@@ -142,7 +142,7 @@ def build_fixed_structure_declaration(
         initial_structure="initialized",
         # The number of free parameters is identical in both states, so a
         # complexity term would be a constant and cannot affect the decision.
-        score=NativeScore(residual_output="residuals"),
+        score=NativeScore(),
     )
 
 

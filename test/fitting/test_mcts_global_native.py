@@ -77,8 +77,13 @@ def _declaration(member):
             NativeAction("free-lifetime", "terminate", "free-lifetime", terminal=True),
         ),
         initial_structure="fixed-lifetime",
-        score=NativeScore(complexity_penalty=0.01),
+        score=NativeScore(effective_sample_size=48.0),
     )
+
+
+def _group_keys(problem):
+    """The declared groups, from canonical ids ``<group>.<index>``."""
+    return sorted({pid.rsplit(".", 1)[0] for pid in problem.get_parameter_ids()})
 
 
 def _live_state(fit):
@@ -101,7 +106,7 @@ def test_global_search_uses_one_joint_problem_and_one_shared_owner_port():
 
     assert prepared.supported, prepared.reasons
     assert _live_state(fit) == before
-    keys = list(prepared.problem.get_parameter_group_keys())
+    keys = _group_keys(prepared.problem)
     assert sum(key.startswith("shared:") for key in keys) == 1
     assert sum(key.startswith("member:") for key in keys) == 2
     assert len(prepared.binding.ports) == 3
@@ -262,7 +267,7 @@ def test_common_dispatcher_routes_a_multi_member_fit_to_the_joint_capability():
     assert prepared.binding.declaration.objective_model is fit._model
     assert len(prepared.binding.ports) == 3
     assert (
-        sum(key.startswith("shared:") for key in prepared.problem.get_parameter_group_keys()) == 1
+        sum(key.startswith("shared:") for key in _group_keys(prepared.problem)) == 1
     )
 
 

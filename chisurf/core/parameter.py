@@ -283,10 +283,7 @@ class Parameter(chisurf.core.base.Base):
                 if ub == ub and v > ub:
                     v = ub
                 if v != raw and not self.fixed:
-                    f = self._port.fixed
-                    self._port.fixed = False
                     self._port.value = v
-                    self._port.fixed = f
                     # The write-back cleared the entry; the clamped value is
                     # what every later read must see.
                     self.__dict__["_frozen_flags"] = frozen
@@ -338,10 +335,7 @@ class Parameter(chisurf.core.base.Base):
         # Testing the cheap one first skips the port read entirely whenever no
         # bound clamped the value, which is nearly every read.
         if v != raw and not self.fixed:
-            f = self._port.fixed
-            self._port.fixed = False
             self._port.value = v
-            self._port.fixed = f
 
         return v
 
@@ -398,10 +392,7 @@ class Parameter(chisurf.core.base.Base):
             )
             return
 
-        f = self._port.fixed
-        self._port.fixed = False
         self._port.value = val_float
-        self._port.fixed = f
 
     @property
     def link(self) -> chisurf.core.parameter.Parameter:
@@ -631,10 +622,7 @@ class Parameter(chisurf.core.base.Base):
         """Restore parameter state from :meth:`__getstate__` output."""
         s = json.dumps(state["port"])
         self._port.read_json(s)
-        fixed = self._port.fixed
-        self._port.fixed = False
         self._port.value = state["port"]["value"]
-        self._port.fixed = fixed
 
     def __round__(self, n=None):
         """Return a new parameter whose value is ``round(self)``."""

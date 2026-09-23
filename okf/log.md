@@ -2,6 +2,13 @@
 
 ## 2026-09-23
 
+* **Fitting on bff's `FitObjective` API.**
+  - `minimizer.py` passes objectives, not port names. Its director `ResidualNode` is now a `FitObjective`.
+  - `mcts/native.py` builds the single bff `FittingModelSearchProblem`: one canonical id per group port (`<group>.<index>`), and one structure per declaration with its fixed mask and seeds.
+  - `NativeScore.complexity_penalty` and `residual_output` are replaced by `effective_sample_size`, scored as BIC; `1` charges nothing. Global searches add the members' sizes.
+  - The unfix-write-refix workarounds in `core/parameter.py`, `mcts/dispatcher.py` and `mcts/native.py` are deleted, because a fixed bff port takes writes.
+  - Concept: [graph objective](subsystems/graph-objective.md) "The objective contract". `test/fitting`: 1123 passed (the two failures are listed in known-issues).
+
 * **Resolved CI test suite failures across Linux, macOS, and Windows.**
   - **Linux (`ubuntu-22.04`)**: Fixed coverage.py data lock deadlock during test execution in
     `test/agent/test_bootstrap.py` by marking `test_qt_widget_models_appear_once_an_application_exists`

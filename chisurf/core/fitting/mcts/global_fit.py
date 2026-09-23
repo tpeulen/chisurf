@@ -133,36 +133,27 @@ def _member_structures(
 
 
 def _score(declarations: Sequence[NativeSearchDeclaration]) -> NativeScore:
-    """Require one score surface and combine BIC-style sample sizes.
+    """One BIC over the joint residual: the members' sample sizes add.
 
-    A joint BFF residual owns the numerical score.  Positive member penalties
-    encode ``log(n_effective) / 2``; independent member sample sizes add.  Zero
-    means that candidate structures have equal dimension (or no complexity
-    penalty) and stays zero for the joint problem.
+    A member with ``effective_sample_size == 1`` charges nothing for its
+    parameters; mixing it with members that do would make the joint charge
+    depend on which member a parameter came from, so that is refused.
     """
     scores = [declaration.score for declaration in declarations]
-    if any(
-        score.residual_output != "residuals" or score.score_output or score.acceptable_output
-        for score in scores
-    ):
+    if any(score.score_output or score.acceptable_output for score in scores):
         raise ValueError(
             "global search requires BFF joint residual scoring without "
             "member-only score or acceptability outputs"
         )
-    penalties = [float(score.complexity_penalty) for score in scores]
-    if any(not math.isfinite(value) or value < 0.0 for value in penalties):
-        raise ValueError("member complexity penalties must be finite and non-negative")
-    positive = [value for value in penalties if value > 0.0]
-    if not positive:
-        penalty = 0.0
-    elif len(positive) != len(penalties):
+    sizes = [float(score.effective_sample_size) for score in scores]
+    if any(not math.isfinite(value) or value < 1.0 for value in sizes):
+        raise ValueError("member effective sample sizes must be finite and at least 1")
+    charged = [value for value in sizes if value > 1.0]
+    if not charged:
+        return NativeScore()
+    if len(charged) != len(sizes):
         raise ValueError("members disagree on whether model complexity is penalized")
-    else:
-        largest = max(2.0 * value for value in positive)
-        penalty = 0.5 * (
-            largest + math.log(sum(math.exp(2.0 * value - largest) for value in positive))
-        )
-    return NativeScore(residual_output="residuals", complexity_penalty=penalty)
+    return NativeScore(effective_sample_size=sum(charged))
 
 
 def _state_key(state: tuple[str, ...]) -> str:

@@ -23,6 +23,17 @@ back to the **director**: the optimiser is still IMP.bff's C++ LM, but the
 objective is a Python callback reached through a SWIG director once per
 residual evaluation. One algorithm, two transport paths.
 
+# The objective contract
+
+Everything the minimiser and model search optimise is an `IMP.bff.FitObjective`:
+a node whose evaluation is a weighted residual vector on its `residuals` output
+port. `FitChiSquared` and `FitJointChiSquared` are objectives. The director
+fallback's `ResidualNode` subclasses `FitObjective` and writes to
+`get_residuals_port()`. `FitMinimizer.set_objective(objective)` and
+`FitJointChiSquared.add_member(objective)` take the objective itself, with no
+port name. A fixed port still accepts writes, because `fixed` only keeps the
+optimiser away, so setting a held parameter needs no unfix/refix.
+
 # What builds
 
 ## Single model: Expression → ChiSquared → Minimizer

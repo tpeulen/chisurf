@@ -54,10 +54,14 @@ class NativeAction:
 
 @dataclass(frozen=True)
 class NativeScore:
-    """Scoring settings interpreted exclusively by BFF."""
+    """Scoring settings interpreted exclusively by BFF.
 
-    residual_output: str = "residuals"
-    complexity_penalty: float = 0.0
+    Without a ``score_output`` every structure is compared by BIC over
+    ``effective_sample_size`` observations; ``1`` charges nothing for a free
+    parameter, which is right only when every candidate has the same number.
+    """
+
+    effective_sample_size: float = 1.0
     score_output: str = ""
     acceptable_output: str = ""
 
@@ -95,7 +99,6 @@ class NativeSearchBinding:
         live_snapshot = _snapshot(self.declaration.live_parameters)
         try:
             for parameter, value, is_fixed in zip(self.parameters, values, fixed):
-                parameter.fixed = False
                 parameter.value = float(value)
                 parameter.fixed = bool(is_fixed)
             self.declaration.objective_model.find_parameters()
@@ -162,10 +165,7 @@ def _restore(snapshot: Sequence[tuple[Any, ...]]) -> None:
         current = float(parameter.value)
         values_differ = current != value and not (math.isnan(current) and math.isnan(value))
         if values_differ:
-            was_fixed = bool(parameter.fixed)
-            parameter.fixed = False
             parameter.value = value
-            parameter.fixed = was_fixed
         if (
             hasattr(parameter, "redundant")
             and bool(getattr(parameter, "redundant", False)) != redundant
@@ -250,11 +250,11 @@ def prepare_native_model_search(
             "backend_unavailable",
             f"IMP.bff is unavailable: {error}",
         )
-    if not hasattr(bff, "FittingModelSearchProblem"):
+    if not hasattr(bff, "FitObjective"):
         return unsupported(
             declaration.capability_id,
             "backend_api_unavailable",
-            "IMP.bff does not expose FittingModelSearchProblem",
+            "IMP.bff predates the FitObjective search API",
         )
 
     declared_parameters = _unique(
@@ -328,7 +328,6 @@ def prepare_native_model_search(
             str(unmapped[0].name),
         )
 
-    problem = bff.FittingModelSearchProblem(objective, declaration.score.residual_output)
     group_by_key = {group.key: group for group in declaration.groups}
     initial = next(
         structure
@@ -336,32 +335,56 @@ def prepare_native_model_search(
         if structure.key == declaration.initial_structure
     )
     initially_free = set(initial.free_groups)
+    problem = bff.FittingModelSearchProblem()
     ordered_parameters: list[Any] = []
     ordered_ports: list[Any] = []
+    ids: list[str] = []
+    group_of: list[str] = []
+    start_values: list[float] = []
+    enable_values: list[float] = []
     for group in declaration.groups:
         ports = [port_by_parameter[id(parameter)] for parameter in group.parameters]
-        if group.initial_values:
-            for port, value in zip(ports, group.initial_values):
-                port.fixed = False
-                port.value = float(value)
-        for port in ports:
+        for index, (parameter, port) in enumerate(zip(group.parameters, ports)):
+            if group.initial_values:
+                port.value = float(group.initial_values[index])
             port.fixed = group.key not in initially_free
-        problem.add_parameter_group(group.key, ports, list(group.enable_values))
-        ordered_parameters.extend(group.parameters)
-        ordered_ports.extend(ports)
+            canonical = f"{group.key}.{index}"
+            problem.add_parameter(canonical, port)
+            ids.append(canonical)
+            group_of.append(group.key)
+            start_values.append(float(port.value))
+            enable_values.append(
+                float(group.enable_values[index]) if group.enable_values else float(port.value)
+            )
+            ordered_parameters.append(parameter)
+            ordered_ports.append(port)
     for structure in declaration.structures:
-        problem.add_structure(structure.key, list(structure.free_groups))
+        free = set(structure.free_groups)
+        # A group free at the root starts where the user left it; one this
+        # structure frees on top starts from its declared seed.
+        values = [
+            enable if group in free and group not in initially_free else start
+            for group, start, enable in zip(group_of, start_values, enable_values)
+        ]
+        mask = [0 if group in free else 1 for group in group_of]
+        problem.add_structure(structure.key, objective, ids, ordered_ports, values, mask)
+        score = declaration.score
+        if score.score_output:
+            problem.set_structure_score_output(structure.key, score.score_output)
+        else:
+            problem.set_structure_selection(
+                structure.key,
+                bff.MODEL_SELECTION_BIC,
+                float(score.effective_sample_size),
+                float(len(mask) - sum(mask)),
+            )
+        if score.acceptable_output:
+            problem.set_structure_acceptable_output(structure.key, score.acceptable_output)
     problem.set_initial_structure(declaration.initial_structure)
     for action in declaration.actions:
         problem.add_action(
             action.parent, action.key, action.result, float(action.prior), bool(action.terminal)
         )
-    if declaration.score.score_output:
-        problem.set_score_output(declaration.score.score_output)
-    else:
-        problem.set_complexity_penalty(float(declaration.score.complexity_penalty))
-    if declaration.score.acceptable_output:
-        problem.set_acceptable_output(declaration.score.acceptable_output)
 
     keepalive = (minimizer, objective, tuple(native_ports), group_by_key)
     binding = NativeSearchBinding(

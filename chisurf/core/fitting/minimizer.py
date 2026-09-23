@@ -160,12 +160,11 @@ def have_minimizer() -> bool:
 
 if _bff is not None:
 
-    class ResidualNode(_bff.GraphNode):
-        """A Python residual presented to C++ as a node with a residual port.
+    class ResidualNode(_bff.FitObjective):
+        """A Python residual presented to C++ as a fit objective.
 
         The optimiser writes the trial vector into this node's input ports,
-        calls ``update()``, and reads the residual vector back off the
-        ``residuals`` output port. Everything in between -- setting the
+        calls ``update()``, and reads the objective's residuals. Everything in between -- setting the
         model's parameters, evaluating it, forming the weighted residual --
         happens in one Python call instead of the several the old loop made.
 
@@ -180,7 +179,6 @@ if _bff is not None:
             self._names = ["p%d" % i for i in range(n_parameters)]
             for n in self._names:
                 self.add_input_port(n, _bff.GraphPort(0.0))
-            self.add_output_port("residuals", _bff.GraphPort([0.0], False, True))
             # Resolved once and held. `get_input_port` is a SWIG call and the
             # ports do not move, so looking them up inside `evaluate` cost a
             # crossing per parameter per residual evaluation -- on a
@@ -188,7 +186,7 @@ if _bff is not None:
             # settled in this constructor. Measured on a parse fit: 1.14 ms
             # of optimisation against 1.06 without it.
             self._ports = [self.get_input_port(n) for n in self._names]
-            self._out = self.outputs["residuals"]
+            self._out = self.get_residuals_port()
             #: Set when the callback raised, so `minimize` can re-raise it in
             #: Python rather than let it cross back through the director.
             self.error = None
@@ -409,7 +407,6 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
     model_in.link = out
     chi2.add_input_port("model", model_in)
     chi2.add_output_port(name, _bff.GraphPort(0.0, False, True))
-    chi2.add_output_port("residuals", _bff.GraphPort([0.0], False, True))
     return chi2, carried, (curve, axes_alive, out, model_in)
 
 
@@ -570,7 +567,7 @@ def _description_objective(model, free):
     ports = [p._port for p in free]
     m = _bff.FitMinimizer()
     m.set_parameter_ports(ports)
-    m.set_objective(objective, "residuals")
+    m.set_objective(objective)
     maxfev = int(problem.get_minimizer_maxfev())
     if maxfev > 0:
         m.maxfev = maxfev
@@ -618,7 +615,7 @@ def _single_objective(
 
     m = _bff.FitMinimizer()
     m.set_parameter_ports(parameter_ports)
-    m.set_objective(chi2, "residuals")
+    m.set_objective(chi2)
     # The graph holds the only reference to these once this function returns.
     m._graph = (chi2, carried, keepalive, extra_keepalive)
     # What a Sampler needs to drive the same graph: the objective node, the
@@ -1008,13 +1005,12 @@ def _group_objective(fit, model, free):
 
     joint = _bff.FitJointChiSquared("joint")
     joint.add_output_port("joint", _bff.GraphPort(0.0, False, True))
-    joint.add_output_port("residuals", _bff.GraphPort([0.0], False, True))
     for chi2 in chi2_nodes:
-        joint.add_member(chi2, "residuals")
+        joint.add_member(chi2)
 
     m = _bff.FitMinimizer()
     m.set_parameter_ports(parameter_ports)
-    m.set_objective(joint, "residuals")
+    m.set_objective(joint)
     # The graph holds the only reference to these once this function returns.
     m._graph = (joint, chi2_nodes, keepalive)
     m._sampler_surface = (joint, parameter_ports, "joint")
@@ -1136,7 +1132,7 @@ def director_objective(func, x0, args=()):
     node.set_start(x0)
     m = _bff.FitMinimizer()
     m.set_parameter_ports(node.ports)
-    m.set_objective(node, "residuals")
+    m.set_objective(node)
     return m, node
 
 

@@ -133,11 +133,13 @@ def test_int_and_vector_writes_unaffected():
     np.testing.assert_allclose(np.asarray(q.value), [1.0, 2.0, 3.0])
 
 
-def test_fixed_port_ignores_writes():
+def test_fixed_port_takes_writes():
+    """Fixed holds a port from optimisers, not from the user."""
     p = _port()
     p.fixed = True
     p.value = 42.0
-    assert p.value == pytest.approx(1.0)
+    assert p.value == pytest.approx(42.0)
+    assert p.fixed
 
 
 def test_linked_ports_still_propagate():

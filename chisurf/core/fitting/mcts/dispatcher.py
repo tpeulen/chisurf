@@ -55,10 +55,7 @@ class DescribedModelBinding:
 
         for canonical, value in zip(problem.get_parameter_ids(), self.values):
             port = problem.get_parameter(canonical)
-            was = port.fixed
-            port.fixed = False
             port.value = float(value)
-            port.fixed = was
         if self.structure:
             problem.select_structure(self.structure)
         factorgraph.bump_structure_version()

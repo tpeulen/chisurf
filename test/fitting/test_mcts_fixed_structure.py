@@ -60,7 +60,7 @@ def test_parse_fit_refines_entirely_on_the_native_graph_and_applies_the_winner()
 
     assert prepared.supported, prepared.reasons
     assert _parameter_state(fit) == before
-    assert list(prepared.problem.get_parameter_group_keys()) == ["user-free"]
+    assert {pid.rsplit(".", 1)[0] for pid in prepared.problem.get_parameter_ids()} == {"user-free"}
     root = prepared.problem.get_initial_state()
     actions = prepared.problem.get_actions(root)
     assert {(action.get_key(), action.get_terminal()) for action in actions} == {
