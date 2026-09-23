@@ -90,23 +90,21 @@ ndxplorer/tests/test_app/test_emtk_app.py ndxplorer/tests/test_qt_free_logic.py`
 (the core tests build `NdxApp(features=[])`). Compare each shot with `parity/qt/`
 by control inventory; the ticks are in `tools/parity/features.md`.
 
-1. **Parity status, 2026-09-23.** The main-view scenarios above are ticked:
-   same default axes, stored axis settings (Fd/Fa log 0.1..500 on selection),
-   counts 12237/12237, colour limits 1.00e+00 / 2.01e+02, bins and ranges as
-   spin boxes, shortcuts Ctrl+O/Ctrl+I, drop to open, status line. The look is
-   emtk's and ImPlot's default (user directive): no Qt palette, no proportional
-   font; `theme.py` only maps x/y/z/gate to ImPlot's first colormap colours.
-   Deliberate difference: `log #` re-derives vmin/vmax in log10 units; the Qt
-   window keeps linear limits over a log image (its map washes out).
-2. **Open, core:** the window title with the file name (`global`). The native
-   and Tk hosts take a fixed title; a host API to retitle (`control.window_title`
-   read each frame) has to go into emtk `native.py` / `tk_host.py`, which the HiDPI
-   work was editing at the time.
+1. **Parity status, 2026-09-23 (final pass).** `tools/parity/features.md`:
+   249 [x], 35 [~], 2 [-], 0 [ ]. `python -m ndxplorer.app.capture` (all 61)
+   then `python3 tools/parity/compare.py`: every scenario PARITY except
+   `fix_report_tool`, dropped on purpose (the module never existed; the entry is
+   gone from both GUIs), which the report lists as NOT STARTED because no shot
+   can exist. The look is emtk's and ImPlot's default (user directive).
+   Deliberate differences: `log #` re-derives vmin/vmax in log10 units; Print
+   window saves a picture; Exit is disabled in a browser.
+2. **Window title** is done: `NdxApp.window_title` ("ndX - <file>"), carried by
+   every emtk host (emtk `b49285a`).
 3. **Check on a real Retina screen** after the emtk HiDPI fix (emtk `d7d1f23`
-   and later): offscreen captures run at ratio 1 and hid glyphs drawn 2x too
-   large and a window opened at ~986x605 instead of 1400x900. The view specs
-   still use fixed pixel widths for bins (58 px) and buttons; re-check them
-   for clipping at the real ratio.
+   and later): offscreen captures run at ratio 1. The view specs still use
+   fixed pixel widths for bins (58 px) and buttons; re-check them for clipping
+   at the real ratio. The docks are becoming emtk dock windows (another agent,
+   `app/docks`); re-capture after that lands.
 4. **Browser boot: taken.** See the Browser item above (`python -m ndxplorer.app.web`).
 5. **Hooks** (`features/__init__.py`): actions/available/fields, menu_entries,
    custom_sections (`playback`, `draw_mask` in the core spec), tabs,

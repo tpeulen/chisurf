@@ -2,6 +2,8 @@
 
 ## 2026-09-23
 
+* **ndX emtk port: final parity pass.** features.md 249 [x] / 35 [~] / 2 [-] / 0 open; all 61 scenarios captured, every one at PARITY except the deliberately dropped Fix Report Tool. Core cleanup: opening files only through the io feature and `io.loading`, view specs as package data, `window_title` on every emtk host, File > Save > Histograms / Print window / Exit. Resume: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / core.
+
 * **ndX emtk port: the app runs in a browser (Pyodide 0.28 + WebGPU).**
   - `python -m ndxplorer.app.web` builds and serves the page on :8795. The Zed task is
     `ndx-emtk-web`.
