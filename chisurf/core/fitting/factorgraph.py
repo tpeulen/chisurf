@@ -529,6 +529,7 @@ class FactorGraph:
 
         #: The graph queries themselves, in C++ -- see :attr:`engine`.
         self._engine = None
+        self.fit_graph = None
 
     # -- the engine -------------------------------------------------------
 
@@ -1007,6 +1008,41 @@ def posterior_model(fit):
     return getattr(fit, "model", None)
 
 
+def _derived_fit_graph(fit, model):
+    """The factor graph of the objective this fit optimises, read off its nodes.
+
+    ``IMP.bff.get_fit_factor_graph`` walks the native objective: a likelihood
+    per dataset over the parameters its model actually reads, followers joined
+    to their masters by link factors, held parameters kept as evidence. ``None``
+    when the fit has no native objective (the director path), which then keeps
+    the declared construction below.
+    """
+    try:
+        import IMP.bff as bff
+
+        from chisurf.core.fitting.minimizer import graph_objective
+    except ImportError:
+        return None
+    built = graph_objective(fit, model)
+    if built is None:
+        return None
+    minimizer, _free = built
+    pairs = getattr(minimizer, "_parameter_ports", None)
+    if not pairs:
+        return None
+    keys, ports, seen = [], [], set()
+    for parameter, port in pairs:
+        key = parameter_key(parameter)
+        if key in seen or port is None:
+            continue
+        seen.add(key)
+        keys.append(key)
+        ports.append(port)
+    graph = bff.get_fit_factor_graph(minimizer._sampler_surface[0], keys, ports)
+    graph._keep = minimizer
+    return graph
+
+
 def build_factor_graph(fit, model=None) -> FactorGraph:
     """Build the factor graph of a fit.
 
@@ -1041,7 +1077,33 @@ def build_factor_graph(fit, model=None) -> FactorGraph:
     factors: typing.List[FactorNode] = []
 
     local_fits = list(getattr(model, "fits", []) or [])
-    if local_fits:
+    derived = _derived_fit_graph(fit, model) if fit is not None else None
+    if derived is not None:
+        import IMP.bff as bff
+
+        for factor_key in derived.get_factor_keys():
+            if derived.get_factor_kind(factor_key) != bff.INFERENCE_FACTOR_LIKELIHOOD:
+                continue
+            index = len(factors)
+            local_model = getattr(local_fits[index], "model", None) if local_fits else model
+            factors.append(
+                FactorNode(
+                    key=f"L{index}",
+                    kind=LIKELIHOOD,
+                    scope=tuple(k for k in derived.variables_of(factor_key) if k in known),
+                    fit_index=index,
+                    size=int(getattr(local_model, "n_points", 0) or 0),
+                )
+            )
+        if local_fits:
+            owner: typing.Dict[str, int] = {}
+            for i, local in enumerate(local_fits):
+                for p in getattr(getattr(local, "model", None), "parameters", []):
+                    key = parameter_key(p)
+                    if key in known:
+                        owner.setdefault(key, i)
+            variables = [dataclasses.replace(v, fit_index=owner.get(v.key)) for v in variables]
+    elif local_fits:
         # Global fit: one likelihood per dataset, and tag each variable with the
         # local fit that owns it (globals and cross-linked masters keep None).
         owner: typing.Dict[str, int] = {}
@@ -1074,4 +1136,8 @@ def build_factor_graph(fit, model=None) -> FactorGraph:
         )
 
     factors.extend(_prior_factors(model, known))
-    return FactorGraph(variables, factors, version=structure_version())
+    graph = FactorGraph(variables, factors, version=structure_version())
+    #: The whole fit as the optimiser sees it -- held parameters and links
+    #: included -- for a view; ``None`` when there is no native objective.
+    graph.fit_graph = derived
+    return graph

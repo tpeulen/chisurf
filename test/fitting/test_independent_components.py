@@ -13,6 +13,7 @@ import pytest
 
 import chisurf.core.data
 import chisurf.core.fitting.fit
+import chisurf.core.fitting.minimizer
 import chisurf.core.fitting.sample
 import chisurf.core.models.parse
 from chisurf.core.fitting import diagnostics as dg
@@ -175,8 +176,12 @@ def test_components_are_shuffled_so_no_spurious_correlation_appears():
             assert abs(corr[i, j]) < 0.15, f"{ni} vs {nj}: {corr[i, j]:.3f}"
 
 
-def test_decomposition_costs_far_fewer_model_evaluations():
+def test_decomposition_costs_far_fewer_model_evaluations(monkeypatch):
     """The point of the exercise, in local-model evaluations for equal draws."""
+    # Both sides are counted in Python model evaluations, so both run on the
+    # Python path; the native graph would take one of them out of the count.
+    monkeypatch.setattr(chisurf.core.fitting.minimizer, "graph_objective",
+                        lambda *a, **k: None)
 
     def _cost(sampler):
         np.random.seed(9)

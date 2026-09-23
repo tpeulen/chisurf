@@ -34,6 +34,20 @@ fallback's `ResidualNode` subclasses `FitObjective` and writes to
 port name. A fixed port still accepts writes, because `fixed` only keeps the
 optimiser away, so setting a held parameter needs no unfix/refix.
 
+# The factor graph is read off the objective
+
+`factorgraph.build_factor_graph` derives its likelihood scopes from
+`IMP.bff.get_fit_factor_graph` over the native objective whenever one exists.
+Every builder records `minimizer._parameter_ports`: each parameter the graph
+reads, with the port it reads it through, held ones marked fixed. The result
+keeps the whole derived graph on `FactorGraph.fit_graph` for views: links
+between followers and masters, and held parameters as evidence. A fit on the
+director path has no node graph, so it keeps the declared construction.
+
+An all-ones mask is no mask (`_masked`). Before 2026-09-23 every fit's default
+mask counted as one, so every global fit was refused its native graph and ran
+on the director path.
+
 # What builds
 
 ## Single model: Expression → ChiSquared → Minimizer

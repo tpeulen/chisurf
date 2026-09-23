@@ -2,6 +2,12 @@
 
 ## 2026-09-23
 
+* **Global fits run on their native graph, and the factor graph is derived from it.**
+  - `_masked` counted every fit's default all-ones mask as a mask, so every `GlobalFitModel` was refused `_group_objective` and ran on the Python director path. An all-ones mask is now no mask.
+  - The native builders record `_parameter_ports`, and held parameters' ports are marked fixed. `build_factor_graph` takes its scopes from `IMP.bff.get_fit_factor_graph` and keeps the whole derived graph (links, evidence) as `FactorGraph.fit_graph`.
+  - Three tests compared algorithms by counting Python model evaluations; they now run both sides on the Python path.
+  - `test/fitting`, `test/core`, `test/server`: 3024 passed (one unrelated server stderr-timing failure).
+
 * **The H2MM surrogate's C++ engine is IMP.bff's now (T-20260923-nn).**
   - tttrlib keeps no ML code; `HmmSurrogate` and network training moved to IMP.bff (imp.bff 8ef6c968).
   - `burst_h2mm/core/surrogate_tttrlib.py` became `surrogate_bff.py`. It hands `BurstPhotons`' CSR arrays straight to `IMP.bff.HmmSurrogate.predict_from_layout`, so no photon engine is built first. The gate is `HAVE_BFF`.

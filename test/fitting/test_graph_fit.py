@@ -592,8 +592,18 @@ def test_a_masked_member_refuses_the_group():
     different objective than the numpy path it replaces.
     """
     group = make_group()
-    group[0].mask = np.ones(N, dtype=float)
+    mask = np.ones(N, dtype=float)
+    mask[3] = 0.0
+    group[0].mask = mask
     assert M.graph_objective(group, group._model) is None
+
+
+def test_an_all_ones_mask_is_no_mask_and_the_group_runs_natively():
+    """Every fit carries an all-ones mask until a point is excluded; it weights
+    nothing, and treating it as a mask refused every group its native graph."""
+    group = make_group()
+    group[0].mask = np.ones(N, dtype=float)
+    assert M.graph_objective(group, group._model) is not None
 
 
 def test_a_prior_refuses_the_group():

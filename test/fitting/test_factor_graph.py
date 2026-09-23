@@ -383,3 +383,34 @@ def test_an_empty_graph_has_no_cliques():
     g = factorgraph.FactorGraph([], [])
     assert g.cliques() == []
     assert g.treewidth == 0
+
+
+def test_the_graph_is_derived_from_the_objective_that_is_optimised():
+    """Scopes come from what each dataset's model reads in the native graph,
+    and the whole fit -- links and held parameters -- is there for a view."""
+    import IMP.bff as bff
+
+    fit = _global_fit(3)
+    master = _link_across(fit, "a")
+    held = [p for p in fit[2].model.parameters_all if p.name == "c"][0]
+    held.fixed = True
+    for local in fit:
+        local.model.find_parameters()
+    fit._model.find_parameters()
+
+    g = build_factor_graph(fit)
+
+    assert g.fit_graph is not None
+    whole = g.fit_graph
+    links = [k for k in whole.get_factor_keys()
+             if whole.get_factor_kind(k) == bff.INFERENCE_FACTOR_LINK]
+    assert len(links) == 2
+    master_key = factorgraph.parameter_key(master)
+    assert all(master_key in whole.variables_of(k) for k in links)
+    held_key = factorgraph.parameter_key(held)
+    assert whole.get_variable_role(held_key) == "fixed"
+    assert any(held_key in list(whole.get_factor_evidence(k))
+               for k in whole.get_factor_keys())
+    # The posterior's likelihoods: every dataset reads the shared amplitude.
+    for i in range(3):
+        assert master_key in g.variables_of(f"L{i}")

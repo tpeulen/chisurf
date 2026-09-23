@@ -377,7 +377,9 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
             # nor something the optimiser writes, and the graph has no way to
             # recompute it. Refuse rather than freeze it at its start value.
             return None
-        port = _bff.GraphPort(float(p.value))
+        # A held parameter is a constant the optimiser never writes; saying so
+        # on the port is what lets the graph's structure be read off it.
+        port = _bff.GraphPort(float(p.value), bool(getattr(p, "fixed", False)))
         curve.add_input_port(p.name, port)
         carried.append((p, port))
 
@@ -443,8 +445,20 @@ def _wire_links(pending, owner_port) -> bool:
 
 
 def _masked(fit) -> bool:
-    """Whether *fit* carries a mask the graph would have to reproduce."""
-    return getattr(fit, "mask", None) is not None
+    """Whether *fit* carries a mask the graph would have to reproduce.
+
+    Every fit carries a mask, all ones until a point is excluded; that one
+    weights nothing and is not a mask to reproduce. Treating it as one refused
+    every global fit its native graph.
+    """
+    mask = getattr(fit, "mask", None)
+    if mask is None:
+        return False
+    try:
+        values = np.asarray(mask, dtype=float).ravel()
+    except Exception:
+        return True
+    return values.size > 0 and not np.all(values == 1.0)
 
 
 def graph_objective(fit, model, allow_priors: bool = False):
@@ -573,6 +587,11 @@ def _description_objective(model, free):
         m.maxfev = maxfev
     m._graph = (problem,)
     m._sampler_surface = (objective, ports, objective.get_name())
+    m._parameter_ports = [
+        (p, p._port)
+        for p in model.parameters_all
+        if getattr(p, "_port", None) is not None and not getattr(p, "is_output", False)
+    ]
     m._description_model = model
     return m, free
 
@@ -621,6 +640,9 @@ def _single_objective(
     # What a Sampler needs to drive the same graph: the objective node, the
     # ports in `free` order, and the scalar-chi2 output port's name.
     m._sampler_surface = (chi2, parameter_ports, "chi2")
+    # Every parameter the graph reads, with the port it reads it through --
+    # what the factor graph is derived from.
+    m._parameter_ports = list(carried)
     return m, free
 
 
@@ -1014,6 +1036,11 @@ def _group_objective(fit, model, free):
     # The graph holds the only reference to these once this function returns.
     m._graph = (joint, chi2_nodes, keepalive)
     m._sampler_surface = (joint, parameter_ports, "joint")
+    carried_all = [pair for _chi2, carried, _alive in keepalive[: len(chi2_nodes)] for pair in carried]
+    carried_ids = {id(p) for p, _ in carried_all}
+    m._parameter_ports = carried_all + [
+        (p, port) for p, port in zip(free, parameter_ports) if id(p) not in carried_ids
+    ]
     return m, free
 
 

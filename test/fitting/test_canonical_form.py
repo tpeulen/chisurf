@@ -14,6 +14,7 @@ import pytest
 
 import chisurf.core.data
 import chisurf.core.fitting.fit
+import chisurf.core.fitting.minimizer
 import chisurf.core.models.parse
 from chisurf.core.fitting import engine as E
 
@@ -240,7 +241,7 @@ def test_closed_form_conditioning_matches_the_re_fit_it_replaces():
         assert b.value == pytest.approx(a.value, abs=0.05 * a.sd)
 
 
-def test_laplace_conditions_in_closed_form_when_the_model_is_linear():
+def test_laplace_conditions_in_closed_form_when_the_model_is_linear(monkeypatch):
     """The certificate passes on a model linear in its parameters, and it is cheaper.
 
     One Jacobian at the conditional mode proves the closed form is what a re-fit
@@ -248,6 +249,10 @@ def test_laplace_conditions_in_closed_form_when_the_model_is_linear():
     answer then agrees with the forced re-fit to the optimiser's tolerance, the
     width and the evidence included, at a fraction of the model evaluations.
     """
+    # Both sides are counted in Python model evaluations, so both run on the
+    # Python path; the native graph would take one of them out of the count.
+    monkeypatch.setattr(chisurf.core.fitting.minimizer, "graph_objective",
+                        lambda *a, **k: None)
     fit = _fit()
     names = list(fit._model.parameter_names)
     held, target = names[0], names[1]
