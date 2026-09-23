@@ -2,6 +2,13 @@
 
 ## 2026-09-23
 
+* **ndX emtk port: the overlays group (Parameters, Overlays, curve fit, Equations, Table Editor).**
+  - Qt-free, for both GUIs: `core/overlay_curves.py`, `analysis/curve_fit_setup.py` (the curve fit's setup behind a `FitHost`), `core/equation_table.py`, `core/store_edits.py`.
+  - The emtk app gets the constants as a chisurf parameter group (edits recompute only what reads them, right-click link/unlink), overlay curves drawn on the map, Fit curve to data, the Equations tab (reachable from View > Equations, unlike Qt) and the Table Editor. Without chisurf's parameters (a browser) the constants are plain numbers and the tabs say why.
+  - chimol: needed by the Qt window only through `chisurf.gui` (-> `chisurf.core.structure`); the emtk app does not import it (tested).
+  - emtk: DataTable right-click menus, value shading, column filters, sideways scrolling, fit-to-contents, `reserve`.
+  - All seven overlays scenarios at PARITY. Resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / overlays.
+
 * **ndX emtk port: the settings group (Settings menu, Axis Control, report tool, Help).**
   - The emtk app gets Performance Settings, Load settings, Save settings (axis settings, constants, equations), Set default axis, View > Axis Control (the plots read `model.axis_display`), File > Make Report, and Help/About/Update.
   - Writing settings leaves `settings_helpers.py` for `settings/persist.py`, and reports leave `report_tool.py` for `export/report.py` (Figure to PNG bytes, browser-ready). Both GUIs call these modules.

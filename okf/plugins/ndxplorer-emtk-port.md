@@ -134,6 +134,71 @@ out the truncation at each pass). On the MFD data, clicking the diffuse FRET
 cloud absorbed the dense donor-only population next to it: 9584 bursts in
 one ellipse. The density-watershed search replaced it.
 
+### overlays (Parameters, Overlays, curve fit, Equations, Table Editor)
+
+Re-measure with `python -m ndxplorer.app.capture -s overlays_curve -s overlays_equation_list
+-s curve_fit_dialog -s parameters_panel -s add_parameter -s equations_panel -s store_editor`
+and `pytest ndxplorer/tests/test_app/test_overlays.py`; the Qt side with (offscreen)
+`ndxplorer/tests/test_ui/test_curve_fit_overlay.py test_curve_fit_dialog.py
+test_store_editor.py test_equation_editor.py` and `test/test_curve_overlay_update.py`.
+
+1. **Parity status, 2026-09-23: all seven scenarios PARITY** in `parity/report.html`
+   (features.md ticked; deliberate differences written there). The static FRET line
+   is drawn where the Qt one is; 59 equations, all valid; 12,237 rows × 58 columns.
+   Fixed rather than copied: the equation list reads the *user's*
+   `curve_equations.yaml` first (Qt read the shipped file first); Names & functions
+   lists only the functions ndX's engine accepts (`abs`), not chisurf's.
+2. **Trap -- a green test run can be a skipped one.** A chisurf `FittingParameter`
+   needs chisurf's compiled port runtime (IMP.bff). When it cannot load (every
+   browser; a desktop mid-rebuild, as on 2026-09-23 ~09:45 when `_IMP_bff.so` and
+   `libimp_bff.0.dylib` came from different builds) the feature degrades on purpose:
+   the constants become plain numbers (edits still recompute), curves and the fit are
+   off, and the Parameters/Overlays tabs say why. The chisurf tests in
+   `test_overlays.py` then *skip*; check that `overlays._has_chisurf()` is true before
+   reading a pass as a measurement.
+3. **Blocked for the browser: chisurf parameters.** Curves, the curve fit, links and
+   bounds need `chisurf.core.fitting.parameter`, which needs IMP.bff; there is no
+   Pyodide build of it. Unblocking needs either an IMP.bff Pyodide wheel or a pure-
+   Python parameter model for chisurf's port runtime. Everything else (constants as
+   numbers, equations, Table Editor) is Qt-free and chisurf-free.
+4. **chimol, answered.** The Qt window needed `~/dev/chimol` only through
+   `chisurf.gui`: autoform / the parameter table -> `chisurf.gui.widgets.fitting` ->
+   `chisurf.gui.widgets.experiments` -> `chisurf.core.structure` ->
+   `chisurf.core.fio.structure.coordinates` (`from chimol.io.atoms import ATOM_DTYPE`).
+   Without it `NDXplorer._deferred_init` dies in the Gaussian panel's autoform
+   *before* the constants table exists, so the equations run without constants --
+   that is the "equation columns silently missing". chimol is already an explicit
+   chisurf dependency (`pixi.toml`, editable install); the harness adds it to
+   `PYTHONPATH` only because it runs from sources. The emtk app imports no
+   `chisurf.gui` and needs no chimol; `test_overlays.py` loads the MFD folder with
+   chimol blocked and finds the equation columns.
+5. **Open.**
+   - View > Parameters / Overlays hide the tab's content, but `frame._draw_left`
+     still draws those two titles (disabled) when no feature provides them (core).
+   - The fit runs on a thread on a desktop. A fit with a freed constant rewrites the
+     plotted columns from that thread while frames draw; the model only re-bins when
+     something invalidates it, so nothing races today, but any per-frame reader of
+     those two columns would.
+   - The Qt Parameters table still comes from `chisurf.gui` (legacy, deleted with
+     the Qt GUI).
+
+Qt-free logic both GUIs call (moved, not copied): `core/overlay_curves.py`
+(CurveEvaluator out of `plotting/curve_overlay.py`, parameter names, filled text,
+predefined list, sampling, CSV, `OverlayCurve`), `analysis/curve_fit_setup.py`
+(`plot_main.build_curve_fit_for` / `_build_cloud_fit` / `build_data_parameters`
+behind a `FitHost`: `plot_main` is one, `ModelFitHost` the other; the dialog's
+targets, reductions and result line), `core/equation_table.py` (rows, validation,
+YAML, names), `core/store_edits.py` (`apply_edits`). `core/constants_group.py` and
+`core/curve_parameters.py` stay the model. emtk: DataTable right-click
+`context_call`, value shading `colour_source`, `column_filters`, sideways scrolling
+(`min_column_width`), `fit_columns()`, `reserve` for an expanding table
+(`d80bb85`, `1d3462d`). Core: `capture.py` adds the final `main` shot the Qt harness
+always takes (`6bf25d1`); View > Equations reads `show_equations` (`8e1b805`).
+
+Tried and reverted: building a table's rows afresh every frame -- the data table
+rebinds on a new list and lost its sort order and selection each frame; rows are
+handed out through a cache that returns the same list while the content is equal.
+
 ### playback_export (playback, find projections, publication export)
 
 Re-measure with `python -m ndxplorer.app.capture -s playback -s playback_image_frames
