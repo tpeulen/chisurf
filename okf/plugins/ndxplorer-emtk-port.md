@@ -188,12 +188,12 @@ Where to pick this up:
    calibration in the page is the missing backend, as on the desktop; the
    file save/load works there through the io service, and the container
    route needs `chisurf.core.fio.pto`. Not yet run in a page.
-8. **ChiSurf bugs found, not fixed here:** the MMFDB toolbar never appears
-   (the plugin's `MMFDBClient(inprocess=True)` has no session token and
-   `mmfdb.status` requires one); ChiSurf's *menu* route
-   (`run_plugin_from_dir` -> manifest `entrypoints.gui`) never runs the
-   plugin's `__init__.py`, so a window opened from the menu has no Accurate
-   FRET toolbar and no Global View parameters, only the ribbon route has them.
+8. **ChiSurf bugs found here, fixed since** (2026-09-23): the MMFDB toolbar
+   never appeared (a private `MMFDBClient(inprocess=True)` without a session
+   token), and the menu route built a window without the Accurate FRET and
+   MMFDB toolbars and the Global View binding. Both routes now call
+   `chisurf.plugins.ndxplorer.window.build_ndxplorer_window`; see
+   [ndxplorer](ndxplorer.md), *One window, whichever way it is opened*.
 
 Re-measure: `python -m ndxplorer.app.capture -s chisurf_toolbars -s accurate_fret_options
 -s accurate_fret_run -s calibration_save_load -s mmfdb_open` (with no backend the

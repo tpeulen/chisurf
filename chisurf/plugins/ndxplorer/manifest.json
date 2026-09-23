@@ -13,7 +13,7 @@
   "icon": "\ud83d\udd2d",
   "state_namespace": "ndxplorer",
   "entrypoints": {
-    "gui": "chisurf.plugins.ndxplorer.rpc_bridge:make_ndxplorer",
+    "gui": "chisurf.plugins.ndxplorer.window:build_ndxplorer_window",
     "cli": "ndxplorer=chisurf.plugins.ndxplorer.cli:cli"
   },
   "operation_types": [

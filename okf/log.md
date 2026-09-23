@@ -2,6 +2,11 @@
 
 ## 2026-09-23
 
+* **ndX: the menu and the ribbon open the same window, and the MMFDB toolbar appears.**
+  - One construction, `chisurf.plugins.ndxplorer.window.build_ndxplorer_window`, called by the manifest's GUI entry point (menu) and by `__init__.py` (ribbon). A window from the menu now has the Accurate FRET and MMFDB toolbars and the Global View constants.
+  - MMFDB: the window used a private in-process client without a session token, so `mmfdb.status` failed and a bare `except: pass` hid it. It now uses ChiSurf's shared session client (`picker.inprocess_client()`); when MMFDB is unavailable the reason is a warning and a status-bar message.
+  - Tests: `chisurf/plugins/ndxplorer/tests/test_window_routes.py`. See [ndxplorer](plugins/ndxplorer.md), *One window, whichever way it is opened*.
+
 * **ndX: Accurate FRET is in the emtk app, and the Qt baseline has the ChiSurf-hosted window.**
   - The Accurate FRET toolbar, MMFDB open, the calibration restore on open and the Global View constants exist only when ChiSurf's plugin decorates the Qt window. `capture_qt.py` gained a ChiSurf host mode; six hosted scenarios on the cal1 ALEX `.pto` are in the baseline and in features.md.
   - The emtk app has a FRET menu (calibration options, progress, report, save/load through the `.pto` or the io service), File > Import > From MMFDB disabled with its reason. The calibration is a backend contract (`ndxplorer.analysis.fret_calibration.calibrate`) waiting for the accurate-FRET library.

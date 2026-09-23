@@ -70,8 +70,11 @@ def make_inprocess_chisurf_client() -> Any | None:
 def make_ndxplorer(**kwargs: Any):
     """Construct an ``NDXplorer`` with the in-process ChiSurf client injected.
 
-    The single entry point every in-GUI launcher should use so the window always
-    gets the phasor / FRET-line features (the "ChiSurf Phasor" toolbar). Any
+    The entry point every in-GUI launcher should use so the window always
+    gets the phasor / FRET-line features (the "ChiSurf Phasor" toolbar). ChiSurf's
+    own ndX window (menu and ribbon) is
+    :func:`chisurf.plugins.ndxplorer.window.build_ndxplorer_window`, which adds
+    the Accurate FRET and MMFDB toolbars and the Global View binding. Any
     caller-supplied ``chisurf_rpc`` is respected; otherwise an in-process client is
     built and injected. Falls back to a plain ``NDXplorer`` if the client cannot be
     built, so ndX still opens when the RPC stack is unavailable.

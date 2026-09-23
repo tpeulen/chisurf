@@ -23,6 +23,34 @@ running without ChiSurf is a broken environment, not a supported configuration â
 but every chisurf import is lazy or guarded, so nothing pulls the GUI stack at
 module import time.
 
+## One window, whichever way it is opened
+
+ChiSurf opens ndX two ways: the **menu** calls the manifest's `entrypoints.gui`
+(`run_plugin_from_dir` -> `_show_manifest_gui`), the **ribbon** executes the
+plugin's `__init__.py` as `plugin`. They used to build different windows: the
+Accurate FRET toolbar, the MMFDB toolbar and the Global View binding lived in
+`__init__.py`, so a window from the menu had only the phasor toolbar and the
+calibration restore. Both now call
+`chisurf.plugins.ndxplorer.window:build_ndxplorer_window` (the manifest points
+at it; `__init__.py` calls it and shows the window). It builds on
+`rpc_bridge.make_ndxplorer`, which the other launchers (trace browser, ALEX
+suite, H2MM, imaging) keep using bare: the Global View binding is one slot
+(`owner_id="ndxplorer"`), and it belongs to ChiSurf's ndX window.
+
+**The MMFDB toolbar uses ChiSurf's MMFDB session.** It never appeared: the
+window probed `mmfdb.status` with a private `MMFDBClient(inprocess=True)`,
+which carries no session token, `mmfdb.status` requires one, and a bare
+`except: pass` swallowed the "Authentication required". The window now takes
+the shared client `chisurf.gui.widgets.mmfdb.picker.inprocess_client()`, which
+adopts the token of ChiSurf's start-up login (as every file selector does).
+When MMFDB is genuinely unavailable -- no client, not logged in, no answer --
+the reason is a logged warning and a status-bar message, never a silent skip.
+
+Tests: `chisurf/plugins/ndxplorer/tests/test_window_routes.py` (both routes
+give the same toolbars and bind the Global View; a real in-process MMFDB on a
+temporary database shows the toolbar when logged in and logs why not
+otherwise).
+
 ## The calibration button asks what it may determine
 
 "ðŸŽ¯ Optimize FRET calibration" runs
