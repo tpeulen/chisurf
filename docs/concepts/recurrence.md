@@ -12,7 +12,7 @@ anchor: concept-recurrence
 In freely-diffusing single-molecule FRET, a molecule crosses the confocal volume
 in about a **millisecond** and produces one burst — far too short to observe
 slow (ms–s) conformational kinetics. **Recurrence analysis of single particles
-(RASP)** recovers those slow timescales without immobilization by exploiting a
+(RASP)** {cite}`hoffmann2011` recovers those slow timescales without immobilization by exploiting a
 simple observation: a molecule that just produced a burst does not vanish. It
 lingers near the focus and, by diffusion, is likely to **recur** — re-enter the
 detection volume and emit a *second* burst — within a short **recurrence time**.
@@ -31,7 +31,7 @@ stream the number of burst pairs separated by a lag $\tau$ is set purely by the
 mean burst rate; recurrence enriches short-lag pairs above that random-coincidence
 background. The enrichment is quantified by the normalized autocorrelation
 $G(\tau)$ of the burst arrival times, from which RASP defines the
-**same-molecule probability**
+**same-molecule probability** {cite}`hoffmann2011`
 
 $$
 P_\text{same}(\tau) = 1 - \frac{1}{G(\tau)} .
@@ -66,7 +66,7 @@ Contrast the recurrence histogram with the overall burst-efficiency histogram. I
 the molecule is **static** on the timescale of the window, a molecule selected in
 the low-FRET state recurs still in the low-FRET state, and the recurrence
 histogram simply reproduces the selected sub-population. If the molecule
-**interconverts** between states during $\Delta t$, probability leaks toward the
+**interconverts** between states during $\Delta t$ {cite}`hoffmann2011`, probability leaks toward the
 other state: a recurrence histogram conditioned on low FRET grows a high-FRET
 component (and vice versa). Scanning the recurrence window $t_2$ across the
 $P_\text{same}$-defined range turns this leakage into a **relaxation curve**, from
@@ -78,7 +78,8 @@ lasting only a millisecond, can never expose.
 Burst-integrated FRET histograms collapse everything that happens during a burst
 into one number, so **dynamic interconversion** (a molecule switching states)
 and **static heterogeneity** (a mixture of molecules frozen in different states)
-can produce the *same* broadened or multi-peaked histogram. RASP breaks this tie
+can produce the *same* broadened or multi-peaked histogram
+{cite}`gopich2010` {cite}`kalinin2010b`. RASP breaks this tie
 along the **time axis**: conditioning on an initial value and watching how the
 recurrence histogram relaxes as a function of the recurrence time yields the
 interconversion *timescale*. Dynamics show up as a time-dependent leakage between
@@ -87,10 +88,10 @@ states; static heterogeneity shows a recurrence histogram that stays put.
 This makes RASP complementary to the intra-burst dynamics probes:
 
 - {ref}`concept-bva` (burst variance analysis) tests, within a burst, whether the
-  sub-window FRET variance exceeds shot noise — sensitive to dynamics **faster**
-  than the burst duration.
+  sub-window FRET variance exceeds shot noise {cite}`torella2011` — sensitive to
+  dynamics **faster** than the burst duration.
 - {ref}`concept-burst-2cde` (two-channel kernel density) flags photon-stream
-  asymmetry within a burst on the sub-millisecond scale.
+  asymmetry within a burst on the sub-millisecond scale {cite}`tomov2012`.
 
 RASP reaches the opposite regime: interconversion **slower** than a burst but
 faster than the mean time between visits of the same molecule (below the bulk
@@ -109,7 +110,8 @@ H_\text{rec}(E) = P_\text{same}\,H_\text{same}(E)
 $$
 
 where $H_\text{all}$ is the ordinary (unconditioned) burst histogram, since a
-random coincidence is just a fresh molecule drawn from the bulk. The quantity of
+random coincidence is just a fresh molecule drawn from the bulk — the
+decomposition of {cite}`hoffmann2011`. The quantity of
 interest is $H_\text{same}$, recovered by subtracting the known random
 contribution:
 
@@ -138,7 +140,7 @@ buys timescale at a steep cost in precision.
   biases the apparent kinetics toward faster relaxation. Worse, a molecule whose
   *acceptor* alone bleaches recurs as a spurious low-FRET burst — this mimics
   exchange into a low-FRET state. ALEX stoichiometry filtering of the recurring
-  bursts is the standard defence.
+  bursts is the standard defence {cite}`kapanidis2004` {cite}`lee2005`.
 - **The molecule must not leave for good.** RASP assumes free diffusion in and
   out of a stationary volume; convection, flow, sticking to the coverslip, or
   focus drift all change the recurrence statistics without any conformational
@@ -147,7 +149,8 @@ buys timescale at a steep cost in precision.
   between visits — dye photophysics, a change in quantum yield, acceptor
   blinking — is read as a transition.
 - **The accessible window is bounded on both sides**: faster than the burst
-  duration is invisible (use BVA/2CDE/H2MM), slower than the time for a molecule
+  duration is invisible (use BVA {cite}`torella2011`, 2CDE {cite}`tomov2012`,
+  H2MM {cite}`pirchi2016`), slower than the time for a molecule
   to diffuse away irreversibly is inaccessible at any concentration.
 
 ## In ChiSurf

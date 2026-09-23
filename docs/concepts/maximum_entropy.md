@@ -31,7 +31,8 @@ I(t) = \int p(\tau)\, e^{-t/\tau}\, \mathrm{d}\tau ,
 $$
 
 reconvolved with the instrument response as usual. Recovering $p(\tau)$ from
-$I(t)$ is an inverse Laplace transform, and it is **ill-posed**: arbitrarily
+$I(t)$ is an inverse Laplace transform, and it is **ill-posed**
+{cite}`istratov1999`: arbitrarily
 different $p(\tau)$ produce decays that differ by less than the photon noise.
 Discretizing onto a grid does not fix this — it turns it into a linear system
 whose least-squares solution is wildly oscillatory, with spikes and negative
@@ -40,13 +41,15 @@ excursions that shift when a single count changes.
 Two responses are possible. Reduce the number of parameters until the problem is
 determined, which is what a two- or three-exponential fit does at the cost of
 assuming the answer's form. Or keep the grid and add a criterion that selects
-one solution from the many that fit — which is regularization.
+one solution from the many that fit — which is regularization. MEM was brought
+to fluorescence decays for exactly this reason {cite}`livesey1987`
+{cite}`brochon1994`.
 
 ## Entropy as the criterion
 
 MEM selects the distribution that fits the data *and* is otherwise as
-uninformative as possible. "Uninformative" is made precise by the
-Skilling–Gull entropy relative to a prior $m(\tau)$:
+uninformative as possible {cite}`jaynes1957`. "Uninformative" is made precise
+by the Skilling–Gull entropy relative to a prior $m(\tau)$ {cite}`gull1984`:
 
 $$
 S = \sum_i \left[ p_i - m_i - p_i \ln\frac{p_i}{m_i} \right] .
@@ -59,7 +62,8 @@ $$
 Q = \chi^2 - \tfrac{1}{2}\,\nu\,S ,
 $$
 
-so $\nu$ buys smoothness with goodness of fit
+so $\nu$ buys smoothness with goodness of fit; it is minimized by the
+Skilling–Bryan iteration {cite}`skilling1984`
 ({src}`chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py#solve_lifetime_mem`).
 
 Three properties follow, and they are the reason entropy is used rather than,
@@ -101,13 +105,14 @@ distribution comes back as a single broad hump centred on the prior.
 
 Plotting the residual norm against the solution norm as $\nu$ is swept gives the
 **L-curve**, and its corner is the standard compromise: the point past which
-buying more smoothness starts costing real fit quality. ChiSurf samples the
+buying more smoothness starts costing real fit quality {cite}`hansen1992`. ChiSurf samples the
 curve and locates the corner by maximum curvature in log–log space
-({src}`chisurf/core/math/regularization.py#sample_lcurve`), exposed as
+{cite}`hansen1993` ({src}`chisurf/core/math/regularization.py#sample_lcurve`), exposed as
 `compute_l_curve` on both MEM models.
 
 :::{warning}
-The corner is a heuristic, not a criterion with a confidence level. Two things
+The corner is a heuristic, not a criterion with a confidence level, and it can
+mis-select {cite}`hanke1996`. Two things
 to do rather than trust it blindly: check that the recovered features survive a
 factor of a few either side of the corner, and check that $\chi^2_r$ at the
 chosen $\nu$ is still acceptable ({ref}`fundamentals-photon-statistics`). A
@@ -132,7 +137,8 @@ hundred-bin grid, *when the model is right*.
 
 Both run in IMP.bff: the grid's decays are the instrument's own basis (the
 same response preparation and convolution as every other lifetime fit), and
-the entropy-regularised programme is tttrlib's Skilling–Bryan engine. Both
+the entropy-regularised programme is IMP.bff's Skilling–Bryan engine
+{cite}`skilling1984`, ported from tttrlib. Both
 carry the usual TCSPC nuisances — time shift, background, scatter, IRF
 background — and fit them alongside the distribution. Beside the $\chi^2_r$
 the programme minimises, the fit reports a second $\chi^2_r$ weighted by the
@@ -157,7 +163,7 @@ Before claiming a feature:
 4. **Check the photon budget.** Resolving a distribution costs far more photons
    than resolving a mean ({ref}`fundamentals-photon-statistics`). Two peaks
    closer than about a factor of two in lifetime will merge regardless of $\nu$
-   — the information is not in the data.
+   — the information is not in the data {cite}`istratov1999`.
 5. **Check against a parametric fit.** If two exponentials fit with an
    acceptable $\chi^2_r$ and MEM returns two narrow peaks at the same lifetimes,
    they agree and the discrete reading is safe. If MEM returns one broad hump
@@ -192,4 +198,7 @@ spread of the feature you care about.
   · {src}`chisurf/core/math/regularization.py#sample_lcurve`; plugin
   `chisurf/plugins/fluorescence_decay/maxent_decay/`.
 - Literature: {cite}`lakowicz2006`, the time-domain chapter, for lifetime
-  distributions and the maximum-entropy method in fluorescence.
+  distributions; {cite}`livesey1987` and {cite}`brochon1994` for MEM on
+  fluorescence decays; {cite}`vinogradov2000`, the lifetime-distribution MEM the
+  tool was first built on; {cite}`skilling1984` and {cite}`gull1984` for the
+  algorithm and the entropy; {cite}`hansen1992` for the L-curve.

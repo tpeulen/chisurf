@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*312 works.*
+*380 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -28,6 +28,16 @@ and the citation renders as a link to the paper. The source of truth is
 (barth2022)=
 
 **[Barth et al. (2022)](https://doi.org/10.1063/5.0089134)** — A. Barth, O. Opanasyuk, T.-O. Peulen, et al. *Unraveling multi-state molecular dynamics in single-molecule FRET experiments — I. Theory of FRET-lines*. Journal of Chemical Physics **156**, 141501. (2022).
+
+(baumann1986)=
+
+**[Baumann & Fayer (1986)](https://doi.org/10.1063/1.450880)** — J. Baumann, M. D. Fayer. *Excitation transfer in disordered two-dimensional and anisotropic three-dimensional systems: effects of spatial geometry on time-resolved observables*. Journal of Chemical Physics **85**, 4087-4107. (1986).  
+*Geometry (dimensionality) read from the decay shape; orientational averaging for static random acceptors.*
+
+(blumen1979)=
+
+**[Blumen & Manz (1979)](https://doi.org/10.1063/1.438253)** — A. Blumen, J. Manz. *On the concentration and time dependence of the energy transfer to randomly distributed acceptors*. Journal of Chemical Physics **71**, 4694-4702. (1979).  
+*The general d-dimensional result, exp[-Γ(1-d/6) n V_d R0^d (t/τ)^{d/6}], for d = 1, 2, 3.*
 
 (chen2012)=
 
@@ -64,6 +74,26 @@ and the citation renders as a link to the paper. The source of truth is
 **[Förster (1948)](https://doi.org/10.1002/andp.19484370105)** — T. Förster. *Zwischenmolekulare Energiewanderung und Fluoreszenz*. Annalen der Physik **437**, 55-75. (1948).  
 *The 1/R^6 mechanism itself.*
 
+(foerster1949)=
+
+**[Förster (1949)](https://doi.org/10.1515/zna-1949-0501)** — T. Förster. *Experimentelle und theoretische Untersuchung des zwischenmolekularen Übergangs von Elektronenanregungsenergie*. Zeitschrift für Naturforschung A **4**, 321-327. (1949).  
+*The t^{1/2} donor decay for acceptors randomly distributed in three dimensions.*
+
+(grinvald1972)=
+
+**[Grinvald et al. (1972)](https://doi.org/10.1073/pnas.69.8.2273)** — A. Grinvald, E. Haas, I. Z. Steinberg. *Evaluation of the distribution of distances between energy donors and acceptors by fluorescence decay*. Proceedings of the National Academy of Sciences **69**, 2273-2277. (1972).  
+*The donor decay as an integral of p(R) over the Förster rate — distance distributions from TCSPC.*
+
+(haas1975)=
+
+**[Haas et al. (1975)](https://doi.org/10.1073/pnas.72.5.1807)** — E. Haas, M. Wilchek, E. Katchalski-Katzir, I. Z. Steinberg. *Distribution of end-to-end distances of oligopeptides in solution as estimated by energy transfer*. Proceedings of the National Academy of Sciences **72**, 1807-1811. (1975).  
+*First application — end-to-end distance distributions of flexible chains from donor decays.*
+
+(hanke2024flrcif)=
+
+**[Hanke et al. (2024)](https://doi.org/10.1038/s41592-024-02428-x)** — C. A. Hanke, J. D. Westbrook, B. M. Webb, T.-O. Peulen, C. L. Lawson, A. Sali, et al. *Making fluorescence-based integrative structures and associated kinetic information accessible*. Nature Methods **21**, 1970-1972. (2024).  
+*flrCIF, the fluorescence/FRET extension dictionary to PDBx/mmCIF and IHMCIF.*
+
 (hellenkamp2018)=
 
 **[Hellenkamp et al. (2018)](https://doi.org/10.1038/s41592-018-0085-0)** — B. Hellenkamp, S. Schmid, O. Doroshenko, et al. *Precision and accuracy of single-molecule FRET measurements — a multi-laboratory benchmark study*. Nature Methods **15**, 669-676. (2018).  
@@ -73,6 +103,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Hoefling et al. (2011)](https://doi.org/10.1371/journal.pone.0019791)** — M. Hoefling, N. Lima, D. Haenni, C. A. M. Seidel, B. Schuler, H. Grubmüller. *Structural heterogeneity and quantitative FRET efficiency distributions of polyprolines through a hybrid atomistic simulation and Monte Carlo approach*. PLoS ONE **6**, e19791. (2011).  
 *FRET efficiency from atomistic trajectories with explicit kappa2(t); replacing it with 2/3 broadens and biases the result when orientations relax slowly.*
+
+(hofmann2012)=
+
+**[Hofmann et al. (2012)](https://doi.org/10.1073/pnas.1207719109)** — H. Hofmann, A. Soranno, A. Borgia, K. Gast, D. Nettels, B. Schuler. *Polymer scaling laws of unfolded and intrinsically disordered proteins quantified with single-molecule spectroscopy*. Proceedings of the National Academy of Sciences **109**, 16155-16160. (2012).  
+*Fitting the scaling exponent ν of unfolded/IDP chains from smFRET — ν between ~0.4 (collapsed) and ~0.6 (expanded).*
 
 (kalinin2004)=
 
@@ -109,15 +144,50 @@ and the citation renders as a link to the paper. The source of truth is
 **[Murphy et al. (2004)](https://doi.org/10.1021/jp0301406)** — C. B. Murphy, Y. Zhang, T. Troxler, V. Ferry, J. J. Martin, W. E. Jones. *Probing Förster and Dexter Energy-Transfer Mechanisms in Fluorescent Conjugated Polymer Chemosensors*. The Journal of Physical Chemistry B **108**, 1537-1543. (2004).  
 *Foerster and Dexter transfer separated experimentally in one system - how the two mechanisms are told apart.*
 
+(obrien2009)=
+
+**[O'Brien et al. (2009)](https://doi.org/10.1063/1.3082151)** — E. P. O'Brien, G. Morrison, B. R. Brooks, D. Thirumalai. *How accurate are polymer models in the analysis of Förster resonance energy transfer experiments on proteins?*. Journal of Chemical Physics **130**, 124903. (2009).  
+*Gaussian, WLC and SAW distance distributions compared against simulations for FRET on unfolded proteins.*
+
 (peulen2017)=
 
 **[Peulen et al. (2017)](https://doi.org/10.1021/acs.jpcb.7b03441)** — T. O. Peulen, O. Opanasyuk, C. A. M. Seidel. *Combining graphical and analytical methods with molecular simulations to analyze time-resolved FRET measurements of labeled macromolecules accurately*. Journal of Physical Chemistry B **121**, 8211-8241. (2017).  
 *FRET lines, and what they say about dynamics.*
 
+(schuler2016)=
+
+**[Schuler et al. (2016)](https://doi.org/10.1146/annurev-biophys-062215-010915)** — B. Schuler, A. Soranno, H. Hofmann, D. Nettels. *Single-molecule FRET spectroscopy and the polymer physics of unfolded and intrinsically disordered proteins*. Annual Review of Biophysics **45**, 207-231. (2016).  
+*Review — polymer models (Gaussian, SAW, WLC) for converting FRET to chain dimensions.*
+
+(selvin2002)=
+
+**[Selvin (2002)](https://doi.org/10.1146/annurev.biophys.31.101101.140927)** — P. R. Selvin. *Principles and biophysical applications of lanthanide-based probes*. Annual Review of Biophysics and Biomolecular Structure **31**, 275-302. (2002).  
+*Lanthanide chelates - ms lifetimes, time-gated detection, and LRET distances.*
+
 (sindbert2011)=
 
 **[Sindbert et al. (2011)](https://doi.org/10.1021/ja105725e)** — S. Sindbert, S. Kalinin, H. Nguyen, A. Kienzler, L. Clima, W. Bannwarth, B. Appel, S. Müller, C. A. M. Seidel. *Accurate distance determination of nucleic acids via Förster resonance energy transfer - implications of dye linker length and rigidity*. Journal of the American Chemical Society **133**, 2463-2480. (2011).  
 *The accessible-volume model of the dye cloud, and what the linker does to a distance.*
+
+(steinberg1971)=
+
+**[Steinberg (1971)](https://doi.org/10.1146/annurev.bi.40.070171.000503)** — I. Z. Steinberg. *Long-range nonradiative transfer of electronic excitation energy in proteins and polypeptides*. Annual Review of Biochemistry **40**, 83-114. (1971).  
+*The effective orientation factor 0.476 for rigid, randomly oriented and distributed acceptors (static averaging).*
+
+(thomas1978)=
+
+**[Thomas et al. (1978)](https://doi.org/10.1073/pnas.75.12.5746)** — D. D. Thomas, W. F. Carlsen, L. Stryer. *Fluorescence energy transfer in the rapid-diffusion limit*. Proceedings of the National Academy of Sciences **75**, 5746-5750. (1978).  
+*Diffusion during the donor lifetime enhances transfer to distributed acceptors beyond the static laws.*
+
+(wolber1979)=
+
+**[Wolber & Hudson (1979)](https://doi.org/10.1016/S0006-3495(79)85171-1)** — P. K. Wolber, B. S. Hudson. *An analytic solution to the Förster energy transfer problem in two dimensions*. Biophysical Journal **28**, 197-210. (1979).  
+*The t^{1/3} law for acceptors in a membrane plane, including an excluded area of closest approach.*
+
+(zheng2018)=
+
+**[Zheng et al. (2018)](https://doi.org/10.1063/1.5006954)** — W. Zheng, G. H. Zerze, A. Borgia, J. Mittal, B. Schuler, R. B. Best. *Inferring properties of disordered chains from FRET transfer efficiencies*. Journal of Chemical Physics **148**, 123329. (2018).  
+*The SAW-ν distance distribution ChiSurf's saw_nu implements (the rdf.py docstring misattributes it to J. Am. Chem. Soc.).*
 
 
 ## Single-molecule FRET
@@ -161,6 +231,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Ingargiola et al. (2016)](https://doi.org/10.1371/journal.pone.0160716)** — A. Ingargiola, E. Lerner, S. Chung, S. Weiss, X. Michalet. *FRETBursts - an open source toolkit for analysis of freely-diffusing single-molecule FRET*. PLOS ONE **11**, e0160716. (2016).  
 *The open burst-analysis toolkit, and the PyBroMo diffusion simulator beside it.*
 
+(ingargiola2016photonhdf5)=
+
+**[Ingargiola et al. (2016)](https://doi.org/10.1016/j.bpj.2015.11.013)** — A. Ingargiola, T. Laurence, R. Boutelle, S. Weiss, X. Michalet. *Photon-HDF5 - an open file format for timestamp-based single-molecule fluorescence experiments*. Biophysical Journal **110**, 26-33. (2016).  
+*The open HDF5 photon-timestamp format; an import/export format for ChiSurf, not its native container.*
+
 (kalinin2007)=
 
 **[Kalinin et al. (2007)](https://doi.org/10.1021/jp072293p)** — S. Kalinin, S. Felekyan, M. Antonik, C. A. M. Seidel. *Probability distribution analysis of single-molecule fluorescence anisotropy and resonance energy transfer*. The Journal of Physical Chemistry B **111**, 10253-10262. (2007).  
@@ -171,6 +246,21 @@ and the citation renders as a link to the paper. The source of truth is
 **[Kapanidis et al. (2004)](https://doi.org/10.1073/pnas.0401690101)** — A. N. Kapanidis, N. K. Lee, T. A. Laurence, S. Doose, E. Margeat, S. Weiss. *Fluorescence-aided molecule sorting: analysis of structure and interactions by alternating-laser excitation of single molecules*. Proceedings of the National Academy of Sciences **101**, 8936-8941. (2004).  
 *Where stoichiometry-based sorting is introduced.*
 
+(kapanidis2005)=
+
+**[Kapanidis et al. (2005)](https://doi.org/10.1021/ar0401348)** — A. N. Kapanidis, T. A. Laurence, N. K. Lee, E. Margeat, X. Kong, S. Weiss. *Alternating-Laser Excitation of Single Molecules*. Accounts of Chemical Research **38**, 523-533. (2005).  
+*Review of µs-ALEX, the E–S histogram and stoichiometry sorting.*
+
+(kim2008cys)=
+
+**[Kim et al. (2008)](https://doi.org/10.1021/bc7002499)** — Y. Kim, S. O. Ho, N. R. Gassman, Y. Korlann, E. V. Landorf, F. R. Collart, S. Weiss. *Efficient site-specific labeling of proteins via cysteines*. Bioconjugate Chemistry **19**, 786-791. (2008).  
+*Maleimide-cysteine labelling for single-molecule FRET.*
+
+(kudryavtsev2012)=
+
+**[Kudryavtsev et al. (2012)](https://doi.org/10.1002/cphc.201100822)** — V. Kudryavtsev, M. Sikor, S. Kalinin, D. Mokranjac, C. A. M. Seidel, D. C. Lamb. *Combining MFD and PIE for Accurate Single-Pair Förster Resonance Energy Transfer Measurements*. ChemPhysChem **13**, 1060-1078. (2012).  
+*PIE with multiparameter detection; stoichiometry and corrections for accurate smFRET.*
+
 (vandemeent2014)=
 
 **[Meent et al. (2014)](https://doi.org/10.1016/j.bpj.2013.12.055)** — J.-W. van de Meent, J. E. Bronson, C. H. Wiggins, R. L. Gonzalez Jr. *Empirical Bayes methods enable advanced population-level analyses of single-molecule FRET experiments*. Biophysical Journal **106**, 1327-1337. (2014).  
@@ -180,6 +270,16 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Moerner & Fromm (2003)](https://doi.org/10.1063/1.1589587)** — W. E. Moerner, D. P. Fromm. *Methods of single-molecule fluorescence spectroscopy and microscopy*. Review of Scientific Instruments **74**, 3597-3619. (2003).  
 *The instrument review for single-molecule detection: collection efficiency, background and the detectors.*
+
+(muller2005)=
+
+**[Müller et al. (2005)](https://doi.org/10.1529/biophysj.105.064766)** — B. K. Müller, E. Zaychikov, C. Bräuchle, D. C. Lamb. *Pulsed Interleaved Excitation*. Biophysical Journal **89**, 3508-3522. (2005).  
+*PIE — laser identity carried in the micro time; what folded µs-ALEX becomes.*
+
+(nettels2007)=
+
+**[Nettels et al. (2007)](https://doi.org/10.1073/pnas.0611093104)** — D. Nettels, I. V. Gopich, A. Hoffmann, B. Schuler. *Ultrafast dynamics of protein collapse from single-molecule photon statistics*. Proceedings of the National Academy of Sciences **104**, 2655-2660. (2007).  
+*Nanosecond FCS on smFRET bursts — the dynamics window below BVA's.*
 
 (nir2006)=
 
@@ -615,10 +715,20 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Banterle et al. (2013)](https://doi.org/10.1016/j.jsb.2013.05.004)** — N. Banterle, K. H. Bui, E. A. Lemke, M. Beck. *Fourier ring correlation as a resolution criterion for super-resolution microscopy*. Journal of Structural Biology **183**, 363-367. (2013).
 
+(benkrid2000)=
+
+**[Benkrid et al. (2000)](https://search.crossref.org/search/works?q=Design+and+FPGA+implementation+of+a+perimeter+estimator+Proceedings+of+the+Irish+Machine+Vision+and+Image+Processing+Conference+2000&from_ui=yes)** — K. Benkrid, D. Crookes, A. Benkrid. *Design and FPGA implementation of a perimeter estimator*. Proceedings of the Irish Machine Vision and Image Processing Conference, 51-57. (2000).  
+*The border-configuration-weighted perimeter (1, sqrt2, (1+sqrt2)/2) that scikit-image and ChiSurf use. No DOI exists.*
+
 (biggs1997)=
 
 **[Biggs & Andrews (1997)](https://doi.org/10.1364/AO.36.001766)** — D. S. C. Biggs, M. Andrews. *Acceleration of iterative image restoration algorithms*. Applied Optics **36**, 1766-1775. (1997).  
 *Vector extrapolation for Richardson-Lucy, the same path with larger steps.*
+
+(brown1992)=
+
+**[Brown (1992)](https://doi.org/10.1145/146370.146374)** — L. G. Brown. *A survey of image registration techniques*. ACM Computing Surveys **24**, 325-376. (1992).  
+*Cross-correlation as the translation estimator, and its FFT evaluation — the method drift correction uses.*
 
 (cardarelli2010)=
 
@@ -679,6 +789,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Heel & Schatz (2005)](https://doi.org/10.1016/j.jsb.2005.05.009)** — M. van Heel, M. Schatz. *Fourier shell correlation threshold criteria*. Journal of Structural Biology **151**, 250-262. (2005).
 
+(hu1962)=
+
+**[Hu (1962)](https://doi.org/10.1109/TIT.1962.1057692)** — M.-K. Hu. *Visual pattern recognition by moment invariants*. IRE Transactions on Information Theory **8**, 179-187. (1962).  
+*Image moments as shape descriptors, and the seven invariants `moments_hu` returns.*
+
 (jameson1984)=
 
 **[Jameson et al. (1984)](https://doi.org/10.1080/05704928408081716)** — D. M. Jameson, E. Gratton, R. D. Hall. *The Measurement and Analysis of Heterogeneous Emissions by Multifrequency Phase and Modulation Fluorometry*. Applied Spectroscopy Reviews **20**, 55-106. (1984).  
@@ -699,6 +814,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Lakowicz et al. (1992)](https://doi.org/10.1016/0003-2697(92)90112-k)** — J. R. Lakowicz, H. Szmacinski, K. Nowaczyk, K. W. Berndt, M. Johnson. *Fluorescence lifetime imaging*. Analytical Biochemistry **202**, 316-330. (1992).  
 *The method paper for lifetime imaging: contrast from tau rather than from intensity.*
 
+(longfils2019)=
+
+**[Longfils et al. (2019)](https://doi.org/10.1016/j.bpj.2019.09.045)** — M. Longfils, N. Smisdom, M. Ameloot, M. Rudemo, V. Lemmens, G. Solís Fernández, M. Röding, N. Lorén, J. Hendrix, A. Särkkä. *Raster Image Correlation Spectroscopy Performance Evaluation*. Biophysical Journal **117**, 1900-1914. (2019).  
+*RICSPE — analytical bias and covariance of the RICS correlation estimator, Monte-Carlo propagation to the mean squared relative error of D. The method the RICS-precision planner ports (via PAM/MIA).*
+
 (lucy1974)=
 
 **[Lucy (1974)](https://doi.org/10.1086/111605)** — L. B. Lucy. *An iterative technique for the rectification of observed distributions*. The Astronomical Journal **79**, 745. (1974).  
@@ -717,6 +837,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Nyquist (1928)](https://doi.org/10.1109/T-AIEE.1928.5055024)** — H. Nyquist. *Certain topics in telegraph transmission theory*. Transactions of the American Institute of Electrical Engineers **47**, 617-644. (1928).  
 *Two samples per period of the highest frequency present.*
+
+(otsu1979)=
+
+**[Otsu (1979)](https://doi.org/10.1109/TSMC.1979.4310076)** — N. Otsu. *A threshold selection method from gray-level histograms*. IEEE Transactions on Systems, Man, and Cybernetics **9**, 62-66. (1979).  
+*The automatic threshold (maximal between-class variance) used to segment molecules.*
 
 (pawley2006)=
 
@@ -778,6 +903,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Sroda et al. (2020)](https://doi.org/10.1364/optica.399600)** — Aleksandra Sroda, Adrian Makowski, Ron Tenne, Uri Rossman, Gur Lubin, Dan Oron, Radek Lapkiewicz. *SOFISM: Super-resolution optical fluctuation image scanning microscopy*. Optica **7**, 1308. (2020).  
 *Super-resolution optical fluctuation image scanning microscopy.*
 
+(stringer2021)=
+
+**[Stringer et al. (2021)](https://doi.org/10.1038/s41592-020-01018-x)** — C. Stringer, T. Wang, M. Michaelos, M. Pachitariu. *Cellpose: a generalist algorithm for cellular segmentation*. Nature Methods **18**, 100-106. (2021).  
+*Cellpose; its label images import as regions.*
+
 (vallmitjana2020)=
 
 **[Vallmitjana et al. (2020)](https://doi.org/10.1021/acs.jpcb.0c06946)** — A. Vallmitjana, B. Torrado, A. Dvornikov, S. Ranjit, E. Gratton. *Blind Resolution of Lifetime Components in Individual Pixels of Fluorescence Lifetime Images Using the Phasor Approach*. The Journal of Physical Chemistry B **124**, 10126-10137. (2020).  
@@ -787,6 +917,16 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Verveer et al. (2000)](https://doi.org/10.1126/science.290.5496.1567)** — P. J. Verveer, F. S. Wouters, A. R. Reynolds, P. I. H. Bastiaens. *Quantitative Imaging of Lateral ErbB1 Receptor Signal Propagation in the Plasma Membrane*. Science **290**, 1567-1570. (2000).  
 *Global analysis of a FLIM stack - one shared lifetime pair across all pixels, fitting only the fraction per pixel.*
+
+(vincent1991)=
+
+**[Vincent & Soille (1991)](https://doi.org/10.1109/34.87344)** — L. Vincent, P. Soille. *Watersheds in digital spaces: an efficient algorithm based on immersion simulations*. IEEE Transactions on Pattern Analysis and Machine Intelligence **13**, 583-598. (1991).  
+*The watershed segmentation whose labels become regions.*
+
+(vanderwalt2014)=
+
+**[Walt et al. (2014)](https://doi.org/10.7717/peerj.453)** — S. van der Walt, J. L. Schönberger, J. Nunez-Iglesias, F. Boulogne, J. D. Warner, N. Yager, E. Gouillart, T. Yu. *scikit-image: image processing in Python*. PeerJ **2**, e453. (2014).  
+*The regionprops definitions ChiSurf's region properties reproduce property for property.*
 
 (weber1981)=
 
@@ -812,6 +952,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Zhang et al. (2007)](https://doi.org/10.1364/AO.46.001819)** — B. Zhang, J. Zerubia, J.-C. Olivo-Marin. *Gaussian approximations of fluorescence microscope point-spread function models*. Applied Optics **46**, 1819-1829. (2007).  
 *Where sigma = 0.21 lambda / NA comes from, and how far it can be trusted.*
+
+(zitova2003)=
+
+**[Zitová & Flusser (2003)](https://doi.org/10.1016/S0262-8856(03)00137-9)** — B. Zitová, J. Flusser. *Image registration methods: a survey*. Image and Vision Computing **21**, 977-1000. (2003).  
+*Area-based (correlation) registration, sub-pixel peak interpolation, and the limits of a pure-translation model.*
 
 (zunino2025)=
 
@@ -1055,10 +1200,38 @@ and the citation renders as a link to the paper. The source of truth is
 **[Torre et al. (2007)](https://doi.org/10.1021/jp0647941)** — J. García de la Torre, G. del Rio Echenique, A. Ortega. *Improved calculation of rotational diffusion and intrinsic viscosity of bead models for macromolecules and nanoparticles*. Journal of Physical Chemistry B **111**, 955-961. (2007).  
 *HYDRO++ - the bead-model calculation the HydroPro tool drives.*
 
+(vallat2018)=
+
+**[Vallat et al. (2018)](https://doi.org/10.1016/j.str.2018.03.011)** — B. Vallat, B. Webb, J. D. Westbrook, A. Sali, H. M. Berman. *Development of a prototype system for archiving integrative/hybrid structure models of biological macromolecules*. Structure **26**, 894-904.e2. (2018).  
+*PDB-Dev and the IHM dictionary (now PDB-IHM) - the integrative-model extension of mmCIF.*
+
 (word1999)=
 
 **[Word et al. (1999)](https://doi.org/10.1006/jmbi.1998.2400)** — J. M. Word, S. C. Lovell, T. H. LaBean, H. C. Taylor, M. E. Zalis, B. K. Presley, J. S. Richardson, D. C. Richardson. *Visualizing and quantifying molecular goodness-of-fit: small-probe contact dots with explicit hydrogen atoms*. Journal of Molecular Biology **285**, 1711-1733. (1999).  
 *All-atom contacts; a van der Waals overlap of 0.4 A or more between non-bonded atoms is a serious clash.*
+
+
+## Polymer models
+
+(descloizeaux1974)=
+
+**[Cloizeaux (1974)](https://doi.org/10.1103/PhysRevA.10.1665)** — J. des Cloizeaux. *Lagrangian theory for a self-avoiding random chain*. Physical Review A **10**, 1665-1669. (1974).  
+*The r^θ exp[-(r/r0)^δ] form of the self-avoiding-walk end-to-end distribution.*
+
+(flory1949)=
+
+**[Flory (1949)](https://doi.org/10.1063/1.1747243)** — P. J. Flory. *The configuration of real polymer chains*. Journal of Chemical Physics **17**, 303-310. (1949).  
+*Excluded-volume scaling R ~ N^ν; the Flory exponent.*
+
+(leguillou1980)=
+
+**[Guillou & Zinn-Justin (1980)](https://doi.org/10.1103/PhysRevB.21.3976)** — J. C. Le Guillou, J. Zinn-Justin. *Critical exponents from field theory*. Physical Review B **21**, 3976-3998. (1980).  
+*ν = 0.588 and γ = 1.1615 for the self-avoiding walk (n = 0) — the saw_nu defaults.*
+
+(zimm1959)=
+
+**[Zimm & Bragg (1959)](https://doi.org/10.1063/1.1730390)** — B. H. Zimm, J. K. Bragg. *Theory of the phase transition between helix and random coil in polypeptide chains*. Journal of Chemical Physics **31**, 526-535. (1959).  
+*The nearest-neighbour two-state (Ising) chain with cooperativity and field, solved by transfer matrices.*
 
 
 ## Time-resolved fluorescence
@@ -1077,6 +1250,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Beechem et al. (1985)](https://doi.org/10.1080/10739148508543585)** — J. M. Beechem, M. Ameloot, L. Brand. *Global and target analysis of complex decay phenomena*. Instrumentation Science and Technology **14**, 379-402. (1985).  
 *Distinguishes global analysis (share a parameter) from target analysis (fit the underlying model directly).*
+
+(brochon1994)=
+
+**[Brochon (1994)](https://doi.org/10.1016/S0076-6879(94)40052-0)** — J.-C. Brochon. *Maximum entropy method of data analysis in time-resolved spectroscopy*. Methods in Enzymology **240**, 262-311. (1994).  
+*Review of MEM for lifetime and anisotropy distributions, including prior and grid choice.*
 
 (coates1968)=
 
@@ -1113,6 +1291,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Köllner & Wolfrum (1992)](https://doi.org/10.1016/0009-2614(92)87068-Z)** — M. Köllner, J. Wolfrum. *How many photons are necessary for fluorescence-lifetime measurements?*. Chemical Physics Letters **200**, 199-204. (1992).  
 *The photon-budget limit of a lifetime estimate, sigma_tau/tau = F/sqrt(N), with F = 1 in the ideal case.*
 
+(livesey1987)=
+
+**[Livesey & Brochon (1987)](https://doi.org/10.1016/S0006-3495(87)83264-2)** — A. K. Livesey, J. C. Brochon. *Analyzing the distribution of decay constants in pulse-fluorimetry using the maximum entropy method*. Biophysical Journal **52**, 693-706. (1987).  
+*MEM recovery of fluorescence lifetime distributions from TCSPC decays.*
+
 (maus2001)=
 
 **[Maus et al. (2001)](https://doi.org/10.1021/ac000877g)** — Michael Maus, Mircea Cotlet, Johan Hofkens, Thomas Gensch, Frans C. De Schryver, J. Schaffer, C. A. M. Seidel. *An Experimental Comparison of the Maximum Likelihood Estimation and Nonlinear Least-Squares Fluorescence Lifetime Analysis of Single Molecules*. Analytical Chemistry **73**, 2078-2086. (2001).  
@@ -1132,6 +1315,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Straume et al. (1991)](https://doi.org/10.1007/0-306-47058-6_4)** — M. Straume, S. G. Frasier-Cadoret, M. L. Johnson. *Least-Squares Analysis of Fluorescence Data*. Topics in Fluorescence Spectroscopy, Vol. 2 (Plenum), 177-240. (1991).  
 *Least squares for fluorescence decays -- weighting, goodness of fit, and confidence intervals by the F-statistic support plane.*
+
+(vinogradov2000)=
+
+**[Vinogradov & Wilson (2000)](https://doi.org/10.1366/0003702001950210)** — S. A. Vinogradov, D. F. Wilson. *Recursive maximum entropy algorithm and its application to the luminescence lifetime distribution recovery*. Applied Spectroscopy **54**, 849-855. (2000).  
+*The MEM lifetime-distribution algorithm the MaxEnt decay tool was originally built on (its README cites it under a wrong title).*
 
 (wahl2015)=
 
@@ -1175,8 +1363,23 @@ and the citation renders as a link to the paper. The source of truth is
 **[Perrin (1936)](https://doi.org/10.1051/jphysrad:01936007010100)** — F. Perrin. *Mouvement Brownien d'un ellipsoide (II). Rotation libre et dépolarisation des fluorescences. Translation et diffusion de molécules ellipsoidales*. Journal de Physique et le Radium **7**, 1-11. (1936).  
 *Free rotation and fluorescence depolarization for the ellipsoid - the shape dependence behind the Perrin equation.*
 
+(swaminathan1997)=
+
+**[Swaminathan et al. (1997)](https://doi.org/10.1016/S0006-3495(97)78835-0)** — R. Swaminathan, C. P. Hoang, A. S. Verkman. *Photobleaching recovery and anisotropy decay of green fluorescent protein GFP-S65T in solution and cells - cytoplasmic viscosity probed by green fluorescent protein translational and rotational diffusion*. Biophysical Journal **72**, 1900-1907. (1997).  
+*GFP-S65T lifetime 2.9 ns, rotational correlation time 20 ns in solution (36 ns in cytoplasm).*
+
 
 ## Photophysics
+
+(vandenberg2002)=
+
+**[Berg et al. (2002)](https://doi.org/10.1021/jp020356s)** — P. A. W. van den Berg, K. A. Feenstra, A. E. Mark, H. J. C. Berendsen, A. J. W. G. Visser. *Dynamic conformations of flavin adenine dinucleotide - simulated molecular dynamics of the flavin cofactor related to the time-resolved fluorescence characteristics*. The Journal of Physical Chemistry B **106**, 8858-8869. (2002).  
+*Free FAD as stacked (quenched, ps) and open (ns) conformers.*
+
+(blacker2014)=
+
+**[Blacker et al. (2014)](https://doi.org/10.1038/ncomms4936)** — T. S. Blacker, Z. F. Mann, J. E. Gale, M. Ziegler, A. J. Bain, G. Szabadkai, M. R. Duchen. *Separating NADH and NADPH fluorescence in live cells and tissues using FLIM*. Nature Communications **5**, 3936. (2014).  
+*Enzyme-bound NAD(P)H lifetimes spread over ~1.5-4.5 ns depending on the binding protein.*
 
 (braslavsky2007)=
 
@@ -1187,6 +1390,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Brouwer (2011)](https://doi.org/10.1351/pac-rep-10-09-31)** — A. M. Brouwer. *Standards for photoluminescence quantum yield measurements in solution (IUPAC Technical Report)*. Pure and Applied Chemistry **83**, 2213-2228. (2011).  
 *The IUPAC procedure for a relative quantum-yield measurement, including the standards and their pitfalls.*
+
+(chen1998trp)=
+
+**[Chen & Barkley (1998)](https://doi.org/10.1021/bi980274n)** — Y. Chen, M. D. Barkley. *Toward understanding tryptophan fluorescence in proteins*. Biochemistry **37**, 9976-9982. (1998).  
+*The intramolecular quenchers of tryptophan in proteins (amides, protonated His, disulfides, carboxylates, amines).*
 
 (chen2010)=
 
@@ -1212,6 +1420,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Doose et al. (2005)](https://doi.org/10.1002/cphc.200500191)** — S. Doose, H. Neuweiler, M. Sauer. *A close look at fluorescence quenching of organic dyes by tryptophan*. ChemPhysChem **6**, 2277-2285. (2005).  
 *Quenching needs van der Waals contact - which is what justifies a step function of distance.*
+
+(eftink1981)=
+
+**[Eftink & Ghiron (1981)](https://doi.org/10.1016/0003-2697(81)90474-7)** — M. R. Eftink, C. A. Ghiron. *Fluorescence quenching studies with proteins*. Analytical Biochemistry **114**, 199-227. (1981).  
+*Solute quenching (acrylamide, iodide) as a probe of tryptophan exposure.*
 
 (frantsuzov2008)=
 
@@ -1248,6 +1461,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Lehrer (1971)](https://doi.org/10.1021/bi00793a015)** — S. S. Lehrer. *Solute perturbation of protein fluorescence - quenching of the tryptophyl fluorescence of model compounds and of lysozyme by iodide ion*. Biochemistry **10**, 3254-3263. (1971).  
 *The modified Stern-Volmer plot, and the fractional accessibility read from its intercept.*
 
+(levitus2011)=
+
+**[Levitus & Ranjit (2011)](https://doi.org/10.1017/S0033583510000247)** — M. Levitus, S. Ranjit. *Cyanine dyes in biophysical research - the photophysics of polymethine fluorescent dyes in biomolecular environments*. Quarterly Reviews of Biophysics **44**, 123-151. (2011).  
+*Cyanine cis-trans isomerisation and environment sensitivity (PIFE).*
+
 (levitus2020)=
 
 **[Levitus (2020)](https://doi.org/10.1088/2050-6120/ab7e10)** — M. Levitus. *Tutorial: measurement of fluorescence spectra and determination of relative fluorescence quantum yields of transparent samples*. Methods and Applications in Fluorescence **8**, 13825. (2020).  
@@ -1273,6 +1491,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Mataga et al. (1956)](https://search.crossref.org/search/works?q=Solvent+effects+upon+fluorescence+spectra+and+the+dipole+moments+of+excited+molecules+Bulletin+of+the+Chemical+Society+of+Japan+1956&from_ui=yes)** — N. Mataga, Y. Kaifu, M. Koizumi. *Solvent effects upon fluorescence spectra and the dipole moments of excited molecules*. Bulletin of the Chemical Society of Japan **29**, 465-470. (1956).  
 *The independent derivation usually cited together with Lippert.*
 
+(mujumdar1993)=
+
+**[Mujumdar et al. (1993)](https://doi.org/10.1021/bc00020a001)** — R. B. Mujumdar, L. A. Ernst, S. R. Mujumdar, C. J. Lewis, A. S. Waggoner. *Cyanine dye labeling reagents - sulfoindocyanine succinimidyl esters*. Bioconjugate Chemistry **4**, 105-111. (1993).  
+*The sulfonated Cy3/Cy5 amine-reactive labels.*
+
 (nawara2019)=
 
 **[Nawara & Waluk (2019)](https://doi.org/10.1021/acs.analchem.9b00583)** — K. Nawara, J. Waluk. *Goodbye to Quinine in Sulfuric Acid Solutions as a Fluorescence Quantum Yield Standard*. Analytical Chemistry **91**, 5389-5394. (2019).  
@@ -1282,6 +1505,16 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Nirmal et al. (1996)](https://doi.org/10.1038/383802a0)** — M. Nirmal, B. O. Dabbousi, M. G. Bawendi, J. J. Macklin, J. K. Trautman, T. D. Harris, L. E. Brus. *Fluorescence intermittency in single cadmium selenide nanocrystals*. Nature **383**, 802-804. (1996).  
 *On/off blinking of single nanocrystals first reported.*
+
+(ormo1996)=
+
+**[Ormö et al. (1996)](https://doi.org/10.1126/science.273.5280.1392)** — M. Ormö, A. B. Cubitt, K. Kallio, L. A. Gross, R. Y. Tsien, S. J. Remington. *Crystal structure of the Aequorea victoria green fluorescent protein*. Science **273**, 1392-1395. (1996).  
+*The 11-strand beta-can (24 A x 42 A) with the chromophore at its centre.*
+
+(panchukvoloshina1999)=
+
+**[Panchuk-Voloshina et al. (1999)](https://doi.org/10.1177/002215549904700910)** — N. Panchuk-Voloshina, R. P. Haugland, J. Bishop-Stewart, M. K. Bhalgat, P. J. Millard, F. Mao, et al. *Alexa dyes, a series of new fluorescent dyes that yield exceptionally bright, photostable conjugates*. Journal of Histochemistry & Cytochemistry **47**, 1179-1188. (1999).  
+*The sulfonated rhodamine/coumarin/cyanine series.*
 
 (rehm1970)=
 
@@ -1303,6 +1536,16 @@ and the citation renders as a link to the paper. The source of truth is
 **[Seidel et al. (1996)](https://doi.org/10.1021/jp951507c)** — C. A. M. Seidel, A. Schulz, M. H. M. Sauer. *Nucleobase-specific quenching of fluorescent dyes - 1. nucleobase one-electron redox potentials and their correlation with static and dynamic quenching efficiencies*. The Journal of Physical Chemistry **100**, 5541-5553. (1996).  
 *One quenching order across dyes, G > A > C ~ T, and it tracks the oxidation potentials.*
 
+(shaner2005)=
+
+**[Shaner et al. (2005)](https://doi.org/10.1038/nmeth819)** — N. C. Shaner, P. A. Steinbach, R. Y. Tsien. *A guide to choosing fluorescent proteins*. Nature Methods **2**, 905-909. (2005).  
+*Brightness, photostability, pH sensitivity and oligomerisation across fluorescent proteins.*
+
+(skala2007)=
+
+**[Skala et al. (2007)](https://doi.org/10.1073/pnas.0708425104)** — M. C. Skala, K. M. Riching, A. Gendron-Fitzpatrick, J. Eickhoff, K. W. Eliceiri, J. G. White, N. Ramanujam. *In vivo multiphoton microscopy of NADH and FAD redox states, fluorescence lifetimes, and cellular morphology in precancerous epithelia*. Proceedings of the National Academy of Sciences **104**, 19494-19499. (2007).  
+*Metabolic FLIM - NADH is short free / long bound, FAD the reverse (bound is the short component).*
+
 (steenken1997)=
 
 **[Steenken & Jovanovic (1997)](https://doi.org/10.1021/ja962255b)** — S. Steenken, S. V. Jovanovic. *How easily oxidizable is DNA? One-electron reduction potentials of adenosine and guanosine radicals in aqueous solution*. Journal of the American Chemical Society **119**, 617-618. (1997).  
@@ -1318,6 +1561,16 @@ and the citation renders as a link to the paper. The source of truth is
 **[Strickler & Berg (1962)](https://doi.org/10.1063/1.1733166)** — S. J. Strickler, R. A. Berg. *Relationship between absorption intensity and fluorescence lifetime of molecules*. The Journal of Chemical Physics **37**, 814-822. (1962).  
 *The radiative rate from the absorption spectrum - why the natural lifetime is a property of the transition.*
 
+(szabo1980)=
+
+**[Szabo & Rayner (1980)](https://doi.org/10.1021/ja00522a020)** — A. G. Szabo, D. M. Rayner. *Fluorescence decay of tryptophan conformers in aqueous solution*. Journal of the American Chemical Society **102**, 554-563. (1980).  
+*The rotamer model - free tryptophan is already bi-exponential because its side-chain conformers decay differently.*
+
+(tsien1998)=
+
+**[Tsien (1998)](https://doi.org/10.1146/annurev.biochem.67.1.509)** — R. Y. Tsien. *The green fluorescent protein*. Annual Review of Biochemistry **67**, 509-544. (1998).  
+*The GFP review - chromophore formation, protonation states, variants.*
+
 (ulbrich2007)=
 
 **[Ulbrich & Isacoff (2007)](https://doi.org/10.1038/nmeth1024)** — M. H. Ulbrich, E. Y. Isacoff. *Subunit counting in membrane-bound proteins*. Nature Methods **4**, 319-321. (2007).  
@@ -1327,6 +1580,16 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Vaiana et al. (2003)](https://doi.org/10.1021/ja036082j)** — A. C. Vaiana, H. Neuweiler, A. Schulz, J. Wolfrum, M. Sauer, J. C. Smith. *Fluorescence quenching of dyes by tryptophan - interactions at atomic detail from combination of experiment and computer simulation*. Journal of the American Chemical Society **125**, 14564-14572. (2003).  
 *Molecular dynamics of dye-Trp complexes - quenching happens in stacked van der Waals contact.*
+
+(vivian2001)=
+
+**[Vivian & Callis (2001)](https://doi.org/10.1016/S0006-3495(01)76183-8)** — J. T. Vivian, P. R. Callis. *Mechanisms of tryptophan fluorescence shifts in proteins*. Biophysical Journal **80**, 2093-2109. (2001).  
+*Why tryptophan emission shifts with burial - the local electric field, not polarity alone.*
+
+(zanettidomingues2013)=
+
+**[Zanetti-Domingues et al. (2013)](https://doi.org/10.1371/journal.pone.0074200)** — L. C. Zanetti-Domingues, C. J. Tynan, D. J. Rolfe, D. T. Clarke, M. Martin-Fernandez. *Hydrophobic fluorescent probes introduce artifacts into single molecule tracking experiments due to non-specific binding*. PLoS ONE **8**, e74200. (2013).  
+*Dye hydrophobicity predicts non-specific sticking; hydrophilic dyes stick less.*
 
 
 ## Optics and point-spread functions
@@ -1448,6 +1711,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Halin (1976)](https://doi.org/10.1007/BF01917434)** — R. Halin. *S-functions for graphs*. Journal of Geometry **8**, 171-186. (1976).  
 *Introduces the parameter later known as treewidth, under the name dimension.*
 
+(jaynes1957)=
+
+**[Jaynes (1957)](https://doi.org/10.1103/PhysRev.106.620)** — E. T. Jaynes. *Information theory and statistical mechanics*. Physical Review **106**, 620-630. (1957).  
+*The maximum-entropy principle — the least committal distribution consistent with the data.*
+
 (johnson1992)=
 
 **[Johnson & Faunt (1992)](https://doi.org/10.1016/0076-6879(92)10003-V)** — M. L. Johnson, L. M. Faunt. *Parameter estimation by least-squares methods*. Methods in Enzymology **210**, 1-37. (1992).  
@@ -1533,6 +1801,34 @@ and the citation renders as a link to the paper. The source of truth is
 **[Zhang & Stephens (2009)](https://doi.org/10.1198/tech.2009.08017)** — J. Zhang, M. A. Stephens. *A new and efficient estimation method for the generalized Pareto distribution*. Technometrics **51**, 316-325. (2009).
 
 
+## Data formats and standards
+
+(fitzgerald2006mmcif)=
+
+**[Fitzgerald et al. (2006)](https://doi.org/10.1107/97809553602060000745)** — P. M. D. Fitzgerald, J. D. Westbrook, P. E. Bourne, B. McMahon, K. D. Watenpaugh, H. M. Berman. *Macromolecular dictionary (mmCIF)*. International Tables for Crystallography, Vol. G, 295-443. (2006).  
+*The mmCIF dictionary itself - the wwPDB base vocabulary the .pto terms extend.*
+
+(lhomme2020ebml)=
+
+**[Lhomme et al. (2020)](https://doi.org/10.17487/RFC8794)** — S. Lhomme, D. Rice, M. Bunkus. *Extensible Binary Meta Language*. IETF RFC 8794. (2020).  
+*EBML, the element framing (variable-length ID + size + data) a .pto container is written in.*
+
+(lhomme2024matroska)=
+
+**[Lhomme et al. (2024)](https://doi.org/10.17487/RFC9559)** — S. Lhomme, M. Bunkus, D. Rice. *Matroska Media Container Format Specification*. IETF RFC 9559. (2024).  
+*The EBML schema whose element IDs (SeekHead, Attachments, Tags) a .pto reuses where the meaning matches.*
+
+(nist2015sha)=
+
+**[Standards & Technology (2015)](https://doi.org/10.6028/NIST.FIPS.180-4)** — National Institute of Standards and Technology. *Secure Hash Standard (SHS)*. FIPS PUB 180-4. (2015).  
+*SHA-256, the checksum that proves the embedded instrument file is recovered byte-for-byte.*
+
+(westbrook2000mmcif)=
+
+**[Westbrook & Bourne (2000)](https://doi.org/10.1093/bioinformatics/16.2.159)** — J. D. Westbrook, P. E. Bourne. *STAR/mmCIF - an ontology for macromolecular structure*. Bioinformatics **16**, 159-168. (2000).  
+*The dictionary-driven data model (categories, items, enumerations) MMFDB's vocabulary is built on.*
+
+
 ## Other
 
 (debeer1994)=
@@ -1550,15 +1846,50 @@ and the citation renders as a link to the paper. The source of truth is
 **[Denk et al. (1990)](https://doi.org/10.1126/science.2321027)** — W. Denk, J. H. Strickler, W. W. Webb. *Two-photon laser scanning fluorescence microscopy*. Science **248**, 73-76. (1990).  
 *The instrument: two-photon absorption combined with laser scanning, and the sectioning argument — excitation where the flux is squared.*
 
+(golub1973)=
+
+**[Golub & Pereyra (1973)](https://doi.org/10.1137/0710036)** — G. H. Golub, V. Pereyra. *The Differentiation of Pseudo-Inverses and Nonlinear Least Squares Problems Whose Variables Separate*. SIAM Journal on Numerical Analysis **10**, 413-432. (1973).  
+*Variable projection — solve the linear amplitudes inside the nonlinear fit.*
+
+(gull1984)=
+
+**[Gull & Skilling (1984)](https://doi.org/10.1049/ip-f-1.1984.0099)** — S. F. Gull, J. Skilling. *Maximum entropy method in image processing*. IEE Proceedings F (Communications, Radar and Signal Processing) **131**, 646. (1984).  
+*The entropy relative to a prior model, S = sum p - m - p ln(p/m), and its positivity.*
+
+(hanke1996)=
+
+**[Hanke (1996)](https://doi.org/10.1007/BF01731984)** — M. Hanke. *Limitations of the L-curve method in ill-posed problems*. BIT Numerical Mathematics **36**, 287-301. (1996).  
+*Why the L-curve corner is a heuristic that can mis-select the regularization weight.*
+
+(hansen1992)=
+
+**[Hansen (1992)](https://doi.org/10.1137/1034115)** — P. C. Hansen. *Analysis of discrete ill-posed problems by means of the L-curve*. SIAM Review **34**, 561-580. (1992).  
+*The L-curve; its corner as the regularization-parameter choice.*
+
+(hansen1993)=
+
+**[Hansen & O'Leary (1993)](https://doi.org/10.1137/0914086)** — P. C. Hansen, D. P. O'Leary. *The use of the L-curve in the regularization of discrete ill-posed problems*. SIAM Journal on Scientific Computing **14**, 1487-1503. (1993).  
+*Locating the L-curve corner by maximum curvature in log-log space.*
+
 (helmchen2005)=
 
 **[Helmchen & Denk (2005)](https://doi.org/10.1038/nmeth818)** — F. Helmchen, W. Denk. *Deep tissue two-photon microscopy*. Nature Methods **2**, 932-940. (2005).  
 *Penetration depth as a scattering budget, and where the budget runs out.*
 
+(hill1910)=
+
+**[Hill (1910)](https://doi.org/10.1113/jphysiol.1910.sp001386)** — A. V. Hill. *The possible effects of the aggregation of the molecules of haemoglobin on its dissociation curves*. The Journal of Physiology (Proceedings of the Physiological Society, January 22, 1910) **40**, iv-vii. (1910).  
+*The Hill equation. The DOI resolves to the Proceedings issue that carries Hill's note.*
+
 (lardon2011)=
 
 **[Lardon et al. (2011)](https://doi.org/10.1111/j.1462-2920.2011.02414.x)** — L. A. Lardon, B. V. Merkey, S. Martins, A. Dötsch, C. Picioreanu, J.-U. Kreft, B. F. Smets. *iDynoMiCS - next-generation individual-based modelling of biofilms*. Environmental Microbiology **13**, 2416-2434. (2011).  
 *The individual-based biofilm simulator the demonstration follows.*
+
+(lawson1995)=
+
+**[Lawson & Hanson (1995)](https://doi.org/10.1137/1.9781611971217)** — C. L. Lawson, R. J. Hanson. *Solving Least Squares Problems*. SIAM (Classics in Applied Mathematics; reprint of the 1974 Prentice-Hall edition). (1995).  
+*The non-negative least-squares (NNLS) active-set algorithm scipy.optimize.nnls implements.*
 
 (picioreanu1998)=
 
@@ -1569,6 +1900,16 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Rotne & Prager (1969)](https://doi.org/10.1063/1.1670977)** — J. Rotne, S. Prager. *Variational treatment of hydrodynamic interaction in polymers*. The Journal of Chemical Physics **50**, 4831-4837. (1969).  
 *The hydrodynamic-interaction tensor between beads that bead-model programs use.*
+
+(skilling1984)=
+
+**[Skilling & Bryan (1984)](https://doi.org/10.1093/mnras/211.1.111)** — J. Skilling, R. K. Bryan. *Maximum entropy image reconstruction: general algorithm*. Monthly Notices of the Royal Astronomical Society **211**, 111-124. (1984).  
+*The Skilling-Bryan MEM iteration that IMP.bff's MaxEntQp engine implements.*
+
+(stefan2013)=
+
+**[Stefan & Novère (2013)](https://doi.org/10.1371/journal.pcbi.1003106)** — M. I. Stefan, N. Le Novère. *Cooperative Binding*. PLoS Computational Biology **9**, e1003106. (2013).  
+*Cooperative-binding models and what the Hill coefficient does and does not say.*
 
 (stewart2008)=
 
@@ -1584,6 +1925,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Torre (2001)](https://doi.org/10.1016/S0301-4622(01)00218-6)** — J. García de la Torre. *Hydration from hydrodynamics. General considerations and applications of bead modelling to globular proteins*. Biophysical Chemistry **93**, 159-170. (2001).  
 *What the hydration shell in a hydrodynamic model does and does not mean.*
+
+(weiss1997)=
+
+**[Weiss (1997)](https://doi.org/10.1096/fasebj.11.11.9285481)** — J. N. Weiss. *The Hill equation revisited: uses and misuses*. The FASEB Journal **11**, 835-841. (1997).  
+*Why the Hill coefficient is an interaction coefficient, not a site count.*
 
 (xu1996)=
 

@@ -32,13 +32,18 @@ $$
 \;\neq\; E(\langle R \rangle).
 $$
 
-A symmetric $p(R)$ produces an asymmetric spread of efficiencies biased toward
-the high-$E$ side, because the near molecules transfer disproportionately well.
-Converting $\langle E\rangle$ back through $E^{-1}$ therefore returns a distance
-that is systematically too short, and nothing in the measurement announces it.
+$E(R)$ changes curvature at $R = (5/7)^{1/6}R_0 \approx 0.95\,R_0$: it is
+concave below and convex above. So a symmetric $p(R)$ centred beyond
+$\approx 0.95\,R_0$ gives $\langle E\rangle > E(\langle R\rangle)$ and
+$E^{-1}(\langle E\rangle)$ returns a distance that is too short; centred inside,
+the bias reverses and the distance comes back too long. For $R_0 = 50$ Å and a
+Gaussian of $\sigma = 8$ Å, $\langle R\rangle = 40$ Å returns 41.4 Å and
+$\langle R\rangle = 65$ Å returns 62.9 Å. Nothing in the measurement announces
+either.
 
 The time-resolved donor decay does not have this problem. Each sub-population
-contributes its own exponential, so the decay is the distribution, weighted:
+contributes its own exponential, so the decay is the distribution, weighted
+{cite}`grinvald1972`:
 
 $$
 I_{DA}(t) = I_{D(0)}(t) \int p(R)\,
@@ -47,12 +52,14 @@ I_{DA}(t) = I_{D(0)}(t) \int p(R)\,
 $$
 
 Fitting this — rather than a sum of free exponentials — is what turns a decay
-into a distance distribution.
+into a distance distribution, first done for flexible oligopeptides
+{cite}`haas1975`.
 
 ## What the decay can and cannot resolve
 
 The kernel above is a Laplace-like transform, and inverting it is
-ill-conditioned. The practical limits, which matter more than the formalism:
+ill-conditioned {cite}`istratov1999`. The practical limits, which matter more
+than the formalism {cite}`peulen2017`:
 
 - **The mean is easy, the width is not.** Recovering $\langle R\rangle$ needs a
   few thousand photons; recovering the width needs one to two orders of
@@ -69,7 +76,7 @@ ill-conditioned. The practical limits, which matter more than the formalism:
   common way a distance distribution goes wrong.
 - **A broad distribution and a distribution of $\kappa^2$ look alike.** Both
   broaden the decay. Bounding $\kappa^2$ from anisotropy
-  ({ref}`concept-kappa2-orientation`) is what separates them, and ChiSurf can
+  ({ref}`concept-kappa2-orientation`, {cite}`dale1979`) is what separates them, and ChiSurf can
   fold the $\kappa^2$ spread into the distance distribution explicitly
   ({src}`chisurf/core/fluorescence/general.py#convolve_distance_with_k2_ratio`).
 
@@ -83,25 +90,34 @@ mean and a width. Assumes nothing about the polymer, which makes it the default
 when the question is "how broad is this?" rather than "which chain model
 applies?". Several Gaussians describe discrete conformational states, and the
 usual caution applies — two Gaussians will fit a broad unimodal distribution
-convincingly.
+convincingly. The Gaussian is the form used since the first decay-based distance
+distributions {cite}`haas1975`.
 
 **Worm-like chain** (`FRET: FD (Worm-like chain)`). $p(R)$ from a contour length
 and a persistence length, the standard model for a semi-flexible chain such as
-duplex DNA or an unfolded but stiff peptide. Two physical parameters instead of
+duplex DNA or an unfolded but stiff peptide; ChiSurf evaluates the analytical
+radial distribution of {cite}`becker2010`. Two physical parameters instead of
 a free shape, so it is far better conditioned — when the model is right. An
 optional linker width broadens the result to account for the dye clouds.
 
 **SAW-ν** (`FRET: FD (SAW-ν)`). A self-avoiding walk parameterized by the RMS
-end-to-end distance and the Flory scaling exponent $\nu$. This is the model for
-an intrinsically disordered or unfolded protein, and $\nu$ is the observable
-worth having: $\nu \approx 0.6$ is a good solvent (expanded), $\nu \approx 0.33$
-a poor one (collapsed), $\nu = 0.5$ the theta state. Fitting $\nu$ rather than
-assuming it is what makes the measurement a statement about chain–solvent
-interaction.
+end-to-end distance and the Flory scaling exponent $\nu$
+{cite}`flory1949`, in the des Cloizeaux form
+$p(R) \propto R^{2+(\gamma-1)/\nu}\exp[-(R/r_0)^{1/(1-\nu)}]$
+{cite}`descloizeaux1974` {cite}`zheng2018` with $\gamma = 1.1615$
+{cite}`leguillou1980`. This is the model for an intrinsically disordered or
+unfolded protein {cite}`obrien2009`, and $\nu$ is the observable worth having:
+$\nu \approx 0.59$ is a good solvent (expanded), $\nu \to 1/3$ a poor one
+(collapsed globule), $\nu = 0.5$ the theta state
+{cite}`hofmann2012` {cite}`schuler2016`. Fitting $\nu$ rather than assuming it
+is what makes the measurement a statement about chain–solvent interaction.
 
 **Ising chain** (`FRET: FD (Ising)`). A two-state chain in which a field drives
-folded (compact) against unfolded (expanded) segments, giving a distance
-distribution that changes shape with the field rather than merely shifting.
+folded (compact) against unfolded (expanded) segments, with a nearest-neighbour
+coupling for cooperativity — the helix–coil model of {cite}`zimm1959` with a
+Gaussian bond per residue state, solved by a transfer-matrix product. It gives a
+distance distribution that changes shape with the field rather than merely
+shifting.
 
 **Discrete rates** (`FRET: FD (Discrete)`) is the degenerate case: fit transfer
 rate constants directly, with no distance model at all. Useful when the
@@ -121,8 +137,8 @@ nanometres.
 
 This is not a correction to apply afterwards — the cloud has to be modelled, and
 its width adds to the measured distribution width. The accessible-volume
-treatment and the three distinct distance measures it produces are in
-{ref}`concept-accessible-volume`.
+treatment {cite}`sindbert2011` {cite}`kalinin2012` and the three distinct
+distance measures it produces are in {ref}`concept-accessible-volume`.
 
 ## Reading a result
 
@@ -153,12 +169,16 @@ Before believing a recovered width, check in this order:
 - Related concepts: {ref}`concept-tcspc-lifetime` ·
   {ref}`concept-kappa2-orientation` · {ref}`concept-accessible-volume` ·
   {ref}`concept-fret` · {ref}`concept-mfd-fitting`.
-- Implementation: the models in `chisurf/core/models/tcspc/` (`fret.py`,
-  `fret_structure.py`) with their editor layouts `fret_gaussian.view.json`,
-  `worm_like_chain.view.json`, `saw_nu.view.json`, `ising_chain.view.json`;
+- Implementation: IMP.bff model descriptions `tcspc_fret_gaussian`,
+  `tcspc_fret_worm_like_chain`, `tcspc_fret_saw_nu`, `tcspc_fret_ising_chain`,
+  `tcspc_fret_discrete`, with their editor layouts in
+  `chisurf/core/models/views/tcspc_fret_*.view.json`; the $p(R)$ kernels
+  {src}`chisurf/core/math/functions/rdf.py`;
   distance/rate conversions
   {src}`chisurf/core/fluorescence/general.py#distribution2rates` and
   {src}`chisurf/core/fluorescence/general.py#gaussian2rates`.
 - Literature: {cite}`lakowicz2006`, the chapter on time-resolved energy transfer
-  and conformational distributions of biopolymers; {cite}`sindbert2011` for what
-  the linker contributes to the measured width.
+  and conformational distributions of biopolymers; {cite}`grinvald1972` and
+  {cite}`haas1975` for the method; {cite}`peulen2017` for what a decay can
+  resolve; {cite}`schuler2016` and {cite}`obrien2009` for the polymer models;
+  {cite}`sindbert2011` for what the linker contributes to the measured width.

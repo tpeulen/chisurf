@@ -28,7 +28,7 @@ burst observables themselves are in {ref}`concept-smfret-bursts`.
 A two-colour FRET burst gives the efficiency $E$, and $E$ alone cannot tell a
 low-FRET molecule from one whose acceptor is missing or dark: both put nearly all
 their photons in the donor channel. **Alternating-laser excitation** removes the
-ambiguity by asking the acceptor directly. The acceptor laser is switched on and
+ambiguity by asking the acceptor directly {cite}`kapanidis2004,kapanidis2005`. The acceptor laser is switched on and
 off out of phase with the donor laser, so every photon carries two labels — which
 detector saw it, and which laser was on — and the four combinations are
 
@@ -36,21 +36,26 @@ $$
 I_{DD},\quad I_{DA},\quad I_{AA},\quad I_{AD}
 $$
 
-(first index the exciting colour, second the emitting one). The **stoichiometry**
+(first index the exciting colour, second the emitting one). With $F$ the
+background-, leakage- and direct-excitation-corrected counts, the
+**stoichiometry** is
 
 $$
-S = \frac{\gamma I_{DD} + I_{DA}}{\gamma I_{DD} + I_{DA} + I_{AA}/\beta}
+S = \frac{\gamma F_{DD} + F_{DA}}{\gamma F_{DD} + F_{DA} + F_{AA}/\beta}
 $$
+
+{cite}`lee2005,hellenkamp2018`; with $\gamma=\beta=1$ and raw counts it is the
+uncorrected $S$ of {cite}`kapanidis2004`.
 
 is near 1 when only a donor is present, near 0 when only an acceptor is, and
 mid-range for a doubly labelled molecule. Gating on $S$ is what makes an $E$
 histogram a statement about FRET rather than about labelling
-(Kapanidis *et al.* 2004).
+{cite}`kapanidis2004`.
 
-In **µs-ALEX** the switching period is tens to hundreds of microseconds — long
+In **µs-ALEX** {cite}`kapanidis2004` the switching period is tens to hundreds of microseconds — long
 compared with the fluorescence lifetime, short compared with a burst — so the
 laser identity is encoded in the photon's **macro** time. In **PIE / ns-ALEX**
-the two lasers are pulsed within one excitation period and the identity is in the
+{cite}`muller2005,kudryavtsev2012` the two lasers are pulsed within one excitation period and the identity is in the
 **micro** time instead. The measured quantity is the same; only where the label
 sits differs.
 
@@ -95,7 +100,8 @@ the spectral line is its number.
 
 The corrections that turn these counts into a transferable efficiency — leakage
 $\alpha$, direct excitation $\delta$, detection $\gamma$, excitation flux $\beta$
-— are in {ref}`concept-accurate-fret`.
+— are in {ref}`concept-accurate-fret`; the multi-laboratory benchmark
+{cite}`hellenkamp2018` fixes their conventions.
 
 :::{admonition} A rate is not a count
 :class: warning
@@ -126,7 +132,9 @@ being measured, and the isotherm then reports that wander as affinity.
 
 The amplitudes enter linearly, so they need not be searched: for any trial
 $(\mu,\sigma)$ they are the non-negative least-squares solution, and only the
-$2K$ shape parameters go to the optimiser. That *variable projection* is what
+$2K$ shape parameters go to the optimiser. That *variable projection*
+{cite}`golub1973`, with the amplitudes from Lawson–Hanson NNLS
+{cite}`lawson1995` (`scipy.optimize.nnls`), is what
 keeps a two-component fit of six conditions out of the local minimum where one
 component has collapsed onto the other.
 
@@ -138,16 +146,18 @@ $$
 f(c) \;=\; f_{\min} + (f_{\max}-f_{\min})\,\frac{c^{n}}{K_d^{\,n} + c^{n}}
 $$
 
-with $n=1$ for a single site and $n \ne 1$ for cooperativity: $n>1$ means that
-binding one ligand raises the affinity for the next, $n<1$ that it lowers it.
+— the Hill equation {cite}`hill1910` — with $n=1$ for a single site and
+$n \ne 1$ for cooperativity: $n>1$ means that binding one ligand raises the
+affinity for the next, $n<1$ that it lowers it {cite}`stefan2013`.
 
 :::{admonition} n is not the number of binding sites
 :class: warning
 The Hill coefficient is written as if it counted sites, and in practice it
-rarely does — a protein with four sites routinely fits with $n \approx 2.5$.
+rarely does — haemoglobin, with four O₂ sites, fits with $n$ between about 1.7
+and 3.2. $n$ equals the site count only in the limit of infinite cooperativity.
 Read it as an **interaction coefficient** that says how steeply the occupancy
 turns on, and quote the site count from structure or stoichiometry rather than
-from a curve fit (Weiss 1997; Stefan & Le Novère 2013).
+from a curve fit {cite}`weiss1997,stefan2013`.
 :::
 
 :::{admonition} An unsaturated series does not have a K_d
@@ -160,16 +170,13 @@ baseline.
 
 ## Further reading
 
-- Kapanidis *et al.*, *PNAS* **101**, 8936 (2004) — ALEX and the stoichiometry
-  axis. [10.1073/pnas.0401690101](https://doi.org/10.1073/pnas.0401690101)
-- Müller *et al.*, *Biophys. J.* **89**, 3508 (2005) — pulsed interleaved
-  excitation. [10.1529/biophysj.105.064766](https://doi.org/10.1529/biophysj.105.064766)
-- Hellenkamp *et al.*, *Nat. Methods* **15**, 669 (2018) — the correction factors
-  and why they decide whether two laboratories agree.
-  [10.1038/s41592-018-0085-0](https://doi.org/10.1038/s41592-018-0085-0)
-- Weiss, *FASEB J.* **11**, 835 (1997) — "The Hill equation revisited: uses and
-  misuses". [10.1096/fasebj.11.11.9285481](https://doi.org/10.1096/fasebj.11.11.9285481)
-- Stefan & Le Novère, *PLoS Comput. Biol.* **9**, e1003106 (2013) — cooperative
-  binding, and what the Hill coefficient does and does not say.
-  [10.1371/journal.pcbi.1003106](https://doi.org/10.1371/journal.pcbi.1003106)
+- {cite}`kapanidis2004` — ALEX and the stoichiometry axis; {cite}`kapanidis2005`
+  reviews it.
+- {cite}`muller2005` — pulsed interleaved excitation; {cite}`kudryavtsev2012`
+  combines it with multiparameter detection for accurate smFRET.
+- {cite}`hellenkamp2018` — the correction factors and why they decide whether two
+  laboratories agree.
+- {cite}`weiss1997` — "The Hill equation revisited: uses and misuses".
+- {cite}`stefan2013` — cooperative binding, and what the Hill coefficient does and
+  does not say.
 - {ref}`concept-smfret-bursts`, {ref}`concept-accurate-fret`.

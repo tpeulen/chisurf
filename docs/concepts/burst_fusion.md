@@ -22,7 +22,7 @@ systematic rather than random:
   molecule ever actually produced, and a `min_photons` floor then rejects them —
   discarding real signal.
 * Each fragment carries fewer photons than the passage, so its **proximity
-  ratio** is broadened by shot noise. The FRET histogram is wider than the
+  ratio** is broadened by shot noise {cite}`nir2006`. The FRET histogram is wider than the
   sample is heterogeneous, and a fit reads that width as a distribution of
   states.
 * A **dynamics analysis** sees a burst end and another begin where the molecule
@@ -37,9 +37,9 @@ For the step-by-step workflow in ChiSurf see the guide
 
 ## The decision: the same-molecule probability
 
-Recurrence analysis ({doc}`RASP <recurrence>`) defines the **same-molecule
-probability** from the normalized autocorrelation $G(\tau)$ of the burst arrival
-times:
+Recurrence analysis ({doc}`RASP <recurrence>`, {cite}`hoffmann2011`) defines the
+**same-molecule probability** from the normalized autocorrelation $G(\tau)$ of
+the burst arrival times:
 
 $$
 P_\text{same}(\tau) = 1 - \frac{1}{G(\tau)} .
@@ -68,7 +68,7 @@ exactly what the plot says it means.
 $P_\text{same}$ is *not* monotonic: at the very shortest lags it dips, because
 nothing recurs faster than a burst is long and those bins hold coincidences
 between different molecules and little else. Taking the last lag above the
-threshold — the recurrence time as the literature states it — is robust to that
+threshold — the recurrence time as the literature states it {cite}`hoffmann2011` — is robust to that
 dip; scanning outward from the shortest lag would read the dip as "different
 molecule" and fuse nothing at all.
 
@@ -85,8 +85,9 @@ would over-weight the shortest file.
 If A fuses with B and B with C, all three become one burst — even when A and C
 are further apart than $\tau_\text{max}$. That is the physically right reading:
 the molecule was in the volume the whole time. It is also how a chain runs away
-in a dense measurement, so the number of fragments one fused burst may contain is
-capped explicitly.
+in a dense measurement, so the number of fragments one fused burst may contain
+can be capped (`max_group`). The default 0 leaves it unlimited; the gap ceiling
+below bounds each link, not the length of the chain.
 
 ## The cost: a fused burst is one interval
 
@@ -158,5 +159,6 @@ efficiency. They are recomputed on the fused folder instead.
 
 ## References
 
-- {cite}`hoffmann2011` — separating shot noise from real heterogeneity in a burst distribution.
+- {cite}`hoffmann2011` — recurrence analysis of single particles (RASP): the burst-pair
+  statistic and the same-molecule probability $P_\text{same}$ fusion reads its window from.
 - {cite}`nir2006` — the shot-noise-limited histogram a measured one has to be compared against.

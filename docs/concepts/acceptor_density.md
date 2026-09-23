@@ -23,7 +23,8 @@ practice.
 
 ## The three decay laws
 
-For a random distribution with no diffusion and no excluded volume,
+For a random distribution with no diffusion and no excluded volume
+{cite}`foerster1949` {cite}`wolber1979` {cite}`blumen1979`,
 
 $$
 I_{DA}(t) = I_D^0 \exp\!\left[-\frac{t}{\tau_{D(0)}}
@@ -32,7 +33,9 @@ I_{DA}(t) = I_D^0 \exp\!\left[-\frac{t}{\tau_{D(0)}}
 \eta_d = \tfrac{1}{2}\,\Gamma\!\left(1 - \tfrac{d}{6}\right)\frac{C}{C_0},
 $$
 
-with $d = 3, 2, 1$ for a volume, a plane and a line. The stretch exponent
+with $d = 3, 2, 1$ for a volume, a plane and a line: Förster's $t^{1/2}$ law
+{cite}`foerster1949`, its two-dimensional counterpart {cite}`wolber1979`, and
+the general $d$-dimensional form {cite}`blumen1979`. The stretch exponent
 $d/6$ — a half, a third, a sixth — is the signature. Written out:
 
 | Dimensionality | Physical case | Exponent | $C_0$ | $\eta_d$ at $C=C_0$ |
@@ -94,26 +97,30 @@ the model should have been this one instead.
 **Dimensionality is itself measurable.** The three laws are distinguishable:
 data generated in one dimensionality cannot be fitted acceptably by the law for
 another. That makes the decay shape a probe of the *geometry* the acceptors
-occupy, not just of how many there are — which is how the approach is used to
-ask whether probes are confined to a plane or leaking into the volume.
+occupy, not just of how many there are {cite}`baumann1986` — which is how the
+approach is used to ask whether probes are confined to a plane or leaking into
+the volume.
 
 ## Assumptions, and when they break
 
 - **No diffusion.** Donor–acceptor diffusion during the excited-state lifetime
   brings fresh acceptors into range and increases transfer above these
-  expressions. In fluid membranes at room temperature this is not negligible;
+  expressions {cite}`thomas1978`. In fluid membranes at room temperature this is not negligible;
   the frozen-solution case is where the closed forms are exact.
 - **No excluded volume.** Acceptors are allowed arbitrarily close to the donor.
   A real molecule has a distance of closest approach, which reduces the
   early-time quenching most — the same region where the dimensionality
-  signature lives.
+  signature lives. {cite}`wolber1979` treats the excluded area in two
+  dimensions; the model here does not.
 - **Random distribution.** Clustering, phase separation or binding all break it,
   and they do so by producing a *local* density that is not the mean density.
   This is a feature if clustering is the question and a systematic error if it
   is not.
 - **$\kappa^2 = 2/3$**, folded into $R_0$ as always. A rotationally frozen
-  three-dimensional solution averages to $\langle\kappa^2\rangle = 0.476$
-  instead and needs 1.18-fold more acceptor for the same transfer
+  three-dimensional solution averages to an effective $\kappa^2 = 0.476$
+  instead — the decay depends on $\langle|\kappa|\rangle^2$, not on
+  $\langle\kappa^2\rangle$ {cite}`steinberg1971` — and needs
+  $(0.667/0.476)^{1/2} = 1.18$-fold more acceptor for the same transfer
   ({ref}`concept-kappa2-orientation`).
 - **One donor population.** Homo-transfer between donors is assumed absent,
   which requires the donor concentration to be low even when the acceptor
@@ -212,5 +219,8 @@ argument these take, divide by $C_0$: `c_over_c0 = sigma / c0`.
   · {src}`chisurf/core/fluorescence/fret/acceptor_density.py#transfer_efficiency`;
   tests in `test/fluorescence/test_fret_acceptor_density.py` and
   `test/fitting/test_acceptor_density_model.py`.
-- Literature: {cite}`lakowicz2006`, the chapter on energy transfer to multiple
-  acceptors in one, two or three dimensions.
+- Literature: {cite}`foerster1949` (three dimensions), {cite}`wolber1979` (two),
+  {cite}`blumen1979` (any $d$), {cite}`baumann1986` (geometry and orientation
+  from the decay shape), {cite}`thomas1978` (diffusion); {cite}`lakowicz2006`,
+  the chapter on energy transfer to multiple acceptors in one, two or three
+  dimensions.

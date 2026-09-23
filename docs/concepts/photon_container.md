@@ -31,13 +31,13 @@ The recording, first and unchanged, and then everything computed from it.
 
 **The instrument file is kept byte-for-byte.** Not converted, not normalised —
 the exact bytes your microscope's software wrote. `disassemble` writes them back
-out and verifies the SHA-256 while doing it, so "the original is recoverable" is
+out and verifies the SHA-256 {cite}`nist2015sha` while doing it, so "the original is recoverable" is
 a checked claim rather than an intention. The photons are read *in place* out of
 the container, so a `.pto` is the size of the raw data plus the results, not
 twice the raw data.
 
-It is also **immutable**. It is the first object in the file and nothing ever
-rewrites it, so no amount of recomputation can disturb the data everything else
+It is also **immutable**. It is the first data object in the file — only the
+plain-text preamble below precedes it — and nothing ever rewrites it, so no amount of recomputation can disturb the data everything else
 depends on.
 
 **Every result says what one of its rows is.** This is the part that a folder of
@@ -58,8 +58,8 @@ state-annotated photons lived in five files outside the companion system, and
 burst fusion wrote its mapping back into *another analysis's* folder.
 
 In a container each table declares its **grain** — what one row is — from a
-fixed vocabulary: a photon, a burst, a dwell, a pixel, a frame, a molecule, a
-track, a state, a species, a point on a curve. A dwell table says `dwell` and
+fixed vocabulary of twenty-one terms: a photon, a burst, a dwell, a pixel, a
+frame, a molecule, a track, a state, a species, a point on a curve, and so on. A dwell table says `dwell` and
 carries the burst number it belongs to. The join is then a *declared key*, and a
 burst the analysis skipped is simply an absent row, which says something true,
 instead of a placeholder row, which destroys the information that it was
@@ -78,7 +78,8 @@ means the unit is *unknown*, which is a different claim from *dimensionless* and
 is written differently.
 
 **The file explains itself.** The first object is plain ASCII describing the
-format: that it is EBML (RFC 8794), how an element is framed, which element IDs
+format: that it is EBML (RFC 8794 {cite}`lhomme2020ebml`, the framing Matroska
+uses {cite}`lhomme2024matroska`), how an element is framed, which element IDs
 matter by number, and how to recover the instrument file. Find it with
 `strings measurement.pto | head -40`. A file that needs a specific library
 version to be intelligible is a file with an expiry date; this one can be taken
@@ -97,10 +98,10 @@ collaborator's software writes another, and a reader costs nothing. What it
 | a table — bursts, pixels, molecules, tracks | inside the `.pto`, at its own grain |
 | a raster | a TIFF, carried inside the `.pto` |
 | a project — datasets, fits, a session | `.csp` |
-| metadata for deposition | mmCIF |
+| metadata for deposition | mmCIF {cite}`westbrook2000mmcif` |
 
-Everything else — the `…4` folders, `.imaging.h5`, kristine, PyCorrFit,
-Photon-HDF5, CSV — is either something ChiSurf **imports** or something you
+Everything else — the `…4` folders, `.imaging.h5`, kristine, PyCorrFit
+{cite}`mueller2014`, Photon-HDF5 {cite}`ingargiola2016photonhdf5`, CSV — is either something ChiSurf **imports** or something you
 **export on purpose**. Both still work.
 
 The case worth explaining is the curve, because it looks like it should be a
@@ -217,8 +218,8 @@ for you.
 
 The names in a `.pto` — what kind of thing an artifact is, what operation
 produced it, what a row is, what a unit is called — are **mmCIF dictionary
-items**, from the wwPDB/PDB-IHM family plus the fluorescence extension
-(flrCIF) and, where those lack a term, a local extension that declares it.
+items**, from the wwPDB/PDB-IHM family {cite}`fitzgerald2006mmcif,vallat2018`
+plus the fluorescence extension (flrCIF) {cite}`hanke2024flrcif` and, where those lack a term, a local extension that declares it.
 
 Nothing in ChiSurf invents a name. A writer that tries to use a term the
 dictionaries do not declare fails at write time, rather than producing a file

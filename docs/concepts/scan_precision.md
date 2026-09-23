@@ -29,14 +29,14 @@ slow-axis lag $\psi$ from a reference pixel was recorded at a delay
 $$\tau(\xi, \psi, \Delta) = |\xi\, t_\mathrm{p} + \psi\, t_\mathrm{l} + \Delta\, t_\mathrm{f}|,$$
 
 with $t_\mathrm{p}$, $t_\mathrm{l}$ and $t_\mathrm{f}$ the pixel, line and frame
-times. The correlation carpet $G(\xi, \psi, \Delta)$ is therefore a correlation
+times {cite}`digman2005,digman2005b`. The correlation carpet $G(\xi, \psi, \Delta)$ is therefore a correlation
 *in time*, sampled on a grid whose spacing is set entirely by the scanner. This
 is the identity that makes RICS, STICS, TICS and iMSD one method
 ({ref}`concept-image-correlation`), and it is also what makes the dwell time a
 physics parameter rather than a convenience.
 
 The fit learns $D$ from how quickly $G$ falls along that axis. The molecule's
-own clock is the diffusion time across the focus,
+own clock is the diffusion time across the focus {cite}`elson1974`,
 
 $$\tau_D = \frac{w_r^2}{4D},$$
 
@@ -66,12 +66,14 @@ Two secondary effects shift it from the naive $t_\mathrm{p} \approx \tau_D / n$:
 * **Correlated noise.** Correlation values at different lags are built from the
   same pixels and are *not* independent. The estimator's covariance is a full
   matrix; treating it as a set of per-lag variances understates the error
-  substantially.
+  substantially {cite}`saffarian2003,longfils2019`.
 
 ## What the predictor computes
 
-The prediction follows Sanguigno et al.'s analysis of RICS estimator noise, in
-three steps:
+The prediction is RICSPE, Longfils et al.'s analysis of RICS estimator noise
+{cite}`longfils2019` — the RICS counterpart of Saffarian and Elson's FCS
+treatment {cite}`saffarian2003` — as shipped in PAM's MIA {cite}`schrimpf2018`,
+in three steps:
 
 1. **Covariance.** The covariance of the correlation estimator over the fitted
    lag range is computed analytically — a shot-noise term involving the
@@ -81,11 +83,14 @@ three steps:
 2. **Realisations.** Noise is drawn from that covariance, added to the noiseless
    correlation, and the result is fitted for $D$ exactly as a measurement would
    be.
-3. **Spread.** The scatter of the fitted values across many realisations gives
-   the mean squared relative error.
+3. **Spread.** The scatter of the fitted values about the true $D$ across many
+   realisations gives the mean squared relative error,
+   $\mathrm{MSRE} = \langle (\hat D_k - D)^2 / D^2 \rangle$ {cite}`longfils2019`;
+   the planner reports its square root, the relative error.
 
 Reading a single number off this is straightforward: below about 5 % relative
-error the acquisition is good, 5–20 % usable, above 50 % not worth recording.
+error the acquisition is good, 5–20 % usable, 20–50 % poor, above 50 % not worth
+recording.
 
 ### Agreement with the reference implementation
 
@@ -108,8 +113,8 @@ recommended.
 ## The honest caveats
 
 **The prediction is itself a Monte-Carlo quantity.** With $N$ realisations it
-carries a relative uncertainty of roughly $1/\sqrt{2N}$ — about 10 % at the
-default 40. The consequence matters: **the position of the minimum is not
+carries a relative uncertainty of roughly $1/\sqrt{2N}$ — about 11 % at the
+planner's default of 40. The consequence matters: **the position of the minimum is not
 resolved to one step of a dwell scan**. Along a flat stretch the argmin moves
 between neighbouring points from noise alone. Read the optimum as an order of
 magnitude, compare error *values* rather than trusting an argmin, or raise the
@@ -160,5 +165,6 @@ which no amount of averaging removes.
 
 ## References
 
-- {cite}`sanguigno2010` — the closed form for a correlation measured under a scanning beam.
+- {cite}`longfils2019` — RICSPE: bias and covariance of the RICS estimator, and the MSRE this planner predicts.
+- {cite}`saffarian2003` — the FCS estimator's standard deviation and bias, which RICSPE extends to a raster.
 - {cite}`digman2005` — scanning FCS: the beam supplies the sampling that a stationary focus cannot.

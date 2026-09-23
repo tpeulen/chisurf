@@ -29,7 +29,9 @@ The problem is correlation. A correlation analysis asks *how much does the image
 at time $t$ resemble the image at time $t + \tau$?*, and answers it with the
 overlap between the two. Diffusion reduces that overlap because molecules move
 independently. **Translation reduces it too** — and the correlation function
-cannot tell the two apart.
+cannot tell the two apart. (A spatiotemporal correlation does see a uniform
+translation, as a peak that moves with lag; STICS reads that motion as flow
+{cite}`hebert2005`, which is the same error under another name.)
 
 Concretely, for a stack whose frames are identical except for a translation,
 the frame-lag correlation at zero spatial lag falls off with $\Delta$:
@@ -44,19 +46,22 @@ Nothing in that sample is diffusing. The decay on the left is pure drift, and a
 diffusion model fitted to it has only one way to reproduce a decay — report a
 larger $D$. The correction restores the flat curve the physics demands.
 
-The scale that matters is the **beam waist**, not the pixel. Drift comparable to
-$w_r$ decorrelates a frame pair completely; drift well below one pixel does
+The scale that matters is the **beam waist**, not the pixel. For a Gaussian
+focus the spatial correlation falls as $\exp(-\delta^2/w_r^2)$
+{cite}`petersen1993`, so a drift of one $w_r$ already cuts the frame-pair
+overlap to $1/e$ and two waists to $e^{-4}$; drift well below one pixel does
 nothing at all. Hence the rule of thumb:
 
 * $< 1$ px total — ignore it;
 * a few px — correct before any frame-lag analysis;
-* $> w_r$ — the uncorrected frame-lag results were not merely noisy, they were
-  measuring the stage.
+* $\gtrsim w_r$ — the uncorrected frame-lag results were not merely noisy, they
+  were measuring the stage.
 
 ## Measuring the shift
 
-The estimator is cross-correlation. For a reference frame $a$ and a later frame
-$b$,
+The estimator is cross-correlation, the classic area-based registration of a
+pure translation, evaluated by FFT {cite}`brown1992,zitova2003`. For a reference
+frame $a$ and a later frame $b$,
 
 $$
 C(\xi, \psi) = \mathcal{F}^{-1}\bigl\{\, \mathcal{F}(a)\,\overline{\mathcal{F}(b)} \,\bigr\}
@@ -72,7 +77,9 @@ Two practical details matter more than the formula.
 neighbouring pixels of $C$ are often within noise of each other, and picking the
 larger one is a coin flip that moves the answer by a whole pixel. A small
 Gaussian ($\sigma \approx 2$ px) removes that coin flip. This is what the
-reference implementation does, and it is worth keeping.
+reference implementation, PAM's MIA {cite}`schrimpf2018`, does, and it is worth
+keeping. Because the FFT correlation is circular, the smoothing wraps at the
+edges of the lag map rather than reflecting there.
 
 **The choice of reference is a bias/variance trade.**
 
@@ -113,8 +120,8 @@ structured artefact.
 
 The correction is applied in **whole pixels**. Sub-pixel refinement (fitting a
 parabola through the correlation peak and its neighbours) sharpens the measured
-*number*, which is what you want for reading off a drift rate, but the image is
-still moved by integers.
+*number*, which is what you want for reading off a drift rate
+{cite}`zitova2003`, but the image is still moved by integers.
 
 ## Photon streams are a different object
 

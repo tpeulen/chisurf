@@ -40,6 +40,7 @@ TOPIC_TITLES = [
     ("imaging", "Image correlation and scanning microscopy"),
     ("resolution", "Image resolution"),
     ("tracking", "Particle tracking"),
+    ("segmentation", "Image segmentation and region measurement"),
     ("colocalisation", "Colocalisation"),
     ("structure", "Structure, surfaces and polymers"),
     ("polymer", "Polymer models"),
@@ -52,6 +53,8 @@ TOPIC_TITLES = [
     ("mle", "Maximum-likelihood estimation"),
     ("statistics", "Statistics, sampling and convergence"),
     ("exploration", "Dimensionality reduction and clustering"),
+    ("formats", "Data formats and standards"),
+    ("data", "Data, provenance and vocabularies"),
 ]
 
 #: The OKF header the generated page carries. Emitted here rather than

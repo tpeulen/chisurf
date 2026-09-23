@@ -63,7 +63,7 @@ $$
 \mu_{rc} = \tfrac1N\textstyle\sum_i (r_i - \bar r)(c_i - \bar c),
 $$
 
-define the ellipse with the same mass distribution as the region. With
+define the ellipse with the same second moments as the region {cite}`hu1962`. With
 $\lambda_1 \ge \lambda_2$ the eigenvalues of that covariance,
 
 $$
@@ -72,11 +72,16 @@ $$
 e = \sqrt{1 - \lambda_2/\lambda_1} ,
 $$
 
-and the **orientation** is the angle of the major axis,
-$\theta = \tfrac12 \arctan\!\bigl(2\mu_{rc} /(\mu_{rr} - \mu_{cc})\bigr)$,
-taken in $[-\pi/2, \pi/2]$. Eccentricity $e$ runs from 0 for a disc to 1 for a
+and the **orientation** is the angle of the major axis, measured from the row
+axis towards the column axis,
+$\theta = \tfrac12 \operatorname{atan2}\!\bigl(2\mu_{rc},\, \mu_{rr} - \mu_{cc}\bigr)$,
+which lies in $[-\pi/2, \pi/2]$ (a plain $\arctan$ of the ratio would fold it
+into $[-\pi/4, \pi/4]$). Eccentricity $e$ runs from 0 for a disc to 1 for a
 line, and is the cheapest way to separate a diffraction-limited spot from a
 scratch, a filament or two molecules that the segmentation failed to split.
+Hu's seven moment invariants {cite}`hu1962`, built from the normalised central
+moments, are reported as well: shape descriptors unchanged by translation,
+scale and rotation.
 
 ### Boundary, and why it is not a pixel count
 
@@ -85,7 +90,7 @@ pixels treats a 45° edge as though it were axis-aligned and underestimates its
 true length by $1 - 1/\sqrt2 \approx 29\%$. ChiSurf instead weights each border
 pixel by its 4-neighbourhood configuration — 1 for a straight step, $\sqrt2$ for
 a diagonal one, $(1+\sqrt2)/2$ for a corner — the estimator of Benkrid and
-Crookes [1] used by scikit-image. A Crofton-formula variant is also available,
+Crookes {cite}`benkrid2000` used by scikit-image {cite}`vanderwalt2014`. A Crofton-formula variant is also available,
 which is less biased for large convex regions and noisier for small ones.
 
 From area and perimeter comes **circularity**,
@@ -131,7 +136,7 @@ are all the same kind of object:
 
 * an optional **analysis region**, drawn or loaded, confining the search to one
   cell or one illuminated patch. It is applied *before* thresholding, so an
-  automatic (Otsu) threshold is computed from that region's own pixels — the
+  automatic (Otsu) threshold {cite}`otsu1979` is computed from that region's own pixels — the
   point of restricting the analysis is that the rest of the frame should not set
   its threshold;
 * the **foreground**, the union of the segmented molecules;
@@ -159,9 +164,9 @@ look unrelated:
   rectangle there is the standard way to ask *do the bright pixels colocalize
   even though the dim ones do not?*, and because the gate is a region it need
   not be a rectangle: an ellipse around a population, or a polygon around a
-  diagonal cloud, works with no new machinery;
-* **as a segmentation** — each label of a watershed or an imported Cellpose
-  result is a region, so the objects a segmentation found can be gated,
+  diagonal cloud, works with no new machinery {cite}`bolte2006,costes2004`;
+* **as a segmentation** — each label of a watershed {cite}`vincent1991` or an
+  imported Cellpose {cite}`stringer2021` result is a region, so the objects a segmentation found can be gated,
   measured and stored like a hand-drawn one.
 
 A **painted** gate works on either kind of axis too. Paint on an image and the
@@ -178,7 +183,7 @@ for programs that read nothing else.
 ## Interoperability
 
 The property names, definitions and algorithms follow
-``skimage.measure.regionprops`` [2] exactly — the border-weighted perimeter, the
+``skimage.measure.regionprops`` {cite}`vanderwalt2014` exactly — the border-weighted perimeter, the
 half-pixel-offset convex hull, the inertia-tensor axes, the sign convention of
 the orientation, the Euler coefficients. ChiSurf's implementation is checked
 against scikit-image property by property, so a number reported here is directly
@@ -220,20 +225,4 @@ closes the loop between measuring and selecting.
   {doc}`the scan-image guide </guides/24_scan_images>`.
 - Restricting a drift estimate to a structured patch:
   {ref}`concept-drift-correction`.
-
-# Citations
-
-[1] K. Benkrid, D. Crookes, A. Benkrid, *Design and FPGA implementation of a
-perimeter estimator*, Proceedings of the Irish Machine Vision and Image
-Processing Conference, 2000, 51–57.
-
-[2] S. van der Walt, J. L. Schönberger, J. Nunez-Iglesias, F. Boulogne, J. D.
-Warner, N. Yager, E. Gouillart, T. Yu, *scikit-image: image processing in
-Python*, PeerJ 2:e453, 2014.
-
-[3] M. K. Hu, *Visual pattern recognition by moment invariants*, IRE
-Transactions on Information Theory 8(2):179–187, 1962.
-
-[4] F. Bolte, F. P. Cordelières, *A guided tour into subcellular colocalization
-analysis in light microscopy*, Journal of Microscopy 224(3):213–232, 2006.
 - Tools in ChiSurf: **Region MLE** (`chisurf/plugins/microscopy/region_mle/`) fits each segmented region, and **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`) draws and stores the regions.

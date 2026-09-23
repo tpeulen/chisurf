@@ -3418,3 +3418,764 @@ hansen2004:
   doi: 10.1063/1.1803533
   note: Friction factor of a rod - the Cylinder shape of the FCS calculator.
   topics: [fcs, hydrodynamics]
+
+# ── Concept-page citation pass ──────────────────────────────────
+nettels2007:
+  authors: D. Nettels, I. V. Gopich, A. Hoffmann, B. Schuler
+  title: Ultrafast dynamics of protein collapse from single-molecule photon statistics
+  journal: Proceedings of the National Academy of Sciences
+  year: 2007
+  volume: 104
+  pages: 2655-2660
+  doi: 10.1073/pnas.0611093104
+  note: Nanosecond FCS on smFRET bursts — the dynamics window below BVA's.
+  topics: [smfret, fcs, dynamics]
+
+kapanidis2005:
+  authors: A. N. Kapanidis, T. A. Laurence, N. K. Lee, E. Margeat, X. Kong, S. Weiss
+  title: Alternating-Laser Excitation of Single Molecules
+  journal: Accounts of Chemical Research
+  year: 2005
+  volume: 38
+  pages: 523-533
+  doi: 10.1021/ar0401348
+  note: Review of µs-ALEX, the E–S histogram and stoichiometry sorting.
+  topics: [smfret, alex]
+
+muller2005:
+  authors: B. K. Müller, E. Zaychikov, C. Bräuchle, D. C. Lamb
+  title: Pulsed Interleaved Excitation
+  journal: Biophysical Journal
+  year: 2005
+  volume: 89
+  pages: 3508-3522
+  doi: 10.1529/biophysj.105.064766
+  note: PIE — laser identity carried in the micro time; what folded µs-ALEX becomes.
+  topics: [smfret, alex, pie]
+
+kudryavtsev2012:
+  authors: V. Kudryavtsev, M. Sikor, S. Kalinin, D. Mokranjac, C. A. M. Seidel, D. C. Lamb
+  title: Combining MFD and PIE for Accurate Single-Pair Förster Resonance Energy Transfer Measurements
+  journal: ChemPhysChem
+  year: 2012
+  volume: 13
+  pages: 1060-1078
+  doi: 10.1002/cphc.201100822
+  note: PIE with multiparameter detection; stoichiometry and corrections for accurate smFRET.
+  topics: [smfret, alex, pie]
+
+golub1973:
+  authors: G. H. Golub, V. Pereyra
+  title: The Differentiation of Pseudo-Inverses and Nonlinear Least Squares Problems Whose Variables Separate
+  journal: SIAM Journal on Numerical Analysis
+  year: 1973
+  volume: 10
+  pages: 413-432
+  doi: 10.1137/0710036
+  note: Variable projection — solve the linear amplitudes inside the nonlinear fit.
+  topics: [fitting, numerics]
+
+lawson1995:
+  authors: C. L. Lawson, R. J. Hanson
+  title: Solving Least Squares Problems
+  journal: SIAM (Classics in Applied Mathematics; reprint of the 1974 Prentice-Hall edition)
+  year: 1995
+  doi: 10.1137/1.9781611971217
+  note: The non-negative least-squares (NNLS) active-set algorithm scipy.optimize.nnls implements.
+  topics: [fitting, numerics]
+
+hill1910:
+  authors: A. V. Hill
+  title: The possible effects of the aggregation of the molecules of haemoglobin on its dissociation curves
+  journal: The Journal of Physiology (Proceedings of the Physiological Society, January 22, 1910)
+  year: 1910
+  volume: 40
+  pages: iv-vii
+  doi: 10.1113/jphysiol.1910.sp001386
+  note: The Hill equation. The DOI resolves to the Proceedings issue that carries Hill's note.
+  topics: [binding, titration]
+
+weiss1997:
+  authors: J. N. Weiss
+  title: "The Hill equation revisited: uses and misuses"
+  journal: The FASEB Journal
+  year: 1997
+  volume: 11
+  pages: 835-841
+  doi: 10.1096/fasebj.11.11.9285481
+  note: Why the Hill coefficient is an interaction coefficient, not a site count.
+  topics: [binding, titration]
+
+stefan2013:
+  authors: M. I. Stefan, N. Le Novère
+  title: Cooperative Binding
+  journal: PLoS Computational Biology
+  year: 2013
+  volume: 9
+  pages: e1003106
+  doi: 10.1371/journal.pcbi.1003106
+  note: Cooperative-binding models and what the Hill coefficient does and does not say.
+  topics: [binding, titration]
+
+# ── from bib_new_B ──
+# acceptor_density, recurrence). Every DOI Crossref-verified 2026-09-23.
+
+# ── Maximum entropy, regularization ────────────────────────────────
+
+skilling1984:
+  authors: J. Skilling, R. K. Bryan
+  title: "Maximum entropy image reconstruction: general algorithm"
+  journal: Monthly Notices of the Royal Astronomical Society
+  year: 1984
+  volume: 211
+  pages: 111-124
+  doi: 10.1093/mnras/211.1.111
+  note: The Skilling-Bryan MEM iteration that IMP.bff's MaxEntQp engine implements.
+  topics: [fitting, maxent]
+
+gull1984:
+  authors: S. F. Gull, J. Skilling
+  title: Maximum entropy method in image processing
+  journal: IEE Proceedings F (Communications, Radar and Signal Processing)
+  year: 1984
+  volume: 131
+  pages: "646"
+  doi: 10.1049/ip-f-1.1984.0099
+  note: The entropy relative to a prior model, S = sum p - m - p ln(p/m), and its positivity.
+  topics: [fitting, maxent]
+
+jaynes1957:
+  authors: E. T. Jaynes
+  title: Information theory and statistical mechanics
+  journal: Physical Review
+  year: 1957
+  volume: 106
+  pages: 620-630
+  doi: 10.1103/PhysRev.106.620
+  note: The maximum-entropy principle — the least committal distribution consistent with the data.
+  topics: [fitting, maxent, statistics]
+
+livesey1987:
+  authors: A. K. Livesey, J. C. Brochon
+  title: Analyzing the distribution of decay constants in pulse-fluorimetry using the maximum entropy method
+  journal: Biophysical Journal
+  year: 1987
+  volume: 52
+  pages: 693-706
+  doi: 10.1016/S0006-3495(87)83264-2
+  note: MEM recovery of fluorescence lifetime distributions from TCSPC decays.
+  topics: [tcspc, maxent, lifetime]
+
+brochon1994:
+  authors: J.-C. Brochon
+  title: Maximum entropy method of data analysis in time-resolved spectroscopy
+  journal: Methods in Enzymology
+  year: 1994
+  volume: 240
+  pages: 262-311
+  doi: 10.1016/S0076-6879(94)40052-0
+  note: Review of MEM for lifetime and anisotropy distributions, including prior and grid choice.
+  topics: [tcspc, maxent, lifetime]
+
+vinogradov2000:
+  authors: S. A. Vinogradov, D. F. Wilson
+  title: Recursive maximum entropy algorithm and its application to the luminescence lifetime distribution recovery
+  journal: Applied Spectroscopy
+  year: 2000
+  volume: 54
+  pages: 849-855
+  doi: 10.1366/0003702001950210
+  note: The MEM lifetime-distribution algorithm the MaxEnt decay tool was originally built on (its README cites it under a wrong title).
+  topics: [tcspc, maxent, lifetime]
+
+hansen1992:
+  authors: P. C. Hansen
+  title: Analysis of discrete ill-posed problems by means of the L-curve
+  journal: SIAM Review
+  year: 1992
+  volume: 34
+  pages: 561-580
+  doi: 10.1137/1034115
+  note: The L-curve; its corner as the regularization-parameter choice.
+  topics: [fitting, regularization]
+
+hansen1993:
+  authors: P. C. Hansen, D. P. O'Leary
+  title: The use of the L-curve in the regularization of discrete ill-posed problems
+  journal: SIAM Journal on Scientific Computing
+  year: 1993
+  volume: 14
+  pages: 1487-1503
+  doi: 10.1137/0914086
+  note: Locating the L-curve corner by maximum curvature in log-log space.
+  topics: [fitting, regularization]
+
+hanke1996:
+  authors: M. Hanke
+  title: Limitations of the L-curve method in ill-posed problems
+  journal: BIT Numerical Mathematics
+  year: 1996
+  volume: 36
+  pages: 287-301
+  doi: 10.1007/BF01731984
+  note: Why the L-curve corner is a heuristic that can mis-select the regularization weight.
+  topics: [fitting, regularization]
+
+# ── Distance distributions from donor decays; polymer models ───────
+
+grinvald1972:
+  authors: A. Grinvald, E. Haas, I. Z. Steinberg
+  title: Evaluation of the distribution of distances between energy donors and acceptors by fluorescence decay
+  journal: Proceedings of the National Academy of Sciences
+  year: 1972
+  volume: 69
+  pages: 2273-2277
+  doi: 10.1073/pnas.69.8.2273
+  note: The donor decay as an integral of p(R) over the Förster rate — distance distributions from TCSPC.
+  topics: [fret, tcspc, distributions]
+
+haas1975:
+  authors: E. Haas, M. Wilchek, E. Katchalski-Katzir, I. Z. Steinberg
+  title: Distribution of end-to-end distances of oligopeptides in solution as estimated by energy transfer
+  journal: Proceedings of the National Academy of Sciences
+  year: 1975
+  volume: 72
+  pages: 1807-1811
+  doi: 10.1073/pnas.72.5.1807
+  note: First application — end-to-end distance distributions of flexible chains from donor decays.
+  topics: [fret, tcspc, distributions, polymer]
+
+obrien2009:
+  authors: E. P. O'Brien, G. Morrison, B. R. Brooks, D. Thirumalai
+  title: How accurate are polymer models in the analysis of Förster resonance energy transfer experiments on proteins?
+  journal: Journal of Chemical Physics
+  year: 2009
+  volume: 130
+  pages: "124903"
+  doi: 10.1063/1.3082151
+  note: Gaussian, WLC and SAW distance distributions compared against simulations for FRET on unfolded proteins.
+  topics: [fret, polymer, distributions]
+
+zheng2018:
+  authors: W. Zheng, G. H. Zerze, A. Borgia, J. Mittal, B. Schuler, R. B. Best
+  title: Inferring properties of disordered chains from FRET transfer efficiencies
+  journal: Journal of Chemical Physics
+  year: 2018
+  volume: 148
+  pages: "123329"
+  doi: 10.1063/1.5006954
+  note: The SAW-ν distance distribution ChiSurf's saw_nu implements (the rdf.py docstring misattributes it to J. Am. Chem. Soc.).
+  topics: [fret, polymer, distributions]
+
+descloizeaux1974:
+  authors: J. des Cloizeaux
+  title: Lagrangian theory for a self-avoiding random chain
+  journal: Physical Review A
+  year: 1974
+  volume: 10
+  pages: 1665-1669
+  doi: 10.1103/PhysRevA.10.1665
+  note: The r^θ exp[-(r/r0)^δ] form of the self-avoiding-walk end-to-end distribution.
+  topics: [polymer]
+
+flory1949:
+  authors: P. J. Flory
+  title: The configuration of real polymer chains
+  journal: Journal of Chemical Physics
+  year: 1949
+  volume: 17
+  pages: 303-310
+  doi: 10.1063/1.1747243
+  note: Excluded-volume scaling R ~ N^ν; the Flory exponent.
+  topics: [polymer]
+
+leguillou1980:
+  authors: J. C. Le Guillou, J. Zinn-Justin
+  title: Critical exponents from field theory
+  journal: Physical Review B
+  year: 1980
+  volume: 21
+  pages: 3976-3998
+  doi: 10.1103/PhysRevB.21.3976
+  note: ν = 0.588 and γ = 1.1615 for the self-avoiding walk (n = 0) — the saw_nu defaults.
+  topics: [polymer]
+
+hofmann2012:
+  authors: H. Hofmann, A. Soranno, A. Borgia, K. Gast, D. Nettels, B. Schuler
+  title: Polymer scaling laws of unfolded and intrinsically disordered proteins quantified with single-molecule spectroscopy
+  journal: Proceedings of the National Academy of Sciences
+  year: 2012
+  volume: 109
+  pages: 16155-16160
+  doi: 10.1073/pnas.1207719109
+  note: Fitting the scaling exponent ν of unfolded/IDP chains from smFRET — ν between ~0.4 (collapsed) and ~0.6 (expanded).
+  topics: [fret, polymer, smfret]
+
+schuler2016:
+  authors: B. Schuler, A. Soranno, H. Hofmann, D. Nettels
+  title: Single-molecule FRET spectroscopy and the polymer physics of unfolded and intrinsically disordered proteins
+  journal: Annual Review of Biophysics
+  year: 2016
+  volume: 45
+  pages: 207-231
+  doi: 10.1146/annurev-biophys-062215-010915
+  note: Review — polymer models (Gaussian, SAW, WLC) for converting FRET to chain dimensions.
+  topics: [fret, polymer, smfret]
+
+zimm1959:
+  authors: B. H. Zimm, J. K. Bragg
+  title: Theory of the phase transition between helix and random coil in polypeptide chains
+  journal: Journal of Chemical Physics
+  year: 1959
+  volume: 31
+  pages: 526-535
+  doi: 10.1063/1.1730390
+  note: The nearest-neighbour two-state (Ising) chain with cooperativity and field, solved by transfer matrices.
+  topics: [polymer]
+
+# ── Transfer to an acceptor density ───────────────────────────────
+
+foerster1949:
+  authors: T. Förster
+  title: Experimentelle und theoretische Untersuchung des zwischenmolekularen Übergangs von Elektronenanregungsenergie
+  journal: Zeitschrift für Naturforschung A
+  year: 1949
+  volume: 4
+  pages: 321-327
+  doi: 10.1515/zna-1949-0501
+  note: The t^{1/2} donor decay for acceptors randomly distributed in three dimensions.
+  topics: [fret, acceptor_density]
+
+wolber1979:
+  authors: P. K. Wolber, B. S. Hudson
+  title: An analytic solution to the Förster energy transfer problem in two dimensions
+  journal: Biophysical Journal
+  year: 1979
+  volume: 28
+  pages: 197-210
+  doi: 10.1016/S0006-3495(79)85171-1
+  note: The t^{1/3} law for acceptors in a membrane plane, including an excluded area of closest approach.
+  topics: [fret, acceptor_density, membranes]
+
+blumen1979:
+  authors: A. Blumen, J. Manz
+  title: On the concentration and time dependence of the energy transfer to randomly distributed acceptors
+  journal: Journal of Chemical Physics
+  year: 1979
+  volume: 71
+  pages: 4694-4702
+  doi: 10.1063/1.438253
+  note: The general d-dimensional result, exp[-Γ(1-d/6) n V_d R0^d (t/τ)^{d/6}], for d = 1, 2, 3.
+  topics: [fret, acceptor_density]
+
+baumann1986:
+  authors: J. Baumann, M. D. Fayer
+  title: "Excitation transfer in disordered two-dimensional and anisotropic three-dimensional systems: effects of spatial geometry on time-resolved observables"
+  journal: Journal of Chemical Physics
+  year: 1986
+  volume: 85
+  pages: 4087-4107
+  doi: 10.1063/1.450880
+  note: Geometry (dimensionality) read from the decay shape; orientational averaging for static random acceptors.
+  topics: [fret, acceptor_density]
+
+thomas1978:
+  authors: D. D. Thomas, W. F. Carlsen, L. Stryer
+  title: Fluorescence energy transfer in the rapid-diffusion limit
+  journal: Proceedings of the National Academy of Sciences
+  year: 1978
+  volume: 75
+  pages: 5746-5750
+  doi: 10.1073/pnas.75.12.5746
+  note: Diffusion during the donor lifetime enhances transfer to distributed acceptors beyond the static laws.
+  topics: [fret, acceptor_density]
+
+steinberg1971:
+  authors: I. Z. Steinberg
+  title: Long-range nonradiative transfer of electronic excitation energy in proteins and polypeptides
+  journal: Annual Review of Biochemistry
+  year: 1971
+  volume: 40
+  pages: 83-114
+  doi: 10.1146/annurev.bi.40.070171.000503
+  note: The effective orientation factor 0.476 for rigid, randomly oriented and distributed acceptors (static averaging).
+  topics: [fret, kappa2, acceptor_density]
+
+# ── from bib_new_C ──
+# live_streaming_analysis). Every DOI verified against Crossref 2026-09-23.
+
+# ── Image registration / drift ──────────────────────────────────────
+
+brown1992:
+  authors: L. G. Brown
+  title: A survey of image registration techniques
+  journal: ACM Computing Surveys
+  year: 1992
+  volume: 24
+  pages: 325-376
+  doi: 10.1145/146370.146374
+  note: Cross-correlation as the translation estimator, and its FFT evaluation — the method drift correction uses.
+  topics: [imaging, corrections]
+
+zitova2003:
+  authors: B. Zitová, J. Flusser
+  title: 'Image registration methods: a survey'
+  journal: Image and Vision Computing
+  year: 2003
+  volume: 21
+  pages: 977-1000
+  doi: 10.1016/S0262-8856(03)00137-9
+  note: Area-based (correlation) registration, sub-pixel peak interpolation, and the limits of a pure-translation model.
+  topics: [imaging, corrections]
+
+# ── Segmentation / region properties ───────────────────────────────
+
+otsu1979:
+  authors: N. Otsu
+  title: A threshold selection method from gray-level histograms
+  journal: IEEE Transactions on Systems, Man, and Cybernetics
+  year: 1979
+  volume: 9
+  pages: 62-66
+  doi: 10.1109/TSMC.1979.4310076
+  note: The automatic threshold (maximal between-class variance) used to segment molecules.
+  topics: [imaging, segmentation]
+
+hu1962:
+  authors: M.-K. Hu
+  title: Visual pattern recognition by moment invariants
+  journal: IRE Transactions on Information Theory
+  year: 1962
+  volume: 8
+  pages: 179-187
+  doi: 10.1109/TIT.1962.1057692
+  note: Image moments as shape descriptors, and the seven invariants `moments_hu` returns.
+  topics: [imaging, segmentation]
+
+benkrid2000:
+  authors: K. Benkrid, D. Crookes, A. Benkrid
+  title: Design and FPGA implementation of a perimeter estimator
+  journal: Proceedings of the Irish Machine Vision and Image Processing Conference
+  year: 2000
+  pages: 51-57
+  note: The border-configuration-weighted perimeter (1, sqrt2, (1+sqrt2)/2) that scikit-image and ChiSurf use. No DOI exists.
+  topics: [imaging, segmentation]
+
+vanderwalt2014:
+  authors: S. van der Walt, J. L. Schönberger, J. Nunez-Iglesias, F. Boulogne, J. D. Warner, N. Yager, E. Gouillart, T. Yu
+  title: 'scikit-image: image processing in Python'
+  journal: PeerJ
+  year: 2014
+  volume: 2
+  pages: e453
+  doi: 10.7717/peerj.453
+  note: The regionprops definitions ChiSurf's region properties reproduce property for property.
+  topics: [imaging, segmentation, software]
+
+vincent1991:
+  authors: L. Vincent, P. Soille
+  title: 'Watersheds in digital spaces: an efficient algorithm based on immersion simulations'
+  journal: IEEE Transactions on Pattern Analysis and Machine Intelligence
+  year: 1991
+  volume: 13
+  pages: 583-598
+  doi: 10.1109/34.87344
+  note: The watershed segmentation whose labels become regions.
+  topics: [imaging, segmentation]
+
+stringer2021:
+  authors: C. Stringer, T. Wang, M. Michaelos, M. Pachitariu
+  title: 'Cellpose: a generalist algorithm for cellular segmentation'
+  journal: Nature Methods
+  year: 2021
+  volume: 18
+  pages: 100-106
+  doi: 10.1038/s41592-020-01018-x
+  note: Cellpose; its label images import as regions.
+  topics: [imaging, segmentation]
+
+# ── RICS precision ─────────────────────────────────────────────────
+
+longfils2019:
+  authors: M. Longfils, N. Smisdom, M. Ameloot, M. Rudemo, V. Lemmens, G. Solís Fernández, M. Röding, N. Lorén, J. Hendrix, A. Särkkä
+  title: Raster Image Correlation Spectroscopy Performance Evaluation
+  journal: Biophysical Journal
+  year: 2019
+  volume: 117
+  pages: 1900-1914
+  doi: 10.1016/j.bpj.2019.09.045
+  note: RICSPE — analytical bias and covariance of the RICS correlation estimator, Monte-Carlo propagation to the mean squared relative error of D. The method the RICS-precision planner ports (via PAM/MIA).
+  topics: [imaging, correlation, precision]
+
+# ── from bib_new_D ──
+# ── Data formats and standards (photon container) ───────────────────
+
+lhomme2020ebml:
+  authors: S. Lhomme, D. Rice, M. Bunkus
+  title: Extensible Binary Meta Language
+  journal: IETF RFC 8794
+  year: 2020
+  doi: 10.17487/RFC8794
+  note: EBML, the element framing (variable-length ID + size + data) a .pto container is written in.
+  topics: [data, formats]
+
+lhomme2024matroska:
+  authors: S. Lhomme, M. Bunkus, D. Rice
+  title: Matroska Media Container Format Specification
+  journal: IETF RFC 9559
+  year: 2024
+  doi: 10.17487/RFC9559
+  note: The EBML schema whose element IDs (SeekHead, Attachments, Tags) a .pto reuses where the meaning matches.
+  topics: [data, formats]
+
+nist2015sha:
+  authors: National Institute of Standards and Technology
+  title: Secure Hash Standard (SHS)
+  journal: FIPS PUB 180-4
+  year: 2015
+  doi: 10.6028/NIST.FIPS.180-4
+  note: SHA-256, the checksum that proves the embedded instrument file is recovered byte-for-byte.
+  topics: [data, formats]
+
+westbrook2000mmcif:
+  authors: J. D. Westbrook, P. E. Bourne
+  title: STAR/mmCIF - an ontology for macromolecular structure
+  journal: Bioinformatics
+  year: 2000
+  volume: 16
+  pages: 159-168
+  doi: 10.1093/bioinformatics/16.2.159
+  note: The dictionary-driven data model (categories, items, enumerations) MMFDB's vocabulary is built on.
+  topics: [data, formats, provenance]
+
+fitzgerald2006mmcif:
+  authors: P. M. D. Fitzgerald, J. D. Westbrook, P. E. Bourne, B. McMahon, K. D. Watenpaugh, H. M. Berman
+  title: Macromolecular dictionary (mmCIF)
+  journal: International Tables for Crystallography, Vol. G
+  year: 2006
+  pages: 295-443
+  doi: 10.1107/97809553602060000745
+  note: The mmCIF dictionary itself - the wwPDB base vocabulary the .pto terms extend.
+  topics: [data, formats]
+
+vallat2018:
+  authors: B. Vallat, B. Webb, J. D. Westbrook, A. Sali, H. M. Berman
+  title: Development of a prototype system for archiving integrative/hybrid structure models of biological macromolecules
+  journal: Structure
+  year: 2018
+  volume: 26
+  pages: 894-904.e2
+  doi: 10.1016/j.str.2018.03.011
+  note: PDB-Dev and the IHM dictionary (now PDB-IHM) - the integrative-model extension of mmCIF.
+  topics: [data, formats, structure]
+
+hanke2024flrcif:
+  authors: C. A. Hanke, J. D. Westbrook, B. M. Webb, T.-O. Peulen, C. L. Lawson, A. Sali, et al.
+  title: Making fluorescence-based integrative structures and associated kinetic information accessible
+  journal: Nature Methods
+  year: 2024
+  volume: 21
+  pages: 1970-1972
+  doi: 10.1038/s41592-024-02428-x
+  note: flrCIF, the fluorescence/FRET extension dictionary to PDBx/mmCIF and IHMCIF.
+  topics: [data, formats, fret]
+
+ingargiola2016photonhdf5:
+  authors: A. Ingargiola, T. Laurence, R. Boutelle, S. Weiss, X. Michalet
+  title: Photon-HDF5 - an open file format for timestamp-based single-molecule fluorescence experiments
+  journal: Biophysical Journal
+  year: 2016
+  volume: 110
+  pages: 26-33
+  doi: 10.1016/j.bpj.2015.11.013
+  note: The open HDF5 photon-timestamp format; an import/export format for ChiSurf, not its native container.
+  topics: [data, formats, smfret]
+
+# ── Fluorophores: intrinsic, extrinsic, genetically encoded ─────────
+
+vivian2001:
+  authors: J. T. Vivian, P. R. Callis
+  title: Mechanisms of tryptophan fluorescence shifts in proteins
+  journal: Biophysical Journal
+  year: 2001
+  volume: 80
+  pages: 2093-2109
+  doi: 10.1016/S0006-3495(01)76183-8
+  note: Why tryptophan emission shifts with burial - the local electric field, not polarity alone.
+  topics: [photophysics, fluorophores]
+
+szabo1980:
+  authors: A. G. Szabo, D. M. Rayner
+  title: Fluorescence decay of tryptophan conformers in aqueous solution
+  journal: Journal of the American Chemical Society
+  year: 1980
+  volume: 102
+  pages: 554-563
+  doi: 10.1021/ja00522a020
+  note: The rotamer model - free tryptophan is already bi-exponential because its side-chain conformers decay differently.
+  topics: [photophysics, fluorophores]
+
+chen1998trp:
+  authors: Y. Chen, M. D. Barkley
+  title: Toward understanding tryptophan fluorescence in proteins
+  journal: Biochemistry
+  year: 1998
+  volume: 37
+  pages: 9976-9982
+  doi: 10.1021/bi980274n
+  note: The intramolecular quenchers of tryptophan in proteins (amides, protonated His, disulfides, carboxylates, amines).
+  topics: [photophysics, fluorophores, quenching]
+
+eftink1981:
+  authors: M. R. Eftink, C. A. Ghiron
+  title: Fluorescence quenching studies with proteins
+  journal: Analytical Biochemistry
+  year: 1981
+  volume: 114
+  pages: 199-227
+  doi: 10.1016/0003-2697(81)90474-7
+  note: Solute quenching (acrylamide, iodide) as a probe of tryptophan exposure.
+  topics: [photophysics, fluorophores, quenching]
+
+blacker2014:
+  authors: T. S. Blacker, Z. F. Mann, J. E. Gale, M. Ziegler, A. J. Bain, G. Szabadkai, M. R. Duchen
+  title: Separating NADH and NADPH fluorescence in live cells and tissues using FLIM
+  journal: Nature Communications
+  year: 2014
+  volume: 5
+  pages: 3936
+  doi: 10.1038/ncomms4936
+  note: Enzyme-bound NAD(P)H lifetimes spread over ~1.5-4.5 ns depending on the binding protein.
+  topics: [photophysics, flim, fluorophores]
+
+vandenberg2002:
+  authors: P. A. W. van den Berg, K. A. Feenstra, A. E. Mark, H. J. C. Berendsen, A. J. W. G. Visser
+  title: Dynamic conformations of flavin adenine dinucleotide - simulated molecular dynamics of the flavin cofactor related to the time-resolved fluorescence characteristics
+  journal: The Journal of Physical Chemistry B
+  year: 2002
+  volume: 106
+  pages: 8858-8869
+  doi: 10.1021/jp020356s
+  note: Free FAD as stacked (quenched, ps) and open (ns) conformers.
+  topics: [photophysics, fluorophores, flim]
+
+skala2007:
+  authors: M. C. Skala, K. M. Riching, A. Gendron-Fitzpatrick, J. Eickhoff, K. W. Eliceiri, J. G. White, N. Ramanujam
+  title: In vivo multiphoton microscopy of NADH and FAD redox states, fluorescence lifetimes, and cellular morphology in precancerous epithelia
+  journal: Proceedings of the National Academy of Sciences
+  year: 2007
+  volume: 104
+  pages: 19494-19499
+  doi: 10.1073/pnas.0708425104
+  note: Metabolic FLIM - NADH is short free / long bound, FAD the reverse (bound is the short component).
+  topics: [photophysics, flim, fluorophores]
+
+mujumdar1993:
+  authors: R. B. Mujumdar, L. A. Ernst, S. R. Mujumdar, C. J. Lewis, A. S. Waggoner
+  title: Cyanine dye labeling reagents - sulfoindocyanine succinimidyl esters
+  journal: Bioconjugate Chemistry
+  year: 1993
+  volume: 4
+  pages: 105-111
+  doi: 10.1021/bc00020a001
+  note: The sulfonated Cy3/Cy5 amine-reactive labels.
+  topics: [photophysics, fluorophores]
+
+panchukvoloshina1999:
+  authors: N. Panchuk-Voloshina, R. P. Haugland, J. Bishop-Stewart, M. K. Bhalgat, P. J. Millard, F. Mao, et al.
+  title: Alexa dyes, a series of new fluorescent dyes that yield exceptionally bright, photostable conjugates
+  journal: Journal of Histochemistry & Cytochemistry
+  year: 1999
+  volume: 47
+  pages: 1179-1188
+  doi: 10.1177/002215549904700910
+  note: The sulfonated rhodamine/coumarin/cyanine series.
+  topics: [photophysics, fluorophores]
+
+levitus2011:
+  authors: M. Levitus, S. Ranjit
+  title: Cyanine dyes in biophysical research - the photophysics of polymethine fluorescent dyes in biomolecular environments
+  journal: Quarterly Reviews of Biophysics
+  year: 2011
+  volume: 44
+  pages: 123-151
+  doi: 10.1017/S0033583510000247
+  note: Cyanine cis-trans isomerisation and environment sensitivity (PIFE).
+  topics: [fluorophores, photophysics]
+
+kim2008cys:
+  authors: Y. Kim, S. O. Ho, N. R. Gassman, Y. Korlann, E. V. Landorf, F. R. Collart, S. Weiss
+  title: Efficient site-specific labeling of proteins via cysteines
+  journal: Bioconjugate Chemistry
+  year: 2008
+  volume: 19
+  pages: 786-791
+  doi: 10.1021/bc7002499
+  note: Maleimide-cysteine labelling for single-molecule FRET.
+  topics: [photophysics, fluorophores, smfret]
+
+zanettidomingues2013:
+  authors: L. C. Zanetti-Domingues, C. J. Tynan, D. J. Rolfe, D. T. Clarke, M. Martin-Fernandez
+  title: Hydrophobic fluorescent probes introduce artifacts into single molecule tracking experiments due to non-specific binding
+  journal: PLoS ONE
+  year: 2013
+  volume: 8
+  pages: e74200
+  doi: 10.1371/journal.pone.0074200
+  note: Dye hydrophobicity predicts non-specific sticking; hydrophilic dyes stick less.
+  topics: [photophysics, fluorophores]
+
+swaminathan1997:
+  authors: R. Swaminathan, C. P. Hoang, A. S. Verkman
+  title: Photobleaching recovery and anisotropy decay of green fluorescent protein GFP-S65T in solution and cells - cytoplasmic viscosity probed by green fluorescent protein translational and rotational diffusion
+  journal: Biophysical Journal
+  year: 1997
+  volume: 72
+  pages: 1900-1907
+  doi: 10.1016/S0006-3495(97)78835-0
+  note: GFP-S65T lifetime 2.9 ns, rotational correlation time 20 ns in solution (36 ns in cytoplasm).
+  topics: [photophysics, fluorophores, anisotropy]
+
+tsien1998:
+  authors: R. Y. Tsien
+  title: The green fluorescent protein
+  journal: Annual Review of Biochemistry
+  year: 1998
+  volume: 67
+  pages: 509-544
+  doi: 10.1146/annurev.biochem.67.1.509
+  note: The GFP review - chromophore formation, protonation states, variants.
+  topics: [photophysics, fluorophores]
+
+shaner2005:
+  authors: N. C. Shaner, P. A. Steinbach, R. Y. Tsien
+  title: A guide to choosing fluorescent proteins
+  journal: Nature Methods
+  year: 2005
+  volume: 2
+  pages: 905-909
+  doi: 10.1038/nmeth819
+  note: Brightness, photostability, pH sensitivity and oligomerisation across fluorescent proteins.
+  topics: [photophysics, fluorophores]
+
+ormo1996:
+  authors: M. Ormö, A. B. Cubitt, K. Kallio, L. A. Gross, R. Y. Tsien, S. J. Remington
+  title: Crystal structure of the Aequorea victoria green fluorescent protein
+  journal: Science
+  year: 1996
+  volume: 273
+  pages: 1392-1395
+  doi: 10.1126/science.273.5280.1392
+  note: The 11-strand beta-can (24 A x 42 A) with the chromophore at its centre.
+  topics: [photophysics, fluorophores]
+
+selvin2002:
+  authors: P. R. Selvin
+  title: Principles and biophysical applications of lanthanide-based probes
+  journal: Annual Review of Biophysics and Biomolecular Structure
+  year: 2002
+  volume: 31
+  pages: 275-302
+  doi: 10.1146/annurev.biophys.31.101101.140927
+  note: Lanthanide chelates - ms lifetimes, time-gated detection, and LRET distances.
+  topics: [photophysics, fluorophores, fret]

@@ -44,14 +44,16 @@ increments one counter, so the live histogram is *identical* to
 
 **Multi-tau correlator.** Photons are binned into a uniform macro-time trace and
 each new sample feeds a cascade of levels, level $b$ running at $2^b$ coarser
-resolution. Because the bins are aligned to macro time 0, a level-$b$ bin is
+resolution — the multi-tau architecture of hardware correlators
+{cite}`schatzel1990`. Because the bins are aligned to macro time 0, a level-$b$ bin is
 exactly the batch correlator's `t >> b` bin, and the two agree lag for lag.
 Memory is the cascade, not the photons: $O(n_\text{bins} \cdot n_\text{casc})$.
 
 The one thing that is *not* identical is the normalisation. $G(\tau)$ divides by
 how much measurement a lag actually had — an overlap term $T - \tau$ — and the
 streaming correlator counts that from the bins it has emitted while a batch
-correlator computes it from the photon times it was handed. On a real stream the
+correlator computes it from the photon times it was handed
+{cite}`wahl2003,laurence2006`. On a real stream the
 two differ by ~0.1%, everywhere, without a trend across the cascades. A
 *cascade-dependent* difference means something else: it is the signature of a lag
 misassignment, which reads as an inflated $G$ growing with the cascade.
@@ -64,9 +66,11 @@ resolution costs 1000 numbers however long the measurement runs.
 
 **Burst rate and phasor** ride along on a pass that is already happening. The
 burst search keeps the last $m$ macro times in a ring buffer and reports a burst
-whenever $m$ consecutive photons span less than $T$; the phasor accumulates
-$\sum\cos(\omega t_i)$ and $\sum\sin(\omega t_i)$ over micro times, which is two
-running sums for a number that summarises the whole decay. Neither needs the
+whenever $m$ consecutive photons span less than $T$ — the sliding-window
+search of {cite}`nir2006`; the phasor accumulates $\sum\cos(\omega t_i)$
+and $\sum\sin(\omega t_i)$ over micro times and divides by the photon count
+{cite}`digman2008`, which is two running sums and a counter for a number that
+summarises the whole decay. Neither needs the
 photons afterwards.
 
 ## Ordering is the assumption they all share
@@ -89,9 +93,6 @@ second one on, with nothing raising.
   each window shows
 - [The photon container](photon_container.md) — where a finished measurement goes
 - [FCS correlation](fcs_correlation.md) — what $G(\tau)$ means once you have it
-- Schätzel, K. (1990) *Noise on photon correlation data: I. Autocorrelation
-  functions*, Quantum Optics 2, 287 — the multi-tau architecture
-  [10.1088/0954-8998/2/4/002](https://doi.org/10.1088/0954-8998/2/4/002)
-- Wahl, M. et al. (2003) *Fast calculation of fluorescence correlation data with
-  asynchronous time-correlated single-photon counting*, Optics Express 11, 3583
-  [10.1364/OE.11.003583](https://doi.org/10.1364/OE.11.003583)
+- {cite}`schatzel1990` — the multi-tau architecture
+- {cite}`wahl2003` — multi-tau correlation computed directly on photon arrival
+  times, the batch counterpart

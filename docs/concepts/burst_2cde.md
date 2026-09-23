@@ -29,8 +29,8 @@ For the step-by-step workflow in ChiSurf, see the guide
 **rate** around a given photon is estimated by a kernel density estimate (KDE):
 a kernel is centred on the photon's macro time and the contributions of nearby
 photons — measured in *time*, not in *photon index* — are summed. Following
-Tomov's notation, the KDE at the $i$-th photon of channel $X$, evaluated over the
-photons of channel $Y$, is
+Tomov's notation {cite}`tomov2012`, the KDE at the $i$-th photon of channel $X$,
+evaluated over the photons of channel $Y$, is
 
 $$
 \mathrm{KDE}_{X_i}^{Y} \;=\;
@@ -39,15 +39,16 @@ $$
 $$
 
 a symmetric-exponential (Laplace) kernel of time constant $\tau$ — the original
-Tomov choice. ChiSurf also offers a Gaussian kernel
+Tomov choice. ChiSurf also offers the Gaussian kernel of the FRETBursts
+implementation {cite}`ingargiola2016`,
 $\exp\!\big(-(t_i-t_j)^2/2\tau^2\big)$, which estimates the rate more accurately
 and with far weaker dependence on the evaluation position (the Laplace kernel,
 sampled *at* the photon positions, always sits on its own peak and systematically
 over-estimates the rate). For a Gaussian kernel the rate estimate is reliable
 above $\sim 1/(2\tau)$ counts per second; below that it depends strongly on where
-the KDE is evaluated. To make the self-channel density $\mathrm{KDE}_{X_i}^{X}$
-unbiased, the photon itself is excluded and a small-$N$ correction is applied,
-giving the **normalized-by-KDE** term (nbKDE)
+the KDE is evaluated. For the Laplace kernel the self-channel density
+$\mathrm{KDE}_{X_i}^{X}$ excludes the photon itself and carries Tomov's
+small-$N$ correction, the **nbKDE** term {cite}`tomov2012`
 
 $$
 \mathrm{nbKDE}_{X_i}^{X} \;=\;
@@ -56,7 +57,9 @@ $$
 \exp\!\left(-\frac{\lvert t_{(CHX)_i}-t_{(CHX)_j}\rvert}{\tau}\right),
 $$
 
-where $N_{CHX}$ is the number of channel-$X$ photons in the current burst.
+where $N_{CHX}$ is the number of channel-$X$ photons in the current burst. The
+Gaussian variant uses the raw $\mathrm{KDE}_{X_i}^{X}$ (self term included, no
+prefactor), as FRETBursts does.
 
 A subtlety worth knowing: the kernel density itself is evaluated over the
 **entire photon stream**, and only the resulting per-photon densities are sliced
@@ -64,15 +67,18 @@ per burst. Restricting the KDE to the burst slice would put an artificial cliff
 at each burst boundary — photons near the edge would lose the neighbours that
 legitimately contribute to their local rate, biasing their density downward and
 inflating 2CDE for short bursts. Evaluating globally and slicing afterwards
-keeps every photon's rate estimate honest. The burst enters only through the
+keeps every photon's rate estimate honest; this is the FRETBursts reference
+scheme {cite}`ingargiola2016`, which `tttrlib.TwoCDE` reproduces bit-exactly. The burst enters only through the
 averages $(E)_D$, $(1-E)_A$ and the small-$N$ factors, which use the burst's own
 photon counts.
 
 The kernel time constant $\tau$ sets the timescale over which brightness is
 averaged. It should be short enough to resolve within-burst changes yet long
-enough to accumulate several photons per kernel: typical values are
-$\tau \sim 40$–$100\ \mu\mathrm{s}$, well below the millisecond burst duration
-and above the microsecond inter-photon spacing.
+enough to accumulate several photons per kernel. Tomov used
+$\tau = 45\ \mu\mathrm{s}$ for FRET-2CDE and $75\ \mu\mathrm{s}$ for
+ALEX-2CDE, and recommends 30–500 µs for typical data {cite}`tomov2012` — well
+below the millisecond burst duration and above the microsecond inter-photon
+spacing.
 
 ## FRET-2CDE: a per-burst dynamics score
 
@@ -94,6 +100,8 @@ $$
 \boxed{\;\mathrm{FRET\text{-}2CDE} = 110 - 100\,\big[(E)_D + (1-E)_A\big]\;}
 $$
 
+(Tomov eqs. 6–8 {cite}`tomov2012`).
+
 The logic is the **temporal (anti)correlation** of the two colours. In a static
 burst the donor and acceptor rates rise and fall together (both track the same
 molecule crossing the beam), so $(E)_D + (1-E)_A \approx 1$ and FRET-2CDE settles
@@ -101,10 +109,10 @@ near a fixed baseline of $\approx 10$, independent of the actual efficiency. If
 the molecule switches FRET state mid-burst, the donor and acceptor brightness
 become **anticorrelated in time** — donor bright while acceptor dim, then the
 reverse — the two weighted estimates no longer sum to one, and FRET-2CDE rises,
-typically into the 30–100 range for clear millisecond dynamics. A common
-practice is to treat bursts near the static baseline as static and flag bursts
-above a cutoff of $\approx 10$–$12$ as dynamic (ChiSurf's
-`dynamic_fraction` uses a threshold of this order).
+typically into the 30–100 range for clear millisecond dynamics. Bursts near the
+static baseline are treated as static and bursts above a cutoff as dynamic:
+Tomov split at 15 {cite}`tomov2012`; ChiSurf's `dynamic_fraction` defaults to
+12.
 
 ## ALEX-2CDE: a brightness-heterogeneity / purity score
 
@@ -113,7 +121,7 @@ the sample is probed by two excitation streams — donor-excitation ($D_{ex}$) a
 acceptor-excitation ($A_{ex}$). ALEX-2CDE reuses the same two-channel KDE
 machinery, but now on the two *excitation* streams, to score how uniform the
 donor and acceptor brightness are across the burst. Define the cross-over-self
-brightness ratios
+brightness ratios (Tomov eqs. 10–11 {cite}`tomov2012`)
 
 $$
 BR_{D_{ex}} = \frac{1}{N_{CHA_{ex}}} \sum_{i=1}^{N_{CHD_{ex}}}
@@ -123,21 +131,33 @@ BR_{A_{ex}} = \frac{1}{N_{CHD_{ex}}} \sum_{i=1}^{N_{CHA_{ex}}}
 \frac{\mathrm{KDE}_{A_{ex,i}}^{D}}{\mathrm{KDE}_{A_{ex,i}}^{A}},
 $$
 
-which ChiSurf combines as
+For a burst whose two excitation streams keep a fixed brightness ratio, each
+$BR \to 1$. Tomov sums them (eq. 12),
+$\mathrm{ALEX\text{-}2CDE} = 100 - 50\,(BR_{D_{ex}} + BR_{A_{ex}})$, so a pure
+burst scores $\approx 0$ and a heterogeneous one rises above it {cite}`tomov2012`.
+**ChiSurf does not compute that.** `tttrlib.TwoCDE` — like the code cell of the
+FRETBursts 2CDE notebook it was ported from — takes the *difference*,
 
 $$
-\boxed{\;\mathrm{ALEX\text{-}2CDE} = 100 - 50\,\big(BR_{D_{ex}} - BR_{A_{ex}}\big)\;}
+\boxed{\;\mathrm{ALEX\text{-}2CDE}_\text{ChiSurf} = 100 - 50\,\big(BR_{D_{ex}} - BR_{A_{ex}}\big)\;}
 $$
+
+whose static baseline is $\approx 100$, not 0 (200 simulated constant-rate 1 ms bursts, 60 + 40
+photons, $\tau = 75\ \mu\mathrm{s}$: median 98.5 against 7.3 for eq. 12).
+A heterogeneous burst moves it *either* way — acceptor bleaching lowers
+$BR_{A_{ex}}$ and pushes it below 100, donor bleaching lowers $BR_{D_{ex}}$ and
+pushes it above — so gate on the distance from the static cluster, never with
+the "keep below 10" cutoffs of the paper.
 
 A well-behaved single molecule carrying one active donor and one active acceptor
 gives donor- and acceptor-excitation photons that are present *throughout* the
-burst; the brightness ratios are balanced and ALEX-2CDE clusters at a low value.
-Impure bursts break this balance: a donor-only or acceptor-only molecule, an
+burst; the brightness ratios are balanced and the burst sits in the static
+cluster. Impure bursts break this balance: a donor-only or acceptor-only molecule, an
 acceptor that **blinks** or bleaches partway through the burst, or two molecules
 of different labelling coinciding in the volume all make one excitation stream's
-brightness heterogeneous relative to the other, driving ALEX-2CDE up. It is
-therefore used as a **purity filter** — keep bursts with ALEX-2CDE below a cutoff
-(commonly $\approx 10$–$15$) to purge donor-only/acceptor-only contamination,
+brightness heterogeneous relative to the other, driving ALEX-2CDE (eq. 12) up. It is
+therefore used as a **purity filter** — Tomov kept bursts below 4–10 on the eq. 12
+scale {cite}`tomov2012` — to purge donor-only/acceptor-only contamination,
 photophysical artefacts, and multi-molecule events before building $E$–$S$
 histograms.
 
@@ -151,9 +171,9 @@ the burst browser or in ndX.
 
 ChiSurf's defaults are $\tau = 100\ \mu\mathrm{s}$ with the Laplace kernel
 (Tomov's original), and `dynamic_fraction(threshold=12.0)` for the
-static/dynamic split. The kernels are truncated for speed — at $5\tau$ (Laplace)
-and $3\tau$ (Gaussian) — which is far enough out that the neglected tail is
-negligible.
+static/dynamic split. The kernels are truncated for speed — at $5\tau$ (Laplace,
+as in {cite}`tomov2012`) and $3\tau$ (Gaussian, as in FRETBursts) — where the
+neglected tail is below $e^{-5}$ and $e^{-4.5}$ of the peak.
 
 **2CDE has a timescale window, and it is set by $\tau$ and the burst duration.**
 Exchange much faster than $\tau$ is averaged inside the kernel and the burst
@@ -180,7 +200,7 @@ distributions, or the FRET-line analysis in {ref}`concept-fret`.
 **Other things move the score.** Acceptor blinking or bleaching mid-burst is a
 genuine brightness anticorrelation and raises FRET-2CDE exactly like a
 conformational transition; so can a second molecule entering the volume. Screen
-with ALEX-2CDE first where ALEX/PIE data are available. Finally, donor-only and
+with ALEX-2CDE first where ALEX/PIE data are available {cite}`tomov2012`. Finally, donor-only and
 acceptor-only bursts have no meaningful two-colour ratio at all — ChiSurf returns
 `NaN` when either stream is empty in a burst, so those rows must be dropped, not
 read as zeros.
@@ -188,10 +208,12 @@ read as zeros.
 ## See also
 
 - Guide: {doc}`/guides/01_fret_2cde`.
-- Plugin `chisurf/plugins/burst/burst_2cde/`; engine `tttrlib.TwoCDE`
-  (base class `tttrlib.BurstFeature`); reference NumPy port in
-  {src}`chisurf/plugins/burst/burst_2cde/core/computation.py`.
+- Plugin `chisurf/plugins/burst/burst_2cde/`
+  ({src}`chisurf/plugins/burst/burst_2cde/core/computation.py`); engine
+  `tttrlib.TwoCDE` (base class `tttrlib.BurstFeature`). There is no NumPy
+  fallback any more: without `TwoCDE` the plugin raises.
 - The complementary variance-based dynamics test, Burst Variance Analysis
   (`chisurf/plugins/burst/burst_bva/`).
 - Primary literature: {cite}`tomov2012` introduces the 2CDE kernel and both of
-  its statistics.
+  its statistics; {cite}`ingargiola2016` is the FRETBursts implementation the
+  engine is validated against.
