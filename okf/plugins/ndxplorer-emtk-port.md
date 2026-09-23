@@ -40,32 +40,61 @@ Feed a real folder drop through CDP (`Input.dispatchDragEvent` with
    - Dragging a rectangle on the map gives two interval gates (3272 bursts kept).
    - Selection *save* goes through the emtk file dialog and then downloads
      `gates.selection.json`.
-   - The Parameters and Overlays tabs show plain-number constants and give the reason.
    - A single `.bur` drop works too.
+   - **With the IMP.bff wheel (second round):**
+     - The Parameters tab has real constants that can be edited: Bg 1.2 → 1.5
+       takes, and `constants.values()` reads 1.5.
+     - Overlays: *FD/FA vs tau (static line)* + *Add Curve* draws the line on
+       Fd/Fa × Tau (green).
+     - The curve-fit dialog's *Fit* frees kf, which goes from 0.2 to 0.205304
+       (reduced χ² 11.21).
+     - Gaussian Fit: three seeds clicked on the map, then *Fit*, gives
+       "Fitted 3 Gaussians" with separate populations. Two seeds from *add*
+       start at the same default point and fit as one symmetric pair, and the
+       desktop does the same.
+     - Find structure, K-means: the result matches the desktop. On Proximity
+       ratio and `<tauD(A)>x` the page gives 6889/2017/3331 and native gives
+       6904/3333/2000 (same clusters in another order, about 15 bursts
+       moved), and the map colours three bands. On `Tau (green)`, K-means
+       gives 12232/1/4 both natively and in the page: the column runs to
+       13212, and K-means does not scale its input. That is a property of
+       the method, not of the browser.
+     - Screenshots: scratchpad `ndxweb/shots2/01…06_*.png`.
 2. **What the page carries.** See `ndxplorer/app/web.py`:
    - ndxplorer and emtk;
    - chisurf's Qt-free core (`__init__`, `_bundled_packages`, `core`, `settings`)
      and `mmfdb/config.py`;
-   - from Pyodide: numpy, scipy, pyyaml, matplotlib, Pillow and **lzma**
-     (`chisurf.core.fio` imports it);
-   - the tttrlib wheel from `~/dev/worktrees/tttrlib-pyodide/dist/pyodide`, or
-     `$NDX_TTTRLIB_WHEEL`.
+   - chimol's readers (`chimol/__init__.py`, `chimol/io`, about 1 MB).
+     `chisurf.core.fitting.fit` imports `chisurf.core.experiments`, which
+     imports every experiment type. The modelling type reaches
+     `chisurf.core.fio.structure`, which takes `atom_dtype` from
+     `chimol.io.atoms` at module level. Shipping these readers was chosen
+     over reshaping chisurf's experiment registry for one host;
+   - from Pyodide: numpy, scipy, pyyaml, matplotlib, Pillow, scikit-learn and
+     **lzma** (`chisurf.core.fio` imports it);
+   - the tttrlib wheel (`$NDX_TTTRLIB_WHEEL`, else `~/dev/worktrees/tttrlib-pyodide/dist/pyodide`);
+   - the IMP.bff wheel (`$NDX_IMPBFF_WHEEL`, else `~/dev/worktrees/imp.bff-pyodide/dist/pyodide`).
+     It is optional: without it, Gaussian Fit and the overlay curves say on
+     their tabs why they are off.
 
    Nothing native was cut. The one fix in chisurf itself: `chisurf.core.settings`
    copied the Qt style sheets from `chisurf/gui/styles` at import and failed
    without the GUI package. It now skips that step.
-3. **Blocked on the IMP Pyodide wheel (IMP.bff).** Without it:
-   - Gaussian Fit gives the reason on its tab (`build_gaussian_group` now probes a
-     parameter; before, the empty group built and its *add* raised inside a frame);
-   - the overlay curves are off, and constants are plain numbers.
-
-   Add the wheel with `python -m ndxplorer.app.web --wheels <imp wheel>`. Then
-   re-take the Gaussian Fit and Overlays tabs in a page.
+3. **Open, found in the page:**
+   - **Keys faster than frames.** `io.key` holds one key per frame. Six
+     Backspaces sent together delete one character, so an edit typed fast
+     parses wrong and reverts. Typed text already adds up (item 5). Special
+     keys need an input queue in emtk `IO`, as ImGui has one. Until then,
+     tests press keys about 100 ms apart.
+   - **Greek letters.** χ and σ draw as `¤` in the page: σ in the Gaussian
+     table, χ² in the fit dialog. The baked glyph atlas has no Greek. A
+     desktop rasterises them on first use.
+   - Overlay curves and Gaussian ellipses stay on the map after the axes
+     change. Check whether the Qt window does the same.
 4. **Not taken yet in a page:**
    - *Mount folder…* (needs a picker; `emtkMountDirectory` with an OPFS handle is
      the test route);
-   - Find structure (scikit-learn is not in the page's package list; K-means,
-     HDBSCAN and PCA fall back to it);
+   - PCA, HDBSCAN and UMAP (UMAP says it cannot run: numba);
    - Load/Save Mask (`tttrlib.imread`/`imwrite`);
    - export and report downloads.
 5. **Fixed on the way.** The headless tests draw twice after every event, which

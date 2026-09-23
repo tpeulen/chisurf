@@ -2,6 +2,22 @@
 
 ## 2026-09-23
 
+* **ndX in the browser, with the fitting parameters.**
+  - `python -m ndxplorer.app.web` finds the IMP.bff Pyodide wheel on its own
+    (`$NDX_IMPBFF_WHEEL`).
+  - The page now also ships chimol's readers, because
+    `chisurf.core.fitting.fit` reaches `chimol.io.atoms` through the
+    experiment registry. It also loads scikit-learn.
+  - Verified in headless Chromium with WebGPU:
+    - editable constants;
+    - the static FRET line on Fd/Fa × τ;
+    - a curve fit (kf 0.2 → 0.2053);
+    - a 3-component Gaussian fit;
+    - K-means colouring, matching native.
+  - Open: fast special keys are lost (`io.key` is one per frame), and Greek
+    letters are missing from the page atlas.
+  - Resume point: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / Browser.
+
 * **ndX emtk port: final parity pass.** features.md 249 [x] / 35 [~] / 2 [-] / 0 open; all 61 scenarios captured, every one at PARITY except the deliberately dropped Fix Report Tool. Core cleanup: opening files only through the io feature and `io.loading`, view specs as package data, `window_title` on every emtk host, File > Save > Histograms / Print window / Exit. Resume: [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Where to pick this up" / core.
 
 * **ndX emtk port: the app runs in a browser (Pyodide 0.28 + WebGPU).**
