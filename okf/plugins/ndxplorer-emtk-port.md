@@ -22,6 +22,20 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Find structure on tttrlib (2026-09-24)
+
+State: HDBSCAN is `tttrlib.hdbscan`, K-means `tttrlib.kmeans` (uniforms from
+`tttrlib.kmeans_uniforms(k, KMEANS_N_INIT=10, seed=KMEANS_SEED=42)`), PCA is
+NumPy (`pca_helpers._principal_axes`: SVD of the centred table's QR `R`). No
+scikit-learn, no hdbscan package, no ChiSurf estimator on this path, desktop or
+browser; `Method.probe` for both labellings is `structure.get_tttrlib` and they
+are not installable (a failure means a too-old tttrlib). A/B vs the previous
+ChiSurf estimators: bit-identical labels on iris and the MFD folder; the page
+gives the desktop's labels on its own data. Guard:
+`ndxplorer/tests/test_clustering_without_sklearn.py` (fresh interpreter, with and
+without sklearn/hdbscan importable). Next: nothing open here; UMAP stays
+optional (umap-learn, desktop only).
+
 ### Vector parameters in every table (2026-09-24)
 
 State: any ndX `Parameter` can hold one value per population
@@ -850,8 +864,9 @@ environment, not the port; `python -c "import IMP.bff"` tells which.
    2-D and Plot 3-D. To re-check, do the same, or accept the in-app Install, which runs
    `conda install umap-learn -c conda-forge` into the env as a task.
 3. **Browser run not yet taken.** Every module imports without Qt. What is missing:
-   - K-means, HDBSCAN and PCA fall back to scikit-learn when `chisurf.core.ml` cannot
-     be imported. This code path was never run under Pyodide.
+   - K-means and HDBSCAN are tttrlib's kernels and PCA is NumPy, on the desktop and
+     in the page alike (2026-09-24; verified in the page, see "Find structure on
+     tttrlib").
    - UMAP says in words that it cannot run in a browser (numba).
    - The Gaussian Fit panel needs chisurf's `FittingParameter` (IMP.bff, native). In a
      page it shows the reason instead of the table. A browser Gaussian fit needs a

@@ -2,6 +2,13 @@
 
 ## 2026-09-24
 
+* **ndX Find structure runs on tttrlib: HDBSCAN `tttrlib.hdbscan`, K-means `tttrlib.kmeans`, PCA NumPy; ChiSurf's Python HDBSCAN deleted.**
+  - ndxplorer 30c6335/81bb11a/38e4779: `analysis/structure.py` calls the kernels (`get_tttrlib` probe; K-means seeded by `tttrlib.kmeans_uniforms(k, 10, seed=42)`); `pca_helpers.compute_pca` is QR+SVD in NumPy (the largest loading of each axis is positive; `IncrementalPCA` path and `PcaResult.incremental` gone); `lazy_imports` keeps only umap/napari. scikit-learn left the web page's package list; hdbscan/scikit-learn left `environment.yml`.
+  - A/B (old ChiSurf estimators vs tttrlib) on iris (k-means k=3 petals and all four; HDBSCAN 5/5, 5/20) and the MFD folder (k-means k=3, k=2 standardised; HDBSCAN 5/50 on tau×PR, standardised on tau×PR×Sg/Sr): labels and probabilities **bit-identical** (ARI 1.0). PCA: same variances and loadings to 1e-12, signs of some components flipped (now a fixed rule).
+  - Browser (tttrlib Pyodide wheel rebuilt from dev): MFD drop, K-means 3 clusters, HDBSCAN 13 clusters/4304 noise, labels identical to the desktop on the page's own data; PCA report; no sklearn/hdbscan in `sys.modules`, not in `loadedPackages`.
+  - ChiSurf 8cbeceead: `chisurf/core/ml/cluster/_hdbscan.py` deleted with its export; `test/ml/test_hdbscan.py` and the benchmark call `tttrlib.hdbscan`. tttrlib 251dcc1d1: `hdbscan` labels rows with a NaN/inf noise (before, they merged the whole table into one cluster).
+  - scikit-learn is still used (not declared) only by `docs/guides/make_figures.py` (GaussianMixture) and optional parity tests. Resume: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md) "Find structure on tttrlib".
+
 * **Neural networks cross into bff as msgpack, bff's one network format (T-20260923-nn follow-up).**
   - IMP.bff (2cca80a9) reads and writes every network document as msgpack `bytes`: `NeuralNet(bytes)`, `set_action_policy(bytes)`, `get_shipped_action_policy()` (bytes), `HmmSurrogate.from_file/to_file/from_msgpack/to_msgpack`. JSON text raises `TypeError`.
   - `NativeSearchSettings.action_policy` is `"shipped"`, `""` or msgpack `bytes`. `SurrogateModel.to_json/export_json` became `to_document/export_msgpack`, and `surrogate_bff.is_native_surrogate` routes `.msgpack` files. Old JSON exports are not read.
