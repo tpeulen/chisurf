@@ -43,8 +43,18 @@ __all__ = [
 ]
 
 
-_NDX_FACTORS = ("gamma", "alpha", "beta", "delta", "bg_dd", "bg_da", "bg_aa", "r0", "phi_a",
-                "phi_d")
+_NDX_FACTORS = (
+    "gamma",
+    "alpha",
+    "beta",
+    "delta",
+    "bg_dd",
+    "bg_da",
+    "bg_aa",
+    "r0",
+    "phi_a",
+    "phi_d",
+)
 
 
 def calibration_to_ndx_constants(calibration) -> dict:
@@ -282,6 +292,11 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     path = _container_of(source)
     kept = restorable(str(path)) if path is not None else {"saved": {}, "background": {}}
     rates, saved = kept["background"], kept["saved"]
+    vectors = {
+        name: vector
+        for name, vector in dict(kept.get("vectors") or {}).items()
+        if vector.get("values") and vector.get("populations")
+    }
     if not factors and not rates and not saved:
         return {}
 
@@ -292,6 +307,8 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     # in the meantime is theirs. So the comparison is against what was last
     # restored from this container, not against what the window now holds.
     stored = {**factors, **rates, **{f"saved:{k}": v for k, v in saved.items()}}
+    if vectors:
+        stored["vectors"] = vectors
     key = str(pathlib.Path(str(source)).resolve())
     seen = getattr(ndx, "_restored_parameters", None)
     if not isinstance(seen, dict):
@@ -314,8 +331,11 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     for attribute, constant in (("bg_dd", "Bg"), ("bg_da", "Br"), ("bg_aa", "By")):
         if constant in rates:
             setattr(calib, attribute, float(rates[constant]))
-    applied = push_calibration_to_ndx(ndx, calib, recompute=not saved)
+    applied = push_calibration_to_ndx(ndx, calib, recompute=not (saved or vectors))
 
+    if vectors and not saved:
+        # The stored population-wise factors, through the parameter table.
+        applied.update(_push_constants(ndx, {}, vectors=vectors))
     if saved:
         # Written through the same seam, so the parameter table follows and the
         # recompute throttle cannot revert them on the next event.
@@ -323,6 +343,10 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
         apply_values = getattr(editor, "apply_values", None)
         if callable(apply_values):
             apply_values(saved)
+        apply_vectors = getattr(editor, "apply_vectors", None)
+        if vectors and callable(apply_vectors) and apply_vectors(vectors):
+            # The saved vector constants: their elements are constants by name.
+            saved = {**saved, **_vector_values(editor, vectors)}
         constants_map = getattr(ndx, "constants", None)
         update = getattr(constants_map, "update", None)
         if callable(update):
@@ -377,7 +401,19 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     return applied
 
 
-def _push_constants(ndx, mapping: dict, *, recompute: bool = True) -> dict:
+def _vector_values(editor, vectors) -> dict:
+    """``{name: value, name[pop]: value, ...}`` of *vectors* as the editor now holds them."""
+    names = {str(n) for n in dict(vectors or {})}
+    return {
+        k: v
+        for k, v in dict(editor.dict).items()
+        if k in names or any(k.startswith(f"{n}[") for n in names)
+    }
+
+
+def _push_constants(
+    ndx, mapping: dict, *, recompute: bool = True, vectors: dict | None = None, result=None
+) -> dict:
     """Write ndX constants into a window: its parameter table, then its mapping.
 
     The parameter *table* is the source of truth, not ``ndx.constants``:
@@ -385,11 +421,26 @@ def _push_constants(ndx, mapping: dict, *, recompute: bool = True) -> dict:
     ``parameter_control.dict`` on every parameter event, so a value written only
     into the mapping is reverted the moment the event loop turns. A live
     ``ConstantsMapping`` is updated in place, which keeps Global-View links.
+
+    *vectors* are vector constants (``{name: {"values", "populations", ...}}``,
+    what a calibration writes and a measurement stores), applied after the
+    scalars through the same table, as the emtk app applies them. A calibration
+    *result*, when given, first turns a stale vector of a factor it wrote as one
+    value back into a scalar
+    (:func:`ndxplorer.core.constants_group.replace_shared_factors`).
     """
     editor = getattr(ndx, "parameter_control", None)
+    replace = getattr(editor, "replace_shared_factors", None)
+    if result is not None and callable(replace):
+        replace(result)
     apply_values = getattr(editor, "apply_values", None)
     if callable(apply_values):
         apply_values(mapping)
+    apply_vectors = getattr(editor, "apply_vectors", None)
+    if vectors and callable(apply_vectors) and apply_vectors(vectors):
+        # The elements are constants by name (``gamma[HF]``): a plain-dict
+        # window mapping takes them too; a live mapping already has them.
+        mapping = {**mapping, **_vector_values(editor, vectors)}
     constants = getattr(ndx, "constants", None)
     update = getattr(constants, "update", None)
     if callable(update):
@@ -491,17 +542,28 @@ def optimize_calibration_from_ndx(
         )
     provenance = getattr(data_source, "provenance", None) or {}
     options = {
-        "columns": dict(columns or {}), "donor_lifetime": donor_lifetime,
-        "linker_sigma": float(linker_sigma), "gamma_source": gamma_source,
-        "n_bootstrap": int(n_bootstrap), "use_priors": bool(use_priors),
-        "factors": None if factors is None else list(factors), "background": background,
-        "min_population": int(min_population), "inject_columns": bool(inject_columns),
-        "species_factors": str(species_factors), "dimensions": list(dimensions or []),
+        "columns": dict(columns or {}),
+        "donor_lifetime": donor_lifetime,
+        "linker_sigma": float(linker_sigma),
+        "gamma_source": gamma_source,
+        "n_bootstrap": int(n_bootstrap),
+        "use_priors": bool(use_priors),
+        "factors": None if factors is None else list(factors),
+        "background": background,
+        "min_population": int(min_population),
+        "inject_columns": bool(inject_columns),
+        "species_factors": str(species_factors),
+        "dimensions": list(dimensions or []),
         "population_method": str(population_method),
     }
-    result = calibrate_columns(table, start, options,
-                               container=str(provenance.get("container_path") or ""),
-                               progress=progress, priors=priors)
+    result = calibrate_columns(
+        table,
+        start,
+        options,
+        container=str(provenance.get("container_path") or ""),
+        progress=progress,
+        priors=priors,
+    )
     if not result.get("ok"):
         return result
     result["before"] = {k: constants.get(k) for k in result["constants"]}
@@ -511,7 +573,11 @@ def optimize_calibration_from_ndx(
         data_source.set_column(name, np.asarray(values, dtype=float))
     if result.get("new_columns"):
         refresh_column_selectors(ndx)
-    result["constants"] = _push_constants(ndx, result["constants"], recompute=recompute)
+    written = set(result["constants"])
+    applied = _push_constants(
+        ndx, result["constants"], recompute=recompute, vectors=result.get("vectors"), result=result
+    )
+    result["constants"] = {k: v for k, v in applied.items() if k in written}
     return result
 
 

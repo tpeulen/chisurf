@@ -412,6 +412,15 @@ def _add_accurate_fret_toolbar(ndx) -> None:
                 + ([f"Note: {loaded['note']}"] if loaded.get("note") else [])
                 + ["", ("Changes:" if changes else "Nothing would change.")]
                 + changes
+                + [
+                    f"  {name} per population: "
+                    + ", ".join(
+                        f"{p} {float(v):.4g}"
+                        for p, v in zip(vector.get("populations") or [], vector.get("values") or [])
+                    )
+                    for name, vector in dict(loaded.get("vectors") or {}).items()
+                    if vector.get("values")
+                ]
             )
             if (
                 dialogs.question(
@@ -430,7 +439,8 @@ def _add_accurate_fret_toolbar(ndx) -> None:
             from chisurf.plugins.ndxplorer.calibration_bridge import _push_constants
 
             try:
-                _push_constants(ndx, constants)
+                # Its vector constants too (per-population factors), as the emtk app.
+                _push_constants(ndx, constants, vectors=loaded.get("vectors"))
             except Exception:
                 log("Loaded the calibration, but could not refresh the plots")
             if loaded.get("report"):
