@@ -1,11 +1,10 @@
-"""Per-burst tables: reading them, and recognizing which column is which channel.
+"""Per-burst tables: reading them.
 
 A burst table is one row per burst and one column per measured quantity, and
 every program in the field names those columns differently — ndX's
 ``Green Count Rate (KHz)``, the Seidel-style ``.bur`` headers, the plain
-``i_dd``/``i_da``/``i_aa`` of this API. Analyses should not each carry their own
-guessing rules, so the conventions live here once and both the file readers and
-the live ndX bridge use them.
+``i_dd``/``i_da``/``i_aa`` of this API. Which column is which channel is
+decided once, by ``tttrlib.guess_burst_columns`` (shared with ndXplorer).
 
 Channel roles follow the convention of
 ``tttrlib.corrected_es``: ``i_dd`` (donor emission under donor
@@ -17,229 +16,17 @@ channel), ``i_aa`` (acceptor emission under acceptor excitation) and ``tau_f``
 from __future__ import annotations
 
 import pathlib
-import re
 
 import numpy as np
+import tttrlib
 
 from chisurf.core.datastore import column_names
 
 __all__ = [
-    "COLUMN_HINTS",
-    "DETECTOR_ROLE_WORDS",
-    "gated_stream_columns",
-    "guess_columns",
     "read_burst_table",
     "columns_from_data",
     "maps_fret_channels",
 ]
-
-#: Column-name fragments (lower case) identifying each channel role. Matched in
-#: order, exact match first, so a more specific name wins over a substring.
-COLUMN_HINTS: dict[str, tuple[str, ...]] = {
-    "i_dd": (
-        "i_dd",
-        "i11",
-        "green count rate",
-        "f_dexc_dem",
-        "sg",
-        "number of photons (green)",
-        "ngreen",
-        "n green",
-        "donor donor",
-    ),
-    "i_da": (
-        "i_da",
-        "i12",
-        "red count rate",
-        "f_dexc_aem",
-        "sr",
-        "number of photons (red)",
-        "nred",
-        "n red",
-        "donor acceptor",
-    ),
-    "i_aa": (
-        "i_aa",
-        "i22",
-        "delayed yellow",
-        "yellow count rate",
-        "f_aexc_aem",
-        "sy",
-        "number of photons (yellow)",
-        "nyellow",
-        "n yellow",
-        "acceptor acceptor",
-    ),
-    "tau_f": (
-        "tau_f",
-        "tau (green)",
-        "taud(a)",
-        "lifetime green",
-        "green lifetime",
-        "donor lifetime",
-        "tau green",
-    ),
-}
-
-
-#: Name fragments (lower case) that identify a detector or an excitation window
-#: as donor-side or acceptor-side. Used to read the *gated* stream columns of a
-#: PIE/ALEX table, where the role is carried by the window and detector names
-#: rather than by the column header's own vocabulary.
-DETECTOR_ROLE_WORDS: dict[str, tuple[str, ...]] = {
-    "donor": ("green", "donor", "prompt", "d"),
-    "acceptor": ("red", "acceptor", "delay", "delayed", "yellow", "a"),
-}
-
-#: A window x detector column of a burst table, as
-#: ``chisurf/core/fio/fluorescence/burst_features.yaml`` declares it:
-#: ``S {window} {detector} (photons|kHz) | {r0}-{r1}``.
-_GATED_COLUMN = re.compile(
-    r"^s\s+(?P<middle>.+?)\s+\((?P<unit>khz|photons)\)\s*\|\s*\d+\s*-\s*\d+$"
-)
-
-#: ``Number of Photons ({detector})`` — how the detector names are recovered.
-_DETECTOR_COLUMN = re.compile(r"^number of photons \((?P<detector>.+)\)$")
-
-
-def _role_of(name: str) -> str:
-    """Return ``"donor"``, ``"acceptor"`` or ``""`` for a window/detector name."""
-    low = str(name).strip().lower()
-    for role, words in DETECTOR_ROLE_WORDS.items():
-        # Longest word first: "delayed" must win over the bare "d" of the donor
-        # list, which any name containing a d would otherwise match.
-        for word in sorted(words, key=len, reverse=True):
-            if low == word or word in low.split():
-                return role
-    return ""
-
-
-def gated_stream_columns(names) -> dict[str, str]:
-    """Map the channel roles onto a PIE/ALEX table's *gated* stream columns.
-
-    A burst table from a two-window setup carries both the whole-detector counts
-    (``Green Count Rate (KHz)``) and the four window x detector streams
-    (``S green green (kHz) | 296-1704``, ...). Only the second set is the ALEX
-    channels: ``Green Count Rate`` sums the donor detector over *both*
-    excitation periods, so using it as ``I_DD`` folds the acceptor-excitation
-    donor signal into the FRET efficiency — an error that shifts E without
-    making any histogram look broken.
-
-    Returns
-    -------
-    dict
-        ``{"i_dd": name, "i_da": name, "i_aa": name}`` for the roles that could
-        be resolved; empty when the table has no gated columns (a single-window
-        measurement, or a foreign table).
-    """
-    originals = [str(n) for n in names]
-    detectors = []
-    for name in originals:
-        match = _DETECTOR_COLUMN.match(name.strip().lower())
-        if match:
-            detectors.append(match.group("detector").strip())
-    if not detectors:
-        return {}
-
-    # Photon counts win over the rate beside them: E and S are ratios of counts,
-    # and each rate divides by *its own* stream's span, so the four rates of one
-    # burst have four different denominators and their ratios are not the count
-    # ratios. A table written before the count columns existed still resolves,
-    # on the rates -- see okf/references/known-issues.md.
-    gated: dict[tuple[str, str], str] = {}
-    rates: dict[tuple[str, str], str] = {}
-    for name in originals:
-        match = _GATED_COLUMN.match(name.strip().lower())
-        if not match:
-            continue
-        middle = match.group("middle")
-        target = gated if match.group("unit") == "photons" else rates
-        for detector in detectors:
-            if middle == detector or middle.endswith(" " + detector):
-                window = middle[: len(middle) - len(detector)].strip()
-                if window:
-                    target[(window, detector)] = name
-                break
-    for key, name in rates.items():
-        gated.setdefault(key, name)
-    if not gated:
-        return {}
-
-    def pick(role: str, candidates) -> str:
-        for candidate in candidates:
-            if _role_of(candidate) == role:
-                return candidate
-        return ""
-
-    windows = list(dict.fromkeys(window for window, _ in gated))
-    w_donor = pick("donor", windows)
-    w_acceptor = pick("acceptor", windows)
-    d_donor = pick("donor", detectors)
-    acceptors = [d for d in detectors if _role_of(d) == "acceptor"]
-    d_da = acceptors[0] if acceptors else ""
-    # The acceptor-excitation channel prefers a *second* acceptor detector when
-    # the setup lists one. That is the Seidel convention -- ``red`` and
-    # ``yellow`` are the same physical detector entered twice, once per
-    # excitation window -- and each entry carries only its own window's photons.
-    # So the cross product still writes an ``S delayed red`` column and it is
-    # all zeros; reading I_AA from it puts every burst at S = 1 without any
-    # column being missing.
-    d_aa = next((d for d in acceptors[1:]), d_da)
-
-    out: dict[str, str] = {}
-    for role, key in (
-        ("i_dd", (w_donor, d_donor)),
-        ("i_da", (w_donor, d_da)),
-        ("i_aa", (w_acceptor, d_aa)),
-    ):
-        if all(key) and key in gated:
-            out[role] = gated[key]
-    # All or nothing on the FRET pair: half a gated mapping mixed with half an
-    # ungated one would put I_DD and I_DA on different photon selections, which
-    # is worse than using neither.
-    if "i_dd" not in out or "i_da" not in out:
-        return {}
-    return out
-
-
-def guess_columns(names, extra_hints: dict | None = None) -> dict[str, str]:
-    """Map channel roles onto column names by matching known naming conventions.
-
-    Parameters
-    ----------
-    names : iterable of str
-        Column names of the burst table.
-    extra_hints : dict, optional
-        ``{role: (fragment, …)}`` tried *before* the built-in conventions —
-        typically the detector windows of the selected setup, which is how a
-        table with site-specific channel names ("det0_green") still maps itself.
-
-    Returns
-    -------
-    dict
-        ``{"i_dd": name, "i_da": name, "i_aa": name, "tau_f": name}``, with the
-        roles that could not be matched left out. A column is never assigned to
-        two roles.
-    """
-    names = list(names)
-    # The gated streams win when the table has them: they are the ALEX channels,
-    # while the whole-detector columns beside them sum over both excitation
-    # periods (see :func:`gated_stream_columns`).
-    out: dict[str, str] = gated_stream_columns(names)
-    lowered = [(str(n), str(n).strip().lower()) for n in names]
-    for role, hints in COLUMN_HINTS.items():
-        if role in out:
-            continue
-        hints = tuple((extra_hints or {}).get(role, ())) + tuple(hints)
-        for hint in hints:
-            match = next(
-                (original for original, low in lowered if low == hint or hint in low), None
-            )
-            if match is not None and match not in out.values():
-                out[role] = match
-                break
-    return out
-
 
 def read_burst_table(path: str | pathlib.Path) -> dict[str, np.ndarray]:
     """Read a burst table into ``{column: array}``.
@@ -453,7 +240,7 @@ def maps_fret_channels(path, extra_hints: dict | None = None) -> bool:
         A ``.bur``, a burst folder, or a container run
         (``m000.pto/sliding_window_All 0.1500#60``).
     extra_hints : dict, optional
-        Passed through to :func:`guess_columns`.
+        Passed through to ``tttrlib.guess_burst_columns``.
 
     Returns
     -------
@@ -481,7 +268,7 @@ def maps_fret_channels(path, extra_hints: dict | None = None) -> bool:
     try:
         columns = read_burst_table(resolved)
         names = list(columns)
-        mapped = guess_columns(names, extra_hints=extra_hints)
+        mapped = tttrlib.guess_burst_columns(names, extra_hints)
         ok = bool(mapped.get("i_dd")) and bool(mapped.get("i_da"))
     except Exception:
         # Unreadable is not "does not map" -- it is unknown, and refusing a run

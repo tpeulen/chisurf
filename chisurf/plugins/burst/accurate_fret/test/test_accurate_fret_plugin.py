@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import tttrlib
 import pytest
 
 from chisurf.core.fluorescence.fret.lines import static_fret_line
@@ -63,7 +64,7 @@ def test_read_and_guess_columns(burst_table):
     """A burst table is read and its channels recognised by their column names."""
     columns = _core.read_burst_table(burst_table)
     assert len(columns) == 5
-    guess = _core.guess_columns(columns)
+    guess = tttrlib.guess_burst_columns(list(columns))
     assert guess["i_dd"] == "Green Count Rate (KHz)"
     assert guess["i_da"] == "Red Count Rate (KHz)"
     assert guess["i_aa"] == "S delayed yellow (kHz)"

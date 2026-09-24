@@ -13,6 +13,7 @@ from collections.abc import Callable
 from concurrent.futures import CancelledError
 
 import numpy as np
+import tttrlib
 
 from .. import core as _core
 
@@ -148,7 +149,7 @@ class AccurateFretViewModel:
 
     def _has_detector_columns(self) -> bool:
         """Whether the loaded table splits its photons by detector at all."""
-        from chisurf.core.fluorescence.burst.table import DETECTOR_ROLE_WORDS
+        from tttrlib import BURST_DETECTOR_ROLE_WORDS as DETECTOR_ROLE_WORDS
 
         words = tuple(DETECTOR_ROLE_WORDS)
         return any(any(word in str(name).lower() for word in words) for name in self._columns)
@@ -298,7 +299,7 @@ class AccurateFretViewModel:
 
     def _map_columns(self) -> None:
         """Fill the four channel combos from the loaded columns."""
-        guess = _core.guess_columns(self._columns, self._window_hints())
+        guess = tttrlib.guess_burst_columns(list(self._columns), self._window_hints())
         self.column_i_dd = guess.get("i_dd", "")
         self.column_i_da = guess.get("i_da", "")
         self.column_i_aa = guess.get("i_aa", "")

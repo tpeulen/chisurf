@@ -23,25 +23,17 @@ from dataclasses import dataclass, field
 import numpy as np
 import tttrlib
 
-from chisurf.core.fluorescence.burst.table import (
-    COLUMN_HINTS,
-    columns_from_data,
-    guess_columns,
-    read_burst_table,
-)
+from chisurf.core.fluorescence.burst.table import columns_from_data, read_burst_table
 from chisurf.core.fluorescence.fret.accurate import AutoCalibration, auto_calibrate
 from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
 from chisurf.core.fluorescence.fret.lines import dynamic_fret_line, static_fret_line
 
 logger = logging.getLogger(__name__)
 
-# The burst-table conventions (which column is which channel) are shared with the
-# live ndX bridge, so they live in the core and are re-exported here.
+# Which column is which channel is tttrlib.guess_burst_columns, shared with ndX.
 __all__ = [
     "CalibrationResult",
-    "COLUMN_HINTS",
     "read_burst_table",
-    "guess_columns",
     "columns_from_data",
     "calibrate",
     "list_lightpaths",

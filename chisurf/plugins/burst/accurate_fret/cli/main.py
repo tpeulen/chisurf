@@ -6,6 +6,7 @@ import json
 
 import click
 import numpy as np
+import tttrlib
 
 from .. import core as _core
 
@@ -142,7 +143,7 @@ def cli(
             click.echo(name)
         return
 
-    guess = _core.guess_columns(columns)
+    guess = tttrlib.guess_burst_columns(list(columns))
     mapping = {
         "i_dd": column_i_dd or guess.get("i_dd"),
         "i_da": column_i_da or guess.get("i_da"),

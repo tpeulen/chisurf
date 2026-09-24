@@ -25,6 +25,7 @@ from collections.abc import Callable
 from typing import Any
 
 import numpy as np
+import tttrlib
 
 from chisurf.core.datastore import (
     column_names,
@@ -245,7 +246,7 @@ class BurstBrowserViewModel:
         # gave (DA + AA) / (DD + DA + AA + AD), which is not a proximity ratio
         # and put the populations of a two-state sample at the wrong efficiency.
         from tttrlib import apparent_es
-        from chisurf.core.fluorescence.burst.table import guess_columns
+        from tttrlib import guess_burst_columns as guess_columns
 
         mapping = guess_columns(names)
         green_col, red_col = mapping.get("i_dd"), mapping.get("i_da")

@@ -158,7 +158,7 @@ def test_the_streams_of_that_setup_map_onto_the_alex_channels():
     range, so the cross product also writes an all-zero ``S delayed red``.
     Picking that as I_AA is not a missing column -- it is every burst at S = 1.
     """
-    from chisurf.core.fluorescence.burst.table import guess_columns
+    from tttrlib import guess_burst_columns as guess_columns
 
     columns = ["Number of Photons (green)", "Number of Photons (red)", "Number of Photons (yellow)"]
     for window, (lo, hi) in (("prompt", (300, 3700)), ("delayed", (4300, 7700))):
@@ -172,7 +172,7 @@ def test_the_streams_of_that_setup_map_onto_the_alex_channels():
 
 def test_a_two_detector_pie_table_still_resolves():
     """Without a second acceptor entry the acceptor window uses the only one."""
-    from chisurf.core.fluorescence.burst.table import guess_columns
+    from tttrlib import guess_burst_columns as guess_columns
 
     columns = ["Number of Photons (green)", "Number of Photons (red)"]
     for window, (lo, hi) in (("prompt", (300, 3700)), ("delayed", (4300, 7700))):
@@ -186,7 +186,7 @@ def test_a_two_detector_pie_table_still_resolves():
 
 def test_photon_counts_win_over_the_rates_beside_them():
     """E and S are ratios of counts; the rates have per-stream denominators."""
-    from chisurf.core.fluorescence.burst.table import guess_columns
+    from tttrlib import guess_burst_columns as guess_columns
 
     columns = ["Number of Photons (green)", "Number of Photons (red)"]
     for window, (lo, hi) in (("prompt", (300, 3700)), ("delayed", (4300, 7700))):

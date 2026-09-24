@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import tttrlib
 
-from chisurf.core.fluorescence.burst.table import guess_columns, read_burst_table
+from chisurf.core.fluorescence.burst.table import read_burst_table
 
 __all__ = [
     "Corrections",
@@ -130,7 +130,7 @@ def load_channels(
         already-loaded ``{column: array}`` mapping.
     hints : dict, optional
         Extra ``{role: (fragment, …)}`` naming hints, passed straight to
-        :func:`~chisurf.core.fluorescence.burst.table.guess_columns` — typically
+        ``tttrlib.guess_burst_columns`` — typically
         the detector-setup window names.
 
     Returns
@@ -145,7 +145,7 @@ def load_channels(
         If the donor or the FRET channel cannot be identified.
     """
     columns = dict(source) if isinstance(source, dict) else read_burst_table(source)
-    mapping = guess_columns(columns.keys(), hints)
+    mapping = tttrlib.guess_burst_columns(list(columns.keys()), hints)
     missing = [role for role in ("i_dd", "i_da") if role not in mapping]
     if missing:
         raise ValueError(
