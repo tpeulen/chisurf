@@ -40368,3 +40368,20 @@ side of the line.
   value replaces a stale vector of it, and the report says so. Resume point:
   [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md); table:
   [GUI tables](subsystems/gui-tables.md).
+
+- 2026-09-24 — **ndX vector parameters mean something.** A population-wise
+  curve parameter (a vector, or linked to one) draws one tinted, labelled curve
+  per population (emtk, Qt, CSV) and is fitted by one joint fit (shared
+  parameters once, elements per population, reduced χ² per population;
+  `analysis/curve_fit_populations.py`). A Gaussian parameter made a vector is a
+  population-conditional mixture (one component per observed population, EM
+  pooling the shared parts; `analysis/gaussian_populations.py`), drawn and
+  fitted in both GUIs; Gaussian Save/Load keep the vectors (group state in the
+  JSON). ChiSurf's Qt parameter table gains *Make vector… / Populations… /
+  Make scalar* through a `population_vector` protocol the ndX mirrors carry
+  (`Parameter.set_populations` is the shared model call).
+  `AccurateFretFeature.write_vector` goes through `apply_vector_entries`. Two
+  ChiSurf GUI test failures proven pre-existing and fixed in test code
+  (known-issues). Docs: guide 46 "Population-wise parameters". Resume point:
+  [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md); table:
+  [GUI tables](subsystems/gui-tables.md).

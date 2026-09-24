@@ -36,6 +36,101 @@ gives the desktop's labels on its own data. Guard:
 without sklearn/hdbscan importable). Next: nothing open here; UMAP stays
 optional (umap-learn, desktop only).
 
+### Vector parameters mean something: curves, curve fit, Gaussians (2026-09-24)
+
+State: a vector is used, not only edited. Population sets are one function
+for every consumer, `core/overlay_curves.py:population_sources / population_labels /
+population_parameter_sets(group)`: a parameter is population-wise when it is a
+vector or *linked to* a vector (a curve's `gamma` pinned to the constant
+`gamma[...]`); the populations are the union over the vectors; a vector
+without a population reads its global value there.
+
+- **Curves** (`OverlayCurve.drawn_curves`, the emtk map, the Qt window's
+  `get_visible_curves`, Save CSV): one curve per population named
+  `"<title> [<pop>]"`, tinted from the curve's colour (`population_colour`:
+  same hue, lightness 0.40–0.80), labelled at its right end (the map has no
+  legend: `implot.plot_text` under a pushed `COL_INLAY_TEXT`); no
+  population-wise parameter: the one global curve.
+- **Curve fit** (`analysis/curve_fit_populations.py`, picked by
+  `build_curve_fit_for` when the curve has populations) — design: **one joint
+  fit**. The first vector's axis splits the displayed points
+  (`FitDataReader.by_population`: the label column's codes 1/0, or the
+  probability columns when all exist; the display weight multiplies in), every
+  population sees the same bins; each population gets the fit the curve gets
+  alone (cloud / column ridge / marginal, `CurveFit` or `ParametricCurveFit`
+  over `_Alias`es); the optimiser moves the shared parameters once and each
+  element for its population, residuals concatenated. So a shared parameter is
+  fitted to all populations and an element only to its own — not N separate
+  fits, which could not share anything. Proxies are seeded from the curve
+  (fixed/linked elements held; a linked-to-vector parameter supplies its
+  elements, held); `write_back` writes elements and shared values;
+  `CurveFitResult.population_chi2r` = per population Σr²/(n−free of that
+  population), shown in the status line (`χ²ᵣ[HF]=…`). Data parameters (the
+  constants that move the data) are not offered to a population-wise fit.
+- **Gaussians** (`analysis/gaussian_populations.py`) — decision: implemented,
+  as a **population-conditional mixture** p(x|q) = Σ_k w_k[q] N(μ_k[q], Σ_k[q]),
+  a vector parameter taking its element for q, a scalar shared. Why this and
+  not "disallow": a mixture's components are *latent* populations; a vector's
+  are *observed* (the column says which one a burst is in). "One more
+  component + links" cannot express it — each component would be free to take
+  the other population's bursts. EM: E-step per population weighted by
+  membership (bursts in no population use the global values, an extra "none"
+  column); M-step: an element from its population's responsibilities, a shared
+  parameter pooled; a covariance assembled from parts (population-wise `sd_x`
+  from that population's scatter, shared `rho` pooled); held elements stamped
+  back. `write_population_fit` writes elements, the global value only when
+  there were no-population bursts, shared values from the largest population,
+  and `group.population_shares` (weights the drawn marginals). Drawn per
+  population and component (`GaussianPanel.drawn`, tinted, label at the
+  centre); the Qt panel draws `population_rows` and fits through the same
+  function (columns from `data_manager.get_filtered_values`).
+- **Gaussian Save/Load**: `save_gaussians(..., state=group.get_state())` puts
+  the group state (elements by name + `"vectors"`) in the JSON as
+  `"parameters"`; `load_gaussian_state(path)` + `group.set_state` after the
+  rows are rebuilt (both GUIs). The CSV has no state.
+- **Qt tables create vectors**: ChiSurf's `ParameterGroupTableWidget.context_menu(row)`
+  adds *Make vector…* (top-level scalar), *Populations…* and *Make scalar*
+  (a vector's rows) for a parameter carrying `population_vector`; ndX mirrors
+  carry `chisurf_binding.PopulationVectorActions`, which calls the same model
+  methods as the emtk menu (`Parameter.set_populations`, now the one place;
+  `parse_populations` moved to `core/vector_constants.py`). `PopulationsDialog`
+  (populations + editable column combo); the constants editor listens to its
+  group so the table follows. Trap: rows added while the dialog is up are not
+  laid out, so the table kept its old height and cut the last rows; it is
+  resized when the dialog finishes (`_resize_rows`).
+- `AccurateFretFeature.write_vector` calls `constants.apply_vectors` (the
+  `apply_vector_entries` path); the duplicate is gone.
+
+Measure: `ndxplorer/tests/test_curve_populations.py` (N curves, tints, union,
+linked vector, the emtk map draws `##overlay-curve-0-0/1` and labels),
+`test_curve_fit_populations.py` (two synthetic populations on y = a·x + b:
+a = 1.0/3.0 within 0.05, shared b; cloud; probability columns; marginal μ
+2.0/6.0 with shared σ; held element; missing column), `test_gaussian_populations.py`
+(centres 2.0/6.0, pooled widths, weight vectors 0.8/0.2, held element,
+probabilities), `test_app/test_gaussian_vectors.py` (save/load round trip,
+panel save/load, map draws both populations, no-column message),
+`test_write_vector_shared_path.py`; ndX suite 1401 passed (ndxplorer/tests + test);
+ChiSurf
+`chisurf/plugins/ndxplorer/tests/test_vector_menu_qt.py` (menu → dialog →
+vector → Populations… → Make scalar; `CHISURF_TABLE_SHOTS=<dir>`). cal1 (a copy;
+label column from E < 0.5 inside 0.3 < S < 0.8, x = FRET efficiency, y =
+Stoichiometry (PIE)): curve `1/(Om + Sig*x)` with Om per population, joint fit
+by column population: Om 1.737 / 1.707, Sig 0.271, χ²ᵣ 1.27 / 1.13 (both FRET
+populations sit on the same S(E) line, as they should); one Gaussian with x₁
+per population: 0.316 / 0.777, σ shared (y range 0.3–0.8, else the D-/A-only
+bursts join the shared widths as no-population bursts). Figures in
+`docs/guides/46_ndxplorer.md` "Population-wise parameters".
+
+Next:
+1. The curve fit does not offer data parameters (constants) to a
+   population-wise fit; a vector *constant* freed in the ordinary curve fit
+   still moves only its global value. Making that per population needs the
+   data re-derived per population per step (the FRET calibration's problem).
+2. The Qt Gaussian panel's selection highlight indexes ellipses by component,
+   which is off once a component is drawn per population (legacy; emtk is right).
+3. The Qt `PopulationsDialog` offers the vector's column and the default only
+   (editable): it does not know the window's burst columns.
+
 ### Vector parameters in every table (2026-09-24)
 
 State: any ndX `Parameter` can hold one value per population
@@ -88,23 +183,22 @@ widget, QTest clicks and typing), `test_app/test_shared_factor_replaces_vector.p
 selecting a row shows its note under the table and scrolls; a test must reach
 the element with the Down key, not by a pixel computed before the click.
 Suites 2026-09-24: ndX 1378 passed (ndxplorer/tests + test); ChiSurf
-parameter-table, Global View and plugins/ndxplorer tests green. Not from this
-change: `test/gui/test_parameter_linking.py` reads `./test/data` relative to
-the cwd (fails from /tmp; segfaults in the zmq server thread from the repo
-root), and `test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`
-fails only after other GUI tests (passes alone: order-dependent).
+parameter-table, Global View and plugins/ndxplorer tests green. The two ChiSurf
+GUI failures seen then were proven pre-existing (same at 5b1a33b3e and
+66b02a057) and fixed in test code (chisurf b97adc44e; causes in
+[known issues](../references/known-issues.md), ae5bef86a): the linking test's
+cwd-relative data path and a QApplication freed mid-session with stale
+wrappers (the zmq thread was a bystander); `cs.fits` leaked by two test files
+into `test_curve_input_widget_renders_and_dispatches`.
 
 Next:
-1. What a vector *means* outside the constants: the curve is drawn and the
-   Gaussian EM runs at the global value; one curve / one Gaussian per
-   population is not implemented. Gaussian Save/Load (`records()`) does not
-   carry vectors; the curve fit's own parameters are copies
-   (`seed_from_group`), so a curve vector is not fitted, and a vector constant
-   freed in the curve fit moves only its global value.
-2. The Qt tables show and edit vectors but cannot make one (no *Make vector /
-   Populations / Make scalar* there): legacy, use the emtk app.
-3. `AccurateFretFeature.write_vector` repeats `apply_vector_entries`' handling
-   of uncertainties by population; it can call `ConstantsMapping.apply_vectors`.
+1. ~~What a vector *means* outside the constants~~ — done 2026-09-24 (curves,
+   curve fit, Gaussians, Gaussian Save/Load: see "Vector parameters mean
+   something"); left: a vector constant freed in the curve fit moves only its
+   global value.
+2. ~~The Qt tables cannot make a vector~~ — done 2026-09-24 (*Make vector… /
+   Populations… / Make scalar* through `population_vector`).
+3. ~~`write_vector` repeats `apply_vector_entries`~~ — done 2026-09-24.
 
 ### FRET calibration: population-wise factors, gating dimensions; z marginal (2026-09-24)
 

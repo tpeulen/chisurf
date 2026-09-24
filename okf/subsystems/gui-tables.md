@@ -119,6 +119,19 @@ Parameters table with the data table's tree (`tree_key: parent`,
 (mouse click opens, double-click + typed value + Enter edits),
 `chisurf/plugins/core/globalview/tests/test_model.py::test_a_vector_published_by_population_is_one_expandable_row`.
 
+**Making a vector** from the table: a parameter that carries
+`population_vector` (a small protocol: `name`, `is_vector`, `can_be_vector`,
+`populations`, `column`, `column_options()`, `set_populations(text, column)`
+→ error or `None`, `to_scalar()`) gets *Make vector…* on its top-level row and
+*Populations…* / *Make scalar* on a vector's rows (`context_menu(row)`,
+`PopulationsDialog`). nDXplorer's mirrors carry it
+(`ndxplorer.core.chisurf_binding.PopulationVectorActions`), calling the same
+model methods as the emtk table's menu; the owner of the parameters rebuilds
+the table when elements come or go (the ndX constants editor listens to its
+group). A table rebuilt while the dialog is up is resized once it closes
+(`_resize_rows`), else its last rows are cut off. Measure:
+`chisurf/plugins/ndxplorer/tests/test_vector_menu_qt.py`.
+
 # Consumers
 
 * the [Data table plot](/subsystems/gui-autoform.md) (`chisurf/gui/plots/table_plot.py`)
