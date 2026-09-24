@@ -298,3 +298,29 @@ def test_columns_that_say_nothing_are_not_shown():
     assert {"row", "parameter", "value", "fixed", "lo", "hi", "link"} <= set(shown(model))
     model, _fits, _ = _session(3)
     assert "owner" in shown(model)
+
+
+def test_a_vector_published_by_population_is_one_expandable_row():
+    """``gamma[HF]``, ``gamma[LF]`` are filed under ``gamma``; the table opens it."""
+    group = _group(["gamma", "gamma[HF]", "gamma[LF]", "Bg"])
+    model = GlobalViewModel(fits=lambda: [], groups=lambda: [("ndx", "ndX constants", group)],
+                            mutator=_Mutator())
+    model.refresh()
+    records = {r["parameter"]: r for r in model.parameter_records()}
+    parent = records["gamma"]["uid"]
+    assert records["gamma[HF]"]["parent"] == parent == records["gamma[LF]"]["parent"]
+    assert records["gamma"]["parent"] == "" and records["Bg"]["parent"] == ""
+    model.expanded_vectors.add(parent)
+    from emtk.pil_painter import PilPainter
+
+    from chisurf.plugins.core.globalview.gui.surface import GlobalViewSurface
+
+    surface = GlobalViewSurface(model)
+    surface.docks.focus("Parameters")
+    for _ in range(3):
+        painter = PilPainter(1100, 760)
+        surface.draw(painter, 0.0, 0.0, 1100.0, 760.0)
+    import os
+
+    if os.environ.get("CHISURF_TABLE_SHOTS"):
+        painter.frame.save(os.path.join(os.environ["CHISURF_TABLE_SHOTS"], "globalview.png"))

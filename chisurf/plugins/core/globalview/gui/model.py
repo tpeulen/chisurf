@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import csv
 import logging
+import re
 import typing
 
 from chisurf.core.fitting import parameter_network as pn
@@ -144,6 +145,25 @@ def _number(value: typing.Any) -> typing.Optional[float]:
         return None
 
 
+#: ``base[label]``: one element of a vector published as named parameters.
+_ELEMENT = re.compile(r"^(?P<base>.*[^\s])\[(?P<label>[^\[\]]+)\]$")
+
+
+def _nest_vector_elements(records: list) -> None:
+    """File each ``base[label]`` record under its owner's ``base`` record (``parent``).
+
+    nDXplorer publishes a vector constant as its global value ``gamma`` and one
+    parameter per population, ``gamma[HF]`` …, each with its own fixed flag,
+    bounds and link; the Parameters table shows them as one expandable row.
+    """
+    bases = {(r["owner"], r["local"], r["parameter"]): r["uid"] for r in records}
+    for record in records:
+        match = _ELEMENT.match(record["parameter"])
+        if match is not None:
+            parent = bases.get((record["owner"], record["local"], match.group("base")))
+            record["parent"] = parent or ""
+
+
 class GlobalViewModel:
     """The Global View's state and behaviour; see the module docstring.
 
@@ -210,6 +230,8 @@ class GlobalViewModel:
         self._objects: dict = {}
         self._records: list = []
         self._records_by_uid: dict = {}
+        #: Keys of the vectors the Parameters table shows open (its tree).
+        self.expanded_vectors: set = set()
 
         self.content = ev.GlobalViewContent()
         self.content.radius_scale = self.node_size / 11.0
@@ -391,8 +413,10 @@ class GlobalViewModel:
                     "follower": follower,
                     "muted": follower or _flag(p, "fixed"),
                     "tip": str(getattr(p, "description", "") or ""),
+                    "parent": "",
                 }
             )
+        _nest_vector_elements(records)
         self._records = records
         self._records_by_uid = {r["uid"]: (r, rows[i]) for i, r in enumerate(records)}
 

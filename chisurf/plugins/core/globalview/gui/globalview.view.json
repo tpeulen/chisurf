@@ -232,6 +232,8 @@
           "options": {
             "source": "parameter_records",
             "row_key": "uid",
+            "tree_key": "parent",
+            "expanded_attr": "expanded_vectors",
             "editable": true,
             "edited_call": "edit_parameter",
             "editable_call": "may_edit_parameter",
