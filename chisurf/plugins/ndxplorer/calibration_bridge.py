@@ -435,6 +435,9 @@ def optimize_calibration_from_ndx(
     background: str = "constants",
     min_population: int = 20,
     inject_columns: bool = True,
+    species_factors: str = "auto",
+    dimensions: Sequence[str] | None = None,
+    population_method: str = "gmm",
     recompute: bool = True,
     progress=None,
 ) -> dict:
@@ -451,8 +454,12 @@ def optimize_calibration_from_ndx(
 
     Parameters are the options of the calibration (see ``calibrate_columns``);
     ``columns`` overrides the channel mapping (``{role: column}``), ``factors``
-    names the factors written (all by default), ``recompute`` refreshes the
-    window's derived columns and plots.
+    names the factors written (all by default), ``species_factors`` ("off",
+    "auto", "on") whether the FRET populations get their own gamma,
+    ``dimensions`` the gating dimensions (``[]``: the stoichiometry gating),
+    ``population_method`` how the populations are found ("gmm", or "hdbscan"
+    where tttrlib has it), ``recompute`` refreshes the window's derived columns
+    and plots.
 
     Returns
     -------
@@ -489,6 +496,8 @@ def optimize_calibration_from_ndx(
         "n_bootstrap": int(n_bootstrap), "use_priors": bool(use_priors),
         "factors": None if factors is None else list(factors), "background": background,
         "min_population": int(min_population), "inject_columns": bool(inject_columns),
+        "species_factors": str(species_factors), "dimensions": list(dimensions or []),
+        "population_method": str(population_method),
     }
     result = calibrate_columns(table, start, options,
                                container=str(provenance.get("container_path") or ""),
