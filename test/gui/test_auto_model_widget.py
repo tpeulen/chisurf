@@ -263,20 +263,23 @@ def test_parameter_group_sections_populate(qapp, lifetime_model):
 
 
 @pytest.fixture
-def registered_lifetime_model(lifetime_model):
+def registered_lifetime_model(lifetime_model, monkeypatch):
     """A lifetime model whose fit is registered with the fit machinery.
 
     Controls that edit a fit dispatch at a *fit index* and deliberately do
     nothing when the model's fit is not registered -- dispatching at fit 0
     instead would edit whichever fit happened to be first.
+
+    The fit is registered in a fresh ``chisurf.fits`` of its own rather than
+    appended to whatever an earlier test left there: a bare ``Fit`` another
+    test assigned (``cs.fits = [fit]``) is not iterable, and the widgets'
+    ``_own_fit_index`` gives up on the whole list at the first entry it cannot
+    iterate, so this fit was reported as unregistered and nothing dispatched.
     """
     import chisurf as cs
 
-    cs.fits.append(lifetime_model.fit)
-    try:
-        yield lifetime_model
-    finally:
-        cs.fits.remove(lifetime_model.fit)
+    monkeypatch.setattr(cs, "fits", [lifetime_model.fit], raising=False)
+    yield lifetime_model
 
 
 def test_curve_input_widget_renders_and_dispatches(qapp, registered_lifetime_model, monkeypatch):

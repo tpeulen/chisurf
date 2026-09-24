@@ -14,6 +14,12 @@ import utils
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 utils.set_search_paths(TOPDIR)
 
+# The IBH sample decays, found from this file rather than the working
+# directory: "./test/data/..." only resolved when pytest ran from the repo
+# root, and a dataset that is not found is skipped without an error, so every
+# test after the first failed on an empty ``cs.fits`` instead.
+IBH_SAMPLE = os.path.join(TOPDIR, "data", "tcspc", "ibh_sample")
+
 
 import pytest
 
@@ -22,9 +28,37 @@ import chisurf.gui
 import chisurf.macros
 
 
+# The QApplication that ``get_app`` builds, held for the life of the process.
+# ``get_app`` keeps no reference of its own once its startup-auth timer has
+# fired, so the fixture's return value was the last one and pytest dropped it
+# after the module's last test: the QApplication was deallocated mid-session.
+_APP = None
+
+
+def _flush_deferred_deletes():
+    from qtpy import QtCore, QtWidgets
+
+    for _ in range(5):
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+        QtWidgets.QApplication.processEvents()
+
+
 @pytest.fixture(scope="module", autouse=True)
 def _ensure_app():
-    return cs.gui.get_app()
+    """Build the app once, and leave nothing half-deleted behind.
+
+    ``fit.close_all`` retires each fit's windows with ``deleteLater()``, and
+    no event loop runs here to carry that out. Whenever PyQt next walks its
+    wrappers -- deallocating the QApplication (above), or ``cleanup_on_exit``
+    at interpreter shutdown -- it met one of those and segfaulted in
+    ``sip_api_get_address`` via ``cleanup_qobject``. The zmq server thread in
+    the faulthandler dump is a bystander. See okf/references/known-issues.md.
+    """
+    global _APP
+    _APP = cs.gui.get_app()
+    yield _APP
+    _clear()
+    _flush_deferred_deletes()
 
 
 if hasattr(cs, "api") and cs.core.api is not None:
@@ -54,8 +88,8 @@ def _setup():
     gui.current_setup.rep_rate = 10.0
     gui.current_setup.dt = 0.0141
 
-    cs.macros.add_dataset(filename="./test/data/tcspc/ibh_sample/Decay_577D.txt")
-    cs.macros.add_dataset(filename="./test/data/tcspc/ibh_sample/Prompt.txt")
+    cs.macros.add_dataset(filename=os.path.join(IBH_SAMPLE, "Decay_577D.txt"))
+    cs.macros.add_dataset(filename=os.path.join(IBH_SAMPLE, "Prompt.txt"))
 
     cs.core.actions.dispatch(
         name="fit.add",

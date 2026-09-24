@@ -39,10 +39,11 @@ class _SimpleModel(ModelCurve):
 
 
 @pytest.fixture
-def param(qapp):
+def param(qapp, monkeypatch):
     data = cs.core.data.DataCurve(x=np.arange(10.0), y=np.arange(10.0))
     fit = cs.core.fitting.fit.Fit(model_class=_SimpleModel, data=data)
-    cs.fits = [fit]
+    # Scoped to the test: a bare Fit left in chisurf.fits hides later tests' fits.
+    monkeypatch.setattr(cs, "fits", [fit], raising=False)
     return fit.model.p1
 
 
@@ -265,7 +266,8 @@ def test_view_spec_prior_applied_when_widget_built(qapp, monkeypatch):
 
     data = cs.core.data.DataCurve(x=np.arange(10.0), y=np.arange(10.0))
     fit = cs.core.fitting.fit.Fit(model_class=_GroupModel, data=data)
-    cs.fits = [fit]
+    # Scoped to the test: a bare Fit left in chisurf.fits hides later tests' fits.
+    monkeypatch.setattr(cs, "fits", [fit], raising=False)
     model = fit.model
 
     view = vs.ModelView(

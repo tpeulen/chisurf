@@ -39,10 +39,11 @@ class _SimpleModel(ModelCurve):
 
 
 @pytest.fixture
-def params(qapp):
+def params(qapp, monkeypatch):
     data = cs.core.data.DataCurve(x=np.arange(10.0), y=np.arange(10.0))
     fit = cs.core.fitting.fit.Fit(model_class=_SimpleModel, data=data)
-    cs.fits = [fit]
+    # Scoped to the test: a bare Fit left in chisurf.fits hides later tests' fits.
+    monkeypatch.setattr(cs, "fits", [fit], raising=False)
     return [fit.model.p1, fit.model.p2]
 
 
