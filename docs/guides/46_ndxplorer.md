@@ -390,6 +390,70 @@ second component's centre was held (ticked *Fixed*, greyed out, and returned
 unchanged at 0.74) while everything else was optimised onto the data.
 ```
 
+(ndx-population-wise)=
+
+## Population-wise parameters: one value per population
+
+Any parameter — a constant, an overlay curve's, a Gaussian's — can hold **one
+value per population**: right-click its row and choose **Make vector…**, give
+how many populations (`2`: populations 0 and 1) or their names (`HF, LF`), and
+the burst column that says which population a burst is in (**Picked by**,
+`Cluster Label` by default; a calibration writes `Population` with probability
+columns `P(FRET n)`). The row becomes an expandable `name [n]` with its
+*(global)* value — what a burst in no population gets — and one element per
+population, each with its own value, fixed flag, bounds and link.
+**Populations…** changes the populations, **Make scalar** drops the elements.
+The emtk window and the Qt window's tables have the same menu.
+
+What a vector *does* depends on where it is:
+
+- **A constant** is evaluated burst by burst in the equations: a burst takes its
+  population's element (or the probability-weighted mix).
+- **An overlay curve** is drawn **once per population**, each curve tinted from
+  the curve's colour and labelled with its population at its right end. A curve
+  parameter *linked* to a vector constant does the same with the constant's
+  elements. Its **Fit** is one **joint fit**: the displayed data is split by the
+  vector's column (every population sees the same bins, weighted by
+  membership), each population gets the fit the curve would get alone, and the
+  optimiser moves the shared parameters once and each element for its own
+  population only. The status line reports the overall and each population's
+  reduced $\chi^2$ (`χ²ᵣ[0]=1.27, χ²ᵣ[1]=1.13`), and the fitted elements are
+  written back into the curve. The constants that shape the data are not offered
+  to a population-wise fit.
+- **A Gaussian** becomes one component **per population**: a burst of
+  population *q* is drawn from $\sum_k w_k[q]\,\mathcal N(\mu_k[q], \Sigma_k[q])$,
+  where a vector parameter takes its element for *q* and every other parameter
+  is shared. The EM fits an element from its population's bursts and a shared
+  parameter from all of them; the map draws each population's ellipses (tinted,
+  labelled at the centre) and the marginals each population's curve, weighted by
+  its share of the bursts. Unlike adding a second Gaussian, the population a
+  burst belongs to is *observed* (the column), not inferred. **Save** keeps the
+  vectors (the JSON carries the parameter state), **Load** restores them.
+
+```{figure} figures/ndxplorer_curve_populations.png
+:name: fig-ndxplorer-curve-populations
+:width: 100%
+
+An overlay curve $S = 1/(\Omega + \Sigma E)$ on the cal1 measurement whose
+$\Omega$ is a vector over two populations: one curve per population, labelled
+`[0]` and `[1]`; the curve's table shows the vector opened.
+```
+
+```{figure} figures/ndxplorer_gaussian_populations.png
+:name: fig-ndxplorer-gaussian-populations
+:width: 100%
+
+One Gaussian whose centre $x_1$ is population-wise, fitted to cal1's two FRET
+populations (label column from $E < 0.5$): centres 0.32 and 0.78, widths
+shared.
+```
+
+Headless, the same fits are
+{py:func}`~ndxplorer.analysis.curve_fit_populations.build_population_fit`
+(``build_curve_fit_for`` picks it for a curve with a vector) and
+{py:func}`~ndxplorer.analysis.gaussian_populations.fit_population_mixture` /
+``write_population_fit``.
+
 (ndx-find-projections)=
 
 ## Find the informative projections
