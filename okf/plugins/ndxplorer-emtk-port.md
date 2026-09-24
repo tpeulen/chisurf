@@ -22,6 +22,58 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Find informative projections ranks Separation, not correlation (2026-09-24)
+
+State: tpeulen: "in FRET you do not want to find correlations, you want
+projections where populations split". The panel's **Rank by** switch is
+Separation (default) | Correlation | Classes (only with gates/clusters/a label
+z). A deliberate behaviour change vs the Qt window (both GUIs host the same
+spec and model, so Qt changed too); noted in `tools/parity/features.md`.
+
+- **Score** (`analysis/separation.py`, NumPy + `scipy.ndimage`, ~1 ms/pair):
+  64² raster, Gaussian smoothing `0.125·n^(-1/6)` of the robust range, steepest
+  ascent to basins, elder-rule merge from the highest saddle; a split counts
+  when `(peak - saddle)/sqrt(var_peak + var_saddle) >= 3` (Poisson variance of
+  the smoothed counts, weights squared) and the smaller side holds >= 3 %.
+  Score `Σ_{i≠j} p_i p_j (1 - saddle_ij/min(peak_i, peak_j))`, `p_i` the burst
+  share in island i's core (above its highest valley). Axes (`RobustAxis`):
+  log per the view, spikes (>= 2 % and >= 10× the median count per value) ->
+  missing, counted/rounded columns dithered over their step,
+  `tttrlib.flag_dimension_outliers` fence (name "x" so no S/E/tau rule), robust
+  0.5–99.5 % range. Kept out of tttrlib on purpose: thin NumPy, no hot loop.
+- **Columns** (`projection_scores.ColumnSet`): flags (< 20 values), clocks (rise
+  over >= 90 % of consecutive rows), folds (η² on *ranks* >= 0.98 one way, < 0.9
+  the other) left out; aliases (Spearman >= 0.98 or mutual rank-η² >= 0.98)
+  ranked once, preferring a column with an axis range, else the later one; a
+  pair with rank-η² >= 0.95 either way is a curve and skipped. **Trap:** η² on
+  the coordinates calls two far-apart species a curve (0.95 on a planted
+  pair); on ranks it is 0.72.
+- **Candidates measured** (5 000-burst sample, same column set): density valley
+  1.3 ms/pair; tttrlib HDBSCAN per pair 8 ms/pair and noisier (cut acquisition
+  time and photon counts into clusters; ALEX E–S only #3); GMM BIC gain 35
+  ms/pair and rewards skewed/curved single clouds (top pairs were `2I* (red)` and
+  photon counts). Synthetic: every unimodal shape (gauss, correlated,
+  log-normal, banana, uniform, t2) scores 0.
+- **Real tables** (default settings bundle): MFD top 5 = E vs Var(E), E vs
+  (1-E)*E_tau, PR vs Var(E), E vs Tau (green), PR vs (1-E)*E_tau, all 3 islands
+  (D-only, mid-FRET, high-FRET). cal1 ALEX (scripted constants): E(PIE) vs
+  S(PIE) first, 4 islands (A-only, two FRET, D-only). The emtk app restores the
+  18 constants stored in the `.pto`, which unaliases E and PR: there S vs Sg
+  is first and S vs PR(PIE) (4 islands) second. Images:
+  `docs/guides/figures/ndxplorer_find_projections.png`; guards
+  `ndxplorer/tests/test_separation.py` (synthetic, axes, every Rank-by option
+  end to end, both real tables). Speed: MFD 300 pairs 0.4 s + 0.7 s column
+  prep (in the worker), ALEX 210 pairs 0.3 s.
+- **UI**: Islands column; Bursts = all / weight by photons / min photons
+  (weighting ranked noisier on ALEX, so not the default); *Show islands on the
+  map* (emtk `PlaybackExportFeature.map_image`, hidden in Qt). A stale method key
+  falls back to Separation (a live app once showed "Cannot rank: 'structure'").
+
+Next: (1) the table's x/y cells truncate long names at the panel's default
+width; (2) PR and E stay two rows when calibration constants scatter them (the
+aliasing is data-driven); (3) the Qt baseline in `parity/qt` still shows the old
+Score list -- re-capture when the parity run is next refreshed.
+
 ### Find structure on tttrlib (2026-09-24)
 
 State: HDBSCAN is `tttrlib.hdbscan`, K-means `tttrlib.kmeans` (uniforms from

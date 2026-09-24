@@ -473,39 +473,44 @@ Instead of paging through the axis combos, let ndX rank the views
    The two ranking entries in ndX's View menu, below UMAP.
    ```
 
-2. The panel opens and starts at once. With no gate and no clustering it ranks by
-   **Population structure** — which pairs split into more than one population.
-   Draw a range gate, paint a mask or run *Cluster* first, and it opens on
-   **Class separation** with those classes instead; **Score** also offers
-   Pearson and Spearman **Correlation**.
-3. The table fills while it computes, best first, with the score as a bar. Hover
-   is not needed: the selected row's line under the table says what the number
-   means (e.g. *96.4 % of each burst's 10 nearest neighbours share its class;
-   κ = 0.924 above chance*). **Pause** stops, **Start** continues; closing the
-   panel pauses and reopening resumes. Changing **Score**, **Classes** or
-   **Sample** pauses and the next **Start** ranks again from scratch.
+2. The panel opens and starts at once, ranking by **Separation**: which views
+   split the bursts into clearly separated islands — donor-only, acceptor-only
+   and FRET species in $E$ vs $S$, a dynamic population off the static FRET
+   line. **Rank by** switches to **Correlation** (parameters that move
+   together); with a gate, a painted mask or a *Cluster* run it also offers
+   **Classes** (views that keep them apart). For Separation, **Bursts** can
+   weight each burst by its photons or keep only bursts with at least **Min
+   photons**, since dim bursts are wide and fill the valleys.
+3. The table fills while it computes, best first, with the score as a bar and
+   the number of **Islands**. The selected row's line under the table says
+   what the number means (e.g. *4 islands holding 50 %, 25 %, 14 %, 8 % of the
+   5000 sampled bursts; 61 % sit clearly inside one*) and which other
+   parameters are the same view. **Pause** stops, **Start** continues; closing
+   the panel pauses and reopening resumes. Changing **Rank by**, **Classes**,
+   **Bursts** or **Sample** pauses and the next **Start** ranks again.
 4. **Click a row** to set x and y. When the ranking finishes the best row is
    applied. Picking axes by hand marks their row, so you see where your own
-   choice ranks. The filter box narrows the rows to a parameter name.
+   choice ranks. The filter box narrows the rows to a parameter name. **Show
+   islands on the map** colours the map by the islands of the view on the axes.
 
 ```{figure} figures/ndxplorer_find_projections.png
 :name: fig-ndxplorer-find-projections
 :width: 60%
 
-The MFD test folder (12 237 bursts) gated on $\tau_{green}$ = 2.5–4.2 ns,
-ranked by how well each view separates the gated bursts from the rest (1 431
-pairs in 13 s). $\tau_{green}$ and the columns derived from it are left out.
+The cal1 ALEX measurement (44 270 bursts) ranked by Separation in the emtk app
+(300 pairs in about a second): $S$ against the proximity ratio splits into four
+islands — acceptor-only, two FRET species and donor-only — coloured on the map
+by *Show islands on the map*.
 ```
 
 From Python, the scores are plain functions on arrays:
 
 ```python
-from ndxplorer.analysis.projection_scores import (
-    ClassLabels, ProjectionRanker, RankingTable)
+from ndxplorer.analysis.projection_scores import ProjectionRanker, RankingTable
 
-table = RankingTable(columns, labels=ClassLabels(inside_gate, True, "gate"))
-ranker = ProjectionRanker(table, "separation")      # or "structure", "pearson"
-ranker.prepare()
+table = RankingTable(columns)                        # a dict of name -> array
+ranker = ProjectionRanker(table, "populations")      # or "correlation"; "separation"
+ranker.prepare()                                     #   needs RankingTable(labels=...)
 scored = sorted((ranker.compute_score(s), s) for s in ranker.iterate_states()
                 if ranker.compute_score(s) is not None)
 best = ranker.row_for_state(*scored[0])

@@ -2,6 +2,11 @@
 
 ## 2026-09-24
 
+* **ndX Find informative projections ranks Separation (bursts in clearly separated islands) by default; Rank by Separation | Correlation | Classes.**
+  - ndxplorer 05e8f7c/dece907/f29fa83/32fd366: `analysis/separation.py` (density-valley islands, elder rule, core-share x valley-depth score, RobustAxis with `tttrlib.flag_dimension_outliers`), `projection_scores.ColumnSet` (flags, clocks, folds out; aliases once), photon weighting/threshold, *Show islands on the map* (emtk), help/tour/parity notes. The 2-means structure score is gone.
+  - Measured: valley 1.3 ms/pair vs HDBSCAN 8 ms (noisier) vs GMM-BIC 35 ms (rewards skew). MFD top = E vs Var(E)/(1-E)*E_tau/Tau (green), 3 islands; cal1 ALEX top = E vs S, 4 islands.
+  - Docs: concept `multidimensional_exploration` (Separation formula), guide 46 (steps, figure). Resume: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).
+
 * **ndX Find structure runs on tttrlib: HDBSCAN `tttrlib.hdbscan`, K-means `tttrlib.kmeans`, PCA NumPy; ChiSurf's Python HDBSCAN deleted.**
   - ndxplorer 30c6335/81bb11a/38e4779: `analysis/structure.py` calls the kernels (`get_tttrlib` probe; K-means seeded by `tttrlib.kmeans_uniforms(k, 10, seed=42)`); `pca_helpers.compute_pca` is QR+SVD in NumPy (the largest loading of each axis is positive; `IncrementalPCA` path and `PcaResult.incremental` gone); `lazy_imports` keeps only umap/napari. scikit-learn left the web page's package list; hdbscan/scikit-learn left `environment.yml`.
   - A/B (old ChiSurf estimators vs tttrlib) on iris (k-means k=3 petals and all four; HDBSCAN 5/5, 5/20) and the MFD folder (k-means k=3, k=2 standardised; HDBSCAN 5/50 on tau×PR, standardised on tau×PR×Sg/Sr): labels and probabilities **bit-identical** (ARI 1.0). PCA: same variances and loadings to 1e-12, signs of some components flipped (now a fixed rule).

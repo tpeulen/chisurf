@@ -218,13 +218,69 @@ A burst table with forty parameters holds 780 two-parameter plots, and the one
 that shows the populations is rarely the first one tried. **Find informative
 projections** scores every pair (and every candidate third axis) and lists them
 best first, in the background, so the plots worth looking at are found rather
-than hunted for. The design is Orange3's *VizRank*; three scores answer three
-different questions, and all of them are computed on one random sample of the
+than hunted for. The design is Orange3's *VizRank*; a **Rank by** switch picks
+one of three questions, and every score is computed on one random sample of the
 bursts (5 000 by default), identical for every view.
 
-**Class separation.** When classes exist — the gate (inside vs outside), each
-gate as its own population, the clusters, or the value of the z parameter — a view
-is good when bursts of one class sit next to each other. For every burst the
+**Separation** (the default). In smFRET the informative view is the one where
+the molecules fall apart into species — donor-only, acceptor-only and FRET
+populations in $E$ vs $S$, a dynamic population off the static FRET line in $E$
+vs $\langle\tau_{D(A)}\rangle_F$ or in the variance plot — not the one where two
+parameters co-vary. The bursts of a view are binned on a $64\times64$ raster
+and smoothed with a Gaussian of width $0.125\,n^{-1/6}$ of the axis range
+(about 0.6 of Scott's rule, which oversmooths multimodal clouds). Every cell
+climbs to its highest neighbour, so each density peak collects a basin; merging
+basins from the highest saddle down — the elder rule of 0-dimensional
+persistent homology (Edelsbrunner, Letscher & Zomorodian,
+[10.1007/s00454-002-2885-2](https://doi.org/10.1007/s00454-002-2885-2)) — pairs
+every peak but the highest with the valley that separates it from a denser one.
+A split counts, and its two sides become separate **islands**, when the valley
+is significant against the Poisson noise of the smoothed counts,
+$(f_{peak} - f_{saddle}) / \sqrt{\mathrm{var}_{peak} + \mathrm{var}_{saddle}} \geq 3$,
+and the smaller side holds at least 3 % of the bursts. The score is
+
+$$\mathrm{sep} = \sum_{i \neq j} p_i\, p_j\, \left(1 - \frac{f_{ij}}{\min(f_i, f_j)}\right),$$
+
+with $p_i$ the share of the sampled bursts in island $i$'s **core** (above its
+highest valley to any other island: bursts on a bridge, in a tail or in the
+noise do not count), $f_i$ its peak and $f_{ij}$ the saddle between two
+islands. It is the chance that two bursts drawn at random sit in two different,
+clearly separated islands: 0 for one population however elongated, skewed or
+correlated, 0.5 for two equal islands with empty space between them, 0.18 for a
+10 % island off a 90 % blob, 0.67 for three equal islands.
+
+Each axis is prepared as the calibration prepares its gating dimensions: values
+the axis cannot draw are missing (non-positive on a log axis); an exact value
+holding at least 2 % of the bursts and ten times the typical count is a fit
+sentinel or bound (`-1` where a channel was not fitted) and is missing too;
+counted or rounded values are spread over their step, so integers are not a comb
+of "populations"; outliers are fenced per dimension (the 2.5–97.5 % quantiles
+widened by their spread); and only then is the axis mapped onto its robust
+0.5–99.5 % range. The score is therefore invariant to each axis' units. Shot noise
+widens low-photon bursts, which fill the valleys; the ranking can weight bursts
+by their photon count or keep only bursts above a photon threshold. Parameters
+that cannot show molecules apart are set aside before any pair is scored: flags
+(fewer than 20 values), the acquisition clock (a column that rises from row to
+row), and *folds* — a many-to-one function of another parameter, such as
+$(1-E)E$ of $E$, which piles density up where it folds. Parameters that are the
+same quantity (Spearman $|\rho| \geq 0.98$, or each a function of the other, as
+the proximity ratio and $E$) are ranked once. A pair in which one axis is a
+function of the other (correlation ratio $\eta^2 \geq 0.95$ on ranks) is a curve,
+not a cloud, and is not ranked.
+
+Why a density valley: on the MFD and ALEX test tables, HDBSCAN per pair agreed on
+synthetic splits but was about eight times slower and cut uniform acquisition
+times and photon counts into clusters, and a Gaussian-mixture BIC gain calls any
+skewed or curved single population (a log-normal count rate, a banana) three
+components. The valley score costs about a millisecond per pair.
+
+**Correlation.** Spearman's $\rho$ of the pair (Orange3's correlation ranking),
+over the same columns: it finds parameters that measure related things — $E$ and
+a lifetime, a rate and its count — not populations.
+
+**Classes.** Offered when classes exist — the gate (inside vs outside), each
+gate as its own population, the clusters, or a z parameter that holds labels — a
+view is good when bursts of one class sit next to each other. For every burst the
 $k = 10$ nearest bursts in the view are found and the share $p_o$ with the same
 class is averaged (Orange3's scatter-plot score). The table shows it corrected for
 chance,
@@ -232,34 +288,11 @@ chance,
 $$\kappa = \frac{p_o - p_e}{1 - p_e}, \qquad p_e = \sum_c p_c^2 ,$$
 
 because a gate holding 5 % of the bursts makes $p_o \geq 0.9$ in *every* view by
-the majority class alone. For a continuous class the score is the $R^2$ of
-predicting it by the neighbours' mean, weighted by the share of bursts that have
-a value. Distances are taken **as the plot draws the axes** — each axis mapped onto
-its range, in decades on a log axis — rather than in raw units, where a photon
-count in the hundreds would decide every neighbourhood and a lifetime in
-nanoseconds none. The parameters a gate is defined on, and any parameter that is
-a monotone function of one of them (Spearman $|\rho| \geq 0.98$, e.g. $E_\tau$ from
-$\tau$), are left out: they separate their own gate by construction.
-
-**Population structure.** With no classes, a view is good when the cloud splits
-into more than one population. The score is the 2-means *cluster index* of
-SigClust (Liu, Hayes, Nobel & Marron,
-[10.1198/016214508000000454](https://doi.org/10.1198/016214508000000454)): whiten
-the points, split them into the two groups with the least spread inside them, and
-take the within-group sum of squares over the total, $CI = W/T$, along the split
-direction. Whitening makes it indifferent to units, elongation and correlation,
-and gives a closed-form reference: a single Gaussian has $CI = 1 - 2/\pi \approx
-0.363$, two equal populations $\Delta$ widths apart $CI = 4/(\Delta^2 + 4)$. The
-table shows $1 - CI/0.363$: 0 for one population, 0.45 for $\Delta = 4$, 0.72 for
-$\Delta = 6$, negative for heavy-tailed clouds. The smaller group must hold at least
-5 % of the bursts, and parameters with fewer than 20 distinct values (fit flags)
-are not scored — otherwise a clump at a fit bound or a 0/1 switch is a perfect
-"split". Correlation cannot stand in for this: two populations side by side along
-one axis are uncorrelated.
-
-**Correlation.** Pearson's $r$ or Spearman's $\rho$ over the bursts where both
-parameters have values (Orange3's correlation ranking). Duplicated quantities — a
-count and its rate over a similar window — rank first, correctly.
+the majority class alone. Distances are taken **as the plot draws the axes** —
+each axis mapped onto its range, in decades on a log axis. The parameters a gate
+is defined on, and any parameter that is a monotone function of one of them
+(Spearman $|\rho| \geq 0.98$, e.g. $E_\tau$ from $\tau$), are left out: they
+separate their own gate by construction.
 
 In ndX the panel opens from **View ▸ Find informative projections…** (and its
 *z axis* entry), below *UMAP*. Clicking a row sets the axes (and the scale they
