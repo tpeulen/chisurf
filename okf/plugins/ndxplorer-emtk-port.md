@@ -82,16 +82,30 @@ takes never reaches the tables; `NdxApp._press_overlays` commits open cells.
 Measure: `ndxplorer/tests/test_app/test_parameter_tables.py` drives real
 double-click, keys, Enter / click-away.
 
+One mirror, 2026-09-24: the ChiSurf-hosted Qt window no longer builds its own
+copy of the constants. `chisurf/plugins/ndxplorer/parameters.py`
+(`NdxConstants`, `bind_ndx_parameters`) and the Qt toolbar's "⟲ Sync
+constants" are gone; `chisurf/plugins/ndxplorer/window.py::_bind_global_view`
+publishes `ndx.constants_group` through `chisurf_binding.publish(..., "ndxplorer",
+"ndX constants")` and withdraws it on `destroyed`. Trap: the window builds its
+parameter editor in `_deferred_init` (a zero timer), so at construction
+`constants_group` is `None`; the publishing waits on a timer the window owns.
+Load calibration writes through `calibration_bridge._push_constants` (the
+table), not by replacing `ndx.constants` with a dict. The curve-fit dialog
+releases its loose mirrors on close (`chisurf_binding.release`, ndxplorer
+7492d18). Measure: `chisurf/plugins/ndxplorer/tests/test_window_routes.py`
+(both routes publish the window's own group's mirror, label `ndX constants`,
+and the slot empties when the window is destroyed; it fails if
+`_bind_global_view` is dropped), `test/fitting/test_global_view_parameters.py`,
+`ndxplorer/tests/test_ui/test_curve_fit_dialog.py::test_closing_the_dialog_drops_the_fits_mirrors`.
+
 Next:
-1. **One ChiSurf mirror of the constants.** `chisurf/plugins/ndxplorer/parameters.py`
-   (`NdxConstants`, `bind_ndx_parameters`) still builds its own FittingParameter
-   copy of the hosted Qt window's constants under owner `ndxplorer` — the same
-   slot `ui/parameter_editor.py` publishes the ndX group's mirror in, so the
-   last one registered wins. Replace it with
-   `chisurf_binding.publish(window.parameter_control.parameter_group, ...)` and
-   port `test/fitting/test_global_view_parameters.py`.
-2. A loose curve fit's parameters (`mirrored_list`) stay in the binding's
-   `_MIRRORS` after the Qt dialog closes (small leak); detach on close.
+1. The ndX editor registers the same group as `"ndX"` in nDXplorer's own
+   registry; the Global View label is `"ndX constants"`. One name would do.
+2. `chisurf/plugins/ndxplorer/tests/test_calibration_options.py::test_the_options_map_onto_the_bridge`
+   fails at HEAD (2026-09-24): `population_method`, `species_factors`,
+   `dimensions` in the options have no parameter in
+   `optimize_calibration_from_ndx`. Not from this change; the FRET work owns it.
 
 ### Browser (the app in a Pyodide + WebGPU page)
 

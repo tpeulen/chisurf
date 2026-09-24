@@ -82,7 +82,6 @@ EXPECTED_VIOLATIONS: dict[str, int] = {
     "chisurf/plugins/fret_line/gui/tool.py": 1,
     "chisurf/plugins/modelling/fret/test/test_engine.py": 1,
     "chisurf/plugins/modelling/fret/test/test_fps_outputs.py": 7,
-    "chisurf/plugins/ndxplorer/parameters.py": 1,
     "chisurf/plugins/tttr/tttr_microtime_shifter/tests/test_gui.py": 2,
 }
 

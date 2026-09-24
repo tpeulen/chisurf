@@ -23,6 +23,11 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+#: The Global View slot of ChiSurf's ndX window (the one ndX's own parameter
+#: editor registers its constants under).
+GLOBAL_VIEW_OWNER = "ndxplorer"
+GLOBAL_VIEW_LABEL = "ndX constants"
+
 
 def build_ndxplorer_window(**kwargs: Any):
     """Build ChiSurf's ndX window, as both the menu and the ribbon open it.
@@ -43,8 +48,8 @@ def build_ndxplorer_window(**kwargs: Any):
 
     ndx = make_ndxplorer(**kwargs)
     add_mmfdb_toolbar(ndx)
-    ndx_parameters = _bind_global_view(ndx)
-    _add_accurate_fret_toolbar(ndx, ndx_parameters)
+    _bind_global_view(ndx)
+    _add_accurate_fret_toolbar(ndx)
     return ndx
 
 
@@ -135,24 +140,76 @@ def add_mmfdb_toolbar(ndx, client: Any = None):
     return toolbar
 
 
-def _bind_global_view(ndx):
-    """Publish the window's constants as fitting parameters (Global View).
+def _bind_global_view(ndx) -> None:
+    """Publish the window's constants in the Global View, once they exist.
 
-    They then show up next to every fit parameter and can be linked to one.
+    The constants are nDXplorer's own parameter group (the window's
+    ``constants_group``), and :mod:`ndxplorer.core.chisurf_binding` keeps the
+    one ChiSurf mirror of it: this puts that mirror in the owner slot
+    ``"ndxplorer"``, where it shows up next to every fit parameter and can be
+    linked to one. The slot is emptied when the window goes away, unless a
+    later window has taken it.
+
+    The window builds its parameter table in a deferred step after the
+    constructor, so the group may not exist yet; then the publishing waits for
+    the event loop to run that step (a zero timer queued after it).
     """
-    try:
-        from chisurf.plugins.ndxplorer.parameters import bind_ndx_parameters
+    if getattr(ndx, "constants_group", None) is not None:
+        _publish_constants(ndx)
+        return
+    from qtpy import QtCore
 
-        ndx_parameters = bind_ndx_parameters(ndx)
-    except Exception:
-        logger.warning("Could not publish the ndX constants as fitting parameters", exc_info=True)
+    # A timer the window owns: a window deleted before the loop turns takes it
+    # along, and nothing is published for it.
+    later = QtCore.QTimer(ndx)
+    later.setSingleShot(True)
+    later.timeout.connect(lambda: _publish_constants(ndx))
+    later.start(0)
+
+
+def _publish_constants(ndx):
+    """Put ``ndx.constants_group``'s mirror in the Global View; return the group."""
+    group = getattr(ndx, "constants_group", None)
+    if group is None:
+        logger.warning("ndX constants not in the Global View: the window has no parameter group")
         return None
-    logger.info("ndX constants in the Global View: %d", len(ndx_parameters.constant_names))
-    return ndx_parameters
+    from ndxplorer.core import chisurf_binding
+
+    if not chisurf_binding.publish(group, GLOBAL_VIEW_OWNER, GLOBAL_VIEW_LABEL):
+        logger.warning(
+            "Could not publish the ndX constants in the Global View: %s",
+            chisurf_binding.why_unavailable() or "ChiSurf registry refused the group",
+        )
+        return None
+
+    def _withdraw(*_args) -> None:
+        from ndxplorer.core import parameters
+
+        held = {owner: g for owner, _label, g in parameters.registered_groups()}
+        if held.get(GLOBAL_VIEW_OWNER) is group:
+            parameters.unregister_group(GLOBAL_VIEW_OWNER)  # ndX's registry and ChiSurf's
+        elif chisurf_binding.chisurf_group(group) is published_group():
+            chisurf_binding.withdraw(GLOBAL_VIEW_OWNER)
+
+    destroyed = getattr(ndx, "destroyed", None)
+    if destroyed is not None and hasattr(destroyed, "connect"):
+        destroyed.connect(_withdraw)
+    logger.info("ndX constants in the Global View: %d", len(group.parameters_all))
+    return group
 
 
-def _add_accurate_fret_toolbar(ndx, ndx_parameters) -> None:
-    """Add the Accurate FRET toolbar: calibrate, save, load, sync constants."""
+def published_group():
+    """The ChiSurf group in the ndX Global View slot (``None``: empty)."""
+    from chisurf.core.registry.parameter_groups import iter_registered_parameter_groups
+
+    for owner_id, _label, group in iter_registered_parameter_groups():
+        if owner_id == GLOBAL_VIEW_OWNER:
+            return group
+    return None
+
+
+def _add_accurate_fret_toolbar(ndx) -> None:
+    """Add the Accurate FRET toolbar: calibrate, save, load."""
     from chisurf.gui import dialogs
 
     log = logger.info
@@ -195,9 +252,6 @@ def _add_accurate_fret_toolbar(ndx, ndx_parameters) -> None:
                     ndx, "Accurate FRET", str(result.get("error", "calibration failed"))
                 )
                 return
-            if ndx_parameters is not None:
-                # The Global View must show what the window now holds.
-                ndx_parameters.pull(ndx)
             # The report is ndX's, so the emtk app reads the same text.
             from ndxplorer.analysis.fret_calibration import report_text
 
@@ -371,20 +425,14 @@ def _add_accurate_fret_toolbar(ndx, ndx_parameters) -> None:
                 != QtWidgets.QMessageBox.Yes
             ):
                 return
-            ndx.constants = {**before, **constants}
-            data_source = getattr(ndx, "data_source", None)
+            # Through the parameter table: the constants are its group, and the
+            # Global View shows that group's mirror.
+            from chisurf.plugins.ndxplorer.calibration_bridge import _push_constants
+
             try:
-                if data_source is not None and hasattr(data_source, "compute_columns"):
-                    data_source.compute_columns(
-                        constants=ndx.constants,
-                        equations=getattr(ndx, "equations", None),
-                    )
-                if hasattr(ndx, "update_plots"):
-                    ndx.update_plots()
+                _push_constants(ndx, constants)
             except Exception:
                 log("Loaded the calibration, but could not refresh the plots")
-            if ndx_parameters is not None:
-                ndx_parameters.pull(ndx)
             if loaded.get("report"):
                 from chisurf.plugins.ndxplorer.calibration_report import (
                     show_calibration_report,
@@ -414,19 +462,5 @@ def _add_accurate_fret_toolbar(ndx, ndx_parameters) -> None:
             "Shows what would change before changing anything."
         )
         load_action.triggered.connect(_load_calibration)
-
-        if ndx_parameters is not None:
-
-            def _sync_constants() -> None:
-                """Apply constants edited in the Global View, then read back."""
-                ndx_parameters.push(ndx)
-                ndx_parameters.pull(ndx)
-
-            sync_action = calibration_toolbar.addAction("⟲ Sync constants")
-            sync_action.setToolTip(
-                "Apply the constants as they stand in the Global View to this window "
-                "(and read back what the window holds)."
-            )
-            sync_action.triggered.connect(_sync_constants)
     except Exception:
         logger.warning("Could not add the accurate-FRET toolbar to ndX", exc_info=True)

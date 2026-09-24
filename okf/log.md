@@ -40320,3 +40320,18 @@ side of the line.
   guard test), blinking ~27. `docs/concepts/burst_2cde.md`, the plugin help
   and guide 01 now state eq. 12, with a note that columns from older builds
   are on the ~100 scale. The installed arm64 tttrlib is not rebuilt yet.
+
+- 2026-09-24 — **ndX: one ChiSurf mirror of the constants; curve-fit mirrors
+  released; emtk examples headless.** `chisurf/plugins/ndxplorer/parameters.py`
+  (`NdxConstants`, `bind_ndx_parameters`, a second FittingParameter copy in
+  the owner slot `ndxplorer`) removed with the Qt "Sync constants" action;
+  `window.py` publishes the window's own `constants_group` through
+  `ndxplorer.core.chisurf_binding.publish` once the deferred editor exists and
+  withdraws it on destroy. Tests ported (`test_global_view_parameters.py`,
+  `test_window_routes.py`, `test_vector_constants_published.py`). ndxplorer
+  7492d18: `chisurf_binding.release` + the Qt curve-fit dialog drops its loose
+  mirrors on close; dock-share timer owned by the dock area. emtk 62867ef:
+  `test_every_example_runs[docking.py]` hung because `examples/docking.py` opens
+  `emtk.native`, which with glfw and a display ran a real window's loop forever;
+  the runner sets `EMTK_CANVAS=offscreen` (one frame, exit) and a timeout.
+  Resume point: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).

@@ -5,7 +5,8 @@ Two regressions, both of the "degraded without a word" kind:
 * The menu opens ndX through the manifest's ``entrypoints.gui``; the ribbon
   executes the plugin's ``__init__.py``. They used to build different windows:
   only the ribbon added the Accurate FRET and MMFDB toolbars and bound the
-  constants into the Global View.
+  constants into the Global View. Both now publish the window's own constants
+  group -- its one ChiSurf mirror -- in the slot ``ndxplorer``.
 * The MMFDB toolbar never appeared: the window probed ``mmfdb.status`` with a
   private ``MMFDBClient(inprocess=True)`` that carried no session token, and a
   bare ``except: pass`` swallowed the "Authentication required".
@@ -23,7 +24,7 @@ import pytest
 pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from qtpy import QtWidgets  # noqa: E402
+from qtpy import QtCore, QtWidgets  # noqa: E402
 
 PLUGIN_DIR = pathlib.Path(__file__).resolve().parents[1]
 MMFDB_TOOLBAR = "ndxplorerMmfdbToolbar"
@@ -60,11 +61,11 @@ def _toolbars(ndx) -> set[str]:
 
 
 def _close(ndx) -> None:
-    from chisurf.plugins.ndxplorer.parameters import unbind_ndx_parameters
-
-    unbind_ndx_parameters()
+    """Close and destroy the window; destroying it empties the Global View slot."""
+    QtWidgets.QApplication.processEvents()  # the window's deferred set-up, as when shown
     ndx.close()
     ndx.deleteLater()
+    QtWidgets.QApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
     QtWidgets.QApplication.processEvents()
 
 
@@ -93,7 +94,14 @@ def _open_from_ribbon():
 
 def test_menu_and_ribbon_build_the_same_window(qapp, mmfdb_answers):
     """Same toolbars, and both bind the window's constants into the Global View."""
-    from chisurf.plugins.ndxplorer.parameters import bound_ndx_parameters
+    from ndxplorer.core.chisurf_binding import chisurf_group
+
+    from chisurf.core.registry.parameter_groups import iter_registered_parameter_groups
+    from chisurf.plugins.ndxplorer.window import (
+        GLOBAL_VIEW_LABEL,
+        GLOBAL_VIEW_OWNER,
+        published_group,
+    )
 
     seen = {}
     for route, opener in (("menu", _open_from_menu), ("ribbon", _open_from_ribbon)):
@@ -101,11 +109,19 @@ def test_menu_and_ribbon_build_the_same_window(qapp, mmfdb_answers):
         try:
             qapp.processEvents()
             seen[route] = _toolbars(ndx)
-            group = bound_ndx_parameters()
-            assert group is not None, f"{route}: no Global View binding"
-            assert group._window is ndx, f"{route}: the Global View is bound to another window"
+            published = published_group()
+            assert published is not None, f"{route}: no Global View binding"
+            # The window's own constants, through their one mirror -- not a copy.
+            assert published is chisurf_group(ndx.constants_group), (
+                f"{route}: the Global View holds another group than the window's constants"
+            )
+            labels = {o: label for o, label, _g in iter_registered_parameter_groups()}
+            assert labels[GLOBAL_VIEW_OWNER] == GLOBAL_VIEW_LABEL, (
+                f"{route}: the window did not publish its constants (only ndX's editor did)"
+            )
         finally:
             _close(ndx)
+        assert published_group() is None, f"{route}: the closed window is still published"
 
     assert seen["menu"] == seen["ribbon"]
     assert {MMFDB_TOOLBAR, FRET_TOOLBAR} <= seen["menu"], seen["menu"]

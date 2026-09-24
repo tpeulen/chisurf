@@ -22,11 +22,16 @@ from chisurf.plugins.core.lightpath_simulator.core.parameters import (
     register_lightpath_parameters,
     unregister_lightpath_parameters,
 )
-from chisurf.plugins.ndxplorer.parameters import (
-    NdxConstants,
-    bind_ndx_parameters,
-    unbind_ndx_parameters,
+
+pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
+
+from ndxplorer.core import chisurf_binding  # noqa: E402
+from ndxplorer.core.constants_group import (  # noqa: E402
+    ConstantsMapping,
+    build_constants_group,
+    group_to_value_dict,
 )
+from ndxplorer.core.parameters import register_group, unregister_group  # noqa: E402
 
 NDX_CONSTANTS = {
     "gG/gR": 0.6,
@@ -40,7 +45,6 @@ NDX_CONSTANTS = {
     "Bg": 1.2,
     "Br": 0.6,
     "By": 0.6,
-    "label": "not a number",
 }
 
 MATRICES = {
@@ -57,136 +61,97 @@ MATRICES = {
 }
 
 
-class _DataSource:
-    """Minimal stand-in for ndX's data source."""
-
-    last: dict | None = None
-
-    def compute_columns(self, constants=None, equations=None):
-        """Record the constants a recompute was asked to use."""
-        self.last = dict(constants or {})
-
-
-class _Window:
-    """Minimal stand-in for an ndX window."""
-
-    def __init__(self):
-        self.constants = dict(NDX_CONSTANTS)
-        self.equations = []
-        self.data_source = _DataSource()
-        self.updated = 0
-
-    def update_plots(self):
-        """Count plot refreshes."""
-        self.updated += 1
-
-
 @pytest.fixture()
-def window():
-    """Return a stub ndX window with its constants set."""
-    return _Window()
+def group():
+    """The constants of an ndX window: nDXplorer's own parameter group."""
+    return build_constants_group(NDX_CONSTANTS)
 
 
 @pytest.fixture(autouse=True)
 def _clean_registry():
-    """Leave the process-global registry as clean as it was found."""
+    """Leave the process-global registries as clean as they were found."""
     yield
+    unregister_group("ndxplorer")
+    chisurf_binding.withdraw("ndxplorer")
     for owner_id, *_ in list(iter_registered_parameter_groups()):
         unregister_parameter_group(owner_id)
 
 
+def _registered(owner: str):
+    return {o: g for o, _label, g in iter_registered_parameter_groups()}.get(owner)
+
+
 # ---------------------------------------------------------------------------
-# ndX constants
+# ndX constants: nDXplorer's group, mirrored once
 # ---------------------------------------------------------------------------
 
 
-def test_constants_become_fitting_parameters(window):
-    """Every numeric constant of the window is exposed as a fitting parameter."""
-    group = NdxConstants(window.constants)
-    names = {p.name for p in group.parameters_all}
-    assert {"gG/gR", "alpha", "beta", "r", "tauD0", "forster_radius"} <= names
-    assert "label" not in names  # non-numeric entries are skipped
-    assert len(group.constant_names) == len(NDX_CONSTANTS) - 1
+def test_constants_become_fitting_parameters(group):
+    """Publishing the group puts one FittingParameter per constant in the Global View."""
+    from chisurf.core.fitting.parameter import FittingParameter
 
-    alpha = group.parameter("alpha")
-    assert alpha.value == pytest.approx(0.015)
-    assert alpha.fixed is False  # visible in the Global View by default
-    assert (alpha.lb, alpha.ub) == (0.0, 1.0)  # a leakage cannot leave 0…1
-    # a name that is not an identifier still works
-    assert group.parameter("gG/gR").value == pytest.approx(0.6)
+    assert chisurf_binding.publish(group, "ndxplorer", "ndX constants")
+    registered = _registered("ndxplorer")
+    assert registered is chisurf_binding.chisurf_group(group)
+    by_name = {p.name: p for p in registered.parameters_all}
+    assert set(by_name) == set(NDX_CONSTANTS)
+    assert all(isinstance(p, FittingParameter) for p in by_name.values())
+    assert by_name["gG/gR"].value == pytest.approx(0.6)  # not an identifier: still works
+    assert by_name["alpha"].value == pytest.approx(0.015)
 
 
-def test_parameters_are_globally_resolvable(window):
-    """Each parameter carries a process-wide identity, which is what links use."""
+def test_parameters_are_globally_resolvable(group):
+    """Each mirror carries a process-wide identity, which is what links use."""
     from chisurf.core.base import Base
 
-    group = NdxConstants(window.constants)
-    alpha = group.parameter("alpha")
+    chisurf_binding.publish(group, "ndxplorer", "ndX constants")
+    alpha = chisurf_binding.mirrored(group.parameters_all_dict["alpha"])
     assert Base.find_by_uuid(alpha.unique_identifier) is alpha
 
 
-def test_binding_publishes_the_group_to_the_global_view(window):
-    """Binding a window makes its constants enumerable by the Global View."""
-    group = bind_ndx_parameters(window)
-    owners = {owner_id: label for owner_id, label, _ in iter_registered_parameter_groups()}
-    assert "ndxplorer" in owners
-    registered = [g for _, _, g in iter_registered_parameter_groups()]
-    assert group in registered
+def test_the_editor_and_the_window_share_one_mirror(group):
+    """ndX's editor registers the group and ChiSurf's window publishes it again.
 
-    unbind_ndx_parameters()
-    assert "ndxplorer" not in dict(
-        (owner_id, label) for owner_id, label, _ in iter_registered_parameter_groups()
-    )
-
-
-def test_editing_a_parameter_reaches_the_window(window):
-    """An edited value is pushed into the window, which recomputes."""
-    group = bind_ndx_parameters(window)
-    group.parameter("alpha").value = 0.09
-    applied = group.push(window)
-
-    assert applied["alpha"] == pytest.approx(0.09)
-    assert window.constants["alpha"] == pytest.approx(0.09)
-    assert window.data_source.last["alpha"] == pytest.approx(0.09)
-    assert window.updated == 1
-
-
-def test_refreshing_the_group_syncs_a_global_view_edit(window):
-    """``update`` carries an edit made elsewhere into the window.
-
-    The Global View writes straight into the parameter object; without this hook
-    the window would keep computing with the old number.
+    Both land in the slot ``ndxplorer``; the second must not replace the first
+    with a copy, or the Global View would edit numbers the window never reads.
     """
-    group = bind_ndx_parameters(window)
-    group.parameter("forster_radius").value = 60.0
-    group.update()
-    assert window.constants["forster_radius"] == pytest.approx(60.0)
-    # and it is a no-op once they agree
-    window.updated = 0
-    group.update()
-    assert window.updated == 0
+    register_group(group, "ndxplorer", "ndX")  # ui/parameter_editor.py
+    first = _registered("ndxplorer")
+    assert chisurf_binding.publish(group, "ndxplorer", "ndX constants")  # window.py
+    assert _registered("ndxplorer") is first is chisurf_binding.chisurf_group(group)
 
 
-def test_pull_reads_the_window_back(window):
-    """Constants changed by the window itself come back into the parameters."""
-    group = bind_ndx_parameters(window)
-    window.constants["alpha"] = 0.11
-    window.constants["new_constant"] = 3.0
-    created = group.pull(window)
-
-    assert group.parameter("alpha").value == pytest.approx(0.11)
-    assert created == ["new_constant"]  # constants may appear later
-    assert group.parameter("new_constant").value == pytest.approx(3.0)
+def test_withdrawing_empties_the_slot(group):
+    chisurf_binding.publish(group, "ndxplorer", "ndX constants")
+    chisurf_binding.withdraw("ndxplorer")
+    assert _registered("ndxplorer") is None
 
 
-def test_calibration_view_of_the_same_numbers(window):
+def test_a_global_view_edit_is_the_windows_value(group):
+    """An edit of the mirror is what the window's constants read next."""
+    chisurf_binding.publish(group, "ndxplorer", "ndX constants")
+    constants = ConstantsMapping(group)  # what the window computes with
+    chisurf_binding.mirrored(group.parameters_all_dict["forster_radius"]).value = 60.0
+    assert constants["forster_radius"] == pytest.approx(60.0)
+
+
+def test_a_window_edit_reaches_the_global_view(group):
+    chisurf_binding.publish(group, "ndxplorer", "ndX constants")
+    ConstantsMapping(group).update({"alpha": 0.09, "new_constant": 3.0})
+    by_name = {p.name: p for p in _registered("ndxplorer").parameters_all}
+    assert by_name["alpha"].value == pytest.approx(0.09)
+    assert by_name["new_constant"].value == pytest.approx(3.0)  # constants may appear later
+
+
+def test_calibration_view_of_the_same_numbers(group):
     """The Hellenkamp view is derived, not duplicated.
 
     ndX's ``beta`` is the direct excitation and its ``r`` is ``1/beta``, so
     the two namings are converted rather than mirrored.
     """
-    group = NdxConstants(window.constants)
-    calibration = group.as_calibration()
+    from chisurf.plugins.ndxplorer.calibration_bridge import calibration_from_ndx_constants
+
+    calibration = calibration_from_ndx_constants(dict(group_to_value_dict(group)))
     assert calibration.delta == pytest.approx(0.005)  # ndx "beta"
     assert calibration.beta == pytest.approx(1.0)  # 1 / ndx "r"
     assert calibration.gamma == pytest.approx((0.32 / 0.8) / 0.6)
@@ -295,7 +260,7 @@ def test_optics_round_trip_through_the_payload():
 # ---------------------------------------------------------------------------
 
 
-def test_a_fit_parameter_can_be_linked_to_an_ndx_constant(window):
+def test_a_fit_parameter_can_be_linked_to_an_ndx_constant(group):
     """A fit reads its Förster radius from the window, so there is one number.
 
     This is what "in the Global View" is *for*: the constant keeps one owner, and
@@ -303,16 +268,16 @@ def test_a_fit_parameter_can_be_linked_to_an_ndx_constant(window):
     """
     from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
 
-    group = bind_ndx_parameters(window)
+    chisurf_binding.publish(group, "ndxplorer", "ndX constants")
     calibration = CalibrationParameters()
-    calibration._r0.link = group.parameter("forster_radius")
+    calibration._r0.link = chisurf_binding.mirrored(group.parameters_all_dict["forster_radius"])
 
     assert calibration.r0 == pytest.approx(52.0)
-    group.parameter("forster_radius").value = 58.0
+    group.parameters_all_dict["forster_radius"].value = 58.0  # the window's edit
     assert calibration.r0 == pytest.approx(58.0)  # the follower tracks the owner
 
 
-def test_a_calibration_can_be_linked_to_the_optics(window):
+def test_a_calibration_can_be_linked_to_the_optics():
     """A fitted factor can follow an optical quantity — the prior made explicit."""
     from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
 

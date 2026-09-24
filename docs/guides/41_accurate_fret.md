@@ -436,10 +436,12 @@ That makes the two things you would otherwise keep in your head explicit:
 
 ```python
 # a fit's Förster radius follows the one ndX is using
-from chisurf.plugins.ndxplorer.parameters import bound_ndx_parameters
+from ndxplorer.core.chisurf_binding import mirrored
 
-constants = bound_ndx_parameters()
-fit.model.parameters_all_dict["R0"].link = constants.parameter("forster_radius")
+constants = ndx.constants_group  # the open window's constants
+fit.model.parameters_all_dict["R0"].link = mirrored(
+    constants.parameters_all_dict["forster_radius"]
+)
 ```
 
 and the optical model can hand itself over as the calibration prior directly:
@@ -453,9 +455,10 @@ optics = registered_lightpath_parameters()
 result = auto_calibrate(i_dd, i_da, i_aa, lightpath=optics.as_prior_arguments())
 ```
 
-Editing an ndX constant in the Global View reaches the window: the group
-pushes the changed value and ndX recomputes. The `⟲ Sync constants`
-toolbar action in ndX does the same on demand, in both directions.
+Editing an ndX constant in the Global View reaches the window: what the
+Global View shows is the one ChiSurf mirror of the window's own constants, so
+the window reads the edited value on its next recompute. There is no copy to
+synchronise, and no "Sync constants" action.
 
 Note that the optics `gamma`/`alpha`/`delta` are **derived** — recomputed from
 the probabilities whenever the optical model changes — so read them, do not fit
