@@ -40342,3 +40342,17 @@ side of the line.
   `emtk.native`, which with glfw and a display ran a real window's loop forever;
   the runner sets `EMTK_CANVAS=offscreen` (one frame, exit) and a timeout.
   Resume point: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).
+- 2026-09-24 — Vector parameters in every parameter table. ndX: any `Parameter`
+  can be a vector (`set_vector`; elements `base[label]` belong to their
+  parameter, `parameters_flat` lists them; constants API kept on top); the
+  shared emtk `ParameterTable` draws and edits vectors as trees with the vector
+  menu for every table (Parameters-only subclass and `constant_rows.py`
+  deleted); the Qt tables drop the summary line. ChiSurf:
+  `ParameterGroupTableWidget` groups `name[pop]` parameters and array-valued
+  parameters under an expandable row with editable elements (an array used to
+  show, and be overwritten by, its first element); the emtk Global View nests
+  elements under their base (`tree_key`). Qt calibration paths (restore on
+  open, Load, a bridge run) apply vector constants; a factor written as one
+  value replaces a stale vector of it, and the report says so. Resume point:
+  [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md); table:
+  [GUI tables](subsystems/gui-tables.md).

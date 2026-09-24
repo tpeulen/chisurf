@@ -22,6 +22,76 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Vector parameters in every table (2026-09-24)
+
+State: any ndX `Parameter` can hold one value per population
+(`core/parameters.py`: `Parameter.set_vector / to_vector / to_scalar /
+elements / populations / vector_state`, `ParameterGroup.set_vector /
+vector_names / vectors_state / vectors / parameters_flat`). The elements are
+ordinary Parameters named `base[label]` that belong to their parameter, not to
+the group: `parameters_all` stays the top level (a Gaussian's six-per-component
+layout does not shift, a curve reads its global value), while
+`parameters_flat`, `parameters_all_dict`, `get(name)`, `get_state` (elements by
+name plus `"vectors"`), links and the registry include them.
+`core/constants_group.py` keeps its API (`set_vector`, `vector_elements`,
+`vectors_state`, `ConstantsMapping` over the flat names) as thin spellings of
+the group's, plus `apply_vector_entries` (a stored/calibrated
+`{name: {values, populations, uncertainties by population or position, ...}}`)
+and `replace_shared_factors`. Published to ChiSurf as `name[pop]` scalars
+(`chisurf_binding` mirrors `parameters_flat`), so per-element fixed/bounds/link
+work there; `chisurf_group()` brings a mirror in step before answering.
+
+Tables: the emtk `ParameterTable` (`app/parameter_table.py`) draws every vector
+of every table as a tree (parent `gamma [2]` with the values summed up,
+*(global)*, one row per population) with the vector menu (*Copy values*,
+*Paste values*, *Populations…*, *Make scalar*; *Make vector…* on a top-level
+scalar; `VectorDialog` is opened through `OverlaysFeature.open_populations`).
+The Parameters-only `ConstantsTable` and `features/constant_rows.py` are gone.
+The Qt tables are ChiSurf's `ParameterGroupTableWidget` over the flat mirrors,
+which groups `name[pop]` under an expandable row (see
+[GUI tables](../subsystems/gui-tables.md)); the constants editor lost its
+read-only summary line and gained `set_vector / apply_vectors /
+replace_shared_factors / to_scalar`; the Qt curve and Gaussian panels follow a
+vector made on their group (`group.listen`). The curve table is 170 px (a
+selected row's note line otherwise hides a vector's last element).
+
+Calibration: the Qt window's restore on open and *Load calibration*
+(`calibration_bridge._push_constants(..., vectors=)`) and a bridge run apply
+the vector constants as the emtk app does. A run that wrote a factor as one
+value turns a stale vector of that factor (cal1's stored `gamma`
+0.4536/0.8090) back into a scalar at the new value, and the report says
+"Replaced population-wise γ with shared γ" (`replace_shared_factors`, called by
+`AccurateFretFeature.finish` and the bridge).
+
+Measure: `ndxplorer/tests/test_vector_parameters_model.py` (Gaussian/curve
+vectors, renumbering, state round trip, links), `test_app/test_vector_tables.py`
+(Gaussian via the menu, curve, curve fit's data table, Parameters: click the
+triangle, double-click, type, Enter; `NDX_VECTOR_SHOTS=<dir>` saves frames),
+`test_ui/test_parameter_editor_vectors.py` (Qt constants editor and curve
+widget, QTest clicks and typing), `test_app/test_shared_factor_replaces_vector.py`,
+`chisurf/plugins/ndxplorer/tests/test_vector_calibration_qt.py`,
+`test/gui/test_parameter_table_vectors.py`. Trap: in a small emtk table,
+selecting a row shows its note under the table and scrolls; a test must reach
+the element with the Down key, not by a pixel computed before the click.
+Suites 2026-09-24: ndX 1378 passed (ndxplorer/tests + test); ChiSurf
+parameter-table, Global View and plugins/ndxplorer tests green. Not from this
+change: `test/gui/test_parameter_linking.py` reads `./test/data` relative to
+the cwd (fails from /tmp; segfaults in the zmq server thread from the repo
+root), and `test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`
+fails only after other GUI tests (passes alone: order-dependent).
+
+Next:
+1. What a vector *means* outside the constants: the curve is drawn and the
+   Gaussian EM runs at the global value; one curve / one Gaussian per
+   population is not implemented. Gaussian Save/Load (`records()`) does not
+   carry vectors; the curve fit's own parameters are copies
+   (`seed_from_group`), so a curve vector is not fitted, and a vector constant
+   freed in the curve fit moves only its global value.
+2. The Qt tables show and edit vectors but cannot make one (no *Make vector /
+   Populations / Make scalar* there): legacy, use the emtk app.
+3. `AccurateFretFeature.write_vector` repeats `apply_vector_entries`' handling
+   of uncertainties by population; it can call `ConstantsMapping.apply_vectors`.
+
 ### FRET calibration: population-wise factors, gating dimensions; z marginal (2026-09-24)
 
 State: the options dialog (`analysis/fret_calibration_options.view.json`) has a
@@ -60,10 +130,10 @@ Next:
    and values to be confirmed; the dialog enables itself when
    `tttrlib.AutoCalibrateOptions` has the attribute and `_AFRET_OPTION_KEYS`
    lists it).
-2. A run that selects shared gamma leaves an older `gamma` vector in the window
-   (stored or from an earlier run); the report says "none written" but the
-   Parameters tab still has it. Decide whether a written scalar gamma should
-   make an existing gamma vector scalar (today: the user does Make scalar).
+2. ~~A run that selects shared gamma leaves an older `gamma` vector~~ — done
+   2026-09-24: a factor written as one value replaces its vector
+   (`constants_group.replace_shared_factors`, both GUIs; see "Vector parameters
+   in every table").
 3. The Qt window's AutoForm shows the Populations panel but does not disable
    unavailable dimensions; the backend drops them with a note.
 
@@ -93,11 +163,10 @@ legacy `2N+1` zero-row interleave — any reader that skips
 `deinterleave_burst_rows` sees 88541 rows instead of 44270, silently.
 
 Next:
-1. The Qt window's Load (`chisurf/plugins/ndxplorer/window.py`,
-   `_load_calibration`) and the bridge's restore on open apply only the flat
-   constants (`gamma[FRET 1]` as a plain name), not the stored vector constants
-   (`restorable()["vectors"]`), which the emtk app applies through
-   `write_vector`. Uncertainties are saved by population, not by position.
+1. ~~The Qt window's Load and the bridge's restore on open apply only the flat
+   constants~~ — done 2026-09-24: both apply `restorable()["vectors"]` /
+   the loaded vectors through the parameter table
+   (`_push_constants(..., vectors=)`, `ParameterEditor.apply_vectors`).
 2. The "accurate fret calibration" factor table (ChiSurf's Accurate FRET step)
    is still read only by ChiSurf's bridge (`calibration_from_container`, it
    needs `calibration_columns`); the emtk app does not restore it on open.
