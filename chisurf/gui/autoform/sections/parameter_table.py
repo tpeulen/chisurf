@@ -19,6 +19,14 @@ nDXplorer publishes its vector constants -- are grouped under a parent row
 ``base [n]`` (with ``base`` itself, when present, as its *(global)* child), and
 a parameter whose value is an array shows one child row per element. Clicking
 the name of a parent row opens or closes it; elements are edited like any row.
+
+A parameter that can *become* a vector carries ``population_vector`` (nDXplorer's
+mirrors do: ``ndxplorer.core.chisurf_binding.PopulationVectorActions``): its
+row's menu then offers *Make vector…*, and a vector's rows *Populations…* and
+*Make scalar*. The protocol: ``name``, ``is_vector``, ``can_be_vector``,
+``populations``, ``column``, ``column_options()``,
+``set_populations(text, column) -> error or None`` and ``to_scalar()``. The
+owner of the parameters rebuilds the table when the vector's elements come or go.
 """
 
 from __future__ import annotations
@@ -1456,10 +1464,17 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
 
     # -- link / copy / paste ------------------------------------------------
     def _context_menu(self, pos) -> None:
-        menu = QtWidgets.QMenu(self._table)
         index = self._table.indexAt(pos)
-        if index.isValid() and self._model.param_at(index.row()) is not None:
-            self._add_link_actions(menu, index.row())
+        menu = self.context_menu(index.row() if index.isValid() else None)
+        menu.exec_(self._table.viewport().mapToGlobal(pos))
+
+    def context_menu(self, row: typing.Optional[int]) -> QtWidgets.QMenu:
+        """The menu of row *row* (``None``: no row): link, vector, copy, paste."""
+        menu = QtWidgets.QMenu(self._table)
+        if row is not None and self._model.param_at(row) is not None:
+            self._add_link_actions(menu, row)
+        if row is not None:
+            self._add_vector_actions(menu, row)
         act_copy = menu.addAction(f"{Glyphs.COPY} Copy")
         act_paste = menu.addAction(f"{Glyphs.IMPORT} Paste")
         act_copy.setShortcut("Ctrl+C")
@@ -1467,7 +1482,47 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         act_copy.triggered.connect(self._copy_selection)
         act_paste.triggered.connect(self._paste_selection)
         act_paste.setEnabled(bool(QtWidgets.QApplication.clipboard().text().strip()))
-        menu.exec_(self._table.viewport().mapToGlobal(pos))
+        return menu
+
+    # -- vectors: Make vector… / Populations… / Make scalar -------------------
+    def _population_vector(self, row: int):
+        """Row *row*'s ``population_vector`` actions (see the module), or ``None``."""
+        entry = self._model.row(row)
+        param = entry.param
+        if param is None and entry.kind == "vector":
+            param = next((c.param for c in entry.children), None)
+        return getattr(param, "population_vector", None) if param is not None else None
+
+    def _add_vector_actions(self, menu: QtWidgets.QMenu, row: int) -> None:
+        actions = self._population_vector(row)
+        if actions is None:
+            return
+        if actions.is_vector:
+            menu.addAction("Populations…").triggered.connect(
+                lambda: self.ask_populations(actions))
+            menu.addAction("Make scalar").triggered.connect(lambda: actions.to_scalar())
+        elif actions.can_be_vector and self._model.row(row).depth == 0:
+            menu.addAction("Make vector…").triggered.connect(
+                lambda: self.ask_populations(actions))
+        else:
+            return
+        menu.addSeparator()
+
+    def _resize_rows(self) -> None:
+        self._table.resizeRowsToContents()
+        self._size_to_content()
+
+    def ask_populations(self, actions) -> "PopulationsDialog":
+        """Open the populations dialog for *actions* (non-blocking); return it."""
+        # Opened before the vector is made: the owner rebuilds the table then.
+        dialog = PopulationsDialog(actions, self,
+                                   on_apply=lambda: self._model.expanded.add(actions.name))
+        # Sized again once the dialog is gone: rows added while it is up are not
+        # laid out yet, and the table would keep its old height.
+        dialog.finished.connect(lambda _r: QtCore.QTimer.singleShot(0, self._resize_rows))
+        self._populations_dialog = dialog
+        dialog.open()
+        return dialog
 
     def _add_link_actions(self, menu: QtWidgets.QMenu, row: int) -> None:
         """Prepend the link/unlink entries for ``row``'s parameter to ``menu``."""
@@ -1661,6 +1716,49 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
 # a single row: a "#" index column, then the compact Value/Fixed/Lo/Hi/Bounds/
 # Error columns repeated once per parameter slot so the amplitude block sits
 # beside the lifetime block (author-approved layout).
+
+
+class PopulationsDialog(QtWidgets.QDialog):
+    """*Make vector…* / *Populations…*: one value per population, picked by a column."""
+
+    def __init__(self, actions, parent=None, on_apply=None) -> None:
+        super().__init__(parent)
+        self.actions = actions
+        self._on_apply = on_apply
+        self.setWindowTitle(f"Populations of {actions.name}" if actions.is_vector
+                            else f"Make {actions.name} a vector")
+        layout = QtWidgets.QFormLayout(self)
+        hint = QtWidgets.QLabel(f"One value of {actions.name} per population; a burst takes "
+                                "its population's value, and a burst in no population the "
+                                "global one.")
+        hint.setWordWrap(True)
+        layout.addRow(hint)
+        self.populations = QtWidgets.QLineEdit(
+            ", ".join(actions.populations) if actions.is_vector else "2")
+        self.populations.setToolTip("How many (3: populations 0, 1, 2), or their names (HF, LF).")
+        layout.addRow("Populations:", self.populations)
+        self.column = QtWidgets.QComboBox()
+        self.column.setEditable(True)
+        self.column.addItems(list(actions.column_options()))
+        self.column.setCurrentText(actions.column)
+        self.column.setToolTip("The burst column whose value says which population a burst "
+                               "is in.")
+        layout.addRow("Picked by:", self.column)
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def accept(self) -> None:
+        if self._on_apply is not None:
+            self._on_apply()
+        problem = self.actions.set_populations(self.populations.text(),
+                                               self.column.currentText().strip())
+        if problem:
+            QtWidgets.QMessageBox.warning(self, "Populations", problem)
+            return
+        super().accept()
 
 
 def _group_header_label(label_text: str) -> str:
@@ -2333,7 +2431,47 @@ class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         act_copy.triggered.connect(self._copy_selection)
         act_paste.triggered.connect(self._paste_selection)
         act_paste.setEnabled(bool(QtWidgets.QApplication.clipboard().text().strip()))
-        menu.exec_(self._table.viewport().mapToGlobal(pos))
+        return menu
+
+    # -- vectors: Make vector… / Populations… / Make scalar -------------------
+    def _population_vector(self, row: int):
+        """Row *row*'s ``population_vector`` actions (see the module), or ``None``."""
+        entry = self._model.row(row)
+        param = entry.param
+        if param is None and entry.kind == "vector":
+            param = next((c.param for c in entry.children), None)
+        return getattr(param, "population_vector", None) if param is not None else None
+
+    def _add_vector_actions(self, menu: QtWidgets.QMenu, row: int) -> None:
+        actions = self._population_vector(row)
+        if actions is None:
+            return
+        if actions.is_vector:
+            menu.addAction("Populations…").triggered.connect(
+                lambda: self.ask_populations(actions))
+            menu.addAction("Make scalar").triggered.connect(lambda: actions.to_scalar())
+        elif actions.can_be_vector and self._model.row(row).depth == 0:
+            menu.addAction("Make vector…").triggered.connect(
+                lambda: self.ask_populations(actions))
+        else:
+            return
+        menu.addSeparator()
+
+    def _resize_rows(self) -> None:
+        self._table.resizeRowsToContents()
+        self._size_to_content()
+
+    def ask_populations(self, actions) -> "PopulationsDialog":
+        """Open the populations dialog for *actions* (non-blocking); return it."""
+        # Opened before the vector is made: the owner rebuilds the table then.
+        dialog = PopulationsDialog(actions, self,
+                                   on_apply=lambda: self._model.expanded.add(actions.name))
+        # Sized again once the dialog is gone: rows added while it is up are not
+        # laid out yet, and the table would keep its old height.
+        dialog.finished.connect(lambda _r: QtCore.QTimer.singleShot(0, self._resize_rows))
+        self._populations_dialog = dialog
+        dialog.open()
+        return dialog
 
     def _add_link_actions(self, menu: QtWidgets.QMenu, param: FittingParameter) -> None:
         ctrl = self._controller(param)
