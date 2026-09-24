@@ -174,34 +174,19 @@ def deinterleave_bursts(df):
     tttrlib.DataStore
         One row per result, with any unnamed column dropped.
     """
-    from chisurf.core.datastore import (
-        column_names,
-        numeric_column,
-        row_count,
-        take_columns,
-        take_rows,
-    )
+    import tttrlib
+
+    from chisurf.core.datastore import as_store
 
     # A frame is converted here rather than deeper down. `as_store` deliberately
     # has no pandas fallback -- the tree is moving off frames and a caller
     # holding one is expected to have moved already -- but this function's
     # contract is to accept whatever an analysis hands it, and several analyses
-    # still hand it a frame.
-    out = as_table(df)
-    n = row_count(out)
-
-    if n >= 3 and n % 2 == 1:
-        even = np.arange(0, n, 2)
-        numeric = [numeric_column(out, name) for name in column_names(out)]
-        numeric = [v for v in numeric if np.isfinite(v).any()]
-        if numeric and all(np.all(v[even] == 0) for v in numeric):
-            out = take_rows(out, np.arange(1, n, 2))
-
-    # Always through take_columns, even when nothing is dropped: it is what
-    # converts a caller's frame, and returning the argument unchanged would make
-    # the return type depend on whether the table happened to have a blank
-    # column.
-    return take_columns(out, [c for c in column_names(out) if str(c).strip()])
+    # still hand it a frame. The layout test and the cut are tttrlib's, shared
+    # with ndX's container reader.
+    out = tttrlib.deinterleave_burst_rows(as_store(as_table(df)))
+    # Always a table of its own: callers add columns to what comes back.
+    return out.copy() if out is df else out
 
 
 def container_for(source: str | Path, out_dir: str | Path | None = None) -> Path:

@@ -6,9 +6,14 @@ folder. This module writes it instead as one photon container: the instrument
 file kept verbatim at the front, every result an artifact beside it, and every
 name taken from the mmCIF dictionaries rather than invented here.
 
-The normative rules are in [the PTO.MFDB profile](/specs/pto-mfdb.md); this is
-the only code that implements them, so a plugin never touches ``tttrlib.PtoFile``
-directly and no writer has to remember the conventions.
+The normative rules are in [the PTO.MFDB profile](/specs/pto-mfdb.md). The tag
+layer itself -- typed tag lookup, lineage edges, verified payloads, the
+artifact/operation/edge description, the writer lock -- is tttrlib's
+(``tttrlib.pto_tag``, ``pto_describe``, ``PtoWriteLock``, ...), shared with
+ndXplorer, which reads containers without ChiSurf. What this module adds is the
+dictionary: every term is checked against it and every write names its
+version. A plugin goes through :class:`Measurement` and never touches
+``tttrlib.PtoFile`` directly, so no writer has to remember the conventions.
 
 Three things are worth knowing before using it.
 
@@ -341,26 +346,6 @@ def _sha256_of_path(path: Path) -> tuple[str, int]:
     return digest.hexdigest(), size
 
 
-def _settings_hash(settings: Mapping[str, Any] | None) -> str:
-    """Return the identity of a run, from its settings.
-
-    Canonicalised so that key order and float formatting cannot make one run
-    look like two.
-
-    Parameters
-    ----------
-    settings : mapping or None
-        The analysis parameters.
-
-    Returns
-    -------
-    str
-        Lowercase hexadecimal SHA-256 of the canonical JSON.
-    """
-    blob = json.dumps(settings or {}, sort_keys=True, separators=(",", ":"), default=str)
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
-
-
 def is_measurement(path: str | Path) -> bool:
     """Return whether *path* is a photon container.
 
@@ -424,87 +409,6 @@ def _primary_uid(handle: Any) -> int:
     return 0
 
 
-class _WriteLock:
-    """One writer at a time, per container, across processes.
-
-    Nothing stopped two processes opening the same container for writing at
-    once. Both succeeded instantly, neither was told, and the last one to
-    commit decided what the file said -- which is how a burst table came to
-    hold rows no single code path produces. A running ChiSurf and a script (or
-    two tools inside one session) reaching the same measurement is not an
-    exotic case; it is the ordinary one.
-
-    An advisory `flock` on a sidecar rather than on the container itself: the
-    container is opened and rewritten by the C++ writer, and a lock held on a
-    file that gets replaced underneath is not a lock. Advisory because that is
-    what `flock` is -- it binds the writers that ask, which is all of them,
-    here.
-
-    **Fails immediately rather than waiting.** A writer that blocks looks
-    exactly like a writer that hung, and a burst search that takes a minute
-    gives no way to tell them apart; being told which file, and by which
-    process, is what makes it actionable.
-    """
-
-    #: Sidecar holding the lock. Beside the container, not inside it.
-    SUFFIX = ".lock"
-
-    def __init__(self, path: Path) -> None:
-        self._path = Path(str(path) + self.SUFFIX)
-        self._handle = None
-
-    def acquire(self) -> None:
-        """Take the lock, or say who has it.
-
-        Raises
-        ------
-        PtoMfdbError
-            If another process holds it.
-        """
-        import fcntl
-        import os
-
-        try:
-            handle = open(self._path, "a+")
-        except OSError:
-            # An unwritable directory is not a reason to refuse a write the
-            # filesystem may still allow; the lock is best-effort protection,
-            # not a permission system.
-            logger.debug("no writer lock for %s", self._path, exc_info=True)
-            return
-        try:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            handle.seek(0)
-            holder = handle.read().strip() or "another process"
-            handle.close()
-            raise PtoMfdbError(
-                f"{self._path.with_suffix('')} is open for writing by "
-                f"{holder}. Close it there, or wait for that write to finish: "
-                "two writers would each overwrite the other's results."
-            ) from None
-        handle.seek(0)
-        handle.truncate()
-        handle.write(f"pid {os.getpid()}")
-        handle.flush()
-        self._handle = handle
-
-    def release(self) -> None:
-        """Drop the lock and remove the sidecar."""
-        import contextlib
-        import fcntl
-
-        handle, self._handle = self._handle, None
-        if handle is None:
-            return
-        with contextlib.suppress(OSError):
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-        with contextlib.suppress(OSError):
-            handle.close()
-        with contextlib.suppress(OSError):
-            self._path.unlink()
-
-
 class Measurement:
     """One measurement: the instrument data, and everything computed from it.
 
@@ -531,7 +435,9 @@ class Measurement:
         self._path = Path(path)
         self._writable = bool(writable)
         self._instrument_uid = 0
-        #: Writer lock, when this handle holds one. See :class:`_WriteLock`.
+        #: Writer lock (``tttrlib.PtoWriteLock``), when this handle holds one:
+        #: one writer per container across processes, failing at once with who
+        #: holds it rather than waiting.
         self._lock = None
 
     # -- construction ---------------------------------------------------------
@@ -677,9 +583,12 @@ class Measurement:
         PtoMfdbError
             If the file is not a container, or cannot be opened.
         """
-        lock = _WriteLock(Path(path)) if writable else None
+        lock = _tttrlib().PtoWriteLock(str(path)) if writable else None
         if lock is not None:
-            lock.acquire()
+            try:
+                lock.acquire()
+            except _tttrlib().PtoLockedError as exc:
+                raise PtoMfdbError(str(exc)) from None
         handle = _tttrlib().PtoFile()
         if not handle.open(str(path), writable):
             if lock is not None:
@@ -837,7 +746,7 @@ class Measurement:
 
         store = self._as_store(table)
         self._describe_columns(store, units, items)
-        run = _settings_hash(parameters)
+        run = _tttrlib().pto_settings_hash(parameters)
 
         existing = self._find_run(operation_type, run, artifact_kind, name)
         tttrlib = _tttrlib()
@@ -1136,7 +1045,7 @@ class Measurement:
             size_bytes=len(payload),
             operation_type=operation_type,
             parameters=parameters,
-            run=_settings_hash(parameters) if operation_type else "",
+            run=_tttrlib().pto_settings_hash(parameters) if operation_type else "",
             derived_from=derived_from,
             mime_type=mime_type,
         )
@@ -1215,20 +1124,7 @@ class Measurement:
         object
             The tag's text, integer or float, or *default*.
         """
-        tttrlib = _tttrlib()
-        for t in self._f.tags_for(uid):
-            if t.name != item:
-                continue
-            if t.type == tttrlib.PtoType_Text:
-                return t.text
-            if t.type in (tttrlib.PtoType_UInt, tttrlib.PtoType_UID):
-                return t.u
-            if t.type == tttrlib.PtoType_Int:
-                return t.i
-            if t.type == tttrlib.PtoType_Float:
-                return t.d
-            return default
-        return default
+        return _tttrlib().pto_tag(self._f, uid, item, default)
 
     def parents(self, uid: int) -> list[int]:
         """Return the UIDs this object was derived from.
@@ -1244,16 +1140,10 @@ class Measurement:
         -------
         list of int
         """
-        tttrlib = _tttrlib()
-        # `_RELATIONSHIP_TYPE` is read as well as `_SOURCE_NODE_ID`: a container
-        # written before the two were separated carries the parent UID under the
-        # relation's name, and refusing to read it would orphan every result in
-        # those files.
-        return [
-            t.u
-            for t in self._f.tags_for(uid)
-            if t.type == tttrlib.PtoType_UID and t.name in (_SOURCE_NODE_ID, _RELATIONSHIP_TYPE)
-        ]
+        # A UID-typed `_RELATIONSHIP_TYPE` counts as well: a container written
+        # before the parent and the relation were separated carries the parent
+        # UID under the relation's name.
+        return _tttrlib().pto_parents(self._f, uid)
 
     def provenance(self, uid: int) -> dict:
         """Return everything recorded about how one object came to be.
@@ -1423,23 +1313,11 @@ class Measurement:
             If there is no such object, the read fails, or the payload does not
             match its recorded checksum.
         """
-        import hashlib
-
         uid = self._resolve(ref)
-        data = self._f.read(uid)
-        if data is None:
-            raise PtoMfdbError(f"could not read {ref}: {self._f.error()}")
-        data = bytes(data)
-
-        recorded = self.tag(uid, _CHECKSUM)
-        if recorded:
-            actual = hashlib.sha256(data).hexdigest()
-            if actual != recorded:
-                raise PtoMfdbError(
-                    f"{ref} does not match its recorded checksum "
-                    f"({recorded[:16]}… expected, {actual[:16]}… found)"
-                )
-        return data
+        try:
+            return _tttrlib().pto_read_blob(self._f, uid)
+        except RuntimeError as exc:
+            raise PtoMfdbError(f"{ref}: {exc}") from None
 
     def extract(self, ref: int | str, destination: str | Path) -> Path:
         """Write one object back out as a file of its own, verifying it.
@@ -1722,12 +1600,6 @@ class Measurement:
         tag.name, tag.type, tag.target, tag.u = item, tttrlib.PtoType_UInt, uid, int(value)
         self._f.add_tag(tag)
 
-    def _ref(self, uid: int, item: str, value: int) -> None:
-        tttrlib = _tttrlib()
-        tag = tttrlib.PtoTag()
-        tag.name, tag.type, tag.target, tag.u = item, tttrlib.PtoType_UID, uid, int(value)
-        self._f.add_tag(tag)
-
     def _stamp_versions(self) -> None:
         """Record what a later reader needs in order to diagnose a disagreement.
 
@@ -1876,61 +1748,38 @@ class Measurement:
         source_row_column: str = "",
         target_row_column: str = "",
     ) -> None:
-        """Attach the artifact, operation and edge rows an object stands for."""
+        """Attach the artifact, operation and edge rows an object stands for.
+
+        tttrlib writes them (``pto_describe``, shared with every other reader
+        and writer of the profile); what is ChiSurf's is the writing
+        application and the dictionary version it validated the terms against.
+        """
         from mmfdb.schema.pdbx_metadata import (
             extension_dictionary_hash,
             extension_dictionary_version,
         )
 
-        if not self.tag(uid, _ARTIFACT_ID):
-            self._text(uid, _ARTIFACT_ID, str(uuid.uuid4()))
-        self._text(uid, _DATA_FORMAT, data_format)
-        self._text(uid, _ROW_GRAIN, row_grain)
-        self._text(uid, _MIME_TYPE, mime_type)
-        self._text(uid, _FILE_PATH, file_path)
-        if checksum:
-            self._text(uid, _CHECKSUM, checksum)
-            self._text(uid, _CHECKSUM_ALGORITHM, "sha256")
-        if size_bytes:
-            self._uint(uid, _SIZE_BYTES, size_bytes)
-
-        if operation_type:
-            self._text(uid, _OPERATION_TYPE, operation_type)
-            self._text(uid, _ALGORITHM, algorithm)
-            self._text(uid, _SETTINGS_HASH, run)
-            self._text(uid, _SOFTWARE_PACKAGE, _writing_app().split()[0])
-            self._text(uid, _SOFTWARE_VERSION, _writing_app().split()[-1])
-            self._text(uid, _DICTIONARY_VERSION, extension_dictionary_version())
-            self._text(uid, _DICTIONARY_HASH, extension_dictionary_hash())
-            if parameters:
-                self._text(
-                    uid,
-                    _SETTINGS_JSON,
-                    json.dumps(dict(parameters), sort_keys=True, default=str),
-                )
-
-        # The parent and the *relation* are two facts and are recorded as two
-        # tags. They used to be one: the parent's UID was written under
-        # `relationship_type`, so asking a file how a result related to what it
-        # came from returned an integer — and the relation itself, which is the
-        # whole point of an edge, was never recorded at all.
-        # Re-running an analysis updates the object in place, but its tags are
-        # appended, not replaced -- so writing every parent unconditionally made
-        # a container that had been re-analysed three times claim the same
-        # source four times over. An edge is a fact about where the result came
-        # from; recording it twice does not make it truer.
-        parents = _as_uids(derived_from)
-        recorded = set(self.parents(uid))
-        for parent in parents:
-            if parent in recorded:
-                continue
-            recorded.add(parent)
-            self._ref(uid, _SOURCE_NODE_ID, parent)
-        if parents:
-            self._text(uid, _RELATIONSHIP_TYPE, relationship_type)
-        self._text(uid, _SOURCE_ROW_COLUMN, source_row_column)
-        self._text(uid, _TARGET_ROW_COLUMN, target_row_column)
-
+        _tttrlib().pto_describe(
+            self._f,
+            uid,
+            data_format=data_format,
+            row_grain=row_grain,
+            checksum=checksum,
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            file_path=file_path,
+            operation_type=operation_type,
+            algorithm=algorithm,
+            parameters=parameters,
+            run=run,
+            derived_from=list(_as_uids(derived_from)),
+            relationship_type=relationship_type,
+            source_row_column=source_row_column,
+            target_row_column=target_row_column,
+            software=_writing_app(),
+            dictionary_version=extension_dictionary_version(),
+            dictionary_hash=extension_dictionary_hash(),
+        )
 
 def _metadata_to_cif(metadata: Mapping[str, Mapping[str, Any]]) -> str:
     """Render ``{category: {item: value}}`` as an mmCIF block.
