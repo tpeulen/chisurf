@@ -225,8 +225,10 @@ is worth keeping:
 
 ## Density-based clustering (HDBSCAN)
 
-`chisurf.core.ml.cluster.HDBSCAN` — density-based clustering of a burst or pixel
-table. This replaced two external packages, `hdbscan` and `scikit-learn`, both
+`tttrlib.hdbscan` — density-based clustering of a burst or pixel table (it was
+`chisurf.core.ml.cluster.HDBSCAN`, a Python pipeline over the same kernels,
+until tttrlib ran the whole pipeline itself; the numbers below are from that
+port). This replaced two external packages, `hdbscan` and `scikit-learn`, both
 of which are the references it has to beat. See the
 [concept page](../concepts/density_clustering.md) for the method and the
 [OKF concept](../../okf/subsystems/machine-learning.md) for the implementation.

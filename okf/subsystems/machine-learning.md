@@ -1,7 +1,7 @@
 ---
 type: Subsystem
 title: "Machine learning estimators"
-description: chisurf.core.ml — the in-tree replacements for the six scikit-learn estimators the tree used (GaussianMixture, KMeans, PCA/IncrementalPCA, StandardScaler, MLPRegressor, HDBSCAN), mirroring scikit-learn's layout and spelling, with the density-clustering kernels compiled in the photon library.
+description: chisurf.core.ml — the in-tree replacements for the scikit-learn estimators the tree used (GaussianMixture, KMeans, PCA/IncrementalPCA, StandardScaler, MLPRegressor), mirroring scikit-learn's layout and spelling. HDBSCAN is not here any more — it is tttrlib.hdbscan, the whole pipeline in the photon library (the Python port was deleted 2026-09-24).
 resource: chisurf/core/ml/
 tags: [subsystems, ml, clustering, dependencies, math, burst-selection, ndxplorer]
 timestamp: '2026-08-10T00:00:00Z'
@@ -89,7 +89,7 @@ fails if it comes back. What is worth knowing before touching it:
 |---|---|---|
 | `GaussianMixture` | `sklearn.mixture` | four covariance types, `n_init`, `aic`/`bic`, `score_samples`; **extra**: `fix_means` / `fix_covariances` masks, which the library cannot do and which a companion tool had written its own EM for |
 | `KMeans` | `sklearn.cluster` | k-means++ seeding and Lloyd iterations, shared with the HMM's initialisation |
-| `HDBSCAN` | `sklearn.cluster` | core distances → mutual-reachability MST → condensed tree → excess of mass; accepts the standalone package's `prediction_data` and ignores it |
+| ~~`HDBSCAN`~~ | — | **deleted 2026-09-24**: call `tttrlib.hdbscan(x, min_cluster_size, min_samples, …)` → `HdbscanResult(labels, probabilities, persistence)`; non-finite rows are noise. The four steps below are what it runs |
 | `PCA` / `IncrementalPCA` | `sklearn.decomposition` | covariance eigendecomposition and batch moments, `svd_flip` sign convention |
 | `StandardScaler` | `sklearn.preprocessing` | `fit`/`transform`/`inverse_transform` |
 | `MLPRegressor` | `sklearn.neural_network` | Adam with early stopping; keeps the `coefs_`/`intercepts_`/`out_activation_` names the surrogate's JSON export reads |
@@ -174,8 +174,10 @@ Performance against the packages this replaced is tracked in
   compatibility surface, not an internal detail.
 * `chisurf/core/math/hmm.py` — the k-means initialisation and the Gaussian
   log-density, shared rather than copied.
-* The photon-data exploration companion — k-means, PCA/IncrementalPCA, HDBSCAN,
-  and the constrained mixture.
+* The photon-data exploration companion (ndXplorer) — the constrained mixture.
+  Its Find structure no longer uses this package: HDBSCAN and k-means are
+  `tttrlib.hdbscan` / `tttrlib.kmeans` (seeded from `tttrlib.kmeans_uniforms(k,
+  10, seed=42)`, bit-identical to `KMeans(random_state=42)` here), PCA is NumPy.
 
 See also: [hidden Markov models](hidden-markov-models.md) for the module these
 estimators used to hide in, [compiled modules](compiled-modules.md) for the

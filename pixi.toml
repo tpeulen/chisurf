@@ -89,9 +89,9 @@ rendercanvas = "*"
 glfw = "*"
 python-docx = "*"
 # scikit-learn and hdbscan were dropped: every estimator the tree reached for —
-# GMM, k-means, PCA/IncrementalPCA, StandardScaler, the surrogate's MLP, and
-# HDBSCAN — now lives in chisurf.core.ml, over a compiled k-d tree / Borůvka
-# kernel in the photon library. See okf/subsystems/machine-learning.md.
+# GMM, k-means, PCA/IncrementalPCA, StandardScaler and the surrogate's MLP —
+# now lives in chisurf.core.ml; HDBSCAN is the photon library's own
+# (tttrlib.hdbscan). See okf/subsystems/machine-learning.md.
 pygments = "*"
 sqlalchemy = ">=2.0"
 # Imported directly, so declared directly rather than left to arrive with

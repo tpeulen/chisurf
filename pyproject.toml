@@ -104,7 +104,8 @@ dependencies = [
 # histogramming, syntax highlighting, and the LaTeX view of a parse model (an
 # in-tree AST converter is the fallback). The external notebook server and its
 # `notebook` dependency were removed in 2026-08; scikit-learn and hdbscan in the
-# same way, once chisurf.core.ml held every estimator the tree reaches for.
+# same way, once chisurf.core.ml (and tttrlib, for HDBSCAN) held every
+# estimator the tree reaches for.
 full = [
     "Pygments",
     "latexify-py",

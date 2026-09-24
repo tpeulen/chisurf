@@ -168,8 +168,8 @@ requirements:
     # in-tree chitable widget family. No third-party GUI toolkit remains.
     - python-docx
     # scikit-learn and hdbscan removed: chisurf.core.ml holds every estimator
-    # the tree reaches for (GMM, k-means, PCA, StandardScaler, MLPRegressor,
-    # HDBSCAN), over a compiled kernel in the photon library.
+    # the tree reaches for (GMM, k-means, PCA, StandardScaler, MLPRegressor);
+    # HDBSCAN is the photon library's (tttrlib.hdbscan).
     - ${{ "libcxx" if osx }}
     - micromamba
     - pygments
