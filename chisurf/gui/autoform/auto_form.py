@@ -1232,8 +1232,14 @@ class AutoForm(QtWidgets.QWidget):
                 table.set_params(_row_params())
                 self.refresh_plots()
 
+            def _component_count() -> int:
+                # A vector's elements are rows of the list, not parameters of a component.
+                top = getattr(table.table_model, "top_level", None)
+                params = top() if style == "list" and callable(top) else _row_params()
+                return len(params) // max(1, section.row_width)
+
             def on_del_table():
-                if len(_row_params()) // max(1, section.row_width) > section.min_rows:
+                if _component_count() > section.min_rows:
                     del_fn = getattr(group, section.remove_method, None)
                     if callable(del_fn):
                         # The selected component, when the group's remove method
@@ -1259,9 +1265,17 @@ class AutoForm(QtWidgets.QWidget):
                 selection = table.table_view.selectionModel()
                 if selection is None:
                     return None
-                per_row = max(1, int(section.row_width)) if style == "list" else 1
-                rows = {index.row() // per_row for index in selection.selectedIndexes()}
-                return rows.pop() if len(rows) == 1 else None
+                if style != "list":
+                    rows = {index.row() for index in selection.selectedIndexes()}
+                    return rows.pop() if len(rows) == 1 else None
+                per_row = max(1, int(section.row_width))
+                model = table.table_model
+                # Rows are not parameters once a vector is open: ask the model.
+                where = {
+                    model.top_level_position(index.row()) for index in selection.selectedIndexes()
+                }
+                rows = {w // per_row for w in where if w is not None}
+                return rows.pop() if len(rows) == 1 and None not in where else None
 
             def _remove_takes_index(fn) -> bool:
                 try:

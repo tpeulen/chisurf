@@ -95,6 +95,30 @@ top of such a model instead, so it gains the features without a rewrite. This is
 explicitly the small-table path: its predicates run per row in Python. With no
 scheme set it also strips whatever background the wrapped model paints.
 
+## Vector parameters in the parameter table
+
+`ParameterGroupTableWidget` (`chisurf/gui/autoform/sections/parameter_table.py`,
+every fit model editor's `list` tables and nDXplorer's Qt tables) shows a
+vector as **one expandable row**. Its model builds `_Row`s, not one row per
+parameter: parameters named `base[label]` (nDXplorer publishes a vector
+constant one `FittingParameter` per population, so each keeps its own fixed
+flag, bounds and link) are filed under a parent `▸ base [n]` with the values
+summed up, `base` itself as the *(global)* child; a parameter whose value is an
+array (a `GraphPort` of length > 1) is a parent over `[0]`, `[1]` … rows whose
+*Value* edits that element (`_set_array_element`). Before, the first kind read
+as unrelated rows and the second as its first element only, and typing into it
+collapsed the array to a scalar. A click on a parent's name opens or closes it
+(`toggle`); the parent's *Fixed* holds or frees every element; row → parameter
+goes through `param_at(row)` and the controllers are keyed by parameter, since
+opening a vector moves the rows. `top_level()` / `top_level_position(row)` map
+a row back to the parameter list, which the AutoForm `dynamic_group` list
+style uses to find the selected component. An empty bool cell draws no box
+(`BooleanToggleDelegate`). The emtk Global View does the same for its
+Parameters table with the data table's tree (`tree_key: parent`,
+`_nest_vector_elements`). Measure: `test/gui/test_parameter_table_vectors.py`
+(mouse click opens, double-click + typed value + Enter edits),
+`chisurf/plugins/core/globalview/tests/test_model.py::test_a_vector_published_by_population_is_one_expandable_row`.
+
 # Consumers
 
 * the [Data table plot](/subsystems/gui-autoform.md) (`chisurf/gui/plots/table_plot.py`)

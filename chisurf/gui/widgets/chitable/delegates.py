@@ -124,7 +124,12 @@ class BooleanToggleDelegate(QtWidgets.QStyledItemDelegate):
         return QtCore.QRect(x, y, size, size)
 
     def paint(self, painter, option, index) -> None:  # noqa: D102 (Qt override)
-        checked = self._is_checked(index.data(QtCore.Qt.DisplayRole))
+        value = index.data(QtCore.Qt.DisplayRole)
+        if isinstance(value, str) and not value:
+            # An empty cell has no flag -- a derived output, an element of an
+            # array: an unchecked box there would invite a click that does nothing.
+            return
+        checked = self._is_checked(value)
         style = (
             QtWidgets.QApplication.style()
             if QtWidgets.QApplication.instance()

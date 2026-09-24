@@ -12,6 +12,13 @@ system, but usable standalone::
 
 Each row represents one parameter; columns are controlled by the ``columns``
 attribute on the section descriptor.
+
+**Vectors** read as one expandable row (:class:`_Row`): parameters named
+``base[label]`` -- a vector published one element per population, as
+nDXplorer publishes its vector constants -- are grouped under a parent row
+``base [n]`` (with ``base`` itself, when present, as its *(global)* child), and
+a parameter whose value is an array shows one child row per element. Clicking
+the name of a parent row opens or closes it; elements are edited like any row.
 """
 
 from __future__ import annotations
@@ -341,6 +348,26 @@ def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) ->
     return True
 
 
+def _set_array_element(param: FittingParameter, index: int, value: typing.Any) -> bool:
+    """Write element *index* of a parameter whose value is an array; return success.
+
+    A linked follower is not written, as for a scalar.
+    """
+    if getattr(param, "is_linked", False) and not getattr(param, "is_link_master", False):
+        return False
+    values = _port_values(param)
+    if values is None or not 0 <= index < len(values):
+        return False
+    try:
+        values = values.copy()
+        values[index] = float(value)
+        param._port.value = values
+    except Exception:
+        return False
+    _notify_edited(param, _editor(param))
+    return True
+
+
 def _notify_edited(param: FittingParameter, ctrl) -> None:
     """Carry a table edit through to the model, the view and the plots.
 
@@ -423,13 +450,57 @@ _FloatEditDelegate = FloatEditDelegate
 # ── table model ─────────────────────────────────────────────────────────
 
 
+#: ``base[label]``: one element of a vector published as named scalars.
+_ELEMENT = re.compile(r"^(?P<base>.*[^\s])\[(?P<label>[^\[\]]+)\]$")
+
+
+def _port_values(param) -> typing.Optional[typing.Any]:
+    """The values of a parameter whose value is an array, else ``None``."""
+    port = getattr(param, "_port", None)
+    if port is None:
+        return None
+    try:
+        import numpy as np
+
+        values = np.ravel(np.asarray(port.value, dtype=float))
+    except Exception:
+        return None
+    return values if values.size > 1 else None
+
+
+def _summary(values) -> str:
+    """``"0.61, 0.83"``: a vector's values as its collapsed row shows them."""
+    values = list(values)
+    parts = [f"{float(v):.4g}" for v in values[:6]]
+    return ", ".join(parts + (["…"] if len(values) > 6 else []))
+
+
+class _Row(typing.NamedTuple):
+    """One table row.
+
+    ``kind`` is ``"param"`` (a parameter, top-level or an element of a named
+    vector), ``"vector"`` (the parent of named elements; ``param`` is ``None``),
+    ``"array"`` (a parameter whose value is an array) or ``"item"`` (element
+    ``index`` of that array).
+    """
+
+    kind: str
+    param: typing.Any
+    label: str
+    key: str = ""
+    depth: int = 0
+    index: int = -1
+    children: tuple = ()
+
+
 class ParameterGroupTableModel(QtCore.QAbstractTableModel):
     """Table model exposing a list of :class:`FittingParameter` objects.
 
     Each row is one parameter.  Columns are defined by :data:`COLUMN_META`
     and map to the parameter's value, fixed flag, bounds, and error estimate.
     The backing list is *not* copied — edits flow through to the original
-    objects immediately.
+    objects immediately. A vector is a parent row with its elements below it
+    while open (see the module).
     """
 
     def __init__(
@@ -439,17 +510,128 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
     ):
         super().__init__(parent)
         self._params: typing.List[FittingParameter] = list(params)
+        #: Keys of the open vectors (a name, or ``id`` of an array parameter).
+        self.expanded: set = set()
+        self._rows: typing.List[_Row] = self._build_rows()
 
     # -- structural updates -------------------------------------------------
     def set_params(self, params: typing.List[FittingParameter]) -> None:
         """Replace the backing parameter list (used on add/remove of a component)."""
         self.beginResetModel()
         self._params = list(params)
+        self._rows = self._build_rows()
+        self.endResetModel()
+
+    def _build_rows(self) -> typing.List[_Row]:
+        """The rows: parameters, and each vector as a parent over its elements."""
+        names = [str(getattr(p, "name", "")) for p in self._params]
+        elements: dict = {}
+        for p, name in zip(self._params, names):
+            match = _ELEMENT.match(name)
+            if match is not None:
+                elements.setdefault(match.group("base"), []).append((match.group("label"), p))
+        globals_ = {name: p for p, name in zip(self._params, names) if name in elements}
+        rows: typing.List[_Row] = []
+        done: set = set()
+        for p, name in zip(self._params, names):
+            match = _ELEMENT.match(name)
+            base = match.group("base") if match is not None else name
+            if base in elements:
+                if base in done:
+                    continue
+                done.add(base)
+                children = []
+                if base in globals_:
+                    children.append(_Row("param", globals_[base], "(global)", depth=1))
+                children += [_Row("param", e, label, depth=1) for label, e in elements[base]]
+                rows.append(
+                    _Row(
+                        "vector",
+                        None,
+                        f"{base} [{len(elements[base])}]",
+                        key=base,
+                        children=tuple(children),
+                    )
+                )
+                if base in self.expanded:
+                    rows.extend(children)
+                continue
+            values = _port_values(p)
+            if values is not None:
+                key = f"id:{id(p)}"
+                children = tuple(
+                    _Row("item", p, f"[{i}]", depth=1, index=i) for i in range(len(values))
+                )
+                label = str(p.__dict__.get("label_text", name))
+                rows.append(
+                    _Row("array", p, f"{label} [{len(values)}]", key=key, children=children)
+                )
+                if key in self.expanded:
+                    rows.extend(children)
+                continue
+            rows.append(_Row("param", p, ""))
+        return rows
+
+    def row(self, row: int) -> _Row:
+        return self._rows[row]
+
+    def param_at(self, row: int) -> typing.Optional[FittingParameter]:
+        """The parameter row *row* edits (``None`` for a named vector's parent)."""
+        if not 0 <= row < len(self._rows):
+            return None
+        return self._rows[row].param
+
+    def rows_of(self, param) -> typing.List[int]:
+        """The rows showing *param* (its own, and an array's element rows)."""
+        return [i for i, r in enumerate(self._rows) if r.param is param]
+
+    def top_level(self) -> typing.List[FittingParameter]:
+        """The parameters without the elements of a named vector (its ``base`` stays)."""
+        inside = {
+            id(c.param)
+            for r in self._rows
+            if r.kind == "vector"
+            for c in r.children
+            if c.label != "(global)"
+        }
+        return [p for p in self._params if id(p) not in inside]
+
+    def top_level_position(self, row: int) -> typing.Optional[int]:
+        """Where row *row*'s parameter -- or the vector it belongs to -- is in
+        :meth:`top_level` (``None`` for a vector with no global parameter)."""
+        if not 0 <= row < len(self._rows):
+            return None
+        entry = self._rows[row]
+        param = entry.param
+        if entry.kind == "vector" or (entry.depth and entry.kind == "param"):
+            parent = (
+                entry
+                if entry.kind == "vector"
+                else next(
+                    (r for r in self._rows if r.kind == "vector" and entry in r.children), None
+                )
+            )
+            glob = [c.param for c in (parent.children if parent else ()) if c.label == "(global)"]
+            param = glob[0] if glob else None
+        top = self.top_level()
+        return next((i for i, p in enumerate(top) if p is param), None)
+
+    def is_parent(self, row: int) -> bool:
+        return 0 <= row < len(self._rows) and bool(self._rows[row].children)
+
+    def toggle(self, row: int) -> None:
+        """Open or close the vector at *row*."""
+        if not self.is_parent(row):
+            return
+        key = self._rows[row].key
+        (self.expanded.discard if key in self.expanded else self.expanded.add)(key)
+        self.beginResetModel()
+        self._rows = self._build_rows()
         self.endResetModel()
 
     # -- row / column count -------------------------------------------------
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._params) if not parent.isValid() else 0
+        return len(self._rows) if not parent.isValid() else 0
 
     def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
         return len(COLUMN_META) if not parent.isValid() else 0
@@ -470,10 +652,26 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
     def data(self, index: QtCore.QModelIndex, role: int = QtCore.Qt.DisplayRole):
         if not index.isValid():
             return None
-        param = self._params[index.row()]
+        entry = self._rows[index.row()]
+        param = entry.param
         col_id, _, editable, kind = COLUMN_META[index.column()]
+        texts = (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole, QtCore.Qt.ToolTipRole)
+        # An array's parent row shows its parameter's fixed flag and bounds.
+        if role in texts and (
+            entry.kind in ("vector", "item")
+            or (entry.kind == "array" and col_id in ("name", "value"))
+        ):
+            return self._vector_data(entry, col_id, kind, role)
+        if param is None:
+            if role == QtCore.Qt.TextAlignmentRole and kind == "float":
+                return int(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            if role == QtCore.Qt.TextAlignmentRole and kind == "bool":
+                return int(QtCore.Qt.AlignCenter)
+            return None
 
         if role == QtCore.Qt.DisplayRole:
+            if col_id == "name" and entry.depth:
+                return "\u2003\u2003" + entry.label
             return self._display_value(col_id, kind, param)
         if role == QtCore.Qt.EditRole:
             return self._edit_value(col_id, param)
@@ -488,6 +686,46 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
             return self._font(param)
         if role == QtCore.Qt.ForegroundRole:
             return self._foreground(col_id, param)
+        return None
+
+    def _vector_data(self, entry: _Row, col_id: str, kind: str, role: int):
+        """A vector's parent row, or an array element's row (``None``: as a parameter)."""
+        mark = "▾ " if entry.key in self.expanded else "▸ "
+        if entry.kind == "item":
+            values = _port_values(entry.param)
+            value = (
+                float(values[entry.index])
+                if values is not None and entry.index < len(values)
+                else None
+            )
+            if col_id == "name":
+                return None if role != QtCore.Qt.DisplayRole else "\u2003\u2003" + entry.label
+            if col_id == "value" and value is not None:
+                if role == QtCore.Qt.EditRole:
+                    return value
+                return f"{value:.6g}" if role == QtCore.Qt.DisplayRole else None
+            return "" if role == QtCore.Qt.DisplayRole else None
+        if col_id == "name":
+            if role == QtCore.Qt.ToolTipRole:
+                return "One value per population (element): click the name to open or close."
+            return mark + entry.label if role == QtCore.Qt.DisplayRole else None
+        members = [c.param for c in entry.children if c.label != "(global)"]
+        if col_id == "value":
+            if role != QtCore.Qt.DisplayRole:
+                return None
+            values = (
+                _port_values(entry.param) if entry.kind == "array" else [m.value for m in members]
+            )
+            return _summary(values if values is not None else [])
+        if entry.kind == "vector":
+            if col_id == "fixed":
+                fixed = all(bool(m.fixed) for m in members)
+                return (
+                    fixed
+                    if role == QtCore.Qt.EditRole
+                    else (str(fixed) if role == QtCore.Qt.DisplayRole else None)
+                )
+            return "" if role == QtCore.Qt.DisplayRole else None
         return None
 
     @staticmethod
@@ -602,7 +840,15 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
         base = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
         if not editable:
             return base
-        param = self._params[index.row()]
+        entry = self._rows[index.row()]
+        param = entry.param
+        if entry.kind == "vector":
+            # The parent's Fixed holds or frees every element; nothing else is its own.
+            return base | QtCore.Qt.ItemIsEditable if col_id == "fixed" else base
+        if entry.kind == "array" and col_id == "value":
+            return base
+        if entry.kind == "item" and col_id != "value":
+            return base
         # A derived output is computed from the others; nothing about it is
         # editable, including the fix flag and the bounds.
         if getattr(param, "is_output", False):
@@ -627,9 +873,30 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
     ) -> bool:
         if role != QtCore.Qt.EditRole or not index.isValid():
             return False
-        param = self._params[index.row()]
+        entry = self._rows[index.row()]
+        param = entry.param
         col_id, _, _, _ = COLUMN_META[index.column()]
 
+        if entry.kind == "vector":
+            done = [
+                _set_param_value(c.param, col_id, value)
+                for c in entry.children
+                if c.label != "(global)"
+            ]
+            if not any(done):
+                return False
+            self.dataChanged.emit(
+                self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1)
+            )
+            return True
+        if entry.kind == "item":
+            if not _set_array_element(param, entry.index, value):
+                return False
+            rows = self.rows_of(param)
+            self.dataChanged.emit(
+                self.index(min(rows), 0), self.index(max(rows), self.columnCount() - 1)
+            )
+            return True
         if not _set_param_value(param, col_id, value):
             return False
 
@@ -646,7 +913,7 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
     # -- helpers ------------------------------------------------------------
     @property
     def parameters(self) -> typing.List[FittingParameter]:
-        """Live list of parameters backing the model."""
+        """Live list of parameters backing the model (every one, open or not)."""
         return self._params
 
 
@@ -1051,6 +1318,10 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         """
         self._params = params
         self._model.set_params(params)
+        # Controllers are keyed by id(): one of a parameter gone may not be
+        # handed to a new object that happens to reuse its address.
+        alive = {id(p) for p in params}
+        self._controllers = {k: c for k, c in self._controllers.items() if k in alive}
         self._apply_column_visibility()
         self.set_bounds_visible(self._bounds_visible)
         self._install_controllers()
@@ -1078,9 +1349,8 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         finalize" for every parameter in the group).
         """
         owned = []
-        for row in range(self._model.rowCount()):
-            param = self._model.parameters[row]
-            ctrl = self._controller(row)
+        for param in self._model.parameters:
+            ctrl = self._controller_for(param)
             # A host whose parameters are not part of any fit says so once, here,
             # rather than having every edit ask a backend that cannot know them.
             try:
@@ -1104,19 +1374,32 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         per-parameter row widgets use, so the table offers the same actions
         without duplicating their logic.
         """
-        ctrl = self._controllers.get(row)
+        param = self._model.param_at(row)
+        return self._controller_for(param) if param is not None else None
+
+    def _controller_for(self, param: FittingParameter):
+        """Return (creating on first use) the proxy controller of ``param``.
+
+        Keyed by the parameter, not the row: opening a vector moves the rows.
+        """
+        ctrl = self._controllers.get(id(param))
         if ctrl is None:
             from chisurf.gui.widgets.fitting.parameter_widgets import (
                 FittingParameterProxyController,
             )
 
             ctrl = FittingParameterProxyController(
-                self._model.parameters[row],
+                param,
                 parent=self,
-                on_change=partial(self._refresh_row, row),
+                on_change=partial(self._refresh_param, param),
             )
-            self._controllers[row] = ctrl
+            self._controllers[id(param)] = ctrl
         return ctrl
+
+    def _refresh_param(self, param: FittingParameter) -> None:
+        """Repaint the rows showing ``param`` (see :meth:`_refresh_row`)."""
+        for row in self._model.rows_of(param):
+            self._refresh_row(row)
 
     def _refresh_row(self, row: int) -> None:
         """Repaint one row from its parameter.
@@ -1139,10 +1422,20 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
             self._suppress_change = False
 
     def _on_cell_clicked(self, index: QtCore.QModelIndex) -> None:
-        """Open the parameter detail popup when its name is clicked."""
+        """Open the parameter detail popup when its name is clicked; a vector's opens it."""
         if not index.isValid() or index.column() != COL_NAME:
             return
-        self._open_details_popup(index.row())
+        if self._model.is_parent(index.row()):
+            self.toggle(index.row())
+            return
+        if self._model.param_at(index.row()) is not None:
+            self._open_details_popup(index.row())
+
+    def toggle(self, row: int) -> None:
+        """Open or close the vector at ``row`` and size the table to its rows."""
+        self._model.toggle(row)
+        self._install_controllers()
+        self._size_to_content()
 
     def _open_details_popup(self, row: int) -> None:
         from chisurf.gui.widgets.fitting.parameter_widgets import (
@@ -1165,7 +1458,7 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
     def _context_menu(self, pos) -> None:
         menu = QtWidgets.QMenu(self._table)
         index = self._table.indexAt(pos)
-        if index.isValid():
+        if index.isValid() and self._model.param_at(index.row()) is not None:
             self._add_link_actions(menu, index.row())
         act_copy = menu.addAction(f"{Glyphs.COPY} Copy")
         act_paste = menu.addAction(f"{Glyphs.IMPORT} Paste")
@@ -1178,7 +1471,7 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
 
     def _add_link_actions(self, menu: QtWidgets.QMenu, row: int) -> None:
         """Prepend the link/unlink entries for ``row``'s parameter to ``menu``."""
-        param = self._model.parameters[row]
+        param = self._model.param_at(row)
         ctrl = self._controller(row)
         link_menu = ctrl.build_link_menu()
         link_menu.setTitle(f"🔗 Link {param.name} to")
@@ -1192,7 +1485,7 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
     def _unlink(self, row: int) -> None:
         """Drop the link on ``row``'s parameter (local echo + RPC + trace)."""
         ctrl = self._controller(row)
-        ctrl.apply_unlink(self._model.parameters[row])
+        ctrl.apply_unlink(self._model.param_at(row))
         ctrl.finalize()
         # The row now paints as a free parameter: upright, undimmed, editable.
         self._refresh_row(row)
