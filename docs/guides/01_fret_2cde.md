@@ -30,7 +30,8 @@ $$\mathrm{FRET\text{-}2CDE} = 110 - 100\,\big[(E)_D + (1-E)_A\big].$$
 
 A **static** burst gives ≈ 10; a burst with millisecond dynamics rises to 30–100.
 **ALEX-2CDE** is the analogous quantity for ALEX/PIE data and flags acceptor
-blinking / donor-only contamination.
+blinking / donor-only contamination: a clean burst scores ≈ 0, and Tomov kept
+bursts below 4–10.
 
 ## In ChiSurf
 

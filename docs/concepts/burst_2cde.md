@@ -135,19 +135,16 @@ For a burst whose two excitation streams keep a fixed brightness ratio, each
 $BR \to 1$. Tomov sums them (eq. 12),
 $\mathrm{ALEX\text{-}2CDE} = 100 - 50\,(BR_{D_{ex}} + BR_{A_{ex}})$, so a pure
 burst scores $\approx 0$ and a heterogeneous one rises above it {cite}`tomov2012`.
-**ChiSurf does not compute that.** `tttrlib.TwoCDE` — like the code cell of the
-FRETBursts 2CDE notebook it was ported from — takes the *difference*,
+ChiSurf computes exactly this (`tttrlib.TwoCDE`).
 
-$$
-\boxed{\;\mathrm{ALEX\text{-}2CDE}_\text{ChiSurf} = 100 - 50\,\big(BR_{D_{ex}} - BR_{A_{ex}}\big)\;}
-$$
-
-whose static baseline is $\approx 100$, not 0 (200 simulated constant-rate 1 ms bursts, 60 + 40
-photons, $\tau = 75\ \mu\mathrm{s}$: median 98.5 against 7.3 for eq. 12).
-A heterogeneous burst moves it *either* way — acceptor bleaching lowers
-$BR_{A_{ex}}$ and pushes it below 100, donor bleaching lowers $BR_{D_{ex}}$ and
-pushes it above — so gate on the distance from the static cluster, never with
-the "keep below 10" cutoffs of the paper.
+:::{note}
+tttrlib builds before 2026-09-24 took the *difference*
+$100 - 50\,(BR_{D_{ex}} - BR_{A_{ex}})$, copied from the code cell of the
+FRETBursts 2CDE notebook (whose own text quotes eq. 12). Its static baseline is
+$\approx 100$, not 0 — 200 simulated constant-rate 1 ms bursts gave a median of
+98.5 against 7.3 for eq. 12 — so ALEX-2CDE columns written by an older build, and
+any cutoff tuned on them, must be recomputed.
+:::
 
 A well-behaved single molecule carrying one active donor and one active acceptor
 gives donor- and acceptor-excitation photons that are present *throughout* the

@@ -5874,8 +5874,10 @@ mismatch; MFD reader `update_widgets`; seven tools not drawing shipped help
 
 Open, highest value first:
 
-1. **tttrlib ALEX-2CDE sign** (`TwoCDE.cpp:43`, − where Tomov eq. 12 has +;
-   static-burst median 98.5 vs 7.3) — board ticket T-20260923-11.
+1. ~~**tttrlib ALEX-2CDE sign**~~ **Fixed 2026-09-24 in tttrlib `04d83cd29`**
+   (eq. 12 verified against the paper; clean-burst median now ~1.5). ChiSurf
+   sees it after the next tttrlib rebuild of the arm64/pixi env; ALEX-2CDE
+   columns written before that are on the old ~100 scale.
 2. **`Bursts.recurrence()` always raises** — `burst_analysis/api/workflow.py`
    ~1313 `select_bursts` builds its `AnalysisRequest` without the setup's
    detectors/windows, so the table has no per-detector counts (hit by two passes).

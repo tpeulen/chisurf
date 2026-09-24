@@ -40293,3 +40293,11 @@ side of the line.
   acquisition device-type mismatch, MFD reader refresh. Bibliography 383.
   Open defects: [known-issues](references/known-issues.md), third 09-23
   section.
+
+- 2026-09-24 — **ALEX-2CDE uses Tomov eq. 12** (owner: "fix the ALEX-2CDE
+  sign in tttrlib"). tttrlib `04d83cd29`: `100 - 50 (BR_Dex + BR_Aex)`; the
+  minus came from the FRETBursts notebook's code cell, which contradicts its
+  own markdown and the paper. Clean bursts now score ~0 (1.5 in the new
+  guard test), blinking ~27. `docs/concepts/burst_2cde.md`, the plugin help
+  and guide 01 now state eq. 12, with a note that columns from older builds
+  are on the ~100 scale. The installed arm64 tttrlib is not rebuilt yet.

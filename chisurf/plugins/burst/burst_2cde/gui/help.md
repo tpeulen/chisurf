@@ -26,7 +26,7 @@ the molecule switches state mid-burst the two colours become anticorrelated in
 time (donor bright while acceptor dim, then the reverse) and the score rises,
 typically into 30–100 for clear millisecond dynamics.
 
-**ALEX-2CDE = 100 − 50·(BR_Dex − BR_Aex)** runs the same machinery on the two
+**ALEX-2CDE = 100 − 50·(BR_Dex + BR_Aex)** (Tomov eq. 12) runs the same machinery on the two
 *excitation* streams instead, and scores how uniformly donor and acceptor
 brightness are distributed across the burst. It needs ALEX or PIE data. A clean
 single molecule with one active donor and one active acceptor is bright in both
