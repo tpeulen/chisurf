@@ -2,6 +2,11 @@
 
 ## 2026-09-24
 
+* **ndX parameter tables: the edit bug, one shared table, ndX's own parameter model.**
+  - Bug: an emtk DataTable cell was committed only on Enter or a press inside the table; a click elsewhere (or on the menu bar) left it open, so a typed Gaussian ρ never took. emtk 8e33b9e commits on any click, parses U+2212 and ∞, keeps text typed with Enter; ndxplorer commits open cells on menu-bar presses.
+  - One parameter table (`app/views/parameter_table.view.json` + `app/parameter_table.py`) for Gaussian Fit, Parameters, curves and the curve fit; per-feature table code deleted (emtk 743319a: dotted model names).
+  - `core/parameters.py` is ndX's parameter model; constants/curves/Gaussians use it, EM is numpy and the curve fit scipy, so they run without chisurf/IMP; `core/chisurf_binding.py` mirrors registered groups to ChiSurf when present. ndxplorer 4bca2ba, ab285d4, dae540c, fa4035d. Resume: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md) "Parameter tables".
+
 * **ndX's FRET calibration runs on tttrlib without ChiSurf.**
   - ndxplorer `analysis/fret_backend.py` (+ `fret_background.py`, `fret_result.py`) is ndX's default calibration backend; `backend()` no longer falls back to ChiSurf. Channel roles come from `tttrlib.guess_burst_columns` and the report from `tttrlib.calibration_report` (both moved from chisurf `burst/table.py` / `AutoCalibration.report`).
   - ChiSurf's `optimize_calibration_from_ndx` calls it and adds only the light-path priors and the Qt writes; `calibrate_columns`, `fitted_background`, `measured_background` and `burst_durations_ms` were deleted from the bridge, and `calibration_to/from_ndx_constants` moved from `fret/calibration.py` into the bridge on ndX's mapping.

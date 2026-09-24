@@ -22,6 +22,42 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Parameter tables and the parameter model (2026-09-24)
+
+State: every parameter table of the emtk app (Gaussian Fit, Parameters, an
+overlay curve, the curve fit's two tables) is one `data_table` section,
+`ndxplorer/app/views/parameter_table.view.json`, over
+`ndxplorer/app/parameter_table.py:ParameterTable`; a feature spec writes
+`{"type": "parameter_table", "table": "<attr>"}` and `expand()` inserts it with
+dotted model names (`table.rows`, emtk 743319a). Content-sized columns, Lo/Hi as
+bound or −∞/∞ (no Bounds column), Link only while something is linked,
+Copy/Paste/Link…/Unlink. The parameters are ndX's own
+(`core/parameters.py`: Parameter, ParameterGroup, registry, `link_targets`);
+Gaussian EM is numpy, curve fit is scipy — all run with chisurf and IMP blocked
+(`ndxplorer/tests/test_works_without_chisurf.py`). With chisurf,
+`core/chisurf_binding.py` mirrors a registered group as FittingParameters (push
+on write, pull on read) for the Global View, links from fits, and the Qt
+window's ChiSurf tables (`chisurf_group`, `mirrored_list`).
+
+The reported bug ("parameter edit does not work", Gaussian ρ typed as -0.1571):
+the emtk DataTable committed a cell only on Enter or a press *inside* the
+table; a click elsewhere left it open and uncommitted forever (fixed in emtk
+8e33b9e, plus U+2212/∞ parsing and text typed with Enter). A press the menu bar
+takes never reaches the tables; `NdxApp._press_overlays` commits open cells.
+Measure: `ndxplorer/tests/test_app/test_parameter_tables.py` drives real
+double-click, keys, Enter / click-away.
+
+Next:
+1. **One ChiSurf mirror of the constants.** `chisurf/plugins/ndxplorer/parameters.py`
+   (`NdxConstants`, `bind_ndx_parameters`) still builds its own FittingParameter
+   copy of the hosted Qt window's constants under owner `ndxplorer` — the same
+   slot `ui/parameter_editor.py` publishes the ndX group's mirror in, so the
+   last one registered wins. Replace it with
+   `chisurf_binding.publish(window.parameter_control.parameter_group, ...)` and
+   port `test/fitting/test_global_view_parameters.py`.
+2. A loose curve fit's parameters (`mirrored_list`) stay in the binding's
+   `_MIRRORS` after the Qt dialog closes (small leak); detach on close.
+
 ### Browser (the app in a Pyodide + WebGPU page)
 
 Run `python -m ndxplorer.app.web` (arm64 env) from the ChiSurf checkout root. It
