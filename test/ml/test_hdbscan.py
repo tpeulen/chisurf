@@ -1,27 +1,21 @@
-"""HDBSCAN: parity with scikit-learn, and the two invariants the port adds.
+"""HDBSCAN as ChiSurf uses it: tttrlib's (``tttrlib.hdbscan``).
 
-Three things are being proved here, and they are not the same thing:
+ChiSurf had its own Python HDBSCAN over tttrlib's k-d tree / Boruvka kernels;
+tttrlib now runs the whole pipeline itself, so that copy is gone and these are
+the checks it carried, pointed at the one implementation left:
 
 1. **The clustering is scikit-learn's.** Labels and membership probabilities
-   match, exactly, on data whose mutual-reachability weights are generic.
+   match on data whose mutual-reachability weights are generic (when
+   scikit-learn happens to be installed; it is not a dependency).
 2. **The minimum spanning tree is a minimum spanning tree, and a reproducible
-   one.** Steps 1 and 2 are the photon library's compiled kernels, called
-   without a capability check in front of them — a library that lacks them
-   fails on the attribute — so there is no second copy to compare against and
-   no guard to test. They are checked instead against arithmetic the method
-   itself supplies: an explicit mutual-reachability distance matrix and SciPy's
-   own MST. Reproducibility is checked where it is hardest — a lattice, where
-   nearly every weight ties and a weight-only ordering would leave the tree
-   undetermined.
+   one**, checked against arithmetic the method itself supplies: an explicit
+   mutual-reachability distance matrix and SciPy's own MST. Reproducibility is
+   checked where it is hardest -- a lattice, where nearly every weight ties.
 3. **Degenerate input is answered, not crashed on.** Fewer points than
-   ``min_cluster_size``, rows with a NaN, an all-identical column.
+   ``min_cluster_size``, rows with a NaN, duplicated points.
 
-Where scikit-learn and this port legitimately differ is documented in
-:func:`test_tied_weights_are_broken_deterministically`: mutual-reachability
-weights tie constantly (a core distance is the weight of every edge it
-dominates), and any minimum spanning tree algorithm then has a choice.
-scikit-learn leaves that choice to the sort algorithm; here it is fixed, so the
-same data always gives the same clusters.
+The label-for-label comparison on scikit-learn's own dendrogram lives with the
+kernels, in tttrlib's ``test/python/misc/test_math_ab_clustering.py``.
 """
 
 from __future__ import annotations
@@ -29,12 +23,21 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.core.ml.cluster import HDBSCAN
-from chisurf.core.ml.cluster._hdbscan import (
-    core_distances,
-    mutual_reachability_mst,
-    tree_to_labels,
-)
+tttrlib = pytest.importorskip("tttrlib")
+
+
+def core_distances(X, min_samples):
+    return np.asarray(tttrlib.core_distances(np.ascontiguousarray(X, dtype=float),
+                                             int(min_samples)))
+
+
+def mutual_reachability_mst(X, min_samples, alpha=1.0):
+    return np.asarray(tttrlib.mutual_reachability_mst(np.ascontiguousarray(X, dtype=float),
+                                                      int(min_samples), float(alpha)))
+
+
+def hdbscan(X, **configuration):
+    return tttrlib.hdbscan(np.ascontiguousarray(X, dtype=float), **configuration)
 
 
 def _mutual_reachability_matrix(X, min_samples, alpha=1.0):
@@ -98,23 +101,22 @@ def test_matches_sklearn_end_to_end(n_features, configuration):
     a straightforward accumulation in the last place on a few points per
     thousand. A mutual-reachability graph is full of tied weights, so one unit
     in the last place can flip which of two equal edges enters the spanning
-    tree, and a handful of noise points then change hands. What is exact, and is
-    asserted, is :func:`test_only_tied_weights_can_make_the_two_differ`: given
-    the same dendrogram the two produce identical labels and identical
-    probabilities, for every configuration and every dimension.
+    tree, and a handful of noise points then change hands. Given the same
+    dendrogram the two produce identical labels and probabilities; that is
+    asserted in tttrlib's own A/B tests.
     """
     pytest.importorskip("sklearn")
     from sklearn.cluster import HDBSCAN as SkHDBSCAN
 
     X = _blobs(n_features)
-    mine = HDBSCAN(**configuration).fit(X)
+    mine = hdbscan(X, **configuration)
     theirs = SkHDBSCAN(**configuration).fit(X)
-    agreement = float((mine.labels_ == theirs.labels_).mean())
+    agreement = float((mine.labels == theirs.labels_).mean())
     assert agreement >= 0.97, f"only {agreement:.3f} of the labels agree"
-    assert abs(int(mine.labels_.max()) - int(theirs.labels_.max())) <= 1
-    agreed = mine.labels_ == theirs.labels_
+    assert abs(int(mine.labels.max()) - int(theirs.labels_.max())) <= 1
+    agreed = mine.labels == theirs.labels_
     np.testing.assert_allclose(
-        mine.probabilities_[agreed], theirs.probabilities_[agreed], atol=1e-6
+        mine.probabilities[agreed], theirs.probabilities_[agreed], atol=1e-6
     )
 
 
@@ -138,52 +140,6 @@ def test_mst_weight_multiset_matches_sklearn(n_features):
     np.testing.assert_allclose(
         np.sort(mine[:, 2]), np.sort(np.asarray(theirs["distance"])), rtol=1e-12
     )
-
-
-@pytest.mark.parametrize("n_features", [1, 2, 3, 5, 8])
-@pytest.mark.parametrize("configuration", _CONFIGURATIONS)
-def test_only_tied_weights_can_make_the_two_differ(n_features, configuration):
-    """Given scikit-learn's own dendrogram, the labels and probabilities agree exactly.
-
-    This is the sharp version of the parity claim: it removes the minimum
-    spanning tree from the comparison and tests the condensation, the
-    excess-of-mass selection, the labelling and the membership strengths against
-    the library on identical input — including in the low dimensions where the
-    end-to-end test cannot demand equality.
-    """
-    pytest.importorskip("sklearn")
-    from sklearn.cluster._hdbscan._linkage import make_single_linkage, mst_from_data_matrix
-    from sklearn.cluster._hdbscan._tree import tree_to_labels as sk_tree_to_labels
-    from sklearn.metrics import DistanceMetric
-
-    from chisurf.core.ml.cluster._hdbscan import HIERARCHY_DTYPE
-
-    X = _blobs(n_features)
-    theirs_mst = mst_from_data_matrix(
-        X, core_distances(X, 5), DistanceMetric.get_metric("euclidean"), 1.0
-    )
-    theirs_tree = make_single_linkage(
-        np.ascontiguousarray(theirs_mst[np.argsort(theirs_mst["distance"])])
-    )
-    mine_tree = np.empty(theirs_tree.shape[0], dtype=HIERARCHY_DTYPE)
-    for field in HIERARCHY_DTYPE.names:
-        mine_tree[field] = theirs_tree[field]
-
-    arguments = (
-        configuration["min_cluster_size"],
-        configuration.get("cluster_selection_method", "eom"),
-        configuration.get("allow_single_cluster", False),
-        configuration.get("cluster_selection_epsilon", 0.0),
-        configuration.get("max_cluster_size"),
-    )
-    try:
-        expected_labels, expected_probabilities = sk_tree_to_labels(theirs_tree, *arguments)
-    except TypeError:  # scikit-learn's own epsilon search raises on some trees
-        pytest.skip("scikit-learn cannot label this tree")
-
-    labels, probabilities, _, _ = tree_to_labels(mine_tree, *arguments)
-    np.testing.assert_array_equal(labels, expected_labels)
-    np.testing.assert_allclose(probabilities, expected_probabilities, atol=1e-12)
 
 
 def test_core_distances_match_sklearn():
@@ -225,8 +181,8 @@ def test_max_cluster_size_is_respected():
     centres = [(0.0, 0.0), (0.9, 0.0), (8.0, 0.0), (8.9, 0.0), (0.0, 8.0), (0.9, 8.0)]
     X = np.ascontiguousarray(np.vstack([rng.normal(centre, 0.12, (100, 2)) for centre in centres]))
     cap = 150
-    fitted = HDBSCAN(min_cluster_size=20, max_cluster_size=cap).fit(X)
-    counts = np.bincount(fitted.labels_[fitted.labels_ >= 0])
+    fitted = hdbscan(X, min_cluster_size=20, max_cluster_size=cap)
+    counts = np.bincount(fitted.labels[fitted.labels >= 0])
     assert counts.size >= 2, "the cap must not suppress every cluster"
     assert counts.max() <= cap
 
@@ -234,7 +190,7 @@ def test_max_cluster_size_is_respected():
 def test_recovers_known_blobs():
     """Three well-separated blobs come back as three clusters, noise as noise."""
     X = _blobs(2, sizes=(150, 150, 150), n_noise=0)
-    labels = HDBSCAN(min_cluster_size=25).fit_predict(X)
+    labels = hdbscan(X, min_cluster_size=25).labels
     assert labels.max() + 1 == 3
     for start in (0, 150, 300):
         block = labels[start : start + 150]
@@ -323,9 +279,9 @@ def test_tied_weights_are_broken_deterministically():
     minimal.
     """
     grid = np.stack(np.meshgrid(np.arange(12.0), np.arange(12.0)), axis=-1).reshape(-1, 2)
-    first = HDBSCAN(min_cluster_size=5).fit(grid)
-    second = HDBSCAN(min_cluster_size=5).fit(grid)
-    np.testing.assert_array_equal(first.labels_, second.labels_)
+    first = hdbscan(grid, min_cluster_size=5)
+    second = hdbscan(grid, min_cluster_size=5)
+    np.testing.assert_array_equal(first.labels, second.labels)
 
     mst = mutual_reachability_mst(grid, 5)
     n_tied = mst.shape[0] - np.unique(mst[:, 2]).size
@@ -348,67 +304,26 @@ def test_non_finite_rows_are_noise():
     X = _blobs(2)
     X[5] = np.nan
     X[9, 0] = np.inf
-    fitted = HDBSCAN(min_cluster_size=10).fit(X)
-    assert fitted.labels_[5] == -1
-    assert fitted.labels_[9] == -1
-    assert fitted.probabilities_[5] == 0.0
-    assert fitted.labels_.max() + 1 >= 2
+    fitted = hdbscan(X, min_cluster_size=10)
+    assert fitted.labels[5] == -1
+    assert fitted.labels[9] == -1
+    assert fitted.probabilities[5] == 0.0
+    assert fitted.labels.max() + 1 >= 2
 
 
 def test_fewer_points_than_min_cluster_size():
-    """Everything is noise, and the fitted arrays still exist and have the right length."""
+    """Everything is noise, and the arrays still exist and have the right length."""
     X = np.arange(6.0).reshape(3, 2)
-    fitted = HDBSCAN(min_cluster_size=10).fit(X)
-    np.testing.assert_array_equal(fitted.labels_, [-1, -1, -1])
-    np.testing.assert_array_equal(fitted.probabilities_, [0.0, 0.0, 0.0])
-    assert fitted.condensed_tree_.shape == (0,)
+    fitted = hdbscan(X, min_cluster_size=10)
+    np.testing.assert_array_equal(fitted.labels, [-1, -1, -1])
+    np.testing.assert_array_equal(fitted.probabilities, [0.0, 0.0, 0.0])
+    assert fitted.persistence.shape == (0,)
 
 
 def test_duplicate_points_do_not_divide_by_zero():
     """Coincident points give a zero merge distance, i.e. an infinite lambda."""
     X = np.repeat(np.array([[0.0, 0.0], [5.0, 5.0]]), 30, axis=0)
-    fitted = HDBSCAN(min_cluster_size=5, allow_single_cluster=False).fit(X)
-    assert np.isfinite(fitted.probabilities_).all()
-    assert (fitted.probabilities_ <= 1.0).all()
-    assert fitted.labels_.max() + 1 == 2
-
-
-def test_min_samples_larger_than_the_data_is_refused():
-    """A neighbour rank beyond the sample count is a caller error, not a silent clamp."""
-    with pytest.raises(ValueError, match="min_samples"):
-        HDBSCAN(min_cluster_size=2, min_samples=50).fit(np.zeros((10, 2)))
-
-
-def test_unsupported_metric_is_refused():
-    """Only the Euclidean metric is implemented; anything else must say so."""
-    with pytest.raises(ValueError, match="metric"):
-        HDBSCAN(metric="manhattan").fit(_blobs(2))
-
-
-def test_prediction_data_is_accepted_and_ignored():
-    """The standalone package's keyword must not be an error for a caller porting over."""
-    X = _blobs(2)
-    with_flag = HDBSCAN(min_cluster_size=10, prediction_data=True).fit(X)
-    without = HDBSCAN(min_cluster_size=10).fit(X)
-    np.testing.assert_array_equal(with_flag.labels_, without.labels_)
-
-
-def test_store_centers_gives_one_centroid_per_cluster():
-    """``store_centers='centroid'`` exposes the arithmetic mean of each cluster."""
-    X = _blobs(2, sizes=(150, 150, 150), n_noise=0)
-    fitted = HDBSCAN(min_cluster_size=25, store_centers="centroid").fit(X)
-    n_clusters = fitted.labels_.max() + 1
-    assert fitted.centroids_.shape == (n_clusters, 2)
-    for index in range(n_clusters):
-        np.testing.assert_allclose(
-            fitted.centroids_[index], X[fitted.labels_ == index].mean(axis=0)
-        )
-
-
-def test_get_params_round_trips():
-    """The estimator surface is scikit-learn's: parameters go in and come back."""
-    estimator = HDBSCAN(min_cluster_size=7, cluster_selection_method="leaf")
-    assert estimator.get_params()["min_cluster_size"] == 7
-    estimator.set_params(min_cluster_size=9)
-    assert estimator.get_params()["min_cluster_size"] == 9
-    assert "HDBSCAN(" in repr(estimator)
+    fitted = hdbscan(X, min_cluster_size=5, allow_single_cluster=False)
+    assert np.isfinite(fitted.probabilities).all()
+    assert (fitted.probabilities <= 1.0).all()
+    assert fitted.labels.max() + 1 == 2

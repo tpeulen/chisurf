@@ -1,4 +1,4 @@
-"""Benchmark for the in-tree HDBSCAN (:mod:`chisurf.core.ml.cluster`).
+"""Benchmark for the HDBSCAN ChiSurf uses: tttrlib's (``tttrlib.hdbscan``).
 
 Measures the wall time of a complete clustering — core distances, the
 mutual-reachability spanning tree, the condensed tree and the excess-of-mass
@@ -45,7 +45,7 @@ import time
 import numpy as np
 import pytest
 
-from chisurf.core.ml.cluster import HDBSCAN
+import tttrlib
 
 try:  # optional external reference, not a dependency
     import hdbscan as _reference_package
@@ -108,11 +108,11 @@ def run_case(n_samples, n_features):
     rows = []
 
     seconds, fitted = _time(
-        lambda x: HDBSCAN(min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES).fit(x),
+        lambda x: tttrlib.hdbscan(x, min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES),
         data,
         repeat=2,
     )
-    rows.append(("chisurf", seconds, _n_clusters(fitted.labels_)))
+    rows.append(("tttrlib", seconds, _n_clusters(fitted.labels)))
 
     if _reference_package is not None:
         seconds, fitted = _time(
@@ -140,7 +140,7 @@ def run_case(n_samples, n_features):
 def main():
     """Print the markdown table for ``docs/development/benchmarks.md``."""
     # One warm run so first-call overhead does not land in the first case.
-    HDBSCAN(min_cluster_size=MIN_CLUSTER_SIZE).fit(make_blobs(400, 3))
+    tttrlib.hdbscan(make_blobs(400, 3), min_cluster_size=MIN_CLUSTER_SIZE)
 
     print("| case | implementation | fit [s] | clusters |")
     print("| --- | --- | ---: | ---: |")
@@ -167,7 +167,7 @@ def test_the_compiled_kernel_keeps_up_with_scikit_learn():
     data = make_blobs(20_000, 3)
 
     mine, fitted = _time(
-        lambda x: HDBSCAN(min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES).fit(x),
+        lambda x: tttrlib.hdbscan(x, min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES),
         data,
     )
     theirs, reference = _time(
@@ -177,7 +177,7 @@ def test_the_compiled_kernel_keeps_up_with_scikit_learn():
         data,
     )
 
-    assert _n_clusters(fitted.labels_) == _n_clusters(reference.labels_)
+    assert _n_clusters(fitted.labels) == _n_clusters(reference.labels_)
     assert mine < 3.0 * theirs, (
         f"the compiled kernel ({mine:.3f} s) is more than 3x scikit-learn "
         f"({theirs:.3f} s) -- check that OpenMP was found when tttrlib was built"

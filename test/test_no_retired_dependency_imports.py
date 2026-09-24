@@ -90,11 +90,11 @@ RETIRED = {
     "sklearn": (
         "scikit-learn",
         "use chisurf.core.ml (GaussianMixture, KMeans, PCA, IncrementalPCA, "
-        "StandardScaler, MLPRegressor, HDBSCAN)",
+        "StandardScaler, MLPRegressor) or tttrlib.hdbscan",
     ),
     "hdbscan": (
         "hdbscan",
-        "use chisurf.core.ml.cluster.HDBSCAN",
+        "use tttrlib.hdbscan",
     ),
     "skimage": (
         "scikit-image",
