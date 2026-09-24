@@ -22,6 +22,52 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Islands as clusters (2026-09-24)
+
+State: tpeulen: "let the different groups be clusters, so that the user can
+select the clusters with cluster selection tool". The ranking panel has **Use
+islands as clusters** (button under *Show islands on the map*; Separation,
+pairs; both hosts). It labels **every burst of the table** (not the 5 000
+sample) by the islands of the view on the axes and writes them the way Find
+structure does, so everything that reads clusters follows unchanged.
+
+- **Labels** (`separation.Populations.label(points, core=True)`): the islands
+  are found again on the ranking's sample; each burst goes through the view's
+  `RobustAxis.transform` (scale, sentinel spikes, outlier fence, robust range).
+  A burst is labelled only when its cell stands `CORE_Z = 2` shot-noise sigmas
+  above its island's highest valley **and** its basin hangs on the island
+  above that valley. -1: flat bridges (they sit at about the valley level; the
+  score's "above the valley" core alone labelled a whole bridge), thin tails,
+  clumps too small for an island (behind a significant valley, or off in empty
+  space -- the elder rule merged those into the largest island at level 0),
+  missing/outlier coordinates. The score's cores are unchanged. Numbering: by
+  bursts held in the table, largest first (`ProjectionRankModel.island_clusters`).
+  An alias on the axes (PR for E) is looked up through its ranked column
+  (`ProjectionRanker.ranked_names`).
+- **Writing**: emtk `PlaybackExportFeature.use_islands_as_clusters` ->
+  `AnalysisFeature.set_clusters` (now also Find structure's path):
+  `Cluster Label` + `Cluster Probability` (1 in a core, 0 otherwise),
+  `labels/label_run` (method "islands" for Save Clustering), plus a kept column
+  `Island Label (<x> vs <y>)` (real column names). Map: islands overlay off,
+  cluster colour on. Status: "4 islands of Proximity ratio(PIE) vs
+  Stoichiometry (PIE) written as clusters 0–3 (unassigned: −1)[, replacing the
+  previous clusters]". Qt: `ProjectionRankController.use_islands_as_clusters`
+  -> `window.on_clustering_done` (spin box range, columns) + `_use_clustering`,
+  colour box checked, status bar.
+- **Measured**: cal1 ALEX S vs PR(PIE): 4 clusters of 9068 / 5650 / 2045 / 895
+  bursts, 26 612 of 44 270 unassigned (the low-photon smear between species);
+  score cores would label ~60 %, `CORE_Z` 1.0 labels 48 % but leaves 78 % of a
+  synthetic bridge labelled. Guards: `tests/test_app/test_playback_export.py::
+  test_islands_become_the_clusters_of_every_burst` (3 islands + bridge + clump
+  + outliers; spin box count), `tests/test_separation.py::
+  test_alex_s_vs_pr_islands_are_four_clusters`, `tests/test_ui/
+  test_projection_rank.py::test_the_islands_of_the_view_become_the_window_clusters`.
+
+Next: (1) `CORE_Z` is a constant, not a panel setting -- expose it if users want
+more bursts assigned; (2) writing columns bumps `data_version`, so reopening the
+panel after *Use islands as clusters* starts a new ranking (as after Find
+structure); (3) the doc guide 46 does not mention the button yet.
+
 ### Find informative projections ranks Separation, not correlation (2026-09-24)
 
 State: tpeulen: "in FRET you do not want to find correlations, you want

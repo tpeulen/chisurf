@@ -40390,3 +40390,13 @@ side of the line.
   (known-issues). Docs: guide 46 "Population-wise parameters". Resume point:
   [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md); table:
   [GUI tables](subsystems/gui-tables.md).
+
+- 2026-09-24 — **ndX: islands as clusters.** *Find informative projections*
+  gains *Use islands as clusters*: every burst of the table is labelled by the
+  island of the view on the axes (-1 on bridges, tails, small clumps,
+  outliers; `CORE_Z = 2` sigmas above the valley), written as Find structure
+  writes clusters (`Cluster Label`, `AnalysisFeature.set_clusters`; Qt via
+  `on_clustering_done`) plus `Island Label (x vs y)`, so the Cluster spin box,
+  colour, gates, Save Burst IDs and population axes work on them. cal1 S vs PR:
+  4 clusters. Resume point:
+  [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).
