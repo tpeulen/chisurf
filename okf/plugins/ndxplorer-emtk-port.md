@@ -22,6 +22,41 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### `.pto` without ChiSurf (2026-09-24)
+
+State: ndX reads and writes `.pto` containers with tttrlib alone.
+`ndxplorer/io/container.py` (open/commit/lock bracket) over tttrlib's PTO.MFDB
+layer (`pto_tag`, `pto_parents`, `pto_read_blob`, `pto_add_blob`,
+`PtoWriteLock`, `deinterleave_burst_rows`; tttrlib `ext/python/PtoMfdb.py`).
+`io/pto_reader.py` reads the burst search + companions (or, with no bursts, the
+newest `pixel`-grain image table) and the provenance; `analysis/fret_background`
+reads the stored background (`stored_rates`); `io/fret_calibration_io` saves
+(locked, described blob, FIFO of 5), lists, loads and computes `restorable()`
+(newest saved calibration + background, newer wins Bg/Br/By). The emtk app
+applies `restorable()` on open (`AccurateFretFeature.restore_stored`, once per
+stored value); ChiSurf's bridge uses the same for the Qt window.
+
+Measure: `ndxplorer/tests/test_fret_backend_without_chisurf.py` (fresh process,
+`sys.modules["chisurf"/"IMP"/"IMP.bff"] = None`): cal1 and bh_spc132 `m000.pto`
+columns equal ChiSurf's `Measurement.get_store` + `deinterleave_bursts`;
+`background="measurement"` gives Bg/Br/By = the stored rates; save → load in a
+copied `.pto`. Browser: `NDX_TTTRLIB_WHEEL=<tttrlib dev Pyodide wheel> python -m
+ndxplorer.app.web`, drop cal1: default FRET calibration γ 0.7502 α 0.1570 β
+1.0599 δ 0.0674 (desktop equal); measurement background γ 0.7737 α 0.1432 β
+1.0230 δ 0.0430 both places. Trap: the cal1 burst table is stored with the
+legacy `2N+1` zero-row interleave — any reader that skips
+`deinterleave_burst_rows` sees 88541 rows instead of 44270, silently.
+
+Next:
+1. The Qt window's Load (`chisurf/plugins/ndxplorer/window.py`,
+   `_load_calibration`) and the bridge's restore on open apply only the flat
+   constants (`gamma[FRET 1]` as a plain name), not the stored vector constants
+   (`restorable()["vectors"]`), which the emtk app applies through
+   `write_vector`. Uncertainties are saved by population, not by position.
+2. The "accurate fret calibration" factor table (ChiSurf's Accurate FRET step)
+   is still read only by ChiSurf's bridge (`calibration_from_container`, it
+   needs `calibration_columns`); the emtk app does not restore it on open.
+
 ### Parameter tables and the parameter model (2026-09-24)
 
 State: every parameter table of the emtk app (Gaussian Fit, Parameters, an

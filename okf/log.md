@@ -2,6 +2,12 @@
 
 ## 2026-09-24
 
+* **ndX opens `.pto` containers without ChiSurf; the PTO.MFDB tag layer moved into tttrlib.**
+  - tttrlib 26b50c11c (`ext/python/PtoMfdb.py`): `pto_tag`, `pto_parents`, `pto_read_blob`, `pto_describe`, `pto_add_blob`, `pto_settings_hash`, `PtoWriteLock`/`PtoLockedError`, `deinterleave_burst_rows`. ChiSurf's `Measurement.tag/parents/get_blob/_describe`, `_WriteLock`, `_settings_hash` and `deinterleave_bursts` now call them; the dictionary checks stay in ChiSurf.
+  - ndxplorer `io/container.py` + `pto_reader.py` (bursts, companions, image tables, provenance), `fret_background.stored_rates`, `fret_calibration_io` save/load/`restorable` all on tttrlib; the emtk app restores a measurement's stored constants on open. ChiSurf's calibration bridge reads the background and saved calibration through ndX (`saved_constants_from_container`, `_artifact_age` deleted).
+  - Fixed on the way: Load/restore of a calibration with a vector constant raised (`write_vector` took uncertainties by position, `vectors()` saves them by population).
+  - Verified with chisurf/IMP/IMP.bff blocked (`ndxplorer/tests/test_fret_backend_without_chisurf.py`) and in the browser (tttrlib Pyodide wheel from dev): cal1 `.pto` opens, FRET calibration γ 0.7502 α 0.1570 β 1.0599 δ 0.0674 as on the desktop. Known-issues entry removed. Resume: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md) "`.pto` without ChiSurf".
+
 * **ndX parameter tables: the edit bug, one shared table, ndX's own parameter model.**
   - Bug: an emtk DataTable cell was committed only on Enter or a press inside the table; a click elsewhere (or on the menu bar) left it open, so a typed Gaussian ρ never took. emtk 8e33b9e commits on any click, parses U+2212 and ∞, keeps text typed with Enter; ndxplorer commits open cells on menu-bar presses.
   - One parameter table (`app/views/parameter_table.view.json` + `app/parameter_table.py`) for Gaussian Fit, Parameters, curves and the curve fit; per-feature table code deleted (emtk 743319a: dotted model names).

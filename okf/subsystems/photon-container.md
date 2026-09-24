@@ -274,7 +274,8 @@ Consequences worth not re-deriving:
    holds `2N+1` rows — a zero row, a burst, a zero row — because companions are
    merged by *counting*, and it carries a nameless trailing column to produce
    the header's trailing tab. Both leak into the in-memory frames the analyses
-   pass around. `deinterleave_bursts` in `burst_container.py` strips them and
+   pass around. `deinterleave_bursts` in `burst_container.py` (on
+   `tttrlib.deinterleave_burst_rows`) strips them and
    `write_burst_artifact` calls it, so a writer that goes through the seam is
    safe; one that reaches past it is not, and a placeholder row silently
    destroys the information that a burst was absent. The trap is that the frame
@@ -294,9 +295,16 @@ Consequences worth not re-deriving:
 
 # What it is
 
-`chisurf/core/fio/pto.py` is the only code that writes or reads a photon
+`chisurf/core/fio/pto.py` is ChiSurf's only code that writes or reads a photon
 container. A plugin never touches `tttrlib.PtoFile`, so no writer has to
-remember the conventions and there is one place to change them.
+remember the conventions and there is one place to change them. The tag layer
+under it -- typed tag lookup (`tttrlib.pto_tag`), lineage (`pto_parents`),
+verified payloads (`pto_read_blob`), the artifact/operation/edge description
+(`pto_describe`, `pto_add_blob`), the writer lock (`PtoWriteLock`) and the
+`.bur` interleave (`deinterleave_burst_rows`) -- is tttrlib's, shared with
+ndXplorer, which opens containers with ChiSurf absent
+(`ndxplorer/io/container.py`, `pto_reader.py`). What stays here is the
+dictionary: term checks and version stamps.
 
 The normative rules are the [PTO.MFDB profile](/specs/pto-mfdb.md). The
 container beneath it is PTO, specified in tttrlib and **frozen** — nothing here
