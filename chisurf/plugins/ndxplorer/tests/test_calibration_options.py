@@ -143,7 +143,7 @@ def test_none_really_means_zero():
     assert result["background"] == "none"
 
 
-def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch):
+def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path):
     """KHz x ms = counts, and the scaling is per burst.
 
     A 4 ms burst carries four times the background of a 1 ms one; subtracting
@@ -154,55 +154,16 @@ def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch)
     durations = np.array([1.0, 2.0, 4.0])
     table = {"Duration (ms)": durations}
 
-    class _Column:
-        def __init__(self, name, values=None, strings=None):
-            self._name, self._values, self._strings = name, values, strings
+    import tttrlib
 
-        def name(self):
-            return self._name
-
-        def numpy(self):
-            return np.asarray(self._values, dtype=float)
-
-        def string_at(self, row):
-            return self._strings[row]
-
-    class _Store:
-        def __init__(self):
-            self._cols = [
-                _Column("Detector", strings=["green", "red", "yellow"]),
-                _Column("Rate", values=[0.5, 1.0, 2.0]),
-            ]
-
-        def n_columns(self):
-            return len(self._cols)
-
-        def n_rows(self):
-            return 3
-
-        def column(self, i):
-            return self._cols[i]
-
-    class _Obj:
-        name = "background"
-        uid = 1
-
-    class _Measurement:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_a):
-            return False
-
-        def artifacts(self):
-            return [_Obj()]
-
-        def get_store(self, _uid):
-            return _Store()
-
-    import chisurf.core.fio.pto as pto
-
-    monkeypatch.setattr(pto.Measurement, "open", staticmethod(lambda *_a, **_k: _Measurement()))
+    background = tttrlib.DataStore()
+    background.add("Detector", ["green", "red", "yellow"])
+    background.add("Rate", np.array([0.5, 1.0, 2.0]))
+    handle = tttrlib.PtoFile()
+    assert handle.create(str(tmp_path / "m.pto"), "test")
+    tttrlib.pto_add_store(handle, "background_data", "background", background)
+    assert handle.commit()
+    handle.close()
 
     out, rates, note = bridge.measured_background(table, str(tmp_path / "m.pto"))
     assert note == "" and rates == {"bg_dd": 0.5, "bg_da": 1.0, "bg_aa": 2.0}
@@ -782,13 +743,14 @@ def test_gg_gr_restores_from_a_saved_calibration(container):
     window's own constants, gG/gR included, so that is what a user who pressed
     it expects back.
     """
+    from ndxplorer.io.fret_calibration_io import saved_constants
+
     from chisurf.plugins.ndxplorer.calibration_bridge import (
         restore_calibration_from_container,
-        saved_constants_from_container,
     )
 
     _write_saved_calibration(container, {"gG/gR": 0.498, "alpha": 0.153, "r": 1.035})
-    saved = saved_constants_from_container(container)
+    saved = saved_constants(str(container))
     assert "gG/gR" in saved
     ndx = _window()
     ndx.constants["gG/gR"] = 9.99

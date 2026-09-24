@@ -128,5 +128,5 @@ def test_a_container_with_no_burst_table_says_so(tmp_path: Path):
     source.write_bytes(SPC.read_bytes())
     container = pto_api.convert(source)
 
-    with pytest.raises(FileNotFoundError, match="no burst table"):
+    with pytest.raises(FileNotFoundError, match="no burst or image table"):
         read_burst_analysis(container)

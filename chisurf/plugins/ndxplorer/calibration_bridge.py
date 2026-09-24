@@ -35,7 +35,6 @@ __all__ = [
     "optimize_calibration_from_ndx",
     "calibration_from_container",
     "background_from_container",
-    "saved_constants_from_container",
     "restore_calibration_from_container",
     "refresh_stored_parameters",
     "CALIBRATION_ARTIFACT",
@@ -139,11 +138,6 @@ def find_ndx_windows() -> list:
     return windows
 
 
-#: Artifact ndX's "Save calibration" writes: a JSON blob whose ``constants``
-#: block is this window's own constant names, gG/gR included.
-SAVED_CALIBRATION_ARTIFACT = "fret_calibration"
-
-
 def _artifacts(measurement):
     """Every artifact, newest first, skipping any that cannot be described.
 
@@ -156,92 +150,6 @@ def _artifacts(measurement):
         return []
 
 
-def saved_constants_from_container(source) -> dict:
-    """The constants of the most recent explicitly saved calibration.
-
-    ndX's *Save calibration* writes a JSON artifact holding this window's own
-    constants -- ``gG/gR``, ``PhiA``, ``PhiD``, the backgrounds -- which is a
-    different thing from the ``accurate fret calibration`` table the Accurate
-    FRET step writes, and the only one that carries the detection-efficiency
-    ratio directly. Reading only the table meant a user who had pressed Save got
-    nothing back.
-
-    Returns
-    -------
-    dict
-        ndX constant names to values, empty when the measurement has no saved
-        calibration.
-    """
-    import json
-
-    from chisurf.core.fio.pto import Measurement
-
-    path = _container_of(source)
-    if path is None:
-        return {}
-    try:
-        with Measurement.open(path, writable=False) as measurement:
-            # By the timestamp in the payload, because the container reuses the
-            # slots of removed objects: once the saved-calibration history has
-            # been pruned even once, position no longer says which is newest.
-            candidates = []
-            for index, obj in enumerate(_artifacts(measurement)):
-                if getattr(obj, "name", "") != SAVED_CALIBRATION_ARTIFACT:
-                    continue
-                try:
-                    blob = measurement.get_blob(obj.uid)
-                except Exception:
-                    continue
-                try:
-                    if isinstance(blob, (bytes, bytearray)):
-                        blob = blob.decode("utf-8")
-                    payload = json.loads(blob)
-                except Exception:
-                    continue
-                constants = payload.get("constants")
-                if isinstance(constants, dict) and constants:
-                    candidates.append(
-                        (
-                            str(payload.get("saved_utc", "")),
-                            -index,
-                            {
-                                str(k): float(v)
-                                for k, v in constants.items()
-                                if isinstance(v, (int, float)) and np.isfinite(float(v))
-                            },
-                        )
-                    )
-            if candidates:
-                candidates.sort(key=lambda entry: (entry[0], entry[1]))
-                return candidates[-1][2]
-    except Exception:
-        logging.debug("could not read a saved calibration from %s", path, exc_info=True)
-    return {}
-
-
-def _artifact_age(source, name: str) -> int:
-    """How far back an artifact sits, newest first; ``-1`` when absent.
-
-    A container keeps everything it is given, so "which of these two is current"
-    is a question about *position*, not about type. Deciding it by type instead
-    meant a calibration saved last week overrode a background measured this
-    morning.
-    """
-    from chisurf.core.fio.pto import Measurement
-
-    path = _container_of(source)
-    if path is None:
-        return -1
-    try:
-        with Measurement.open(path, writable=False) as measurement:
-            for index, obj in enumerate(_artifacts(measurement)):
-                if getattr(obj, "name", "") == name:
-                    return index
-    except Exception:
-        return -1
-    return -1
-
-
 def _container_of(source):
     """Walk a run path up to the ``.pto`` it lives in, or ``None``."""
     path = pathlib.Path(str(source))
@@ -250,67 +158,18 @@ def _container_of(source):
     return path if path.suffix.lower() == ".pto" and path.is_file() else None
 
 
-#: Detector in a measurement's background artifact -> the ndX constant that
-#: holds its rate. ndX's Bg/Br/By are subtracted from the **kHz** stream columns
-#: (``Fg(PIE) = Sg(PIE) - Bg`` where ``Sg(PIE)`` is ``S prompt green (kHz)``),
-#: so a stored rate goes in as it stands -- no duration, no unit factor.
-_BACKGROUND_CONSTANTS = {"green": "Bg", "red": "Br", "yellow": "By"}
-
-
 def background_from_container(source) -> dict:
-    """The per-detector background **rates** stored in a measurement.
+    """The per-detector background **rates** stored in a measurement, as ndX constants.
 
-    Returns
-    -------
-    dict
-        ``{"Bg": kHz, "Br": kHz, "By": kHz}`` for the detectors the measurement
-        has an estimate for; empty when it carries none. A detector whose rate
-        is not finite is left out rather than written as zero -- "not measured"
-        and "measured as nothing" are different claims, and only one of them is
-        safe to subtract.
+    ``{"Bg": kHz, "Br": kHz, "By": kHz}`` for the detectors the measurement has
+    an estimate for; empty when it carries none. *source* is the container or a
+    run path inside one. ndX reads it (with tttrlib alone): see
+    :func:`ndxplorer.analysis.fret_background.stored_background_constants`.
     """
-    from chisurf.core.fio.pto import Measurement
+    from ndxplorer.analysis.fret_background import stored_background_constants
 
-    path = pathlib.Path(str(source))
-    while path.suffix.lower() != ".pto" and path.parent != path:
-        path = path.parent
-    if path.suffix.lower() != ".pto" or not path.is_file():
-        return {}
-
-    rates: dict[str, float] = {}
-    try:
-        with Measurement.open(path, writable=False) as measurement:
-            # The LAST matching artifact, not the first: a container keeps the
-            # estimates it has been given, so re-running the background step
-            # leaves an older one in front of the newer. Reading the first meant
-            # a corrected estimate was ignored in favour of the one it replaced.
-            for obj in _artifacts(measurement):
-                if getattr(obj, "name", "") != "background":
-                    continue
-                try:
-                    store = measurement.get_store(obj.uid)
-                except Exception:
-                    # A container holds artifacts of several encodings, and
-                    # ``get_store`` raises on anything that is not a dstore.
-                    # Guarding the *loop* instead of each artifact meant one
-                    # JSON blob stopped every later artifact from being read --
-                    # which is exactly what a saved calibration is.
-                    continue
-                names = [store.column(i).name() for i in range(store.n_columns())]
-                if "Detector" not in names or "Rate" not in names:
-                    continue
-                detectors = store.column(names.index("Detector"))
-                values = np.asarray(store.column(names.index("Rate")).numpy(), dtype=float)
-                for row in range(store.n_rows()):
-                    detector = str(detectors.string_at(row)).lower()
-                    constant = _BACKGROUND_CONSTANTS.get(detector)
-                    if constant and np.isfinite(values[row]):
-                        rates[constant] = float(values[row])
-                break
-    except Exception:
-        logging.debug("could not read a background from %s", path, exc_info=True)
-        return {}
-    return rates
+    path = _container_of(source)
+    return stored_background_constants(str(path)) if path is not None else {}
 
 
 #: Artifact the Accurate FRET step writes into a measurement. Its rows are the
@@ -354,8 +213,7 @@ def calibration_from_container(source) -> dict:
     factors: dict[str, float] = {}
     try:
         with Measurement.open(path, writable=False) as measurement:
-            # The most recent calibration, for the reason given in
-            # ``background_from_container``: a re-run adds, it does not replace.
+            # The most recent calibration: a re-run adds, it does not replace.
             for obj in _artifacts(measurement):
                 if getattr(obj, "name", "") != CALIBRATION_ARTIFACT:
                     continue
@@ -415,21 +273,15 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     # step comes first) still has something to restore, and it is the part the
     # equations use most directly.
     factors = calibration_from_container(source)
-    rates = background_from_container(source)
-    # An explicitly saved calibration is ndX's own constants -- gG/gR included,
-    # which is the one thing neither of the other two carries: the factor table
-    # stores gamma, and gG/gR is only recoverable from it together with both
-    # quantum yields.
-    saved = saved_constants_from_container(source)
-    if saved and rates:
-        # Both name Bg/Br/By, so one has to win, and it is the *newer* of the
-        # two artifacts -- not the saved one by fiat. Re-measuring the
-        # background after saving a calibration is the ordinary order of work,
-        # and the newer estimate is the one meant.
-        saved_age = _artifact_age(source, SAVED_CALIBRATION_ARTIFACT)
-        background_age = _artifact_age(source, "background")
-        if 0 <= background_age < saved_age:
-            saved = {k: v for k, v in saved.items() if k not in rates}
+    # ndX's own reading of the container: the background step's rates and the
+    # newest explicitly saved calibration (ndX's constants, gG/gR included --
+    # the one thing the factor table does not carry), with the newer of the two
+    # winning Bg/Br/By.
+    from ndxplorer.io.fret_calibration_io import restorable
+
+    path = _container_of(source)
+    kept = restorable(str(path)) if path is not None else {"saved": {}, "background": {}}
+    rates, saved = kept["background"], kept["saved"]
     if not factors and not rates and not saved:
         return {}
 
