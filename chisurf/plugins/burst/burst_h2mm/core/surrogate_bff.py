@@ -13,7 +13,7 @@ without building a photon engine first.
 
 The C++ feature extractor reproduces :func:`~.surrogate.extract_features`
 bit for bit (verified to 1e-12), so a surrogate trained here with scikit-learn
-and exported via :meth:`~.surrogate.SurrogateModel.export_json` gives identical
+and exported via :meth:`~.surrogate.SurrogateModel.export_msgpack` gives identical
 estimates through either path. When IMP.bff has no surrogate (built without
 tttrlib) this module reports so via :data:`HAVE_BFF` and callers fall back to
 the Python estimator.
@@ -54,7 +54,7 @@ def _layout(data: BurstPhotons) -> tuple:
 
 
 def load(path: str | Path):
-    """Load an :class:`IMP.bff.HmmSurrogate` from a ``bff.hmm_surrogate`` JSON file.
+    """Load an :class:`IMP.bff.HmmSurrogate` from a ``bff.hmm_surrogate`` msgpack file.
 
     Raises
     ------
@@ -62,13 +62,13 @@ def load(path: str | Path):
         If IMP.bff has no surrogate.
     """
     _require()
-    return bff.HmmSurrogate.from_json_file(str(path))
+    return bff.HmmSurrogate.from_file(str(path))
 
 
-def is_json_surrogate(obj) -> bool:
-    """Whether ``obj`` names a JSON surrogate this backend can load."""
+def is_native_surrogate(obj) -> bool:
+    """Whether ``obj`` names a msgpack surrogate this backend can load."""
     if isinstance(obj, (str, Path)):
-        return str(obj).endswith(".json")
+        return str(obj).endswith(".msgpack")
     return HAVE_BFF and isinstance(obj, bff.HmmSurrogate)
 
 
@@ -94,7 +94,7 @@ def estimate_model(
     n_states : int
         Number of hidden states; must match the surrogate.
     surrogate : IMP.bff.HmmSurrogate or path
-        A loaded surrogate, or a path to a ``bff.hmm_surrogate`` JSON file.
+        A loaded surrogate, or a path to a ``bff.hmm_surrogate`` msgpack file.
     refine_iters : int
         If > 0, run this many Baum-Welch maps from the surrogate estimate.
     tol : float

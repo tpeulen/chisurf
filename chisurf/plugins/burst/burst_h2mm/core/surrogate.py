@@ -35,11 +35,11 @@ change.
 
 from __future__ import annotations
 
-import json
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
 
+import msgpack
 import numpy as np
 
 from .h2mm import (
@@ -176,11 +176,12 @@ class SurrogateModel:
         with open(path, "wb") as fh:
             pickle.dump(self, fh)
 
-    def to_json(self) -> dict:
-        """Return this surrogate in the language-neutral ``bff`` JSON schema.
+    def to_document(self) -> dict:
+        """Return this surrogate as a ``bff.hmm_surrogate`` document.
 
         The pickle written by :meth:`save` is Python-only and unsafe to share;
-        this schema is readable by :class:`IMP.bff.HmmSurrogate`, so a surrogate
+        this document, stored as msgpack by :meth:`export_msgpack`, is what
+        :class:`IMP.bff.HmmSurrogate` reads, so a surrogate
         trained here runs in the C++ engine (and in any other IMP.bff binding)
         with identical numbers.
 
@@ -222,10 +223,9 @@ class SurrogateModel:
             },
         }
 
-    def export_json(self, path: str | Path, indent: int = 2) -> None:
-        """Write this surrogate to ``path`` in the ``bff`` JSON schema."""
-        with open(path, "w") as fh:
-            json.dump(self.to_json(), fh, indent=indent)
+    def export_msgpack(self, path: str | Path) -> None:
+        """Write this surrogate to ``path`` as msgpack, bff's network format."""
+        Path(path).write_bytes(msgpack.packb(self.to_document(), use_bin_type=True))
 
     @staticmethod
     def load(path: str | Path) -> SurrogateModel:

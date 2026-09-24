@@ -256,16 +256,16 @@ def fit_one(
             ri = int(refine_iters) if engine == "surrogate-refine" else 0
             # A format dispatch, not two implementations: both paths extract
             # features with the same (compiled) extractor and differ only in
-            # which regressor was serialised -- a C++ estimator in JSON, or a
+            # which regressor was serialised -- a C++ estimator in msgpack, or a
             # pickled scikit-learn model.
-            if _bff_surrogate.is_json_surrogate(sm):
-                # A JSON surrogate is the C++ estimator's format. If that engine
+            if _bff_surrogate.is_native_surrogate(sm):
+                # A msgpack surrogate is the C++ estimator's format. If that engine
                 # is missing, say so -- quietly handing it to the scikit-learn
                 # path would answer with a different estimator than the one the
                 # surrogate was trained for.
                 if not _bff_surrogate.HAVE_BFF:
                     raise RuntimeError(
-                        "this surrogate is in the compiled estimator's JSON "
+                        "this surrogate is in the compiled estimator's msgpack "
                         "format, but IMP.bff has no HmmSurrogate (it was "
                         "built without tttrlib); rebuild it"
                     )

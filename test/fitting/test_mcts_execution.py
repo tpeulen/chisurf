@@ -101,13 +101,13 @@ class _EchoSearch:
 def test_an_explicit_policy_is_forwarded_to_the_native_problem(monkeypatch):
     monkeypatch.setattr(bff, "ModelSearch", _EchoSearch)
     result = run_native_search(
-        _PolicyProblem(), NativeSearchSettings(action_policy="native-policy-json")
+        _PolicyProblem(), NativeSearchSettings(action_policy=b"native-policy")
     )
-    assert result == "native-policy-json"
+    assert result == b"native-policy"
 
 
 def test_the_shipped_policy_is_the_default_and_none_means_declared_priors(monkeypatch):
     monkeypatch.setattr(bff, "ModelSearch", _EchoSearch)
-    monkeypatch.setattr(bff, "get_shipped_action_policy", lambda: "shipped-json")
-    assert run_native_search(_PolicyProblem(), NativeSearchSettings()) == "shipped-json"
+    monkeypatch.setattr(bff, "get_shipped_action_policy", lambda: b"shipped")
+    assert run_native_search(_PolicyProblem(), NativeSearchSettings()) == b"shipped"
     assert run_native_search(_PolicyProblem(), NativeSearchSettings(action_policy="")) is None

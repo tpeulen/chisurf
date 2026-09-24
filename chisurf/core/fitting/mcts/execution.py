@@ -26,9 +26,10 @@ class NativeSearchSettings:
     dirichlet_fraction: float = 0.0
     seed: int = 7
     # The move policy weighting PUCT's priors: ``"shipped"`` is the
-    # family-agnostic network bff ships, ``""`` searches on the declared
-    # priors alone, anything else is a ``bff.neural_net`` document.
-    action_policy: str = "shipped"
+    # family-agnostic network bff ships, ``""`` (or ``b""``) searches on the
+    # declared priors alone, and ``bytes`` are a ``bff.neural_net`` document
+    # in msgpack, bff's network format.
+    action_policy: str | bytes = "shipped"
 
 
 def run_native_search(

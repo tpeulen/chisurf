@@ -2,6 +2,11 @@
 
 ## 2026-09-24
 
+* **Neural networks cross into bff as msgpack, bff's one network format (T-20260923-nn follow-up).**
+  - IMP.bff (2cca80a9) reads and writes every network document as msgpack `bytes`: `NeuralNet(bytes)`, `set_action_policy(bytes)`, `get_shipped_action_policy()` (bytes), `HmmSurrogate.from_file/to_file/from_msgpack/to_msgpack`. JSON text raises `TypeError`.
+  - `NativeSearchSettings.action_policy` is `"shipped"`, `""` or msgpack `bytes`. `SurrogateModel.to_json/export_json` became `to_document/export_msgpack`, and `surrogate_bff.is_native_surrogate` routes `.msgpack` files. Old JSON exports are not read.
+  - burst_h2mm, test_optional_backends and test_mcts_*: 121 passed; test/fitting -k "mcts or model_search or policy": 26 passed.
+
 * **ndX FRET calibration: population-wise gamma, gating dimensions, population finder; a readable z marginal.**
   - Options dialog "Populations" panel: population-wise factors off/auto/on (tttrlib `species_factors`; on adopts the per-population gamma whenever identifiable), gating dimensions S/E/tau_d/tau_a/r_d/r_a with the ones the table lacks disabled and explained, population finder gmm/hdbscan (disabled until tttrlib has `population_method`). Passed through `fret_backend` and ChiSurf's `optimize_calibration_from_ndx` (chisurf 5793a9dd3).
   - Report window/text: mode, gating, selected model with both BICs, identifiable, vectors written (`gamma[FRET 1]`…); Make scalar named as the way back.
