@@ -2,6 +2,13 @@
 
 ## 2026-09-24
 
+* **ndX FRET calibration: population-wise gamma, gating dimensions, population finder; a readable z marginal.**
+  - Options dialog "Populations" panel: population-wise factors off/auto/on (tttrlib `species_factors`; on adopts the per-population gamma whenever identifiable), gating dimensions S/E/tau_d/tau_a/r_d/r_a with the ones the table lacks disabled and explained, population finder gmm/hdbscan (disabled until tttrlib has `population_method`). Passed through `fret_backend` and ChiSurf's `optimize_calibration_from_ndx` (chisurf 5793a9dd3).
+  - Report window/text: mode, gating, selected model with both BICs, identifiable, vectors written (`gamma[FRET 1]`…); Make scalar named as the way back.
+  - emtk adf4cb5: a disabled item still shows its tooltip (ImGui AllowWhenDisabled).
+  - cal1: off/auto/on all γ 0.7502 α 0.1570 β 1.0599 δ 0.0674, never identifiable (no lifetime column); synthetic two-species gamma 0.6/1.2 recovered within 8 %.
+  - z marginal 56 → 100 px, resizable from the grip under it, kept with the layout. Resume: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).
+
 * **ndX opens `.pto` containers without ChiSurf; the PTO.MFDB tag layer moved into tttrlib.**
   - tttrlib 26b50c11c (`ext/python/PtoMfdb.py`): `pto_tag`, `pto_parents`, `pto_read_blob`, `pto_describe`, `pto_add_blob`, `pto_settings_hash`, `PtoWriteLock`/`PtoLockedError`, `deinterleave_burst_rows`. ChiSurf's `Measurement.tag/parents/get_blob/_describe`, `_WriteLock`, `_settings_hash` and `deinterleave_bursts` now call them; the dictionary checks stay in ChiSurf.
   - ndxplorer `io/container.py` + `pto_reader.py` (bursts, companions, image tables, provenance), `fret_background.stored_rates`, `fret_calibration_io` save/load/`restorable` all on tttrlib; the emtk app restores a measurement's stored constants on open. ChiSurf's calibration bridge reads the background and saved calibration through ndX (`saved_constants_from_container`, `_artifact_age` deleted).

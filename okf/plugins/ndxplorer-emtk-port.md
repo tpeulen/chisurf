@@ -22,6 +22,51 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### FRET calibration: population-wise factors, gating dimensions; z marginal (2026-09-24)
+
+State: the options dialog (`analysis/fret_calibration_options.view.json`) has a
+**Populations** panel. *Population-wise factors* off / auto (default) / on maps
+to tttrlib `auto_calibrate`'s `species_factors` (off = False; auto = BIC
+decides; on = ndX adopts the fitted per-population gamma whenever
+`model_selection.identifiable`, `fret_result.force_species`). *Gating
+dimensions* S, E, tau_d, tau_a, r_d, r_a (`CalibrationOptions.gate_*`; S alone
+= `dimensions=[]`, the stoichiometry gating); `fret_backend.dimension_columns`
+maps them onto burst columns (tau_d = tttrlib's `tau_f` role, the rest by
+`DIMENSION_HINTS`), the dialog disables and explains the ones a table lacks
+(emtk adf4cb5: tooltips on disabled items). *Population finder* (gmm /
+hdbscan) is `population_method`, passed only when the installed tttrlib has it
+(`population_method_reason()`), otherwise disabled with the reason. The report
+window and text show mode, gating, selected model with both BICs, identifiable,
+and the vectors written (`gamma[FRET 1]`…). The ChiSurf bridge
+(`optimize_calibration_from_ndx`) takes the same three options. The z marginal
+(Plot controls > z axis) is 100 px by default and resizable from the grip under
+it (`docks.ZMARGINAL_*`, kept as layout extra `plot_controls.zmarginal_h`).
+
+Measure: `ndxplorer/tests/test_fret_population_options.py` (synthetic
+two-species bursts with gamma 0.6/1.2 and lifetimes: auto and on give
+gamma[FRET 1/2] within 8 %, BIC 4.2 vs 125.6; on forces per-population gamma
+on a shared sample; off writes no vectors; cal1 in every mode γ 0.7502 α
+0.1570 β 1.0599 δ 0.0674). cal1 in the app: never identifiable — its table has
+no lifetime column, the app's equation column `<tauD(A)>x` is picked as tau_f
+but only one of the two FRET populations lies on the static line (n_obs 3);
+auto with S,E,tau_d gating: 28.8 s, 3 FRET populations, still shared, γ 0.4317
+β 1.5802 δ 0.0564 (S-only 4.5 s). Trap: the cal1 `.pto` in tttr-data already
+carries a stored calibration with a `gamma` vector (0.4536, 0.8090), so the
+Parameters tab shows gamma[FRET 1/2] on open regardless of the run; captures
+work on a copy.
+
+Next:
+1. Wire `population_method` to the tttrlib HDBSCAN option once it lands (name
+   and values to be confirmed; the dialog enables itself when
+   `tttrlib.AutoCalibrateOptions` has the attribute and `_AFRET_OPTION_KEYS`
+   lists it).
+2. A run that selects shared gamma leaves an older `gamma` vector in the window
+   (stored or from an earlier run); the report says "none written" but the
+   Parameters tab still has it. Decide whether a written scalar gamma should
+   make an existing gamma vector scalar (today: the user does Make scalar).
+3. The Qt window's AutoForm shows the Populations panel but does not disable
+   unavailable dimensions; the backend drops them with a note.
+
 ### `.pto` without ChiSurf (2026-09-24)
 
 State: ndX reads and writes `.pto` containers with tttrlib alone.
