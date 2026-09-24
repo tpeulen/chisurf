@@ -1,3 +1,72 @@
+## Two GUI test failures that predate the vector-parameter commits (test fixes 2026-09-24)
+
+**Measured 2026-09-24** (arm64 env, `QT_QPA_PLATFORM=offscreen`), identically
+at HEAD, at `5b1a33b3e` and at `66b02a057` (before any vector-parameter
+commit, run from a detached worktree with `PYTHONPATH=<worktree>`). Neither
+file nor the code they drive changed across those commits. Both are fixed in
+test code; the two library-side causes are still there.
+
+**`test/gui/test_parameter_linking.py`**, two faults:
+
+- *Symptom 1:* run from anywhere but the repo root, 4 of 5 tests fail
+  (`assert 0 == 2` on `len(cs.fits)`, then `IndexError`). *Cause:* datasets
+  were loaded from `./test/data/...`, relative to the cwd, and
+  `cs.macros.add_dataset` skips a missing file without raising.
+  *Fixed:* the path is built from the file's `TOPDIR`.
+- *Symptom 2:* from the repo root all 5 pass, then the process dies with
+  `Segmentation fault` (exit 139). It reproduced in 3 of 4 runs, and in 3 of 3
+  at `66b02a057`. The faulthandler dump puts a `chisurf/server/transport/zmq.py`
+  `serve_forever` poll thread first, but that thread is only a bystander. The
+  crashing thread is the main one, at `_pytest/runner.py:150`
+  (`item.funcargs = None`). lldb shows `dealloc_QApplication ->
+  sip_api_visit_wrappers -> cleanup_qobject -> sip_api_get_address`
+  (EXC_BAD_ACCESS). *Cause, two parts:* (1) `chisurf.gui.get_app()` keeps no
+  reference to the QApplication it creates. The only other holder is the
+  `_run_startup_auth` closure passed to `QTimer.singleShot(0, ...)`, and that
+  is released once the timer fires. So the module fixture's return value was
+  the last reference, and pytest freed the QApplication after the last test.
+  (2) Every `_setup()` runs `fit.close_all`, which retires windows with
+  `deleteLater()`, and no event loop runs to carry those out. Whenever PyQt
+  next walks its wrappers, it reaches a stale one and crashes: in
+  `dealloc_QApplication`, or, once the app is pinned, in QtCore's
+  `cleanup_on_exit` at interpreter shutdown. The shutdown crash reproduces
+  without pytest: run the five test bodies in a plain script and it exits 139.
+  Delivering `QEvent.DeferredDelete` before exit makes it exit 0.
+  *Fixed in the test:* a module global pins the app, and the module fixture's
+  teardown runs `fit.close_all` and flushes deferred deletes. It then passed
+  with exit 0 in 4 of 4 runs (3 from the root, 1 from `/tmp`). *Fix idea in the
+  library:* `get_app` should keep the QApplication in a module global. Any
+  headless caller of `fit.close_all` must process `DeferredDelete` before
+  exiting.
+
+**`test/gui/test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`**
+(order-dependent):
+
+- *Symptom:* it passes alone, in its own file and in the natural `test/gui`
+  order. It fails with `StopIteration` (no `model.change_irf` was dispatched)
+  when any test that sets `cs.fits = [fit]` runs before it. The smallest
+  reproduction is `pytest test/gui/test_parameter_table_actions.py::test_context_menu_offers_link_and_unlink
+  test/gui/test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`.
+  `test_parameter_prior_widget.py` has the same effect.
+- *Cause:* `test_parameter_table_actions.py` (fixture `params`) and
+  `test_parameter_prior_widget.py` (`param` and one test body) rebound
+  `chisurf.fits` to a list holding a bare `Fit`, and never restored it. The
+  curve-input widget's `_own_fit_index` (`chisurf/gui/autoform/sections/builtin.py`,
+  four copies) wraps its whole loop in one `try`. `fit in list(fg)` raises
+  `TypeError` on the non-iterable bare `Fit`, and the method returns `-1`
+  ("not registered") without ever reaching the test's fit, so nothing is
+  dispatched. In the app, `cs.fits` holds FitGroups, so this only bites tests.
+- *Fixed in the tests:* the victim fixture `registered_lifetime_model` and
+  the two polluters now use `monkeypatch.setattr(cs, "fits", [...])`.
+  *Fix idea in the library:* skip a non-iterable entry inside the loop instead
+  of abandoning the search.
+
+Also seen, not investigated: in a full `pytest test/gui -x` run,
+`test_dialogs_and_progress.py::test_confirm_declines_by_default` fails, and
+the process exits 139 after the summary. The earlier entry on `test/gui`
+contamination below lists the first; the second may be the same stale-wrapper
+crash at exit.
+
 ## Two fitting tests red on 2026-09-17, in files other sessions changed that day
 
 **Measured 2026-09-17** (aGrUM-to-bff session, arm64 env, `pytest test/fitting`,
