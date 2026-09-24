@@ -37,7 +37,29 @@ timestamp: '2026-09-23T00:00:00Z'
    against 0.826 from the S-only gating (and takes 25 s for 44 270 bursts
    against 2.4 s). The ground-truth tests are synthetic. Validate on an MFD
    measurement with lifetimes before making it the default.
-4. **Inherited quirk kept for exactness:** the 1-D gate's EM weights squared
+4. **ndX calibrates without ChiSurf (2026-09-24).** ndX's default backend is
+   `ndxplorer.analysis.fret_backend.calibrate_columns` (tttrlib only; column
+   roles via `tttrlib.guess_burst_columns`, ndX constants via
+   `factors_from_constants`/`constants_from_factors`, backgrounds in
+   `fret_background.py`). ChiSurf's `optimize_calibration_from_ndx` calls it
+   and only adds the light-path priors and the Qt window writes. With ChiSurf
+   absent, the lifetime route uses the no-linker line and the measured
+   background is skipped, both stated in the report. Verified: on cal1 with
+   default options both GUIs give gamma 0.7502 ± 0.0069, alpha 0.1570,
+   beta 1.0599, delta 0.0674 (identical constants); a fresh process with
+   `chisurf` and `IMP` blocked calibrates cal1 to the same factors
+   (`ndxplorer/tests/test_fret_backend_without_chisurf.py`). Open: ndX still
+   *reads* a `.pto` through ChiSurf's `Measurement` (`ndxplorer/io/pto_reader.py`),
+   so without ChiSurf the FRET menu works on a loaded table but a `.pto`
+   cannot be opened -- see known-issues.
+5. **Why "gamma 0.8256" and "gamma 0.7502" are both right for cal1.** 0.8256 is
+   `tttrlib.auto_calibrate` on the raw `Number of Photons (green/red/yellow)`
+   with zero background; the FRET menu's default is `background="fit"`
+   (per-burst background from the reference populations, two passes) on the
+   gated photon columns, starting from the window's constants: 0.7502. With
+   `background="none"` the menu gives 0.8243, with the window's constant
+   backgrounds 0.8092. The background choice is the whole difference.
+6. **Inherited quirk kept for exactness:** the 1-D gate's EM weights squared
    residuals by the squared responsibility (the spherical estimator in
    `chisurf.core.ml` does the same); the port reproduces it. Fixing it changes
    the gates slightly -- do it in both places or neither.

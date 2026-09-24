@@ -25,15 +25,14 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from chisurf.core.fluorescence.fret.calibration import calibration_to_ndx_constants
+from chisurf.core.fluorescence.fret.calibration import CalibrationFit, CalibrationParameters
 
 __all__ = [
+    "calibration_to_ndx_constants",
+    "calibration_from_ndx_constants",
     "push_calibration_to_ndx",
     "push_unmixed_columns_to_ndx",
     "optimize_calibration_from_ndx",
-    "calibrate_columns",
-    "measured_background",
-    "fitted_background",
     "calibration_from_container",
     "background_from_container",
     "saved_constants_from_container",
@@ -43,6 +42,38 @@ __all__ = [
     "refresh_column_selectors",
     "find_ndx_windows",
 ]
+
+
+_NDX_FACTORS = ("gamma", "alpha", "beta", "delta", "bg_dd", "bg_da", "bg_aa", "r0", "phi_a",
+                "phi_d")
+
+
+def calibration_to_ndx_constants(calibration) -> dict:
+    """A calibration group's factors as ndX constants (``gG/gR``, ``alpha``, ``beta``, ``r``, ...).
+
+    The name mapping is ndX's (:func:`ndxplorer.analysis.fret_backend.constants_from_factors`):
+    ndX's ``beta`` is the direct excitation, ``r = 1/beta`` and
+    ``gG/gR = (PhiA/PhiD)/gamma``.
+    """
+    from ndxplorer.analysis.fret_backend import constants_from_factors
+
+    calib = calibration.model if isinstance(calibration, CalibrationFit) else calibration
+    return constants_from_factors({name: float(getattr(calib, name)) for name in _NDX_FACTORS})
+
+
+def calibration_from_ndx_constants(constants: dict, calib=None):
+    """ndX constants into a calibration group; a missing constant keeps the group's value.
+
+    The inverse of :func:`calibration_to_ndx_constants`, through ndX's own
+    mapping (:func:`ndxplorer.analysis.fret_backend.factors_from_constants`).
+    """
+    from ndxplorer.analysis.fret_backend import factors_from_constants
+
+    calib = calib if calib is not None else CalibrationParameters()
+    start = {name: float(getattr(calib, name)) for name in _NDX_FACTORS}
+    for name, value in factors_from_constants(dict(constants or {}), start).items():
+        setattr(calib, name, value)
+    return calib
 
 
 def push_calibration_to_ndx(ndx, calibration, *, recompute: bool = True) -> dict:
@@ -75,60 +106,7 @@ def push_calibration_to_ndx(ndx, calibration, *, recompute: bool = True) -> dict
         columns (matrix un-mixing), for setups where the scalar constants are not
         enough.
     """
-    mapping = calibration_to_ndx_constants(calibration)
-
-    # The parameter *table* is the source of truth, not ``ndx.constants``.
-    # ndxplorer's recompute throttle resets ``constants`` from
-    # ``parameter_control.dict`` on every parameter event, so a calibration
-    # written only into the mapping is reverted the moment the event loop turns
-    # — the values were correct for as long as nothing happened, which is why
-    # this looked like it worked outside a running GUI.
-    editor = getattr(ndx, "parameter_control", None)
-    applied_to_table = False
-    apply_values = getattr(editor, "apply_values", None)
-    if callable(apply_values):
-        apply_values(mapping)
-        applied_to_table = True
-
-    # ``constants`` is a plain dict in the legacy path and a live
-    # ``ConstantsMapping`` over the fitting-parameter group when the chisurf
-    # table is in use. The latter is a Mapping, *not* a dict, and writing
-    # through it is what keeps Global-View crosslinks alive — so update it in
-    # place and never replace it.
-    constants = getattr(ndx, "constants", None)
-    update = getattr(constants, "update", None)
-    if callable(update):
-        update(mapping)
-    else:
-        constants = dict(constants or {})
-        constants.update(mapping)
-        ndx.constants = constants
-
-    if applied_to_table:
-        # Keep the throttle's diff baseline consistent with what the table now
-        # holds, so the push does not read back as an edit of every constant.
-        try:
-            ndx._prev_constants = dict(editor.dict)
-        except Exception:
-            pass
-
-    if recompute:
-        data_source = getattr(ndx, "data_source", None)
-        if data_source is not None and hasattr(data_source, "compute_columns"):
-            try:
-                data_source.compute_columns(
-                    constants=ndx.constants, equations=getattr(ndx, "equations", None)
-                )
-            except Exception:
-                pass
-        update = getattr(ndx, "update_plots", None)
-        if callable(update):
-            try:
-                update()
-            except Exception:
-                pass
-
-    return mapping
+    return _push_constants(ndx, calibration_to_ndx_constants(calibration), recompute=recompute)
 
 
 def find_ndx_windows() -> list:
@@ -159,111 +137,6 @@ def find_ndx_windows() -> list:
         if looks_like_ndx:
             windows.append(widget)
     return windows
-
-
-def fitted_background(i_dd, i_da, i_aa, split, *, durations=None, min_population: int = 20) -> dict:
-    """Channel background **rates** estimated from the reference populations.
-
-    Often nobody knows the background. But the measurement contains two
-    populations that are *defined* by a missing fluorophore, and in each of them
-    one channel is measuring background and nothing else:
-
-    * an **acceptor-only** burst has no donor, so what appears in the donor
-      channel under donor excitation is background — that is ``bg_dd``;
-    * a **donor-only** burst has no acceptor, so what appears under acceptor
-      excitation is background — that is ``bg_aa``;
-    * ``bg_da`` comes from the leakage relation on the donor-only bursts,
-      ``I_DA = alpha * I_DD + bg_da * T``. Fitting the duration term explicitly
-      is what separates leakage from background at all; taking the ratio of the
-      means, which is the usual shortcut, silently folds the background into
-      alpha and then subtracts it from every burst as if it scaled with donor
-      brightness.
-
-    **The answer is a rate (kHz), not a count.** What these populations give
-    directly is counts, and counts are not a property of the measurement: a 4 ms
-    burst carries four times the background of a 1 ms one. Dividing by the burst
-    duration is what makes the number comparable with the measured background
-    from the inter-photon-time fit -- and it is what the consumer expects, since
-    ndX's ``Bg``/``Br``/``By`` are rates (``Fg = Sg - Bg`` with ``Sg`` in kHz).
-    Returning counts here is what made a fitted background over-correct: a
-    median of 8 photons per burst arrived in the window as 8 kHz, against a real
-    background of about 3.
-
-    Medians, not means: these populations are the ones a mixture model is least
-    certain about, so a handful of misassigned bright bursts would otherwise set
-    the background for the whole measurement.
-
-    Parameters
-    ----------
-    i_dd, i_da, i_aa : array_like
-        The three channels. ``i_aa`` may be ``None``.
-    split : object
-        The population split from
-        :func:`~chisurf.core.fluorescence.fret.accurate.auto_calibrate`, with
-        boolean ``donor_only`` / ``acceptor_only`` masks.
-    durations : array_like, optional
-        Per-burst durations in ms. Without them no rate can be formed and the
-        result is empty — better than returning counts labelled as rates.
-    min_population : int, optional
-        Smallest population accepted for an estimate. Below it the channel is
-        left out rather than guessed — an absent key means "not determined",
-        and the caller keeps whatever it had.
-
-    Returns
-    -------
-    dict
-        ``{"bg_dd": float, "bg_da": float, "bg_aa": float}`` in kHz, for the
-        channels that could be estimated. Never negative.
-    """
-    out: dict[str, float] = {}
-    if split is None or durations is None:
-        return out
-    dt = np.asarray(durations, dtype=float)
-    donor_only = np.asarray(getattr(split, "donor_only", []), dtype=bool)
-    acceptor_only = np.asarray(getattr(split, "acceptor_only", []), dtype=bool)
-    dd = np.asarray(i_dd, dtype=float)
-    da = np.asarray(i_da, dtype=float)
-    aa = None if i_aa is None else np.asarray(i_aa, dtype=float)
-
-    if dt.size != dd.size:
-        return out
-
-    def rate(counts, mask):
-        """Median of the per-burst rate — a median of ratios, not a ratio of
-        medians, so one long dim burst cannot stand in for the population.
-        """
-        good = mask & np.isfinite(counts) & np.isfinite(dt) & (dt > 0)
-        if int(good.sum()) < min_population:
-            return None
-        return float(max(0.0, np.median(counts[good] / dt[good])))
-
-    if acceptor_only.size == dd.size:
-        value = rate(dd, acceptor_only)
-        if value is not None:
-            out["bg_dd"] = value
-    if aa is not None and donor_only.size == aa.size:
-        value = rate(aa, donor_only)
-        if value is not None:
-            out["bg_aa"] = value
-
-    if donor_only.size == dd.size and int(donor_only.sum()) >= min_population:
-        # I_DA = alpha * I_DD + bg_da * T, solved for both at once. The duration
-        # is a *regressor*, not a constant offset: fitting an intercept instead
-        # says every burst carries the same background whatever its length.
-        x, y, t = dd[donor_only], da[donor_only], dt[donor_only]
-        finite = np.isfinite(x) & np.isfinite(y) & np.isfinite(t) & (t > 0)
-        if int(finite.sum()) >= min_population and np.ptp(x[finite]) > 0 and np.ptp(t[finite]) > 0:
-            design = np.column_stack([x[finite], t[finite]])
-            solution, *_ = np.linalg.lstsq(design, y[finite], rcond=None)
-            # solution[0] is a leakage slope; alpha is determined by the
-            # calibration, not here, so only the rate is kept.
-            out["bg_da"] = float(max(0.0, solution[1]))
-    return out
-
-
-#: Detector name in a measurement's background artifact → the channel it is the
-#: background of. The Seidel vocabulary, the same one the burst tables use.
-_BACKGROUND_ROLES = {"green": "i_dd", "red": "i_da", "yellow": "i_aa"}
 
 
 #: Artifact ndX's "Save calibration" writes: a JSON blob whose ``constants``
@@ -529,10 +402,6 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
         The ndX constants actually written, empty when there was nothing to
         restore.
     """
-    from chisurf.core.fluorescence.fret.calibration import (
-        calibration_from_ndx_constants,
-    )
-
     if source is None:
         data_source = getattr(ndx, "data_source", None)
         provenance = getattr(data_source, "provenance", None) or {}
@@ -656,102 +525,48 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     return applied
 
 
-def burst_durations_ms(table, detector: str):
-    """That detector's per-burst durations in ms, else the burst's, else ``None``.
+def _push_constants(ndx, mapping: dict, *, recompute: bool = True) -> dict:
+    """Write ndX constants into a window: its parameter table, then its mapping.
 
-    Both background routes need this and they must agree: a background is a
-    *rate*, and it becomes counts only through the length of the burst it fell
-    into.
+    The parameter *table* is the source of truth, not ``ndx.constants``:
+    ndxplorer's recompute throttle resets ``constants`` from
+    ``parameter_control.dict`` on every parameter event, so a value written only
+    into the mapping is reverted the moment the event loop turns. A live
+    ``ConstantsMapping`` is updated in place, which keeps Global-View links.
     """
-    for name in (f"Duration ({detector}) (ms)", "Duration (ms)"):
-        if name in table:
-            return np.asarray(table[name], dtype=float)
-    return None
-
-
-def measured_background(ndx, table) -> dict:
-    """Per-burst background **counts** from the measurement's own estimate.
-
-    Backgrounds are not fitted by the calibration — they are an input to it, and
-    every corrected quantity is a count *minus* one. Leaving them as three
-    numbers somebody typed puts the least-checked part of the correction in the
-    place where it changes E most: a background error moves the dim bursts and
-    leaves the bright ones, which looks exactly like a real sub-population.
-
-    The measurement already carries the answer. The background step writes a
-    ``background`` artifact into the container — one rate per detector, fitted
-    from that file's own inter-photon-time distribution — and a rate becomes the
-    counts *in a burst* when multiplied by how long the burst lasted. That is
-    the difference between a constant and a background: a 4 ms burst carries
-    four times the background of a 1 ms one, and subtracting the same number
-    from both is wrong in opposite directions.
-
-    Parameters
-    ----------
-    ndx : object
-        The ndX window; its data source's provenance names the container.
-    table : mapping of str to array
-        The burst columns, for the durations.
-
-    Returns
-    -------
-    dict
-        ``{role: array}`` for the roles that could be resolved, empty when the
-        measurement has no stored background (nothing is assumed).
-    """
-    from chisurf.core.fio.pto import Measurement
-
-    data_source = getattr(ndx, "data_source", None)
-    provenance = getattr(data_source, "provenance", None) or {}
-    container = provenance.get("container_path") or ""
-    if not container:
-        metadata = getattr(data_source, "metadata", None) or {}
-        container = (metadata.get("provenance") or {}).get("container_path", "")
-    if not container:
-        return {}
-
-    rates: dict[str, float] = {}
-    try:
-        with Measurement.open(container, writable=False) as measurement:
-            for obj in measurement.artifacts():
-                if getattr(obj, "name", "") != "background":
-                    continue
-                store = measurement.get_store(obj.uid)
-                names = [store.column(i).name() for i in range(store.n_columns())]
-                if "Detector" not in names or "Rate" not in names:
-                    continue
-                detectors = store.column(names.index("Detector"))
-                values = np.asarray(store.column(names.index("Rate")).numpy(), dtype=float)
-                for row in range(store.n_rows()):
-                    rates[str(detectors.string_at(row)).lower()] = float(values[row])
-                break
-    except Exception:
-        return {}
-    if not rates:
-        return {}
-
-    out: dict[str, np.ndarray] = {}
-    for detector, role in _BACKGROUND_ROLES.items():
-        rate = rates.get(detector)
-        durations = burst_durations_ms(table, detector)
-        if rate is None or durations is None:
-            continue
-        # kHz x ms = counts, which is why no unit factor appears here.
-        out[role] = np.clip(rate * durations, 0.0, None)
-        # The rate is what the *window* holds (its Bg/Br/By are rates), so it
-        # travels beside the counts rather than being re-read from the file.
-        out.setdefault("rates", {})[_ROLE_TO_BG[role]] = float(rate)
-    return out
-
-
-#: Burst-table role → the calibration's background attribute for that channel.
-_ROLE_TO_BG = {"i_dd": "bg_dd", "i_da": "bg_da", "i_aa": "bg_aa"}
-
-
-#: The Hellenkamp correction factors this bridge can write, in the order the
-#: paper introduces them. ``r0`` is not a correction but is carried with them
-#: because the distance columns depend on it.
-_FACTOR_NAMES = ("alpha", "beta", "gamma", "delta", "r0")
+    editor = getattr(ndx, "parameter_control", None)
+    apply_values = getattr(editor, "apply_values", None)
+    if callable(apply_values):
+        apply_values(mapping)
+    constants = getattr(ndx, "constants", None)
+    update = getattr(constants, "update", None)
+    if callable(update):
+        update(mapping)
+    else:
+        constants = dict(constants or {})
+        constants.update(mapping)
+        ndx.constants = constants
+    if callable(apply_values):
+        try:
+            ndx._prev_constants = dict(editor.dict)
+        except Exception:
+            pass
+    if recompute:
+        data_source = getattr(ndx, "data_source", None)
+        if data_source is not None and hasattr(data_source, "compute_columns"):
+            try:
+                data_source.compute_columns(
+                    constants=ndx.constants, equations=getattr(ndx, "equations", None)
+                )
+            except Exception:
+                pass
+        update_plots = getattr(ndx, "update_plots", None)
+        if callable(update_plots):
+            try:
+                update_plots()
+            except Exception:
+                pass
+    return mapping
 
 
 def optimize_calibration_from_ndx(
@@ -771,312 +586,72 @@ def optimize_calibration_from_ndx(
     recompute: bool = True,
     progress=None,
 ) -> dict:
-    """Optimize ndxplorer's correction constants against the data it has loaded.
+    """Calibrate an open ndX window's constants against its bursts, in place.
 
-    The end of the workflow: ndxplorer loads a burst measurement, and its
-    correction constants — normally typed by hand — should follow from *that*
-    measurement. This reads the per-burst channel columns out of the open window,
-    starts from the constants the window already carries (so backgrounds, quantum
-    yields, Förster radius and tau_D(0) are the user's own settings, not
-    defaults), runs the automatic calibration
-    (:func:`chisurf.core.fluorescence.fret.accurate.auto_calibrate` — populations
-    found by a Gaussian mixture, alpha/delta from the reference populations,
-    gamma/beta from the E-S fit or the static FRET line), and writes the
-    posterior back into ``ndx.constants``.
+    The calibration is ndX's own
+    (:func:`ndxplorer.analysis.fret_backend.calibrate_columns`, computed by
+    tttrlib); this adds what only ChiSurf has -- the light-path priors
+    (``lightpath``, keyword arguments of
+    :func:`~chisurf.core.fluorescence.fret.calibration.set_priors_from_lightpath`,
+    which also seed gamma/alpha/delta at the optics values) -- and writes the
+    result into the Qt window: the constants through its parameter table, the
+    accurate columns into its data source.
 
-    It also injects the **accurate** per-burst columns. This is not redundant:
-    ndxplorer's own efficiency equation corrects leakage but has no
-    direct-excitation term, so pushing the constants alone cannot make its native
-    ``FRET efficiency`` column accurate. The injected columns are new names —
-    ndx's own columns and equations are untouched, nothing is corrected twice.
-
-    Parameters
-    ----------
-    ndx : object
-        In-process ndX window (needs a ``data_source`` holding the burst
-        columns, and ``constants``).
-    columns : dict, optional
-        Explicit ``{role: column_name}`` overrides for ``i_dd``/``i_da``/
-        ``i_aa``/``tau_f``; the rest are recognised automatically
-        (:func:`chisurf.core.fluorescence.burst.table.guess_columns`).
-    donor_lifetime : float, optional
-        Donor-only lifetime tau_D(0) in ns for the FRET lines; taken from the
-        window's ``tauD0`` constant when omitted.
-    linker_sigma : float, optional
-        Linker width (Å) shaping the static FRET line.
-    gamma_source : str, optional
-        ``"auto"``, ``"es"``, ``"lifetime"`` or ``"combined"``.
-    n_bootstrap : int, optional
-        Bootstrap resamples for the factor uncertainties.
-    lightpath : dict, optional
-        Optics prior (see
-        :func:`chisurf.plugins.burst.accurate_fret.core.lightpath_prior`).
-    use_priors : bool, optional
-        Combine the data estimates with the optics priors.
-    background : str, optional
-        Where the channel backgrounds come from. ``"constants"`` (the default)
-        uses the three numbers the window carries — the previous behaviour.
-        ``"measurement"`` uses the rates the background step stored in the
-        container, scaled by each burst's duration, which makes the background a
-        *per-burst* quantity rather than one number for a file. ``"none"`` sets
-        them to zero.
-
-        ``"fit"`` estimates them from the reference populations themselves (see
-        :func:`fitted_background`) — for when nobody knows the background, which
-        is most of the time.
-
-        It is the input whose error is hardest to see: it moves the dim bursts
-        and leaves the bright ones, which looks like a sub-population.
-    min_population : int, optional
-        Smallest reference population accepted when fitting the backgrounds.
-    factors : sequence of str, optional
-        Which correction factors the calibration is allowed to change —
-        any of ``"alpha"``, ``"beta"``, ``"gamma"``, ``"delta"``, ``"r0"``.
-        ``None`` (the default) applies all of them.
-
-        The others keep the value the window already had. That is the point of
-        the option: γ from a measurement's own populations is only as good as
-        the populations, and someone who has determined γ properly on a
-        reference sample wants α and δ fitted *around* it rather than replaced
-        by a worse estimate. The calibration is still run in full — the report
-        shows what each factor came out as — but only the named ones are
-        written.
-    inject_columns : bool, optional
-        Also write the accurate per-burst ``E``/``S``/``R_DA``/population columns.
-    recompute : bool, optional
-        Recompute ndx's derived columns and refresh its plots afterwards.
-    progress : callable, optional
-        ``progress(step, total, message)``, forwarded to
-        :func:`~chisurf.core.fluorescence.fret.accurate.auto_calibrate` so a
-        caller can drive a bar. Return ``False`` from it to stop early. With
-        ``background="fit"`` the calibration runs twice, so the steps restart;
-        the message says which pass is running.
+    Parameters are the options of the calibration (see ``calibrate_columns``);
+    ``columns`` overrides the channel mapping (``{role: column}``), ``factors``
+    names the factors written (all by default), ``recompute`` refreshes the
+    window's derived columns and plots.
 
     Returns
     -------
     dict
-        ``{"ok", "constants", "before", "factors", "uncertainties", "report",
-        "columns", "injected", "populations"}``, or ``{"ok": False, "error": …}``
-        when the window carries no usable burst columns.
+        The calibration's result (``ok``, ``constants``, ``before``, ``factors``,
+        ``uncertainties``, ``report``, ``columns``, ``injected``,
+        ``populations``, ``species``, ``vectors``, ...), or ``{"ok": False,
+        "error": ...}``.
     """
-    import tttrlib
-
-    from chisurf.core.fluorescence.burst.table import guess_columns
-    from chisurf.core.fluorescence.fret.accurate import auto_calibrate
-    from chisurf.core.fluorescence.fret.calibration import calibration_from_ndx_constants
-    from chisurf.core.fluorescence.fret.lines import static_fret_line
+    from ndxplorer.analysis.fret_backend import calibrate_columns
 
     data_source = getattr(ndx, "data_source", None)
     table = ndx_columns(data_source)
     if not table:
         return {"ok": False, "error": "the ndX window holds no burst columns"}
-
-    mapping = {**guess_columns(table), **{k: v for k, v in (columns or {}).items() if v}}
-    for role in ("i_dd", "i_da"):
-        if mapping.get(role) not in table:
-            return {
-                "ok": False,
-                "error": (
-                    f"could not identify the {role} column among "
-                    f"{', '.join(list(table)[:12])}…; pass it explicitly"
-                ),
-            }
-
-    def pick(role):
-        name = mapping.get(role)
-        return table[name] if name in table else None
-
-    # Backgrounds first: everything below is computed from counts that already
-    # have them subtracted.
-    per_burst_background: dict = {}
-    background_rates: dict = {}
-    if background == "measurement":
-        per_burst_background = measured_background(ndx, table)
-        background_rates = dict(per_burst_background.pop("rates", {}) or {})
-
     constants = dict(getattr(ndx, "constants", {}) or {})
-    calib = calibration_from_ndx_constants(constants)
-    if background in ("none", "fit") or per_burst_background:
-        # Subtracting per burst and zeroing the scalars is *identical* algebra --
-        # the background only ever enters as ``counts - background`` -- and it is
-        # the only way to carry a per-burst value through a calibration object
-        # whose backgrounds are single numbers.
-        #
-        # Only when there is something to subtract, though: asking for the
-        # measured background on a container that never had one would otherwise
-        # zero the window's own numbers as well, and subtract nothing in their
-        # place -- strictly worse than the setting it replaced.
-        calib.bg_dd = calib.bg_da = calib.bg_aa = 0.0
+    start, priors, notes = dict(constants), None, []
+    if lightpath:
+        from chisurf.core.fluorescence.fret.accurate import calibration_constants
+        from chisurf.core.fluorescence.fret.calibration import set_priors_from_lightpath
 
-    # ``auto_calibrate`` refines ``calib`` in place, so anything the caller wants
-    # kept has to be remembered before the call, not read back after it.
-    kept = {name: float(getattr(calib, name)) for name in _FACTOR_NAMES}
-    tau_d0 = donor_lifetime
-    if tau_d0 is None:
-        tau_d0 = float(constants.get("tauD0", 4.0) or 4.0)
-
-    tau_f = pick("tau_f")
-    line = None
-    if tau_f is not None:
-        line = static_fret_line(float(tau_d0), r0=float(calib.r0), sigma=float(linker_sigma))
-
-    def counts(role):
-        """That channel's counts, with any per-burst background removed."""
-        values = pick(role)
-        if values is None:
-            return None
-        offset = per_burst_background.get(role)
-        if offset is None:
-            return values
-        return np.clip(np.asarray(values, dtype=float) - offset, 0.0, None)
-
-    def calibrate(bootstrap: int):
-        return auto_calibrate(
-            counts("i_dd"),
-            counts("i_da"),
-            counts("i_aa"),
-            calibration=calib,
-            lightpath=lightpath,
-            tau_f=tau_f,
-            line=line,
-            donor_lifetime=float(tau_d0),
-            linker_sigma=float(linker_sigma),
-            gamma_source=gamma_source,
-            n_bootstrap=bootstrap,
-            use_priors=use_priors,
-            progress=(
-                None
-                if progress is None
-                else (lambda step, total, message: progress(step, total, prefix + message))
-            ),
+        calib = calibration_from_ndx_constants(constants)
+        optics = set_priors_from_lightpath(calib, **lightpath)
+        priors = calibration_constants(calib)["priors"]
+        start.update(calibration_to_ndx_constants(calib))
+        notes.append(
+            "light path: gamma {gamma:.4f}, alpha {alpha:.4f}, delta {delta:.4f} "
+            "(prior means)".format(**optics)
         )
-
-    fitted: dict = {}
-    prefix = ""
-    if background == "fit":
-        # Two passes, and they are not the same pass twice. The backgrounds are
-        # read off the *reference populations*, so the populations have to exist
-        # before they can be estimated -- and once they are subtracted, the
-        # classification that found those populations is no longer the one the
-        # data supports, so it is made again. The first pass skips the bootstrap:
-        # its factors are thrown away, only its split is used.
-        prefix = "pass 1 of 2 (backgrounds): "
-        first = calibrate(0)
-        fitted = fitted_background(
-            pick("i_dd"),
-            pick("i_da"),
-            pick("i_aa"),
-            first.split,
-            durations=burst_durations_ms(table, "green"),
-            min_population=int(min_population),
-        )
-        # A rate becomes counts through each burst's own duration -- the same
-        # conversion the measured route makes, and the reason the fit is worth
-        # anything: subtracting one number from every burst is wrong in opposite
-        # directions at the two ends of the duration distribution.
-        for role, detector in (("i_dd", "green"), ("i_da", "red"), ("i_aa", "yellow")):
-            rate = fitted.get(_ROLE_TO_BG.get(role, ""))
-            durations = burst_durations_ms(table, detector)
-            if rate is None or durations is None:
-                continue
-            per_burst_background[role] = np.clip(rate * durations, 0.0, None)
-        background_rates = dict(fitted)
-
-    prefix = "pass 2 of 2: " if background == "fit" else ""
-    result = calibrate(int(n_bootstrap))
-
-    # Restore whatever the caller did not ask to have calibrated, *before* the
-    # accurate columns below are computed from ``calib`` — otherwise the columns
-    # would be corrected with factors the window is not going to carry.
-    selected = (
-        _FACTOR_NAMES
-        if factors is None
-        else [name for name in _FACTOR_NAMES if name in set(factors)]
-    )
-    determined = {name: float(getattr(calib, name)) for name in _FACTOR_NAMES}
-    for name in _FACTOR_NAMES:
-        if name not in selected:
-            setattr(calib, name, kept[name])
-
-    injected: list[str] = []
-    vectors: dict = {}
-    if inject_columns:
-        split = result.split
-        labels = np.zeros(np.asarray(counts("i_dd")).shape, dtype=int)
-        if split is not None:
-            labels = np.where(split.fret, split.fret_labels, -1)
-            labels = np.where(split.acceptor_only, -2, labels)
-        accurate = tttrlib.accurate_fret(
-            counts("i_dd"),
-            counts("i_da"),
-            counts("i_aa"),
-            factors=calib.as_dict(),
-            tau_f=tau_f,
-            line=line,
-            uncertainties=result.uncertainties,
-            labels=labels,
-        )
-        data_source.set_column("FRET efficiency (accurate)", np.asarray(accurate["E"], dtype=float))
-        injected.append("FRET efficiency (accurate)")
-        if accurate["S"] is not None:
-            data_source.set_column(
-                "Stoichiometry (accurate)", np.asarray(accurate["S"], dtype=float)
-            )
-            injected.append("Stoichiometry (accurate)")
-        data_source.set_column("R_DA (accurate)", np.asarray(accurate["distance"], dtype=float))
-        injected.append("R_DA (accurate)")
-        data_source.set_column("Population", labels.astype(float))
-        injected.append("Population")
-        vectors = _species_vectors(result.species, data_source, injected)
-        if vectors and "gamma" in vectors:
-            # the species model won: the accurate columns use each burst's gamma
-            data_source.set_column("FRET efficiency (accurate)",
-                                   np.asarray(result.species["E"], dtype=float))
-            if accurate["S"] is not None:
-                data_source.set_column("Stoichiometry (accurate)",
-                                       np.asarray(result.species["S"], dtype=float))
-        if accurate["deviation"] is not None:
-            data_source.set_column(
-                "Off static FRET line", np.asarray(accurate["deviation"], dtype=float)
-            )
-            injected.append("Off static FRET line")
-        refresh_column_selectors(ndx)
-
-    # The window's Bg/Br/By are **rates** (``Fg = Sg - Bg``, Sg in kHz), while
-    # the calibration carried the per-burst counts as zeros because the
-    # subtraction happened per burst. Push the rates, so ndX's own equation
-    # columns are corrected with the same background the accurate columns were.
-    # Neither route did: "fit" wrote a per-burst *count* into a rate constant
-    # (a median of 8 photons arriving as 8 kHz, against a real background near
-    # 3), and "measurement" wrote the zeros, leaving the equations uncorrected.
-    for attribute, value in background_rates.items():
-        setattr(calib, attribute, float(value))
-    applied = push_calibration_to_ndx(ndx, calib, recompute=recompute)
-    return {
-        "ok": True,
-        "constants": applied,
-        "before": {k: constants.get(k) for k in applied},
-        "factors": result.factors,
-        "uncertainties": result.uncertainties,
-        "report": result.report(),
-        "columns": mapping,
-        "injected": injected,
-        "populations": result.populations,
-        # global + per-population factors and the shared-vs-species model
-        # choice; "vectors" holds the set_vector arguments of the factors
-        # that are not pooled (only when the species model was selected)
-        "species": _species_summary(result.species),
-        "vectors": vectors,
-        # What the calibration determined, and which of those were written.
-        # A factor the caller held fixed still appears here, so the report can
-        # show "gamma would have been 0.91; kept 1.00".
-        "determined": determined,
-        "applied_factors": list(selected),
-        "background": background,
-        "background_per_burst": sorted(per_burst_background),
-        "background_fitted": fitted,
-        "held": {n: kept[n] for n in _FACTOR_NAMES if n not in selected},
+    provenance = getattr(data_source, "provenance", None) or {}
+    options = {
+        "columns": dict(columns or {}), "donor_lifetime": donor_lifetime,
+        "linker_sigma": float(linker_sigma), "gamma_source": gamma_source,
+        "n_bootstrap": int(n_bootstrap), "use_priors": bool(use_priors),
+        "factors": None if factors is None else list(factors), "background": background,
+        "min_population": int(min_population), "inject_columns": bool(inject_columns),
     }
+    result = calibrate_columns(table, start, options,
+                               container=str(provenance.get("container_path") or ""),
+                               progress=progress, priors=priors)
+    if not result.get("ok"):
+        return result
+    result["before"] = {k: constants.get(k) for k in result["constants"]}
+    if notes:
+        result["report"] = "\n".join(f"  ! {n}" for n in notes) + "\n" + result["report"]
+    for name, values in result.get("new_columns", {}).items():
+        data_source.set_column(name, np.asarray(values, dtype=float))
+    if result.get("new_columns"):
+        refresh_column_selectors(ndx)
+    result["constants"] = _push_constants(ndx, result["constants"], recompute=recompute)
+    return result
 
 
 def refresh_column_selectors(ndx) -> None:
@@ -1279,93 +854,3 @@ def refresh_stored_parameters(ndx) -> dict:
     it from overwriting values the user tuned themselves.
     """
     return restore_calibration_from_container(ndx)
-
-
-def _species_summary(species) -> dict | None:
-    """The species table of a calibration, JSON-ready (no per-burst arrays)."""
-    if not species:
-        return None
-    return {
-        "labels": list(species["labels"]),
-        "names": list(species["names"]),
-        "populations": list(species["populations"]),
-        "factors": species["factors"],
-        "model_selection": species["model_selection"],
-    }
-
-
-def _species_vectors(species, data_source, injected) -> dict:
-    """Per-population factors as ndX vector constants, with their per-burst axis.
-
-    Only factors that are not pooled become vectors -- gamma, when the
-    species model lowered the BIC. The axis is the injected ``Population``
-    column (FRET population ``s`` coded ``s``) and one ``P(<name>)`` column
-    per population holding each burst's assignment probability; the equation
-    engine mixes the elements with those weights.
-    """
-    if not species:
-        return {}
-    names = list(species["names"])
-    vectors = {}
-    for factor, entry in species["factors"].items():
-        if entry.get("pooled", True):
-            continue
-        if not vectors:
-            assignment = np.asarray(species["assignment"], dtype=float)
-            for s, name in enumerate(names):
-                column = f"P({name})"
-                data_source.set_column(column, assignment[:, s])
-                injected.append(column)
-        vectors[factor] = {
-            "values": [float(v) for v in entry["values"]],
-            "populations": names,
-            "uncertainties": [float(v) for v in entry["sigma"]],
-            "default": float(entry["global"]),
-            "column": "Population",
-            "codes": {name: float(s) for s, name in enumerate(names)},
-            "probabilities": {name: f"P({name})" for name in names},
-        }
-    return vectors
-
-
-def calibrate_columns(columns, constants, options, *, container: str = "", progress=None) -> dict:
-    """ndX's calibration contract over plain burst columns.
-
-    :func:`ndxplorer.analysis.fret_calibration.calibrate` hands a window's burst
-    columns and constants to its backend without the window. This runs
-    :func:`optimize_calibration_from_ndx` on a stand-in holding just those, so
-    the emtk window and the Qt one get the same numbers from the same code
-    (verified bit for bit against the Qt run on the cal1 ALEX measurement).
-
-    Parameters
-    ----------
-    columns : mapping of str to ndarray
-        Burst columns by name.
-    constants : mapping of str to float
-        The window's constants: the starting point, and what held factors keep.
-    options : ndxplorer.analysis.fret_calibration.CalibrationOptions
-        What to determine and write.
-    container : str, optional
-        The `.pto` the bursts came from (for ``background="measurement"``).
-    progress : callable, optional
-        ``progress(step, total, message) -> bool``; ``False`` stops the run.
-
-    Returns
-    -------
-    dict
-        The contract's result, with ``new_columns`` holding the injected
-        accurate columns.
-    """
-    from types import SimpleNamespace
-
-    from ndxplorer.core.data_source import DataSource
-
-    source = DataSource.from_columns(columns)
-    source.provenance = {"container_path": container}
-    window = SimpleNamespace(data_source=source, constants=dict(constants))
-    result = optimize_calibration_from_ndx(window, progress=progress, recompute=False,
-                                           **options.as_kwargs())
-    if result.get("ok"):
-        result["new_columns"] = {name: np.asarray(source.column_values(name))
-                                 for name in result.get("injected") or []}
-    return result

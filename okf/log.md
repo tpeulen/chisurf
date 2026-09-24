@@ -1,5 +1,13 @@
 # Update Log
 
+## 2026-09-24
+
+* **ndX's FRET calibration runs on tttrlib without ChiSurf.**
+  - ndxplorer `analysis/fret_backend.py` (+ `fret_background.py`, `fret_result.py`) is ndX's default calibration backend; `backend()` no longer falls back to ChiSurf. Channel roles come from `tttrlib.guess_burst_columns` and the report from `tttrlib.calibration_report` (both moved from chisurf `burst/table.py` / `AutoCalibration.report`).
+  - ChiSurf's `optimize_calibration_from_ndx` calls it and adds only the light-path priors and the Qt writes; `calibrate_columns`, `fitted_background`, `measured_background` and `burst_durations_ms` were deleted from the bridge, and `calibration_to/from_ndx_constants` moved from `fret/calibration.py` into the bridge on ndX's mapping.
+  - cal1, default options: both GUIs give gamma 0.7502, alpha 0.1570, beta 1.0599, delta 0.0674, identical constants; a process with chisurf and IMP blocked gives the same. The earlier "gamma 0.8256" was raw counts with zero background (`background="none"` gives 0.8243).
+  - Open: ndX still opens `.pto` only through ChiSurf ([known-issues](references/known-issues.md)). Resume point: [fret-calibration](references/fret-calibration.md).
+
 ## 2026-09-23
 
 * **Accurate FRET moved into tttrlib; ChiSurf keeps the calibration-parameter plumbing.**

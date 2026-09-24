@@ -149,7 +149,7 @@ def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch)
     A 4 ms burst carries four times the background of a 1 ms one; subtracting
     one number from both is wrong in opposite directions.
     """
-    from chisurf.plugins.ndxplorer import calibration_bridge as bridge
+    from ndxplorer.analysis import fret_background as bridge
 
     durations = np.array([1.0, 2.0, 4.0])
     table = {"Duration (ms)": durations}
@@ -204,13 +204,8 @@ def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch)
 
     monkeypatch.setattr(pto.Measurement, "open", staticmethod(lambda *_a, **_k: _Measurement()))
 
-    class _DS:
-        provenance = {"container_path": str(tmp_path / "m.pto")}
-
-    class _Ndx:
-        data_source = _DS()
-
-    out = bridge.measured_background(_Ndx(), table)
+    out, rates, note = bridge.measured_background(table, str(tmp_path / "m.pto"))
+    assert note == "" and rates == {"bg_dd": 0.5, "bg_da": 1.0, "bg_aa": 2.0}
     np.testing.assert_allclose(out["i_dd"], 0.5 * durations)  # green
     np.testing.assert_allclose(out["i_da"], 1.0 * durations)  # red
     np.testing.assert_allclose(out["i_aa"], 2.0 * durations)  # yellow
@@ -318,7 +313,7 @@ def test_a_window_without_durations_gets_no_fitted_background():
     Returning the count would look like it worked and quietly over-correct,
     which is the failure this whole path is being fixed for.
     """
-    from chisurf.plugins.ndxplorer import calibration_bridge as bridge
+    from ndxplorer.analysis import fret_background as bridge
 
     class _Split:
         donor_only = np.ones(50, dtype=bool)

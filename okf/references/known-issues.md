@@ -5920,3 +5920,13 @@ Open, highest value first:
     wording (measured 2.8×); CLSM-Draw "&" mnemonic; ndX
     `DataSource(columns, frame)` gone, breaking make_screenshots'
     `_grab_ndx_gaussian_panel`.
+
+## ndX opens `.pto` containers only through ChiSurf (2026-09-24)
+
+`ndxplorer/io/pto_reader.py` reads a container with
+`chisurf.core.fio.pto.Measurement`. The FRET calibration itself no longer needs
+ChiSurf (it is tttrlib via `ndxplorer.analysis.fret_backend`), but with ChiSurf
+missing or broken (e.g. while IMP.bff is being rebuilt, which breaks
+`import chisurf`) a `.pto` cannot be opened in ndX at all. Fix: read the burst
+table through tttrlib's `PtoFile` in `pto_reader.py`. Not done in the
+calibration change because the reader belongs to the ndX I/O work.

@@ -7,11 +7,11 @@ import collections.abc
 import numpy as np
 import pytest
 
-from chisurf.core.fluorescence.fret.calibration import (
-    CalibrationParameters,
+from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
+from chisurf.plugins.ndxplorer.calibration_bridge import (
     calibration_to_ndx_constants,
+    push_calibration_to_ndx,
 )
-from chisurf.plugins.ndxplorer.calibration_bridge import push_calibration_to_ndx
 
 pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
 

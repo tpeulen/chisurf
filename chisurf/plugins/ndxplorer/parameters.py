@@ -261,7 +261,7 @@ class NdxConstants(FittingParameterGroup):
         CalibrationParameters
             The calibration view of the same numbers.
         """
-        from chisurf.core.fluorescence.fret.calibration import calibration_from_ndx_constants
+        from chisurf.plugins.ndxplorer.calibration_bridge import calibration_from_ndx_constants
 
         return calibration_from_ndx_constants(self.as_dict(), calibration)
 

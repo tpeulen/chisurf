@@ -78,49 +78,20 @@ class AutoCalibration:
     tau_d0: float = float("nan")
 
     def report(self) -> str:
-        """Human-readable summary of the calibration and how it was obtained."""
-        lines = ["Automatic FRET calibration", "=========================="]
-        for key in ("alpha", "delta", "gamma", "beta"):
-            u = self.uncertainties.get(key, float("nan"))
-            unc = "" if not np.isfinite(u) else f" ± {u:.4f}"
-            lines.append(f"  {key:<6s} = {self.factors.get(key, float('nan')):.4f}{unc}")
-        if self.split is not None:
-            c = self.split.counts
-            lines.append(
-                f"  bursts: {c['donor_only']} donor-only, {c['acceptor_only']} "
-                f"acceptor-only, {c['fret']} FRET in {c['fret_populations']} population(s)"
-            )
-            lines.append(
-                f"  stoichiometry cuts ({self.split.method}): "
-                f"{self.split.thresholds[0]:.3f} / {self.split.thresholds[1]:.3f}"
-            )
-        labels = {
-            "prior": "light path",
-            "es": "E-S population fit",
-            "lifetime": "static FRET line",
-            "data": "data (adopted)",
-            "posterior": "posterior",
-        }
-        for key, label in labels.items():
-            value = self.gamma_estimates.get(key)
-            if value is not None and np.isfinite(value):
-                lines.append(f"  gamma [{label}] = {value:.4f}")
-        if self.species and self.species["model_selection"]["selected"] == "species":
-            values = ", ".join(f"{v:.4f}" for v in self.species["factors"]["gamma"]["values"])
-            lines.append(f"  gamma per FRET population (species model, lower BIC) = {values}")
-        for p in self.populations:
-            tau = f", tau_f = {p['tau_f']:.3f} ns" if "tau_f" in p else ""
-            dev = f", off-line by {p['deviation']:+.3f}" if "deviation" in p else ""
-            lines.append(
-                f"  population {p['label']}: n = {p['n']}, E = {p['E']:.3f} "
-                f"± {p['sigma_E']:.3f}, R = {p['distance']:.1f} Å{tau}{dev}"
-            )
-        lines.extend(f"  ! {m}" for m in self.messages)
-        lines.append(
-            f"  {'converged' if self.converged else 'not converged'} "
-            f"after {self.iterations} iteration(s)"
+        """Human-readable summary of the calibration (``tttrlib.calibration_report``)."""
+        return tttrlib.calibration_report(
+            {
+                "factors": self.factors,
+                "uncertainties": self.uncertainties,
+                "split": None if self.split is None else vars(self.split),
+                "gamma_estimates": self.gamma_estimates,
+                "species": self.species,
+                "populations": self.populations,
+                "messages": self.messages,
+                "converged": self.converged,
+                "iterations": self.iterations,
+            }
         )
-        return "\n".join(lines)
 
 
 def calibration_constants(calibration) -> dict:

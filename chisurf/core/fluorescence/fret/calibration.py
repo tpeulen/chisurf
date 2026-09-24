@@ -50,8 +50,6 @@ __all__ = [
     "register_calibration",
     "unregister_calibration",
     "link_to_calibration",
-    "calibration_to_ndx_constants",
-    "calibration_from_ndx_constants",
     "calibration_to_setup",
     "calibration_from_setup",
     "setup_calibration_values",
@@ -721,50 +719,6 @@ def link_to_calibration(parameter, calibration, factor: str) -> None:
     parameter.link = group.parameters_all_dict[factor]
 
 
-def calibration_to_ndx_constants(calibration) -> dict:
-    """Map calibration factors onto ndxplorer's MFD constant names.
-
-    ndxplorer's derived-FRET equations use ``gG/gR``, ``alpha`` (leakage),
-    ``beta`` (direct excitation), ``Bg``/``Br``/``By``, ``PhiA``/``PhiD`` and
-    ``forster_radius``; its effective detection factor is
-    ``gamma = (PhiA/PhiD) / (gG/gR)``. This inverts that so the ndx effective
-    gamma equals the calibration ``gamma``:
-
-        gG/gR = (PhiA/PhiD) / gamma
-
-    Parameters
-    ----------
-    calibration : CalibrationParameters or CalibrationFit
-        Source of the (posterior) calibration factors.
-
-    Returns
-    -------
-    dict
-        ndxplorer constant name → value, ready to merge into ``ndx.constants``.
-    """
-    calib = calibration.model if isinstance(calibration, CalibrationFit) else calibration
-    phi_a = float(calib.phi_a)
-    phi_d = float(calib.phi_d)
-    gamma = float(calib.gamma)
-    beta = float(calib.beta)
-    gg_gr = (phi_a / phi_d) / gamma if gamma != 0 else 1.0
-    # Names differ from Hellenkamp's: ndxplorer's "beta" is the direct-excitation
-    # coefficient (Hellenkamp delta), and its "r" scales the acceptor-excitation
-    # signal in the stoichiometry denominator, i.e. r = 1/beta_Hellenkamp.
-    return {
-        "gG/gR": gg_gr,
-        "alpha": float(calib.alpha),
-        "beta": float(calib.delta),
-        "r": (1.0 / beta) if beta else 1.0,
-        "Bg": float(calib.bg_dd),
-        "Br": float(calib.bg_da),
-        "By": float(calib.bg_aa),
-        "PhiA": phi_a,
-        "PhiD": phi_d,
-        "forster_radius": float(calib.r0),
-    }
-
-
 #: The calibration factors stored on a detector setup, and the group attribute
 #: each maps to. Deliberately a plain ``{name: float}`` payload rather than a
 #: pickled parameter group: it is written to the setups file and read by tools
@@ -929,55 +883,6 @@ def setup_calibration_uncertainties(setup: dict | None) -> dict:
     payload = (setup or {}).get(SETUP_CALIBRATION_FIELD) or {}
     found = payload.get("uncertainties") if isinstance(payload, dict) else None
     return dict(found) if isinstance(found, dict) else {}
-
-
-def calibration_from_ndx_constants(constants: dict, calib=None):
-    """Read ndxplorer's MFD constants back into a calibration group.
-
-    The inverse of :func:`calibration_to_ndx_constants` — it lets an
-    optimization *start from the settings the user already has in ndxplorer*
-    (backgrounds, quantum yields, Förster radius, donor lifetime) instead of from
-    defaults, so only what the data can improve is changed.
-
-    Parameters
-    ----------
-    constants : dict
-        ndxplorer's constants mapping (``gG/gR``, ``alpha``, ``beta``, ``r``,
-        ``Bg``/``Br``/``By``, ``PhiA``/``PhiD``, ``forster_radius``, ``tauD0``).
-        Missing entries keep the group's current value.
-    calib : CalibrationParameters, optional
-        Group to fill in place; a fresh one is created when omitted.
-
-    Returns
-    -------
-    CalibrationParameters
-        The calibration group.
-    """
-    calib = calib if calib is not None else CalibrationParameters()
-    get = lambda key: constants.get(key) if isinstance(constants, dict) else None  # noqa: E731
-
-    for key, setter in (
-        ("PhiA", "phi_a"),
-        ("PhiD", "phi_d"),
-        ("alpha", "alpha"),
-        ("Bg", "bg_dd"),
-        ("Br", "bg_da"),
-        ("By", "bg_aa"),
-        ("forster_radius", "r0"),
-    ):
-        value = get(key)
-        if value is not None and np.isfinite(float(value)):
-            setattr(calib, setter, float(value))
-    delta = get("beta")  # ndx "beta" == direct excitation
-    if delta is not None and np.isfinite(float(delta)):
-        calib.delta = float(np.clip(float(delta), 0.0, 1.0))
-    r = get("r")  # ndx "r" == 1 / beta_Hellenkamp
-    if r is not None and float(r) > 0:
-        calib.beta = float(1.0 / float(r))
-    gg_gr = get("gG/gR")
-    if gg_gr is not None and float(gg_gr) != 0:
-        calib.gamma = float(np.clip((calib.phi_a / calib.phi_d) / float(gg_gr), 0.05, 20.0))
-    return calib
 
 
 def calibrate_from_samples(
