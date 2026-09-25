@@ -82,3 +82,8 @@ def test_widget_creation(qapp, qtbot):
     assert isinstance(widget.auto_form, AutoForm)
     for key in ("irf_bg_channels", "irf_bg_run", "irf_bg_results", "path_list"):
         assert get_section_factory(key) is not None
+
+    widget.show()
+    widget.resize(800, 600)
+    qapp.processEvents()
+    assert widget.host.grab().width() > 0
