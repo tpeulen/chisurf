@@ -118,9 +118,18 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
             mmfdb_scope="all",
             guards=list(self._guards),
         )
-        layout.addWidget(self.file_list, 1)
+        self.file_list.hide()
+        layout.addWidget(self.file_list)
+
+        from emtk.qt_host import ControlHost
+        from .data_selection_app import BurstDataSelectionApp, WINDOW_BG
+
+        self.app = BurstDataSelectionApp(self)
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        layout.addWidget(self.host, 1)
 
         self.status_label = QtWidgets.QLabel("No TTTR files selected.", self)
+        self.status_label.hide()
         layout.addWidget(self.status_label)
 
     # -- external API kept stable for the workflow ----------------------------
@@ -139,10 +148,38 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
     def add_paths(self, paths: list[Path]) -> None:
         """Add files/folders (folders expanded + de-duplicated by the widget)."""
         self.file_list.add_paths([str(Path(p)) for p in paths])
+        if hasattr(self, "host"):
+            self.host.update()
 
     def clear(self) -> None:
         """Clear selected data files."""
         self.file_list.clear()
+        if hasattr(self, "host"):
+            self.host.update()
+
+    def _browse_files(self) -> None:
+        ext_filter = "TTTR Files (*." + " *.".join(self.TTTR_EXTENSIONS) + ");;All Files (*)"
+        files, _ = QtWidgets.QFileDialog.getOpenFileNames(self, "Select TTTR Files", "", ext_filter)
+        if files:
+            self.add_paths([Path(f) for f in files])
+
+    def _browse_folder(self) -> None:
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Data Folder")
+        if folder:
+            self.add_paths([Path(folder)])
+
+    def _browse_mmfdb(self) -> None:
+        if hasattr(self.file_list, "_on_add_mmfdb"):
+            self.file_list._on_add_mmfdb()
+
+    def _remove_index(self, index: int) -> None:
+        if 0 <= index < len(self._paths):
+            new_paths = [p for i, p in enumerate(self._paths) if i != index]
+            self.clear()
+            if new_paths:
+                self.add_paths(new_paths)
+            if hasattr(self, "host"):
+                self.host.update()
 
     def _on_paths_committed(self, path_strs: list[str]) -> None:
         """Sync canonical state after the ``path_list`` widget commits a change.
