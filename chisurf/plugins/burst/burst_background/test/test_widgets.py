@@ -11,6 +11,10 @@ def test_background_estimator_widget(qapp, qtbot):
     # Shell API used by _burst_background / _apply_context_to_background.
     assert widget.detector_wizard_page is not None
     assert widget.tttr_files == []
+    widget.show()
+    widget.resize(800, 600)
+    qapp.processEvents()
+    assert widget.host.grab().width() > 0
 
 
 def test_background_estimator_embedded_drops_channel_dock(qapp, qtbot):

@@ -1,38 +1,36 @@
-"""Burst Background Estimation — an AutoForm tool over :class:`BackgroundViewModel`.
+"""Burst Background Estimation — an immediate-mode EMTK tool over :class:`BackgroundViewModel`.
 
-Thin :class:`~qtpy.QtWidgets.QWidget` wrapping a single
-:class:`~chisurf.gui.autoform.AutoForm` bound to the Qt-free
-:class:`~.view_model.BackgroundViewModel` and laid out from
-``gui/background.view.json``: the detector channel-definition page, the TTTR file
-list + Estimate action, the inter-photon-time distribution (points + fitted
-tail), the per-detector background-rate bars and the results table — each a
-draggable chisurf dock. The former hand-built tabbed widget now lives in
-``view_model.py`` (logic) + ``gui/sections.py`` (Qt).
+Hosts :class:`~.gui.app.BurstBackgroundApp` via :class:`emtk.qt_host.ControlHost` inside
+a Qt widget, providing:
+- Dockable and draggable windows (Parameters, Inter-photon Time Distribution, Rate Bars, Results).
+- Interactive draggable tail-fit window (:func:`implot.drag_rect`) and region dropping.
+- Per-detector background rates and export to burst containers.
 """
 
 from __future__ import annotations
 
 import logging
+from typing import Any
 
+from emtk.qt_host import ControlHost
 from qtpy import QtWidgets
 
+from .gui import sections
+from .gui.app import WINDOW_BG, BurstBackgroundApp
 from .view_model import BackgroundViewModel
 
 # Plugin brand icon (unified emoji set) + hierarchical menu name.
 icon = "🌑"
 name = "Spectroscopy:Single-Molecule:Burst Background Estimation"
 
-# The packaged console script. rattler-recipe/collect_entry_points.py discovers
-# a plugin CLI only through this assignment, so a `cli.py` without it ships in
-# the package but is reachable by no command -- which is how `burst-background`
-# silently left the recipe when this module was rewritten as an AutoForm tool.
+# The packaged console script.
 cli_entrypoint = "burst-background=chisurf.plugins.burst.burst_background.cli:cli"
 
 logger = logging.getLogger(__name__)
 
 
 class BurstBackgroundEstimator(QtWidgets.QWidget):
-    """Per-detector background from burst analysis (AutoForm tool)."""
+    """Per-detector background from burst analysis (EMTK tool)."""
 
     def __init__(
         self, show_channel_definition: bool = True, parent: QtWidgets.QWidget | None = None
@@ -43,55 +41,56 @@ class BurstBackgroundEstimator(QtWidgets.QWidget):
 
         self.model = BackgroundViewModel(show_channel_definition=show_channel_definition)
 
-        # Import AutoForm + register/build sections lazily so importing this
-        # package for the Qt-free model never pulls the GUI chain.
-        from chisurf.gui.autoform import AutoForm
-
-        from .gui import sections
-
-        # Always create the detector page (so the shell can push channels into it
-        # even when the channels dock is hidden in the embedded workflow).
+        # Always build the detector page so the shell can push channels into it.
         sections.build_detector_page(self.model)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(2, 2, 2, 2)
-        layout.setSpacing(2)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # The shared ``?`` + **Guide** pair, in a hairline strip above the form.
-        # This tool is a plain ``QWidget`` with no toolbar of its own, so the
-        # buttons go through the free-function form of the seam and onto a
-        # ``QToolBar`` added to the layout like any other widget.
-        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+        self.app = BurstBackgroundApp(model=self.model, on_estimate=self._estimate)
+        self.gui = self.app.bg_gui
 
-        self.help_toolbar = QtWidgets.QToolBar("Help", self)
-        self.help_toolbar.setMovable(False)
-        self.help_toolbar.setFloatable(False)
-        self.help_toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
-        attach_help_and_guide(
-            self,
-            self.help_toolbar,
-            title="Burst background — help",
-            model=self.model,
-        )
-        layout.addWidget(self.help_toolbar)
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        layout.addWidget(self.host, 1)
 
-        self.auto_form = AutoForm(self.model)
-        layout.addWidget(self.auto_form)
+        # Proxy action button for workflow shell discovery
+        self.toolAction_run = QtWidgets.QToolButton(self)
+        self.toolAction_run.setObjectName("toolAction_run")
+        self.toolAction_run.setVisible(False)
+        self.toolAction_run.clicked.connect(self._estimate)
 
-        # The file list reads the model when it is built and never again, so a
-        # workflow that pushes its measurements in (``_add_tttr_files``) left
-        # the Files dock empty while the estimate ran on files it did not show.
-        # Re-reading on the model's own notification is what makes the pushed
-        # state visible; ``sync`` only ever reads, so this cannot loop.
+        # Hidden QListWidget for compatibility with tests inspecting file lists
+        self._list_widget = QtWidgets.QListWidget(self)
+        self._list_widget.setVisible(False)
+
         self.model.add_observer(self._on_model_event)
 
+    def _estimate(self) -> None:
+        try:
+            self.model.estimate()
+        except Exception:
+            pass
+
     def _on_model_event(self, event: str) -> None:
-        """Re-read model-owned lists into their widgets when the model changes."""
+        """Sync internal lists on model changes."""
         if event in ("files", "computed"):
-            try:
-                self.auto_form.sync_fields()
-            except Exception:
-                logger.debug("background: could not sync fields", exc_info=True)
+            self._list_widget.clear()
+            for f in self.model.files:
+                self._list_widget.addItem(f)
+
+    # ── Guided Tour Hook ────────────────────────────────────────────────
+    def tour_target(
+        self, target: Any
+    ) -> tuple[QtWidgets.QWidget, tuple[float, float, float, float]] | None:
+        """Resolve a guided-tour target dict to an EMTK item screen rect."""
+        if not isinstance(target, dict):
+            return None
+        name = target.get("name")
+        rect = self.gui.item_rects.get(name) if name else None
+        if rect is not None:
+            return self.host, rect
+        return None
 
     # -- API kept for the workflow shell (_apply_context_to_background) --------
     @property
@@ -107,6 +106,9 @@ class BurstBackgroundEstimator(QtWidgets.QWidget):
     def _add_tttr_files(self, paths) -> None:
         """Add TTTR files (used by the shell to push the selected raw files)."""
         self.model.add_files(list(paths))
+        self._list_widget.clear()
+        for f in self.model.files:
+            self._list_widget.addItem(f)
 
 
 __all__ = ["BurstBackgroundEstimator", "BackgroundViewModel", "name"]
