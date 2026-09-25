@@ -55,8 +55,25 @@ class BurstGsTool(ChisurfDockTool):
         self.toolbar = toolbar
         self.addToolBar(toolbar)
 
-        self.auto_form = AutoForm(self.model)
-        self.setCentralWidget(self.auto_form)
+        from emtk.qt_host import ControlHost
+        from .app import WINDOW_BG, BurstGsApp
+
+        self.app = BurstGsApp(
+            model=self.model,
+            on_fit=self.run_with_progress,
+            on_export=self._export_csv,
+        )
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        self.setCentralWidget(self.host)
+
+        # Retain auto_form shim for callers
+        class _FormShim:
+            def __init__(self, host): self._host = host
+            def sync_fields(self): self._host.update()
+            def refresh_plots(self): self._host.update()
+
+        self.auto_form = _FormShim(self.host)
+
         # The view-model also notifies from the compute worker; the signal hop
         # guarantees the handler (which touches widgets) runs on the GUI thread.
         self.modelEvent.connect(self._handle_model_event)
