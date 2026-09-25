@@ -134,7 +134,7 @@ latexify-py = "*"
 # just in pyproject.toml's [project.dependencies], because pixi.toml's own
 # [pypi-dependencies] is what the solver actually reads -- pyproject.toml's
 # list is metadata for a bare `pip install chisurf`, not consumed by pixi.
-emtk = "*"
+emtk = { git = "https://github.com/tpeulen/emtk.git", branch = "main" }
 # imp-bff (PyPI name; imports as IMP.bff) is the structure/dye-simulation/
 # scoring engine: AV backend, structure I/O and kappa-squared correction all
 # import it unguarded. Bare `imp` (the full IMP suite) is no longer a chisurf
@@ -150,7 +150,7 @@ emtk = "*"
 # the toolchain this needs (cmake, ninja, swig, scikit-build-core) is already
 # in every environment here for tttrlib's own from-source build. Once a real
 # PyPI release exists, drop back to `imp-bff = "*"`.
-imp-bff = { git = "https://github.com/tpeulen/IMP.bff.git", branch = "independent-core" }
+imp-bff = { git = "https://github.com/tpeulen/IMP.bff.git", branch = "dev" }
 
 [pypi-options]
 dependency-overrides = { "numpy" = {} }

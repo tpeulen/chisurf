@@ -55,9 +55,7 @@ def mmfdb_answers(monkeypatch):
 
 
 def _toolbars(ndx) -> set[str]:
-    return {
-        bar.objectName() or bar.windowTitle() for bar in ndx.findChildren(QtWidgets.QToolBar)
-    }
+    return {bar.objectName() or bar.windowTitle() for bar in ndx.findChildren(QtWidgets.QToolBar)}
 
 
 def _close(ndx) -> None:

@@ -145,8 +145,7 @@ def test_collapsing_wins_outright_with_several_private_parameters(monkeypatch):
     """Where blocked sampling breaks down, per model evaluation."""
     # Both sides are counted in Python model evaluations, so both run on the
     # Python path; the native graph would take one of them out of the count.
-    monkeypatch.setattr(chisurf.core.fitting.minimizer, "graph_objective",
-                        lambda *a, **k: None)
+    monkeypatch.setattr(chisurf.core.fitting.minimizer, "graph_objective", lambda *a, **k: None)
 
     def _ess_per_eval(sampler):
         np.random.seed(7)

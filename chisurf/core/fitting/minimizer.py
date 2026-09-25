@@ -1036,7 +1036,9 @@ def _group_objective(fit, model, free):
     # The graph holds the only reference to these once this function returns.
     m._graph = (joint, chi2_nodes, keepalive)
     m._sampler_surface = (joint, parameter_ports, "joint")
-    carried_all = [pair for _chi2, carried, _alive in keepalive[: len(chi2_nodes)] for pair in carried]
+    carried_all = [
+        pair for _chi2, carried, _alive in keepalive[: len(chi2_nodes)] for pair in carried
+    ]
     carried_ids = {id(p) for p, _ in carried_all}
     m._parameter_ports = carried_all + [
         (p, port) for p, port in zip(free, parameter_ports) if id(p) not in carried_ids

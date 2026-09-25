@@ -28,6 +28,7 @@ __all__ = [
     "maps_fret_channels",
 ]
 
+
 def read_burst_table(path: str | pathlib.Path) -> dict[str, np.ndarray]:
     """Read a burst table into ``{column: array}``.
 

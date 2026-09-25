@@ -27,7 +27,6 @@ import chisurf as cs
 import chisurf.gui
 import chisurf.macros
 
-
 # The QApplication that ``get_app`` builds, held for the life of the process.
 # ``get_app`` keeps no reference of its own once its startup-auth timer has
 # fired, so the fixture's return value was the last one and pytest dropped it

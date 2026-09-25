@@ -96,7 +96,7 @@ def test_make_vector_populations_and_make_scalar_from_the_menu(qapp, editor):
     assert [e.value for e in gamma.elements] == pytest.approx([0.8, 0.8])
     assert gamma.vector_state()["column"] == "Population"
     names = _names(table)
-    assert any(n.endswith("gamma [2]") for n in names)       # the table follows, opened
+    assert any(n.endswith("gamma [2]") for n in names)  # the table follows, opened
     assert any(n.endswith("HF") for n in names) and any(n.endswith("LF") for n in names)
     _settle(qapp)
     # sized to every row once the dialog is gone (no row cut off)
@@ -123,8 +123,7 @@ def test_make_vector_populations_and_make_scalar_from_the_menu(qapp, editor):
 def test_a_bad_population_text_keeps_the_dialog_open(qapp, editor, monkeypatch):
     table = editor._table
     warnings = []
-    monkeypatch.setattr(QtWidgets.QMessageBox, "warning",
-                        lambda *a, **k: warnings.append(a[2]))
+    monkeypatch.setattr(QtWidgets.QMessageBox, "warning", lambda *a, **k: warnings.append(a[2]))
     _action(table.context_menu(_row(table, "alpha")), "Make vector…").trigger()
     dialog = table._populations_dialog
     dialog.populations.setText(" , ")

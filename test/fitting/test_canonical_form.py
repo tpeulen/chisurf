@@ -251,8 +251,7 @@ def test_laplace_conditions_in_closed_form_when_the_model_is_linear(monkeypatch)
     """
     # Both sides are counted in Python model evaluations, so both run on the
     # Python path; the native graph would take one of them out of the count.
-    monkeypatch.setattr(chisurf.core.fitting.minimizer, "graph_objective",
-                        lambda *a, **k: None)
+    monkeypatch.setattr(chisurf.core.fitting.minimizer, "graph_objective", lambda *a, **k: None)
     fit = _fit()
     names = list(fit._model.parameter_names)
     held, target = names[0], names[1]

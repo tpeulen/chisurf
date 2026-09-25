@@ -1781,6 +1781,7 @@ class Measurement:
             dictionary_hash=extension_dictionary_hash(),
         )
 
+
 def _metadata_to_cif(metadata: Mapping[str, Mapping[str, Any]]) -> str:
     """Render ``{category: {item: value}}`` as an mmCIF block.
 

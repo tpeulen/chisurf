@@ -1498,12 +1498,10 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         if actions is None:
             return
         if actions.is_vector:
-            menu.addAction("Populations…").triggered.connect(
-                lambda: self.ask_populations(actions))
+            menu.addAction("Populations…").triggered.connect(lambda: self.ask_populations(actions))
             menu.addAction("Make scalar").triggered.connect(lambda: actions.to_scalar())
         elif actions.can_be_vector and self._model.row(row).depth == 0:
-            menu.addAction("Make vector…").triggered.connect(
-                lambda: self.ask_populations(actions))
+            menu.addAction("Make vector…").triggered.connect(lambda: self.ask_populations(actions))
         else:
             return
         menu.addSeparator()
@@ -1512,11 +1510,12 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         self._table.resizeRowsToContents()
         self._size_to_content()
 
-    def ask_populations(self, actions) -> "PopulationsDialog":
+    def ask_populations(self, actions) -> PopulationsDialog:
         """Open the populations dialog for *actions* (non-blocking); return it."""
         # Opened before the vector is made: the owner rebuilds the table then.
-        dialog = PopulationsDialog(actions, self,
-                                   on_apply=lambda: self._model.expanded.add(actions.name))
+        dialog = PopulationsDialog(
+            actions, self, on_apply=lambda: self._model.expanded.add(actions.name)
+        )
         # Sized again once the dialog is gone: rows added while it is up are not
         # laid out yet, and the table would keep its old height.
         dialog.finished.connect(lambda _r: QtCore.QTimer.singleShot(0, self._resize_rows))
@@ -1725,27 +1724,33 @@ class PopulationsDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.actions = actions
         self._on_apply = on_apply
-        self.setWindowTitle(f"Populations of {actions.name}" if actions.is_vector
-                            else f"Make {actions.name} a vector")
+        self.setWindowTitle(
+            f"Populations of {actions.name}"
+            if actions.is_vector
+            else f"Make {actions.name} a vector"
+        )
         layout = QtWidgets.QFormLayout(self)
-        hint = QtWidgets.QLabel(f"One value of {actions.name} per population; a burst takes "
-                                "its population's value, and a burst in no population the "
-                                "global one.")
+        hint = QtWidgets.QLabel(
+            f"One value of {actions.name} per population; a burst takes "
+            "its population's value, and a burst in no population the "
+            "global one."
+        )
         hint.setWordWrap(True)
         layout.addRow(hint)
         self.populations = QtWidgets.QLineEdit(
-            ", ".join(actions.populations) if actions.is_vector else "2")
+            ", ".join(actions.populations) if actions.is_vector else "2"
+        )
         self.populations.setToolTip("How many (3: populations 0, 1, 2), or their names (HF, LF).")
         layout.addRow("Populations:", self.populations)
         self.column = QtWidgets.QComboBox()
         self.column.setEditable(True)
         self.column.addItems(list(actions.column_options()))
         self.column.setCurrentText(actions.column)
-        self.column.setToolTip("The burst column whose value says which population a burst "
-                               "is in.")
+        self.column.setToolTip("The burst column whose value says which population a burst is in.")
         layout.addRow("Picked by:", self.column)
         buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addRow(buttons)
@@ -1753,8 +1758,9 @@ class PopulationsDialog(QtWidgets.QDialog):
     def accept(self) -> None:
         if self._on_apply is not None:
             self._on_apply()
-        problem = self.actions.set_populations(self.populations.text(),
-                                               self.column.currentText().strip())
+        problem = self.actions.set_populations(
+            self.populations.text(), self.column.currentText().strip()
+        )
         if problem:
             QtWidgets.QMessageBox.warning(self, "Populations", problem)
             return
@@ -2447,12 +2453,10 @@ class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         if actions is None:
             return
         if actions.is_vector:
-            menu.addAction("Populations…").triggered.connect(
-                lambda: self.ask_populations(actions))
+            menu.addAction("Populations…").triggered.connect(lambda: self.ask_populations(actions))
             menu.addAction("Make scalar").triggered.connect(lambda: actions.to_scalar())
         elif actions.can_be_vector and self._model.row(row).depth == 0:
-            menu.addAction("Make vector…").triggered.connect(
-                lambda: self.ask_populations(actions))
+            menu.addAction("Make vector…").triggered.connect(lambda: self.ask_populations(actions))
         else:
             return
         menu.addSeparator()
@@ -2461,11 +2465,12 @@ class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         self._table.resizeRowsToContents()
         self._size_to_content()
 
-    def ask_populations(self, actions) -> "PopulationsDialog":
+    def ask_populations(self, actions) -> PopulationsDialog:
         """Open the populations dialog for *actions* (non-blocking); return it."""
         # Opened before the vector is made: the owner rebuilds the table then.
-        dialog = PopulationsDialog(actions, self,
-                                   on_apply=lambda: self._model.expanded.add(actions.name))
+        dialog = PopulationsDialog(
+            actions, self, on_apply=lambda: self._model.expanded.add(actions.name)
+        )
         # Sized again once the dialog is gone: rows added while it is up are not
         # laid out yet, and the table would keep its old height.
         dialog.finished.connect(lambda _r: QtCore.QTimer.singleShot(0, self._resize_rows))

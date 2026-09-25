@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import numpy as np
-import tttrlib
 import pytest
+import tttrlib
 
 from chisurf.core.fluorescence.fret.lines import static_fret_line
 from chisurf.plugins.burst.accurate_fret import core as _core

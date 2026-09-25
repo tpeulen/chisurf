@@ -200,9 +200,7 @@ def restore_parameters(
         if any(isinstance(r, dict) and not r.get("ok", True) for r in results):
             failed.append(str(param.name))
     if failed:
-        raise RuntimeError(
-            "Could not restore the template parameters " + ", ".join(failed)
-        )
+        raise RuntimeError("Could not restore the template parameters " + ", ".join(failed))
 
 
 def collect_rows(

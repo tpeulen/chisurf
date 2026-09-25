@@ -269,9 +269,7 @@ def fit_one(
                         "format, but IMP.bff has no HmmSurrogate (it was "
                         "built without tttrlib); rebuild it"
                     )
-                return _bff_surrogate.estimate_model(
-                    data, n_states, sm, refine_iters=ri, tol=tol
-                )
+                return _bff_surrogate.estimate_model(data, n_states, sm, refine_iters=ri, tol=tol)
             # A pickled SurrogateModel stays on the scikit-learn path. This
             # used to go through the in-tree `fit_states`, whose surrogate arm
             # only forwarded here -- so it kept a whole EM engine alive to make

@@ -576,13 +576,23 @@ def refine_calibration(
     # the resampling draws numpy's generator, as this function always did
     rng = np.random.default_rng(seed)
     n = labels.size
-    indices = np.stack([rng.integers(0, n, n) for _ in range(int(n_bootstrap))]) \
-        if data_sigma is None and n_bootstrap else None
+    indices = (
+        np.stack([rng.integers(0, n, n) for _ in range(int(n_bootstrap))])
+        if data_sigma is None and n_bootstrap
+        else None
+    )
     est = tttrlib.refine_gamma(
-        i_dd, i_da, i_aa, labels, alpha=calib.alpha, delta=calib.delta,
+        i_dd,
+        i_da,
+        i_aa,
+        labels,
+        alpha=calib.alpha,
+        delta=calib.delta,
         prior=(float(prior.mu), float(prior.sigma)) if has_prior else None,
-        data_sigma=data_sigma, n_bootstrap=int(n_bootstrap) if indices is not None else 0,
-        seed=seed, indices=indices,
+        data_sigma=data_sigma,
+        n_bootstrap=int(n_bootstrap) if indices is not None else 0,
+        seed=seed,
+        indices=indices,
     )
     gamma_data = est["gamma_data"]
     # beta (excitation-flux ratio) is also identified by the E-S fit.

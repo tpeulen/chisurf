@@ -30,9 +30,8 @@ def test_multi_model_pdb_has_separate_model_records(tmp_path):
 
     import numpy as np
 
-    from chisurf.core.fio.structure.coordinates import write_pdb
-
     from chisurf.core.fio.structure.coordinates import atom_dtype as ATOM_DTYPE
+    from chisurf.core.fio.structure.coordinates import write_pdb
 
     atoms = np.zeros(2, dtype=ATOM_DTYPE)
     atoms["atom_id"] = [1, 2]

@@ -47,14 +47,14 @@ def show_calibration_report(
         The result of an automatic save already done, so the window can say
         where it went instead of offering to do it again silently.
     """
-    from qtpy import QtGui, QtWidgets
-
-    from chisurf.gui import dialogs
     from ndxplorer.io.fret_calibration_io import (
         SUFFIX,
         container_of,
         save_calibration,
     )
+    from qtpy import QtGui, QtWidgets
+
+    from chisurf.gui import dialogs
 
     dialog = QtWidgets.QDialog(parent)
     dialog.setWindowTitle(title)

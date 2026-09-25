@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import chisurf as cs
 from chisurf.core.experiments.bootstrap import (
     describe_registry,
@@ -11,9 +13,6 @@ from chisurf.core.experiments.bootstrap import (
     qt_application_available,
     resolve_class,
 )
-
-
-import pytest
 
 
 def test_readers_and_models_are_registered_without_the_main_window():

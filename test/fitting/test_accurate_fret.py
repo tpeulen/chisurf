@@ -110,7 +110,10 @@ def test_population_classification_matches_the_truth():
     split = classify_es_populations(es["S"], es["E"])
     assert split["method"] == "mixture"
     truth = d["kind"]
-    for mask, name in ((split["donor_only"], "donor_only"), (split["acceptor_only"], "acceptor_only")):
+    for mask, name in (
+        (split["donor_only"], "donor_only"),
+        (split["acceptor_only"], "acceptor_only"),
+    ):
         assert np.count_nonzero(mask) > 300
         purity = np.mean(truth[mask] == name)
         assert purity > 0.95, f"{name} gate is only {purity:.2%} pure"

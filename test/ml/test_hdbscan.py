@@ -27,13 +27,17 @@ tttrlib = pytest.importorskip("tttrlib")
 
 
 def core_distances(X, min_samples):
-    return np.asarray(tttrlib.core_distances(np.ascontiguousarray(X, dtype=float),
-                                             int(min_samples)))
+    return np.asarray(
+        tttrlib.core_distances(np.ascontiguousarray(X, dtype=float), int(min_samples))
+    )
 
 
 def mutual_reachability_mst(X, min_samples, alpha=1.0):
-    return np.asarray(tttrlib.mutual_reachability_mst(np.ascontiguousarray(X, dtype=float),
-                                                      int(min_samples), float(alpha)))
+    return np.asarray(
+        tttrlib.mutual_reachability_mst(
+            np.ascontiguousarray(X, dtype=float), int(min_samples), float(alpha)
+        )
+    )
 
 
 def hdbscan(X, **configuration):
@@ -115,9 +119,7 @@ def test_matches_sklearn_end_to_end(n_features, configuration):
     assert agreement >= 0.97, f"only {agreement:.3f} of the labels agree"
     assert abs(int(mine.labels.max()) - int(theirs.labels_.max())) <= 1
     agreed = mine.labels == theirs.labels_
-    np.testing.assert_allclose(
-        mine.probabilities[agreed], theirs.probabilities_[agreed], atol=1e-6
-    )
+    np.testing.assert_allclose(mine.probabilities[agreed], theirs.probabilities_[agreed], atol=1e-6)
 
 
 @pytest.mark.parametrize("n_features", [1, 2, 3, 5])

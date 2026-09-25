@@ -5,6 +5,7 @@ Each element is a parameter of the window's constants group, named
 and a fit parameter can be linked to one population's value; an edit of the
 mirror is what ndX's equations read as that population's element.
 """
+
 import pytest
 
 pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")

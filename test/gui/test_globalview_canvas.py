@@ -98,8 +98,13 @@ def test_the_window_is_one_emtk_surface(tool):
     from qtpy import QtWidgets
 
     assert tool.centralWidget() is tool.host
-    for kind in (QtWidgets.QToolBar, QtWidgets.QCheckBox, QtWidgets.QComboBox,
-                 QtWidgets.QTableView, QtWidgets.QAbstractSpinBox):
+    for kind in (
+        QtWidgets.QToolBar,
+        QtWidgets.QCheckBox,
+        QtWidgets.QComboBox,
+        QtWidgets.QTableView,
+        QtWidgets.QAbstractSpinBox,
+    ):
         assert not tool.findChildren(kind), f"a {kind.__name__} is back"
 
 

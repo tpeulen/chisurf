@@ -44,7 +44,6 @@ import time
 
 import numpy as np
 import pytest
-
 import tttrlib
 
 try:  # optional external reference, not a dependency

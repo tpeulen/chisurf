@@ -15,7 +15,10 @@ import pytest
 bff = pytest.importorskip("IMP.bff")
 
 from chisurf.core.fitting.mcts.dispatcher import prepare_model_search  # noqa: E402
-from chisurf.core.fitting.mcts.execution import NativeSearchSettings, run_native_search  # noqa: E402
+from chisurf.core.fitting.mcts.execution import (  # noqa: E402
+    NativeSearchSettings,
+    run_native_search,
+)
 
 from .test_description_model import _simulated, _view  # noqa: E402
 

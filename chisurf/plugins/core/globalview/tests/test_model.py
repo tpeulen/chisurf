@@ -303,8 +303,9 @@ def test_columns_that_say_nothing_are_not_shown():
 def test_a_vector_published_by_population_is_one_expandable_row():
     """``gamma[HF]``, ``gamma[LF]`` are filed under ``gamma``; the table opens it."""
     group = _group(["gamma", "gamma[HF]", "gamma[LF]", "Bg"])
-    model = GlobalViewModel(fits=lambda: [], groups=lambda: [("ndx", "ndX constants", group)],
-                            mutator=_Mutator())
+    model = GlobalViewModel(
+        fits=lambda: [], groups=lambda: [("ndx", "ndX constants", group)], mutator=_Mutator()
+    )
     model.refresh()
     records = {r["parameter"]: r for r in model.parameter_records()}
     parent = records["gamma"]["uid"]

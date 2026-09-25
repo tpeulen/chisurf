@@ -75,7 +75,9 @@ def is_native_surrogate(obj) -> bool:
 def extract_features(data: BurstPhotons) -> np.ndarray:
     """Feature vector via the C++ extractor (matches the in-tree one to 1e-12)."""
     _require()
-    return np.asarray(bff.HmmSurrogate.extract_features_from_layout(*_layout(data)), dtype=np.float64)
+    return np.asarray(
+        bff.HmmSurrogate.extract_features_from_layout(*_layout(data)), dtype=np.float64
+    )
 
 
 def estimate_model(

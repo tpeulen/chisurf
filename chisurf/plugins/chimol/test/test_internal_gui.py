@@ -1231,10 +1231,10 @@ def test_a_dragged_window_snaps_to_the_edge_and_anchors_in_corners(gui):
 
 def test_window_states_survive_a_restart(tmp_path, monkeypatch):
     """The ask: chimol must remember window states between restarts."""
-    from chimol.ui import window_state
+    from chimol.ui.gui import windows
 
     path = tmp_path / "chimol_windows.json"
-    monkeypatch.setattr(window_state, "state_path", lambda: path)
+    monkeypatch.setattr(windows, "window_state_path", lambda: path)
 
     first = InternalGui()
     first.enable_persistence()
@@ -1257,10 +1257,10 @@ def test_window_states_survive_a_restart(tmp_path, monkeypatch):
 
 def test_a_bare_panel_never_touches_the_saved_states(tmp_path, monkeypatch):
     """Tests and headless probes must not read or write real preferences."""
-    from chimol.ui import window_state
+    from chimol.ui.gui import windows
 
     path = tmp_path / "chimol_windows.json"
-    monkeypatch.setattr(window_state, "state_path", lambda: path)
+    monkeypatch.setattr(windows, "window_state_path", lambda: path)
 
     gui = InternalGui()  # persistence never enabled
     gui.layout(WIDTH, HEIGHT)

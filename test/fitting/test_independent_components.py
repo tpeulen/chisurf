@@ -180,8 +180,7 @@ def test_decomposition_costs_far_fewer_model_evaluations(monkeypatch):
     """The point of the exercise, in local-model evaluations for equal draws."""
     # Both sides are counted in Python model evaluations, so both run on the
     # Python path; the native graph would take one of them out of the count.
-    monkeypatch.setattr(chisurf.core.fitting.minimizer, "graph_objective",
-                        lambda *a, **k: None)
+    monkeypatch.setattr(chisurf.core.fitting.minimizer, "graph_objective", lambda *a, **k: None)
 
     def _cost(sampler):
         np.random.seed(9)

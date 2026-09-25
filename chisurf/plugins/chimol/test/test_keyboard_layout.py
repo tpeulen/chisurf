@@ -86,9 +86,8 @@ def test_the_browser_host_passes_the_character_the_page_produced():
     shifted, so the page's text reaches the renderer untouched -- through
     emtk's page, which translates the key, and chimol's surface.
     """
-    from emtk.web.page import WebPage
-
     from chimol.hosts.web.page import Page
+    from emtk.web.page import WebPage
 
     seen = []
 

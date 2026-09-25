@@ -266,9 +266,7 @@ def test_common_dispatcher_routes_a_multi_member_fit_to_the_joint_capability():
     assert prepared.supported, prepared.reasons
     assert prepared.binding.declaration.objective_model is fit._model
     assert len(prepared.binding.ports) == 3
-    assert (
-        sum(key.startswith("shared:") for key in _group_keys(prepared.problem)) == 1
-    )
+    assert sum(key.startswith("shared:") for key in _group_keys(prepared.problem)) == 1
 
 
 def test_native_tcspc_members_are_refused_whole_until_joint_builder_supports_them():

@@ -456,7 +456,7 @@ class PositionPanel(QtWidgets.QWidget):
 
             # Dye Model combobox (col 7)
             model_cb = QtWidgets.QComboBox()
-            model_cb.addItems(["AV1", "AV0", "AV3"])
+            model_cb.addItems(["AV1", "AV0", "AV3", "ROTAMER"])
             model_cb.setCurrentText("AV1")
             model_cb.currentTextChanged.connect(self.onDyeModelChanged)
             self.table.setCellWidget(row, 7, model_cb)

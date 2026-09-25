@@ -696,8 +696,9 @@ class App:
         self.menubar.draw(painter, x, y, w, MENU_H)
         self._remember_menu_rects()
 
-    def _draw_tables(self, painter: Any, x: float, y: float, w: float, h: float,
-                     modal: bool) -> None:
+    def _draw_tables(
+        self, painter: Any, x: float, y: float, w: float, h: float, modal: bool
+    ) -> None:
         """The table overlays, each a frame of its own over its panel."""
         g = self.gui
         self.table_boxes = []
@@ -749,7 +750,7 @@ class App:
         if self.modal():
             return self.dialog_io
         if holding(self.storage):
-            return self.io              # a choice's list is up: the press is its
+            return self.io  # a choice's list is up: the press is its
         if px is not None and any(
             bx <= px < bx + bw and by <= py < by + bh for bx, by, bw, bh in self.table_boxes
         ):
@@ -811,7 +812,11 @@ class App:
             elif self.gui.dialogs:
                 self.gui.dialogs.pop()
             return True
-        io = self.dialog_io if self.modal() else (self.io if listing else (self._focus_io or self.io))
+        io = (
+            self.dialog_io
+            if self.modal()
+            else (self.io if listing else (self._focus_io or self.io))
+        )
         io.key = int(key)
         io.text = "".join(c for c in (text or "") if c >= " " and c != "\x7f")
         return True

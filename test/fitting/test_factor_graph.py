@@ -402,15 +402,15 @@ def test_the_graph_is_derived_from_the_objective_that_is_optimised():
 
     assert g.fit_graph is not None
     whole = g.fit_graph
-    links = [k for k in whole.get_factor_keys()
-             if whole.get_factor_kind(k) == bff.INFERENCE_FACTOR_LINK]
+    links = [
+        k for k in whole.get_factor_keys() if whole.get_factor_kind(k) == bff.INFERENCE_FACTOR_LINK
+    ]
     assert len(links) == 2
     master_key = factorgraph.parameter_key(master)
     assert all(master_key in whole.variables_of(k) for k in links)
     held_key = factorgraph.parameter_key(held)
     assert whole.get_variable_role(held_key) == "fixed"
-    assert any(held_key in list(whole.get_factor_evidence(k))
-               for k in whole.get_factor_keys())
+    assert any(held_key in list(whole.get_factor_evidence(k)) for k in whole.get_factor_keys())
     # The posterior's likelihoods: every dataset reads the shared amplitude.
     for i in range(3):
         assert master_key in g.variables_of(f"L{i}")
