@@ -20,6 +20,8 @@ from chisurf.plugins.core.code_editor.notebook_editor import (
 )
 from chisurf.plugins.core.code_editor.text_editor import TextEditor
 
+pytestmark = [pytest.mark.gui, pytest.mark.widget]
+
 
 @pytest.fixture
 def app() -> QtWidgets.QApplication:
@@ -185,14 +187,14 @@ def test_insert_between_reorders_cells(app):
     inserted = nb_ed.add_cell(cell_type="code", source="mid", after_index=0)
     initial = nb_ed.cells()[0]
     assert [c for c in nb_ed.cells()] == [initial, inserted, first, last]
-    QtWidgets.QApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+    QtWidgets.QApplication.processEvents()
     inserts = [
         b for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
     ]
     assert len(inserts) == 3
     nb_ed.remove_cell(inserted)
     assert [c for c in nb_ed.cells()] == [initial, first, last]
-    QtWidgets.QApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+    QtWidgets.QApplication.processEvents()
     inserts = [
         b for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
     ]

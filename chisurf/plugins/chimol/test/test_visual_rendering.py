@@ -2,11 +2,14 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import pytest
 from chimol.geometry.primitives import _compute_center_radius
 from chimol.render.raytracer import RayCamera, Sphere, trace
 from PIL import Image
 
 import chisurf.core.structure as cs_struct
+
+pytestmark = pytest.mark.slow
 
 
 class TestVisualRendering(unittest.TestCase):
