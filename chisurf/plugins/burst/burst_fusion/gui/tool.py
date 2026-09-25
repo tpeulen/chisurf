@@ -1,27 +1,38 @@
-"""GUI entry point of the Burst Fusion step.
+"""GUI entry point of the Burst Fusion step, powered by emtk.
 
-A :class:`~chisurf.gui.widgets.tools.chisurf_dock_tool.ChisurfDockTool` holding
-one :class:`~chisurf.gui.autoform.AutoForm` over the Qt-free
-:class:`~.view_model.FusionViewModel`, laid out by ``fusion.view.json``. The
-toolbar carries only the ``?`` help and the guided tour; the two actions live in
-the form itself (``gui.sections``) because they belong beside the threshold that
-drives them.
+A :class:`~chisurf.gui.widgets.tools.chisurf_dock_tool.ChisurfDockTool` hosting
+:class:`~.app.BurstFusionApp` through :class:`emtk.qt_host.ControlHost` over the
+Qt-free :class:`~.view_model.FusionViewModel`.
 """
 
 from __future__ import annotations
 
 import logging
+from typing import Any
 
+from emtk.qt_host import ControlHost
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.autoform import AutoForm
 from chisurf.gui.dialogs import ChiSurfMessageBox
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
-from . import sections  # noqa: F401  (side effect: registers the action bar)
+from .app import WINDOW_BG, BurstFusionApp
 from .view_model import FusionViewModel
 
 logger = logging.getLogger(__name__)
+
+
+class _FormShim:
+    """Compatibility shim for callers expecting an AutoForm interface."""
+
+    def __init__(self, host: QtWidgets.QWidget) -> None:
+        self._host = host
+
+    def sync_fields(self) -> None:
+        self._host.update()
+
+    def refresh_plots(self) -> None:
+        self._host.update()
 
 
 class BurstFusionTool(ChisurfDockTool):
@@ -33,17 +44,21 @@ class BurstFusionTool(ChisurfDockTool):
         self.setMinimumSize(900, 620)
 
         self.model = FusionViewModel()
+        self.app = BurstFusionApp(model=self.model)
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        self.setCentralWidget(self.host)
+        self.form = _FormShim(self.host)
 
         toolbar = QtWidgets.QToolBar()
         toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
-        demo = toolbar.addAction("🧪 Load demo")
-        demo.setToolTip(
+        self._demo_action = toolbar.addAction("🧪 Load demo")
+        self._demo_action.setToolTip(
             "Simulate a measurement whose answer is declared — a known number of "
             "molecules, a known fraction of their crossings cut up by the burst "
             "search — and load its burst folder, so fusion can be judged against "
             "a number instead of a feeling."
         )
-        demo.triggered.connect(self.load_demo)
+        self._demo_action.triggered.connect(self.load_demo)
         self.add_toolbar_guide(toolbar, resource="guide.json", model=self.model)
         self.add_toolbar_help(
             toolbar, resource="help.md", title="Burst Fusion — Help", model=self.model
@@ -51,17 +66,45 @@ class BurstFusionTool(ChisurfDockTool):
         self.toolbar = toolbar
         self.addToolBar(toolbar)
 
-        self.form = AutoForm(self.model)
-        self.setCentralWidget(self.form)
+        # Invisible proxy action buttons for navigation shell discovery and testing
+        self.btn_run = QtWidgets.QToolButton(self)
+        self.btn_run.setObjectName("toolAction_run")
+        self.btn_run.clicked.connect(self._on_run_clicked)
+        self.btn_run.hide()
+
+        self.btn_refresh = QtWidgets.QToolButton(self)
+        self.btn_refresh.setObjectName("toolAction_refresh")
+        self.btn_refresh.clicked.connect(self._on_refresh_clicked)
+        self.btn_refresh.hide()
+
         self.model.add_observer(self._on_model_event)
 
-    def load_demo(self) -> None:
-        """Generate (or reuse) the demo measurement and load its burst folder.
+    def _on_run_clicked(self) -> None:
+        self.process_bursts()
 
-        The first run simulates a photon stream and runs a burst search over it,
-        which takes a few seconds, so it reports into the shared status bar (or
-        the window's own, standalone) rather than freezing silently.
-        """
+    def _on_refresh_clicked(self) -> None:
+        try:
+            self.model.analyze()
+        except Exception:
+            logger.warning("burst fusion: analyze failed", exc_info=True)
+
+    def tour_target(self, target: dict[str, Any]) -> tuple[QtWidgets.QWidget, tuple | None] | None:
+        """Tell GuidedTour where a step target is on this emtk surface."""
+        action = target.get("action")
+        if action and hasattr(self, "_demo_action"):
+            w = self.toolbar.widgetForAction(self._demo_action)
+            if w is not None:
+                return w, None
+        key = target.get("key") or target.get("attr") or target.get("title") or target.get("name")
+        if key:
+            rect = self.app.fusion_gui.item_rects.get(str(key))
+            if rect is not None:
+                return self.host, rect
+            return self.host, (0.0, 0.0, float(self.host.width()), float(self.host.height()))
+        return None
+
+    def load_demo(self) -> None:
+        """Generate (or reuse) the demo measurement and load its burst folder."""
         from chisurf.gui.widgets.navigation import find_status_reporter
 
         reporter = find_status_reporter(self)
@@ -84,7 +127,7 @@ class BurstFusionTool(ChisurfDockTool):
 
         try:
             self.model.load_demo(progress=progress)
-            self.form.sync_fields()
+            self.host.update()
         except Exception as exc:
             logger.warning("burst fusion: the demo could not be built", exc_info=True)
             ChiSurfMessageBox.warning(self, "Burst fusion — demo", str(exc))
@@ -99,16 +142,10 @@ class BurstFusionTool(ChisurfDockTool):
     def set_folder(self, folder: str) -> None:
         """Point the step at the burst folder an upstream step produced."""
         self.model.set_folder(str(folder))
-        self.form.sync_fields()
+        self.host.update()
 
     def set_channel_settings(self, settings: dict) -> None:
-        """Adopt the workflow's detector definition for regenerating the bursts.
-
-        The fused burst table is re-derived from the photons, which needs the
-        detector/window definition. The source folder's reading manifest carries
-        it, but a folder written by an older version does not — and then the
-        workflow's own channel page is the only place it exists.
-        """
+        """Adopt the workflow's detector definition for regenerating the bursts."""
         settings = settings or {}
         self.model.detectors = dict(settings.get("detectors") or {})
         self.model.windows = dict(settings.get("windows") or {})
@@ -118,33 +155,17 @@ class BurstFusionTool(ChisurfDockTool):
         return self.model.written_folder
 
     def process_bursts(self) -> str:
-        """Fuse the bursts and write the folder — the headless *Run*.
-
-        Running this step means producing its output: the fused folder, handed
-        to the workflow so every later step analyses it. The shell's *Next ▶* /
-        ⏩ walk never reaches this, because the step is declared ``optional`` and
-        the walk passes over optional steps without running them — pressing Next
-        on an un-run fusion step leaves the pipeline on the bursts it already
-        had, which is the whole meaning of "optional" here.
-        """
+        """Fuse the bursts and write the folder — the headless *Run*."""
         if self.model.can_run() is not None:
             return ""
-        return self.model.fuse()
+        result = self.model.fuse()
+        self.host.update()
+        return result
 
     def _on_model_event(self, event: str) -> None:
-        """Redraw whenever the model changed.
-
-        ``refresh_plots`` reaches the summary table and the status block too —
-        both opt into ``AUTOFORM_REFRESH`` — so one call keeps every view of the
-        analysis in step.
-        """
+        """Redraw whenever the model changed."""
         try:
-            self.form.refresh_plots()
-            # Also re-read the fields: the model is written to from outside the
-            # form as well (the demo, the embedding workflow), and a control still
-            # showing the old value next to a result computed from the new one is
-            # worse than no control at all.
-            self.form.sync_fields()
+            self.host.update()
         except Exception:
             logger.warning("burst fusion: refresh failed", exc_info=True)
 
