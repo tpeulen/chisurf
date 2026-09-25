@@ -1,20 +1,22 @@
-"""Burst Browser — an AutoForm tool over :class:`BurstBrowserViewModel`.
+"""Burst Browser — an immediate-mode EMTK tool over :class:`BurstBrowserViewModel`.
 
-Thin :class:`~qtpy.QtWidgets.QWidget` wrapping a single
-:class:`~chisurf.gui.autoform.AutoForm` bound to the Qt-free
-:class:`~.view_model.BurstBrowserViewModel` and laid out from
-``gui/burst_browser.view.json``: a Controls panel (open action, detector/column
-combos, a foldable Gating box) plus the per-burst table and the histogram as
-draggable chisurf docks. The former hand-built widget (table model, gating spin
-boxes, histogram) now lives in ``gui/sections.py``.
+Hosts :class:`~.gui.app.BurstBrowserApp` via :class:`emtk.qt_host.ControlHost` inside
+a Qt widget, providing:
+- Left pane: Data source (Open folder/file), detector & column selection, and Gating controls.
+- Center pane: Paginated per-burst table with row selection.
+- Right pane: Live histogram of the selected column with emtk.implot.
 """
 
 from __future__ import annotations
 
 import logging
+import pathlib
+from typing import Any
 
+from emtk.qt_host import ControlHost
 from qtpy import QtWidgets
 
+from .gui.app import WINDOW_BG, BurstBrowserApp
 from .view_model import BurstBrowserViewModel
 
 # Plugin brand icon (unified emoji set) + hierarchical menu name.
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class BurstBrowserWidget(QtWidgets.QWidget):
-    """Inspect burstwise ``.bur`` tables + ``…4`` companions (AutoForm tool)."""
+    """Inspect burstwise ``.bur`` tables + ``…4`` companions (EMTK tool)."""
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -34,20 +36,50 @@ class BurstBrowserWidget(QtWidgets.QWidget):
 
         self.model = BurstBrowserViewModel()
 
-        # Import AutoForm + register the custom sections lazily (only when the
-        # widget is actually built) so importing this package — e.g. for the
-        # Qt-free view-model — never pulls in the heavy GUI/settings chain.
-        from chisurf.gui.autoform import AutoForm
-
-        from .gui import sections  # noqa: F401  (side effect: register sections)
+        self.app = BurstBrowserApp(
+            model=self.model,
+            on_open_folder=self._open_folder_dialog,
+            on_open_file=self._open_file_dialog,
+        )
+        self.gui = self.app.browser_gui
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(2, 2, 2, 2)
-        layout.setSpacing(2)
-        self.auto_form = AutoForm(self.model)
-        layout.addWidget(self.auto_form)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-    # -- public API kept for the workflow shell (_apply_context_to_browser) ---
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        layout.addWidget(self.host)
+
+    # ── Guided Tour Hook ────────────────────────────────────────────────
+    def tour_target(
+        self, target: Any
+    ) -> tuple[QtWidgets.QWidget, tuple[float, float, float, float]] | None:
+        """Resolve a guided-tour target dict to an EMTK item screen rect."""
+        if not isinstance(target, dict):
+            return None
+        name = target.get("name")
+        rect = self.gui.item_rects.get(name) if name else None
+        if rect is not None:
+            return self.host, rect
+        return None
+
+    def _open_folder_dialog(self) -> None:
+        d = QtWidgets.QFileDialog.getExistingDirectory(self, "Select folder with .bur files")
+        if d:
+            self.load_folder(pathlib.Path(d))
+
+    def _open_file_dialog(self) -> None:
+        f, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Select burst file", filter="Burst Files (*.bur *.pto);;All Files (*)"
+        )
+        if f:
+            p = pathlib.Path(f)
+            if p.suffix == ".bur":
+                self.load_bur(p)
+            else:
+                self.load_folder(p)
+
+    # ── public API kept for the workflow shell (_apply_context_to_browser) ──
     @property
     def table(self):
         """The loaded burst table (or ``None``) — the shell checks this."""
