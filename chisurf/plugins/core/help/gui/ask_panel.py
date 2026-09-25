@@ -226,6 +226,22 @@ class AskPanel(QWidget):
             return
         self.ask(question)
 
+    def wait(self, timeout_ms: int = 5000) -> bool:
+        """Wait for any running background worker thread to finish."""
+        if self._thread is not None:
+            if self._thread.isRunning():
+                self._thread.quit()
+            ok = self._thread.wait(timeout_ms)
+            if not ok and self._thread.isRunning():
+                self._thread.terminate()
+                self._thread.wait(500)
+            return ok
+        return True
+
+    def closeEvent(self, event) -> None:
+        self.wait()
+        super().closeEvent(event)
+
     def ask(self, question: str) -> None:
         """Put *question* to the documentation and show the answer.
 
@@ -236,13 +252,15 @@ class AskPanel(QWidget):
         """
         if self.busy:
             return
+        if self._thread is not None:
+            self.wait(1000)
         self.input.clear()
         self._last_anchor = f"turn{len(self._turns)}"
         self._turns.append(self._question_html(question, len(self._turns)))
         self._render()
         self._set_busy(True, "Reading the documentation…")
 
-        self._thread = QThread(self)
+        self._thread = QThread()
         self._worker = _AskWorker(self._client, question)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)

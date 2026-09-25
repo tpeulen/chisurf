@@ -34,7 +34,8 @@ def panel(qapp, qtbot):
 
     widget = AskPanel(StubClient())
     qtbot.addWidget(widget)
-    return widget
+    yield widget
+    widget.wait()
 
 
 def test_the_empty_panel_says_what_it_is_for(panel):
@@ -49,6 +50,7 @@ def test_an_example_question_is_clickable(panel, qtbot):
 
     panel._on_anchor(QUrl(f"ask:{EXAMPLE_QUESTIONS[0]}"))
     qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
+    panel.wait()
     assert panel._client.asked == [EXAMPLE_QUESTIONS[0]]
 
 
@@ -67,6 +69,7 @@ def test_an_answer_lists_the_pages_it_came_from(panel, qtbot):
     }
     panel.ask("what does gamma do?")
     qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
+    panel.wait()
 
     html = panel.transcript.toHtml()
     assert "Accurate FRET" in html
@@ -78,6 +81,7 @@ def test_an_answer_with_no_page_read_is_flagged(panel, qtbot):
     panel._client.answer = {"ok": True, "text": "Probably in the settings.", "pages": []}
     panel.ask("where is it?")
     qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
+    panel.wait()
     assert "No documentation page was opened" in panel.transcript.toHtml()
 
 
@@ -85,6 +89,7 @@ def test_a_failure_reaches_the_reader(panel, qtbot):
     panel._client.answer = {"ok": False, "text": "", "pages": [], "error": "no API key"}
     panel.ask("anything")
     qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
+    panel.wait()
     assert "no API key" in panel.transcript.toHtml()
 
 
@@ -107,6 +112,7 @@ def test_a_page_named_in_the_prose_becomes_a_link(panel, qtbot):
     }
     panel.ask("where are the factors?")
     qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
+    panel.wait()
     html = panel.transcript.toHtml()
     assert 'href="docs/concepts/accurate_fret.md"' in html
 
@@ -126,6 +132,7 @@ def test_a_markdown_link_the_model_wrote_is_rendered(panel, qtbot):
     }
     panel.ask("where?")
     qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
+    panel.wait()
     html = panel.transcript.toHtml()
     assert "accurate_fret.md#The four factors" in html
     assert "[the four factors]" not in html, "the Markdown was not rendered"
@@ -172,6 +179,7 @@ def test_the_input_is_disabled_while_it_is_thinking(panel):
 def test_clearing_returns_to_the_empty_state(panel, qtbot):
     panel.ask("something")
     qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
+    panel.wait()
     panel.clear()
     assert "only reads documentation" in panel.transcript.toHtml()
 
