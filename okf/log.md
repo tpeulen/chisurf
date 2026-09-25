@@ -40400,3 +40400,17 @@ side of the line.
   colour, gates, Save Burst IDs and population axes work on them. cal1 S vs PR:
   4 clusters. Resume point:
   [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).
+
+- 2026-09-25 — **emtk: text-editing shortcuts and the clipboard in every
+  field.** Cmd/Ctrl+A did nothing useful because `im.input_text` had no caret
+  or selection at all (it appended `io.text`; in a page Cmd+A typed an "a"),
+  `TextField` (combo filter, DataTable cells) had a caret but no selection,
+  and hosts disagreed on Command (Qt/Tk: CONTROL, glfw/browser: META). Now
+  `CONTROL_MODIFIER`/`io.key_ctrl` is the primary modifier on every host
+  (Cmd on a Mac client, Ctrl elsewhere; `emtk.keys.mac_behaviors`), and one
+  `TextField` gives select all, copy/cut/paste, undo/redo, word/line moves,
+  shift-extend, click/drag/double/triple-click selection and Mac Emacs
+  Ctrl-A/E to input_text, view_form, the combo filter, DataTable and the code
+  editor. `emtk.clipboard.paste` reads QClipboard / Tk / glfw / pbpaste; a
+  page forwards the DOM copy/cut/paste events (boot.js `<clipboard>`).
+  Shortcut table: emtk docs/widgets.rst "Text editing shortcuts".
