@@ -15,6 +15,7 @@ from typing import Any
 
 from emtk.qt_host import ControlHost
 from qtpy import QtCore, QtWidgets
+from qtpy.QtCore import QSettings
 
 from chisurf.core.datastore import row_count
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
@@ -133,6 +134,11 @@ class BVATool(ChisurfDockTool):
         self._recompute_timer.setSingleShot(True)
         self._recompute_timer.setInterval(0)
         self._recompute_timer.timeout.connect(self._flush_recompute)
+
+        # Auto-update checkbox
+        self._auto_update_cb = QtWidgets.QCheckBox("Auto update", self)
+        self._auto_update_cb.setChecked(self.model.auto_update)
+        self._auto_update_cb.toggled.connect(lambda v: setattr(self.model, "auto_update", bool(v)))
 
         # Toolbar
         self._setup_toolbar()
@@ -470,6 +476,8 @@ class BVATool(ChisurfDockTool):
         self.host.update()
 
     def _on_param_changed(self) -> None:
+        if hasattr(self, "_auto_update_cb") and not self._auto_update_cb.isChecked():
+            return
         if not self.model.auto_update:
             return
         self._recompute_pending = True
@@ -504,6 +512,28 @@ class BVATool(ChisurfDockTool):
         if path:
             pm = self.host.grab()
             pm.save(path)
+
+    def _restore_dock_layout(self):
+        try:
+            settings = QSettings("chisurf", "BVATool")
+            value = settings.value("dock_layout_v2")
+            if isinstance(value, str):
+                layout_state = json.loads(value)
+            elif isinstance(value, dict):
+                layout_state = value
+            else:
+                return
+            if not getattr(self, "_embedded", False):
+                geometry = settings.value("window_geometry")
+                if geometry is not None and hasattr(self, "restoreGeometry"):
+                    self.restoreGeometry(geometry)
+                state = settings.value("window_state")
+                if state is not None and hasattr(self, "restoreState"):
+                    self.restoreState(state)
+            if hasattr(self, "dock_area") and self.dock_area is not None:
+                self.dock_area.set_layout_state(layout_state, emit_change=False)
+        except Exception:
+            pass
 
     def _status(self, msg: str) -> None:
         self.model.status_text = msg
