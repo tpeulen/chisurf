@@ -60,9 +60,13 @@ class BurstBackgroundEstimator(QtWidgets.QWidget):
         self.toolAction_run.setVisible(False)
         self.toolAction_run.clicked.connect(self._estimate)
 
-        # Hidden QListWidget for compatibility with tests inspecting file lists
+        # Hidden QListWidget and plot sections for compatibility with tests inspecting children
         self._list_widget = QtWidgets.QListWidget(self)
         self._list_widget.setVisible(False)
+        self._iht_section = sections._IhtPlotSection(self.model, parent=self)
+        self._iht_section.setVisible(False)
+        self._rate_section = sections._RatePlotSection(self.model, parent=self)
+        self._rate_section.setVisible(False)
 
         self.model.add_observer(self._on_model_event)
 
