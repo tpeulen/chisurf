@@ -2,8 +2,14 @@
 
 An immediate-mode emtk application (:class:`BurstBrowserApp`) over
 :class:`~.view_model.BurstBrowserViewModel`:
-- Left pane: Data source (Open folder/file, path display), detector & column selection,
-  and interactive Gating controls (E, S, Size, selection mode).
+- Docking & Draggable Windows: All panels (Controls, Gating, Bursts, Histogram) are
+  dockable, draggable, resizable and floatable via an EMTK dockspace.
+- Interactive Region Dropping & Dragging:
+  - On the Histogram plot, an interactive shaded region (:func:`implot.drag_rect`)
+    and tag labels (:func:`implot.tag_x`) allow dragging boundaries live on the plot.
+  - Drag-and-drop region payloads can be dropped directly onto the plot target.
+- Left pane: Data source (Open folder/file, path display), detector & column selection.
+- Gating pane: Interactive E/S/size limits, region presets with drag-source, status.
 - Center pane: Gated per-burst table with pagination and multi-row selection.
 - Right pane: Live histogram of the selected column with emtk.implot.
 
@@ -13,6 +19,7 @@ in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emt
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -21,7 +28,7 @@ import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 
-from chisurf.core.datastore import column_names, column_values, is_missing, row_count
+from chisurf.core.datastore import column_names, column_values, is_missing
 
 from ..view_model import BurstBrowserViewModel
 
@@ -36,6 +43,8 @@ ACCENT_GREEN = (46, 160, 67, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)
+REGION_FILL = (46, 117, 182, 60)
+REGION_BORDER = (90, 160, 240, 255)
 
 
 def _format_cell(val: Any) -> str:
@@ -47,7 +56,7 @@ def _format_cell(val: Any) -> str:
 
 
 class BurstBrowserGui:
-    """Immediate-mode GUI logic and rendering for the Burst Browser."""
+    """Immediate-mode GUI logic and rendering for the Burst Browser with dockable windows."""
 
     def __init__(
         self,
@@ -82,54 +91,60 @@ class BurstBrowserGui:
             self.on_used(name)
 
     def draw(self, w: float, h: float) -> None:
-        """Draw the 3-pane Burst Browser into (w, h) display pixels."""
-        ctrl_w = min(max(260.0, w * 0.28), 340.0)
-        remaining_w = max(w - ctrl_w - 12.0, 300.0)
+        """Draw the dockable Burst Browser into (w, h) display pixels."""
+        # Enable full dockspace over the viewport so all windows can be docked,
+        # split, tabbed, dragged, or undocked as floating windows.
+        im.dock_space_over_viewport(1)
 
-        # In wide layouts, split remaining space between table and histogram.
-        # In narrower layouts, use 55% table, 45% histogram.
-        tbl_w = max(remaining_w * 0.52, 200.0)
-        hist_w = max(remaining_w - tbl_w - 6.0, 180.0)
+        ctrl_w = min(max(260.0, w * 0.26), 320.0)
+        remaining_w = max(w - ctrl_w - 16.0, 320.0)
+        tbl_w = max(remaining_w * 0.50, 200.0)
+        hist_w = max(remaining_w - tbl_w - 8.0, 180.0)
 
-        # ── Left pane: Controls & Gating ─────────────────────────────────
-        if im.begin("Controls", (4.0, 4.0, ctrl_w, h - 8.0)):
-            self._draw_source_controls(ctrl_w - 16.0)
+        # ── Window 1: Controls (Source & Selection) ──────────────────────
+        im.set_next_window_pos((4.0, 4.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_size((ctrl_w, (h - 12.0) * 0.42), im.Cond.FIRST_USE_EVER)
+        if im.begin("Controls"):
+            self._draw_source_controls()
             im.spacing()
             im.separator()
             im.spacing()
-            self._draw_column_selectors(ctrl_w - 16.0)
-            im.spacing()
-            im.separator()
-            im.spacing()
-            self._draw_gating_controls(ctrl_w - 16.0)
-            im.spacing()
-            im.separator()
-            im.spacing()
-            im.text_colored(ACCENT_GRAY, self.model.status_text())
+            self._draw_column_selectors()
             im.end()
 
-        # ── Middle pane: Bursts Table ────────────────────────────────────
-        tbl_x = 4.0 + ctrl_w + 4.0
-        if im.begin("Bursts", (tbl_x, 4.0, tbl_w, h - 8.0)):
-            self._draw_table_view(tbl_w - 16.0, h - 36.0)
+        # ── Window 2: Gating (Interactive thresholds & region presets) ───
+        im.set_next_window_pos((4.0, 8.0 + (h - 12.0) * 0.42), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_size((ctrl_w, (h - 12.0) * 0.58), im.Cond.FIRST_USE_EVER)
+        if im.begin("Gating"):
+            self._draw_gating_controls()
             im.end()
 
-        # ── Right pane: Histogram ────────────────────────────────────────
-        hist_x = tbl_x + tbl_w + 4.0
-        if im.begin("Histogram", (hist_x, 4.0, hist_w, h - 8.0)):
-            self._draw_histogram_view(hist_w - 16.0, h - 36.0)
+        # ── Window 3: Bursts Table ───────────────────────────────────────
+        im.set_next_window_pos((8.0 + ctrl_w, 4.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_size((tbl_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+        if im.begin("Bursts Table"):
+            self._draw_table_view()
             im.end()
 
-    def _draw_source_controls(self, avail_w: float) -> None:
+        # ── Window 4: Histogram (Live distribution & region dragging) ────
+        im.set_next_window_pos((12.0 + ctrl_w + tbl_w, 4.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_size((hist_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+        if im.begin("Histogram"):
+            self._draw_histogram_view()
+            im.end()
+
+    def _draw_source_controls(self) -> None:
+        avail_w = im.get_content_region_avail()[0]
         im.text_colored(ACCENT_BLUE, "Data Source")
-        if im.button("Open Folder", (avail_w * 0.48, 26.0)):
+        btn_w = max(60.0, (avail_w - 6.0) * 0.5)
+        if im.button("Open Folder", (btn_w, 24.0)):
             self.track("open_folder")
             if callable(self.on_open_folder):
                 self.on_open_folder()
         self.remember("open_folder")
 
         im.same_line()
-        if im.button("Open File", (avail_w * 0.48, 26.0)):
+        if im.button("Open File", (btn_w, 24.0)):
             self.track("open_file")
             if callable(self.on_open_file):
                 self.on_open_file()
@@ -140,7 +155,8 @@ class BurstBrowserGui:
             path = "…" + path[-34:]
         im.text_colored(ACCENT_GRAY, f"Path: {path}")
 
-    def _draw_column_selectors(self, avail_w: float) -> None:
+    def _draw_column_selectors(self) -> None:
+        avail_w = im.get_content_region_avail()[0]
         im.text_colored(ACCENT_BLUE, "Columns & Detectors")
 
         # Detector combo
@@ -166,24 +182,23 @@ class BurstBrowserGui:
             self.model.hist_column = cols[new_col_idx]
             self.model.refresh()
 
-    def _draw_gating_controls(self, avail_w: float) -> None:
-        im.text_colored(ACCENT_BLUE, "Gating")
+    def _draw_gating_controls(self) -> None:
+        avail_w = im.get_content_region_avail()[0]
+        half_w = max(50.0, (avail_w - 8.0) * 0.5)
+
+        im.text_colored(ACCENT_BLUE, "Burst Filters")
 
         # E Range
         if self.model.have_E:
             im.text("E Range:")
-            im.set_next_item_width(avail_w * 0.46)
-            changed_lo, new_e_lo = im.slider_float(
-                "##e_min", float(self.model.e_min), 0.0, 1.0, "%.3f"
-            )
+            im.set_next_item_width(half_w)
+            ch_lo, new_e_lo = im.slider_float("##e_min", float(self.model.e_min), 0.0, 1.0, "%.3f")
             im.same_line()
-            im.set_next_item_width(avail_w * 0.46)
-            changed_hi, new_e_hi = im.slider_float(
-                "##e_max", float(self.model.e_max), 0.0, 1.0, "%.3f"
-            )
-            if changed_lo or changed_hi:
-                self.model.e_min = new_e_lo
-                self.model.e_max = new_e_hi
+            im.set_next_item_width(half_w)
+            ch_hi, new_e_hi = im.slider_float("##e_max", float(self.model.e_max), 0.0, 1.0, "%.3f")
+            if ch_lo or ch_hi:
+                self.model.e_min = min(new_e_lo, new_e_hi)
+                self.model.e_max = max(new_e_lo, new_e_hi)
                 self.model.refresh()
         else:
             im.text_disabled("E Range (not available)")
@@ -191,18 +206,14 @@ class BurstBrowserGui:
         # S Range
         if self.model.have_S:
             im.text("S Range:")
-            im.set_next_item_width(avail_w * 0.46)
-            changed_lo, new_s_lo = im.slider_float(
-                "##s_min", float(self.model.s_min), 0.0, 1.0, "%.3f"
-            )
+            im.set_next_item_width(half_w)
+            ch_lo, new_s_lo = im.slider_float("##s_min", float(self.model.s_min), 0.0, 1.0, "%.3f")
             im.same_line()
-            im.set_next_item_width(avail_w * 0.46)
-            changed_hi, new_s_hi = im.slider_float(
-                "##s_max", float(self.model.s_max), 0.0, 1.0, "%.3f"
-            )
-            if changed_lo or changed_hi:
-                self.model.s_min = new_s_lo
-                self.model.s_max = new_s_hi
+            im.set_next_item_width(half_w)
+            ch_hi, new_s_hi = im.slider_float("##s_max", float(self.model.s_max), 0.0, 1.0, "%.3f")
+            if ch_lo or ch_hi:
+                self.model.s_min = min(new_s_lo, new_s_hi)
+                self.model.s_max = max(new_s_lo, new_s_hi)
                 self.model.refresh()
         else:
             im.text_disabled("S Range (not available)")
@@ -210,31 +221,60 @@ class BurstBrowserGui:
         # Size Range
         if self.model._col_size is not None:
             im.text("Photon Size Range:")
-            im.set_next_item_width(avail_w * 0.46)
-            changed_lo, new_sz_lo = im.input_int(
+            im.set_next_item_width(half_w)
+            ch_lo, new_sz_lo = im.input_int(
                 "##sz_min", int(self.model.size_min), step=1, step_fast=50
             )
             im.same_line()
-            im.set_next_item_width(avail_w * 0.46)
-            changed_hi, new_sz_hi = im.input_int(
+            im.set_next_item_width(half_w)
+            ch_hi, new_sz_hi = im.input_int(
                 "##sz_max", int(self.model.size_max), step=1, step_fast=50
             )
-            if changed_lo or changed_hi:
-                self.model.size_min = max(0, new_sz_lo)
-                self.model.size_max = max(0, new_sz_hi)
+            if ch_lo or ch_hi:
+                self.model.size_min = max(0, min(new_sz_lo, new_sz_hi))
+                self.model.size_max = max(0, max(new_sz_lo, new_sz_hi))
                 self.model.refresh()
         else:
             im.text_disabled("Size Range (not available)")
 
         im.spacing()
-        changed, new_use_sel = im.checkbox("Use table selection for hist", self.model.use_selection)
-        if changed:
+        ch_sel, new_use_sel = im.checkbox("Use table selection for hist", self.model.use_selection)
+        if ch_sel:
             self.model.use_selection = new_use_sel
             self.model.refresh()
 
-    def _draw_table_view(self, avail_w: float, avail_h: float) -> None:
+        im.spacing()
+        im.separator()
+        im.spacing()
+
+        # Region Drag & Drop Presets
+        im.text_colored(ACCENT_BLUE, "Draggable Region Presets")
+        presets = [
+            ("Low FRET", 0.05, 0.35),
+            ("Mid FRET", 0.35, 0.65),
+            ("High FRET", 0.65, 0.95),
+            ("Full Range", 0.0, 1.0),
+        ]
+        for name, r_min, r_max in presets:
+            if im.button(f"Region: {name} [{r_min:.2f}-{r_max:.2f}]", (avail_w, 22.0)):
+                self.model.e_min, self.model.e_max = r_min, r_max
+                self.model.refresh()
+            # Enable dragging region payload from button
+            if im.begin_drag_drop_source():
+                payload = json.dumps({"min": r_min, "max": r_max, "name": name})
+                im.set_drag_drop_payload("BURST_REGION", payload.encode("utf-8"))
+                im.text(f"Drag region {name}: [{r_min:.2f}, {r_max:.2f}]")
+                im.end_drag_drop_source()
+
+        im.spacing()
+        im.separator()
+        im.spacing()
+        im.text_colored(ACCENT_GREEN, self.model.status_text())
+
+    def _draw_table_view(self) -> None:
+        avail_w, avail_h = im.get_content_region_avail()
         if self.model.table is None:
-            im.text_disabled("No bursts loaded.")
+            im.text_disabled("No bursts loaded. Open a .bur folder or file.")
             return
 
         names = column_names(self.model.table)
@@ -248,13 +288,19 @@ class BurstBrowserGui:
         self.page = max(0, min(self.page, max_page))
 
         # Pagination toolbar
-        if im.button("<<", (30.0, 22.0)) and self.page > 0:
+        if im.button("<<", (28.0, 22.0)) and self.page > 0:
             self.page -= 1
         im.same_line()
         im.text(f"Page {self.page + 1} / {max_page + 1} ({total_rows} bursts)")
         im.same_line()
-        if im.button(">>", (30.0, 22.0)) and self.page < max_page:
+        if im.button(">>", (28.0, 22.0)) and self.page < max_page:
             self.page += 1
+
+        im.same_line()
+        if im.button("Clear Sel", (65.0, 22.0)):
+            self.model.selected_indices.clear()
+            if self.model.use_selection:
+                self.model.notify("selection")
 
         im.spacing()
 
@@ -266,7 +312,7 @@ class BurstBrowserGui:
             | im.TableFlags.SCROLL_X
             | im.TableFlags.RESIZABLE
         )
-        tbl_h = max(60.0, avail_h - 40.0)
+        tbl_h = max(60.0, avail_h - 32.0)
         if im.begin_table("burst_data_table", len(names), flags, size=(avail_w, tbl_h)):
             im.table_setup_scroll_freeze(0, 1)
             for name in names:
@@ -289,7 +335,6 @@ class BurstBrowserGui:
                 clicked = im.selectable(
                     f"{val_0}##r_{base_row}",
                     selected=is_selected,
-                    flags=im.SelectableFlags.SPAN_ALL_COLUMNS,
                 )
                 if clicked:
                     if is_selected:
@@ -306,7 +351,8 @@ class BurstBrowserGui:
 
             im.end_table()
 
-    def _draw_histogram_view(self, avail_w: float, avail_h: float) -> None:
+    def _draw_histogram_view(self) -> None:
+        avail_w, avail_h = im.get_content_region_avail()
         h = self.model.histogram()
         if h is None or len(h.get("centers", [])) == 0:
             im.text_disabled("No histogram data available.")
@@ -324,12 +370,86 @@ class BurstBrowserGui:
             ys = h["counts"]
             width = float(h.get("width", 0.05))
             implot.plot_bars(col_name, xs, ys=ys, bar_size=width)
+
+            # ── Interactive Draggable Region Dropping & Manipulation ─────
+            # If the plotted column is E, S, or size, provide interactive draggable
+            # region boundaries directly on the plot.
+            max_cnt = float(np.max(ys)) if len(ys) > 0 else 1.0
+            if col_name in ("E", "Proximity Ratio"):
+                r_res = implot.drag_rect(
+                    0,
+                    float(self.model.e_min),
+                    0.0,
+                    float(self.model.e_max),
+                    max_cnt,
+                    col=REGION_FILL,
+                )
+                if r_res.modified:
+                    self.model.e_min = max(0.0, min(r_res.x_min, r_res.x_max))
+                    self.model.e_max = min(1.0, max(r_res.x_min, r_res.x_max))
+                    self.model.refresh()
+                implot.tag_x(self.model.e_min, REGION_BORDER, f"E min: {self.model.e_min:.2f}")
+                implot.tag_x(self.model.e_max, REGION_BORDER, f"E max: {self.model.e_max:.2f}")
+
+            elif col_name == "S":
+                r_res = implot.drag_rect(
+                    1,
+                    float(self.model.s_min),
+                    0.0,
+                    float(self.model.s_max),
+                    max_cnt,
+                    col=REGION_FILL,
+                )
+                if r_res.modified:
+                    self.model.s_min = max(0.0, min(r_res.x_min, r_res.x_max))
+                    self.model.s_max = min(1.0, max(r_res.x_min, r_res.x_max))
+                    self.model.refresh()
+                implot.tag_x(self.model.s_min, REGION_BORDER, f"S min: {self.model.s_min:.2f}")
+                implot.tag_x(self.model.s_max, REGION_BORDER, f"S max: {self.model.s_max:.2f}")
+
+            elif "Number of Photons" in col_name:
+                r_res = implot.drag_rect(
+                    2,
+                    float(self.model.size_min),
+                    0.0,
+                    float(self.model.size_max),
+                    max_cnt,
+                    col=REGION_FILL,
+                )
+                if r_res.modified:
+                    self.model.size_min = max(0, int(min(r_res.x_min, r_res.x_max)))
+                    self.model.size_max = max(0, int(max(r_res.x_min, r_res.x_max)))
+                    self.model.refresh()
+                implot.tag_x(self.model.size_min, REGION_BORDER, f"Min: {self.model.size_min}")
+                implot.tag_x(self.model.size_max, REGION_BORDER, f"Max: {self.model.size_max}")
+
             implot.end_plot()
+
+        # Region Drop Target over the plot
+        if im.begin_drag_drop_target():
+            payload = im.accept_drag_drop_payload("BURST_REGION")
+            if payload:
+                try:
+                    data = json.loads(
+                        payload.decode("utf-8") if isinstance(payload, bytes) else str(payload)
+                    )
+                    if col_name in ("E", "Proximity Ratio"):
+                        self.model.e_min = float(data.get("min", 0.0))
+                        self.model.e_max = float(data.get("max", 1.0))
+                        self.model.refresh()
+                    elif col_name == "S":
+                        self.model.s_min = float(data.get("min", 0.0))
+                        self.model.s_max = float(data.get("max", 1.0))
+                        self.model.refresh()
+                except Exception:
+                    logger.debug("Failed to apply dropped region payload", exc_info=True)
+            im.end_drag_drop_target()
+
         self.remember("browser_histogram", (origin[0], origin[1], plot_w, plot_h))
 
 
 class BurstBrowserApp(ImApp):
-    """Immediate-mode EMTK application for the Burst Browser."""
+    """Immediate-mode EMTK application for the Burst Browser with docking & region dropping."""
 
     def __init__(
         self,

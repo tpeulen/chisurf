@@ -316,6 +316,8 @@ class BurstBrowserViewModel:
         if as_int:
             vmin, vmax = max(0, int(vmin)), int(vmax)
         if vmin >= vmax:
+            if as_int:
+                return 0, max(1, int(vmax))
             return lo, hi
         return vmin, vmax
 

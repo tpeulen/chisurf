@@ -12,6 +12,7 @@ in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emt
 
 from __future__ import annotations
 
+import json
 from typing import Any, Callable
 
 from emtk import im, implot
@@ -50,6 +51,7 @@ class BurstBvaGui:
         self.on_browse = on_browse
         self.on_clear = on_clear
 
+        self.region_rect: list[float] = [0.2, 0.05, 0.8, 0.35]
         self.selected_settings_tab = "BVA Settings"
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
@@ -72,11 +74,15 @@ class BurstBvaGui:
 
     def draw(self, w: float, h: float) -> None:
         """Draw the BVA GUI into (w, h) display pixels."""
+        im.dock_space_over_viewport(1)
+
         left_w = min(max(340.0, w * 0.34), 440.0)
         right_w = max(w - left_w - 12.0, 200.0)
 
-        # ── Left pane: Controls & Settings ──────────────────────────────
-        if im.begin("BVA Controls", (4.0, 4.0, left_w, h - 8.0)):
+        # ── Left pane: Controls & Settings (Dockable) ───────────────────
+        im.set_next_window_pos((4.0, 4.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_size((left_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+        if im.begin("BVA Controls"):
             self._draw_action_buttons()
             im.spacing()
             self._draw_folder_input(left_w - 16.0)
@@ -106,9 +112,11 @@ class BurstBvaGui:
             im.end()
             self.remember("controls", (4.0, 4.0, left_w, h - 8.0))
 
-        # ── Right pane: Plot ─────────────────────────────────────────────
+        # ── Right pane: Plot (Dockable) ──────────────────────────────────
         plots_x = left_w + 8.0
-        if im.begin("BVA Plot Window", (plots_x, 4.0, right_w, h - 8.0)):
+        im.set_next_window_pos((plots_x, 4.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_size((right_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+        if im.begin("BVA Plot Window"):
             if im.begin_tab_bar("bva_plot_tabs"):
                 if im.begin_tab_item("Plot"):
                     self.remember("Plot")
@@ -283,7 +291,44 @@ class BurstBvaGui:
                         implot.set_next_error_bar_style((0, 255, 255, 160))
                         implot.plot_error_bars("##profile_err", prof_x, prof_y, prof_sd)
 
+            # Interactive draggable region
+            r_res = implot.drag_rect(
+                0,
+                float(self.region_rect[0]),
+                float(self.region_rect[1]),
+                float(self.region_rect[2]),
+                float(self.region_rect[3]),
+                col=(46, 117, 182, 60),
+            )
+            if r_res.modified:
+                self.region_rect = [
+                    min(r_res.x_min, r_res.x_max),
+                    min(r_res.y_min, r_res.y_max),
+                    max(r_res.x_min, r_res.x_max),
+                    max(r_res.y_min, r_res.y_max),
+                ]
+            implot.tag_x(self.region_rect[0], (90, 160, 240, 255), f"E: {self.region_rect[0]:.2f}")
+            implot.tag_x(self.region_rect[2], (90, 160, 240, 255), f"E: {self.region_rect[2]:.2f}")
+            implot.tag_y(
+                self.region_rect[3], (90, 160, 240, 255), f"Std: {self.region_rect[3]:.2f}"
+            )
+
             implot.end_plot()
+
+        # Region Drop Target
+        if im.begin_drag_drop_target():
+            payload = im.accept_drag_drop_payload("BURST_REGION")
+            if payload:
+                try:
+                    data = json.loads(
+                        payload.decode("utf-8") if isinstance(payload, bytes) else str(payload)
+                    )
+                    if "min" in data and "max" in data:
+                        self.region_rect[0] = float(data["min"])
+                        self.region_rect[2] = float(data["max"])
+                except Exception:
+                    pass
+            im.end_drag_drop_target()
 
         self.remember("bva_plot", (origin[0], origin[1], w, h))
 

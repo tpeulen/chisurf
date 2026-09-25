@@ -46,6 +46,15 @@ def test_burst_browser_widget(qapp, qtbot, tmp_path):
     assert pixmap.width() > 0
     assert pixmap.height() > 0
 
+    # Verify region adjustment and histogram update
+    widget.model.e_min = 0.3
+    widget.model.e_max = 0.7
+    widget.model.refresh()
+    qapp.processEvents()
+    h = widget.model.histogram()
+    assert h is not None
+    assert widget.tour_target({"name": "open_folder"}) is not None
+
 
 def _interleave(df_n: pd.DataFrame, cols) -> pd.DataFrame:
     """Return a 2n+1 interleaved table (header row + alternating zero/value rows)."""
