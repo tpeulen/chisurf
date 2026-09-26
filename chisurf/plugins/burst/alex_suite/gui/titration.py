@@ -1,21 +1,18 @@
 """The titration step: a concentration series of FRET histograms.
 
-An :class:`~chisurf.gui.autoform.AutoForm` over ``titration.view.json`` bound to
-the Qt-free
+Rendered by the EMTK app in :mod:`.app` (:class:`TitrationApp`) over the
+Qt-free
 :class:`~chisurf.plugins.burst.alex_suite.gui.titration_view_model.TitrationViewModel`,
-plus one custom section for the Fit/Export buttons — the run button carries the
-object name the workflow shell's *Next* and ⏩ look for, so the titration takes
-part in the pipeline walk like every other step.
+which keeps every setting, the series table, the fit and the two plot sources.
+The model stays toolkit-free: it asks for files through a callback rather than
+opening a dialog itself, so the same object drives a script.
 """
 
 from __future__ import annotations
 
 import logging
 
-from qtpy import QtCore, QtWidgets
-
-from chisurf.gui.autoform import AutoForm
-from chisurf.gui.autoform.sections.registry import register_section
+from qtpy import QtWidgets
 
 from .titration_view_model import TitrationViewModel
 
@@ -23,61 +20,6 @@ logger = logging.getLogger("chisurf.plugins.burst")
 
 #: Burst tables the file chooser offers.
 BURST_FILTER = "Burst tables (*.bur *.pto *.csv *.txt);;All files (*)"
-
-
-@register_section("alex_titration_run")
-def alex_titration_run(model, target=None, **options):
-    """AutoForm factory for the titration Fit / Export button row."""
-    return _RunSection(model)
-
-
-class _RunSection(QtWidgets.QWidget):
-    """Fit and Export buttons for the titration panel."""
-
-    def __init__(self, model, parent=None):
-        """Build the button row bound to *model*."""
-        super().__init__(parent)
-        self._model = model
-        row = QtWidgets.QHBoxLayout(self)
-        row.setContentsMargins(2, 2, 2, 2)
-
-        # ``toolAction_run`` is the shell's contract for "this step's primary
-        # action"; naming it anything else silently drops the step out of the
-        # Next/fast-forward walk.
-        self.run_button = QtWidgets.QToolButton(self)
-        self.run_button.setObjectName("toolAction_run")
-        self.run_button.setText("📈 Fit series")
-        self.run_button.setToolTip(
-            "Histogram every concentration, fit them together with shared "
-            "population positions, and fit the binding isotherm."
-        )
-        self.run_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
-        self.run_button.clicked.connect(model.run)
-        row.addWidget(self.run_button)
-
-        self.export_button = QtWidgets.QToolButton(self)
-        self.export_button.setText("💾 Export CSV")
-        self.export_button.setToolTip(
-            "Write the stack, the fitted curves, the populations and the isotherm as one CSV."
-        )
-        self.export_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
-        self.export_button.clicked.connect(self._export)
-        row.addWidget(self.export_button)
-        row.addStretch(1)
-
-    def _export(self) -> None:
-        """Ask for a path and write the result there."""
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export titration", "titration.csv", "CSV (*.csv)"
-        )
-        if not path:
-            return
-        try:
-            written = self._model.export_csv(path)
-        except Exception as exc:
-            logger.warning(f"ALEX Suite: titration export failed — {exc}")
-            return
-        logger.info(f"Titration exported to {written}")
 
 
 class TitrationPanel(QtWidgets.QWidget):
@@ -88,25 +30,17 @@ class TitrationPanel(QtWidgets.QWidget):
         super().__init__(parent)
         self._workflow = parent
         self.model = TitrationViewModel()
-        # The model stays Qt-free: it asks for files through a callback rather
-        # than opening a dialog itself, so the same object drives a script.
-        self.model.request_files = self._choose_files
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(2, 2, 2, 2)
-        # The spec comes from the model's ``view_spec`` (titration.view.json).
-        self.auto_form = AutoForm(self.model)
-        # The step is a page, not a dashboard: the table, the settings, the two
-        # plots and the numbers are all wanted at once and do not fit a panel's
-        # height. Scrolling keeps them in one readable column; the alternative
-        # the dock area gives — a tab bar — hides the plots behind the settings,
-        # which is precisely the layout this workflow exists to avoid.
-        scroll = QtWidgets.QScrollArea(self)
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        scroll.setWidget(self.auto_form)
-        layout.addWidget(scroll)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        from emtk.qt_host import ControlHost
+
+        from .app import WINDOW_BG, TitrationApp
+
+        self.app = TitrationApp(self)
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        layout.addWidget(self.host, 1)
         self.model.add_observer(self._on_model_event)
 
     # ── workflow hand-off ───────────────────────────────────────────────
@@ -138,16 +72,24 @@ class TitrationPanel(QtWidgets.QWidget):
         )
         return list(paths)
 
+    def export_csv(self) -> None:
+        """Ask for a path and write the result there."""
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Export titration", "titration.csv", "CSV (*.csv)"
+        )
+        if not path:
+            return
+        try:
+            written = self.model.export_csv(path)
+        except Exception as exc:
+            logger.warning(f"ALEX Suite: titration export failed — {exc}")
+            return
+        logger.info(f"Titration exported to {written}")
+
     def _on_model_event(self, event: str) -> None:
-        """Refresh the form when the model changes."""
-        try:
-            self.auto_form.sync_fields()
-        except Exception:
-            logger.warning("Titration: field sync failed", exc_info=True)
-        try:
-            self.auto_form.refresh_plots()
-        except Exception:
-            logger.warning("Titration: plot refresh failed", exc_info=True)
+        """Repaint the canvas when the model changes."""
+        if hasattr(self, "host"):
+            self.host.update()
 
 
 __all__ = ["TitrationPanel", "TitrationViewModel"]

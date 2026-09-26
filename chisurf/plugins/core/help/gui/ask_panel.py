@@ -97,10 +97,10 @@ def linkify_pages(text: str) -> str:
     return _BARE_PATH.sub(replace, text)
 
 
-class _AskWorker(QObject):
-    """Runs one question on a worker thread."""
+class _AskThread(QThread):
+    """Runs one question on a background thread."""
 
-    finished = Signal(dict)
+    answered = Signal(dict)
 
     def __init__(self, client, question: str):
         super().__init__()
@@ -114,7 +114,7 @@ class _AskWorker(QObject):
         except Exception as exc:  # pragma: no cover - defensive
             logger.exception("the documentation assistant failed")
             answer = {"ok": False, "error": str(exc), "text": "", "pages": []}
-        self.finished.emit(dict(answer or {}))
+        self.answered.emit(dict(answer or {}))
 
 
 class AskPanel(QWidget):
@@ -147,8 +147,7 @@ class AskPanel(QWidget):
         # The browser's own renderer, so a formula is typeset once per session
         # and comes out in the same face and colour as the pages beside it.
         self._math_provider = math_provider
-        self._thread: QThread | None = None
-        self._worker: _AskWorker | None = None
+        self._thread: _AskThread | None = None
         self._turns: list[str] = []
         self._last_anchor = ""
         self.setMinimumWidth(300)
@@ -260,13 +259,8 @@ class AskPanel(QWidget):
         self._render()
         self._set_busy(True, "Reading the documentation…")
 
-        self._thread = QThread()
-        self._worker = _AskWorker(self._client, question)
-        self._worker.moveToThread(self._thread)
-        self._thread.started.connect(self._worker.run)
-        self._worker.finished.connect(self._on_answer)
-        self._worker.finished.connect(self._thread.quit)
-        self._thread.finished.connect(self._worker.deleteLater)
+        self._thread = _AskThread(self._client, question)
+        self._thread.answered.connect(self._on_answer)
         self._thread.start()
 
     def _on_answer(self, answer: dict) -> None:
