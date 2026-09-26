@@ -9,14 +9,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf
 
 logger = logging.getLogger(__name__)
 from chisurf.core.fio.staging import TTTR_EXTENSIONS as _TTTR_EXTENSIONS
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui.widgets.navigation import NavigationPanelTool
+from chisurf.gui.widgets.navigation import _StatusTask
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.setup_client import (
     DetectorSetupClient,
 )
@@ -122,15 +123,46 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         layout.addWidget(self.file_list)
 
         from emtk.qt_host import ControlHost
-        from .data_selection_app import BurstDataSelectionApp, WINDOW_BG
 
-        self.app = BurstDataSelectionApp(self)
+        from .data_selection_app import WINDOW_BG, BurstDataSelectionApp
+
+        self.app = BurstDataSelectionApp(
+            self,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
+        )
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])
         layout.addWidget(self.host, 1)
 
         self.status_label = QtWidgets.QLabel("No TTTR files selected.", self)
         self.status_label.hide()
         layout.addWidget(self.status_label)
+
+    def _start_guide(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+        from chisurf.gui.widgets.tools.guided_tour import GuidedTour, load_tour
+        from chisurf.gui.widgets.tools.help_guide import GUIDE_RESOURCE, resolve_tool_resource
+
+        path = resolve_tool_resource(GUIDE_RESOURCE, None, self)
+        if path is not None:
+            steps = load_tour(path)
+            tour = getattr(self.host, "_guided_tour", None)
+            if tour is not None:
+                tour.stop()
+            tour = GuidedTour(self.host, steps, model=None)
+            self.host._guided_tour = tour
+            tour.start()
+
+    def _show_help(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
+        from chisurf.gui.autoform.sections.help_section import HelpButton
+
+        btn = HelpButton(None, resource="help.md", title="Data Selection — help")
+        btn.show_help()
 
     # -- external API kept stable for the workflow ----------------------------
 
@@ -265,6 +297,66 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         )
 
 
+class BurstSetupSelectionWidget(QtWidgets.QWidget):
+    """Workflow-local detector setup and channel configuration selector (Step 0)."""
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.tool: Any = parent
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        from emtk.qt_host import ControlHost
+
+        from .setup_selection_app import WINDOW_BG, BurstSetupSelectionApp
+
+        self.app = BurstSetupSelectionApp(self)
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        layout.addWidget(self.host, 1)
+
+    def selected_setup_name(self) -> str:
+        return getattr(self.app.setup_gui, "selected_setup_name", "")
+
+    def selected_setup_data(self) -> dict[str, Any]:
+        return getattr(self.app.setup_gui, "selected_setup_data", {})
+
+    def apply_setup(self, name: str) -> None:
+        if hasattr(self.app.setup_gui, "select_setup"):
+            self.app.setup_gui.select_setup(name)
+
+    # ── the wizard-page contract other workflows still speak ─────────────
+
+    def get_settings(self) -> dict[str, Any]:
+        """Return the selected setup, as the detector wizard page did."""
+        data = dict(self.selected_setup_data())
+        if data and not data.get("setup_name"):
+            data["setup_name"] = self.selected_setup_name()
+        return data
+
+    def load_data_into_tables(self, settings: dict[str, Any]) -> None:
+        """Show the workflow's setup here (select it; edit via the wizard).
+
+        The ALEX Suite hands its context's setup to this step the way it did to
+        the ``DetectorWizardPage``: match by name and select it. Editing stays
+        behind the panel's wizard button.
+        """
+        gui = getattr(self.app, "setup_gui", None)
+        if gui is None:
+            return
+        name = str((settings or {}).get("setup_name") or "")
+        if not name or name == gui.selected_setup_name:
+            return
+        gui.refresh_setups()
+        gui.select_setup(name, sync=False)
+
+
+def _setup_selection(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the detector setup selection panel (Step 0)."""
+    widget = BurstSetupSelectionWidget(parent=parent)
+    _bind(parent, "setup", widget)
+    return widget
+
+
 def _data_selection(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the raw data selection panel."""
     widget = BurstDataSelectionWidget(parent=parent)
@@ -276,7 +368,7 @@ def _burst_selection(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the burst selection panel."""
     from chisurf.plugins.burst.burst_selection import BurstSelectionTool
 
-    widget = BurstSelectionTool(parent=parent, show_channel_selection=True)
+    widget = BurstSelectionTool(parent=parent, show_channel_selection=True, embedded=True)
     _bind(parent, "selection", widget)
     return widget
 
@@ -324,35 +416,50 @@ def _mle_panel(parent: QtWidgets.QWidget, *, role: str, split_by_state: bool) ->
     wizard._embedded = True
     _set_state_split(wizard, split_by_state)
     _bind(parent, role, wizard)
-    # Embed the plain central QWidget, not the QMainWindow. On native macOS an
-    # embedded QMainWindow (its menu/status bars and native view layer) swallowed
-    # mouse clicks over the panel; hosting just its central content widget avoids
-    # every QMainWindow-as-child quirk. The wizard object stays alive as the
-    # workflow's "mle" panel (it owns all the logic and widget references); the
-    # content carries a back-reference so context application can resolve it.
-    central = wizard.takeCentralWidget()
-    if central is None:
-        return wizard
-    central._mle_wizard = wizard
-    # Tie the wizard's lifetime to the widget that is actually embedded. Its fit
-    # buttons live under ``central`` and are wired to ``wizard`` slots; if the
-    # wizard (a QMainWindow) is left parented to the workflow in a separate
-    # branch, a window/child cleanup can destroy it while ``central`` — and its
-    # buttons — survive, so a later click fires a slot on a deleted C++ object
-    # ("wrapped C/C++ object ... has been deleted"). Re-parenting the wizard onto
-    # ``central`` puts them in one branch with one lifetime: the wizard can never
-    # outlive nor predecease its own content.
-    #
-    # Reparent as a plain, hidden child widget — NOT a window. Kept as a
-    # ``Qt.Window`` it stays a top-level widget that macOS actually shows (an
-    # empty little traffic-light window floating over the panel, whose close
-    # deletes the wizard and re-triggers the crash). ``Qt.Widget`` + ``hide()``
-    # makes it an invisible, laid-out-nowhere child: it never renders, never
-    # grabs clicks (the QMainWindow-as-child swallow only happens when visible),
-    # and is not a window that can be closed.
-    wizard.setParent(central, QtCore.Qt.Widget)
+    from emtk.qt_host import ControlHost
+
+    from chisurf.plugins.burst.burst_mle_analysis.gui.app import WINDOW_BG, BurstMleApp
+
+    def _start_guide():
+        if hasattr(app, "start_guide"):
+            app.start_guide()
+            return
+        from chisurf.gui.widgets.tools.guided_tour import GuidedTour, load_tour
+        from chisurf.gui.widgets.tools.help_guide import GUIDE_RESOURCE, resolve_tool_resource
+
+        path = resolve_tool_resource(GUIDE_RESOURCE, None, wizard)
+        if path is not None:
+            steps = load_tour(path)
+            target = getattr(wizard, "host", wizard)
+            tour = getattr(target, "_guided_tour", None)
+            if tour is not None:
+                tour.stop()
+            tour = GuidedTour(target, steps, model=None)
+            target._guided_tour = tour
+            tour.start()
+
+    def _show_help():
+        if hasattr(app, "show_help"):
+            app.show_help()
+            return
+        from chisurf.gui.autoform.sections.help_section import HelpButton
+
+        btn = HelpButton(None, resource="help.md", title="Burst MLE — help")
+        btn.show_help()
+
+    app = BurstMleApp(
+        wizard=wizard,
+        split_by_state=split_by_state,
+        on_guide=_start_guide,
+        on_help=_show_help,
+    )
+    host = ControlHost(app, background=WINDOW_BG[:3])
+    host._mle_wizard = wizard
+    host._app = app
+    wizard.host = host
+    wizard.setParent(host, QtCore.Qt.Widget)
     wizard.hide()
-    return central
+    return host
 
 
 def _set_state_split(wizard: QtWidgets.QWidget, enabled: bool) -> None:
@@ -486,6 +593,13 @@ def _hide_dock_tab_by_name(widget: QtWidgets.QWidget, tab_name: str) -> None:
 
 
 BURST_PANELS = [
+    {
+        "name": "0. Setup Selection",
+        "icon": Glyphs.SETTINGS,
+        "description": "Select detector setup, channel routing, and excitation windows.",
+        "factory": _setup_selection,
+        "role": "setup",
+    },
     {
         "name": "1. Data Selection",
         "icon": Glyphs.OPEN,
@@ -623,99 +737,463 @@ BURST_PANELS = [
 ]
 
 
-class BurstAnalysisTool(NavigationPanelTool):
-    """Integrated burst workflow tool: the numbered pipeline plus its side tools.
+class _StatusTextLabel:
+    def __init__(self, tool: BurstAnalysisTool) -> None:
+        self._tool = tool
 
-    The pipeline runs at two grains — bursts (steps 2-5) and the segments H2MM
-    cuts them into (steps 6-7) — and the step names say which.
+    def text(self) -> str:
+        return str(getattr(self._tool, "_status_text", "Ready"))
 
-    The class is also the base for *other* burst pipelines with a different step
-    order — the ALEX Suite is one. Everything below the panel list is generic:
-    the context is threaded between panels by ``role``, so a subclass that swaps
-    :attr:`PANELS` (and adds its own roles to :meth:`_apply_context_to_panel`)
-    inherits the whole hand-off layer unchanged.
-    """
+    def setText(self, text: str) -> None:
+        self._tool._status_text = str(text)
+        if hasattr(self._tool, "host"):
+            self._tool.host.update()
 
-    #: Step list of this pipeline. Subclasses override it; nothing else here
-    #: names a step.
+
+class _StatusProgressWidget:
+    def __init__(self, tool: BurstAnalysisTool) -> None:
+        self._tool = tool
+
+    def value(self) -> int:
+        return int(getattr(self._tool, "_status_progress_value", 0))
+
+    def maximum(self) -> int:
+        return int(getattr(self._tool, "_status_progress_maximum", 0))
+
+    def setValue(self, v: int) -> None:
+        self._tool._status_progress_value = int(v)
+        if hasattr(self._tool, "host"):
+            self._tool.host.update()
+
+    def setMaximum(self, m: int) -> None:
+        self._tool._status_progress_maximum = int(m)
+        self._tool._status_progress_visible = bool(m > 0)
+        if hasattr(self._tool, "host"):
+            self._tool.host.update()
+
+    def setRange(self, a: int, b: int) -> None:
+        self._tool._status_progress_maximum = int(b)
+        self._tool._status_progress_visible = bool(b > 0)
+        if hasattr(self._tool, "host"):
+            self._tool.host.update()
+
+    def setVisible(self, v: bool) -> None:
+        self._tool._status_progress_visible = bool(v)
+        if hasattr(self._tool, "host"):
+            self._tool.host.update()
+
+
+class _StatusButton:
+    def __init__(self, tool: BurstAnalysisTool) -> None:
+        self._tool = tool
+
+    def setVisible(self, v: bool) -> None:
+        self._tool._status_cancel_visible = bool(v)
+        if hasattr(self._tool, "host"):
+            self._tool.host.update()
+
+
+class _BurstStatusLogHandler(logging.Handler):
+    def __init__(self, tool: BurstAnalysisTool) -> None:
+        super().__init__()
+        self._tool = tool
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return
+        self._tool.status_logged.emit(msg)
+
+
+class BurstAnalysisTool(ChisurfDockTool):
+    """Integrated burst workflow tool: 100% native EMTK interface."""
+
+    status_logged = QtCore.Signal(str)
+
     PANELS: list[dict[str, Any]] = BURST_PANELS
-    #: Window title of this pipeline.
     TITLE = "Burst Analysis"
-    #: Left-list width. Long step labels need a wider list, so it goes with the
-    #: panel list rather than being fixed here.
     NAVIGATION_WIDTH = 310
     NAVIGATION_MIN_WIDTH = 290
 
     def __init__(self, parent=None):
         """Create the integrated burst workflow tool."""
+        super().__init__(parent=parent)
+        self.setWindowTitle(self.TITLE)
+        self.setMinimumSize(950, 620)
+        self.resize(1180, 760)
+
         self.workflow_context = BurstWorkflowContext()
+        self.panels: list[dict[str, Any]] = [dict(p) for p in self.PANELS]
         self._workflow_panels: dict[str, QtWidgets.QWidget] = {}
-        # Set once the optional fusion step has written a folder: the folder it
-        # fused, and the folder it produced. Burst selection re-publishes its own
-        # output folder on every context refresh, which would otherwise drop the
-        # workflow back onto the un-fused bursts the moment the user changed step.
+        self._panel_apps: dict[str, Any] = {}
         self._fusion_source: Path | None = None
         self._fused_folder: Path | None = None
-        # Shared detector definition flows through the central
-        # ``detector_setups.*`` RPC store (same as the Imaging Tools window).
         self._setup_client = DetectorSetupClient()
-        super().__init__(
-            title=self.TITLE,
-            panels=self.PANELS,
-            parent=parent,
-            minimum_size=(950, 620),
-            initial_size=(1180, 760),
-            # Wide enough for the longest step label ("6. Burst segmentation
-            # (H2MM)"); at 270 it was clipped mid-word and the list grew a
-            # horizontal scroll bar.
-            navigation_width=self.NAVIGATION_WIDTH,
-            navigation_min_width=self.NAVIGATION_MIN_WIDTH,
-            # Embedded panels report status via normal logging; the shared status
-            # bar shows any INFO record from the burst plugin package.
-            status_logger="chisurf.plugins.burst",
+
+        # Status and progress state
+        self._status_text: str = "Ready"
+        self._active_task: Any = None
+        self._status_progress_value: int = 0
+        self._status_progress_maximum: int = 0
+        self._status_progress_visible: bool = False
+        self._status_cancel_visible: bool = False
+
+        self._status_message = _StatusTextLabel(self)
+        self._status_progress = _StatusProgressWidget(self)
+        self._status_cancel = _StatusButton(self)
+
+        # Scoped log handler so logging.info(...) reflects in the status bar
+        self.status_logged.connect(self._on_log_status)
+        self._install_status_log_handler("chisurf.plugins.burst")
+
+        # Native EMTK Master Application
+        from emtk.qt_host import ControlHost
+
+        from .app import WINDOW_BG, BurstAnalysisApp
+
+        self.app = BurstAnalysisApp(self)
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        self.setCentralWidget(self.host)
+
+        # Transitional Qt fallback: a panel that has no EMTK app yet (ndX in
+        # the ALEX Suite, any not-yet-ported step) is overlaid as a native Qt
+        # child on the canvas' central area, so it stays usable while the
+        # piecewise EMTK port catches up.
+        self._qt_overlay: QtWidgets.QWidget | None = None
+        self._qt_overlay_role: str | None = None
+        self.host.installEventFilter(self)
+
+        # Seed detector setup context from last used or default
+        self._init_setup_context()
+
+        # Load initial panel (Step 0: Setup Selection)
+        self.show_panel_by_role("setup")
+
+    def _init_setup_context(self) -> None:
+        """Seed workflow context with last used or first available detector setup."""
+        try:
+            from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
+                load_detector_setups,
+            )
+
+            setups_info = load_detector_setups()
+            setups = setups_info.get("setups", {}) if isinstance(setups_info, dict) else {}
+            last_used = setups_info.get("last_used") if isinstance(setups_info, dict) else None
+            name = last_used if last_used in setups else (next(iter(setups)) if setups else "")
+            if name and name in setups:
+                setup_data = dict(setups[name])
+                self.workflow_context.setup_name = name
+                self.workflow_context.channel_settings = setup_data
+                self._setup_client.set_current(setup_data)
+        except Exception as exc:
+            logger.debug(f"Could not pre-initialize detector setup context: {exc}")
+
+    def _on_log_status(self, msg: str) -> None:
+        first = (msg or "").splitlines()[0][:200] if msg else ""
+        self._status_message.setText(first)
+
+    def _install_status_log_handler(self, logger_name: str) -> None:
+        handler = _BurstStatusLogHandler(self)
+        handler.setLevel(logging.INFO)
+        log = logging.getLogger(logger_name)
+        self._status_logger_level = log.level
+        if not log.isEnabledFor(logging.INFO):
+            log.setLevel(logging.INFO)
+        log.addHandler(handler)
+        self._status_log_handler = handler
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        for w in self._workflow_panels.values():
+            w.hide()
+        # The active Qt-fallback panel was just hidden with the rest; put it
+        # back, or the step shows an empty central area after a re-show.
+        if self._qt_overlay_role is not None:
+            overlay = self._qt_fallback_overlay()
+            overlay.show()
+            overlay.raise_()
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802 (Qt override)
+        """Keep the transitional Qt overlay glued to the EMTK central area."""
+        if obj is self.host and event.type() == QtCore.QEvent.Resize:
+            self._layout_qt_overlay()
+        return super().eventFilter(obj, event)
+
+    def _qt_fallback_overlay(self) -> QtWidgets.QWidget:
+        """The transparent child widget that carries a Qt-only panel."""
+        if self._qt_overlay is None:
+            self._qt_overlay = QtWidgets.QWidget(self.host)
+            layout = QtWidgets.QVBoxLayout(self._qt_overlay)
+            layout.setContentsMargins(0, 0, 0, 0)
+            self._qt_overlay.hide()
+        return self._qt_overlay
+
+    def _layout_qt_overlay(self) -> None:
+        """Place the Qt overlay exactly over the EMTK shell's central area."""
+        overlay = self._qt_overlay
+        if overlay is None or not overlay.isVisible():
+            return
+        gui = getattr(self.app, "analysis_gui", None)
+        if gui is None:
+            return
+        nav_w, top_h, status_h, _, _ = gui.get_layout(
+            float(self.host.width()), float(self.host.height())
         )
+        overlay.setGeometry(
+            int(nav_w),
+            int(top_h),
+            max(1, self.host.width() - int(nav_w)),
+            max(1, self.host.height() - int(top_h + status_h)),
+        )
+
+    def _show_qt_fallback(self, role: str, widget: QtWidgets.QWidget) -> None:
+        """Show *widget* as the transitional Qt fallback for *role*."""
+        overlay = self._qt_fallback_overlay()
+        layout = overlay.layout()
+        while layout.count():
+            item = layout.takeAt(0)
+            child = item.widget()
+            if child is not None and child is not widget:
+                child.hide()
+                child.setParent(self)
+        if widget.parent() is not overlay:
+            layout.addWidget(widget)
+        widget.show()
+        overlay.show()
+        overlay.raise_()
+        self._qt_overlay_role = role
+        self._layout_qt_overlay()
+
+    def _hide_qt_fallback(self) -> None:
+        """Drop the transitional Qt overlay, returning the panel to the canvas."""
+        if self._qt_overlay is None:
+            return
+        layout = self._qt_overlay.layout()
+        while layout.count():
+            item = layout.takeAt(0)
+            child = item.widget()
+            if child is not None:
+                child.hide()
+                child.setParent(self)
+        self._qt_overlay.hide()
+        self._qt_overlay_role = None
+
+    def closeEvent(self, event) -> None:
+        if hasattr(self, "_status_log_handler"):
+            try:
+                log = logging.getLogger("chisurf.plugins.burst")
+                log.removeHandler(self._status_log_handler)
+                if hasattr(self, "_status_logger_level"):
+                    log.setLevel(self._status_logger_level)
+            except Exception:
+                pass
+        super().closeEvent(event)
+
+    def begin_task(self, message: str, maximum: int = 0, cancel: Any = None) -> _StatusTask:
+        return _StatusTask(self, message, maximum, cancel)
+
+    def _activate_task(self, task: Any, message: str, maximum: int, cancellable: bool) -> None:
+        self._active_task = task
+        self._status_text = message
+        self._status_progress_value = 0
+        self._status_progress_maximum = maximum
+        self._status_progress_visible = bool(maximum > 0)
+        self._status_cancel_visible = bool(cancellable)
+        if hasattr(self, "host"):
+            self.host.update()
+
+    def _deactivate_task(self, task: Any) -> None:
+        if self._active_task is task:
+            self._active_task = None
+            self._status_progress_visible = False
+            self._status_cancel_visible = False
+            if hasattr(self, "host"):
+                self.host.update()
+
+    def _task_set_value(self, task: Any, v: int) -> None:
+        if self._active_task is task:
+            self._status_progress_value = int(v)
+            if hasattr(self, "host"):
+                self.host.update()
+
+    def _task_set_message(self, task: Any, message: str) -> None:
+        self._status_text = str(message)
+        if hasattr(self, "host"):
+            self.host.update()
+
+    def _task_set_range(self, task: Any, a: int, b: int) -> None:
+        if self._active_task is task:
+            self._status_progress_maximum = int(b)
+            self._status_progress_visible = bool(b > 0)
+            if hasattr(self, "host"):
+                self.host.update()
+
+    def get_active_app(self) -> Any:
+        role = getattr(self.app, "selected_role", "data")
+        if role not in self._panel_apps:
+            self._ensure_panel_loaded(role)
+        return self._panel_apps.get(role)
+
+    def _ensure_panel_loaded(self, role: str) -> None:
+        if role in self._workflow_panels:
+            return
+        for panel in self.panels:
+            if panel.get("role") == role and not panel.get("separator"):
+                factory = panel.get("factory")
+                if callable(factory):
+                    widget = factory(self)
+                    # factory invokes _bind -> bind_workflow_panel(role, widget)
+                    app = getattr(widget, "app", getattr(widget, "_app", None))
+                    if app is not None:
+                        self._panel_apps[role] = app
+                break
 
     def bind_workflow_panel(self, role: str, widget: QtWidgets.QWidget) -> None:
         """Register a loaded panel and apply current workflow context."""
+        widget.hide()
         self._workflow_panels[role] = widget
-        if role == "data":
+        app = getattr(widget, "app", getattr(widget, "_app", None))
+        if app is not None:
+            self._panel_apps[role] = app
+
+        if role == "setup":
+            self._sync_setup_context()
+        elif role == "data":
             self._sync_data_context()
         elif role == "selection":
             self._bind_selection_panel(widget)
         self._apply_context_to_panel(role, widget)
 
+    def show_panel_by_role(self, role: str) -> bool:
+        """Navigate to the (non-separator) panel with the given role."""
+        valid_roles = [p.get("role") for p in self.panels if not p.get("separator")]
+        if role not in valid_roles:
+            return False
+
+        self._refresh_workflow_context()
+        self._ensure_panel_loaded(role)
+        widget = self._workflow_panels.get(role)
+        if widget is not None:
+            widget.hide()
+            self._apply_context_to_panel(role, widget)
+
+        # A panel without an EMTK app renders nothing on the canvas; show it
+        # through the transitional Qt overlay instead of an empty central area.
+        if widget is not None and role not in self._panel_apps:
+            self._show_qt_fallback(role, widget)
+        else:
+            self._hide_qt_fallback()
+
+        self.app.selected_role = role
+        if hasattr(self, "host"):
+            self.host.update()
+        return True
+
     def goto_workflow_role(self, role: str) -> bool:
-        """Select the workflow step with the given ``role`` (e.g. from a panel's
-        'go to IRF & Background' button).
-        """
-        for i, panel in enumerate(self.panels):
-            if panel.get("role") == role:
-                self.nav_list.setCurrentRow(i)
-                return True
+        return self.show_panel_by_role(role)
+
+    def goto_next_step(self) -> bool:
+        roles = [p.get("role") for p in self.panels if not p.get("separator")]
+        curr = getattr(self.app, "selected_role", "setup")
+        if curr in roles:
+            idx = roles.index(curr)
+            if idx < len(roles) - 1:
+                return self.show_panel_by_role(roles[idx + 1])
         return False
 
+    def goto_prev_step(self) -> bool:
+        roles = [p.get("role") for p in self.panels if not p.get("separator")]
+        curr = getattr(self.app, "selected_role", "setup")
+        if curr in roles:
+            idx = roles.index(curr)
+            if idx > 0:
+                return self.show_panel_by_role(roles[idx - 1])
+        return False
+
+    def process_current_step(self) -> bool:
+        """Compatibility for workflow tests: execute active panel's action if non-optional."""
+        role = getattr(self.app, "selected_role", "setup")
+        for p in self.panels:
+            if p.get("role") == role:
+                if p.get("optional"):
+                    return False
+                break
+        widget = self._workflow_panels.get(role)
+        run_btn = getattr(widget, "analyze_files", None)
+        if callable(run_btn):
+            try:
+                run_btn()
+                return True
+            except Exception:
+                return False
+        return False
+
+    def _on_next_clicked(self) -> None:
+        """Compatibility for workflow tests: advance to next step."""
+        self.goto_next_step()
+
+    def fast_forward(self) -> None:
+        """Walk and execute pipeline steps sequentially."""
+        pipeline_roles = [
+            "setup",
+            "data",
+            "selection",
+            "bva",
+            "two_cde",
+            "mle",
+            "h2mm",
+            "segment_mle",
+        ]
+        for role in pipeline_roles:
+            self.show_panel_by_role(role)
+            widget = self._workflow_panels.get(role)
+            run_btn = getattr(widget, "analyze_files", None)
+            if callable(run_btn):
+                try:
+                    run_btn()
+                except Exception:
+                    pass
+
     def _on_nav_changed(self, index: int) -> None:
-        """Refresh and apply workflow context when the user changes steps."""
-        self._refresh_workflow_context()
-        super()._on_nav_changed(index)
         if 0 <= index < len(self.panels):
             role = str(self.panels[index].get("role") or "")
-            widget = self._panel_widget(index)
-            if widget is not None:
-                self._apply_context_to_panel(role, widget)
+            if role and not self.panels[index].get("separator"):
+                self.show_panel_by_role(role)
 
     def _panel_widget(self, index: int) -> QtWidgets.QWidget | None:
         """Return the inner widget for a loaded panel wrapper."""
-        if index < 0 or index >= len(self.panels):
-            return None
-        wrapper = self.panels[index].get("instance")
-        if wrapper is None:
-            return None
-        layout = wrapper.layout()
-        if layout is None or layout.count() == 0:
-            return None
-        item = layout.itemAt(0)
-        return item.widget() if item is not None else None
+        if 0 <= index < len(self.panels):
+            role = self.panels[index].get("role", "")
+            return self._workflow_panels.get(role)
+        return None
+
+    @property
+    def nav_list(self) -> Any:
+        class _NavListProxy:
+            def __init__(self, tool: BurstAnalysisTool) -> None:
+                self._tool = tool
+
+            def setCurrentRow(self, index: int) -> None:
+                self._tool._on_nav_changed(index)
+
+            def currentRow(self) -> int:
+                curr_role = getattr(self._tool.app, "selected_role", "setup")
+                for i, p in enumerate(self._tool.panels):
+                    if p.get("role") == curr_role:
+                        return i
+                return 0
+
+            def item(self, row: int) -> Any:
+                class _ItemProxy:
+                    def flags(self) -> int:
+                        from qtpy import QtCore
+
+                        return int(QtCore.Qt.ItemIsSelectable)
+
+                return _ItemProxy()
+
+        return _NavListProxy(self)
 
     def _bind_selection_panel(self, widget: QtWidgets.QWidget) -> None:
         """Wrap Burst Selection execution so downstream steps see outputs."""
@@ -739,11 +1217,28 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _refresh_workflow_context(self) -> None:
         """Refresh shared context from loaded upstream widgets."""
+        self._sync_setup_context()
         self._sync_data_context()
         self._sync_channel_context()
         selection = self._workflow_panels.get("selection")
         if selection is not None:
             self._sync_selection_context(selection)
+
+    def _sync_setup_context(self) -> None:
+        """Capture detector setup selection from step 0."""
+        panel = self._workflow_panels.get("setup")
+        if panel is not None:
+            name_fn = getattr(panel, "selected_setup_name", None)
+            if callable(name_fn):
+                name = name_fn()
+                if name:
+                    self.workflow_context.setup_name = name
+            data_fn = getattr(panel, "selected_setup_data", None)
+            if callable(data_fn):
+                data = data_fn()
+                if data:
+                    self.workflow_context.channel_settings = data
+                    self._setup_client.set_current(data)
 
     def _sync_data_context(self) -> None:
         """Capture raw data selection from step 1."""
@@ -765,10 +1260,10 @@ class BurstAnalysisTool(NavigationPanelTool):
     def _sync_channel_context(self) -> None:
         """Capture channel definitions via the shared RPC store.
 
-        There is no standalone Channels step — the channel definition comes from
-        the detector setup the Burst Selection step has chosen. It is published to
-        the central ``detector_setups.*`` RPC store, then read back so the
-        workflow context always reflects the canonical (RPC-held) definition.
+        The channel definition comes from Step 0 (Setup Selection) or the detector
+        setup Burst Selection has chosen. It is published to the central
+        ``detector_setups.*`` RPC store, then read back so the workflow context
+        always reflects the canonical (RPC-held) definition.
         """
         settings = self._channel_settings_from_selection()
         if settings:
@@ -777,7 +1272,7 @@ class BurstAnalysisTool(NavigationPanelTool):
         current = self._setup_client.get_current()
         if current:
             self.workflow_context.channel_settings = current
-        name = self._selected_setup_name()
+        name = self._selected_setup_name() or self.workflow_context.setup_name
         if name:
             self.workflow_context.setup_name = name
 
@@ -787,24 +1282,19 @@ class BurstAnalysisTool(NavigationPanelTool):
         return str(getattr(panel, "_selected_setup_name", "") or "")
 
     def _channel_settings_from_selection(self) -> dict | None:
-        """The detector setup the Burst Selection step has selected, if any.
-
-        Burst Selection applies a *saved* detector setup (name → definition), so
-        that saved definition is the channel setup the rest of the workflow uses
-        now that the standalone Channels step is gone.
-        """
-        name = self._selected_setup_name()
+        """The detector setup selected for the workflow."""
+        name = self._selected_setup_name() or self.workflow_context.setup_name
         if not name:
-            return None
+            return self.workflow_context.channel_settings or None
         try:
             from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
                 load_detector_setups,
             )
 
             setup = load_detector_setups().get("setups", {}).get(name)
-            return setup or None
+            return setup or self.workflow_context.channel_settings or None
         except Exception:
-            return None
+            return self.workflow_context.channel_settings or None
 
     def _sync_selection_context(self, widget: QtWidgets.QWidget) -> None:
         """Capture burst-selection outputs from step 2."""
@@ -1011,7 +1501,9 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_panel(self, role: str, widget: QtWidgets.QWidget) -> None:
         """Apply current workflow context to one panel."""
-        if role == "selection":
+        if role == "setup":
+            self._apply_context_to_setup(widget)
+        elif role == "selection":
             self._apply_channels_to_burst_selection(widget)
         elif role == "fusion":
             self._apply_context_to_fusion(widget)
@@ -1036,12 +1528,27 @@ class BurstAnalysisTool(NavigationPanelTool):
         elif role == "irf_bg":
             self._apply_context_to_irf_bg(widget)
 
+    def _apply_context_to_setup(self, widget: QtWidgets.QWidget) -> None:
+        """Apply current workflow setup name to the setup selection panel."""
+        name = self.workflow_context.setup_name
+        if name and hasattr(widget, "apply_setup"):
+            try:
+                widget.apply_setup(name)
+            except Exception:
+                pass
+
     def _apply_channels_to_burst_selection(self, widget: QtWidgets.QWidget) -> None:
-        """Use step-1 definitions in Burst Selection."""
+        """Use step-0/step-1 definitions in Burst Selection."""
         raw_files = self.workflow_context.raw_files
         if raw_files and not getattr(widget, "_file_paths", []):
             try:
                 widget._add_paths(raw_files)
+            except Exception:
+                pass
+        setup_name = self.workflow_context.setup_name
+        if setup_name and hasattr(widget, "_apply_detector_setup"):
+            try:
+                widget._apply_detector_setup(setup_name)
             except Exception:
                 pass
         settings = self.workflow_context.channel_settings

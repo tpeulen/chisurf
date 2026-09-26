@@ -180,6 +180,7 @@ def test_burst_workflow_panel_order() -> None:
     # Kinetics), then the two that feed the pipeline from the raw files
     # (Background, IRF & Background).
     assert labels == [
+        "⚙️ 0. Setup Selection",
         "📂 1. Data Selection",
         "🔍 2. Burst Selection",
         "🔗 3. Burst Fusion (optional)",
@@ -196,8 +197,8 @@ def test_burst_workflow_panel_order() -> None:
         "🌙 Background",
         "✨ IRF & Background",
     ]
-    # The separator sits after the eight numbered steps.
-    assert BURST_PANELS[8]["separator"] is True
+    # The separator sits after the nine numbered steps (0-8).
+    assert BURST_PANELS[9]["separator"] is True
     assert "channels" not in {p.get("role") for p in BURST_PANELS}
     # Segmentation must come before the fit that consumes it.
     roles = [p.get("role") for p in BURST_PANELS]

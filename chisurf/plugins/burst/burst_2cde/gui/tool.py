@@ -124,6 +124,8 @@ class BurstTwoCdeTool(ChisurfDockTool):
             on_restart=self._on_restart_clicked,
             on_stop=self.stop,
             on_browse=self._browse,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
         )
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])
         self.setCentralWidget(self.host)
@@ -134,7 +136,7 @@ class BurstTwoCdeTool(ChisurfDockTool):
         self._task = None
 
         # Action toolbar
-        toolbar = QtWidgets.QToolBar()
+        toolbar = QtWidgets.QToolBar(self)
         toolbar.setStyleSheet(TOOLBAR_STYLE)
         self._run = action_button("run", tooltip="Compute 2CDE over all loaded data")
         self._run.clicked.connect(self._on_run_clicked)
@@ -151,9 +153,23 @@ class BurstTwoCdeTool(ChisurfDockTool):
         toolbar.addWidget(self._run)
         toolbar.addWidget(self._restart)
         toolbar.addWidget(self._stop)
-        toolbar.addWidget(browse)
-        self.add_toolbar_help(toolbar, resource="help.md", title="2CDE — help")
-        self.addToolBar(toolbar)
+        guide_btn = self.add_toolbar_guide(toolbar, resource="guide.json", model=self.model)
+        if guide_btn is not None:
+            try:
+                guide_btn.clicked.disconnect()
+            except Exception:
+                pass
+            guide_btn.clicked.connect(self._start_guide)
+
+        help_btn = self.add_toolbar_help(toolbar, resource="help.md", title="2CDE — help")
+        if help_btn is not None and getattr(help_btn, "button", None) is not None:
+            try:
+                help_btn.button.clicked.disconnect()
+            except Exception:
+                pass
+        self.toolbar = toolbar
+        self.toolbar.setVisible(False)
+        self.toolbar.hide()
 
         # Compatibility shims for tests and legacy callers
         self._folder_edit = _TextShim(lambda: self.model.folder, self._set_folder_from_edit)
@@ -204,6 +220,20 @@ class BurstTwoCdeTool(ChisurfDockTool):
 
     def _on_model_event(self, event: str) -> None:
         self.host.update()
+
+    def _start_guide(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+        if getattr(self, "_guide_button", None) is not None:
+            self._guide_button.click()
+
+    def _show_help(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
+        if getattr(self, "_help_button", None) is not None:
+            self._help_button.show_help()
 
     def tour_target(self, target: dict[str, Any]) -> tuple[QtWidgets.QWidget, tuple | None] | None:
         """Tell GuidedTour where a step target is on this emtk surface."""

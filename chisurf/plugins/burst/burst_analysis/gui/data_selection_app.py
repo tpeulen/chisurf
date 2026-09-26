@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
+import datetime
+import json
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import emtk.im as im
 import emtk.implot as implot
+from emtk.app import ImApp
+from emtk.docking import DockManager, Region, Split
+
+from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
 
 if TYPE_CHECKING:
     from .tool import BurstDataSelectionWidget
 
-WINDOW_BG = (0.12, 0.12, 0.14, 1.0)
+WINDOW_BG = (30, 32, 38, 255)
 
 
 def _format_size(size_bytes: int) -> str:
@@ -25,36 +31,109 @@ def _format_size(size_bytes: int) -> str:
     return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
 
 
-class BurstDataSelectionApp:
-    """EMTK app providing dockable, draggable windows for TTTR data selection."""
+class BurstDataSelectionGui:
+    """EMTK GUI providing responsive, dockable windows for TTTR data selection."""
 
-    def __init__(self, widget: BurstDataSelectionWidget) -> None:
+    def __init__(
+        self,
+        widget: BurstDataSelectionWidget,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
+    ) -> None:
         self.widget = widget
+        self.on_guide = on_guide
+        self.on_help = on_help
         self.filter_text = ""
         self.selected_index: int | None = None
         self._last_dropped_region: dict[str, Any] | None = None
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        self.on_used: Callable[[str], None] | None = None
 
-    def update(self) -> None:
-        # Full viewport dockspace
-        im.dock_space_over_viewport(1)
+        layout = Split(
+            "h",
+            0.62,
+            Region("left"),
+            Split("v", 0.55, Region("details"), Region("summary")),
+        )
+        self.docks = DockManager(layout)
+        self.docks.add_window(
+            "files",
+            "📁 TTTR Data Files",
+            self._draw_files,
+            dock="left",
+            closable=False,
+        )
+        self.docks.add_window(
+            "details",
+            "ℹ️ File Details",
+            self._draw_details,
+            dock="details",
+            closable=False,
+        )
+        self.docks.add_window(
+            "summary",
+            "📊 Summary & Next Steps",
+            self._draw_summary,
+            dock="summary",
+            closable=False,
+        )
 
+        help_resource = Path(__file__).parent / "help.md"
+        guide_resource = Path(__file__).parent / "guide.json"
+        self.help_window = EmTkHelpWindow(
+            title="Data Selection — Help & Reference",
+            resource=help_resource,
+            owner=self.widget,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self.widget,
+        )
+
+    def start_guide(self) -> None:
+        """Start the in-EMTK guided tour."""
+        self.tour.start()
+
+    def show_help(self) -> None:
+        """Show the in-EMTK help window."""
+        self.help_window.show()
+
+    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+        """Store the item's screen rectangle for tour targeting."""
+        r = rect if rect is not None else im.get_item_rect()
+        if r is not None:
+            self.item_rects[name] = tuple(r)
+
+    def track(self, name: str) -> None:
+        """Record usage of a named control."""
+        if callable(self.on_used):
+            self.on_used(name)
+
+    def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         paths = self.widget.paths()
         if self.selected_index is not None and self.selected_index >= len(paths):
             self.selected_index = len(paths) - 1 if paths else None
 
-        self._render_files_window(paths)
-        self._render_details_window(paths)
-        self._render_summary_window(paths)
+        vp = im.get_main_viewport()
+        vw, vh = vp.size
+        width = float(w or vw or 800.0)
+        height = float(h or vh or 600.0)
+        self.docks.draw((0.0, 0.0, width, height))
 
-    def _render_files_window(self, paths: list[Path]) -> None:
-        im.set_next_window_size((580, 480), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_pos((20, 20), im.Cond.FIRST_USE_EVER)
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, width, height))
 
-        expanded, opened = im.begin("TTTR Data Files")
-        if not expanded:
-            im.end()
-            return
+        if self.tour.active:
+            self.tour.draw(width, height)
 
+    def update(self) -> None:
+        self.draw()
+
+    def _draw_files(self, box: tuple[float, float, float, float]) -> None:
+        paths = self.widget.paths()
         # Top Action Bar
         if im.button("➕ Add Files"):
             self.widget._browse_files()
@@ -69,7 +148,9 @@ class BurstDataSelectionApp:
             if im.button("➖ Remove"):
                 self.widget._remove_index(self.selected_index)
                 if self.selected_index >= len(self.widget.paths()):
-                    self.selected_index = len(self.widget.paths()) - 1 if self.widget.paths() else None
+                    self.selected_index = (
+                        len(self.widget.paths()) - 1 if self.widget.paths() else None
+                    )
         else:
             im.begin_disabled()
             im.button("➖ Remove")
@@ -89,7 +170,7 @@ class BurstDataSelectionApp:
         im.align_text_to_frame_padding()
         im.text("Filter:")
         im.same_line()
-        im.set_next_item_width(240)
+        im.set_next_item_width(200)
         _, self.filter_text = im.input_text("##file_filter", self.filter_text)
         if self.filter_text:
             im.same_line()
@@ -105,7 +186,7 @@ class BurstDataSelectionApp:
 
         im.spacing()
 
-        # Table of files
+        # Table of files - dynamically sized to fill the remaining dock height
         table_flags = (
             im.TableFlags.BORDERS
             | im.TableFlags.ROW_BG
@@ -113,38 +194,38 @@ class BurstDataSelectionApp:
             | im.TableFlags.SCROLL_Y
             | im.TableFlags.SIZING_FIXED_FIT
         )
-        if im.begin_table("tttr_files_table", 5, table_flags):
+        table_h = max(120.0, box[3] - 78.0)
+        if im.begin_table("tttr_files_table", 5, table_flags, (0, table_h)):
             im.table_setup_column("#", im.TableColumnFlags.WIDTH_FIXED, 36.0)
             im.table_setup_column("Filename", im.TableColumnFlags.WIDTH_STRETCH)
-            im.table_setup_column("Size", im.TableColumnFlags.WIDTH_FIXED, 75.0)
-            im.table_setup_column("Format", im.TableColumnFlags.WIDTH_FIXED, 60.0)
-            im.table_setup_column("Status", im.TableColumnFlags.WIDTH_FIXED, 95.0)
+            im.table_setup_column("Size", im.TableColumnFlags.WIDTH_FIXED, 80.0)
+            im.table_setup_column("Format", im.TableColumnFlags.WIDTH_FIXED, 65.0)
+            im.table_setup_column("Status", im.TableColumnFlags.WIDTH_FIXED, 75.0)
             im.table_headers_row()
 
-            filter_lower = self.filter_text.strip().lower()
             imports = self.widget.mmfdb_payload().get("imports", {})
-
-            for i, p in enumerate(paths):
-                fname = p.name
-                if filter_lower and filter_lower not in fname.lower() and filter_lower not in str(p).lower():
+            for idx, p in enumerate(paths):
+                if self.filter_text and self.filter_text.lower() not in p.name.lower():
                     continue
 
                 im.table_next_row()
 
                 # Column 0: Index
                 im.table_set_column_index(0)
-                im.text(f"{i + 1}")
+                im.text(f"{idx + 1}")
 
-                # Column 1: Selectable Filename + Drag Source
+                # Column 1: Filename (Selectable + Drag Source)
                 im.table_set_column_index(1)
-                is_selected = (self.selected_index == i)
-                clicked, _ = im.selectable(f"{fname}##file_{i}", selected=is_selected)
-                if clicked:
-                    self.selected_index = i
+                is_selected = self.selected_index == idx
+                if im.selectable(
+                    f"{p.name}##file_{idx}", is_selected, im.SelectableFlags.SPAN_ALL_COLUMNS
+                ):
+                    self.selected_index = idx
 
                 if im.begin_drag_drop_source():
-                    im.set_drag_drop_payload("BURST_FILE", str(p).encode("utf-8"))
-                    im.text(f"File: {fname}")
+                    drag_data = json.dumps({"type": "tttr_file", "path": str(p), "index": idx})
+                    im.set_drag_drop_payload("BURST_FILE", drag_data.encode("utf-8"))
+                    im.text(f"Moving {p.name}")
                     im.end_drag_drop_source()
 
                 # Column 2: Size
@@ -177,28 +258,17 @@ class BurstDataSelectionApp:
             payload = im.accept_drag_drop_payload("BURST_REGION")
             if payload:
                 try:
-                    import json
                     data = json.loads(payload.decode("utf-8"))
                     self._last_dropped_region = data
                 except Exception:
                     pass
             im.end_drag_drop_target()
 
-        im.end()
-
-    def _render_details_window(self, paths: list[Path]) -> None:
-        im.set_next_window_size((380, 320), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_pos((610, 20), im.Cond.FIRST_USE_EVER)
-
-        expanded, opened = im.begin("File Metadata & MMFDB")
-        if not expanded:
-            im.end()
-            return
-
+    def _draw_details(self, box: tuple[float, float, float, float]) -> None:
+        paths = self.widget.paths()
         if self.selected_index is None or not (0 <= self.selected_index < len(paths)):
             im.text_colored("No file selected.", (0.6, 0.6, 0.6, 1.0))
             im.text("Click on any file in the table to inspect details.")
-            im.end()
             return
 
         p = paths[self.selected_index]
@@ -210,7 +280,6 @@ class BurstDataSelectionApp:
         try:
             st = p.stat()
             im.text(f"Size: {_format_size(st.st_size)} ({st.st_size:,} bytes)")
-            import datetime
             mtime = datetime.datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
             im.text(f"Modified: {mtime}")
         except Exception as e:
@@ -241,17 +310,8 @@ class BurstDataSelectionApp:
                 self.widget._import_path_to_mmfdb(p)
                 self.widget.host.update()
 
-        im.end()
-
-    def _render_summary_window(self, paths: list[Path]) -> None:
-        im.set_next_window_size((380, 200), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_pos((610, 350), im.Cond.FIRST_USE_EVER)
-
-        expanded, opened = im.begin("Summary & Next Steps")
-        if not expanded:
-            im.end()
-            return
-
+    def _draw_summary(self, box: tuple[float, float, float, float]) -> None:
+        paths = self.widget.paths()
         total_files = len(paths)
         total_size = 0
         for p in paths:
@@ -279,4 +339,43 @@ class BurstDataSelectionApp:
         else:
             im.text_colored("Add TTTR files to begin analysis.", (0.8, 0.8, 0.8, 1.0))
 
-        im.end()
+
+class BurstDataSelectionApp(ImApp):
+    """The EMTK App for TTTR Data Selection."""
+
+    def __init__(
+        self,
+        widget: BurstDataSelectionWidget,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
+    ) -> None:
+        self.selection_gui = BurstDataSelectionGui(
+            widget=widget,
+            on_guide=on_guide,
+            on_help=on_help,
+        )
+        self.widget = widget
+        super().__init__(gui=self._render, continuous=False)
+
+    @property
+    def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
+        return self.selection_gui.item_rects
+
+    @property
+    def on_used(self) -> Callable[[str], None] | None:
+        return self.selection_gui.on_used
+
+    @on_used.setter
+    def on_used(self, cb: Callable[[str], None] | None) -> None:
+        self.selection_gui.on_used = cb
+
+    def start_guide(self) -> None:
+        """Start guided tour inside EMTK."""
+        self.selection_gui.start_guide()
+
+    def show_help(self) -> None:
+        """Show help documentation inside EMTK."""
+        self.selection_gui.show_help()
+
+    def _render(self) -> None:
+        self.selection_gui.draw()

@@ -144,9 +144,31 @@ class BurstFcsTool(ChisurfDockTool):
         # Hidden correlator reused only to resolve FCS presets → channel lists.
         self._corr = WizardTTTRCorrelator()
 
-        self._build_toolbar()
         self._build_central()
+        from emtk.qt_host import ControlHost
+
+        from .app import WINDOW_BG, BurstFcsApp
+
+        self.app = BurstFcsApp(
+            self,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
+        )
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        self.setCentralWidget(self.host)
         self._populate_detector_setups()
+
+    def _start_guide(self) -> None:
+        """Start guided tour inside the EMTK host."""
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+
+    def _show_help(self) -> None:
+        """Display help documentation."""
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
 
     # ------------------------------------------------------------------
     # Toolbar: Run action + an emoji "≡ Settings" pop-up menu (no loose

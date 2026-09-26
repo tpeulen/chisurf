@@ -40,6 +40,8 @@ class BurstBrowserWidget(QtWidgets.QWidget):
             model=self.model,
             on_open_folder=self._open_folder_dialog,
             on_open_file=self._open_file_dialog,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
         )
         self.gui = self.app.browser_gui
 
@@ -49,6 +51,16 @@ class BurstBrowserWidget(QtWidgets.QWidget):
 
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])
         layout.addWidget(self.host)
+
+    def _start_guide(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+
+    def _show_help(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
 
     # ── Guided Tour Hook ────────────────────────────────────────────────
     def tour_target(

@@ -10,14 +10,15 @@ Runs toolkit-free under :class:`emtk.qt_host.ControlHost` in Qt,
 in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
 """
 
-from __future__ import annotations
-
 import json
+from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.im_core import Col
+
+from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
 
 from .view_model import BvaViewModel
 
@@ -43,6 +44,8 @@ class BurstBvaGui:
         on_stop: Callable[[], None] | None = None,
         on_browse: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
     ) -> None:
         self.model = model if model is not None else BvaViewModel()
         self.on_run = on_run
@@ -50,6 +53,8 @@ class BurstBvaGui:
         self.on_stop = on_stop
         self.on_browse = on_browse
         self.on_clear = on_clear
+        self.on_guide = on_guide
+        self.on_help = on_help
 
         self.region_rect: list[float] = [0.2, 0.05, 0.8, 0.35]
         self.selected_settings_tab = "BVA Settings"
@@ -57,6 +62,29 @@ class BurstBvaGui:
         self.on_used: Callable[[str], None] | None = None
 
         self.model.add_observer(self._on_model_event)
+
+        help_resource = Path(__file__).parent / "help.md"
+        guide_resource = Path(__file__).parent / "guide.json"
+        self.help_window = EmTkHelpWindow(
+            title="Burst Variance Analysis (BVA) — Help & Reference",
+            resource=help_resource,
+            owner=self.model,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self.model,
+        )
+
+    def start_guide(self) -> None:
+        """Start the in-EMTK guided tour."""
+        self.tour.start()
+
+    def show_help(self) -> None:
+        """Show the in-EMTK help window."""
+        self.help_window.show()
 
     def _on_model_event(self, event: str) -> None:
         pass
@@ -72,16 +100,21 @@ class BurstBvaGui:
         if callable(self.on_used):
             self.on_used(name)
 
-    def draw(self, w: float, h: float) -> None:
+    def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         """Draw the BVA GUI into (w, h) display pixels."""
         im.dock_space_over_viewport(1)
 
-        left_w = min(max(340.0, w * 0.34), 440.0)
-        right_w = max(w - left_w - 12.0, 200.0)
+        vp = im.get_main_viewport()
+        vw, vh = vp.size
+        width = float(w or vw or 800.0)
+        height = float(h or vh or 600.0)
+
+        left_w = min(max(340.0, width * 0.34), 440.0)
+        right_w = max(width - left_w - 12.0, 200.0)
 
         # ── Left pane: Controls & Settings (Dockable) ───────────────────
-        im.set_next_window_pos((4.0, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((left_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_pos((4.0, 4.0), im.Cond.ALWAYS)
+        im.set_next_window_size((left_w, height - 8.0), im.Cond.ALWAYS)
         if im.begin("BVA Controls"):
             self._draw_action_buttons()
             im.spacing()
@@ -110,12 +143,12 @@ class BurstBvaGui:
             im.spacing()
             self._draw_status()
             im.end()
-            self.remember("controls", (4.0, 4.0, left_w, h - 8.0))
+            self.remember("controls", (4.0, 4.0, left_w, height - 8.0))
 
         # ── Right pane: Plot (Dockable) ──────────────────────────────────
         plots_x = left_w + 8.0
-        im.set_next_window_pos((plots_x, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((right_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_pos((plots_x, 4.0), im.Cond.ALWAYS)
+        im.set_next_window_size((right_w, height - 8.0), im.Cond.ALWAYS)
         if im.begin("BVA Plot Window"):
             if im.begin_tab_bar("bva_plot_tabs"):
                 if im.begin_tab_item("Plot"):
@@ -129,6 +162,12 @@ class BurstBvaGui:
                 im.end_tab_bar()
             im.end()
             self.remember("PlotWindow", (plots_x, 4.0, right_w, h - 8.0))
+
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, width, height))
+
+        if self.tour.active:
+            self.tour.draw(width, height)
 
     def _draw_action_buttons(self) -> None:
         """Draw Run, Restart, Stop, and Browse actions."""
@@ -172,6 +211,18 @@ class BurstBvaGui:
                 self.on_browse()
         self.remember("folder")
 
+        im.same_line()
+        if im.button("📖 Guide"):
+            self.track("guide")
+            self.start_guide()
+        self.remember("guide")
+
+        im.same_line()
+        if im.button("❓ Help"):
+            self.track("help")
+            self.show_help()
+        self.remember("help")
+
     def _draw_folder_input(self, width: float) -> None:
         """Folder path input."""
         im.text("Burst folder:")
@@ -186,7 +237,11 @@ class BurstBvaGui:
         im.text_colored((200, 210, 230, 255), "Analysis Parameters")
 
         # Window length
+        col_x = 175.0
+        im.align_text_to_frame_padding()
         im.text("Min window length (s):")
+        im.same_line(col_x)
+        im.set_next_item_width(120)
         changed, wl = im.drag_float(
             "##window_length", self.model.window_length, 0.001, 0.0001, 10.0, "%.4f s"
         )
@@ -195,7 +250,10 @@ class BurstBvaGui:
             self.model.notify("param")
 
         # Photons per slice
+        im.align_text_to_frame_padding()
         im.text("Photons per slice:")
+        im.same_line(col_x)
+        im.set_next_item_width(120)
         changed, pps = im.drag_float(
             "##photons_per_slice", float(self.model.photons_per_slice), 1.0, 1.0, 500.0, "%.0f"
         )
@@ -207,13 +265,19 @@ class BurstBvaGui:
         im.text_colored((200, 210, 230, 255), "Display Options")
 
         # Bins
+        im.align_text_to_frame_padding()
         im.text("Bins X:")
+        im.same_line(col_x)
+        im.set_next_item_width(120)
         changed, bx = im.drag_float("##bins_x", float(self.model.bins_x), 1.0, 10.0, 500.0, "%.0f")
         if changed:
             self.model.bins_x = max(10, int(round(bx)))
             self.model.notify("bins")
 
+        im.align_text_to_frame_padding()
         im.text("Bins Y:")
+        im.same_line(col_x)
+        im.set_next_item_width(120)
         changed, by = im.drag_float("##bins_y", float(self.model.bins_y), 1.0, 10.0, 500.0, "%.0f")
         if changed:
             self.model.bins_y = max(10, int(round(by)))
@@ -344,6 +408,8 @@ class BurstBvaApp(ImApp):
         on_stop: Callable[[], None] | None = None,
         on_browse: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
     ) -> None:
         self.bva_gui = BurstBvaGui(
             model=model,
@@ -352,9 +418,19 @@ class BurstBvaApp(ImApp):
             on_stop=on_stop,
             on_browse=on_browse,
             on_clear=on_clear,
+            on_guide=on_guide,
+            on_help=on_help,
         )
         self.model = self.bva_gui.model
         super().__init__(gui=self._render, continuous=False)
+
+    def start_guide(self) -> None:
+        """Start guided tour inside EMTK."""
+        self.bva_gui.start_guide()
+
+    def show_help(self) -> None:
+        """Show help documentation inside EMTK."""
+        self.bva_gui.show_help()
 
     def _render(self) -> None:
         w, h = im.get_main_viewport().size

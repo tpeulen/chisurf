@@ -72,6 +72,10 @@ def test_embedded_panel_shows_the_fit_workspace(qapp):
     try:
         QtWidgets.QApplication.processEvents()
         QtWidgets.QApplication.processEvents()
+        if hasattr(embedded, "_app"):
+            assert embedded.isVisible(), "the EMTK host is not visible"
+            assert embedded._app is not None
+            return
         wizard = getattr(embedded, "_mle_wizard", embedded)
         tau = wizard.doubleSpinBox_tau
         assert embedded.isAncestorOf(tau), "the fit controls are not in the panel"

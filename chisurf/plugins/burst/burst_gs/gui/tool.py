@@ -50,27 +50,51 @@ class BurstGsTool(ChisurfDockTool):
         a_csv = toolbar.addAction("💾 Export CSV")
         a_csv.setToolTip("Write the fitted rates, efficiencies and any scan to a CSV file.")
         a_csv.triggered.connect(self._export_csv)
-        # Long help behind a ? at the far right of the toolbar — never inline text.
-        self.add_toolbar_help(toolbar, resource="help.md", title="Photon-by-photon kinetics — help")
+        guide_btn = self.add_toolbar_guide(toolbar, resource="guide.json", model=self.model)
+        if guide_btn is not None:
+            try:
+                guide_btn.clicked.disconnect()
+            except Exception:
+                pass
+            guide_btn.clicked.connect(self._start_guide)
+
+        help_btn = self.add_toolbar_help(
+            toolbar, resource="help.md", title="Photon-by-photon kinetics — help"
+        )
+        if help_btn is not None and getattr(help_btn, "button", None) is not None:
+            try:
+                help_btn.button.clicked.disconnect()
+            except Exception:
+                pass
+            help_btn.button.clicked.connect(self._show_help)
         self.toolbar = toolbar
-        self.addToolBar(toolbar)
+        self.toolbar.setVisible(False)
+        self.toolbar.hide()
 
         from emtk.qt_host import ControlHost
+
         from .app import WINDOW_BG, BurstGsApp
 
         self.app = BurstGsApp(
             model=self.model,
             on_fit=self.run_with_progress,
             on_export=self._export_csv,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
         )
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])
         self.setCentralWidget(self.host)
 
         # Retain auto_form shim for callers
         class _FormShim:
-            def __init__(self, host): self._host = host
-            def sync_fields(self): self._host.update()
-            def refresh_plots(self): self._host.update()
+            def __init__(self, host):
+                self._host = host
+
+            def sync_fields(self):
+                self._host.update()
+
+            def refresh_plots(self):
+                self._host.update()
 
         self.auto_form = _FormShim(self.host)
 
@@ -164,6 +188,20 @@ class BurstGsTool(ChisurfDockTool):
         if added:
             self.model.bur_files = list(self.model.bur_files) + added
             self.model.notify("changed")
+
+    def _start_guide(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+        if getattr(self, "_guide_button", None) is not None:
+            self._guide_button.click()
+
+    def _show_help(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
+        if getattr(self, "_help_button", None) is not None:
+            self._help_button.show_help()
 
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt override)
         """Persist the window geometry on close."""

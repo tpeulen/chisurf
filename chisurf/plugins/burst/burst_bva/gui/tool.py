@@ -118,6 +118,8 @@ class BVATool(ChisurfDockTool):
             on_stop=self.stop,
             on_browse=self._select_folder,
             on_clear=self._clear_plot,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
         )
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])
         self.setCentralWidget(self.host)
@@ -139,9 +141,14 @@ class BVATool(ChisurfDockTool):
         self._auto_update_cb = QtWidgets.QCheckBox("Auto update", self)
         self._auto_update_cb.setChecked(self.model.auto_update)
         self._auto_update_cb.toggled.connect(lambda v: setattr(self.model, "auto_update", bool(v)))
+        self._auto_update_cb.hide()
 
         # Toolbar
         self._setup_toolbar()
+        if hasattr(self, "toolbar"):
+            self.removeToolBar(self.toolbar)
+            self.toolbar.setVisible(False)
+            self.toolbar.hide()
 
         # Detector page shim for workflow context
         self.detector_page = _DetectorPageShim(self.model)
@@ -270,6 +277,33 @@ class BVATool(ChisurfDockTool):
         if event in ("param", "channel", "folder"):
             self._on_param_changed()
         self.host.update()
+
+    def _start_guide(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+        if getattr(self, "_guide_button", None) is not None:
+            self._guide_button.click()
+        else:
+            from chisurf.gui.widgets.tools.guided_tour import GuidedTour, load_tour
+            from chisurf.gui.widgets.tools.help_guide import GUIDE_RESOURCE, resolve_tool_resource
+
+            path = resolve_tool_resource(GUIDE_RESOURCE, self.model, self)
+            if path is not None:
+                steps = load_tour(path)
+                tour = getattr(self.host, "_guided_tour", None)
+                if tour is not None:
+                    tour.stop()
+                tour = GuidedTour(self.host, steps, model=self.model)
+                self.host._guided_tour = tour
+                tour.start()
+
+    def _show_help(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
+        if getattr(self, "_help_button", None) is not None:
+            self._help_button.show_help()
 
     def tour_target(self, target: dict[str, Any]) -> tuple[QtWidgets.QWidget, tuple | None] | None:
         """Tell GuidedTour where a step target is on this emtk surface."""

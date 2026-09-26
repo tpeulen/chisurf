@@ -60,89 +60,97 @@ def embed_mainwindow(mw: QtWidgets.QWidget) -> QtWidgets.QWidget:
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(4)
 
-    # Re-expose actions: prefer the window's OWN toolbars (not toolbars that
-    # belong to nested panels inside the central widget), fall back to the menu.
-    actions: list[QtWidgets.QAction] = []
-    for tb in mw.findChildren(QtWidgets.QToolBar):
-        if tb.parent() is mw:
-            actions.extend(tb.actions())
-    if not actions:
-        mbar = mw.menuBar()
-        if mbar is not None:
-            for menu_action in mbar.actions():
-                menu = menu_action.menu()
-                if menu is not None:
-                    actions.extend(menu.actions())
-    seen: set[int] = set()
-    button_row = QtWidgets.QHBoxLayout()
-    button_row.setContentsMargins(6, 4, 6, 0)
-    n_buttons = 0
-    has_spacer = False
-    adopted: list[QtWidgets.QWidget] = []
-    for act in actions:
-        if act is None or act.isSeparator():
-            continue
-        if id(act) in seen:
-            continue
-        seen.add(id(act))
-
-        # A toolbar entry added as a *widget* carries no action text, so
-        # filtering on text alone dropped it. That is how every aggregated tool
-        # lost its ``?`` and its **Guide**: both are added with
-        # ``toolbar.addWidget`` (along with the expanding spacer that
-        # right-aligns them), so a tool documented and toured perfectly well on
-        # its own arrived inside a hub with no way to reach either.
-        widget = act.defaultWidget() if isinstance(act, QtWidgets.QWidgetAction) else None
-        if widget is not None:
-            button_row.addWidget(widget)
-            adopted.append(widget)
-            if widget.sizePolicy().horizontalPolicy() == QtWidgets.QSizePolicy.Expanding:
-                has_spacer = True
-            else:
-                n_buttons += 1
-            continue
-
-        if not act.text().strip():
-            continue
-        btn = QtWidgets.QToolButton()
-        btn.setDefaultAction(act)
-        btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
-        button_row.addWidget(btn)
-        n_buttons += 1
-    if n_buttons:
-        # The tool's own spacer already pushes the trailing widgets right; a
-        # second stretch would fight it and re-centre the row.
-        if not has_spacer:
-            button_row.addStretch(1)
-        # A rich tool (ndX has about twenty toolbar actions) does not fit the
-        # width a panel gives it, and Qt's answer is to elide every label to
-        # "M...t" / "P...w" -- a row of buttons nobody can read, which is worse
-        # than a row they have to scroll. Put the row in a horizontal scroller
-        # instead, sized to what it actually needs.
-        row_widget = QtWidgets.QWidget()
-        row_widget.setLayout(button_row)
-        scroller = QtWidgets.QScrollArea()
-        scroller.setWidgetResizable(True)
-        scroller.setFrameShape(QtWidgets.QFrame.NoFrame)
-        scroller.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        scroller.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        scroller.setWidget(row_widget)
-        scroller.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        # The hint has to be taken after the row is installed on a widget, or it
-        # is the empty layout's -- and the horizontal scroll bar lives *inside*
-        # the fixed height, so without its share the buttons are cropped top and
-        # bottom by exactly the bar's thickness.
-        scroller.setFixedHeight(
-            row_widget.sizeHint().height() + scroller.horizontalScrollBar().sizeHint().height() + 6
+    central = mw.centralWidget()
+    is_emtk = (
+        getattr(mw, "_emtk_native", False)
+        or getattr(mw, "is_emtk", False)
+        or getattr(central, "is_emtk", False)
+        or (
+            central is not None
+            and (
+                type(central).__name__ == "ControlHost"
+                or hasattr(central, "_app")
+                or hasattr(mw, "host")
+            )
         )
-        layout.addWidget(scroller)
-        # Only now is the row installed on a widget and the adopted widgets
-        # actually reparented -- and the reparent is what carries Qt's hidden
-        # state over from the toolbar. Showing them before this point sets the
-        # flag on a widget that is then re-hidden, which looked exactly like the
-        # bug it was meant to fix: the buttons take up space and draw nothing.
-        for widget in adopted:
-            widget.setVisible(True)
+    )
+
+    if is_emtk:
+        layout.setSpacing(0)
+        for tb in mw.findChildren(QtWidgets.QToolBar):
+            tb.setVisible(False)
+    else:
+        # Re-expose actions: prefer the window's OWN toolbars (not toolbars that
+        # belong to nested panels inside the central widget), fall back to the menu.
+        actions: list[QtWidgets.QAction] = []
+        for tb in mw.findChildren(QtWidgets.QToolBar):
+            if tb.parent() is mw:
+                actions.extend(tb.actions())
+        if not actions:
+            mbar = mw.menuBar()
+            if mbar is not None:
+                for menu_action in mbar.actions():
+                    menu = menu_action.menu()
+                    if menu is not None:
+                        actions.extend(menu.actions())
+            seen: set[int] = set()
+            button_row = QtWidgets.QHBoxLayout()
+            button_row.setContentsMargins(6, 4, 6, 0)
+            n_buttons = 0
+            has_spacer = False
+            adopted: list[QtWidgets.QWidget] = []
+            for act in actions:
+                if act is None or act.isSeparator():
+                    continue
+                if id(act) in seen:
+                    continue
+                seen.add(id(act))
+
+                # A toolbar entry added as a *widget* carries no action text, so
+                # filtering on text alone dropped it. That is how every aggregated tool
+                # lost its ``?`` and its **Guide**: both are added with
+                # ``toolbar.addWidget`` (along with the expanding spacer that
+                # right-aligns them), so a tool documented and toured perfectly well on
+                # its own arrived inside a hub with no way to reach either.
+                widget = act.defaultWidget() if isinstance(act, QtWidgets.QWidgetAction) else None
+                if widget is not None:
+                    button_row.addWidget(widget)
+                    adopted.append(widget)
+                    if widget.sizePolicy().horizontalPolicy() == QtWidgets.QSizePolicy.Expanding:
+                        has_spacer = True
+                    else:
+                        n_buttons += 1
+                    continue
+
+                if not act.text().strip():
+                    continue
+                btn = QtWidgets.QToolButton()
+                btn.setDefaultAction(act)
+                btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+                button_row.addWidget(btn)
+                n_buttons += 1
+            if n_buttons:
+                # The tool's own spacer already pushes the trailing widgets right; a
+                # second stretch would fight it and re-centre the row.
+                if not has_spacer:
+                    button_row.addStretch(1)
+                row_widget = QtWidgets.QWidget()
+                row_widget.setLayout(button_row)
+                scroller = QtWidgets.QScrollArea()
+                scroller.setWidgetResizable(True)
+                scroller.setFrameShape(QtWidgets.QFrame.NoFrame)
+                scroller.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+                scroller.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+                scroller.setWidget(row_widget)
+                scroller.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+                scroller.setFixedHeight(
+                    row_widget.sizeHint().height()
+                    + scroller.horizontalScrollBar().sizeHint().height()
+                    + 6
+                )
+                layout.addWidget(scroller)
+                for widget in adopted:
+                    widget.setVisible(True)
 
     central = mw.centralWidget()
     if central is not None:
@@ -1326,12 +1334,29 @@ class NavigationPanelTool(ChisurfDockTool):
         wrapper = QtWidgets.QWidget()
         self._prepare_embedded_widget(widget, wrapper)
         layout = QtWidgets.QVBoxLayout(wrapper)
-        layout.setContentsMargins(*self._panel_margins)
+        is_emtk_panel = (
+            getattr(widget, "is_emtk", False)
+            or getattr(widget, "_emtk_native", False)
+            or type(widget).__name__ == "ControlHost"
+            or hasattr(widget, "host")
+        )
+        if is_emtk_panel:
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(0)
+            wrapper.is_emtk = True
+            for tb in widget.findChildren(QtWidgets.QToolBar):
+                if isinstance(widget, QtWidgets.QMainWindow):
+                    widget.removeToolBar(tb)
+                tb.setVisible(False)
+                tb.hide()
+        else:
+            layout.setContentsMargins(*self._panel_margins)
         if panel is not None:
             for flag in MATURITY_FLAGS:
                 if panel.get(flag):
                     layout.addWidget(self._maturity_banner(panel, flag))
         layout.addWidget(widget)
+        wrapper._embedded_widget = widget
         return wrapper
 
     def _maturity_banner(self, panel: Mapping[str, Any], flag: str) -> QtWidgets.QLabel:

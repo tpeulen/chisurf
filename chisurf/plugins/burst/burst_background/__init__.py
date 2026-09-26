@@ -48,7 +48,12 @@ class BurstBackgroundEstimator(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.app = BurstBackgroundApp(model=self.model, on_estimate=self._estimate)
+        self.app = BurstBackgroundApp(
+            model=self.model,
+            on_estimate=self._estimate,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
+        )
         self.gui = self.app.bg_gui
 
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])
@@ -82,6 +87,16 @@ class BurstBackgroundEstimator(QtWidgets.QWidget):
             self._list_widget.clear()
             for f in self.model.files:
                 self._list_widget.addItem(f)
+
+    def _start_guide(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+
+    def _show_help(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
 
     # ── Guided Tour Hook ────────────────────────────────────────────────
     def tour_target(

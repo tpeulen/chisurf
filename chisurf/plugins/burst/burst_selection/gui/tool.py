@@ -462,10 +462,12 @@ class BurstSelectionTool(ChisurfDockTool):
         show_filter_plot: bool = False,
         show_burst_plot: bool = False,
         mmfdb_client: Any = None,
+        embedded: bool = False,
         **kwargs: object,
     ) -> None:
         """Initialize the migrated GUI and its API-backed controls."""
         assert isinstance(self, QtWidgets.QMainWindow), "BurstSelectionTool must be a QMainWindow"
+        self._embedded = bool(embedded)
         self.show_channel_selection = show_channel_selection
         self.show_clear_button = show_clear_button
         self.show_decay_button = show_decay_button
@@ -527,13 +529,44 @@ class BurstSelectionTool(ChisurfDockTool):
         central = QtWidgets.QWidget(self)
         self.setCentralWidget(central)
         layout = QtWidgets.QVBoxLayout(central)
-        layout.setContentsMargins(0, 4, 0, 0)
-        layout.setSpacing(2)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         layout.addLayout(self._build_action_bar(central))
 
         self.dock_area = DockArea(central)
         self._build_docks()
-        layout.addWidget(self.dock_area, 1)
+        self.dock_area.hide()
+        self._status_bar.hide()
+        from emtk.qt_host import ControlHost
+
+        from .app import WINDOW_BG, BurstSelectionApp
+
+        self.app = BurstSelectionApp(
+            self,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
+        )
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        layout.addWidget(self.host, 1)
+
+    def _start_guide(self) -> None:
+        """Start guided tour inside the EMTK host."""
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+        from chisurf.gui.widgets.tools.guided_tour import GuidedTour, load_tour
+        from chisurf.gui.widgets.tools.help_guide import GUIDE_RESOURCE, resolve_tool_resource
+
+        path = resolve_tool_resource(GUIDE_RESOURCE, None, self)
+        if path is not None:
+            steps = load_tour(path)
+            target = getattr(self, "host", self)
+            tour = getattr(target, "_guided_tour", None)
+            if tour is not None:
+                tour.stop()
+            tour = GuidedTour(target, steps, model=None)
+            target._guided_tour = tour
+            tour.start()
 
     def _build_action_bar(self, parent: QtWidgets.QWidget) -> QtWidgets.QLayout:
         """Create the top-level action bar (empty - controls moved to toolbar)."""
@@ -1386,8 +1419,16 @@ class BurstSelectionTool(ChisurfDockTool):
         about_action.triggered.connect(self._show_help)
         help_menu.addAction(about_action)
 
+        self.menuBar().hide()
         self._setup_toolbar()
         self._setup_viewport_toolbar()
+        for tb in self.findChildren(QtWidgets.QToolBar):
+            tb.hide()
+        central = self.centralWidget()
+        if central is not None:
+            for child in self.findChildren(QtWidgets.QWidget):
+                if child is not central and not central.isAncestorOf(child):
+                    child.hide()
 
     def _connect_histogram_controls(self, slot: Any) -> None:
         """Connect histogram controls to a common update slot."""
@@ -3950,12 +3991,12 @@ class BurstSelectionTool(ChisurfDockTool):
         self._status_bar.showMessage("Ready")
 
     def _show_help(self) -> None:
-        """Open the shared help modal (Help ▸ About, and the toolbar ``?``).
-
-        Both routes now show ``help.md`` through the same modal every other
-        ChiSurf tool uses, so the help has one source and its links are live.
-        """
-        self._help_button.show_help()
+        """Open the in-EMTK help window when embedded, fallback to Qt help button."""
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
+        if getattr(self, "_help_button", None) is not None:
+            self._help_button.show_help()
 
     def _open_in_ndxplorer(self) -> None:
         """Open a registered burst selection from MMFDB in ndX (PRD-28)."""

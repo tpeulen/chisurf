@@ -45,6 +45,8 @@ class BurstIrfBackgroundTool(QtWidgets.QWidget):
             model=self.model,
             on_compute=self._compute,
             on_send_to_mle=self._send_to_mle,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
         )
         self.gui = self.app.irf_gui
 
@@ -94,6 +96,16 @@ class BurstIrfBackgroundTool(QtWidgets.QWidget):
             self.auto_form.refresh_plots()
         except Exception:
             pass
+
+    def _start_guide(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+
+    def _show_help(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
 
     # ── Guided Tour Hook ────────────────────────────────────────────────
     def tour_target(

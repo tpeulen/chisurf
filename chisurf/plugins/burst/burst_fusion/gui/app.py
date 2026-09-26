@@ -64,8 +64,17 @@ def _hex_to_rgba(
 class BurstFusionGui:
     """The immediate-mode GUI logic and rendering for Burst Fusion."""
 
-    def __init__(self, model: FusionViewModel | None = None) -> None:
+    def __init__(
+        self,
+        model: FusionViewModel | None = None,
+        on_demo: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
+    ) -> None:
         self.model = model if model is not None else FusionViewModel()
+        self.on_demo = on_demo
+        self.on_guide = on_guide
+        self.on_help = on_help
         self.form_state = FormState()
         spec_path = pathlib.Path(__file__).parent / "fusion.view.json"
         self.spec = load_view_spec(str(spec_path))
@@ -79,8 +88,30 @@ class BurstFusionGui:
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
 
-        # Hook model changes to trigger repaint
-        self.model.add_observer(self._on_model_event)
+        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
+
+        help_resource = pathlib.Path(__file__).parent / "help.md"
+        guide_resource = pathlib.Path(__file__).parent / "guide.json"
+        self.help_window = EmTkHelpWindow(
+            title="Burst Fusion — Help & Reference",
+            resource=help_resource,
+            owner=self.model,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self.model,
+        )
+
+    def start_guide(self) -> None:
+        """Start the in-EMTK guided tour."""
+        self.tour.start()
+
+    def show_help(self) -> None:
+        """Show the in-EMTK help window."""
+        self.help_window.show()
 
     def _on_model_event(self, event: str) -> None:
         pass
@@ -123,6 +154,28 @@ class BurstFusionGui:
             except Exception:
                 pass
         self.remember("toolAction_refresh")
+
+        im.same_line()
+        if self.on_demo is not None:
+            if im.button("🧪 Demo"):
+                self.track("load_demo")
+                try:
+                    self.on_demo()
+                except Exception:
+                    pass
+            self.remember("load_demo")
+            im.same_line()
+
+        if im.button("📖 Guide"):
+            self.track("guide")
+            self.start_guide()
+        self.remember("guide")
+
+        im.same_line()
+        if im.button("❓ Help"):
+            self.track("help")
+            self.show_help()
+        self.remember("help")
 
     def draw(self, w: float, h: float) -> None:
         """Draw the fusion GUI into (w, h) display pixels."""
@@ -178,6 +231,12 @@ class BurstFusionGui:
 
             im.end()
             self.remember("results", (plots_x, 4.0, right_w, h - 8.0))
+
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, w, h))
+
+        if self.tour.active:
+            self.tour.draw(w, h)
 
     def _draw_all_plots(self, w: float, h: float) -> None:
         """Draw 5 plots in a 2-column grid."""
@@ -276,10 +335,26 @@ class BurstFusionGui:
 class BurstFusionApp(ImApp):
     """The EMTK App for Burst Fusion."""
 
-    def __init__(self, model: FusionViewModel | None = None) -> None:
-        self.fusion_gui = BurstFusionGui(model=model)
+    def __init__(
+        self,
+        model: FusionViewModel | None = None,
+        on_demo: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
+    ) -> None:
+        self.fusion_gui = BurstFusionGui(
+            model=model, on_demo=on_demo, on_guide=on_guide, on_help=on_help
+        )
         self.model = self.fusion_gui.model
         super().__init__(gui=self._render, continuous=False)
+
+    def start_guide(self) -> None:
+        """Start guided tour inside EMTK."""
+        self.fusion_gui.start_guide()
+
+    def show_help(self) -> None:
+        """Show help documentation inside EMTK."""
+        self.fusion_gui.show_help()
 
     def _render(self) -> None:
         w, h = im.get_main_viewport().size

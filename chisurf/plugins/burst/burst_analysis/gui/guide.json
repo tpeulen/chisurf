@@ -7,6 +7,16 @@
       "target": {}
     },
     {
+      "title": "0 — detector setup and channels first",
+      "text": "Every burst analysis needs to know which hardware channels map to donor and acceptor detectors, and how excitation pulses (PIE/ALEX) are gated. Configuring it here establishes the setup used across all downstream steps.",
+      "target": {
+        "panel": "Setup Selection"
+      },
+      "await": {
+        "hint": "Select <b>0. Setup Selection</b> in the list on the left."
+      }
+    },
+    {
       "title": "1 — the raw files, once",
       "text": "Every later step reads what you select here and <b>nothing re-opens anything else</b>. That is the point of putting it first: the pipeline has one source of data, so a result can always be traced back to the file it came from.",
       "target": {

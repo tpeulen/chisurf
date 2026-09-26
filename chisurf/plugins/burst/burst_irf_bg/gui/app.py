@@ -59,15 +59,46 @@ class BurstIrfBackgroundGui:
         model: IrfBackgroundViewModel | None = None,
         on_compute: Callable[[], None] | None = None,
         on_send_to_mle: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
     ) -> None:
         self.model = model if model is not None else IrfBackgroundViewModel()
         self.on_compute = on_compute
         self.on_send_to_mle = on_send_to_mle
+        self.on_guide = on_guide
+        self.on_help = on_help
         self.status_text = "Load files, define detectors, then compute."
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
 
+        from pathlib import Path
+
+        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
+
+        help_resource = Path(__file__).parent / "help.md"
+        guide_resource = Path(__file__).parent / "guide.json"
+        self.help_window = EmTkHelpWindow(
+            title="Burst IRF & Background — Help & Reference",
+            resource=help_resource,
+            owner=self.model,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self.model,
+        )
+
         self.model.add_observer(self._on_model_event)
+
+    def start_guide(self) -> None:
+        """Start the in-EMTK guided tour."""
+        self.tour.start()
+
+    def show_help(self) -> None:
+        """Show the in-EMTK help window."""
+        self.help_window.show()
 
     def _on_model_event(self, event: str) -> None:
         if event == "computed":
@@ -93,25 +124,31 @@ class BurstIrfBackgroundGui:
         right_w = max(w - left_w - 16.0, 320.0)
 
         # ── Window 1: Parameters & Actions ──────────────────────────────
-        im.set_next_window_pos((4.0, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((left_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_pos((4.0, 4.0), im.Cond.ALWAYS)
+        im.set_next_window_size((left_w, max(h - 8.0, 100.0)), im.Cond.ALWAYS)
         if im.begin("IRF Parameters"):
             self._draw_parameters()
             im.end()
 
         # ── Window 2: IRF Decay Plot ─────────────────────────────────────
-        im.set_next_window_pos((8.0 + left_w, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((right_w, (h - 12.0) * 0.60), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_pos((8.0 + left_w, 4.0), im.Cond.ALWAYS)
+        im.set_next_window_size((right_w, max((h - 12.0) * 0.60, 150.0)), im.Cond.ALWAYS)
         if im.begin("IRF Plot (Non-burst scatter)"):
             self._draw_irf_plot()
             im.end()
 
         # ── Window 3: Results Table ──────────────────────────────────────
-        im.set_next_window_pos((8.0 + left_w, 8.0 + (h - 12.0) * 0.60), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((right_w, (h - 12.0) * 0.40), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_pos((8.0 + left_w, 8.0 + max((h - 12.0) * 0.60, 150.0)), im.Cond.ALWAYS)
+        im.set_next_window_size((right_w, max((h - 12.0) * 0.40, 100.0)), im.Cond.ALWAYS)
         if im.begin("Results"):
             self._draw_results_table()
             im.end()
+
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, float(w), float(h)))
+
+        if self.tour.active:
+            self.tour.draw(float(w), float(h))
 
     def _draw_parameters(self) -> None:
         avail_w = im.get_content_region_avail()[0]
@@ -184,6 +221,19 @@ class BurstIrfBackgroundGui:
             if callable(self.on_send_to_mle):
                 self.on_send_to_mle()
         self.remember("send_to_mle")
+
+        btn_half_w = max(50.0, (avail_w - 6.0) * 0.5)
+        im.spacing()
+        if im.button("📖 Guide", (btn_half_w, 24.0)):
+            self.track("guide")
+            self.start_guide()
+        self.remember("guide")
+
+        im.same_line()
+        if im.button("❓ Help", (btn_half_w, 24.0)):
+            self.track("help")
+            self.show_help()
+        self.remember("help")
 
         im.spacing()
         im.text_colored(ACCENT_GRAY, f"Files loaded: {len(self.model.files)}")
@@ -280,14 +330,26 @@ class BurstIrfBackgroundApp(ImApp):
         model: IrfBackgroundViewModel | None = None,
         on_compute: Callable[[], None] | None = None,
         on_send_to_mle: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
     ) -> None:
         self.irf_gui = BurstIrfBackgroundGui(
             model=model,
             on_compute=on_compute,
             on_send_to_mle=on_send_to_mle,
+            on_guide=on_guide,
+            on_help=on_help,
         )
         self.model = self.irf_gui.model
         super().__init__(gui=self._render, continuous=False)
+
+    def start_guide(self) -> None:
+        """Start guided tour inside EMTK."""
+        self.irf_gui.start_guide()
+
+    def show_help(self) -> None:
+        """Show help documentation inside EMTK."""
+        self.irf_gui.show_help()
 
     def _render(self) -> None:
         w, h = im.get_main_viewport().size

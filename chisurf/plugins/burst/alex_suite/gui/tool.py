@@ -76,19 +76,16 @@ def _data_selection(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 def _setup(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the detector-setup step: pick one, or edit one.
 
-    The canonical setup editor, embedded rather than re-implemented. It is a
-    ``QWizardPage``, which is a plain widget once it is not in a wizard — the
-    Finish/Next chrome belongs to the wizard, not to the page.
+    The EMTK setup-selection step the Burst Analysis window uses, embedded
+    rather than re-implemented. It selects a setup from the same store every
+    reader uses; full editing stays behind its wizard button, which opens the
+    canonical ``DetectorWizard``.
     """
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
-
-    widget = DetectorWizardPage(
-        show_edit_json=False,
-        show_save=True,
-        show_setup_selection=True,
-        show_help=False,
-        allow_finish=False,
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstSetupSelectionWidget,
     )
+
+    widget = BurstSetupSelectionWidget(parent=parent)
     _bind(parent, "channels", widget)
     return widget
 

@@ -1,0 +1,22 @@
+[
+  {
+    "title": "Welcome to Burst-wise FCS",
+    "text": "This tool correlates photons within isolated single-molecule bursts to extract diffusion coefficients and photophysical kinetics without bulk bias.",
+    "target": {"name": "run"}
+  },
+  {
+    "title": "Correlator Settings",
+    "text": "Configure linear bins per cascade, cascade tier depth, and optional burst padding in milliseconds.",
+    "target": {"name": "run"}
+  },
+  {
+    "title": "Run Correlation",
+    "text": "Press <b>Run FCS</b> to compute autocorrelation and cross-correlation curves across configured detector pairs.",
+    "target": {"name": "run"}
+  },
+  {
+    "title": "Inspect Curves & Gating",
+    "text": "Review the multi-tau correlation curves G(τ) and adjust interactive time-gate boundaries directly on the plot.",
+    "target": {"name": "run"}
+  }
+]

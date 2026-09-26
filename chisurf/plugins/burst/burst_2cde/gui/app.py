@@ -42,18 +42,49 @@ class BurstTwoCdeGui:
         on_restart: Callable[[], None] | None = None,
         on_stop: Callable[[], None] | None = None,
         on_browse: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
     ) -> None:
         self.model = model if model is not None else TwoCdeViewModel()
         self.on_run = on_run
         self.on_restart = on_restart
         self.on_stop = on_stop
         self.on_browse = on_browse
+        self.on_guide = on_guide
+        self.on_help = on_help
 
         self.threshold_y: float = 10.0
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
 
         self.model.add_observer(self._on_model_event)
+
+        from pathlib import Path
+
+        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
+
+        help_resource = Path(__file__).parent / "help.md"
+        guide_resource = Path(__file__).parent / "guide.json"
+        self.help_window = EmTkHelpWindow(
+            title="2CDE — Help & Reference",
+            resource=help_resource,
+            owner=self.model,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self.model,
+        )
+
+    def start_guide(self) -> None:
+        """Start the in-EMTK guided tour."""
+        self.tour.start()
+
+    def show_help(self) -> None:
+        """Show the in-EMTK help window."""
+        self.help_window.show()
 
     def _on_model_event(self, event: str) -> None:
         pass
@@ -77,8 +108,8 @@ class BurstTwoCdeGui:
         right_w = max(w - left_w - 12.0, 200.0)
 
         # ── Left pane: Controls (Dockable) ───────────────────────────────
-        im.set_next_window_pos((4.0, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((left_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_pos((4.0, 4.0), im.Cond.ALWAYS)
+        im.set_next_window_size((left_w, max(h - 8.0, 100.0)), im.Cond.ALWAYS)
         if im.begin("2CDE Controls"):
             self._draw_action_buttons()
             im.spacing()
@@ -92,14 +123,20 @@ class BurstTwoCdeGui:
 
         # ── Right pane: Plot (Dockable) ──────────────────────────────────
         plots_x = left_w + 8.0
-        im.set_next_window_pos((plots_x, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((right_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+        im.set_next_window_pos((plots_x, 4.0), im.Cond.ALWAYS)
+        im.set_next_window_size((right_w, max(h - 8.0, 100.0)), im.Cond.ALWAYS)
         if im.begin("2CDE Plot"):
             avail_w, avail_h = im.get_content_region_avail()
             avail_h = max(avail_h, 250.0)
             self._draw_plot(avail_w, avail_h)
             im.end()
             self.remember("twocde_plot", (plots_x, 4.0, right_w, h - 8.0))
+
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, w, h))
+
+        if self.tour.active:
+            self.tour.draw(w, h)
 
     def _draw_action_buttons(self) -> None:
         """Draw Run, Restart, Stop, and Browse actions."""
@@ -145,6 +182,18 @@ class BurstTwoCdeGui:
             if callable(self.on_browse):
                 self.on_browse()
         self.remember("folder")
+
+        im.same_line()
+        if im.button("📖 Guide"):
+            self.track("guide")
+            self.start_guide()
+        self.remember("guide")
+
+        im.same_line()
+        if im.button("❓ Help"):
+            self.track("help")
+            self.show_help()
+        self.remember("help")
 
     def _draw_folder_input(self, width: float) -> None:
         """Folder path input."""
@@ -289,6 +338,8 @@ class BurstTwoCdeApp(ImApp):
         on_restart: Callable[[], None] | None = None,
         on_stop: Callable[[], None] | None = None,
         on_browse: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
     ) -> None:
         self.two_cde_gui = BurstTwoCdeGui(
             model=model,
@@ -296,9 +347,19 @@ class BurstTwoCdeApp(ImApp):
             on_restart=on_restart,
             on_stop=on_stop,
             on_browse=on_browse,
+            on_guide=on_guide,
+            on_help=on_help,
         )
         self.model = self.two_cde_gui.model
         super().__init__(gui=self._render, continuous=False)
+
+    def start_guide(self) -> None:
+        """Start guided tour inside EMTK."""
+        self.two_cde_gui.start_guide()
+
+    def show_help(self) -> None:
+        """Show help documentation inside EMTK."""
+        self.two_cde_gui.show_help()
 
     def _render(self) -> None:
         w, h = im.get_main_viewport().size

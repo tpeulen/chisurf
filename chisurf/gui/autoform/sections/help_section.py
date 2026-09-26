@@ -113,9 +113,20 @@ class HelpButton(QtWidgets.QWidget):
         self._show()
 
     def _show(self) -> None:
+        from qtpy import QtCore
+
+        # If embedded in an EMTK tool with an in-EMTK help window, prefer in-EMTK help
+        p = self.parent()
+        while p is not None:
+            if hasattr(p, "app") and hasattr(p.app, "show_help"):
+                p.app.show_help()
+                return
+            p = getattr(p, "parent", lambda: None)()
+
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle(self._title)
         dialog.resize(560, 480)
+        dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         layout = QtWidgets.QVBoxLayout(dialog)
         browser = QtWidgets.QTextBrowser()
         # Links in a help page are cross-references, not decoration: a document
@@ -141,4 +152,7 @@ class HelpButton(QtWidgets.QWidget):
         buttons.rejected.connect(dialog.reject)
         buttons.accepted.connect(dialog.accept)
         layout.addWidget(buttons)
-        dialog.exec_()
+        self._active_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()

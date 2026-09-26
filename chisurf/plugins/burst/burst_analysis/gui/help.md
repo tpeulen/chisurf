@@ -12,6 +12,8 @@ numbered steps in the left list and says what each one decides.
 
 The order is not a suggestion. Each step consumes what the one before it wrote:
 
+0. **Setup selection** — the detector channels, hardware routing, and excitation
+   (PIE / ALEX) windows that map TTTR channels to colors and polarizations.
 1. **Data selection** — the raw TTTR files. Nothing later re-opens anything else.
 2. **Burst selection** — the detector channels and the burst search. This is the
    step that decides *what a burst is*; every later number is one row per burst

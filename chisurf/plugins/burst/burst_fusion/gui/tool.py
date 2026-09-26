@@ -44,7 +44,12 @@ class BurstFusionTool(ChisurfDockTool):
         self.setMinimumSize(900, 620)
 
         self.model = FusionViewModel()
-        self.app = BurstFusionApp(model=self.model)
+        self.app = BurstFusionApp(
+            model=self.model,
+            on_demo=self.load_demo,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
+        )
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])
         self.setCentralWidget(self.host)
         self.form = _FormShim(self.host)
@@ -59,12 +64,27 @@ class BurstFusionTool(ChisurfDockTool):
             "a number instead of a feeling."
         )
         self._demo_action.triggered.connect(self.load_demo)
-        self.add_toolbar_guide(toolbar, resource="guide.json", model=self.model)
-        self.add_toolbar_help(
+        guide_btn = self.add_toolbar_guide(toolbar, resource="guide.json", model=self.model)
+        if guide_btn is not None:
+            try:
+                guide_btn.clicked.disconnect()
+            except Exception:
+                pass
+            guide_btn.clicked.connect(self._start_guide)
+
+        help_btn = self.add_toolbar_help(
             toolbar, resource="help.md", title="Burst Fusion — Help", model=self.model
         )
+        if help_btn is not None and getattr(help_btn, "button", None) is not None:
+            try:
+                help_btn.button.clicked.disconnect()
+            except Exception:
+                pass
+            help_btn.button.clicked.connect(self._show_help)
+
         self.toolbar = toolbar
-        self.addToolBar(toolbar)
+        self.toolbar.setVisible(False)
+        self.toolbar.hide()
 
         # Invisible proxy action buttons for navigation shell discovery and testing
         self.btn_run = QtWidgets.QToolButton(self)
@@ -87,6 +107,20 @@ class BurstFusionTool(ChisurfDockTool):
             self.model.analyze()
         except Exception:
             logger.warning("burst fusion: analyze failed", exc_info=True)
+
+    def _start_guide(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+        if getattr(self, "_guide_button", None) is not None:
+            self._guide_button.click()
+
+    def _show_help(self) -> None:
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
+        if getattr(self, "_help_button", None) is not None:
+            self._help_button.show_help()
 
     def tour_target(self, target: dict[str, Any]) -> tuple[QtWidgets.QWidget, tuple | None] | None:
         """Tell GuidedTour where a step target is on this emtk surface."""

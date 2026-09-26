@@ -241,15 +241,25 @@ class H2mmTool(ChisurfDockTool):
         # split/move/close docks, not just a plain tab bar.
         self.dock_area.setContextMenuEnabled(True)
         self.dock_area.setContextMenuMode("basic")
-        layout.addWidget(self.dock_area, 1)
 
         self._status_label = QLabel("Ready")
         self._status_label.setStyleSheet("color: #888; font-style: italic; padding: 0 8px;")
         self._status_label.setFixedHeight(22)
-        layout.addWidget(self._status_label)
-        # Embedded, the shared status bar carries messages — hide the local line.
-        if self._embedded:
-            self._status_label.setVisible(False)
+
+        self.toolbar.hide()
+        self.dock_area.hide()
+        self._status_label.setVisible(False)
+        from emtk.qt_host import ControlHost
+
+        from .app import WINDOW_BG, H2mmApp
+
+        self.app = H2mmApp(
+            self,
+            on_guide=self._start_guide,
+            on_help=self._show_help,
+        )
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        layout.addWidget(self.host, 1)
 
         self._connect_signals()
         # Restore a saved dock arrangement, else apply the default two-column grid
@@ -258,6 +268,22 @@ class H2mmTool(ChisurfDockTool):
         self._restore_dock_layout()
         self.dock_area.layoutChanged.connect(self._save_dock_layout)
         self._load_settings()
+
+    def _start_guide(self) -> None:
+        """Start guided tour inside the EMTK host."""
+        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+            self.app.start_guide()
+            return
+        if getattr(self, "_guide_button", None) is not None:
+            self._guide_button.click()
+
+    def _show_help(self) -> None:
+        """Display help documentation."""
+        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+            self.app.show_help()
+            return
+        if getattr(self, "_help_button", None) is not None:
+            self._help_button.show_help()
 
     def _setup_toolbar(self):
         from chisurf.gui.widgets.tool_buttons import (

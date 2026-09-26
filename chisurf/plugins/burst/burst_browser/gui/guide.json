@@ -1,0 +1,22 @@
+[
+  {
+    "title": "Welcome to Burst Browser",
+    "text": "The Burst Browser allows you to inspect, filter, and gate single-molecule bursts across all measurement runs.",
+    "target": {"name": "browser_controls"}
+  },
+  {
+    "title": "Data Source & Columns",
+    "text": "Select your burst data table and configure observable columns for inspection.",
+    "target": {"name": "browser_controls"}
+  },
+  {
+    "title": "Interactive Gating",
+    "text": "Set gate boundaries on burst size, duration, and FRET parameters to filter your sub-populations.",
+    "target": {"name": "browser_controls"}
+  },
+  {
+    "title": "Burst Table & Histograms",
+    "text": "Inspect the individual burst records in the table and live-updating histogram distributions.",
+    "target": {"name": "browser_controls"}
+  }
+]
