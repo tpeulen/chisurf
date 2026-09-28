@@ -11,6 +11,7 @@ as the traces: .trace_browser_meta.json
 """
 
 import csv
+import importlib.util
 import json
 import os
 import pathlib
@@ -87,16 +88,6 @@ try:
     from chisurf.core.fio.fluorescence import burst as burstio
 except Exception:
     burstio = None
-try:
-    # Both moved when ndX was reorganised (``ndxplorer.reader`` ->
-    # ``ndxplorer.io.reader``, ``ndxplorer.plot_main`` -> the package root).
-    # Guarded imports turn that into a silently missing feature, so the paths
-    # are covered by a test rather than only by this ``except``.
-    from ndxplorer import NDXplorer
-    from ndxplorer.io import reader as ndx_reader
-except Exception:
-    ndx_reader = None
-    NDXplorer = None
 
 # Optional docx dependency (python-docx)
 try:
@@ -2425,7 +2416,7 @@ class TraceBrowser(QWidget):
             except Exception:
                 pass
             return
-        if NDXplorer is None or ndx_reader is None:
+        if importlib.util.find_spec("ndxplorer") is None:
             try:
                 dialogs.error(self, "ndX", "ndX components are not available.")
             except Exception:
@@ -2575,34 +2566,16 @@ class TraceBrowser(QWidget):
             except Exception as _e:
                 logging.debug(f"TraceBrowser: MTI write skipped: {_e}")
 
-            # Open in NDXplorer
+            # Open in ndX: ChiSurf's one ndX window, reading the folder itself
+            # (so it knows where the table came from: title, working path,
+            # the calibration and session stored beside it).
             try:
-                ds = ndx_reader.read_burst_analysis(str(analysis_dir))
-                try:
-                    from chisurf.plugins.ndxplorer.rpc_bridge import make_ndxplorer
+                from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
-                    ndx = make_ndxplorer(data_source=ds)
-                except Exception:
-                    ndx = NDXplorer(data_source=ds)
-                try:
-                    ndx.working_path = str(analysis_dir)
-                except Exception:
-                    pass
-                ndx.setWindowTitle(f"ndX - {src.stem} (TW {tw_ms:.0f} ms)")
+                ndx = build_ndxplorer_window(analysis_dir)
                 ndx.show()
                 ndx.raise_()
                 ndx.activateWindow()
-
-                # Ensure the analysis folder is actually loaded (not just path set)
-                try:
-                    # Use NDXplorer's loader to read the burst analysis directory
-                    ndx.open_files(
-                        file_handles=str(analysis_dir), file_type="burst_dir", append=False
-                    )
-                except Exception as _e:
-                    logging.debug(
-                        f"TraceBrowser: ndX open_files failed, continuing with preloaded DataSource: {_e}"
-                    )
 
                 self.ndxplorer_windows.append(ndx)
 

@@ -6551,10 +6551,7 @@ class MMFDBWidget(NavigationPanelTool):
             dialogs.warning(self, "No Selection", "Please select a processed product.")
             return
         row = selected[0].row()
-        prod_id = self.processed_products_table.item(row, 0).text()
         path_str = self.processed_products_table.item(row, 4).text()
-        prod_data = self.processed_product_detail_widget.get_data()
-        exp_id = prod_data.get("experiment_id") or ""
         if not path_str:
             dialogs.warning(self, "No Path", "Selected product has no associated file path.")
             return
@@ -6568,56 +6565,21 @@ class MMFDBWidget(NavigationPanelTool):
             )
             return
 
-        import sys
-
-        root = Path(__file__).resolve().parents[5]
-        ndx_path = root / "modules" / "ndxplorer"
-        if ndx_path.is_dir() and str(ndx_path) not in sys.path:
-            sys.path.insert(0, str(ndx_path))
-
         try:
-            import ndxplorer.io.reader as ndx_reader
-            from ndxplorer import NDXplorer
+            # ChiSurf's one ndX window; it reads the folder or file itself.
+            from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
-            if path.is_dir():
-                ds = ndx_reader.read_burst_analysis(str(path))
-                ndx = NDXplorer(
-                    data_source=ds,
-                    zmq_cmd_port=8765,
-                    processed_data_id=prod_id,
-                    experiment_id=exp_id,
-                )
-                ndx.working_path = str(path)
-                ndx.setWindowTitle(f"ndX - {path.name}")
-                ndx.show()
-                ndx.raise_()
-                ndx.activateWindow()
-                try:
-                    ndx.open_files(file_handles=str(path), file_type="burst_dir", append=False)
-                except Exception as exc:
-                    chisurf.logging.warning("Operation failed: %s", exc)
-            else:
-                ndx = NDXplorer(
-                    zmq_cmd_port=8765,
-                    processed_data_id=prod_id,
-                    experiment_id=exp_id,
-                )
-                ndx.setWindowTitle(f"ndX - {path.name}")
-                ndx.show()
-                ndx.raise_()
-                ndx.activateWindow()
-                file_type = "h5" if path.suffix == ".h5" else "zip"
-                try:
-                    ndx.open_files(file_handles=str(path), file_type=file_type, append=False)
-                except Exception as exc:
-                    chisurf.logging.warning("Operation failed: %s", exc)
+            ndx = build_ndxplorer_window(path)
+            ndx.show()
+            ndx.raise_()
+            ndx.activateWindow()
 
             if not hasattr(self, "_ndxplorer_windows"):
                 self._ndxplorer_windows = []
             self._ndxplorer_windows.append(ndx)
             self.statusBar().showMessage(f"Opened {path.name} in ndX")
         except Exception as e:
-            dialogs.error(self, "Error", f"Failed to open in NDXplorer:\n{e}")
+            dialogs.error(self, "Error", f"Failed to open in ndX:\n{e}")
 
     def objects_tab(self) -> QtWidgets.QWidget:
         """Create the object store management tab."""

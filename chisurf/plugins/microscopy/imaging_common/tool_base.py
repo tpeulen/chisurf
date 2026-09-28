@@ -197,31 +197,20 @@ class ImagingMapTool(QtWidgets.QWidget):
             self.model.notify("run")
             return
         try:
-            try:
-                from ndxplorer import NDXplorer
-            except Exception:
-                from ndxplorer.core.plot_main import NDXplorer
+            from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
             from .base import build_ndx_data_source
 
             ds = build_ndx_data_source(df)
             win = self._ndx_window
-            if win is None:
-                try:
-                    from chisurf.plugins.ndxplorer.rpc_bridge import make_ndxplorer
-
-                    win = self._ndx_window = make_ndxplorer()
-                except Exception:
-                    win = self._ndx_window = NDXplorer()
-                win.setWindowTitle("ndX — imaging")
+            if win is None or not win.isVisible():
+                # A closed window has closed its app: open a fresh one.
+                win = self._ndx_window = build_ndxplorer_window(data_source=ds)
+            else:
+                self._load_ndx_data_source(win, ds)
             win.show()
             win.raise_()
             win.activateWindow()
-            # ndxplorer builds its plot widgets in a deferred (QTimer) init after
-            # the window is shown; let that run before loading data, else the
-            # data lands before the UI exists and the window shows up empty.
-            QtWidgets.QApplication.processEvents()
-            self._load_ndx_data_source(win, ds)
         except Exception as exc:
             logger.warning("could not open ndxplorer: %s", exc, exc_info=True)
             self.model.results_text = f"ndxplorer failed: {exc}"
@@ -229,34 +218,12 @@ class ImagingMapTool(QtWidgets.QWidget):
 
     @staticmethod
     def _load_ndx_data_source(win, ds) -> None:
-        """Assign a DataSource and put ndxplorer into image mode, then replot.
+        """Show *ds* in the ndX window: a pixel table opens as an image.
 
-        Mirrors ndxplorer's own file-load path: assign data, run image-axis
-        detection (``X pixel``/``Y pixel`` → pixel axes + frame selection), then
-        recompute + replot. Without the detection call the per-pixel table is
-        treated as generic burst data instead of an image.
+        The window's app detects the ``X pixel``/``Y pixel`` columns on every
+        new table (its image mode), as when the table is opened from a file.
         """
-        win.data_source = ds
-        applied = False
-        detect = getattr(win, "check_and_set_image_axes", None)
-        if callable(detect):
-            try:
-                applied = bool(detect())
-            except Exception:
-                logger.debug("ndxplorer image-axis detection failed", exc_info=True)
-        if not applied:
-            refresh = getattr(win, "refresh_axis_comboboxes_preserving_selection", None)
-            if callable(refresh):
-                try:
-                    refresh()
-                except Exception:
-                    logger.debug("ndxplorer axis refresh failed", exc_info=True)
-        upd = getattr(win, "update_ui_data", None)
-        if callable(upd):
-            try:
-                upd()
-            except Exception:
-                logger.debug("ndxplorer update_ui_data failed", exc_info=True)
+        win.show_source(ds)
 
     def _sync_ndxplorer(self) -> None:
         win = self._ndx_window

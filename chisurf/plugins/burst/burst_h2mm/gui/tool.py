@@ -1200,29 +1200,15 @@ class H2mmTool(ChisurfDockTool):
         try:
             from ndxplorer.core.data_source import DataSource
 
-            try:
-                from chisurf.plugins.ndxplorer.rpc_bridge import make_ndxplorer
+            from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
-                win = make_ndxplorer()
-            except Exception:
-                from ndxplorer import NDXplorer
-
-                win = NDXplorer()
-            win.setWindowTitle("ndX — H2MM dwells")
+            # The store is the data source's table, so nothing is copied on
+            # the way into the window.
+            win = build_ndxplorer_window(data_source=DataSource(table))
             self._ndx_dwell_window = win
             win.show()
             win.raise_()
             win.activateWindow()
-            # ndX builds its plot widgets in a deferred init after the window is
-            # shown; let that run first or the data lands before the UI exists.
-            QApplication.processEvents()
-            # The store is the data source's table, so nothing is copied on
-            # the way into the window.
-            win.data_source = DataSource(table)
-            for name in ("recompute", "replot", "update_plots"):
-                fn = getattr(win, name, None)
-                if callable(fn):
-                    fn()
         except Exception as exc:
             logging.warning("could not open the dwell table in ndX: %s", exc)
             self._status(f"ndX could not be opened: {exc}")

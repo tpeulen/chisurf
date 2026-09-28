@@ -66,38 +66,19 @@ def test_lines_service_phasor_and_fret_over_inprocess_client(client):
     assert len(fret_lines[0]["x"]) == 6
 
 
-def test_gui_window_installs_phasor_toolbar(client, qtbot):
-    """A real NDXplorer given the in-process client wires services + installs the toolbar."""
-    import ndxplorer
-    from qtpy import QtWidgets
+def test_chisurf_window_gets_the_phasor_panel(client, qtbot, tmp_path, monkeypatch):
+    """ChiSurf's ndX window hands the app the client: the Phasor / FRET window is on."""
+    monkeypatch.setenv("NDXPLORER_SETTINGS_DIR", str(tmp_path))
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
-    win = ndxplorer.NDXplorer(chisurf_rpc=client)
-    qtbot.addWidget(win)
-    # Run the deferred init (scheduled via singleShot(0)), which wires the RPC services.
-    qtbot.waitUntil(lambda: getattr(win, "phasor_service", None) is not None, timeout=5000)
-    assert win.lines_service is not None
-    toolbar = win.findChild(QtWidgets.QToolBar, "chisurfPhasorToolbar")
-    assert toolbar is not None
-
-
-def test_toolbar_surfaces_control_panel(client, qtbot):
-    """The toolbar button opens the control panel, populated with FRET models over RPC."""
-    import ndxplorer
-    from qtpy import QtWidgets
-
-    win = ndxplorer.NDXplorer(chisurf_rpc=client)
-    qtbot.addWidget(win)
-    qtbot.waitUntil(lambda: getattr(win, "phasor_service", None) is not None, timeout=5000)
-    toolbar = win.findChild(QtWidgets.QToolBar, "chisurfPhasorToolbar")
-
-    # The panel exists (hidden) and the toolbar action reveals it.
-    panel = win.findChild(QtWidgets.QWidget, "chisurfPhasorPanel")
-    assert panel is not None
-    assert panel.isHidden()  # starts hidden
-    toolbar._on_open_panel()
-    assert not panel.isHidden()  # toolbar button surfaced it
-
-    # Overlay-set checkboxes and the FRET model list are populated from ChiSurf.
-    assert set(panel._set_checks) >= {"semicircle", "polar_grid", "fret"}
-    models = [panel._fret_model.itemText(i) for i in range(panel._fret_model.count())]
-    assert any("FRET" in m for m in models)
+    window = build_ndxplorer_window(chisurf_rpc=client, session_autosave=False,
+                                    layout_store=None)
+    try:
+        assert window.app.chisurf_rpc is client
+        assert window.app.panel.available("show_phasor_panel")
+        phasor = next(f for f in window.app.features if f.name == "phasor")
+        # The FRET models come from ChiSurf, over the client.
+        assert any("FRET" in m for m in phasor.panel.fret_models())
+        assert phasor.panel.sweep_params()
+    finally:
+        window.close()

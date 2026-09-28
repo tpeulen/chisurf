@@ -21,19 +21,22 @@ def test_list_files(tmp_path):
 
 
 def test_the_ndxplorer_integration_is_actually_wired():
-    """A guarded import that fails leaves the feature silently missing.
+    """The one-click button opens ChiSurf's ndX window on the analysis folder.
 
-    The browser hands a burst analysis to ndX through two optional
-    imports wrapped in ``try``/``except``. When ndX reorganised its
-    modules both paths went stale, and nothing failed — ``ndx_reader`` and
-    ``NDXplorer`` simply became ``None`` and the button did nothing. This pins
-    the symbols and the two calls the browser makes on them.
+    The browser used to reach into ndX's Qt window through guarded imports;
+    when ndX reorganised, they went stale and the button did nothing. It now
+    goes through the plugin's single construction, pinned here.
     """
+    import inspect
+
     import pytest
 
     pytest.importorskip("ndxplorer")
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
     from chisurf.plugins.tttr import trace_browser
 
-    assert trace_browser.ndx_reader is not None, "ndX reader import went stale"
-    assert trace_browser.NDXplorer is not None, "ndX window import went stale"
-    assert hasattr(trace_browser.ndx_reader, "read_burst_analysis")
+    assert "path" in inspect.signature(build_ndxplorer_window).parameters
+    source = inspect.getsource(trace_browser)
+    assert "build_ndxplorer_window(analysis_dir)" in source
+    assert "NDXplorer(" not in source
+

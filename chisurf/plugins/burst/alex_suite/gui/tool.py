@@ -124,9 +124,9 @@ def _es_explorer(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     thresholds, and a "Dataset Viewer" that plotted any burst property against
     any other. ndX is both, so they are one step.
     """
-    from chisurf.plugins.ndxplorer.rpc_bridge import make_ndxplorer
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
-    widget = embed_mainwindow(make_ndxplorer())
+    widget = embed_mainwindow(build_ndxplorer_window())
     _bind(parent, "es", widget)
     return widget
 
@@ -469,10 +469,8 @@ class AlexSuiteTool(BurstAnalysisTool):
         derived columns the user built on them. So the *file set* is the key —
         a new burst search loads, returning to the step does not.
 
-        Not keyed on "does ndX hold data": a fresh ``NDXplorer`` reports a
-        non-empty ``data_source`` (it starts with a placeholder), so that test
-        reads "already loaded" for a window that has never seen a file, and the
-        step silently stayed on the splash screen.
+        ndX is ChiSurf's ndX window (the emtk app, hosted); it reads the
+        files itself, in the background, with the equations of its settings.
         """
         ndx = getattr(widget, "_embedded_mainwindow", widget)
         files, file_type = self._ndx_sources()
@@ -484,12 +482,8 @@ class AlexSuiteTool(BurstAnalysisTool):
         self._refresh_ndx_parameters(ndx)
         if not files or files == self._es_loaded:
             return
-        open_files = getattr(ndx, "open_files", None)
-        if not callable(open_files):
-            return
-        self._ensure_ndx_equations(ndx)
         try:
-            open_files(file_handles=files, file_type=file_type)
+            ndx.open_paths(files, file_type)
         except Exception as exc:
             logger.warning(f"ALEX Suite: could not open the bursts in ndX — {exc}")
             return
@@ -499,11 +493,7 @@ class AlexSuiteTool(BurstAnalysisTool):
     def _refresh_ndx_parameters(ndx) -> None:
         """Bring ndX's constants up to date with what the measurement stores."""
         try:
-            from chisurf.plugins.ndxplorer.calibration_bridge import (
-                refresh_stored_parameters,
-            )
-
-            applied = refresh_stored_parameters(ndx)
+            applied = ndx.refresh_stored_constants()
             if applied:
                 logger.info(
                     "ALEX Suite: ndX adopted the measurement's stored "
@@ -511,39 +501,6 @@ class AlexSuiteTool(BurstAnalysisTool):
                 )
         except Exception as exc:
             logger.debug(f"ALEX Suite: could not refresh ndX's parameters — {exc}")
-
-    @staticmethod
-    def _ensure_ndx_equations(ndx) -> None:
-        """Make sure ndX has its MFD equations before it is given a file.
-
-        ndX loads its settings — the equations *and* the constants they use — in
-        ``_deferred_init``, which runs when the window is first shown. Embedded
-        in this workflow it is handed files as soon as the step's context is
-        applied, and that can be first: the table then loads with
-        ``equations = []``, so not one derived column is computed. No error, no
-        empty plot — the burst columns are all there, and E and S simply do not
-        exist. "ndX does not compute the equations" is this, and it depends on
-        the order two unrelated things happened in, which is why it comes and
-        goes.
-        """
-        if getattr(ndx, "equations", None):
-            return
-        try:
-            from ndxplorer import settings_helpers
-
-            settings_helpers.load_settings(
-                ndx,
-                settings_json_fn=str(settings_helpers.get_settings_path() / "mfd.settings.json"),
-            )
-            logger.info(
-                f"ALEX Suite: loaded {len(ndx.equations)} ndX equations before "
-                "handing it the bursts (its own deferred init had not run yet)."
-            )
-        except Exception as exc:
-            logger.warning(
-                f"ALEX Suite: could not load ndX's equations — E and S will be "
-                f"missing from the E-S step ({exc})"
-            )
 
     def _ndx_sources(self) -> tuple[list[str], str | None]:
         """Return the burst sources in the form ndX can actually open.

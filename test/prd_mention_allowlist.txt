@@ -124,8 +124,6 @@ chisurf/plugins/modelling/fret/gui/dock_tool.py
 chisurf/plugins/modelling/fret/test/test_cli_flags.py
 chisurf/plugins/modelling/fret/test/test_engine.py
 chisurf/plugins/modelling/fret/test/test_fps_outputs.py
-chisurf/plugins/ndxplorer/mmfdb_launcher.py
-chisurf/plugins/ndxplorer/rpc_bridge.py
 chisurf/plugins/pch/gui/tool.py
 chisurf/plugins/pch/test/test_gui_dock_tool.py
 chisurf/plugins/spectra_downloader/tests/test_register_component.py
