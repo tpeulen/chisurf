@@ -131,3 +131,99 @@ def test_a_table_handed_over_is_shown(qapp):
         assert window.app.model.source.size == 3
     finally:
         window.close()
+
+
+# -- File > Import > From MMFDB ------------------------------------------------
+
+
+@pytest.fixture
+def embedded_mmfdb(tmp_path, monkeypatch):
+    """A real in-process MMFDB on a throw-away database.
+
+    Resets ChiSurf's shared session client before and after, so the client is
+    built -- and adopts the session token -- inside the test.
+    """
+    pytest.importorskip("mmfdb")
+    from chisurf.gui.widgets.mmfdb import picker
+
+    monkeypatch.setenv("MMFDB_DATABASE_URL", f"sqlite:///{tmp_path / 'mmfdb.db'}")
+    import chisurf.core.settings as cs_settings
+
+    mmfdb = dict(cs_settings.cs_settings.get("mmfdb", {}) or {})
+    for key in ("last_server", "last_port"):
+        mmfdb.pop(key, None)
+    mmfdb["default_user_id"] = "user"
+    monkeypatch.setitem(cs_settings.cs_settings, "mmfdb", mmfdb)
+    picker.reset_session_client()
+    yield
+    picker.reset_session_client()
+
+
+def _log_in_like_chisurf_startup() -> None:
+    """Log in as ChiSurf's start-up does, and keep the token for the process."""
+    from mmfdb.security.credentials import store_runtime_session_token
+
+    from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
+
+    login = MMFDBClient(inprocess=True)
+    result = login.login("user", "user", quiet=True)
+    assert result.get("ok"), result
+    store_runtime_session_token(login.host, login.cmd_port, "user", result["token"])
+
+
+def test_from_mmfdb_opens_the_picked_selection(qapp, embedded_mmfdb, tmp_path, monkeypatch):
+    """Logged in: the entry is enabled, and the picked selection opens in the window."""
+    from chisurf.plugins.ndxplorer import mmfdb_launcher
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+
+    table = tmp_path / "selection.csv"
+    table.write_text("I_DD,I_DA\n10,4\n20,8\n")
+    picked = {}
+
+    def pick(parent=None, scope="all", *, client):
+        picked["client"] = client
+        return str(table)
+
+    monkeypatch.setattr(mmfdb_launcher, "pick_burst_selection_path", pick)
+    _log_in_like_chisurf_startup()
+    window = build_ndxplorer_window(session_autosave=False, layout_store=None)
+    try:
+        assert window.app.panel.available("open_from_mmfdb")
+        assert window.app.run_action("open_from_mmfdb")
+        assert picked["client"].token, "the picker got a client without the session"
+        assert window.app.model.has_data and window.app.model.source.size == 2
+        assert window.app.message is None
+    finally:
+        window.close()
+
+
+def test_from_mmfdb_without_a_session_says_why(qapp, embedded_mmfdb, monkeypatch):
+    """No session: nothing is picked, and the window says it is not logged in."""
+    from mmfdb.security import credentials
+
+    from chisurf.plugins.core.mmfdb_admin.gui import session
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+
+    monkeypatch.setattr(credentials, "load_runtime_session_token", lambda *a, **k: None)
+    monkeypatch.setattr(session, "cached_token", lambda *a, **k: None)
+    window = build_ndxplorer_window(session_autosave=False, layout_store=None)
+    try:
+        assert window.open_from_mmfdb() is None
+        title, text = window.app.message
+        assert title == "Open from MMFDB" and "not logged in" in text
+    finally:
+        window.close()
+
+
+def test_from_mmfdb_without_a_client_says_why(qapp, monkeypatch):
+    """No in-process MMFDB at all: the message says the client could not start."""
+    from chisurf.gui.widgets.mmfdb import picker
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+
+    monkeypatch.setattr(picker, "inprocess_client", lambda: None)
+    window = build_ndxplorer_window(session_autosave=False, layout_store=None)
+    try:
+        assert window.open_from_mmfdb() is None
+        assert "could not be started" in window.app.message[1]
+    finally:
+        window.close()

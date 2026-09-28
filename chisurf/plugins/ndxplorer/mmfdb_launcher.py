@@ -1,9 +1,11 @@
-"""Open a registered burst selection from MMFDB in ndX (PRD-28).
+"""Open a registered burst selection from MMFDB in ndX.
 
 The chisurf side of the ndX ↔ MMFDB round trip. Reuses the existing dataset
 picker (the sample/measurement selection widget) and ``mmfdb.datasets.open`` to
-resolve an artifact to a local path, then hands it to ndX via its drop-style
-opener. ``modules/ndxplorer`` stays chisurf-free; this module is the only glue.
+resolve an artifact to a local path, then opens it in ChiSurf's ndX window
+(:func:`chisurf.plugins.ndxplorer.window.build_ndxplorer_window`), whose
+File > Import > From MMFDB runs :func:`pick_burst_selection_path` too.
+``modules/ndxplorer`` stays chisurf-free; this module is the only glue.
 
 Usable directly (e.g. from the Code Editor) for a manual round-trip test::
 
@@ -37,53 +39,32 @@ def resolve_dataset_path(client: Any, artifact_id: str) -> str | None:
 
 
 def open_path_in_ndxplorer(path: str) -> Any:
-    """Launch (a new) ndX and open ``path`` using its drop-style opener.
+    """Open ``path`` in a new ndX window and show it.
 
-    Best-effort: ndX is an optional external module. Returns the ndX
-    instance or ``None`` if it could not be launched.
+    Returns the window, or ``None`` if ndX could not be opened.
     """
     try:
-        import ndxplorer
-        from ndxplorer.__main__ import open_path_like_drop
-        from qtpy import QtCore
+        from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+
+        window = build_ndxplorer_window(path)
     except Exception as exc:  # pragma: no cover - depends on optional module
-        logger.error("ndX is not available: %s", exc)
+        logger.error("ndX could not be opened: %s", exc)
         return None
-    # PRD-56: hand ndX an in-process ChiSurf client so its phasor / FRET-line
-    # features work with no server process. Best-effort — None degrades gracefully.
-    chisurf_rpc = None
-    try:
-        from chisurf.plugins.ndxplorer.rpc_bridge import make_inprocess_chisurf_client
-
-        chisurf_rpc = make_inprocess_chisurf_client()
-    except Exception:  # pragma: no cover - optional
-        logger.warning("Could not build in-process ChiSurf RPC client", exc_info=True)
-    ndx = ndxplorer.NDXplorer(chisurf_rpc=chisurf_rpc)
-    ndx.show()
-    ndx.raise_()
-    ndx.activateWindow()
-    # Open AFTER ndX's deferred initialization has run. NDXplorer schedules
-    # _deferred_init via singleShot(0) from __init__, and that is what loads the
-    # settings/equations (which derive Sg/Sr/Proximity ratio/FRET…) and seeds the
-    # default state. Opening synchronously here would (a) compute columns with
-    # empty equations and (b) race deferred init, which then overwrites the loaded
-    # data with the bundled example dataset. Scheduling the open with a second
-    # singleShot(0) guarantees FIFO ordering: deferred init first, then the open.
-    QtCore.QTimer.singleShot(0, lambda: open_path_like_drop(ndx, str(path)))
-    return ndx
+    window.show()
+    window.raise_()
+    window.activateWindow()
+    return window
 
 
-def open_burst_selection_from_mmfdb(
+def pick_burst_selection_path(
     parent: Any = None,
     scope: str = "all",
     *,
     client: Any,
-) -> Any:
-    """Pick a registered burst selection from MMFDB and open it in ndX.
+) -> str | None:
+    """Let the user pick a registered burst selection; return its local path.
 
-    Pick (the sample/measurement selection widget) → resolve the artifact to a
-    local path → open in ndX. Returns the ndX instance, or ``None`` if
-    nothing was selected / it could not be opened.
+    ``None`` when nothing was picked or the artifact has no local path.
     """
     from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
 
@@ -100,7 +81,23 @@ def open_burst_selection_from_mmfdb(
     if not path:
         logger.error("Could not resolve a local path for artifact %s", sel.artifact_id)
         return None
-    return open_path_in_ndxplorer(path)
+    return path
+
+
+def open_burst_selection_from_mmfdb(
+    parent: Any = None,
+    scope: str = "all",
+    *,
+    client: Any,
+) -> Any:
+    """Pick a registered burst selection from MMFDB and open it in ndX.
+
+    Pick (the sample/measurement selection widget) → resolve the artifact to a
+    local path → open in ndX. Returns the ndX window, or ``None`` if nothing
+    was selected / it could not be opened.
+    """
+    path = pick_burst_selection_path(parent, scope, client=client)
+    return open_path_in_ndxplorer(path) if path else None
 
 
 def send_path_to_ndxplorer(path: str, parent: Any = None) -> Any:

@@ -75,6 +75,7 @@ class NdxWindow(ChisurfDockTool):
 
         self.app = app
         app.on_exit = self.close
+        app.mmfdb_opener = self.open_from_mmfdb
         self.setWindowTitle(app.window_title)
         self.resize(*WINDOW_SIZE)
         self.host = ControlHost(app, background=(30, 32, 38))
@@ -102,6 +103,75 @@ class NdxWindow(ChisurfDockTool):
             model.path = str(path)
         self.app.data_changed()
         self.host.update()
+
+    def open_paths(self, paths, kind: str | None = None):
+        """Open several files as one table, in the background (File > Import).
+
+        *kind* is an importer of :data:`ndxplorer.io.loading.IMPORTERS`
+        (``"pto"``, ``"bur"``...), or ``None`` to tell it from the paths.
+        Returns the load task, or ``None`` when there was nothing to open.
+        """
+        paths = [str(p) for p in paths or ()]
+        if not paths:
+            return None
+        task = self._feature("io").load(paths, kind)
+        self.host.update()
+        return task
+
+    def refresh_stored_constants(self) -> dict:
+        """Adopt the constants the open measurement stores, if they changed.
+
+        What a workflow step calls when it is revisited: another step may have
+        written a new background or calibration into the container since. A
+        no-op when the stored values have not moved, so tuned values stay.
+        """
+        applied = self._feature("accurate_fret").restore_stored()
+        self.host.update()
+        return applied
+
+    def open_from_mmfdb(self, client: Any = None) -> str | None:
+        """File > Import > From MMFDB: pick a burst selection, open it here.
+
+        The client is ChiSurf's shared in-process MMFDB client
+        (:func:`chisurf.gui.widgets.mmfdb.picker.inprocess_client`), which
+        adopts the session token of ChiSurf's MMFDB login -- ``mmfdb.status``
+        refuses a client without one. When there is no client, or it does not
+        answer, the app says why in a message box. Returns the opened path.
+        """
+        from chisurf.plugins.ndxplorer.mmfdb_launcher import pick_burst_selection_path
+
+        title = "Open from MMFDB"
+        if client is None:
+            from chisurf.gui.widgets.mmfdb import picker
+
+            client = picker.inprocess_client()
+        if client is None:
+            self._say(title, "The in-process MMFDB client could not be started "
+                             "(MMFDB missing or its database not initialised).")
+            return None
+        try:
+            client.status()
+        except Exception as exc:  # noqa: BLE001 - said, not raised
+            hint = "" if getattr(client, "token", None) else " (not logged in to MMFDB)"
+            self._say(title, f"MMFDB did not answer{hint}: {exc}")
+            return None
+        path = pick_burst_selection_path(parent=self, client=client)
+        if path:
+            self.open_path(path)
+        return path
+
+    def _say(self, title: str, text: str) -> None:
+        """A message box in the app (and the log): the reason a thing did not happen."""
+        logger.warning("%s: %s", title, text)
+        self.app.message = (title, text)
+        self.host.update()
+
+    def _feature(self, name: str):
+        """The app's feature module *name* (``io``, ``accurate_fret``...)."""
+        for feature in self.app.features:
+            if feature.name == name:
+                return feature
+        raise LookupError(f"ndX has no {name!r} feature")
 
     def on_paths_dropped(self, paths) -> None:
         """A dropped file or folder goes to the app, which opens the first."""
