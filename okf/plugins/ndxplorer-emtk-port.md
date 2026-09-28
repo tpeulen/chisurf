@@ -22,6 +22,73 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Hosted in ChiSurf (2026-09-28)
+
+State: ChiSurf opens only the emtk app. `build_ndxplorer_window` (plugin
+`window.py`) hosts `NdxApp` in a `ChisurfDockTool` through
+`emtk.qt_host.ControlHost` (QPainter host; why not the wgpu host:
+[ndxplorer](plugins/ndxplorer.md) "One window"). Every route uses it: ribbon
+and menu (manifest `entrypoints.gui`), `__init__.py`, trace browser, MMFDB
+admin, imaging, H2MM, ALEX Suite E-S, `mmfdb_launcher` (burst selection,
+MMFDB). The host sets `app.chisurf_rpc` (in-process client) and
+`app.mmfdb_opener`; the app registers its constants in the Global View slot
+`ndxplorer` and the window withdraws them on close. New in the app: the
+**Phasor / FRET** window (`features/phasor.py` + `phasor/phasor.view.json`,
+View > Phasor / FRET…, View > Clear phasor overlays; off with a reason
+without a client) and File > Import > From MMFDB enabled by the host.
+Deleted from ChiSurf: the Qt toolbars of `window.py`, `rpc_bridge.make_ndxplorer`
++ `_measurement_aware`, `calibration_report.py`, `calibration_options.py`.
+Guard: `chisurf/plugins/ndxplorer/tests/test_no_qt_ndx_window.py`.
+Commits: chisurf 2633b5853, 149703517, 30eb376cb; ndxplorer e5f8252, 6540087.
+
+Before/after (control inventory, Qt `parity/qt/<id>` vs the hosted emtk
+window; re-derive with a script like the one in the log bullet -- build the
+window on a **copy** of the cal1 `.pto`, `session_autosave=False`,
+`layout_store=None`, `window.grab()`):
+
+- chisurf_toolbars: Accurate FRET toolbar (FRET calibration, Save, Load) ->
+  FRET menu (same three); Sync constants -> not needed (one group, no copy);
+  ChiSurf Phasor toolbar (Phasor / FRET…, Clear) -> View > Phasor / FRET…,
+  View > Clear phasor overlays; parameters restored on open -> restored (the
+  status line says "Restored 16 constants stored in …"). Trap: the values
+  differ from the Qt shot (gG/gR 0.533 vs 1.333, PhiA/PhiD 0.32/0.8 vs 1/1,
+  plus gamma) because the cal1 container carries a newer saved calibration
+  than when the Qt baseline was taken; `restorable()` on the copy gives the
+  emtk values exactly.
+- chisurf_phasor: every panel control is in the emtk form (Frequency,
+  Harmonic, Lifetimes, Donor τ0, the five sets, Draw overlays, Clear; Model,
+  Sweep param, Min, Max, Points, Draw FRET line; τ φ/M columns). Measured on
+  the imaging table (g/s): 27-28 phasor items, 1 FRET line, tau_phi/tau_m added.
+- mmfdb_open: Qt toolbar (never shown in the baseline: no session) -> File >
+  Import > From MMFDB…, enabled when hosted.
+- Send selection to (right-click the map): targets FCS, TCSPC decay, PDA, PCH
+  from the same `BurstAnalysisBridge.discover()` the Qt window used.
+
+Open front:
+
+1. **MMFDB provenance on Save burst IDs** is lost: the MMFDB admin opened the
+   Qt window with `processed_data_id`/`experiment_id`, and saving burst IDs
+   called `ndxplorer.record_analysis` over RPC. The emtk io feature has no
+   hook for it; the admin now just opens the path. Needs an app hook (like
+   `mmfdb_opener`) called after `_write_burst_ids`, set by the host.
+2. **The MMFDB picker is the legacy Qt `MmfdbDatasetPickerDialog`**, opened by
+   the host window (not a new Qt surface). An uncommitted native port in
+   another session has `chisurf.emtk.dataset_picker.DatasetPicker`; switch
+   `NdxWindow.open_from_mmfdb` to it once that is committed.
+3. **One entry point in the manifest**: that same uncommitted native work adds
+   `"emtk": "chisurf.plugins.ndxplorer.gui.app:make_app"` to the ndX manifest
+   (and `chisurf/plugins/ndxplorer/gui/app.py`, which decorates the app a
+   second way). Left untouched (not this session's); it must be reconciled with
+   `build_ndxplorer_window` so there is one construction.
+4. **Embedded ALEX step**: `embed_mainwindow` flattens `NdxWindow` into the
+   workflow, so its `closeEvent` never runs -- no `app.close()` (session save
+   on close) and no Global View withdraw for that window.
+5. **Imaging live sync** hands a new table each run (`show_source`), which
+   clears the gates; the Qt window did the same through `data_source`.
+6. Deleting ndX's own Qt GUI (`ndxplorer/core/plot_main.py`, `ui/`) is a
+   separate, user-confirmed step; `ndxplorer/phasor_integration.py`,
+   `ui/phasor_toolbar.py`, `ui/phasor_panel.py` go with it.
+
 ### Session state in the measurement (2026-09-28)
 
 State: a `.pto` keeps the analysis view as `ndx_session` (artifact kind

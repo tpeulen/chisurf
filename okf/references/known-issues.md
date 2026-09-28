@@ -5989,3 +5989,25 @@ Open, highest value first:
     wording (measured 2.8×); CLSM-Draw "&" mnemonic; ndX
     `DataSource(columns, frame)` gone, breaking make_screenshots'
     `_grab_ndx_gaussian_panel`.
+
+## ndX opened from the MMFDB admin no longer records a selection back into MMFDB
+
+**Since 2026-09-28** ChiSurf opens only the emtk ndX app. The legacy Qt window,
+when the MMFDB admin opened it with `processed_data_id`/`experiment_id`, called
+`ndxplorer.record_analysis` (mmfdb `admin/backend/ndxplorer_services.py`) when
+burst IDs were saved; the emtk io feature has no such hook, so the admin now
+opens the path and nothing is recorded. **Blocks:** provenance of gate
+selections made from an MMFDB product. Fix: an app hook after
+`_write_burst_ids` that the host sets (as `app.mmfdb_opener`). Resume point:
+[ndxplorer-emtk-port](../plugins/ndxplorer-emtk-port.md) "Hosted in ChiSurf".
+
+## Two guard tests red on 2026-09-28, from uncommitted native-port files
+
+Measured in the arm64 env while switching ndX to the emtk app:
+`test/test_forbidden_communication.py` (17 files over their count, all in the
+uncommitted native emtk ports: `*/gui/app.py`, `*/test/test_native.py`,
+`calculator/native_form.py`, `autoform/sections/{builtin,parameter_table}.py`)
+and `test/test_prd_mentions.py::test_prd_mention_allowlist_has_no_stale_entries`
+(`calculator/kappa2_dist/gui/tool.py`,
+`tttr/tttr_time_windows/tests/test_construction_smoke.py` no longer name a
+PRD). Not edited under their owners. **Blocks:** nothing at run time.

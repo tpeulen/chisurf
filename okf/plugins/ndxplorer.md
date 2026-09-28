@@ -25,31 +25,41 @@ module import time.
 
 ## One window, whichever way it is opened
 
-ChiSurf opens ndX two ways: the **menu** calls the manifest's `entrypoints.gui`
-(`run_plugin_from_dir` -> `_show_manifest_gui`), the **ribbon** executes the
-plugin's `__init__.py` as `plugin`. They used to build different windows: the
-Accurate FRET toolbar, the MMFDB toolbar and the Global View binding lived in
-`__init__.py`, so a window from the menu had only the phasor toolbar and the
-calibration restore. Both now call
-`chisurf.plugins.ndxplorer.window:build_ndxplorer_window` (the manifest points
-at it; `__init__.py` calls it and shows the window). It builds on
-`rpc_bridge.make_ndxplorer`, which the other launchers (trace browser, ALEX
-suite, H2MM, imaging) keep using bare: the Global View binding is one slot
-(`owner_id="ndxplorer"`), and it belongs to ChiSurf's ndX window.
+ChiSurf opens ndX as the **emtk app** (`ndxplorer.app.frame.NdxApp`) hosted in
+a Qt window, and through **one** construction:
+`chisurf.plugins.ndxplorer.window:build_ndxplorer_window(path=None, *,
+data_source=None, chisurf_rpc=None, session_autosave=True, layout_store=...)`,
+which returns an `NdxWindow` (a `ChisurfDockTool` whose central widget is
+`emtk.qt_host.ControlHost(app)` -- the lightpath_simulator / globalview
+pattern). The menu and the ribbon (both `run_plugin_from_dir` ->
+`_show_manifest_gui` -> the manifest's `entrypoints.gui`), the plugin's
+`__init__.py`, `mmfdb_launcher.open_path_in_ndxplorer` (burst selection's
+output, MMFDB), the trace browser, the MMFDB admin, imaging (`show_source`,
+image mode on every new table), H2MM (dwell table) and the ALEX Suite's E-S
+step (`open_paths`, `refresh_stored_constants`) all call it. Nothing in
+`chisurf/` touches the Qt window any more: `tests/test_no_qt_ndx_window.py`
+fails on `ndxplorer.core.plot_main`, `NDXplorer` or `make_ndxplorer`.
 
-**The MMFDB toolbar uses ChiSurf's MMFDB session.** It never appeared: the
-window probed `mmfdb.status` with a private `MMFDBClient(inprocess=True)`,
-which carries no session token, `mmfdb.status` requires one, and a bare
-`except: pass` swallowed the "Authentication required". The window now takes
-the shared client `chisurf.gui.widgets.mmfdb.picker.inprocess_client()`, which
-adopts the token of ChiSurf's start-up login (as every file selector does).
-When MMFDB is genuinely unavailable -- no client, not logged in, no answer --
-the reason is a logged warning and a status-bar message, never a silent skip.
+What the host adds (the app stays ChiSurf-free): `app.chisurf_rpc` = the
+in-process client of `rpc_bridge.make_inprocess_chisurf_client` (Send
+selection to, the Phasor / FRET window); `app.mmfdb_opener` = File > Import >
+From MMFDB through ChiSurf's shared session client
+(`picker.inprocess_client()`; no client or no session says why in the app's
+message box); the Global View slot `ndxplorer` (the app registers its
+constants itself; the window withdraws them on close unless a newer window
+holds the slot); drops forwarded to `app.files_dropped`. The FRET menu and the
+calibration restore on open are the app's own.
+
+**Host choice: the QPainter host.** `emtk.wgpu_host.WgpuControlHost` forwards
+only the left button (no right-click gate/plot menus, no Send selection to),
+does not redraw while the app animates (playback, background loads), ignores
+the app's window title and cannot be grabbed for a screenshot; the QPainter
+host has all of that and draws the 1400x900 frame in ~20 ms (measured with
+the cal1 `.pto`, 44 270 bursts).
 
 Tests: `chisurf/plugins/ndxplorer/tests/test_window_routes.py` (both routes
-give the same toolbars and bind the Global View; a real in-process MMFDB on a
-temporary database shows the toolbar when logged in and logs why not
-otherwise).
+host the app with the client and publish/withdraw the constants; From MMFDB
+opens a picked selection with the session client, and says why without one).
 
 ## The calibration button asks what it may determine
 
@@ -65,7 +75,7 @@ populations is only as good as those populations, and someone who determined γ
 on a reference sample wants α and δ fitted *around* it rather than replaced by a
 worse estimate. So the action now asks first (the options and their form are ndX's,
 `ndxplorer/analysis/fret_calibration.py` + `fret_calibration_options.view.json`,
-shown in the Qt window by `calibration_options.py`): which of α, δ, γ, β, R₀ may be written, which route γ comes from,
+shown by the emtk app's FRET menu -- the Qt window's `calibration_options.py` dialog was deleted with its toolbar on 2026-09-28): which of α, δ, γ, β, R₀ may be written, which route γ comes from,
 whether the light-path priors are used, the bootstrap count, τ_D(0) and the
 linker width, and whether the accurate per-burst columns are added.
 
@@ -139,10 +149,10 @@ since every burst reader addresses a run), and `restore_calibration_from_contain
 applies it. Only the stored factors are replaced — the window's backgrounds and
 quantum yields survive, because those are not what the artifact describes.
 
-There is no "a load finished" signal in ndX, but there is one place every load
-ends: the assignment to `data_source`. `rpc_bridge._measurement_aware` subclasses
-the window to hook that property, so this works for every in-GUI ndX regardless
-of which path opened the file.
+In the emtk app the restore is the accurate-FRET feature's
+`restore_stored()`, run on every `on_data_changed` (so every route that opens a
+table restores); the Qt-window hook `rpc_bridge._measurement_aware` was deleted
+with the Qt route on 2026-09-28.
 
 **Under flrCIF's names, not chisurf's.** `_flr_fret_calibration_parameters`
 has carried `alpha`, `alpha_sd`, `beta`, `gamma`, `delta`, `gG_gR_ratio` and

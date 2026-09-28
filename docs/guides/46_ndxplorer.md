@@ -41,6 +41,37 @@ python -m ndxplorer --chisurf-rpc localhost:5555 # linked to a ChiSurf server
 Load an MFD table (a burst `.csv`/HDF5, or a ChiSurf posterior export). Each row
 is one burst; each numeric column is a selectable axis.
 
+(guide-ndx-in-chisurf)=
+### ndX in ChiSurf
+
+In ChiSurf, **Main › Tools › ndX** (the ribbon button) opens the same emtk
+application in a ChiSurf window. So do the tools that hand ndX a table: the
+trace browser's one-click ndX, the MMFDB admin's *Open in ndX*, the imaging
+tools' pixel table, H2MM's dwell table, the burst-selection output and the
+ALEX Suite's E–S step. Hosted, the window gets what only ChiSurf has:
+
+- **View › Phasor / FRET…** — the phasor overlays (universal semicircle,
+  iso-lifetime grid, lifetime ticks, polar grid, FRET trajectory at a
+  frequency, harmonic and donor τ0), the **FRET line** of a FRET model swept
+  over one of its parameters, and the **τ φ/M columns** computed from the g, s
+  columns. ChiSurf computes the geometry; the lines are drawn over the map in
+  data coordinates. **View › Clear phasor overlays** removes them. Standalone
+  (without `--chisurf-rpc`) both entries are off, and the window says why.
+- **Send selection to ▸** (right-click on the map) — the gated bursts go to
+  ChiSurf's PDA, FCS, TCSPC-decay or PCH analysis (the {ref}`bridges <concept-md-bridges>`).
+- **File › Import › From MMFDB…** — pick a burst selection registered in MMFDB
+  (you must be logged in to ChiSurf's MMFDB) and open it here.
+- The **constants** appear in the **Global View** as the group *ndX*, where a
+  fit parameter can be linked to one; closing the window withdraws them.
+- The **FRET** menu (calibration, save, load) and the **calibration restore**
+  on opening a `.pto` are the app's own and work the same outside ChiSurf.
+
+```{figure} figures/ndxplorer_chisurf_phasor.png
+ndX opened from ChiSurf's ribbon: an image table on g/s with the phasor
+overlays (semicircle, lifetime grid and ticks, polar grid) drawn by
+View › Phasor / FRET….
+```
+
 (guide-ndx-playback)=
 ## Play the measurement back
 
@@ -561,8 +592,8 @@ session was saved.
   (FRET › Save calibration), its constants are kept and the session's are not.
 
 The window layout (docks, marginal sizes) is yours, not the measurement's, and
-stays in `~/.ndxplorer/ndxplorer_layout.json`. The Qt window ignores a stored
-session. The session is one JSON object, `ndx_session`, of the mmfdb artifact
+stays in `~/.ndxplorer/ndxplorer_layout.json`. The legacy Qt window (no longer
+opened by ChiSurf) ignores a stored session. The session is one JSON object, `ndx_session`, of the mmfdb artifact
 kind `analysis_view_state`, with its schema version, the ndX version and the
 identity of the table it was made on.
 

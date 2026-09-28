@@ -40433,3 +40433,14 @@ side of the line.
   ndxplorer ac3d2f6, 12ca8f9, ce10402, 3cfb688 (+ playback hooks inside
   2a7d158); mmfdb f5c89f4; guide 46 "Session state in the measurement";
   resume point in [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).
+- 2026-09-28 — **ChiSurf opens ndX as the emtk app.** `build_ndxplorer_window`
+  hosts `NdxApp` in a Qt window (QPainter `ControlHost`) and is the one
+  construction for the ribbon/menu and every tool that opens ndX (trace
+  browser, MMFDB admin, imaging, H2MM, ALEX Suite, burst selection, MMFDB
+  launcher). Host adds the in-process RPC client and the MMFDB opener; the app
+  gained the Phasor / FRET window and an enabled File > Import > From MMFDB.
+  The Qt toolbars, `make_ndxplorer`, `calibration_report.py` and
+  `calibration_options.py` are deleted; `test_no_qt_ndx_window.py` guards it.
+  chisurf 2633b5853, 149703517, 30eb376cb; ndxplorer e5f8252, 6540087; guide 46
+  "ndX in ChiSurf"; resume point in
+  [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md) "Hosted in ChiSurf".
