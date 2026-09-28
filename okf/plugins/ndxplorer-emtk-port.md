@@ -22,6 +22,53 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Islands as clusters: whole islands by default (2026-09-28)
+
+State: tpeulen: "label whole islands." Cores left ~60 % of the cal1 bursts
+unassigned. *Use islands as clusters* now has **Label: Whole islands | Cores
+only** beside it (`vizrank.view.json` row; same spec in both hosts), default
+Whole (`ProjectionRankModel.label_mode`).
+
+- **Method** (`separation.Populations.assign(points, mode)`, cells built by
+  `_whole_islands`): a burst gets the island of its cell's catchment basin
+  (steepest-ascent watershed + elder-rule merges -- the score's own
+  segmentation, `Populations.cells`). -1: (a) the ridge -- the island holds
+  `< RIDGE_P = 2/3` of the smoothed density at the cell; membership = the
+  island's own histogram smoothed by the score's kernel / the smoothed
+  histogram of all bursts, ~1/2 on a watershed line, so 2:1 odds leave a band
+  of ~+-0.4 kernel widths (1-2 cells: the smoothing cannot place the boundary
+  finer); (b) a basin whose `joined` level is 0 (empty space) or -inf (behind
+  a significant valley but < MIN_POPULATION) -- not merged into a neighbour;
+  (c) NaN coordinates (RobustAxis sentinels/fence). `Cluster Probability` =
+  that membership (0 for -1); cores keep `label(core=True)` labels, now also
+  with the membership as probability.
+- **Measured** (cal1 ALEX, S vs PR(PIE), re-take with
+  `model.island_clusters(names, source.column_values, mode)` after a Separation
+  ranking): Whole 4 clusters 21 924 / 10 618 / 5 547 / 3 378, 94 % labelled;
+  the 6 % = 3.1 % outlier/missing + 3.2 % ridge, 0 % clumps. Cores 37 %
+  (8 512 / 5 293 / 1 918 / 849); every core burst keeps its island in Whole
+  (up to renumbering). The status line reports both numbers.
+- **Trap (bridge midline)**: on a *uniform* bridge the watershed lands wherever
+  noise puts a bump's saddle (the elder rule hands a whole noise basin to one
+  side), so "the midline is -1" only holds where the bridge dips; the synthetic
+  test uses a bridge thinning to its middle, and there the centreline reads
+  0 | -1 | 1 for 20/20 seeds. A marker-controlled priority flood from the cores
+  would place a flat bridge's boundary more stably -- not done, it would no
+  longer be the score's segmentation.
+- **Trap (data files)**: `NdxApp.close()` now saves session state into the
+  opened `.pto` (the session-state work); a screenshot script that closes the
+  app rewrites the 179 MB cal1 file. Do not close the app in capture scripts.
+- Guards: `tests/test_separation.py::test_whole_islands_label_every_basin_but_
+  ridges_clumps_and_outliers[1-3]`, `test_cores_only_labels_as_before`,
+  `test_alex_s_vs_pr_islands_are_four_clusters` (both modes);
+  `tests/test_app/test_playback_export.py::test_whole_islands_are_the_default_
+  clusters` and `test_islands_become_the_clusters_of_every_burst` (Cores).
+
+Next: (1) `Show islands on the map` still paints the raw basins (clumps
+included); switch it to the whole labels if users compare the two; (2) no
+selection tool reads `Cluster Probability` yet -- a "probability >= p" gate
+would use it; (3) doc guide 46 still lacks the button.
+
 ### Islands as clusters (2026-09-24)
 
 State: tpeulen: "let the different groups be clusters, so that the user can

@@ -40414,3 +40414,12 @@ side of the line.
   editor. `emtk.clipboard.paste` reads QClipboard / Tk / glfw / pbpaste; a
   page forwards the DOM copy/cut/paste events (boot.js `<clipboard>`).
   Shortcut table: emtk docs/widgets.rst "Text editing shortcuts".
+- 2026-09-28 — **ndX: islands as clusters label whole islands.** *Use islands
+  as clusters* gets **Label: Whole islands (default) | Cores only**. Whole: each
+  burst gets the island of its catchment basin (the Separation score's own
+  watershed); -1 only on ridges (island's share of the smoothed density
+  < 2/3), in clumps under 3 % (not merged) and for outliers/missing.
+  `Cluster Probability` = that share. cal1 S vs PR: 94 % labelled (Whole) vs
+  37 % (Cores), still 4 clusters; the status line reports the coverage.
+  ndxplorer 0abf608, 2a7d158, f8c8b3d; resume point in
+  [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).
