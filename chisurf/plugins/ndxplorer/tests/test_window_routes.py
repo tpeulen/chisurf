@@ -1,20 +1,14 @@
-"""The menu and the ribbon open the same ndX window, and MMFDB is not skipped silently.
+"""The menu and the ribbon open the same ndX window: the emtk app in a Qt host.
 
-Two regressions, both of the "degraded without a word" kind:
-
-* The menu opens ndX through the manifest's ``entrypoints.gui``; the ribbon
-  executes the plugin's ``__init__.py``. They used to build different windows:
-  only the ribbon added the Accurate FRET and MMFDB toolbars and bound the
-  constants into the Global View. Both now publish the window's own constants
-  group -- its one ChiSurf mirror -- in the slot ``ndxplorer``.
-* The MMFDB toolbar never appeared: the window probed ``mmfdb.status`` with a
-  private ``MMFDBClient(inprocess=True)`` that carried no session token, and a
-  bare ``except: pass`` swallowed the "Authentication required".
+The menu opens ndX through the manifest's ``entrypoints.gui``; the ribbon
+executes the plugin's ``__init__.py``. They used to build different Qt windows,
+and then both built the legacy Qt window while the emtk app was finished. Both
+now call :func:`~chisurf.plugins.ndxplorer.window.build_ndxplorer_window`, which
+hosts :class:`ndxplorer.app.frame.NdxApp` in a ``ChisurfDockTool``.
 """
 
 from __future__ import annotations
 
-import logging
 import os
 import pathlib
 import types
@@ -24,11 +18,9 @@ import pytest
 pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from qtpy import QtCore, QtWidgets  # noqa: E402
+from qtpy import QtWidgets  # noqa: E402
 
 PLUGIN_DIR = pathlib.Path(__file__).resolve().parents[1]
-MMFDB_TOOLBAR = "ndxplorerMmfdbToolbar"
-FRET_TOOLBAR = "ndxplorerAccurateFretToolbar"
 
 
 @pytest.fixture(scope="module")
@@ -37,34 +29,10 @@ def qapp():
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
-class _AnsweringMmfdb:
-    """An MMFDB client that answers ``mmfdb.status`` (a logged-in session)."""
-
-    token = "session-token"
-
-    def status(self):
-        return {"ok": True}
-
-
-@pytest.fixture
-def mmfdb_answers(monkeypatch):
-    """ChiSurf's shared MMFDB session client is logged in and answering."""
-    from chisurf.gui.widgets.mmfdb import picker
-
-    monkeypatch.setattr(picker, "inprocess_client", lambda: _AnsweringMmfdb())
-
-
-def _toolbars(ndx) -> set[str]:
-    return {bar.objectName() or bar.windowTitle() for bar in ndx.findChildren(QtWidgets.QToolBar)}
-
-
-def _close(ndx) -> None:
-    """Close and destroy the window; destroying it empties the Global View slot."""
-    QtWidgets.QApplication.processEvents()  # the window's deferred set-up, as when shown
-    ndx.close()
-    ndx.deleteLater()
-    QtWidgets.QApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-    QtWidgets.QApplication.processEvents()
+@pytest.fixture(autouse=True)
+def _scratch_settings(tmp_path, monkeypatch):
+    """ndX's settings folder (dock layout, session store) is a scratch one."""
+    monkeypatch.setenv("NDXPLORER_SETTINGS_DIR", str(tmp_path / "ndxplorer"))
 
 
 def _open_from_menu():
@@ -77,7 +45,7 @@ def _open_from_menu():
 
 
 def _open_from_ribbon():
-    """Open ndX the way the ribbon does: execute ``__init__.py`` as ``plugin``."""
+    """Open ndX the way the ribbon's fallback does: execute ``__init__.py`` as ``plugin``."""
     from chisurf.gui import misc_helpers
 
     context = {"__name__": "plugin"}
@@ -90,39 +58,53 @@ def _open_from_ribbon():
     return context["ndx"]
 
 
-def test_menu_and_ribbon_build_the_same_window(qapp, mmfdb_answers):
-    """Same toolbars, and both bind the window's constants into the Global View."""
+def test_menu_and_ribbon_host_the_emtk_app(qapp):
+    """Both routes give an ``NdxWindow`` around an ``NdxApp`` with ChiSurf's client."""
+    from emtk.qt_host import host_class
+    from ndxplorer.app.frame import NdxApp
     from ndxplorer.core.chisurf_binding import chisurf_group
 
-    from chisurf.core.registry.parameter_groups import iter_registered_parameter_groups
+    from chisurf.plugins.ndxplorer.window import NdxWindow, _constants_group, published_group
+
+    for route, opener in (("menu", _open_from_menu), ("ribbon", _open_from_ribbon)):
+        window = opener()
+        try:
+            # By name: the ribbon's macro runner reloads the plugin's modules.
+            assert type(window).__name__ == NdxWindow.__name__, route
+            assert isinstance(window.app, NdxApp), route
+            assert isinstance(window.centralWidget(), host_class()), route
+            assert window.app.chisurf_rpc is not None, f"{route}: no ChiSurf RPC client"
+            assert window.app.session_autosave, f"{route}: the user's window keeps sessions"
+            window.host.grab()  # one frame, as on screen
+            group = _constants_group(window.app)
+            assert group is not None
+            # The app's own constants, through their one mirror -- not a copy.
+            assert published_group() is not None, f"{route}: no Global View binding"
+            assert published_group() is chisurf_group(group), route
+        finally:
+            window.close()
+        assert published_group() is None, f"{route}: the closed window is still published"
+
+
+def test_a_second_window_keeps_the_slot_when_the_first_closes(qapp):
+    """Closing an older window does not withdraw a newer window's constants."""
+    from ndxplorer.core.chisurf_binding import chisurf_group
+
     from chisurf.plugins.ndxplorer.window import (
-        GLOBAL_VIEW_LABEL,
-        GLOBAL_VIEW_OWNER,
+        _constants_group,
+        build_ndxplorer_window,
         published_group,
     )
 
-    seen = {}
-    for route, opener in (("menu", _open_from_menu), ("ribbon", _open_from_ribbon)):
-        ndx = opener()
-        try:
-            qapp.processEvents()
-            seen[route] = _toolbars(ndx)
-            published = published_group()
-            assert published is not None, f"{route}: no Global View binding"
-            # The window's own constants, through their one mirror -- not a copy.
-            assert published is chisurf_group(ndx.constants_group), (
-                f"{route}: the Global View holds another group than the window's constants"
-            )
-            labels = {o: label for o, label, _g in iter_registered_parameter_groups()}
-            assert labels[GLOBAL_VIEW_OWNER] == GLOBAL_VIEW_LABEL, (
-                f"{route}: the window did not publish its constants (only ndX's editor did)"
-            )
-        finally:
-            _close(ndx)
-        assert published_group() is None, f"{route}: the closed window is still published"
-
-    assert seen["menu"] == seen["ribbon"]
-    assert {MMFDB_TOOLBAR, FRET_TOOLBAR} <= seen["menu"], seen["menu"]
+    first = build_ndxplorer_window(session_autosave=False, layout_store=None)
+    second = build_ndxplorer_window(session_autosave=False, layout_store=None)
+    try:
+        first.close()
+        assert published_group() is not None
+        assert published_group() is chisurf_group(_constants_group(second.app))
+    finally:
+        second.close()
+    assert published_group() is None
 
 
 def test_the_manifest_points_at_the_single_construction():
@@ -134,83 +116,18 @@ def test_the_manifest_points_at_the_single_construction():
     assert "build_ndxplorer_window()" in (PLUGIN_DIR / "__init__.py").read_text()
 
 
-@pytest.fixture
-def embedded_mmfdb(tmp_path, monkeypatch):
-    """A real in-process MMFDB on a throw-away database.
+def test_a_table_handed_over_is_shown(qapp):
+    """A tool that computed bursts hands the table over; the app shows it."""
+    from ndxplorer.core.data_source import DataSource
 
-    Resets ChiSurf's shared session client before and after, so the client is
-    built -- and adopts the session token -- inside the test.
-    """
-    pytest.importorskip("mmfdb")
-    from chisurf.gui.widgets.mmfdb import picker
-
-    monkeypatch.setenv("MMFDB_DATABASE_URL", f"sqlite:///{tmp_path / 'mmfdb.db'}")
-    import chisurf.core.settings as cs_settings
-
-    mmfdb = dict(cs_settings.cs_settings.get("mmfdb", {}) or {})
-    for key in ("last_server", "last_port"):
-        mmfdb.pop(key, None)
-    mmfdb["default_user_id"] = "user"
-    monkeypatch.setitem(cs_settings.cs_settings, "mmfdb", mmfdb)
-    picker.reset_session_client()
-    yield
-    picker.reset_session_client()
-
-
-def _log_in_like_chisurf_startup() -> None:
-    """Log in as ChiSurf's start-up does, and keep the token for the process."""
-    from mmfdb.security.credentials import store_runtime_session_token
-
-    from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
-
-    login = MMFDBClient(inprocess=True)
-    result = login.login("user", "user", quiet=True)
-    assert result.get("ok"), result
-    store_runtime_session_token(login.host, login.cmd_port, "user", result["token"])
-
-
-def test_mmfdb_toolbar_appears_with_the_chisurf_session(qapp, embedded_mmfdb):
-    """Logged in to the in-process MMFDB, the window offers "Open from MMFDB"."""
     from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
-    _log_in_like_chisurf_startup()
-    ndx = build_ndxplorer_window()
+    source = DataSource.from_columns({"I_DD": [10.0, 20.0, 30.0], "I_DA": [4.0, 8.0, 3.0]})
+    window = build_ndxplorer_window(
+        data_source=source, session_autosave=False, layout_store=None
+    )
     try:
-        assert MMFDB_TOOLBAR in _toolbars(ndx)
+        assert window.app.model.has_data
+        assert window.app.model.source.size == 3
     finally:
-        _close(ndx)
-
-
-def test_without_mmfdb_session_the_reason_is_logged(qapp, embedded_mmfdb, caplog, monkeypatch):
-    """No session: no toolbar, and a warning that says why -- not a silent pass."""
-    from mmfdb.security import credentials
-
-    from chisurf.plugins.core.mmfdb_admin.gui import session
-    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
-
-    monkeypatch.setattr(credentials, "load_runtime_session_token", lambda *a, **k: None)
-    monkeypatch.setattr(session, "cached_token", lambda *a, **k: None)
-    with caplog.at_level(logging.WARNING, logger="chisurf.plugins.ndxplorer.window"):
-        ndx = build_ndxplorer_window()
-    try:
-        assert MMFDB_TOOLBAR not in _toolbars(ndx)
-        reasons = [r.getMessage() for r in caplog.records if "MMFDB toolbar" in r.getMessage()]
-        assert reasons and "not logged in" in reasons[0], caplog.text
-        assert "MMFDB toolbar" in ndx.statusBar().currentMessage()
-    finally:
-        _close(ndx)
-
-
-def test_mmfdb_client_missing_is_logged(qapp, caplog, monkeypatch):
-    """No in-process MMFDB at all: no toolbar, and the warning says so."""
-    from chisurf.gui.widgets.mmfdb import picker
-    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
-
-    monkeypatch.setattr(picker, "inprocess_client", lambda: None)
-    with caplog.at_level(logging.WARNING, logger="chisurf.plugins.ndxplorer.window"):
-        ndx = build_ndxplorer_window()
-    try:
-        assert MMFDB_TOOLBAR not in _toolbars(ndx)
-        assert "could not be started" in caplog.text
-    finally:
-        _close(ndx)
+        window.close()

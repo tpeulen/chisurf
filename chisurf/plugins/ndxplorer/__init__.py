@@ -37,14 +37,13 @@ log = cs.logging.info
 if __name__ == "__main__":
     import sys
 
-    import ndxplorer
     from qtpy.QtWidgets import QApplication
 
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+
     app = QApplication(sys.argv)
-    ndx = ndxplorer.NDXplorer()
+    ndx = build_ndxplorer_window(sys.argv[1] if len(sys.argv) > 1 else None)
     ndx.show()
-    ndx.raise_()
-    ndx.activateWindow()
     sys.exit(app.exec())
 
 if __name__ == "plugin":
