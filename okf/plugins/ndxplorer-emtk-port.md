@@ -22,6 +22,41 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Session state in the measurement (2026-09-28)
+
+State: a `.pto` keeps the analysis view as `ndx_session` (artifact kind
+`analysis_view_state`, mmfdb dictionary 1.9; operation `project_snapshot`),
+last 5 kept, under the writer lock. Container side
+`ndxplorer/io/session_io.py`; the view as data `ndxplorer/app/session_state.py`
+(model part: axes, colours, masks, z gate, gates by column name); each feature
+adds its part through `Feature.session_state()` /
+`restore_session_state(state, ctx)` (analysis: clusters incl. islands, Gaussian
+Fit; overlays: curves with vectors, constants group, equations if not the
+settings'; playback_export: playback, ranking settings/open). Orchestration:
+`features/session.py` (File > Save session Ctrl+S / Revert / Forget /
+Download .pto with session). Tests `tests/test_app/test_session.py` (8).
+
+- **Autosave is the user's app only** (`NdxApp(session_autosave=True)`:
+  `make_app`, `launch.run`). **Trap, happened:** before 3cfb688 any NdxApp
+  that opened a real `.pto` and closed wrote a session: the *original* cal1
+  `.pto` (`tttr-data/sm/cal1/001_…_alex.pto`) got 4 `ndx_session` objects
+  (05:04-05:06 UTC, islands view, x = Proximity ratio(PIE)) from other work on
+  the live tree. Not removed (the file is the user's); the user decides:
+  File > Forget session on it, or
+  `ndxplorer.io.session_io.forget_sessions(path)`. Until then opening cal1
+  restores that view (and the Island Label column from its clusters).
+- **Open:** (1) PCA/UMAP columns (`PC_n`, `UMAP_n`) are not stored, so an
+  axis on them is reported "not restored"; storing them packed like the
+  cluster labels is the fix if wanted. (2) Crosslinks between parameter groups
+  (a curve parameter linked to a constant) are not stored. (3) Dock/window
+  visibility stays in the per-user layout on purpose; only the ranking
+  windows' open state is in the session. (4) Colour limits are re-set once
+  after the first recompute (a recompute resets them, as typed limits always
+  were). (5) The browser path is tested with `FileService(browser=True)`, not
+  in a real Pyodide page.
+- Table identity = sha256 of the column names (at load, before restore) +
+  row count; mismatch -> partial restore, notes in the status line.
+
 ### Islands as clusters: whole islands by default (2026-09-28)
 
 State: tpeulen: "label whole islands." Cores left ~60 % of the cal1 bursts

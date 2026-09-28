@@ -40423,3 +40423,13 @@ side of the line.
   37 % (Cores), still 4 clusters; the status line reports the coverage.
   ndxplorer 0abf608, 2a7d158, f8c8b3d; resume point in
   [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).
+- 2026-09-28 — **ndX: the analysis view is kept in the measurement.** A `.pto`
+  now stores `ndx_session` (mmfdb artifact kind `analysis_view_state`,
+  dictionary 1.9): axes, colours, masks, gates, clusters, curves, Gaussians,
+  constants/equations, playback, ranking settings; restored on open (partial
+  on another table, noted in the status line), saved by File > Save session and,
+  in the user's app only, on leaving the file or closing when changed; last 5
+  kept, writer lock respected; browser: File > Download .pto with session.
+  ndxplorer ac3d2f6, 12ca8f9, ce10402, 3cfb688 (+ playback hooks inside
+  2a7d158); mmfdb f5c89f4; guide 46 "Session state in the measurement";
+  resume point in [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md).

@@ -527,6 +527,51 @@ sub-cloud, and ndX resolves the selection to its bursts' photons and starts
 the matching ChiSurf fit over the RPC link, overlaying the result back in the
 parameter space. See {ref}`concept-md-bridges`.
 
+## Session state in the measurement
+
+A `.pto` measurement remembers how you last looked at it. When you open one
+that holds a saved **session**, ndX returns to it after the bursts load: the
+x/y/z parameters with their bins, ranges and log/norm/auto flags, the weight,
+the colormap, log counts, the colour limits and the NaN/inf masks, the gates
+(intervals, 2-D Gaussians, painted masks, drawn regions), the clusters (also
+*Use islands as clusters*) with the chosen cluster and the colouring, the
+overlay curves (equations, colours, parameters and their per-population
+vectors), the Gaussian Fit components, the constants and — when you changed
+them — the equations, the playback settings and the settings of the *Find
+informative projections* windows. The status line says when the restored
+session was saved.
+
+- **File › Save session** (Ctrl+S) writes it now. The window also saves it
+  when you open another file and when you close the window, but only if the
+  view changed since it was restored or saved — opening a file and closing it
+  leaves the file untouched. There is no timed autosave: the measurement keeps
+  the last five sessions, and each is a state you chose to leave behind.
+- **File › Revert to saved session** goes back to the newest saved one;
+  **File › Forget session** removes them all from the file.
+- A session saved on a different table (another burst search, other columns,
+  another number of bursts) is applied where it still fits; the status line
+  lists what was not restored ("gate G (no column 'Tau (green)')", "cluster
+  labels (the table has another number of rows)").
+- If another program (ChiSurf) is writing the file, the save says so and the
+  window carries on; save again once that program is done.
+- In the **browser** the dropped file is an in-memory copy: the session is
+  written into it, and **File › Download .pto with session** hands the file
+  back as a download (on a desktop it saves a copy where you choose).
+- A newer calibration wins: if a FRET calibration was stored after the session
+  (FRET › Save calibration), its constants are kept and the session's are not.
+
+The window layout (docks, marginal sizes) is yours, not the measurement's, and
+stays in `~/.ndxplorer/ndxplorer_layout.json`. The Qt window ignores a stored
+session. The session is one JSON object, `ndx_session`, of the mmfdb artifact
+kind `analysis_view_state`, with its schema version, the ndX version and the
+identity of the table it was made on.
+
+```{figure} figures/ndxplorer_session_restored.png
+The cal1 measurement reopened: axes, bins, colormap, the photon gate, the two
+clusters coloured, the overlay line, and "Restored the session saved …" in
+the status line.
+```
+
 ## See also
 
 - Theory: {ref}`concept-multidimensional-exploration`, {ref}`concept-accurate-fret`.
