@@ -27,8 +27,6 @@
     "accurate_fret": "*",
     "burst_fcs_correlator": "*",
     "burst_mle_analysis": "*",
-    "fret_line": "*",
-    "img_pixel_phasor": "*",
     "mmfdb_admin": "*"
   }
 }

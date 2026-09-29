@@ -15,7 +15,7 @@ What ChiSurf adds to the app lives here, not in ndX (ndX works without
 ChiSurf):
 
 * the in-process ChiSurf RPC client (``app.chisurf_rpc``), which the app's
-  "Send selection to" menu and its phasor panel talk to;
+  "Send selection to" menu talks to;
 * the Global View slot: the app publishes its constants group under
   :data:`GLOBAL_VIEW_OWNER` itself (through ``ndxplorer.core.chisurf_binding``);
   the window withdraws it when it closes, unless a later window has taken it.
@@ -208,7 +208,7 @@ def build_ndxplorer_window(
     data_source : DataSource, optional
         An in-memory table to show instead (see :meth:`NdxWindow.show_source`).
     chisurf_rpc : object, optional
-        The ChiSurf RPC client for "Send selection to" and the phasor panel;
+        The ChiSurf RPC client for "Send selection to";
         the in-process client (:func:`~chisurf.plugins.ndxplorer.rpc_bridge.make_inprocess_chisurf_client`)
         when omitted.
     session_autosave : bool

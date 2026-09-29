@@ -1,8 +1,11 @@
-"""End-to-end headless test of the ndX ↔ ChiSurf in-process RPC bridge (PRD-56 §7).
+"""ndX and ChiSurf over RPC, headless.
 
-Builds the in-process ChiSurf client (phasor + FRET-line services), then drives it
-through ndX's own chisurf-free ``PhasorService`` / ``LinesService`` facades — the
-exact path the GUI uses, minus the socket.
+ChiSurf's ndX window gets the in-process client (the burst-analysis bridges);
+phasor geometry is not on it -- ndX draws that itself, as overlay curves and
+equations. The ``phasor.*`` / ``fret_line.*`` services are still ChiSurf's RPC
+endpoints (the standalone Qt window reaches them over a socket with
+``--chisurf-rpc``): they are driven here through ndX's chisurf-free
+``PhasorService`` / ``LinesService`` facades on a dispatcher that has them.
 """
 
 from __future__ import annotations
@@ -30,10 +33,26 @@ def client():
     return c
 
 
-def test_phasor_service_over_inprocess_client(client):
+@pytest.fixture()
+def phasor_client():
+    """A client with the phasor and FRET-line services, as a ChiSurf server has them."""
+    from chisurf.core.plugin.client import InProcessClient
+    from chisurf.plugins.fret_line.backend.services import register_services as lines
+    from chisurf.plugins.microscopy.img_pixel_phasor.backend.services import (
+        register_services as phasor)
+    from chisurf.server.dispatcher import ServiceDispatcher
+    from chisurf.server.session import SessionState
+
+    dispatcher = ServiceDispatcher(SessionState())
+    phasor(dispatcher)
+    lines(dispatcher)
+    return InProcessClient(dispatcher)
+
+
+def test_phasor_service_over_inprocess_client(phasor_client):
     from ndxplorer.rpc import PhasorService
 
-    svc = PhasorService(client)
+    svc = PhasorService(phasor_client)
     # A single-exponential phasor point round-trips to its true lifetime.
     from chisurf.plugins.microscopy.img_pixel_phasor import analysis
 
@@ -47,10 +66,10 @@ def test_phasor_service_over_inprocess_client(client):
     assert "universal semicircle" in names
 
 
-def test_lines_service_phasor_and_fret_over_inprocess_client(client):
+def test_lines_service_phasor_and_fret_over_inprocess_client(phasor_client):
     from ndxplorer.rpc import LinesService
 
-    svc = LinesService(client)
+    svc = LinesService(phasor_client)
 
     phasor_lines = svc.phasor.overlays(frequency_mhz=80.0, sets=["semicircle"])
     assert phasor_lines[0]["name"] == "universal semicircle"
@@ -66,8 +85,9 @@ def test_lines_service_phasor_and_fret_over_inprocess_client(client):
     assert len(fret_lines[0]["x"]) == 6
 
 
-def test_chisurf_window_gets_the_phasor_panel(client, qtbot, tmp_path, monkeypatch):
-    """ChiSurf's ndX window hands the app the client: the Phasor / FRET window is on."""
+def test_chisurf_window_draws_phasor_geometry_as_overlays(client, qtbot, tmp_path,
+                                                          monkeypatch):
+    """ChiSurf's ndX window has the client, and phasor geometry without it: overlays."""
     monkeypatch.setenv("NDXPLORER_SETTINGS_DIR", str(tmp_path))
     from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
@@ -75,10 +95,9 @@ def test_chisurf_window_gets_the_phasor_panel(client, qtbot, tmp_path, monkeypat
                                     layout_store=None)
     try:
         assert window.app.chisurf_rpc is client
-        assert window.app.panel.available("show_phasor_panel")
-        phasor = next(f for f in window.app.features if f.name == "phasor")
-        # The FRET models come from ChiSurf, over the client.
-        assert any("FRET" in m for m in phasor.panel.fret_models())
-        assert phasor.panel.sweep_params()
+        assert all(f.name != "phasor" for f in window.app.features)
+        overlays = next(f for f in window.app.features if f.name == "overlays")
+        assert {"Universal circle", "Lifetime points", "FRET trajectory"} <= set(
+            overlays.overlays.equation_options())
     finally:
         window.close()

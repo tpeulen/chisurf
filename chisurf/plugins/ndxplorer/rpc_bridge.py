@@ -8,11 +8,12 @@ ndX's chisurf-free ``RpcClient`` contract (``call(method, params)``), so the app
 gains ChiSurf's RPC methods with no server process and no configuration.
 
 The dispatcher is built with the **core manifest** (``fit.*``, ``dataset.*``,
-``pda.from_bursts``, …) *plus* the plugin services below, so ndX gets both the
-phasor / FRET-line overlays and the analysis **bridges** — routing a gated burst
-selection into PDA (``pda.from_bursts``), burst correlation (``burst_fcs.*``) or
-lifetime MLE (``burst_mle.*``), via
-:class:`ndxplorer.analysis.burst_bridge.BurstAnalysisBridge`.
+``pda.from_bursts``, …) *plus* the plugin services below, so ndX gets the
+analysis **bridges** — routing a gated burst selection into PDA
+(``pda.from_bursts``), burst correlation (``burst_fcs.*``) or lifetime MLE
+(``burst_mle.*``), via :class:`ndxplorer.analysis.burst_bridge.BurstAnalysisBridge`.
+Phasor geometry is not among them: ndX draws it itself, as overlay curves and
+equations (the universal circle, lifetime points, FRET trajectories; τφ, τM).
 """
 
 from __future__ import annotations
@@ -23,11 +24,8 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 #: Plugin service entrypoints to register on the in-process dispatcher (on top of
-#: the core manifest). These add the phasor / FRET-line overlays and the burst
-#: analysis targets the bridges dispatch to.
+#: the core manifest): the burst analysis targets the bridges dispatch to.
 _SERVICE_REGISTRARS = (
-    "chisurf.plugins.microscopy.img_pixel_phasor.backend.services:register_services",
-    "chisurf.plugins.fret_line.backend.services:register_services",
     "chisurf.plugins.burst.burst_fcs_correlator.backend.services:register_services",
     "chisurf.plugins.burst.burst_mle_analysis.backend.services:register_services",
 )
@@ -41,7 +39,7 @@ def _load(path: str):
 
 
 def make_inprocess_chisurf_client() -> Any | None:
-    """Return an ``InProcessClient`` exposing the phasor + FRET-line RPC methods.
+    """Return an ``InProcessClient`` exposing ChiSurf's RPC methods to ndX.
 
     Best-effort: returns ``None`` if the RPC/plugin machinery is unavailable, so callers
     can degrade gracefully (ndX then runs without ChiSurf features).
