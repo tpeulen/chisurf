@@ -30,8 +30,8 @@ calibration and the fit stay in sync.
 ## Launching
 
 ndX runs standalone or connected to a ChiSurf RPC server (the latter
-enables the phasor / FRET-line overlays and the analysis
-{ref}`bridges <concept-md-bridges>`):
+enables the analysis {ref}`bridges <concept-md-bridges>`; phasor analysis needs
+no ChiSurf, see [Phasor plots](#phasor-plots-are-overlays)):
 
 ```bash
 python -m ndxplorer                              # standalone
@@ -50,13 +50,6 @@ trace browser's one-click ndX, the MMFDB admin's *Open in ndX*, the imaging
 tools' pixel table, H2MM's dwell table, the burst-selection output and the
 ALEX Suite's E–S step. Hosted, the window gets what only ChiSurf has:
 
-- **View › Phasor / FRET…** — the phasor overlays (universal semicircle,
-  iso-lifetime grid, lifetime ticks, polar grid, FRET trajectory at a
-  frequency, harmonic and donor τ0), the **FRET line** of a FRET model swept
-  over one of its parameters, and the **τ φ/M columns** computed from the g, s
-  columns. ChiSurf computes the geometry; the lines are drawn over the map in
-  data coordinates. **View › Clear phasor overlays** removes them. Standalone
-  (without `--chisurf-rpc`) both entries are off, and the window says why.
 - **Send selection to ▸** (right-click on the map) — the gated bursts go to
   ChiSurf's PDA, FCS, TCSPC-decay or PCH analysis (the {ref}`bridges <concept-md-bridges>`).
 - **File › Import › From MMFDB…** — pick a burst selection registered in MMFDB
@@ -66,11 +59,8 @@ ALEX Suite's E–S step. Hosted, the window gets what only ChiSurf has:
 - The **FRET** menu (calibration, save, load) and the **calibration restore**
   on opening a `.pto` are the app's own and work the same outside ChiSurf.
 
-```{figure} figures/ndxplorer_chisurf_phasor.png
-ndX opened from ChiSurf's ribbon: an image table on g/s with the phasor
-overlays (semicircle, lifetime grid and ticks, polar grid) drawn by
-View › Phasor / FRET….
-```
+Phasor plots are not a hosted extra: they are ordinary overlays, the same in
+and outside ChiSurf ([below](#phasor-plots-are-overlays)).
 
 (guide-ndx-playback)=
 ## Play the measurement back
@@ -147,6 +137,38 @@ your calibration; free one deliberately and it joins the fit as a
    optimised, fixed ones held — including constants and linked parameters, whose
    values belong elsewhere. The fit reports a reduced $\chi^2_r$ and redraws the
    overlay.
+
+(phasor-plots-are-overlays)=
+### Phasor plots are overlays
+
+A phasor plot is a map whose axes are the phasor columns (`g (green)` against
+`s (green)` on an image table), so its reference geometry is overlay curves
+from the **Equation** list, and the apparent lifetimes are equations:
+
+- **Universal circle** — $g = 1/(1+(\omega\tau)^2)$, $s = \omega\tau/(1+(\omega\tau)^2)$,
+  $\tau$ from 0 to ∞ (a *parametric* curve, $\tau = \tan t/\omega$);
+- **Lifetime points** — markers at single-exponential lifetimes, labelled
+  "τ ns" (a *point set*; edit the t values and the label format);
+- **FRET trajectory** — the donor quenched as $\tau_{DA} = \tau_0(1-E)$, $E$
+  from 0 to 1, from the donor-only point to (1, 0); a donor-only fraction
+  `x_DOnly` and a background fraction `bg` pull it inside the circle. Also
+  **FRET trajectory (distance)**, **(Gaussian distance)**, the
+  **Two-component mixing line**, the **Iso-phase line** and the
+  **Iso-modulation arc**.
+
+Each has the frequency `f` (MHz) and `harmonic` as parameters, linked on Add to
+the constants **f_rep** and **harmonic** of the Parameters tab (and `tau0` to
+`tauD0`), so one edit there moves every phasor curve. The columns
+`tau_phi` and `tau_m` ($\tau_\phi = s/(\omega g)$,
+$\tau_M = \sqrt{1/(g^2+s^2)-1}/\omega$, $\omega = 2\pi f_{rep} n$) appear
+wherever the table has g and s columns (per channel: `tau_phi (green)`).
+
+```{figure} figures/ndxplorer_chisurf_phasor.png
+An image table on g/s with three overlays from the list: Universal circle
+(white), Lifetime points (yellow, 0.5–8 ns) and FRET trajectory (red, from the
+4 ns donor-only point to (1, 0)). The Overlays tab shows each curve's x(t),
+y(t), t range or t values, and its f / harmonic linked to f_rep / harmonic.
+```
 
 ### Fit through the cloud, not through a summary of it
 

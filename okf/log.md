@@ -1,5 +1,12 @@
 # Update Log
 
+## 2026-09-29
+
+* **ndX phasor analysis is overlays and equations; the Phasor / FRET window is deleted.**
+  - ndxplorer d081978/02a526b/6a94f77/80d3f44: overlay-curve kinds *parametric* (x(t), y(t), `where`, t range) and *points* (t list, labels), generic and compiled to the traced-function contract; curve panel fields per kind, markers with labels, session (kind, spec, constant links). Entries: Universal circle, Lifetime points, FRET trajectory (+ distance, Gaussian distance), Two-component mixing line, Iso-phase line, Iso-modulation arc; `f`/`harmonic` linked to new constants `f_rep`/`harmonic`. Equations `tau_phi`, `tau_m` (plain/green/red). Deleted `features/phasor.py`, its view, menu entries and test.
+  - mmfdb 98ee49a: the g/s columns, tau_phi/tau_m, f_rep/harmonic in `mmfdb_workflow_ext.dic`. chisurf cb3c6f127: the in-process ndX client drops the img_pixel_phasor / fret_line services (endpoints kept for the Qt window's socket).
+  - Checked against numpy: single-exponential g/s on the circle, lifetime points at their τ, FRET trajectory from τD0 to (1, 0), tau_phi = tau_m = τ (rtol 1e-9); works with chisurf blocked. Docs: guide 46 "Phasor plots are overlays". Resume: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md) "Phasor = overlays".
+
 ## 2026-09-24
 
 * **ndX Find informative projections ranks Separation (bursts in clearly separated islands) by default; Rank by Separation | Correlation | Classes.**

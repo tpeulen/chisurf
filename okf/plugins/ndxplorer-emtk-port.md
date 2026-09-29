@@ -22,6 +22,45 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Phasor = overlays and equations (2026-09-29)
+
+State: the Phasor / FRET window (`features/phasor.py`, View > Phasor / FRET…,
+Clear phasor overlays) is **deleted**; a phasor plot is a map of the g, s
+columns. `core/overlay_curves.py` has two generic kinds beside y = f(x) and
+the traced `def`: **parametric** (`x`, `y` of `t`, ordered `where`
+definitions, `t: [t0, t1]`) and **points** (`t` list, `labels` format),
+compiled to the traced-function contract, so CSV, vectors (one curve per
+population), the fit and the session take them. Entries may declare `fixed`,
+`links` (`{param: constant}`, applied on Add and on session restore) and
+`color`. `settings/curve_equations.yaml`: Universal circle, Lifetime points,
+FRET trajectory (x_DOnly, bg, g_bg/s_bg), FRET trajectory (distance) /
+(Gaussian distance), Two-component mixing line, Iso-phase line, Iso-modulation
+arc; `f`/`harmonic` link to the new constants `f_rep`/`harmonic`, `tau0` to
+`tauD0`, `R0` to `forster_radius`. `mfd.equations.yaml`: `tau_phi`, `tau_m`
+(plain, `(green)`, `(red)`), skipped where g/s are missing; the names are in
+mmfdb `mmfdb_workflow_ext.dic` (mmfdb 98ee49a). ChiSurf's in-process client no
+longer registers img_pixel_phasor / fret_line (their endpoints stay: the
+standalone Qt window uses them over `--chisurf-rpc`). Qt `curve_overlay.py`
+reads a parametric entry as a generated `def` and does not list point sets.
+Commits: ndxplorer d081978, 02a526b, 6a94f77, 80d3f44; chisurf cb3c6f127.
+Tests: `tests/test_curve_kinds.py`, `tests/test_app/test_phasor_overlays.py`
+(numpy agreement, session, chisurf blocked), chisurf
+`test/fio/test_ndxplorer_rpc_bridge.py`.
+
+Open front:
+
+1. **Not ported:** the old window's *iso-lifetime grid* for a list of
+   lifetimes and the *polar grid* are single entries now (Iso-phase line /
+   Iso-modulation arc per τ, the existing *Circle* entry); a curve is one line,
+   so a grid is several curves. The E-vs-τf FRET-line models (Gaussian, WLC,
+   Discrete) were not phasor geometry: they are the existing *Static FRET Line*
+   entries (the WLC phasor trajectory was not ported).
+2. **Old settings folders** (`~/.ndxplorer/mfd.constants.json` copied before
+   this) lack `f_rep`/`harmonic`: the τ columns then skip, and the phasor
+   curves stay unlinked (free `f`) until the constants are added.
+3. The map shows no phasor-specific axis defaults: set the range to g 0..1,
+   s 0..0.6 by hand (the screenshot script sets `model.x.lo/hi`).
+
 ### Hosted in ChiSurf (2026-09-28)
 
 State: ChiSurf opens only the emtk app. `build_ndxplorer_window` (plugin
@@ -32,10 +71,9 @@ and menu (manifest `entrypoints.gui`), `__init__.py`, trace browser, MMFDB
 admin, imaging, H2MM, ALEX Suite E-S, `mmfdb_launcher` (burst selection,
 MMFDB). The host sets `app.chisurf_rpc` (in-process client) and
 `app.mmfdb_opener`; the app registers its constants in the Global View slot
-`ndxplorer` and the window withdraws them on close. New in the app: the
-**Phasor / FRET** window (`features/phasor.py` + `phasor/phasor.view.json`,
-View > Phasor / FRET…, View > Clear phasor overlays; off with a reason
-without a client) and File > Import > From MMFDB enabled by the host.
+`ndxplorer` and the window withdraws them on close. New in the app:
+File > Import > From MMFDB enabled by the host (the Phasor / FRET window added
+here was later replaced by overlays, see above).
 Deleted from ChiSurf: the Qt toolbars of `window.py`, `rpc_bridge.make_ndxplorer`
 + `_measurement_aware`, `calibration_report.py`, `calibration_options.py`.
 Guard: `chisurf/plugins/ndxplorer/tests/test_no_qt_ndx_window.py`.
@@ -48,17 +86,15 @@ window on a **copy** of the cal1 `.pto`, `session_autosave=False`,
 
 - chisurf_toolbars: Accurate FRET toolbar (FRET calibration, Save, Load) ->
   FRET menu (same three); Sync constants -> not needed (one group, no copy);
-  ChiSurf Phasor toolbar (Phasor / FRET…, Clear) -> View > Phasor / FRET…,
-  View > Clear phasor overlays; parameters restored on open -> restored (the
+  ChiSurf Phasor toolbar (Phasor / FRET…, Clear) -> overlay entries (see
+  "Phasor = overlays"); parameters restored on open -> restored (the
   status line says "Restored 16 constants stored in …"). Trap: the values
   differ from the Qt shot (gG/gR 0.533 vs 1.333, PhiA/PhiD 0.32/0.8 vs 1/1,
   plus gamma) because the cal1 container carries a newer saved calibration
   than when the Qt baseline was taken; `restorable()` on the copy gives the
   emtk values exactly.
-- chisurf_phasor: every panel control is in the emtk form (Frequency,
-  Harmonic, Lifetimes, Donor τ0, the five sets, Draw overlays, Clear; Model,
-  Sweep param, Min, Max, Points, Draw FRET line; τ φ/M columns). Measured on
-  the imaging table (g/s): 27-28 phasor items, 1 FRET line, tau_phi/tau_m added.
+- chisurf_phasor: deliberately unified into overlays and equations (control
+  map in `tools/parity/features.md`).
 - mmfdb_open: Qt toolbar (never shown in the baseline: no session) -> File >
   Import > From MMFDB…, enabled when hosted.
 - Send selection to (right-click the map): targets FCS, TCSPC decay, PDA, PCH
@@ -788,8 +824,8 @@ Where to pick this up:
    so it reaches the Global View as soon as the emtk app runs in ChiSurf's
    process; no ChiSurf plugin hosts the emtk app yet. "Sync constants" is not
    needed then (one group, no copy).
-6. **Open: ChiSurf Phasor** (`chisurf_phasor`): needs a ChiSurf RPC client in
-   `NdxApp` (`--chisurf-rpc` does not reach it).
+6. **Done differently: ChiSurf Phasor** (`chisurf_phasor`): overlays and
+   equations, no RPC (see "Phasor = overlays").
 7. **Browser.** Nothing in the feature imports Qt (tested). What blocks a
    calibration in the page is the missing backend, as on the desktop; the
    file save/load works there through the io service, and the container
