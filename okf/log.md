@@ -40455,3 +40455,20 @@ side of the line.
   chisurf 2633b5853, 149703517, 30eb376cb; ndxplorer e5f8252, 6540087; guide 46
   "ndX in ChiSurf"; resume point in
   [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md) "Hosted in ChiSurf".
+- 2026-09-29 — ndX in ChiSurf: the Plot controls' FRET calibration / Save
+  calibration / Load calibration buttons are gone; the three actions stay in
+  the app's **FRET** menu (where the emtk port put them). The buttons were a
+  Qt-bridge-era convenience (`chisurf/plugins/ndxplorer/gui/app.py`,
+  `_add_fret_actions`) that duplicated the menu entries above the native
+  controls. Docs guide 41 now points at the FRET menu. In emtk, the Qt host
+  (`emtk/qt_host.py`) now accepts file drops and forwards them to the hosted
+  control (`files_dropped`, else `on_files_dropped`): Qt delivers drag events
+  to the widget under the pointer and an ignored drag never reaches the
+  embedding window, so dropping a file on ChiSurf's ndX (or any embedded emtk
+  app) did nothing. emtk suite 2170 passed; drop verified end-to-end offscreen
+  (drag-enter → move → drop opens the file). Known issue found on the way,
+  not from this change: with the manifest's new `entrypoints.emtk`, the
+  menu/ribbon route opens the bare ControlHost, and
+  `test_window_routes.py::test_menu_and_ribbon_host_the_emtk_app` expects the
+  NdxWindow — the two uncommitted artifacts disagree; resolve when the
+  emtk-entrypoint migration settles.

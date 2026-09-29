@@ -6011,3 +6011,15 @@ and `test/test_prd_mentions.py::test_prd_mention_allowlist_has_no_stale_entries`
 (`calculator/kappa2_dist/gui/tool.py`,
 `tttr/tttr_time_windows/tests/test_construction_smoke.py` no longer name a
 PRD). Not edited under their owners. **Blocks:** nothing at run time.
+## ndX menu/ribbon route vs manifest emtk entrypoint (found 2026-09-29)
+
+The ndxplorer manifest gained `entrypoints.emtk`
+(`chisurf.plugins.ndxplorer.gui.app:make_app`) while
+`chisurf/plugins/ndxplorer/tests/test_window_routes.py::test_menu_and_ribbon_host_the_emtk_app`
+still asserts the menu opens the `NdxWindow` (`build_ndxplorer_window`). The
+launcher dispatches through `select_gui_entrypoint`, which prefers `emtk`, so
+the menu now yields a bare `ControlHost` and the test fails. The emtk factory
+does not (yet) give the window-level features `NdxWindow` adds: the Global
+View slot withdrawal, `session_autosave`, the geometry persistence, the MMFDB
+opener wiring. Decide the direction (wrap the emtk app in `NdxWindow` when a
+Qt host is available, or port the missing pieces) and fix one side.

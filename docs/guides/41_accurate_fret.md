@@ -245,7 +245,7 @@ offset.
 ## Doing it entirely inside ndX
 
 If the bursts are already open in ndX, the round trip through this tool is
-unnecessary. ndX's own toolbar carries **🎯 FRET calibration**,
+unnecessary. ndX's **FRET** menu carries **FRET calibration…**,
 which does the whole thing in one click on the loaded measurement:
 
 1. it reads the burst columns out of the window;
@@ -259,10 +259,10 @@ which does the whole thing in one click on the loaded measurement:
    `Stoichiometry (accurate)`, `R_DA (accurate)`, `Off static FRET line` and
    `Population` — so they can be plotted and gated like any other column.
 
-While it runs, the toolbar shows a progress bar: the calibration is six
-refinement passes plus the bootstrap resamples, twice over when the backgrounds
-are fitted, and the bar counts those steps. Cancelling stops it and returns
-what it has, saying so in the report.
+While it runs, a progress bar shows the calibration's steps: the calibration is
+six refinement passes plus the bootstrap resamples, twice over when the
+backgrounds are fitted, and the bar counts those steps. Cancelling stops it and
+returns what it has, saying so in the report.
 
 The report opens in a window you can resize and read — the factor table, the
 uncertainties, the populations, and what was held fixed with the value this
@@ -271,8 +271,9 @@ calibration…** and **Save report…**.
 
 ### Keeping a calibration
 
-**💾 Save calibration** and **📂 Load calibration** sit next to the calibrate
-button, and the calibration is stored **in the `.pto` measurement by default**.
+**Save calibration…** and **Load calibration…** sit in the same **FRET** menu
+under the calibrate entry, and the calibration is stored **in the `.pto`
+measurement by default**.
 That container already holds the photon stream, the burst table and the
 background estimate; factors determined from that measurement belong beside
 them rather than in a file next to it that the next copy leaves behind. Each
