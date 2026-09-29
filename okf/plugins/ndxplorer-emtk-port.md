@@ -22,6 +22,31 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Shipped defaults under old settings; phasor axis ranges (2026-09-29)
+
+State: `settings/defaults.py` merges the shipped file of the same name under a
+user's older `~/.ndxplorer` **on load, writing nothing**:
+constants and `mfd.axis.json` get the keys the user file lacks (user values
+win); `mfd.equations.yaml` and `curve_equations.yaml` get a shipped entry
+appended only when its name is absent and the user was never *offered* it. Offered =
+`defaults_seen.json` beside the file (written by `record_seen` when the user
+saves equations: `persist.write_equations`, the Equations tab's Save), else
+(an old folder) a name whose first-shipped date (`defaults.SHIPPED_SINCE`,
+from git; a test demands every shipped name has one) is before the user
+file's mtime. So a deletion that was saved stays deleted. `SettingsBundle.added`
+says what was added; logged in full, and the app's status line starts with
+"Added 2 new constants from the defaults: f_rep, harmonic; 6 new equations; …".
+Persisting is unchanged (only the Save entries write). Axis settings keys
+`re:<regex>` are patterns (`utils/axis_helpers.axis_entry`: own name first,
+then the first matching pattern, full match, case-sensitive); shipped
+`re:g( \(.+\))?` 0…1 and `re:s( \(.+\))?` 0…0.6, linear, so every g/s
+channel column gets phasor ranges. Commits: ndxplorer 599e795, bf6f507,
+8814e82. Tests: `tests/test_settings_defaults.py` (temp HOME, old folder),
+`tests/test_axis_helpers.py`. Open: a deleted *constant* or axis entry comes
+back on the next load (by design: shipped equations need the constants);
+`docs/reference/figures.md` caption for `ndxplorer_chisurf_phasor.png` is
+still stale (another session had that file uncommitted).
+
 ### Phasor = overlays and equations (2026-09-29)
 
 State: the Phasor / FRET window (`features/phasor.py`, View > Phasor / FRET…,
@@ -55,9 +80,7 @@ Open front:
    so a grid is several curves. The E-vs-τf FRET-line models (Gaussian, WLC,
    Discrete) were not phasor geometry: they are the existing *Static FRET Line*
    entries (the WLC phasor trajectory was not ported).
-2. **Old settings folders** (`~/.ndxplorer/mfd.constants.json` copied before
-   this) lack `f_rep`/`harmonic`: the τ columns then skip, and the phasor
-   curves stay unlinked (free `f`) until the constants are added.
+2. **Old settings folders: done** (see "Shipped defaults under old settings").
 3. The map shows no phasor-specific axis defaults: set the range to g 0..1,
    s 0..0.6 by hand (the screenshot script sets `model.x.lo/hi`).
 

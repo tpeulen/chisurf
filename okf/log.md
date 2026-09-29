@@ -2,6 +2,10 @@
 
 ## 2026-09-29
 
+* **ndX: an older settings folder gets the shipped defaults it lacks, on load; g/s axes default to phasor ranges.**
+  - ndxplorer 599e795/bf6f507/8814e82: `settings/defaults.py` merges shipped constants, axis settings, equations and overlay curves under the user's (user wins; an equation/curve the user deleted and saved, or deleted by hand after it shipped, is not re-added: `defaults_seen.json` record written on save, else first-shipped date vs file mtime). Nothing written on load; status line + log say what was added. Axis settings `re:` pattern keys; shipped g 0…1 / s 0…0.6.
+  - Checked: an old-style folder (no f_rep/harmonic, no tau_phi/tau_m, no phasor curves) opens the image table on g (green)/s (green) with tau_phi/tau_m columns, 0…1 × 0…0.6 and the universal circle linked to f_rep; folder bytes unchanged. Suite 1472 passed. Resume: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md) "Shipped defaults under old settings".
+
 * **ndX phasor analysis is overlays and equations; the Phasor / FRET window is deleted.**
   - ndxplorer d081978/02a526b/6a94f77/80d3f44: overlay-curve kinds *parametric* (x(t), y(t), `where`, t range) and *points* (t list, labels), generic and compiled to the traced-function contract; curve panel fields per kind, markers with labels, session (kind, spec, constant links). Entries: Universal circle, Lifetime points, FRET trajectory (+ distance, Gaussian distance), Two-component mixing line, Iso-phase line, Iso-modulation arc; `f`/`harmonic` linked to new constants `f_rep`/`harmonic`. Equations `tau_phi`, `tau_m` (plain/green/red). Deleted `features/phasor.py`, its view, menu entries and test.
   - mmfdb 98ee49a: the g/s columns, tau_phi/tau_m, f_rep/harmonic in `mmfdb_workflow_ext.dic`. chisurf cb3c6f127: the in-process ndX client drops the img_pixel_phasor / fret_line services (endpoints kept for the Qt window's socket).
