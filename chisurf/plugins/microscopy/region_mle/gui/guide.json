@@ -3,7 +3,7 @@
   "steps": [
     {
       "title": "One lifetime per region, and none of them found here",
-      "text": "This tool fits a <b>single fluorescence lifetime per region</b> by Poisson maximum likelihood — the 2I* estimator, on the parallel and perpendicular decays together.<br/><br/>It does <b>not</b> segment. The regions come from the <b>Spot Finder</b>, the panel above, or from a saved label image. That separation is deliberate: a fit that finds its own regions cannot be shown what it is about to fit, which is exactly how a tuned preview and the run that followed it stopped agreeing.<br/><br/>Seven steps, about two minutes.",
+      "text": "This tool fits a <b>single fluorescence lifetime per region</b> by Poisson maximum likelihood — the 2I* estimator, on the parallel and perpendicular decays together.<br/><br/>It does <b>not</b> segment. The regions come from the <b>Spot Finder</b>, or from a saved label image. That separation is deliberate: a fit that finds its own regions cannot be shown what it is about to fit, which is exactly how a tuned preview and the run that followed it stopped agreeing.<br/><br/>Seven steps, about two minutes.",
       "target": {}
     },
     {
@@ -13,7 +13,7 @@
         "action": "Load demo"
       },
       "await": {
-        "hint": "Press <b>🧪 Load demo</b>. It simulates the field (a few seconds the first time), detects the regions, and fills this panel in."
+        "hint": "Press <b>Load demo</b>. It simulates the field (a few seconds the first time), detects the regions, and fills this panel in."
       }
     },
     {
@@ -44,12 +44,12 @@
         "action": "Preview"
       },
       "await": {
-        "hint": "Press <b>👁️ Preview</b>, then press <b>▶ Run</b> to fit."
+        "hint": "Press <b>Preview</b>, then press <b>Run</b> to fit."
       }
     },
     {
       "title": "Read the decay, not only the number",
-      "text": "Open the <b>Decay</b> tab and select a region. You get the data, the fitted model, the IRF and the background on a log axis, with the <b>weighted residuals</b> above sharing the time axis — so a systematic deviation lines up with the channel that caused it. It is the same panel the burst-wise MLE draws, because a region and a burst are the same measurement under different membership rules.<br/><br/>Check the fitted τ against the demo's 1.0, 3.6, 2.2 and 0.6 ns. The long ones come back a few percent low, and that is real: a 3.6 ns decay is not finished inside this simulation's 8.2 ns excitation period.",
+      "text": "Open the <b>Decay</b> tab, after choosing a region in the <b>Regions</b> tab. You get the data, the fitted model, the IRF and the background on a log axis, with the <b>weighted residuals</b> above sharing the time axis — so a systematic deviation lines up with the channel that caused it. It is the same panel the burst-wise MLE draws, because a region and a burst are the same measurement under different membership rules.<br/><br/>Check the fitted τ against the demo's 1.0, 3.6, 2.2 and 0.6 ns. The long ones come back a few percent low, and that is real: a 3.6 ns decay is not finished inside this simulation's 8.2 ns excitation period.",
       "target": {
         "title": "Decay"
       }

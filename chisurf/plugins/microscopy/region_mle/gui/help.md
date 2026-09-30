@@ -60,7 +60,7 @@ percentile with a floor so one bad channel cannot flatten the rest.
 
 ## Try it without your own data
 
-**🧪 Load demo** simulates a field whose four objects have lifetimes of 1.0,
+**Load demo** simulates a field whose four objects have lifetimes of 1.0,
 3.6, 2.2 and 0.6 ns, detects them with the standard workflow and fills this
 panel in. Fit it and compare. The long lifetimes come back a few percent low,
 and that is real rather than a defect: a 3.6 ns decay is not finished inside the

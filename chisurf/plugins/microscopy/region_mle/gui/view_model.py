@@ -371,7 +371,12 @@ class RegionMleViewModel(MleObserverMixin):
                 "segment.</i>"
             )
         n_mol = sum(r.n_molecules for r in self.results)
-        taus = [float(t) for r in self.results for t in r.dataframe.get("tau", [])]
+        taus = [
+            float(t)
+            for r in self.results
+            if "tau" in column_names(r.dataframe)
+            for t in numeric_column(r.dataframe, "tau")
+        ]
         median = float(np.median(taus)) if taus else float("nan")
         return (
             f"<b>{n_mol}</b> region(s) in <b>{len(self.results)}</b> file(s); "

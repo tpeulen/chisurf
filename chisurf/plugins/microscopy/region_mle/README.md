@@ -21,9 +21,14 @@ The plugin follows the client-server / Qt-free-core standard:
   `joint_output.tsv`.
 - **`backend/services.py`** — ZMQ/JSON-RPC service registration
   (`region_mle.analyze.run`, `region_mle.contract.describe`).
-- **`gui/`** — an AutoForm view (`region_mle.view.json`) over the Qt-free
-  `RegionMleViewModel`; `RegionMleTool` hosts it and runs the analysis on a
-  background thread.
+- **`gui/`** — the Qt-free `RegionMleViewModel` (`view_model.py`) behind two
+  front ends. The native emtk app (`app.py`, `entrypoints.emtk`) draws
+  `region_mle_emtk.view.json` over `RegionMleModel` (`model.py`: the
+  view-model plus window state) and runs the analysis on a
+  `chisurf.emtk.jobs.SnapshotJob`; its `custom` sections (file lists, region
+  editor, region image, decay plot) are drawn by callbacks in `app.py`. The Qt
+  `RegionMleTool` (`tool.py`, AutoForm over `region_mle.view.json`) stays as
+  the legacy fallback.
 - **`cli/`** — `region-mle analyze | contract | serve`.
 
 ## GUI usage
@@ -32,9 +37,9 @@ The plugin follows the client-server / Qt-free-core standard:
 2. Drag CLSM imaging file(s) and an IRF file into the two lists.
 3. Set the detector channels (even = parallel, odd = perpendicular), the
    micro-time fit window, and the segmentation / Fit23 options.
-4. Press **▶ Run**. The segmentation image (with molecule-centroid markers) and
-   the per-molecule fit table populate when the run finishes; TSVs are written
-   next to each file.
+4. Press **Run**. The region image (analysis region, region outlines and
+   numbers, the selected region's marker) and the decay plot populate when the
+   run finishes; TSVs are written next to each file.
 
 ## Testing
 
