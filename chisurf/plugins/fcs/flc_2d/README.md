@@ -18,7 +18,9 @@ The plugin is now split into the migrated plugin layout:
 - `core.py` and `fit/` - numerical 2D-FDC, ILT, MEM, kinetics, and simulator code.
 - `backend/services.py` - JSON-RPC handlers under the `flc2d.*` namespace.
 - `gui/client.py` - typed client used by the GUI instead of direct backend calls.
-- `gui/tool.py` - stateful docked widget shell with persistent dock layout.
+- `gui/tool.py` - stateful docked widget shell with persistent dock layout (legacy Qt).
+- `gui/model.py` - Qt-free model: settings, stream/IRF loading, simulation, the analysis run and its results; shared by both GUIs.
+- `gui/app.py`, `gui/flc_2d_emtk.view.json` - native emtk app (`entrypoints.emtk`): toolbar, Settings and the result windows as tabs.
 - `cli/` - command-line entrypoint declared in `manifest.json`.
 
 ## GUI

@@ -73,7 +73,7 @@ wrong lifetime.
 
 *Synthetic* builds a Gaussian pulse from the centre, FWHM and skew you give it;
 *Detect* places one at the decay's own prompt rise; *File* uses a measured IRF
-(📈 **IRF**); *None* tail-fits without one, which is honest only if every lifetime
+(**IRF** button); *None* tail-fits without one, which is honest only if every lifetime
 of interest is much longer than the pulse. The **rise** toggle scans the IRF
 position during the 1D-MEM and averages around the optimum, which trades a little
 resolution for a much smaller timing systematic.

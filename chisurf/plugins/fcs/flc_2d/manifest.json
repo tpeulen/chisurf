@@ -26,6 +26,7 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.fcs.flc_2d.gui.tool:FlcTwoDTool",
+    "emtk": "chisurf.plugins.fcs.flc_2d.gui.app:make_app",
     "cli": "flc-2d=chisurf.plugins.fcs.flc_2d.cli:cli",
     "services": "chisurf.plugins.fcs.flc_2d.backend.services:register_services"
   },

@@ -16,63 +16,82 @@ code by T. Kondo (Schlau-Cohen Lab): ``TK_Create2DFDC_04``,
 
 import logging
 from pathlib import Path
-
-from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import QWidget
-
-try:
-    from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c  # noqa: E731
-
-try:
-    from chisurf.plugins.fcs.flc_2d.gui import FlcTwoDTool
-except Exception:  # noqa: BLE001 - fall back so discovery never hard-fails
-    FlcTwoDTool = None
+from typing import Any
 
 name = "Spectroscopy:Fluorescence Correlation Spectroscopy:2D-FLCS"
 
 # Hidden from the menu: surfaced inside the FCS Toolbox meta tool.
 menu_hidden = True
 
-try:
-    _png = Path(__file__).parent / "icon.png"
-    icon = QIcon(str(_png)) if _png.exists() else QIcon()
-except Exception:  # noqa: BLE001
-    icon = QIcon()
+# The Qt classes are built on first access (PEP 562), so importing this package -- and
+# with it ``gui.app``, ``gui.model``, ``api`` and ``backend`` -- needs no Qt binding.
+_LAZY = ("FlcTwoDTool", "TwoDFLCPlugin", "TwoDFCSPlugin", "icon", "window")
 
 
-if FlcTwoDTool is not None:
+def _build() -> None:
+    """Create the Qt plugin window class, icon and aliases (needs a Qt binding)."""
+    from qtpy.QtGui import QIcon
+    from qtpy.QtWidgets import QWidget
 
-    @persist_plugin_state("flc_2d")
-    class TwoDFLCPlugin(FlcTwoDTool):
-        """Main 2D-FLC plugin window."""
+    try:
+        from chisurf.gui.misc_helpers import persist_plugin_state
+    except ImportError:
+        persist_plugin_state = lambda n: lambda c: c  # noqa: E731
 
-        def __init__(self):
-            super().__init__()
-            self.setWindowTitle("2D-FLCS Analysis")
-            try:
-                self.setWindowIcon(icon)
-            except Exception:  # noqa: BLE001
-                pass
-            logging.getLogger(__name__).info("2D-FLCS plugin initialized")
+    try:
+        from chisurf.plugins.fcs.flc_2d.gui import FlcTwoDTool
+    except Exception:  # noqa: BLE001 - fall back so discovery never hard-fails
+        FlcTwoDTool = None
 
-else:
+    try:
+        _png = Path(__file__).parent / "icon.png"
+        icon = QIcon(str(_png)) if _png.exists() else QIcon()
+    except Exception:  # noqa: BLE001
+        icon = QIcon()
 
-    class TwoDFLCPlugin(QWidget):
-        """Fallback widget when the GUI dependencies are missing."""
+    if FlcTwoDTool is not None:
 
-        def __init__(self):
-            super().__init__()
-            self.setWindowTitle("2D-FLCS Plugin — import error")
-            logging.getLogger(__name__).error("Failed to import FlcTwoDTool")
+        @persist_plugin_state("flc_2d")
+        class TwoDFLCPlugin(FlcTwoDTool):
+            """Main 2D-FLC plugin window."""
+
+            def __init__(self):
+                super().__init__()
+                self.setWindowTitle("2D-FLCS Analysis")
+                try:
+                    self.setWindowIcon(icon)
+                except Exception:  # noqa: BLE001
+                    pass
+                logging.getLogger(__name__).info("2D-FLCS plugin initialized")
+
+    else:
+
+        class TwoDFLCPlugin(QWidget):
+            """Fallback widget when the GUI dependencies are missing."""
+
+            def __init__(self):
+                super().__init__()
+                self.setWindowTitle("2D-FLCS Plugin — import error")
+                logging.getLogger(__name__).error("Failed to import FlcTwoDTool")
+
+    globals().update(
+        FlcTwoDTool=FlcTwoDTool,
+        icon=icon,
+        TwoDFLCPlugin=TwoDFLCPlugin,
+        # Backwards-compatible alias for older callers / the FCS Toolbox.
+        TwoDFCSPlugin=TwoDFLCPlugin,
+        window=TwoDFLCPlugin,
+    )
 
 
-# Backwards-compatible alias for older callers / the FCS Toolbox.
-TwoDFCSPlugin = TwoDFLCPlugin
+def __getattr__(attribute: str) -> Any:
+    """Build the Qt half on first access of one of its names."""
+    if attribute in _LAZY:
+        _build()
+        return globals()[attribute]
+    raise AttributeError(f"module {__name__!r} has no attribute {attribute!r}")
 
-window = TwoDFLCPlugin
 
 if __name__ == "plugin":
-    window = TwoDFLCPlugin()
+    window = __getattr__("window")()
     window.show()
