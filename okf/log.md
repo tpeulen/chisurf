@@ -2,6 +2,8 @@
 
 ## 2026-09-30
 
+* **Type C audit of the three script-entrypoint plugins** (`okf/plugins/emtk-ports/type-c-audit.md`): `screenshot` is a headless action (nothing to port); `tttr_correlate` (887 Qt lines) and `tttr_histogram` (760 Qt lines) are full Qt windows with no emtk equivalent verified yet; `tttr/microtime_histogram` already has an emtk app but no selection-expression field, so merging `tttr_histogram` into it needs a parity check first.
+
 * **PRD-153 pilot (`pch`) reviewed and accepted; evidence tool and PRD corrected from what the pilot found.**
   - `pch` is ported (agent commits b2496542f, 138ceeeaa, ec41fc2f8): same numbers as the Qt tool (BH_SPC132 ch 0,8, 50 us: 1246577 bins, 2 components chi2 1018.40/21), 48 plugin tests pass, Qt-free, no untooltipped control. Report `okf/plugins/emtk-ports/pch/REPORT.md`.
   - `test/gui/emtk_port_parity.py`: a leading pictogram glued to a word is stripped (five false "lost" entries for `pch`), both halves are normalised in `compare`, `deliberate.json` records reasoned differences (`explained`, `stale_explanations`), and spec fields drawn with `##id` labels are now in the tooltip audit. 10 tests.
