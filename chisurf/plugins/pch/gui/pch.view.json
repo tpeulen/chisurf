@@ -1,0 +1,54 @@
+{
+  "_comment": "Photon counting histogram tool. Drawn by emtk.view_form over PchModel (gui/model.py); the two plots are hand-drawn in gui/app.py.",
+  "sections": [
+    {"type": "panel", "title": "Actions", "sections": [
+      {"type": "button_row", "buttons": [
+        {"action": "load", "label": "Load TTTR",
+         "description": "Choose a photon-stream file (PTU, HT3, T2R, T3R, PTO, SPC) to analyse."},
+        {"action": "compute", "label": "Compute PCH",
+         "description": "Bin the photons of the loaded file into counting intervals and histogram the counts per bin."},
+        {"action": "fit", "label": "Fit Model",
+         "description": "Fit the species model (brightness and occupancy per component) to the histogram over the selected k range."},
+        {"action": "save", "label": "Save Results",
+         "description": "Write the histogram, the fit and the results text as NPZ, CSV and TXT files."}
+      ]}
+    ]},
+    {"type": "panel", "title": "Data settings", "sections": [
+      {"type": "value", "attr": "filename", "label": "File", "kind": "str",
+       "read_only": true, "elide": "start",
+       "description": "The photon-stream file that is loaded. Use Load TTTR or drop a file on the window."},
+      {"type": "value", "attr": "channels", "label": "Channels", "kind": "str",
+       "description": "Comma-separated routing channels whose photons are counted, for example 0,2. Empty uses all channels."},
+      {"type": "value", "attr": "bin_time_us", "label": "Bin time", "kind": "float",
+       "minimum": 0.1, "maximum": 1000000.0, "decimals": 2, "step": 10.0, "suffix": " μs",
+       "description": "Width of the counting interval in microseconds. The histogram is the distribution of photon counts per interval."},
+      {"type": "panel", "n_col": 2, "sections": [
+        {"type": "value", "attr": "micro_time_min", "label": "Micro time", "kind": "int",
+         "minimum": 0, "maximum": 65535, "step": 1,
+         "description": "Lower micro-time gate (TAC channel): photons below it are not counted."},
+        {"type": "value", "attr": "micro_time_max", "label": "to", "kind": "int",
+         "minimum": 0, "maximum": 65535, "step": 1,
+         "description": "Upper micro-time gate (TAC channel): photons above it are not counted."}
+      ]}
+    ]},
+    {"type": "panel", "title": "Model fit", "sections": [
+      {"type": "value", "attr": "n_components", "label": "Components", "kind": "int",
+       "minimum": 1, "maximum": 10, "step": 1, "style": "spin", "call": "set_n_components",
+       "description": "Number of molecular species in the model. Each species has a brightness ε and a mean occupancy ⟨N⟩."},
+      {"type": "table", "name": "species", "source": "species", "editable": true,
+       "edited_call": "edit_species", "height": 150,
+       "columns": [
+         {"key": "component", "label": "#", "width": 40, "editable": false,
+          "description": "Species number."},
+         {"key": "epsilon", "label": "ε", "format": "%.4f",
+          "description": "Molecular brightness: counts per bin per molecule. Starting value for the fit; replaced by the fitted value. Double click to edit."},
+         {"key": "n_mean", "label": "⟨N⟩", "format": "%.4f",
+          "description": "Mean number of molecules of this species in the detection volume. Starting value for the fit; replaced by the fitted value. Double click to edit."}
+       ]},
+      {"type": "panel", "title": "Fit results", "sections": [
+        {"type": "info", "source": "results_text"}
+      ]}
+    ]},
+    {"type": "info", "source": "status_line"}
+  ]
+}

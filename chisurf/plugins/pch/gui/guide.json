@@ -1,0 +1,53 @@
+{
+  "_comment": "Guided tour for the PCH tool. Steps point at real controls; steps with an await wait for the user. The names file_loaded, computed and fitted are set by the app when the outcome exists, not when a button is pressed.",
+  "steps": [
+    {
+      "title": "What this measures",
+      "text": "The photon counting histogram P(k) says how often a time bin holds k photons. Its width beyond Poisson gives the molecular brightness and the number of molecules. Six steps: load, set up, compute, choose a range, fit, save.",
+      "target": {}
+    },
+    {
+      "title": "Load a photon stream",
+      "text": "Press <b>Load TTTR</b> and choose a PTU, HT3, T2R, T3R, PTO or SPC file, or drop it on the window.",
+      "target": {"name": "file_loaded"},
+      "await": {"hint": "Press <b>Load TTTR</b> and choose a file to continue."}
+    },
+    {
+      "title": "Say which detectors count",
+      "text": "<b>Channels</b> lists the routing channels that are counted. The default 0,2 is only a starting point; use the channels of your detectors.",
+      "target": {"attr": "channels"}
+    },
+    {
+      "title": "Choose the counting interval",
+      "text": "<b>Bin time</b> is the width of one counting interval. Shorter than the diffusion time, so a molecule does not move much within a bin.",
+      "target": {"attr": "bin_time_us"}
+    },
+    {
+      "title": "Compute the histogram",
+      "text": "<b>Compute PCH</b> bins the photons and draws the intensity trace and the histogram P(k) on a logarithmic axis.",
+      "target": {"name": "computed"},
+      "await": {"hint": "Press <b>Compute PCH</b> and wait for the plots."}
+    },
+    {
+      "title": "Choose the k range of the fit",
+      "text": "Drag the two vertical lines on the histogram to set the lowest and highest k that the fit uses.",
+      "target": {"name": "region"}
+    },
+    {
+      "title": "Set the species",
+      "text": "<b>Components</b> is the number of species. Each row of the table is one species with a starting brightness ε and occupancy ⟨N⟩; double click a cell to change it.",
+      "target": {"attr": "n_components"}
+    },
+    {
+      "title": "Fit the model",
+      "text": "<b>Fit Model</b> fits the species to the histogram over your k range. The table then shows the fitted ε and ⟨N⟩ and the results text the fractions and χ².",
+      "target": {"name": "fitted"},
+      "await": {"hint": "Press <b>Fit Model</b> and read the fit results."}
+    },
+    {
+      "title": "Save the result",
+      "text": "<b>Save Results</b> writes the trace, histogram and fit as NPZ, CSV and TXT files under a base name you choose.",
+      "target": {"action": "save"}
+    }
+  ]
+}
