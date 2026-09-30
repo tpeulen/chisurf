@@ -2,6 +2,9 @@
 
 ## 2026-09-30
 
+* **PRD-153 `flc-2d` port reviewed and accepted; radio tooltips fixed in emtk.** Port by the agent (7c8ebf259, 999fe82a2, 8092d7f21; interrupted once by an API rate limit and resumed), report `okf/plugins/emtk-ports/flc-2d/REPORT.md`: 91 plugin tests pass, `compare` exit 0 (49 explained differences), Qt-free, the legacy Qt tool still constructs with its baseline's 79 controls, populated map and L-curve match the Qt baseline.
+  - emtk 608be8c: `view_form` radio `choice` buttons now carry the section's tooltip (the port had to use a drop-down because they did not). Open: docked tab strips do not scroll or wrap (known issues).
+
 * **PRD-153 Wave 2 pilot (`region_mle`) reviewed and accepted; a general emtk bug found through it.** Port by the agent (1d630e6e5, d5207db8b, 51cbd6a13), report `okf/plugins/emtk-ports/region_mle/REPORT.md`: 47 plugin tests pass, `compare` exit 0, Qt-free, populated result equals the Qt baseline (4 regions, median tau 1.54 ns).
   - emtk e76836b: `im.collapsing_header` read an ImGui flags word (`0`, `TreeNodeFlags.DEFAULT_OPEN`) as a bool and forced the header open/closed every frame, so about 30 headers across the ports (calculators, tttr_splitter, lightpath_simulator, burst tools, the region editor) could not be toggled. An int is now flags and sets only the initial state. Verified in the real app: clicking "Analysis regions" opens the editor.
   - Open (known issues): the simulated demo reads as an empty `CLSMImage`, so Load demo then Run fails in the shipped Qt tool too.
