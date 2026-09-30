@@ -1,0 +1,192 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.00",
+    "0.000",
+    "0.150",
+    "0.300",
+    "0.500",
+    "1.000",
+    "12.500",
+    "1d-mem+gaussian",
+    "2.000",
+    "25",
+    "2d-fdc",
+    "2d-flcsmap",
+    "2dresidual",
+    "40",
+    "8.000",
+    "80",
+    "bins",
+    "cascades",
+    "center",
+    "corr",
+    "dynamics",
+    "fwhm",
+    "grid",
+    "guide",
+    "help",
+    "irf",
+    "kinetics(advanced)",
+    "l-curve",
+    "lag",
+    "lifetimedistribution",
+    "lifetimeinversion",
+    "logλ",
+    "method",
+    "nnls",
+    "open",
+    "openatttrfiletobegin.",
+    "rise",
+    "run",
+    "settings",
+    "sim",
+    "simulator",
+    "skew",
+    "source",
+    "speciescorrelation",
+    "synthetic",
+    "tmax",
+    "tmin",
+    "toolbar",
+    "win",
+    "τmax",
+    "τmin"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open##request_open",
+      "tooltip": "Open TTTR photon stream file."
+    },
+    {
+      "kind": "button",
+      "label": "IRF",
+      "id": "IRF##request_open_irf",
+      "tooltip": "Load an instrument-response TTTR file."
+    },
+    {
+      "kind": "button",
+      "label": "Sim",
+      "id": "Sim##request_simulate",
+      "tooltip": "Generate a synthetic two-state exchange photon stream."
+    },
+    {
+      "kind": "button",
+      "label": "Run",
+      "id": "Run##request_run",
+      "tooltip": "Build 2D-FDC and resolve lifetimes."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help##request_help",
+      "tooltip": "Explain what the map shows, how to read it and what to check first."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##request_guide",
+      "tooltip": "Walk through the demo: simulate a stream whose answer is known, run and read the map."
+    },
+    {
+      "kind": "input_text",
+      "label": "dT_ms",
+      "id": "##dT_ms",
+      "tooltip": "Macro-time lag dT at which the 2D fluorescence-decay correlation is built. Pick a value within the dynamics timescale to see lifetime cross-peaks."
+    },
+    {
+      "kind": "input_text",
+      "label": "ddT_ms",
+      "id": "##ddT_ms",
+      "tooltip": "Half-width of the macro-time lag window (ddT). Wider = more photon pairs but coarser lag resolution."
+    },
+    {
+      "kind": "input_text",
+      "label": "tmin_ns",
+      "id": "##tmin_ns",
+      "tooltip": "Lower micro-time gate (ns) for the decay axis."
+    },
+    {
+      "kind": "input_text",
+      "label": "tmax_ns",
+      "id": "##tmax_ns",
+      "tooltip": "Upper micro-time gate (ns) for the decay axis."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_bins",
+      "id": "##max_bins",
+      "tooltip": "Block-rebin the 2D-FDC down to this many bins before inversion (speed vs resolution)."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_components",
+      "id": "##n_components",
+      "tooltip": "Number of log-spaced trial lifetimes in the inversion basis."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_min_ns",
+      "id": "##tau_min_ns",
+      "tooltip": "Smallest trial lifetime (ns)."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_max_ns",
+      "id": "##tau_max_ns",
+      "tooltip": "Largest trial lifetime (ns)."
+    },
+    {
+      "kind": "input_text",
+      "label": "log10_reg",
+      "id": "##log10_reg",
+      "tooltip": "Regularisation as log10(reg); 0 selects it automatically by L-curve."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_center_ns",
+      "id": "##irf_center_ns",
+      "tooltip": "Centre (prompt position) of the synthetic IRF in ns. Ignored for Detect/File/None."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_fwhm_ns",
+      "id": "##irf_fwhm_ns",
+      "tooltip": "Full width at half maximum of the synthetic IRF (ns)."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_shape",
+      "id": "##irf_shape",
+      "tooltip": "Skewness of the synthetic IRF pulse (0 = symmetric Gaussian)."
+    },
+    {
+      "kind": "checkbox",
+      "label": "rise",
+      "id": "rise##irf_rise_scan",
+      "tooltip": "When running the 1D-MEM, scan the IRF rise position and average the distributions around the optimum (port of TK_MyMain_Search_RiseIRF_1DMEM); reduces the IRF-timing systematic."
+    },
+    {
+      "kind": "checkbox",
+      "label": "corr",
+      "id": "corr##compute_dynamics",
+      "tooltip": "After resolving the lifetimes, compute the species-resolved (lifetime-filtered) correlation and fit the interconversion relaxation time + rate matrix."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_casc",
+      "id": "##n_casc",
+      "tooltip": "Multi-tau cascades for the filtered correlation."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

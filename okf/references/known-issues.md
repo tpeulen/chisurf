@@ -6037,3 +6037,14 @@ Fix direction: read through the shared loader Spot Finder uses
 (`imaging.simulate.clsm_from_scan` with the sidecar `scan_layout`; another stream is moving this into
 `core/fluorescence/imaging/intensity.py`), and keep the error text in `run()`. The emtk port's tests
 and populated screenshots wrap `CLSMImage` in a test-side shim (the `workdir` fixture) until then.
+
+### emtk: radio choices carry no tooltip, docked tab strips do not scroll (found porting flc-2d)
+
+`emtk.view_form._draw_choice` calls `_tooltip(section)` only for the combo branch, so a
+`choice` with `style: radio` leaves its radio buttons untooltipped and the port parity tool
+lists them in `controls_without_tooltip`. Repro: `draw_form({"sections":[{"type":"choice",
+"attr":"m","options":["a","b"],"style":"radio","description":"x"}]}, model, FormState())`
+under `test.gui.emtk_port_parity` recording. flc-2d uses a drop-down for its solver meanwhile.
+Also `emtk.docking` tab strips neither scroll nor wrap: seven tabs need ~670 px, a narrower
+region cuts the last tab (flc-2d avoids it with one full-width strip). Fix direction: tooltip
+after the radio loop; an overflow menu or scrolling for tabs.

@@ -40520,3 +40520,16 @@ side of the line.
   on the result store. Evidence `okf/plugins/emtk-ports/region_mle/`
   (compare exit 0, 46 tests in the plugin folder); report text delivered with
   the hand-over (REPORT.md could not be written by the agent).
+
+- **2026-09-30 · flc-2d: native emtk port (Type B, Wave 2)**
+  - `_FlcModel` moved from `gui/tool.py` to `gui/model.py` (cut and paste) and gained the
+    work of the Qt button handlers (open stream/IRF, simulate, run with inversion, L-curve,
+    species correlation, 1D-MEM); the Qt tool delegates to it and gives identical arrays
+    (tested side by side). New `gui/app.py` + `gui/flc_2d_emtk.view.json`: Toolbar, Settings
+    and six result windows as one tab strip, `ImageCanvas` maps, `implot` plots and L-curve,
+    jobs on `SnapshotJob`, FileDialog and drop. Package and `gui` `__init__` made lazy so the
+    app imports without Qt. Evidence `okf/plugins/emtk-ports/flc-2d/` (compare exit 0, 49
+    deliberate entries, plugin folder 91 passed). emtk gaps found: radio `choice` draws no
+    tooltips (method is a drop-down), docked tab strip does not scroll. No docs guide page
+    exists for the tool. REPORT.md text delivered with the hand-over (the agent could not
+    write the file).
