@@ -1,0 +1,282 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.000",
+    "0.380",
+    "01",
+    "1",
+    "1.000",
+    "2.000",
+    "256",
+    "2i*(p+2s)",
+    "addfiles",
+    "analysis",
+    "analysisregion",
+    "analysisregions",
+    "biflscatter",
+    "channelsandfitwindow,andpressrun.eachregionis",
+    "clear",
+    "clsmimagingfiles",
+    "database",
+    "decay",
+    "detection",
+    "detectorchannels",
+    "export",
+    "filterregions",
+    "findtheregionsfirstwiththespotfinder,thenadd",
+    "fit(fit23)",
+    "fitstart",
+    "fitstop",
+    "fittedwithasingle-lifetimepoisson-mle(fit23);this",
+    "fixr0",
+    "fixγ",
+    "fixρ",
+    "fixτ",
+    "guide",
+    "help",
+    "irffile",
+    "l1",
+    "l2",
+    "loadanimageorrunpreviewtoinspectpixels.",
+    "loaddemo",
+    "micro-timebinning",
+    "minphotons",
+    "nofile.addordropone.",
+    "noregionselected.",
+    "noregionsyet.runorpreview,oropensavedresults.",
+    "openresults",
+    "preview",
+    "r0",
+    "regionname",
+    "regions",
+    "remove",
+    "run",
+    "spots",
+    "theimagingfile(s)andanirfhere,setthedetector",
+    "tooldoesnotsegment.",
+    "γ",
+    "ρ(ns)",
+    "τ(ns)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what the fit does, what a region needs and how to read the decay."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the demo: load it, preview the regions, run and read a decay."
+    },
+    {
+      "kind": "button",
+      "label": "Add files",
+      "id": "Add files##sel_files",
+      "tooltip": "Choose photon files to add."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##sel_files",
+      "tooltip": "Pick a registered photon dataset from the MMFDB catalogue."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove##sel_files",
+      "tooltip": "Remove the selected file from the list."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##sel_files",
+      "tooltip": "Empty the list without deleting any file."
+    },
+    {
+      "kind": "button",
+      "label": "Add files",
+      "id": "Add files##sel_irf_files",
+      "tooltip": "Choose the IRF measurement."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##sel_irf_files",
+      "tooltip": "Pick a registered photon dataset from the MMFDB catalogue."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove##sel_irf_files",
+      "tooltip": "Remove the selected file from the list."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##sel_irf_files",
+      "tooltip": "Empty the list without deleting any file."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Analysis regions",
+      "id": "Analysis regions",
+      "tooltip": "Restrict detection to named regions; empty or disabled regions use the entire frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "detector_chs_text",
+      "id": "##detector_chs_text",
+      "tooltip": "Space-separated routing channels; even = parallel (∥), odd = perpendicular (⊥)."
+    },
+    {
+      "kind": "input_text",
+      "label": "mtr_start",
+      "id": "##mtr_start",
+      "tooltip": "Fit-window start on the binned micro-time axis."
+    },
+    {
+      "kind": "input_text",
+      "label": "mtr_stop",
+      "id": "##mtr_stop",
+      "tooltip": "Fit-window stop on the binned micro-time axis."
+    },
+    {
+      "kind": "input_text",
+      "label": "micro_time_binning",
+      "id": "##micro_time_binning",
+      "tooltip": "Integer down-binning of the micro-time axis before fitting."
+    },
+    {
+      "kind": "input_text",
+      "label": "region_set",
+      "id": "##region_set",
+      "tooltip": "Which detection in the measurement's container to fit, when it holds more than one. Regions are found by the Spot Finder; this tool fits the ones it is given."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_photons",
+      "id": "##min_photons",
+      "tooltip": "Regions with fewer photons in the fit window are not fitted; they keep a row, with NaN parameters."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau",
+      "id": "##tau",
+      "tooltip": "Initial fluorescence lifetime."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix τ",
+      "id": "fix τ##fix_tau",
+      "tooltip": "Hold the lifetime fixed."
+    },
+    {
+      "kind": "input_text",
+      "label": "gamma",
+      "id": "##gamma",
+      "tooltip": "Initial scatter fraction."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix γ",
+      "id": "fix γ##fix_gamma",
+      "tooltip": "Hold the scatter fraction fixed."
+    },
+    {
+      "kind": "input_text",
+      "label": "r0",
+      "id": "##r0",
+      "tooltip": "Fundamental anisotropy."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix r0",
+      "id": "fix r0##fix_r0",
+      "tooltip": "Hold the fundamental anisotropy fixed."
+    },
+    {
+      "kind": "input_text",
+      "label": "rho",
+      "id": "##rho",
+      "tooltip": "Rotational correlation time."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix ρ",
+      "id": "fix ρ##fix_rho",
+      "tooltip": "Hold the rotational correlation time fixed."
+    },
+    {
+      "kind": "input_text",
+      "label": "l1",
+      "id": "##l1",
+      "tooltip": "Polarisation mixing correction l1."
+    },
+    {
+      "kind": "input_text",
+      "label": "l2",
+      "id": "##l2",
+      "tooltip": "Polarisation mixing correction l2."
+    },
+    {
+      "kind": "checkbox",
+      "label": "2I* (P+2S)",
+      "id": "2I* (P+2S)##p2s_twoIstar",
+      "tooltip": "Optimise P+2S instead of P and S separately."
+    },
+    {
+      "kind": "checkbox",
+      "label": "BIFL scatter",
+      "id": "BIFL scatter##soft_bifl_scatter",
+      "tooltip": "Reduce Istar by the background contribution."
+    },
+    {
+      "kind": "button",
+      "label": "Load demo",
+      "id": "Load demo##request_demo",
+      "tooltip": "Simulate a field whose regions have known lifetimes, detect them with the standard workflow, and fill this panel in — so a fitted lifetime can be checked against an answer."
+    },
+    {
+      "kind": "button",
+      "label": "Preview",
+      "id": "Preview##request_preview",
+      "tooltip": "Measure the regions about to be fitted, without fitting them — the same regions the run uses."
+    },
+    {
+      "kind": "button",
+      "label": "Run",
+      "id": "Run##request_run",
+      "tooltip": "Fit every detected region in every selected file; writes molecule_data.tsv + joint_output.tsv."
+    },
+    {
+      "kind": "button",
+      "label": "Export",
+      "id": "Export##request_export",
+      "tooltip": "Export the combined per-molecule table (all files) to a TSV/CSV."
+    },
+    {
+      "kind": "button",
+      "label": "Open results…",
+      "id": "Open results…##request_open_results",
+      "tooltip": "Reopen a saved molecule_data.tsv (or joint_output.tsv) from a previous analysis to browse its molecules."
+    },
+    {
+      "kind": "input_text",
+      "label": "Filter regions",
+      "id": "Filter regions",
+      "tooltip": "Show only regions whose name contains this text; the image is unchanged."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

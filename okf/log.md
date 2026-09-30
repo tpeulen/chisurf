@@ -40501,3 +40501,18 @@ side of the line.
   `test_window_routes.py::test_menu_and_ribbon_host_the_emtk_app` expects the
   NdxWindow — the two uncommitted artifacts disagree; resolve when the
   emtk-entrypoint migration settles.
+
+- 2026-09-30 — Region MLE ported to emtk (PRD-153 Wave 2, Type B). `entrypoints.emtk`
+  → `chisurf/plugins/microscopy/region_mle/gui/app.py` (`RegionMleApp`, Qt-free),
+  spec `gui/region_mle_emtk.view.json`, model `gui/model.py` (the unchanged
+  view-model plus window state), fit on a `SnapshotJob`. Analysis region drawn
+  and dragged on the image, measured regions as read-only outlines with
+  numbers, selected-region marker, residuals over the log decay. Not reachable:
+  the region editor's add/edit/save/load (`chisurf/emtk/regions.py` passes `0`
+  to `collapsing_header`, which emtk reads as "closed" every frame). Found on
+  the way, not fixed: `fit_regions`/`preview_regions` read the simulated demo
+  with `tttrlib.CLSMImage` (empty image) so Load demo + Run fails, and `run()`
+  clears its error text. One fix in the view model: `info_html` called `.get`
+  on the result store. Evidence `okf/plugins/emtk-ports/region_mle/`
+  (compare exit 0, 46 tests in the plugin folder); report text delivered with
+  the hand-over (REPORT.md could not be written by the agent).
