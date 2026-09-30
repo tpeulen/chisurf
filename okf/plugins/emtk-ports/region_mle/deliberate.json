@@ -28,12 +28,12 @@
   "frame": "pyqtgraph ImageView frame button; the region image is one summed frame; not ported.",
   "menu": "pyqtgraph ImageView menu button; not ported.",
   "roi": "pyqtgraph ImageView's own ROI button; the analysis region is edited through the Analysis region section instead.",
-  "combine": "BLOCKED, see report section 10: the rule combo of the analysis-region editor sits inside RegionControls' 'Analysis regions' header, which cannot be opened (forced closed every frame).",
-  "allofthem": "BLOCKED (report section 10): entry of the 'Combine' combo inside the closed RegionControls header.",
-  "anyofthem": "BLOCKED (report section 10): entry of the 'Combine' combo inside the closed RegionControls header.",
-  "exactlyone": "BLOCKED (report section 10): entry of the 'Combine' combo inside the closed RegionControls header.",
-  "noregions": "BLOCKED (report section 10): the 'no regions' summary beside the Combine combo of the region editor.",
-  "region": "BLOCKED (report section 10): header of the region table of the editor; RegionControls lists regions as selectable rows inside its closed header.",
-  "shape": "BLOCKED (report section 10): column of the Qt region table; RegionControls shows the shape by the editable parameters of the selected region inside its closed header.",
-  "measurement": "BLOCKED (report section 10): column of the Qt region table; RegionControls shows area and mean intensity of the selected region inside its closed header."
+  "combine": "The Qt analysis-region editor (rule combo, add/remove, save/load); drawn by RegionControls inside the 'Analysis regions' header, which starts closed, so absent from the closed-state inventory. Reachable since emtk collapsing_header honours flags (see after_region_editor_open_1200x800.png).",
+  "allofthem": "The Qt analysis-region editor (rule combo, add/remove, save/load); drawn by RegionControls inside the 'Analysis regions' header, which starts closed, so absent from the closed-state inventory. Reachable since emtk collapsing_header honours flags (see after_region_editor_open_1200x800.png).",
+  "anyofthem": "The Qt analysis-region editor (rule combo, add/remove, save/load); drawn by RegionControls inside the 'Analysis regions' header, which starts closed, so absent from the closed-state inventory. Reachable since emtk collapsing_header honours flags (see after_region_editor_open_1200x800.png).",
+  "exactlyone": "The Qt analysis-region editor (rule combo, add/remove, save/load); drawn by RegionControls inside the 'Analysis regions' header, which starts closed, so absent from the closed-state inventory. Reachable since emtk collapsing_header honours flags (see after_region_editor_open_1200x800.png).",
+  "noregions": "The Qt analysis-region editor (rule combo, add/remove, save/load); drawn by RegionControls inside the 'Analysis regions' header, which starts closed, so absent from the closed-state inventory. Reachable since emtk collapsing_header honours flags (see after_region_editor_open_1200x800.png).",
+  "region": "The Qt analysis-region editor (rule combo, add/remove, save/load); drawn by RegionControls inside the 'Analysis regions' header, which starts closed, so absent from the closed-state inventory. Reachable since emtk collapsing_header honours flags (see after_region_editor_open_1200x800.png).",
+  "shape": "The Qt analysis-region editor (rule combo, add/remove, save/load); drawn by RegionControls inside the 'Analysis regions' header, which starts closed, so absent from the closed-state inventory. Reachable since emtk collapsing_header honours flags (see after_region_editor_open_1200x800.png).",
+  "measurement": "The Qt analysis-region editor (rule combo, add/remove, save/load); drawn by RegionControls inside the 'Analysis regions' header, which starts closed, so absent from the closed-state inventory. Reachable since emtk collapsing_header honours flags (see after_region_editor_open_1200x800.png)."
 }

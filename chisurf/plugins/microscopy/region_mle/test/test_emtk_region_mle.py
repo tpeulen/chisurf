@@ -417,3 +417,36 @@ def test_guide_targets_are_reachable_and_tour_waits_for_outcomes(workdir):
     # the step texts name controls of this app (no emoji labels, no Qt toolbar)
     text = json.dumps(steps, ensure_ascii=False)
     assert "🧪" not in text and "👁" not in text and "▶" not in text
+
+
+def test_the_analysis_region_editor_opens_when_its_header_is_clicked():
+    """The editor sits in a collapsible header that starts closed; a click must open it for good.
+
+    (emtk once read the header's flags word as a bool and forced it closed every frame.)
+    """
+    from emtk.testing import RecordingPainter
+
+    from ..gui.app import make_app
+
+    app = make_app()
+
+    def frame():
+        painter = RecordingPainter()
+        app.draw(painter, 0, 0, 1200, 800)
+        return painter
+
+    for _ in range(3):
+        painter = frame()
+    assert "Add rectangle" not in painter.strings
+    header = next(t for t in painter.texts if "Analysis regions" in str(t[5]))
+    io = app.io
+    io.mouse_pos = (header[0] + 20, header[1] + 5)
+    io.mouse_clicked[0] = io.mouse_down[0] = True
+    frame()
+    io.mouse_clicked[0] = io.mouse_down[0] = False
+    io.mouse_released[0] = True
+    frame()
+    io.mouse_released[0] = False
+    for _ in range(3):
+        painter = frame()
+    assert {"Add rectangle", "Add ellipse", "Add polygon"} <= set(painter.strings)

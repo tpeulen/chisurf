@@ -6023,3 +6023,17 @@ does not (yet) give the window-level features `NdxWindow` adds: the Global
 View slot withdrawal, `session_autosave`, the geometry persistence, the MMFDB
 opener wiring. Decide the direction (wrap the emtk app in `NdxWindow` when a
 Qt host is available, or port the missing pieces) and fix one side.
+
+## region_mle: the simulated demo reads as an empty image (found 2026-09-30)
+
+`region_mle`'s `preview_regions` / `fit_regions` (`core/region_mle.py`, around line 826) build
+`tttrlib.CLSMImage(tttr, channels=..., fill=True)` directly. The simulated demo written by
+`spot_finder/demo.py` does not carry the scanner's marker layout, so that call returns an empty
+image (`intensity.shape == (1, 1, 0)`), and Load demo then Run/Preview fails with
+`the regions are (48, 48) and the image is (1, 0)` -- in the shipped Qt tool as well, not only in the
+emtk port. `run()` then clears its own `status_text`, so the user sees the intro text and no error.
+Reproduce: `create_demo(tmp)` then `np.asarray(tttrlib.CLSMImage(tttrlib.TTTR(str(path)), channels=[0, 1], fill=True).intensity).shape`.
+Fix direction: read through the shared loader Spot Finder uses
+(`imaging.simulate.clsm_from_scan` with the sidecar `scan_layout`; another stream is moving this into
+`core/fluorescence/imaging/intensity.py`), and keep the error text in `run()`. The emtk port's tests
+and populated screenshots wrap `CLSMImage` in a test-side shim (the `workdir` fixture) until then.

@@ -2,6 +2,10 @@
 
 ## 2026-09-30
 
+* **PRD-153 Wave 2 pilot (`region_mle`) reviewed and accepted; a general emtk bug found through it.** Port by the agent (1d630e6e5, d5207db8b, 51cbd6a13), report `okf/plugins/emtk-ports/region_mle/REPORT.md`: 47 plugin tests pass, `compare` exit 0, Qt-free, populated result equals the Qt baseline (4 regions, median tau 1.54 ns).
+  - emtk e76836b: `im.collapsing_header` read an ImGui flags word (`0`, `TreeNodeFlags.DEFAULT_OPEN`) as a bool and forced the header open/closed every frame, so about 30 headers across the ports (calculators, tttr_splitter, lightpath_simulator, burst tools, the region editor) could not be toggled. An int is now flags and sets only the initial state. Verified in the real app: clicking "Analysis regions" opens the editor.
+  - Open (known issues): the simulated demo reads as an empty `CLSMImage`, so Load demo then Run fails in the shipped Qt tool too.
+
 * **Type C audit of the three script-entrypoint plugins** (`okf/plugins/emtk-ports/type-c-audit.md`): `screenshot` is a headless action (nothing to port); `tttr_correlate` (887 Qt lines) and `tttr_histogram` (760 Qt lines) are full Qt windows with no emtk equivalent verified yet; `tttr/microtime_histogram` already has an emtk app but no selection-expression field, so merging `tttr_histogram` into it needs a parity check first.
 
 * **PRD-153 pilot (`pch`) reviewed and accepted; evidence tool and PRD corrected from what the pilot found.**
