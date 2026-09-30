@@ -1,14 +1,11 @@
 {
   "plugin": "pch",
-  "lost": [
-    "ε1",
-    "ℹ️help",
-    "⟨n⟩1",
-    "💾saveresults",
-    "📊computepch",
-    "📥loadtttr",
-    "🧪fitmodel"
-  ],
+  "explained": {
+    "ε1": "Two stacked spin boxes per species became one editable table (columns ε, ⟨N⟩, #); the control is the table's ε column.",
+    "⟨n⟩1": "Same table: the ⟨N⟩ column."
+  },
+  "stale_explanations": [],
+  "lost": [],
   "gained": [
     "#",
     "0",
@@ -33,13 +30,9 @@
     "3.0000",
     "65535",
     "actions",
-    "computepch",
     "datasettings",
-    "fitmodel",
     "guide",
-    "help",
     "intensitytrace",
-    "loadtttr",
     "modelfit",
     "p(k)",
     "pchsettings",
@@ -47,7 +40,6 @@
     "photoncountk",
     "photoncounts",
     "ready.loadatttrfiletobegin.",
-    "saveresults",
     "time(s)",
     "ε",
     "⟨n⟩"

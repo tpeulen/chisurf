@@ -2,6 +2,12 @@
 
 ## 2026-09-30
 
+* **PRD-153 pilot (`pch`) reviewed and accepted; evidence tool and PRD corrected from what the pilot found.**
+  - `pch` is ported (agent commits b2496542f, 138ceeeaa, ec41fc2f8): same numbers as the Qt tool (BH_SPC132 ch 0,8, 50 us: 1246577 bins, 2 components chi2 1018.40/21), 48 plugin tests pass, Qt-free, no untooltipped control. Report `okf/plugins/emtk-ports/pch/REPORT.md`.
+  - `test/gui/emtk_port_parity.py`: a leading pictogram glued to a word is stripped (five false "lost" entries for `pch`), both halves are normalised in `compare`, `deliberate.json` records reasoned differences (`explained`, `stale_explanations`), and spec fields drawn with `##id` labels are now in the tooltip audit. 10 tests.
+  - `test/test_plugin_help_guide_seam.py`: `EmTkHelpWindow`/`EmTkGuidedTour` count as drawing the help, so `test_shipped_help_is_drawn` passes again (it was red for 26 emtk ports). 22 other guide failures in that file belong to other plugins.
+  - `⟨N⟩` looking like `(N)` is Menlo's shallow angle brackets at the default size, not an emtk bug. Open: emtk has no PNG export of a window/plot outside `emtk.testing`; `chisurf/emtk/help_guide.py` hard-codes accent colours.
+
 * **PRD-153: procedure, evidence tool and report template for porting the remaining Qt plugins to emtk.**
   - `okf/prds/prd-153.md`: rules, Definition of Done, the P0-P10 gates, Type A (decouple an emtk app from its Qt tool) and Type B (Qt-only) recipes with the `f_test` port as the reference, required tests, waves (pilot `pch` first; `mfd_prepare`, `burst_ebfret`, `alex_suite` only once their trees are clean — another instance had uncommitted edits in them on 2026-09-30, `mfd_prepare`'s emtk app crashed on draw with a missing `remember`; then `region_mle`, `flc-2d`, `fret_docking`, `updater`), the excluded large/blocked plugins, and when to stop and ask.
   - `test/gui/emtk_port_parity.py` (+ `test/gui/test_emtk_port_parity.py`, 6 passed): `before` captures the Qt widget and its control inventory, `after` draws the emtk app at 1200x800 and 800x600 through `app.draw`, records every control with the tooltip that follows it, and proves the app imports no Qt / `chisurf.gui` in a fresh interpreter; `compare` lists lost controls. Run on `f_test`: 13 Qt controls, 31 emtk, 0 without tooltip, Qt-free, `lost = ["fromfit"]` (a real rename: the Qt "From fit" menu became "Refresh open fits" / "Load selected fit").

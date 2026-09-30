@@ -344,10 +344,12 @@ def test_help_is_substantive_and_links_live(plugin: GuiPlugin):
     )
 
 
-#: Calls or bases that draw ``?``/**Guide** for a tool that ships the files.
+#: Calls or bases that draw ``?``/**Guide** for a tool that ships the files. An emtk app
+#: has no Qt toolbar to attach to: it draws the window and the tour itself.
 _DRAWS_HELP = re.compile(
     r"\b(ensure_help_toolbar|add_toolbar_help|attach_help_and_guide"
-    r"|NavigationPanelTool|BurstAnalysisTool|AutoFormMleTool)\b"
+    r"|NavigationPanelTool|BurstAnalysisTool|AutoFormMleTool"
+    r"|EmTkHelpWindow|EmTkGuidedTour)\b"
 )
 
 #: Tools that ship help files but do not draw them yet. **Shrinking**; never

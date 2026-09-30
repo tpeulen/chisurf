@@ -73,13 +73,13 @@ Controls without tooltip (`after.json` → `controls_without_tooltip`, must be `
 
 ## 5. Deliberate differences
 
-Every entry of `compare.json` → `lost` and every change of behaviour must appear here.
+Every entry of `compare.json` → `explained` (from `deliberate.json`) and every change of behaviour must appear here. `lost` must be `[]` and `stale_explanations` `[]`.
 
 | Lost/changed item | Why | Where it went / what replaces it |
 |---|---|---|
 | | | |
 
-If `lost` is empty: write `none — compare.json lost = []`.
+If `explained` is empty: write `none — compare.json lost = [] and explained = {}`.
 
 ## 6. Tests (paste)
 

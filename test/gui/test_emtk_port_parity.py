@@ -17,6 +17,8 @@ def test_normalize_treats_renames_as_parity():
     assert epp.normalize("📁 Folder") == epp.normalize("Folder")
     assert epp.normalize("<b>Bins X:</b>") == "binsx"
     assert epp.normalize("ℹ️ Help") == "help"
+    assert epp.normalize("📥loadtttr") == "loadtttr"      # already normalised, emoji glued on
+    assert epp.normalize(epp.normalize("📥 Load TTTR")) == "loadtttr"
     assert epp.normalize("χ² min") == "χ²min"       # a name, not a pictogram
 
 
@@ -70,3 +72,35 @@ def test_compare_flags_a_lost_control(tmp_path):
 def test_unknown_plugin_is_a_clear_error():
     with pytest.raises(KeyError):
         epp.manifest_of("no_such_plugin_id")
+
+
+def _evidence(tmp_path, before, after, deliberate=None):
+    (tmp_path / "before.json").write_text(json.dumps({"controls": before}))
+    (tmp_path / "after.json").write_text(
+        json.dumps({"controls": after, "controls_without_tooltip": [], "qt_free": {"ok": True}})
+    )
+    if deliberate is not None:
+        (tmp_path / "deliberate.json").write_text(json.dumps(deliberate))
+
+
+def test_a_deliberate_difference_is_explained_not_hidden(tmp_path):
+    _evidence(tmp_path, ["run", "\u03b51", "save"], ["run", "save"], {"\u03b5 1": "now a table column"})
+    result = epp.compare("x", tmp_path)
+    assert result["lost"] == []
+    assert result["explained"] == {"\u03b51": "now a table column"}
+
+
+def test_an_explanation_for_a_control_that_is_present_is_reported_stale(tmp_path):
+    _evidence(tmp_path, ["run"], ["run"], {"run": "no longer needed"})
+    assert epp.compare("x", tmp_path)["stale_explanations"] == ["run"]
+
+
+def test_an_unexplained_loss_still_blocks(tmp_path, capsys):
+    _evidence(tmp_path, ["run", "save"], ["run"], {"other": "x"})
+    assert epp.main(["compare", "x", "--out", str(tmp_path)]) == 1
+
+
+def test_compare_normalises_both_halves(tmp_path):
+    """Evidence written by an older tool (emoji glued on) still compares equal."""
+    _evidence(tmp_path, ["\U0001f4e5loadtttr", "run"], ["loadtttr", "run"])
+    assert epp.compare("x", tmp_path)["lost"] == []

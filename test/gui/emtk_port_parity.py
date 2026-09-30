@@ -36,8 +36,10 @@ Files written to ``--out`` (all of them are committed with the port):
 * ``before.json`` / ``after.json`` -- control inventory (normalised text of every
   label, button and table cell) and, for ``after``, one row per interactive control
   with its tooltip (``controls_without_tooltip`` must be empty).
-* ``compare.json`` -- ``lost`` (blocker), ``gained``, ``untooltipped``, and the
-  Qt-free import check result.
+* ``deliberate.json`` -- written by the porter: ``{"<control>": "reason and replacement"}`` for
+  each control that is deliberately not 1:1 (a table replacing stacked rows, ...).
+* ``compare.json`` -- ``lost`` (blocker: a control nobody explained), ``explained``,
+  ``gained``, ``untooltipped``, and the Qt-free import check result.
 """
 
 from __future__ import annotations
@@ -90,30 +92,27 @@ def _resolve(spec: str) -> typing.Any:
     return getattr(importlib.import_module(module), attr)
 
 
-def _is_pictogram(token: str) -> bool:
-    """Whether *token* is only emoji/symbol marks (``📁``, ``ℹ️``), not a name like ``χ²``."""
+def _is_pictogram_char(ch: str) -> bool:
+    """Whether *ch* is an emoji/symbol mark (``📁``, ``ℹ``, a variation selector), not a letter."""
     import unicodedata
 
-    return bool(token) and all(
-        ch == "\u2139" or unicodedata.category(ch) in ("So", "Sk", "Sm", "Cf", "Mn")
-        for ch in token
-    )
+    return ch == "\u2139" or unicodedata.category(ch) in ("So", "Sk", "Sm", "Cf", "Mn")
 
 
 def normalize(text: str) -> str:
     """Compare-key of a control's text: no markup, accelerators, ellipsis, emoji, case or space.
 
-    ``&Open...`` and ``Open…`` are the same control, and so are ``📁 Folder`` and
-    ``Folder``; ``χ² min`` keeps its ``χ²`` (a letter, not a pictogram).
+    ``&Open...`` and ``Open…`` are the same control, and so are ``📁 Folder``, ``📁Folder``
+    and ``Folder`` (a leading run of pictograms is dropped, glued to the word or not);
+    ``χ² min`` keeps its ``χ²`` (letters, not pictograms). Safe to apply to a string that
+    was already normalised.
     """
     out = re.sub(r"<[^>]*>", "", str(text)).strip()
     out = out.replace("&", "").replace("...", "").replace("\u2026", "")
-    head, _, rest = out.partition(" ")
-    if rest and _is_pictogram(head):
-        out = rest
-    elif _is_pictogram(out):
-        out = ""
-    out = re.sub(r"[:\s]+", "", out)
+    i = 0
+    while i < len(out) and (_is_pictogram_char(out[i]) or out[i].isspace()):
+        i += 1
+    out = re.sub(r"[:\s]+", "", out[i:])
     return out.lower()
 
 
@@ -237,7 +236,13 @@ def emtk_inventory(app: typing.Any, size: tuple[int, int] = SIZES[0]) -> dict:
             app.draw(painter, 0.0, 0.0, float(size[0]), float(size[1]))
     controls = set(recorder.texts) | {normalize(s) for s in painter.strings}
     controls.discard("")
-    rows = [r for r in recorder.rows if r["label"]]
+    # A control drawn with an empty visible label (every spec field: ``##name``) is still a
+    # control a user operates, so it is kept, named by its id, and its tooltip is audited.
+    rows = []
+    for r in recorder.rows:
+        name = r["label"] or r["id"].lstrip("#")
+        if name:
+            rows.append(dict(r, label=name))
     return {
         "size": list(size),
         "controls": sorted(controls),
@@ -327,16 +332,29 @@ def compare(plugin_id: str, out: pathlib.Path) -> dict:
     """
     before = json.loads((out / "before.json").read_text())
     after = json.loads((out / "after.json").read_text())
-    lost = sorted(set(before["controls"]) - set(after["controls"]))
-    gained = sorted(set(after["controls"]) - set(before["controls"]))
+    # Normalised again here (it is idempotent) so evidence captured by an older version of
+    # this tool, or by ``migration_parity``'s own normaliser, compares like with like.
+    before_controls = {normalize(c) for c in before["controls"]} - {""}
+    after_controls = {normalize(c) for c in after["controls"]} - {""}
+    missing = sorted(before_controls - after_controls)
+    # A difference the porter has decided on is written to ``deliberate.json`` as
+    # ``{"<control>": "why, and where it went"}`` (keys are normalised like labels). It is
+    # listed separately and never hides: ``lost`` is only what nobody explained.
+    explained_file = out / "deliberate.json"
+    explained = json.loads(explained_file.read_text()) if explained_file.exists() else {}
+    explained = {normalize(k): v for k, v in explained.items()}
+    lost = [c for c in missing if c not in explained]
+    gained = sorted(after_controls - before_controls)
     result = {
         "plugin": plugin_id,
+        "explained": {c: explained[c] for c in missing if c in explained},
+        "stale_explanations": sorted(set(explained) - set(missing)),
         "lost": lost,
         "gained": gained,
         "untooltipped": after.get("controls_without_tooltip", []),
         "qt_free": after.get("qt_free", {}),
-        "before_controls": len(before["controls"]),
-        "after_controls": len(after["controls"]),
+        "before_controls": len(before_controls),
+        "after_controls": len(after_controls),
     }
     (out / "compare.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))
     return result
