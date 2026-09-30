@@ -1,0 +1,45 @@
+{
+  "controls": [
+    "bintime",
+    "channels",
+    "components",
+    "file",
+    "fitresults",
+    "microtime",
+    "to",
+    "ε1",
+    "ℹ️help",
+    "⟨n⟩1",
+    "💾saveresults",
+    "📊computepch",
+    "📥loadtttr",
+    "🧪fitmodel"
+  ],
+  "labels": [
+    "Bin Time:",
+    "Channels:",
+    "Components:",
+    "File:",
+    "Fit Results:",
+    "Micro Time:",
+    "to",
+    "ε 1",
+    "⟨N⟩ 1"
+  ],
+  "buttons": [
+    "ℹ️ Help",
+    "💾 Save Results",
+    "📊 Compute PCH",
+    "📥 Load TTTR",
+    "🧪 Fit Model"
+  ],
+  "line_edits": 8,
+  "combos": 0,
+  "spin_boxes": 6,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.pch.gui.tool:PCHApp",
+  "size": [
+    1200,
+    800
+  ]
+}
