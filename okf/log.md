@@ -1,5 +1,21 @@
 # Update Log
 
+## 2026-09-30
+
+* **PRD-153: procedure, evidence tool and report template for porting the remaining Qt plugins to emtk.**
+  - `okf/prds/prd-153.md`: rules, Definition of Done, the P0-P10 gates, Type A (decouple an emtk app from its Qt tool) and Type B (Qt-only) recipes with the `f_test` port as the reference, required tests, waves (pilot `pch` first; `mfd_prepare`, `burst_ebfret`, `alex_suite` only once their trees are clean — another instance had uncommitted edits in them on 2026-09-30, `mfd_prepare`'s emtk app crashed on draw with a missing `remember`; then `region_mle`, `flc-2d`, `fret_docking`, `updater`), the excluded large/blocked plugins, and when to stop and ask.
+  - `test/gui/emtk_port_parity.py` (+ `test/gui/test_emtk_port_parity.py`, 6 passed): `before` captures the Qt widget and its control inventory, `after` draws the emtk app at 1200x800 and 800x600 through `app.draw`, records every control with the tooltip that follows it, and proves the app imports no Qt / `chisurf.gui` in a fresh interpreter; `compare` lists lost controls. Run on `f_test`: 13 Qt controls, 31 emtk, 0 without tooltip, Qt-free, `lost = ["fromfit"]` (a real rename: the Qt "From fit" menu became "Refresh open fits" / "Load selected fit").
+  - Report template `okf/plugins/emtk-ports/_TEMPLATE.md`; evidence per plugin goes in `okf/plugins/emtk-ports/<id>/`.
+
+* **emtk port audit: emoji glyphs, window size, hub factories, batch-analysis markup.**
+  - emtk 301ff0a: colour-emoji labels (`🚀 Run`, `📁 Folder`, `📖 Guide` ... ~100 across the ports) drew a solid white block because the glyph cache kept only the alpha of Apple Color Emoji's fixed 160 px strike, cropped. They now draw as one-colour pictograms (`dynamic_font._rasterise_strike`); test `tests/test_emoji_glyphs.py`.
+  - emtk a6203b2: `ControlHost` opened every emtk plugin in Qt's default 640x480 window (toolbars cut off, plots cramped). A parentless host now opens at the control's `preferred_size` or 1200x800, clamped to 92 % of the screen; embedded hosts are untouched. Tests in `tests/test_qt_host.py`.
+  - chisurf: `img_drift`, `img_frc`, `img_flow`, `img_tracking` `make_app()` did not accept the `coordinator=` the imaging hub passes, so none of the four opened from the Imaging workflow (caught by `imaging_tools/test/test_native.py::test_all_native_children_render_without_qt`, red). They take `coordinator=None` now.
+  - chisurf: `batch_analysis` drew its selection summary HTML through `im.text_wrapped`, so `<h4>`/`<ul>` showed as text; it goes through `im.markdown`. Test `test_native_batch_selection_summary_shows_no_markup` (fails without the fix).
+  - emtk (uncommitted, in `emtk/im_widgets.py::_slider_text_edit` + `tests/test_ui_sliders_im.py`, both still untracked/dirty from another stream): a double click on any `im.slider_*` track opens the type-in, as Ctrl+Click does; `view_form` already did. Calculator sliders (`calculator/inputs.py`) are deliberate -- log tracks for wide ranges -- so the default stays a slider, but exact entry is now discoverable. emtk suite 2180 passed.
+  - Note: emtk a6203b2 also carries another stream's uncommitted `qt_host.py` changes (weak-reference detach, background normalisation, `closeEvent`) and their tests; the suite is green with them.
+  - Measured: all 104 `entrypoints.emtk` factories construct and draw headlessly at 1200x800 (`ndxplorer` has a different app API and was skipped); 175 native/emtk test runs per file all pass except `img_flow::test_the_demo_is_a_readable_ptu_whose_flow_comes_back` (`n_escaped == 25`, see known issues below).
+
 ## 2026-09-29
 
 * **ndX: an older settings folder gets the shipped defaults it lacks, on load; g/s axes default to phasor ranges.**
