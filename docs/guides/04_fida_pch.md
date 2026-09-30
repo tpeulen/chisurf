@@ -43,9 +43,11 @@ There are two GUI routes, and only one of them is FIDA.
 stream and fits the multi-species PCH of {cite}`chen1999` — a 3-D Gaussian
 volume, no brightness profile. **Load TTTR** → set **Channels**, **Bin Time**
 and the **Micro Time** window → **Compute PCH** draws the intensity trace (top)
-and the histogram (bottom); **Components** and the ε/⟨N⟩ start values set the
-fit, the shaded region on the histogram the fit range, and **Fit Model** runs
-it.
+and the histogram (bottom); **Components** and the ε/⟨N⟩ start values (one
+table row per species, double click a cell to edit) set the fit, the two
+vertical lines on the histogram the fit range, and **Fit Model** runs it. The
+tool is an emtk window: **Help** explains the settings, **Guide** walks through
+load, compute and fit, and a photon file dropped on the window is loaded.
 
 ```{figure} figures/04_pch_tool.png
 :name: fig-pch-tool
@@ -132,8 +134,10 @@ FIDA photon-counting histograms.
   count, including tail bins with expected counts near 10⁻¹⁴. On the data of
   {numref}`fig-pch-tool` one component gives ε = 0.332, ⟨N⟩ = 1.83 and
   χ²ᵣ = 1.5 × 10²⁰ over the full range (1.1 × 10¹⁰ over k ≤ 13), with the model
-  falling ten decades below the data at k = 13. A two-component fit did not
-  return within 5 minutes. Use FIDA in the PCH experiment.
+  falling ten decades below the data at k = 13. Two components (starting values
+  ε = 2, ⟨N⟩ = 3 per species) return in about a second with ε = 8.28 and 0.058,
+  ⟨N⟩ = 0.022 and 8.75 and χ²ᵣ = 48.5 over k ≤ 24 — better, but the misfit
+  above k = 10 remains. Use FIDA in the PCH experiment.
 - **`FidaModel` parameters have bounds off** (`fida_model.py`, `_p(..., bounds_on=False)`),
   so an unattended fit can run `N` negative; see above.
 - **`fida.fida_pch` ignores `profile` and `oversample`.** Both are documented

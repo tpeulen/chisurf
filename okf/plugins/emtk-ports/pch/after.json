@@ -1,0 +1,99 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "#",
+    "0",
+    "0,2",
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "100.00μs",
+    "1e-05",
+    "1e-06",
+    "2.0000",
+    "3.0000",
+    "65535",
+    "actions",
+    "bintime",
+    "channels",
+    "components",
+    "computepch",
+    "datasettings",
+    "file",
+    "fitmodel",
+    "fitresults",
+    "guide",
+    "help",
+    "intensitytrace",
+    "loadtttr",
+    "microtime",
+    "modelfit",
+    "p(k)",
+    "pchsettings",
+    "photoncountinghistogram",
+    "photoncountk",
+    "photoncounts",
+    "ready.loadatttrfiletobegin.",
+    "saveresults",
+    "time(s)",
+    "to",
+    "ε",
+    "⟨n⟩"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the photon counting histogram, the settings and the outputs."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through loading a file, computing the histogram and fitting it."
+    },
+    {
+      "kind": "button",
+      "label": "Load TTTR",
+      "id": "Load TTTR##load",
+      "tooltip": "Choose a photon-stream file (PTU, HT3, T2R, T3R, PTO, SPC) to analyse."
+    },
+    {
+      "kind": "button",
+      "label": "Compute PCH",
+      "id": "Compute PCH##compute",
+      "tooltip": "Bin the photons of the loaded file into counting intervals and histogram the counts per bin."
+    },
+    {
+      "kind": "button",
+      "label": "Fit Model",
+      "id": "Fit Model##fit",
+      "tooltip": "Fit the species model (brightness and occupancy per component) to the histogram over the selected k range."
+    },
+    {
+      "kind": "button",
+      "label": "Save Results",
+      "id": "Save Results##save",
+      "tooltip": "Write the histogram, the fit and the results text as NPZ, CSV and TXT files."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
