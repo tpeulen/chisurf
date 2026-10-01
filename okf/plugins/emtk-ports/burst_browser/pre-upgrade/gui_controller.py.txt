@@ -1,0 +1,177 @@
+"""Native browser loading, cancellation and gated/selected table export."""
+
+import copy
+from concurrent.futures import CancelledError, ThreadPoolExecutor
+from pathlib import Path
+from threading import Event
+
+import numpy as np
+
+
+class BurstBrowserController:
+    def __init__(self, model):
+        self.model = model
+        self.running = False
+        self.status = ""
+        self._cancel = Event()
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="burst-browser")
+        self._future = None
+        self.dialog = None
+        self.action = "file"
+        from chisurf.emtk.dataset_picker import DatasetPicker
+
+        self.datasets = DatasetPicker(
+            kinds=["analysis_result", "raw_data", "burst_data"], on_paths=self.on_paths_dropped
+        )
+
+    def check_cancel(self):
+        if self._cancel.is_set():
+            raise CancelledError()
+
+    def load(self, path):
+        if self.running:
+            return
+        path = Path(path)
+        if not path.exists():
+            self.status = f"Input does not exist: {path}"
+            return
+        self._cancel.clear()
+        snapshot = copy.copy(self.model)
+        snapshot._observers = []
+        snapshot.table, snapshot.mask, snapshot.selected_indices = None, None, []
+        self.running = True
+        self.status = f"Loading bursts: {path.name} …"
+        self._future = self._executor.submit(self._load, snapshot, path)
+
+    def _load(self, snapshot, path):
+        self.check_cancel()
+        if path.suffix.lower() == ".bur":
+            snapshot.load_bur(path)
+        else:
+            snapshot.load_folder(path, cancel_check=self.check_cancel)
+        self.check_cancel()
+        if snapshot.table is None:
+            raise ValueError(f"No readable bursts found in {path}")
+        return snapshot
+
+    def poll(self):
+        if self._future is None or not self._future.done():
+            return
+        future, self._future = self._future, None
+        try:
+            snapshot = future.result()
+            self.check_cancel()
+            observers = self.model._observers
+            self.model.__dict__.update(snapshot.__dict__)
+            self.model._observers = observers
+            self.model.notify("data")
+            self.status = self.model.status_text()
+        except CancelledError:
+            self.status = "Loading cancelled; previous data retained."
+        except Exception as exc:
+            self.status = f"Error: {exc}"
+        finally:
+            self.running = False
+
+    def on_paths_dropped(self, paths):
+        if paths:
+            self.load(paths[0])
+
+    def stop(self):
+        if self.running:
+            self._cancel.set()
+            self.status = "Stopping burst read …"
+
+    def clear(self):
+        self.stop()
+        observers = self.model._observers
+        self.model.__dict__.update(type(self.model)().__dict__)
+        self.model._observers = observers
+        self.model.notify("data")
+        self.status = "Data cleared."
+
+    def export(self, path, selected=False):
+        from chisurf.core.datastore import take_rows
+        from chisurf.core.fio.fluorescence.burst import write_csv_table
+
+        if self.model.table is None:
+            raise ValueError("Load bursts before exporting.")
+        rows = (
+            np.asarray(self.model.selected_indices, dtype=int)
+            if selected
+            else self.model.masked_row_indices()
+        )
+        rows = np.intersect1d(rows, self.model.masked_row_indices())
+        write_csv_table(Path(path), take_rows(self.model.table, rows))
+        self.status = f"Exported {len(rows)} bursts: {path}"
+
+    def browse(self, action="file"):
+        from emtk.file_dialog import FileDialog
+
+        self.action = action
+        self.dialog = FileDialog(
+            "Burst browser input / export",
+            mode="folder"
+            if action == "folder"
+            else ("save" if action.startswith("export") else "open"),
+            filters=[("Burst tables / containers", ["*.bur", "*.pto", "*.h5", "*.hdf5"])]
+            if action == "file"
+            else [("CSV", ["*.csv"])],
+            filename="bursts.csv" if action.startswith("export") else None,
+        )
+
+    def draw_controls(self):
+        from emtk import im
+
+        for label, callback, tip in (
+            (
+                "MMFDB datasets",
+                self.datasets.open,
+                "Load a burst analysis dataset from the database.",
+            ),
+            (
+                "Export gated bursts",
+                lambda: self.browse("export_gate"),
+                "Save every burst passing the current gates as CSV.",
+            ),
+            (
+                "Export selected bursts",
+                lambda: self.browse("export_selected"),
+                "Save selected table rows that also pass the current gates.",
+            ),
+            ("Clear data", self.clear, "Remove the current table, histogram and row selection."),
+            (
+                "Stop loading",
+                self.stop,
+                "Cancel between input files and retain the previous table.",
+            ),
+        ):
+            if im.button(label):
+                callback()
+            im.set_item_tooltip(tip)
+        if self.status:
+            im.text_wrapped(self.status)
+
+    def draw_dialogs(self, frame):
+        from emtk import im
+
+        if self.dialog is not None:
+            if im.begin("Burst browser file chooser"):
+                result = self.dialog.draw()
+                if result:
+                    try:
+                        if self.action.startswith("export"):
+                            self.export(result[0], selected=self.action == "export_selected")
+                        else:
+                            self.load(result[0])
+                    except Exception as exc:
+                        self.status = f"Error: {exc}"
+                    self.dialog = None
+                elif result is False:
+                    self.dialog = None
+            im.end()
+        self.datasets.render(frame)
+
+    def close(self):
+        self.stop()
+        self._executor.shutdown(wait=False, cancel_futures=True)

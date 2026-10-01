@@ -1,0 +1,9 @@
+ M chisurf/plugins/burst/burst_browser/__init__.py
+ M chisurf/plugins/burst/burst_browser/gui/__init__.py
+ M chisurf/plugins/burst/burst_browser/gui/app.py
+ M chisurf/plugins/burst/burst_browser/manifest.json
+ M chisurf/plugins/burst/burst_browser/view_model.py
+?? chisurf/plugins/burst/burst_browser/gui/controller.py
+?? chisurf/plugins/burst/burst_browser/gui/tool.py
+?? chisurf/plugins/burst/burst_browser/test/demo_folder.py
+?? chisurf/plugins/burst/burst_browser/test/test_native.py
