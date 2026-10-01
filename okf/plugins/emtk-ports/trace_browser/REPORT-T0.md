@@ -84,3 +84,7 @@ hunk; the rename shows as `__init__.py` shrunk plus `widget.py` new; `core/trace
 3. Quirks recorded by the agent (toolbar Subfolders checkbox without effect, stale hidden-row flags on a reused widget,
    channel-only setup gives an empty trace, `api/io.list_files` differs from the widget scan) are carried to the card that
    owns the control (T2) and must be decided there, not silently "fixed".
+
+4. **Five uncached-trace tests skipped (reviewer, with T1).** They run the legacy `IntensityTrace` Qt engine, which reads its
+   detector mapping from a real saved setup and wrote to the real database; they are skipped with that reason and card T3
+   re-enables them against the Qt-free binner (see the review in `REPORT-T1.md`).

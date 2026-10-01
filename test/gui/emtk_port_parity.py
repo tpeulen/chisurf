@@ -131,6 +131,7 @@ class ControlRecorder:
     def __init__(self) -> None:
         self.rows: list[dict] = []
         self.texts: set[str] = set()
+        self._depth = 0
 
     # a control was drawn
     def control(self, kind: str, label: typing.Any) -> None:
@@ -172,9 +173,18 @@ class ControlRecorder:
         recorder = self
 
         def wrapper(*args, **kwargs):
-            label = args[0] if args else kwargs.get("label", "")
-            recorder.control(kind, label)
-            return func(*args, **kwargs)
+            # Only the outermost control call is a control the app drew. ``input_float`` is
+            # built on other wrapped functions (a drag field and the step buttons); recording
+            # those too gave phantom rows and the app's tooltip landed on the inner one, so
+            # a tooltipped field was reported as having none.
+            if recorder._depth == 0:
+                label = args[0] if args else kwargs.get("label", "")
+                recorder.control(kind, label)
+            recorder._depth += 1
+            try:
+                return func(*args, **kwargs)
+            finally:
+                recorder._depth -= 1
 
         wrapper.__wrapped__ = func
         return wrapper
@@ -183,7 +193,10 @@ class ControlRecorder:
         recorder = self
 
         def wrapper(text, *args, **kwargs):
-            recorder.tooltip(text)
+            # A tooltip a widget sets for its own parts (the step buttons inside an input
+            # field) is not the app's tooltip for the control.
+            if recorder._depth == 0:
+                recorder.tooltip(text)
             return func(text, *args, **kwargs)
 
         wrapper.__wrapped__ = func

@@ -73,3 +73,34 @@ No emtk gap blocked the card.
 
 ## Docs
 No docs change: the card is intermediate and the menu still opens the Qt tool; the guide, `help.md` and the docs page are card T4 (manifest switch).
+
+## Review (reviewer, 2026-10-01)
+
+Verified, not taken from the hand-over: commits touch only trace_browser files, the evidence folder and the agent's own
+log hunk; a fresh `after --entry` gives 22 controls (21 in the agent's run: this account has "ALEX Suite (auto)" saved,
+the agent's run had none; the difference is the setup name only), 0 untooltipped, Qt-free; `compare` exit 0, `lost` `[]`,
+113 explained (51 shared-editor renames, 18 closed-dropdown items, 18 `card T2`, 13 `card T4`, 10 editor-format limits);
+no Qt imports in `gui/app.py` / `gui/model.py`; constructing the app does not write to the real MMFDB; the Setup page
+screenshots at 1200x800 and 800x600 read clean. **Accepted.** Findings and what was done:
+
+1. **Tests were not hermetic — FIXED.** The T0 model tests touched the real `~/.chisurf/flr/sample_management.db` and five
+   failed on a clean settings folder. The hermetic autouse fixture now lives in `test/conftest.py` for the whole test
+   folder (T1's own copy removed; `ALEX` / `OVERLAP` setups shared from there). Five uncached-trace tests still need the
+   legacy `IntensityTrace` Qt engine plus a real saved setup in a real MMFDB (with a fresh one it raises `KeyError: 0` in
+   `intensity_trace/__init__.py:1523`, the fallback path indexing a dict with `[0]`); they are **skipped with that reason
+   and card T3 must re-enable all five** against its Qt-free binner.
+2. **"Foreign key" failure when loading a settings JSON into a fresh MMFDB — FIXED in core (reviewer).**
+   `setup_store.save_setup_row` stamped `created_by_user_id` for a user the database had never seen, so on a new
+   installation (or an unseeded `default_user_id`) the first setup save, including the one-time migration of a legacy
+   `detector_setups.json`, failed with `FOREIGN KEY constraint failed` and rolled back; every tool that reads detector
+   setups was affected. It now calls `db.ensure_user(user_id)` first (that method exists for exactly this). Two tests
+   (`test/fio/test_setup_store_fresh_database.py`) fail without the fix; the six `test_container_cross_writer.py`
+   failures in `test/fio` are identical on the committed code and unrelated.
+3. **The parity recorder double-counted nested controls — FIXED (reviewer).** `input_float` is built on other wrapped
+   widgets; the nested calls added phantom rows and the app's tooltip landed on the inner one, which is why 13 numeric
+   inputs of the editor's other tabs were reported untooltipped although the widget sets a tooltip after each. Only the
+   outermost control call and the app's own tooltip are recorded now (test added); the three accepted ports
+   (`pch`, `region_mle`, `flc-2d`) re-run with identical inventories and 0 untooltipped.
+4. Differences from Qt the agent listed (starts on the Setup page instead of the browser, empty editor with nothing saved,
+   shorter TTTR-format list) are card T2 decisions: T2 decides whether to start on the browser when a setup is remembered;
+   the 10 unreachable tttrlib container names are an emtk shared-editor limitation to be listed in the final report.

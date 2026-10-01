@@ -115,6 +115,13 @@ def save_setup_row(
         user_id = resolve_active_user_id()
     if is_public is None:
         is_public = False
+    # ``created_by_user_id`` is a foreign key to the users table. A fresh database has no row for
+    # the active user (a configured ``default_user_id`` that was never seeded, or any new
+    # installation), so the first save -- including the one-time migration of a legacy
+    # ``detector_setups.json`` -- failed with "FOREIGN KEY constraint failed" and rolled back.
+    ensure_user = getattr(db, "ensure_user", None)
+    if user_id and callable(ensure_user):
+        ensure_user(user_id)
     db.save_setup(
         setup_id=setup_id_for_name(setup_name, user_id, config.id_prefix),
         name=setup_name,

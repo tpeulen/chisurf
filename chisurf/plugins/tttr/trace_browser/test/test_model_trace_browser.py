@@ -228,7 +228,19 @@ def test_observers_are_notified(fake_dir):
     assert "files" in events and "rows" in events
 
 
+
+#: These tests compute an *uncached* trace, which runs through the legacy ``IntensityTrace`` Qt
+#: widget. That engine takes its detector mapping from the global saved-setups store of a real
+#: MMFDB, so the tests only passed on a machine that had the author's setup saved -- and they wrote
+#: to the real ``~/.chisurf`` database while doing it. They are skipped (not deleted) until card T3
+#: replaces the engine with a Qt-free binner; T3 must re-enable all of them against it.
+needs_legacy_trace_engine = pytest.mark.skip(
+    reason="uncached traces need the legacy IntensityTrace engine and a real saved setup; re-enabled by card T3"
+)
+
+
 # ---- traces (need the binning engine, a Qt widget class -> qapp) -----------------------------
+@needs_legacy_trace_engine
 def test_trace_matches_the_reference(qapp, real_dir):
     # Reference: pre-change Qt widget, ``TraceBrowser._compute_trace_cached`` (git HEAD) on a
     # copy of test/data/tttr/BH/132/BH_SPC132.spc with the default ALEX setup, offscreen.
@@ -246,6 +258,7 @@ def test_trace_matches_the_reference(qapp, real_dir):
     assert int(pad.max()) == 467
 
 
+@needs_legacy_trace_engine
 def test_load_trace_uses_and_fills_the_disk_cache(qapp, real_dir):
     m = TraceBrowserModel()
     m.image_probe = lambda p: False
@@ -263,6 +276,7 @@ def test_load_trace_uses_and_fills_the_disk_cache(qapp, real_dir):
     assert m.trace_signature(f, 10.0) == m.trace_signature(f, 10.0)
 
 
+@needs_legacy_trace_engine
 def test_precompute_all_traces_reports_progress(qapp, real_dir):
     m = TraceBrowserModel()
     m.image_probe = lambda p: False
@@ -275,6 +289,7 @@ def test_precompute_all_traces_reports_progress(qapp, real_dir):
     assert m.precompute_all_traces() == 0  # everything cached now
 
 
+@needs_legacy_trace_engine
 def test_trace_job_runs_on_a_snapshot(qapp, real_dir):
     """Heavy methods run inside SnapshotJob and the result is copied back.
 
@@ -309,6 +324,7 @@ def test_trace_job_runs_on_a_snapshot(qapp, real_dir):
 
 
 # ---- the Qt widget and the model agree -------------------------------------------------------
+@needs_legacy_trace_engine
 def test_qt_widget_and_model_agree_on_the_same_folder(qapp, qtbot, fake_dir):
     pytest.importorskip("pyqtgraph")
     from chisurf.plugins.tttr.trace_browser import TraceBrowser

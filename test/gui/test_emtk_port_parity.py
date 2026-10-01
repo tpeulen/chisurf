@@ -116,3 +116,22 @@ def test_entry_overrides_the_manifest_so_a_partial_port_can_be_checked(tmp_path)
 def test_a_missing_entry_is_a_clear_error():
     with pytest.raises(ValueError, match="--entry"):
         epp.build_emtk_app("trace_browser")      # no entrypoints.emtk until its last card
+
+
+def test_a_numeric_input_is_one_control_with_its_tooltip():
+    """input_float/input_int are built on other wrapped widgets; they must not add phantom rows."""
+    from emtk import im
+    from emtk.app import ImApp
+
+    def gui():
+        im.begin("t", (0, 0, 300, 300))
+        im.input_float("##a", 1.0)
+        im.set_item_tooltip("tip a")
+        im.input_int("##b", 2)
+        im.set_item_tooltip("tip b")
+        im.end()
+
+    inventory = epp.emtk_inventory(ImApp(gui), (400, 400))
+    rows = {(r["kind"], r["label"]): r["tooltip"] for r in inventory["interactive"]}
+    assert rows == {("input_float", "a"): "tip a", ("input_int", "b"): "tip b"}
+    assert inventory["controls_without_tooltip"] == []
