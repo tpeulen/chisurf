@@ -1,0 +1,3 @@
+{
+  "?": "the help button of the Qt tool's toolbar, which the tool hides (toolbar.setVisible(False)) and the user never sees; the drawn surface's '❓ Help' button, on both sides (before_populated.png, after_populated_*), opens the same help.md"
+}

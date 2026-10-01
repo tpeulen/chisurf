@@ -1,0 +1,121 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0,8",
+    "0.2",
+    "0.4",
+    "0.6",
+    "0.8",
+    "1",
+    "1,9",
+    "10",
+    "100.0µs",
+    "15",
+    "20",
+    "25",
+    "2cde",
+    "2cdeparameters",
+    "30",
+    "35",
+    "40",
+    "45",
+    "5",
+    "50",
+    "acceptorroutingchannels",
+    "analysisfolder",
+    "burstfolder",
+    "donorroutingchannels",
+    "filetype",
+    "folder",
+    "fret",
+    "fret-2cde/alex-2cde",
+    "fretefficiency(proximityratio)",
+    "guide",
+    "help",
+    "kernel",
+    "laplace",
+    "restart",
+    "run",
+    "spc-130",
+    "stop",
+    "variant",
+    "τ(window)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "🚀 Run",
+      "id": "🚀 Run",
+      "tooltip": "Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE."
+    },
+    {
+      "kind": "button",
+      "label": "🔄 Restart",
+      "id": "🔄 Restart",
+      "tooltip": "Reset the analysis state and recompute the 2CDE values from scratch."
+    },
+    {
+      "kind": "button",
+      "label": "⏹ Stop",
+      "id": "⏹ Stop",
+      "tooltip": "Stop the running 2CDE analysis."
+    },
+    {
+      "kind": "button",
+      "label": "📁 Folder",
+      "id": "📁 Folder",
+      "tooltip": "Browse for the folder containing the burst analysis files."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Start a step-by-step guided tour of this tool."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "Open the help window with reference documentation."
+    },
+    {
+      "kind": "input_text",
+      "label": "folder_path",
+      "id": "##folder_path",
+      "tooltip": "Path to the folder with the bursts to analyze; type a path or use Folder to browse."
+    },
+    {
+      "kind": "drag_float",
+      "label": "twocde_tau",
+      "id": "##twocde_tau",
+      "tooltip": "Averaging window τ in microseconds used when computing the 2CDE metric."
+    },
+    {
+      "kind": "input_text",
+      "label": "twocde_donor",
+      "id": "##twocde_donor",
+      "tooltip": "Comma-separated TTTR routing channels assigned to the donor (e.g. 0,8)."
+    },
+    {
+      "kind": "input_text",
+      "label": "twocde_acceptor",
+      "id": "##twocde_acceptor",
+      "tooltip": "Comma-separated TTTR routing channels assigned to the acceptor (e.g. 1,9)."
+    },
+    {
+      "kind": "input_text",
+      "label": "twocde_file_type",
+      "id": "##twocde_file_type",
+      "tooltip": "TTTR file type of the source measurements (e.g. SPC-130, PTO)."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
