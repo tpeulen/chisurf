@@ -256,7 +256,7 @@ class Kappa2Gui(TourTarget):
                 "Probability distribution of κ² the selected orientation model "
                 "produces, with the assumed true κ² marked."
             )
-        self.remember("plot")
+        self.remember("plot", tuple(box))  # the window's content: the plot fills it
 
     # ── the results ───────────────────────────────────────────────────────
 
