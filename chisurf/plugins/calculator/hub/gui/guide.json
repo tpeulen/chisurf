@@ -1,0 +1,25 @@
+{
+  "steps": [
+    {
+      "title": "The calculators",
+      "text": "The list on the left holds every calculator ChiSurf bundles: FRET and homoFRET, FRET lines, FCS diffusion, RICS precision, phasor plot, the kappa-squared distribution, the F-test, FCS saturation and the PSF calculator. Hover an entry for what it does.",
+      "target": {"name": "calculators_list"}
+    },
+    {
+      "title": "Pick one",
+      "text": "Click an entry. The calculator is built the first time you open it and keeps its settings while you look at another one.",
+      "target": {"name": "calculators_list"},
+      "await": true
+    },
+    {
+      "title": "The embedded calculator",
+      "text": "It is drawn on the right under its description. Every calculator has its own Guide and Help buttons: use them for how that calculator is operated.",
+      "target": {"name": "description"}
+    },
+    {
+      "title": "Help",
+      "text": "The Help button explains the hub, the list and the keys: Up and Down in the list move the selection while no field of the calculator is being edited.",
+      "target": {"name": "help"}
+    }
+  ]
+}
