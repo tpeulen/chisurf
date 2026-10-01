@@ -1,0 +1,419 @@
+diff --git a/chisurf/plugins/burst/burst_bva/gui/app.py b/chisurf/plugins/burst/burst_bva/gui/app.py
+index b3ffa88d0..412bd04fd 100644
+--- a/chisurf/plugins/burst/burst_bva/gui/app.py
++++ b/chisurf/plugins/burst/burst_bva/gui/app.py
+@@ -18,7 +18,7 @@ from emtk import im, implot
+ from emtk.app import ImApp
+ from emtk.im_core import Col
+ 
+-from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
++from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+ 
+ from .view_model import BvaViewModel
+ 
+@@ -44,6 +44,8 @@ class BurstBvaGui:
+         on_stop: Callable[[], None] | None = None,
+         on_browse: Callable[[], None] | None = None,
+         on_clear: Callable[[], None] | None = None,
++        on_save: Callable[[], None] | None = None,
++        on_save_settings: Callable[[], None] | None = None,
+         on_guide: Callable[[], None] | None = None,
+         on_help: Callable[[], None] | None = None,
+     ) -> None:
+@@ -53,6 +55,8 @@ class BurstBvaGui:
+         self.on_stop = on_stop
+         self.on_browse = on_browse
+         self.on_clear = on_clear
++        self.on_save = on_save
++        self.on_save_settings = on_save_settings
+         self.on_guide = on_guide
+         self.on_help = on_help
+ 
+@@ -60,9 +64,6 @@ class BurstBvaGui:
+         self.selected_settings_tab = "BVA Settings"
+         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+         self.on_used: Callable[[str], None] | None = None
+-
+-        self.model.add_observer(self._on_model_event)
+-
+         help_resource = Path(__file__).parent / "help.md"
+         guide_resource = Path(__file__).parent / "guide.json"
+         self.help_window = EmTkHelpWindow(
+@@ -73,10 +74,14 @@ class BurstBvaGui:
+             size=(700.0, 520.0),
+         )
+         self.tour = EmTkGuidedTour(
+-            steps=guide_resource,
+-            get_target_rect=lambda k: self.item_rects.get(k),
+-            owner=self.model,
++            steps=guide_resource, get_target_rect=lambda k: self.item_rects.get(k), owner=self.model
+         )
++        self.model.add_observer(self._on_model_event)
++
++    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
++        r = rect if rect is not None else im.get_item_rect()
++        if r is not None:
++            self.item_rects[name] = tuple(r)
+ 
+     def start_guide(self) -> None:
+         """Start the in-EMTK guided tour."""
+@@ -89,12 +94,6 @@ class BurstBvaGui:
+     def _on_model_event(self, event: str) -> None:
+         pass
+ 
+-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+-        """Store the item's screen rectangle for tour targeting."""
+-        r = rect if rect is not None else im.get_item_rect()
+-        if r is not None:
+-            self.item_rects[name] = tuple(r)
+-
+     def track(self, name: str) -> None:
+         """Record usage of a named control."""
+         if callable(self.on_used):
+@@ -124,6 +123,7 @@ class BurstBvaGui:
+             # Tab bar for settings
+             if im.begin_tab_bar("bva_settings_tabs"):
+                 if im.begin_tab_item("BVA Settings"):
++                    im.set_item_tooltip("Adjust analysis and display parameters.")
+                     self.selected_settings_tab = "BVA Settings"
+                     self.remember("BVA Settings")
+                     self._draw_bva_parameters()
+@@ -132,6 +132,7 @@ class BurstBvaGui:
+                     self.remember("BVA Settings")
+ 
+                 if im.begin_tab_item("Channel Definitions"):
++                    im.set_item_tooltip("Set detector routing and microtime gates.")
+                     self.selected_settings_tab = "Channel Definitions"
+                     self.remember("Channel Definitions")
+                     self._draw_channel_definitions()
+@@ -142,9 +143,10 @@ class BurstBvaGui:
+ 
+             im.spacing()
+             self._draw_status()
+-            im.end()
+             self.remember("controls", (4.0, 4.0, left_w, height - 8.0))
+ 
++        im.end()
++
+         # ── Right pane: Plot (Dockable) ──────────────────────────────────
+         plots_x = left_w + 8.0
+         im.set_next_window_pos((plots_x, 4.0), im.Cond.ALWAYS)
+@@ -160,9 +162,10 @@ class BurstBvaGui:
+                 else:
+                     self.remember("Plot")
+                 im.end_tab_bar()
+-            im.end()
+             self.remember("PlotWindow", (plots_x, 4.0, right_w, h - 8.0))
+ 
++        im.end()
++
+         if self.help_window.open:
+             self.help_window.draw((0.0, 0.0, width, height))
+ 
+@@ -178,6 +181,9 @@ class BurstBvaGui:
+             self.track("toolAction_run")
+             if not self.model.is_running and callable(self.on_run):
+                 self.on_run()
++        im.set_item_tooltip(
++            "Compute the per-burst standard deviation of the proximity ratio (BVA) for the loaded bursts."
++        )
+         self.remember("run")
+         self.remember("toolAction_run")
+         im.pop_style_color(3)
+@@ -187,6 +193,7 @@ class BurstBvaGui:
+             self.track("toolAction_restart")
+             if not self.model.is_running and callable(self.on_restart):
+                 self.on_restart()
++        im.set_item_tooltip("Reset the analysis state and recompute from scratch.")
+         self.remember("restart")
+         self.remember("toolAction_restart")
+ 
+@@ -199,6 +206,7 @@ class BurstBvaGui:
+             self.track("toolAction_stop")
+             if self.model.is_running and callable(self.on_stop):
+                 self.on_stop()
++        im.set_item_tooltip("Stop the running BVA computation.")
+         self.remember("stop")
+         self.remember("toolAction_stop")
+         if self.model.is_running:
+@@ -209,6 +217,7 @@ class BurstBvaGui:
+             self.track("folder")
+             if callable(self.on_browse):
+                 self.on_browse()
++        im.set_item_tooltip("Browse for the folder containing the burst analysis files.")
+         self.remember("folder")
+ 
+         im.same_line()
+@@ -216,18 +225,44 @@ class BurstBvaGui:
+             self.track("guide")
+             self.start_guide()
+         self.remember("guide")
++        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+ 
+         im.same_line()
+         if im.button("❓ Help"):
+             self.track("help")
+             self.show_help()
+         self.remember("help")
++        im.set_item_tooltip("Open the help window with reference documentation.")
++
++        # These actions previously lived only in the hidden Qt toolbar.
++        im.spacing()
++        for label, action, tip in (
++            (
++                "🗑 Clear",
++                self.on_clear,
++                "Clear the plotted BVA results and invalidate the cached analysis.",
++            ),
++            ("💾 Save plot", self.on_save, "Save the displayed BVA plot as a PNG image."),
++            (
++                "⚙ Save defaults",
++                self.on_save_settings,
++                "Save the current analysis and display settings as defaults.",
++            ),
++        ):
++            if im.button(label) and callable(action):
++                action()
++            im.set_item_tooltip(tip)
++            im.same_line()
++        im.new_line()
+ 
+     def _draw_folder_input(self, width: float) -> None:
+         """Folder path input."""
+         im.text("Burst folder:")
+         folder_str = str(self.model.analysis_folder or "")
+         changed, text = im.input_text("##folder_path", folder_str, hint="Burst analysis folder …")
++        im.set_item_tooltip(
++            "Path to the burst analysis folder; type a path or use Folder to browse."
++        )
+         if changed:
+             self.model.set_folder(text)
+ 
+@@ -245,6 +280,9 @@ class BurstBvaGui:
+         changed, wl = im.drag_float(
+             "##window_length", self.model.window_length, 0.001, 0.0001, 10.0, "%.4f s"
+         )
++        im.set_item_tooltip(
++            "Minimum window length in seconds used to slice bursts into photon subsets."
++        )
+         if changed:
+             self.model.window_length = max(0.0001, float(wl))
+             self.model.notify("param")
+@@ -257,6 +295,9 @@ class BurstBvaGui:
+         changed, pps = im.drag_float(
+             "##photons_per_slice", float(self.model.photons_per_slice), 1.0, 1.0, 500.0, "%.0f"
+         )
++        im.set_item_tooltip(
++            "Number of photons per slice when splitting bursts for the variance analysis."
++        )
+         if changed:
+             self.model.photons_per_slice = max(1, int(round(pps)))
+             self.model.notify("param")
+@@ -270,6 +311,7 @@ class BurstBvaGui:
+         im.same_line(col_x)
+         im.set_next_item_width(120)
+         changed, bx = im.drag_float("##bins_x", float(self.model.bins_x), 1.0, 10.0, 500.0, "%.0f")
++        im.set_item_tooltip("Number of histogram bins along the mean proximity-ratio axis.")
+         if changed:
+             self.model.bins_x = max(10, int(round(bx)))
+             self.model.notify("bins")
+@@ -279,6 +321,7 @@ class BurstBvaGui:
+         im.same_line(col_x)
+         im.set_next_item_width(120)
+         changed, by = im.drag_float("##bins_y", float(self.model.bins_y), 1.0, 10.0, 500.0, "%.0f")
++        im.set_item_tooltip("Number of histogram bins along the standard-deviation axis.")
+         if changed:
+             self.model.bins_y = max(10, int(round(by)))
+             self.model.notify("bins")
+@@ -287,10 +330,12 @@ class BurstBvaGui:
+         if im.checkbox("Show static line", self.model.show_static_line)[0]:
+             self.model.show_static_line = not self.model.show_static_line
+             self.model.notify("display")
++        im.set_item_tooltip("Overlay the shot-noise limited static line on the BVA plot.")
+ 
+         if im.checkbox("Auto update", self.model.auto_update)[0]:
+             self.model.auto_update = not self.model.auto_update
+             self.model.notify("display")
++        im.set_item_tooltip("Recompute the BVA automatically whenever a parameter changes.")
+ 
+     def _draw_channel_definitions(self) -> None:
+         """Draw detector channel controls."""
+@@ -299,18 +344,52 @@ class BurstBvaGui:
+ 
+         im.text("Donor routing channels:")
+         changed, donor = im.input_text("##donor_ch", self.model.donor_channels_text, hint="0,8")
++        im.set_item_tooltip(
++            "Comma-separated TTTR routing channels assigned to the donor (e.g. 0,8)."
++        )
+         if changed:
+             self.model.donor_channels_text = donor
+             self.model.notify("channel")
+ 
+         im.text("Acceptor routing channels:")
+         changed, acc = im.input_text("##acceptor_ch", self.model.acceptor_channels_text, hint="1,9")
++        im.set_item_tooltip(
++            "Comma-separated TTTR routing channels assigned to the acceptor (e.g. 1,9)."
++        )
+         if changed:
+             self.model.acceptor_channels_text = acc
+             self.model.notify("channel")
+ 
++        for name, label in (
++            ("donor", "Donor microtime ranges:"),
++            ("acceptor", "Acceptor microtime ranges:"),
++        ):
++            im.text(label)
++            ranges = getattr(self.model, f"{name}_micro_time_ranges")
++            value = ", ".join(f"{lo}:{hi}" for lo, hi in ranges)
++            changed, text = im.input_text(f"##{name}_microtime", value, hint="0:32768")
++            im.set_item_tooltip(
++                "Microtime gates in channel bins, written as start:end pairs separated by commas."
++            )
++            if changed:
++                try:
++                    parsed = [
++                        tuple(int(v.strip()) for v in part.split(":")) for part in text.split(",")
++                    ]
++                    if not parsed or any(
++                        len(pair) != 2 or pair[0] < 0 or pair[1] <= pair[0] for pair in parsed
++                    ):
++                        raise ValueError("Use increasing start:end pairs")
++                    setattr(self.model, f"{name}_micro_time_ranges", parsed)
++                    self.model.notify("channel")
++                except ValueError:
++                    self.model.status_text = (
++                        "Invalid microtime range; use increasing start:end pairs."
++                    )
++
+         im.text("File type:")
+         changed, ft = im.input_text("##file_type", self.model.file_type, hint="SPC-130")
++        im.set_item_tooltip("TTTR file type of the source measurements (e.g. SPC-130).")
+         if changed:
+             self.model.file_type = ft
+             self.model.notify("file_type")
+@@ -408,9 +487,21 @@ class BurstBvaApp(ImApp):
+         on_stop: Callable[[], None] | None = None,
+         on_browse: Callable[[], None] | None = None,
+         on_clear: Callable[[], None] | None = None,
++        on_save: Callable[[], None] | None = None,
++        on_save_settings: Callable[[], None] | None = None,
+         on_guide: Callable[[], None] | None = None,
+         on_help: Callable[[], None] | None = None,
+     ) -> None:
++        self.controller = None
++        if all(callback is None for callback in (on_run, on_restart, on_stop, on_browse, on_clear)):
++            from .controller import BvaController
++
++            model = model if model is not None else BvaViewModel()
++            self.controller = BvaController(model)
++            on_run, on_restart = self.controller.run, self.controller.restart
++            on_stop, on_browse = self.controller.stop, self.controller.browse
++            on_clear = self.controller.clear
++            on_save, on_save_settings = self.controller.save_plot, self.controller.save_settings
+         self.bva_gui = BurstBvaGui(
+             model=model,
+             on_run=on_run,
+@@ -418,11 +509,15 @@ class BurstBvaApp(ImApp):
+             on_stop=on_stop,
+             on_browse=on_browse,
+             on_clear=on_clear,
++            on_save=on_save,
++            on_save_settings=on_save_settings,
+             on_guide=on_guide,
+             on_help=on_help,
+         )
+         self.model = self.bva_gui.model
+-        super().__init__(gui=self._render, continuous=False)
++        self.item_rects = self.bva_gui.item_rects
++        self.bva_gui.remember = self.remember
++        super().__init__(gui=self._render, continuous=self.controller is not None)
+ 
+     def start_guide(self) -> None:
+         """Start guided tour inside EMTK."""
+@@ -432,6 +527,20 @@ class BurstBvaApp(ImApp):
+         """Show help documentation inside EMTK."""
+         self.bva_gui.show_help()
+ 
++    def close(self) -> None:
++        """Cancel pending work and release the analysis executor."""
++        if self.controller is not None:
++            self.controller.close()
++
+     def _render(self) -> None:
++        if self.controller is not None:
++            self.controller.poll()
+         w, h = im.get_main_viewport().size
+         self.bva_gui.draw(float(w), float(h))
++        if self.controller is not None:
++            self.controller.draw_dialog()
++
++
++def create_app(**kwargs):
++    """Create the toolkit-free plugin control."""
++    return BurstBvaApp(**kwargs)
+diff --git a/chisurf/plugins/burst/burst_bva/gui/tool.py b/chisurf/plugins/burst/burst_bva/gui/tool.py
+index 643c3eb06..1604ecf7e 100644
+--- a/chisurf/plugins/burst/burst_bva/gui/tool.py
++++ b/chisurf/plugins/burst/burst_bva/gui/tool.py
+@@ -118,6 +118,8 @@ class BVATool(ChisurfDockTool):
+             on_stop=self.stop,
+             on_browse=self._select_folder,
+             on_clear=self._clear_plot,
++            on_save=self._save_plot,
++            on_save_settings=self._save_settings,
+             on_guide=self._start_guide,
+             on_help=self._show_help,
+         )
+@@ -274,7 +276,7 @@ class BVATool(ChisurfDockTool):
+         self.addToolBar(self.toolbar)
+ 
+     def _on_model_event(self, event: str) -> None:
+-        if event in ("param", "channel", "folder"):
++        if event in ("param", "channel", "folder", "file_type"):
+             self._on_param_changed()
+         self.host.update()
+ 
+@@ -471,7 +473,7 @@ class BVATool(ChisurfDockTool):
+             burst_df,
+             tttrs,
+             progress_window=task.progress_window("Computing BVA..."),
+-            **settings,
++            **{key: value for key, value in settings.items() if key != "file_type"},
+         )
+ 
+         if write_output and self.model.analysis_folder is not None:
+diff --git a/chisurf/plugins/burst/burst_bva/manifest.json b/chisurf/plugins/burst/burst_bva/manifest.json
+index 98bfbf3cb..82bb92bcb 100644
+--- a/chisurf/plugins/burst/burst_bva/manifest.json
++++ b/chisurf/plugins/burst/burst_bva/manifest.json
+@@ -3,8 +3,13 @@
+   "version": "2.1.0",
+   "display_name": "Spectroscopy:Single-Molecule:BVA",
+   "description": "Burst Variance Analysis for single-molecule FRET experiments.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Spectroscopy", "Single-Molecule"],
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Spectroscopy",
++    "Single-Molecule"
++  ],
+   "state_namespace": "burst_bva",
+   "statefulness": {
+     "enabled": true,
+@@ -16,9 +21,12 @@
+   "entrypoints": {
+     "gui": "chisurf.plugins.burst.burst_bva.gui.tool:BVATool",
+     "cli": "chisurf.plugins.burst.burst_bva.cli.main:cli",
+-    "services": "chisurf.plugins.burst.burst_bva.backend.services:register_services"
++    "services": "chisurf.plugins.burst.burst_bva.backend.services:register_services",
++    "emtk": "chisurf.plugins.burst.burst_bva.gui.app:create_app"
+   },
+-  "operation_types": ["burst_variance_analysis"],
++  "operation_types": [
++    "burst_variance_analysis"
++  ],
+   "rpc_methods": [
+     {
+       "name": "burst_bva.jobs.compute",

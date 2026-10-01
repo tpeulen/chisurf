@@ -1,0 +1,5 @@
+ M chisurf/plugins/burst/burst_bva/gui/app.py
+ M chisurf/plugins/burst/burst_bva/gui/tool.py
+ M chisurf/plugins/burst/burst_bva/manifest.json
+?? chisurf/plugins/burst/burst_bva/gui/controller.py
+?? chisurf/plugins/burst/burst_bva/tests/test_emtk_actions.py

@@ -1,0 +1,237 @@
+"""Toolkit-free BVA execution; rendering owns polling on the UI thread."""
+
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from threading import Event
+
+from chisurf.core.runtime import analysis_cache
+
+from ..core import computation as core
+
+
+class BvaController:
+    def __init__(self, model, settings_path=None):
+        self.model = model
+        if settings_path is None:
+            from chisurf.core.settings import get_path
+
+            settings_path = Path(get_path("settings")) / "plugin_burst_bva_settings.ini"
+        self.settings_path = Path(settings_path)
+        self._restore_settings()
+        self._dialog_kind = "folder"
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bva")
+        self._future = None
+        self._cache = analysis_cache.ResultCache()
+        self._cancel = Event()
+        self.dialog = None
+        self._pending = False
+        model.add_observer(self._changed)
+
+    def _changed(self, event):
+        if event in ("param", "channel", "folder", "file_type") and self.model.auto_update:
+            if self.model.is_running:
+                self._pending = True
+            else:
+                self.run()
+
+    def run(self, force=False):
+        if self.model.is_running:
+            return
+        folder = self.model.analysis_folder
+        if folder is None or not folder.is_dir():
+            self.model.status_text = "Select a valid burst analysis folder."
+            return
+        settings = self.model.bva_settings()
+        self._fingerprint = self.model.analysis_fingerprint(settings)
+        if (
+            not force
+            and self.model.df is not None
+            and self._cache.matches(self._fingerprint)
+            and analysis_cache.is_current(folder / "bv4" / "bva.stamp.json", self._fingerprint)
+        ):
+            self.model.status_text = "Unchanged — Restart recomputes the previous BVA result."
+            return
+        self._cancel.clear()
+        self.model.is_running = True
+        self.model.status_text = "Reading burst data …"
+        self._future = self._executor.submit(
+            self._compute,
+            folder,
+            settings,
+            self._fingerprint,
+            self.model.input_files(),
+            self.model.fingerprint_params(settings),
+        )
+
+    def restart(self):
+        self.run(force=True)
+
+    def set_value(self, value):
+        if self._cancel.is_set():
+            raise InterruptedError("BVA cancelled")
+
+    def _compute(self, folder, settings, fingerprint, inputs, params):
+        saved_settings = dict(settings)
+        df, tttrs = core.read_burst_analysis(folder, settings.pop("file_type"), pattern="bi4_bur")
+        self.set_value(0)
+        result = core.compute_bva(df, tttrs, **settings, progress_window=self)
+        self.set_value(0)
+        core.write_bv4_analysis(result, str(folder), progress_window=self)
+        import json
+
+        output = folder / "bv4"
+        output.mkdir(parents=True, exist_ok=True)
+        (output / "bva_settings.json").write_text(json.dumps(saved_settings, indent=4))
+        analysis_cache.write_stamp(
+            output / "bva.stamp.json",
+            fingerprint,
+            params=params,
+            inputs=inputs,
+            outputs=sorted(output.glob("*.bv4")),
+            tool="bva",
+        )
+        return df, tttrs, result
+
+    def stop(self):
+        if self._future is not None:
+            self._cancel.set()
+            self._cache.abandon(self._fingerprint)
+            self.model.status_text = "Stopping BVA …"
+
+    def poll(self):
+        if self._future is None or not self._future.done():
+            return
+        future, self._future = self._future, None
+        try:
+            payload = future.result()
+            self.set_value(0)
+            self.model.set_result(*payload)
+            self._cache.remember(self._fingerprint)
+        except InterruptedError:
+            self.model.status_text = "BVA cancelled."
+        except Exception as exc:
+            self.model.status_text = f"Error: {exc}"
+        finally:
+            self.model.is_running = False
+            self.model.notify("finished")
+            if self._pending:
+                self._pending = False
+                self.run()
+
+    def clear(self):
+        self.stop()
+        self._pending = False
+        self._cache.invalidate()
+        self.model.df = self.model.burst_df = self.model.tttrs = None
+        self.model.status_text = "Plot cleared"
+
+    def _restore_settings(self):
+        import configparser
+
+        config = configparser.ConfigParser()
+        config.read(self.settings_path)
+        values = config["General"] if config.has_section("General") else {}
+        for name in ("window_length", "photons_per_slice", "bins_x", "bins_y"):
+            if name in values:
+                try:
+                    value = type(getattr(self.model, name))(values[name])
+                    if value > 0:
+                        setattr(self.model, name, value)
+                except ValueError:
+                    pass
+        if values.get("last_folder"):
+            self.model.data_folder = self.model.analysis_folder = Path(values["last_folder"])
+
+    def save_settings(self):
+        import configparser
+
+        config = configparser.ConfigParser()
+        config["General"] = {
+            name: str(getattr(self.model, name))
+            for name in ("window_length", "photons_per_slice", "bins_x", "bins_y")
+        }
+        if self.model.analysis_folder:
+            config["General"]["last_folder"] = str(self.model.analysis_folder)
+        self.settings_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.settings_path.open("w") as stream:
+            config.write(stream)
+        self.model.status_text = "Settings saved"
+
+    def export_plot(self, path):
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        from matplotlib.figure import Figure
+
+        figure = Figure(figsize=(8, 6))
+        FigureCanvasAgg(figure)
+        axes = figure.subplots()
+        data = self.model.get_plot_data()
+        if self.model.show_static_line:
+            axes.plot(data["static_x"], data["static_y"], label="Static line")
+        if data.get("has_data"):
+            axes.scatter(data["scatter_x"], data["scatter_y"], s=8, alpha=0.5, label="Bursts")
+            axes.errorbar(
+                data["profile_x"],
+                data["profile_mean"],
+                yerr=data["profile_sd"],
+                label="Profile mean",
+            )
+        axes.set(
+            xlabel="Mean Proximity Ratio",
+            ylabel="Std Proximity Ratio",
+            xlim=(-0.05, 1.05),
+            ylim=(-0.01, 0.44),
+        )
+        axes.legend()
+        figure.savefig(path, dpi=150)
+        self.model.status_text = f"Plot saved: {path}"
+
+    def save_plot(self):
+        from emtk.file_dialog import FileDialog
+
+        self._dialog_kind = "save"
+        self.dialog = FileDialog(
+            "Save BVA plot", mode="save", filename="bva_plot.png", filters=[("PNG", ["*.png"])]
+        )
+
+    def browse(self):
+        from emtk.file_dialog import FileDialog
+
+        self._dialog_kind = "folder"
+        self.dialog = FileDialog(
+            "Select burst folder", mode="folder", directory=str(self.model.analysis_folder or "")
+        )
+
+    def draw_dialog(self):
+        if self.dialog is None:
+            return
+        from emtk import im
+
+        if im.begin("BVA file chooser"):
+            result = self.dialog.draw()
+            if result:
+                if self._dialog_kind == "save":
+                    try:
+                        self.export_plot(result[0])
+                    except Exception as exc:
+                        self.model.status_text = f"Error: {exc}"
+                else:
+                    self.model.set_folder(result[0])
+                    if not self.model.auto_update:
+                        self.run()
+                self.dialog = None
+            elif result is False:
+                self.dialog = None
+        im.end()
+
+    def on_paths_dropped(self, paths):
+        if paths:
+            path = Path(paths[0])
+            if path.is_dir():
+                self.model.set_folder(path)
+            else:
+                self.model.status_text = f"Not a folder: {path.name}"
+
+    def close(self):
+        self.stop()
+        self.model.remove_observer(self._changed)
+        self._executor.shutdown(wait=False, cancel_futures=True)

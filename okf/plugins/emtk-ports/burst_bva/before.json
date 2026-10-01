@@ -1,0 +1,29 @@
+{
+  "controls": [
+    "?",
+    "autoupdate",
+    "guide"
+  ],
+  "labels": [],
+  "buttons": [
+    "?",
+    "Auto update",
+    "Guide",
+    "⏹️",
+    "▶️",
+    "⚙️",
+    "💾",
+    "📁",
+    "🔁",
+    "🗑️"
+  ],
+  "line_edits": 1,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.burst.burst_bva.gui.tool:BVATool",
+  "size": [
+    1200,
+    800
+  ]
+}
