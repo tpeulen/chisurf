@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-01
+
+* **trace_browser T0 (emtk port, card 0): Qt-free model and de-duplication.** `gui/model.py` (`TraceBrowserModel`) holds folder, setup, channels, file rows, rating filter, bin window, y range, selection, caches and trace loading; the Qt `TraceBrowser` (moved to `widget.py`, package `__init__` now a lazy shim) delegates to it and its duplicated metadata/cache code is gone. Findings: the CLSM image probe hides every real TTTR with tttrlib 0.27 (kept), trace binning needs a Qt widget (a Qt-free binner is needed for T3). Evidence and report: `okf/plugins/emtk-ports/trace_browser/REPORT-T0.md`.
+
 ## 2026-09-30
 
 * **Burst survey reviewed; invented-data defect found.** `okf/plugins/emtk-ports/burst-survey.md` (five large burst/trace plugins: stages, Qt LOC, Qt-free logic, existing emtk apps, dirty trees, proposed cards; only `trace_browser` is clean). Verified in the source: `burst_mle_analysis/gui/app.py` and `burst_h2mm/gui/app.py` draw synthetic decays, a hard-coded rate table and a seeded random scatter as if they were results. Recorded in known issues; PRD-153 gains rule 8a (no invented data).
