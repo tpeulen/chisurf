@@ -1,0 +1,220 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "2cde·2d-flcs·accuratefret·aisettings·alexsuite·audifier",
+    "a+",
+    "aboutchisurf",
+    "aboutchisurf·releasenotes",
+    "askdocs",
+    "assumes.",
+    "authoringtools",
+    "a−",
+    "back",
+    "chisurfanalysestime-resolvedandsingle-moleculefluorescencedata—tcspc,fcsandsmfret.thedocumentationis",
+    "chisurfdocumentation",
+    "concepts—thetheory",
+    "coremethods·fittingandinference·correlationmethods·single-moleculefret(bursts)·dynamics(hiddenmarkov)·",
+    "dataimport",
+    "docs/page.md#anchor,srcpath#symbol,citekey,urlorsearch",
+    "document",
+    "documentation",
+    "examples,andareferenceforformats,settingsandeverypluginparameter.",
+    "fileformats·plugincatalogue·parameterglossary·figureindex·tableindex·codeindex",
+    "fitinterface",
+    "fittinginterfaceexamples",
+    "fundamentals—photophysics",
+    "fwd",
+    "gettingstarted",
+    "go",
+    "guides—howtodoitinchisurf",
+    "guides—howtoinchisurf",
+    "hiddenstates·fluorescencedecaysandanisotropy·correlationspectroscopy·imagingandmicroscopy",
+    "home",
+    "imagingandresolution",
+    "infourlayersthetheoryofeachmethod,aguidethatrunsitinthisapplication,thefittinginterfaceitselfwithcompleteworked",
+    "literature",
+    "next",
+    "onlinedocs",
+    "photondataandtheburstpipeline·smfretefficiency,stoichiometryandcorrections·dynamicsdistributions,kineticsand",
+    "plugins",
+    "prev",
+    "reference",
+    "resetzoom",
+    "searchdocumentation",
+    "searcheverypagefromtheboxabovethetree,orusethetreeontheleft.everyplugin's?buttonopensitsownhelphere.",
+    "source",
+    "starthere",
+    "theexcitedstate·orientationandtransfer·probeandenvironment·measuringphotons·reference",
+    "thefittinginterface·fluorescencedecaymodels·anisotropywizard·correlatorplugin·parameterdependencygraphs·",
+    "thepartsofthedocumentation",
+    "videos",
+    "workedexample—calibratinganfcssetup",
+    "•aboutchisurf—whatchisurfis,andwhatchanged.",
+    "•concepts—thetheory—whateachmethodmeasures,withtheformulasandtheassumptions.",
+    "•dataimport—importdataandcreateyourfirstfit",
+    "•fitinterface—thefittinginterface,parameterbyparameter",
+    "•fittinginterfaceexamples—thefittinginterfaceitself,andcompleteworkedexamples.",
+    "•fundamentals—photophysics—theexcitedstate,transfer,theinstrumentandthecountingstatisticseverymethod",
+    "•gettingstarted—install,launch,andfindyourwayaround",
+    "•gettingstarted—installchisurf,launchit,runafirstanalysis.",
+    "•guides—howtodoitinchisurf—picktheworkflowyouwanttorun",
+    "•guides—howtoinchisurf—step-by-stepworkflowsintherealinterface.",
+    "•literature—everyworkthedocumentationcites,eachlinkingtothepaper.",
+    "•plugins—everyinstalledanalysistool,withitsowndocumentation.",
+    "•reference—fileformats,settings,parametersandtheplugincatalogue."
+  ],
+  "interactive": [
+    {
+      "kind": "input_text",
+      "label": "doc_search",
+      "id": "##doc_search",
+      "tooltip": "Search documentation titles and text"
+    },
+    {
+      "kind": "selectable",
+      "label": "Getting started",
+      "id": "Getting started",
+      "tooltip": "Getting started"
+    },
+    {
+      "kind": "tree_node",
+      "label": "Fundamentals — photophysics",
+      "id": "Fundamentals — photophysics",
+      "tooltip": "Expand or collapse Fundamentals — photophysics"
+    },
+    {
+      "kind": "tree_node",
+      "label": "Concepts — the theory",
+      "id": "Concepts — the theory",
+      "tooltip": "Expand or collapse Concepts — the theory"
+    },
+    {
+      "kind": "tree_node",
+      "label": "Guides — how to in ChiSurf",
+      "id": "Guides — how to in ChiSurf",
+      "tooltip": "Expand or collapse Guides — how to in ChiSurf"
+    },
+    {
+      "kind": "tree_node",
+      "label": "Fitting interface & examples",
+      "id": "Fitting interface & examples",
+      "tooltip": "Expand or collapse Fitting interface & examples"
+    },
+    {
+      "kind": "tree_node",
+      "label": "Reference",
+      "id": "Reference",
+      "tooltip": "Expand or collapse Reference"
+    },
+    {
+      "kind": "selectable",
+      "label": "Literature",
+      "id": "Literature",
+      "tooltip": "Literature"
+    },
+    {
+      "kind": "tree_node",
+      "label": "Plugins",
+      "id": "Plugins",
+      "tooltip": "Expand or collapse Plugins"
+    },
+    {
+      "kind": "tree_node",
+      "label": "About ChiSurf",
+      "id": "About ChiSurf",
+      "tooltip": "Expand or collapse About ChiSurf"
+    },
+    {
+      "kind": "input_text",
+      "label": "doc_address",
+      "id": "##doc_address",
+      "tooltip": "Enter a document, source symbol, citation key or web address; press Enter or Go"
+    },
+    {
+      "kind": "button",
+      "label": "Go",
+      "id": "Go",
+      "tooltip": "Navigate to this address or search for its text"
+    },
+    {
+      "kind": "button",
+      "label": "Home",
+      "id": "Home",
+      "tooltip": "Show documentation start page"
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Return to the previous page in navigation history"
+    },
+    {
+      "kind": "button",
+      "label": "Fwd",
+      "id": "Fwd",
+      "tooltip": "Advance to the next page in navigation history"
+    },
+    {
+      "kind": "button",
+      "label": "Prev",
+      "id": "Prev",
+      "tooltip": "Open the previous document in the table of contents"
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Open the next document in the table of contents"
+    },
+    {
+      "kind": "button",
+      "label": "Online docs",
+      "id": "Online docs",
+      "tooltip": "Open the documentation website in a browser"
+    },
+    {
+      "kind": "button",
+      "label": "Videos",
+      "id": "Videos",
+      "tooltip": "Open tutorial videos in your web browser"
+    },
+    {
+      "kind": "button",
+      "label": "Source",
+      "id": "Source",
+      "tooltip": "Switch between reading the document and editing its source; the virtual Home page has no source file"
+    },
+    {
+      "kind": "small_button",
+      "label": "A−",
+      "id": "A−",
+      "tooltip": "Reduce document text by half a point"
+    },
+    {
+      "kind": "small_button",
+      "label": "Reset zoom",
+      "id": "Reset zoom",
+      "tooltip": "Restore the default 12-point document text"
+    },
+    {
+      "kind": "small_button",
+      "label": "A+",
+      "id": "A+",
+      "tooltip": "Increase document text by half a point; Ctrl/Command+wheel also zooms"
+    },
+    {
+      "kind": "checkbox",
+      "label": "Authoring tools",
+      "id": "Authoring tools",
+      "tooltip": "Show human and AI review sign-off actions, status filters and manual review summary"
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

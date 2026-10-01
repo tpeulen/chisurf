@@ -27,3 +27,9 @@ else:
         for _ in range(3): a.draw(RecordingPainter(), 0, 0, *size)
         emtk_screenshot(a, out / f"{prefix}_page_{size[0]}x{size[1]}.png", size)
         a.close()
+    a = make_help_app()
+    a.model.authoring_mode = True
+    a.model.open_page(page)
+    for _ in range(3): a.draw(RecordingPainter(), 0, 0, 1200, 800)
+    emtk_screenshot(a, out / f"{prefix}_authoring_1200x800.png", (1200, 800))
+    a.close()

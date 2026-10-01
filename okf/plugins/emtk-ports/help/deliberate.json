@@ -1,0 +1,20 @@
+{
+  "1": "Row number of the hidden popup list of the Qt review-filter combo (5 entries); inventory artefact, not a control.",
+  "2": "Row number of the hidden popup list of the Qt review-filter combo (5 entries); inventory artefact, not a control.",
+  "3": "Row number of the hidden popup list of the Qt review-filter combo (5 entries); inventory artefact, not a control.",
+  "4": "Row number of the hidden popup list of the Qt review-filter combo (5 entries); inventory artefact, not a control.",
+  "5": "Row number of the hidden popup list of the Qt review-filter combo (5 entries); inventory artefact, not a control.",
+  "address": "Qt 'Address:' label beside the address field; the emtk address field has the same hint text ('docs/page.md#anchor, src:path#symbol, cite:key, URL or search') and a tooltip instead of a label.",
+  "ask": "Qt 'Ask' toolbar toggle that shows the question panel; the emtk app shows the same panel as the 'Ask Docs' tab beside 'Documentation'.",
+  "askthedocs": "Header 'Ask the docs' of the Qt question panel; the emtk panel is the 'Ask Docs' tab.",
+  "edit": "Qt authoring 'Edit' toggle; emtk 'Source' button (toggles to 'Read') above the page, same action.",
+  "save": "Qt authoring 'Save'; emtk 'Save' appears beside 'Read' while the source is being edited (not drawn in the default state the inventory records).",
+  "markreviewed": "Qt authoring 'Mark reviewed'; emtk 'Mark human reviewed' in the Authoring tools row (drawn when Authoring tools is on and the page is tracked).",
+  "ai-reviewed": "Qt authoring 'AI-reviewed'; emtk 'Mark AI reviewed' in the Authoring tools row (authoring state, after_authoring_1200x800.png).",
+  "show": "Qt 'Show:' label of the review-filter combo; the emtk combo above the tree (authoring state) has a tooltip instead of a label.",
+  "allpages": "Entry of the review-filter combo; emtk combo above the tree in the authoring state lists All pages / Unreviewed / AI-reviewed / Human-reviewed / Stale.",
+  "unreviewed": "Entry of the review-filter combo; present in the emtk combo (authoring state).",
+  "reviewed": "Entry 'Reviewed' of the review-filter combo; emtk 'Human-reviewed' (authoring state).",
+  "stale": "Entry of the review-filter combo; present in the emtk combo (authoring state).",
+  "developerdocs": "Qt authoring 'Developer docs' toggle; emtk 'Developer docs' checkbox in the Authoring tools row (authoring state; test_developer_docs_toggle_lists_development_pages)."
+}
