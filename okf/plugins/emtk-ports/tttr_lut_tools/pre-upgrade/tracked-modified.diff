@@ -1,0 +1,105 @@
+diff --git a/chisurf/plugins/tttr/tttr_lut_tools/__init__.py b/chisurf/plugins/tttr/tttr_lut_tools/__init__.py
+index 6cad2a0dc..b9495c705 100644
+--- a/chisurf/plugins/tttr/tttr_lut_tools/__init__.py
++++ b/chisurf/plugins/tttr/tttr_lut_tools/__init__.py
+@@ -6,8 +6,6 @@ from pathlib import Path
+ 
+ from chisurf.core.plugin import load_manifest
+ 
+-from .gui.tool import TTRLutToolsWidget
+-
+ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
+ if _manifest is not None:
+     name = _manifest.display_name
+@@ -18,6 +16,17 @@ else:
+ 
+ __all__ = ["TTRLutToolsWidget"]
+ 
++
++def __getattr__(name):
++    if name == "TTRLutToolsWidget":
++        from .gui.tool import TTRLutToolsWidget
++
++        return TTRLutToolsWidget
++    raise AttributeError(name)
++
++
+ if __name__ == "plugin":
++    from .gui.tool import TTRLutToolsWidget
++
+     window = TTRLutToolsWidget()
+     window.show()
+diff --git a/chisurf/plugins/tttr/tttr_lut_tools/api/io.py b/chisurf/plugins/tttr/tttr_lut_tools/api/io.py
+index 32c35458d..f0c861240 100644
+--- a/chisurf/plugins/tttr/tttr_lut_tools/api/io.py
++++ b/chisurf/plugins/tttr/tttr_lut_tools/api/io.py
+@@ -64,11 +64,11 @@ def load_microtimes(
+     RuntimeError
+         If no micro-times are found in any input file.
+     """
+-    import tttrlib
++    from chisurf.core.fio.staging import open_tttr
+ 
+     parts: list[np.ndarray] = []
+     for filename in file_list:
+-        tttr = tttrlib.TTTR(filename) if not routine else tttrlib.TTTR(filename, routine)
++        tttr = open_tttr(filename, routine)
+         if channel is not None:
+             tttr = tttr.get_tttr_by_channel([int(channel)])
+         microtimes = tttr.micro_times
+@@ -98,12 +98,12 @@ def load_micro_and_routing(
+     RuntimeError
+         If no events are found in any input file.
+     """
+-    import tttrlib
++    from chisurf.core.fio.staging import open_tttr
+ 
+     micro_parts: list[np.ndarray] = []
+     route_parts: list[np.ndarray] = []
+     for filename in file_list:
+-        tttr = tttrlib.TTTR(filename) if not routine else tttrlib.TTTR(filename, routine)
++        tttr = open_tttr(filename, routine)
+         micro = tttr.micro_times
+         if micro is None or len(micro) == 0:
+             continue
+diff --git a/chisurf/plugins/tttr/tttr_lut_tools/gui/__init__.py b/chisurf/plugins/tttr/tttr_lut_tools/gui/__init__.py
+index 3264ddf4f..6e4a57b96 100644
+--- a/chisurf/plugins/tttr/tttr_lut_tools/gui/__init__.py
++++ b/chisurf/plugins/tttr/tttr_lut_tools/gui/__init__.py
+@@ -1,7 +1,19 @@
+-"""GUI widgets for TTTR LUT Tools."""
+-
+-from .settings_panel import TTTRSettingsPanel
+-from .tac_lut_panel import TACLinearizationPanel
+-from .tool import TTRLutToolsWidget
++"""Lazy legacy widgets, keeping native factory imports independent of Qt."""
+ 
+ __all__ = ["TACLinearizationPanel", "TTTRSettingsPanel", "TTRLutToolsWidget"]
++
++
++def __getattr__(name):
++    if name == "TACLinearizationPanel":
++        from .tac_lut_panel import TACLinearizationPanel
++
++        return TACLinearizationPanel
++    if name == "TTTRSettingsPanel":
++        from .settings_panel import TTTRSettingsPanel
++
++        return TTTRSettingsPanel
++    if name == "TTRLutToolsWidget":
++        from .tool import TTRLutToolsWidget
++
++        return TTRLutToolsWidget
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/tttr/tttr_lut_tools/manifest.json b/chisurf/plugins/tttr/tttr_lut_tools/manifest.json
+index 7f7c0e528..61e7d47c1 100644
+--- a/chisurf/plugins/tttr/tttr_lut_tools/manifest.json
++++ b/chisurf/plugins/tttr/tttr_lut_tools/manifest.json
+@@ -24,6 +24,7 @@
+     }
+   },
+   "entrypoints": {
++    "emtk": "chisurf.plugins.tttr.tttr_lut_tools.gui.app:create_app",
+     "gui": "chisurf.plugins.tttr.tttr_lut_tools.gui.tool:TTRLutToolsWidget",
+     "cli": "lut-tools=chisurf.plugins.tttr.tttr_lut_tools.cli.main:cli",
+     "services": "chisurf.plugins.tttr.tttr_lut_tools.backend.services:register_services"

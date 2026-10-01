@@ -1,0 +1,37 @@
+{
+  "channels": [
+    0,
+    1,
+    8,
+    9
+  ],
+  "channel": "0",
+  "region_auto": [
+    1749,
+    2387
+  ],
+  "info": "ch 0 | Range [1749, 2387) | width=638 | f=0.526734 | n_mean=8.12",
+  "region_hand": [
+    1200,
+    1900
+  ],
+  "info_hand": "ch 0 | Range [1200, 1900) | width=700 | f=0.919861 | n_mean=14.18",
+  "ch0_autodetect_fails_keeps": [
+    1200,
+    1900
+  ],
+  "ch8_autodetect": [
+    788,
+    828
+  ],
+  "ch8_info": "ch 8 | Range [788, 828) | width=40 | f=16.288312 | n_mean=353.27",
+  "lut_saved": "lut.npy",
+  "lut_len": 3664,
+  "corrected_n": 56499,
+  "assigned_channels": [
+    0,
+    1,
+    8,
+    9
+  ]
+}
