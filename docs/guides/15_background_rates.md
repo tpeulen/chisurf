@@ -36,19 +36,20 @@ Each file's rates are also recorded beside its photons.
 :name: fig-15-burst-background
 :width: 100%
 
-The **Inter-photon time** dock after *Estimate background* on the BH SPC-132
-smFRET measurement (green = routing channels 0/8, red = 1/9). Points are the
-histogram, lines the fitted exponential tails, the shaded band the fit window
-(3.34–4.41 ms, seeded from the data). *Results* reads 1.869 kHz green,
-0.968 kHz red.
+The tool after *Estimate Background* on the BH SPC-132 smFRET measurement
+(green = routing channels 0/8, red = 1/9). In the **Inter-photon time** dock the
+points are the histogram, the lines the fitted exponential tails, and the tag
+marks the fit window (3.34–4.41 ms, seeded from the data). *Rates & results*
+reads 1.647 kHz green, 0.495 kHz red.
 ```
 
 ```{figure} figures/15_burst_background_fit.png
 :name: fig-15-burst-background-fit
 :width: 90%
 
-The **Fit** dock: the window edges (log sliders coupled to the band), the
-histogram **Bin width** (0.1 ms) and **Min. counts per bin** (1).
+The **Fit Settings**: the window edges (**Fit from** / **Fit to**, also draggable
+as the band on the plot), the histogram **Bin width** (0.1 ms) and **Min counts /
+bin** (1).
 ```
 
 The **Fit from** / **Fit to** window is seeded on the first estimate from
@@ -67,15 +68,18 @@ tttr = tttrlib.TTTR("test/data/tttr/BH/132/BH_SPC132.spc", "SPC-130")
 scale = tttr.header.macro_time_resolution * 1e3          # ticks -> ms
 dt_ms = background._detector_interphoton_times(tttr, {"chs": [0, 8]}, scale)
 rate_khz = background.estimate_background_from_interphoton_times(
-    dt_ms, tail_range_ms=(3.335, 4.412))   # 1.869 kHz; omit the window for the fraction rule
+    dt_ms, tail_range_ms=(3.335, 4.412))   # 1.647 kHz; omit the window for the fraction rule
 ```
 
 The `burst-background analyze FILES -s setups.json -n <setup>` command runs the
 same estimate over many files, but with the older **fraction rule** only
 (`--tail-fraction`, fit from `max(dt)·fraction` to the end); it has no window
-option. On this file the fraction rule gives 2.10 / 0.59 kHz and a 1–6 ms window
-2.28 / 0.63 kHz, against 1.87 / 0.97 kHz for the seeded window — the rate moves
-with the window, which is why the window is the setting to check.
+option. On this file the fraction rule gives 0.25 / 0.15 kHz and a 1–6 ms window
+1.49 / 0.63 kHz, against 1.65 / 0.50 kHz for the seeded window — the rate moves
+with the window, which is why the window is the setting to check. The seeded value
+agrees with a direct maximum-likelihood fit of a truncated exponential to the same
+intervals (1.70 / 0.51 kHz); the far-tail fraction rule fits a few one-count bins and
+is not to be trusted.
 
 The `burst_irf_bg` step (**IRF & Background**, the next tool in the workflow)
 additionally recovers a scatter-derived **IRF** from the same non-burst photons

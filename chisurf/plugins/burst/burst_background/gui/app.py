@@ -345,6 +345,13 @@ class BurstBackgroundGui:
                 implot.setup_axes("Detector", "Rate (kHz)")
                 xs = np.arange(len(rows), dtype=float)
                 implot.setup_axis_ticks(implot.AXIS_X1, xs, labels=[r.get("detector", "") for r in rows])
+                implot.setup_legend(implot.LOCATION_NORTH_EAST)
+                # Room above the tallest bar (auto-fit put it on the edge); applied when the
+                # rates change -- a first ONCE request on a drawn plot is ignored by emtk.
+                request = (0.0, max(float(r.get("rate", 0.0)) for r in rows) * 1.15 or 1.0)
+                changed = request != getattr(self, "_rate_request", None)
+                self._rate_request = request
+                implot.setup_axis_limits(implot.AXIS_Y1, *request, implot.COND_ALWAYS if changed else implot.COND_ONCE)
                 for i, r in enumerate(rows):
                     col = _hex_to_rgba(r.get("color", ACCENT_BLUE))
                     implot.set_next_fill_style(col)

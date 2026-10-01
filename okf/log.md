@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **Guide 15 numbers and figures corrected**: the background rates it quoted (1.869 / 0.968 kHz seeded, 2.10 / 0.59 fraction
+  rule) came from the tail fit fixed in `8e2c1f892`; re-measured on the same BH SPC-132 file they are 1.647 / 0.495 (a direct
+  truncated-exponential MLE of the intervals: 1.70 / 0.51) and 0.25 / 0.15. Figures regenerated from the current emtk tool
+  (`okf/plugins/emtk-ports/burst_background/scripts/make_guide15_figures.py`); rate bars get room and a legend that does not
+  cover them.
+
 - **IRF tool's background fitted in a seeded window** (found during the burst_irf_bg upgrade): `extract_irf_background`
   fitted the background with the 80 %-of-longest-gap rule, which left a few one-count bins and reported 0.69 / 0.15 kHz where
   the same photons give ~1.9 kHz on both detectors. The quantile seed burst_background already used moved to core
