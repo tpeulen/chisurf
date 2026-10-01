@@ -16,6 +16,10 @@ VIEW_W, VIEW_H = 420, 340
 PLOT_X, PLOT_Y, PLOT_W, PLOT_H = 40, 96, 340, 120
 CURVE_POINTS = 70
 REPEAT_DELAY, REPEAT_RATE = .28, .045
+#: Coverage layers of each photon's halo. Twelve (840 filled circles a frame)
+#: took ~0.2 s per frame on the QPainter host, so a held key stepped once
+#: instead of repeating; four keep the soft edge at a fraction of the cost.
+HALO_RINGS = 4
 STEPS = {"left": -1, "right": 1, "coarse_left": -10, "coarse_right": 10}
 
 
@@ -224,8 +228,8 @@ class NumberQuestApp(ImApp):
             # with radial coverage (1-r)^1.68. Concentric coverage layers
             # reproduce its soft optical halo on the EMTK draw list.
             previous = 0
-            for ring in range(12, 0, -1):
-                fraction = (ring-.5)/12
+            for ring in range(HALO_RINGS, 0, -1):
+                fraction = (ring-.5)/HALO_RINGS
                 coverage = (1-fraction)**1.68
                 alpha = (coverage-previous)/(1-previous)
                 draw.add_circle_filled(at(xx, yy), 3.38*fraction*scale, (0,255,255,round(alpha*255)))
