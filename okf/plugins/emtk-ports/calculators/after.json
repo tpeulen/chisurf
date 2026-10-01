@@ -1,0 +1,222 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.002",
+    "0.004",
+    "0.006",
+    "0.008",
+    "0.01",
+    "0.012",
+    "0.014",
+    "0.016",
+    "0.02",
+    "0.03",
+    "0.04",
+    "0.05",
+    "0.06",
+    "0.07",
+    "0.318230",
+    "0.5",
+    "0.560037",
+    "1",
+    "1.5",
+    "1.7599ns",
+    "10",
+    "100",
+    "2",
+    "20",
+    "30",
+    "4.0000ns",
+    "40",
+    "50",
+    "50.00a",
+    "52.00a",
+    "6.00a",
+    "60",
+    "70",
+    "80",
+    "90",
+    "chi",
+    "combinedheterofretandhomofretparametercalculator—convertbetweendistance,efficiency,lifetimeandrate.",
+    "distanceda",
+    "distancedistribution",
+    "editanyfield;thelinkedquantitiesupdate.",
+    "efficiency",
+    "f-test/χ²-max",
+    "fcsdiffusion",
+    "fcssaturation",
+    "fret/homofret",
+    "fretline",
+    "fretparameters",
+    "försterr0",
+    "gaussian",
+    "guide",
+    "help",
+    "heterofret",
+    "homofret",
+    "k_fret(1/ns)",
+    "kfret",
+    "lifetimed0",
+    "lifetimeda",
+    "p(k)",
+    "p(r)",
+    "parameters",
+    "phasorplot",
+    "psfcalculator",
+    "r(å)",
+    "rate-constantdistribution",
+    "ricsprecision",
+    "κ²distribution",
+    "σ",
+    "χdistribution"
+  ],
+  "interactive": [
+    {
+      "kind": "selectable",
+      "label": "FRET / homoFRET",
+      "id": "FRET / homoFRET",
+      "tooltip": "Combined heteroFRET and homoFRET parameter calculator — convert between distance, efficiency, lifetime and rate."
+    },
+    {
+      "kind": "selectable",
+      "label": "FRET line",
+      "id": "FRET line",
+      "tooltip": "Compute static, dynamic, WLC and mixture FRET lines for parameter ranges, ready to overlay on smFRET 2D histograms."
+    },
+    {
+      "kind": "selectable",
+      "label": "FCS diffusion",
+      "id": "FCS diffusion",
+      "tooltip": "Confocal-FCS diffusion/volume calculator — solve τ, D, rₕ, V_eff and concentration from one constraint."
+    },
+    {
+      "kind": "selectable",
+      "label": "RICS precision",
+      "id": "RICS precision",
+      "tooltip": "Predict how precisely a raster scan would measure a diffusion coefficient, and sweep the pixel dwell time to find the one that measures it best — from the intended settings, before acquiring."
+    },
+    {
+      "kind": "selectable",
+      "label": "Phasor plot",
+      "id": "Phasor plot",
+      "tooltip": "Interactive phasor plot — universal semicircle with a reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line."
+    },
+    {
+      "kind": "selectable",
+      "label": "κ² distribution",
+      "id": "κ² distribution",
+      "tooltip": "Orientation-factor distribution p(κ²) for FRET — wobbling-in-cone, diffusion-with-traps and isotropic models with apparent-distance error."
+    },
+    {
+      "kind": "selectable",
+      "label": "F-test / χ²-max",
+      "id": "F-test / χ²-max",
+      "tooltip": "Compare two nested model fits (confidence ↔ χ² threshold) and compute the χ²-max upper limit of a single fit at a confidence level."
+    },
+    {
+      "kind": "selectable",
+      "label": "FCS Saturation",
+      "id": "FCS Saturation",
+      "tooltip": "Numerical calculation of excitation saturation and effective volume expansion in FCS across arbitrary multi-state kinetic schemes (e.g. Cy5)."
+    },
+    {
+      "kind": "selectable",
+      "label": "PSF calculator",
+      "id": "PSF calculator",
+      "tooltip": "Compute a 3-D point-spread function and view it as a volume: vectorial Richards-Wolf, scalar Airy or Gaussian, with the polarization entering the objective pupil."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A short walk through the hub."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "What the hub is and how the embedded calculators are used."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "HeteroFRET",
+      "id": "HeteroFRET",
+      "tooltip": "HeteroFRET: a donor-acceptor pair - distance, lifetime, efficiency and rate."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "HomoFRET",
+      "id": "HomoFRET",
+      "tooltip": "HomoFRET: energy migration between like dyes - anisotropy decay and the implied donor-acceptor distance."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through the calculator."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "The help page for the FRET calculator."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau0",
+      "id": "##tau0",
+      "tooltip": "Donor-only fluorescence lifetime (no acceptor)."
+    },
+    {
+      "kind": "input_text",
+      "label": "R0",
+      "id": "##R0",
+      "tooltip": "Förster radius R0."
+    },
+    {
+      "kind": "input_text",
+      "label": "R",
+      "id": "##R",
+      "tooltip": "Donor-acceptor distance. Any of distance, lifetime, efficiency or rate may be entered; the others are recomputed."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau",
+      "id": "##tau",
+      "tooltip": "Donor lifetime in the presence of acceptor (D in DA). Editable input that back-computes the distance."
+    },
+    {
+      "kind": "input_text",
+      "label": "E",
+      "id": "##E",
+      "tooltip": "FRET efficiency. Editable input that back-computes the distance."
+    },
+    {
+      "kind": "input_text",
+      "label": "kFRET",
+      "id": "##kFRET",
+      "tooltip": "FRET rate constant. Editable input that back-computes the distance."
+    },
+    {
+      "kind": "input_text",
+      "label": "sigma",
+      "id": "##sigma",
+      "tooltip": "Width of the donor-acceptor distance distribution."
+    },
+    {
+      "kind": "checkbox",
+      "label": "χ distribution",
+      "id": "χ distribution##use_chi",
+      "tooltip": "Use a 3D non-central chi distance distribution instead of a Gaussian. Distances are never Gaussian: a Gaussian assigns weight to negative / near-zero distances, while the chi distribution is non-negative and vanishes at contact (R=0)."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

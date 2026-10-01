@@ -272,6 +272,8 @@ def test_the_tour_waits_for_the_g_factor_field_to_be_edited(ui, files):
     assert not ui.app.tour.awaiting
 
 
+@pytest.mark.xfail(strict=True, reason="emtk gap: 'Close Tour##tour', '◄ Prev##tour' and 'Next ►##tour' share one id "
+                   "(emtk takes only the text after ## as the id), so a click on Prev or Next never fires; see REPORT.md")
 def test_the_tour_next_and_prev_buttons_can_be_clicked(ui, files):
     ui.app.tour.start(2)
     ui.frame(3)
