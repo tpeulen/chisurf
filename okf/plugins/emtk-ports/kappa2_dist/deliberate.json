@@ -1,0 +1,12 @@
+{
+  "?": "Qt help button '?'; emtk 'Help' in the toolbar row.",
+  "results": "Qt 'Results' panel title; emtk 'Orientation statistics' window (a table of the five Qt values plus SD2 and SA2).",
+  "meanrapp/rda": "Qt rich-text label 'Mean R<sub>app</sub>/R<sub>DA</sub>'; emtk table row 'Mean R_app/R_DA'.",
+  "sdrapp/rda": "Qt rich-text label 'SD R<sub>app</sub>/R<sub>DA</sub>'; emtk table row 'SD R_app/R_DA'.",
+  "rad∞": "Qt rich-text label r<sub>AD∞</sub>; emtk spec label 'r_AD∞' (same field, r_ADinf).",
+  "ra∞": "Qt rich-text label r<sub>A∞</sub>; emtk spec label 'r_A∞' (r_Ainf).",
+  "rd∞": "Qt rich-text label r<sub>D∞</sub>; emtk spec label 'r_D∞' (r_Dinf).",
+  "radknown(useδ)": "Qt rich-text label 'r<sub>AD</sub> known (use δ)'; emtk spec label 'r_AD known (use δ)' (rAD_known).",
+  "dwt(diffusion)": "Qt radio button 'DWT (Diffusion)'; emtk draws the same choice as a combo (the radio row was cut at 800 px), 'DWT (Diffusion)' is an entry of its list.",
+  "isotropic": "Qt radio button 'Isotropic'; emtk draws the same choice as a combo (the radio row was cut at 800 px), 'Isotropic' is an entry of its list."
+}

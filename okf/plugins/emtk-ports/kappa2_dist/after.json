@@ -1,0 +1,156 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-0.3627",
+    "0",
+    "0.001",
+    "0.005",
+    "0.050",
+    "0.0516",
+    "0.100",
+    "0.2166",
+    "0.380",
+    "0.5",
+    "0.5130",
+    "0.667",
+    "0.6674",
+    "0.9933",
+    "1",
+    "1.5",
+    "1.50",
+    "100",
+    "131",
+    "2",
+    "2.5",
+    "200",
+    "3",
+    "3.5",
+    "300",
+    "4",
+    "400",
+    "500",
+    "57.66",
+    "600",
+    "700",
+    "anisotropyparameters",
+    "bins",
+    "calculationoptions",
+    "compute",
+    "frete",
+    "guide",
+    "help",
+    "meanr_app/r_da",
+    "meanκ²",
+    "model",
+    "modelparameters",
+    "orientationstatistics",
+    "p(κ²)",
+    "quantity",
+    "r_adknown(useδ)",
+    "r_ad∞",
+    "r_a∞",
+    "r_d∞",
+    "r₀(fund.)",
+    "save",
+    "sdr_app/r_da",
+    "sdκ²",
+    "sd₂(donor)",
+    "step(°)",
+    "sₐ₂(acceptor)",
+    "trueκ²",
+    "trueκ²=0.667",
+    "value",
+    "wic(cone)",
+    "δ(deg)",
+    "κ²",
+    "κ²distribution"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Compute",
+      "id": "Compute",
+      "tooltip": "Run the selected orientation model and draw its κ² distribution and orientation statistics."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Save the κ² distribution and the orientation statistics."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "The short help page: the three models, the anisotropies to measure first, and reading the result."
+    },
+    {
+      "kind": "input_text",
+      "label": "r_0",
+      "id": "##r_0",
+      "tooltip": "Fundamental anisotropy of the dye."
+    },
+    {
+      "kind": "input_text",
+      "label": "r_Dinf",
+      "id": "##r_Dinf",
+      "tooltip": "Residual anisotropy of the donor without FRET."
+    },
+    {
+      "kind": "input_text",
+      "label": "r_Ainf",
+      "id": "##r_Ainf",
+      "tooltip": "Residual anisotropy of direct-excited acceptor."
+    },
+    {
+      "kind": "input_text",
+      "label": "r_ADinf",
+      "id": "##r_ADinf",
+      "tooltip": "Residual anisotropy of FRET-sensitised acceptor."
+    },
+    {
+      "kind": "input_text",
+      "label": "kappa2_true",
+      "id": "##kappa2_true",
+      "tooltip": "Assumed orientation factor used for R_app / R_DA."
+    },
+    {
+      "kind": "input_text",
+      "label": "fret_efficiency",
+      "id": "##fret_efficiency",
+      "tooltip": "FRET efficiency (used for DWT model)."
+    },
+    {
+      "kind": "input_text",
+      "label": "step",
+      "id": "##step",
+      "tooltip": "Angular step size for the WIC grid search."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bins",
+      "id": "##n_bins",
+      "tooltip": "Number of bins in the κ² histogram."
+    },
+    {
+      "kind": "checkbox",
+      "label": "r_AD known (use δ)",
+      "id": "r_AD known (use δ)##rAD_known",
+      "tooltip": "When checked, use the δ angle computed from residual anisotropies."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

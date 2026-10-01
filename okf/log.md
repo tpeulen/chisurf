@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+* **kappa2_dist emtk app reworked by EMTK-1 in error (owner SWAP4B).** Spec-drawn form with the Qt labels, declared statistics table, legend marker, edits during a computation no longer dropped; model unchanged from the committed Qt tool; 28 passed. The code commit swept in another agent's staged deletion; repaired (54a665e47, deletion re-staged). Handed to SWAP4B for verification: `okf/plugins/emtk-ports/kappa2_dist/REPORT.md`.
+
 * **traj_energy_calculator emtk app at parity with the Qt widget (swap-candidate, session EMTK-1).** Same energies (byte-identical file). Added file choosers (trajectory, topology, output, potential tables), the H-Bond / Iso-UNRES / MJ potential files the Qt editors show, and a worker with frame counter for Process. Trap: the Qt setup section needs `modules/imp-tricks/src` on `PYTHONPATH`. Open: AV-Potential cannot be scored on either side (constructor mismatch). 28 passed. Report: `okf/plugins/emtk-ports/traj_energy_calculator/REPORT.md`.
 
 * **minesweeper emtk view at parity with the Qt game (swap-candidate, session EMTK-1).** Same board, keys and scripted game as the Qt view driven with a stub host. Fixed: after a loss the emtk app overwrote the result with "Start a new game…" and played the effect on further presses; it now ignores them like Qt. Sound greyed (emtk audio known issue). 33 passed. Report: `okf/plugins/emtk-ports/minesweeper/REPORT.md`.
