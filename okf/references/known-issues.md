@@ -6160,3 +6160,14 @@ changed nothing; it is now greyed with the tooltip "No sound here: this window h
 `False`. *Not fixed here:* an audio backend is new infrastructure (emtk or a shared ChiSurf module), not part of a port; the
 only Qt-free player in the tree is `chisurf/plugins/tttr/audifier/native_playback.py` (a WAV file per playback through
 `afplay`/`ffplay`/`aplay`), too coarse for music loops and per-event effects. The factories accept `audio=` for when one exists.
+
+## emtk implot: a first `COND_ONCE` axis-limits request on an existing plot is ignored (found 2026-10-01)
+
+**Measured** in burst_fusion's fragments histogram: the plot is drawn empty, then data arrives and the app calls
+`implot.setup_axis_limits(AXIS_Y1, lo, hi, COND_ONCE)` for the first time. `emtk/implot.py:setup_axis_limits` applies a ONCE
+request only when the plot is not yet initialized or the request differs from an earlier ONCE request; with no earlier request it
+does neither, but still sets `has_range`, which turns auto-fit off — the axis stays at its default (1e-6–1 on a log axis) and the
+bars fill the plot. Reproduce: `test_the_fragments_axis_holds_every_bar` with the app calling ONCE only fails with
+`(1e-06, 1.0, [158, 105, 20])`. Worked around in the app (ALWAYS when the requested range changes, ONCE after it);
+burst_2cde is unaffected because its empty plot makes a ONCE request first. *Not fixed here:* emtk is outside the EMTK-1 claim;
+the fix belongs in `setup_axis_limits` (treat "no earlier ONCE request" as new), with a regression test in emtk.
