@@ -1,3 +1,16 @@
+## emtk gaps found while upgrading the swap-candidates (2026-10-01, SWAP4B)
+
+- **The guided tour's Next and Prev buttons never fire, in every emtk port.** `chisurf/emtk/help_guide.py` draws
+  `Close Tour##tour`, `◄ Prev##tour` and `Next ►##tour`; emtk takes only the text after `##` as the id, so the three share one
+  and only the first (Close Tour) receives a click. Repro: `app.tour.start(2)`, draw, press and release on the drawn text
+  `Next ►` (the pointer driver in any `test/pointer.py` of the four plugins): `step_idx` stays 2. Each plugin carries an
+  `xfail(strict=True)` test; fix the labels (`Next ►##tour_next`) and the tests turn green.
+- **`emtk.im.input_float` is a drag field**: no typed number (double click and Ctrl+click do nothing). The shared channel editor
+  (`chisurf/emtk/channel_definition.py`, `_float_input`) uses it; a spec `value` field (`draw_sections`) is typeable.
+- **A `data_table` keeps its selection by row key after the row is removed**: select a row, remove it, add the same key again and the
+  row comes back highlighted while the model has nothing selected (`vv_vh_anisotropy` works around it with `forget_selection`).
+- **The help window prints markdown bold and backticks literally.**
+
 ## Two GUI test failures that predate the vector-parameter commits (test fixes 2026-09-24)
 
 **Measured 2026-09-24** (arm64 env, `QT_QPA_PLATFORM=offscreen`), identically
