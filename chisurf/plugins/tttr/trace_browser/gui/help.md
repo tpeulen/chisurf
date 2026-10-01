@@ -16,7 +16,7 @@ Click a row to select one file. Select all selects every listed file. Export, CS
 - CSV writes the binned trace of each selected file (time, then one column per series) at the current bin window into a folder you choose.
 - DOCX writes a Word report (name, folder, rating, annotation, trace picture of each file) into the opened folder. It needs the python-docx package; the button is greyed when that is not installed.
 - Delete asks first, then moves the selected files and the files that share their name (a measurement's companion files) to the .trash folder of the opened folder. Nothing is deleted for good: move a file back by hand and rescan. The Delete key in the table does the same.
-- HMM, TW and NDX open the first selected file in Intensity Trace Analysis, TTTR Time Window and ndX with the current bin window. They need the ChiSurf main window and are greyed when the Trace Browser runs on its own. NDX first writes the burst table (in a folder next to the data, named after the file and the bin window) and then opens it.
+- HMM, TW and NDX open the first selected file in a new Intensity Trace Analysis window, a new TTTR Time Window tool and a new ndX window, with the current bin window. They work inside ChiSurf and are greyed when the Trace Browser runs on its own. NDX first writes the burst table (in a folder next to the data, named after the file and the bin window) and then opens it.
 
 ## Speed
 Precompute computes and caches the trace of every listed file in the background (Stop ends it); Precompute after scan does that after every scan. Clear caches deletes the cached traces of the folder.

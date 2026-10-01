@@ -657,10 +657,12 @@ def test_the_hand_offs_work_on_the_first_file_of_a_multi_selection(work, monkeyp
         app.close()
 
 
-def test_without_a_host_the_hand_off_buttons_are_greyed_and_record_nothing(work):
-    from chisurf.plugins.tttr.trace_browser.gui.app import make_app as factory
+def test_without_a_host_the_hand_off_buttons_are_greyed_and_record_nothing(work, monkeypatch):
+    from chisurf.plugins.tttr.trace_browser.gui import app as app_module
 
-    app = factory()
+    # a session that already runs a QApplication would host the app (card T5): this test is about no host
+    monkeypatch.setattr(app_module, "default_request_handler", lambda: None)
+    app = app_module.make_app()
     try:
         assert app.on_request is None and app.model.host_connected is False
         app.model.accept_setup(json.loads(json.dumps(ALEX)))

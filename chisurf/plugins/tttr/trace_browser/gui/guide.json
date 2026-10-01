@@ -62,7 +62,7 @@
     },
     {
       "title": "Open the trace in another tool",
-      "text": "<b>HMM</b>, <b>TW</b> and <b>NDX</b> open the first selected file in Intensity Trace Analysis, TTTR Time Window and ndX with the current bin window. They need the ChiSurf main window and are greyed when the Trace Browser runs on its own.",
+      "text": "<b>HMM</b>, <b>TW</b> and <b>NDX</b> open the first selected file in a new Intensity Trace Analysis window, a new TTTR Time Window tool and a new ndX window, with the current bin window. They work inside ChiSurf and are greyed when the Trace Browser runs on its own.",
       "target": {"action": "open_time_window"}
     },
     {

@@ -75,7 +75,7 @@ The buttons under the folder row act on the selected files (click a row, or
 | **CSV** | writes each selected trace (time and one column per series, at the current bin window) into a folder you choose |
 | **DOCX** | writes a Word report (name, folder, rating, annotation, trace picture) into the opened folder; needs the optional `python-docx` package and is greyed without it |
 | **Delete** | after a confirmation, moves the selected files and the files that share their name to the `.trash` folder of the opened folder (nothing is deleted for good); the Delete key in the table does the same |
-| **HMM**, **TW**, **NDX** | open the first selected file in *Intensity Trace*, *TTTR Time Window* or ndXplorer; they need the ChiSurf main window and are greyed when the Trace Browser runs on its own (**NDX** first writes the burst table next to the data) |
+| **HMM**, **TW**, **NDX** | open the first selected file in a new *Intensity Trace* window (the bin window and the detector setup are passed on), a new *TTTR Time Window* tool holding the file and the bin window, or a new ndXplorer window; they work inside ChiSurf and are greyed when the Trace Browser runs on its own (**NDX** first writes the burst table next to the data and opens ndX on that folder) |
 
 **Help** explains the window and **Guide** walks through the first steps.
 
@@ -86,8 +86,9 @@ The buttons under the folder row act on the selected files (click a row, or
 Trace Browser on the ten BH SPC-132 smFRET files of the burst-selection test
 folder (green 0/8, red 1/9, SPC-130), `m000.spc` selected, 10 ms bins (the
 default). The coincident green/red spikes are FRET bursts; the right column is
-the count histogram of each trace. HMM, TW and NDX are greyed because this
-window runs without the ChiSurf main window; DOCX because `python-docx` is not
+the count histogram of each trace. HMM, TW and NDX are enabled because a
+ChiSurf session (a Qt application) is running; they are greyed when the Trace
+Browser runs without one. DOCX is greyed because `python-docx` is not
 installed.
 ```
 

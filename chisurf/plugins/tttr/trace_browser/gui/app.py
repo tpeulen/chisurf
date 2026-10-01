@@ -27,7 +27,8 @@ The buttons under the folder row act on the table's selection (one row, or every
 *Delete* moves them to ``.trash`` after a confirmation drawn here.  *HMM*, *TW* and *NDX* open
 the selected trace in another ChiSurf tool: that needs the main window, so the model records a
 request (:attr:`~.model.TraceBrowserModel.requests`) and the app hands it to the ``on_request(name,
-payload)`` callback of its host; without a host the three buttons are greyed.  Help and Guide
+payload)`` callback of its host (:func:`make_app` finds ChiSurf's adapter, :mod:`.host`, when a Qt
+application runs); without a host the three buttons are greyed.  Help and Guide
 (:class:`~chisurf.emtk.help_guide.EmTkHelpWindow`, :class:`~chisurf.emtk.help_guide.EmTkGuidedTour`)
 sit above the form on both pages.
 
@@ -58,6 +59,7 @@ from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
 
+from .host_lookup import default_request_handler
 from .model import TraceBrowserModel
 
 HERE = Path(__file__).parent
@@ -880,6 +882,10 @@ def make_app(on_request: Callable[[str, dict], Any] | None = None) -> TraceBrows
     Parameters
     ----------
     on_request : callable, optional
-        The host's ``on_request(name, payload)``; without it the HMM, TW and NDX buttons are greyed.
+        The host's ``on_request(name, payload)``; it always wins.  Without it the ChiSurf host
+        adapter (:func:`.host.default_request_handler`) is used when a Qt application is already
+        running; with neither, the HMM, TW and NDX buttons are greyed.
     """
+    if on_request is None:
+        on_request = default_request_handler()
     return TraceBrowserApp(on_request=on_request)

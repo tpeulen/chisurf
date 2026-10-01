@@ -444,10 +444,10 @@ def _grab_22_trace_browser():
 
     from emtk.export import save_png
 
-    from chisurf.plugins.tttr.trace_browser.gui.app import TraceBrowserApp
+    from chisurf.plugins.tttr.trace_browser.gui.app import make_app
 
     work, _folder = _sm_dna_copy()
-    app = TraceBrowserApp()
+    app = make_app()   # a QApplication runs here, so the HMM / TW / NDX buttons are hosted (enabled)
     app.model.accept_setup(
         {
             "detectors": dict(_BH_DETECTORS),
