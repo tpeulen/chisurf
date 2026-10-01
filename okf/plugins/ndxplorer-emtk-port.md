@@ -22,6 +22,82 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Phasor IRF / background correction (2026-10-01)
+
+State: the phasor columns are corrected by equations, `tau_phi`/`tau_m` read
+the corrected ones. **tttrlib's approach** (the form copied, nothing invented):
+
+- The phasor of a decay is `DecayPhasor` (tttrlib
+  `modules/imaging/clsm/src/DecayPhasor.cpp`): `compute_phasor` (photon list,
+  :45) and `compute_phasor_bincounts` (histogram, :102; batch form after it)
+  sum cos/sin(2 pi `frequency` k) over micro-time channel k, `frequency` in
+  cycles per channel, normalise by N, then **divide by the IRF phasor**:
+  `DecayPhasor::g`/`::s` (:182, :191) are the complex division
+  (g_irf g + s_irf s, g_irf s - s_irf g) / |z_irf|^2; (1, 0) is the identity,
+  (0, 0) is rejected (`check_irf`, :17). A/B'd bit-for-bit against phasorpy's
+  `phasor_transform` calibration (`test/python/clsm/test_ab_phasor_reference.py`).
+- **Per pixel**: `CLSMImage::get_phasor` (`CLSMImage.cpp`:3787) takes an IRF as
+  a TTTR (`tttr_irf`, its phasor by `compute_phasor`) or `correct_irf_offset`
+  (:3829: a delta IRF at the decay's half-rise channel, `get_decay_irf_offset`
+  :3535, i.e. a pure rotation); default `frequency` = micro/macro time
+  resolution (:3801), i.e. f_rep from the sync period. `StreamingPhasor`
+  (`modules/streaming/include/StreamingDecayHistogram.h`:98) has no IRF.
+- **Background**: no phasor-level function. tttrlib's form is subtracting a
+  background histogram from the counts before the sums
+  (`compute_phasor_bincounts` accepts negative bins, `DecayPhasor.h`:93), i.e.
+  count based: z = (N z_raw - N_bg z_bg)/(N - N_bg), then the IRF division.
+  No known-lifetime reference (`tau_ref`) in tttrlib; phasorpy's calibration
+  it is validated against divides by z_ref/z_circle(tau_ref).
+- **Corrected micro times** (not phasor-specific): TAC linearisation and
+  per-channel shifts (`MicrotimeLinearization`, `TTTR.h`:2644;
+  `shift_micro_time_by_channel` :1187). Dead time appears only in the decay
+  models (`DecayConvolution.h`), not in the phasor.
+- **Where ndX's g/s came from**: `tools/make_image_hdf5.py`:57 calls
+  `CLSMImage.get_phasor(tttr, minimum_number_of_photons=3)` -- no `tttr_irf`,
+  no `correct_irf_offset`: the IRF correction was available and skipped, a
+  background correction never existed. ChiSurf's img_pixel_phasor passes an
+  IRF file when one is given.
+
+ndX now: constants `g_irf`, `s_irf` (1, 0) and `n_bg` (0) per channel (plain,
+`(green)`, `(red)`), `g_bg`, `s_bg` (0, 0); equations `f_bg = n_bg / Number of
+Photons`, `g corr`, `s corr` = ((z - f_bg z_bg) / ((1 - f_bg) z_irf)); tau_phi
+and tau_m read g corr / s corr (the raw-phase lifetime is dropped: it carries
+the instrument's phase). Axis patterns `re:g corr…`, `re:s corr…`, `re:f_bg…`;
+`SHIPPED_SINCE` dates; mmfdb terms (mmfdb dcc3784). **FRET > Phasor reference
+from IRF…** (`features/phasor_reference.py`, `analysis/phasor_reference.py`):
+tttrlib `DecayPhasor.phasor_of_bincounts` at f_rep x harmonic x micro-time
+resolution, flat background removed by linearity, optional tau_ref; `n_bg` =
+the measurement's flat-background fraction x the table's photons / (pixels x
+lines x frames). No tttrlib change was needed (the `frequency` argument already
+is f_rep x harmonic x dt). Commits: ndxplorer 593a8e3, 486d5f4, 990ebe2.
+Tests: `tests/test_phasor_correction.py` (synthetic Gaussian-IRF + background
+decays: raw off the circle, corrected on it, tau_phi/tau_m within 3 % for
+0.5-8 ns; equations = `DecayPhasor.g/s`), `tests/test_app/test_phasor_reference_dialog.py`.
+
+Measurement (re-derive with the script in the log bullet; the table is
+`parity/.cache/data/image_test.h5`, 10 frames of `pq_ht3_clsm.ht3`, f_rep 32):
+IRF `crn_clv_mirror.ht3` channels 0 1 -> g_irf 0.981, s_irf 0.181 (3.6 % dark
+counts removed), measurement background 4.6 % -> n_bg (green) 0.20; median
+pixel (0.69, 0.47) outside -> (0.79, 0.33) inside, 15 % -> 34 % of the rows
+inside (the rest is shot noise of 3-30-photon pixels).
+
+Open front:
+
+1. **Red has no IRF in tttr-data**: the mirror lit only channels 0/1; channels
+   4/5 are refused (> 50 % flat). The image table has no red phasor anyway.
+2. **A burst table**: `f_bg` is count based per row, so bursts need
+   `'Bg' * 'Duration (ms)'` in the f_bg equation (documented, not shipped: two
+   equations cannot share a name). Burst tables now carry three zero `f_bg`
+   columns.
+3. **IRF from a `.pto`**: the dialog reads TTTR files only; cal1's `.pto`
+   holds no IRF stream (its "background histogram" objects are inter-photon
+   times, not decays), so picking a photon stream of the container is not done.
+4. **Tables without photon counts** lose `g corr`/`tau_phi` (the count-based
+   fraction needs N); a table from ChiSurf's img_pixel_phasor writes its own
+   tau_phi/tau_m data columns.
+5. `docs/reference/figures.md` (generated, dirty in another session) does not
+   list the three new guide-46 figures.
+
 ### Shipped defaults under old settings; phasor axis ranges (2026-09-29)
 
 State: `settings/defaults.py` merges the shipped file of the same name under a

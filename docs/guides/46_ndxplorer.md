@@ -170,6 +170,57 @@ An image table on g/s with three overlays from the list: Universal circle
 y(t), t range or t values, and its f / harmonic linked to f_rep / harmonic.
 ```
 
+#### Referencing the phasor to the instrument and removing background
+
+A phasor computed from raw micro times carries the instrument: the IRF's
+position rotates it and the background shrinks it, so an image's pixels sit
+*outside* the universal circle and `tau_phi` is meaningless. ndX corrects the
+columns with equations in tttrlib's form (`DecayPhasor` in
+`modules/imaging/clsm`): the background photons of the row are taken out, then
+the phasor is divided by the IRF phasor,
+
+$$z_{corr} = \frac{z - f_{bg}\, z_{bg}}{(1 - f_{bg})\, z_{irf}},\qquad
+z = g + i s,\; z_{irf} = g_{irf} + i s_{irf},\; f_{bg} = n_{bg}/N .$$
+
+The columns are `f_bg`, `g corr`, `s corr` (plain, `(green)`, `(red)`), and
+`tau_phi` / `tau_m` read `g corr` / `s corr`. The constants (Parameters tab,
+defaults meaning *no correction*): `g_irf`, `s_irf` per channel (1, 0),
+`n_bg` per channel — background photons per pixel or burst (0) — and `g_bg`,
+`s_bg`, the background's own phasor (0, 0: uncorrelated background spread over
+the period). The background fraction is photon-count based, as tttrlib
+subtracts a background histogram from the counts; a burst table can make it
+rate based by editing the `f_bg (green)` equation to
+`'Bg' * 'Duration (ms)' / 'Number of Photons (green)'`.
+
+**FRET > Phasor reference from IRF…** fills the constants from measurements
+with tttrlib: an IRF (scatter or mirror; or a dye of known **reference
+lifetime**, whose place on the circle is divided out,
+$z_{irf} = z_{ref}(1 - i\omega\tau_{ref})$) gives `g_irf`, `s_irf` per colour
+at `f_rep` × `harmonic`, its flat background (dark counts) removed first; the
+measurement the pixel table was made from gives `n_bg`: its flat background
+fraction times the table's photons over its pixels × frames. Compute shows the
+values, Apply writes them. A channel without an IRF (a red detector the
+mirror did not reach) is refused rather than turned into a phasor of noise.
+
+```{figure} figures/ndxplorer_phasor_reference_dialog.png
+FRET > Phasor reference from IRF… on the image test table (made from
+`pq_ht3_clsm.ht3`, 32 MHz), with its mirror measurement `crn_clv_mirror.ht3` as
+IRF: green g_irf = 0.981, s_irf = 0.181 (3.6 % dark counts removed), 4.6 %
+background in the measurement, n_bg = 0.2 photons per pixel and frame.
+```
+
+```{figure} figures/ndxplorer_phasor_uncorrected.png
+Before: `g (green)` against `s (green)` with the Universal circle (f_rep 32
+MHz). The cloud lies outside the circle, rotated by the IRF's phase.
+```
+
+```{figure} figures/ndxplorer_phasor_corrected.png
+After: `g corr (green)` against `s corr (green)`. The cloud is on the circle;
+the median pixel moves from (0.69, 0.47), outside, to (0.79, 0.33), inside, and
+`tau_phi (green)` is 2.4 ns. The remaining spread is shot noise: a pixel of one
+frame holds 3–30 photons.
+```
+
 ### Fit through the cloud, not through a summary of it
 
 **Fit through** decides what the curve is compared with, and it matters more
