@@ -1,0 +1,16 @@
+{
+  "score": 94,
+  "threshold": 90,
+  "threshold_pass": true,
+  "verdict": "pass",
+  "category_match": true,
+  "reference_images": ["chisurf/plugins/misc/games/pong/test/renders/qt-game-reference.png", "chisurf/plugins/misc/games/pong/test/renders/qt-widget-reference.png"],
+  "generated_screenshot": "chisurf/plugins/misc/games/pong/test/renders/native-normal-serve.png",
+  "additional_screenshots": ["native-normal-rally.png", "native-narrow-rally.png", "native-normal-paused.png", "native-normal-winner.png"],
+  "differences": ["The native toolbar uses EMTK styling rather than the macOS Qt button.", "The native optical paddles and photon halo have slightly sharper edges.", "Narrow native windows intentionally letterbox the complete field to preserve both paddles."],
+  "suggestions": [],
+  "next_actions": [],
+  "reasoning": "After the footer correction the field geometry, bitmap glyph metrics, spectral colors, countdown, scores, axis and centered controls match the genuine legacy GPU frame. The responsive narrow view and populated paused/winner states remain complete and unclipped.",
+  "iterations": [{"score": 88, "action": "Measured and centered footer captions; softened optic edges"}, {"score": 94, "action": "Normal and narrow native GPU screenshots visually inspected"}],
+  "review_method": "Direct visual comparison using the visual-verdict skill; field compared beneath the 40px toolbar"
+}

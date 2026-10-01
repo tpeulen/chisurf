@@ -1,58 +1,43 @@
-# Pong Game Plugin
+# Pong
 
-This plugin provides a classic Pong game implemented using PyQt5. It was developed primarily for testing the 
-ChiSurf plugin system.
+Pong has a native EMTK view and the existing Qt/chigame view. Both use
+`model.py` for CPU tracking, paddle/wall collisions, spectral transfers,
+scoring, the one-second serve countdown, and the first-to-seven winner.
 
-## Features
+Run the native view with:
 
-- Two-player gameplay with keyboard controls
-- CPU opponent with basic AI
-- Score tracking
-- Adjustable game speed
-- Simple and intuitive interface
-- Pause functionality
+```sh
+python -m chisurf.emtk --plugin pong
+```
 
-## Overview
+Up/Down moves the left paddle. M switches between CPU and two-player mode;
+W/S moves the right paddle in two-player mode. P pauses, R resets, N toggles
+mute, and Enter/Space restarts after a win. The native view also supports
+mouse dragging on either paddle's half of the field, and clickable footer
+controls with tooltips. Narrow windows fit the whole field without losing a
+paddle. Text and tooltips cover English, German, French, Spanish, Portuguese,
+and Russian.
 
-The Pong Game plugin implements the classic arcade game where players control paddles to hit a ball back and forth. 
-While it provides a fun diversion, its primary purpose was to serve as a test case for the ChiSurf plugin system, 
-demonstrating how interactive graphical applications can be integrated into the ChiSurf framework.
+The native app exports/restores the active round, including scores, paddle
+positions, the ball, serve countdown, mode, pause, mute and winner. It releases
+held inputs on key-up/focus loss and stops animation when closed. Transient
+impact sparks are regenerated during play rather than persisted.
 
-The game features a player-controlled paddle on the left side (using the Up and Down arrow keys) and a CPU-controlled 
-paddle on the right side. The ball bounces between the paddles, and points are scored when the ball passes a paddle.
+The current EMTK toolkit has no shared native audio backend. The native view
+preserves the sound preference and mute state, and accepts an injected audio
+adapter, but the default factory does not play music or effects. The Qt view
+retains its original audio playback.
 
-As a test plugin, it showcases various aspects of plugin development including:
-- Integration with the ChiSurf menu system
-- Creating interactive PyQt5 widgets
-- Handling user input
-- Implementing game logic with timers
+Verification:
 
-## Requirements
+```sh
+QT_QPA_PLATFORM=offscreen python -m pytest chisurf/plugins/misc/games/pong/test -q
+python -m ruff check chisurf/plugins/misc/games/pong
+python -m chisurf.plugins.misc.games.pong.test.capture_native
+QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.misc.games.pong.test.capture_qt
+```
 
-- Python packages:
-  - PyQt5
-  - chisurf core modules
-
-## Usage
-
-1. Launch the plugin from the ChiSurf menu: Miscellaneous > Pong
-2. Control your paddle (left side) using the Up and Down arrow keys
-3. Try to hit the ball past the CPU-controlled paddle (right side)
-4. Press P to pause/resume the game
-5. The score is displayed at the top of the screen
-
-## Applications
-
-While primarily developed as a test plugin, the Pong Game can be used for:
-- Demonstrating PyQt5 game development techniques
-- Testing the plugin system's ability to handle interactive graphical applications
-- Providing a simple example for plugin developers
-- Offering a brief recreational break during data analysis sessions
-
-## License
-
-This plugin is part of the ChiSurf package and is distributed under the same license.
-
-## Author
-
-This plugin was created as part of the ChiSurf project.
+`test/renders` contains the genuine Qt widget and legacy GPU reference plus
+native normal/narrow serve, rally, paused and winner captures. The visual
+verdict improved from 88 to 94 after measuring the original footer spacing.
+GPU captures need access to the platform graphics adapter.

@@ -3,9 +3,15 @@
   "version": "2.0.0",
   "display_name": "Tools:Miscellaneous:Games:Pong",
   "description": "Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Tools", "Miscellaneous", "Games"],
-  "icon": "🏓",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "Miscellaneous",
+    "Games"
+  ],
+  "icon": "\ud83c\udfd3",
   "state_namespace": "pong_game",
   "statefulness": {
     "enabled": true,
@@ -22,7 +28,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.misc.games.pong.pong:Pong",
     "cli": null,
-    "services": null
+    "services": null,
+    "emtk": "chisurf.plugins.misc.games.pong.app:make_app"
   },
   "rpc_methods": [],
   "events": [],
