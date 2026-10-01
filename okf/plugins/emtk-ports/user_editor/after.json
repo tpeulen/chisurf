@@ -1,0 +1,176 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0rows×6columns",
+    "account",
+    "accounts",
+    "active",
+    "address",
+    "admin",
+    "administrator",
+    "affiliation",
+    "allowsign-inwithoutapassword",
+    "autologin",
+    "copy",
+    "delete",
+    "department",
+    "displayname",
+    "e-mail",
+    "exportcsv",
+    "filter",
+    "generic",
+    "guide",
+    "help",
+    "listingusersrequiresanadministratoraccount.signinasanadministrator,then",
+    "new",
+    "notes",
+    "nouserselected",
+    "password",
+    "phone",
+    "pickarowtoeditthataccount,orpressnewtocreateone.",
+    "pressreload.",
+    "reload",
+    "revert",
+    "role",
+    "save",
+    "user",
+    "username",
+    "website"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save##do_save",
+      "tooltip": "Write the edited account back to the database. A rename also moves your stored session token, so you stay signed in."
+    },
+    {
+      "kind": "button",
+      "label": "Revert",
+      "id": "Revert##ask_revert",
+      "tooltip": "Discard the edits to this account (asks first)."
+    },
+    {
+      "kind": "button",
+      "label": "Reload",
+      "id": "Reload##do_reload",
+      "tooltip": "Fetch the user list again, in the background."
+    },
+    {
+      "kind": "button",
+      "label": "New",
+      "id": "New##new_user",
+      "tooltip": "Create a new account. Fill in a username and a display name, then press Save."
+    },
+    {
+      "kind": "button",
+      "label": "Delete",
+      "id": "Delete##ask_delete",
+      "tooltip": "Delete the selected account (asks first). Built-in accounts and the active account cannot be deleted."
+    },
+    {
+      "kind": "button",
+      "label": "Password...",
+      "id": "Password...##ask_password",
+      "tooltip": "Set or change this account's password. It is applied when you Save."
+    },
+    {
+      "kind": "button",
+      "label": "Copy",
+      "id": "Copy##request_copy",
+      "tooltip": "Copy the rows the table shows now, with the column headers, to the clipboard as tab-separated text."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write the rows and columns the table shows now to a CSV file."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the table, the account form, passwords and deleting."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through picking an account, editing it and saving."
+    },
+    {
+      "kind": "input_text",
+      "label": "user_id",
+      "id": "##user_id",
+      "tooltip": "How the account is addressed. Changing it renames the account; built-in accounts cannot be renamed."
+    },
+    {
+      "kind": "input_text",
+      "label": "display_name",
+      "id": "##display_name",
+      "tooltip": "The name shown wherever the user appears."
+    },
+    {
+      "kind": "input_text",
+      "label": "email",
+      "id": "##email",
+      "tooltip": "Optional contact address."
+    },
+    {
+      "kind": "input_text",
+      "label": "affiliation",
+      "id": "##affiliation",
+      "tooltip": "Institution or company."
+    },
+    {
+      "kind": "input_text",
+      "label": "department",
+      "id": "##department",
+      "tooltip": "Department or group."
+    },
+    {
+      "kind": "input_text",
+      "label": "phone",
+      "id": "##phone",
+      "tooltip": "Optional contact number."
+    },
+    {
+      "kind": "input_text",
+      "label": "website",
+      "id": "##website",
+      "tooltip": "Optional URL; must start with http:// or https://."
+    },
+    {
+      "kind": "input_text",
+      "label": "address",
+      "id": "##address",
+      "tooltip": "Postal address."
+    },
+    {
+      "kind": "input_text",
+      "label": "details",
+      "id": "##details",
+      "tooltip": "Free-text notes about the account."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Administrator",
+      "id": "Administrator##is_admin",
+      "tooltip": "Administrators may list, edit and delete users. The server refuses to remove the last one."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Allow sign-in without a password",
+      "id": "Allow sign-in without a password##allow_autologin",
+      "tooltip": "Convenient on a single-user machine. Administrators may not use it."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n2026-10-01 12:13:39,844 - ERROR - root - MMFDB RPC failed: mmfdb.users.list: Permission denied\n"
+  }
+}
