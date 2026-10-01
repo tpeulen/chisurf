@@ -1,0 +1,453 @@
+"""EMTK immediate-mode UI for the k² distribution calculator.
+
+Left: the model choice and the anisotropy / calculation parameters. Right: the
+k² distribution the selected model produces, and the resulting orientation
+statistics. The widget (:class:`~.tool.Kappa2Dist`) keeps the RPC-backed
+client, the save path and the backward-compat surface; this app renders its
+state and calls back. Immediate mode reads the model every frame, so an edit
+in the controls is the model's state on the same frame — Compute just runs the
+distribution.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
+
+import emtk.im as im
+import emtk.implot as implot
+import numpy as np
+from emtk.app import ImApp
+from emtk.docking import DockManager, Region, Split
+from emtk.im_core import Col
+
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
+
+if TYPE_CHECKING:
+    from .tool import Kappa2Dist, _Kappa2DistModel
+
+WINDOW_BG = (30, 32, 38, 255)
+ACCENT_GREEN = (46, 160, 67, 255)
+ACCENT_BLUE = (31, 119, 180, 255)
+
+MODEL_OPTIONS = ("cone", "diffusion", "isotropic")
+
+_TABLE_FLAGS = im.TableFlags.BORDERS | im.TableFlags.ROW_BG
+
+
+class Kappa2Gui(TourTarget):
+    """EMTK GUI for the k² orientation-factor distribution calculator."""
+
+    def __init__(
+        self,
+        tool: Kappa2Dist,
+        on_compute: Callable[[], None] | None = None,
+        on_edit: Callable[[], None] | None = None,
+        on_save: Callable[[], None] | None = None,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
+    ) -> None:
+        self.tool = tool
+        self.on_compute = on_compute
+        self.on_edit = on_edit
+        self.on_save = on_save
+        self.on_guide = on_guide
+        self.on_help = on_help
+
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+
+        layout = Split(
+            "h",
+            0.40,
+            Region("controls"),
+            Split("v", 0.62, Region("plot"), Region("results")),
+        )
+        self.docks = DockManager(layout)
+        self.docks.add_window(
+            "controls",
+            "🎛️ Model & parameters",
+            self._draw_controls,
+            dock="controls",
+            closable=False,
+        )
+        self.docks.add_window(
+            "plot",
+            "📈 k² distribution",
+            self._draw_plot,
+            dock="plot",
+            closable=False,
+        )
+        self.docks.add_window(
+            "results",
+            "🔢 Orientation statistics",
+            self._draw_results,
+            dock="results",
+            closable=False,
+        )
+
+        self.help_window = EmTkHelpWindow(
+            title="κ² distribution — Help & Reference",
+            resource=Path(__file__).parent / "help.md",
+            owner=tool,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=Path(__file__).parent / "guide.json",
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=tool,
+            wait_for_controls=True,
+        )
+
+    # ── plumbing ──────────────────────────────────────────────────────────
+
+    @property
+    def model(self) -> _Kappa2DistModel:
+        return self.tool._model
+
+    def start_guide(self) -> None:
+        self.tour.start()
+
+    def show_help(self) -> None:
+        self.help_window.show()
+
+
+    def draw(self, w: float = 0.0, h: float = 0.0) -> None:
+        vp = im.get_main_viewport()
+        width = float(w or vp.size[0] or 860.0)
+        height = float(h or vp.size[1] or 620.0)
+        self.docks.draw((0.0, 0.0, width, height))
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, width, height))
+        if self.tour.active:
+            self.tour.draw(width, height)
+
+    # ── controls ──────────────────────────────────────────────────────────
+
+    def _draw_controls(self, box: tuple[float, float, float, float]) -> None:
+        before_inputs = {
+            k: v for k, v in vars(self.model).items() if isinstance(v, (float, int, str, bool))
+        }
+        m = self.model
+
+        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
+        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
+        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
+        im.begin_disabled(bool(getattr(self.tool, "busy", False)))
+        if im.button("▶ Compute"):
+            if callable(self.on_compute):
+                self.on_compute()
+                self.tour.notify_used("compute")
+        im.set_item_tooltip(
+            "Run the selected orientation model and draw its κ² distribution "
+            "and orientation statistics."
+        )
+        im.pop_style_color(3)
+        self.remember("compute")
+        im.end_disabled()
+
+        im.same_line()
+        if im.button("💾 Save"):
+            if callable(self.on_save):
+                self.on_save()
+        im.set_item_tooltip("Save the κ² distribution and the orientation statistics.")
+        self.remember("save")
+        # A dock window can be dragged narrow; a button that does not fit is
+        # clipped at the border, so start a new row when one would.
+        if im.get_line_avail() < 100.0:
+            im.new_line()
+        else:
+            im.same_line()
+        if im.button("📖 Guide"):
+            self.start_guide()
+        im.set_item_tooltip("A step-by-step walk through the tool.")
+        self.remember("guide")
+        if im.get_line_avail() < 100.0:
+            im.new_line()
+        else:
+            im.same_line()
+        if im.button("❓ Help"):
+            self.show_help()
+        im.set_item_tooltip(
+            "The short help page: the three models, the anisotropies to measure "
+            "first, and reading the result."
+        )
+        self.remember("help")
+        im.separator()
+
+        im.begin_disabled(bool(getattr(self.tool, "busy", False)))
+        if im.collapsing_header("Model", im.TreeNodeFlags.DEFAULT_OPEN):
+            im.set_item_tooltip("Expand or collapse model settings.")
+            idx = MODEL_OPTIONS.index(m.model_type) if m.model_type in MODEL_OPTIONS else 0
+            changed, new_idx = im.combo("Model", idx, list(MODEL_OPTIONS))
+            im.set_item_tooltip(
+                "Wobbling-in-Cone (cone), Diffusion-with-Traps (diffusion) or "
+                "isotropic orientation model for the two dyes."
+            )
+            if changed and 0 <= new_idx < len(MODEL_OPTIONS):
+                m.model_type = MODEL_OPTIONS[new_idx]
+                self._schedule_compute()
+            self.remember("model")
+
+        if im.collapsing_header("Anisotropy parameters", im.TreeNodeFlags.DEFAULT_OPEN):
+            im.set_item_tooltip("Expand or collapse anisotropy parameters settings.")
+            changed = False
+            _, v = bounded_float("r₀ (fund.)", m.r_0, step=0.01, minimum=0.0, maximum=0.4)
+            self.remember("r_0")
+            im.set_item_tooltip("Fundamental anisotropy of the dye, at your excitation wavelength.")
+            changed |= v != m.r_0
+            m.r_0 = v
+            _, v = bounded_float("r_D∞", m.r_Dinf, step=0.01, minimum=0.0, maximum=0.4)
+            self.remember("r_Dinf")
+            if im.is_item_clicked():
+                self.tour.notify_used("r_Dinf")
+            im.set_item_tooltip(
+                "Residual anisotropy of the donor without FRET (donor-only sample)."
+            )
+            changed |= v != m.r_Dinf
+            m.r_Dinf = v
+            _, v = bounded_float("r_A∞", m.r_Ainf, step=0.01, minimum=0.0, maximum=0.4)
+            self.remember("r_Ainf")
+            im.set_item_tooltip("Residual anisotropy of the directly excited acceptor.")
+            changed |= v != m.r_Ainf
+            m.r_Ainf = v
+            _, v = bounded_float("r_AD∞", m.r_ADinf, step=0.005, minimum=0.0, maximum=0.4)
+            self.remember("r_ADinf")
+            im.set_item_tooltip(
+                "Residual anisotropy of the FRET-sensitised acceptor; the hard "
+                "one to measure — leave 'r_AD known' unchecked if you do not have it."
+            )
+            changed |= v != m.r_ADinf
+            m.r_ADinf = v
+            if changed:
+                self._schedule_compute()
+
+        if im.collapsing_header("Calculation options", im.TreeNodeFlags.DEFAULT_OPEN):
+            im.set_item_tooltip("Expand or collapse calculation options settings.")
+            changed = False
+            _, v = bounded_float("true κ²", m.kappa2_true, step=0.05, minimum=0.0, maximum=4.0)
+            self.remember("kappa2_true")
+            im.set_item_tooltip(
+                "Assumed orientation factor used for R_app / R_DA; marked on "
+                "the distribution as 'true κ²'."
+            )
+            changed |= v != m.kappa2_true
+            m.kappa2_true = v
+            _, v = bounded_float(
+                "FRET E", m.fret_efficiency, step=0.05, minimum=0.001, maximum=0.999
+            )
+            self.remember("fret_efficiency")
+            im.set_item_tooltip(
+                "FRET efficiency, used by the DWT model only, which averages "
+                "efficiencies; leaving the default while using DWT gives a "
+                "meaningless answer."
+            )
+            changed |= v != m.fret_efficiency
+            m.fret_efficiency = v
+            _, v = bounded_float("Step (°)", m.step, step=0.5, minimum=0.01, maximum=10.0)
+            self.remember("step")
+            im.set_item_tooltip("Angular step size for the WIC grid search, in degrees.")
+            changed |= v != m.step
+            m.step = v
+            _, v = bounded_int("Bins", m.n_bins, step=10, minimum=5, maximum=999)
+            self.remember("n_bins")
+            im.set_item_tooltip(
+                "Number of bins in the κ² histogram; changing it must not change the reported mean."
+            )
+            changed |= v != m.n_bins
+            m.n_bins = int(v)
+            _, checked = im.checkbox("r_AD known", m.rAD_known)
+            self.remember("rAD_known")
+            im.set_item_tooltip(
+                "When checked, use the δ angle computed from the residual "
+                "anisotropies; unchecked, the tool drops δ and returns the "
+                "wider, honest bound."
+            )
+            changed |= checked != m.rAD_known
+            m.rAD_known = checked
+            if changed:
+                self._schedule_compute()
+            self.remember("options")
+
+        im.end_disabled()
+
+        for name, before in before_inputs.items():
+            if getattr(self.model, name, before) != before:
+                self.tour.notify_used(name)
+
+    def _schedule_compute(self) -> None:
+        """Parameter edits recompute through the tool, like the old timer."""
+        if callable(self.on_edit):
+            self.on_edit()
+
+    # ── the distribution plot ─────────────────────────────────────────────
+
+    def _draw_plot(self, box: tuple[float, float, float, float]) -> None:
+        m = self.model
+        if implot.begin_plot("##k2dist", (-1, -1)):
+            implot.setup_axes("κ²", "p(κ²)")
+            implot.setup_legend()
+            if m._k2scale is not None and m._k2hist is not None and len(m._k2hist):
+                x = np.asarray(m._k2scale[1:], dtype=float)
+                y = np.asarray(m._k2hist, dtype=float)
+                implot.set_next_line_style(ACCENT_BLUE, 2.0)
+                implot.plot_line("p(κ²)", x, y)
+                # The assumed value the distribution should reproduce.
+                implot.tag_x(
+                    float(m.kappa2_true),
+                    (200, 200, 200, 140),
+                    fmt=f"true κ² = {m.kappa2_true:.3g}",
+                )
+            else:
+                implot.plot_dummy("press Compute to draw the distribution")
+            implot.end_plot()
+            im.set_item_tooltip(
+                "Probability distribution of κ² the selected orientation model "
+                "produces, with the assumed true κ² marked."
+            )
+        self.remember("plot")
+
+    # ── the results ───────────────────────────────────────────────────────
+
+    def _draw_results(self, box: tuple[float, float, float, float]) -> None:
+        m = self.model
+        if im.begin_table("k2_results", 2, _TABLE_FLAGS, (0, 0)):
+            im.table_setup_column("Quantity", im.TableColumnFlags.WIDTH_FIXED, 150.0)
+            im.table_setup_column("Value", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_headers_row()
+            im.set_item_tooltip(
+                "Orientation statistics of the κ² distribution; SD R_app/R_DA "
+                "is the relative systematic uncertainty on the distance — the "
+                "number to quote."
+            )
+            rows = (
+                ("Mean κ²", f"{m.k2_mean:.4f}"),
+                ("SD κ²", f"{m.k2_sd:.4f}"),
+                ("Mean R_app/R_DA", f"{m.Rapp_mean:.4f}"),
+                ("SD R_app/R_DA", f"{m.RappSD:.4f}"),
+                ("δ (deg)", f"{m.delta_deg:.2f}"),
+                ("SD₂ (donor)", f"{m.SD2:.4f}"),
+                ("Sₐ₂ (acceptor)", f"{m.SA2:.4f}"),
+            )
+            for label, value in rows:
+                im.table_next_row()
+                im.table_set_column_index(0)
+                im.text_unformatted(label)
+                im.table_set_column_index(1)
+                im.text_colored(value, (0.55, 0.8, 1.0, 1.0))
+            im.end_table()
+        self.remember("results")
+
+
+class Kappa2App(ImApp):
+    """The EMTK ImApp for the k² distribution calculator."""
+
+    def __init__(
+        self,
+        tool: Kappa2Dist,
+        on_compute: Callable[[], None] | None = None,
+        on_edit: Callable[[], None] | None = None,
+        on_save: Callable[[], None] | None = None,
+    ) -> None:
+        self.tool = tool
+        self.kappa2_gui = Kappa2Gui(
+            tool,
+            on_compute=on_compute,
+            on_edit=on_edit,
+            on_save=on_save,
+            on_guide=self.start_guide,
+            on_help=self.show_help,
+        )
+        self.native_layouts = {"main": self.kappa2_gui.docks}
+        super().__init__(gui=self._render, continuous=False)
+
+    @property
+    def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
+        return self.kappa2_gui.item_rects
+
+    def start_guide(self) -> None:
+        self.kappa2_gui.start_guide()
+
+    def show_help(self) -> None:
+        self.kappa2_gui.show_help()
+
+    def _render(self) -> None:
+        self.kappa2_gui.draw()
+
+
+__all__ = ["Kappa2App", "WINDOW_BG"]
+
+
+def make_app(**kwargs):
+    """Construct the standalone EMTK orientation calculator and CSV export."""
+    from chisurf.emtk.i18n import install
+
+    install()
+    from types import SimpleNamespace
+
+    from chisurf.plugins.calculator.export import install_csv_export
+
+    from ..backend.services import _kappa2_compute_handler
+    from .model import _Kappa2DistModel
+
+    client = SimpleNamespace(compute=_kappa2_compute_handler)
+    state = SimpleNamespace(_model=_Kappa2DistModel())
+
+    def compute():
+        state._model.compute(client)
+
+    import copy
+    import threading
+
+    state.busy = False
+    pending = []
+
+    def schedule():
+        if state.busy:
+            return
+        state.busy = True
+        snapshot = copy.copy(state._model)
+
+        def run():
+            snapshot.compute(client)
+            pending.append(snapshot)
+
+        threading.Thread(target=run, daemon=True).start()
+
+    app = Kappa2App(state, on_compute=schedule, on_edit=schedule)
+    render = app.gui
+
+    def draw():
+        if pending:
+            state._model.__dict__.update(pending.pop().__dict__)
+            state.busy = False
+        render()
+
+    app.gui = draw
+    app.continuous = True
+
+    def write(path):
+        m = state._model
+        if m._k2scale is None or m._k2hist is None:
+            raise ValueError("Compute a distribution before exporting.")
+        header = [
+            "# Kappa2 Distribution",
+            f"# Model: {m.model_type}",
+            f"# SD2: {m.SD2:.6f}",
+            f"# SA2: {m.SA2:.6f}",
+            f"# Mean kappa2: {m.k2_mean:.6f}",
+            f"# SD kappa2: {m.k2_sd:.6f}",
+            f"# Assumed kappa2: {m.kappa2_true:.6f}",
+            f"# Mean Rapp: {m.Rapp_mean:.6f}",
+            f"# SD Rapp: {m.RappSD:.6f}",
+            "#",
+            "# kappa2,probability",
+        ]
+        lines = [f"{x:.6f},{y:.6f}" for x, y in zip(m._k2scale[1:], m._k2hist)]
+        path.write_text("\n".join(header + lines) + "\n")
+
+    app.kappa2_gui.on_save = install_csv_export(app, "kappa2.csv", write)
+    app.write_csv = write
+    compute()
+    return app
