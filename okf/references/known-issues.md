@@ -6171,3 +6171,14 @@ bars fill the plot. Reproduce: `test_the_fragments_axis_holds_every_bar` with th
 `(1e-06, 1.0, [158, 105, 20])`. Worked around in the app (ALWAYS when the requested range changes, ONCE after it);
 burst_2cde is unaffected because its empty plot makes a ONCE request first. *Not fixed here:* emtk is outside the EMTK-1 claim;
 the fix belongs in `setup_axis_limits` (treat "no earlier ONCE request" as new), with a regression test in emtk.
+
+## emtk help window draws help.md as raw markdown, one source line per paragraph (found 2026-10-02)
+
+**Measured** in traj_save_topology's help (`okf/plugins/emtk-ports/traj_save_topology/after_help_1200x800.png`):
+`chisurf/emtk/help_guide.py:EmTkHelpWindow.draw` hands each stripped source line to `im.text_wrapped`, so `**bold**`,
+`` `code` ``, `*emphasis*` and `[title](docs/…)` links show their markup, and a paragraph wrapped over several source
+lines breaks at every source newline (a bullet's continuation line starts flush left, outside the bullet). The Qt `?`
+modal renders the same files as rich text and routes links to the documentation browser. Every emtk port with a
+`help.md` is affected. *Not fixed here:* `chisurf/emtk/*` is a shared helper outside the EMTK-1 claim; the fix is to join
+a paragraph's lines before wrapping and to render (or at least strip) inline markup, with links going through
+`chisurf/gui/widgets/tools/doc_links.py`'s routing.
