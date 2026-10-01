@@ -1,5 +1,5 @@
 {
-  "_comment": "Trace Browser, Browser page (cards T2, T3b). Drawn by emtk.view_form over TraceBrowserModel (gui/model.py); the trace plot and the annotation box are drawn by gui/app.py (a plot cannot be a spec); the export / hand-off controls (card T4) are not part of this spec yet.",
+  "_comment": "Trace Browser, Browser page (cards T2, T3b). Drawn by emtk.view_form over TraceBrowserModel (gui/model.py); the trace plot and the annotation box are drawn by gui/app.py (a plot cannot be a spec); the Export, CSV, DOCX, Delete and hand-off buttons (card T4) act on the table's selection (one row, or all rows after Select all); Delete asks for a confirmation that gui/app.py draws.",
   "title": "Trace browser",
   "sections": [
     {
@@ -14,6 +14,34 @@
          "description": "Clear the file list, the selection and the shown trace. No file and no rating or note is changed."},
         {"action": "clear_caches", "label": "Clear caches",
          "description": "Delete the cached traces and the cached image probes of this folder, in memory and on disk. Traces are computed again when needed."}
+      ]
+    },
+    {
+      "type": "button_row",
+      "description": "Select files, copy them or their traces out of the folder, write a report, or move them to the .trash folder.",
+      "buttons": [
+        {"action": "select_all_files", "label": "Select all",
+         "description": "Select every listed file, so that Export, CSV, DOCX, Delete and the hand-offs work on all of them. Click a row to go back to one file."},
+        {"action": "export_selected", "label": "Export",
+         "description": "Copy the selected files, unchanged, into a folder you choose. Click a row, or Select all, first."},
+        {"action": "export_csv", "label": "CSV",
+         "description": "Write the binned trace of each selected file as a CSV file (time and one column per series, at the current bin window) into a folder you choose."},
+        {"action": "export_docx", "label": "DOCX",
+         "description": "Write a Word report of the selected files (name, folder, rating, annotation, trace picture) into the opened folder. Needs the python-docx package: greyed when it is not installed."},
+        {"action": "delete_selected", "label": "Delete",
+         "description": "Move the selected files, and the files that share their name, to the .trash folder of the opened folder after you confirm. Nothing is deleted for good. The Delete key does the same."}
+      ]
+    },
+    {
+      "type": "button_row",
+      "description": "Open the selected trace in another ChiSurf tool. These need the ChiSurf main window.",
+      "buttons": [
+        {"action": "open_intensity_trace", "label": "HMM",
+         "description": "Open the first selected file in Intensity Trace Analysis with the current bin window and setup. Needs the ChiSurf main window: greyed when this app runs on its own."},
+        {"action": "open_time_window", "label": "TW",
+         "description": "Open the first selected file in TTTR Time Window with the current bin window. Needs the ChiSurf main window: greyed when this app runs on its own."},
+        {"action": "open_ndxplorer", "label": "NDX",
+         "description": "Cut the first selected file into windows of the current bin window, write the burst table beside the data and open it in ndX. Needs the ChiSurf main window: greyed when this app runs on its own."}
       ]
     },
     {
@@ -68,12 +96,13 @@
     },
     {
       "type": "custom", "key": "data_table", "title": "Files",
-      "description": "One row per listed file. Click a row to select it; double click a rating or a note to edit it. Ratings and notes are saved beside the data in the folder's .trace_browser_meta.json.",
+      "description": "One row per listed file. Click a row to select it (Select all selects every row); double click a rating or a note to edit it. Ratings and notes are saved beside the data in the folder's .trace_browser_meta.json.",
       "options": {
         "source": "rows",
         "row_key": "path",
         "selected_call": "select_row",
         "edited_call": "edit_cell",
+        "delete_call": "delete_from_table",
         "expand": true,
         "reserve": 4,
         "min_column_width": 40,

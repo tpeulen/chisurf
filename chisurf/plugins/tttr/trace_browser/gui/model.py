@@ -25,9 +25,14 @@ imported lazily by :func:`..core.trace.load_trace` on a cache miss only).
 
 from __future__ import annotations
 
+import csv
+import importlib
+import importlib.util
 import logging
 import pathlib
 import shutil
+import tempfile
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -72,6 +77,29 @@ FILETYPE_EXTENSIONS: dict[str, set[str]] = {
     "PHOTON_HDF5": {".h5", ".hdf5", ".photon.hdf5"},
     "HDF5": {".h5", ".hdf5"},
 }
+
+
+#: Names of the hand-off requests the model records (and a host fulfils).
+HANDOFF_INTENSITY_TRACE = "open_intensity_trace"
+HANDOFF_TIME_WINDOW = "open_time_window"
+HANDOFF_NDXPLORER = "open_ndxplorer"
+
+#: Spec actions that need at least one selected file.
+_SELECTION_ACTIONS = frozenset(
+    {"export_selected", "export_csv", "export_docx", "delete_selected",
+     "open_intensity_trace", "open_time_window", "open_ndxplorer"}
+)
+_HANDOFF_ACTIONS = frozenset({"open_intensity_trace", "open_time_window", "open_ndxplorer"})
+
+
+def _docx_modules() -> tuple[Any, Any] | None:
+    """Return ``(Document, Inches)`` of the optional ``python-docx`` package, or ``None``."""
+    try:
+        from docx import Document
+        from docx.shared import Inches
+    except Exception:
+        return None
+    return Document, Inches
 
 
 def get_tttr_supported_exts() -> list[str]:
@@ -147,8 +175,19 @@ class TraceBrowserModel:
         self.current_file: pathlib.Path | None = None
         #: The shown trace: ``{"time_axis", "counts", "labels", "time_window_ms"}``.
         self.trace: dict[str, Any] | None = None
-        #: Hand-off requests for the host application (filled by later cards).
+        #: Hand-off requests for the host application: ``{"name": ..., "payload": {...}}``.
         self.requests: list[dict[str, Any]] = []
+        #: ``True`` when a host (the ChiSurf main window) fulfils hand-off requests; the app sets it.
+        self.host_connected = False
+        #: Paths (str) of every selected row (the table's multi-row selection, set by the app);
+        #: empty means "only :attr:`selected_files`".
+        self.multi_selection: list[str] = []
+        #: Set by :meth:`select_all_files`; the app selects every row of the table and clears it.
+        self.select_all_requested = False
+        #: A pending confirmation (``{"kind", "title", "message", "paths"}``) or ``None``.
+        self.confirm: dict[str, Any] | None = None
+        #: Number of exports, deletions and hand-offs that finished (a guided tour watches it).
+        self.actions_done = 0
         self.status_text = "Open a folder with TTTR files."
         self.error_text = ""
         #: Why the trace of the current file could not be loaded (empty when it could).
@@ -380,10 +419,21 @@ class TraceBrowserModel:
         """
         if name == "stop_precompute":
             return bool(self.precompute["running"])
-        if self.busy:
+        if self.busy or self.confirm is not None:
             return False
         if name == "precompute_traces":
             return bool(self.rows) and not self.precompute["running"]
+        if name == "select_all_files":
+            return bool(self.rows)
+        if name in _SELECTION_ACTIONS and not self.selection_paths():
+            return False
+        if name == "export_docx":
+            return _docx_modules() is not None
+        if name in _HANDOFF_ACTIONS:
+            if not self.host_connected:
+                return False
+            if name == HANDOFF_NDXPLORER:
+                return tttrlib is not None and self.ndx_available()
         return True
 
     def choose_folder(self) -> None:
@@ -1173,3 +1223,568 @@ class TraceBrowserModel:
         self.status_text = "Trace caches cleared."
         self.notify("caches")
         return removed_dirs
+
+
+    # ── selection set, export, delete and hand-offs (the Qt toolbar's actions) ──────────
+    def selection_paths(self) -> list[pathlib.Path]:
+        """The files the export, delete and hand-off actions work on, in table order.
+
+        The table's multi-row selection (:attr:`multi_selection`) when it holds listed files,
+        else the single selected row (:attr:`selected_files`).
+        """
+        listed = [r["path"] for r in self.rows]
+        known = set(listed)
+        multi = {p for p in self.multi_selection if p in known}
+        if multi:
+            return [pathlib.Path(p) for p in listed if p in multi]
+        return [pathlib.Path(p) for p in self.selected_files if p in known]
+
+    def select_all_files(self) -> None:
+        """Select every listed file (the table highlights them; the actions use all of them)."""
+        self.multi_selection = [r["path"] for r in self.rows]
+        self.select_all_requested = True
+        self.status_text = f"{len(self.multi_selection)} file(s) selected."
+
+    def _need_selection(self, what: str) -> list[pathlib.Path] | None:
+        """The selected files, or ``None`` with a hint in :attr:`status_text` when there are none."""
+        paths = self.selection_paths()
+        if not paths:
+            self.status_text = f"Select one or more files first, then {what}."
+            return None
+        return paths
+
+    @property
+    def docx_available(self) -> bool:
+        """Whether the optional ``python-docx`` package can be imported."""
+        return _docx_modules() is not None
+
+    @staticmethod
+    def ndx_available() -> bool:
+        """Whether the ndX components can be imported (the Qt tool tested the same)."""
+        return importlib.util.find_spec("ndxplorer") is not None
+
+    # -- Export (copy the files) -----------------------------------------------------
+    def export_selected(self) -> None:
+        """Ask the host for a destination folder to copy the selected files to (*Export*)."""
+        if self._need_selection("press Export") is not None:
+            self.dialog = "export"
+
+    def export_files(self, dest: str | pathlib.Path, paths: list | None = None) -> int:
+        """Copy *paths* (default: the selection) into the folder *dest* with their metadata kept.
+
+        The Qt tool's ``_on_export`` (``shutil.copy2`` into the chosen folder, flat, by file
+        name) for the selected files instead of every listed file. A name that two selected
+        files share (files of different sub-folders) gets ``__2``, ``__3`` ... so the second
+        does not overwrite the first; a file that already exists in *dest* from before is
+        overwritten, as in Qt.
+
+        Returns
+        -------
+        int
+            Number of files copied.
+        """
+        files = [pathlib.Path(p) for p in (paths if paths is not None else self.selection_paths())]
+        out = pathlib.Path(dest)
+        if not files:
+            self.status_text = "Nothing selected to export."
+            return 0
+        copied = 0
+        used: set[str] = set()
+        try:
+            out.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self.error_text = f"Cannot create {out}: {exc}"
+            return 0
+        for src in files:
+            name = src.name
+            target = out / name
+            n = 2
+            while name in used:
+                name = f"{src.stem}__{n}{src.suffix}"
+                target = out / name
+                n += 1
+            used.add(name)
+            try:
+                if target.exists() and src.resolve() == target.resolve():
+                    continue                       # exporting a file onto itself
+                shutil.copy2(str(src), str(target))
+                copied += 1
+            except Exception as exc:
+                logger.warning("TraceBrowser: Failed to copy %s to %s: %s", src, out, exc)
+        self.error_text = ""
+        self.status_text = f"Exported {copied}/{len(files)} file(s) to {out}"
+        if copied:
+            self.actions_done += 1
+        self.notify("export")
+        return copied
+
+    # -- CSV ---------------------------------------------------------------------------
+    def export_csv(self) -> None:
+        """Ask the host for a destination folder for the CSV traces of the selection (*CSV*)."""
+        if self._need_selection("press CSV") is not None:
+            self.dialog = "csv"
+
+    def export_csv_files(self, dest: str | pathlib.Path, paths: list | None = None) -> list[str]:
+        """Write the binned trace of each of *paths* (default: the selection) as CSV into *dest*.
+
+        As the Qt ``_on_export_csv``: the plugin's RPC export first (one
+        ``<stem>_trace.csv`` per file: the header ``time_ms`` then one column per series, one
+        row per bin at the current bin window); when that gives nothing, the local fallback
+        (``<stem>_bin<window>ms.csv``, header ``time_s``, image-like files skipped).
+
+        Returns
+        -------
+        list of str
+            The CSV files written.
+        """
+        files = [pathlib.Path(p) for p in (paths if paths is not None else self.selection_paths())]
+        out = pathlib.Path(dest)
+        if not files:
+            self.status_text = "Nothing selected to export."
+            return []
+        out.mkdir(parents=True, exist_ok=True)
+        window_ms = float(self.window_ms)
+        written: list[str] = []
+        try:
+            written = list(
+                self.client.export_csv(
+                    [str(p) for p in files],
+                    str(out),
+                    time_window_ms=window_ms,
+                    setup_settings=self.setup_settings,
+                    selected_channels=self.selected_channels,
+                )
+                or []
+            )
+        except Exception:
+            logger.debug("TraceBrowser: RPC CSV export failed; falling back to local export")
+        if not written:
+            written = self._export_csv_local(files, out, window_ms)
+        self.error_text = ""
+        self.status_text = f"Exported {len(written)}/{len(files)} CSV file(s) to {out}"
+        if written:
+            self.actions_done += 1
+        self.notify("export")
+        return written
+
+    def _export_csv_local(
+        self, files: list[pathlib.Path], out: pathlib.Path, window_ms: float
+    ) -> list[str]:
+        """The Qt tool's local CSV fallback (cut and pasted from ``_on_export_csv``)."""
+        written: list[str] = []
+        for p in files:
+            try:
+                if self.is_image_tttr(p):
+                    continue
+                time_axis, padded, labels = self.compute_trace_cached(p, window_ms)
+                if time_axis is None or padded is None or len(time_axis) == 0:
+                    continue
+                safe_labels = [
+                    str(l).replace("\n", " ").replace("\r", " ").replace(",", ";") for l in labels
+                ]
+                header = ["time_s"] + safe_labels
+                bin_tag = (f"{window_ms:g}").replace(".", "p")
+                csv_path = out / f"{p.stem}_bin{bin_tag}ms.csv"
+                with open(csv_path, "w", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(header)
+                    nb = int(padded.shape[0])
+                    if len(padded.shape) == 1:
+                        for i in range(nb):
+                            writer.writerow([float(time_axis[i]), float(padded[i])])
+                    else:
+                        nc = int(padded.shape[1])
+                        for i in range(nb):
+                            writer.writerow(
+                                [float(time_axis[i])] + [float(padded[i, j]) for j in range(nc)]
+                            )
+                written.append(str(csv_path))
+            except Exception as exc:
+                logger.warning("TraceBrowser: Failed to export CSV for %s: %s", p, exc)
+        return written
+
+    # -- DOCX report ---------------------------------------------------------------------
+    def export_docx(self) -> None:
+        """Write the DOCX report of the selected files (*DOCX*; needs ``python-docx``)."""
+        paths = self._need_selection("press DOCX")
+        if paths is None:
+            return
+        if not self.docx_available:
+            self.error_text = (
+                "python-docx is not installed. Please install 'python-docx' to enable DOCX export."
+            )
+            return
+        self.request("write_docx", [str(p) for p in paths])
+
+    def write_docx(self, paths: list | None = None) -> pathlib.Path | None:
+        """Write ``<folder name>.docx`` into the open folder: one section per file.
+
+        The Qt tool's ``_on_export_docx``: a heading, then per file its name, folder, rating,
+        annotation and a picture of its trace (drawn here from the loaded trace with the
+        Qt-free Agg backend of matplotlib; no picture when that is not available).
+
+        Returns
+        -------
+        pathlib.Path or None
+            The saved file, or ``None`` (and :attr:`error_text` set) when it could not be written.
+        """
+        modules = _docx_modules()
+        if modules is None:
+            self.error_text = (
+                "python-docx is not installed. Please install 'python-docx' to enable DOCX export."
+            )
+            return None
+        Document, Inches = modules
+        files = [pathlib.Path(p) for p in (paths if paths is not None else self.selection_paths())]
+        if not files:
+            self.status_text = "Nothing selected to export."
+            return None
+        folder = self.current_folder or files[0].parent
+        save_path = folder / ((folder.name or "traces") + ".docx")
+        tmpdir = pathlib.Path(tempfile.mkdtemp(prefix="trace_export_"))
+        try:
+            doc = Document()
+            doc.add_heading("Trace Browser Export", level=1)
+            for p in files:
+                rec = self.meta_get(p)
+                doc.add_heading(p.name, level=2)
+                doc.add_paragraph(f"Folder: {p.parent}")
+                doc.add_paragraph(f"Rating: {int(rec.get('rating', 0))}")
+                annotation = rec.get("annotation", "")
+                if annotation:
+                    doc.add_paragraph(f"Annotation: {annotation}")
+                image = self._render_trace_png(p, tmpdir / f"{p.stem}.png")
+                if image is not None:
+                    doc.add_picture(str(image), width=Inches(6))
+                doc.add_paragraph("")
+            doc.save(str(save_path))
+        except Exception as exc:
+            logger.exception("TraceBrowser: Failed to save DOCX %s: %s", save_path, exc)
+            self.error_text = f"Failed to save DOCX: {exc}"
+            return None
+        finally:
+            shutil.rmtree(str(tmpdir), ignore_errors=True)
+        self.error_text = ""
+        self.status_text = f"Saved: {save_path}"
+        self.actions_done += 1
+        self.notify("export")
+        return save_path
+
+    def _render_trace_png(self, path: pathlib.Path, png: pathlib.Path) -> pathlib.Path | None:
+        """Draw the trace of *path* into *png* (matplotlib Agg); ``None`` when that fails."""
+        try:
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            from matplotlib.figure import Figure
+
+            time_axis, counts, labels = self.load_trace(path, self.window_ms)
+            counts = np.asarray(counts, dtype=float)
+            if counts.ndim == 1:
+                counts = counts[:, None]
+            fig = Figure(figsize=(7.0, 3.0), dpi=100)
+            FigureCanvasAgg(fig)
+            ax = fig.add_subplot(1, 1, 1)
+            for j, label in enumerate(labels[: counts.shape[1]]):
+                ax.plot(time_axis, counts[:, j], linewidth=0.8, label=str(label))
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel(f"Counts / {self.window_ms:g} ms")
+            ax.set_title(path.name)
+            if labels:
+                ax.legend(loc="upper right", fontsize=7)
+            fig.tight_layout()
+            fig.savefig(str(png))
+            return png
+        except Exception as exc:
+            logger.debug("TraceBrowser: No trace picture for %s: %s", path, exc)
+            return None
+
+    # -- Delete (move to .trash) --------------------------------------------------------
+    def plan_delete(self, paths: list | None = None) -> list[pathlib.Path]:
+        """The files a delete moves: *paths* plus every sibling sharing a file name stem.
+
+        As the Qt ``_on_delete_selected`` (a measurement's ``.spc`` and its companion files
+        move together). Only existing files inside the open folder and outside ``.trash`` are
+        taken; nothing else is ever touched.
+        """
+        folder = self.current_folder
+        if folder is None:
+            return []
+        base = folder.resolve()
+        chosen: dict[pathlib.Path, None] = {}
+
+        def add(fp: pathlib.Path) -> None:
+            try:
+                if not fp.is_file():
+                    return
+                rel = fp.resolve().relative_to(base)
+            except Exception:
+                return                              # outside the open folder: never touched
+            if any(part == ".trash" for part in rel.parts):
+                return
+            chosen[fp] = None
+
+        for item in paths if paths is not None else self.selection_paths():
+            p = pathlib.Path(item)
+            add(p)
+            try:
+                for sib in p.parent.iterdir():
+                    if sib.name.startswith(p.stem + ".") and sib.stem == p.stem:
+                        add(sib)
+            except Exception:
+                pass
+        return sorted(chosen)
+
+    def delete_selected(self) -> None:
+        """Ask for confirmation to move the selected files to ``.trash`` (*Delete selected*)."""
+        paths = self._need_selection("press Delete selected")
+        if paths is None:
+            return
+        move = self.plan_delete(paths)
+        if not move:
+            self.status_text = "Nothing to move: the selected files are not in the open folder."
+            return
+        names = [p.name for p in move]
+        shown = ", ".join(names[:6]) + (f", ... ({len(names) - 6} more)" if len(names) > 6 else "")
+        self.confirm = {
+            "kind": "delete",
+            "title": "Move to .trash?",
+            "message": (
+                f"Move {len(move)} file(s) to the .trash folder of {self.current_folder}? "
+                f"The selection plus the files that share its name: {shown}. "
+                "Nothing is deleted for good: move a file back by hand to list it again."
+            ),
+            "yes": "Move to .trash",
+            "paths": [str(p) for p in move],
+        }
+
+    def delete_from_table(self, record: Any = None) -> None:
+        """The table's Delete key (once per selected row): ask to move the selection to ``.trash``."""
+        if self.confirm is None and not self.busy:
+            self.delete_selected()
+
+    def confirm_yes(self) -> None:
+        """Carry out the pending confirmation."""
+        pending, self.confirm = self.confirm, None
+        if pending and pending.get("kind") == "delete":
+            self.request("delete_files", list(pending["paths"]))
+
+    def confirm_no(self) -> None:
+        """Drop the pending confirmation; nothing changes."""
+        if self.confirm is not None:
+            self.confirm = None
+            self.status_text = "Cancelled: no file was moved."
+
+    def trash_dir(self) -> pathlib.Path | None:
+        """The ``.trash`` folder of the open folder (created on use)."""
+        base = self.current_folder
+        if base is None:
+            return None
+        trash = base / ".trash"
+        try:
+            trash.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        return trash
+
+    def delete_files(self, paths: list) -> int:
+        """Move *paths* into ``.trash`` (keeping sub-folders), drop their metadata, refresh the list.
+
+        The Qt ``_on_delete_selected`` body: an existing target gets a ``__<timestamp>``
+        suffix instead of being overwritten; the selection moves to the row nearest the first
+        removed one; the plot clears when the shown file moved.
+
+        Returns
+        -------
+        int
+            Number of files moved.
+        """
+        folder = self.current_folder
+        trash = self.trash_dir()
+        if folder is None or trash is None:
+            return 0
+        anchor = None
+        moved_set = {str(p) for p in paths}
+        for i, row in enumerate(self.rows):
+            if row["path"] in moved_set:
+                anchor = i
+                break
+        base = folder.resolve()
+        moved = 0
+        for p in (pathlib.Path(x) for x in sorted(moved_set)):
+            try:
+                if not p.is_file():
+                    continue
+                rel = p.resolve().relative_to(base)       # outside the folder: not moved
+                if any(part == ".trash" for part in rel.parts):
+                    continue
+                dest = trash / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                final = dest
+                if final.exists():
+                    ts = time.strftime("%Y%m%d-%H%M%S")
+                    final = final.with_name(f"{final.stem}__{ts}{final.suffix}")
+                shutil.move(str(p), str(final))
+                logger.info("TraceBrowser: moved to trash: '%s' -> '%s'", p, final)
+                moved += 1
+                self.meta.pop(self.rel_key(p), None)
+            except Exception as exc:
+                logger.warning("TraceBrowser: Failed to move %s to .trash: %s", p, exc)
+        self.flush_meta()
+        self.multi_selection = []
+        self.apply_filter()
+        if self.rows and self.current_file is None and anchor is not None:
+            self.select_row(self.rows[min(anchor, len(self.rows) - 1)])
+        self.error_text = ""
+        self.status_text = f"Moved {moved} file(s) to {trash}"
+        if moved:
+            self.actions_done += 1
+        self.notify("rows")
+        return moved
+
+    # -- hand-offs to other tools ------------------------------------------------------
+    def hand_off(self, name: str, payload: dict[str, Any]) -> None:
+        """Record a request for the host (name and payload) in :attr:`requests`.
+
+        The app passes new requests to its host callback (the ChiSurf main window) from the
+        draw thread; the model never opens another window itself.
+        """
+        self.requests.append({"name": name, "payload": payload})
+        self.actions_done += 1
+        self.notify("request")
+
+    def _channels_for(self, path: pathlib.Path) -> list[int]:
+        """The routing channels of a hand-off: the setup's, else those used in *path* (Qt: ``[0, 2]``)."""
+        if self.selected_channels is not None:
+            return list(self.selected_channels)
+        try:
+            return sorted(int(c) for c in tttrlib.TTTR(str(path)).get_used_routing_channels())
+        except Exception as exc:
+            logger.warning("TraceBrowser: Failed to detect channels, using default [0, 2]: %s", exc)
+            return [0, 2]
+
+    def open_intensity_trace(self) -> None:
+        """Hand the first selected trace to *Intensity Trace Analysis* (*HMM*)."""
+        paths = self._need_selection("press HMM")
+        if paths is None:
+            return
+        first = paths[0]
+        self.hand_off(
+            HANDOFF_INTENSITY_TRACE,
+            {
+                "file": str(first),
+                "window_ms": float(self.window_ms),
+                "setup_settings": self.setup_settings,
+                "selected_channels": self._channels_for(first),
+            },
+        )
+        self.status_text = f"Sent {first.name} to Intensity Trace Analysis."
+
+    def open_time_window(self) -> None:
+        """Hand the first selected file and the bin window to *TTTR Time Window* (*TW*)."""
+        paths = self._need_selection("press TW")
+        if paths is None:
+            return
+        first = paths[0]
+        self.hand_off(
+            HANDOFF_TIME_WINDOW, {"files": [str(first)], "window_ms": float(self.window_ms)}
+        )
+        self.status_text = f"Sent {first.name} to TTTR Time Window."
+
+    def open_ndxplorer(self) -> None:
+        """Write the burst analysis of the first selected file, then ask the host to open ndX (*NDX*)."""
+        paths = self._need_selection("press NDX")
+        if paths is None:
+            return
+        self.request("prepare_ndx", str(paths[0]))
+
+    def prepare_ndx(self, source: str | pathlib.Path) -> pathlib.Path | None:
+        """The Qt one-click ndX pipeline, up to opening the window.
+
+        Cut from ``_on_open_in_ndxplorer``: window the file by the bin window, write the burst
+        table (``bi4_bur/<stem>.bur``) and ``Info`` beside the data in ``<stem>_TW_<ms>ms`` and
+        record the hand-off ``open_ndxplorer`` with that folder. (The Qt tool also saved the
+        windows to a temporary ``.bst`` file that nothing read; that is not written here.)
+
+        Returns
+        -------
+        pathlib.Path or None
+            The analysis folder, or ``None`` (and :attr:`error_text` set) on failure.
+        """
+        src = pathlib.Path(source)
+        if tttrlib is None:
+            self.error_text = "tttrlib is not available."
+            return None
+        if not self.ndx_available():
+            self.error_text = "ndX components are not available."
+            return None
+        tw_ms = float(self.window_ms)
+        tw_s = tw_ms / 1000.0
+        try:
+            from chisurf.core.fio.fluorescence import burst as burstio
+        except Exception:
+            burstio = None
+        try:
+            from chisurf.plugins.tttr.tttr_time_windows.api.selection import compute_bids_from_tttr
+        except Exception:
+            compute_bids_from_tttr = None
+        try:
+            tttr = tttrlib.TTTR(str(src))
+            if compute_bids_from_tttr is not None:
+                bids = compute_bids_from_tttr(tttr, tw_s)
+            else:
+                mt = tttr.macro_times
+                res = float(getattr(tttr.header, "macro_time_resolution", 0.0)) or float(
+                    getattr(tttr, "macro_time_resolution", 0.0)
+                )
+                if res <= 0:
+                    raise RuntimeError("Macro time resolution unavailable from TTTR header")
+                clocks_per_bin = max(1, int(np.floor(tw_s / res)))
+                max_clock = int(mt.max()) if len(mt) else 0
+                edges = np.arange(0, max_clock + 1, clocks_per_bin, dtype=np.int64)
+                starts = np.searchsorted(mt, edges, side="left")
+                stops = np.searchsorted(mt, edges + clocks_per_bin, side="left")
+                bids = np.stack([starts, stops], axis=1)
+            if bids is None or getattr(bids, "size", 0) == 0:
+                self.error_text = "No data to compute burst IDs."
+                return None
+            analysis_dir = src.parent / f"{src.stem}_TW_{tw_ms:.0f}ms"
+            bi4_bur_dir = analysis_dir / "bi4_bur"
+            (analysis_dir / "Info").mkdir(parents=True, exist_ok=True)
+            bi4_bur_dir.mkdir(parents=True, exist_ok=True)
+            mt_max = int(np.max(tttr.micro_times)) + 1 if len(tttr) > 0 else 0
+            full = (0, mt_max if mt_max > 0 else 4096)
+            settings = self.setup_settings
+            if isinstance(settings, dict) and settings.get("detectors"):
+                detectors = settings["detectors"]
+            else:
+                try:
+                    chs = sorted(tttr.get_used_routing_channels())
+                except Exception:
+                    chs = []
+                detectors = {"all": {"chs": chs, "micro_time_ranges": [full]}}
+            windows = {"all": full}
+            start_stop = [(int(a), int(b)) for a, b in np.asarray(bids).tolist()]
+            if burstio is None:
+                raise ImportError("burst utilities unavailable")
+            df = burstio.generate_burst_dataframe(start_stop, str(src.name), tttr, windows, detectors)
+            burstio.write_dataframe_to_bur(df, str(bi4_bur_dir / f"{src.stem}.bur"))
+            try:
+                max_macro_time = 0.0
+                res = float(getattr(tttr.header, "macro_time_resolution", 0.0)) or float(
+                    getattr(tttr, "macro_time_resolution", 0.0)
+                )
+                if len(tttr) > 0 and res > 0:
+                    max_macro_time = float(tttr.macro_times.max()) * res
+                burstio.write_mti_summary(src, analysis_dir, max_macro_time=max_macro_time, append=True)
+            except Exception as exc:
+                logger.debug("TraceBrowser: MTI write skipped: %s", exc)
+        except Exception as exc:
+            logger.exception("TraceBrowser: One-click NDX workflow failed: %s", exc)
+            self.error_text = f"One-click workflow failed: {exc}"
+            return None
+        self.error_text = ""
+        self.hand_off(
+            HANDOFF_NDXPLORER,
+            {"folder": str(analysis_dir), "file": str(src), "window_ms": tw_ms},
+        )
+        self.status_text = f"Wrote {analysis_dir.name}; asked the host to open ndX."
+        return analysis_dir

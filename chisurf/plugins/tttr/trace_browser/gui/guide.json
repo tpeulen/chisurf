@@ -1,0 +1,74 @@
+{
+  "_comment": "Guided tour for the Trace Browser emtk app. Steps point at real controls (spec attr / action names, or the names the app registers); steps with an await wait for the user and are released by their outcome: setup_accepted (the browser page is shown), folder_opened (files are listed), several_selected (more than one file selected), exported (an export, delete or hand-off finished).",
+  "steps": [
+    {
+      "title": "What this does",
+      "text": "The Trace Browser lists the TTTR files of a folder, draws the intensity trace of the file you select and keeps a rating and a note for every file. The tour covers the setup, opening a folder, the options, the table, the trace, notes, selecting, exporting, deleting, the hand-offs and help.",
+      "target": {}
+    },
+    {
+      "title": "Accept a detector setup",
+      "text": "The setup page says which routing channels and micro-time windows make which trace, and the file type. Choose a setup in the editor and press <b>Continue</b>. When a setup was used before the app already shows the browser page and this step is done.",
+      "target": {"name": "setup_accepted"},
+      "await": {"hint": "Press <b>Continue</b> on the setup page to open the browser."}
+    },
+    {
+      "title": "Open a folder",
+      "text": "Press <b>Open</b> and choose a folder with TTTR files, or drop a folder on the window. The files are listed in the table and the first one is plotted.",
+      "target": {"name": "folder_opened"},
+      "await": {"hint": "Press <b>Open</b> and choose a folder with TTTR files."}
+    },
+    {
+      "title": "Subfolders and the rating filter",
+      "text": "<b>Include subfolders</b> also lists the files of nested folders (the .trash folder is never listed). <b>Filter</b> shows only the files with a rating of at least 1, 2 or 3 stars, or only the unrated ones.",
+      "target": {"attr": "include_subfolders"}
+    },
+    {
+      "title": "Bin window and y range",
+      "text": "<b>Bin window [ms]</b> is the width of a time bin; changing it loads the trace of the selected file again. <b>Y min</b> and <b>Y max</b> set the y axis of the trace plot; equal values fit the data.",
+      "target": {"attr": "window_ms"}
+    },
+    {
+      "title": "The file table",
+      "text": "Click a row to select a file. Double click a <b>Rating</b> cell (0 to 3) or a <b>Notes</b> cell to edit it, then press Enter. Ratings and notes are saved beside the data in the folder.",
+      "target": {"name": "rows"}
+    },
+    {
+      "title": "The trace",
+      "text": "One line per detector of the setup plus their sum; the histogram on the right counts how many bins hold each count. Scroll to zoom, drag to pan, double click to fit. A trace that is empty usually means the setup does not match the file.",
+      "target": {"name": "trace_plot"}
+    },
+    {
+      "title": "Write an annotation",
+      "text": "The <b>Annotation</b> box holds free text about the shown file. It is the same text as the Notes cell and is saved shortly after you stop typing.",
+      "target": {"name": "annotation"}
+    },
+    {
+      "title": "Select several files",
+      "text": "Export, CSV, DOCX, Delete and the hand-offs work on the selected files. Press <b>Select all</b> to select every listed file; click a row to go back to one file.",
+      "target": {"name": "several_selected"},
+      "await": {"hint": "Press <b>Select all</b> to select every listed file."}
+    },
+    {
+      "title": "Export what you selected",
+      "text": "<b>Export</b> copies the selected files into a folder you choose. <b>CSV</b> writes each selected trace (time and one column per series) at the current bin window. <b>DOCX</b> writes a Word report into the opened folder and needs the python-docx package.",
+      "target": {"name": "exported"},
+      "await": {"hint": "Press <b>Export</b> or <b>CSV</b> and choose a folder that is not the data folder."}
+    },
+    {
+      "title": "Delete is a move",
+      "text": "<b>Delete</b> asks first, then moves the selected files and the files that share their name to the .trash folder of the opened folder. Nothing is deleted for good. Do not press it now unless you mean it.",
+      "target": {"action": "delete_selected"}
+    },
+    {
+      "title": "Open the trace in another tool",
+      "text": "<b>HMM</b>, <b>TW</b> and <b>NDX</b> open the first selected file in Intensity Trace Analysis, TTTR Time Window and ndX with the current bin window. They need the ChiSurf main window and are greyed when the Trace Browser runs on its own.",
+      "target": {"action": "open_time_window"}
+    },
+    {
+      "title": "Help",
+      "text": "<b>Help</b> explains every part of the window and links to the documentation page with a worked example. <b>Guide</b> starts this tour again.",
+      "target": {"name": "help"}
+    }
+  ]
+}

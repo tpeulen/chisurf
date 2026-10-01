@@ -22,6 +22,15 @@ an :class:`emtk.file_dialog.FileDialog` in folder mode or dropped on the window.
 the Qt constructor (which calls ``_on_continue()`` itself) the app opens on the Browser
 page whenever a setup is available (the last used saved one, or a remembered one).
 
+The buttons under the folder row act on the table's selection (one row, or every row after
+*Select all*): *Export* copies the files, *CSV* writes their traces, *DOCX* writes a report,
+*Delete* moves them to ``.trash`` after a confirmation drawn here.  *HMM*, *TW* and *NDX* open
+the selected trace in another ChiSurf tool: that needs the main window, so the model records a
+request (:attr:`~.model.TraceBrowserModel.requests`) and the app hands it to the ``on_request(name,
+payload)`` callback of its host; without a host the three buttons are greyed.  Help and Guide
+(:class:`~chisurf.emtk.help_guide.EmTkHelpWindow`, :class:`~chisurf.emtk.help_guide.EmTkGuidedTour`)
+sit above the form on both pages.
+
 All state is in :class:`~.model.TraceBrowserModel`; this module imports no Qt.
 """
 
@@ -31,6 +40,7 @@ import json
 import re
 import time
 from collections import deque
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +55,7 @@ from chisurf.core import setup_channel_definition as definition
 from chisurf.core.fio import setup_store as store
 from chisurf.core.setup_channel_definition import ChannelDefinition
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
 
 from .model import TraceBrowserModel
@@ -250,10 +261,22 @@ class TraceBrowserApp(ImApp):
     setups_file : str or Path, optional
         Detector-setups JSON file offered on the setup page; ``None`` is the user's
         canonical file, which is what the Qt setup page reads.
+    on_request : callable, optional
+        ``on_request(name, payload)`` of the host (the ChiSurf main window) that opens the other
+        tool of a hand-off (``open_intensity_trace``, ``open_time_window``, ``open_ndxplorer``).
+        Called from the draw thread. Without it the HMM, TW and NDX buttons are greyed.
     """
 
-    def __init__(self, model: TraceBrowserModel | None = None, setups_file: Any = None) -> None:
+    def __init__(
+        self,
+        model: TraceBrowserModel | None = None,
+        setups_file: Any = None,
+        on_request: Callable[[str, dict], Any] | None = None,
+    ) -> None:
         self.model = model or TraceBrowserModel()
+        self.on_request = on_request
+        self.model.host_connected = on_request is not None
+        self._delivered = 0
         self.setups_file = str(setups_file) if setups_file else None
         self.editor: ChannelDefinitionWidget | None = None
         self.item_rects: dict[str, tuple] = {}
@@ -279,6 +302,19 @@ class TraceBrowserApp(ImApp):
         )
         self.form = FormState()
         self.dialog: FileDialog | None = None
+        self.dialog_kind = ""
+        self._dialog_paths: list[str] = []
+        self._outcome: tuple = ()
+        self.help_window = EmTkHelpWindow(
+            title="Trace Browser — Help", resource=HERE / "help.md", owner=self
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
+        )
+        self.form.on_used = self.tour.notify_used
         self._new_editor(None)
         self.setup_docks = DockManager(Region("setup"), name="trace_browser_setup")
         self.setup_docks.add_window(
@@ -454,6 +490,7 @@ class TraceBrowserApp(ImApp):
         self._pump_trace()
         self._pump_precompute()
         self._flush_notes()
+        self._deliver_requests()
         width, height = im.get_main_viewport().size
         box = (0.0, 0.0, float(width), float(height))
         self.form.rects.clear()
@@ -463,6 +500,66 @@ class TraceBrowserApp(ImApp):
         self.editor.draw_dialogs(box)
         self._open_requested_dialog()
         self._draw_dialog(box)
+        self._draw_confirm(box)
+        self._tour_outcomes()
+        self.help_window.draw(box)
+        self.tour.draw(float(width), float(height))
+
+    def _draw_help_buttons(self) -> None:
+        """Help and Guide, at the top of both pages."""
+        if im.button("Help"):
+            self.help_window.show()
+        im.set_item_tooltip(
+            "Explain the Trace Browser: the setup page, the file table, the trace plot, "
+            "exporting, deleting and the hand-offs to other tools."
+        )
+        self.item_rects["help"] = im.get_item_rect()
+        im.same_line()
+        if im.button("Guide"):
+            self.tour.start()
+        im.set_item_tooltip(
+            "Walk through accepting a setup, opening a folder, selecting files and exporting them."
+        )
+        self.item_rects["guide"] = im.get_item_rect()
+
+    def _tour_outcomes(self) -> None:
+        """Tell the tour what happened: the browser page is shown, files are listed, several are
+        selected, something was exported.
+
+        A step that waits is released by its *outcome*, not by the button press (Open only opens
+        a dialog), and by a state that already holds (a folder that is open already).
+        """
+        model = self.model
+        if "choose_folder" in self.form.rects:
+            self.item_rects["folder_opened"] = self.form.rects["choose_folder"]
+        if "select_all_files" in self.form.rects:
+            self.item_rects["several_selected"] = self.form.rects["select_all_files"]
+        if "export_selected" in self.form.rects:
+            self.item_rects["exported"] = self.form.rects["export_selected"]
+        if model.page != "setup":
+            self.tour.notify_used("setup_accepted")
+        if model.rows:
+            self.tour.notify_used("folder_opened")
+        if len(model.selection_paths()) > 1:
+            self.tour.notify_used("several_selected")
+        if self._outcome and model.actions_done > self._outcome[0]:
+            self.tour.notify_used("exported")
+        self._outcome = (model.actions_done,)
+
+    def _deliver_requests(self) -> None:
+        """Pass the hand-off requests the model recorded to the host, once each, on this thread."""
+        requests = self.model.requests
+        if self._delivered > len(requests):
+            self._delivered = 0
+        while self._delivered < len(requests):
+            request = requests[self._delivered]
+            self._delivered += 1
+            if self.on_request is None:
+                continue
+            try:
+                self.on_request(str(request["name"]), dict(request.get("payload") or {}))
+            except Exception as exc:
+                self.model.error_text = f"The host could not open {request['name']}: {exc}"
 
     def draw_setup(self, box: Any) -> None:
         """Page 0: *Continue*, then the shared setup editor."""
@@ -470,12 +567,15 @@ class TraceBrowserApp(ImApp):
             self.continue_to_browser()
         im.set_item_tooltip("Accept detector setup and open trace browser")
         self.item_rects["continue"] = im.get_item_rect()
+        im.same_line()
+        self._draw_help_buttons()
         im.separator()
         assert self.editor is not None
         self.editor.draw()
 
     def draw_browser(self, box: Any) -> None:
-        """Page 1: the form of the spec (controls and the file table)."""
+        """Page 1: Help and Guide, then the form of the spec (controls and the file table)."""
+        self._draw_help_buttons()
         draw_form(self.spec, self.model, self.form)
         self._sync_table_selection()
 
@@ -485,13 +585,23 @@ class TraceBrowserApp(ImApp):
         if binding is None:
             return
         control = binding.control
+        if self.model.select_all_requested:
+            self.model.select_all_requested = False
+            control.select_all()
         selected = self.model.selected_files
         key = selected[0] if selected else None
-        if key != control.selected_key:
+        if key != control.selected_key and key not in control.also_selected:
             if key is None:
                 control.selected_key = None
+                control.also_selected = set()
             else:
                 control.select_key(key)
+        # The table's selection (one row, or every row after Select all) is what Export, CSV,
+        # DOCX, Delete and the hand-offs act on.
+        rows = self.model.rows
+        self.model.multi_selection = [
+            rows[i]["path"] for i in control.selected_indices() if 0 <= i < len(rows)
+        ]
 
     # -- the trace area ------------------------------------------------------------
     def draw_plot(self, box: Any) -> None:
@@ -634,14 +744,27 @@ class TraceBrowserApp(ImApp):
             self._notes_dirty_at = None
 
     # -- folder dialog ---------------------------------------------------------
+    #: Title of the folder dialog for each request of the model.
+    _DIALOG_TITLES = {
+        "folder": "Select folder with PTU/TTTR files",
+        "export": "Select destination folder for the exported files",
+        "csv": "Select destination folder for the CSV files",
+    }
+
     def _open_requested_dialog(self) -> None:
-        """Turn the model's ``dialog`` request into a folder :class:`FileDialog`."""
+        """Turn the model's ``dialog`` request into a folder :class:`FileDialog`.
+
+        ``folder`` opens a folder to browse; ``export`` and ``csv`` ask where the selected files
+        (or their CSV traces) go. The selection is taken when the dialog opens.
+        """
         kind, self.model.dialog = self.model.dialog, ""
-        if kind != "folder" or self.dialog is not None:
+        if kind not in self._DIALOG_TITLES or self.dialog is not None:
             return
         folder = self.model.current_folder
+        self.dialog_kind = kind
+        self._dialog_paths = [str(p) for p in self.model.selection_paths()]
         self.dialog = FileDialog(
-            "Select folder with PTU/TTTR files",
+            self._DIALOG_TITLES[kind],
             mode="folder",
             directory=str(folder) if folder else None,
         )
@@ -652,10 +775,42 @@ class TraceBrowserApp(ImApp):
         if im.begin(self.dialog.title):
             result = self.dialog.draw()
             if result:
+                kind, paths = self.dialog_kind, self._dialog_paths
                 self.dialog = None
-                self.model.request("open_folder", Path(result[0]))
+                if kind == "export":
+                    self.model.request("export_files", Path(result[0]), paths)
+                elif kind == "csv":
+                    self.model.request("export_csv_files", Path(result[0]), paths)
+                else:
+                    self.model.request("open_folder", Path(result[0]))
             elif result is False:
                 self.dialog = None
+        im.end()
+
+    def _draw_confirm(self, box: Any) -> None:
+        """The confirmation window of a pending delete: what moves, and Move / Cancel."""
+        pending = self.model.confirm
+        if pending is None:
+            return
+        width = min(460.0, float(box[2]) - 40.0)
+        place = (max(20.0, (box[2] - width) / 2.0), max(60.0, box[3] * 0.25), width, 190.0)
+        if im.begin(str(pending["title"]), place):
+            im.text(str(pending["title"]))
+            im.separator()
+            im.text_wrapped(str(pending["message"]))
+            im.spacing()
+            if im.button(str(pending["yes"]) + "##confirm_yes"):
+                self.model.confirm_yes()
+            im.set_item_tooltip(
+                "Move the listed files to the .trash folder of the opened folder. "
+                "They are not deleted for good."
+            )
+            self.item_rects["confirm_yes"] = im.get_item_rect()
+            im.same_line()
+            if im.button("Cancel##confirm_no"):
+                self.model.confirm_no()
+            im.set_item_tooltip("Keep the files where they are. Nothing changes.")
+            self.item_rects["confirm_no"] = im.get_item_rect()
         im.end()
 
     # -- folders dropped on the window ------------------------------------------
@@ -719,6 +874,12 @@ class TraceBrowserApp(ImApp):
             self.editor.close()
 
 
-def make_app() -> TraceBrowserApp:
-    """Factory for the (later) manifest ``entrypoints.emtk``."""
-    return TraceBrowserApp()
+def make_app(on_request: Callable[[str, dict], Any] | None = None) -> TraceBrowserApp:
+    """Factory of the manifest ``entrypoints.emtk``.
+
+    Parameters
+    ----------
+    on_request : callable, optional
+        The host's ``on_request(name, payload)``; without it the HMM, TW and NDX buttons are greyed.
+    """
+    return TraceBrowserApp(on_request=on_request)
