@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+* **kappa2_dist verified against the Qt tool and upgraded (swap-candidate, SWAP4B; first pass by EMTK-1).** Populated Qt baseline (five scenarios under seed 7); every edit typed into the native fields equals the committed AutoForm tool (results, histogram, CSV byte for byte). Fixed: a NaN statistic compared unequal to itself, so the window recomputed on every frame (busy flag stuck); Save enabled like the Qt button and in an in-app dialog with a "Saved to" status; spin arrows; failed or non-finite calculations explained; settings round trip; `make_app(kappa2=)`; guide step named the Qt `?`. Plugin folder 57 passed; compare exit 0. Open: the shared `calculator/export.py` Save window is untitled. Report `okf/plugins/emtk-ports/kappa2_dist/REPORT.md` (first pass kept as `REPORT_first_pass.md`).
+
 - **Games launcher restyled** (owner feedback): sidebar of names (description as tooltip), header with
   description and keys, the game fills the area; Tetris and Number Quest open their emtk apps; Breakout
   listed "(not available)" until its port lands; `focus_lost` forwarded to the game. Evidence:
