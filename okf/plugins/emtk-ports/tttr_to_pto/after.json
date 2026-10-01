@@ -1,0 +1,52 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0rows×4columns",
+    "action",
+    "addfiles",
+    "clearhistory",
+    "directionyoudrop,thefile(s)youdroppedarekeptuntouched.",
+    "dropvendorphotonfile(s)(.ptu,.spc,.ht3,)topackthemintoone.ptobesidethefirst,ordropa.ptotounpacktheoriginalvendorfile(s)backout.whichever",
+    "files",
+    "guide",
+    "help",
+    "noconversionsyet.dropfilesonthiswindoworpressaddfiles.",
+    "result",
+    "status",
+    "tttr⇄.pto"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through packing, unpacking and sidecar handling."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Read the conversion rules and verification guarantees."
+    },
+    {
+      "kind": "button",
+      "label": "Add files...",
+      "id": "Add files...##request_add",
+      "tooltip": "Choose vendor photon files to pack into one .pto, or .pto containers to unpack. Same as dropping them on the window."
+    },
+    {
+      "kind": "button",
+      "label": "Clear history",
+      "id": "Clear history##clear_history",
+      "tooltip": "Remove the finished entries from the list; the files on disk stay untouched."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

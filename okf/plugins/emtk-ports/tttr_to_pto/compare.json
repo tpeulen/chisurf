@@ -1,0 +1,31 @@
+{
+  "plugin": "tttr_to_pto",
+  "explained": {
+    "1": "The Qt list's row-number header (an item-view artefact); the emtk history is a table with Status, Action, Files and Result columns and a row count under it.",
+    "?": "The Qt '?' help button; the emtk window has a labelled Help button (the same help text, help_emtk.md) next to Guide.",
+    "dropvendorphotonfile(s)(.ptu,.spc,.ht3,)topackthemintoone.ptobesidethefirst,ordropa.ptotounpacktheoriginalvendorfile(s)backout.whicheverdirectionyoudrop,thefile(s)youdroppedarekeptuntouched.": "The explanatory sentence is drawn by the spec's info section wrapped over two lines, so the recorder sees two strings; the words are the same."
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "0rows×4columns",
+    "action",
+    "addfiles",
+    "clearhistory",
+    "directionyoudrop,thefile(s)youdroppedarekeptuntouched.",
+    "dropvendorphotonfile(s)(.ptu,.spc,.ht3,)topackthemintoone.ptobesidethefirst,ordropa.ptotounpacktheoriginalvendorfile(s)backout.whichever",
+    "files",
+    "help",
+    "noconversionsyet.dropfilesonthiswindoworpressaddfiles.",
+    "result",
+    "status",
+    "tttr⇄.pto"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 4,
+  "after_controls": 13
+}
