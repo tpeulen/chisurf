@@ -1,0 +1,9 @@
+ M chisurf/plugins/traj/potential_energy/__init__.py
+ M chisurf/plugins/traj/potential_energy/manifest.json
+ M chisurf/plugins/traj/potential_energy/view_model.py
+?? chisurf/plugins/traj/potential_energy/app.py
+?? chisurf/plugins/traj/potential_energy/potential_specs.py
+?? chisurf/plugins/traj/potential_energy/strings.py
+?? chisurf/plugins/traj/potential_energy/test/capture_native.py
+?? chisurf/plugins/traj/potential_energy/test/renders/
+?? chisurf/plugins/traj/potential_energy/test/test_native.py
