@@ -7,6 +7,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from emtk import im
+from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
 
 from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
@@ -307,6 +308,8 @@ class _StandaloneApp(CountRateApp):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.continuous = True
+        self._file_window = DialogWindow("Choose analysis path", size=(760.0, 520.0), key="cr-file")
+        self._file_window.show()
 
     def _render(self):
         self.tool.job.poll()
@@ -316,15 +319,17 @@ class _StandaloneApp(CountRateApp):
         self.tool.dataset_picker.render(frame)
         self.tool.channel_editor.draw_dialogs(frame)
         if self.tool.dialog:
-            if im.begin("Choose analysis path"):
-                result = self.tool.dialog.draw()
-                if result:
-                    callback = self.tool.dialog_callback
-                    self.tool.dialog = None
-                    callback(result)
-                elif result is False:
-                    self.tool.dialog = None
-            im.end()
+            # A sized window over the app (an unsized ``im.begin`` covered the whole viewport),
+            # closed by its x, Escape or the dialog's own Cancel.
+            pressed = self._file_window.begin(frame)
+            result = self.tool.dialog.draw()
+            self._file_window.end()
+            if result:
+                callback = self.tool.dialog_callback
+                self.tool.dialog = None
+                callback(result)
+            elif result is False or pressed == "close":
+                self.tool.dialog = None
         if self.tool.setup_editor is not None:
             if im.begin("Detector channel setup"):
                 _, self.tool.setup_editor = im.input_text_multiline(
