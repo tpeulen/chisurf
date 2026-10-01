@@ -8,7 +8,8 @@
   "icon": "🎏",
   "state_namespace": "vv_vh_anisotropy",
   "entrypoints": {
-    "gui": "chisurf.plugins.vv_vh_anisotropy:VvVhAnisotropyCalculator"
+    "gui": "chisurf.plugins.vv_vh_anisotropy:VvVhAnisotropyCalculator",
+    "emtk": "chisurf.plugins.vv_vh_anisotropy.gui.app:create_app"
   },
   "menu_hidden": true,
   "deprecated": true,

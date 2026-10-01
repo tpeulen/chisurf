@@ -1,0 +1,142 @@
+{
+  "_comment": "VV/VH anisotropy, native emtk windows. Drawn by emtk.view_form over AnisotropyModel (gui/model.py): 'controls' is the top window, 'batch' the batch window. The plots, the file dialogs, Help and Guide are drawn by gui/app.py.",
+  "title": "VV/VH Anisotropy Decay",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "VV/VH anisotropy",
+      "name": "controls",
+      "description": "Load a VV/VH file, set the correction and choose the region that defines r-infinity.",
+      "sections": [
+        {
+          "type": "info", "key": "deprecation",
+          "text": "Deprecated: VV/VH Anisotropy Decay is deprecated/obsolete. Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead.",
+          "description": "This tool is obsolete; the VV/VH G-Factor plugin and the reader-integrated anisotropy workflow replace it."
+        },
+        {
+          "type": "button_row",
+          "description": "Load a VV/VH file, save the results, or process many files with the same settings.",
+          "buttons": [
+            {"action": "request_load", "label": "Load VV/VH file…",
+             "description": "Load a paired parallel/perpendicular decay (.dat or .txt, VV followed by VH). Dropping a file on the window does the same."},
+            {"action": "request_save", "label": "Save outputs…",
+             "description": "Save the shifted VV/VH decays (<name>_shifted.dat), the anisotropy trace (<name>_anisotropy.txt: channel, r(t), r(t) minus r-infinity) and the r-infinity metadata (<name>_rinf.csv)."},
+            {"action": "open_batch", "label": "Batch files…",
+             "description": "Open the batch window: queue many VV/VH files and compute r-infinity for each with the current settings."}
+          ]
+        },
+        {
+          "type": "value", "attr": "loaded_file", "label": "File", "kind": "str", "read_only": true, "elide": "start",
+          "description": "The VV/VH file that is loaded."
+        },
+        {
+          "type": "panel", "title": "Correction", "n_col": 2,
+          "description": "Settings applied to VV and VH before r(t) = (VV - g VH) / (VV + 2 g VH) is formed.",
+          "sections": [
+            {"type": "value", "attr": "g_factor", "label": "G-factor", "kind": "float", "minimum": 0.0, "maximum": 10.0,
+             "decimals": 5, "step": 0.001, "style": "spin", "call": "recompute",
+             "description": "Detector sensitivity correction applied to VH (0 to 10)."},
+            {"type": "toggle", "attr": "apply_bg", "label": "Apply backgrounds", "call": "recompute",
+             "description": "Subtract constant VV and VH backgrounds before calculation."},
+            {"type": "value", "attr": "bg_vv", "label": "BG VV", "kind": "float", "minimum": -1000000000.0, "maximum": 1000000000.0,
+             "decimals": 3, "step": 1.0, "style": "spin", "call": "recompute",
+             "description": "Constant background to subtract from VV."},
+            {"type": "value", "attr": "bg_vh", "label": "BG VH", "kind": "float", "minimum": -1000000000.0, "maximum": 1000000000.0,
+             "decimals": 3, "step": 1.0, "style": "spin", "call": "recompute",
+             "description": "Constant background to subtract from VH."},
+            {"type": "toggle", "attr": "flip", "label": "Flip VV↔VH", "call": "recompute",
+             "description": "Swap channels when the source file has reversed polarization (data swapped in VV/VH)."},
+            {"type": "value", "attr": "shift", "label": "Shift VH (channels)", "kind": "float", "minimum": -150.0, "maximum": 150.0,
+             "decimals": 3, "step": 0.5, "style": "spin", "call": "recompute",
+             "description": "Shift VH by a fractional channel using interpolation (-150 to 150)."}
+          ]
+        },
+        {
+          "type": "panel", "title": "r-infinity region", "n_col": 3,
+          "description": "The channels whose r(t) is averaged to r-infinity. The two green lines in the anisotropy plot move the same bounds.",
+          "sections": [
+            {"type": "value", "attr": "region_start", "label": "Region start", "kind": "float", "decimals": 3, "step": 1.0, "call": "recompute",
+             "description": "First channel in the r-infinity averaging region."},
+            {"type": "value", "attr": "region_end", "label": "Region end", "kind": "float", "decimals": 3, "step": 1.0, "call": "recompute",
+             "description": "Last boundary of the r-infinity averaging region."},
+            {"type": "value", "attr": "r_infty_text", "label": "r∞", "kind": "str", "read_only": true,
+             "description": "r-infinity: the mean of r(t) over the region, five decimals; N/A when there is no valid point in it."}
+          ]
+        },
+        {
+          "type": "info", "key": "status", "source": "message",
+          "description": "What was loaded or saved, or why an action failed."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "VV/VH Anisotropy Batch Processor",
+      "name": "batch",
+      "description": "Compute r-infinity for many VV/VH files with one set of settings.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Queue VV/VH files, folders or database datasets, or take them off the queue.",
+          "buttons": [
+            {"action": "request_add_files", "label": "Files",
+             "description": "Queue VV/VH files (.dat or .txt). Dropping files on the window does the same."},
+            {"action": "request_add_folder", "label": "Folder",
+             "description": "Queue the .dat and .txt files of a folder, recursively."},
+            {"action": "request_database", "label": "Database",
+             "description": "Select VV/VH datasets from the session MMFDB database."},
+            {"action": "remove_selected", "label": "Remove",
+             "description": "Remove the selected file from the queue (it stays on disk)."},
+            {"action": "clear_batch", "label": "Clear",
+             "description": "Empty the queue and its results."}
+          ]
+        },
+        {
+          "type": "custom", "key": "data_table", "title": "",
+          "description": "The queued VV/VH files, in the order they are processed. Click a row to select it; Delete removes it.",
+          "options": {
+            "source": "batch_file_rows", "row_key": "path", "editable": false, "height": 120,
+            "selected_call": "select_batch_file", "delete_call": "remove_selected",
+            "columns": [
+              {"key": "name", "title": "File", "width": 160, "tooltip": "The file name."},
+              {"key": "path", "title": "Path", "tooltip": "The full path of the file."}
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "description": "Run the batch with the settings the window was opened with, or save its table.",
+          "buttons": [
+            {"action": "run_batch", "label": "Run Batch",
+             "description": "Compute r-infinity for each queued VV/VH file with the settings that were current when this window opened. A file that cannot be read gets a row with its error."},
+            {"action": "request_save_batch", "label": "Save CSV…",
+             "description": "Save the results table as CSV: filename, r_inf, region_min, region_max, bg_vv, bg_vh, g_factor, error."},
+            {"action": "close_batch", "label": "Close",
+             "description": "Close the batch window; the queue and the results are kept."}
+          ]
+        },
+        {
+          "type": "custom", "key": "data_table", "title": "",
+          "description": "One row per processed file: r-infinity, the region actually used (clamped to the file) and the settings.",
+          "options": {
+            "source": "batch_result_rows", "editable": false, "expand": true, "reserve": 40, "min_column_width": 60,
+            "columns": [
+              {"key": "filename", "title": "filename", "width": 110, "tooltip": "The VV/VH file."},
+              {"key": "r_inf", "title": "r_inf", "width": 80, "format": "%.5f", "tooltip": "Mean of r(t) over the region; NaN when the file could not be read."},
+              {"key": "region_min", "title": "region_min", "width": 105, "format": "%.1f", "tooltip": "Lower region bound, clamped to the file's channels."},
+              {"key": "region_max", "title": "region_max", "width": 105, "format": "%.1f", "tooltip": "Upper region bound, clamped to the file's channels."},
+              {"key": "bg_vv", "title": "bg_vv", "width": 70, "format": "%.3f", "tooltip": "VV background of the snapshot."},
+              {"key": "bg_vh", "title": "bg_vh", "width": 70, "format": "%.3f", "tooltip": "VH background of the snapshot."},
+              {"key": "g_factor", "title": "g_factor", "width": 80, "format": "%.5f", "tooltip": "G-factor of the snapshot."},
+              {"key": "error", "title": "error", "width": 300, "tooltip": "Why the file could not be read; empty when it was."}
+            ]
+          }
+        },
+        {
+          "type": "info", "key": "batch_status", "source": "message",
+          "description": "What was queued, processed or saved, or why an action failed."
+        }
+      ]
+    }
+  ]
+}

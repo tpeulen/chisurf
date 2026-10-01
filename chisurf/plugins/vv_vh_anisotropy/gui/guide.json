@@ -1,0 +1,44 @@
+{
+  "_comment": "Guided tour of the VV/VH anisotropy tool. Steps point at real controls; the ones the user must use wait for them.",
+  "steps": [
+    {
+      "title": "Load a VV/VH file",
+      "text": "The file holds the parallel decay (VV) followed by the perpendicular decay (VH). Press <b>Load VV/VH file…</b> (or drop the file on the window). Both decays and r(t) appear at once.",
+      "target": {"action": "request_load"},
+      "await": {"hint": "Press <b>Load VV/VH file…</b> and choose a .dat or .txt file."}
+    },
+    {
+      "title": "Set the G-factor",
+      "text": "r(t) = (VV - g VH) / (VV + 2 g VH). The G-factor corrects the different sensitivity of the two detection channels; a wrong g tilts the whole curve, so take it from a reference measurement.",
+      "target": {"attr": "g_factor"},
+      "await": {"hint": "Change <b>G-factor</b> and press Enter; watch r(t) and r∞ move."}
+    },
+    {
+      "title": "Subtract the backgrounds",
+      "text": "Constant backgrounds are subtracted from VV and VH before r(t) is formed. Points where the denominator is not positive are left out of r(t).",
+      "target": {"attr": "bg_vv"}
+    },
+    {
+      "title": "Choose the r∞ region",
+      "text": "r∞ is the mean of r(t) over the region between the two green lines. Drag the lines in the plot, or type the bounds. Pick a stretch where r(t) has levelled off and the noise is still small.",
+      "target": {"action": "anisotropy"}
+    },
+    {
+      "title": "Read r∞",
+      "text": "Five decimals; N/A when no valid point lies in the region.",
+      "target": {"attr": "r_infty_text"}
+    },
+    {
+      "title": "Save the results",
+      "text": "Writes three files next to the name you choose: the shifted decays, the anisotropy trace (channel, r(t), r(t) minus r∞) and the r∞ metadata.",
+      "target": {"action": "request_save"},
+      "await": {"hint": "Press <b>Save outputs…</b> and choose a name."}
+    },
+    {
+      "title": "Process many files",
+      "text": "The batch window computes r∞ for every queued file with the settings that are current when it opens.",
+      "target": {"action": "open_batch"},
+      "await": {"hint": "Press <b>Batch files…</b>."}
+    }
+  ]
+}
