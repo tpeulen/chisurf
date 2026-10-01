@@ -1,500 +1,190 @@
-"""EMTK immediate-mode UI for the combined FRET / HomoFRET calculator.
+"""Native emtk FRET / HomoFRET calculator (forms from fret.view.json and homofret.view.json).
 
-Two tabs, one canvas. Each tab is a dock layout of its own: the parameters on
-the left, the distance distribution and its derived rate / anisotropy plots on
-the right. The coupling that needed ``blockSignals`` gymnastics under Qt falls
-out of immediate mode: the fields read and write the model, an edit runs its
-one handler, and the handler's results are next frame's field values — there
-are no signals to echo.
+Two tabs, each a dock layout of its own: the parameter form on the left, the
+distance distribution and its derived rate (or anisotropy-time) distribution
+on the right. The form is the view spec drawn by ``emtk.view_form.draw_form``;
+an edit runs the one model method the spec's ``call`` names, and its results
+are the next frame's field values.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
 
-import emtk.im as im
-import emtk.implot as implot
 import numpy as np
+from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
-from emtk.im_core import Col
+from emtk.view_form import FormState, draw_form
 
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 
-if TYPE_CHECKING:
-    from .tool import FretCalculatorTool, _FretModel, _HomoFretModel
+from .model import FretCalculatorModel
 
-WINDOW_BG = (30, 32, 38, 255)
-ACCENT_GREEN = (46, 160, 67, 255)
+HERE = Path(__file__).parent
 
 _TAB_BAR_H = 26.0
+_NO_FILES = "The FRET Calculator takes no dropped files."
+
+
+def _rgba(colour) -> tuple:
+    """A ``#rrggbb`` series colour as an RGBA tuple."""
+    if isinstance(colour, str):
+        return tuple(int(colour.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4)) + (255,)
+    return colour
 
 
 def _series_plot(name: str, series: list[dict]) -> None:
-    """Draw one declarative plot series list; active solid, the other dashed."""
+    """Draw one declarative series list; the active distribution solid, the other dashed."""
     for s in series:
         xs = np.asarray(s.get("x", []), dtype=float)
         ys = np.asarray(s.get("y", []), dtype=float)
         if not len(xs) or not len(ys):
             continue
-        colour = s.get("color", "#888888")
-        if isinstance(colour, str):
-            colour = tuple(int(colour.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4)) + (255,)
-        dash = s.get("style") == "dash"
         implot.set_next_line_style(
-            colour, float(s.get("width", 1.0)), dash=(4.0, 3.0) if dash else None
+            _rgba(s.get("color", "#888888")),
+            float(s.get("width", 1.0)),
+            dash=(4.0, 3.0) if s.get("style") == "dash" else None,
         )
         implot.plot_line(s.get("name") or name, xs, ys)
 
 
-def _changed(value, new) -> bool:
-    """One field's edit test, tolerant of array-free scalars only."""
-    return new != value
+def _split_spec(spec: dict) -> tuple[dict, list[dict]]:
+    """The form half of a view spec (everything but ``plot`` sections) and its plots."""
+    plots: list[dict] = []
+    forms: list[dict] = []
+    for section in spec.get("sections", []):
+        found = [s for s in section.get("sections", []) if s.get("type") == "plot"]
+        if found or section.get("type") == "plot":
+            plots.extend(found or [section])
+        else:
+            forms.append(section)
+    return {"sections": forms}, plots
 
 
-class _HeteroTab(TourTarget):
-    """The HeteroFRET calculator, rendered immediate-mode."""
+class _Tab:
+    """One calculator tab: its model, its form state and its three dock windows."""
 
-    def __init__(
-        self,
-        tool: FretCalculatorTool,
-        model: _FretModel,
-        on_guide: Callable[[], None],
-        on_help: Callable[[], None],
-    ) -> None:
-        self.tool = tool
+    def __init__(self, app: FretCalcApp, model, second: str, title: str) -> None:
+        self.app = app
         self.model = model
-        self.on_guide = on_guide
-        self.on_help = on_help
-
-        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
-
-        layout = Split(
-            "h",
-            0.42,
-            Region("params"),
-            Split("v", 0.55, Region("distance"), Region("rate")),
+        self.form = FormState()
+        self.item_rects: dict[str, tuple] = {}
+        self.form_spec, self.plots = _split_spec(model.view_spec())
+        self.docks = DockManager(
+            Split("h", 0.42, Region("params"), Split("v", 0.55, Region("distance"), Region(second)))
         )
-        self.docks = DockManager(layout)
-        self.docks.add_window(
-            "params",
-            "🎛️ FRET parameters",
-            self._draw_params,
-            dock="params",
-            closable=False,
-        )
-        self.docks.add_window(
-            "distance",
-            "📏 Distance distribution",
-            self._draw_distance,
-            dock="distance",
-            closable=False,
-        )
-        self.docks.add_window(
-            "rate",
-            "⚡ Rate-constant distribution",
-            self._draw_rate,
-            dock="rate",
-            closable=False,
-        )
+        self.second = second
+        self.docks.add_window("params", title, self._draw_params, dock="params", closable=False)
+        for key, plot in zip(("distance", second), self.plots):
+            self.docks.add_window(
+                key, plot.get("title", key), self._plot_drawer(key, plot), dock=key, closable=False
+            )
 
-    # ── plumbing ──────────────────────────────────────────────────────
+    # -- windows --------------------------------------------------------------- #
+    def _draw_params(self, box) -> None:
+        app = self.app
+        if im.button("Guide"):
+            app.start_guide()
+        im.set_item_tooltip("A step-by-step walk through the calculator.")
+        self.item_rects["guide"] = im.get_item_rect()
+        im.same_line()
+        if im.button("Help"):
+            app.show_help()
+        im.set_item_tooltip("The help page for the FRET calculator.")
+        self.item_rects["help"] = im.get_item_rect()
+        im.separator()
+        im.text_wrapped(self.model.status_text())
+        self.form.rects.clear()
+        draw_form(self.form_spec, self.model, self.form)
 
+    def _plot_drawer(self, key: str, plot: dict):
+        def draw(box) -> None:
+            if implot.begin_plot(f"##{key}_{self.model.spec_file}", (-1, -1)):
+                implot.setup_axes(plot.get("x_label"), plot.get("y_label"))
+                implot.setup_legend(implot.LOCATION_NORTH_EAST)
+                _series_plot(key, getattr(self.model, plot["source"])())
+                implot.end_plot()
+                im.set_item_tooltip(plot.get("description", ""))
+            self.item_rects[key] = im.get_item_rect()
+
+        return draw
+
+    # -- what the existing tests and the calculators hub call ------------------ #
     def _compute_forward(self) -> None:
-        r = self.tool._client.compute_fret(
-            R=self.model.R,
-            R0=self.model.R0,
-            tau0=self.model.tau0,
-            kappa2=0.667,
-            sigma=self.model.sigma,
-            distribution="chi" if self.model.use_chi else "gaussian",
-        )
-        if r.get("ok"):
-            self._apply(r["result"])
+        self.model.compute_forward()
 
-    def _apply(self, r: dict) -> None:
-        """Write a compute result back, as ``_set_from_result`` did."""
-        # Qt's spin boxes also bounded values written by inverse handlers.
-        # E=0/1 produces infinite distance/rate; never feed those into plots.
-        for attr, key, low, high in (
-            ("R", "R", 0.1, 9999.0),
-            ("E", "E", 0.0, 1.0),
-            ("tau", "tau_DA", 0.0, 9999.0),
-            ("kFRET", "kFRET", 0.0, 9999.0),
-        ):
-            value = float(r[key])
-            if not np.isnan(value):
-                setattr(self.model, attr, float(np.clip(value, low, high)))
+    _compute = _compute_forward
 
     def _compute_from_lifetime(self) -> None:
-        r = self.tool._client.compute_fret_from_lifetime(
-            tau_DA=self.model.tau, R0=self.model.R0, tau0=self.model.tau0
-        )
-        if r.get("ok"):
-            self._apply(r["result"])
+        self.model.from_lifetime()
 
     def _compute_from_efficiency(self) -> None:
-        r = self.tool._client.compute_fret_from_efficiency(
-            E=self.model.E, R0=self.model.R0, tau0=self.model.tau0
-        )
-        if r.get("ok"):
-            self._apply(r["result"])
+        self.model.from_efficiency()
 
     def _compute_from_rate(self) -> None:
-        r = self.tool._client.compute_fret_from_rate(
-            kFRET=self.model.kFRET, R0=self.model.R0, tau0=self.model.tau0
-        )
-        if r.get("ok"):
-            self._apply(r["result"])
-
-    # ── the fields ────────────────────────────────────────────────────
-
-    def _draw_params(self, box) -> None:
-        m = self.model
-        before_inputs = vars(m).copy()
-        if im.button("📖 Guide"):
-            self.on_guide()
-        im.set_item_tooltip("A step-by-step walk through the calculator.")
-        self.remember("guide")
-        if im.get_line_avail() < 100.0:
-            im.new_line()
-        else:
-            im.same_line()
-        if im.button("❓ Help"):
-            self.on_help()
-        im.set_item_tooltip("The short help page for the FRET calculator.")
-        self.remember("help")
-        im.separator()
-
-        # Each field: edit in place, then run the handler the old tab wired to
-        # that field's editingFinished. One edit per frame drives one handler;
-        # the results are written back for the next frame — no echo, no
-        # blocking.
-        _, v = bounded_float("τ₀ donor [ns]", m.tau0, step=0.1, minimum=0.001, maximum=9999.0)
-        im.set_item_tooltip("Donor-only fluorescence lifetime (ns), no acceptor present.")
-        self.remember("tau0")
-        if _changed(m.tau0, v):
-            m.tau0 = v
-            self._compute_forward()
-        _, v = bounded_float("R₀ [Å]", m.R0, step=0.5, minimum=0.1, maximum=999.0)
-        im.set_item_tooltip("Förster radius R₀ (Å).")
-        self.remember("R0")
-        if _changed(m.R0, v):
-            m.R0 = v
-            self._compute_forward()
-        _, v = bounded_float("σ [Å]", m.sigma, step=0.5, minimum=0.1, maximum=999.0)
-        im.set_item_tooltip("Width of the donor-acceptor distance distribution (Å).")
-        self.remember("sigma")
-        if _changed(m.sigma, v):
-            m.sigma = v
-            self._compute_forward()
-        self.remember("params")
-
-        im.separator()
-        _, checked = im.checkbox("Use χ² distribution", m.use_chi)
-        im.set_item_tooltip(
-            "Use a 3D non-central chi distance distribution instead of a "
-            "Gaussian: non-negative and vanishing at contact, where a Gaussian "
-            "assigns weight to negative distances."
-        )
-        if checked != m.use_chi:
-            m.use_chi = checked
-            self._compute_forward()
-        self.remember("use_chi")
-
-        im.separator()
-        _, v = bounded_float("R_DA [Å]", m.R, step=0.5, minimum=0.1, maximum=9999.0)
-        im.set_item_tooltip(
-            "Donor-acceptor distance (Å); any of distance, lifetime, "
-            "efficiency or rate may be entered and the others are recomputed."
-        )
-        self.remember("R")
-        if _changed(m.R, v):
-            m.R = v
-            self._compute_forward()
-        _, v = bounded_float("τ_DA [ns]", m.tau, step=0.05, minimum=0.0, maximum=9999.0)
-        im.set_item_tooltip(
-            "Donor lifetime in the presence of acceptor (ns); editing it "
-            "back-computes the distance."
-        )
-        self.remember("tau")
-        if _changed(m.tau, v):
-            m.tau = v
-            self._compute_from_lifetime()
-        _, v = bounded_float("E", m.E, step=0.01, minimum=0.0, maximum=1.0)
-        im.set_item_tooltip("FRET efficiency; editing it back-computes the distance.")
-        self.remember("E")
-        if _changed(m.E, v):
-            m.E = v
-            self._compute_from_efficiency()
-        _, v = bounded_float("k_FRET [1/ns]", m.kFRET, step=0.01, minimum=0.0, maximum=9999.0)
-        im.set_item_tooltip("FRET rate constant (1/ns); editing it back-computes the distance.")
-        self.remember("kFRET")
-        if _changed(m.kFRET, v):
-            m.kFRET = v
-            self._compute_from_rate()
-
-        for name, before in before_inputs.items():
-            if getattr(m, name) != before:
-                getattr(self, "on_used", lambda name: None)(name)
-
-    def _draw_distance(self, box) -> None:
-        if implot.begin_plot("##het_distance", (-1, -1)):
-            implot.setup_axes("R_DA [Å]", "p(R)")
-            implot.setup_legend()
-            _series_plot("distance", self.model.distance_plot_series())
-            implot.end_plot()
-            im.set_item_tooltip(
-                "Donor-acceptor distance distribution: Gaussian vs the "
-                "non-negative chi distribution, the active one solid."
-            )
-        self.remember("distance")
-
-    def _draw_rate(self, box) -> None:
-        if implot.begin_plot("##het_rate", (-1, -1)):
-            implot.setup_axes("k_FRET [1/ns]", "p(k)")
-            implot.setup_legend()
-            _series_plot("rate", self.model.rate_plot_series())
-            implot.end_plot()
-            im.set_item_tooltip(
-                "FRET-rate-constant distribution induced by the distance distribution."
-            )
-        self.remember("rate")
-
-    def draw(self, x: float, y: float, w: float, h: float) -> None:
-        self.docks.draw((x, y, w, h))
-
-
-class _HomoTab(TourTarget):
-    """The HomoFRET calculator, rendered immediate-mode."""
-
-    def __init__(
-        self,
-        tool: FretCalculatorTool,
-        model: _HomoFretModel,
-        on_guide: Callable[[], None],
-        on_help: Callable[[], None],
-    ) -> None:
-        self.tool = tool
-        self.model = model
-        self.on_guide = on_guide
-        self.on_help = on_help
-
-        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
-
-        layout = Split(
-            "h",
-            0.42,
-            Region("params"),
-            Split("v", 0.55, Region("distance"), Region("aniso")),
-        )
-        self.docks = DockManager(layout)
-        self.docks.add_window(
-            "params",
-            "🎛️ Homo-FRET parameters",
-            self._draw_params,
-            dock="params",
-            closable=False,
-        )
-        self.docks.add_window(
-            "distance",
-            "📏 Distance distribution",
-            self._draw_distance,
-            dock="distance",
-            closable=False,
-        )
-        self.docks.add_window(
-            "aniso",
-            "🧭 Anisotropy decay",
-            self._draw_aniso,
-            dock="aniso",
-            closable=False,
-        )
-
-    def _compute(self) -> None:
-        r = self.tool._client.compute_homo_fret(
-            t_RM=self.model.t_RM,
-            rho=self.model.rho,
-            tau0=self.model.tau0,
-            R0=self.model.R0,
-        )
-        if r.get("ok"):
-            res = r["result"]
-            self.model.k_homo = res["k_homo"]
-            rda = res["R_DA"]
-            if np.isfinite(rda) and rda > 0:
-                self.model.R_DA = rda
+        self.model.from_rate()
 
     def _compute_backmap(self) -> None:
-        r = self.tool._client.homo_backmap(
-            R_DA=self.model.R_DA,
-            R0=self.model.R0,
-            tau0=self.model.tau0,
-            rho=self.model.rho,
-        )
-        if r.get("ok"):
-            res = r["result"]
-            if np.isfinite(res["k_homo"]):
-                self.model.k_homo = res["k_homo"]
-            if np.isfinite(res["t_RM"]) and res["t_RM"] > 0:
-                self.model.t_RM = res["t_RM"]
+        self.model.backmap()
 
-    def _draw_params(self, box) -> None:
-        m = self.model
-        before_inputs = vars(m).copy()
-        if im.button("📖 Guide"):
-            self.on_guide()
-        im.set_item_tooltip("A step-by-step walk through the calculator.")
-        self.remember("guide")
-        if im.get_line_avail() < 100.0:
-            im.new_line()
-        else:
-            im.same_line()
-        if im.button("❓ Help"):
-            self.on_help()
-        im.set_item_tooltip("The short help page for the FRET calculator.")
-        self.remember("help")
-        im.separator()
-
-        _, v = bounded_float("τ₀ donor [ns]", m.tau0, step=0.1, minimum=0.001, maximum=9999.0)
-        im.set_item_tooltip("Donor-only fluorescence lifetime (ns).")
-        self.remember("tau0")
-        if _changed(m.tau0, v):
-            m.tau0 = v
-            self._compute()
-        _, v = bounded_float("R₀ [Å]", m.R0, step=0.5, minimum=0.1, maximum=999.0)
-        im.set_item_tooltip("Förster radius R₀ (Å).")
-        self.remember("R0")
-        if _changed(m.R0, v):
-            m.R0 = v
-            self._compute()
-        _, v = bounded_float("t_RM [ns]", m.t_RM, step=0.1, minimum=0.001, maximum=9999.0)
-        im.set_item_tooltip("Anisotropy decay (energy-migration) time t_RM (ns).")
-        self.remember("t_RM")
-        if _changed(m.t_RM, v):
-            m.t_RM = v
-            self._compute()
-        _, v = bounded_float("ρ [ns]", m.rho, step=0.5, minimum=0.001, maximum=9999.0)
-        im.set_item_tooltip("Rotational correlation time ρ (ns).")
-        self.remember("rho")
-        if _changed(m.rho, v):
-            m.rho = v
-            self._compute()
-        self.remember("params")
-
-        im.separator()
-        _, v = bounded_float("R_DA [Å]", m.R_DA, step=0.5, minimum=0.0, maximum=9999.0)
-        im.set_item_tooltip(
-            "Donor-acceptor distance implied by the homo-FRET rate (Å); "
-            "editing it back-maps to the anisotropy relaxation time."
-        )
-        self.remember("R_DA")
-        if _changed(m.R_DA, v):
-            m.R_DA = v
-            self._compute_backmap()
-        # k_Homo is an output of the forward compute / backmap, not an input
-        # -- the old spin box was read-only, and disabled is that here.
-        im.begin_disabled()
-        bounded_float("k_Homo [1/ns]", m.k_homo, step=0.01, minimum=0.0, maximum=9999.0)
-        im.set_item_tooltip(
-            "Homo-FRET (energy-migration) rate constant, derived from "
-            "t_RM / ρ; a computed output, not an input."
-        )
-        im.end_disabled()
-        _, v = bounded_float("σ [Å]", m.sigma, step=0.5, minimum=0.1, maximum=999.0)
-        im.set_item_tooltip("Width of the distance distribution shown in the plot below (Å).")
-        m.sigma = v
-
-        im.separator()
-        _, checked = im.checkbox("Use χ² distribution", m.use_chi)
-        im.set_item_tooltip(
-            "Use a 3D non-central chi distance distribution (non-negative, "
-            "vanishes at contact) instead of a Gaussian."
-        )
-        m.use_chi = checked
-        self.remember("use_chi")
-
-        for name, before in before_inputs.items():
-            if getattr(m, name) != before:
-                getattr(self, "on_used", lambda name: None)(name)
-
-    def _draw_distance(self, box) -> None:
-        if implot.begin_plot("##homo_distance", (-1, -1)):
-            implot.setup_axes("R_DA [Å]", "p(R)")
-            implot.setup_legend()
-            _series_plot("distance", self.model.distance_plot_series())
-            implot.end_plot()
-            im.set_item_tooltip(
-                "Distance distribution around R_DA: Gaussian vs the "
-                "non-negative chi distribution, the active one solid."
-            )
-        self.remember("distance")
-
-    def _draw_aniso(self, box) -> None:
-        if implot.begin_plot("##homo_aniso", (-1, -1)):
-            implot.setup_axes("t [ns]", "p(t)")
-            implot.setup_legend()
-            _series_plot("aniso", self.model.aniso_time_plot_series())
-            implot.end_plot()
-            im.set_item_tooltip(
-                "Characteristic anisotropy-decay time distribution: rotational "
-                "depolarisation (ρ) in parallel with energy-transfer "
-                "depolarisation (2·k_FRET)."
-            )
-        self.remember("aniso")
+    def target_rect(self, name: str):
+        return self.form.rects.get(name) or self.form.rects.get(name + ".fold") or self.item_rects.get(name)
 
     def draw(self, x: float, y: float, w: float, h: float) -> None:
         self.docks.draw((x, y, w, h))
 
 
 class FretCalcApp(ImApp):
-    """The EMTK ImApp for the FRET calculator: a tab bar over two dock layouts."""
+    """The calculator: a tab bar over two dock layouts."""
 
-    def __init__(self, tool: FretCalculatorTool) -> None:
-        self.tool = tool
-        self.hetero = _HeteroTab(
-            tool, tool._hetero_model, on_guide=self.start_guide, on_help=self.show_help
-        )
-        self.homo = _HomoTab(
-            tool, tool._homo_model, on_guide=self.start_guide, on_help=self.show_help
-        )
-        self.active_tab = 0
-        self._tab_names = ("HeteroFRET", "HomoFRET")
-        self._pending_tab: str | None = None
-
-        # The tabs computed once at construction under Qt; keep that order so
-        # the first frame shows computed outputs, not the model's defaults.
-        self.hetero._compute_forward()
-        self.homo._compute()
-
+    def __init__(self, model: FretCalculatorModel | None = None) -> None:
+        self.model = model or FretCalculatorModel()
+        self.hetero = _Tab(self, self.model.hetero, "rate", "FRET parameters")
+        self.homo = _Tab(self, self.model.homo, "aniso", "Homo-FRET parameters")
+        self.tabs = (self.hetero, self.homo)
+        self.item_rects: dict[str, tuple] = {}
+        self._pending_tab: int | None = None
         self.help_window = EmTkHelpWindow(
-            title="FRET Calculator — Help & Reference",
-            resource=Path(__file__).parent / "help.md",
-            owner=tool,
+            title="FRET Calculator - Help",
+            resource=HERE / "help.md",
+            owner=self,
             on_start_guide=self.start_guide,
             size=(700.0, 520.0),
         )
         self.tour = EmTkGuidedTour(
-            steps=Path(__file__).parent / "guide.json",
-            get_target_rect=lambda k: self.item_rects.get(k),
-            owner=tool,
+            steps=HERE / "guide.json",
+            get_target_rect=self.target_rect,
+            owner=self,
             wait_for_controls=True,
+            on_step_change=self._show_step_tab,
         )
-        self.hetero.on_used = self.tour.notify_used
-        self.homo.on_used = self.tour.notify_used
+        for tab in self.tabs:
+            tab.form.on_used = self.tour.notify_used
         self.native_layouts = {"hetero": self.hetero.docks, "homo": self.homo.docks}
         super().__init__(gui=self._render, continuous=False)
 
+    # -- tabs and tour ------------------------------------------------------------ #
     @property
-    def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
-        active = self.hetero if self.active_tab == 0 else self.homo
-        return active.item_rects
+    def active_tab(self) -> int:
+        return self.model.tab
+
+    @property
+    def active(self) -> _Tab:
+        return self.tabs[self.model.tab]
 
     def select_tab(self, index: int) -> None:
-        """Switch tabs programmatically, as a caller of the old QTabWidget did."""
-        self._pending_tab = self._tab_names[index]
+        """Switch tabs programmatically (the tab bar applies it on the next frame)."""
+        self._pending_tab = int(index)
+        self.model.tab = int(index)
+
+    def _show_step_tab(self, index: int, step: dict) -> None:
+        tab = step.get("tab")
+        if tab in self.model.TABS:
+            self.select_tab(self.model.TABS.index(tab))
+
+    def target_rect(self, name: str):
+        return self.item_rects.get(name) or self.active.target_rect(name)
 
     def start_guide(self) -> None:
         self.tour.start()
@@ -502,11 +192,8 @@ class FretCalcApp(ImApp):
     def show_help(self) -> None:
         self.help_window.show()
 
-    def _render(self) -> None:
-        vp = im.get_main_viewport()
-        width = float(vp.size[0] or 900.0)
-        height = float(vp.size[1] or 620.0)
-
+    # -- one frame ----------------------------------------------------------------- #
+    def _tab_bar(self, width: float) -> None:
         im.set_next_window_pos((0.0, 0.0), im.Cond.ALWAYS)
         im.set_next_window_size((width, _TAB_BAR_H), im.Cond.ALWAYS)
         if im.begin(
@@ -515,60 +202,62 @@ class FretCalcApp(ImApp):
             im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE | im.WindowFlags.NO_SCROLLBAR,
         ):
             if im.begin_tab_bar("fret_calc_tabs"):
-                pending = self._pending_tab
-                self._pending_tab = None
-                if im.begin_tab_item(
-                    "HeteroFRET", im.TabItemFlags.SET_SELECTED if pending == "HeteroFRET" else 0
-                ):
-                    self.active_tab = 0
-                    im.end_tab_item()
-                im.set_item_tooltip(
-                    "HeteroFRET: a donor-acceptor pair — distance, lifetime, "
-                    "efficiency and rate distributions."
+                pending, self._pending_tab = self._pending_tab, None
+                tips = (
+                    "HeteroFRET: a donor-acceptor pair - distance, lifetime, efficiency and rate.",
+                    "HomoFRET: energy migration between like dyes - anisotropy decay and the "
+                    "implied donor-acceptor distance.",
                 )
-                if im.begin_tab_item(
-                    "HomoFRET", im.TabItemFlags.SET_SELECTED if pending == "HomoFRET" else 0
-                ):
-                    self.active_tab = 1
-                    im.end_tab_item()
-                im.set_item_tooltip(
-                    "HomoFRET: energy migration between like dyes — anisotropy "
-                    "decay and the implied donor-acceptor distance."
-                )
+                for index, (name, tip) in enumerate(zip(self.model.TABS, tips)):
+                    flags = im.TabItemFlags.SET_SELECTED if pending == index else 0
+                    if im.begin_tab_item(name, flags):
+                        if self.model.tab != index:
+                            self.model.tab = index
+                            self.tour.notify_used("tab_" + name.lower())
+                        im.end_tab_item()
+                    im.set_item_tooltip(tip)
+                    self.item_rects["tab_" + name.lower()] = im.get_item_rect()
                 im.end_tab_bar()
-            im.end()
+        im.end()
 
-        active = self.hetero if self.active_tab == 0 else self.homo
-        active.draw(0.0, _TAB_BAR_H, width, height - _TAB_BAR_H)
+    def _render(self) -> None:
+        vp = im.get_main_viewport()
+        width = float(vp.size[0] or 900.0)
+        height = float(vp.size[1] or 620.0)
+        self._tab_bar(width)
+        self.active.draw(0.0, _TAB_BAR_H, width, height - _TAB_BAR_H)
+        self.help_window.draw((0.0, 0.0, width, height))
+        self.tour.draw(width, height)
 
-        if self.help_window.open:
-            self.help_window.draw((0.0, 0.0, width, height))
-        if self.tour.active:
-            self.tour.draw(width, height)
+    # -- file drops: the calculator has no file input (the Qt tool said so in its status bar) -- #
+    def files_dropped(self, paths) -> bool:
+        paths = [p for p in (paths or ()) if p]
+        if paths:
+            self.active.model.status = _NO_FILES
+        return bool(paths)
+
+    on_files_dropped = files_dropped
+    on_paths_dropped = files_dropped
+
+    # -- persistence ------------------------------------------------------------------ #
+    def export_settings(self) -> dict:
+        """Inputs of both tabs and the selected tab (outputs are recomputed)."""
+        return self.model.export_settings()
+
+    def restore_settings(self, settings: dict) -> None:
+        """Restore :meth:`export_settings`; invalid entries are ignored."""
+        self.model.restore_settings(settings)
+        for tab in self.tabs:
+            tab.form.buffers.clear()
+        self._pending_tab = self.model.tab
 
 
-__all__ = ["FretCalcApp", "WINDOW_BG"]
+__all__ = ["FretCalcApp"]
 
 
-def make_app(**kwargs):
-    """Construct the standalone EMTK calculator without loading a Qt host."""
+def make_app(**kwargs) -> FretCalcApp:
+    """Construct the standalone calculator without any Qt host."""
     from chisurf.emtk.i18n import install
 
     install()
-    from types import SimpleNamespace
-
-    from ..backend import services
-    from .model import _FretModel, _HomoFretModel
-
-    client = SimpleNamespace(
-        compute_fret=services.fret_compute_handler,
-        compute_fret_from_lifetime=services.fret_from_lifetime_handler,
-        compute_fret_from_efficiency=services.fret_from_efficiency_handler,
-        compute_fret_from_rate=services.fret_from_rate_handler,
-        compute_homo_fret=services.homo_compute_handler,
-        homo_backmap=services.homo_backmap_handler,
-    )
-    state = SimpleNamespace(
-        _client=client, _hetero_model=_FretModel(), _homo_model=_HomoFretModel()
-    )
-    return FretCalcApp(state)
+    return FretCalcApp()

@@ -2,47 +2,58 @@
   "steps": [
     {
       "title": "Donor lifetime",
-      "text": "Set the donor-only lifetime in ns.",
-      "target": {
-        "attr": "tau0"
-      },
+      "text": "Set the donor-only lifetime in ns: type a value in Lifetime D0 and press Enter, or use the arrows.",
+      "tab": "HeteroFRET",
+      "target": {"attr": "tau0"},
       "await": true
     },
     {
-      "title": "F\u00f6rster radius",
-      "text": "Set R0 in \u00c5 for the donor/acceptor pair.",
-      "target": {
-        "attr": "R0"
-      },
+      "title": "Förster radius",
+      "text": "Set R0 in Å for the donor/acceptor pair.",
+      "target": {"attr": "R0"},
       "await": true
     },
     {
       "title": "Distance",
-      "text": "Enter donor\u2013acceptor distance in \u00c5; efficiency, lifetime and transfer rate update together.",
-      "target": {
-        "attr": "R"
-      },
+      "text": "Enter the donor-acceptor distance in Å. Efficiency, lifetime and transfer rate update together.",
+      "target": {"attr": "R"},
       "await": true
     },
     {
       "title": "Inverse calculation",
-      "text": "Edit efficiency to solve the effective single distance. Broad distribution averages are not exactly invertible.",
-      "target": {
-        "attr": "E"
-      },
+      "text": "Edit the efficiency to solve for the effective single distance. Broad distribution averages are not exactly invertible.",
+      "target": {"attr": "E"},
       "await": true
     },
     {
-      "title": "Distribution width",
-      "text": "Set the width of the distance distribution in \u00c5 and inspect both plots.",
-      "target": {
-        "attr": "sigma"
-      },
+      "title": "Distance distribution",
+      "text": "Tick χ distribution to use the non-negative chi distance distribution instead of a Gaussian, then watch both plots change. The active distribution is solid.",
+      "target": {"attr": "use_chi"},
       "await": true
     },
     {
       "title": "HomoFRET",
-      "text": "The HomoFRET tab links migration and rotational correlation time to distance. The rate is read-only."
+      "text": "Open the HomoFRET tab: energy migration between like dyes links the migration time and the rotational correlation time to a distance.",
+      "target": {"name": "tab_homofret"},
+      "await": true
+    },
+    {
+      "title": "Migration time",
+      "text": "Edit the anisotropy migration time t_RM. The migration rate k_homo (read-only) and the implied distance R_DA follow.",
+      "tab": "HomoFRET",
+      "target": {"attr": "t_RM"},
+      "await": true
+    },
+    {
+      "title": "Back-map",
+      "text": "Edit the distance R_DA to solve backwards for the migration time.",
+      "target": {"attr": "R_DA"},
+      "await": true
+    },
+    {
+      "title": "Help",
+      "text": "The Help button explains the quantities, the distributions and the plots. Hover any control for its unit and meaning.",
+      "target": {"name": "help"}
     }
   ]
 }

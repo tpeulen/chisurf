@@ -9,7 +9,6 @@
 chisurf/plugins/burst/burst_browser/gui
 chisurf/plugins/burst/burst_fcs_correlator/gui
 chisurf/plugins/burst/burst_mle_analysis
-chisurf/plugins/calculator/fret_calculator/gui
 chisurf/plugins/calculator/hub/gui
 modules/chimol/chimol/hosts/qt
 chisurf/plugins/core/acq/gui

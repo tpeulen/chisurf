@@ -1,10 +1,11 @@
 """Combined FRET / HomoFRET Calculator GUI.
 
-The window is a :class:`~chisurf.gui.widgets.tools.ChisurfDockTool` (PRD-23 /
-PRD-36) hosting the EMTK app in :mod:`.app` (:class:`FretCalcApp`) — two tabs
-backed by the backend services via :class:`FretCalculatorClient`. Geometry
-persistence, the lazy MMFDB accessors, and the declared-message status bar
-come from the shared base rather than being re-implemented here.
+The window is a :class:`~chisurf.gui.widgets.tools.ChisurfDockTool` hosting the
+emtk app in :mod:`.app` (:class:`FretCalcApp`) - two tabs backed by the
+Qt-free models in :mod:`.model`. Geometry persistence, the lazy MMFDB
+accessors, and the declared-message status bar come from the shared base
+rather than being re-implemented here. The emtk entrypoint opens the app
+without this Qt host.
 """
 
 from __future__ import annotations
@@ -12,18 +13,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
 from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.tools import ChisurfDockTool
 
 from .client import FretCalculatorClient
-
-_GUI_DIR = Path(__file__).parent
-
-
-from .model import _distribution_series, _FretModel, _HomoFretModel
+from .model import FretCalculatorModel
 
 
 class _TabsShim:
@@ -43,7 +39,7 @@ class FretCalculatorTool(ChisurfDockTool):
     standing message instead of being silently swallowed.
     """
 
-    #: QSettings key for the base's geometry helpers (PRD-36 recipe step 1).
+    #: QSettings key for the base's geometry helpers .
     tool_settings_name: str = "FretCalculatorTool"
 
     class Information(ChisurfDockTool.Information):
@@ -56,16 +52,17 @@ class FretCalculatorTool(ChisurfDockTool):
         self.setWindowTitle("FRET Calculator")
         self.resize(380, 320)
         self._client = FretCalculatorClient()
-        self._hetero_model = _FretModel()
-        self._homo_model = _HomoFretModel()
+        self.model = FretCalculatorModel(self._client)
+        self._hetero_model = self.model.hetero
+        self._homo_model = self.model.homo
         self.tabs = _TabsShim()
 
         from emtk.qt_host import ControlHost
 
-        from .app import WINDOW_BG, FretCalcApp
+        from .app import FretCalcApp
 
-        self.app = FretCalcApp(self)
-        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        self.app = FretCalcApp(self.model)
+        self.host = ControlHost(self.app)
         central = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(central)
         layout.setContentsMargins(0, 0, 0, 0)
