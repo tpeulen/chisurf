@@ -1,0 +1,17 @@
+{
+  "1": "inventory artefact of the Qt capture: a row/index number of a Qt combo list or spin box, not a control the user sees",
+  "2": "inventory artefact of the Qt capture: a row/index number of a Qt combo list or spin box, not a control the user sees",
+  "3": "inventory artefact of the Qt capture: a row/index number of a Qt combo list or spin box, not a control the user sees",
+  "4": "inventory artefact of the Qt capture: a row/index number of a Qt combo list or spin box, not a control the user sees",
+  "5": "inventory artefact of the Qt capture: a row/index number of a Qt combo list or spin box, not a control the user sees",
+  "6": "inventory artefact of the Qt capture: a row/index number of a Qt combo list or spin box, not a control the user sees",
+  "?": "Qt title-row help button; the emtk window has Help and Guide buttons (Help is in 'gained')",
+  "acpagent(stdio)": "an entry of the Provider drop-down list; emtk draws the list as an overlay only while it is open, the closed field shows the current provider (test_provider_options_and_defaults_equal_the_qt_tool asserts the emtk list equals the Qt combo's entries, test_changing_the_provider_loads_its_defaults selects every one)",
+  "custom(openai-compatible)": "an entry of the Provider drop-down list; emtk draws the list as an overlay only while it is open, the closed field shows the current provider (test_provider_options_and_defaults_equal_the_qt_tool asserts the emtk list equals the Qt combo's entries, test_changing_the_provider_loads_its_defaults selects every one)",
+  "local(ollama,lmstudio,)": "an entry of the Provider drop-down list; emtk draws the list as an overlay only while it is open, the closed field shows the current provider (test_provider_options_and_defaults_equal_the_qt_tool asserts the emtk list equals the Qt combo's entries, test_changing_the_provider_loads_its_defaults selects every one)",
+  "openai(chatgpt)": "an entry of the Provider drop-down list; emtk draws the list as an overlay only while it is open, the closed field shows the current provider (test_provider_options_and_defaults_equal_the_qt_tool asserts the emtk list equals the Qt combo's entries, test_changing_the_provider_loads_its_defaults selects every one)",
+  "openrouter": "an entry of the Provider drop-down list; emtk draws the list as an overlay only while it is open, the closed field shows the current provider (test_provider_options_and_defaults_equal_the_qt_tool asserts the emtk list equals the Qt combo's entries, test_changing_the_provider_loads_its_defaults selects every one)",
+  "temperature": "inside a section that starts folded, as in the Qt tool (Generation Settings); drawn when the section is opened (after_populated_expanded_* screenshots; test_generation_settings_are_folded_until_opened asserts Temperature, Top-p and Max tokens appear once it is opened)",
+  "top-p": "inside a section that starts folded, as in the Qt tool (Generation Settings); drawn when the section is opened (after_populated_expanded_* screenshots; test_generation_settings_are_folded_until_opened asserts Temperature, Top-p and Max tokens appear once it is opened)",
+  "maxtokens": "inside a section that starts folded, as in the Qt tool (Generation Settings); drawn when the section is opened (after_populated_expanded_* screenshots; test_generation_settings_are_folded_until_opened asserts Temperature, Top-p and Max tokens appear once it is opened)"
+}

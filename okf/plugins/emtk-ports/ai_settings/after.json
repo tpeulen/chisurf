@@ -1,0 +1,111 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "aisettings",
+    "apiconfiguration",
+    "apikey",
+    "baseurl",
+    "configureoneendpointperprovider,withseparatemodelsforchat/codetasksandimagegeneration.",
+    "fetchmodels",
+    "generationsettings",
+    "guide",
+    "help",
+    "https//api.mistral.ai/v1",
+    "imagemodel",
+    "mistral(eu)",
+    "mistral-large-latest",
+    "mistral-medium-latest",
+    "models",
+    "pasteapikey-itissavedandtestedautomatically",
+    "provider",
+    "reset",
+    "save",
+    "showkey",
+    "signinviabrowser",
+    "test/save/reset",
+    "testconnection",
+    "textmodel"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the providers, the key, the models and the buttons."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through choosing a provider, fetching models and testing it."
+    },
+    {
+      "kind": "button",
+      "label": "Sign in via browser",
+      "id": "Sign in via browser##sign_in",
+      "tooltip": "Open the provider's console to create or copy an API key."
+    },
+    {
+      "kind": "input_text",
+      "label": "base_url",
+      "id": "##base_url",
+      "tooltip": "OpenAI-compatible API base URL for the selected provider."
+    },
+    {
+      "kind": "input_text",
+      "label": "api_key",
+      "id": "##api_key",
+      "tooltip": "Bearer token for the endpoint, drawn as stars. Pasting a key (Enter, or a click elsewhere) auto-saves it and tests the connection. Not needed for most local servers."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show key",
+      "id": "Show key##show_key",
+      "tooltip": "Show the API key in clear text instead of stars. For this session only: a provider switch hides it again, and the setting is never saved."
+    },
+    {
+      "kind": "input_text",
+      "label": "text_model",
+      "id": "##text_model",
+      "tooltip": "Used for chat, code editing, explanations, and other text tasks. Type any model id, or pick one of the fetched models below."
+    },
+    {
+      "kind": "input_text",
+      "label": "image_model",
+      "id": "##image_model",
+      "tooltip": "Used only for plugin icon and other image-generation tasks. Type any model id, or pick one of the fetched models below."
+    },
+    {
+      "kind": "button",
+      "label": "Fetch models",
+      "id": "Fetch models##fetch_models",
+      "tooltip": "Query the endpoint's /models list and split it into text and image models. Runs in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Test connection",
+      "id": "Test connection##test_connection",
+      "tooltip": "Check the endpoint responds to a /models request. Runs in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save##save",
+      "tooltip": "Persist the current provider's settings to ai_api_settings.json in the settings folder."
+    },
+    {
+      "kind": "button",
+      "label": "Reset",
+      "id": "Reset##reset",
+      "tooltip": "Reset the current provider's fields to defaults (not saved until you press Save)."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
