@@ -105,7 +105,7 @@ class BoardingApp(ImApp):
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
         self.form.on_used = self.tour.notify_used
-        self.docks = DockManager(Split("h", 0.26, Region("steps"), Region("page")))
+        self.docks = DockManager(Split("h", 0.22, Region("steps"), Region("page"), min_size=165.0))
         self.docks.add_window("steps", tr("Steps"), self.draw_steps, dock="steps", closable=False)
         self.docks.add_window("page", tr("Welcome to ChiSurf"), self.draw_page, dock="page", closable=False)
         super().__init__(gui=self.render)
@@ -185,7 +185,9 @@ class BoardingApp(ImApp):
     def draw_page(self, box: Any = None) -> None:
         """The header of the current step and its page."""
         im.text(self.model.title)
-        im.text_disabled(self.model.subtitle)
+        im.begin_disabled(True)
+        im.text_wrapped(self.model.subtitle)
+        im.end_disabled()
         im.separator()
         panel = self.panels[self.model.step_id]
         draw_sections(panel["sections"], self.model, self.form, titles=False)

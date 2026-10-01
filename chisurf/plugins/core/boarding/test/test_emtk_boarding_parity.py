@@ -253,6 +253,8 @@ def test_restore_defaults_asks_and_declining_changes_nothing(model, hermetic):
     assert model.confirm == "" and target.read_text() != "mine: 1\n"
     assert model.repair_ok and "overwrite" in model.repair_message
     assert "overwrite" in model.repair_status_html()
+    # only the overwrite path writes the main settings file; it is what gives the Settings step its mark
+    assert (hermetic / "settings_chisurf.yaml").is_file() and model.step_complete(1) is True
 
 
 def test_failing_copy_is_reported_not_raised(model, monkeypatch):

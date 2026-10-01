@@ -83,14 +83,13 @@
             "tooltip_key": "detail",
             "expand": true,
             "reserve": 48,
-            "fit_columns": true,
             "min_column_width": 60,
             "columns": [
-              {"key": "item", "title": "Item", "width": 250,
+              {"key": "item", "title": "Item", "width": 180,
                "tooltip": "The settings file, folder or store."},
-              {"key": "status", "title": "Status", "width": 90,
+              {"key": "status", "title": "Status", "width": 82,
                "tooltip": "OK when it exists, MISSING when it does not, or the state of the metadata store and setup lists."},
-              {"key": "detail", "title": "Location", "width": 420,
+              {"key": "detail", "title": "Location", "width": 340,
                "tooltip": "Where the file or folder is, or how many setups are stored."}
             ]
           }
