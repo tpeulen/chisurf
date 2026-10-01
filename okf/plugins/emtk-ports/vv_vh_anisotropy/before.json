@@ -1,0 +1,39 @@
+{
+  "controls": [
+    "applybackgrounds",
+    "batch",
+    "bgvh",
+    "bgvv",
+    "flipvv↔vh(dataswappedinvv/vh)",
+    "g-factor",
+    "loadvv/vhfile",
+    "r∞",
+    "save",
+    "shiftvh(channels)",
+    "vv/vhanisotropydecayisdeprecated/obsolete.usethevv/vhg-factorpluginandreader-integratedanisotropyworkflowinstead."
+  ],
+  "labels": [
+    "BG VH:",
+    "BG VV:",
+    "Shift VH (channels):",
+    "g-factor:",
+    "r∞:",
+    "⛔ VV/VH Anisotropy Decay is deprecated/obsolete. Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead."
+  ],
+  "buttons": [
+    "Apply backgrounds",
+    "Batch…",
+    "Flip VV↔VH (data swapped in VV/VH)",
+    "Load VV/VH File",
+    "Save…"
+  ],
+  "line_edits": 6,
+  "combos": 0,
+  "spin_boxes": 4,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.vv_vh_anisotropy:VvVhAnisotropyCalculator",
+  "size": [
+    1200,
+    800
+  ]
+}

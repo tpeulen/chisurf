@@ -1,0 +1,7 @@
+ M chisurf/plugins/vv_vh_anisotropy/__init__.py
+ M chisurf/plugins/vv_vh_anisotropy/manifest.json
+?? chisurf/plugins/vv_vh_anisotropy/gui/
+?? chisurf/plugins/vv_vh_anisotropy/qt_tool.py
+?? chisurf/plugins/vv_vh_anisotropy/test/capture.py
+?? chisurf/plugins/vv_vh_anisotropy/test/renders/
+?? chisurf/plugins/vv_vh_anisotropy/test/test_native.py
