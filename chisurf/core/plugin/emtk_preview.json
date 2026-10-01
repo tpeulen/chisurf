@@ -3,7 +3,6 @@
   "preview": [
     "setup",
     "ai_settings",
-    "plot_settings",
     "plugin_manager",
     "setup_channel_definition",
     "tttr_lut_tools",
