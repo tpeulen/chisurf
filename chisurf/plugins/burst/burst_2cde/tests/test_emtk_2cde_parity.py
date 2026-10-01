@@ -283,29 +283,38 @@ def test_draws_empty_and_populated(folder, size):
         app.close()
 
 
-def test_the_2cde_axis_fits_every_burst_of_a_new_result(folder, monkeypatch):
+def _y_ranges(monkeypatch):
+    """The y range each plot ends its frame with, by title (what is drawn, not what was asked)."""
     from emtk import implot
+    from emtk import implot_internal as I
 
-    requests = []
-    original = implot.setup_axis_limits
+    seen = {}
+    original = implot.end_plot
 
-    def record(axis, lo, hi, cond=implot.COND_ONCE):
-        if axis == implot.AXIS_Y1:
-            requests.append((lo, hi, cond))
-        return original(axis, lo, hi, cond)
+    def end_plot():
+        plot = I.gp.current_plot
+        if plot is not None:
+            axis = plot.axes[I.AXIS_Y1]
+            seen[plot.title] = (float(axis.range_min), float(axis.range_max))
+        return original()
 
-    monkeypatch.setattr(implot, "setup_axis_limits", record)
-    app = _app(folder)
+    monkeypatch.setattr(implot, "end_plot", end_plot)
+    return seen
+
+
+def test_the_2cde_axis_fits_every_burst_of_a_new_result(folder, monkeypatch):
+    """Measured on a plot already drawn empty, as in the app: the result arrives later."""
+    seen = _y_ranges(monkeypatch)
+    app = _app()
     try:
+        _draw(app)                                            # the empty plot exists
+        app.model.set_folder(folder)
         app.controller.run()
         _settle(app)
-        requests.clear()
-        _draw(app, n=3)
+        _draw(app, n=2)
         y = _values(app.model.df)
-        assert len(set(requests)) == 1                            # the same request every frame: a zoom holds
-        lo, hi, cond = requests[0]
-        assert cond == implot.COND_ONCE                           # re-applied only when the result changes
-        assert lo < np.nanmin(y) and hi > np.nanmax(y)            # no burst on (or past) the edge
+        lo, hi = seen["FRET-2CDE / ALEX-2CDE"]
+        assert lo < np.nanmin(y) and hi > np.nanmax(y), (lo, hi)  # no burst on (or past) the edge
     finally:
         app.close()
 
