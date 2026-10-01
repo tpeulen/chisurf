@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+* **trace_browser T1 (emtk port, card 1): native Setup stage.** `gui/app.py` (`TraceBrowserApp`, `make_app`) draws the Setup page with the shared emtk setup editor, Continue (`TraceBrowserModel.accept_setup`: the Qt `_on_continue`) and Select setup (`back_to_setup`), and a labelled placeholder for the Browser page (card T2); `build_channel_labels` moved from the Qt widget into the model. Not in the manifest; checked with `--entry`. 55 tests in the plugin folder (11 new, hermetic: temp settings folder), `compare` exit 0 with 113 explained controls (later cards, renamed editor controls), report `okf/plugins/emtk-ports/trace_browser/REPORT-T1.md`, evidence `okf/plugins/emtk-ports/trace_browser/T1/`. Open: shared-editor TTTR-format list shorter than Qt's, T0 tests not hermetic.
+
 * **trace_browser T0 (emtk port, card 0): Qt-free model and de-duplication.** `gui/model.py` (`TraceBrowserModel`) holds folder, setup, channels, file rows, rating filter, bin window, y range, selection, caches and trace loading; the Qt `TraceBrowser` (moved to `widget.py`, package `__init__` now a lazy shim) delegates to it and its duplicated metadata/cache code is gone. Findings: the CLSM image probe hides every real TTTR with tttrlib 0.27 (kept), trace binning needs a Qt widget (a Qt-free binner is needed for T3). Evidence and report: `okf/plugins/emtk-ports/trace_browser/REPORT-T0.md`.
 
 ## 2026-09-30

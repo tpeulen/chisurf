@@ -1,0 +1,144 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "calibrationrevision",
+    "continue",
+    "deletesetup",
+    "detectors",
+    "detectorsetup",
+    "exportsetupsfile",
+    "latest",
+    "loadsetupsfile",
+    "opticalsetup",
+    "piewindows",
+    "publicsetup",
+    "refreshcalibrationhistory",
+    "refreshsetups",
+    "renamesetup",
+    "savesetup",
+    "setupdefinition",
+    "setupname",
+    "setups",
+    "taccorrections",
+    "tttrreading",
+    "unsaved"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Continue",
+      "id": "Continue",
+      "tooltip": "Accept detector setup and open trace browser"
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Setups",
+      "id": "Setups",
+      "tooltip": "Manage named setup definitions and calibration revisions."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh setups",
+      "id": "Refresh setups",
+      "tooltip": "Load available saved detector setups from MMFDB or the selected JSON file."
+    },
+    {
+      "kind": "combo",
+      "label": "channel_setup",
+      "id": "##channel_setup",
+      "tooltip": "Select a named instrument setup and restore all detector, timing and optical parameters."
+    },
+    {
+      "kind": "input_text",
+      "label": "Setup name",
+      "id": "##Setup name",
+      "tooltip": "Name used when saving or renaming the detector setup."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Public setup",
+      "id": "Public setup",
+      "tooltip": "Publish the saved setup for other users through the MMFDB setup store."
+    },
+    {
+      "kind": "button",
+      "label": "Save setup",
+      "id": "Save setup",
+      "tooltip": "Persist all channels, windows, corrections and optical configuration."
+    },
+    {
+      "kind": "button",
+      "label": "Rename setup",
+      "id": "Rename setup",
+      "tooltip": "Rename the selected saved setup to the entered name."
+    },
+    {
+      "kind": "button",
+      "label": "Delete setup",
+      "id": "Delete setup",
+      "tooltip": "Request deletion of the selected saved setup."
+    },
+    {
+      "kind": "button",
+      "label": "Load setups file",
+      "id": "Load setups file",
+      "tooltip": "Choose a detector-setup JSON library."
+    },
+    {
+      "kind": "button",
+      "label": "Export setups file",
+      "id": "Export setups file",
+      "tooltip": "Save all loaded named setups as a JSON library."
+    },
+    {
+      "kind": "combo",
+      "label": "calibration",
+      "id": "##calibration",
+      "tooltip": "Load stored G-factor and polarization-mixing values from this calibration revision."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh calibration history",
+      "id": "Refresh calibration history",
+      "tooltip": "Query calibration dates for this setup."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "TTTR reading",
+      "id": "TTTR reading",
+      "tooltip": "Select format, timing, binning and header/decay calibration."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Detectors",
+      "id": "Detectors",
+      "tooltip": "Edit routing channels, microtime gates and polarization factors."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "PIE windows",
+      "id": "PIE windows",
+      "tooltip": "Define excitation gates and detector/window combinations."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "TAC corrections",
+      "id": "TAC corrections",
+      "tooltip": "Assign or compute per-routing-channel TAC LUTs and shifts."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Optical setup",
+      "id": "Optical setup",
+      "tooltip": "Edit and simulate the instrument light path."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  }
+}
