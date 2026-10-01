@@ -1,0 +1,32 @@
+{
+  "controls": [
+    "atomselection",
+    "mindistance",
+    "removeclashedframes",
+    "saveclash-free",
+    "stride",
+    "topology",
+    "trajectory"
+  ],
+  "labels": [
+    "Atom selection",
+    "Min distance",
+    "Stride",
+    "Topology",
+    "Trajectory"
+  ],
+  "buttons": [
+    "…",
+    "▼  Remove clashed frames",
+    "💾 Save clash-free…"
+  ],
+  "line_edits": 4,
+  "combos": 0,
+  "spin_boxes": 2,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.traj.traj_remove_clashes.widget:RemoveClashedFrames (+HEAD view_model, sections)",
+  "size": [
+    1200,
+    800
+  ]
+}
