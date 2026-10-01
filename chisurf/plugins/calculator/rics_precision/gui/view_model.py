@@ -48,6 +48,10 @@ class PrecisionViewModel:
 
         self._sweep: _core.PrecisionSweep | None = None
         self._status = "Set the sample and the scan, then press Predict."
+        #: a window action the host should carry out: ``"predict"`` or ``"export"``
+        self.request = ""
+        #: set by the host while a prediction runs
+        self.busy = False
 
     # ── observer hook ──
     def add_observer(self, cb: Callable[[str], None]) -> None:
@@ -72,6 +76,11 @@ class PrecisionViewModel:
     @property
     def status(self) -> str:
         """One-line summary for the host status bar."""
+        return self._status
+
+    @property
+    def status_text(self) -> str:
+        """The status line (a worker reports its progress through it)."""
         return self._status
 
     @property
@@ -139,6 +148,76 @@ class PrecisionViewModel:
 
         self._status = self._summary()
         return True
+
+    def predict(self) -> bool:
+        """Run :meth:`compute`, reporting its progress on the status line (what a worker calls)."""
+
+        def progress(fraction: float, message: str) -> None:
+            self._status = f"{message} ({int(fraction * 100)} %)"
+            self.notify("progress")
+
+        self._status = "Predicting…"
+        return self.compute(progress=progress)
+
+    # ── actions of the emtk window ──
+    def request_predict(self) -> None:
+        """The Predict button: ask the host to run :meth:`predict` off the UI thread."""
+        self.request = "predict"
+
+    def request_export(self) -> None:
+        """The Export CSV button: ask the host for a file name."""
+        self.request = "export"
+
+    def enabled(self, action: str) -> bool:
+        """Whether a button of the spec can act now (the window greys it otherwise)."""
+        if action == "request_predict":
+            return not self.busy
+        return True
+
+    def csv_text(self) -> str:
+        """The swept prediction as CSV, exactly as the Qt tool wrote it.
+
+        Raises
+        ------
+        ValueError
+            Before a prediction has run.
+        """
+        if self._sweep is None:
+            raise ValueError("Predict something before exporting.")
+        lines = ["dwell_us,line_ms,frame_ms,error_percent"]
+        lines += [
+            f"{r['dwell']},{r['line']},{r['frame']},{r['error']}" for r in self.sweep_rows()
+        ]
+        return "\n".join(lines) + "\n"
+
+    def export_csv(self, path) -> None:
+        """Write :meth:`csv_text` to *path*."""
+        text = self.csv_text()
+        with open(path, "w") as fh:
+            fh.write(text)
+
+    #: the inputs a session remembers
+    SETTINGS = (
+        "diffusion_coefficient", "n_particles", "brightness_khz", "w_r", "w_z", "pixel_size_nm",
+        "two_d", "pixel_time_us", "line_overhead", "nx", "ny", "n_images", "n_lags",
+        "n_repeats", "seed",
+    )
+
+    def export_settings(self) -> dict:
+        """The inputs (not the prediction)."""
+        return {name: getattr(self, name) for name in self.SETTINGS}
+
+    def restore_settings(self, state: dict) -> None:
+        """Restore :meth:`export_settings`; entries of the wrong type are ignored."""
+        for name in self.SETTINGS:
+            if name not in state:
+                continue
+            current = getattr(self, name)
+            try:
+                value = bool(state[name]) if isinstance(current, bool) else type(current)(state[name])
+            except (TypeError, ValueError):
+                continue
+            setattr(self, name, value)
 
     def _summary(self) -> str:
         """Return the sentence that tells the user what to do."""

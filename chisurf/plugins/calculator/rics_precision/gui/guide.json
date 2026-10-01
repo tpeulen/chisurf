@@ -31,10 +31,20 @@
       }
     },
     {
+      "title": "Run the sweep",
+      "text": "<b>Predict</b> sweeps the pixel dwell time from 0.5 µs to 0.5 ms and predicts the error on D at each step, plus at your own dwell. It runs in the background; the status line shows its progress, and a setting no scan can realise is reported there instead of a curve.",
+      "target": {
+        "action": "request_predict"
+      },
+      "await": {
+        "hint": "Press <b>Predict</b>."
+      }
+    },
+    {
       "title": "Read the trough as an order of magnitude, not a setting",
       "text": "Your own dwell is marked on the curve, and the status line turns it into a sentence — how good it is, and how much better the best dwell would be.<br/><br/>Rough guide: <b>below 5 %</b> means differences between conditions will be measurable; <b>5–20 %</b> is usable for a large effect; above that the experiment is unlikely to answer the question.<br/><br/>Two honest limits. Each point is <b>itself a Monte-Carlo estimate</b> — about 10 % at the default repeat count — so the position of the minimum is an order of magnitude and not a value to dial in. And precision is quoted <b>per frame count, not per unit time</b>: a slower scan in this comparison is also a longer acquisition, so read the table's implied line and frame times before choosing.<br/><br/>The <b>?</b> button has the rest.",
       "target": {
-        "title": "Error vs dwell"
+        "action": "plot"
       }
     }
   ]

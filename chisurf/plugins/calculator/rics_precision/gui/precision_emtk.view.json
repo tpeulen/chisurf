@@ -1,0 +1,278 @@
+{
+  "_comment": "RICS precision, native emtk windows. Drawn by emtk.view_form over PrecisionViewModel (gui/view_model.py): 'settings' is the left window, 'numbers' the table window. The plot, the file dialog, Help and Guide are drawn by gui/app.py. Field names, ranges, decimals and descriptions are those of precision.view.json (the Qt AutoForm spec).",
+  "title": "RICS precision",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Settings",
+      "name": "settings",
+      "description": "What you are measuring and how you plan to scan it.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Predict the precision for the settings below, or export the numbers behind the curve.",
+          "buttons": [
+            {
+              "action": "request_predict",
+              "label": "Predict",
+              "description": "Sweep the pixel dwell time and predict the relative error on D, marking your own setting on the curve. The sweep runs in the background."
+            },
+            {
+              "action": "request_export",
+              "label": "Export CSV",
+              "description": "Write the predicted error against dwell time (dwell, line, frame, error) to a CSV file."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Sample",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "diffusion_coefficient",
+              "label": "D [µm²/s]",
+              "description": "The diffusion coefficient you expect to measure. This is the awkward part of planning a scan: the best settings depend on the answer you do not have yet, so use a literature value or a guess and check how sensitive the prediction is to it. A free dye is a few hundred; a labelled protein a few tens; a membrane protein below one.",
+              "kind": "float",
+              "decimals": 3,
+              "minimum": 1e-06,
+              "maximum": 100000.0,
+              "style": "spin",
+              "step": 1.0
+            },
+            {
+              "type": "value",
+              "attr": "n_particles",
+              "label": "Molecules in view",
+              "description": "Number of fluorescent molecules in the illuminated region. Too few and the correlation is noisy; too many and its amplitude (which goes as 1/N) sinks into the background.",
+              "kind": "float",
+              "decimals": 1,
+              "minimum": 0.01,
+              "maximum": 1000000.0,
+              "style": "spin",
+              "step": 5.0
+            },
+            {
+              "type": "value",
+              "attr": "brightness_khz",
+              "label": "Brightness [kHz/molecule]",
+              "description": "Photons per second from a single molecule at the centre of the focus. This is the dominant lever on precision after the number of frames — a dim label cannot be rescued by scanning cleverly.",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.001,
+              "maximum": 100000.0,
+              "style": "spin",
+              "step": 10.0
+            }
+          ],
+          "collapsible": true,
+          "description": "The sample settings of the planned measurement. Click the header to fold or unfold."
+        },
+        {
+          "type": "panel",
+          "title": "Optics",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "w_r",
+              "label": "w_r [µm]",
+              "description": "Lateral beam waist. Measure it with the waist calibration rather than guessing: every predicted error scales with it.",
+              "kind": "float",
+              "decimals": 3,
+              "minimum": 0.001,
+              "maximum": 100.0,
+              "style": "spin",
+              "step": 0.05
+            },
+            {
+              "type": "value",
+              "attr": "w_z",
+              "label": "w_z [µm]",
+              "description": "Axial beam waist. Only its ratio to w_r matters here.",
+              "kind": "float",
+              "decimals": 3,
+              "minimum": 0.001,
+              "maximum": 1000.0,
+              "style": "spin",
+              "step": 0.1
+            },
+            {
+              "type": "value",
+              "attr": "pixel_size_nm",
+              "label": "Pixel size [nm]",
+              "description": "Physical pixel size. It should sample the waist several times over — around 4 to 6 pixels across w_r — or the spatial shape of the correlation is undersampled.",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 1.0,
+              "maximum": 100000.0,
+              "style": "spin",
+              "step": 5.0
+            },
+            {
+              "type": "toggle",
+              "attr": "two_d",
+              "label": "Membrane (2-D)",
+              "description": "Use the 2-D geometry for a membrane or a surface, which has different shape factors from a 3-D focus."
+            }
+          ],
+          "collapsible": true,
+          "description": "The optics settings of the planned measurement. Click the header to fold or unfold."
+        },
+        {
+          "type": "panel",
+          "title": "Scan",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "pixel_time_us",
+              "label": "Pixel dwell [µs]",
+              "description": "The dwell time you plan to use. It is marked on the curve so you can see how far it sits from the optimum.",
+              "kind": "float",
+              "decimals": 3,
+              "minimum": 0.01,
+              "maximum": 100000.0,
+              "style": "spin",
+              "step": 1.0
+            },
+            {
+              "type": "value",
+              "attr": "line_overhead",
+              "label": "Line overhead ×",
+              "description": "How much longer a line takes than the sum of its pixels, from flyback and settling. 1.2 means 20 % overhead. The sweep scales the line time with the dwell, because a line cannot stay short as its pixels grow.",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 1.0,
+              "maximum": 100.0,
+              "style": "spin",
+              "step": 0.1
+            },
+            {
+              "type": "value",
+              "attr": "nx",
+              "label": "Pixels per line",
+              "kind": "int",
+              "minimum": 8,
+              "maximum": 4096,
+              "description": "Image width. A larger image averages more pixel pairs and so measures better, at the cost of a longer frame.",
+              "style": "spin",
+              "step": 1
+            },
+            {
+              "type": "value",
+              "attr": "ny",
+              "label": "Lines per frame",
+              "kind": "int",
+              "minimum": 8,
+              "maximum": 4096,
+              "description": "Image height.",
+              "style": "spin",
+              "step": 1
+            },
+            {
+              "type": "value",
+              "attr": "n_images",
+              "label": "Frames",
+              "kind": "int",
+              "minimum": 1,
+              "maximum": 100000,
+              "description": "Frames averaged. Precision improves as the square root of this, so halving the error costs four times the acquisition time.",
+              "style": "spin",
+              "step": 10
+            }
+          ],
+          "collapsible": true,
+          "description": "The scan settings of the planned measurement. Click the header to fold or unfold."
+        },
+        {
+          "type": "panel",
+          "title": "Estimator",
+          "collapsed": true,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "n_lags",
+              "label": "Lags fitted",
+              "kind": "int",
+              "minimum": 1,
+              "maximum": 15,
+              "description": "Largest lag included on each axis. Cost grows as the fourth power of this, so raising it is expensive; the reference implementation uses 15. It must stay below half the smaller image dimension — a lag is averaged over the pixel pairs that realise it, and a small image holds too few.",
+              "style": "spin",
+              "step": 1
+            },
+            {
+              "type": "value",
+              "attr": "n_repeats",
+              "label": "Repeats",
+              "kind": "int",
+              "minimum": 5,
+              "maximum": 2000,
+              "description": "Monte-Carlo realisations behind each point. The predicted error carries an uncertainty of roughly 1/sqrt(2N) itself — about 11 % at 40 — which is why the position of the minimum is only good to an order of magnitude.",
+              "style": "spin",
+              "step": 5
+            },
+            {
+              "type": "value",
+              "attr": "seed",
+              "label": "Seed",
+              "kind": "int",
+              "minimum": 0,
+              "maximum": 1000000,
+              "description": "Random seed, so a quoted prediction can be reproduced.",
+              "style": "spin",
+              "step": 1
+            }
+          ],
+          "collapsible": true,
+          "description": "The estimator settings of the planned measurement. Click the header to fold or unfold."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Numbers",
+      "name": "numbers",
+      "description": "The numbers behind the curve.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per swept dwell time: the line and frame time it implies and the predicted error. A dash in the error column means the timing is not realisable.",
+          "options": {
+            "source": "sweep_rows",
+            "editable": false,
+            "expand": true,
+            "reserve": 8,
+            "min_column_width": 70,
+            "columns": [
+              {
+                "key": "dwell",
+                "title": "Dwell [µs]",
+                "width": 110,
+                "tooltip": "Pixel dwell time."
+              },
+              {
+                "key": "line",
+                "title": "Line [ms]",
+                "width": 110,
+                "tooltip": "Line time implied by the dwell and the overhead."
+              },
+              {
+                "key": "frame",
+                "title": "Frame [ms]",
+                "width": 110,
+                "tooltip": "Time for one frame — multiply by the frame count for the total acquisition."
+              },
+              {
+                "key": "error",
+                "title": "Error [%]",
+                "width": 110,
+                "tooltip": "Predicted relative error on D. '—' means the timing is not realisable."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

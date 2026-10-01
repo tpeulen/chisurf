@@ -9,6 +9,7 @@
   "state_namespace": "rics_precision",
   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
   "entrypoints": {
+    "emtk": "chisurf.plugins.calculator.rics_precision.gui.app:make_app",
     "gui": "chisurf.plugins.calculator.rics_precision.gui.tool:RicsPrecisionTool",
     "cli": "rics-precision=chisurf.plugins.calculator.rics_precision.cli:cli"
   }
