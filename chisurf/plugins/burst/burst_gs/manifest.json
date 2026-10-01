@@ -11,7 +11,7 @@
     "Single-Molecule",
     "FRET"
   ],
-  "icon": "⏱️",
+  "icon": "\u23f1\ufe0f",
   "state_namespace": "burst_gs",
   "statefulness": {
     "enabled": true,
@@ -23,7 +23,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.burst.burst_gs.gui.tool:BurstGsTool",
     "cli": "burst-gs=chisurf.plugins.burst.burst_gs.cli:cli",
-    "services": "chisurf.plugins.burst.burst_gs.backend.services:register_services"
+    "services": "chisurf.plugins.burst.burst_gs.backend.services:register_services",
+    "emtk": "chisurf.plugins.burst.burst_gs.gui.app:create_app"
   },
   "rpc_methods": [
     {
