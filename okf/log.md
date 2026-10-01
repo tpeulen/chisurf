@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **Guide 57 background re-measured**: the §6 simulated folder (no dark counts, `true_responses()` background 0) reported
+  0.335 kHz with the old tail fit; with `8e2c1f892` and `b3652dca8` it reports 0.001 kHz. The burst-analysis workflow's
+  `bg_tail_fraction` is documented as the fallback it now is.
+
 - **Guide 15 numbers and figures corrected**: the background rates it quoted (1.869 / 0.968 kHz seeded, 2.10 / 0.59 fraction
   rule) came from the tail fit fixed in `8e2c1f892`; re-measured on the same BH SPC-132 file they are 1.647 / 0.495 (a direct
   truncated-exponential MLE of the intervals: 1.70 / 0.51) and 0.25 / 0.15. Figures regenerated from the current emtk tool

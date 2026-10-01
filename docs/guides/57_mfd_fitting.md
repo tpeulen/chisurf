@@ -190,7 +190,8 @@ is a **code** test. It shows the machinery is wired correctly, not that the phys
 is right.
 
 On the §6 folder `data.report()` lists the four detectors with a count agreement
-of 1.0000 each and a background of 0.335 kHz; one static model evaluation
+of 1.0000 each and a background of 0.001 kHz — the simulator adds no dark counts
+(`true_responses()` declares 0), so the estimate should be near zero; one static model evaluation
 (`model.score`) takes 0.3 s and the two-state kinetic one 1.5 s.
 
 ## Known defects

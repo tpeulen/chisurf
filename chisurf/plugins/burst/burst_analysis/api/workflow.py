@@ -686,8 +686,9 @@ class Bursts:
             Quantile of the non-burst micro-time histogram taken as the flat
             dark-count floor before normalising the IRF.
         bg_tail_fraction : float
-            Tail fraction of the interphoton-time histogram used for the
-            background rate fit.
+            Tail fraction of the interphoton-time histogram, used for the background
+            rate only when no seeded fit window can be fitted (see
+            :func:`~chisurf.core.fluorescence.burst.background.seed_tail_window`).
         """
         from chisurf.core.fluorescence.burst.irf_bg import extract_irf_background
 
@@ -1375,7 +1376,8 @@ class BurstWorkflow:
         baseline_quantile : float
             Dark-count floor quantile subtracted before normalising the IRF.
         bg_tail_fraction : float
-            Interphoton-time tail fraction used for the background-rate fit.
+            Interphoton-time tail fraction, the background-rate fallback when no seeded
+            window can be fitted.
 
         Returns
         -------
