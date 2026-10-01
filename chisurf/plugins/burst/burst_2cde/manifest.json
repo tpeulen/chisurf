@@ -10,7 +10,7 @@
     "Spectroscopy",
     "Single-Molecule"
   ],
-  "icon": "⚡",
+  "icon": "\u26a1",
   "state_namespace": "burst_2cde",
   "statefulness": {
     "enabled": true,
@@ -22,7 +22,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.burst.burst_2cde.gui.tool:BurstTwoCdeTool",
     "cli": "chisurf.plugins.burst.burst_2cde.cli.main:cli",
-    "services": "chisurf.plugins.burst.burst_2cde.backend.services:register_services"
+    "services": "chisurf.plugins.burst.burst_2cde.backend.services:register_services",
+    "emtk": "chisurf.plugins.burst.burst_2cde.gui.app:create_app"
   },
   "rpc_methods": [
     {

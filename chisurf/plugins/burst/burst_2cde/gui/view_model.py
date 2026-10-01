@@ -43,6 +43,11 @@ class TwoCdeViewModel:
         self.status_text: str = ""
         self.is_running: bool = False
         self.is_locked: bool = False
+        #: A run was skipped as unchanged: Restart is what recomputes it.
+        self.restart_attention: bool = False
+        #: While running: what is happening, and the done fraction (None = not known yet).
+        self.progress_text: str = ""
+        self.progress: float | None = None
 
         self._observers: list[Callable[[str], None]] = []
 

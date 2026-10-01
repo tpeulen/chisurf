@@ -22,6 +22,8 @@ except ImportError:  # pragma: no cover - standalone use
 
 import tttrlib
 
+from chisurf.plugins.burst.burst_bva.core.computation import read_burst_analysis
+
 # Column names written into the burst dataframe.
 COLUMN_FRET_2CDE = "FRET-2CDE"
 COLUMN_ALEX_2CDE = "ALEX-2CDE"
