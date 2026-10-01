@@ -1079,7 +1079,8 @@ def test_real_registry_populates_the_app():
     app = make_app()
     painter = draw(app)
     assert len(app.model.rows) > 100
-    assert "About ChiSurf" in painter.strings and "Spectroscopy" in painter.strings
+    assert "About ChiSurf" in painter.strings
+    assert any(s.startswith("Spectrosc") for s in painter.strings)  # a long cell is shortened
 
 
 # ── 12. spec, tooltips, guide, help ─────────────────────────────────────

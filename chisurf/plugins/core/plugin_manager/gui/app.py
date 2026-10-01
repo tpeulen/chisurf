@@ -104,10 +104,10 @@ class PluginManagerApp(ImApp):
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         if self._sized != tuple(vp.size):
-            # The right window needs about 420 px for its labels and combos; a
+            # The right window needs about 460 px for its labels and combos; a
             # resize of the window re-proposes the split (a drag in between stays).
             self._sized = tuple(vp.size)
-            self.docks.set_ratio("root", min(0.66, max(0.4, 1.0 - 420.0 / float(vp.size[0]))))
+            self.docks.set_ratio("root", min(0.66, max(0.45, 1.0 - 460.0 / float(vp.size[0]))))
         self.form.rects.clear()
         self.docks.draw(box)
         self._sync_table_selection()

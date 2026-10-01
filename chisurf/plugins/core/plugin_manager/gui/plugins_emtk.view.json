@@ -254,25 +254,25 @@
               {
                 "key": "relation",
                 "title": "Relation",
-                "width": 90,
+                "width": 100,
                 "tooltip": "requires, optional, required by or optional for."
               },
               {
                 "key": "bound",
                 "title": "Bound",
-                "width": 60,
+                "width": 50,
                 "tooltip": "The version bound the manifest asks for; any when it asks for none."
               },
               {
                 "key": "installed",
                 "title": "Installed",
-                "width": 70,
+                "width": 60,
                 "tooltip": "The version of that plugin that is installed; a dash when it is not."
               },
               {
                 "key": "status",
                 "title": "Status",
-                "width": 80,
+                "width": 70,
                 "tooltip": "The state of that plugin: enabled, disabled, missing and so on."
               }
             ]
