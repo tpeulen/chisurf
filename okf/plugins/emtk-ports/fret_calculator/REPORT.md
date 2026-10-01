@@ -3,7 +3,7 @@
 Agent: claude (Sonnet), 2026-10-01, per `UPGRADE_BRIEF.md`. Board entry `T-20261001-SWAP4B`. Verdict: **accept** after the upgrade. The pre-upgrade app computed
 the same physics but deviated from the Qt tool in five checkable ways (section 0); none lost data, all fixed inside the plugin's own app.
 
-Commits: `b3d3e17db` Qt baseline and current emtk state (with `pre-upgrade/`), `166f72009` emtk app at parity with the Qt tool (code, tests, allow-list strikes), then the evidence commit.
+Commits: `b3d3e17db` Qt baseline and current emtk state (with `pre-upgrade/`), `166f72009` emtk app at parity with the Qt tool (code, tests, allow-list strikes), `e8c2a7c5f` evidence and report, then the click-coverage commit and its evidence.
 
 ## 0. What the pre-upgrade app got wrong (found by comparing with the Qt tool, not by the heuristic audit)
 
@@ -69,7 +69,8 @@ Screenshots: `before.png`, `before_populated_{hetero_forward_chi,hetero_inverse,
 | `gui/app.py` | rewritten | `FretCalcApp`: tab bar, per-tab dock layout, `draw_form` form, plots, Guide/Help, drop hooks, persistence; `make_app(**kwargs)` |
 | `gui/tool.py` | changed | the Qt host now builds `FretCalcApp(model)`; PRD references removed |
 | `gui/guide.json`, `gui/help.md` | changed | 9 steps (8 wait for the user, both tabs); help without the Qt-era slider text and without Markdown marks |
-| `tests/test_emtk_fret_calculator_parity.py` | new | 39 tests |
+| `tests/test_emtk_fret_calculator_parity.py` | new | 39 tests (numbers against the Qt tool and the backend, every edit typed into the real field) |
+| `tests/test_emtk_fret_calculator_clicks.py` | new | 31 tests (5 of them strict xfails documenting emtk gaps): every control operated with simulated pointer and keys |
 | `tests/test_emtk_app.py` | deleted | monkeypatched the old slider; its cases (coupled recompute, toggle, back-map, series, tabs) are in the new file |
 | `manifest.json` | unchanged by me | `entrypoints.emtk` already added by the stream |
 
@@ -97,7 +98,7 @@ Behaviour differences: status line for failed calculations (Qt: silent); k_homo 
 
 ```
 $ python -m pytest chisurf/plugins/calculator/fret_calculator -q -p no:cacheprovider
-58 passed in 27.53s          (19 existing + 39 new)
+84 passed, 5 xfailed in 43.01s     (19 existing + 39 parity + 26 click tests that pass; 5 strict xfails, section 10)
 $ python -m pytest chisurf/plugins/calculator/test -q -p no:cacheprovider -k "fret_calc or native_factories"
 24 passed
 $ python -m pytest test/gui/test_emtk_port_parity.py -q -p no:cacheprovider
@@ -127,6 +128,33 @@ Existing-test change with explanation: `chisurf/plugins/calculator/test/test_nat
 
 Pre-existing failures I did not cause: `test/test_plugin_help_guide_seam.py` has 18 failures for other plugins (stale allow-list entries, tours of burst/img tools); none mentions `fret_calculator` (`-k fret_calculator`: 3 passed).
 
+## 6a. Click coverage (every control -> the test that operates it with simulated pointer / keyboard events)
+
+The tests in `tests/test_emtk_fret_calculator_clicks.py` and the typing helpers of the parity file move the pointer, press and release it at the rectangle a control was drawn in (or at the text a button
+drew), type with `key`, and read the visible outcome. Nothing calls a model method to "click".
+
+| Control (Qt checklist item) | Test |
+|---|---|
+| tab bar: HeteroFRET, HomoFRET | `test_clicking_the_tab_labels_switches_the_window_and_the_selected_tab_is_kept`, `test_a_file_dropped_on_the_host...`, parity `test_the_tab_bar_switches_tabs` |
+| Hetero fields tau0, R0, R, tau, E, kFRET, sigma: type + Enter | parity `test_defaults_and_every_edit_equal_the_qt_tool` (15 edits, equal to the Qt tool), `test_typed_garbage_is_ignored_clamped_...` |
+| the same fields, up and down arrows | `test_each_hetero_arrow_steps_its_field_up_and_down_and_runs_its_handler[tau0, R0, R, tau, E, kFRET, sigma]` |
+| Homo fields tau0, R0, t_RM, rho, R_DA, sigma: type + Enter, arrows | parity `test_homo_every_edit_equals_the_qt_tool`, `test_each_homo_arrow_steps_its_field_up_and_down_and_runs_its_handler[6]` |
+| k_homo (read-only) | `test_a_clicked_field_takes_the_keyboard_and_a_read_only_one_ignores_typing`, parity `test_k_homo_is_an_output_it_cannot_be_typed_into` |
+| click-away commit, same value again | `test_clicking_away_commits_a_typed_value_and_enter_on_an_unchanged_one_does_nothing` |
+| chi distribution (both tabs) | `test_the_chi_toggle_is_a_checkbox_clicked_on_either_tab`, parity `test_the_chi_toggle_recomputes_and_swaps_the_solid_curve` |
+| Parameters fold header | `test_the_parameters_fold_header_hides_and_shows_the_fields` |
+| distance / rate / anisotropy plots: drag pan | `test_a_drag_pans_a_plot`; wheel zoom: `test_the_wheel_zooms_a_plot` (xfail, emtk gap 2) |
+| wheel over a field | `test_the_wheel_over_a_field_steps_it` (xfail, emtk gap 2) |
+| Guide button, Close Tour, awaited controls, tour walked to the end | `test_the_guide_button_starts_the_tour_and_close_tour_ends_it`, `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`; Next / Prev: `test_the_tour_next_and_prev_buttons_can_be_clicked` (xfail, emtk gap 1) |
+| Help button, Start Guided Tour, Close, Close Help, Escape | `test_the_help_button_opens_a_window_with_working_buttons`; section buttons: `test_a_help_section_button_shows_only_that_section` (xfail, emtk gap 1) |
+| file drop on the host | `test_a_file_dropped_on_the_host_reaches_the_app_and_says_the_calculator_has_no_file_input` |
+| small window | `test_the_flow_works_in_the_small_window_too` |
+
+Populated click sequence, read at full size: `click_0_before_any_click`, `click_1_typed_58_in_Distance_DA_not_committed` (the field shows the typed text, nothing recomputed), `click_2_after_Enter_efficiency_lifetime_rate_follow`,
+`click_3_after_click_on_chi_distribution` (checkbox ticked, the chi curve solid, E 0.346), `click_4_after_click_on_the_HomoFRET_tab`, `click_5_after_two_clicks_on_the_R_DA_up_arrow` (R_DA 53.35, t_RM 1.2374),
+`click_6_after_click_on_Help`, `click_7_after_click_on_Guide` (script `scripts/capture_clicks.py`; model afterwards: R 58, chi on, t_RM 1.2374). Harness trap found while writing it: rectangles recorded under the pixel painter
+(screenshots) are stale for the recording painter's font metrics, so the script re-draws before every click.
+
 ## 7. Screenshots I looked at (full size)
 
 | File | Observation | Fix |
@@ -149,6 +177,24 @@ Hetero: type the donor lifetime, R0, distance, sigma; efficiency, lifetime and r
 
 ## 10. Blocked / open
 
+* **emtk gap 1 (ids): the guided tour's Prev and Next buttons and the help window's section buttons cannot be clicked.** `emtk.im_core.get_id` keeps only the text after `##`, so `Close Tour##tour`, `◄ Prev##tour` and `Next ►##tour`
+  are one id (and every `…##filter` pill of the help window is one id): the first drawn button takes the release, the others never fire (Close Tour works, Next does not). Shared source: `chisurf/emtk/help_guide.py`; the fix is unique suffixes or hashing the whole label. Reproduction:
+  ```
+  tour = EmTkGuidedTour(steps=[{"title": "a", "text": "x"}, {"title": "b", "text": "y"}], get_target_rect=lambda k: None)
+  app = ImApp(lambda: tour.draw(*im.get_main_viewport().size)); tour.start()      # draw 2 frames (RecordingPainter), then
+  # pointer_move + pointer_press(x, y, 1) + draw + pointer_release at the centre of the drawn "Next ►" text, draw twice
+  print(tour.step_idx)   # 0 (expected 1); the same click on "Close Tour" ends the tour
+  ```
+  Tests: `test_the_tour_next_and_prev_buttons_can_be_clicked`, `test_a_help_section_button_shows_only_that_section` (strict xfail: they fail until it is fixed, then flip).
+* **emtk gap 2 (wheel in docked windows).** A `DockManager` window consumes the wheel: a spin field (`style: spin`) and an implot inside it never see it, so no docked plot zooms and no field steps with the wheel (both work in a plain `im.begin` window). Reproduction:
+  ```
+  dm = DockManager(Split("h", .5, Region("a"), Region("b"))); dm.add_window("a", "A", plot_fn, dock="a"); dm.add_window("b", "B", lambda box: im.text("b"), dock="b")
+  app = ImApp(lambda: dm.draw((0, 0, 800, 600)))      # plot_fn: implot.begin_plot + plot_line + end_plot
+  # draw 2 frames, pointer_move into window A, app.wheel(x, y, 3.0), draw 2 frames
+  # tick labels unchanged; the same plot in `if im.begin("w", (0, 0, 400, 300)):` zooms
+  ```
+  Tests: `test_the_wheel_zooms_a_plot`, `test_the_wheel_over_a_field_steps_it` (strict xfail).
+* **emtk gap 3 (focus).** A text field keeps the keyboard after a click on a checkbox or a button, so the next typed character lands in it. Reproduction: draw `draw_form` with a `value` and a `toggle`; click into the field, click the toggle, `app.key(ord("9"), "9")`: `form.buffers` is `{"R0": "9"}` and `io.want_capture_keyboard` stays True (screenshot `click_3_...`: the Distance DA text is still selected after the toggle click). Test: `test_clicking_a_checkbox_takes_the_keyboard_away_from_a_text_field` (strict xfail).
 * emtk gap (shared `chisurf/emtk/help_guide.py`, not emtk): `EmTkHelpWindow` draws Markdown links raw (`[title](docs/concepts/fret.md)` appears literally, `after_populated_help_1200x800.png`). Repro: `EmTkHelpWindow(text="[a](docs/x.md)").show()` then draw.
 * emtk layout: a spec toggle label and `spin` arrows clip when the dock is narrower than about 230 px (`after_populated_narrow_500x500.png`).
 * Systemic (also on the board): `build_plugin_widget`'s ControlHost never calls an app's `close()`; this app has nothing to close.
