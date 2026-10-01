@@ -1,0 +1,21 @@
+{
+  "plugin": "traj_save_topology",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "[010732]ready",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "log",
+    "pdbnamingtheatoms—requiredfordcd"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 3,
+  "after_controls": 9
+}

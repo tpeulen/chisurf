@@ -37,7 +37,7 @@ if which == "qt":
         qapp.processEvents()
     w.grab().save(str(out / f"{prefix}.png"))
     print("QT", json.dumps(w.model._log[-3:]))
-else:
+elif which == "emtk":
     from emtk.testing import RecordingPainter
     from test.gui.emtk_port_parity import emtk_screenshot, manifest_of
     module, attr = manifest_of(tool)["entrypoints"]["emtk"].split(":")
@@ -49,3 +49,21 @@ else:
         emtk_screenshot(a, out / f"{prefix}_{size[0]}x{size[1]}.png", size)
         print("EMTK", json.dumps(a.model.log_text()[-3:]))
         getattr(a, "close", lambda: None)()
+
+if which == "emtk-states":
+    # the save dialog over the loaded tool, and the guide's first waiting step
+    from emtk.testing import RecordingPainter
+    from test.gui.emtk_port_parity import emtk_screenshot, manifest_of
+    module, attr = manifest_of(tool)["entrypoints"]["emtk"].split(":")
+    a = getattr(importlib.import_module(module), attr)()
+    populate(a.model)
+    a.begin_save()
+    a.draw(RecordingPainter(), 0, 0, 1200, 800)
+    emtk_screenshot(a, out / f"{prefix}_dialog_1200x800.png", (1200, 800))
+    a.dialog = None
+    step = next(i for i, s in enumerate(a.tour.steps) if s.get("await"))
+    a.tour.start(step)
+    for _ in range(2):
+        a.draw(RecordingPainter(), 0, 0, 800, 600)
+    emtk_screenshot(a, out / f"{prefix}_guide_800x600.png", (800, 600))
+    a.close()

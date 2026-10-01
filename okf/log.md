@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **traj_save_topology emtk app at parity** (EMTK-1, upgrade row 37), on a new shared trajectory-tool app
+  (`chisurf/plugins/traj/emtk_tool.py`: the spec via draw_form, file rows with dialogs and typed drops, the save action on a
+  worker, a scrolling log, Guide/Help) that the other four single-panel traj tools reuse; help.md and guide.json new, off the
+  help/guide allow-list. Known issue filed: the emtk help window draws markdown raw.
+  [report](plugins/emtk-ports/traj_save_topology/REPORT.md).
+
 - **traj_energy declares the calculator's emtk app** (EMTK-1, upgrade row 36): manifest entrypoint and a lazy Qt export
   that is actually lazy now (an eager import above it still loaded PyQt5). [report](plugins/emtk-ports/traj_energy/REPORT.md).
 

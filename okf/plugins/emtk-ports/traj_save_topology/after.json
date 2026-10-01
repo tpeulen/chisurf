@@ -1,0 +1,66 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "[010732]ready",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "log",
+    "pdbnamingtheatoms—requiredfordcd",
+    "savetopology",
+    "topology",
+    "trajectory"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What the tool does, what it writes, and the known limits."
+    },
+    {
+      "kind": "input_text",
+      "label": "trajectory",
+      "id": "##trajectory",
+      "tooltip": "The trajectory the tool reads. Drop a .dcd here or press … to pick one."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##trajectory.browse",
+      "tooltip": "Open a DCD trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "topology",
+      "id": "##topology",
+      "tooltip": "The structure that names the atoms; a DCD stores coordinates only."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##topology.browse",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them."
+    },
+    {
+      "kind": "button",
+      "label": "💾 Save topology…",
+      "id": "💾 Save topology…",
+      "tooltip": "Write the first frame of the trajectory as a PDB file."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
