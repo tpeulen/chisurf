@@ -144,6 +144,7 @@ class CountRateGui(TourTarget):
             steps=Path(__file__).parent / "guide.json",
             get_target_rect=lambda k: self.item_rects.get(k),
             owner=tool,
+            wait_for_controls=True,
         )
 
     # ── plumbing ──────────────────────────────────────────────────────────
@@ -154,6 +155,10 @@ class CountRateGui(TourTarget):
 
     def start_guide(self) -> None:
         self.tour.start()
+
+    def _used(self, name: str) -> None:
+        """Tell the tour that the user pressed the control it is waiting for."""
+        self.tour.notify_used(name)
 
     def show_help(self) -> None:
         self.help_window.show()
@@ -198,6 +203,7 @@ class CountRateGui(TourTarget):
     def _draw_files(self, box: tuple[float, float, float, float]) -> None:
         im.begin_disabled(self.busy())
         if im.button("Add files"):
+            self._used("add_files")
             if callable(self.on_add_files):
                 self.on_add_files()
         im.set_item_tooltip("Queue TTTR files (.ptu, .ht3, .spc, …) for the analysis.")
@@ -394,12 +400,14 @@ class CountRateGui(TourTarget):
 
         im.begin_disabled(self.busy())
         if im.button("Calculate"):
+            self._used("calculate")
             if callable(self.on_calculate):
                 self.on_calculate()
         im.set_item_tooltip("Compute count rates for all queued files.")
         self.remember("calculate")
         im.same_line()
         if im.button("Save"):
+            self._used("save")
             if callable(self.on_save):
                 self.on_save()
         im.set_item_tooltip("Save the results table as tab-separated text.")

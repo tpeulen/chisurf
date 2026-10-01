@@ -134,6 +134,7 @@ class CountRateController:
 
     def add_paths(self, paths):
         if self.job.running:
+            self.message = "Wait for the running analysis to finish before adding files."
             return
         expanded = []
         extensions = tuple(ext.lower() for ext in TTTR_EXTENSIONS)
@@ -340,8 +341,14 @@ class _StandaloneApp(CountRateApp):
                 im.set_item_tooltip("Discard the current channel-definition edit.")
             im.end()
 
-    def on_paths_dropped(self, paths):
-        self.tool.add_paths(paths)
+    def files_dropped(self, paths):
+        """Host hook (native, web and Qt hosts): queue the dropped files and folders."""
+        before = len(self.tool._model.files)
+        self.tool.add_paths([str(p) for p in paths or []])
+        return len(self.tool._model.files) > before
+
+    on_files_dropped = files_dropped
+    on_paths_dropped = files_dropped
 
     def export_settings(self):
         return self.tool.export_settings()

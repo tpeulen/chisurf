@@ -1,22 +1,33 @@
-[
-  {
-    "title": "Queue inputs",
-    "target": "add_files",
-    "text": "Add TTTR files, a folder, or datasets from MMFDB."
-  },
-  {
-    "title": "Define channels",
-    "target": "setup_source",
-    "text": "Select an authoritative detector setup, including excitation windows and microtime gates."
-  },
-  {
-    "title": "Calculate",
-    "target": "calculate",
-    "text": "Compute channel rates without blocking the interface."
-  },
-  {
-    "title": "Save results",
-    "target": "save",
-    "text": "Export the channel summary as a tab-separated table."
-  }
-]
+{
+  "_comment": "Guided tour for the Count Rate Analysis tool. Steps point at real controls; the ones the user must press wait for the press.",
+  "steps": [
+    {
+      "title": "Queue the files",
+      "text": "The tool reports one count rate per detector channel over many TTTR files. Press <b>Add files</b> (or drop files or a folder on the window) to queue them; <b>Folder</b> and <b>Database</b> queue whole sets.",
+      "target": {"action": "add_files"},
+      "await": {"hint": "Press <b>Add files</b> and choose one or more TTTR files."}
+    },
+    {
+      "title": "Define the channels",
+      "text": "The detector setup decides which routing channels and micro-time gates make up each reported channel. Pick a saved setup or edit one here; the results use exactly these channels.",
+      "target": {"action": "setup_source"}
+    },
+    {
+      "title": "Calculate",
+      "text": "Counts the photons of every channel in every file on a background thread and divides by the measurement time. <b>Stop analysis</b> appears while it runs.",
+      "target": {"action": "calculate"},
+      "await": {"hint": "Press <b>Calculate</b>."}
+    },
+    {
+      "title": "Read the table",
+      "text": "One row per channel: mean and standard deviation of the rate over the files, the photons and the total time. A large standard deviation means the rate drifts between files; the plot shows it file by file.",
+      "target": {"action": "results"}
+    },
+    {
+      "title": "Save",
+      "text": "Writes the table as tab-separated text.",
+      "target": {"action": "save"},
+      "await": {"hint": "Press <b>Save</b> and choose a file name."}
+    }
+  ]
+}

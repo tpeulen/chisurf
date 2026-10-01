@@ -161,3 +161,118 @@ def test_settings_round_trip(tmp_path):
             other.close()
     finally:
         app.close()
+
+
+# 9. a drop reaches the model: the host hook is on the app (it sat on the controller's tool)
+def test_dropped_files_and_folders_are_queued(tmp_path):
+    app = create_app()
+    try:
+        folder = tmp_path / "set"
+        (folder / "sub").mkdir(parents=True)
+        a, b = folder / "a.ptu", folder / "sub" / "b.ht3"
+        a.write_bytes(b"x"); b.write_bytes(b"x")
+        (folder / "notes.txt").write_text("no")
+        assert callable(getattr(app, "files_dropped", None))        # what the native/web hosts call
+        assert callable(getattr(app, "on_files_dropped", None))     # what the Qt host prefers
+        assert app.files_dropped([str(folder)]) is True              # a folder is expanded
+        assert sorted(Path(f).name for f in app.tool._model.files) == ["a.ptu", "b.ht3"]
+        assert app.files_dropped([str(folder / "notes.txt")]) is False  # nothing queued
+        assert "supported" in app.tool.message
+        assert len(app.tool._model.files) == 2
+    finally:
+        app.close()
+
+
+# 10. the error paths of Calculate and Save, shown on the status line
+def test_calculate_and_save_errors_reach_the_status_line(tmp_path):
+    app = create_app()
+    try:
+        tool = app.tool
+        assert tool.calculate() is False
+        assert tool.message == "Please load TTTR files first."
+        a = tmp_path / "a.ptu"
+        a.write_bytes(b"x")
+        tool.add_paths([a])
+        tool.channel_editor.model.get_settings = lambda: {}          # no detector in the setup
+        tool.message = ""
+        assert tool.calculate() is False
+        assert "detector setup" in tool.message
+        tool.message = ""
+        tool.save_dialog()                                           # nothing computed yet
+        assert tool.message == "There is no data to save." and tool.dialog is None
+        painter = _draw(app)
+        assert "There is no data to save." in painter.strings
+    finally:
+        app.close()
+
+
+# 11. a failing read is reported, not swallowed; Save writes the Qt tool's table
+def test_failing_read_is_reported_and_save_writes_the_table(tmp_path):
+    channels = {"all": [{"detector_chs": [0], "micro_time_range": None, "window_range": None}]}
+
+    def broken(path):
+        raise OSError("cannot read " + str(path))
+
+    app = create_app(reader=broken)
+    try:
+        a = tmp_path / "a.ptu"
+        a.write_bytes(b"x")
+        app.tool.channels = lambda: channels
+        app.tool._model.channels_provider = app.tool.channels
+        app.tool.add_paths([a])
+        assert app.tool.calculate()
+        with pytest.raises(OSError):
+            app.tool.job.future.result(timeout=30)
+        app.tool.job.poll()
+        assert "cannot read" in app.tool.message
+        assert app.tool._model.results_rows() == []
+    finally:
+        app.close()
+    # the table text the Qt tool wrote, for the model both tools share
+    from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.view_model import CountRateViewModel
+
+    model = CountRateViewModel()
+    model.files = ["f.ptu"]
+    model._per_file = {"f.ptu": {"all": 44722.9}}
+    model._per_file_photons = {"f.ptu": {"all": 6714549}}
+    model._meas_times = {"f.ptu": 150.1366}
+    model._channel_order = ["all"]
+    out = tmp_path / "t.txt"
+    app = create_app()
+    try:
+        app.tool._model = model
+        assert app.tool.save(out)
+        app.tool.job.future.result(timeout=30)
+        app.tool.job.poll()
+        lines = out.read_text().splitlines()
+        assert lines[0].split("\t")[0] == "Channel"
+        assert lines[1] == "all\t44.72\t0.00\t6714549\t150.137"
+        assert str(out) in app.tool.message
+    finally:
+        app.close()
+
+
+# 12. the guide waits for the buttons it names, and the tour is wired to hear them
+def test_guide_waits_for_the_user():
+    app = create_app()
+    try:
+        tour = app.count_rate_gui.tour
+        assert tour.wait_for_controls
+        steps = tour.steps
+        assert len(steps) >= 3 and any(s.get("await") for s in steps)
+        for step in steps:
+            assert isinstance(step["target"], dict), step["title"]
+        _draw(app)
+        for step in steps:                                           # the targets are drawn controls
+            key = tour._target_key(step["target"])
+            if key != "results":                                     # the table exists after Calculate
+                assert key in app.item_rects, key
+        tour.start(0)
+        assert tour.awaiting
+        app.count_rate_gui.on_add_files = lambda: None
+        tour.notify_used("calculate")                                # another control: still waiting
+        assert tour.awaiting
+        tour.notify_used("add_files")
+        assert not tour.awaiting
+    finally:
+        app.close()
