@@ -1,0 +1,442 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "#",
+    "'hello",
+    "(",
+    ")",
+    "1",
+    "2",
+    "2lines",
+    "3",
+    "__pycache__",
+    "_shipped_docs.py",
+    "agent",
+    "aiassistant",
+    "build",
+    "build_tools",
+    "changelog.md",
+    "check",
+    "chisurf",
+    "chisurf!'",
+    "chisurf.egg-info",
+    "chisurf_project.cs.pto",
+    "chisurf_project.csp",
+    "chisurfemtkcodeeditorinitialized.",
+    "claude.md",
+    "clear",
+    "close",
+    "code",
+    "copy",
+    "demo",
+    "diagnostics",
+    "doc",
+    "dockerfile.linux",
+    "docs",
+    "editor",
+    "emtk",
+    "examples",
+    "file",
+    "filterfiles",
+    "fix",
+    "from",
+    "handover.md",
+    "handover_chimol.md",
+    "handover_chisurf_surface.md",
+    "help",
+    "junk",
+    "license",
+    "llm-wiki",
+    "logs",
+    "main.py",
+    "manifest.in",
+    "modules",
+    "new",
+    "notebook",
+    "okf",
+    "open",
+    "output",
+    "parent",
+    "pixi.lock",
+    "pixi.toml",
+    "plugins",
+    "print",
+    "project",
+    "projectroot/users/tpeulen/dev/chisurf",
+    "pyproject.toml",
+    "python",
+    "rattler-recipe",
+    "readme.md",
+    "renders",
+    "rootchisurf",
+    "run",
+    "save",
+    "saveas",
+    "scratch",
+    "separateprocess",
+    "session-ses_03d8.md",
+    "settings",
+    "setup.py",
+    "tcspcnet_fret.npz",
+    "tcspcnet_trained.npz",
+    "test",
+    "test_renders",
+    "to",
+    "tools",
+    "untitled·ln1,col1|utf-8|unsaved",
+    "view",
+    "welcome"
+  ],
+  "interactive": [
+    {
+      "kind": "small_button",
+      "label": "↑ Parent",
+      "id": "↑ Parent",
+      "tooltip": "↑ Parent"
+    },
+    {
+      "kind": "input_text",
+      "label": "file_filter",
+      "id": "##file_filter",
+      "tooltip": "Filter project files by name"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 __pycache__",
+      "id": "📁 __pycache__",
+      "tooltip": "/Users/tpeulen/dev/chisurf/__pycache__"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 AGENT",
+      "id": "📁 AGENT",
+      "tooltip": "/Users/tpeulen/dev/chisurf/AGENT"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 build",
+      "id": "📁 build",
+      "tooltip": "/Users/tpeulen/dev/chisurf/build"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 build_tools",
+      "id": "📁 build_tools",
+      "tooltip": "/Users/tpeulen/dev/chisurf/build_tools"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 chisurf",
+      "id": "📁 chisurf",
+      "tooltip": "/Users/tpeulen/dev/chisurf/chisurf"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 chisurf.egg-info",
+      "id": "📁 chisurf.egg-info",
+      "tooltip": "/Users/tpeulen/dev/chisurf/chisurf.egg-info"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 demo",
+      "id": "📁 demo",
+      "tooltip": "/Users/tpeulen/dev/chisurf/demo"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 doc",
+      "id": "📁 doc",
+      "tooltip": "/Users/tpeulen/dev/chisurf/doc"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 docs",
+      "id": "📁 docs",
+      "tooltip": "/Users/tpeulen/dev/chisurf/docs"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 examples",
+      "id": "📁 examples",
+      "tooltip": "/Users/tpeulen/dev/chisurf/examples"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 junk",
+      "id": "📁 junk",
+      "tooltip": "/Users/tpeulen/dev/chisurf/junk"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 llm-wiki",
+      "id": "📁 llm-wiki",
+      "tooltip": "/Users/tpeulen/dev/chisurf/llm-wiki"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 logs",
+      "id": "📁 logs",
+      "tooltip": "/Users/tpeulen/dev/chisurf/logs"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 modules",
+      "id": "📁 modules",
+      "tooltip": "/Users/tpeulen/dev/chisurf/modules"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 okf",
+      "id": "📁 okf",
+      "tooltip": "/Users/tpeulen/dev/chisurf/okf"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 plugins",
+      "id": "📁 plugins",
+      "tooltip": "/Users/tpeulen/dev/chisurf/plugins"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 rattler-recipe",
+      "id": "📁 rattler-recipe",
+      "tooltip": "/Users/tpeulen/dev/chisurf/rattler-recipe"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 renders",
+      "id": "📁 renders",
+      "tooltip": "/Users/tpeulen/dev/chisurf/renders"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 scratch",
+      "id": "📁 scratch",
+      "tooltip": "/Users/tpeulen/dev/chisurf/scratch"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 test",
+      "id": "📁 test",
+      "tooltip": "/Users/tpeulen/dev/chisurf/test"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 test_renders",
+      "id": "📁 test_renders",
+      "tooltip": "/Users/tpeulen/dev/chisurf/test_renders"
+    },
+    {
+      "kind": "tree_node",
+      "label": "📁 tools",
+      "id": "📁 tools",
+      "tooltip": "/Users/tpeulen/dev/chisurf/tools"
+    },
+    {
+      "kind": "selectable",
+      "label": "🐍 _shipped_docs.py",
+      "id": "🐍 _shipped_docs.py",
+      "tooltip": "/Users/tpeulen/dev/chisurf/_shipped_docs.py"
+    },
+    {
+      "kind": "selectable",
+      "label": "📝 CHANGELOG.md",
+      "id": "📝 CHANGELOG.md",
+      "tooltip": "/Users/tpeulen/dev/chisurf/CHANGELOG.md"
+    },
+    {
+      "kind": "selectable",
+      "label": "📄 chisurf_project.cs.pto",
+      "id": "📄 chisurf_project.cs.pto",
+      "tooltip": "/Users/tpeulen/dev/chisurf/chisurf_project.cs.pto"
+    },
+    {
+      "kind": "selectable",
+      "label": "📄 chisurf_project.csp",
+      "id": "📄 chisurf_project.csp",
+      "tooltip": "/Users/tpeulen/dev/chisurf/chisurf_project.csp"
+    },
+    {
+      "kind": "selectable",
+      "label": "📝 CLAUDE.md",
+      "id": "📝 CLAUDE.md",
+      "tooltip": "/Users/tpeulen/dev/chisurf/CLAUDE.md"
+    },
+    {
+      "kind": "selectable",
+      "label": "📄 Dockerfile.linux",
+      "id": "📄 Dockerfile.linux",
+      "tooltip": "/Users/tpeulen/dev/chisurf/Dockerfile.linux"
+    },
+    {
+      "kind": "selectable",
+      "label": "📝 HANDOVER.md",
+      "id": "📝 HANDOVER.md",
+      "tooltip": "/Users/tpeulen/dev/chisurf/HANDOVER.md"
+    },
+    {
+      "kind": "selectable",
+      "label": "📝 HANDOVER_CHIMOL.md",
+      "id": "📝 HANDOVER_CHIMOL.md",
+      "tooltip": "/Users/tpeulen/dev/chisurf/HANDOVER_CHIMOL.md"
+    },
+    {
+      "kind": "selectable",
+      "label": "📝 HANDOVER_CHISURF_SURFACE.md",
+      "id": "📝 HANDOVER_CHISURF_SURFACE.md",
+      "tooltip": "/Users/tpeulen/dev/chisurf/HANDOVER_CHISURF_SURFACE.md"
+    },
+    {
+      "kind": "selectable",
+      "label": "📄 LICENSE",
+      "id": "📄 LICENSE",
+      "tooltip": "/Users/tpeulen/dev/chisurf/LICENSE"
+    },
+    {
+      "kind": "selectable",
+      "label": "📄 MANIFEST.in",
+      "id": "📄 MANIFEST.in",
+      "tooltip": "/Users/tpeulen/dev/chisurf/MANIFEST.in"
+    },
+    {
+      "kind": "selectable",
+      "label": "📄 pixi.lock",
+      "id": "📄 pixi.lock",
+      "tooltip": "/Users/tpeulen/dev/chisurf/pixi.lock"
+    },
+    {
+      "kind": "selectable",
+      "label": "⚙️ pixi.toml",
+      "id": "⚙️ pixi.toml",
+      "tooltip": "/Users/tpeulen/dev/chisurf/pixi.toml"
+    },
+    {
+      "kind": "selectable",
+      "label": "⚙️ pyproject.toml",
+      "id": "⚙️ pyproject.toml",
+      "tooltip": "/Users/tpeulen/dev/chisurf/pyproject.toml"
+    },
+    {
+      "kind": "selectable",
+      "label": "📝 README.md",
+      "id": "📝 README.md",
+      "tooltip": "/Users/tpeulen/dev/chisurf/README.md"
+    },
+    {
+      "kind": "selectable",
+      "label": "📝 session-ses_03d8.md",
+      "id": "📝 session-ses_03d8.md",
+      "tooltip": "/Users/tpeulen/dev/chisurf/session-ses_03d8.md"
+    },
+    {
+      "kind": "selectable",
+      "label": "🐍 setup.py",
+      "id": "🐍 setup.py",
+      "tooltip": "/Users/tpeulen/dev/chisurf/setup.py"
+    },
+    {
+      "kind": "selectable",
+      "label": "📊 tcspcnet_fret.npz",
+      "id": "📊 tcspcnet_fret.npz",
+      "tooltip": "/Users/tpeulen/dev/chisurf/tcspcnet_fret.npz"
+    },
+    {
+      "kind": "selectable",
+      "label": "📊 tcspcnet_trained.npz",
+      "id": "📊 tcspcnet_trained.npz",
+      "tooltip": "/Users/tpeulen/dev/chisurf/tcspcnet_trained.npz"
+    },
+    {
+      "kind": "button",
+      "label": "➕ New",
+      "id": "➕ New",
+      "tooltip": "New — create an empty document"
+    },
+    {
+      "kind": "button",
+      "label": "📂 Open",
+      "id": "📂 Open",
+      "tooltip": "Open… — choose files to open in the editor"
+    },
+    {
+      "kind": "button",
+      "label": "💾 Save",
+      "id": "💾 Save",
+      "tooltip": "Save — save the active document to disk"
+    },
+    {
+      "kind": "button",
+      "label": "📝 Save As",
+      "id": "📝 Save As",
+      "tooltip": "Save As… — save the active document under a chosen name"
+    },
+    {
+      "kind": "button",
+      "label": "✖ Close",
+      "id": "✖ Close",
+      "tooltip": "Close — close the active document; ask before discarding changes"
+    },
+    {
+      "kind": "button",
+      "label": "▶ Run",
+      "id": "▶ Run",
+      "tooltip": "Run Script — run the active Python document and display its output"
+    },
+    {
+      "kind": "combo",
+      "label": "run_endpoint",
+      "id": "##run_endpoint",
+      "tooltip": "Process: isolated, stoppable execution. Console: main-thread macros with access to ChiSurf state; long macros block interaction."
+    },
+    {
+      "kind": "button",
+      "label": "🧹 Check",
+      "id": "🧹 Check",
+      "tooltip": "Ruff Check — check the unsaved Python buffer using the optional Ruff executable"
+    },
+    {
+      "kind": "button",
+      "label": "🛠 Fix",
+      "id": "🛠 Fix",
+      "tooltip": "Ruff Fix — apply Ruff's safe fixes to the unsaved buffer; save explicitly afterwards"
+    },
+    {
+      "kind": "button",
+      "label": "📓 Notebook",
+      "id": "📓 Notebook",
+      "tooltip": "New notebook — create an empty notebook with editable cells and a persistent ChiSurf shell"
+    },
+    {
+      "kind": "button",
+      "label": "⚙ Settings",
+      "id": "⚙ Settings",
+      "tooltip": "Settings… — open the native editor appearance and diagnostics settings"
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "  main.py  ",
+      "id": "  main.py  ###tab_4552988032",
+      "tooltip": "main.py — right-click for document actions"
+    },
+    {
+      "kind": "button",
+      "label": "🗑 Clear",
+      "id": "🗑 Clear",
+      "tooltip": "🗑 Clear"
+    },
+    {
+      "kind": "button",
+      "label": "📋 Copy",
+      "id": "📋 Copy",
+      "tooltip": "📋 Copy"
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

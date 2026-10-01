@@ -1,0 +1,14 @@
+ M chisurf/plugins/core/code_editor/__init__.py
+ M chisurf/plugins/core/code_editor/__main__.py
+ M chisurf/plugins/core/code_editor/agent_panel.py
+ M chisurf/plugins/core/code_editor/document_store.py
+ M chisurf/plugins/core/code_editor/editor.py
+ M chisurf/plugins/core/code_editor/manifest.json
+ M chisurf/plugins/core/code_editor/rpc_server.py
+ M chisurf/plugins/core/code_editor/test/test_notebook_editor.py
+ M chisurf/plugins/core/code_editor/wizard.py
+?? chisurf/plugins/core/code_editor/acp_client.py
+?? chisurf/plugins/core/code_editor/gui/
+?? chisurf/plugins/core/code_editor/test/test_acp_client.py
+?? chisurf/plugins/core/code_editor/test/test_emtk_editor.py
+?? chisurf/plugins/core/code_editor/test/test_notebook_shortcuts.py
