@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+* **traj_energy_calculator emtk app at parity with the Qt widget (swap-candidate, session EMTK-1).** Same energies (byte-identical file). Added file choosers (trajectory, topology, output, potential tables), the H-Bond / Iso-UNRES / MJ potential files the Qt editors show, and a worker with frame counter for Process. Trap: the Qt setup section needs `modules/imp-tricks/src` on `PYTHONPATH`. Open: AV-Potential cannot be scored on either side (constructor mismatch). 28 passed. Report: `okf/plugins/emtk-ports/traj_energy_calculator/REPORT.md`.
+
 * **minesweeper emtk view at parity with the Qt game (swap-candidate, session EMTK-1).** Same board, keys and scripted game as the Qt view driven with a stub host. Fixed: after a loss the emtk app overwrote the result with "Start a new game…" and played the effect on further presses; it now ignores them like Qt. Sound greyed (emtk audio known issue). 33 passed. Report: `okf/plugins/emtk-ports/minesweeper/REPORT.md`.
 
 * **tetris emtk view at parity with the Qt game (swap-candidate, session EMTK-1).** Rules moved into `model.TetrisModel` equal the committed `TetrisGame` (action names, view helpers moved); bindings compared with the Qt game in a subprocess. Sound switch now takes a backend (`make_app(audio=...)`) and stays greyed while emtk has no audio. 30 passed. Report: `okf/plugins/emtk-ports/tetris/REPORT.md`.

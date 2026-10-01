@@ -1,0 +1,30 @@
+{
+  "plugin": "traj_energy_calculator",
+  "explained": {
+    "ca": "Qt H-Bond editor label 'CA' (the field after 'cutoff'); emtk 'Cutoff CA'.",
+    "cutoff": "Qt H-Bond editor label 'cutoff' before its CA field; emtk 'Cutoff CA' (one label per field).",
+    "h": "Qt H-Bond editor label 'H' (second cutoff field); emtk 'Cutoff H'."
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "/users/tpeulen/dev/chisurf/chisurf/core/structure/potential/database/hb.npy",
+    "1",
+    "1.000",
+    "3.000",
+    "8.000",
+    "[204155]ready",
+    "cutoffca",
+    "cutoffh",
+    "h-bond",
+    "log",
+    "output"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 15,
+  "after_controls": 23
+}

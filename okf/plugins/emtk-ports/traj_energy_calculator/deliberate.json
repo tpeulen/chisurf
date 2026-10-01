@@ -1,0 +1,5 @@
+{
+  "cutoff": "Qt H-Bond editor label 'cutoff' before its CA field; emtk 'Cutoff CA' (one label per field).",
+  "ca": "Qt H-Bond editor label 'CA' (the field after 'cutoff'); emtk 'Cutoff CA'.",
+  "h": "Qt H-Bond editor label 'H' (second cutoff field); emtk 'Cutoff H'."
+}
