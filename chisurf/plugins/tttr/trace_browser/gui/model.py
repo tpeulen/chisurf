@@ -435,8 +435,14 @@ class TraceBrowserModel:
         """Probe whether *tttr_obj* supports CLSM imaging (an image-like dataset)."""
         try:
             clsm = tttrlib.CLSMImage(tttr_data=tttr_obj)
-            _ = getattr(clsm, "intensity", None)
-            return _ is not None
+            intensity = getattr(clsm, "intensity", None)
+            if intensity is None:
+                return False
+            # tttrlib builds a CLSMImage from *any* readable TTTR without raising; a file that
+            # is not a scan gives an empty array (1, 0, 0). Only a non-empty pixel stack is an
+            # image: testing ``is not None`` classed every single-molecule file as one and the
+            # browser then listed no TTTR file at all.
+            return int(np.asarray(intensity).size) > 0
         except Exception:
             return False
 

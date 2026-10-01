@@ -407,3 +407,39 @@ print('QT-FREE OK')
     done = subprocess.run([sys.executable, "-c", script], cwd=REPO, env=env,
                           capture_output=True, text=True)
     assert done.returncode == 0 and "QT-FREE OK" in done.stdout, done.stdout + done.stderr[-1500:]
+
+
+def test_a_single_molecule_file_is_not_an_image_and_a_scan_is():
+    """tttrlib builds a CLSMImage from any TTTR; only a non-empty pixel stack is an image.
+
+    With the old ``is not None`` test every readable TTTR was classed as an image and hidden,
+    so the browser listed no file at all (tttrlib 0.27.0).
+    """
+    import pathlib
+
+    pytest.importorskip("tttrlib")
+    root = pathlib.Path(__file__).resolve().parents[5] / "test" / "data"
+    molecule = root / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+    scan = root / "clsm" / "Leica_SP8.ptu"
+    if not (molecule.exists() and scan.exists()):
+        pytest.skip("sample files missing")
+    model = TraceBrowserModel()
+    assert model.probe_image(molecule) is False
+    assert model.probe_image(scan) is True
+
+
+def test_the_scan_lists_a_real_single_molecule_file_and_hides_a_scan(tmp_path):
+    import pathlib
+    import shutil
+
+    pytest.importorskip("tttrlib")
+    root = pathlib.Path(__file__).resolve().parents[5] / "test" / "data"
+    molecule = root / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+    scan = root / "clsm" / "Leica_SP8.ptu"
+    if not (molecule.exists() and scan.exists()):
+        pytest.skip("sample files missing")
+    shutil.copy(molecule, tmp_path / molecule.name)      # a temp copy: the browser writes beside files
+    shutil.copy(scan, tmp_path / scan.name)
+    model = TraceBrowserModel()
+    model.open_folder(tmp_path)
+    assert [r["name"] for r in model.rows] == [molecule.name]

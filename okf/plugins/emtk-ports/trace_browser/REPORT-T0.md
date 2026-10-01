@@ -60,3 +60,27 @@ Table fill and sorting, star widget, hiding rows by row index, debounce timer, p
 
 ## Blocked / open
 Findings 1 and 2 above (probe bug; Qt-free binner for T3). Environment note: `IMP.bff` was briefly unimportable while another agent rebuilt it; retried, no effect on results.
+
+## Review (reviewer, 2026-10-01)
+
+Verified, not taken from the hand-over: commits touch only trace_browser files, its report and the agent's own log
+hunk; the rename shows as `__init__.py` shrunk plus `widget.py` new; `core/trace.py` changed only by moving the
+`IntensityTrace` import into the cache-miss branch; 42 tests passed (44 after the fix below); every legacy name
+(`TraceBrowser`, `StarCombo`, `StarRatingWidget`, `NoHoverSelectTable`, `META_FILENAME`, `get_tttr_supported_exts`,
+`name`, `cli_entrypoint`) still resolves. **Accepted**, with these decisions:
+
+1. **Image probe bug — FIXED (reviewer).** Reproduced: with tttrlib 0.27.0 `CLSMImage(tttr_data=...)` does not raise on a
+   non-image file but returns an empty `(1, 0, 0)` intensity (a real scan, `Leica_SP8.ptu`, gives `(93, 512, 512)`).
+   The probe tested `is not None`, so every readable TTTR was classed as an image and the browser listed no file at all
+   (`BH_SPC132.spc` -> "treated as image: True"). This is a shipped Qt-tool defect that predates the port. The probe now
+   requires a non-empty pixel stack (`gui/model.py::is_clsm_compatible`); two tests on the real sample files fail without
+   the fix. The same probe pattern exists nowhere else in `chisurf/`. The agent's workaround (patching the probe off in
+   the baseline script) is no longer needed; a fresh baseline would list the file.
+2. **Trace binning needs Qt — decision for card T3.** `core.trace.load_trace` bins with `IntensityTrace`, a QWidget, so
+   an uncached trace cannot be computed Qt-free (and hung a worker thread in the agent's test). Card T3 must first add a
+   Qt-free binner to `core/` (counts per window from the photon macro times, same numbers as `IntensityTrace`, proven
+   against it on `BH_SPC132.spc`), with `load_trace` using it; that is the one allowed `core/` change, as an additive
+   function, and the Qt tool may keep its widget path until T4.
+3. Quirks recorded by the agent (toolbar Subfolders checkbox without effect, stale hidden-row flags on a reused widget,
+   channel-only setup gives an empty trace, `api/io.list_files` differs from the widget scan) are carried to the card that
+   owns the control (T2) and must be decided there, not silently "fixed".
