@@ -19,6 +19,6 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.core.setup_channel_definition.gui.tool:SetupChannelDefinitionWidget",
-    "emtk": "chisurf.plugins.core.setup_channel_definition.gui.app:create_app"
+    "emtk": "chisurf.plugins.core.setup_channel_definition.gui.app:make_app"
   }
 }

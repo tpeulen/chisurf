@@ -1,0 +1,67 @@
+{
+  "_comment": "Guided tour of the channel definition tool. Targets are the toolbar controls drawn by the app (item_rects names).",
+  "steps": [
+    {
+      "title": "Choose or start a setup",
+      "text": "The <b>Setup</b> choice lists the saved detector setups. Pick one and its detectors, PIE windows, reading routine, LUTs and optical setup replace the working definition. <i>Unsaved</i> is a definition with no name.",
+      "target": {
+        "name": "setup_choice"
+      },
+      "await": {
+        "hint": "Pick a setup, or skip this step if none is saved yet."
+      }
+    },
+    {
+      "title": "Tabs: reading, detectors, windows",
+      "text": "Below the toolbar the editor has six tabs. <b>TTTR reading</b> takes timing from a measurement; <b>Detectors</b> and <b>PIE windows</b> hold the routing channels and the micro-time ranges. Click a tab to look at it; nothing changes until you edit a field."
+    },
+    {
+      "title": "Save under a name",
+      "text": "<b>Save</b> asks for a name and stores everything under it. A saved setup is what the analysis tools select.",
+      "target": {
+        "name": "save"
+      },
+      "await": {
+        "hint": "Press Save."
+      }
+    },
+    {
+      "title": "Name it",
+      "text": "Type a name and confirm. A name already in use is overwritten.",
+      "target": {
+        "name": "confirm"
+      },
+      "await": {
+        "hint": "Press Save in the prompt, or Cancel."
+      }
+    },
+    {
+      "title": "Share it",
+      "text": "<b>Public</b> makes the saved setup visible to every user of the MMFDB the next time you press Save. It is available only for a saved setup you own.",
+      "target": {
+        "name": "public"
+      }
+    },
+    {
+      "title": "Calibration snapshots",
+      "text": "Every archived G-factor calibration of the selected setup is a dated snapshot. Choosing one applies its G factor, l1 and l2 to the detectors. <b>Latest</b> leaves them as they are.",
+      "target": {
+        "name": "calibration"
+      }
+    },
+    {
+      "title": "Rename and delete",
+      "text": "<b>Rename</b> and <b>Delete</b> act on the selected saved setup and ask before changing anything.",
+      "target": {
+        "name": "rename"
+      }
+    },
+    {
+      "title": "Help",
+      "text": "<b>Help</b> explains the six tabs, the units of micro-time ranges and the LUT handling.",
+      "target": {
+        "name": "help"
+      }
+    }
+  ]
+}
