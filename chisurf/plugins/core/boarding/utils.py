@@ -1,18 +1,26 @@
 import html
+import os
 import pathlib
 import shutil
-
-from qtpy import QtCore, QtGui
+import subprocess
+import sys
 
 import chisurf as cs
 import chisurf.core.settings
 
 
 def open_in_file_manager(path: pathlib.Path) -> None:
-    """Open *path* in the OS file manager (best-effort, never raises)."""
+    """Open *path* in the OS file manager (best-effort, never raises; no toolkit needed)."""
     try:
-        url = QtCore.QUrl.fromLocalFile(str(path))
-        QtGui.QDesktopServices.openUrl(url)
+        if sys.platform.startswith("win"):
+            os.startfile(str(path))  # noqa: S606 - the user asked to open this folder
+        else:
+            opener = "open" if sys.platform == "darwin" else "xdg-open"
+            subprocess.Popen(  # noqa: S603 - fixed program, the path is one argument
+                [opener, str(path)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
     except Exception:
         pass
 
@@ -88,11 +96,9 @@ def detector_setups_summary() -> dict:
     any migration side effect.
     """
     try:
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
-            DETECTOR_SETUPS_FILE,
-            _db,
-            _load_mmfdb_detector_setups,
-        )
+        from chisurf.core.fio.setup_store import get_db as _db
+        from chisurf.core.fio.setup_store import load_mmfdb_setups
+        from chisurf.core.setup_channel_definition import CONFIG, DETECTOR_SETUPS_FILE, _row_data
     except Exception:
         return {"count": None, "store": "unknown", "detail": ""}
 
@@ -103,7 +109,7 @@ def detector_setups_summary() -> dict:
         db = None
     if db is not None:
         try:
-            res = _load_mmfdb_detector_setups(db)
+            res = load_mmfdb_setups(db, CONFIG, row_to_data=_row_data)
             n = len((res or {}).get("setups", {}) or {})
             return {"count": n, "store": "mmfdb", "detail": "in MMFDB"}
         except Exception:
@@ -149,34 +155,54 @@ def fcs_setups_summary() -> dict:
     return {"count": n or 0, "store": "none", "detail": ""}
 
 
-def _status_row(label: str, status: str, color: str, detail: str = "") -> str:
-    """Render one table row with a coloured status word and an optional detail cell."""
-    native = QtCore.QDir.toNativeSeparators(str(detail or ""))
-    detail_cell = _html_code(native) if native else ""
-    return (
-        "<tr>"
-        f"<td style='padding:4px 10px 4px 0'>{html.escape(label)}</td>"
-        f"<td style='padding:4px 10px 4px 0; color:{color}; font-weight:600'>{html.escape(status)}</td>"
-        f"<td style='padding:4px 0 4px 0'>{detail_cell}</td>"
-        "</tr>"
-    )
-
-
 #: Colours for the three-state status cells.
 _OK_COLOR = "#2e7d32"
 _MISSING_COLOR = "#c62828"
 _NEUTRAL_COLOR = "#8a8a8a"
 
 
-def _file_row(label: str, ok: bool, detail: str = "") -> str:
-    """Render an OK/MISSING row for a genuinely file-backed setting."""
-    return _status_row(
+def _status_cells(label: str, status: str, color: str, detail: str = "") -> dict:
+    """One status row as data: ``item``, ``status``, ``detail`` (native separators) and ``color``."""
+    return {
+        "item": str(label),
+        "status": str(status),
+        "detail": str(detail or "").replace("/", os.sep),
+        "color": color,
+    }
+
+
+def _cells_html(cells: dict) -> str:
+    """Render one status row (see :func:`_status_cells`) as an HTML table row."""
+    detail_cell = _html_code(cells["detail"]) if cells["detail"] else ""
+    return (
+        "<tr>"
+        f"<td style='padding:4px 10px 4px 0'>{html.escape(cells['item'])}</td>"
+        f"<td style='padding:4px 10px 4px 0; color:{cells['color']}; font-weight:600'>"
+        f"{html.escape(cells['status'])}</td>"
+        f"<td style='padding:4px 0 4px 0'>{detail_cell}</td>"
+        "</tr>"
+    )
+
+
+def _status_row(label: str, status: str, color: str, detail: str = "") -> str:
+    """Render one table row with a coloured status word and an optional detail cell."""
+    return _cells_html(_status_cells(label, status, color, detail))
+
+
+def _file_cells(label: str, ok: bool, detail: str = "") -> dict:
+    """An OK/MISSING row, as data, for a genuinely file-backed setting."""
+    return _status_cells(
         label, "OK" if ok else "MISSING", _OK_COLOR if ok else _MISSING_COLOR, detail
     )
 
 
-def _setups_row(label: str, summary: dict) -> str:
-    """Render an MMFDB-aware row for a setup type.
+def _file_row(label: str, ok: bool, detail: str = "") -> str:
+    """Render an OK/MISSING row for a genuinely file-backed setting."""
+    return _cells_html(_file_cells(label, ok, detail))
+
+
+def _setups_cells(label: str, summary: dict) -> dict:
+    """An MMFDB-aware row, as data, for a setup type.
 
     A count > 0 is ``OK``; an empty store is a neutral "none yet" (not an error,
     since setups are created on demand); an unknown count is neutral too.
@@ -185,18 +211,23 @@ def _setups_row(label: str, summary: dict) -> str:
     store = summary.get("store", "unknown")
     where = summary.get("detail", "")
     if count is None:
-        return _status_row(label, "—", _NEUTRAL_COLOR, "could not be determined")
+        return _status_cells(label, "—", _NEUTRAL_COLOR, "could not be determined")
     if count > 0:
         noun = "setup" if count == 1 else "setups"
-        return _status_row(label, "OK", _OK_COLOR, f"{count} {noun} {where}".strip())
+        return _status_cells(label, "OK", _OK_COLOR, f"{count} {noun} {where}".strip())
     # count == 0 → nothing defined yet; phrase by store so it never looks broken.
     if store == "mmfdb":
-        return _status_row(label, "none yet", _NEUTRAL_COLOR, "MMFDB connected — none defined yet")
-    return _status_row(label, "none yet", _NEUTRAL_COLOR, "define one when needed")
+        return _status_cells(label, "none yet", _NEUTRAL_COLOR, "MMFDB connected — none defined yet")
+    return _status_cells(label, "none yet", _NEUTRAL_COLOR, "define one when needed")
 
 
-def build_status_html() -> str:
-    """Return an HTML table describing the settings files and setup stores.
+def _setups_row(label: str, summary: dict) -> str:
+    """Render an MMFDB-aware row for a setup type."""
+    return _cells_html(_setups_cells(label, summary))
+
+
+def status_cells() -> list[dict]:
+    """Return the settings-files and setup-store status as rows of data.
 
     Setup types that live in the MMFDB (detectors, FCS channels) are reported by
     their actual availability — not by the presence of a legacy JSON file — so a
@@ -205,46 +236,39 @@ def build_status_html() -> str:
     p = settings_paths()
     mmfdb = mmfdb_info()
 
-    rows = []
-    rows.append(
-        _file_row(
+    rows = [
+        _file_cells(
             "User settings directory", p["user_settings_dir"].exists(), str(p["user_settings_dir"])
-        )
-    )
-    rows.append(
-        _file_row(
+        ),
+        _file_cells(
             "settings_chisurf.yaml",
             p["settings_chisurf_yaml"].is_file(),
             str(p["settings_chisurf_yaml"]),
-        )
-    )
-    rows.append(
-        _file_row(
+        ),
+        _file_cells(
             "settings_colors.yaml",
             p["settings_colors_yaml"].is_file(),
             str(p["settings_colors_yaml"]),
-        )
-    )
-    rows.append(
-        _file_row(
+        ),
+        _file_cells(
             "anisotropy_corrections.json",
             p["anisotropy_corrections_json"].is_file(),
             str(p["anisotropy_corrections_json"]),
-        )
-    )
-    rows.append(_file_row("styles/", p["styles_dir"].is_dir(), str(p["styles_dir"])))
-    rows.append(_file_row("plugins/", p["plugins_dir"].is_dir(), str(p["plugins_dir"])))
-    rows.append(_file_row("logs/", p["logs_dir"].is_dir(), str(p["logs_dir"])))
+        ),
+        _file_cells("styles/", p["styles_dir"].is_dir(), str(p["styles_dir"])),
+        _file_cells("plugins/", p["plugins_dir"].is_dir(), str(p["plugins_dir"])),
+        _file_cells("logs/", p["logs_dir"].is_dir(), str(p["logs_dir"])),
+    ]
 
     # Metadata store + the setup types it now backs (not plain files anymore).
     if mmfdb["connected"]:
-        rows.append(_status_row("Metadata store (MMFDB)", "connected", _OK_COLOR, mmfdb["path"]))
+        rows.append(_status_cells("Metadata store (MMFDB)", "connected", _OK_COLOR, mmfdb["path"]))
     else:
         rows.append(
-            _status_row("Metadata store (MMFDB)", "local files", _NEUTRAL_COLOR, "not connected")
+            _status_cells("Metadata store (MMFDB)", "local files", _NEUTRAL_COLOR, "not connected")
         )
-    rows.append(_setups_row("Detector setups", detector_setups_summary()))
-    rows.append(_setups_row("FCS channel setups", fcs_setups_summary()))
+    rows.append(_setups_cells("Detector setups", detector_setups_summary()))
+    rows.append(_setups_cells("FCS channel setups", fcs_setups_summary()))
 
     try:
         s = getattr(cs.core.settings, "cs_settings", None)
@@ -252,35 +276,58 @@ def build_status_html() -> str:
     except Exception:
         ok = False
 
-    rows.append(_file_row("Runtime settings", ok, "loaded" if ok else "not loaded"))
+    rows.append(_file_cells("Runtime settings", ok, "loaded" if ok else "not loaded"))
+    return rows
 
+
+def build_status_html() -> str:
+    """Return an HTML table describing the settings files and setup stores."""
     return (
         "<h3>Settings status</h3>"
-        "<table style='border-collapse:collapse'>" + "".join(rows) + "</table>"
+        "<table style='border-collapse:collapse'>"
+        + "".join(_cells_html(row) for row in status_cells())
+        + "</table>"
     )
+
+
+#: The optional dependencies the wizard reports: ``(module, what it is for)``.
+OPTIONAL_DEPENDENCIES = (
+    ("tttrlib", "TTTR reading and analysis"),
+    ("pyqtgraph", "Plotting in the GUI"),
+    ("markdown", "Rendering Markdown docs in Help"),
+    ("pymol", "3D viewer (optional)"),
+)
+
+
+def deps_cells() -> list[dict]:
+    """Return the optional-dependency status as rows of data (``module``, ``status``, ``purpose``)."""
+    rows = []
+    for mod, purpose in OPTIONAL_DEPENDENCIES:
+        ok, detail = import_check(mod)
+        rows.append(
+            {
+                "module": mod,
+                "status": "OK" if ok else "MISSING",
+                "purpose": purpose,
+                "detail": "" if ok else str(detail or ""),
+                "color": _OK_COLOR if ok else _MISSING_COLOR,
+            }
+        )
+    return rows
 
 
 def build_deps_html() -> str:
     """Return an HTML table describing which optional dependencies are importable."""
-    deps = [
-        ("tttrlib", "TTTR reading and analysis"),
-        ("pyqtgraph", "Plotting in the GUI"),
-        ("markdown", "Rendering Markdown docs in Help"),
-        ("pymol", "3D viewer (optional)"),
-    ]
-
     rows = []
-    for mod, purpose in deps:
-        ok, detail = import_check(mod)
-        status = "OK" if ok else "MISSING"
-        color = "#2e7d32" if ok else "#c62828"
-        extra = html.escape(purpose)
-        if not ok and detail:
-            extra = f"{extra}<br/><span style='color:#666'>{html.escape(str(detail))}</span>"
+    for cell in deps_cells():
+        extra = html.escape(cell["purpose"])
+        if cell["detail"]:
+            extra = f"{extra}<br/><span style='color:#666'>{html.escape(cell['detail'])}</span>"
         rows.append(
             "<tr>"
-            f"<td style='padding:4px 10px 4px 0'><code>{html.escape(mod)}</code></td>"
-            f"<td style='padding:4px 10px 4px 0; color:{color}; font-weight:600'>{status}</td>"
+            f"<td style='padding:4px 10px 4px 0'><code>{html.escape(cell['module'])}</code></td>"
+            f"<td style='padding:4px 10px 4px 0; color:{cell['color']}; font-weight:600'>"
+            f"{cell['status']}</td>"
             f"<td style='padding:4px 0 4px 0'>{extra}</td>"
             "</tr>"
         )

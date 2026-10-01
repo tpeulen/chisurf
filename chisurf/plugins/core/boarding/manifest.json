@@ -17,7 +17,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.boarding.wizard:WelcomeToChiSurfWizard"
+    "gui": "chisurf.plugins.core.boarding.wizard:WelcomeToChiSurfWizard",
+    "emtk": "chisurf.plugins.core.boarding.app:make_app"
   },
   "optional_requires": {
     "fcs_channel_preset": "*",

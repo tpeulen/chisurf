@@ -1,0 +1,262 @@
+{
+  "_comment": "Onboarding wizard, native emtk window. Drawn by emtk.view_form over BoardingModel (model.py). 'navigation' is the Back / Next / Finish bar, 'confirm' the question Restore defaults asks, and one panel per step of the Qt wizard (named by the step id). The step texts are Markdown drawn by the 'markdown' custom section, the repair outcome by 'repair_status', and the detector and FCS steps embed the shared channel-definition and FCS-preset editors through the 'detector_editor' and 'fcs_editor' custom sections, drawn by app.py.",
+  "title": "Welcome to ChiSurf",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Navigation",
+      "name": "navigation",
+      "description": "Walk the steps in order: Back, Next, and Finish on the last step.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Back goes to the previous step, Next to the following one, and Finish (last step only) closes the wizard.",
+          "buttons": [
+            {"action": "go_back", "label": "Back",
+             "description": "Go to the previous step. Not available on the first step."},
+            {"action": "go_next", "label": "Next",
+             "description": "Go to the following step. Every step can be skipped; nothing has to be completed first.",
+             "hidden_when": {"attr": "is_last", "equals": "True"}},
+            {"action": "finish", "label": "Finish",
+             "description": "Close the wizard. You can run it again from the Plugin Manager.",
+             "hidden_when": {"attr": "is_last", "equals": "False"}}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Restore defaults",
+      "name": "confirm",
+      "description": "The question Restore defaults asks before it replaces your settings files.",
+      "sections": [
+        {
+          "type": "custom", "key": "markdown",
+          "description": "What restoring the packaged defaults does.",
+          "options": {"source": "restore_question"}
+        },
+        {
+          "type": "button_row",
+          "description": "Replace the settings files, or keep them.",
+          "buttons": [
+            {"action": "confirm_yes", "label": "Restore defaults",
+             "description": "Replace your current user settings files with the packaged defaults."},
+            {"action": "confirm_no", "label": "Keep my settings",
+             "description": "Close this question; nothing changes."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Welcome",
+      "name": "welcome",
+      "description": "Introduction: what the wizard does and where your settings live.",
+      "sections": [
+        {
+          "type": "custom", "key": "markdown",
+          "description": "What this wizard helps you with.",
+          "options": {"source": "welcome_html"}
+        },
+        {
+          "type": "button_row",
+          "description": "Open the folder with your ChiSurf settings.",
+          "buttons": [
+            {"action": "open_settings_dir", "label": "Open settings folder",
+             "description": "Open the user settings folder (~/.chisurf) in your file manager."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Settings",
+      "name": "settings",
+      "description": "Whether your user settings files and setup stores exist.",
+      "sections": [
+        {
+          "type": "custom", "key": "data_table", "title": "Settings status",
+          "description": "One row per settings file or store: its state (OK, MISSING, connected, none yet) and where it is.",
+          "options": {
+            "source": "status_rows",
+            "row_key": "item",
+            "tooltip_key": "detail",
+            "expand": true,
+            "reserve": 48,
+            "fit_columns": true,
+            "min_column_width": 60,
+            "columns": [
+              {"key": "item", "title": "Item", "width": 250,
+               "tooltip": "The settings file, folder or store."},
+              {"key": "status", "title": "Status", "width": 90,
+               "tooltip": "OK when it exists, MISSING when it does not, or the state of the metadata store and setup lists."},
+              {"key": "detail", "title": "Location", "width": 420,
+               "tooltip": "Where the file or folder is, or how many setups are stored."}
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "description": "Re-check the settings files, or open the settings editor.",
+          "buttons": [
+            {"action": "refresh", "label": "Refresh",
+             "description": "Re-check the settings files."},
+            {"action": "open_settings_editor", "label": "Open settings editor",
+             "description": "Open the ChiSurf settings editor to adjust paths and options."}
+          ]
+        },
+        {
+          "type": "custom", "key": "notice",
+          "description": "Why a window did not open.",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Fix / Initialize",
+      "name": "fix",
+      "description": "Create missing settings files or restore the packaged defaults.",
+      "sections": [
+        {
+          "type": "custom", "key": "markdown",
+          "description": "When to use this step.",
+          "options": {"source": "repair_intro_html"}
+        },
+        {
+          "type": "button_row",
+          "description": "Create the missing files, or replace all settings by the defaults.",
+          "buttons": [
+            {"action": "create_missing", "label": "Create missing files",
+             "description": "Only writes settings files that do not exist yet."},
+            {"action": "request_restore", "label": "Restore defaults (overwrite)",
+             "description": "Replace current user settings files with packaged defaults. Asks first."}
+          ]
+        },
+        {
+          "type": "custom", "key": "repair_status",
+          "description": "The outcome of the last create, restore or update action.",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Experiments",
+      "name": "experiments",
+      "description": "Re-sync the fitting-model list so new models appear.",
+      "sections": [
+        {
+          "type": "custom", "key": "markdown",
+          "description": "What updating the experiment configuration does.",
+          "options": {"source": "experiments_intro_html"}
+        },
+        {
+          "type": "button_row",
+          "description": "Update experiment_configs.yaml from the packaged default.",
+          "buttons": [
+            {"action": "update_experiments", "label": "Update experiments",
+             "description": "Re-sync experiment_configs.yaml from the packaged default so new fitting models (e.g. the AutoForm PDA models) show up. Requires a restart."}
+          ]
+        },
+        {
+          "type": "custom", "key": "repair_status",
+          "description": "The outcome of the last create, restore or update action.",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Dependencies",
+      "name": "dependencies",
+      "description": "Which optional Python packages are importable.",
+      "sections": [
+        {
+          "type": "custom", "key": "data_table", "title": "Optional dependencies",
+          "description": "One row per optional package: whether it imports and what it is used for. A missing package only disables the feature that needs it.",
+          "options": {
+            "source": "deps_rows",
+            "row_key": "module",
+            "expand": true,
+            "reserve": 48,
+            "fit_columns": true,
+            "min_column_width": 60,
+            "columns": [
+              {"key": "module", "title": "Package", "width": 110,
+               "tooltip": "The Python module that is tried."},
+              {"key": "status", "title": "Status", "width": 90,
+               "tooltip": "OK when the module imports, MISSING when it does not."},
+              {"key": "purpose", "title": "Used for", "width": 260,
+               "tooltip": "The feature that needs the package."},
+              {"key": "detail", "title": "Import error", "width": 300,
+               "tooltip": "Why the import failed, when it did."}
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "description": "Re-check the optional packages.",
+          "buttons": [
+            {"action": "refresh", "label": "Refresh",
+             "description": "Re-check the optional dependencies."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Detector setup",
+      "name": "detector",
+      "description": "Define the detector channels, PIE windows and timing once per hardware configuration.",
+      "sections": [
+        {
+          "type": "custom", "key": "detector_editor",
+          "description": "The shared detector, PIE-window, TTTR-reading, TAC-correction and optical-setup editor of the Setup: Channel Definition tool.",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "FCS channels",
+      "name": "fcs",
+      "description": "Define which detector channels or channel pairs belong to an FCS correlation.",
+      "sections": [
+        {
+          "type": "custom", "key": "fcs_editor",
+          "description": "The shared FCS channel-pair editor of the Setup: FCS Definitions tool.",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Finish",
+      "name": "finish",
+      "description": "Recommended next steps, and shortcuts to Help and the Plugin Manager.",
+      "sections": [
+        {
+          "type": "custom", "key": "markdown",
+          "description": "What to do next.",
+          "options": {"source": "finish_html"}
+        },
+        {
+          "type": "button_row",
+          "description": "Open Help or the Plugin Manager.",
+          "buttons": [
+            {"action": "open_help", "label": "Open Help",
+             "description": "Browse experiment-specific guides and built-in documentation."},
+            {"action": "open_plugin_manager", "label": "Open Plugin Manager",
+             "description": "Manage installed plugins."}
+          ]
+        },
+        {
+          "type": "custom", "key": "notice",
+          "description": "Why a window did not open.",
+          "options": {}
+        }
+      ]
+    }
+  ]
+}

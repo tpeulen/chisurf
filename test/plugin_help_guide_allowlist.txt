@@ -13,7 +13,6 @@ chisurf/plugins/calculator/fret_calculator/gui
 chisurf/plugins/calculator/hub/gui
 modules/chimol/chimol/hosts/qt
 chisurf/plugins/core/acq/gui
-chisurf/plugins/core/boarding
 chisurf/plugins/core/code_editor
 chisurf/plugins/core/help/gui
 chisurf/plugins/core/lightpath_simulator/gui

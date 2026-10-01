@@ -71,6 +71,9 @@ class BoardingViewModel:
     def __init__(self) -> None:
         self._observers: list[Callable[[str], None]] = []
         self._repair_status_html = ""
+        #: Plain-text outcome of the last create/restore/update action and whether it worked.
+        self.repair_message = ""
+        self.repair_ok = True
 
     # ── observer hook ──────────────────────────────────────────────────
     def add_observer(self, cb: Callable[[str], None]) -> None:
@@ -164,6 +167,7 @@ class BoardingViewModel:
 
     def _set_repair_status(self, ok: bool, msg: str) -> None:
         color = "#2e7d32" if ok else "#c62828"
+        self.repair_message, self.repair_ok = str(msg), bool(ok)
         self._repair_status_html = f"<span style='color:{color}; font-weight:600'>{msg}</span>"
         self.notify("refresh")
 

@@ -1,0 +1,45 @@
+{
+  "_comment": "Guided tour of the onboarding wizard. Targets are controls of the emtk app: the step list ('nav_list'), the Back/Next/Finish and page buttons (their action names) and the embedded editors ('detector_save', 'fcs_Save').",
+  "steps": [
+    {
+      "title": "The steps",
+      "text": "Every step of the setup is listed here. A <b>check mark</b> means the step needs nothing more from you. Click a step to go there; nothing has to be done in order.",
+      "target": {"name": "nav_list"},
+      "await": {"hint": "Click any step in the list."}
+    },
+    {
+      "title": "Go on with Next",
+      "text": "<b>Next</b> and <b>Back</b> only move between steps; they never change your settings.",
+      "target": {"name": "go_next"},
+      "await": {"hint": "Press Next."}
+    },
+    {
+      "title": "Create what is missing",
+      "text": "Open <b>Fix / Initialize</b> if the <b>Settings</b> step lists a file as MISSING. <b>Create missing files</b> writes only the files that do not exist yet; <b>Restore defaults</b> replaces your settings and asks first.",
+      "target": {"name": "create_missing"},
+      "await": {"hint": "Go to the Fix / Initialize step and press Create missing files."}
+    },
+    {
+      "title": "New fitting models",
+      "text": "<b>Update experiments</b> copies the packaged model list over yours so new models show up in the add-fit list. Restart ChiSurf afterwards.",
+      "target": {"name": "update_experiments"},
+      "await": {"hint": "Go to the Experiments step and press Update experiments."}
+    },
+    {
+      "title": "Describe your detectors",
+      "text": "The <b>Detector setup</b> step hosts the channel-definition editor. Set up the routing channels and PIE windows once for your hardware and press <b>Save</b>; the step then gets its check mark.",
+      "target": {"name": "detector_save"}
+    },
+    {
+      "title": "FCS channel pairs",
+      "text": "For burst-wise FCS, pick the detector setup, add a channel pair and press <b>Save</b>.",
+      "target": {"name": "fcs_Save"}
+    },
+    {
+      "title": "Done",
+      "text": "<b>Finish</b> closes the wizard. You can run it again from the Plugin Manager whenever something is missing.",
+      "target": {"name": "finish"},
+      "await": {"hint": "Go to the last step and press Finish."}
+    }
+  ]
+}
