@@ -1,0 +1,97 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "10.000",
+    "1000",
+    "all",
+    "binwindow10ms",
+    "binwindow[ms]",
+    "clear",
+    "clearcaches",
+    "file",
+    "files",
+    "filter",
+    "folder",
+    "herebycardt3.nothingisdrawnuntilthen.",
+    "includesubfolders",
+    "nofolderselected",
+    "notes",
+    "open",
+    "openafolderwithtttrfiles.",
+    "rating",
+    "selectedfile(none)",
+    "selectsetup",
+    "size(mb)",
+    "theintensitytraceoftheselectedfile,itschannelsandtheyrangearedrawn",
+    "tracebrowser",
+    "traceplot",
+    "traceplotcardt3",
+    "ymax",
+    "ymin"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "← Select setup",
+      "id": "← Select setup##back_to_setup",
+      "tooltip": "Go back to the detector setup page. The accepted setup, the folder and the file list stay as they are."
+    },
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open##choose_folder",
+      "tooltip": "Choose a folder with PTU/TTTR files. You can also drop a folder on the window."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##clear",
+      "tooltip": "Clear the file list, the selection and the shown trace. No file and no rating or note is changed."
+    },
+    {
+      "kind": "button",
+      "label": "Clear caches",
+      "id": "Clear caches##clear_caches",
+      "tooltip": "Delete the cached traces and the cached image probes of this folder, in memory and on disk. Traces are computed again when needed."
+    },
+    {
+      "kind": "input_text",
+      "label": "folder_text",
+      "id": "##folder_text",
+      "tooltip": "The folder whose files are listed. Use Open, or drop a folder on the window."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Include subfolders",
+      "id": "Include subfolders##include_subfolders",
+      "tooltip": "Also list the files in the sub-folders of the opened folder (the .trash folder is never listed). Switching it rescans the folder."
+    },
+    {
+      "kind": "input_text",
+      "label": "window_ms",
+      "id": "##window_ms",
+      "tooltip": "Width of the time bins of the intensity trace in milliseconds. The trace itself is drawn by a later card; the value is kept and remembered."
+    },
+    {
+      "kind": "input_text",
+      "label": "y_min",
+      "id": "##y_min",
+      "tooltip": "Lower limit of the trace plot's y axis (counts per bin). Entered the wrong way round with Y max, the two are swapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "y_max",
+      "id": "##y_max",
+      "tooltip": "Upper limit of the trace plot's y axis (counts per bin)."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
