@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 
 from chisurf.core.datastore import (
+    as_store,
     column_names,
     concat_stores,
     new_store,
@@ -262,7 +263,16 @@ def compute_bva(
     # interleaved (every other row is a sentinel whose ``First File`` names no
     # measurement), so a column shorter than the table would silently shift
     # every result onto the wrong burst.
-    df.append_columns(
+    #
+    # The input is left as it was: the GUIs keep the burst table they read and
+    # recompute on it when a parameter changes, and appending in place made the
+    # second run fail ("both stores have a column 'Proximity Ratio Mean'").
+    out = as_store(df).copy()
+    for name in ("Proximity Ratio Mean", "Proximity Ratio Std"):
+        names = list(column_names(out))
+        if name in names:
+            out.remove_column(names.index(name))
+    out.append_columns(
         store_from_arrays(
             {
                 "Proximity Ratio Mean": means,
@@ -271,8 +281,8 @@ def compute_bva(
         )
     )
     if progress_window:
-        progress_window.set_value(row_count(df))
-    return df
+        progress_window.set_value(row_count(out))
+    return out
 
 
 def write_bva_container(

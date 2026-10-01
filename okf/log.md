@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **compute_bva leaves its input untouched** (found during the burst_bva upgrade): it appended its two result columns to the
+  input table in place, so a recompute on the burst table the GUIs keep (the Qt tool's auto update, the emtk controller)
+  failed with "both stores have a column 'Proximity Ratio Mean'". Now returns a copy; guard
+  `burst_bva/tests/test_compute_bva_leaves_input.py`.
+
 - **burst_background emtk app at parity** (EMTK-1, backfill): sized per-action dialogs, frames on demand, folder drop no longer
   adds the .pto container as a second measurement; shared drawing fixed (legend "Series", colliding fit tags, unnamed rate bars);
   guide targets drawn. Found here: the background tail-fit bias (`8e2c1f892`). [report](plugins/emtk-ports/burst_background/REPORT.md).
