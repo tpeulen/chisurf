@@ -13,7 +13,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.switch_user:SwitchUserWidget"
+    "gui": "chisurf.plugins.core.switch_user:SwitchUserWidget",
+    "emtk": "chisurf.plugins.core.switch_user.app:make_app"
   },
   "icon": "👤"
 }

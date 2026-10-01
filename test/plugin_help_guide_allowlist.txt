@@ -20,7 +20,6 @@ chisurf/plugins/core/mmfdb_admin/gui
 chisurf/plugins/core/plugin_check/gui
 chisurf/plugins/core/project_browser/gui
 chisurf/plugins/core/setup/gui
-chisurf/plugins/core/switch_user
 chisurf/plugins/core/updater
 chisurf/plugins/core/wizards/gui
 chisurf/plugins/fcs/fcs_channel_preset/gui

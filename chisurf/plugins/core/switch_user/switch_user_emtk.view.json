@@ -1,0 +1,90 @@
+{
+  "_comment": "Switch user, native emtk window. Drawn by emtk.view_form over SwitchUserModel (model.py): 'login' is the form of the Qt login dialog (server or MMFDB URL, port, account, password, the two remember options, Login / Cancel, status), 'notice' the message box the Qt dialog showed. The two editable combos of the Qt dialog are a text field plus a picker over the list.",
+  "title": "Switch User",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Sign in",
+      "name": "login",
+      "description": "Sign in to the MMFDB workspace as another account.",
+      "sections": [
+        {
+          "type": "value", "kind": "str", "label": "Server", "attr": "server",
+          "call": "edited_server", "hidden_when": {"attr": "mode", "equals": "remote"},
+          "placeholder": "127.0.0.1",
+          "description": "Host name or address of the MMFDB server. Type one, or pick a remembered server below."
+        },
+        {
+          "type": "value", "kind": "str", "label": "MMFDB URL", "attr": "server",
+          "call": "edited_server", "hidden_when": {"attr": "mode", "equals": "embedded"},
+          "description": "Address of the remote MMFDB (an http or https URL)."
+        },
+        {
+          "type": "value", "kind": "int", "label": "Port", "attr": "port",
+          "minimum": 1, "maximum": 65535, "hidden_when": {"attr": "mode", "equals": "remote"},
+          "description": "Command port of the MMFDB server (1 to 65535). The publish port is the next one."
+        },
+        {
+          "type": "choice", "label": "Recent servers", "attr": "recent_server",
+          "options_source": "recent_servers", "call": "use_recent_server",
+          "description": "The servers you signed in to before, newest first. Picking one fills the server field."
+        },
+        {
+          "type": "value", "kind": "str", "label": "User", "attr": "user", "call": "edited_user",
+          "description": "The account to sign in as. Type any account name, or pick one below."
+        },
+        {
+          "type": "choice", "label": "Select user", "attr": "known_user",
+          "options_source": "offered_users", "call": "use_known_user",
+          "description": "The configured account and the desktop accounts. Picking one fills the user field."
+        },
+        {
+          "type": "value", "kind": "password", "label": "Password", "attr": "password",
+          "description": "The account's password. It is shown as stars and never stored."
+        },
+        {
+          "type": "toggle", "label": "Save selected user", "attr": "save_login",
+          "description": "Remember this account as the default one for the next start."
+        },
+        {
+          "type": "toggle", "label": "Log in automatically when allowed", "attr": "autologin",
+          "description": "Keep a session token in the operating system's credential store so the next start signs in without a password."
+        },
+        {
+          "type": "button_row",
+          "description": "Sign in, or close without changing the active user.",
+          "buttons": [
+            {"action": "login", "label": "Login",
+             "description": "Authenticate against the MMFDB. On success the account and server are remembered and the window closes."},
+            {"action": "cancel", "label": "Cancel",
+             "description": "Close without changing the active user."}
+          ]
+        },
+        {
+          "type": "info", "source": "status_text",
+          "description": "The result of the last attempt, or what to do next."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Notice",
+      "name": "notice",
+      "description": "A message about the sign-in that has to be read before the window goes on.",
+      "sections": [
+        {
+          "type": "info", "source": "notice_text",
+          "description": "What happened."
+        },
+        {
+          "type": "button_row",
+          "description": "Acknowledge the message.",
+          "buttons": [
+            {"action": "dismiss_notice", "label": "OK",
+             "description": "Close this message."}
+          ]
+        }
+      ]
+    }
+  ]
+}

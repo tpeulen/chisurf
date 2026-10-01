@@ -1,0 +1,33 @@
+{
+  "_comment": "Guided tour of the switch-user window. Targets are controls of the emtk app: spec fields by attr, buttons by action name.",
+  "steps": [
+    {
+      "title": "Which server",
+      "text": "The <b>Server</b> is where the MMFDB runs; <b>127.0.0.1</b> is this computer. Pick a server you used before with <b>Recent servers</b>, or type one. A remote MMFDB is addressed by a <b>URL</b> instead and has no port.",
+      "target": {"name": "server", "attr": "server"}
+    },
+    {
+      "title": "Which account",
+      "text": "Type the account name, or use <b>Select user</b> for the configured account and the desktop accounts. Leave it empty and the account last picked from the list is used.",
+      "target": {"name": "user", "attr": "user"},
+      "await": {"hint": "Edit the User field and press Enter."}
+    },
+    {
+      "title": "The password",
+      "text": "The password is shown as stars and is never stored. An account that may sign in without a password accepts an empty one.",
+      "target": {"name": "password", "attr": "password"}
+    },
+    {
+      "title": "What is remembered",
+      "text": "<b>Save selected user</b> makes this the default account at the next start. <b>Log in automatically when allowed</b> also keeps a session token in the operating system's credential store.",
+      "target": {"name": "autologin", "attr": "autologin"},
+      "await": {"hint": "Tick or untick Log in automatically."}
+    },
+    {
+      "title": "Sign in",
+      "text": "<b>Login</b> asks the MMFDB. A refusal is shown in a message and nothing changes; on success the choice is saved and the window closes. <b>Cancel</b> closes it without changing anything.",
+      "target": {"name": "login", "action": "login"},
+      "await": {"hint": "Press Login."}
+    }
+  ]
+}

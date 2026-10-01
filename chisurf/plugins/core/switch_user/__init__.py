@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from qtpy import QtWidgets
-
 from chisurf.core.plugin import load_manifest
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 name = _manifest.display_name if _manifest is not None else "Setup:Switch User"
 
 
-def show_switch_user(parent: QtWidgets.QWidget | None = None) -> None:
+def show_switch_user(parent=None) -> None:
     """Open the ChiSurf login dialog to switch the active MMFDB user.
 
     Parameters
@@ -26,20 +24,19 @@ def show_switch_user(parent: QtWidgets.QWidget | None = None) -> None:
     dialog.exec()
 
 
-class SwitchUserWidget(QtWidgets.QWidget):
-    """Transient plugin widget that opens the MMFDB login dialog."""
+def __getattr__(attribute):
+    """Load the legacy Qt widget only when a Qt host requests it."""
+    if attribute == "SwitchUserWidget":
+        from qtpy import QtWidgets
 
-    def showEvent(self, event) -> None:
-        """Open the switch-user dialog when the plugin is shown.
+        class SwitchUserWidget(QtWidgets.QWidget):
+            def showEvent(self, event):
+                super().showEvent(event)
+                show_switch_user(parent=self)
+                self.close()
 
-        Parameters
-        ----------
-        event : QtCore.QShowEvent
-            Qt show event.
-        """
-        super().showEvent(event)
-        show_switch_user(parent=self)
-        self.close()
+        return SwitchUserWidget
+    raise AttributeError(attribute)
 
 
 if __name__ == "plugin":
