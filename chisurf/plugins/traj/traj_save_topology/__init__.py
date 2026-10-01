@@ -17,18 +17,21 @@ to interpret coordinate data correctly.
 # Plugin brand icon (unified emoji set)
 icon = "💾"
 
-import sys
-
-from chisurf.plugins.traj.traj_save_topology.widget import SaveTopology
-
 # Define the plugin name - this will appear in the Plugins menu
 name = "Structure:Trajectory:Save Topol"
+
+
+def __getattr__(attribute):
+    if attribute == "SaveTopology":
+        from chisurf.plugins.traj.traj_save_topology.widget import SaveTopology
+        return SaveTopology
+    raise AttributeError(attribute)
 
 
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed
 if __name__ == "plugin":
     # Create an instance of the SaveTopology class
-    window = SaveTopology()
+    window = __getattr__("SaveTopology")()
     # Show the window
     window.show()

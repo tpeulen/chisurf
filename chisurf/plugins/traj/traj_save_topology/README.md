@@ -19,21 +19,19 @@ This is useful for extracting a representative structure from a trajectory for f
 
 ## Requirements
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - mdtraj (for trajectory handling)
-  - chisurf core modules
+- ChiSurf's trajectory readers (`chisurf.core.structure.trajectory_data`); no Qt for
+  the emtk window (`app.py`), Qt only for the legacy AutoForm widget (`widget.py`).
 
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Structure > Save Topology
-2. Load a trajectory file:
-   - Click "..." to select an input H5 trajectory file
-   - The file path will appear in the text field
-3. Save the topology file:
-   - Click "save" to choose a save location
-   - The first frame of the trajectory will be saved as a PDB file
+1. Open *Structure > Trajectory > Save Topol* (or the *Save Topol* panel of Traj Tools).
+2. Choose the trajectory: press **…** beside *Trajectory*, or drop a `.dcd` on the window.
+3. Choose the topology: press **…** beside *Topology*, or drop a `.pdb`/`.cif`/`.ent`.
+   A DCD stores coordinates only, so the topology is required for it.
+4. Press **💾 Save topology…** and pick a file name; frame 0 is written as a PDB and
+   every step is listed in the log.
+
+**📖 Guide** walks through these steps; **❓ Help** has the details.
 
 ## Applications
 

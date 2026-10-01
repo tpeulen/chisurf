@@ -1,0 +1,33 @@
+{
+  "_comment": "Guided tour for the Save-Topology tool. Targets are by name: the file rows and the save button live inside the traj_save_topology_io custom section, so no spec key names them; the log is the spec's info section. Read by chisurf.emtk.help_guide (emtk) and chisurf.gui.widgets.tools.guided_tour (Qt).",
+  "steps": [
+    {
+      "title": "Frame 0 as a structure",
+      "text": "This tool writes the <b>first frame</b> of a trajectory as a PDB file. Three steps: choose the trajectory, choose the topology that names its atoms, save.",
+      "target": {}
+    },
+    {
+      "title": "The trajectory",
+      "text": "A DCD holds the coordinates of every frame. Press <b>…</b> beside the row, or drop a <code>.dcd</code> on the window.",
+      "target": {"name": "trajectory"},
+      "await": {"hint": "Press <b>…</b> and pick a trajectory."}
+    },
+    {
+      "title": "The topology",
+      "text": "A DCD stores coordinates and <i>nothing else</i>: the atom names, residues and chains come from a structure file. Choose the PDB the trajectory was written for — the atom order must match.",
+      "target": {"name": "topology"},
+      "await": {"hint": "Press <b>…</b> and pick the PDB that names the atoms."}
+    },
+    {
+      "title": "Save",
+      "text": "Pick a file name; frame 0 is read in the topology's atom order and written as a PDB.",
+      "target": {"name": "save"},
+      "await": {"hint": "Press <b>💾 Save topology…</b>."}
+    },
+    {
+      "title": "What happened",
+      "text": "Every step lands in the log: the files chosen, the frame read, where it was written — or why it failed.<br/><br/>The <b>?</b> button has the details.",
+      "target": {"name": "log"}
+    }
+  ]
+}
