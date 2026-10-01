@@ -14,6 +14,9 @@ Rules that apply to every card (in addition to PRD-153):
   default. The evidence tool therefore compares each card against the **same** `before.json`; a
   control owned by a later card goes into `deliberate.json` with the reason `"card <n>"` and is
   removed from it when that card lands (`stale_explanations` must be empty at the end).
+* **Checking a card before the manifest switch:** `$PY -m test.gui.emtk_port_parity after <id> --out <dir> --entry
+  chisurf.plugins.<group>.<id>.gui.app:make_app` builds the app from the named factory instead of the manifest (the
+  Qt-free proof uses it too), so a card can be evidenced while `entrypoints.emtk` is still absent.
 * **One working-tree state per card.** Before a card starts: `git status --short -- <plugin dir>`
   must be empty and the board must show no live claim; otherwise pick another card.
 * A card is **not started** until its predecessor's report is accepted by the reviewer.

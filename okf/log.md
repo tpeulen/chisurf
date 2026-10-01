@@ -6,6 +6,8 @@
 
 ## 2026-09-30
 
+* **Parity tool: `--entry module:factory` for multi-card ports** (an unfinished app must not be in the manifest, so the menu keeps the Qt tool). Two tests; wave3-plan card rules updated.
+
 * **trace_browser card T0 reviewed and accepted; a shipped Qt-tool bug fixed.** Qt-free `TraceBrowserModel` (agent commits 0e11d4c08, f37e4b392, ec906b765; 42 tests), report `okf/plugins/emtk-ports/trace_browser/REPORT-T0.md`. Found through it: the CLSM image probe tested `intensity is not None`, but tttrlib 0.27.0 returns an empty `(1, 0, 0)` intensity for any non-image file, so every TTTR file was classed as an image and the Trace Browser listed none. The probe now requires a non-empty pixel stack; tests on `BH_SPC132.spc` (listed) and `Leica_SP8.ptu` (hidden) fail without the fix. Card T3 will need a Qt-free trace binner in `core/` (binning currently runs through the `IntensityTrace` QWidget).
 
 * **Burst survey reviewed; invented-data defect found.** `okf/plugins/emtk-ports/burst-survey.md` (five large burst/trace plugins: stages, Qt LOC, Qt-free logic, existing emtk apps, dirty trees, proposed cards; only `trace_browser` is clean). Verified in the source: `burst_mle_analysis/gui/app.py` and `burst_h2mm/gui/app.py` draw synthetic decays, a hard-coded rate table and a seeded random scatter as if they were results. Recorded in known issues; PRD-153 gains rule 8a (no invented data).

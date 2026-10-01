@@ -104,3 +104,15 @@ def test_compare_normalises_both_halves(tmp_path):
     """Evidence written by an older tool (emoji glued on) still compares equal."""
     _evidence(tmp_path, ["\U0001f4e5loadtttr", "run"], ["loadtttr", "run"])
     assert epp.compare("x", tmp_path)["lost"] == []
+
+
+def test_entry_overrides_the_manifest_so_a_partial_port_can_be_checked(tmp_path):
+    """f_test's factory, named explicitly, builds and passes the Qt-free proof without the manifest."""
+    entry = "chisurf.plugins.core.f_test.gui.app:make_app"
+    assert epp.build_emtk_app("no_such_plugin_id_needed", entry) is not None
+    assert epp.qt_free("no_such_plugin_id_needed", entry)["ok"]
+
+
+def test_a_missing_entry_is_a_clear_error():
+    with pytest.raises(ValueError, match="--entry"):
+        epp.build_emtk_app("trace_browser")      # no entrypoints.emtk until its last card

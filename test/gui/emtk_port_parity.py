@@ -190,11 +190,16 @@ class ControlRecorder:
         return wrapper
 
 
-def build_emtk_app(plugin_id: str) -> typing.Any:
-    """Construct the plugin's emtk app from ``entrypoints.emtk`` (no Qt host, no state)."""
-    spec = manifest_of(plugin_id).get("entrypoints", {}).get("emtk")
+def build_emtk_app(plugin_id: str, entry: str | None = None) -> typing.Any:
+    """Construct the plugin's emtk app from ``entrypoints.emtk`` (no Qt host, no state).
+
+    *entry* (``"module:factory"``) overrides the manifest: a plugin ported in several cards
+    has no ``entrypoints.emtk`` until the last card (the menu would open an unfinished app),
+    so its intermediate cards are checked with ``--entry``.
+    """
+    spec = entry or manifest_of(plugin_id).get("entrypoints", {}).get("emtk")
     if not spec:
-        raise ValueError(f"{plugin_id}: manifest has no entrypoints.emtk")
+        raise ValueError(f"{plugin_id}: manifest has no entrypoints.emtk (and no --entry given)")
     from chisurf.emtk.i18n import install
 
     install()
@@ -262,7 +267,7 @@ def emtk_screenshot(app: typing.Any, path: pathlib.Path, size: tuple[int, int]) 
     return path
 
 
-def qt_free(plugin_id: str) -> dict:
+def qt_free(plugin_id: str, entry: str | None = None) -> dict:
     """Import and draw the emtk app in a fresh interpreter that forbids Qt.
 
     Returns ``{"ok": bool, "output": str}``. This is the proof that the port's
@@ -277,7 +282,7 @@ class BlockQt(importlib.abc.MetaPathFinder):
             raise RuntimeError('Qt imported: ' + fullname)
 sys.meta_path.insert(0, BlockQt())
 from test.gui.emtk_port_parity import build_emtk_app, draw_app
-app = build_emtk_app({plugin_id!r})
+app = build_emtk_app({plugin_id!r}, {entry!r})
 draw_app(app, (1200, 800))
 bad = sorted(m for m in sys.modules if m == 'chisurf.gui' or m.startswith('chisurf.gui.'))
 assert not bad, 'chisurf.gui imported: ' + ', '.join(bad[:5])
@@ -360,14 +365,14 @@ def compare(plugin_id: str, out: pathlib.Path) -> dict:
     return result
 
 
-def after(plugin_id: str, out: pathlib.Path) -> dict:
-    """Render the emtk app at both sizes; write screenshots, ``after.json``."""
-    app = build_emtk_app(plugin_id)
+def after(plugin_id: str, out: pathlib.Path, entry: str | None = None) -> dict:
+    """Render the emtk app at both sizes; write screenshots, ``after.json`` (see ``--entry``)."""
+    app = build_emtk_app(plugin_id, entry)
     try:
         for size in SIZES:
             emtk_screenshot(app, out / f"after_{size[0]}x{size[1]}.png", size)
         inventory = emtk_inventory(app, SIZES[0])
-        inventory["qt_free"] = qt_free(plugin_id)
+        inventory["qt_free"] = qt_free(plugin_id, entry)
     finally:
         close = getattr(app, "close", None)
         if callable(close):
@@ -382,6 +387,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("phase", choices=("before", "after", "compare"))
     parser.add_argument("plugin_id")
     parser.add_argument("--out", required=True, help="evidence directory (created)")
+    parser.add_argument("--entry", default=None,
+                        help="module:factory of the emtk app, for a card of a multi-card port "
+                             "whose manifest has no entrypoints.emtk yet (after only)")
     args = parser.parse_args(argv)
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -390,7 +398,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"before: {len(data['controls'])} controls -> {out}")
         return 0
     if args.phase == "after":
-        data = after(args.plugin_id, out)
+        data = after(args.plugin_id, out, args.entry)
         print(
             f"after: {len(data['controls'])} controls, "
             f"{len(data['controls_without_tooltip'])} without tooltip, "
