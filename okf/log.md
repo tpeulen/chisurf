@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **project_browser emtk app at parity** (EMTK-1, upgrade row 34): a restore reopens the fits' windows as the Qt tool did; a
+  guided tour on the real controls; columns that fit; the service's import numbering fixed (`2d095575f`).
+  [report](plugins/emtk-ports/project_browser/REPORT.md).
+
 - **Project import numbers the version after its project's newest** (found during the project_browser upgrade): an archive
   keeps its project id, and it also kept its version number, so importing v1 into a database that held the project gave it two
   "v1" rows. Guard `project_browser/test/test_import_version_numbering.py`; `services.py` off the PRD-mention allow-list.

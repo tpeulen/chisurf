@@ -1,0 +1,33 @@
+{
+  "plugin": "project_browser",
+  "explained": {
+    "2026-10-01223147": "a cell of the seeded database (Created), not a control: the Qt baseline read its tree rows; the emtk inventory is taken before the asynchronous load ends. The emtk table shows every row once loaded (after_populated_*, test_the_list_shows_what_the_qt_tree_shows compares them cell by cell)",
+    "decaystudy(2versions)": "a project row of the seeded database, not a control (see 2026-10-01223147)",
+    "fcstitration(1versions)": "a project row of the seeded database, not a control (see 2026-10-01223147)",
+    "private": "a Visibility cell of the seeded database, not a control (see 2026-10-01223147)",
+    "proj_e0c811fea22a": "a project ID cell of the seeded database, not a control (see 2026-10-01223147)",
+    "proj_efe156ad2c5e": "a project ID cell of the seeded database, not a control (see 2026-10-01223147)",
+    "public": "a Visibility cell of the seeded database, not a control (see 2026-10-01223147)",
+    "user_default": "an Owner cell of the seeded database, not a control (see 2026-10-01223147)"
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "guide",
+    "help",
+    "loadingprojects",
+    "name,id,ownerornotes",
+    "nomatchingprojects.refresh,savethecurrentsessionorimportaprojectarchive.",
+    "projectsandversions",
+    "searchprojects",
+    "selectaprojecttorestoreitslatestversion,orexpandittoselectanexactversion.",
+    "selectedprojectdetails"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 24,
+  "after_controls": 25
+}

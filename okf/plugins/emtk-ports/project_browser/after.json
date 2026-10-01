@@ -1,0 +1,100 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "created",
+    "datasets",
+    "deleteversion",
+    "export.cs.pto",
+    "fits",
+    "guide",
+    "help",
+    "id",
+    "importproject",
+    "loadingprojects",
+    "name,id,ownerornotes",
+    "nomatchingprojects.refresh,savethecurrentsessionorimportaprojectarchive.",
+    "notes",
+    "open/restore",
+    "owner",
+    "project/version",
+    "projectsandversions",
+    "refresh",
+    "savecurrentproject",
+    "searchprojects",
+    "selectaprojecttorestoreitslatestversion,orexpandittoselectanexactversion.",
+    "selectedprojectdetails",
+    "showpublic",
+    "status",
+    "visibility"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Open / Restore",
+      "id": "Open / Restore",
+      "tooltip": "Restore a selected version, or the newest version of the selected project."
+    },
+    {
+      "kind": "button",
+      "label": "Save Current Project",
+      "id": "Save Current Project",
+      "tooltip": "Save all current datasets, fits and instrument state as a new database version."
+    },
+    {
+      "kind": "button",
+      "label": "Export .cs.pto",
+      "id": "Export .cs.pto",
+      "tooltip": "Export the selected exact version as a portable project archive."
+    },
+    {
+      "kind": "button",
+      "label": "Import Project",
+      "id": "Import Project",
+      "tooltip": "Preview an archive, check IDs and import after confirmation."
+    },
+    {
+      "kind": "button",
+      "label": "Delete Version",
+      "id": "Delete Version",
+      "tooltip": "Soft-delete the selected version; database manage permission is required."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh",
+      "tooltip": "Reload projects from the database."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through finding, inspecting, restoring and saving projects."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain project versions, restoration, permissions and archives."
+    },
+    {
+      "kind": "input_text",
+      "label": "Search projects",
+      "id": "Search projects",
+      "tooltip": "Search stored project names, identifiers, owners and version notes."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show public",
+      "id": "Show public",
+      "tooltip": "Include projects made readable to other authenticated users."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
