@@ -10,7 +10,7 @@
       "title": "Open a container",
       "text": "Press <b>Open</b> and choose a .pto, pick one from the MMFDB database with <b>Database</b>, or drop one on the window. A vendor photon file dropped here is offered for packing into a new container first.",
       "target": {"name": "filename"},
-      "await": {"hint": "Open a <b>.pto</b>: press <b>Open</b> and choose a file, or drop one on the window."}
+      "await": {"hint": "Open a <b>.pto</b>: press <b>Open</b>, or drop one here."}
     },
     {
       "title": "What is in it",

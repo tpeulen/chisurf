@@ -70,18 +70,18 @@ class PtoInspectorApp(ImApp):
         self.artifacts = TableBinding({'source': 'artifact_rows', 'columns': [
             {'key': key, 'label': tr(title), 'width': width, 'description': tr(title) + ': ' + tr(description)}
             for key, title, width, description in [
-                ('name', 'Name', 120, 'Artifact label; UID is the unique identity.'),
-                ('kind', 'Kind', 140, 'Dictionary artifact kind.'),
-                ('operation', 'Operation', 170, 'Recorded operation; empty means carried data.'),
-                ('grain', 'Grain', 70, 'What one table row represents.'),
-                ('rows', 'Rows', 65, 'Number of stored rows.'),
-                ('size', 'Size', 75, 'Stored payload size.'),
-                ('parents', 'Parents', 60, 'Number of recorded parent artifacts.'),
+                ('name', 'Name', 80, 'Artifact label; UID is the unique identity.'),
+                ('kind', 'Kind', 110, 'Dictionary artifact kind.'),
+                ('operation', 'Operation', 130, 'Recorded operation; empty means carried data.'),
+                ('grain', 'Grain', 60, 'What one table row represents.'),
+                ('rows', 'Rows', 48, 'Number of stored rows.'),
+                ('size', 'Size', 66, 'Stored payload size.'),
+                ('parents', 'Parents', 66, 'Number of recorded parent artifacts.'),
             ]], 'selected_call': 'select_row', 'activated_call': 'open_row',
-            'row_key': 'uid', 'filter': True, 'column_picker': True, 'min_column_width': 40, 'fit_columns': True, 'expand': True}, self.model)
+            'row_key': 'uid', 'filter': True, 'column_picker': True, 'min_column_width': 40, 'expand': True}, self.model)
         self.table = TableBinding({'source': 'payload', 'columns_source': 'payload_columns',
                                    'filter': True, 'column_picker': True, 'expand': True}, self)
-        self.docks = DockManager(Split('h', .36, Region('container'),
+        self.docks = DockManager(Split('h', .46, Region('container'),
                                       Split('v', .30, Region('provenance'), Split('v', .32, Region('data'), Split('v', .53, Region('curve'), Region('details'))))))
         self.docks.add_window('container', tr('Container'), self.container_view, dock='container', closable=False)
         self.docks.add_window('provenance', tr('Provenance'), self.provenance_view, dock='provenance', closable=False)
@@ -423,6 +423,7 @@ class PtoInspectorApp(ImApp):
         vendor = sorted([Path(p) for p in paths if Path(p).suffix.lower() in VENDOR_SUFFIXES], key=lambda p: p.name)
         if vendor:
             self.vendor_paths = vendor
+            self.notice = ''
             return True
         return False
 
