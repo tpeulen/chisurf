@@ -1,0 +1,260 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.100ms",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.50",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "10.000ms",
+    "1000.0ms",
+    "1e-05",
+    "1e-06",
+    "3",
+    "60",
+    "allplots",
+    "auto",
+    "burst-analysisfolderholdingbi4_bur",
+    "burstduration",
+    "demo",
+    "detectordefinitions",
+    "duration",
+    "estimate",
+    "exportfusionreport",
+    "folder",
+    "fragments",
+    "fragmentsperfusedburst",
+    "fused",
+    "fusedbursts",
+    "fusioncontrols",
+    "fusionplots",
+    "guide",
+    "help",
+    "lagbetweenbursts(ms)",
+    "lagbins",
+    "lagfrom",
+    "lagto",
+    "loadsettings",
+    "log10duration(ms)",
+    "log10photonsperburst",
+    "maxfragments",
+    "maxgap",
+    "minpairs/bin",
+    "mmfdbdatasets",
+    "openburstfolder",
+    "originalburstsinonefusedburst",
+    "p(same)",
+    "p(same)≥",
+    "p(samemolecule)",
+    "p(samemolecule)estimate",
+    "photons",
+    "photonsperburst",
+    "poolfiles",
+    "probabilitydensity",
+    "proximityratio",
+    "quantity",
+    "recordgrouping",
+    "run(fuse)",
+    "same-moleculeprobability",
+    "savesettings",
+    "selec.",
+    "selectaburst-analysisfolderandpressanalyze.",
+    "stopfusion",
+    "tttrfiletype"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Open burst folder",
+      "id": "Open burst folder",
+      "tooltip": "Select the burst-analysis folder containing bi4_bur."
+    },
+    {
+      "kind": "button",
+      "label": "MMFDB datasets",
+      "id": "MMFDB datasets",
+      "tooltip": "Resolve an existing burst analysis from the database."
+    },
+    {
+      "kind": "button",
+      "label": "Load settings",
+      "id": "Load settings",
+      "tooltip": "Load a saved fusion parameter JSON file."
+    },
+    {
+      "kind": "button",
+      "label": "Save settings",
+      "id": "Save settings",
+      "tooltip": "Save current fusion parameters as JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Export fusion report",
+      "id": "Export fusion report",
+      "tooltip": "Export before/after statistics and the output folder path."
+    },
+    {
+      "kind": "input_text",
+      "label": "fusion_type",
+      "id": "##fusion_type",
+      "tooltip": "Use auto for header detection or specify SPC-130, PTU, HT3 or HDF; a source manifest takes precedence."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Detector definitions",
+      "id": "Detector definitions",
+      "tooltip": "Define detector routing and PIE windows when a legacy source folder has no reading manifest."
+    },
+    {
+      "kind": "button",
+      "label": "Stop fusion",
+      "id": "Stop fusion",
+      "tooltip": "Cancel the estimate before writing; an output write already started finishes consistently."
+    },
+    {
+      "kind": "input_text",
+      "label": "folder",
+      "id": "##folder",
+      "tooltip": "The burst-analysis folder to fuse — the output of burst selection. Nothing in it is modified; the fused bursts go to a new folder beside it."
+    },
+    {
+      "kind": "input_text",
+      "label": "threshold",
+      "id": "##threshold",
+      "tooltip": "Two consecutive bursts are fused while the probability that they are the same molecule is at least this. 1 fuses nothing; low values eventually merge different molecules."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_gap_ms",
+      "id": "##max_gap_ms",
+      "tooltip": "Ceiling on the gap fusion may bridge, whatever the probability says (0 removes it). A fused burst is one interval on disk, so bridging a gap puts its background photons inside the burst."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_group",
+      "id": "##max_group",
+      "tooltip": "Largest number of original bursts one fused burst may contain (0 = no limit). Caps runaway chains in dense data."
+    },
+    {
+      "kind": "button",
+      "label": "🚀 Run (Fuse)",
+      "id": "🚀 Run (Fuse)",
+      "tooltip": "Fuse burst fragments that likely belong to the same molecule using the P(same) threshold."
+    },
+    {
+      "kind": "button",
+      "label": "🔄 Estimate",
+      "id": "🔄 Estimate",
+      "tooltip": "Estimate the P(same) curve and thresholds from the loaded bursts without fusing."
+    },
+    {
+      "kind": "button",
+      "label": "🧪 Demo",
+      "id": "🧪 Demo",
+      "tooltip": "Load a demo dataset to try the fusion analysis."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Start a step-by-step guided tour of this tool."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "Open the help window with reference documentation."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_min_ms",
+      "id": "##tau_min_ms",
+      "tooltip": "Shortest inter-burst lag the correlation is evaluated at."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_max_ms",
+      "id": "##tau_max_ms",
+      "tooltip": "Longest lag evaluated. A threshold the curve never falls below inside this range leaves the window unresolved."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bins",
+      "id": "##n_bins",
+      "tooltip": "Logarithmic lag bins between the shortest and longest lag."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_pairs",
+      "id": "##min_pairs",
+      "tooltip": "Burst pairs a lag bin needs before it may end the fusion window. Stops a hole in sparse statistics reading as a confident 'different molecule'."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Pool files",
+      "id": "Pool files##pool_measurements",
+      "tooltip": "Estimate one curve from every measurement of the folder (lags always stay inside a measurement). A single short file rarely has enough burst pairs on its own."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Record grouping",
+      "id": "Record grouping##write_source_companion",
+      "tooltip": "Write an fg4 companion beside the original bursts giving each one its fused-burst number, so the grouping can be inspected or gated on there."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "All plots",
+      "id": "All plots",
+      "tooltip": "Show the all plots before/after comparison."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "P(same)",
+      "id": "P(same)",
+      "tooltip": "Show the p(same) before/after comparison."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Proximity ratio",
+      "id": "Proximity ratio",
+      "tooltip": "Show the proximity ratio before/after comparison."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Photons",
+      "id": "Photons",
+      "tooltip": "Show the photons before/after comparison."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Duration",
+      "id": "Duration",
+      "tooltip": "Show the duration before/after comparison."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Fragments",
+      "id": "Fragments",
+      "tooltip": "Show the fragments before/after comparison."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

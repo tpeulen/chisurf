@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **burst_fusion emtk app at parity** (EMTK-1, upgrade row): per-action sized dialogs, validated drop, result once, frames on
+  demand; the fragments histogram shows every bar (a first COND_ONCE limits request on an existing plot is ignored by emtk);
+  the guide finds its spec-field targets and waits. [report](plugins/emtk-ports/burst_fusion/REPORT.md).
+
 - **burst_bva emtk app at parity** (EMTK-1, upgrade row): the controller now runs as the Qt tool does (auto update without
   writing, the read table reused, unchanged → Restart, failed write keeps the result, Save plot as a window picture); the view
   model no longer reuses one folder's bursts for the next; HEAD's Qt run (TypeError on file_type) fixed by the stream's
