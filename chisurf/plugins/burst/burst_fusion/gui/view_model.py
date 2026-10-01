@@ -256,14 +256,18 @@ class FusionViewModel:
             return f"Not a folder: {self.folder}"
         return None
 
-    def analyze(self) -> None:
+    def analyze(self, cancel_check=None) -> None:
         """Estimate ``P_same`` and the fusion the current threshold implies."""
         reason = self.can_run()
         if reason is not None:
             raise ValueError(reason)
         from ..core.fusion import analyze
 
-        self._analysis = analyze(pathlib.Path(self.folder), self.settings)
+        self._analysis = analyze(
+            pathlib.Path(self.folder),
+            self.settings,
+            **({"cancel_check": cancel_check} if callable(cancel_check) else {}),
+        )
         self._emitted = None
         stats = self._analysis.statistics
         self._status = (

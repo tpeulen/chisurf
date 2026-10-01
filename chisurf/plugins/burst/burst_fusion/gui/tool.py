@@ -203,5 +203,9 @@ class BurstFusionTool(ChisurfDockTool):
         except Exception:
             logger.warning("burst fusion: refresh failed", exc_info=True)
 
+    def closeEvent(self, event):
+        self.app.close()
+        super().closeEvent(event)
+
 
 __all__ = ["BurstFusionTool"]

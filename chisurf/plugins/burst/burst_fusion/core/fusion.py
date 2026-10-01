@@ -170,7 +170,9 @@ def proximity_ratios(frame) -> np.ndarray | None:
 # ── the analysis ────────────────────────────────────────────────────────────
 
 
-def analyze(analysis_folder, settings: FusionSettings | None = None) -> FusionAnalysis:
+def analyze(
+    analysis_folder, settings: FusionSettings | None = None, cancel_check=None
+) -> FusionAnalysis:
     """Decide which bursts of a folder fuse, without writing anything.
 
     Parameters
@@ -189,7 +191,11 @@ def analyze(analysis_folder, settings: FusionSettings | None = None) -> FusionAn
     """
     settings = settings or FusionSettings()
     root = analysis_root(analysis_folder)
+    if callable(cancel_check):
+        cancel_check()
     frames = read_measurements(analysis_folder)
+    if callable(cancel_check):
+        cancel_check()
     if not frames:
         raise FusionError(f"no bursts to fuse in {root}")
 
@@ -207,6 +213,8 @@ def analyze(analysis_folder, settings: FusionSettings | None = None) -> FusionAn
     measurements: list[MeasurementFusion] = []
     tau_used = capped_window(pooled.tau_max_s, settings)
     for stem, frame in frames.items():
+        if callable(cancel_check):
+            cancel_check()
         if settings.pool_measurements:
             window = pooled
         else:

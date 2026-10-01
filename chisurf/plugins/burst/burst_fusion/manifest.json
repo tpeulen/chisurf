@@ -10,7 +10,7 @@
     "Spectroscopy",
     "Single-Molecule"
   ],
-  "icon": "🔗",
+  "icon": "\ud83d\udd17",
   "state_namespace": "burst_fusion",
   "statefulness": {
     "enabled": true,
@@ -22,7 +22,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.burst.burst_fusion.gui.tool:BurstFusionTool",
     "cli": "chisurf.plugins.burst.burst_fusion.cli.main:cli",
-    "services": "chisurf.plugins.burst.burst_fusion.backend.services:register_services"
+    "services": "chisurf.plugins.burst.burst_fusion.backend.services:register_services",
+    "emtk": "chisurf.plugins.burst.burst_fusion.gui.app:create_app"
   },
   "rpc_methods": [
     {

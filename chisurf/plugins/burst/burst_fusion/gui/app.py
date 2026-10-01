@@ -23,6 +23,7 @@ import emtk
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
+from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections, find_section
 from emtk.widgets.view_spec import load_view_spec
 
@@ -61,7 +62,10 @@ def _hex_to_rgba(
     return default
 
 
-class BurstFusionGui:
+from chisurf.emtk.help_guide import TourTarget
+
+
+class BurstFusionGui(TourTarget):
     """The immediate-mode GUI logic and rendering for Burst Fusion."""
 
     def __init__(
@@ -81,14 +85,19 @@ class BurstFusionGui:
         self.dock_spec = self.spec["sections"][0] if self.spec.get("sections") else {}
         self.fusion_panel = find_section(self.dock_spec, "Fusion") or {}
 
+        # Keep the before/after summary compact so advanced parameters remain reachable.
+        for section in self.fusion_panel.get("sections", []):
+            if section.get("type") == "table":
+                section["expand"] = False
+                section["height"] = 180
+
         # Register custom sections
         self.form_state.custom["fusion_actions"] = self._draw_fusion_actions
 
         self.selected_tab = "All"
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
-
-        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
+        from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 
         help_resource = pathlib.Path(__file__).parent / "help.md"
         guide_resource = pathlib.Path(__file__).parent / "guide.json"
@@ -99,11 +108,61 @@ class BurstFusionGui:
             on_start_guide=self.start_guide,
             size=(700.0, 520.0),
         )
+        # Targets are buttons (item_rects) or spec fields (the form's rects); the action
+        # steps wait for their control.
         self.tour = EmTkGuidedTour(
             steps=guide_resource,
-            get_target_rect=lambda k: self.item_rects.get(k),
+            get_target_rect=lambda k: self.item_rects.get(k) or self.form_state.rects.get(k),
             owner=self.model,
+            wait_for_controls=True,
         )
+        self.on_used = self.tour.notify_used
+        self.form_state.on_used = self.tour.notify_used
+        from emtk.docking import DockManager, Region, Split
+
+        self.docks = DockManager(
+            Split("h", 0.35, Region("controls"), Region("plots")), name="burst_fusion"
+        )
+        self.docks.add_window("controls", "Fusion controls", self._draw_controls, dock="controls")
+        self.docks.add_window("plots", "Fusion plots", self._draw_plots, dock="plots")
+
+
+    def _draw_controls(self, box):
+        if getattr(self, "controller", None):
+            self.controller.draw_controls()
+        im.begin_disabled(bool(getattr(self, "controller", None) and self.controller.running))
+        draw_sections(
+            self.fusion_panel.get("sections", []), self.model, self.form_state, n_col=1, titles=True
+        )
+        im.end_disabled()
+        if "summary_rows" in self.form_state.rects:  # the guide names the table by its title
+            self.item_rects["Summary"] = self.form_state.rects["summary_rows"]
+
+    def _draw_plots(self, box):
+        if im.begin_tab_bar("fusion_plot_tabs"):
+            for key, label in [
+                ("All", "All plots"),
+                ("P_same", "P(same)"),
+                ("PR", "Proximity ratio"),
+                ("Photons", "Photons"),
+                ("Duration", "Duration"),
+                ("Fragments", "Fragments"),
+            ]:
+                if im.begin_tab_item(label):
+                    self.selected_tab = key
+                    im.end_tab_item()
+                im.set_item_tooltip(f"Show the {label.lower()} before/after comparison.")
+            im.end_tab_bar()
+        width, height = im.get_content_region_avail()
+        plot = {
+            "All": self._draw_all_plots,
+            "P_same": self._plot_p_same,
+            "PR": self._plot_proximity,
+            "Photons": self._plot_photons,
+            "Duration": self._plot_duration,
+            "Fragments": self._plot_fragments,
+        }[self.selected_tab]
+        plot(max(80, width), max(100, height))
 
     def start_guide(self) -> None:
         """Start the in-EMTK guided tour."""
@@ -115,12 +174,6 @@ class BurstFusionGui:
 
     def _on_model_event(self, event: str) -> None:
         pass
-
-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
-        """Store the item's screen rectangle for tour targeting."""
-        r = rect if rect is not None else im.get_item_rect()
-        if r is not None:
-            self.item_rects[name] = tuple(r)
 
     def track(self, name: str) -> None:
         """Record usage of a named control."""
@@ -138,10 +191,17 @@ class BurstFusionGui:
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
         if im.button("🚀 Run (Fuse)"):
             self.track("toolAction_run")
+            self.track("fusion_actions")
             try:
-                self.model.fuse()
+                if getattr(self, "controller", None):
+                    self.controller.run()
+                else:
+                    self.model.fuse()
             except Exception:
                 pass
+        im.set_item_tooltip(
+            "Fuse burst fragments that likely belong to the same molecule using the P(same) threshold."
+        )
         self.remember("toolAction_run")
         self.remember("fusion_actions")
         im.pop_style_color(3)
@@ -149,88 +209,49 @@ class BurstFusionGui:
         im.same_line()
         if im.button("🔄 Estimate"):
             self.track("toolAction_refresh")
+            self.track("fusion_actions")
             try:
-                self.model.analyze()
+                if getattr(self, "controller", None):
+                    self.controller.estimate()
+                else:
+                    self.model.analyze()
             except Exception:
                 pass
+        im.set_item_tooltip(
+            "Estimate the P(same) curve and thresholds from the loaded bursts without fusing."
+        )
         self.remember("toolAction_refresh")
 
         im.same_line()
         if self.on_demo is not None:
             if im.button("🧪 Demo"):
                 self.track("load_demo")
+                self.track("Load demo")
                 try:
                     self.on_demo()
                 except Exception:
                     pass
+            im.set_item_tooltip("Load a demo dataset to try the fusion analysis.")
             self.remember("load_demo")
+            self.remember("Load demo")
             im.same_line()
 
+        im.new_line()
         if im.button("📖 Guide"):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
+        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
 
         im.same_line()
         if im.button("❓ Help"):
             self.track("help")
             self.show_help()
         self.remember("help")
+        im.set_item_tooltip("Open the help window with reference documentation.")
 
     def draw(self, w: float, h: float) -> None:
-        """Draw the fusion GUI into (w, h) display pixels."""
-        left_w = min(max(340.0, w * 0.32), 440.0)
-        right_w = max(w - left_w - 12.0, 200.0)
-
-        # ── Left pane: Controls ──────────────────────────────────────────
-        if im.begin("Fusion Controls", (4.0, 4.0, left_w, h - 8.0)):
-            if self.fusion_panel and self.fusion_panel.get("sections"):
-                draw_sections(
-                    self.fusion_panel.get("sections", []),
-                    self.model,
-                    self.form_state,
-                    n_col=1,
-                    titles=True,
-                )
-            im.end()
-            self.remember("Fusion", (4.0, 4.0, left_w, h - 8.0))
-
-        # ── Right pane: Plots ────────────────────────────────────────────
-        plots_x = left_w + 8.0
-        if im.begin("Fusion Plots", (plots_x, 4.0, right_w, h - 8.0)):
-            if im.begin_tab_bar("fusion_plot_tabs"):
-                tabs = [
-                    ("All", "All Plots"),
-                    ("P_same", "Same-molecule P(same)"),
-                    ("PR", "Proximity Ratio"),
-                    ("Photons", "Photons"),
-                    ("Duration", "Duration"),
-                    ("Fragments", "Fragments"),
-                ]
-                for key, label in tabs:
-                    if im.begin_tab_item(label):
-                        self.selected_tab = key
-                        im.end_tab_item()
-                im.end_tab_bar()
-
-            avail_w, avail_h = im.get_content_region_avail()
-            avail_h = max(avail_h, 300.0)
-
-            if self.selected_tab == "All":
-                self._draw_all_plots(avail_w, avail_h)
-            elif self.selected_tab == "P_same":
-                self._plot_p_same(avail_w, avail_h)
-            elif self.selected_tab == "PR":
-                self._plot_proximity(avail_w, avail_h)
-            elif self.selected_tab == "Photons":
-                self._plot_photons(avail_w, avail_h)
-            elif self.selected_tab == "Duration":
-                self._plot_duration(avail_w, avail_h)
-            elif self.selected_tab == "Fragments":
-                self._plot_fragments(avail_w, avail_h)
-
-            im.end()
-            self.remember("results", (plots_x, 4.0, right_w, h - 8.0))
+        self.docks.draw((0.0, 0.0, float(w), float(h)))
 
         if self.help_window.open:
             self.help_window.draw((0.0, 0.0, w, h))
@@ -321,6 +342,20 @@ class BurstFusionGui:
         if implot.begin_plot("Fragments per fused burst##fragments", (w, h)):
             implot.setup_axes("original bursts in one fused burst", "fused bursts")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+            # Bars stand on zero, which a log axis cannot show: its auto-fit spanned the bar
+            # tops only, so the smallest count sat on the floor and the largest ran off the top.
+            tops = [float(np.max(s["y"])) for s in series_list if len(s.get("y", [])) > 0]
+            sizes = sorted({int(x) for s in series_list for x in np.asarray(s.get("x", []), float)})
+            if tops:
+                # Applied whenever the bars change (ALWAYS once), held otherwise so a zoom stays:
+                # a first ONCE request after the plot was drawn empty is not applied at all.
+                request = (0.8, max(tops) * 1.5)
+                changed = request != getattr(self, "_fragments_request", None)
+                self._fragments_request = request
+                implot.setup_axis_limits(implot.AXIS_Y1, *request,
+                                         implot.COND_ALWAYS if changed else implot.COND_ONCE)
+            if sizes:  # whole fragment counts, not 1.5 fragments
+                implot.setup_axis_ticks(implot.AXIS_X1, np.asarray(sizes, float), labels=[str(n) for n in sizes])
             for idx, s in enumerate(series_list):
                 col = _hex_to_rgba(s.get("color", ACCENT_BLUE))
                 implot.set_next_fill_style(col)
@@ -342,11 +377,19 @@ class BurstFusionApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        from .controller import FusionController
+
+        model = model if model is not None else FusionViewModel()
+        self.controller = FusionController(model)
+        on_demo = on_demo or self.controller.demo
         self.fusion_gui = BurstFusionGui(
             model=model, on_demo=on_demo, on_guide=on_guide, on_help=on_help
         )
         self.model = self.fusion_gui.model
-        super().__init__(gui=self._render, continuous=False)
+        self.item_rects = self.fusion_gui.item_rects
+        self.fusion_gui.remember = self.remember
+        self.fusion_gui.controller = self.controller
+        super().__init__(gui=self._render)
 
     def start_guide(self) -> None:
         """Start guided tour inside EMTK."""
@@ -357,5 +400,44 @@ class BurstFusionApp(ImApp):
         self.fusion_gui.show_help()
 
     def _render(self) -> None:
+        self.controller.poll()
+        if self.controller.running:  # look again in 0.1 s while a worker runs
+            ctx = get_current_context()
+            ctx.request_frame_at(ctx.io.now + 0.1)
         w, h = im.get_main_viewport().size
         self.fusion_gui.draw(float(w), float(h))
+        self.controller.draw_dialogs((0, 0, w, h))
+
+    def set_folder(self, folder):
+        self.model.set_folder(str(folder))
+
+    def set_channel_settings(self, settings):
+        self.model.detectors = dict(settings.get("detectors") or {})
+        self.model.windows = dict(settings.get("windows") or {})
+        import json
+
+        self.controller.channel_text = json.dumps(
+            {"detectors": self.model.detectors, "windows": self.model.windows}, indent=2
+        )
+
+    @property
+    def output_folder(self):
+        return self.model.written_folder
+
+    def process_bursts(self):
+        if self.controller.running:
+            raise RuntimeError("Fusion is already running.")
+        return self.model.fuse()
+
+    def close(self):
+        self.controller.close()
+
+    def on_paths_dropped(self, paths):
+        self.controller.on_paths_dropped(paths)
+
+
+def create_app(**kwargs):
+    from chisurf.emtk.i18n import install
+
+    install()
+    return BurstFusionApp(**kwargs)

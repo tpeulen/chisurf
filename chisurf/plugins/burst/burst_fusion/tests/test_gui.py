@@ -78,16 +78,10 @@ def test_view_spec_binds_every_source_it_names(qapp):
 
 
 def test_tool_constructs_with_help_and_guide(tool):
-    """Both are toolbar *widgets*, so they are found by their button text."""
-    from qtpy import QtWidgets
-
-    labels = [
-        button.text()
-        for bar in tool.findChildren(QtWidgets.QToolBar)
-        for button in bar.findChildren(QtWidgets.QToolButton)
-    ]
-    assert any("Guide" in label for label in labels), labels
-    assert any("?" in label for label in labels), labels
+    """Both are in-EMTK buttons now: the app carries a tour and help content."""
+    gui = tool.app.fusion_gui
+    assert gui.tour.steps, "the plugin must ship a guided tour"
+    assert gui.help_window.sections, "the plugin must ship help content"
 
 
 def test_the_run_button_is_the_one_that_fuses(tool, qapp):
