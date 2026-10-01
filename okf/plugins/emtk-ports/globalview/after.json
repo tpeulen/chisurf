@@ -1,0 +1,97 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "?",
+    "all",
+    "auto",
+    "clickaparameternodetoeditithere.clicka",
+    "first.",
+    "fitview",
+    "fixed",
+    "guide",
+    "link",
+    "load",
+    "network",
+    "nofitsandnoregisteredparametergroups--nothingtodraw.",
+    "parameter",
+    "parameters",
+    "refresh",
+    "role",
+    "save",
+    "secondoneandpresslinktomakeitfollowthe",
+    "selection",
+    "unlink",
+    "value",
+    "view"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Load…",
+      "id": "Load…##load_network",
+      "tooltip": "Load a parameter network from a GraphML (.gml) file and apply its values, fixed flags and links to the fits."
+    },
+    {
+      "kind": "button",
+      "label": "Save…",
+      "id": "Save…##save_network",
+      "tooltip": "Save the current parameter network to a GraphML (.gml) file."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh##refresh",
+      "tooltip": "Rebuild the network from the current fits and links, and lay it out again. The button to reach for when the picture disagrees with the fits."
+    },
+    {
+      "kind": "checkbox",
+      "label": "auto",
+      "id": "auto##auto_refresh",
+      "tooltip": "Redraw when a fit or a link changes. Changes are coalesced and the layout only re-runs when the network's shape changed, so a running fit costs nothing here. Untick to refresh by hand."
+    },
+    {
+      "kind": "button",
+      "label": "Link",
+      "id": "Link##link_selected",
+      "tooltip": "Link the two selected parameters: the first one selected is the master, the second follows it."
+    },
+    {
+      "kind": "button",
+      "label": "Unlink",
+      "id": "Unlink##unlink_selected",
+      "tooltip": "Remove the links of the selected parameters (of every parameter, with 'all')."
+    },
+    {
+      "kind": "checkbox",
+      "label": "all",
+      "id": "all##unlink_all",
+      "tooltip": "Unlink applies to EVERY parameter in every fit, not just the selection."
+    },
+    {
+      "kind": "button",
+      "label": "Fit view",
+      "id": "Fit view##fit_view",
+      "tooltip": "Fit the graph back into the panel: undoes zoom, pan and any nodes you dragged."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##show_guide",
+      "tooltip": "Walk through the window, one control at a time."
+    },
+    {
+      "kind": "button",
+      "label": "?",
+      "id": "?##show_help",
+      "tooltip": "What the Global View shows and how links work."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

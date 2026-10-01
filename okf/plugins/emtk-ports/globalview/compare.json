@@ -1,0 +1,37 @@
+{
+  "plugin": "globalview",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "?",
+    "all",
+    "auto",
+    "clickaparameternodetoeditithere.clicka",
+    "first.",
+    "fitview",
+    "fixed",
+    "guide",
+    "link",
+    "load",
+    "network",
+    "nofitsandnoregisteredparametergroups--nothingtodraw.",
+    "parameter",
+    "parameters",
+    "refresh",
+    "role",
+    "save",
+    "secondoneandpresslinktomakeitfollowthe",
+    "selection",
+    "unlink",
+    "value",
+    "view"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 0,
+  "after_controls": 22
+}
