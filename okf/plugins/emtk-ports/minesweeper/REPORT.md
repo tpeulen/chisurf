@@ -22,7 +22,7 @@ Modified `gui/__init__.py`, `manifest.json`; untracked `README.md`, `gui/app.py`
 | Board, hot-pixel counter, preset name, numbers in spectral colours, flag, cursor ring, footer | same (`before_populated.png` vs `before_emtk_populated_*.png`); flag glow smaller | yes |
 | ↑↓←→ / WASD cursor, Enter/Space scan, F flag, R reset, Q/E preset (recentred cursor) | same (`test_bindings_match_the_qt_view`) | yes |
 | Finished board ignores scan/flag, result message stays | **was not**: emtk replaced it with "Start a new game to play again." and played the effect → fixed | fixed |
-| Held direction auto-repeat (0.28 s / 0.045 s, chigame timer) | OS key repeat delivered by the host | deliberate |
+| Held direction auto-repeat (0.28 s / 0.045 s, chigame timer) | no repeat timer of its own: one step per key event the host delivers (repeats only if the host forwards auto-repeated presses; not verified) | open |
 | Sound (music "underworld", effects) | greyed, shared tooltip; `make_app(audio_callback=...)` | gap (emtk), known issue |
 | — | mouse: left click scans, right click flags, click the preset name | added by the stream |
 
@@ -59,4 +59,4 @@ Audio output for emtk (known issue "emtk games have no sound").
 
 ## 11. Self-check
 
-- [x] D1 · [x] D2 (sound: emtk gap; key repeat by the OS) · [x] D3 · [x] D4 · [x] D5 · [x] D6 · [ ] D7 n/a · [x] D8 · [x] D9 · [x] D10
+- [x] D1 · [x] D2 (sound: emtk gap; held-key repeat open) · [x] D3 · [x] D4 · [x] D5 · [x] D6 · [ ] D7 n/a · [x] D8 · [x] D9 · [x] D10
