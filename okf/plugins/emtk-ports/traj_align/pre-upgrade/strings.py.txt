@@ -1,0 +1,10 @@
+from emtk import i18n
+
+# ruff: noqa: E701, E702
+
+_CATALOGS = {"de": {"Align Trajectory":"Trajektorie ausrichten", "Align trajectory":"Trajektorie ausrichten", "Trajectory":"Trajektorie", "Topology":"Topologie", "Atom selection":"Atomauswahl", "Output":"Ausgabe", "Stride":"Schrittweite", "Save aligned trajectory":"Ausgerichtete Trajektorie speichern", "Log":"Protokoll", "Aligned trajectory saved":"Ausgerichtete Trajektorie gespeichert"}, "fr": {"Align Trajectory":"Aligner la trajectoire", "Align trajectory":"Aligner la trajectoire", "Trajectory":"Trajectoire", "Topology":"Topologie", "Atom selection":"Sélection d’atomes", "Output":"Sortie", "Stride":"Pas", "Save aligned trajectory":"Enregistrer la trajectoire alignée", "Log":"Journal", "Aligned trajectory saved":"Trajectoire alignée enregistrée"}, "es": {"Align Trajectory":"Alinear trayectoria", "Align trajectory":"Alinear trayectoria", "Trajectory":"Trayectoria", "Topology":"Topología", "Atom selection":"Selección de átomos", "Output":"Salida", "Stride":"Paso", "Save aligned trajectory":"Guardar trayectoria alineada", "Log":"Registro", "Aligned trajectory saved":"Trayectoria alineada guardada"}, "pt": {"Align Trajectory":"Alinhar trajetória", "Align trajectory":"Alinhar trajetória", "Trajectory":"Trajetória", "Topology":"Topologia", "Atom selection":"Seleção de átomos", "Output":"Saída", "Stride":"Passo", "Save aligned trajectory":"Guardar trajetória alinhada", "Log":"Registo", "Aligned trajectory saved":"Trajetória alinhada guardada"}, "ru": {"Align Trajectory":"Выровнять траекторию", "Align trajectory":"Выровнять траекторию", "Trajectory":"Траектория", "Topology":"Топология", "Atom selection":"Выбор атомов", "Output":"Вывод", "Stride":"Шаг", "Save aligned trajectory":"Сохранить выровненную траекторию", "Log":"Журнал", "Aligned trajectory saved":"Выровненная траектория сохранена"}}
+
+def install_translations():
+    for locale, values in _CATALOGS.items(): i18n.add_translations(locale, values, context="Align Trajectory")
+
+def tr(text): return i18n.tr(text, context="Align Trajectory")

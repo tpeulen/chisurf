@@ -1,0 +1,56 @@
+"""Native EMTK trajectory alignment tool."""
+# ruff: noqa: E701, E702
+from __future__ import annotations
+
+from emtk import im
+from emtk.app import ImApp
+
+from .strings import install_translations, tr
+from .view_model import AlignTrajectoryViewModel
+
+install_translations()
+
+
+class AlignTrajectoryApp(ImApp):
+    def __init__(self, model=None):
+        self.model = model or AlignTrajectoryViewModel()
+        self.target = ""
+        self.message = ""
+        super().__init__(self.render)
+
+    def render(self):
+        im.begin(tr("Align Trajectory"), (0, 0, *im.get_main_viewport().size))
+        im.heading(tr("Align trajectory"), level=2)
+        for label, attr, tip in (("Trajectory", "trajectory_filename", "Input trajectory"), ("Topology", "topology_filename", "Optional topology naming the atoms"), ("Atom selection", "atom_selection", "Comma-separated atom ids for superposition"), ("Output", "target", "Destination aligned trajectory")):
+            im.text(tr(label)); im.same_line(); im.set_next_item_width(440)
+            changed, value = im.input_text("##" + attr, str(getattr(self, attr) if attr == "target" else getattr(self.model, attr)))
+            im.set_item_tooltip(tr(tip))
+            if changed:
+                if attr == "target": self.target = value
+                else: setattr(self.model, attr, value)
+        im.text(tr("Stride")); im.same_line(); im.set_next_item_width(120)
+        changed, value = im.input_int("##stride", int(self.model.stride)); im.set_item_tooltip(tr("Read every Nth frame"))
+        if changed: self.model.stride = max(1, value)
+        if im.button(tr("Save aligned trajectory")):
+            try:
+                self.model.save_aligned(self.target)
+                self.message = tr("Aligned trajectory saved")
+            except Exception as exc:
+                self.message = f"{type(exc).__name__}: {exc}"
+        im.set_item_tooltip(tr("Superpose frames on the first frame and write the output"))
+        if self.message: im.text_wrapped(self.message)
+        im.separator(); im.heading(tr("Log"), level=2)
+        for line in self.model.log_text(): im.text(line)
+        im.end()
+
+    def export_settings(self):
+        return {"trajectory_filename": self.model.trajectory_filename, "topology_filename": self.model.topology_filename, "atom_selection": self.model.atom_selection, "stride": self.model.stride, "target": self.target}
+
+    def restore_settings(self, settings):
+        for key in ("trajectory_filename", "topology_filename", "atom_selection", "stride"):
+            if key in settings: setattr(self.model, key, settings[key])
+        self.target = str(settings.get("target", ""))
+
+
+def make_app():
+    return AlignTrajectoryApp()

@@ -1,0 +1,30 @@
+{
+  "controls": [
+    "aligntrajectory",
+    "atomselection",
+    "savealigned",
+    "stride",
+    "topology",
+    "trajectory"
+  ],
+  "labels": [
+    "Atom selection",
+    "Stride",
+    "Topology",
+    "Trajectory"
+  ],
+  "buttons": [
+    "…",
+    "▼  Align trajectory",
+    "💾 Save aligned…"
+  ],
+  "line_edits": 3,
+  "combos": 0,
+  "spin_boxes": 1,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.traj.traj_align.widget:AlignTrajectoryWidget (+HEAD view_model, sections)",
+  "size": [
+    1200,
+    800
+  ]
+}

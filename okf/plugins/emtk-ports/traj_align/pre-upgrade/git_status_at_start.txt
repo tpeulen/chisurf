@@ -1,0 +1,5 @@
+ M chisurf/plugins/traj/traj_align/__init__.py
+ M chisurf/plugins/traj/traj_align/manifest.json
+ M chisurf/plugins/traj/traj_align/view_model.py
+?? chisurf/plugins/traj/traj_align/app.py
+?? chisurf/plugins/traj/traj_align/strings.py
