@@ -30,9 +30,14 @@ def setups_file(tmp_path):
 
 
 def make(setups_file=None):
+    """The app on its Setup page (card T2: with a saved setup it opens on the Browser page)."""
     from chisurf.plugins.tttr.trace_browser.gui.app import TraceBrowserApp
 
-    return TraceBrowserApp(setups_file=setups_file)
+    app = TraceBrowserApp(setups_file=setups_file)
+    app.back_to_setup()
+    # undo what the start-up Continue accepted, so these tests drive Continue themselves
+    app.model.setup_settings = app.model.setup_filetype = app.model.selected_channels = None
+    return app
 
 
 def frames(app, size=(1200, 800), n=3):
@@ -46,39 +51,45 @@ def frames(app, size=(1200, 800), n=3):
 
 @contextlib.contextmanager
 def pressing(monkeypatch, label):
-    """Make the next ``im.button(label)`` report a click (the real button path)."""
-    from emtk import im
+    """Make the next button *label* report a click (the real button path).
 
-    real = im.button
+    Patches ``im.button`` (hand-drawn buttons) and ``emtk.im_widgets.button`` (the buttons of a
+    view spec, whose label carries a ``##action`` id).
+    """
+    from emtk import im, im_widgets
+
     fired = []
 
-    def button(text, *args, **kwargs):
-        result = real(text, *args, **kwargs)
-        if text == label and not fired:
-            fired.append(text)
-            return True
-        return result
+    def wrap(real):
+        def button(text, *args, **kwargs):
+            result = real(text, *args, **kwargs)
+            if str(text).split("##")[0] == label and not fired:
+                fired.append(text)
+                return True
+            return result
 
-    monkeypatch.setattr(im, "button", button)
+        return button
+
+    originals = (im.button, im_widgets.button)
+    monkeypatch.setattr(im, "button", wrap(originals[0]))
+    monkeypatch.setattr(im_widgets, "button", wrap(originals[1]))
     yield fired
-    monkeypatch.setattr(im, "button", real)
+    monkeypatch.setattr(im, "button", originals[0])
+    monkeypatch.setattr(im_widgets, "button", originals[1])
     assert fired, f"no button {label!r} was drawn"
 
 
-# 1. the model keys the app uses exist (no view.json yet: the Setup page is the shared editor)
+# 1. the model keys the Setup page uses exist (the Setup page is the shared editor, no spec;
+#    the Browser page's spec has its own key test in the T2 file)
 def test_model_has_every_key_the_app_uses():
     from chisurf.plugins.tttr.trace_browser.gui.model import TraceBrowserModel
 
-    source = (GUI / "app.py").read_text()
     model = TraceBrowserModel()
-    used = ["page", "setup_settings", "setup_filetype", "selected_channels"]
-    for name in used:
+    for name in ("page", "setup_settings", "setup_filetype", "selected_channels"):
         assert hasattr(model, name), name
-        assert f"model.{name}" in source or name == "page", name
     for name in ("accept_setup", "back_to_setup", "apply_setup", "filetype_of", "build_channel_labels"):
         assert callable(getattr(model, name)), name
     assert model.page == "setup"
-    assert not list(GUI.glob("*.view.json")), "T1 has no spec; T2 adds it with its own key test"
 
 
 # 2. the app draws the Setup page, empty and with a setup selected, at both sizes
@@ -120,9 +131,7 @@ def test_continue_applies_the_setup_and_back_returns(setups_file, monkeypatch):
         assert model.setup_settings["detectors"]["red"]["chs"] == [0]
         assert model.setup_settings["setup_name"] == "ALEX Suite (auto)"
         browser = " | ".join(frames(app))
-        assert "not ported to emtk yet" in browser
-        assert "Accepted setup: ALEX Suite (auto)" in browser
-        assert "Selected channels: 0, 1" in browser and "File type: PTO" in browser
+        assert "Trace plot: card T3" in browser and "Files" in browser   # the Browser page (card T2)
         assert "Continue" not in browser            # the setup page is not drawn
         accepted = model.setup_settings
         with pressing(monkeypatch, "← Select setup"):
@@ -143,7 +152,7 @@ def test_continue_without_a_setup_auto_detects_channels(tmp_path):
         assert app.model.selected_channels is None     # the model then reads them from the files
         assert app.model.setup_filetype is None
         text = " | ".join(frames(app))
-        assert "Accepted setup: (unsaved setup)" in text and "Selected channels: auto-detect" in text
+        assert "Trace plot: card T3" in text and "No folder selected" in text
     finally:
         app.close()
 
@@ -212,7 +221,9 @@ def test_every_control_has_a_tooltip(setups_file):
         app.continue_to_browser()
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
-        assert {row["label"] for row in inv["interactive"]} == {"← Select setup"}
+        assert {"← Select setup", "Open", "Clear", "Clear caches"} <= {
+            row["label"] for row in inv["interactive"]
+        }
     finally:
         app.close()
 

@@ -52,6 +52,9 @@ FILTER_LABELS = (
     "Only 0★",
 )
 
+#: Highest rating the browser stores (the rating column is a whole number from 0 to this).
+RATING_MAX = 5
+
 #: Name of the per-folder trace cache directory (beside the data files).
 CACHE_DIRNAME = ".tttr_trace_cache"
 
@@ -148,6 +151,13 @@ class TraceBrowserModel:
         self.requests: list[dict[str, Any]] = []
         self.status_text = "Open a folder with TTTR files."
         self.error_text = ""
+        #: A dialog the host app should open (``"folder"``); the app clears it when it does.
+        self.dialog = ""
+        #: ``callable(method, *args)`` of a host that runs heavy methods off the draw thread
+        #: (the app's job queue); ``None`` runs them inline.
+        self.runner: Callable[..., Any] | None = None
+        #: ``True`` while the host's worker runs (the form greys its controls).
+        self.busy = False
         #: ``callable(path) -> bool`` replacing the CLSM image probe (tests, hosts).
         self.image_probe: Callable[[pathlib.Path], bool] | None = None
         self._trace_mem_cache: dict[tuple[pathlib.Path, str], tuple] = {}
@@ -311,6 +321,141 @@ class TraceBrowserModel:
         except Exception:
             return set(get_tttr_supported_exts())
 
+    # ── spec-facing helpers (the emtk Browser page) ───────────────────
+    def request(self, method: str, *args: Any) -> Any:
+        """Run the model method *method*: through :attr:`runner` when a host set one, else now.
+
+        A host that keeps its draw loop responsive (the emtk app) queues the call on a
+        worker; headless callers and tests run it inline.
+        """
+        if self.runner is not None:
+            return self.runner(method, *args)
+        return getattr(self, method)(*args)
+
+    @property
+    def folder_text(self) -> str:
+        """The folder label of the Browser page (the Qt label's text)."""
+        return str(self.current_folder) if self.current_folder else "No folder selected"
+
+    @property
+    def status_line(self) -> str:
+        """One line for the status area: the error, else what the last scan found."""
+        if self.busy:
+            return "Working..."
+        return self.error_text or self.status_text
+
+    def filter_label_list(self) -> list[str]:
+        """The rating filter's drop-down entries (:data:`FILTER_LABELS`)."""
+        return list(FILTER_LABELS)
+
+    def enabled(self, name: str) -> bool:
+        """Whether the control *name* may be used now (every control waits for a running scan)."""
+        return not self.busy
+
+    def choose_folder(self) -> None:
+        """Ask the host to open its folder chooser (the Qt *Open*)."""
+        self.dialog = "folder"
+
+    def on_paths_dropped(self, paths: Any) -> bool:
+        """Open the first dropped folder (the Qt ``dropEvent``); anything else is ignored.
+
+        Returns
+        -------
+        bool
+            ``True`` when a folder was taken.
+        """
+        for item in paths or ():
+            try:
+                folder = pathlib.Path(str(item))
+                if folder.exists() and folder.is_dir():
+                    self.request("open_folder", folder)
+                    return True
+            except Exception:
+                continue
+        self.status_text = "Drop a folder to open it; a file is ignored."
+        return False
+
+    def select_row(self, record: Any) -> None:
+        """Select the table row *record* (the table's ``selected_call``; ``None`` clears).
+
+        Only the selection and the current file are set; no trace is computed here.
+        """
+        path = record.get("path") if isinstance(record, dict) else None
+        self.set_selection([path] if path else [])
+        first = self.first_selected()
+        if first != self.current_file:
+            self.trace = None
+        self.current_file = first
+
+    def edit_cell(self, record: Any, key: str, value: Any) -> None:
+        """Write an edited table cell (the table's ``edited_call``): rating or notes.
+
+        The table has already put *value* into the row; an invalid rating (not a whole
+        number from 0 to :data:`RATING_MAX`) or an edit while a scan runs puts the stored
+        value back.
+        """
+        if not isinstance(record, dict) or not record.get("path"):
+            return
+        path = record["path"]
+        if self.busy:
+            self._restore_cell(record, key)
+            return
+        if key == "rating":
+            try:
+                rating = int(value)
+                if rating != float(value) or not 0 <= rating <= RATING_MAX:
+                    raise ValueError(value)
+            except (TypeError, ValueError):
+                self._restore_cell(record, key)
+                self.error_text = f"A rating is a whole number from 0 to {RATING_MAX}."
+                return
+            self.error_text = ""
+            self.set_rating(path, rating)
+        elif key == "notes":
+            self.set_notes(path, str(value))
+
+    def _restore_cell(self, record: dict, key: str) -> None:
+        """Put the stored rating or notes of *record*'s file back into the row."""
+        if key == "rating":
+            record["rating"] = self.get_rating(record["path"])
+        elif key == "notes":
+            record["notes"] = self.get_notes(record["path"])
+
+    def export_view(self) -> dict[str, Any]:
+        """What the Browser page remembers: folder, include-subfolders, filter, bin window, y range."""
+        return {
+            "folder": str(self.current_folder) if self.current_folder else "",
+            "include_subfolders": bool(self.include_subfolders),
+            "rating_filter": self.rating_filter,
+            "window_ms": float(self.window_ms),
+            "y_min": float(self.y_min),
+            "y_max": float(self.y_max),
+        }
+
+    def restore_view(self, state: dict | None) -> pathlib.Path | None:
+        """Adopt :meth:`export_view` (invalid or missing entries keep the current value).
+
+        Returns
+        -------
+        pathlib.Path or None
+            The remembered folder if it still is one (the caller opens it), else ``None``.
+        """
+        state = state or {}
+        if "include_subfolders" in state:
+            self.include_subfolders = bool(state["include_subfolders"])
+        if state.get("rating_filter") in FILTER_LABELS:
+            self.rating_filter = state["rating_filter"]
+        for key in ("window_ms", "y_min", "y_max"):
+            try:
+                if key in state:
+                    setattr(self, key, float(state[key]))
+            except (TypeError, ValueError):
+                pass
+        folder = str(state.get("folder") or "")
+        if folder and pathlib.Path(folder).is_dir():
+            return pathlib.Path(folder)
+        return None
+
     # ── rating filter ─────────────────────────────────────────────────
     @property
     def rating_filter(self) -> str:
@@ -382,6 +527,10 @@ class TraceBrowserModel:
         if self.current_file is not None and not self.current_file.exists():
             self.current_file = None
             self.trace = None
+        if self.current_folder is not None:
+            self.status_text = (
+                f"{len(self.rows)} of {len(self.files)} file(s) in {self.current_folder}"
+            )
         self.notify("rows")
         return missing
 
@@ -417,7 +566,7 @@ class TraceBrowserModel:
         if value is not None:
             self.include_subfolders = bool(value)
         if self.current_folder:
-            self.scan()
+            self.request("scan")
 
     def scan(self) -> list[dict[str, Any]]:
         """Scan :attr:`current_folder` and fill :attr:`files` and :attr:`rows`.

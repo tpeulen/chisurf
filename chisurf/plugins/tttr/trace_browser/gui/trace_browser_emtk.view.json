@@ -1,0 +1,79 @@
+{
+  "_comment": "Trace Browser, Browser page (card T2). Drawn by emtk.view_form over TraceBrowserModel (gui/model.py); the trace plot (card T3) and the export / hand-off controls (card T4) are not part of this spec yet.",
+  "title": "Trace browser",
+  "sections": [
+    {
+      "type": "button_row",
+      "description": "Go back to the detector setup, open a folder of TTTR files, or clear what the browser holds.",
+      "buttons": [
+        {"action": "back_to_setup", "label": "← Select setup",
+         "description": "Go back to the detector setup page. The accepted setup, the folder and the file list stay as they are."},
+        {"action": "choose_folder", "label": "Open",
+         "description": "Choose a folder with PTU/TTTR files. You can also drop a folder on the window."},
+        {"action": "clear", "label": "Clear",
+         "description": "Clear the file list, the selection and the shown trace. No file and no rating or note is changed."},
+        {"action": "clear_caches", "label": "Clear caches",
+         "description": "Delete the cached traces and the cached image probes of this folder, in memory and on disk. Traces are computed again when needed."}
+      ]
+    },
+    {
+      "type": "value", "attr": "folder_text", "label": "Folder", "kind": "str",
+      "read_only": true, "elide": "start",
+      "description": "The folder whose files are listed. Use Open, or drop a folder on the window."
+    },
+    {
+      "type": "toggle", "attr": "include_subfolders", "label": "Include subfolders",
+      "call": "set_include_subfolders",
+      "description": "Also list the files in the sub-folders of the opened folder (the .trash folder is never listed). Switching it rescans the folder."
+    },
+    {
+      "type": "choice", "attr": "rating_filter", "label": "Filter",
+      "options_source": "filter_label_list", "call": "set_rating_filter",
+      "description": "Show only the files whose rating passes: all, at least 1, 2 or 3 stars, or only unrated files."
+    },
+    {
+      "type": "value", "attr": "window_ms", "label": "Bin window [ms]", "kind": "float",
+      "minimum": 0.001, "maximum": 10000.0, "decimals": 3, "step": 0.1,
+      "description": "Width of the time bins of the intensity trace in milliseconds. The trace itself is drawn by a later card; the value is kept and remembered."
+    },
+    {
+      "type": "panel", "n_col": 2,
+      "description": "The y axis range of the trace plot.",
+      "sections": [
+        {"type": "value", "attr": "y_min", "label": "Y min", "kind": "float",
+         "minimum": -1000000000.0, "maximum": 1000000000000.0, "decimals": 0, "step": 100.0,
+         "description": "Lower limit of the trace plot's y axis (counts per bin). Entered the wrong way round with Y max, the two are swapped."},
+        {"type": "value", "attr": "y_max", "label": "Y max", "kind": "float",
+         "minimum": -1000000000.0, "maximum": 1000000000000.0, "decimals": 0, "step": 100.0,
+         "description": "Upper limit of the trace plot's y axis (counts per bin)."}
+      ]
+    },
+    {
+      "type": "info", "source": "status_line",
+      "description": "How many files were found in the folder and how many pass the filter, or what went wrong."
+    },
+    {
+      "type": "custom", "key": "data_table", "title": "Files",
+      "description": "One row per listed file. Click a row to select it; double click a rating or a note to edit it. Ratings and notes are saved beside the data in the folder's .trace_browser_meta.json.",
+      "options": {
+        "source": "rows",
+        "row_key": "path",
+        "selected_call": "select_row",
+        "edited_call": "edit_cell",
+        "expand": true,
+        "reserve": 4,
+        "min_column_width": 40,
+        "columns": [
+          {"key": "name", "title": "File", "width": 140,
+           "description": "File name, relative to the opened folder. Click the header to sort."},
+          {"key": "rating", "title": "Rating", "width": 58, "editable": true,
+           "description": "Rating from 0 (unrated) to 5. Double click, type a whole number and press Enter. Sorting by this column orders by the number."},
+          {"key": "size_mb", "title": "Size (MB)", "width": 82, "format": "%.3f",
+           "description": "File size in megabytes."},
+          {"key": "notes", "title": "Notes", "editable": true,
+           "description": "Free text about the file. Double click, type and press Enter; it is saved with the rating."}
+        ]
+      }
+    }
+  ]
+}
