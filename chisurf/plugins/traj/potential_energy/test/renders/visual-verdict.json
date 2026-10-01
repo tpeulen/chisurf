@@ -1,0 +1,44 @@
+{
+  "plugin": "traj_energy_calculator",
+  "date": "2026-09-28",
+  "score": 95,
+  "verdict": "pass",
+  "threshold": 90,
+  "threshold_pass": true,
+  "per_screenshot": [
+    {
+      "image": "native-normal.png",
+      "size": [760, 620],
+      "score": 97,
+      "verdict": "pass"
+    },
+    {
+      "image": "native-narrow.png",
+      "size": [440, 620],
+      "score": 95,
+      "verdict": "pass"
+    }
+  ],
+  "reference_images": ["qt/core__traj_energy_calculator.png"],
+  "generated_screenshots": ["native-normal.png", "native-narrow.png"],
+  "differences": [
+    "Native dark EMTK styling and vertical flow differ from the light Qt AutoForm layout.",
+    "The genuine Qt reference is degraded: its setup section (trajectory/topology pickers, potential combo, parameter editor, Add) failed to build during capture because the optional IMP.cgmol kernels are absent on this machine, so it shows only Stride, the empty table, Process and the log. The native port builds that section Qt-free and therefore shows more.",
+    "The native parameter editor uses immediate-mode inputs (cutoffs + OH/ON/CN/CH toggles) mirroring the Qt potentialDict editors' fields and effective defaults."
+  ],
+  "suggestions": [
+    "When a machine with IMP.cgmol is available, recapture an undegraded populated Qt reference for a like-for-like comparison.",
+    "Keep parameter inputs clamped to the available width; a fixed 180 px input clipped at 440 px before the clamp."
+  ],
+  "reasoning": "Both populated native captures show the full workflow — trajectory/topology rows, potential type combo with parameter editor, weight, Add, potentials table with remove control, stride, output CSV, Process and a live log — with no clipped text and all controls reachable at 760 px and 440 px. First-pass narrow failure (table columns and combo chevron clipped) was root-caused to a fixed window box and fixed with the viewport-sized begin(); the recapture passed.",
+  "visual_gate": "documents:visual-judge",
+  "first_pass": {
+    "native-normal": 95,
+    "native-narrow": 70,
+    "failures": [
+      "potentials table Weight column and remove button clipped beyond the 440 px window",
+      "potential combo dropdown chevron cut off"
+    ],
+    "fix": "size the window from im.get_main_viewport().size and clamp parameter input widths to the available row width"
+  }
+}

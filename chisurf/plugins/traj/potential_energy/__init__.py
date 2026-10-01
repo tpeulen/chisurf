@@ -8,7 +8,6 @@ icon = "⚡"
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
-from chisurf.plugins.traj.potential_energy.widget import PotentialEnergyWidget
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -18,6 +17,17 @@ else:
 
 __all__ = ["PotentialEnergyWidget"]
 
+
+def __getattr__(attribute):
+    # Lazy export: the Qt widget (and its qtpy import) must not load before the
+    # native EMTK factory, which the plugin scanner renders Qt-free.
+    if attribute == "PotentialEnergyWidget":
+        from chisurf.plugins.traj.potential_energy.widget import PotentialEnergyWidget
+
+        return PotentialEnergyWidget
+    raise AttributeError(attribute)
+
+
 if __name__ == "plugin":
-    window = PotentialEnergyWidget()
+    window = __getattr__("PotentialEnergyWidget")()
     window.show()

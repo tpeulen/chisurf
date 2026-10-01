@@ -1,0 +1,391 @@
+{
+  "entrypoint": "chisurf.plugins.traj.potential_energy.widget:PotentialEnergyWidget",
+  "source_revision": "HEAD",
+  "status": "captured",
+  "image": "traj__potential_energy.png",
+  "width": 1000,
+  "height": 700,
+  "checkout_supplements": [
+    "docs",
+    "okf"
+  ],
+  "historical_asset_aliases": [
+    "chisurf/plugins/test",
+    "chisurf/plugins/tests",
+    "chisurf/plugins/backend",
+    "chisurf/plugins/cli",
+    "chisurf/plugins/gui",
+    "chisurf/plugins/api",
+    "chisurf/plugins/games",
+    "chisurf/plugins/ptu_alex_creator",
+    "chisurf/plugins/tttr_header_edit",
+    "chisurf/plugins/audifier",
+    "chisurf/plugins/tttr_time_windows",
+    "chisurf/plugins/tttr_splitter",
+    "chisurf/plugins/filetools",
+    "chisurf/plugins/tttr_microtime_shifter",
+    "chisurf/plugins/tttr_histogram",
+    "chisurf/plugins/microtime_histogram",
+    "chisurf/plugins/tttr_count_rate_analysis",
+    "chisurf/plugins/trace_browser",
+    "chisurf/plugins/tttr_lut_tools",
+    "chisurf/plugins/tttr_image_browser",
+    "chisurf/plugins/tttr_correlate",
+    "chisurf/plugins/intensity_trace",
+    "chisurf/plugins/tttr_toolbox",
+    "chisurf/plugins/plugin_check",
+    "chisurf/plugins/menu_switch",
+    "chisurf/plugins/screenshot",
+    "chisurf/plugins/project_browser",
+    "chisurf/plugins/style_manager",
+    "chisurf/plugins/plot_settings",
+    "chisurf/plugins/plugin_manager",
+    "chisurf/plugins/setup",
+    "chisurf/plugins/user_editor",
+    "chisurf/plugins/updater",
+    "chisurf/plugins/about",
+    "chisurf/plugins/switch_user",
+    "chisurf/plugins/tttr_to_pto",
+    "chisurf/plugins/lightpath_simulator",
+    "chisurf/plugins/setup_channel_definition",
+    "chisurf/plugins/database_connector",
+    "chisurf/plugins/f_test",
+    "chisurf/plugins/code_editor",
+    "chisurf/plugins/batch_analysis",
+    "chisurf/plugins/hmm",
+    "chisurf/plugins/wizards",
+    "chisurf/plugins/mmfdb_admin",
+    "chisurf/plugins/boarding",
+    "chisurf/plugins/model_manager",
+    "chisurf/plugins/globalview",
+    "chisurf/plugins/pto_inspector",
+    "chisurf/plugins/acq",
+    "chisurf/plugins/help",
+    "chisurf/plugins/fcs_saturation_calc",
+    "chisurf/plugins/psf_calculator",
+    "chisurf/plugins/fret_calculator",
+    "chisurf/plugins/rics_precision",
+    "chisurf/plugins/phasor_calculator",
+    "chisurf/plugins/hub",
+    "chisurf/plugins/kappa2_dist",
+    "chisurf/plugins/structure_tools",
+    "chisurf/plugins/hydropro",
+    "chisurf/plugins/fret",
+    "chisurf/plugins/fps_json_editor",
+    "chisurf/plugins/proteinmc",
+    "chisurf/plugins/fcs_filter_calculator",
+    "chisurf/plugins/flc_2d",
+    "chisurf/plugins/fcs_correlator",
+    "chisurf/plugins/fcs_merger",
+    "chisurf/plugins/fcs_calculator",
+    "chisurf/plugins/fcs_toolbox",
+    "chisurf/plugins/fcs_channel_preset",
+    "chisurf/plugins/fcs_convert",
+    "chisurf/plugins/fcs_lfcs_sim",
+    "chisurf/plugins/rpc",
+    "chisurf/plugins/{{cookiecutter.plugin_name}}",
+    "chisurf/plugins/burst_gs",
+    "chisurf/plugins/alex_suite",
+    "chisurf/plugins/burst_2cde",
+    "chisurf/plugins/burst_fusion",
+    "chisurf/plugins/burst_ebfret",
+    "chisurf/plugins/burst_mle_analysis",
+    "chisurf/plugins/burst_h2mm",
+    "chisurf/plugins/burst_background",
+    "chisurf/plugins/burst_irf_bg",
+    "chisurf/plugins/bid_to_analysis",
+    "chisurf/plugins/mfd_prepare",
+    "chisurf/plugins/burst_selection",
+    "chisurf/plugins/burst_browser",
+    "chisurf/plugins/burst_analysis",
+    "chisurf/plugins/burst_bva",
+    "chisurf/plugins/accurate_fret",
+    "chisurf/plugins/burst_fcs_correlator",
+    "chisurf/plugins/fret_trajectory",
+    "chisurf/plugins/traj_energy",
+    "chisurf/plugins/traj_remove_clashes",
+    "chisurf/plugins/potential_energy",
+    "chisurf/plugins/traj_tools",
+    "chisurf/plugins/traj_convert",
+    "chisurf/plugins/traj_save_topology",
+    "chisurf/plugins/traj_align",
+    "chisurf/plugins/traj_rotate_translate",
+    "chisurf/plugins/traj_join",
+    "chisurf/plugins/lifetime_analysis",
+    "chisurf/plugins/lltf",
+    "chisurf/plugins/maxent_decay",
+    "chisurf/plugins/synthetic_decay",
+    "chisurf/plugins/irf_estimator",
+    "chisurf/plugins/tr_anisotropy",
+    "chisurf/plugins/img_pixel_mle",
+    "chisurf/plugins/img_calibration",
+    "chisurf/plugins/imaging_common",
+    "chisurf/plugins/img_coloc",
+    "chisurf/plugins/mle_common",
+    "chisurf/plugins/img_pixel_intensity",
+    "chisurf/plugins/img_frc",
+    "chisurf/plugins/imaging_tools",
+    "chisurf/plugins/region_mle",
+    "chisurf/plugins/img_drift",
+    "chisurf/plugins/clsm",
+    "chisurf/plugins/img_pixel_nb",
+    "chisurf/plugins/img_flow",
+    "chisurf/plugins/psf_determination",
+    "chisurf/plugins/img_pixel_micro_time",
+    "chisurf/plugins/spot_finder",
+    "chisurf/plugins/img_pixel_phasor",
+    "chisurf/plugins/clsm_generator",
+    "chisurf/plugins/img_tracking"
+  ],
+  "plot_backend": "pyqtgraph",
+  "widget_class": "PotentialEnergyWidget",
+  "tab_pages": [],
+  "controls": [
+    {
+      "class": "AutoForm",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Only every Nth frame is scored; also seeds the emitted frame numbers.",
+      "visible": true
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Only every Nth frame is scored; also seeds the emitted frame numbers.",
+      "visible": true
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "Only every Nth frame is scored; also seeds the emitted frame numbers.",
+      "visible": true
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "TableWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_RunSection",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Score every frame of the trajectory and write the energies to a CSV.",
+      "visible": true
+    },
+    {
+      "class": "InlineProgressWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QProgressBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Cancel the running operation.",
+      "visible": false
+    },
+    {
+      "class": "InfoWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    }
+  ]
+}

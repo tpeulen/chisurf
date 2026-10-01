@@ -86,6 +86,10 @@ class PotentialEnergyViewModel:
         lines = "<br>".join(html.escape(line) for line in self._log)
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
+    def log_text(self) -> list[str]:
+        """Return the raw log lines (bound by the native app; no HTML)."""
+        return list(self._log)
+
     # ── potential registry ──────────────────────────────────────────────
     def potential_names(self) -> list[str]:
         """Return the available potential-type names.
