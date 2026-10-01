@@ -9,7 +9,6 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.plugins.tttr.intensity_trace import IntensityTrace
 from chisurf.plugins.tttr.trace_browser.api.models import TraceLoadResult
 
 
@@ -136,6 +135,11 @@ def load_trace(
     if cached is not None:
         time_axis, counts, labels = cached
     else:
+        # The binning engine is a Qt widget class; it is imported only when a
+        # trace really has to be computed, so a cache hit and the helpers above
+        # work without a Qt binding.
+        from chisurf.plugins.tttr.intensity_trace import IntensityTrace
+
         time_window_s = window_ms / 1000.0
         if isinstance(setup_settings, dict) and "detectors" in setup_settings:
             time_axis, counts, labels = IntensityTrace().process_ptu(
