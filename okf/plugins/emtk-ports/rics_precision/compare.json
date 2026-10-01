@@ -1,0 +1,49 @@
+{
+  "plugin": "rics_precision",
+  "explained": {
+    "?": "The Qt '?' help button; the emtk window has a labelled Help button next to Guide (help.md).",
+    "lagsfitted": "In the Estimator panel, folded at first as in Qt; the emtk widget exists only while the panel is unfolded (the inventory is taken folded). Drawn and tested unfolded.",
+    "repeats": "See lagsfitted.",
+    "seed": "See lagsfitted.",
+    "wr[µm]": "The Qt widget renders the spec label 'w_r [µm]' with a subscript r; emtk shows the label as written, with the underscore.",
+    "wz[µm]": "See wr[µm]: 'w_z [µm]'."
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.250",
+    "1",
+    "1.20",
+    "1.250",
+    "10.000",
+    "100",
+    "100.00",
+    "1e-05",
+    "1e-06",
+    "50.0",
+    "50.00",
+    "64",
+    "8.000",
+    "errorvsdwell",
+    "help",
+    "numbers",
+    "pixeldwell/µs",
+    "predictederror/%",
+    "presspredicttosweepthedwelltime",
+    "setthesampleandthescan,thenpresspredict.",
+    "settings",
+    "w_r[µm]",
+    "w_z[µm]"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 27,
+  "after_controls": 48
+}

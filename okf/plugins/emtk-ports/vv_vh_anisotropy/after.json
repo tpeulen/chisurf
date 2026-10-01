@@ -1,0 +1,146 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.000",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.000",
+    "1.00000",
+    "anisotropyr(t)",
+    "applybackgrounds",
+    "batchfiles",
+    "bgvh",
+    "bgvv",
+    "channel",
+    "correction",
+    "decays(vv,vh)",
+    "deprecatedvv/vhanisotropydecayisdeprecated/obsolete.usethevv/vhg-factorpluginandreader-integratedanisotropyworkflowinstead.",
+    "file",
+    "flipvv↔vh",
+    "g-factor",
+    "guide",
+    "help",
+    "intensity",
+    "loadavv/vhfile",
+    "loadvv/vhfile",
+    "n/a",
+    "nofileloaded",
+    "r(t)",
+    "r-infinityregion",
+    "regionend",
+    "regionstart",
+    "r∞",
+    "saveoutputs",
+    "shiftvh(channels)",
+    "vv/vhanisotropy"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Load VV/VH file…",
+      "id": "Load VV/VH file…##request_load",
+      "tooltip": "Load a paired parallel/perpendicular decay (.dat or .txt, VV followed by VH). Dropping a file on the window does the same."
+    },
+    {
+      "kind": "button",
+      "label": "Save outputs…",
+      "id": "Save outputs…##request_save",
+      "tooltip": "Save the shifted VV/VH decays (<name>_shifted.dat), the anisotropy trace (<name>_anisotropy.txt: channel, r(t), r(t) minus r-infinity) and the r-infinity metadata (<name>_rinf.csv)."
+    },
+    {
+      "kind": "button",
+      "label": "Batch files…",
+      "id": "Batch files…##open_batch",
+      "tooltip": "Open the batch window: queue many VV/VH files and compute r-infinity for each with the current settings."
+    },
+    {
+      "kind": "input_text",
+      "label": "loaded_file",
+      "id": "##loaded_file",
+      "tooltip": "The VV/VH file that is loaded."
+    },
+    {
+      "kind": "input_text",
+      "label": "g_factor",
+      "id": "##g_factor",
+      "tooltip": "Detector sensitivity correction applied to VH (0 to 10)."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Apply backgrounds",
+      "id": "Apply backgrounds##apply_bg",
+      "tooltip": "Subtract constant VV and VH backgrounds before calculation."
+    },
+    {
+      "kind": "input_text",
+      "label": "bg_vv",
+      "id": "##bg_vv",
+      "tooltip": "Constant background to subtract from VV."
+    },
+    {
+      "kind": "input_text",
+      "label": "bg_vh",
+      "id": "##bg_vh",
+      "tooltip": "Constant background to subtract from VH."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Flip VV↔VH",
+      "id": "Flip VV↔VH##flip",
+      "tooltip": "Swap channels when the source file has reversed polarization (data swapped in VV/VH)."
+    },
+    {
+      "kind": "input_text",
+      "label": "shift",
+      "id": "##shift",
+      "tooltip": "Shift VH by a fractional channel using interpolation (-150 to 150)."
+    },
+    {
+      "kind": "input_text",
+      "label": "region_start",
+      "id": "##region_start",
+      "tooltip": "First channel in the r-infinity averaging region."
+    },
+    {
+      "kind": "input_text",
+      "label": "region_end",
+      "id": "##region_end",
+      "tooltip": "Last boundary of the r-infinity averaging region."
+    },
+    {
+      "kind": "input_text",
+      "label": "r_infty_text",
+      "id": "##r_infty_text",
+      "tooltip": "r-infinity: the mean of r(t) over the region, five decimals; N/A when there is no valid point in it."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "The short help page."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

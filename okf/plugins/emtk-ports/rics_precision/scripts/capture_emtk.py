@@ -43,3 +43,12 @@ else:
     app.precision_gui.on_predict()
 wait(lambda: "failed" in model.status.lower())
 draw(3); print("error status:", model.status); shot("error")
+# back to a valid sweep, then the export dialog, the unfolded estimator, the guide and the help
+model.nx = model.ny = 64; model.n_lags = 4
+app.predict(); wait(lambda: model.sweep is not None); draw(3)
+app.form.folds["Estimator"] = True; shot("estimator")
+app.start_export(); shot("export_dialog"); app.dialog = None
+app.tour.start(1); shot("guide_await_d")
+app.form.on_used("diffusion_coefficient"); app.tour.next(); app.tour.next(); app.tour.next()
+shot("guide_predict_step")
+app.tour.stop(); app.show_help(); shot("help")

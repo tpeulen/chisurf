@@ -135,3 +135,42 @@ Deliberate breakage (restored): renaming the app's drop hooks -> `test_dropped_f
 Screenshots read: `verify_error_no_files_1200x800.png` (status line, not a box), `verify_populated_1200x800.png` / `_800x600.png`,
 `verify_guide_await_add_files_1200x800.png` (spotlight on Add files, Next disabled until pressed), `verify_guide_channels_1200x800.png`.
 Script: `scripts/capture_verify.py`.
+
+## 13. Click-driven coverage (added after the verification pass; `tests/test_emtk_count_rate_clicks.py`, driver `tests/pointer.py`)
+
+The tests move the pointer, press and release at the drawn control (found by the text it drew), type into fields, and read the next
+frame. Three more findings: **the file chooser was an unsized window covering the whole app and ignoring Escape** (fixed: a sized
+window with an x, closed by Escape); the shared channel editor's numeric inputs are drag fields that take no typed number (its file,
+not touched); Tour Next / Prev never fire (emtk gap below).
+
+| Control | Test |
+|---|---|
+| Add files (dialog, Cancel, pick two, Open), rows | `test_add_files_button_dialog_cancel_and_open` |
+| dialog x / Escape | `test_the_file_dialog_is_a_window_with_an_x_and_closes_with_escape` |
+| Folder... | `test_folder_button_queues_a_folder_recursively` |
+| Database... | `test_database_button_opens_the_dataset_picker` |
+| row click, Remove (greyed first) | `test_selecting_a_row_enables_remove_and_remove_takes_it_off` |
+| row right-click menu | `test_right_click_on_a_row_offers_remove_from_queue` |
+| Clear | `test_clear_button_empties_the_queue_and_the_results` |
+| Calculate: the Qt row, plot, no files, unreadable file, no channels | `test_calculate_button_fills_the_table_and_the_plot_with_the_qt_tools_row`, `test_calculate_without_files_says_so`, `test_calculate_with_an_unreadable_file_reports_the_reason`, `test_calculate_with_no_detector_channel_asks_for_a_setup` |
+| Save (nothing, dialog, typed name, table text) | `test_save_button_before_and_after_a_calculation` |
+| Stop analysis | `test_stop_analysis_button_discards_the_incomplete_run` |
+| Help, Close Help | `test_help_button_opens_and_closes_the_help_window` |
+| Guide, awaited Add files / Calculate / Save, Close Tour | `test_guide_button_starts_the_tour_which_waits_for_each_awaited_button` |
+| Next / Prev | `test_the_tour_next_and_prev_buttons_can_be_clicked` (**xfail strict**) |
+| drop (native host, Qt host, folder) | `test_a_drop_reaches_the_native_and_the_qt_host` |
+| editor section combo, Refresh setups, detector-setup combo, Public setup | `test_the_editor_section_combo_switches_the_section`, `test_refresh_setups_button_and_the_detector_setup_combo`, `test_the_editor_setup_name_field_takes_typed_text` |
+
+```
+$ python -m pytest chisurf/plugins/tttr/tttr_count_rate_analysis -q -p no:cacheprovider
+52 passed, 1 xfailed in 26.15s
+```
+
+Break-on-purpose (restored): `remove_file` made a no-op -> `test_selecting_a_row_enables_remove_and_remove_takes_it_off` and
+`test_right_click_on_a_row_offers_remove_from_queue` failed. Click sequence (real reader, Leica_SP5.ptu):
+`click_1_before_add_files` ... `click_9_after_click_save_with_nothing_new` (Calculate without files -> Add files -> pick -> Open ->
+Calculate -> select row -> right-click -> Remove from queue). Read: the dialog is a window, not a page; the context menu opens at
+the row; the table keeps `44.72 / 0.00 / 6714549 / 150.137`.
+
+Emtk gap (5 lines): `Close Tour##tour`, `◄ Prev##tour`, `Next ►##tour` share one id: `app.tour.start(2); Pointer(app).click("Next ►")`
+leaves `step_idx` at 2 (shared `chisurf/emtk/help_guide.py`, every port).

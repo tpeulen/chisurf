@@ -1,0 +1,159 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.250",
+    "1",
+    "1.20",
+    "1.250",
+    "10.000",
+    "100",
+    "100.00",
+    "1e-05",
+    "1e-06",
+    "50.0",
+    "50.00",
+    "64",
+    "8.000",
+    "brightness[khz/molecule]",
+    "d[µm²/s]",
+    "dwell[µs]",
+    "error[%]",
+    "errorvsdwell",
+    "estimator",
+    "exportcsv",
+    "frame[ms]",
+    "frames",
+    "guide",
+    "help",
+    "line[ms]",
+    "lineoverhead×",
+    "linesperframe",
+    "membrane(2-d)",
+    "moleculesinview",
+    "numbers",
+    "optics",
+    "pixeldwell/µs",
+    "pixeldwell[µs]",
+    "pixelsize[nm]",
+    "pixelsperline",
+    "predict",
+    "predictederror/%",
+    "presspredicttosweepthedwelltime",
+    "sample",
+    "scan",
+    "setthesampleandthescan,thenpresspredict.",
+    "settings",
+    "w_r[µm]",
+    "w_z[µm]"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Predict",
+      "id": "Predict##request_predict",
+      "tooltip": "Sweep the pixel dwell time and predict the relative error on D, marking your own setting on the curve. The sweep runs in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write the predicted error against dwell time (dwell, line, frame, error) to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "diffusion_coefficient",
+      "id": "##diffusion_coefficient",
+      "tooltip": "The diffusion coefficient you expect to measure. This is the awkward part of planning a scan: the best settings depend on the answer you do not have yet, so use a literature value or a guess and check how sensitive the prediction is to it. A free dye is a few hundred; a labelled protein a few tens; a membrane protein below one."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_particles",
+      "id": "##n_particles",
+      "tooltip": "Number of fluorescent molecules in the illuminated region. Too few and the correlation is noisy; too many and its amplitude (which goes as 1/N) sinks into the background."
+    },
+    {
+      "kind": "input_text",
+      "label": "brightness_khz",
+      "id": "##brightness_khz",
+      "tooltip": "Photons per second from a single molecule at the centre of the focus. This is the dominant lever on precision after the number of frames — a dim label cannot be rescued by scanning cleverly."
+    },
+    {
+      "kind": "input_text",
+      "label": "w_r",
+      "id": "##w_r",
+      "tooltip": "Lateral beam waist. Measure it with the waist calibration rather than guessing: every predicted error scales with it."
+    },
+    {
+      "kind": "input_text",
+      "label": "w_z",
+      "id": "##w_z",
+      "tooltip": "Axial beam waist. Only its ratio to w_r matters here."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size_nm",
+      "id": "##pixel_size_nm",
+      "tooltip": "Physical pixel size. It should sample the waist several times over — around 4 to 6 pixels across w_r — or the spatial shape of the correlation is undersampled."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Membrane (2-D)",
+      "id": "Membrane (2-D)##two_d",
+      "tooltip": "Use the 2-D geometry for a membrane or a surface, which has different shape factors from a 3-D focus."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_time_us",
+      "id": "##pixel_time_us",
+      "tooltip": "The dwell time you plan to use. It is marked on the curve so you can see how far it sits from the optimum."
+    },
+    {
+      "kind": "input_text",
+      "label": "line_overhead",
+      "id": "##line_overhead",
+      "tooltip": "How much longer a line takes than the sum of its pixels, from flyback and settling. 1.2 means 20 % overhead. The sweep scales the line time with the dwell, because a line cannot stay short as its pixels grow."
+    },
+    {
+      "kind": "input_text",
+      "label": "nx",
+      "id": "##nx",
+      "tooltip": "Image width. A larger image averages more pixel pairs and so measures better, at the cost of a longer frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "ny",
+      "id": "##ny",
+      "tooltip": "Image height."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_images",
+      "id": "##n_images",
+      "tooltip": "Frames averaged. Precision improves as the square root of this, so halving the error costs four times the acquisition time."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "The short help page: reading the curve and what moves the answer."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

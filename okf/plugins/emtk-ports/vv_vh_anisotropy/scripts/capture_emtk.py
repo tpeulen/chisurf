@@ -16,7 +16,7 @@ a = make(tmp / "a.dat", seed=1); b = make(tmp / "b.dat", seed=2, rinf=0.08)
 bad = tmp / "bad.dat"; bad.write_text("not numbers\n")
 
 def shot(app, name, sz=size):
-    for _ in range(4):
+    for _ in range(1):
         app.draw(RecordingPainter(), 0, 0, *sz)
     emtk_screenshot(app, out / f"{prefix}_{name}_{sz[0]}x{sz[1]}.png", sz)
 
@@ -33,3 +33,8 @@ m.run_batch(); shot(app, "batch_results")
 for r in m.batch_results: print("row", r)
 m.batch_files.append(str(bad)); m.run_batch(); shot(app, "batch_bad_file")
 m.request_load(); shot(app, "file_dialog")
+# the guide waiting for a press, and the help window
+m.batch_open = False; m.request = ""; app.dialog = None
+app.tour.start(0); shot(app, "guide_await_load")
+app.tour.notify_used("request_load"); app.tour.next(); shot(app, "guide_g_factor")
+app.tour.stop(); app.help_window.show(); shot(app, "help")

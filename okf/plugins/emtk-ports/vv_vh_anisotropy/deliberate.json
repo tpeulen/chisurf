@@ -1,0 +1,6 @@
+{
+ "batch": "Renamed: the Qt toolbar button 'Batch...' is 'Batch files...' (it opens the batch window); same action, in the main window.",
+ "flipvv↔vh(dataswappedinvv/vh)": "Shortened to 'Flip VV↔VH'; the Qt caption's remainder ('data swapped in VV/VH') is the control's tooltip.",
+ "save": "Renamed: Qt 'Save...' is 'Save outputs...' (it writes three files: _shifted.dat, _anisotropy.txt, _rinf.csv); the Qt tool wrote only two of them (see REPORT).",
+ "vv/vhanisotropydecayisdeprecated/obsolete.usethevv/vhg-factorpluginandreader-integratedanisotropyworkflowinstead.": "The Qt label starts with an emoji (no emoji in labels); the same notice now starts with 'Deprecated:'."
+}

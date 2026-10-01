@@ -96,9 +96,9 @@
       "tooltip": "The short help page, also behind Help ▸ About."
     },
     {
-      "kind": "input_float",
-      "label": "time_window",
-      "id": "##time_window",
+      "kind": "input_text",
+      "label": "time_window_ms",
+      "id": "##time_window_ms",
       "tooltip": "Duration of each time window in milliseconds. Smaller values give more windows with fewer photons each; the preview's dashed lines follow."
     },
     {

@@ -1,0 +1,8 @@
+{
+ "?": "The Qt '?' help button; the emtk window has a labelled Help button next to Guide (help.md).",
+ "lagsfitted": "In the Estimator panel, folded at first as in Qt; the emtk widget exists only while the panel is unfolded (the inventory is taken folded). Drawn and tested unfolded.",
+ "repeats": "See lagsfitted.",
+ "seed": "See lagsfitted.",
+ "wr[µm]": "The Qt widget renders the spec label 'w_r [µm]' with a subscript r; emtk shows the label as written, with the underscore.",
+ "wz[µm]": "See wr[µm]: 'w_z [µm]'."
+}

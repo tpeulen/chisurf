@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- **tttr_count_rate_analysis, tttr_time_windows, vv_vh_anisotropy, rics_precision verified against their Qt tools and upgraded (swap-candidates, SWAP4B).** Real regressions the audit and the first pass missed: drops reached nothing in native/web hosts (count rate, time windows, vv/vh), the time-window duration could not be typed (`input_float` is a drag field), a failed Process left "Processing files..." on the status line, the vv/vh and count-rate batch/file windows covered the whole app, the rics curve was unconnected points with slider fields, a rics edit during a sweep was overwritten, a text-sorted numeric table, CRLF where the Qt tool wrote LF. Numbers, files and rows are compared with the Qt tool's; every control has a click-driven test (simulated pointer and keyboard on the drawn app, host drops). Guards struck for the four plugins. emtk gap: the tour's Next/Prev share one id and never fire (xfail strict). Reports: [count rate](plugins/emtk-ports/tttr_count_rate_analysis/REPORT.md), [time windows](plugins/emtk-ports/tttr_time_windows/REPORT.md), [vv/vh](plugins/emtk-ports/vv_vh_anisotropy/REPORT.md), [rics](plugins/emtk-ports/rics_precision/REPORT.md).
+
 - **f_test emtk app at parity** (EMTK-1): the From fit menu (a row per open fit and target, re-read on open), Guide and ?
   replace the stream's combos; guide/help shared by both hosts. Trap: pointer tests must draw with `PixelPainter`, whose
   line height `RecordingPainter` does not share. [report](plugins/emtk-ports/f_test/REPORT.md).

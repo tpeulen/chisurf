@@ -133,3 +133,39 @@ failed; the drop hook made to return `False` -> `test_dropped_files_and_folders_
 Screenshots read: `verify_process_failed_1200x800.png` (status line "Processing failed" and the reason in the log),
 `verify_drop_folder_1200x800.png` / `_800x600.png` (a dropped folder queued, preview), `verify_drop_nothing_1200x800.png`,
 `verify_guide_await_files_1200x800.png`. Script: `scripts/capture_verify.py`.
+
+## 13. Click-driven coverage (added after the verification pass; `tests/test_emtk_time_windows_clicks.py`, driver `tests/pointer.py`)
+
+The tests move the pointer, press and release at the drawn control, type into fields and read the next frame. **New regression
+found by typing: the duration was `im.input_float`, which in emtk is a drag field that takes no typed number** (the Qt spin box
+did): fixed, it is now the spec's `value` field (typed, Qt range 0.001..3 600 000 ms, up/down arrows, preview follows); the
+inventory shows the control as an `input_text` now (`after.json`).
+
+| Control | Test |
+|---|---|
+| Files (dialog, Cancel, pick two, Open, first previewed) | `test_files_button_opens_the_dialog_cancel_closes_it_and_open_queues_the_picked_files` |
+| dialog x / Escape | `test_the_file_dialog_closes_with_its_x_and_with_escape` |
+| Folder | `test_folder_button_queues_the_supported_files_of_a_folder` |
+| Database | `test_database_button_opens_the_dataset_picker` |
+| row click (preview) | `test_clicking_a_file_row_previews_that_file` |
+| - Remove | `test_remove_button_takes_the_previewed_file_off_the_queue` |
+| Clear | `test_clear_button_empties_the_queue_the_preview_and_the_log` |
+| Time window field, range, arrows | `test_time_window_field_takes_typed_text_and_the_preview_follows`, `test_time_window_arrows_step_by_one_millisecond` |
+| Output folder field, Browse... | `test_output_folder_field_takes_typed_text`, `test_browse_button_chooses_an_output_folder` |
+| Process (none, typed settings, failure) | `test_process_button_without_files_says_so_in_the_log`, `test_process_button_runs_the_analysis_with_the_typed_settings_and_logs_the_windows`, `test_a_failing_process_is_shown_on_the_status_line_after_the_click` |
+| Stop | `test_stop_button_discards_the_running_job` |
+| Help (both), Close Help | `test_each_help_button_opens_the_help_window[0,1]` |
+| Guide, awaited Files / time window / Process, Close Tour | `test_guide_button_starts_the_tour_which_waits_for_each_control` |
+| Next / Prev | `test_the_tour_next_and_prev_buttons_can_be_clicked` (**xfail strict**, emtk gap) |
+| drop (native host, Qt host) | `test_a_drop_reaches_the_native_and_the_qt_host` |
+
+```
+$ python -m pytest chisurf/plugins/tttr/tttr_time_windows -q -p no:cacheprovider
+52 passed, 1 xfailed in 17.44s
+after: 35 controls, 0 without tooltip, qt-free=yes ;  compare: exit 0 (lost [] / stale [])
+```
+
+Break-on-purpose (restored): the file removal skipped -> `test_remove_button_takes_the_previewed_file_off_the_queue` failed.
+Click sequence (real client, Leica_SP5.ptu): `click_1_before_files` ... `click_7_after_click_clear` (Files -> pick -> Open -> preview ->
+type 10000 ms -> type the output folder -> Process -> `leica.bst` written, log "16 windows" -> Clear). Read: the trace shows the
+boundaries at 10 s, the status line and the log follow each click.
