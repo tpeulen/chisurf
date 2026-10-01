@@ -1295,46 +1295,7 @@ class TraceBrowser(QWidget):
         return sel
 
     def _build_channel_labels(self, chs: list[int]) -> list[str]:
-        # Build labels like "<detector_name>, start-end[;start2-end2]" for each routing channel
-        try:
-            settings = self.setup_settings or {}
-            dets = settings.get("detectors", {}) if isinstance(settings, dict) else {}
-            # Map routing channel -> list of label parts (in case multiple detectors include same channel)
-            label_map: dict[int, list[str]] = {}
-            for det_name, dinfo in dets.items():
-                try:
-                    det_chs = list(dinfo.get("chs", []))
-                    mtrs = dinfo.get("micro_time_ranges", []) or []
-                    # Build range text
-                    rng_txt = ";".join(
-                        f"{int(a)}-{int(b)}"
-                        for (a, b) in mtrs
-                        if isinstance(a, (int, float)) and isinstance(b, (int, float))
-                    )
-                    base = det_name if det_name is not None else ""
-                    lbl = f"{base}, {rng_txt}" if rng_txt else base
-                    for ch in det_chs:
-                        label_map.setdefault(int(ch), []).append(lbl)
-                except Exception:
-                    continue
-            labels: list[str] = []
-            for ch in chs:
-                parts = label_map.get(int(ch))
-                if parts:
-                    # Deduplicate identical parts while preserving order
-                    seen = set()
-                    uniq = []
-                    for p in parts:
-                        if p not in seen:
-                            seen.add(p)
-                            uniq.append(p)
-                    labels.append(" + ".join(uniq))
-                else:
-                    labels.append(str(ch))
-            return labels
-        except Exception:
-            # Fallback: just stringify channels
-            return [str(c) for c in chs]
+        return self.model.build_channel_labels(chs)
 
     # Drag-and-drop support
     def eventFilter(self, obj, event):

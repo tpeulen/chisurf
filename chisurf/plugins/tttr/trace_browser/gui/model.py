@@ -122,6 +122,8 @@ class TraceBrowserModel:
         self.setup_filetype: str | None = None
         #: Routing channels used by the traces (union over the setup's detectors).
         self.selected_channels: list[int] | None = None
+        #: The page shown: ``"setup"`` (detector setup) or ``"browser"``.
+        self.page = "setup"
         # -- files -----------------------------------------------------
         #: Per-folder metadata ``{relative path: {"rating": int, "annotation": str}}``.
         self.meta: dict[str, dict] = {}
@@ -192,6 +194,100 @@ class TraceBrowserModel:
         self.selected_channels = sorted(chs) if chs else None
         logger.debug("TraceBrowser: Selected channels = %s", self.selected_channels)
         self.notify("setup")
+
+    @staticmethod
+    def filetype_of(settings: dict | None) -> str | None:
+        """Return the file type a setup's TTTR-reading block selects.
+
+        Parameters
+        ----------
+        settings : dict, optional
+            Setup as returned by the setup editor.
+
+        Returns
+        -------
+        str or None
+            The ``tttr_reading.file_type``; ``None`` for ``Auto`` or when absent (as
+            the Qt setup page's ``filetype`` property).
+        """
+        reading = (settings or {}).get("tttr_reading") or {}
+        text = str(reading.get("file_type") or "").strip()
+        return None if not text or text.lower() == "auto" else text
+
+    def accept_setup(self, settings: dict) -> None:
+        """Apply the setup page's result and open the browser page (Continue).
+
+        Parameters
+        ----------
+        settings : dict
+            Setup as returned by the setup editor's ``get_settings()``.
+        """
+        self.apply_setup(settings, self.filetype_of(settings))
+        self.page = "browser"
+        self.notify("page")
+
+    def back_to_setup(self) -> None:
+        """Return to the setup page; the accepted setup stays until the next Continue."""
+        self.page = "setup"
+        self.notify("page")
+
+    def build_channel_labels(self, chs: list[int]) -> list[str]:
+        """Return one label per routing channel in *chs*, built from the setup.
+
+        A label is ``"<detector name>, start-end[;start2-end2]"`` (several detectors
+        sharing a channel are joined with `` + ``); a channel the setup does not
+        name is labelled by its number.
+
+        Parameters
+        ----------
+        chs : list of int
+            Routing channels.
+
+        Returns
+        -------
+        list of str
+            The labels, in the order of *chs*.
+        """
+        # Build labels like "<detector_name>, start-end[;start2-end2]" for each routing channel
+        try:
+            settings = self.setup_settings or {}
+            dets = settings.get("detectors", {}) if isinstance(settings, dict) else {}
+            # Map routing channel -> list of label parts (in case multiple detectors include same channel)
+            label_map: dict[int, list[str]] = {}
+            for det_name, dinfo in dets.items():
+                try:
+                    det_chs = list(dinfo.get("chs", []))
+                    mtrs = dinfo.get("micro_time_ranges", []) or []
+                    # Build range text
+                    rng_txt = ";".join(
+                        f"{int(a)}-{int(b)}"
+                        for (a, b) in mtrs
+                        if isinstance(a, (int, float)) and isinstance(b, (int, float))
+                    )
+                    base = det_name if det_name is not None else ""
+                    lbl = f"{base}, {rng_txt}" if rng_txt else base
+                    for ch in det_chs:
+                        label_map.setdefault(int(ch), []).append(lbl)
+                except Exception:
+                    continue
+            labels: list[str] = []
+            for ch in chs:
+                parts = label_map.get(int(ch))
+                if parts:
+                    # Deduplicate identical parts while preserving order
+                    seen = set()
+                    uniq = []
+                    for p in parts:
+                        if p not in seen:
+                            seen.add(p)
+                            uniq.append(p)
+                    labels.append(" + ".join(uniq))
+                else:
+                    labels.append(str(ch))
+            return labels
+        except Exception:
+            # Fallback: just stringify channels
+            return [str(c) for c in chs]
 
     def allowed_exts(self) -> set[str]:
         """Return the file extensions allowed by the selected setup's file type.
