@@ -1,0 +1,7 @@
+ M chisurf/plugins/burst/accurate_fret/gui/__init__.py
+ M chisurf/plugins/burst/accurate_fret/gui/app.py
+ M chisurf/plugins/burst/accurate_fret/gui/tool.py
+ M chisurf/plugins/burst/accurate_fret/gui/view_model.py
+ M chisurf/plugins/burst/accurate_fret/manifest.json
+?? chisurf/plugins/burst/accurate_fret/gui/controller.py
+?? chisurf/plugins/burst/accurate_fret/test/test_native.py

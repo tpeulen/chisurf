@@ -1,0 +1,185 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "(thedonorchannel(i_dd)columnisnotmapped.)",
+    "0",
+    "0.000",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "4.000",
+    "52.000",
+    "6.000",
+    "bgaa",
+    "bgda",
+    "bgdd",
+    "burstdatacolumns",
+    "calibrate",
+    "combinewithopticsprior",
+    "donortau(ns)",
+    "e_max0.80",
+    "e_min0.20",
+    "e–sburstscatterfretline",
+    "försterr₀(å)",
+    "guide",
+    "help",
+    "i_aa(acceptor)",
+    "i_da(fret)",
+    "i_dd(donor)",
+    "lifetime(tau)",
+    "linkerσ(å)",
+    "loadabursttable(ordropone),mapthechannelcolumnsand",
+    "ndx",
+    "noburstfileloaded.",
+    "photophysicsprior",
+    "presscalibrate.",
+    "proximityratio/frete",
+    "showdynamicfretline",
+    "staticfretline(s=0.5)",
+    "statusconsole",
+    "stoichiometrys",
+    "vburstdatacolumns",
+    "vphotophysicsprior"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "🎯 Calibrate",
+      "id": "🎯 Calibrate",
+      "tooltip": ""
+    },
+    {
+      "kind": "button",
+      "label": "📥 ndX",
+      "id": "📥 ndX",
+      "tooltip": ""
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": ""
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": ""
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Burst Data & Columns",
+      "id": "Burst Data & Columns",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_text",
+      "label": "I_DD (Donor)",
+      "id": "I_DD (Donor)",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_text",
+      "label": "I_DA (FRET)",
+      "id": "I_DA (FRET)",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_text",
+      "label": "I_AA (Acceptor)",
+      "id": "I_AA (Acceptor)",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_text",
+      "label": "Lifetime (Tau)",
+      "id": "Lifetime (Tau)",
+      "tooltip": ""
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Photophysics & Prior",
+      "id": "Photophysics & Prior",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_float",
+      "label": "Donor Tau (ns)",
+      "id": "Donor Tau (ns)",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_float",
+      "label": "Förster R₀ (Å)",
+      "id": "Förster R₀ (Å)",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_float",
+      "label": "Linker σ (Å)",
+      "id": "Linker σ (Å)",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_float",
+      "label": "BG DD",
+      "id": "BG DD",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_float",
+      "label": "BG DA",
+      "id": "BG DA",
+      "tooltip": ""
+    },
+    {
+      "kind": "input_float",
+      "label": "BG AA",
+      "id": "BG AA",
+      "tooltip": ""
+    },
+    {
+      "kind": "checkbox",
+      "label": "Combine with Optics Prior",
+      "id": "Combine with Optics Prior",
+      "tooltip": ""
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show Dynamic FRET Line",
+      "id": "Show Dynamic FRET Line",
+      "tooltip": ""
+    }
+  ],
+  "controls_without_tooltip": [
+    "button: ❓ Help",
+    "button: 🎯 Calibrate",
+    "button: 📖 Guide",
+    "button: 📥 ndX",
+    "checkbox: Combine with Optics Prior",
+    "checkbox: Show Dynamic FRET Line",
+    "collapsing_header: Burst Data & Columns",
+    "collapsing_header: Photophysics & Prior",
+    "input_float: BG AA",
+    "input_float: BG DA",
+    "input_float: BG DD",
+    "input_float: Donor Tau (ns)",
+    "input_float: Förster R₀ (Å)",
+    "input_float: Linker σ (Å)",
+    "input_text: I_AA (Acceptor)",
+    "input_text: I_DA (FRET)",
+    "input_text: I_DD (Donor)",
+    "input_text: Lifetime (Tau)"
+  ],
+  "entrypoint": "HEAD:chisurf.plugins.burst.accurate_fret.gui.tool:AccurateFretTool .app"
+}

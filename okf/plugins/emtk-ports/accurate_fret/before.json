@@ -1,0 +1,14 @@
+{
+  "controls": [],
+  "labels": [],
+  "buttons": [],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.burst.accurate_fret.gui.tool:AccurateFretTool (+HEAD app, view_model)",
+  "size": [
+    1200,
+    800
+  ]
+}
