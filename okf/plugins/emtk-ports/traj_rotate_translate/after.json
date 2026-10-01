@@ -1,0 +1,150 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "1",
+    "[015529]ready",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "log",
+    "pdbnamingtheatoms—requiredfordcd",
+    "rotate/translatetrajectory",
+    "rotationmatrix",
+    "saverotated/translated",
+    "stride",
+    "topology",
+    "trajectory",
+    "translation[ang.]"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What the tool does, what it writes, and the known limits."
+    },
+    {
+      "kind": "input_text",
+      "label": "trajectory",
+      "id": "##trajectory",
+      "tooltip": "The trajectory the tool reads. Drop a .dcd here or press … to pick one."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##trajectory.browse",
+      "tooltip": "Open a DCD trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "topology",
+      "id": "##topology",
+      "tooltip": "The structure that names the atoms; a DCD stores coordinates only."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##topology.browse",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them."
+    },
+    {
+      "kind": "input_float",
+      "label": "r00",
+      "id": "##r00",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
+    },
+    {
+      "kind": "input_float",
+      "label": "r01",
+      "id": "##r01",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
+    },
+    {
+      "kind": "input_float",
+      "label": "r02",
+      "id": "##r02",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
+    },
+    {
+      "kind": "input_float",
+      "label": "r10",
+      "id": "##r10",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
+    },
+    {
+      "kind": "input_float",
+      "label": "r11",
+      "id": "##r11",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
+    },
+    {
+      "kind": "input_float",
+      "label": "r12",
+      "id": "##r12",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
+    },
+    {
+      "kind": "input_float",
+      "label": "r20",
+      "id": "##r20",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
+    },
+    {
+      "kind": "input_float",
+      "label": "r21",
+      "id": "##r21",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
+    },
+    {
+      "kind": "input_float",
+      "label": "r22",
+      "id": "##r22",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
+    },
+    {
+      "kind": "input_float",
+      "label": "t0",
+      "id": "##t0",
+      "tooltip": "Added to every coordinate after the rotation, in Ångström."
+    },
+    {
+      "kind": "input_float",
+      "label": "t1",
+      "id": "##t1",
+      "tooltip": "Added to every coordinate after the rotation, in Ångström."
+    },
+    {
+      "kind": "input_float",
+      "label": "t2",
+      "id": "##t2",
+      "tooltip": "Added to every coordinate after the rotation, in Ångström."
+    },
+    {
+      "kind": "button",
+      "label": "💾 Save rotated/translated…",
+      "id": "💾 Save rotated/translated…",
+      "tooltip": "Rotate + translate every frame and write a new DCD trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "stride",
+      "id": "##stride",
+      "tooltip": "Read every Nth frame of the source trajectory."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

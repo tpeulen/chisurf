@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **traj_rotate_translate emtk app at parity** (EMTK-1, upgrade row 39) on the shared trajectory-tool app: the 3×3 matrix and
+  translation as numeric grids, Save rotated/translated… through a dialog, the transform on a worker; new warning when R is not
+  a rotation (guide 81 updated); help and guide new. [report](plugins/emtk-ports/traj_rotate_translate/REPORT.md).
+
 - **traj_align emtk app at parity** (EMTK-1, upgrade row 38) on the shared trajectory-tool app: rows with dialogs, the spec's
   atom selection and stride, Save aligned… through a dialog, "Align failed" as the Qt box titled it, the alignment on a worker;
   help and guide new. Window captions of the traj tools are now the spec panel titles.

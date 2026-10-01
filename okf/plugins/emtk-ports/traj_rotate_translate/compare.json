@@ -1,0 +1,25 @@
+{
+  "plugin": "traj_rotate_translate",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "0",
+    "1",
+    "[015529]ready",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "log",
+    "pdbnamingtheatoms—requiredfordcd",
+    "rotationmatrix",
+    "translation[ang.]"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 5,
+  "after_controls": 15
+}
