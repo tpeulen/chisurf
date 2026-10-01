@@ -1,0 +1,73 @@
+"""Native EMTK rigid trajectory transform tool."""
+# ruff: noqa: E701, E702
+from __future__ import annotations
+
+from emtk import im
+from emtk.app import ImApp
+
+from .strings import install_translations, tr
+from .view_model import RotateTranslateViewModel
+
+install_translations()
+
+
+class RotateTranslateApp(ImApp):
+    def __init__(self, model=None):
+        self.model = model or RotateTranslateViewModel()
+        self.target = ""
+        self.message = ""
+        super().__init__(self.render)
+
+    def _float(self, label, value, tip):
+        im.text(tr(label)); im.same_line(); im.set_next_item_width(100)
+        changed, result = im.input_float("##" + label, float(value))
+        im.set_item_tooltip(tr(tip))
+        return result if changed else value
+
+    def render(self):
+        im.begin(tr("Rotate Translate Trajectory"), (0, 0, *im.get_main_viewport().size))
+        im.heading(tr("Rotate and translate trajectory"), level=2)
+        for label, attr, tip in (("Trajectory", "trajectory_filename", "Input trajectory"), ("Topology", "topology_filename", "Optional topology naming atoms"), ("Output", "target", "Destination trajectory")):
+            im.text(tr(label)); im.same_line(); im.set_next_item_width(480)
+            changed, value = im.input_text("##" + attr, str(getattr(self, attr) if attr == "target" else getattr(self.model, attr)))
+            im.set_item_tooltip(tr(tip))
+            if changed:
+                if attr == "target": self.target = value
+                else: setattr(self.model, attr, value)
+        im.heading(tr("Rotation matrix"), level=3)
+        matrix = self.model.rotation_matrix.copy()
+        for row in range(3):
+            for col in range(3):
+                matrix[row, col] = self._float(f"R{row}{col}", matrix[row, col], tr("Rotation matrix element"))
+        self.model.set_rotation_matrix(matrix)
+        im.heading(tr("Translation"), level=3)
+        vector = self.model.translation_vector.copy()
+        for index in range(3):
+            vector[index] = self._float(f"T{index}", vector[index], tr("Translation component"))
+        self.model.set_translation_vector(vector)
+        self.model.stride = max(1, int(self._float("Stride", self.model.stride, tr("Read every Nth frame"))))
+        if im.button(tr("Save transformed trajectory")):
+            try:
+                self.model.save_rotated_translated(self.target)
+                self.message = tr("Transformed trajectory saved")
+            except Exception as exc:
+                self.message = f"{type(exc).__name__}: {exc}"
+        im.set_item_tooltip(tr("Apply the rotation and translation and write the output"))
+        if self.message: im.text_wrapped(self.message)
+        im.separator(); im.heading(tr("Log"), level=2)
+        for line in self.model.log_text(): im.text(line)
+        im.end()
+
+    def export_settings(self):
+        return {"trajectory_filename": self.model.trajectory_filename, "topology_filename": self.model.topology_filename, "rotation_matrix": self.model.rotation_matrix.tolist(), "translation_vector": self.model.translation_vector.tolist(), "stride": self.model.stride, "target": self.target}
+
+    def restore_settings(self, settings):
+        for key in ("trajectory_filename", "topology_filename", "stride"):
+            if key in settings: setattr(self.model, key, settings[key])
+        if "rotation_matrix" in settings: self.model.set_rotation_matrix(settings["rotation_matrix"])
+        if "translation_vector" in settings: self.model.set_translation_vector(settings["translation_vector"])
+        self.target = str(settings.get("target", ""))
+
+
+def make_app():
+    return RotateTranslateApp()

@@ -1,0 +1,5 @@
+ M chisurf/plugins/traj/traj_rotate_translate/__init__.py
+ M chisurf/plugins/traj/traj_rotate_translate/manifest.json
+ M chisurf/plugins/traj/traj_rotate_translate/view_model.py
+?? chisurf/plugins/traj/traj_rotate_translate/app.py
+?? chisurf/plugins/traj/traj_rotate_translate/strings.py

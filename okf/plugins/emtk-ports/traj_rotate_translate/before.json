@@ -1,0 +1,28 @@
+{
+  "controls": [
+    "rotate/translatetrajectory",
+    "saverotated/translated",
+    "stride",
+    "topology",
+    "trajectory"
+  ],
+  "labels": [
+    "Stride",
+    "Topology",
+    "Trajectory"
+  ],
+  "buttons": [
+    "…",
+    "▼  Rotate / translate trajectory",
+    "💾 Save rotated/translated…"
+  ],
+  "line_edits": 15,
+  "combos": 0,
+  "spin_boxes": 1,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.traj.traj_rotate_translate.widget:RotateTranslateTrajectoryWidget (+HEAD view_model, sections)",
+  "size": [
+    1200,
+    800
+  ]
+}
