@@ -25,72 +25,19 @@ from typing import Any
 
 from qtpy import QtWidgets
 
-from chisurf.core.dataspec import load_view_spec
-from chisurf.core.math.statistics import chi2_max, f_test_chi2r, f_test_confidence
+from chisurf.core.dataspec import load_view_spec as load_view_spec
+from chisurf.core.math.statistics import (
+    chi2_max as chi2_max,
+    f_test_chi2r as f_test_chi2r,
+    f_test_confidence as f_test_confidence,
+)
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.tools import ChisurfDockTool
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
-#: Edited attr -> the recompute method it triggers (mirrors the legacy slots).
-_CONF_ATTRS = frozenset({"chi2_2", "n1", "n2"})
-_CHI2_2_ATTRS = frozenset({"chi2_1", "conf_level"})
-_CHI2_MAX_ATTRS = frozenset({"chi2_min", "npars", "dof", "conf_level_2"})
-
-
-class _FTestModel:
-    """Backing model for the F-test / χ²-max calculator; fields in ftest.view.json."""
-
-    def __init__(self) -> None:
-        # F-test: compare two nested models. The defaults describe a plausible
-        # pair -- the extra parameters of model 2 buy a 10% lower reduced χ².
-        self.chi2_1 = 1.1
-        self.n1 = 100
-        self.chi2_2 = 1.0
-        self.n2 = 98
-        self.conf_level = 0.95
-        self.recompute_conf()
-        # χ²-max: upper χ² limit from a single fit.
-        self.chi2_min = 1.0
-        self.npars = 1
-        self.dof = 100
-        self.conf_level_2 = 0.95
-        self.chi2_max = 0.0
-        self.recompute_chi2_max()
-
-    def view_spec(self):
-        return load_view_spec(_GUI_DIR / "ftest.view.json")
-
-    def recompute_conf(self) -> None:
-        """Confidence that model 2 is justified: ``F.cdf(χ²₁/χ²₂, n₁, n₂)``."""
-        try:
-            self.conf_level = f_test_confidence(
-                chi2r_1=self.chi2_1, chi2r_2=self.chi2_2, nu_1=self.n1, nu_2=self.n2
-            )
-        except (ZeroDivisionError, ValueError):
-            pass
-
-    def recompute_chi2_2(self) -> None:
-        """χ²(2) threshold for the current confidence: ``χ²₁ / F.ppf(conf, n₁, n₂)``."""
-        try:
-            self.chi2_2 = f_test_chi2r(
-                chi2r_1=self.chi2_1, conf_level=self.conf_level, nu_1=self.n1, nu_2=self.n2
-            )
-        except (ZeroDivisionError, ValueError):
-            pass
-
-    def recompute_chi2_max(self) -> None:
-        """Upper χ² limit of a fit at ``conf_level_2`` for ``npars`` parameters and ``dof``."""
-        self.chi2_max = float(
-            chi2_max(
-                chi2_value=self.chi2_min,
-                number_of_parameters=max(1, int(self.npars)),
-                nu=max(1, int(self.dof)),
-                conf_level=self.conf_level_2,
-            )
-        )
-
+from .model import FTestModel as _FTestModel, _CONF_ATTRS, _CHI2_2_ATTRS, _CHI2_MAX_ATTRS
 
 class FTestTool(ChisurfDockTool):
     """F-test / χ²-max calculator; constructs with no required arguments (hub-embeddable).
@@ -191,19 +138,7 @@ class FTestTool(ChisurfDockTool):
 
     def _load_fit(self, fit: Any, target: str) -> None:
         """Copy a fit's statistics into the selected target section, then recompute."""
-        n_points = int(fit.model.n_points)
-        n_free = int(fit.model.n_free)
-        chi2r = float(fit.chi2r)
-        m = self._model
-        if target == "model1":
-            m.chi2_1, m.n1 = chi2r, max(1, n_points - n_free)
-            m.recompute_chi2_2()
-        elif target == "model2":
-            m.chi2_2, m.n2 = chi2r, max(1, n_points - n_free)
-            m.recompute_conf()
-        else:  # chi2max
-            m.chi2_min, m.npars, m.dof = chi2r, n_free, max(1, n_points - n_free)
-            m.recompute_chi2_max()
+        self._model.load_fit(fit, target)
         self._form.sync_fields()
 
     # ── field wiring: recompute on edit (dispatch by attr) ────────────

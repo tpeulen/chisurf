@@ -10,7 +10,7 @@
       "title": "Load the fits, not the numbers",
       "text": "<b>From fit</b> lists every open fit. Send the simpler one to <b>model 1</b> and the more complex one to <b>model 2</b>; χ²r and ν = points − free parameters come across exactly.",
       "target": {"action": "From fit"},
-      "await": {"hint": "Press <b>📊 From fit</b> and choose a fit for model 1, then again for model 2."}
+      "await": {"hint": "Open <b>From fit</b> and choose a fit for model 1, then again for model 2."}
     },
     {
       "title": "Read the confidence",

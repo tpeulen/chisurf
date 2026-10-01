@@ -7,7 +7,7 @@ fit's minimum before a parameter set is excluded.
 ## F-test — two nested models
 
 Load the **simpler** fit as model 1 and the **more complex** one as model 2 with
-**📊 From fit**, or type χ²r and ν = points − free parameters.
+**From fit**, or type χ²r and ν = points − free parameters.
 
 - **confidence** = F.cdf(χ²r₁ / χ²r₂; n₁, n₂). Above ~0.95 the extra parameters
   are justified by this test; 0.5 means no preference.

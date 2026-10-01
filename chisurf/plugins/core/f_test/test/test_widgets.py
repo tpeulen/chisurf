@@ -165,7 +165,7 @@ def test_tool_builds_and_edit_recomputes(qtbot):
 
 
 def test_tool_reuses_the_shared_dock_base(qtbot):
-    """PRD-36: the window is a ``ChisurfDockTool`` and opens no MMFDB connection."""
+    """The window is a ``ChisurfDockTool`` and opens no MMFDB connection."""
     from chisurf.gui.widgets.tools import ChisurfDockTool
     from chisurf.plugins.core.f_test.gui.tool import FTestTool
 
@@ -176,7 +176,7 @@ def test_tool_reuses_the_shared_dock_base(qtbot):
     assert w.tool_settings_name == "FTestTool"
     # the base wires window-level path drag-drop for every dock tool
     assert w.acceptDrops()
-    # read-only construction (PRD-23 Task 4): no MMFDB connection on init
+    # read-only construction: no MMFDB connection on init
     assert w.acquire_mmfdb_connection() is None
 
 

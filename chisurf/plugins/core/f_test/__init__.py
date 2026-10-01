@@ -12,14 +12,21 @@ from pathlib import Path
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
 
-from .gui.tool import FTestTool, FTestWidget  # noqa: F401
-
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 name = _manifest.display_name if _manifest is not None else "Main:Tools:F-Test"
 
 __all__ = ["FTestTool", "FTestWidget"]
 
+def __getattr__(name: str):
+    if name in {"FTestTool", "FTestWidget"}:
+        from .gui import tool
+
+        return getattr(tool, name)
+    raise AttributeError(name)
+
+
 if __name__ == "plugin":
+    from .gui.tool import FTestTool
     window = FTestTool()
     if _manifest is not None:
         apply_manifest_statefulness(window, _manifest)
