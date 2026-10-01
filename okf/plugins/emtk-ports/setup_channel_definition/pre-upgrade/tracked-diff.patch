@@ -1,0 +1,66 @@
+diff --git a/chisurf/plugins/core/setup_channel_definition/__init__.py b/chisurf/plugins/core/setup_channel_definition/__init__.py
+index d8e2c1ae3..901d58e5c 100644
+--- a/chisurf/plugins/core/setup_channel_definition/__init__.py
++++ b/chisurf/plugins/core/setup_channel_definition/__init__.py
+@@ -5,7 +5,6 @@ from pathlib import Path
+ import chisurf as cs
+ from chisurf.core.plugin import load_manifest
+ from chisurf.core.plugin.registry import apply_manifest_statefulness
+-from chisurf.plugins.core.setup_channel_definition.gui.tool import SetupChannelDefinitionWidget
+ 
+ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
+ if _manifest is not None:
+@@ -19,6 +18,7 @@ icon = "🔢"
+ 
+ def load():
+     """Return the setup channel definition widget."""
++    from .gui.tool import SetupChannelDefinitionWidget
+     return SetupChannelDefinitionWidget()
+ 
+ 
+@@ -30,7 +30,15 @@ __all__ = [
+     "icon",
+ ]
+ 
++def __getattr__(name):
++    if name == 'SetupChannelDefinitionWidget':
++        from .gui.tool import SetupChannelDefinitionWidget
++        return SetupChannelDefinitionWidget
++    raise AttributeError(name)
++
++
+ if __name__ == "plugin":
++    from .gui.tool import SetupChannelDefinitionWidget
+     try:
+         parent = getattr(cs, "cs", None)
+         window = SetupChannelDefinitionWidget(parent=parent)
+diff --git a/chisurf/plugins/core/setup_channel_definition/manifest.json b/chisurf/plugins/core/setup_channel_definition/manifest.json
+index fd61be9b1..51e6f3c76 100644
+--- a/chisurf/plugins/core/setup_channel_definition/manifest.json
++++ b/chisurf/plugins/core/setup_channel_definition/manifest.json
+@@ -3,9 +3,13 @@
+   "version": "1.0.0",
+   "display_name": "Setup:Channel Definition",
+   "description": "Detector Channel and PIE-window definition wizard",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Setup"],
+-  "icon": "🔢",
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Setup"
++  ],
++  "icon": "\ud83d\udd22",
+   "menu_hidden": true,
+   "statefulness": {
+     "enabled": false,
+@@ -14,6 +18,7 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.core.setup_channel_definition.gui.tool:SetupChannelDefinitionWidget"
++    "gui": "chisurf.plugins.core.setup_channel_definition.gui.tool:SetupChannelDefinitionWidget",
++    "emtk": "chisurf.plugins.core.setup_channel_definition.gui.app:create_app"
+   }
+ }

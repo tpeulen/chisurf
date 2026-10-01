@@ -5,7 +5,6 @@ from pathlib import Path
 import chisurf as cs
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
-from chisurf.plugins.core.setup_channel_definition.gui.tool import SetupChannelDefinitionWidget
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -19,6 +18,7 @@ icon = "🔢"
 
 def load():
     """Return the setup channel definition widget."""
+    from .gui.tool import SetupChannelDefinitionWidget
     return SetupChannelDefinitionWidget()
 
 
@@ -30,7 +30,15 @@ __all__ = [
     "icon",
 ]
 
+def __getattr__(name):
+    if name == 'SetupChannelDefinitionWidget':
+        from .gui.tool import SetupChannelDefinitionWidget
+        return SetupChannelDefinitionWidget
+    raise AttributeError(name)
+
+
 if __name__ == "plugin":
+    from .gui.tool import SetupChannelDefinitionWidget
     try:
         parent = getattr(cs, "cs", None)
         window = SetupChannelDefinitionWidget(parent=parent)
