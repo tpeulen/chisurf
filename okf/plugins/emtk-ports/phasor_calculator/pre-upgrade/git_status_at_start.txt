@@ -1,0 +1,6 @@
+ M chisurf/plugins/calculator/phasor_calculator/gui/guide.json
+ M chisurf/plugins/calculator/phasor_calculator/gui/tool.py
+ M chisurf/plugins/calculator/phasor_calculator/manifest.json
+?? chisurf/plugins/calculator/phasor_calculator/gui/app.py
+?? chisurf/plugins/calculator/phasor_calculator/gui/model.py
+?? chisurf/plugins/calculator/phasor_calculator/tests/test_emtk_app.py

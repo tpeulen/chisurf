@@ -1,0 +1,436 @@
+"""EMTK immediate-mode UI for the phasor calculator.
+
+Left: the controls the model declares (frequency, harmonic, reference
+lifetimes, the overlay toggles and their parameters). Right: the phasor plot —
+the universal semicircle plus the selected reference geometry, drawn from the
+same :func:`~chisurf.plugins.microscopy.img_pixel_phasor.analysis.build_overlays`
+the imaging plugin and the ``phasor.overlays`` RPC method use, so all three
+stay in sync. Below the controls: the τ → (g, s) table the old results HTML
+showed, as a real table.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
+
+import emtk.im as im
+import emtk.implot as implot
+from emtk.app import ImApp
+from emtk.docking import DockManager, Region, Split
+from emtk.im_core import Col
+
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
+
+if TYPE_CHECKING:
+    from .tool import PhasorCalculatorTool, _PhasorCalcModel
+
+WINDOW_BG = (30, 32, 38, 255)
+ACCENT_GREEN = (46, 160, 67, 255)
+
+_TABLE_FLAGS = im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.RESIZABLE
+
+#: pyqtgraph's single-letter colours, which the shared overlay builder emits.
+_LETTER_COLOURS = {
+    "w": (255, 255, 255, 255),
+    "y": (255, 255, 0, 255),
+    "r": (255, 80, 80, 255),
+    "g": (80, 255, 80, 255),
+    "c": (80, 200, 255, 255),
+    "m": (255, 80, 255, 255),
+    "k": (0, 0, 0, 255),
+}
+
+
+def _rgba(col) -> tuple[int, int, int, int]:
+    """One overlay colour: a pyqtgraph letter, a hex string or an RGB tuple."""
+    if isinstance(col, str):
+        if col in _LETTER_COLOURS:
+            return _LETTER_COLOURS[col]
+        col = col.lstrip("#")
+        return (int(col[0:2], 16), int(col[2:4], 16), int(col[4:6], 16), 255)
+    if len(col) == 3:
+        return (*col, 255)
+    return tuple(col)
+
+
+class PhasorGui(TourTarget):
+    """EMTK GUI for the phasor calculator."""
+
+    def __init__(
+        self,
+        tool: PhasorCalculatorTool,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
+    ) -> None:
+        self.tool = tool
+        self.on_guide = on_guide
+        self.on_help = on_help
+
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+
+        # Both halves of the left column must fit: four collapsible groups
+        # above, and the τ/g/s table below with all five reference rows
+        # visible — a share either way clips one of them.
+        layout = Split(
+            "h",
+            0.38,
+            Split("v", 0.70, Region("controls"), Region("results")),
+            Region("plot"),
+        )
+        self.docks = DockManager(layout)
+        self.docks.add_window(
+            "controls",
+            "🎛️ Controls",
+            self._draw_controls,
+            dock="controls",
+            closable=False,
+        )
+        self.docks.add_window(
+            "results",
+            "🔢 Reference lifetimes",
+            self._draw_results,
+            dock="results",
+            closable=False,
+        )
+        self.docks.add_window(
+            "plot",
+            "📍 Phasor plot",
+            self._draw_plot,
+            dock="plot",
+            closable=False,
+        )
+
+        self.help_window = EmTkHelpWindow(
+            title="Phasor calculator — Help & Reference",
+            resource=Path(__file__).parent / "help.md",
+            owner=tool,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=Path(__file__).parent / "guide.json",
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=tool,
+            wait_for_controls=True,
+        )
+
+    # ── plumbing ──────────────────────────────────────────────────────────
+
+    @property
+    def model(self) -> _PhasorCalcModel:
+        return self.tool._model
+
+    def start_guide(self) -> None:
+        self.tour.start()
+
+    def show_help(self) -> None:
+        self.help_window.show()
+
+
+    def draw(self, w: float = 0.0, h: float = 0.0) -> None:
+        vp = im.get_main_viewport()
+        width = float(w or vp.size[0] or 780.0)
+        height = float(h or vp.size[1] or 540.0)
+        self.docks.draw((0.0, 0.0, width, height))
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, width, height))
+        if self.tour.active:
+            self.tour.draw(width, height)
+
+    # ── controls ──────────────────────────────────────────────────────────
+
+    def _draw_controls(self, box: tuple[float, float, float, float]) -> None:
+        before_inputs = {
+            k: v for k, v in vars(self.model).items() if isinstance(v, (float, int, str, bool))
+        }
+        m = self.model
+
+        if im.button("📖 Guide"):
+            self.start_guide()
+        im.set_item_tooltip("A step-by-step walk through the tool.")
+        self.remember("guide")
+        im.same_line()
+        if im.button("❓ Help"):
+            self.show_help()
+        im.set_item_tooltip("The short help page: reading the semicircle and every control.")
+        self.remember("help")
+        im.separator()
+
+        # Immediate mode reads the model every frame, so an edit is the model's
+        # state — no sync step, and the plot beside it follows on the same frame.
+        _, m.frequency = bounded_float(
+            "Frequency [MHz]", m.frequency, step=5.0, minimum=0.001, maximum=10000.0
+        )
+        self.remember("frequency")
+        if im.is_item_clicked():
+            self.tour.notify_used("frequency")
+        im.set_item_tooltip(
+            "Modulation frequency used to map lifetimes onto the phasor plot "
+            "(MHz); use the laser repetition rate."
+        )
+        _, m.harmonic = bounded_int("Harmonic", m.harmonic, step=1, minimum=1, maximum=16)
+        self.remember("harmonic")
+        if im.is_item_clicked():
+            self.tour.notify_used("harmonic")
+        im.set_item_tooltip("Harmonic number; the effective frequency is frequency × harmonic.")
+        m.harmonic = max(1, int(m.harmonic))
+        _, m.taus = im.input_text("Lifetimes (ns)", m.taus, hint="0.5, 1, 2, 4, 8")
+        self.remember("taus")
+        if im.is_item_clicked():
+            self.tour.notify_used("taus")
+        im.set_item_tooltip(
+            "Comma-separated reference lifetimes (ns), drawn as the iso-lifetime "
+            "grid and semicircle ticks; their g, s are listed in the "
+            "reference-lifetimes table."
+        )
+        self.remember("taus")
+        if im.is_item_clicked():
+            self.tour.notify_used("taus")
+
+        if im.collapsing_header("Reference geometry", im.TreeNodeFlags.DEFAULT_OPEN):
+            im.set_item_tooltip("Expand or collapse reference geometry settings.")
+            _, m.show_grid = im.checkbox("Iso-lifetime grid", m.show_grid)
+            self.remember("show_grid")
+            im.set_item_tooltip(
+                "Draw iso-phase and iso-modulation lines for the reference lifetimes."
+            )
+            _, m.show_ticks = im.checkbox("Lifetime ticks", m.show_ticks)
+            self.remember("show_ticks")
+            im.set_item_tooltip("Mark the reference lifetimes on the universal semicircle.")
+            _, m.show_polar_grid = im.checkbox("Polar grid", m.show_polar_grid)
+            self.remember("show_polar_grid")
+            im.set_item_tooltip(
+                "Draw a polar coordinate grid (concentric circles and angular "
+                "spokes) for reading phase and modulation."
+            )
+            _, m.show_fret = im.checkbox("FRET trajectory", m.show_fret)
+            self.remember("show_fret")
+            if im.is_item_clicked():
+                self.tour.notify_used("show_fret")
+            im.set_item_tooltip(
+                "Draw the quenched-donor FRET trajectory for the donor-only lifetime below."
+            )
+            self.remember("show_fret")
+            if im.is_item_clicked():
+                self.tour.notify_used("show_fret")
+            if m.show_fret:
+                _, m.tau_d0 = bounded_float(
+                    "Donor tau0 [ns]", m.tau_d0, step=0.5, minimum=0.001, maximum=1000.0
+                )
+                self.remember("tau_d0")
+                im.set_item_tooltip(
+                    "Donor-only lifetime for the FRET trajectory (ns): τ_DA = τ_D0 · (1 − E)."
+                )
+
+        if im.collapsing_header("Two-component line", 0):
+            im.set_item_tooltip("Expand or collapse two-component line settings.")
+            _, m.show_component = im.checkbox("Show component line", m.show_component)
+            self.remember("show_component")
+            im.set_item_tooltip("Draw a mixing line between the two component phasors below.")
+            _, m.g1 = bounded_float("g1", m.g1, step=0.05, minimum=-0.1, maximum=1.1)
+            self.remember("g1")
+            im.set_item_tooltip("Component 1 g (real) coordinate.")
+            _, m.s1 = bounded_float("s1", m.s1, step=0.05, minimum=-0.1, maximum=0.7)
+            self.remember("s1")
+            im.set_item_tooltip("Component 1 s (imaginary) coordinate.")
+            _, m.g2 = bounded_float("g2", m.g2, step=0.05, minimum=-0.1, maximum=1.1)
+            self.remember("g2")
+            im.set_item_tooltip("Component 2 g (real) coordinate.")
+            _, m.s2 = bounded_float("s2", m.s2, step=0.05, minimum=-0.1, maximum=0.7)
+            self.remember("s2")
+            im.set_item_tooltip("Component 2 s (imaginary) coordinate.")
+
+        if im.collapsing_header("Mixing region", 0):
+            im.set_item_tooltip("Expand or collapse mixing region settings.")
+            _, m.show_mixing = im.checkbox("Show mixing region", m.show_mixing)
+            self.remember("show_mixing")
+            im.set_item_tooltip(
+                "Draw the two-component mixing geometry and the "
+                "fraction-weighted mixture point (uses g1/s1 and g2/s2)."
+            )
+            _, m.frac1 = bounded_float("Fraction c1", m.frac1, step=0.05, minimum=0.0, maximum=1.0)
+            self.remember("frac1")
+            im.set_item_tooltip(
+                "Fractional intensity of component 1 (component 2 gets the "
+                "remainder); sets the mixture point."
+            )
+            m.frac1 = min(max(float(m.frac1), 0.0), 1.0)
+
+        if im.collapsing_header("Cursor", 0):
+            im.set_item_tooltip("Expand or collapse cursor settings.")
+            _, m.show_cursor = im.checkbox("Show cursor", m.show_cursor)
+            self.remember("show_cursor")
+            im.set_item_tooltip(
+                "Draw a circular gating-cursor outline at the position below, "
+                "as used for selecting pixels in Pixel Phasor."
+            )
+            _, m.cursor_g = bounded_float(
+                "Cursor g", m.cursor_g, step=0.05, minimum=-0.1, maximum=1.1
+            )
+            self.remember("cursor_g")
+            im.set_item_tooltip("Cursor centre g.")
+            _, m.cursor_s = bounded_float(
+                "Cursor s", m.cursor_s, step=0.05, minimum=-0.1, maximum=0.7
+            )
+            self.remember("cursor_s")
+            im.set_item_tooltip("Cursor centre s.")
+            _, m.cursor_radius = bounded_float(
+                "Cursor radius", m.cursor_radius, step=0.01, minimum=0.001, maximum=0.5
+            )
+            self.remember("cursor_radius")
+            im.set_item_tooltip("Radius of the circular gating cursor.")
+
+        # ── the phasor plot ───────────────────────────────────────────────────
+
+        for name, before in before_inputs.items():
+            if getattr(self.model, name, before) != before:
+                self.tour.notify_used(name)
+
+    def _overlays(self) -> list[dict]:
+        m = self.model
+        from chisurf.plugins.microscopy.img_pixel_phasor import analysis
+
+        # The semicircle comes from the same builder as everything else — one
+        # geometry, shared with the imaging plugin and the RPC method.
+        return analysis.build_overlays(
+            frequency_mhz=float(m.frequency),
+            harmonic=int(m.harmonic),
+            sets=m._sets() + ["semicircle"],
+            taus=m._tau_list(),
+            c1=(m.g1, m.s1),
+            c2=(m.g2, m.s2),
+            tau_d0=float(m.tau_d0),
+            components=[[m.g1, m.s1], [m.g2, m.s2]],
+            fractions=[float(m.frac1), 1.0 - float(m.frac1)],
+            cursors=[
+                {
+                    "center": [m.cursor_g, m.cursor_s],
+                    "radius": float(m.cursor_radius),
+                    "name": "cursor",
+                }
+            ],
+        )
+
+    def _draw_plot(self, box: tuple[float, float, float, float]) -> None:
+        m = self.model
+        if implot.begin_plot("##phasor", (-1, -1)):
+            implot.setup_axes("g (real)", "s (imaginary)")
+            implot.setup_axes_limits(*m.PHASOR_G_RANGE, *m.PHASOR_S_RANGE, implot.COND_ALWAYS)
+            implot.setup_legend()
+            for overlay in self._overlays():
+                name = str(overlay.get("name") or "?")
+                style = overlay.get("style") or {}
+                colour = _rgba(style.get("color", "w"))
+                xs = overlay.get("x")
+                ys = overlay.get("y")
+                if xs is None or ys is None or not len(xs):
+                    continue
+                if overlay.get("kind") == "scatter":
+                    implot.set_next_marker_style(implot.MARKER_CIRCLE, 5.0, colour)
+                    implot.plot_scatter(name, xs, ys)
+                else:
+                    dash = style.get("dash")
+                    implot.set_next_line_style(
+                        colour,
+                        float(style.get("width", 1.0)),
+                        dash=(4.0, 3.0) if dash else None,
+                    )
+                    # The iso-lifetime grid names one item per contour; in the
+                    # legend that is noise on top of noise. The geometric
+                    # references stay listed.
+                    spec = None
+                    if "tau_phi" in name:
+                        spec = implot.PlotSpec(flags=implot.ITEM_FLAGS_NO_LEGEND)
+                    implot.plot_line(name, xs, ys, spec=spec)
+                # Lifetime ticks carry their τ as labels; drawn beside the marker.
+                labels = overlay.get("labels")
+                if labels:
+                    for lx, ly, text in zip(xs, ys, labels):
+                        implot.plot_text(str(text), float(lx), float(ly), (9, -13))
+            implot.end_plot()
+            im.set_item_tooltip(
+                "The universal semicircle with the selected reference geometry: "
+                "a single exponential of lifetime τ sits on the semicircle, a "
+                "mixture inside on the chord between its components."
+            )
+        self.remember("plot")
+        if im.is_item_clicked():
+            self.tour.notify_used("plot")
+
+    # ── the τ → (g, s) table ──────────────────────────────────────────────
+
+    def _rows(self) -> list[tuple[float, float, float]]:
+        m = self.model
+        from chisurf.plugins.microscopy.img_pixel_phasor import analysis
+
+        freq = float(m.frequency) * int(m.harmonic)
+        return [(tau, *analysis.lifetime_to_phasor(tau, freq)) for tau in m._tau_list()]
+
+    def _draw_results(self, box: tuple[float, float, float, float]) -> None:
+        m = self.model
+        freq = float(m.frequency) * int(m.harmonic)
+        im.text_colored(f"Effective f = {freq:g} MHz", (0.35, 0.75, 1.0, 1.0))
+        rows = self._rows()
+        table_h = min(float(box[3]) - 46.0, len(rows) * 24.0 + 34.0)
+        if im.begin_table("phasor_rows", 3, _TABLE_FLAGS, (0, max(60.0, table_h))):
+            im.table_setup_column("τ (ns)", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_setup_column("g", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_setup_column("s", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_headers_row()
+            im.set_item_tooltip(
+                "Each reference lifetime τ and its phasor coordinates at the "
+                "effective frequency: g the real part, s the imaginary part."
+            )
+            for tau, g, s in rows:
+                im.table_next_row()
+                im.table_set_column_index(0)
+                im.text_unformatted(f"{tau:g}")
+                im.table_set_column_index(1)
+                im.text_unformatted(f"{g:.3f}")
+                im.table_set_column_index(2)
+                im.text_unformatted(f"{s:.3f}")
+            im.end_table()
+
+
+class PhasorCalcApp(ImApp):
+    """The EMTK ImApp for the phasor calculator."""
+
+    def __init__(self, tool: PhasorCalculatorTool) -> None:
+        self.tool = tool
+        self.phasor_gui = PhasorGui(
+            tool,
+            on_guide=self.start_guide,
+            on_help=self.show_help,
+        )
+        self.native_layouts = {"main": self.phasor_gui.docks}
+        super().__init__(gui=self._render, continuous=False)
+
+    @property
+    def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
+        return self.phasor_gui.item_rects
+
+    def start_guide(self) -> None:
+        self.phasor_gui.start_guide()
+
+    def show_help(self) -> None:
+        self.phasor_gui.show_help()
+
+    def _render(self) -> None:
+        self.phasor_gui.draw()
+
+
+__all__ = ["PhasorCalcApp", "WINDOW_BG"]
+
+
+def make_app(**kwargs):
+    """Construct the standalone EMTK phasor calculator."""
+    from chisurf.emtk.i18n import install
+
+    install()
+    from types import SimpleNamespace
+
+    from .model import _PhasorCalcModel
+
+    return PhasorCalcApp(SimpleNamespace(_model=_PhasorCalcModel()))
