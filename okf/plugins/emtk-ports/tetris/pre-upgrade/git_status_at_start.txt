@@ -1,0 +1,16 @@
+ M chisurf/plugins/misc/games/tetris/README.md
+ M chisurf/plugins/misc/games/tetris/__init__.py
+ M chisurf/plugins/misc/games/tetris/manifest.json
+ M chisurf/plugins/misc/games/tetris/test/test_game.py
+ M chisurf/plugins/misc/games/tetris/tetris.py
+?? chisurf/plugins/misc/games/tetris/app.py
+?? chisurf/plugins/misc/games/tetris/drawing.py
+?? chisurf/plugins/misc/games/tetris/glyphs.json
+?? chisurf/plugins/misc/games/tetris/model.py
+?? chisurf/plugins/misc/games/tetris/spectrum.py
+?? chisurf/plugins/misc/games/tetris/test/capture_native.py
+?? chisurf/plugins/misc/games/tetris/test/capture_qt.py
+?? chisurf/plugins/misc/games/tetris/test/renders/
+?? chisurf/plugins/misc/games/tetris/test/test_legacy_adapter.py
+?? chisurf/plugins/misc/games/tetris/test/test_native.py
+?? chisurf/plugins/misc/games/tetris/translations.py

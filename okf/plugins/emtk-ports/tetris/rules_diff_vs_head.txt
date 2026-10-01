@@ -1,0 +1,116 @@
+DIFF __init__
+--- 
++++ 
+@@ -0,0 +1,3 @@
++def __init__(self, host=None):
++    self.host = host or SimpleNamespace(audio=SimpleNamespace(sfx=lambda *args: None))
++    self.restart()
+DIFF _cell_center
+--- 
++++ 
+@@ -1,14 +0,0 @@
+-def _cell_center(self, col: int, row: int) -> tuple[float, float]:
+-    """World position of a cell's centre.
+-
+-        Parameters
+-        ----------
+-        col, row : int
+-            Cell coordinates.
+-
+-        Returns
+-        -------
+-        tuple of float
+-            Centre in world units.
+-        """
+-    return (self.ORIGIN_X + (col + 0.5) * self.CELL, self.ORIGIN_Y + (row + 0.5) * self.CELL)
+DIFF _draw_cell
+--- 
++++ 
+@@ -1,21 +0,0 @@
+-def _draw_cell(self, scene, col: int, row: int, shape: int, live: bool=False) -> None:
+-    """Draw one occupied cell as a spectral packet.
+-
+-        Parameters
+-        ----------
+-        scene : chisurf.gui.chigame.scene.Scene
+-            Frame under construction.
+-        col, row : int
+-            Cell coordinates.
+-        shape : int
+-            Which tetromino, which selects the wavelength.
+-        live : bool, optional
+-            Whether this is the falling piece. The live piece carries a halo so
+-            it is unmistakable against settled cells of the same colour --
+-            dimming the settled ones instead just made the well muddy.
+-        """
+-    at = self._cell_center(col, row)
+-    nm = SHAPE_NM[shape]
+-    if live:
+-        scene.draw('photon', 'halo', at=at, size=(self.CELL * 0.5, self.CELL * 0.5), emission_nm=nm)
+-    scene.draw('band', f'{nm:.0f}', at=at, size=(self.CELL - 3.0, self.CELL - 3.0), emission_nm=nm)
+DIFF _handle_steering
+--- 
++++ 
+@@ -11,17 +11,17 @@
+         keys : chisurf.gui.chigame.input.InputMap
+             Controller state.
+         """
+-    if keys.just_pressed(Action.CONFIRM) and self.shape != SQUARE:
++    if keys.just_pressed('confirm') and self.shape != SQUARE:
+         self.try_move(rotated(self.coords), self.x, self.y)
+-    for action, step in ((Action.LEFT, -1), (Action.RIGHT, 1)):
++    for action, step in (('left', -1), ('right', 1)):
+         if keys.just_pressed(action):
+             self.try_move(self.coords, self.x + step, self.y)
+             self._repeat_action = action
+             self._repeat_timer = -REPEAT_DELAY
+-        elif keys.is_held(action) and self._repeat_action is action:
++        elif keys.is_held(action) and self._repeat_action == action:
+             self._repeat_timer += dt
+             while self._repeat_timer >= REPEAT_RATE:
+                 self._repeat_timer -= REPEAT_RATE
+                 self.try_move(self.coords, self.x + step, self.y)
+-        elif self._repeat_action is action and (not keys.is_held(action)):
++        elif self._repeat_action == action and (not keys.is_held(action)):
+             self._repeat_action = None
+DIFF restart
+--- 
++++ 
+@@ -9,5 +9,5 @@
+     self.over = False
+     self._fall_timer = 0.0
+     self._repeat_timer = 0.0
+-    self._repeat_action: Action | None = None
++    self._repeat_action: str | None = None
+     self.new_piece()
+DIFF update
+--- 
++++ 
+@@ -8,22 +8,22 @@
+         keys : chisurf.gui.chigame.input.InputMap
+             Controller state.
+         """
+-    if keys.just_pressed(Action.MENU):
++    if keys.just_pressed('menu'):
+         self.paused = not self.paused
+-    if keys.just_pressed(Action.CANCEL):
++    if keys.just_pressed('cancel'):
+         self.restart()
+         return
+     if self.over:
+-        if keys.just_pressed(Action.CONFIRM):
++        if keys.just_pressed('confirm'):
+             self.restart()
+         return
+     if self.paused:
+         return
+     self._handle_steering(dt, keys)
+-    if keys.just_pressed(Action.SHOULDER_R):
++    if keys.just_pressed('shoulder_r'):
+         self.drop_down()
+         return
+-    interval = SOFT_DROP_INTERVAL if keys.is_held(Action.DOWN) else self.fall_interval
++    interval = SOFT_DROP_INTERVAL if keys.is_held('down') else self.fall_interval
+     self._fall_timer += dt
+     while self._fall_timer >= interval and (not self.over):
+         self._fall_timer -= interval
