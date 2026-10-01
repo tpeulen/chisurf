@@ -135,32 +135,21 @@ def load_trace(
     if cached is not None:
         time_axis, counts, labels = cached
     else:
-        # The binning engine is a Qt widget class; it is imported only when a
-        # trace really has to be computed, so a cache hit and the helpers above
-        # work without a Qt binding.
-        from chisurf.plugins.tttr.intensity_trace import IntensityTrace
+        # Qt-free binner (same numbers as the legacy IntensityTrace engine).
+        from chisurf.plugins.tttr.trace_browser.core.binning import bin_trace
 
         time_window_s = window_ms / 1000.0
         if isinstance(setup_settings, dict) and "detectors" in setup_settings:
-            time_axis, counts, labels = IntensityTrace().process_ptu(
+            time_axis, counts, labels = bin_trace(
                 file_path,
                 time_window_s,
-                selected_detectors=setup_settings.get("detectors") or {},
+                detectors=setup_settings.get("detectors") or {},
+                channels=selected_channels,
             )
         else:
-            channels = selected_channels
-            if channels is None:
-                try:
-                    import tttrlib
-
-                    tttr_obj = tttrlib.TTTR(str(file_path))
-                    channels = sorted(tttr_obj.get_used_routing_channels())
-                except Exception:
-                    channels = []
-            time_axis, counts, channels = IntensityTrace().process_ptu(
-                file_path, time_window_s, channels
+            time_axis, counts, labels = bin_trace(
+                file_path, time_window_s, channels=selected_channels
             )
-            labels = [str(channel) for channel in channels]
         save_cached(
             file_path,
             folder,
