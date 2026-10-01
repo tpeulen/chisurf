@@ -24,6 +24,7 @@ from typing import Any
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
+from emtk.im_core import get_current_context
 
 from .view_model import IrfBackgroundViewModel
 
@@ -73,7 +74,7 @@ class BurstIrfBackgroundGui:
 
         from pathlib import Path
 
-        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
+        from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
         help_resource = Path(__file__).parent / "help.md"
         guide_resource = Path(__file__).parent / "guide.json"
@@ -88,9 +89,37 @@ class BurstIrfBackgroundGui:
             steps=guide_resource,
             get_target_rect=lambda k: self.item_rects.get(k),
             owner=self.model,
+            wait_for_controls=True,
         )
+        self.on_used = self.tour.notify_used  # the Extract step waits for Compute
 
         self.model.add_observer(self._on_model_event)
+
+        from emtk.docking import DockManager, Region, Split
+
+        self.docks = DockManager(
+            Split("h", 0.4, Region("controls"), Split("v", 0.6, Region("plot"), Region("results"))),
+            name="burst_irf_bg",
+        )
+        self.docks.add_window(
+            "controls", "IRF parameters", lambda box: self._draw_parameters(), dock="controls"
+        )
+        self.docks.add_window("plot", "IRF decay", lambda box: self._draw_irf_plot(), dock="plot")
+        self.docks.add_window(
+            "results", "IRF results", lambda box: self._draw_results_table(), dock="results"
+        )
+        self.docks.add_window(
+            "channels", "Channel definition", self._draw_channels, dock="controls"
+        )
+
+    def _draw_channels(self, box):
+        controller = getattr(self, "controller", None)
+        if controller is not None:
+            im.begin_disabled(controller.running)
+            controller.channel_definition.draw()
+            im.end_disabled()
+        else:
+            im.text_wrapped("Detector settings are supplied by the embedding host.")
 
     def start_guide(self) -> None:
         """Start the in-EMTK guided tour."""
@@ -105,44 +134,13 @@ class BurstIrfBackgroundGui:
             n = len(self.model.results_rows())
             self.status_text = f"Extracted IRF + background for {n} detector(s)."
 
-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
-        """Store the item's screen rectangle for tour targeting."""
-        r = rect if rect is not None else im.get_item_rect()
-        if r is not None:
-            self.item_rects[name] = tuple(r)
-
     def track(self, name: str) -> None:
         """Record usage of a named control."""
         if callable(self.on_used):
             self.on_used(name)
 
     def draw(self, w: float, h: float) -> None:
-        """Draw the dockable IRF & Background tool into (w, h) display pixels."""
-        im.dock_space_over_viewport(1)
-
-        left_w = min(max(280.0, w * 0.28), 340.0)
-        right_w = max(w - left_w - 16.0, 320.0)
-
-        # ── Window 1: Parameters & Actions ──────────────────────────────
-        im.set_next_window_pos((4.0, 4.0), im.Cond.ALWAYS)
-        im.set_next_window_size((left_w, max(h - 8.0, 100.0)), im.Cond.ALWAYS)
-        if im.begin("IRF Parameters"):
-            self._draw_parameters()
-            im.end()
-
-        # ── Window 2: IRF Decay Plot ─────────────────────────────────────
-        im.set_next_window_pos((8.0 + left_w, 4.0), im.Cond.ALWAYS)
-        im.set_next_window_size((right_w, max((h - 12.0) * 0.60, 150.0)), im.Cond.ALWAYS)
-        if im.begin("IRF Plot (Non-burst scatter)"):
-            self._draw_irf_plot()
-            im.end()
-
-        # ── Window 3: Results Table ──────────────────────────────────────
-        im.set_next_window_pos((8.0 + left_w, 8.0 + max((h - 12.0) * 0.60, 150.0)), im.Cond.ALWAYS)
-        im.set_next_window_size((right_w, max((h - 12.0) * 0.40, 100.0)), im.Cond.ALWAYS)
-        if im.begin("Results"):
-            self._draw_results_table()
-            im.end()
+        self.docks.draw((0.0, 0.0, float(w), float(h)))
 
         if self.help_window.open:
             self.help_window.draw((0.0, 0.0, float(w), float(h)))
@@ -152,12 +150,21 @@ class BurstIrfBackgroundGui:
 
     def _draw_parameters(self) -> None:
         avail_w = im.get_content_region_avail()[0]
+        if getattr(self, "controller", None) is not None:
+            self.controller.draw_inputs(remember=self.remember, track=self.track)
+            if "bg_channels" in self.item_rects:  # the guide's name for the channel editor button
+                self.item_rects["irf_bg_channels"] = self.item_rects["bg_channels"]
+        im.begin_disabled(bool(getattr(self, "controller", None) and self.controller.running))
         im.text_colored(ACCENT_BLUE, "Burst Search & Baseline")
 
         # Min photons / burst
         im.text("Min photons / burst:")
         im.set_next_item_width(avail_w)
         ch_ph, new_ph = im.drag_int("##min_photons", int(self.model.min_photons), 5, 2, 100000)
+        im.set_item_tooltip(
+            "Minimum photons per burst used when selecting bursts for the IRF/background estimate."
+        )
+        self.remember("min_photons")
         if ch_ph and new_ph >= 2:
             self.model.min_photons = int(new_ph)
 
@@ -165,6 +172,9 @@ class BurstIrfBackgroundGui:
         im.text("Photon window:")
         im.set_next_item_width(avail_w)
         ch_pw, new_pw = im.drag_int("##photon_window", int(self.model.photon_window), 1, 2, 10000)
+        im.set_item_tooltip(
+            "Number of consecutive photons required inside the time window to call a burst."
+        )
         if ch_pw and new_pw >= 2:
             self.model.photon_window = int(new_pw)
 
@@ -174,6 +184,7 @@ class BurstIrfBackgroundGui:
         ch_tw, new_tw = im.drag_float(
             "##time_window", float(self.model.time_window_ms), 0.1, 0.001, 1000.0, "%.3f"
         )
+        im.set_item_tooltip("Sliding time window in milliseconds used by the burst search.")
         if ch_tw and new_tw > 0:
             self.model.time_window_ms = float(new_tw)
 
@@ -183,6 +194,9 @@ class BurstIrfBackgroundGui:
         ch_q, new_q = im.slider_float(
             "##quantile", float(self.model.baseline_quantile), 0.0, 0.9, "%.2f"
         )
+        im.set_item_tooltip(
+            "Quantile of the non-burst micro-time counts used as the background (dark-count) floor."
+        )
         if ch_q:
             self.model.baseline_quantile = float(new_q)
 
@@ -190,12 +204,21 @@ class BurstIrfBackgroundGui:
         im.text("Micro-time binning:")
         im.set_next_item_width(avail_w)
         ch_bin, new_bin = im.drag_int("##binning", int(self.model.micro_time_binning), 1, 1, 64)
+        im.set_item_tooltip("Micro-time binning factor applied before building the IRF histogram.")
         if ch_bin and new_bin >= 1:
             self.model.micro_time_binning = int(new_bin)
+            controller = getattr(self, "controller", None)
+            if controller is not None:
+                controller.channel_definition.model.data["tttr_reading"]["micro_time_binning"] = (
+                    int(new_bin)
+                )
+                controller.channel_definition.model.changed()
 
         im.spacing()
         im.separator()
         im.spacing()
+
+        im.end_disabled()
 
         # Actions
         from emtk.im_core import Col
@@ -205,6 +228,7 @@ class BurstIrfBackgroundGui:
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
         if im.button("🌙 Compute", (avail_w, 28.0)):
             self.track("toolAction_run")
+            self.track("irf_bg_run")
             if callable(self.on_compute):
                 self.on_compute()
             else:
@@ -213,6 +237,10 @@ class BurstIrfBackgroundGui:
                 except Exception as exc:
                     self.status_text = f"Error: {exc}"
         self.remember("toolAction_run")
+        self.remember("irf_bg_run")
+        im.set_item_tooltip(
+            "Extract the instrument response (IRF) and the per-detector background rates from the loaded files."
+        )
         im.pop_style_color(3)
 
         im.spacing()
@@ -221,6 +249,16 @@ class BurstIrfBackgroundGui:
             if callable(self.on_send_to_mle):
                 self.on_send_to_mle()
         self.remember("send_to_mle")
+        im.set_item_tooltip(
+            "Send the extracted IRF and background patterns to the burst-MLE lifetime fit."
+        )
+
+        if getattr(self, "controller", None) is not None:
+            if im.button("Export MLE patterns"):
+                self.controller.browse("patterns")
+            im.set_item_tooltip(
+                "Save per-detector IRF and background patterns in a NumPy archive for scripted MLE fitting."
+            )
 
         btn_half_w = max(50.0, (avail_w - 6.0) * 0.5)
         im.spacing()
@@ -228,16 +266,20 @@ class BurstIrfBackgroundGui:
             self.track("guide")
             self.start_guide()
         self.remember("guide")
+        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
 
         im.same_line()
         if im.button("❓ Help", (btn_half_w, 24.0)):
             self.track("help")
             self.show_help()
         self.remember("help")
+        im.set_item_tooltip("Open the help window with reference documentation.")
 
         im.spacing()
         im.text_colored(ACCENT_GRAY, f"Files loaded: {len(self.model.files)}")
         im.spacing()
+        # The tool's own line (the extraction result); the controller's messages are drawn
+        # with the inputs -- showing them here too doubled every one.
         im.text_wrapped(self.status_text)
 
     def _draw_irf_plot(self) -> None:
@@ -287,9 +329,13 @@ class BurstIrfBackgroundGui:
             im.end_drag_drop_target()
 
         self.remember("irf_series", (origin[0], origin[1], plot_w, plot_h))
+        self.remember("IRF (non-burst scatter)", (origin[0], origin[1], plot_w, plot_h))
 
     def _draw_results_table(self) -> None:
         avail_w, avail_h = im.get_content_region_avail()
+        rx, ry = im.get_cursor_screen_pos()
+        self.remember("irf_bg_results", (rx, ry, avail_w, avail_h))
+        # Columns as wide as their headers: stretched to a narrow pane they overlapped.
         rows = self.model.results_rows()
 
         if im.begin_table(
@@ -299,11 +345,11 @@ class BurstIrfBackgroundGui:
             size=(avail_w, avail_h - 10.0),
         ):
             im.table_setup_scroll_freeze(0, 1)
-            im.table_setup_column("Detector")
-            im.table_setup_column("Background (kHz)")
-            im.table_setup_column("Prompt (ns)")
-            im.table_setup_column("Non-burst")
-            im.table_setup_column("Burst")
+            im.table_setup_column("Detector", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Detector")[0] + 14.0)
+            im.table_setup_column("Background (kHz)", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Background (kHz)")[0] + 14.0)
+            im.table_setup_column("Prompt (ns)", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Prompt (ns)")[0] + 14.0)
+            im.table_setup_column("Non-burst", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Non-burst")[0] + 14.0)
+            im.table_setup_column("Burst", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Burst")[0] + 14.0)
             im.table_headers_row()
 
             for r in rows:
@@ -332,7 +378,16 @@ class BurstIrfBackgroundApp(ImApp):
         on_send_to_mle: Callable[[], None] | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
+        mle_receiver=None,
     ) -> None:
+        self.controller = None
+        if on_compute is None:
+            from .controller import IrfBackgroundController
+
+            model = model if model is not None else IrfBackgroundViewModel()
+            self.controller = IrfBackgroundController(model, mle_receiver=mle_receiver)
+            on_compute = self.controller.run
+            on_send_to_mle = on_send_to_mle or self.controller.send_to_mle
         self.irf_gui = BurstIrfBackgroundGui(
             model=model,
             on_compute=on_compute,
@@ -341,7 +396,12 @@ class BurstIrfBackgroundApp(ImApp):
             on_help=on_help,
         )
         self.model = self.irf_gui.model
-        super().__init__(gui=self._render, continuous=False)
+        self.item_rects = self.irf_gui.item_rects
+        self.irf_gui.remember = self.remember
+        self.irf_gui.controller = self.controller
+        if self.controller is not None:
+            self.controller.on_show_channels = lambda: self.irf_gui.docks.focus("channels")
+        super().__init__(gui=self._render)
 
     def start_guide(self) -> None:
         """Start guided tour inside EMTK."""
@@ -352,5 +412,27 @@ class BurstIrfBackgroundApp(ImApp):
         self.irf_gui.show_help()
 
     def _render(self) -> None:
+        if self.controller is not None:
+            self.controller.poll()
+            if self.controller.running or self.controller.channel_definition._future is not None:
+                ctx = get_current_context()  # look again in 0.1 s while a worker runs
+                ctx.request_frame_at(ctx.io.now + 0.1)
         w, h = im.get_main_viewport().size
         self.irf_gui.draw(w, h)
+        if self.controller is not None:
+            self.controller.draw_dialogs((0, 0, w, h))
+
+    def close(self):
+        if self.controller is not None:
+            self.controller.close()
+
+    def on_paths_dropped(self, paths):
+        if self.controller is not None:
+            self.controller.on_paths_dropped(paths)
+
+
+def create_app(**kwargs):
+    from chisurf.emtk.i18n import install
+
+    install()
+    return BurstIrfBackgroundApp(**kwargs)

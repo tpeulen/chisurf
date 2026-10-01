@@ -111,7 +111,7 @@ class IrfBackgroundViewModel:
             logger.warning("irf-bg: channels_provider failed", exc_info=True)
             return {}
 
-    def compute(self) -> None:
+    def compute(self, cancel_check=None) -> None:
         """Extract pooled per-detector IRF/background from every loaded file."""
         reason = self.can_compute()
         if reason is not None:
@@ -131,7 +131,15 @@ class IrfBackgroundViewModel:
         display: dict[str, dict] = {}
         mle: dict[str, dict[str, np.ndarray]] = {}
         for path in self.files:
-            tttr = tttrlib.TTTR(path)
+            if callable(cancel_check):
+                cancel_check()
+            provider = getattr(self, "tttr_provider", None)
+            if callable(provider):
+                tttr = provider(path)
+            else:
+                from chisurf.core.fio.staging import open_tttr
+
+                tttr = open_tttr(path)
             keep = non_burst_mask(
                 tttr,
                 min_photons=int(self.min_photons),
@@ -184,6 +192,8 @@ class IrfBackgroundViewModel:
                 slot["prompt_ns"] = 0.0
             slot["background_khz"] = slot["bg_sum"] / slot["bg_n"] if slot["bg_n"] else 0.0
 
+        if callable(cancel_check):
+            cancel_check()
         self._display = display
         self._mle = mle
         self.notify("computed")
