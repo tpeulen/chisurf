@@ -3,10 +3,17 @@
   "version": "1.0.0",
   "display_name": "Tools:Miscellaneous:Games:Minesweeper",
   "description": "A Minesweeper game with selectable playfield size and mine count, contained in the Games hub.",
-  "authors": ["ChiSurf contributors"],
-  "categories": ["Tools", "Miscellaneous", "Games"],
+  "authors": [
+    "ChiSurf contributors"
+  ],
+  "categories": [
+    "Tools",
+    "Miscellaneous",
+    "Games"
+  ],
   "entrypoints": {
-    "gui": "chisurf.plugins.misc.games.minesweeper.gui.tool:MinesweeperWidget"
+    "gui": "chisurf.plugins.misc.games.minesweeper.gui.tool:MinesweeperWidget",
+    "emtk": "chisurf.plugins.misc.games.minesweeper.gui.app:make_app"
   },
   "dependencies": {},
   "menu_hidden": true,

@@ -1,0 +1,28 @@
+{
+  "score": 94,
+  "verdict": "pass",
+  "category_match": true,
+  "differences": [
+    "Native marker is a flat cyan disc instead of the reference glow.",
+    "Cursor is a crisp outline instead of the softer aura.",
+    "Native Sound checkbox exposes the missing host audio adapter.",
+    "Narrow native view fits the complete board; legacy reference clips the sides."
+  ],
+  "suggestions": [
+    "A future shared shader/effect primitive could restore glow without a toolkit dependency."
+  ],
+  "reasoning": "Normal native layout matches the original board geometry, pixel typeface, palette and populated state. Narrow native layout preserves the same presentation while fitting all cells and help text. German and Russian narrow captures retain all labels and controls without clipping.",
+  "threshold": 90,
+  "threshold_pass": true,
+  "reference_images": [
+    "qt-game-560x620.png",
+    "qt-game-360x620.png"
+  ],
+  "generated_screenshots": [
+    "native-560x620.png",
+    "native-360x620.png",
+    "native-de-360x620.png",
+    "native-ru-360x620.png"
+  ],
+  "next_actions": []
+}

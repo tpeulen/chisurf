@@ -1,0 +1,249 @@
+"""Standalone EMTK detector-array Minesweeper; the existing rules own the round.
+
+The glyph JSON is the ASCII string art from chigame/pixelfont.py. Keeping the
+asset here avoids importing the Qt-bearing legacy GUI package in a native app.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from emtk import i18n, im
+from emtk.app import ImApp
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
+
+from ..core.game import DIFFICULTIES, GameStatus, MinesweeperGame
+from .translations import install_translations
+
+GLYPHS = json.loads(Path(__file__).with_name("glyphs.json").read_text())
+CELL = 26.0
+COLOURS = [(255, 32, 30, 255), (255, 110, 0, 255), (210, 195, 0, 255),
+           (40, 220, 90, 255), (0, 190, 220, 255), (20, 110, 255, 255),
+           (100, 60, 245, 255), (190, 60, 240, 255)]
+
+
+def tr(text):
+    return i18n.tr(text, context="Minesweeper")
+
+
+def pixel_text(draw, text, pos, height, colour, align="left", max_width=None):
+    """Draw the original proportional pixel face, with Unicode fallback."""
+    if any(char not in GLYPHS for char in text):
+        font_scale = max(1.0, height / 12)
+        im.push_font_scale(font_scale)
+        width, line_height = draw.calc_text_size(text)
+        if max_width is not None and width > max_width:
+            im.pop_font_scale()
+            im.push_font_scale(font_scale * max_width / width)
+            width, line_height = draw.calc_text_size(text)
+        x = pos[0] - (width / 2 if align == "center" else width if align == "right" else 0)
+        draw.add_text((x, pos[1] - line_height / 2), colour, text)
+        im.pop_font_scale()
+        return
+    glyphs = []
+    for char in text:
+        rows = GLYPHS[char].split("//")
+        columns = [x for x in range(7) if any(row[x] == "#" for row in rows)]
+        left, width = (min(columns), max(columns) - min(columns) + 1) if columns else (0, 3)
+        glyphs.append((rows, left, width))
+    advance = sum(width + 1 for rows, left, width in glyphs)
+    if max_width is not None and advance * height / 11 > max_width:
+        height = max_width * 11 / advance
+    unit = height / 11
+    width = sum(width + 1 for rows, left, width in glyphs) * unit
+    x = pos[0] - (width / 2 if align == "center" else width if align == "right" else 0)
+    for rows, left, width in glyphs:
+        for y, row in enumerate(rows):
+            for column in range(left, left + width):
+                if row[column] == "#":
+                    at = (x + (column - left) * unit, pos[1] - height / 2 + y * unit)
+                    draw.add_rect_filled(at, (at[0] + unit, at[1] + unit), colour)
+        x += (width + 1) * unit
+
+
+class MinesweeperApp(ImApp):
+    window_size = (560, 620)
+
+    def __init__(self, game=None, audio_callback=None):
+        self.game = game or MinesweeperGame()
+        self.difficulty_index = 0
+        self.cursor_row, self.cursor_col = self.game.rows // 2, self.game.columns // 2
+        self.message = ""
+        self.sound_enabled = False
+        self.audio_callback = audio_callback
+        super().__init__(self.render)
+
+    @property
+    def window_title(self):
+        return tr("Minesweeper")
+
+    def restart(self):
+        self.game.reset()
+        self.message = ""
+
+    def change_difficulty(self, step):
+        self.difficulty_index = (self.difficulty_index + step) % len(DIFFICULTIES)
+        self.game.configure(*list(DIFFICULTIES.values())[self.difficulty_index])
+        self.cursor_row, self.cursor_col = self.game.rows // 2, self.game.columns // 2
+        self.message = ""
+
+    def move(self, dr, dc):
+        self.cursor_row = min(max(self.cursor_row + dr, 0), self.game.rows - 1)
+        self.cursor_col = min(max(self.cursor_col + dc, 0), self.game.columns - 1)
+
+    def reveal(self):
+        # As the Qt view: a finished board ignores Confirm/Menu, so the result
+        # ("Boom! You found a mine." / the win) stays on screen until a reset.
+        if self.game.status is not GameStatus.ACTIVE:
+            return
+        self.message = self.game.reveal(self.cursor_row, self.cursor_col).message
+        self.sound("reveal", 620.0)
+
+    def flag(self):
+        if self.game.status is not GameStatus.ACTIVE:
+            return
+        self.message = self.game.toggle_flag(self.cursor_row, self.cursor_col).message
+        self.sound("flag", 480.0)
+
+    def sound(self, name, frequency):
+        if self.sound_enabled and self.audio_callback is not None:
+            self.audio_callback(name, frequency)
+
+    def key(self, key, text="", modifiers=0):
+        if modifiers:
+            return False
+        direction = {KEY_UP: (-1, 0), KEY_DOWN: (1, 0), KEY_LEFT: (0, -1), KEY_RIGHT: (0, 1)}
+        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
+        direction.update({ord("W"): (-1, 0), ord("S"): (1, 0), ord("A"): (0, -1), ord("D"): (0, 1)})
+        if key in direction:
+            self.move(*direction[key])
+        elif letter in {"w", "s", "a", "d"}:
+            self.move(*{"w": (-1, 0), "s": (1, 0), "a": (0, -1), "d": (0, 1)}[letter])
+        elif key in {KEY_ENTER, KEY_RETURN, 32} or letter == " ":
+            self.reveal()
+        elif letter == "f":
+            self.flag()
+        elif letter == "r":
+            self.restart()
+        elif letter in {"q", "e"}:
+            self.change_difficulty(1 if letter == "e" else -1)
+        else:
+            return False
+        self.request_frame()
+        return True
+
+    def export_settings(self):
+        return {"rows": self.game.rows, "columns": self.game.columns, "mines": self.game.mines,
+                "difficulty_index": self.difficulty_index, "cursor": [self.cursor_row, self.cursor_col],
+                "status": self.game.status.value, "message": self.message,
+                "sound_enabled": self.sound_enabled,
+                "board": [[{"mine": c.mine, "revealed": c.revealed, "flagged": c.flagged,
+                            "adjacent_mines": c.adjacent_mines} for c in row] for row in self.game.board]}
+
+    def restore_settings(self, state):
+        """Restore a round atomically; malformed input leaves the current game intact."""
+        rows, columns, mines = (int(state[name]) for name in ("rows", "columns", "mines"))
+        board = state["board"]
+        if len(board) != rows or any(len(row) != columns for row in board):
+            raise ValueError("saved board dimensions do not match")
+        positions = {(r, c) for r in range(rows) for c in range(columns) if board[r][c]["mine"]}
+        game = MinesweeperGame(rows, columns, mines, positions)
+        status = GameStatus(state["status"])
+        cursor = tuple(map(int, state["cursor"]))
+        if len(cursor) != 2 or not 0 <= cursor[0] < rows or not 0 <= cursor[1] < columns:
+            raise ValueError("saved cursor is outside the board")
+        for r, c in game.coordinates():
+            game.board[r][c].revealed = bool(board[r][c]["revealed"])
+            game.board[r][c].flagged = bool(board[r][c]["flagged"])
+        if game.flags_remaining < 0:
+            raise ValueError("saved board has too many flags")
+        difficulty_index = int(state.get("difficulty_index", 0)) % len(DIFFICULTIES)
+        message = str(state.get("message", ""))
+        game.status = status
+        # A restarted random round must not repeat its previous mine layout.
+        game._fixed_mine_positions = None
+        self.game = game
+        self.cursor_row, self.cursor_col = cursor
+        self.difficulty_index = difficulty_index
+        self.message = message
+        self.sound_enabled = bool(state.get("sound_enabled", False))
+
+    def render(self):
+        viewport = im.get_main_viewport()
+        x, y = viewport.pos
+        w, h = viewport.size
+        im.begin("##minesweeper", (x, y, w, h))
+        draw = im.get_window_draw_list()
+        draw.add_rect_filled((x, y), (x + w, y + h), (8, 9, 11, 255))
+        im.set_cursor_screen_pos((x + 4, y + 4))
+        im.begin_disabled(self.audio_callback is None)
+        changed, enabled = im.checkbox(tr("Sound") + "##sound", self.sound_enabled)
+        if changed:
+            self.sound_enabled = enabled
+            self.audio_callback("enabled", enabled)
+        im.set_item_tooltip(tr("Music and sound effects (off by default).") if self.audio_callback is not None
+                            else tr("No sound here: this window has no audio output."))
+        im.end_disabled()
+        width, height = self.game.columns * CELL, self.game.rows * CELL
+        camera_h = max(height + 150, (width + 70) / 0.8)
+        scale = min(h / camera_h, (w - 16) / (width + 70))
+        ox = x + (w - width * scale) / 2
+        oy = y + h / 2 - (height / 2 - 4) * scale
+        pitch = CELL * scale
+        for row, col in self.game.coordinates():
+            cell = self.game.board[row][col]
+            left, top = ox + col * pitch, oy + row * pitch
+            center = (left + pitch / 2, top + pitch / 2)
+            colour = (26, 28, 33, 255) if cell.revealed else (48, 54, 64, 255)
+            draw.add_rect_filled((left + scale, top + scale), (left + pitch - scale, top + pitch - scale), colour)
+            if cell.flagged and not cell.revealed:
+                draw.add_circle_filled(center, pitch * 0.17, (40, 204, 196, 255))
+            elif cell.revealed and cell.mine:
+                draw.add_circle_filled(center, pitch / 4, (235, 48, 40, 255))
+            elif cell.revealed and cell.adjacent_mines:
+                pixel_text(draw, str(cell.adjacent_mines), center, pitch * .62, COLOURS[cell.adjacent_mines - 1], "center")
+            im.set_cursor_screen_pos((left, top))
+            if im.invisible_button(f"##cell-{row}-{col}", (pitch, pitch)):
+                self.cursor_row, self.cursor_col = row, col
+                self.reveal()
+            if im.is_item_hovered() and im.is_mouse_clicked(1):
+                self.cursor_row, self.cursor_col = row, col
+                self.flag()
+            im.set_item_tooltip(tr("Left click: scan. Right click: flag. Arrows/WASD: move. Enter/Space: scan. F: flag."))
+        center = (ox + (self.cursor_col + .5) * pitch, oy + (self.cursor_row + .5) * pitch)
+        draw.add_circle(center, pitch * .47, (55, 208, 196, 255), thickness=max(2, pitch * .13))
+        dim = (112, 122, 140, 255)
+        pixel_text(draw, tr("Hot pixels: {count}").format(count=self.game.flags_remaining), (ox, oy - 34 * scale), 13 * scale, (199, 209, 224, 255), max_width=width * scale * .58)
+        preset = list(DIFFICULTIES)[self.difficulty_index]
+        pixel_text(draw, tr(preset), (ox + width * scale, oy - 34 * scale), 13 * scale, dim, "right", width * scale * .40)
+        if self.game.status is GameStatus.WON:
+            banner, tint = tr("Array mapped"), (89, 217, 204, 255)
+        elif self.game.status is GameStatus.LOST:
+            banner, tint = tr("Detector saturated"), (230, 82, 77, 255)
+        else:
+            banner, tint = tr(self.message), dim
+        if banner:
+            pixel_text(draw, banner, (x + w / 2, oy + (height + 22) * scale), 16 * scale, tint, "center", w - 16)
+        for offset, label, tip, action in (
+            (44, "Move   Confirm scan   Menu flag", "Scan the selected cell (Enter/Space). Flag it with F or right click.", self.reveal),
+            (62, "Cancel reset   L/R preset", "Restart with R. Change board size with Q/E or click the difficulty name.", self.restart),
+        ):
+            yy = oy + (height + offset) * scale
+            pixel_text(draw, tr(label), (x + w / 2, yy), 12 * scale, dim, "center", w - 16)
+            im.set_cursor_screen_pos((ox, yy - 9 * scale))
+            if im.invisible_button(f"##action-{offset}", (width * scale, 18 * scale)):
+                action()
+            im.set_item_tooltip(tr(tip))
+        im.set_cursor_screen_pos((ox + width * scale - 120 * scale, oy - 45 * scale))
+        if im.invisible_button("##preset", (120 * scale, 25 * scale)):
+            self.change_difficulty(1)
+        im.set_item_tooltip(tr("Cycle Beginner, Intermediate and Expert boards (Q/E)."))
+        im.end()
+
+
+def make_app(audio_callback=None):
+    """The game; *audio_callback(name, value)* plays effects and switches sound (none in emtk yet)."""
+    from chisurf.emtk.i18n import install
+    install()
+    install_translations()
+    return MinesweeperApp(audio_callback=audio_callback)
