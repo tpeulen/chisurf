@@ -1,0 +1,12 @@
+ M chisurf/plugins/core/help/__init__.py
+ M chisurf/plugins/core/help/api/render.py
+ M chisurf/plugins/core/help/api/rst.py
+ M chisurf/plugins/core/help/api/toc.py
+ M chisurf/plugins/core/help/api/xref.py
+ M chisurf/plugins/core/help/gui/__init__.py
+ M chisurf/plugins/core/help/gui/tool.py
+ M chisurf/plugins/core/help/manifest.json
+ M chisurf/plugins/core/help/test/test_doc_registers.py
+ M chisurf/plugins/core/help/test/test_manual_snippets.py
+?? chisurf/plugins/core/help/gui/help_app.py
+?? chisurf/plugins/core/help/test/test_emtk_help.py

@@ -1,0 +1,355 @@
+diff --git a/chisurf/plugins/core/help/__init__.py b/chisurf/plugins/core/help/__init__.py
+index d9daac125..78264888c 100644
+--- a/chisurf/plugins/core/help/__init__.py
++++ b/chisurf/plugins/core/help/__init__.py
+@@ -19,11 +19,21 @@ else:
+ 
+ icon = "📖"
+ 
+-from chisurf.plugins.core.help.gui.tool import HelpWidget  # noqa: E402
++def __getattr__(attribute):
++    """Resolve the optional Qt host adapter without affecting native EMTK imports."""
++    if attribute in {"HelpEmtkTool", "HelpWidget", "HelpTool"}:
++        from chisurf.plugins.core.help.gui import tool
+ 
+-__all__ = ["HelpWidget"]
++        value = getattr(tool, "HelpEmtkTool" if attribute == "HelpTool" else attribute)
++        globals()[attribute] = value
++        return value
++    raise AttributeError(f"module {__name__!r} has no attribute {attribute!r}")
+ 
+-# Legacy entry point support — when loaded via the old plugin mechanism
++__all__ = ["HelpEmtkTool", "HelpWidget", "HelpTool"]
++
++# Entry point support — when loaded via plugin mechanism
+ if __name__ == "plugin":
+-    window = HelpWidget()
++    from chisurf.plugins.core.help.gui.tool import HelpEmtkTool
++
++    window = HelpEmtkTool()
+     window.show()
+diff --git a/chisurf/plugins/core/help/api/render.py b/chisurf/plugins/core/help/api/render.py
+index 1a8f6073a..7f4d2f55b 100644
+--- a/chisurf/plugins/core/help/api/render.py
++++ b/chisurf/plugins/core/help/api/render.py
+@@ -1,9 +1,9 @@
+ """Format-agnostic document rendering for the Help browser.
+ 
+-The browser serves Markdown (guides, concepts, plugin READMEs) and
+-reStructuredText (the user manual) side by side. Callers should not care which
+-is which, so this module dispatches on the file suffix and presents one
+-interface for both.
++The documentation is Markdown; ``development/api.rst`` (the autodoc shell
++behind the Python API reference) is the one page still written in
++reStructuredText. Callers should not care which is which, so this module
++dispatches on the file suffix and presents one interface for both.
+ """
+ 
+ from __future__ import annotations
+diff --git a/chisurf/plugins/core/help/api/rst.py b/chisurf/plugins/core/help/api/rst.py
+index db105daeb..3439b0b95 100644
+--- a/chisurf/plugins/core/help/api/rst.py
++++ b/chisurf/plugins/core/help/api/rst.py
+@@ -1,11 +1,14 @@
+ """reStructuredText rendering for the Help browser.
+ 
+-The user manual is reStructuredText, not Markdown, so the browser needs a second
+-renderer. Rendering happens through plain ``docutils`` rather than Sphinx: a full
+-Sphinx build is far too slow for interactive browsing and needs the whole project
+-environment. The price is that Sphinx-specific roles and directives are unknown
+-to bare docutils, so the ones the manual actually uses are registered here as
+-no-op fallbacks that render their text instead of raising.
++The documentation is Markdown; one page stays reStructuredText —
++``development/api.rst``, the autodoc shell behind the Python API reference,
++whose generated content leaks as raw text when pushed through a MyST fence —
++so the browser keeps a second renderer for it. Rendering happens through plain
++``docutils`` rather than Sphinx: a full Sphinx build is far too slow for
++interactive browsing and needs the whole project environment. The price is that
++Sphinx-specific roles and directives are unknown to bare docutils, so the ones
++that page actually uses are registered here as no-op fallbacks that render
++their text instead of raising.
+ """
+ 
+ from __future__ import annotations
+diff --git a/chisurf/plugins/core/help/api/toc.py b/chisurf/plugins/core/help/api/toc.py
+index 929a8ed70..d2c00a05e 100644
+--- a/chisurf/plugins/core/help/api/toc.py
++++ b/chisurf/plugins/core/help/api/toc.py
+@@ -418,7 +418,7 @@ def page_summary(path: pathlib.Path, limit: int = 180) -> str:
+ 
+ #: How each top-level section reads in the browser, keyed by the index that
+ #: defines it. The *membership and order* are not here — they come from
+-#: ``docs/index.rst``, so a section added to the website appears in the
++#: ``docs/index.md``, so a section added to the website appears in the
+ #: application without anyone remembering to add it in two places. This is only
+ #: the wording: the website's captions are parenthetical ("Concepts (theory)")
+ #: where a navigation row reads better with a dash, and a summary line has
+@@ -532,7 +532,9 @@ def build_toc(
+             kind="section",
+             summary="Architecture, benchmarks and maintainer notes.",
+         )
+-        development.children = read_index(docs / "development/index.rst")
++        development.children = read_index(
++            _index_path(docs, "development/index") or docs / "development/index.rst"
++        )
+         development.children.extend(_module_docs(base))
+         if development.children:
+             toc.add(development)
+diff --git a/chisurf/plugins/core/help/api/xref.py b/chisurf/plugins/core/help/api/xref.py
+index b95facdba..4d4c0d420 100644
+--- a/chisurf/plugins/core/help/api/xref.py
++++ b/chisurf/plugins/core/help/api/xref.py
+@@ -198,12 +198,21 @@ def document_reference(
+             return None, "", caption or label
+         return entry[0], label, caption or entry[1] or label
+ 
++    if role == "cite":
++        from chisurf.plugins.core.help.api import bibliography as bib
++
++        entry = bib.bibliography().get(label)
++        cite_label = bib.short_citation(entry) if entry else ""
++        ref_entry = ref_index().get(label)
++        if ref_entry is not None:
++            return ref_entry[0], label, caption or cite_label or ref_entry[1] or label
++        return None, "", caption or cite_label or label
++
+     if role == "term":
+         return None, "", caption or label
+ 
+     # A ``{doc}`` target carries no suffix and may name a directory's index, so
+-    # every spelling is tried: ``/concepts/index`` is an *.rst* file, and only
+-    # trying ".md" left the guides' own pointer to the concepts dead.
++    # every spelling is tried; the developer API page is the one *.rst* left.
+     stem = label.lstrip("/")
+     target = None
+     for candidate in (f"{stem}.md", f"{stem}.rst", stem, f"{stem}/index.md", f"{stem}/index.rst"):
+diff --git a/chisurf/plugins/core/help/gui/__init__.py b/chisurf/plugins/core/help/gui/__init__.py
+index a256ad383..cb65870ff 100644
+--- a/chisurf/plugins/core/help/gui/__init__.py
++++ b/chisurf/plugins/core/help/gui/__init__.py
+@@ -1,5 +1,13 @@
+ """Help plugin GUI layer."""
+ 
+-from chisurf.plugins.core.help.gui.tool import HelpWidget
++from chisurf.plugins.core.help.gui.help_app import HelpApp, HelpGui, HelpModel, make_help_app
+ 
+-__all__ = ["HelpWidget"]
++__all__ = ["HelpEmtkTool", "HelpWidget", "HelpApp", "HelpGui", "HelpModel", "make_help_app"]
++
++def __getattr__(name):
++    """Load optional Qt hosting adapters only when explicitly requested."""
++    if name in ['HelpEmtkTool', 'HelpWidget']:
++        from . import tool
++
++        return getattr(tool, name)
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/core/help/gui/tool.py b/chisurf/plugins/core/help/gui/tool.py
+index 050d5e1fd..69dc88112 100644
+--- a/chisurf/plugins/core/help/gui/tool.py
++++ b/chisurf/plugins/core/help/gui/tool.py
+@@ -121,9 +121,9 @@ SECTION_ICONS = {
+ 
+ #: Pages offered on the start page to somebody who has just opened ChiSurf.
+ START_HERE = (
+-    ("docs/getting_started/index.rst", "Install, launch, and find your way around"),
+-    ("docs/manual/data_import.rst", "Import data and create your first fit"),
+-    ("docs/manual/fit_interface.rst", "The fitting interface, parameter by parameter"),
++    ("docs/getting_started/index.md", "Install, launch, and find your way around"),
++    ("docs/manual/data_import.md", "Import data and create your first fit"),
++    ("docs/manual/fit_interface.md", "The fitting interface, parameter by parameter"),
+     ("docs/guides/index.md", "Pick the workflow you want to run"),
+ )
+ 
+@@ -1111,7 +1111,7 @@ class HelpWidget(ChisurfDockTool):
+         if is_source_path(text):
+             from chisurf.gui.widgets.tools.code_links import open_source
+ 
+-            if open_source(text):
++            if open_source(text, prefer_emtk=False):
+                 return
+ 
+         from chisurf.gui.widgets.tools.doc_links import resolve_document
+@@ -1794,7 +1794,7 @@ class HelpWidget(ChisurfDockTool):
+             if is_source_path(raw) or (fragment and is_source_path(f"{raw}#{fragment}")):
+                 from chisurf.gui.widgets.tools.code_links import open_source
+ 
+-                if open_source(f"{raw}#{fragment}" if fragment else raw, base):
++                if open_source(f"{raw}#{fragment}" if fragment else raw, base, prefer_emtk=False):
+                     return
+ 
+             target = pathlib.Path(url.toLocalFile()) if url.isLocalFile() else None
+@@ -2005,3 +2005,58 @@ class HelpWidget(ChisurfDockTool):
+     def _open_video_tutorials(self):
+         """Open the ChiSurf video tutorials in a web browser."""
+         webbrowser.open_new("https://www.peulen.xyz/tutorial/")
++
++
++class HelpEmtkTool(ChisurfDockTool):
++    """Modern Documentation Browser and AI Assistant implemented in pure EMTK."""
++
++    name = "Documentation"
++
++    def __init__(self, parent: Any = None, *, path: str | pathlib.Path | None = None, **kwargs: Any) -> None:
++        super().__init__(parent, **kwargs)
++        self.setWindowTitle(f"{Glyphs.BOOK} ChiSurf Help")
++        self.resize(1200, 800)
++
++        from chisurf.plugins.core.help.gui.help_app import HelpApp, WINDOW_BG
++
++        self.app = HelpApp()
++        self.model = self.app.model
++        if path:
++            self.model.open_page(path)
++
++        try:
++            from emtk.qt_host import ControlHost
++
++            self.host = ControlHost(self.app, background=WINDOW_BG[:3])
++            self.setCentralWidget(self.host)
++        except Exception:
++            self.host = None
++
++    def open_doc(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
++        return self.model.open_page(path, anchor=anchor)
++
++    def show_doc(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
++        return self.model.open_page(path, anchor=anchor)
++
++    def open_path(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
++        return self.model.open_page(path, anchor=anchor)
++
++    def open_markdown_path(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
++        return self.model.open_page(path, anchor=anchor)
++
++    def _open_document_path(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
++        return self.open_markdown_path(path, anchor)
++
++    class _FilterProxy:
++        def __init__(self, model: Any) -> None:
++            self._model = model
++
++        def setText(self, text: str) -> None:
++            self._model.search(text)
++
++        def text(self) -> str:
++            return self._model.search_query
++
++    @property
++    def filter_line_edit(self) -> _FilterProxy:
++        return self._FilterProxy(self.model)
+diff --git a/chisurf/plugins/core/help/manifest.json b/chisurf/plugins/core/help/manifest.json
+index d68de31cd..821e6ab01 100644
+--- a/chisurf/plugins/core/help/manifest.json
++++ b/chisurf/plugins/core/help/manifest.json
+@@ -9,7 +9,7 @@
+   "categories": [
+     "Help"
+   ],
+-  "icon": "\ud83d\udcd6",
++  "icon": "📖",
+   "state_namespace": "help",
+   "state_schema": {
+     "$schema": "http://json-schema.org/draft-07/schema#",
+@@ -37,9 +37,10 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.core.help.gui.tool:HelpWidget",
++    "gui": "chisurf.plugins.core.help.gui.tool:HelpEmtkTool",
+     "cli": "help=chisurf.plugins.core.help.cli.main:cli",
+-    "services": "chisurf.plugins.core.help.backend.services:register_services"
++    "services": "chisurf.plugins.core.help.backend.services:register_services",
++    "emtk": "chisurf.plugins.core.help.gui.help_app:make_help_app"
+   },
+   "rpc_methods": [
+     {
+diff --git a/chisurf/plugins/core/help/test/test_doc_registers.py b/chisurf/plugins/core/help/test/test_doc_registers.py
+index d3a652a70..8c8a6f8cc 100644
+--- a/chisurf/plugins/core/help/test/test_doc_registers.py
++++ b/chisurf/plugins/core/help/test/test_doc_registers.py
+@@ -115,7 +115,7 @@ def test_the_refresh_rule_is_written_down():
+ 
+ @pytest.mark.parametrize("register", ["figures.md", "tables.md", "code.md"])
+ def test_register_is_reachable_from_the_reference_section(register):
+-    index = (docs_root() / "reference" / "index.rst").read_text(encoding="utf-8")
++    index = (docs_root() / "reference" / "index.md").read_text(encoding="utf-8")
+     assert pathlib.Path(register).stem in index
+ 
+ 
+diff --git a/chisurf/plugins/core/help/test/test_manual_snippets.py b/chisurf/plugins/core/help/test/test_manual_snippets.py
+index 7c5cc2a5a..526b103be 100644
+--- a/chisurf/plugins/core/help/test/test_manual_snippets.py
++++ b/chisurf/plugins/core/help/test/test_manual_snippets.py
+@@ -28,13 +28,20 @@ _DOTTED = re.compile(r"\b(chisurf(?:\.[a-z_][a-z_0-9]*)+)\b")
+ _NOT_MODULES = {"chisurf.fits", "chisurf.current_fit", "chisurf.macros.add_dataset"}
+ 
+ 
++def _page_text(page) -> str:
++    """The page's Markdown body, with the OKF front matter removed."""
++    from chisurf.plugins.core.help.api.markdown import strip_front_matter
++
++    return strip_front_matter(page.read_text(encoding="utf-8"))
++
++
+ def _snippets() -> list[tuple[str, str]]:
+     """Return ``(page, code)`` for every Python block in the manual."""
+     manual = docs_root() / "manual"
+     blocks = []
+-    for page in sorted(manual.glob("*.rst")):
+-        text = page.read_text(encoding="utf-8")
+-        for match in re.finditer(r"\.\. code-block:: python\n\n((?:[ \t]+.*\n|\n)+)", text):
++    for page in sorted(manual.glob("*.md")):
++        text = _page_text(page)
++        for match in re.finditer(r"^```python\s*\n(.*?)^```", text, re.MULTILINE | re.DOTALL):
+             blocks.append((page.name, match.group(1)))
+     return blocks
+ 
+@@ -60,7 +67,7 @@ def _resolve(dotted: str) -> bool:
+ @pytest.mark.parametrize(
+     "page,code",
+     _snippets(),
+-    ids=lambda value: value if isinstance(value, str) and value.endswith(".rst") else "",
++    ids=lambda value: value if isinstance(value, str) and value.endswith(".md") else "",
+ )
+ def test_snippet_names_resolve(page, code):
+     """Every ``chisurf.…`` name a manual snippet uses must still exist."""
+@@ -81,7 +88,7 @@ def test_sample_fit_is_documented_with_its_real_signature():
+     parameters = list(inspect.signature(sample_fit).parameters)
+     assert parameters[:2] == ["fit", "target_directory"]
+ 
+-    page = (docs_root() / "manual" / "parameter_sampling.rst").read_text(encoding="utf-8")
++    page = (docs_root() / "manual" / "parameter_sampling.md").read_text(encoding="utf-8")
+     assert "sample_fit(fit, " in page
+     # The old spelling wrote a *file*; it now creates a timestamped directory.
+     assert "filename=" not in page
+@@ -91,9 +98,10 @@ def test_manual_pages_are_not_stubs():
+     """A page saying "Missing" is a broken promise in the table of contents."""
+     manual = docs_root() / "manual"
+     stubs = []
+-    for page in sorted(manual.glob("*.rst")):
+-        text = page.read_text(encoding="utf-8")
+-        body = "\n".join(text.splitlines()[2:]).strip()
++    for page in sorted(manual.glob("*.md")):
++        body = "\n".join(
++            line for line in _page_text(page).splitlines() if not line.startswith("#")
++        ).strip()
+         if len(body.split()) < 12 or body.lower() in {"missing", "tbd", "todo"}:
+             stubs.append(page.name)
+     assert not stubs, stubs
+@@ -108,9 +116,13 @@ def test_no_lost_conversion_artifacts():
+     """
+     manual = docs_root() / "manual"
+     offenders = []
+-    for page in sorted(manual.glob("*.rst")):
+-        for number, line in enumerate(page.read_text(encoding="utf-8").splitlines(), 1):
+-            if line.startswith((" ", "\t", "..")) or not line.strip():
++    for page in sorted(manual.glob("*.md")):
++        in_fence = False
++        for number, line in enumerate(_page_text(page).splitlines(), 1):
++            if line.startswith("```"):
++                in_fence = not in_fence
++                continue
++            if in_fence or line.startswith((" ", "\t", "..", "|")) or not line.strip():
+                 continue
+             if re.search(r"\S\s\s+\S", line) or ", ," in line or re.search(r"\(\)\.?\s", line):
+                 offenders.append(f"{page.name}:{number}")
