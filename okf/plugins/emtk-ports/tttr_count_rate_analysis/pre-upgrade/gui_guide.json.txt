@@ -1,0 +1,22 @@
+[
+  {
+    "title": "Queue inputs",
+    "target": "add_files",
+    "text": "Add TTTR files, a folder, or datasets from MMFDB."
+  },
+  {
+    "title": "Define channels",
+    "target": "setup_source",
+    "text": "Select an authoritative detector setup, including excitation windows and microtime gates."
+  },
+  {
+    "title": "Calculate",
+    "target": "calculate",
+    "text": "Compute channel rates without blocking the interface."
+  },
+  {
+    "title": "Save results",
+    "target": "save",
+    "text": "Export the channel summary as a tab-separated table."
+  }
+]

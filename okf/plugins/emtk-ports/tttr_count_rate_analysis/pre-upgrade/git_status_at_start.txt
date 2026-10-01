@@ -1,0 +1,11 @@
+ M chisurf/plugins/tttr/tttr_count_rate_analysis/cli.py
+ M chisurf/plugins/tttr/tttr_count_rate_analysis/gui/tool.py
+ M chisurf/plugins/tttr/tttr_count_rate_analysis/gui/view_model.py
+ M chisurf/plugins/tttr/tttr_count_rate_analysis/manifest.json
+ M chisurf/plugins/tttr/tttr_count_rate_analysis/test/test_widgets.py
+ M chisurf/plugins/tttr/tttr_count_rate_analysis/test_cli.py
+?? chisurf/plugins/tttr/tttr_count_rate_analysis/gui/app.py
+?? chisurf/plugins/tttr/tttr_count_rate_analysis/gui/controller.py
+?? chisurf/plugins/tttr/tttr_count_rate_analysis/gui/guide.json
+?? chisurf/plugins/tttr/tttr_count_rate_analysis/gui/help.md
+?? chisurf/plugins/tttr/tttr_count_rate_analysis/tests/

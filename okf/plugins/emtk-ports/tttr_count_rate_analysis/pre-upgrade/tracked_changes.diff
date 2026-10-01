@@ -1,0 +1,304 @@
+diff --git a/chisurf/plugins/tttr/tttr_count_rate_analysis/cli.py b/chisurf/plugins/tttr/tttr_count_rate_analysis/cli.py
+index 8c5e936aa..94e247184 100644
+--- a/chisurf/plugins/tttr/tttr_count_rate_analysis/cli.py
++++ b/chisurf/plugins/tttr/tttr_count_rate_analysis/cli.py
+@@ -14,20 +14,7 @@ import numpy as np
+ import tttrlib
+ 
+ from chisurf.core.cli.support import DidYouMeanGroup
+-
+-# Import from chisurf if available, otherwise handle standalone usage
+-try:
+-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
+-except ImportError:
+-    # Simplified version for standalone usage
+-    def load_detector_setups(file_path):
+-        """Load detector setups from a JSON file."""
+-        try:
+-            with open(file_path) as f:
+-                return json.load(f)
+-        except Exception as e:
+-            click.echo(f"Error loading detector setups: {e}", err=True)
+-            return {"setups": {}}
++from chisurf.core.data_io.detector_setups import load_detector_setups
+ 
+ 
+ def calculate_count_rates(
+diff --git a/chisurf/plugins/tttr/tttr_count_rate_analysis/gui/tool.py b/chisurf/plugins/tttr/tttr_count_rate_analysis/gui/tool.py
+index bb2f02324..cbd7c8ae0 100644
+--- a/chisurf/plugins/tttr/tttr_count_rate_analysis/gui/tool.py
++++ b/chisurf/plugins/tttr/tttr_count_rate_analysis/gui/tool.py
+@@ -1,11 +1,11 @@
+ """New-style GUI entrypoint for the Count Rate Analysis tool.
+ 
+-:class:`CountRateAnalyzer` is a thin :class:`~qtpy.QtWidgets.QWidget` wrapping a
+-single :class:`~chisurf.gui.autoform.AutoForm` bound to the Qt-free
+-:class:`~..gui.view_model.CountRateViewModel` and laid out from
+-``count_rate.view.json``: a persistent dock area with the channel-definition
+-page, the file list, the count-rate plot and the results table. Replaces the
+-former hand-built layout. Mirrors the PSF / ALEX tools.
++:class:`CountRateAnalyzer` is a thin :class:`~qtpy.QtWidgets.QWidget` hosting
++the EMTK app in :mod:`.app` (:class:`CountRateApp`) over the Qt-free
++:class:`~..view_model.CountRateViewModel`. The channel definition comes from a
++saved detector setup in the canonical store, injected into the model as its
++``channels_provider`` — the same contract the old DetectorWizardPage page
++fulfilled.
+ """
+ 
+ from __future__ import annotations
+@@ -14,8 +14,6 @@ import logging
+ 
+ from qtpy import QtWidgets
+ 
+-from chisurf.gui.autoform import AutoForm
+-
+ from . import sections  # noqa: F401  (side effect: register the custom sections)
+ from .view_model import CountRateViewModel
+ 
+@@ -30,21 +28,114 @@ class CountRateAnalyzer(QtWidgets.QWidget):
+         self.setWindowTitle("Count Rate Analysis")
+         self.setMinimumSize(700, 500)
+ 
+-        self.model = CountRateViewModel()
++        self._model = CountRateViewModel()
++        self.selected_setup: str = ""
++
++        from emtk.qt_host import ControlHost
++
++        from .app import WINDOW_BG, CountRateApp
++
++        self.app = CountRateApp(
++            self,
++            on_calculate=self._calculate,
++            on_save=self._save,
++            on_add_files=self._add_files,
++            on_clear=self._clear,
++        )
++        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+ 
+         layout = QtWidgets.QVBoxLayout(self)
+-        layout.setContentsMargins(2, 2, 2, 2)
+-        layout.setSpacing(2)
+-        self.auto_form = AutoForm(self.model)
+-        layout.addWidget(self.auto_form)
++        layout.setContentsMargins(0, 0, 0, 0)
++        layout.addWidget(self.host)
+ 
+-        self.model.add_observer(self._on_model_event)
++        # The channel definition the model computes with: the selected saved
++        # detector setup, converted — the contract the DetectorWizardPage had.
++        self._model.channels_provider = self.channels
+ 
+-    def _on_model_event(self, event: str) -> None:
++    # ── the channel source ───────────────────────────────────────────
++
++    def available_setups(self) -> dict:
++        """The saved detector setups, from the canonical store."""
+         try:
+-            self.auto_form.refresh_plots()
++            from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
++                load_detector_setups,
++            )
++
++            info = load_detector_setups()
++            return dict(info.get("setups", {})) if isinstance(info, dict) else {}
+         except Exception:
+-            logger.warning("Count rate: plot refresh failed", exc_info=True)
++            logger.debug("count-rate: could not read the setup store", exc_info=True)
++            return {}
++
++    def channels(self) -> dict:
++        """The channel definition of the selected setup, for the model."""
++        from .app import setup_to_channels
++
++        setups = self.available_setups()
++        setup = setups.get(self.selected_setup)
++        return setup_to_channels(setup) if setup else {}
++
++    # ── actions ──────────────────────────────────────────────────────
++
++    def _calculate(self) -> None:
++        from chisurf.gui import dialogs
++
++        reason = self._model.can_compute()
++        if reason is not None:
++            dialogs.warning(self, "Cannot calculate", reason)
++            return
++        try:
++            self._model.compute()
++        except Exception as exc:  # noqa: BLE001
++            dialogs.error(self, "Error", str(exc))
++        self.host.update()
++
++    def _save(self) -> None:
++        from chisurf.gui import dialogs
++
++        reason = self._model.can_save()
++        if reason is not None:
++            dialogs.warning(self, "No data", reason)
++            return
++        path, _ = QtWidgets.QFileDialog.getSaveFileName(
++            self, "Save Table as Text File", "", "Text Files (*.txt);;All Files (*)"
++        )
++        if not path:
++            return
++        try:
++            self._model.save_table(path)
++            dialogs.information(self, "Success", f"Table saved to {path}")
++        except Exception as exc:  # noqa: BLE001
++            dialogs.error(self, "Error", f"Failed to save file: {exc}")
++
++    def _add_files(self) -> None:
++        paths, _ = QtWidgets.QFileDialog.getOpenFileNames(self, "Select TTTR files")
++        if paths:
++            self._model.add_files(list(paths))
++        self.host.update()
++
++    def _clear(self) -> None:
++        self._model.clear()
++        self.host.update()
++
++    # ── the AutoForm-era surface ─────────────────────────────────────
++
++    @property
++    def auto_form(self):
++        """A shim whose refresh repaints the canvas."""
++        return self
++
++    def refresh_plots(self) -> None:
++        if hasattr(self, "host"):
++            self.host.update()
++
++    def sync_fields(self) -> None:
++        if hasattr(self, "host"):
++            self.host.update()
++
++    @property
++    def model(self):
++        return self._model
+ 
+ 
+ __all__ = ["CountRateAnalyzer"]
+diff --git a/chisurf/plugins/tttr/tttr_count_rate_analysis/gui/view_model.py b/chisurf/plugins/tttr/tttr_count_rate_analysis/gui/view_model.py
+index 5771850c9..dfa394c32 100644
+--- a/chisurf/plugins/tttr/tttr_count_rate_analysis/gui/view_model.py
++++ b/chisurf/plugins/tttr/tttr_count_rate_analysis/gui/view_model.py
+@@ -35,6 +35,8 @@ class CountRateViewModel:
+ 
+     def __init__(self) -> None:
+         self.files: list[str] = []
++        self.loader: Callable | None = None
++        self.macro_resolution_override: float | None = None
+         #: Callable returning the DetectorWizardPage channels map (set by the GUI).
+         self.channels_provider: Callable[[], dict] | None = None
+ 
+@@ -101,7 +103,7 @@ class CountRateViewModel:
+             logger.warning("count-rate: channels_provider failed", exc_info=True)
+             return {}
+ 
+-    def compute(self) -> None:
++    def compute(self, cancel_cb=None, progress_cb=None) -> None:
+         """Compute per-file, per-channel count rates for every loaded file."""
+         reason = self.can_compute()
+         if reason is not None:
+@@ -112,9 +114,17 @@ class CountRateViewModel:
+         per_file_photons: dict[str, dict[str, int]] = {}
+         meas_times: dict[str, float] = {}
+ 
+-        for path in self.files:
+-            tttr = tttrlib.TTTR(path)
+-            mtr = tttr.header.macro_time_resolution
++        for index, path in enumerate(self.files):
++            if callable(cancel_cb) and cancel_cb():
++                raise RuntimeError("Count-rate analysis stopped between files.")
++            if callable(progress_cb):
++                progress_cb(index, len(self.files))
++            tttr = (self.loader or tttrlib.TTTR)(path)
++            mtr = (
++                self.macro_resolution_override
++                if self.macro_resolution_override is not None
++                else tttr.header.macro_time_resolution
++            )
+             meas_time = float(tttr.macro_times[-1] * mtr) if len(tttr.macro_times) else 0.0
+             meas_times[path] = meas_time
+ 
+diff --git a/chisurf/plugins/tttr/tttr_count_rate_analysis/manifest.json b/chisurf/plugins/tttr/tttr_count_rate_analysis/manifest.json
+index 006ec3da6..69566aefd 100644
+--- a/chisurf/plugins/tttr/tttr_count_rate_analysis/manifest.json
++++ b/chisurf/plugins/tttr/tttr_count_rate_analysis/manifest.json
+@@ -3,13 +3,26 @@
+   "version": "2.0.0",
+   "display_name": "Tools:TTTR:Count Rate Analysis",
+   "description": "Count rates per detector channel across many TTTR files, with mean/std and a per-file plot.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Tools", "TTTR", "Analysis"],
+-  "icon": "📟",
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Tools",
++    "TTTR",
++    "Analysis"
++  ],
++  "icon": "\ud83d\udcdf",
+   "menu_hidden": true,
+-  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
++  "statefulness": {
++    "enabled": true,
++    "window": {
++      "enabled": true,
++      "settings_key": null
++    }
++  },
+   "entrypoints": {
+     "gui": "chisurf.plugins.tttr.tttr_count_rate_analysis.gui.tool:CountRateAnalyzer",
+-    "cli": "count-rate=chisurf.plugins.tttr.tttr_count_rate_analysis.cli:cli"
++    "cli": "count-rate=chisurf.plugins.tttr.tttr_count_rate_analysis.cli:cli",
++    "emtk": "chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller:create_app"
+   }
+ }
+diff --git a/chisurf/plugins/tttr/tttr_count_rate_analysis/test/test_widgets.py b/chisurf/plugins/tttr/tttr_count_rate_analysis/test/test_widgets.py
+index ace819b28..5973ade1c 100644
+--- a/chisurf/plugins/tttr/tttr_count_rate_analysis/test/test_widgets.py
++++ b/chisurf/plugins/tttr/tttr_count_rate_analysis/test/test_widgets.py
+@@ -5,9 +5,7 @@ from qtpy import QtWidgets
+ 
+ 
+ def test_count_rate_analyzer_creation(qapp, qtbot):
+-    pytest.importorskip("pyqtgraph")
+     pytest.importorskip("tttrlib")
+-    from chisurf.gui.autoform import AutoForm
+     from chisurf.gui.autoform.sections.registry import get_section_factory
+     from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.tool import CountRateAnalyzer
+ 
+@@ -15,7 +13,11 @@ def test_count_rate_analyzer_creation(qapp, qtbot):
+     qtbot.addWidget(widget)
+     assert isinstance(widget, QtWidgets.QWidget)
+     assert "Count Rate" in widget.windowTitle()
+-    assert isinstance(widget.auto_form, AutoForm)
++    # The UI is the EMTK app; the AutoForm-era attribute is a repaint shim.
++    assert hasattr(widget.auto_form, "refresh_plots")
++    assert widget.app is widget.host.control
++    # The channel definition is injected into the model as the provider.
++    assert callable(widget._model.channels_provider)
+     for key in ("count_rate_channels", "count_rate_run", "count_rate_results", "path_list"):
+         assert get_section_factory(key) is not None
+ 
+diff --git a/chisurf/plugins/tttr/tttr_count_rate_analysis/test_cli.py b/chisurf/plugins/tttr/tttr_count_rate_analysis/test_cli.py
+index 4a5f40f17..1dbebb4bb 100644
+--- a/chisurf/plugins/tttr/tttr_count_rate_analysis/test_cli.py
++++ b/chisurf/plugins/tttr/tttr_count_rate_analysis/test_cli.py
+@@ -10,8 +10,10 @@ import sys
+ import tempfile
+ from pathlib import Path
+ 
+-# Add the repository root to the Python path if needed
+-repo_root = Path(__file__).parent.parent.parent.parent
++# Add the repository root to the Python path if needed. Five levels up:
++# four lands inside the ``chisurf`` package, whose directory on sys.path
++# shadows the top-level ``emtk`` toolkit with ``chisurf/emtk``.
++repo_root = Path(__file__).parent.parent.parent.parent.parent
+ if str(repo_root) not in sys.path:
+     sys.path.insert(0, str(repo_root))
+ 
