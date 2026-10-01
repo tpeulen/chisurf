@@ -1,0 +1,44 @@
+{
+  "controls": [
+    "1",
+    "10.0.0.7",
+    "127.0.0.1",
+    "2",
+    "3",
+    "admin",
+    "alice",
+    "cancel",
+    "chisurf",
+    "lab-server.example.org",
+    "login",
+    "loginautomaticallywhenallowed",
+    "password",
+    "saveselecteduser",
+    "selectuser",
+    "server",
+    "signintothemmfdbworkspace",
+    "user"
+  ],
+  "labels": [
+    "ChiSurf",
+    "Password:",
+    "Select User:",
+    "Server:",
+    "Sign in to the MMFDB workspace"
+  ],
+  "buttons": [
+    "Cancel",
+    "Log in automatically when allowed",
+    "Login",
+    "Save selected user"
+  ],
+  "line_edits": 4,
+  "combos": 2,
+  "spin_boxes": 1,
+  "tables": 2,
+  "entrypoint": "chisurf.gui:LoginDialog (non-modal, temp settings)",
+  "size": [
+    420,
+    250
+  ]
+}

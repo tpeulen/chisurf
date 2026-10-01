@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+from emtk.testing import RecordingPainter
+
+from chisurf.plugins.core.switch_user.app import SwitchUserApp
+
+
+class Client:
+    def login(self, **kwargs):
+        self.kwargs = kwargs
+        return {"ok": True, "token": "token"}
+
+
+def test_native_login_uses_client_and_never_persists_password():
+    client = Client()
+    app = SwitchUserApp(client=client)
+    app.user = "alice"
+    app.password = "secret"
+    app.login()
+    assert app.closed is True
+    assert client.kwargs == {"user_id": "alice", "password": "secret"}
+    assert "password" not in app.export_settings()
+
+
+def test_native_switch_user_render_has_tooltips():
+    app = SwitchUserApp()
+    painter = RecordingPainter()
+    app.draw(painter, 0, 0, 460, 360)
+    assert "Server" in painter.strings and "Login" in painter.strings

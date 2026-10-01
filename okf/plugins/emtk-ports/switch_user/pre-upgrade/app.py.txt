@@ -1,0 +1,88 @@
+"""Pure EMTK MMFDB login surface for switching the active user."""
+from __future__ import annotations
+
+from emtk import im
+from emtk.app import ImApp
+
+from .strings import install_translations, tr
+
+install_translations()
+
+
+class SwitchUserApp(ImApp):
+    def __init__(self, client=None):
+        self.server = "127.0.0.1"
+        self.port = 8765
+        self.user = "admin"
+        self.password = ""
+        self.save_login = True
+        self.autologin = False
+        self.message = tr("Enter credentials and press Login.")
+        self.client = client
+        self.closed = False
+        super().__init__(self.render)
+
+    def _client(self):
+        if self.client is not None:
+            return self.client
+        from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
+        return MMFDBClient(host=self.server, cmd_port=self.port, pub_port=self.port + 1)
+
+    def login(self):
+        if not self.user.strip():
+            self.message = tr("A user name is required.")
+            return
+        try:
+            result = self._client().login(user_id=self.user.strip(), password=self.password)
+            if result.get("ok") or result.get("authenticated"):
+                self.message = tr("Login succeeded.")
+                self.closed = True
+            else:
+                self.message = str(result.get("error") or tr("Login failed."))
+        except Exception as exc:
+            self.message = f"{type(exc).__name__}: {exc}"
+        self.request_frame()
+
+    def render(self):
+        im.begin(tr("Switch User"), (0, 0, *im.get_main_viewport().size))
+        im.heading(tr("Sign in to the MMFDB workspace"), level=2)
+        for label, attr, tip in (("Server", "server", "MMFDB server host"), ("Port", "port", "MMFDB command port"), ("User", "user", "MMFDB account name")):
+            im.text(tr(label))
+            im.same_line()
+            im.set_next_item_width(240)
+            if attr == "port":
+                changed, value = im.input_int("##" + attr, int(getattr(self, attr)))
+            else:
+                changed, value = im.input_text("##" + attr, str(getattr(self, attr)))
+            im.set_item_tooltip(tr(tip))
+            if changed:
+                setattr(self, attr, value)
+        im.text(tr("Password"))
+        im.same_line()
+        im.set_next_item_width(240)
+        changed, self.password = im.input_text("##password", self.password, flags=im.InputTextFlags.PASSWORD)
+        im.set_item_tooltip(tr("MMFDB password; never persisted"))
+        changed, self.save_login = im.checkbox(tr("Save selected user"), self.save_login)
+        im.set_item_tooltip(tr("Remember the selected account name"))
+        changed, self.autologin = im.checkbox(tr("Log in automatically"), self.autologin)
+        im.set_item_tooltip(tr("Store a session token when supported"))
+        if im.button(tr("Login")):
+            self.login()
+        im.set_item_tooltip(tr("Authenticate against the MMFDB"))
+        im.same_line()
+        if im.button(tr("Cancel")):
+            self.closed = True
+        im.set_item_tooltip(tr("Close without changing the active user"))
+        im.text_wrapped(self.message)
+        im.end()
+
+    def close(self):
+        self.closed = True
+
+    def export_settings(self):
+        return {"server": self.server, "port": self.port, "user": self.user,
+                "save_login": self.save_login, "autologin": self.autologin}
+
+
+def make_app():
+    return SwitchUserApp()

@@ -1,0 +1,139 @@
+{
+  "title": "ChiSurf Login",
+  "modal": true,
+  "size": [
+    420,
+    250
+  ],
+  "server_items": [
+    "127.0.0.1",
+    "lab-server.example.org",
+    "10.0.0.7"
+  ],
+  "server_current": "lab-server.example.org",
+  "server_editable": true,
+  "port": 9100,
+  "port_range": [
+    1,
+    65535
+  ],
+  "user_items": [
+    "alice",
+    "user",
+    "admin"
+  ],
+  "user_current": "alice",
+  "user_editable": true,
+  "password_echo_mode": 2,
+  "save_login": true,
+  "autologin": false,
+  "save_text": "Save selected user",
+  "auto_text": "Log in automatically when allowed",
+  "buttons": [
+    "Login",
+    "Cancel"
+  ],
+  "unreachable": [
+    "error",
+    "Error",
+    "Login failed: Connection refused"
+  ],
+  "rejected_not_ok": [
+    "warning",
+    "Login Failed",
+    "Incorrect credentials"
+  ],
+  "rejected_dict_error": [
+    "warning",
+    "Login Failed",
+    "Account locked"
+  ],
+  "empty_user_call": {
+    "user_id": "alice",
+    "password": "x"
+  },
+  "empty_user_warning": [
+    "warning",
+    "Login Failed",
+    "Incorrect credentials"
+  ],
+  "success_accepted": true,
+  "success_call": {
+    "user_id": "admin",
+    "password": "admin"
+  },
+  "success_warnings": [],
+  "token_store_calls": [
+    [
+      "store",
+      "10.0.0.7",
+      9200,
+      "admin"
+    ]
+  ],
+  "yaml_after_login": {
+    "autologin": true,
+    "client": {
+      "cmd_port": 9200,
+      "host": "10.0.0.7",
+      "mode": "embedded",
+      "pub_port": 9201,
+      "username": "admin"
+    },
+    "config_file": null,
+    "default_user_id": "admin",
+    "fitting_timeout_ms": 5000,
+    "last_port": 9200,
+    "last_server": "10.0.0.7",
+    "object_store": {
+      "root": "objects"
+    },
+    "save_login": true,
+    "server_history": [
+      "10.0.0.7",
+      "127.0.0.1",
+      "lab-server.example.org"
+    ]
+  },
+  "runtime_token_keys": [
+    "10.0.0.7:9200:admin"
+  ],
+  "token_refused": {
+    "warnings": [
+      [
+        "warning",
+        "Autologin Not Saved",
+        "Login succeeded, but ChiSurf could not store the session token in the OS credential store."
+      ]
+    ],
+    "accepted": true,
+    "autologin_after": false
+  },
+  "settings_not_saved": {
+    "warnings": [
+      [
+        "warning",
+        "Settings Not Saved",
+        "Login succeeded, but ChiSurf could not store the MMFDB login settings."
+      ]
+    ],
+    "accepted": true
+  },
+  "remote": {
+    "server_label_rows": [
+      "",
+      "ChiSurf",
+      "Sign in to the MMFDB workspace",
+      "MMFDB URL:",
+      "Select User:",
+      "Password:"
+    ],
+    "port_visible": false,
+    "server_items": [
+      "http://127.0.0.1:8080"
+    ],
+    "user_items": [
+      "alice"
+    ]
+  }
+}
