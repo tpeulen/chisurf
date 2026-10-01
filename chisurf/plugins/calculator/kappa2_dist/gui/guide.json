@@ -48,7 +48,7 @@
     },
     {
       "title": "The number to quote",
-      "text": "<b>SD R_app/R_DA</b> is the answer — the relative systematic uncertainty κ² puts on your distance. Under about 0.10 is the usual result for long flexible linkers, and it is why 2/3 has survived as a convention.<br/><br/>The fourth input, <b>r_AD∞</b> (the FRET-sensitized acceptor), tightens the bound further by fixing the angle δ between the dyes — but only tick <b>r_AD known</b> if you actually measured it. Without it, the wider bound is the honest one.<br/><br/>Press <b>?</b> for the models and the theory.",
+      "text": "<b>SD R_app/R_DA</b> is the answer — the relative systematic uncertainty κ² puts on your distance. Under about 0.10 is the usual result for long flexible linkers, and it is why 2/3 has survived as a convention.<br/><br/>The fourth input, <b>r_AD∞</b> (the FRET-sensitized acceptor), tightens the bound further by fixing the angle δ between the dyes — but only tick <b>r_AD known</b> if you actually measured it. Without it, the wider bound is the honest one.<br/><br/>Press <b>Help</b> for the models and the theory.",
       "target": {
         "key": "save"
       }

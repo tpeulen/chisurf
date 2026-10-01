@@ -35,6 +35,10 @@ TRUE_K2_COLOUR = (200, 200, 200, 160)
 
 MODEL_OPTIONS = ("cone", "diffusion", "isotropic")
 
+#: The inputs of the model (what ``export_settings`` keeps).
+INPUT_FIELDS = ("model_type", "r_0", "r_Dinf", "r_Ainf", "r_ADinf", "kappa2_true", "fret_efficiency",
+                "step", "n_bins", "rAD_known")
+
 #: What a computation writes (everything else on the model is an input).
 _RESULT_FIELDS = {"k2_mean", "k2_sd", "Rapp_mean", "RappSD", "delta_deg"}
 
@@ -90,6 +94,8 @@ class Kappa2Gui(TourTarget):
             for section in panel.get("sections", []):
                 if section.get("type") == "choice":
                     section.pop("style", None)
+                if section.get("type") == "value" and not section.get("read_only"):
+                    section["style"] = "spin"  # the Qt fields were spin boxes: arrows step by the spec's step
         self.form = FormState()
         self.results_form = FormState()
 
@@ -162,11 +168,13 @@ class Kappa2Gui(TourTarget):
     # ── controls ──────────────────────────────────────────────────────────
 
     def _draw_controls(self, box: tuple[float, float, float, float]) -> None:
-        before_inputs = {
-            k: v for k, v in vars(self.model).items() if isinstance(v, (float, int, str, bool))
-        }
+        # Only the inputs: a NaN result compares unequal to itself, so watching every float recomputed forever.
+        before_inputs = {name: getattr(self.model, name) for name in INPUT_FIELDS}
         busy = bool(getattr(self.tool, "busy", False))
         self._toolbar(busy)
+        status = getattr(self.tool, "status", "")
+        if status:
+            im.text_wrapped(status)
         im.separator()
 
         im.begin_disabled(busy)
@@ -196,7 +204,8 @@ class Kappa2Gui(TourTarget):
         self.remember("compute")
         im.end_disabled()
         for label, key, tip, action in (
-            ("Save", "save", "Save the κ² distribution and the orientation statistics.", self.on_save),
+            ("Save", "save", "Save the κ² distribution and the orientation statistics as CSV "
+                             "(enabled once a distribution is computed).", self.on_save),
             ("Guide", "guide", "A step-by-step walk through the tool.", self.start_guide),
             ("Help", "help", "The short help page: the three models, the anisotropies to measure "
                              "first, and reading the result.", self.show_help),
@@ -206,10 +215,18 @@ class Kappa2Gui(TourTarget):
                 im.new_line()
             else:
                 im.same_line()
+            # The Qt Save button was enabled only while a distribution with weight existed.
+            im.begin_disabled(key == "save" and not self.has_results())
             if im.button(label) and callable(action):
                 action()
+            im.end_disabled()
             im.set_item_tooltip(tip)
             self.remember(key)
+
+    def has_results(self) -> bool:
+        """Whether a distribution with weight exists (the Qt Save button's enabling rule)."""
+        hist = self.model._k2hist
+        return hist is not None and bool(float(np.sum(hist)) > 0.0)
 
     def _schedule_compute(self) -> None:
         """Parameter edits recompute through the tool, like the old timer."""
@@ -222,7 +239,7 @@ class Kappa2Gui(TourTarget):
         m = self.model
         if implot.begin_plot("##k2dist", (-1, -1)):
             implot.setup_axes("κ²", "p(κ²)")
-            implot.setup_legend()
+            implot.setup_legend(implot.LOCATION_NORTH_EAST)
             if m._k2scale is not None and m._k2hist is not None and len(m._k2hist):
                 x = np.asarray(m._k2scale[1:], dtype=float)
                 y = np.asarray(m._k2hist, dtype=float)
@@ -296,35 +313,125 @@ class Kappa2App(ImApp):
     def _render(self) -> None:
         self.kappa2_gui.draw()
 
+    # -- persistence: the inputs (the Qt tool remembered the window geometry only) --------- #
+    def export_settings(self) -> dict:
+        """The model choice and every input field (the distribution is recomputed on restore)."""
+        model = self.tool._model
+        return {name: getattr(model, name) for name in INPUT_FIELDS}
+
+    def restore_settings(self, settings: dict) -> None:
+        """Restore :meth:`export_settings`; unusable entries are ignored, numbers are clamped to the field."""
+        if not isinstance(settings, dict):
+            return
+        model = self.tool._model
+        limits = {s["attr"]: s for p in self.kappa2_gui.input_spec["sections"]
+                  for s in p.get("sections", []) if s.get("attr")}
+        for name in INPUT_FIELDS:
+            value = settings.get(name)
+            if name == "model_type":
+                if value in MODEL_OPTIONS:
+                    model.model_type = value
+            elif name == "rAD_known":
+                if isinstance(value, bool):
+                    model.rAD_known = value
+            elif isinstance(value, (int, float)) and not isinstance(value, bool) and np.isfinite(value):
+                lo, hi = limits[name].get("minimum"), limits[name].get("maximum")
+                value = min(max(float(value), float(lo)), float(hi))
+                setattr(model, name, int(round(value)) if name == "n_bins" else value)
+        self.kappa2_gui.form.buffers.clear()
+        if callable(self.kappa2_gui.on_edit):
+            self.kappa2_gui.on_edit()
+
 
 __all__ = ["Kappa2App", "WINDOW_BG"]
 
 
-def make_app(**kwargs):
-    """Construct the standalone EMTK orientation calculator and CSV export."""
+def _install_save_dialog(app, write):
+    """The Save button's file dialog: an in-app window over the app, cancelled by Cancel or its close button.
+
+    Returns the function the Save button calls. A failing ``write`` keeps the dialog open with the reason in it,
+    so a wrong folder can be corrected; Cancel (or the window's close button) dismisses it.
+    """
+    from emtk.dialog_window import DialogWindow
+    from emtk.file_dialog import FileDialog
+
+    render = app.gui
+    shown: dict = {"dialog": None, "window": None, "error": ""}
+
+    def request() -> None:
+        shown["dialog"] = FileDialog("Save κ² distribution", mode="save", filename="kappa2.csv",
+                                     filters="CSV (*.csv)")
+        shown["window"] = DialogWindow("Save κ² distribution", size=(640.0, 480.0))
+        shown["error"] = ""
+
+    def draw() -> None:
+        render()
+        if shown["dialog"] is None:
+            return
+        vp = im.get_main_viewport()
+        pressed = shown["window"].begin((*vp.pos, *vp.size))
+        result = shown["dialog"].draw()
+        if shown["error"]:
+            im.text_wrapped(shown["error"])
+        shown["window"].end()
+        if result:
+            try:
+                path = Path(result[0])
+                write(path if path.suffix.lower() == ".csv" else path.with_suffix(".csv"))
+                shown["dialog"] = None
+            except Exception as exc:  # noqa: BLE001 - shown in the dialog, which stays open
+                shown["error"] = f"Could not save: {exc}"
+        elif result is False or pressed == "close":
+            shown["dialog"] = None
+
+    app.gui = draw
+    return request
+
+
+def make_app(kappa2: float = 0.667, **kwargs):
+    """Construct the standalone EMTK orientation calculator and CSV export.
+
+    Parameters
+    ----------
+    kappa2 : float
+        The assumed orientation factor the distance statistics refer to (the Qt tool's constructor argument).
+    """
     from chisurf.emtk.i18n import install
 
     install()
     from types import SimpleNamespace
 
-    from chisurf.plugins.calculator.export import install_csv_export
-
     from ..backend.services import _kappa2_compute_handler
     from .model import _Kappa2DistModel
 
-    client = SimpleNamespace(compute=_kappa2_compute_handler)
-    state = SimpleNamespace(_model=_Kappa2DistModel())
+    state = SimpleNamespace(_model=_Kappa2DistModel(), busy=False, dirty=False, status="", error="")
+    state._model.kappa2_true = kappa2
 
-    def compute():
-        state._model.compute(client)
+    def call(**params):
+        """The backend handler; a failed answer is remembered for the status line."""
+        answer = _kappa2_compute_handler(**params)
+        state.error = "" if answer.get("ok") else f"The calculation failed: {answer.get('error')}"
+        return answer
+
+    client = SimpleNamespace(compute=call)
+
+    def finite() -> bool:
+        m = state._model
+        return all(np.isfinite(getattr(m, name)) for name in _RESULT_FIELDS)
+
+    def refresh_status() -> None:
+        if state.error:
+            state.status = state.error
+        elif not finite():
+            state.status = "These inputs give no finite result (the statistics are not numbers)."
+        else:
+            state.status = ""
 
     import copy
     import threading
 
-    state.busy = False
     #: An edit arrived while a computation ran: run again when it is in (the Qt
     #: tool's debounce timer computed after the last edit; this dropped it).
-    state.dirty = False
     pending = []
 
     def schedule():
@@ -338,6 +445,7 @@ def make_app(**kwargs):
         def run():
             snapshot.compute(client)
             pending.append(snapshot)
+            app.request_frame()  # wake an idle host: the result is drawn on the next frame
 
         threading.Thread(target=run, daemon=True).start()
 
@@ -353,12 +461,12 @@ def make_app(**kwargs):
             # Keep what the user typed meanwhile; only the results come from the run.
             state._model.__dict__.update(inputs)
             state.busy = False
+            refresh_status()
             if state.dirty:
                 schedule()
         render()
 
     app.gui = draw
-    app.continuous = True
 
     def write(path):
         m = state._model
@@ -379,8 +487,12 @@ def make_app(**kwargs):
         ]
         lines = [f"{x:.6f},{y:.6f}" for x, y in zip(m._k2scale[1:], m._k2hist)]
         path.write_text("\n".join(header + lines) + "\n")
+        # the Qt tool said so in a message box; the file name, as a long path would not wrap in the window
+        state.status = f"Saved to {path.name} ({path.parent})"
 
-    app.kappa2_gui.on_save = install_csv_export(app, "kappa2.csv", write)
+    app.kappa2_gui.on_save = _install_save_dialog(app, write)
     app.write_csv = write
-    compute()
+    # The first computation runs on construction, as the Qt tool's did (synchronously, so the first frame has data).
+    state._model.compute(client)
+    refresh_status()
     return app
