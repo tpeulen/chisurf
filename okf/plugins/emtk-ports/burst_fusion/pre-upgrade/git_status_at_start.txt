@@ -1,0 +1,8 @@
+ M chisurf/plugins/burst/burst_fusion/core/fusion.py
+ M chisurf/plugins/burst/burst_fusion/gui/app.py
+ M chisurf/plugins/burst/burst_fusion/gui/tool.py
+ M chisurf/plugins/burst/burst_fusion/gui/view_model.py
+ M chisurf/plugins/burst/burst_fusion/manifest.json
+ M chisurf/plugins/burst/burst_fusion/tests/test_gui.py
+?? chisurf/plugins/burst/burst_fusion/gui/controller.py
+?? chisurf/plugins/burst/burst_fusion/tests/test_native.py

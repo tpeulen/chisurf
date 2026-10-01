@@ -1,0 +1,406 @@
+diff --git a/chisurf/plugins/burst/burst_fusion/core/fusion.py b/chisurf/plugins/burst/burst_fusion/core/fusion.py
+index 4e09662cf..8b6535449 100644
+--- a/chisurf/plugins/burst/burst_fusion/core/fusion.py
++++ b/chisurf/plugins/burst/burst_fusion/core/fusion.py
+@@ -170,7 +170,9 @@ def proximity_ratios(frame) -> np.ndarray | None:
+ # ── the analysis ────────────────────────────────────────────────────────────
+ 
+ 
+-def analyze(analysis_folder, settings: FusionSettings | None = None) -> FusionAnalysis:
++def analyze(
++    analysis_folder, settings: FusionSettings | None = None, cancel_check=None
++) -> FusionAnalysis:
+     """Decide which bursts of a folder fuse, without writing anything.
+ 
+     Parameters
+@@ -189,7 +191,11 @@ def analyze(analysis_folder, settings: FusionSettings | None = None) -> FusionAn
+     """
+     settings = settings or FusionSettings()
+     root = analysis_root(analysis_folder)
++    if callable(cancel_check):
++        cancel_check()
+     frames = read_measurements(analysis_folder)
++    if callable(cancel_check):
++        cancel_check()
+     if not frames:
+         raise FusionError(f"no bursts to fuse in {root}")
+ 
+@@ -207,6 +213,8 @@ def analyze(analysis_folder, settings: FusionSettings | None = None) -> FusionAn
+     measurements: list[MeasurementFusion] = []
+     tau_used = capped_window(pooled.tau_max_s, settings)
+     for stem, frame in frames.items():
++        if callable(cancel_check):
++            cancel_check()
+         if settings.pool_measurements:
+             window = pooled
+         else:
+diff --git a/chisurf/plugins/burst/burst_fusion/gui/app.py b/chisurf/plugins/burst/burst_fusion/gui/app.py
+index 21666819f..d836b41a6 100644
+--- a/chisurf/plugins/burst/burst_fusion/gui/app.py
++++ b/chisurf/plugins/burst/burst_fusion/gui/app.py
+@@ -61,7 +61,10 @@ def _hex_to_rgba(
+     return default
+ 
+ 
+-class BurstFusionGui:
++from chisurf.emtk.help_guide import TourTarget
++
++
++class BurstFusionGui(TourTarget):
+     """The immediate-mode GUI logic and rendering for Burst Fusion."""
+ 
+     def __init__(
+@@ -81,14 +84,19 @@ class BurstFusionGui:
+         self.dock_spec = self.spec["sections"][0] if self.spec.get("sections") else {}
+         self.fusion_panel = find_section(self.dock_spec, "Fusion") or {}
+ 
++        # Keep the before/after summary compact so advanced parameters remain reachable.
++        for section in self.fusion_panel.get("sections", []):
++            if section.get("type") == "table":
++                section["expand"] = False
++                section["height"] = 180
++
+         # Register custom sections
+         self.form_state.custom["fusion_actions"] = self._draw_fusion_actions
+ 
+         self.selected_tab = "All"
+         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+         self.on_used: Callable[[str], None] | None = None
+-
+-        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
++        from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+ 
+         help_resource = pathlib.Path(__file__).parent / "help.md"
+         guide_resource = pathlib.Path(__file__).parent / "guide.json"
+@@ -100,10 +108,51 @@ class BurstFusionGui:
+             size=(700.0, 520.0),
+         )
+         self.tour = EmTkGuidedTour(
+-            steps=guide_resource,
+-            get_target_rect=lambda k: self.item_rects.get(k),
+-            owner=self.model,
++            steps=guide_resource, get_target_rect=lambda k: self.item_rects.get(k), owner=self.model
++        )
++        from emtk.docking import DockManager, Region, Split
++
++        self.docks = DockManager(
++            Split("h", 0.35, Region("controls"), Region("plots")), name="burst_fusion"
+         )
++        self.docks.add_window("controls", "Fusion controls", self._draw_controls, dock="controls")
++        self.docks.add_window("plots", "Fusion plots", self._draw_plots, dock="plots")
++
++
++    def _draw_controls(self, box):
++        if getattr(self, "controller", None):
++            self.controller.draw_controls()
++        im.begin_disabled(bool(getattr(self, "controller", None) and self.controller.running))
++        draw_sections(
++            self.fusion_panel.get("sections", []), self.model, self.form_state, n_col=1, titles=True
++        )
++        im.end_disabled()
++
++    def _draw_plots(self, box):
++        if im.begin_tab_bar("fusion_plot_tabs"):
++            for key, label in [
++                ("All", "All plots"),
++                ("P_same", "P(same)"),
++                ("PR", "Proximity ratio"),
++                ("Photons", "Photons"),
++                ("Duration", "Duration"),
++                ("Fragments", "Fragments"),
++            ]:
++                if im.begin_tab_item(label):
++                    self.selected_tab = key
++                    im.end_tab_item()
++                im.set_item_tooltip(f"Show the {label.lower()} before/after comparison.")
++            im.end_tab_bar()
++        width, height = im.get_content_region_avail()
++        plot = {
++            "All": self._draw_all_plots,
++            "P_same": self._plot_p_same,
++            "PR": self._plot_proximity,
++            "Photons": self._plot_photons,
++            "Duration": self._plot_duration,
++            "Fragments": self._plot_fragments,
++        }[self.selected_tab]
++        plot(max(80, width), max(100, height))
+ 
+     def start_guide(self) -> None:
+         """Start the in-EMTK guided tour."""
+@@ -116,12 +165,6 @@ class BurstFusionGui:
+     def _on_model_event(self, event: str) -> None:
+         pass
+ 
+-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+-        """Store the item's screen rectangle for tour targeting."""
+-        r = rect if rect is not None else im.get_item_rect()
+-        if r is not None:
+-            self.item_rects[name] = tuple(r)
+-
+     def track(self, name: str) -> None:
+         """Record usage of a named control."""
+         if callable(self.on_used):
+@@ -139,9 +182,15 @@ class BurstFusionGui:
+         if im.button("🚀 Run (Fuse)"):
+             self.track("toolAction_run")
+             try:
+-                self.model.fuse()
++                if getattr(self, "controller", None):
++                    self.controller.run()
++                else:
++                    self.model.fuse()
+             except Exception:
+                 pass
++        im.set_item_tooltip(
++            "Fuse burst fragments that likely belong to the same molecule using the P(same) threshold."
++        )
+         self.remember("toolAction_run")
+         self.remember("fusion_actions")
+         im.pop_style_color(3)
+@@ -150,9 +199,15 @@ class BurstFusionGui:
+         if im.button("🔄 Estimate"):
+             self.track("toolAction_refresh")
+             try:
+-                self.model.analyze()
++                if getattr(self, "controller", None):
++                    self.controller.estimate()
++                else:
++                    self.model.analyze()
+             except Exception:
+                 pass
++        im.set_item_tooltip(
++            "Estimate the P(same) curve and thresholds from the loaded bursts without fusing."
++        )
+         self.remember("toolAction_refresh")
+ 
+         im.same_line()
+@@ -163,74 +218,26 @@ class BurstFusionGui:
+                     self.on_demo()
+                 except Exception:
+                     pass
++            im.set_item_tooltip("Load a demo dataset to try the fusion analysis.")
+             self.remember("load_demo")
+             im.same_line()
+ 
++        im.new_line()
+         if im.button("📖 Guide"):
+             self.track("guide")
+             self.start_guide()
+         self.remember("guide")
++        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+ 
+         im.same_line()
+         if im.button("❓ Help"):
+             self.track("help")
+             self.show_help()
+         self.remember("help")
++        im.set_item_tooltip("Open the help window with reference documentation.")
+ 
+     def draw(self, w: float, h: float) -> None:
+-        """Draw the fusion GUI into (w, h) display pixels."""
+-        left_w = min(max(340.0, w * 0.32), 440.0)
+-        right_w = max(w - left_w - 12.0, 200.0)
+-
+-        # ── Left pane: Controls ──────────────────────────────────────────
+-        if im.begin("Fusion Controls", (4.0, 4.0, left_w, h - 8.0)):
+-            if self.fusion_panel and self.fusion_panel.get("sections"):
+-                draw_sections(
+-                    self.fusion_panel.get("sections", []),
+-                    self.model,
+-                    self.form_state,
+-                    n_col=1,
+-                    titles=True,
+-                )
+-            im.end()
+-            self.remember("Fusion", (4.0, 4.0, left_w, h - 8.0))
+-
+-        # ── Right pane: Plots ────────────────────────────────────────────
+-        plots_x = left_w + 8.0
+-        if im.begin("Fusion Plots", (plots_x, 4.0, right_w, h - 8.0)):
+-            if im.begin_tab_bar("fusion_plot_tabs"):
+-                tabs = [
+-                    ("All", "All Plots"),
+-                    ("P_same", "Same-molecule P(same)"),
+-                    ("PR", "Proximity Ratio"),
+-                    ("Photons", "Photons"),
+-                    ("Duration", "Duration"),
+-                    ("Fragments", "Fragments"),
+-                ]
+-                for key, label in tabs:
+-                    if im.begin_tab_item(label):
+-                        self.selected_tab = key
+-                        im.end_tab_item()
+-                im.end_tab_bar()
+-
+-            avail_w, avail_h = im.get_content_region_avail()
+-            avail_h = max(avail_h, 300.0)
+-
+-            if self.selected_tab == "All":
+-                self._draw_all_plots(avail_w, avail_h)
+-            elif self.selected_tab == "P_same":
+-                self._plot_p_same(avail_w, avail_h)
+-            elif self.selected_tab == "PR":
+-                self._plot_proximity(avail_w, avail_h)
+-            elif self.selected_tab == "Photons":
+-                self._plot_photons(avail_w, avail_h)
+-            elif self.selected_tab == "Duration":
+-                self._plot_duration(avail_w, avail_h)
+-            elif self.selected_tab == "Fragments":
+-                self._plot_fragments(avail_w, avail_h)
+-
+-            im.end()
+-            self.remember("results", (plots_x, 4.0, right_w, h - 8.0))
++        self.docks.draw((0.0, 0.0, float(w), float(h)))
+ 
+         if self.help_window.open:
+             self.help_window.draw((0.0, 0.0, w, h))
+@@ -342,11 +349,19 @@ class BurstFusionApp(ImApp):
+         on_guide: Callable[[], None] | None = None,
+         on_help: Callable[[], None] | None = None,
+     ) -> None:
++        from .controller import FusionController
++
++        model = model if model is not None else FusionViewModel()
++        self.controller = FusionController(model)
++        on_demo = on_demo or self.controller.demo
+         self.fusion_gui = BurstFusionGui(
+             model=model, on_demo=on_demo, on_guide=on_guide, on_help=on_help
+         )
+         self.model = self.fusion_gui.model
+-        super().__init__(gui=self._render, continuous=False)
++        self.item_rects = self.fusion_gui.item_rects
++        self.fusion_gui.remember = self.remember
++        self.fusion_gui.controller = self.controller
++        super().__init__(gui=self._render, continuous=True)
+ 
+     def start_guide(self) -> None:
+         """Start guided tour inside EMTK."""
+@@ -357,5 +372,41 @@ class BurstFusionApp(ImApp):
+         self.fusion_gui.show_help()
+ 
+     def _render(self) -> None:
++        self.controller.poll()
+         w, h = im.get_main_viewport().size
+         self.fusion_gui.draw(float(w), float(h))
++        self.controller.draw_dialogs((0, 0, w, h))
++
++    def set_folder(self, folder):
++        self.model.set_folder(str(folder))
++
++    def set_channel_settings(self, settings):
++        self.model.detectors = dict(settings.get("detectors") or {})
++        self.model.windows = dict(settings.get("windows") or {})
++        import json
++
++        self.controller.channel_text = json.dumps(
++            {"detectors": self.model.detectors, "windows": self.model.windows}, indent=2
++        )
++
++    @property
++    def output_folder(self):
++        return self.model.written_folder
++
++    def process_bursts(self):
++        if self.controller.running:
++            raise RuntimeError("Fusion is already running.")
++        return self.model.fuse()
++
++    def close(self):
++        self.controller.close()
++
++    def on_paths_dropped(self, paths):
++        self.controller.on_paths_dropped(paths)
++
++
++def create_app(**kwargs):
++    from chisurf.emtk.i18n import install
++
++    install()
++    return BurstFusionApp(**kwargs)
+diff --git a/chisurf/plugins/burst/burst_fusion/gui/tool.py b/chisurf/plugins/burst/burst_fusion/gui/tool.py
+index 77fb582e8..498a71923 100644
+--- a/chisurf/plugins/burst/burst_fusion/gui/tool.py
++++ b/chisurf/plugins/burst/burst_fusion/gui/tool.py
+@@ -203,5 +203,9 @@ class BurstFusionTool(ChisurfDockTool):
+         except Exception:
+             logger.warning("burst fusion: refresh failed", exc_info=True)
+ 
++    def closeEvent(self, event):
++        self.app.close()
++        super().closeEvent(event)
++
+ 
+ __all__ = ["BurstFusionTool"]
+diff --git a/chisurf/plugins/burst/burst_fusion/gui/view_model.py b/chisurf/plugins/burst/burst_fusion/gui/view_model.py
+index 6a3edabf4..469ecdccd 100644
+--- a/chisurf/plugins/burst/burst_fusion/gui/view_model.py
++++ b/chisurf/plugins/burst/burst_fusion/gui/view_model.py
+@@ -256,14 +256,18 @@ class FusionViewModel:
+             return f"Not a folder: {self.folder}"
+         return None
+ 
+-    def analyze(self) -> None:
++    def analyze(self, cancel_check=None) -> None:
+         """Estimate ``P_same`` and the fusion the current threshold implies."""
+         reason = self.can_run()
+         if reason is not None:
+             raise ValueError(reason)
+         from ..core.fusion import analyze
+ 
+-        self._analysis = analyze(pathlib.Path(self.folder), self.settings)
++        self._analysis = analyze(
++            pathlib.Path(self.folder),
++            self.settings,
++            **({"cancel_check": cancel_check} if callable(cancel_check) else {}),
++        )
+         self._emitted = None
+         stats = self._analysis.statistics
+         self._status = (
+diff --git a/chisurf/plugins/burst/burst_fusion/manifest.json b/chisurf/plugins/burst/burst_fusion/manifest.json
+index b74f6de60..281b47653 100644
+--- a/chisurf/plugins/burst/burst_fusion/manifest.json
++++ b/chisurf/plugins/burst/burst_fusion/manifest.json
+@@ -10,7 +10,7 @@
+     "Spectroscopy",
+     "Single-Molecule"
+   ],
+-  "icon": "🔗",
++  "icon": "\ud83d\udd17",
+   "state_namespace": "burst_fusion",
+   "statefulness": {
+     "enabled": true,
+@@ -22,7 +22,8 @@
+   "entrypoints": {
+     "gui": "chisurf.plugins.burst.burst_fusion.gui.tool:BurstFusionTool",
+     "cli": "chisurf.plugins.burst.burst_fusion.cli.main:cli",
+-    "services": "chisurf.plugins.burst.burst_fusion.backend.services:register_services"
++    "services": "chisurf.plugins.burst.burst_fusion.backend.services:register_services",
++    "emtk": "chisurf.plugins.burst.burst_fusion.gui.app:create_app"
+   },
+   "rpc_methods": [
+     {
+diff --git a/chisurf/plugins/burst/burst_fusion/tests/test_gui.py b/chisurf/plugins/burst/burst_fusion/tests/test_gui.py
+index 888af6089..668f11a82 100644
+--- a/chisurf/plugins/burst/burst_fusion/tests/test_gui.py
++++ b/chisurf/plugins/burst/burst_fusion/tests/test_gui.py
+@@ -78,16 +78,10 @@ def test_view_spec_binds_every_source_it_names(qapp):
+ 
+ 
+ def test_tool_constructs_with_help_and_guide(tool):
+-    """Both are toolbar *widgets*, so they are found by their button text."""
+-    from qtpy import QtWidgets
+-
+-    labels = [
+-        button.text()
+-        for bar in tool.findChildren(QtWidgets.QToolBar)
+-        for button in bar.findChildren(QtWidgets.QToolButton)
+-    ]
+-    assert any("Guide" in label for label in labels), labels
+-    assert any("?" in label for label in labels), labels
++    """Both are in-EMTK buttons now: the app carries a tour and help content."""
++    gui = tool.app.fusion_gui
++    assert gui.tour.steps, "the plugin must ship a guided tour"
++    assert gui.help_window.sections, "the plugin must ship help content"
+ 
+ 
+ def test_the_run_button_is_the_one_that_fuses(tool, qapp):

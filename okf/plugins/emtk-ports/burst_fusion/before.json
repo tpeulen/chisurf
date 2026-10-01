@@ -1,0 +1,14 @@
+{
+  "controls": [],
+  "labels": [],
+  "buttons": [],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.burst.burst_fusion.gui.tool:BurstFusionTool",
+  "size": [
+    1200,
+    800
+  ]
+}
