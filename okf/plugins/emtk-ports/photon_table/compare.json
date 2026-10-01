@@ -1,0 +1,39 @@
+{
+  "plugin": "photon_table",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "0",
+    "0rows×5columns",
+    "200",
+    "allchannels",
+    "channel",
+    "copyvisible",
+    "fileidx",
+    "first",
+    "firstphoton",
+    "guide",
+    "help",
+    "itsphotons.",
+    "last",
+    "macrotime[ms]",
+    "microtime",
+    "next",
+    "nophotons",
+    "openatttrfile,ordroponeonthiswindow,toinspect",
+    "opentttr",
+    "photon",
+    "photons",
+    "prev",
+    "rows",
+    "tttrfile"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 0,
+  "after_controls": 24
+}

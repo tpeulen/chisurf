@@ -1,0 +1,99 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0rows×5columns",
+    "200",
+    "allchannels",
+    "channel",
+    "copyvisible",
+    "fileidx",
+    "first",
+    "firstphoton",
+    "guide",
+    "help",
+    "itsphotons.",
+    "last",
+    "macrotime[ms]",
+    "microtime",
+    "next",
+    "nophotons",
+    "openatttrfile,ordroponeonthiswindow,toinspect",
+    "opentttr",
+    "photon",
+    "photons",
+    "prev",
+    "rows",
+    "tttrfile"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Open TTTR...",
+      "id": "Open TTTR...##request_open",
+      "tooltip": "Open a TTTR file (.ptu, .ht3, .phu, ...). Dropping one on the window does the same."
+    },
+    {
+      "kind": "button",
+      "label": "Copy visible",
+      "id": "Copy visible##request_copy",
+      "tooltip": "Copy the visible rows to the clipboard as tab-separated text."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "The short help page."
+    },
+    {
+      "kind": "button",
+      "label": "First",
+      "id": "First##go_first",
+      "tooltip": "Jump to the first photon of the filtered selection."
+    },
+    {
+      "kind": "button",
+      "label": "Prev",
+      "id": "Prev##go_prev",
+      "tooltip": "One page back."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next##go_next",
+      "tooltip": "One page forward."
+    },
+    {
+      "kind": "button",
+      "label": "Last",
+      "id": "Last##go_last",
+      "tooltip": "Jump to the last full page of the filtered selection."
+    },
+    {
+      "kind": "input_text",
+      "label": "first_index",
+      "id": "##first_index",
+      "tooltip": "Index of the first photon shown, counted within the filtered selection. A value past the end is moved back so that the page stays full."
+    },
+    {
+      "kind": "input_text",
+      "label": "rows_per_page",
+      "id": "##rows_per_page",
+      "tooltip": "Rows shown at once (1 to 20000). Large pages are fine; the table only draws what fits the window."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

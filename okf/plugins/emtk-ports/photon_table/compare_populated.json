@@ -1,0 +1,41 @@
+{
+ "qt_controls": [
+  "channel_filter",
+  "copy visible",
+  "first",
+  "first_photon",
+  "guide",
+  "help",
+  "last",
+  "next",
+  "open tttr...",
+  "prev",
+  "rows_per_page"
+ ],
+ "native_controls": [
+  "copy visible",
+  "first",
+  "first_index",
+  "guide",
+  "help",
+  "last",
+  "next",
+  "open tttr...",
+  "prev",
+  "rows_per_page"
+ ],
+ "qt_only": [
+  "channel_filter",
+  "first_photon"
+ ],
+ "native_only": [
+  "first_index"
+ ],
+ "qt_texts_missing_in_native": [
+  "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/tmp.ytgc8yloze/bh_spc132.spc",
+  "last\u23ed",
+  "next\u25b6"
+ ],
+ "native_untooltipped": [],
+ "qt_untooltipped": []
+}
