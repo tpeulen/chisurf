@@ -4,7 +4,7 @@
     {
       "title": "Two tabs, one main tool",
       "text": "<b>Compute LUT</b> is the main tool: it makes one LUT per routing channel from a flat-light measurement. <b>settings.tttr.json (optional)</b> only saves or loads a portable settings file. Stay on Compute LUT.",
-      "target": {"name": "stage_name"}
+      "target": {"name": "stage_name.0"}
     },
     {
       "title": "Load a uniform-illumination file",
