@@ -200,3 +200,15 @@ none blocking. emtk gaps used around (not patched): `choice` is not editable; `i
 ## 12. Reviewer quick check
 
 As in `_TEMPLATE.md` with `<id>` = `ai_settings`, `<group>/<id>` = `ai_settings`; run with `CHISURF_SETTINGS_DIR`/`MMFDB_SETTINGS_DIR`/`MMFDB_DATABASE_PATH` on a temp folder and the provider key variables unset.
+
+## Review (reviewer, 2026-10-01)
+
+Verified, not taken from the hand-over: commits `5c305f086`, `a4f1be362`, `8565314ea` touch only `ai_settings` files, the evidence folder and the
+agent's own log hunk; 81 tests pass; `compare` exit 0 with `lost` `[]`; no Qt imports in `gui/app.py` / `gui/model.py`. **Secrets:** a scan of the plugin
+and the evidence folder finds no key-like string other than fake test tokens (`sk-test-0000`, `sk-pasted-token`), and the real
+`~/.chisurf/ai_api_settings.json` is unchanged (last modified Sep 28) by the runs; no test reaches the network (transport stubbed). The populated
+screenshot read against the Qt baseline: the same title and description, three collapsible sections (Generation Settings folded as in Qt), masked
+API key with Show key, editable model fields plus pick lists of fetched models, Test connection / Save / Reset and a result line ("Found 4 text and 3
+image models."). **Accepted.** `ai_settings` is removed from `emtk_preview.json`: its emtk window is now the default. Notes: the plugin depends on another
+stream's uncommitted edits in `chisurf/core/settings/ai_settings.py` and `settings_chisurf.yaml` (the ACP `command` / `acp_backend_provider` keys; the
+committed core would drop them on Save), and six old tests of the removed `AISettingsGui` class were dropped (superseded by the new parity tests).
