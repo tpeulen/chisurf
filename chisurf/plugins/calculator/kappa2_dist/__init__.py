@@ -19,11 +19,20 @@ if _manifest is not None:
 else:
     name = "Structure:FRET:Kappa2 Distribution"
 
-from .k2dgui import Kappa2Dist  # noqa: E402
+
+def __getattr__(attribute):
+    if attribute == "Kappa2Dist":
+        from .gui.tool import Kappa2Dist
+
+        return Kappa2Dist
+    raise AttributeError(attribute)
+
 
 __all__ = ["Kappa2Dist"]
 
 if __name__ == "plugin":
+    from .gui.tool import Kappa2Dist
+
     window = Kappa2Dist()
     if _manifest is not None:
         apply_manifest_statefulness(window, _manifest)

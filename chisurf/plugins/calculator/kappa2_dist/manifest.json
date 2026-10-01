@@ -22,6 +22,7 @@
     }
   },
   "entrypoints": {
+    "emtk": "chisurf.plugins.calculator.kappa2_dist.gui.app:make_app",
     "gui": "chisurf.plugins.calculator.kappa2_dist.gui.tool:Kappa2Dist",
     "cli": "chisurf.plugins.calculator.kappa2_dist.__main__:main",
     "services": "chisurf.plugins.calculator.kappa2_dist.backend.services:register_services"

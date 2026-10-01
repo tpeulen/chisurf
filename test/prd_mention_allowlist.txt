@@ -77,7 +77,6 @@ chisurf/plugins/burst/burst_selection/tests/test_replay.py
 chisurf/plugins/calculator/fret_calculator/gui/tool.py
 chisurf/plugins/calculator/fret_calculator/tests/test_construction_smoke.py
 chisurf/plugins/calculator/kappa2_dist/__init__.py
-chisurf/plugins/calculator/kappa2_dist/gui/tool.py
 chisurf/plugins/calculator/phasor_calculator/__init__.py
 chisurf/plugins/calculator/phasor_calculator/tests/test_phasor_calculator.py
 chisurf/plugins/core/acq/tcspc_devices/simulation/core/algorithms.py

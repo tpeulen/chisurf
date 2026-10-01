@@ -64,8 +64,7 @@ Headless:
 ```python
 from chisurf.plugins.calculator.kappa2_dist.core.algorithms import compute_kappa2_dist
 
-result = compute_kappa2_dist(model_type="cone", r_0=0.38,
-                             r_Dinf=0.15, r_Ainf=0.20, r_ADinf=0.005)
+result = compute_kappa2_dist(model_type="cone", r_0=0.38, r_Dinf=0.15, r_Ainf=0.20, r_ADinf=0.005)
 print(result["k2_mean"], result["RappSD"])
 ```
 
