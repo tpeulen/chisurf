@@ -60,9 +60,9 @@
     },
     {
       "title": "The check that catches a wrong calibration",
-      "text": "Look at the <b>E histogram</b> and find the donor-only population. It is the one answer you knew before you started, and after correction it must sit at <b>E ≈ 0</b>.<br/><br/>If it does not, the factors are wrong — not the sample. Nothing else in this window will tell you that.",
+      "text": "Look at the <b>E–S plot</b> and find the donor-only population (S ≈ 1). It is the one answer you knew before you started, and after correction it must sit at <b>E ≈ 0</b>.<br/><br/>If it does not, the factors are wrong — not the sample. Nothing else in this window will tell you that.",
       "target": {
-        "title": "E histogram"
+        "name": "es_plot"
       }
     },
     {

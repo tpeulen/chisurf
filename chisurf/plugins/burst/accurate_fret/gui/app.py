@@ -10,7 +10,7 @@ import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
-from emtk.view_form import FormState, draw_sections
+from emtk.view_form import FormState, draw_form, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
@@ -102,7 +102,7 @@ class AccurateFretGui(TourTarget):
             "es",
             "E–S populations",
             lambda box: self._draw_plot(
-                "E–S", "Accurate FRET efficiency", "Stoichiometry", self.model.es_series()
+                "E–S", "Accurate FRET efficiency", "Stoichiometry", self.model.es_series(), box
             ),
             dock="plots",
         )
@@ -114,6 +114,7 @@ class AccurateFretGui(TourTarget):
                 "Donor lifetime (ns)",
                 "Accurate FRET efficiency",
                 self.model.e_tau_series(),
+                box,
             ),
             dock="plots",
         )
@@ -125,6 +126,7 @@ class AccurateFretGui(TourTarget):
                 "Accurate FRET efficiency",
                 "Bursts",
                 self.model.efficiency_histogram(),
+                box,
             ),
             dock="plots",
         )
@@ -309,24 +311,26 @@ class AccurateFretGui(TourTarget):
         self.controller.channel_definition.draw()
         im.end_disabled()
 
-    @staticmethod
-    def _table(name, rows, columns):
-        if not rows:
-            return
-        if im.begin_table(
-            name,
-            len(columns),
-            im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.SCROLL_X,
-        ):
-            for key, label in columns:
-                im.table_setup_column(label)
-            im.table_headers_row()
-            for row in rows:
-                im.table_next_row()
-                for key, label in columns:
-                    im.table_next_column()
-                    im.text(str(row.get(key, "")))
-            im.end_table()
+    def _table(self, source, columns, description):
+        """A result table: a ``data_table`` section over the model's rows (never a hand-drawn table)."""
+        spec = {
+            "sections": [
+                {
+                    "type": "custom",
+                    "key": "data_table",
+                    "description": description,
+                    "options": {
+                        "source": source,
+                        "editable": False,
+                        "columns": [
+                            {"key": key, "title": label, "width": width, "description": f"{label} of each row."}
+                            for key, label, width in columns
+                        ],
+                    },
+                }
+            ]
+        }
+        draw_form(spec, self.model, self.form_state)
 
     def _render_results_window(self, box=None):
         if im.begin_tab_bar("accurate_result_tabs"):
@@ -338,30 +342,32 @@ class AccurateFretGui(TourTarget):
                 )
                 if opened:
                     if label == "Correction factors":
-                        self._table(
-                            "accurate_factors",
-                            self.model.factor_rows(),
-                            [
-                                ("factor", "Factor"),
-                                ("value", "Value"),
-                                ("uncertainty", "Uncertainty"),
-                                ("origin", "Origin"),
-                            ],
-                        )
+                        if self.model.factor_rows():
+                            self._table(
+                                "factor_rows",
+                                [
+                                    ("factor", "Factor", 80),
+                                    ("value", "Value", 110),
+                                    ("uncertainty", "Uncertainty", 120),
+                                    ("origin", "Origin", 220),
+                                ],
+                                "The correction factors of the calibration with their uncertainties and where each one comes from.",
+                            )
                     elif label == "Populations":
-                        self._table(
-                            "accurate_populations",
-                            self.model.population_rows(),
-                            [
-                                ("population", "Population"),
-                                ("n", "Bursts"),
-                                ("E", "E"),
-                                ("S", "S"),
-                                ("tau_f", "Lifetime (ns)"),
-                                ("distance", "Distance (Å)"),
-                                ("off_line", "FRET-line offset"),
-                            ],
-                        )
+                        if self.model.population_rows():
+                            self._table(
+                                "population_rows",
+                                [
+                                    ("population", "Population", 85),
+                                    ("n", "Bursts", 65),
+                                    ("E", "E", 140),
+                                    ("S", "S", 65),
+                                    ("tau_f", "Lifetime (ns)", 115),
+                                    ("distance", "Distance (Å)", 120),
+                                    ("off_line", "FRET-line offset", 130),
+                                ],
+                                "The burst populations found by the calibration: size, mean E, S, lifetime and distance.",
+                            )
                     else:
                         im.text_wrapped(self.model.results_text)
                     im.end_tab_item()
@@ -369,7 +375,7 @@ class AccurateFretGui(TourTarget):
         if self.model.result is None:
             im.text_wrapped(self.model.results_text)
 
-    def _draw_plot(self, title, xlabel, ylabel, series):
+    def _draw_plot(self, title, xlabel, ylabel, series, box=None):
         key = "es_plot" if title == "E–S" else "lifetime_plot" if title == "E–lifetime" else "histogram"
         if implot.begin_plot(title, (-1, -1)):
             implot.setup_axes(xlabel, ylabel)
@@ -408,9 +414,11 @@ class AccurateFretGui(TourTarget):
                     )
                     implot.plot_line(entry.get("name", "FRET line"), x, y)
             implot.end_plot()
-        self.remember(key)
+        # the window's content: the plot fills it (the last drawn item is only the legend)
+        rect = tuple(box) if box is not None else None
+        self.remember(key, rect)
         if key == "histogram":
-            self.remember("E histogram")      # the guide's name for it
+            self.remember("E histogram", rect)      # the guide's name for it
         im.set_item_tooltip(
             "Measured burst classes and calibrated FRET lines. Drag to pan; scroll to zoom."
             if series
@@ -418,7 +426,12 @@ class AccurateFretGui(TourTarget):
         )
 
     def draw(self, w, h):
+        # Rectangles of fields a collapsed panel no longer draws must not stay as tour / click targets.
+        previous = set(self.form_state.rects)
+        self.form_state.rects.clear()
         self.docks.draw((0.0, 0.0, float(w), float(h)))
+        for name in previous - set(self.form_state.rects):
+            self.item_rects.pop(name, None)
         self.item_rects.update(self.form_state.rects)
         if self.help_window.open:
             self.help_window.draw((0.0, 0.0, float(w), float(h)))
