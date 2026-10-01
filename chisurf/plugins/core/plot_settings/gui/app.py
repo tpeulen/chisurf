@@ -55,9 +55,19 @@ class PlotSettingsApp(ImApp):
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
         self.form.on_used = self.tour.notify_used
-        self.docks = DockManager(Split("v", 0.64, Region("settings"), Region("preview")))
+        # Settings above, the Apply / Save / Reset bar under them (as in the Qt tool), the
+        # preview below. The bar is a window of its own and the form scrolls with its window:
+        # a scrolling child inside one window lets the clipped rows under its bottom edge take
+        # the clicks meant for the buttons below it.
+        self.docks = DockManager(
+            Split("v", 0.64, Split("v", 0.8, Region("settings"), Region("actions")),
+                  Region("preview"))
+        )
         self.docks.add_window(
             "settings", "Plot Settings", self.draw_settings, dock="settings", closable=False
+        )
+        self.docks.add_window(
+            "actions", "Apply / Save / Reset", self.draw_actions, dock="actions", closable=False
         )
         self.docks.add_window(
             "preview", "Preview (sample curves)", self.draw_preview_window, dock="preview",
@@ -76,7 +86,7 @@ class PlotSettingsApp(ImApp):
 
     # ── windows ────────────────────────────────────────────────────────
     def draw_settings(self, box: Any) -> None:
-        """The settings window: Help / Guide, the folding sections, then Apply / Save / Reset."""
+        """The settings window: Help / Guide and the folding sections."""
         if im.button("Help"):
             self.help_window.show()
         im.set_item_tooltip("Explain the sections, Apply, Save and Reset.")
@@ -86,14 +96,10 @@ class PlotSettingsApp(ImApp):
             self.tour.start()
         im.set_item_tooltip("Walk through changing a colour and applying it.")
         self.item_rects["guide"] = im.get_item_rect()
-        avail_w, avail_h = im.get_content_region_avail()[:2]
-        # The Apply / Save / Reset bar and its status line stay at the bottom, as in the
-        # Qt tool; the sections scroll above it.
-        bar = im.get_frame_height_with_spacing() + 2.0 * im.get_text_line_height_with_spacing() + 18.0
-        im.begin_child("plot_settings_sections", (avail_w, max(avail_h - bar, 60.0)))
         draw_sections(self.panels[_SETTINGS]["sections"], self.model, self.form, titles=False)
-        im.end_child()
-        im.separator()
+
+    def draw_actions(self, box: Any) -> None:
+        """The Apply / Save / Reset bar and the status line."""
         draw_sections(self.panels[_ACTIONS]["sections"], self.model, self.form, titles=False)
 
     def draw_preview_window(self, box: Any) -> None:

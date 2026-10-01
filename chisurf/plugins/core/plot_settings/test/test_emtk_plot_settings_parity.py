@@ -689,3 +689,16 @@ def test_help_exists_and_its_links_are_live():
     draw(app)
     app.help_window.show()
     assert draw(app).strings
+
+
+@pytest.mark.parametrize("size", [(1200, 800), (800, 600)])
+def test_pressing_a_button_never_toggles_a_row_scrolled_out_of_view(size):
+    """With every section open the form overflows its window; the buttons must still be the
+    only thing a click on them reaches (a scrolling child let the clipped rows take it)."""
+    app = make_app()
+    open_all(app)
+    for name, attr in (("apply", "Applied"), ("save", "Applied and saved"), ("reset", "Reloaded")):
+        before = app.model.values()
+        click(app, name, size)
+        assert app.model.values() == before, name
+        assert app.model.message.startswith(attr), name
