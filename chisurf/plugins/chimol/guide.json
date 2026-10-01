@@ -1,0 +1,34 @@
+{
+  "_comment": "Guided tour for the ChiMOL viewer embedded in ChiSurf's emtk host. Steps point at real regions of the host and wait for the user; the tour never presses anything.",
+  "steps": [
+    {
+      "title": "A viewer that is mostly molecule",
+      "text": "Menus, toolbar, sequence strip, object list, mouse block and command prompt are all drawn inside the 3-D view. Four steps.",
+      "target": {}
+    },
+    {
+      "title": "Open a structure",
+      "text": "Use <b>File → Open</b> or the <b>Open</b> button, pick an entry of the <b>Demo</b> menu, or type <b>fetch 148l</b> at the prompt.",
+      "target": {"name": "structure"},
+      "await": {"hint": "Open any structure; the step continues when a new object appears in the object list."}
+    },
+    {
+      "title": "Turn it",
+      "text": "Drag with the left button to rotate, the middle button to move, the right button to zoom. The mouse block at the bottom right lists every combination.",
+      "target": {"name": "viewport"},
+      "await": {"hint": "Drag the molecule with the left mouse button."}
+    },
+    {
+      "title": "Say it instead",
+      "text": "Press Return to focus the prompt along the bottom edge, type a command such as <b>show sticks</b> or <b>color red, sele</b>, and press Return to run it.",
+      "target": {"name": "command_line"},
+      "await": {"hint": "Run one command at the prompt."}
+    },
+    {
+      "title": "More help",
+      "text": "<b>Help</b> explains the object list, the menus and the command language; the guide page has the full reference.",
+      "target": {"name": "help"},
+      "links": [{"text": "Guide", "doc": "docs/guides/44_molecular_viewer.md"}]
+    }
+  ]
+}

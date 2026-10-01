@@ -1,30 +1,31 @@
 {
-  "id": "chimol",
-  "version": "0.2.0",
-  "display_name": "Structure:Structure:ChiMOL",
-  "description": "Molecular structure viewer and protein analysis plugin for ChiSurf.",
-  "authors": [
-    "Thomas-Otavio Peulen"
-  ],
-  "categories": [
-    "Structure",
-    "Molecular Viewer"
-  ],
-  "icon": "🧬",
-  "state_namespace": "chimol",
-  "statefulness": {
-    "enabled": true,
-    "window": {
-      "enabled": true,
-      "settings_key": null
-    }
-  },
-  "entrypoints": {
-    "gui": "chimol.hosts.qt:MolViewPluginWindow"
-  },
-  "optional_requires": {
-    "fps_json_editor": "*"
-  },
-  "menu_hidden": false,
-  "deprecated": false
+ "id": "chimol",
+ "version": "0.2.0",
+ "display_name": "Structure:Structure:ChiMOL",
+ "description": "Molecular structure viewer and protein analysis plugin for ChiSurf.",
+ "authors": [
+  "Thomas-Otavio Peulen"
+ ],
+ "categories": [
+  "Structure",
+  "Molecular Viewer"
+ ],
+ "icon": "\ud83e\uddec",
+ "state_namespace": "chimol",
+ "statefulness": {
+  "enabled": true,
+  "window": {
+   "enabled": true,
+   "settings_key": null
+  }
+ },
+ "entrypoints": {
+  "gui": "chimol.hosts.qt:MolViewPluginWindow",
+  "emtk": "chisurf.plugins.chimol.app:make_app"
+ },
+ "optional_requires": {
+  "fps_json_editor": "*"
+ },
+ "menu_hidden": false,
+ "deprecated": false
 }
