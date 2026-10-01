@@ -121,9 +121,9 @@ SECTION_ICONS = {
 
 #: Pages offered on the start page to somebody who has just opened ChiSurf.
 START_HERE = (
-    ("docs/getting_started/index.rst", "Install, launch, and find your way around"),
-    ("docs/manual/data_import.rst", "Import data and create your first fit"),
-    ("docs/manual/fit_interface.rst", "The fitting interface, parameter by parameter"),
+    ("docs/getting_started/index.md", "Install, launch, and find your way around"),
+    ("docs/manual/data_import.md", "Import data and create your first fit"),
+    ("docs/manual/fit_interface.md", "The fitting interface, parameter by parameter"),
     ("docs/guides/index.md", "Pick the workflow you want to run"),
 )
 
@@ -1111,7 +1111,7 @@ class HelpWidget(ChisurfDockTool):
         if is_source_path(text):
             from chisurf.gui.widgets.tools.code_links import open_source
 
-            if open_source(text):
+            if open_source(text, prefer_emtk=False):
                 return
 
         from chisurf.gui.widgets.tools.doc_links import resolve_document
@@ -1794,7 +1794,7 @@ class HelpWidget(ChisurfDockTool):
             if is_source_path(raw) or (fragment and is_source_path(f"{raw}#{fragment}")):
                 from chisurf.gui.widgets.tools.code_links import open_source
 
-                if open_source(f"{raw}#{fragment}" if fragment else raw, base):
+                if open_source(f"{raw}#{fragment}" if fragment else raw, base, prefer_emtk=False):
                     return
 
             target = pathlib.Path(url.toLocalFile()) if url.isLocalFile() else None
@@ -2005,3 +2005,58 @@ class HelpWidget(ChisurfDockTool):
     def _open_video_tutorials(self):
         """Open the ChiSurf video tutorials in a web browser."""
         webbrowser.open_new("https://www.peulen.xyz/tutorial/")
+
+
+class HelpEmtkTool(ChisurfDockTool):
+    """Modern Documentation Browser and AI Assistant implemented in pure EMTK."""
+
+    name = "Documentation"
+
+    def __init__(self, parent: Any = None, *, path: str | pathlib.Path | None = None, **kwargs: Any) -> None:
+        super().__init__(parent, **kwargs)
+        self.setWindowTitle(f"{Glyphs.BOOK} ChiSurf Help")
+        self.resize(1200, 800)
+
+        from chisurf.plugins.core.help.gui.help_app import HelpApp, WINDOW_BG
+
+        self.app = HelpApp()
+        self.model = self.app.model
+        if path:
+            self.model.open_page(path)
+
+        try:
+            from emtk.qt_host import ControlHost
+
+            self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+            self.setCentralWidget(self.host)
+        except Exception:
+            self.host = None
+
+    def open_doc(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
+        return self.model.open_page(path, anchor=anchor)
+
+    def show_doc(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
+        return self.model.open_page(path, anchor=anchor)
+
+    def open_path(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
+        return self.model.open_page(path, anchor=anchor)
+
+    def open_markdown_path(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
+        return self.model.open_page(path, anchor=anchor)
+
+    def _open_document_path(self, path: str | pathlib.Path, anchor: str | None = None) -> bool:
+        return self.open_markdown_path(path, anchor)
+
+    class _FilterProxy:
+        def __init__(self, model: Any) -> None:
+            self._model = model
+
+        def setText(self, text: str) -> None:
+            self._model.search(text)
+
+        def text(self) -> str:
+            return self._model.search_query
+
+    @property
+    def filter_line_edit(self) -> _FilterProxy:
+        return self._FilterProxy(self.model)

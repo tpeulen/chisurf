@@ -19,11 +19,21 @@ else:
 
 icon = "📖"
 
-from chisurf.plugins.core.help.gui.tool import HelpWidget  # noqa: E402
+def __getattr__(attribute):
+    """Resolve the optional Qt host adapter without affecting native EMTK imports."""
+    if attribute in {"HelpEmtkTool", "HelpWidget", "HelpTool"}:
+        from chisurf.plugins.core.help.gui import tool
 
-__all__ = ["HelpWidget"]
+        value = getattr(tool, "HelpEmtkTool" if attribute == "HelpTool" else attribute)
+        globals()[attribute] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {attribute!r}")
 
-# Legacy entry point support — when loaded via the old plugin mechanism
+__all__ = ["HelpEmtkTool", "HelpWidget", "HelpTool"]
+
+# Entry point support — when loaded via plugin mechanism
 if __name__ == "plugin":
-    window = HelpWidget()
+    from chisurf.plugins.core.help.gui.tool import HelpEmtkTool
+
+    window = HelpEmtkTool()
     window.show()
