@@ -353,8 +353,8 @@ _DRAWS_HELP = re.compile(
 )
 
 #: Tools that ship help files but do not draw them yet. **Shrinking**; never
-#: add to it. globalview is being rebuilt on emtk by another stream.
-_HELP_NOT_DRAWN = {"chisurf/plugins/core/globalview/gui"}
+#: add to it. (globalview draws its help since its emtk port.)
+_HELP_NOT_DRAWN: set[str] = set()
 
 
 def test_shipped_help_is_drawn():

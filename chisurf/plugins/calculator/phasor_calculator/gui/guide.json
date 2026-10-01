@@ -54,7 +54,7 @@
       "title": "Look at the plot",
       "text": "The drawing lives in its own dock. Short lifetimes on the right, long on the left; anything inside the arc is multi-exponential.",
       "target": {
-        "key": "plot"
+        "key": "phasor"
       },
       "await": {
         "hint": "Click the phasor plot and inspect the universal semicircle."

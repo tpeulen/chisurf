@@ -265,8 +265,10 @@ class PhasorGui(TourTarget):
                 "mixture inside on the chord between its components."
             )
         self.remember("plot")
+        self.remember("phasor")  # the spec's name for the plot section, which the guide targets
         if im.is_item_clicked():
             self.tour.notify_used("plot")
+            self.tour.notify_used("phasor")
 
     # ── the τ → (g, s) table ──────────────────────────────────────────────
 
