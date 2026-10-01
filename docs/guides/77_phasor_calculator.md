@@ -21,15 +21,16 @@ phasor of a real image is {doc}`24_scan_images`.
 
 **Main → Tools → Calculators**, entry **◐ Phasor plot**. The manifest name
 `Main:Tools:Phasor-Calculator` is hidden from the menu; the Calculators hub is
-the only way in. The window has two dock tabs, **Controls** and **Phasor plot**.
-The plot redraws whenever a field is committed (Enter or focus change) or a box
-is ticked. **❓** (top right) opens a short explanation of the plot.
+the only way in. The window has three docks: **Controls**, **Reference
+lifetimes** and **Phasor plot**. The plot follows every edit at once. **Guide**
+walks through the tool step by step; **Help** opens a short explanation of the
+plot.
 
 ```{figure} figures/phasor_calculator.png
 :name: fig-phasor-calculator
 :width: 100%
 
-The **Phasor plot** tab at 80 MHz, harmonic 1. Yellow: reference lifetimes on
+The window at 80 MHz, harmonic 1. Yellow: reference lifetimes on
 the semicircle (0.5–8 ns), with their iso-phase rays and iso-modulation arcs.
 Red: the FRET trajectory of a 4 ns donor, running along the circle to $(1, 0)$.
 Blue: the chord between a 0.6 ns (C1) and a 5 ns (C2) species. The red cross is
@@ -42,8 +43,10 @@ their 50:50 photon mixture, at $(0.527, 0.310)$, inside the orange gating cursor
 :name: fig-phasor-calculator-controls
 :width: 100%
 
-The **Controls** tab in the same state, with **Results** expanded: the phasor
-coordinates of each reference lifetime at the effective frequency.
+The **Controls** dock in the same state, its groups (**Reference geometry**,
+**Two-component line**, **Mixing region**, **Cursor**) open, and the **Reference
+lifetimes** table: the phasor coordinates of each reference lifetime at the
+effective frequency.
 ```
 
 **Frequency and harmonic**
@@ -52,7 +55,7 @@ coordinates of each reference lifetime at the effective frequency.
   of a frequency-domain instrument. For TCSPC use the real repetition rate, not
   the TAC window (see *Using it well*).
 * **Harmonic** — $n$; everything is drawn at $n \times$ frequency. The
-  effective frequency heads the **Results** table.
+  effective frequency heads the **Reference lifetimes** table.
 
 **Reference lifetimes**
 
@@ -79,7 +82,7 @@ coordinates of each reference lifetime at the effective frequency.
 
 * **Two-component line** — the chord between $(g_1, s_1)$ and $(g_2, s_2)$.
 * **g1, s1, g2, s2** — the component phasors. To place a known lifetime, copy
-  its $g, s$ from the **Results** table (set it in **Lifetimes** first).
+  its $g, s$ from the **Reference lifetimes** table (set it in **Lifetimes** first).
 * **Mixing region** and **Fraction c1** — the point
   $f_1 P_1 + (1 - f_1) P_2$ with lines to both components. $f_1$ is the
   **fractional intensity** (photon fraction) of component 1, not its amplitude.
@@ -92,7 +95,7 @@ coordinates of each reference lifetime at the effective frequency.
 
 ## Read the result
 
-The **Results** panel lists $g$ and $s$ for each reference lifetime at the
+The **Reference lifetimes** table lists $g$ and $s$ for each reference lifetime at the
 effective frequency. For the default 80 MHz: 0.5 ns → $(0.941, 0.236)$, 1 ns →
 $(0.798, 0.401)$, 2 ns → $(0.497, 0.500)$ (the apex, $\omega\tau = 1$), 4 ns →
 $(0.198, 0.399)$, 8 ns → $(0.058, 0.234)$.
@@ -189,15 +192,8 @@ become the fractions used here via $f_i = a_i\tau_i / \sum_j a_j\tau_j$.
 
 ## Known defects
 
-* The **Results** panel is described as showing "apparent lifetimes and mixing
-  fractions", but only lists the reference lifetimes' $g, s$. The mixture point
-  and the cursor centre have no readout.
-* The **Controls** tab flows fields two per row regardless of meaning, so
-  **g1** sits beside **Two-component line** and **s1** starts the next row;
-  each $(g, s)$ pair is split across rows.
-* **Guide** is missing from the toolbar: the tool builds its own **❓** button
-  and does not call the shared help/guide seam, so the shipped `guide.json` is
-  not reachable from the window yet.
+* The **Reference lifetimes** table lists only the reference lifetimes' $g, s$.
+  The mixture point and the cursor centre have no readout.
 
 ## See also
 

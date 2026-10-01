@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **Guide 77 follows the phasor calculator's emtk window**: three docks instead of two tabs, the spec's groups, Guide and
+  Help present, the **Reference lifetimes** table; two known defects removed (fields split across rows, Guide unreachable),
+  figures regenerated (`okf/plugins/emtk-ports/phasor_calculator/scripts/make_guide77_figures.py`).
+
 - **burst_irf_bg emtk app at parity** (EMTK-1, upgrade row): pattern export in the sized dialog (would have failed), status
   once, frames on demand, headers that fit, guide targets drawn; the background rate it reports was corrected in core
   (`b3652dca8`). [report](plugins/emtk-ports/burst_irf_bg/REPORT.md).
