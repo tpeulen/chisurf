@@ -280,8 +280,6 @@ def test_guide_button_starts_the_tour_which_waits_for_each_control(ui):
     assert not tour.active
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: 'Close Tour##tour', '◄ Prev##tour' and 'Next ►##tour' share one id "
-                   "(emtk takes only the text after ## as the id), so a click on Prev or Next never fires; see REPORT.md")
 def test_the_tour_next_and_prev_buttons_can_be_clicked(ui):
     ui.app.time_window_gui.tour.start(2)
     ui.frame(3)
