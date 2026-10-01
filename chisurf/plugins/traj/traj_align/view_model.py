@@ -73,6 +73,10 @@ class AlignTrajectoryViewModel:
         lines = "<br>".join(html.escape(line) for line in self._log)
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
+    def log_text(self) -> list[str]:
+        """Return the raw log lines (bound by the native app; no HTML)."""
+        return list(self._log)
+
     # ── derived state ───────────────────────────────────────────────────
     def atom_indices(self) -> np.ndarray | None:
         """Parse :attr:`atom_selection` into an ``int32`` array of atom ids.

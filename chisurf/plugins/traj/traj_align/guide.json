@@ -1,0 +1,43 @@
+{
+  "_comment": "Guided tour for the Align-Trajectory tool. The file rows and the save button live inside the traj_align_io custom section, so they are targeted by name; atom_selection and stride are spec attrs. Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "Remove the rigid-body motion",
+      "text": "Every frame is rotated and translated onto <b>frame 0</b>, so what is left is the internal motion. Four steps: trajectory, topology, the atoms to fit on, save.",
+      "target": {}
+    },
+    {
+      "title": "The trajectory",
+      "text": "The DCD to align. Press <b>…</b> beside the row, or drop a <code>.dcd</code> on the window.",
+      "target": {"name": "trajectory"},
+      "await": {"hint": "Press <b>…</b> and pick a trajectory."}
+    },
+    {
+      "title": "The topology",
+      "text": "A DCD stores coordinates only; the atom names come from the PDB it was written for.",
+      "target": {"name": "topology"},
+      "await": {"hint": "Press <b>…</b> and pick the PDB that names the atoms."}
+    },
+    {
+      "title": "What to fit on",
+      "text": "Atom ids, comma-separated. <b>Empty fits on every atom.</b> Fit on the domain you take as the reference: the other domain's motion then shows relative to it.",
+      "target": {"attr": "atom_selection"}
+    },
+    {
+      "title": "Stride",
+      "text": "Read every Nth frame. The frame times are kept, so later averages stay correct.",
+      "target": {"attr": "stride"}
+    },
+    {
+      "title": "Save",
+      "text": "Pick the output DCD; the trajectory is aligned chunk by chunk and written.",
+      "target": {"name": "save"},
+      "await": {"hint": "Press <b>💾 Save aligned…</b>."}
+    },
+    {
+      "title": "What happened",
+      "text": "The log lists the files, the stride and where the aligned trajectory went — or why it stopped.<br/><br/>The <b>?</b> button has the details.",
+      "target": {"name": "log"}
+    }
+  ]
+}

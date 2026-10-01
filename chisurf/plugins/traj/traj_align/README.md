@@ -4,7 +4,7 @@ This plugin provides tools for aligning molecular dynamics trajectories to the f
 
 ## Features
 
-- Load trajectories in H5 format
+- Load DCD trajectories with the PDB topology that names their atoms
 - Select specific atoms for alignment
 - Align to the first frame of the trajectory as reference
 - Apply RMSD-based alignment algorithms
@@ -26,27 +26,19 @@ in a consistent reference frame.
 
 ## Requirements
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - mdtraj (for trajectory handling)
-  - tables (for HDF5 file handling)
-  - chisurf core modules
+- ChiSurf's trajectory readers and DCD writer (`chisurf.core.structure.trajectory_data`,
+  `chisurf.core.fio.trajectory`); no Qt for the emtk window (`app.py`), Qt only for the legacy
+  AutoForm widget (`widget.py`).
 
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Structure > Trajectory Alignment
-2. Load a trajectory file:
-   - Click the "..." button to select an input H5 trajectory file
-   - The file path will appear in the text field
-3. Specify atoms for alignment:
-   - Enter a comma-separated list of atom IDs in the "Atom-selection" text area
-   - These atoms will be used for calculating the alignment
-4. Set the stride value:
-   - Adjust the "stride" value to control frame sampling (higher values process fewer frames)
-5. Save the aligned trajectory:
-   - Click the "save" button to choose a save location
-   - The aligned trajectory will be saved in H5 format
+1. Open *Structure > Trajectory > Align* (or the *Align* panel of Traj Tools).
+2. Choose the trajectory (**…** or drop a `.dcd`) and its topology (**…** or drop a `.pdb`).
+3. Enter the fitting atoms as comma-separated atom ids in *Atom selection* (empty = all atoms).
+4. Set *Stride* to read every Nth frame (frame times are kept).
+5. Press **💾 Save aligned…** and pick the output `.dcd`; the log lists each step.
+
+**📖 Guide** walks through these steps; **❓ Help** has the details.
 
 ## Applications
 

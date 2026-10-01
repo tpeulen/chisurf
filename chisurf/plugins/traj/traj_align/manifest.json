@@ -14,7 +14,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.traj.traj_align.widget:AlignTrajectoryWidget"
+    "gui": "chisurf.plugins.traj.traj_align.widget:AlignTrajectoryWidget",
+    "emtk": "chisurf.plugins.traj.traj_align.app:make_app"
   },
   "menu_hidden": true
 }

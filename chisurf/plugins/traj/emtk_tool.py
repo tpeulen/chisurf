@@ -80,7 +80,8 @@ class SaveAction:
 
     ``run(model, path)`` does the work; ``missing(model)`` names what has to be
     chosen first (``None`` when the action can run); ``suggest(model)`` is the
-    file name the save dialog starts with.
+    file name the save dialog starts with; ``failure`` heads the message a
+    failed run leaves in the window (the Qt tool's error-box title).
     """
 
     key: str
@@ -93,6 +94,7 @@ class SaveAction:
         None if model.trajectory_filename else "Open a trajectory first."
     )
     suggest: Callable[[Any], str] = lambda model: ""
+    failure: str = "Save failed"
 
 
 def trajectory_field(**overrides) -> PathField:
@@ -141,7 +143,7 @@ class TrajToolApp(TourTarget, ImApp):
     io_key : str
         The spec's custom section the file rows and the action are drawn into.
     title : str
-        The window caption.
+        The window caption: the spec panel's title, as the Qt panel shows it.
     paths : sequence of PathField
         The file rows, in order.
     action : SaveAction
@@ -247,7 +249,7 @@ class TrajToolApp(TourTarget, ImApp):
         try:
             future.result()
         except Exception as exc:  # the view model has logged it; the window says so too
-            self.status = f"Save failed: {exc}"
+            self.status = f"{self.action.failure}: {exc}"
 
     def _open_dialog(self, dialog: FileDialog, on_pick: Callable[[str], Any],
                      on_cancel: Callable[[], Any] | None = None) -> None:
