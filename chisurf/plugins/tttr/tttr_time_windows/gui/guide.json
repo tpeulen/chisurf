@@ -1,22 +1,33 @@
-[
-  {
-    "target": "add_files",
-    "title": "Queue files",
-    "text": "Add supported TTTR files, a folder, or datasets from MMFDB."
-  },
-  {
-    "target": "time_window",
-    "title": "Choose duration",
-    "text": "Set the duration in milliseconds; the preview boundaries update."
-  },
-  {
-    "target": "output",
-    "title": "Choose output",
-    "text": "Leave empty for an automatically chosen output folder."
-  },
-  {
-    "target": "process",
-    "title": "Process",
-    "text": "Write one BST file per input with inclusive photon boundaries."
-  }
-]
+{
+  "_comment": "Guided tour for the TTTR time-window tool. Steps point at real controls; the ones the user must use wait for them.",
+  "steps": [
+    {
+      "title": "Queue the files",
+      "text": "Each queued TTTR file is cut into consecutive windows of equal duration. Press <b>Files</b> (or drop files or a folder on the window); <b>Folder</b> and <b>Database</b> queue whole sets. Click a queued file to preview its intensity trace.",
+      "target": {"action": "add_files"},
+      "await": {"hint": "Press <b>Files</b> and choose one or more TTTR files."}
+    },
+    {
+      "title": "Choose the window duration",
+      "text": "The duration in milliseconds. Short windows give many windows with few photons each; the dashed lines in the preview follow the value (they are left out when they would be too dense to tell apart).",
+      "target": {"action": "time_window"},
+      "await": {"hint": "Change the <b>Time window (ms)</b> value and press Enter."}
+    },
+    {
+      "title": "Choose the output folder",
+      "text": "Leave it empty and the tool creates a folder next to the first input file; after processing the field shows the folder that was used.",
+      "target": {"action": "output"}
+    },
+    {
+      "title": "Check the preview",
+      "text": "The intensity trace of the selected file with the window boundaries. Check that the duration resolves what you are after before processing.",
+      "target": {"action": "preview"}
+    },
+    {
+      "title": "Process",
+      "text": "Writes one .bst file per input with the inclusive start and stop photon of every window. The processing log lists the windows per file.",
+      "target": {"action": "process"},
+      "await": {"hint": "Press <b>Process</b>."}
+    }
+  ]
+}

@@ -294,5 +294,5 @@ def test_folder_queue_recurses_and_filters(tool, tmp_path, monkeypatch):
 @_needs_offscreen
 def test_help_and_guide_have_real_content(tool):
     gui = tool.app.time_window_gui
-    assert len(gui.tour.steps) == 4
+    assert len(gui.tour.steps) == 5          # queue, duration, output, preview, process
     assert all("No documentation" not in str(section) for section in gui.help_window.sections)

@@ -93,6 +93,7 @@ class TimeWindowGui(TourTarget):
             steps=Path(__file__).parent / "guide.json",
             get_target_rect=lambda k: self.item_rects.get(k),
             owner=tool,
+            wait_for_controls=True,
         )
 
     # ── plumbing ──────────────────────────────────────────────────────────
@@ -103,6 +104,9 @@ class TimeWindowGui(TourTarget):
     def show_help(self) -> None:
         self.help_window.show()
 
+    def _used(self, name: str) -> None:
+        """Tell the tour that the user used the control it is waiting for."""
+        self.tour.notify_used(name)
 
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         vp = im.get_main_viewport()
@@ -118,6 +122,7 @@ class TimeWindowGui(TourTarget):
 
     def _draw_files(self, box: tuple[float, float, float, float]) -> None:
         if im.button("Files"):
+            self._used("add_files")
             if callable(self.on_add_files):
                 self.on_add_files()
         im.set_item_tooltip("Pick TTTR files (.ptu, .ht3, .phu, …) and queue them for splitting.")
@@ -185,6 +190,7 @@ class TimeWindowGui(TourTarget):
         tool = self.tool
 
         if im.button("Process"):
+            self._used("process")
             if callable(self.on_process):
                 self.on_process()
         im.set_item_tooltip(
@@ -220,6 +226,7 @@ class TimeWindowGui(TourTarget):
         )
         v = max(0.001, min(float(v), 3_600_000.0))
         if v != tool.time_window_ms:
+            self._used("time_window")
             tool.time_window_ms = v
             # The preview's boundary lines follow the window duration.
             self.refresh_preview()

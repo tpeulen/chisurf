@@ -152,3 +152,155 @@ def test_window_boundaries_are_drawn_only_when_they_can_be_told_apart(app, monke
     gui.preview = {"counts": np.ones_like(t), "time_axis": t, "time_window_ms": 10000.0}
     _draw(app)
     assert drawn and max(drawn) == 15 and max(drawn) <= app_module.MAX_BOUNDARY_LINES
+
+
+class _FakeClient:
+    """A client that answers like the backend, or fails on request."""
+
+    def __init__(self, fail_preview=False, fail_analyze=False):
+        self.fail_preview, self.fail_analyze = fail_preview, fail_analyze
+        self.analyzed = []
+
+    def load_preview(self, path, window_ms):
+        if self.fail_preview:
+            raise OSError("preview broke")
+        return {"counts": [1.0, 2.0, 3.0], "time_axis": [0.1, 0.2, 0.3]}
+
+    def analyze_files(self, files, time_window_ms, output_dir=None):
+        self.analyzed.append((list(files), time_window_ms, output_dir))
+        if self.fail_analyze:
+            raise OSError("analysis broke")
+        return {"files": [str(f) for f in files], "n_windows": {str(files[0]): 3},
+                "output_paths": {}, "metadata": {"output_dir": "/out", "total_windows": 3}}
+
+
+def _settle(app, times=400):
+    tool = app.tool
+    for _ in range(times):
+        if tool.job.future is not None:
+            try:
+                tool.job.future.result(timeout=60)
+            except Exception:  # noqa: BLE001 - the error is the job's to publish
+                pass
+        _draw(app, times=1)
+        if not tool.job.running and not tool.process_pending:
+            return
+    raise AssertionError("job did not finish")
+
+
+# 9. a drop reaches the queue: the hook is on the app, the Qt window's drop accepted folders
+def test_dropped_files_and_folders_are_queued(app, tmp_path):
+    folder = tmp_path / "set"
+    (folder / "sub").mkdir(parents=True)
+    a, b = folder / "a.ptu", folder / "sub" / "b.ht3"
+    a.write_bytes(b"x"); b.write_bytes(b"x")
+    (folder / "notes.txt").write_text("no")
+    for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
+        assert callable(getattr(app, name, None)), name
+    app.tool._client = _FakeClient()
+    assert app.files_dropped([str(folder)]) is True
+    assert sorted(p.name for p in app.tool._file_paths) == ["a.ptu", "b.ht3"]
+    assert app.files_dropped([str(a)]) is False                      # already queued
+    assert app.files_dropped([str(folder / "notes.txt")]) is False
+    assert "Nothing to queue" in app.tool.message
+    assert len(app.tool._file_paths) == 2
+
+
+# 10. the error paths: the status line says what failed, the log says why
+def test_a_failing_process_is_reported_not_left_as_processing(tmp_path):
+    app = create_app(client=_FakeClient(fail_analyze=True))
+    try:
+        tool = app.tool
+        f = tmp_path / "a.ptu"
+        f.write_bytes(b"x")
+        tool.add_paths([f])
+        _settle(app)
+        tool._process_all()
+        _settle(app)
+        assert tool.message == "Processing failed"
+        assert any("analysis broke" in line for line in tool._log_lines)
+        assert tool._last_result is None
+        painter = _draw(app)
+        assert "Processing failed" in painter.strings
+    finally:
+        app.close()
+
+
+def test_a_failing_preview_is_reported(tmp_path):
+    app = create_app(client=_FakeClient(fail_preview=True))
+    try:
+        f = tmp_path / "a.ptu"
+        f.write_bytes(b"x")
+        app.tool.add_paths([f])
+        _settle(app)
+        assert app.tool.message == "Preview failed"
+        assert any("preview broke" in line for line in app.tool._log_lines)
+        assert app.tool.preview_data is None
+    finally:
+        app.close()
+
+
+def test_process_without_files_says_so_and_a_good_run_logs_the_windows(tmp_path):
+    client = _FakeClient()
+    app = create_app(client=client)
+    try:
+        tool = app.tool
+        tool._process_all()
+        assert tool._log_lines[-1] == "No TTTR files to process. Add files first."
+        assert client.analyzed == []
+        f = tmp_path / "a.ptu"
+        f.write_bytes(b"x")
+        tool.add_paths([f])
+        _settle(app)
+        tool.time_window_ms = 25.0
+        tool.output_dir_text = str(tmp_path / "out")
+        tool._process_all()
+        _settle(app)
+        assert client.analyzed == [([f], 25.0, tmp_path / "out")]
+        assert tool.message == "Processing complete" and tool.output_dir_text == "/out"
+        assert any(l.startswith("Processing 1 file(s) with time window = 25.000 ms") for l in tool._log_lines)
+        assert any("Done: 1 file(s), 3 total windows" in line for line in tool._log_lines)
+    finally:
+        app.close()
+
+
+# 11. Remove and Clear
+def test_remove_and_clear(tmp_path):
+    app = create_app(client=_FakeClient())
+    try:
+        tool = app.tool
+        a, b = tmp_path / "a.ptu", tmp_path / "b.ptu"
+        a.write_bytes(b"x"); b.write_bytes(b"x")
+        tool.add_paths([a, b])
+        _settle(app)
+        assert app.time_window_gui.preview_index == 0 and tool.preview_data is not None
+        tool._remove_preview_file()
+        _settle(app)
+        assert tool._file_paths == [b] and app.time_window_gui.preview_index == 0
+        tool._clear_all()
+        assert tool._file_paths == [] and tool.preview_data is None and tool._log_lines == []
+        assert tool.message == "Cleared"
+        assert "No files queued." in _draw(app).strings
+    finally:
+        app.close()
+
+
+# 12. the guide waits for the controls it names, and the tour hears them
+def test_guide_waits_for_the_user(app):
+    tour = app.time_window_gui.tour
+    assert tour.wait_for_controls
+    assert len(tour.steps) >= 3 and any(s.get("await") for s in tour.steps)
+    _draw(app)
+    for step in tour.steps:
+        assert isinstance(step["target"], dict), step["title"]
+        assert tour._target_key(step["target"]) in app.item_rects, step["title"]
+    tour.start(0)
+    assert tour.awaiting
+    tour.notify_used("process")                                      # another control: still waiting
+    assert tour.awaiting
+    tour.notify_used("add_files")
+    assert not tour.awaiting
+    tour.next()
+    app.time_window_gui.tool.time_window_ms = 10.0
+    _draw(app)
+    assert tour.awaiting and tour.steps[tour.step_idx]["target"] == {"action": "time_window"}

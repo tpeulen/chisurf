@@ -25,7 +25,7 @@ __all__ = ["TTTRTimeWindowTool"]
 
 
 def __getattr__(name: str):
-    """Lazily import the GUI tool (PRD-23: no Qt import as a package side effect)."""
+    """Lazily import the GUI tool (no Qt import as a package side effect)."""
     if name == "TTTRTimeWindowTool":
         from .gui.tool import TTTRTimeWindowTool
 

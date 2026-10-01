@@ -116,9 +116,21 @@ class TimeWindowController:
             self.app.time_window_gui.select_preview(0)
         self.request_frame()
 
-    def on_paths_dropped(self, paths) -> None:
-        """OS drops on this window queue the TTTR files among them."""
-        self.add_paths([p for p in paths if _is_supported_path(str(p))])
+    def drop_paths(self, paths) -> bool:
+        """Queue the TTTR files among *paths*; a dropped folder is searched recursively.
+
+        Returns whether the queue grew. Nothing supported in the drop says so on the status line.
+        """
+        found = []
+        for path in paths or []:
+            p = Path(path)
+            found.extend(sorted(q for q in p.rglob("*") if q.is_file()) if p.is_dir() else [p])
+        before = len(self._file_paths)
+        self.add_paths(found)
+        grew = len(self._file_paths) > before
+        if not grew and not any(_is_supported_path(str(p)) for p in found):
+            self.notify("Nothing to queue: drop TTTR files (.ptu, .ht3, .phu, ...) or a folder of them.")
+        return grew
 
     def _remove_preview_file(self) -> None:
         if self.job.running:
@@ -156,7 +168,7 @@ class TimeWindowController:
         self.job.start(
             lambda: self._client.load_preview(path, duration),
             publish,
-            lambda exc: self._log(f"Preview failed for {path.name}: {exc}"),
+            lambda exc: self._fail("Preview failed", f"Preview failed for {path.name}: {exc}"),
         )
 
     def _process_all(self):
@@ -175,6 +187,7 @@ class TimeWindowController:
         duration = float(self.time_window_ms)
         output = Path(self.output_dir_text.strip()) if self.output_dir_text.strip() else None
         self.notify("Processing files…")
+        self._log(f"Processing {len(files)} file(s) with time window = {duration:.3f} ms…")
         self._job_kind = "process"
 
         def publish(result):
@@ -193,7 +206,7 @@ class TimeWindowController:
         self.job.start(
             lambda: self._client.analyze_files(files, time_window_ms=duration, output_dir=output),
             publish,
-            lambda exc: self._log(f"Processing failed: {exc}"),
+            lambda exc: self._fail("Processing failed", f"Processing failed: {exc}"),
         )
 
     def _clear_all(self) -> None:
@@ -207,6 +220,11 @@ class TimeWindowController:
         self.app.time_window_gui.preview_index = -1
         self.notify(("Cleared"), 4000)
         self.request_frame()
+
+    def _fail(self, status: str, detail: str) -> None:
+        """Show a failure on the status line and keep the detail in the log."""
+        self.notify(status)
+        self._log(detail)
 
     def _log(self, msg: str) -> None:
         """Append a message to the on-canvas log and the application log."""
@@ -237,6 +255,13 @@ class _StandaloneApp(TimeWindowApp):
         # tool (or a test doing so) leaves the settings folder alone.
         if docks.store is not None and docks.state() != self._layout_at_open:
             docks.save()
+
+    def files_dropped(self, paths):
+        """Host hook (native, web and Qt hosts): queue the dropped files and folders."""
+        return self.tool.drop_paths([str(p) for p in paths or []])
+
+    on_files_dropped = files_dropped
+    on_paths_dropped = files_dropped
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
