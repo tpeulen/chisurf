@@ -1,0 +1,4 @@
+{
+ "host_would_accept_a_drop": false,
+ "notice_after_verify": "Every recorded checksum matches the stored bytes."
+}

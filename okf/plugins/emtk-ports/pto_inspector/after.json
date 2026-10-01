@@ -1,0 +1,102 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "container",
+    "containerholdsonemeasurementtheinstrumentfile",
+    "curve",
+    "data",
+    "database",
+    "details",
+    "export",
+    "filter",
+    "fitgraph",
+    "grain",
+    "guide",
+    "help",
+    "kind",
+    "lineage",
+    "name",
+    "nocontaineropen.dropa.ptohere,oruse📂browse.a",
+    "open",
+    "opena.ptocontainer.",
+    "openaphotoncontainer.",
+    "opentool",
+    "operati.",
+    "parameters",
+    "parents",
+    "provenance",
+    "reload",
+    "rows",
+    "selectanartifact.",
+    "size",
+    "text",
+    "theselectedartifactisnotacurve.",
+    "theselectedartifactisnotatable.",
+    "verbatim,andeveryresultcomputedfromitbesideit.",
+    "verify"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open",
+      "tooltip": "Open a photon container."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database",
+      "tooltip": "Choose a container from MMFDB."
+    },
+    {
+      "kind": "button",
+      "label": "Reload",
+      "id": "Reload",
+      "tooltip": "Read changes from disk."
+    },
+    {
+      "kind": "button",
+      "label": "Verify",
+      "id": "Verify",
+      "tooltip": "Check every stored checksum."
+    },
+    {
+      "kind": "button",
+      "label": "Export",
+      "id": "Export",
+      "tooltip": "Export the selected payload."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Read the inspector help."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Start the guided tour."
+    },
+    {
+      "kind": "button",
+      "label": "Fit graph",
+      "id": "Fit graph",
+      "tooltip": "Frame all provenance nodes."
+    },
+    {
+      "kind": "button",
+      "label": "Open tool",
+      "id": "Open tool",
+      "tooltip": "Open the native tool for this operation."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

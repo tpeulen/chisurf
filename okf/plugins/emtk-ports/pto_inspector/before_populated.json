@@ -1,0 +1,134 @@
+{
+ "status": "m.pto \u2014 6 objects",
+ "selected": "fcs",
+ "rows": [
+  {
+   "uid": 7886045727742799,
+   "uid_short": "788604\u2026",
+   "name": "README",
+   "kind": "readme",
+   "grain": "",
+   "operation": "",
+   "rows": 0,
+   "size": "2.6 kB",
+   "size_bytes": 2634,
+   "parents": 0
+  },
+  {
+   "uid": 7506846419554203,
+   "uid_short": "750684\u2026",
+   "name": "m.ptu",
+   "kind": "tttr_photon_stream",
+   "grain": "",
+   "operation": "",
+   "rows": 0,
+   "size": "30.7 MB",
+   "size_bytes": 32168192,
+   "parents": 0
+  },
+  {
+   "uid": 3224990947274030,
+   "uid_short": "322499\u2026",
+   "name": "bursts",
+   "kind": "burst_table",
+   "grain": "burst",
+   "operation": "burst_selection",
+   "rows": 32,
+   "size": "977 B",
+   "size_bytes": 977,
+   "parents": 1
+  },
+  {
+   "uid": 2689592331110200,
+   "uid_short": "268959\u2026",
+   "name": "background",
+   "kind": "background_data",
+   "grain": "channel",
+   "operation": "background_correction",
+   "rows": 2,
+   "size": "243 B",
+   "size_bytes": 243,
+   "parents": 1
+  },
+  {
+   "uid": 7908972463830875,
+   "uid_short": "790897\u2026",
+   "name": "lifetimes",
+   "kind": "analysis_result",
+   "grain": "burst",
+   "operation": "burst_lifetime_fitting",
+   "rows": 32,
+   "size": "763 B",
+   "size_bytes": 763,
+   "parents": 2
+  },
+  {
+   "uid": 3446268746786897,
+   "uid_short": "344626\u2026",
+   "name": "fcs",
+   "kind": "fcs_correlation",
+   "grain": "curve_point",
+   "operation": "fcs_correlation",
+   "rows": 64,
+   "size": "1.3 kB",
+   "size_bytes": 1289,
+   "parents": 1
+  }
+ ],
+ "summary": "<table><tr><td style='padding-right:10px;color:#888'>File</td><td>m.pto</td></tr><tr><td style='padding-right:10px;color:#888'>Size</td><td>32.2 MB (32.2 MB payload)</td></tr><tr><td style='padding-right:10px;color:#888'>Profile</td><td>PTO.MFDB 1.1</td></tr><tr><td style='padding-right:10px;color:#888'>Container</td><td>pto 1.0</td></tr><tr><td style='padding-right:10px;color:#888'>Dictionary</td><td>1.9</td></tr><tr><td style='padding-right:10px;color:#888'>Objects</td><td>6</td></tr></table><p style='color:#888'>1\u00d7 analysis_result, 1\u00d7 background_data, 1\u00d7 burst_table, 1\u00d7 fcs_correlation, 1\u00d7 readme, 1\u00d7 tttr_photon_stream</p>",
+ "detail": "<table><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Name</td><td>fcs</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>UID</td><td>3446268746786897</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Kind</td><td>fcs_correlation</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Operation</td><td>fcs_correlation</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Grain</td><td>one row per curve_point</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Rows</td><td>64</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Size</td><td>1,289 B (reserved 9,481 B)</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Software</td><td>chisurf 26.dev5993</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Dictionary</td><td>1.9</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Run id</td><td><code>44136fa355b3678a\u2026</code></td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Checksum</td><td>\u2014</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>derived_from</td><td>m.ptu</td></tr></table><p style='color:#888'>No settings recorded.</p><p style='color:#888'>No installed tool claims this step, so it was probably computed elsewhere. The settings above are still the whole recipe.</p>",
+ "lineage": "fcs [fcs_correlation, one row per curve_point]\n    by fcs_correlation (chisurf 26.dev5993)\n    derived_from m.ptu\nm.ptu [tttr_photon_stream]",
+ "tool_enabled": false,
+ "tools": [],
+ "after_select_bursts": {
+  "status": "m.pto \u2014 6 objects",
+  "tool_enabled": true,
+  "detail": "<table><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Name</td><td>bursts</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>UID</td><td>3224990947274030</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Kind</td><td>burst_table</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Operation</td><td>burst_selection</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Grain</td><td>one row per burst</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Rows</td><td>32</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Size</td><td>977 B (reserved 9,169 B)</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Software</td><td>chisurf 26.dev5993</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Dictionary</td><td>1.9</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Run id</td><td><code>6200d5fc26e27cce\u2026</code></td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Checksum</td><td>\u2014</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>derived_from</td><td>m.ptu</td></tr></table><p style='color:#888;margin-bottom:2px'>Settings \u2014 the identity of this run; changing one produces a new artifact rather than overwriting this one.</p><pre style='margin-top:0'>M = 10\nmin_photons = 60</pre><p style='color:#888'>Computed by a <b>Spectroscopy:Single-Molecule:Burst Selection</b> step \u2014 \u25b6 Open tool re-opens it.</p>",
+  "curve_axes": {
+   "x_label": "\u201cbursts\u201d is not a curve",
+   "y_label": "",
+   "log_x": false,
+   "log_y": false
+  },
+  "n_curve": 0,
+  "store_cols": [
+   "First Photon",
+   "Number of Photons",
+   "Duration"
+  ]
+ },
+ "after_select_lifetimes": {
+  "status": "m.pto \u2014 6 objects",
+  "tool_enabled": true,
+  "detail": "<table><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Name</td><td>lifetimes</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>UID</td><td>7908972463830875</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Kind</td><td>analysis_result</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Operation</td><td>burst_lifetime_fitting</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Grain</td><td>one row per burst</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Rows</td><td>32</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Size</td><td>763 B (reserved 8,955 B)</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Software</td><td>chisurf 26.dev5993</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Dictionary</td><td>1.9</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Run id</td><td><code>3a1bd7d4b9410a5b\u2026</code></td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Checksum</td><td>\u2014</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>derived_from</td><td>bursts, background on <code>First Photon</code> = <code>First Photon</code></td></tr></table><p style='color:#888;margin-bottom:2px'>Settings \u2014 the identity of this run; changing one produces a new artifact rather than overwriting this one.</p><pre style='margin-top:0'>model = 1-exponential</pre><p style='color:#888'>Computed by a <b>Spectroscopy:Single-Molecule:Burst MLE</b> step \u2014 \u25b6 Open tool re-opens it.</p>",
+  "curve_axes": {
+   "x_label": "\u201clifetimes\u201d is not a curve",
+   "y_label": "",
+   "log_x": false,
+   "log_y": false
+  },
+  "n_curve": 0,
+  "store_cols": [
+   "First Photon",
+   "tau"
+  ]
+ },
+ "after_select_fcs": {
+  "status": "m.pto \u2014 6 objects",
+  "tool_enabled": false,
+  "detail": "<table><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Name</td><td>fcs</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>UID</td><td>3446268746786897</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Kind</td><td>fcs_correlation</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Operation</td><td>fcs_correlation</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Grain</td><td>one row per curve_point</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Rows</td><td>64</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Size</td><td>1,289 B (reserved 9,481 B)</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Software</td><td>chisurf 26.dev5993</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Dictionary</td><td>1.9</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Run id</td><td><code>44136fa355b3678a\u2026</code></td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>Checksum</td><td>\u2014</td></tr><tr><td style='padding-right:10px;color:#888;vertical-align:top'>derived_from</td><td>m.ptu</td></tr></table><p style='color:#888'>No settings recorded.</p><p style='color:#888'>No installed tool claims this step, so it was probably computed elsewhere. The settings above are still the whole recipe.</p>",
+  "curve_axes": {
+   "x_label": "x [ms]",
+   "y_label": "y",
+   "log_x": true,
+   "log_y": false
+  },
+  "n_curve": 1,
+  "store_cols": [
+   "x",
+   "y"
+  ]
+ },
+ "verify": "Every recorded checksum matches the stored bytes.",
+ "error_status": "Cannot open broken.pto: broken.pto is not a PTO.MFDB container"
+}

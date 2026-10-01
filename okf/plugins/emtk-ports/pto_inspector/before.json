@@ -1,0 +1,48 @@
+{
+  "controls": [
+    "0rows×0columns",
+    "?",
+    "container",
+    "export",
+    "grain",
+    "guide",
+    "kind",
+    "name",
+    "open",
+    "opentool",
+    "operation",
+    "reload",
+    "rows",
+    "size",
+    "verify"
+  ],
+  "labels": [
+    "0 rows × 0 columns",
+    "Container"
+  ],
+  "buttons": [
+    "?",
+    "Guide",
+    "∥",
+    "▶ Open tool",
+    "☑️",
+    "🎨",
+    "💾 Export",
+    "📂",
+    "📂 Open",
+    "📤",
+    "🔄 Reload",
+    "🔍 Verify",
+    "🗄️",
+    "🧹"
+  ],
+  "line_edits": 2,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 6,
+  "entrypoint": "chisurf.plugins.core.pto_inspector.gui.tool:PtoInspectorTool",
+  "size": [
+    1200,
+    800
+  ]
+}

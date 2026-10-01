@@ -1,0 +1,31 @@
+diff --git a/chisurf/plugins/core/pto_inspector/manifest.json b/chisurf/plugins/core/pto_inspector/manifest.json
+index b25c43f7d..0173a3bfb 100644
+--- a/chisurf/plugins/core/pto_inspector/manifest.json
++++ b/chisurf/plugins/core/pto_inspector/manifest.json
+@@ -3,9 +3,13 @@
+   "version": "1.0.0",
+   "display_name": "TTTR:PTO Inspector",
+   "description": "Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["TTTR"],
+-  "icon": "🔎",
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "TTTR"
++  ],
++  "icon": "\ud83d\udd0e",
+   "state_namespace": "pto_inspector",
+   "statefulness": {
+     "enabled": true,
+@@ -16,7 +20,8 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.core.pto_inspector.gui.tool:PtoInspectorTool",
+-    "cli": "csg_pto_inspect=chisurf.plugins.core.pto_inspector.cli.main:cli"
++    "cli": "csg_pto_inspect=chisurf.plugins.core.pto_inspector.cli.main:cli",
++    "emtk": "chisurf.plugins.core.pto_inspector.gui.app:make_app"
+   },
+   "menu_hidden": true
+ }

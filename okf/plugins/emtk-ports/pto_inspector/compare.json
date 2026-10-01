@@ -1,0 +1,40 @@
+{
+  "plugin": "pto_inspector",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [
+    "0rows×0columns",
+    "?",
+    "operation"
+  ],
+  "gained": [
+    "containerholdsonemeasurementtheinstrumentfile",
+    "curve",
+    "data",
+    "database",
+    "details",
+    "filter",
+    "fitgraph",
+    "help",
+    "lineage",
+    "nocontaineropen.dropa.ptohere,oruse📂browse.a",
+    "opena.ptocontainer.",
+    "openaphotoncontainer.",
+    "operati.",
+    "parameters",
+    "parents",
+    "provenance",
+    "selectanartifact.",
+    "text",
+    "theselectedartifactisnotacurve.",
+    "theselectedartifactisnotatable.",
+    "verbatim,andeveryresultcomputedfromitbesideit."
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 15,
+  "after_controls": 33
+}
