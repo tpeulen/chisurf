@@ -1,0 +1,158 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.2",
+    "0.4",
+    "0.6",
+    "0.8",
+    "1",
+    "accurate-ehistogram",
+    "accuratefretefficiency",
+    "background",
+    "calibrate",
+    "calibrationsettings",
+    "channels",
+    "correctionfactors",
+    "correctionfactorsandpopulations",
+    "data,sessionandcatalogueactions",
+    "detectorsetup",
+    "detectorsetupnoneselected",
+    "donorlifetime",
+    "dyes(database)",
+    "e–lifetimeandfretlines",
+    "e–s",
+    "e–spopulations",
+    "guide",
+    "help",
+    "i_aa(acceptor)",
+    "i_da(fret)",
+    "i_dd(donor)",
+    "loadabursttable(ordropone),mapthechannelcolumnsandpresscalibrate.",
+    "mmfdbburstdatasets",
+    "nobursttableloaded.",
+    "openbursttable",
+    "opticsprior(lightpath)",
+    "photophysics",
+    "populations",
+    "procedure",
+    "report",
+    "select/configuredetectorsetup",
+    "stoichiometry",
+    "stopcalibration/read",
+    "thedonorchannel(i_dd)columnisnotmapped.",
+    "vchannels"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Calibrate",
+      "id": "Calibrate",
+      "tooltip": "Find burst classes and correction factors from all loaded bursts."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Data, session and catalogue actions",
+      "id": "Data, session and catalogue actions",
+      "tooltip": "Read or publish ndX data, export/store factors, or refresh optical catalogues."
+    },
+    {
+      "kind": "button",
+      "label": "Select / configure detector setup",
+      "id": "Select / configure detector setup",
+      "tooltip": "Select, edit or save an instrument setup; its channel names and stored calibration seed this run."
+    },
+    {
+      "kind": "button",
+      "label": "Open burst table",
+      "id": "Open burst table",
+      "tooltip": "Choose CSV/TSV/TXT/BUR/NPZ burst data with consistent channel units."
+    },
+    {
+      "kind": "button",
+      "label": "MMFDB burst datasets",
+      "id": "MMFDB burst datasets",
+      "tooltip": "Resolve a burst table from the database."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Channels",
+      "id": "Channels",
+      "tooltip": "Configure channels for this calibration."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Dyes (database)",
+      "id": "Dyes (database)",
+      "tooltip": "Configure dyes (database) for this calibration."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Photophysics",
+      "id": "Photophysics",
+      "tooltip": "Configure photophysics for this calibration."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Background",
+      "id": "Background",
+      "tooltip": "Configure background for this calibration."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Optics prior (light path)",
+      "id": "Optics prior (light path)",
+      "tooltip": "Configure optics prior (light path) for this calibration."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Procedure",
+      "id": "Procedure",
+      "tooltip": "Configure procedure for this calibration."
+    },
+    {
+      "kind": "button",
+      "label": "Stop calibration / read",
+      "id": "Stop calibration / read",
+      "tooltip": "Cancel at the next numerical checkpoint and keep the previous successful result."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Start a step-by-step tour of accurate FRET calibration."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Open the scientific reference and workflow help."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Correction factors",
+      "id": "Correction factors",
+      "tooltip": "Inspect correction factors from the actual calibration result."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Populations",
+      "id": "Populations",
+      "tooltip": "Inspect populations from the actual calibration result."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Report",
+      "id": "Report",
+      "tooltip": "Inspect report from the actual calibration result."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
