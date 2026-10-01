@@ -237,9 +237,9 @@
           "type": "custom",
           "key": "data_table",
           "title": "",
-          "description": "One row per swept dwell time: the line and frame time it implies and the predicted error. A dash in the error column means the timing is not realisable.",
+          "description": "One row per swept dwell time: the line and frame time it implies and the predicted error (a click on a header sorts by that column). N/A in the error column means the timing is not realisable.",
           "options": {
-            "source": "sweep_rows",
+            "source": "sweep_numbers",
             "editable": false,
             "expand": true,
             "reserve": 8,
@@ -249,25 +249,29 @@
                 "key": "dwell",
                 "title": "Dwell [µs]",
                 "width": 110,
-                "tooltip": "Pixel dwell time."
+                "tooltip": "Pixel dwell time.",
+                "format": "%.3g"
               },
               {
                 "key": "line",
                 "title": "Line [ms]",
                 "width": 110,
-                "tooltip": "Line time implied by the dwell and the overhead."
+                "tooltip": "Line time implied by the dwell and the overhead.",
+                "format": "%.3g"
               },
               {
                 "key": "frame",
                 "title": "Frame [ms]",
                 "width": 110,
-                "tooltip": "Time for one frame — multiply by the frame count for the total acquisition."
+                "tooltip": "Time for one frame — multiply by the frame count for the total acquisition.",
+                "format": "%.3g"
               },
               {
                 "key": "error",
                 "title": "Error [%]",
                 "width": 110,
-                "tooltip": "Predicted relative error on D. '—' means the timing is not realisable."
+                "tooltip": "Predicted relative error on D. N/A means the timing is not realisable.",
+                "format": "%.1f"
               }
             ]
           }

@@ -170,8 +170,8 @@ class PrecisionViewModel:
 
     def enabled(self, action: str) -> bool:
         """Whether a button of the spec can act now (the window greys it otherwise)."""
-        if action == "request_predict":
-            return not self.busy
+        if action == "request_predict" or action in self.SETTINGS:
+            return not self.busy        # the sweep works on a copy of the inputs: they wait for it
         return True
 
     def csv_text(self) -> str:
@@ -280,6 +280,25 @@ class PrecisionViewModel:
                 }
             )
         return series
+
+    def sweep_numbers(self) -> list[dict]:
+        """The rows of :meth:`sweep_rows` as numbers (dwell µs, line ms, frame ms, error %).
+
+        What the emtk table sorts and formats: a text column sorts "314.8" before "4.5". A dwell
+        time that cannot be realised has a NaN error (the table shows N/A).
+        """
+        s = self._sweep
+        if s is None:
+            return []
+        return [
+            {
+                "dwell": float(dwell) * 1e6,
+                "line": float(line) * 1e3,
+                "frame": float(line) * self.ny * 1e3,
+                "error": float(err) * 100.0 if np.isfinite(err) else float("nan"),
+            }
+            for dwell, line, err in zip(s.dwell, s.line_time, s.relative_error)
+        ]
 
     def sweep_rows(self) -> list[dict]:
         """Return one row per swept dwell time for the table."""

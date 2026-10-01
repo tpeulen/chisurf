@@ -396,3 +396,19 @@ def test_make_app_and_write_csv_before_a_prediction(tmp_path):
     assert callable(app.gui) and isinstance(app, RicsPrecisionApp)
     assert _draw(app, times=1).strings
     app.close()
+
+
+# 14. the table's numbers are the rows' text, as numbers (it sorts as numbers), N/A for an unrealisable dwell
+def test_the_table_numbers_equal_the_qt_rows_and_an_unrealisable_dwell_is_not_a_number(app):
+    _small(app)
+    app.predict()
+    _settle(app)
+    numbers = app.model.sweep_numbers()
+    assert len(numbers) == len(QT_ROWS)
+    for number, row in zip(numbers, QT_ROWS):
+        assert f"{number['dwell']:.3g}" == row["dwell"] and f"{number['line']:.3g}" == row["line"]
+        assert f"{number['frame']:.3g}" == row["frame"] and f"{number['error']:.1f}" == row["error"]
+    assert numbers[0]["error"] > numbers[4]["error"]                    # 314.8 > 4.5 as numbers
+    app.model._sweep.relative_error = np.array([np.nan] + list(app.model._sweep.relative_error[1:]))
+    assert np.isnan(app.model.sweep_numbers()[0]["error"]) and app.model.sweep_rows()[0]["error"] == "—"
+    assert "N/A" in _draw(app).strings
