@@ -21,7 +21,7 @@ Modified `README.md`, `__init__.py`, `manifest.json`, `test/test_game.py`, `tetr
 
 | Qt (committed) | emtk | Present? |
 |---|---|---|
-| Rules (gravity, rotation, wall kicks, line clears, scoring/level) | `model.TetrisModel`; diff against HEAD `TetrisGame` (`rules_diff_vs_head.txt`): action names, `__init__` host default, draw helpers moved to the view | yes |
+| Rules (gravity, rotation, line clears, scoring and level) | `model.TetrisModel`; diff against HEAD `TetrisGame` (`rules_diff_vs_head.txt`): action names, `__init__` host default, draw helpers moved to the view | yes |
 | ←/→ A/D move, ↓ S soft, ↑ W rotate, Space hard drop, P pause, R reset | same (`test_bindings_match_the_qt_game`, `test_keys_drive_the_game_like_the_qt_controller`) | yes |
 | Picture: well, spectral packets, COUNTS / LINES / GAIN, HELD, footer | same (`before_populated.png` vs `before_emtk_populated_*.png`) | yes |
 | Sound (music "town", effects) | greyed, tooltip "no audio output"; takes a backend via `make_app(audio=...)` | gap (emtk), known issue |
