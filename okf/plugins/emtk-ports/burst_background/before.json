@@ -1,0 +1,16 @@
+{
+  "controls": [
+    "1"
+  ],
+  "labels": [],
+  "buttons": [],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 1,
+  "entrypoint": "chisurf.plugins.burst.burst_background:BurstBackgroundEstimator",
+  "size": [
+    1200,
+    800
+  ]
+}

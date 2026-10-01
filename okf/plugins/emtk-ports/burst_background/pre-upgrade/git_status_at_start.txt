@@ -1,0 +1,9 @@
+ M chisurf/plugins/burst/burst_background/__init__.py
+ M chisurf/plugins/burst/burst_background/gui/__init__.py
+ M chisurf/plugins/burst/burst_background/gui/app.py
+ M chisurf/plugins/burst/burst_background/manifest.json
+ M chisurf/plugins/burst/burst_background/view_model.py
+?? chisurf/plugins/burst/burst_background/gui/controller.py
+?? chisurf/plugins/burst/burst_background/gui/tool.py
+?? chisurf/plugins/burst/burst_background/test/demo_data.py
+?? chisurf/plugins/burst/burst_background/test/test_native.py

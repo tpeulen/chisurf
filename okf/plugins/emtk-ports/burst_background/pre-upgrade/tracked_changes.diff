@@ -1,0 +1,496 @@
+diff --git a/chisurf/plugins/burst/burst_background/__init__.py b/chisurf/plugins/burst/burst_background/__init__.py
+index 898072afb..d095ee00b 100644
+--- a/chisurf/plugins/burst/burst_background/__init__.py
++++ b/chisurf/plugins/burst/burst_background/__init__.py
+@@ -1,145 +1,18 @@
+-"""Burst Background Estimation — an immediate-mode EMTK tool over :class:`BackgroundViewModel`.
++"""Burst background plugin with lazy compatibility Qt entrypoint."""
+ 
+-Hosts :class:`~.gui.app.BurstBackgroundApp` via :class:`emtk.qt_host.ControlHost` inside
+-a Qt widget, providing:
+-- Dockable and draggable windows (Parameters, Inter-photon Time Distribution, Rate Bars, Results).
+-- Interactive draggable tail-fit window (:func:`implot.drag_rect`) and region dropping.
+-- Per-detector background rates and export to burst containers.
+-"""
+-
+-from __future__ import annotations
+-
+-import logging
+-from typing import Any
+-
+-from emtk.qt_host import ControlHost
+-from qtpy import QtWidgets
+-
+-from .gui import sections
+-from .gui.app import WINDOW_BG, BurstBackgroundApp
+-from .view_model import BackgroundViewModel
+-
+-# Plugin brand icon (unified emoji set) + hierarchical menu name.
+ icon = "🌑"
+ name = "Spectroscopy:Single-Molecule:Burst Background Estimation"
+-
+-# The packaged console script.
+ cli_entrypoint = "burst-background=chisurf.plugins.burst.burst_background.cli:cli"
+-
+-logger = logging.getLogger(__name__)
+-
+-
+-class BurstBackgroundEstimator(QtWidgets.QWidget):
+-    """Per-detector background from burst analysis (EMTK tool)."""
+-
+-    def __init__(
+-        self, show_channel_definition: bool = True, parent: QtWidgets.QWidget | None = None
+-    ) -> None:
+-        super().__init__(parent)
+-        self.setWindowTitle("Burst Background Estimation")
+-        self.setMinimumSize(820, 600)
+-
+-        self.model = BackgroundViewModel(show_channel_definition=show_channel_definition)
+-
+-        # Always build the detector page so the shell can push channels into it.
+-        sections.build_detector_page(self.model)
+-
+-        layout = QtWidgets.QVBoxLayout(self)
+-        layout.setContentsMargins(0, 0, 0, 0)
+-        layout.setSpacing(0)
+-
+-        self.app = BurstBackgroundApp(
+-            model=self.model,
+-            on_estimate=self._estimate,
+-            on_guide=self._start_guide,
+-            on_help=self._show_help,
+-        )
+-        self.gui = self.app.bg_gui
+-
+-        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+-        layout.addWidget(self.host, 1)
+-
+-        # Proxy action button for workflow shell discovery
+-        self.toolAction_run = QtWidgets.QToolButton(self)
+-        self.toolAction_run.setObjectName("toolAction_run")
+-        self.toolAction_run.setVisible(False)
+-        self.toolAction_run.clicked.connect(self._estimate)
+-
+-        # Hidden QListWidget and plot sections for compatibility with tests inspecting children
+-        self._list_widget = QtWidgets.QListWidget(self)
+-        self._list_widget.setVisible(False)
+-        self._iht_section = sections._IhtPlotSection(self.model, parent=self)
+-        self._iht_section.setVisible(False)
+-        self._rate_section = sections._RatePlotSection(self.model, parent=self)
+-        self._rate_section.setVisible(False)
+-
+-        self.model.add_observer(self._on_model_event)
+-
+-    def _estimate(self) -> None:
+-        try:
+-            self.model.estimate()
+-        except Exception:
+-            pass
+-
+-    def _on_model_event(self, event: str) -> None:
+-        """Sync internal lists on model changes."""
+-        if event in ("files", "computed"):
+-            self._list_widget.clear()
+-            for f in self.model.files:
+-                self._list_widget.addItem(f)
+-
+-    def _start_guide(self) -> None:
+-        if hasattr(self, "app") and hasattr(self.app, "start_guide"):
+-            self.app.start_guide()
+-            return
+-
+-    def _show_help(self) -> None:
+-        if hasattr(self, "app") and hasattr(self.app, "show_help"):
+-            self.app.show_help()
+-            return
+-
+-    # ── Guided Tour Hook ────────────────────────────────────────────────
+-    def tour_target(
+-        self, target: Any
+-    ) -> tuple[QtWidgets.QWidget, tuple[float, float, float, float]] | None:
+-        """Resolve a guided-tour target dict to an EMTK item screen rect."""
+-        if not isinstance(target, dict):
+-            return None
+-        name = target.get("name")
+-        rect = self.gui.item_rects.get(name) if name else None
+-        if rect is not None:
+-            return self.host, rect
+-        return None
+-
+-    # -- API kept for the workflow shell (_apply_context_to_background) --------
+-    @property
+-    def detector_wizard_page(self):
+-        """The detector channel-definition page (always present)."""
+-        return self.model.detector_wizard_page
+-
+-    @property
+-    def tttr_files(self):
+-        """The loaded TTTR file paths."""
+-        return self.model.files
+-
+-    def _add_tttr_files(self, paths) -> None:
+-        """Add TTTR files (used by the shell to push the selected raw files)."""
+-        self.model.add_files(list(paths))
+-        self._list_widget.clear()
+-        for f in self.model.files:
+-            self._list_widget.addItem(f)
+-
+-
+ __all__ = ["BurstBackgroundEstimator", "BackgroundViewModel", "name"]
+ 
+ 
+-if __name__ == "__main__":  # pragma: no cover - manual GUI entry
+-    import sys
++def __getattr__(name):
++    if name == "BurstBackgroundEstimator":
++        from .gui.tool import BurstBackgroundEstimator
++
++        return BurstBackgroundEstimator
++    if name == "BackgroundViewModel":
++        from .view_model import BackgroundViewModel
+ 
+-    app = QtWidgets.QApplication(sys.argv)
+-    window = BurstBackgroundEstimator()
+-    window.show()
+-    sys.exit(app.exec())
+-elif __name__ == "plugin":  # pragma: no cover - used by the plugin host
+-    window = BurstBackgroundEstimator()
+-    window.show()
++        return BackgroundViewModel
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/burst/burst_background/gui/__init__.py b/chisurf/plugins/burst/burst_background/gui/__init__.py
+index 257ec1d5e..32a90c7a5 100644
+--- a/chisurf/plugins/burst/burst_background/gui/__init__.py
++++ b/chisurf/plugins/burst/burst_background/gui/__init__.py
+@@ -1,9 +1 @@
+-"""GUI layer for Burst Background Estimation: custom AutoForm sections + view.json.
+-
+-Importing this package registers the custom sections referenced by
+-``background.view.json``.
+-"""
+-
+-from . import sections  # noqa: F401  (side effect: register custom sections)
+-
+-__all__ = ["sections"]
++"""GUI surfaces; importing native apps never registers legacy Qt sections."""
+diff --git a/chisurf/plugins/burst/burst_background/gui/app.py b/chisurf/plugins/burst/burst_background/gui/app.py
+index 65fa2450e..29aa83871 100644
+--- a/chisurf/plugins/burst/burst_background/gui/app.py
++++ b/chisurf/plugins/burst/burst_background/gui/app.py
+@@ -74,7 +74,7 @@ class BurstBackgroundGui:
+ 
+         from pathlib import Path
+ 
+-        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
++        from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+ 
+         help_resource = Path(__file__).parent / "help.md"
+         guide_resource = Path(__file__).parent / "guide.json"
+@@ -93,6 +93,34 @@ class BurstBackgroundGui:
+ 
+         self.model.add_observer(self._on_model_event)
+ 
++        from emtk.docking import DockManager, Region, Split
++
++        self.docks = DockManager(
++            Split("h", 0.4, Region("controls"), Split("v", 0.6, Region("plot"), Region("results"))),
++            name="burst_background",
++        )
++        self.docks.add_window(
++            "controls", "Fit parameters", lambda box: self._draw_parameters(), dock="controls"
++        )
++        self.docks.add_window(
++            "plot", "Inter-photon time", lambda box: self._draw_iht_plot(), dock="plot"
++        )
++        self.docks.add_window(
++            "results", "Rates & results", lambda box: self._draw_rates_and_results(), dock="results"
++        )
++        self.docks.add_window(
++            "channels", "Channel definition", self._draw_channels, dock="controls"
++        )
++
++    def _draw_channels(self, box):
++        controller = getattr(self, "controller", None)
++        if controller is not None:
++            im.begin_disabled(controller.running)
++            controller.channel_definition.draw()
++            im.end_disabled()
++        else:
++            im.text_wrapped("Detector settings are supplied by the embedding host.")
++
+     def start_guide(self) -> None:
+         """Start the in-EMTK guided tour."""
+         self.tour.start()
+@@ -104,44 +132,13 @@ class BurstBackgroundGui:
+     def _on_model_event(self, event: str) -> None:
+         pass
+ 
+-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+-        """Store the item's screen rectangle for tour targeting."""
+-        r = rect if rect is not None else im.get_item_rect()
+-        if r is not None:
+-            self.item_rects[name] = tuple(r)
+-
+     def track(self, name: str) -> None:
+         """Record usage of a named control."""
+         if callable(self.on_used):
+             self.on_used(name)
+ 
+     def draw(self, w: float, h: float) -> None:
+-        """Draw the dockable Burst Background tool into (w, h) display pixels."""
+-        im.dock_space_over_viewport(1)
+-
+-        left_w = min(max(280.0, w * 0.28), 340.0)
+-        right_w = max(w - left_w - 16.0, 320.0)
+-
+-        # ── Window 1: Parameters & Actions ──────────────────────────────
+-        im.set_next_window_pos((4.0, 4.0), im.Cond.FIRST_USE_EVER)
+-        im.set_next_window_size((left_w, h - 8.0), im.Cond.FIRST_USE_EVER)
+-        if im.begin("Fit Parameters"):
+-            self._draw_parameters()
+-            im.end()
+-
+-        # ── Window 2: Inter-photon Time Distribution Plot ───────────────
+-        im.set_next_window_pos((8.0 + left_w, 4.0), im.Cond.FIRST_USE_EVER)
+-        im.set_next_window_size((right_w, (h - 12.0) * 0.60), im.Cond.FIRST_USE_EVER)
+-        if im.begin("Inter-photon Time Distribution"):
+-            self._draw_iht_plot()
+-            im.end()
+-
+-        # ── Window 3: Background Rate Bars & Results ─────────────────────
+-        im.set_next_window_pos((8.0 + left_w, 8.0 + (h - 12.0) * 0.60), im.Cond.FIRST_USE_EVER)
+-        im.set_next_window_size((right_w, (h - 12.0) * 0.40), im.Cond.FIRST_USE_EVER)
+-        if im.begin("Rates & Results"):
+-            self._draw_rates_and_results()
+-            im.end()
++        self.docks.draw((0.0, 0.0, float(w), float(h)))
+ 
+         if self.help_window.open:
+             self.help_window.draw((0.0, 0.0, float(w), float(h)))
+@@ -151,6 +148,9 @@ class BurstBackgroundGui:
+ 
+     def _draw_parameters(self) -> None:
+         avail_w = im.get_content_region_avail()[0]
++        if getattr(self, "controller", None) is not None:
++            self.controller.draw_inputs()
++        im.begin_disabled(bool(getattr(self, "controller", None) and self.controller.running))
+         im.text_colored(ACCENT_BLUE, "Fit Settings")
+ 
+         # Fit from / to (ms)
+@@ -159,7 +159,10 @@ class BurstBackgroundGui:
+         ch_lo, new_lo = im.drag_float(
+             "##fit_from", float(self.model.fit_from_ms), 0.01, 0.001, 1000.0, "%.3f"
+         )
+-        if ch_lo and new_lo > 0:
++        im.set_item_tooltip(
++            "Lower edge of the inter-photon-time tail window (in ms) fitted as background."
++        )
++        if ch_lo and new_lo > 0 and (self.model.fit_to_ms <= 0 or new_lo < self.model.fit_to_ms):
+             self.model.fit_from_ms = float(new_lo)
+             self.model.update()
+ 
+@@ -168,6 +171,9 @@ class BurstBackgroundGui:
+         ch_hi, new_hi = im.drag_float(
+             "##fit_to", float(self.model.fit_to_ms), 0.01, 0.001, 1000.0, "%.3f"
+         )
++        im.set_item_tooltip(
++            "Upper edge of the inter-photon-time tail window (in ms) fitted as background."
++        )
+         if ch_hi and new_hi > self.model.fit_from_ms:
+             self.model.fit_to_ms = float(new_hi)
+             self.model.update()
+@@ -177,6 +183,9 @@ class BurstBackgroundGui:
+         ch_bin, new_bin = im.drag_float(
+             "##bin_w", float(self.model.binsize_ms), 0.01, 0.001, 10.0, "%.3f"
+         )
++        im.set_item_tooltip(
++            "Histogram bin width of the inter-photon-time distribution in milliseconds."
++        )
+         if ch_bin and new_bin > 0:
+             self.model.binsize_ms = float(new_bin)
+             self.model.update()
+@@ -184,6 +193,7 @@ class BurstBackgroundGui:
+         im.text("Min counts / bin:")
+         im.set_next_item_width(avail_w)
+         ch_cnt, new_cnt = im.drag_int("##min_cnt", int(self.model.min_counts), 1, 0, 1000)
++        im.set_item_tooltip("Bins with fewer counts than this are ignored when fitting the tail.")
+         if ch_cnt and new_cnt >= 0:
+             self.model.min_counts = int(new_cnt)
+             self.model.update()
+@@ -192,6 +202,8 @@ class BurstBackgroundGui:
+         im.separator()
+         im.spacing()
+ 
++        im.end_disabled()
++
+         # Action button
+         from emtk.im_core import Col
+ 
+@@ -208,6 +220,9 @@ class BurstBackgroundGui:
+                 except Exception:
+                     pass
+         self.remember("toolAction_run")
++        im.set_item_tooltip(
++            "Fit the tail of the inter-photon-time distribution to get the per-detector background rates."
++        )
+         im.pop_style_color(3)
+ 
+         btn_half_w = max(50.0, (avail_w - 6.0) * 0.5)
+@@ -216,12 +231,14 @@ class BurstBackgroundGui:
+             self.track("guide")
+             self.start_guide()
+         self.remember("guide")
++        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+ 
+         im.same_line()
+         if im.button("❓ Help", (btn_half_w, 24.0)):
+             self.track("help")
+             self.show_help()
+         self.remember("help")
++        im.set_item_tooltip("Open the help window with reference documentation.")
+ 
+         im.spacing()
+         im.text_colored(ACCENT_GRAY, f"Files loaded: {len(self.model.files)}")
+@@ -371,6 +388,13 @@ class BurstBackgroundApp(ImApp):
+         on_guide: Callable[[], None] | None = None,
+         on_help: Callable[[], None] | None = None,
+     ) -> None:
++        self.controller = None
++        if on_estimate is None:
++            from .controller import BackgroundController
++
++            model = model if model is not None else BackgroundViewModel()
++            self.controller = BackgroundController(model)
++            on_estimate = self.controller.run
+         self.bg_gui = BurstBackgroundGui(
+             model=model,
+             on_estimate=on_estimate,
+@@ -378,7 +402,12 @@ class BurstBackgroundApp(ImApp):
+             on_help=on_help,
+         )
+         self.model = self.bg_gui.model
+-        super().__init__(gui=self._render, continuous=False)
++        self.item_rects = self.bg_gui.item_rects
++        self.bg_gui.remember = self.remember
++        self.bg_gui.controller = self.controller
++        if self.controller is not None:
++            self.controller.on_show_channels = lambda: self.bg_gui.docks.focus("channels")
++        super().__init__(gui=self._render, continuous=self.controller is not None)
+ 
+     def start_guide(self) -> None:
+         """Start guided tour inside EMTK."""
+@@ -389,5 +418,24 @@ class BurstBackgroundApp(ImApp):
+         self.bg_gui.show_help()
+ 
+     def _render(self) -> None:
++        if self.controller is not None:
++            self.controller.poll()
+         w, h = im.get_main_viewport().size
+         self.bg_gui.draw(w, h)
++        if self.controller is not None:
++            self.controller.draw_dialogs((0, 0, w, h))
++
++    def close(self):
++        if self.controller is not None:
++            self.controller.close()
++
++    def on_paths_dropped(self, paths):
++        if self.controller is not None:
++            self.controller.on_paths_dropped(paths)
++
++
++def create_app(**kwargs):
++    from chisurf.emtk.i18n import install
++
++    install()
++    return BurstBackgroundApp(**kwargs)
+diff --git a/chisurf/plugins/burst/burst_background/manifest.json b/chisurf/plugins/burst/burst_background/manifest.json
+index bc87797bb..41d626682 100644
+--- a/chisurf/plugins/burst/burst_background/manifest.json
++++ b/chisurf/plugins/burst/burst_background/manifest.json
+@@ -3,8 +3,13 @@
+   "version": "1.0.0",
+   "display_name": "Spectroscopy:Single-Molecule:Burst Background Estimation",
+   "description": "Estimate detector background rates from TTTR burst data.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Spectroscopy", "Single-Molecule"],
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Spectroscopy",
++    "Single-Molecule"
++  ],
+   "state_namespace": "burst_background",
+   "statefulness": {
+     "enabled": true,
+@@ -15,8 +20,11 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.burst.burst_background:BurstBackgroundEstimator",
+-    "cli": "burst-background=chisurf.plugins.burst.burst_background.cli:cli"
++    "cli": "burst-background=chisurf.plugins.burst.burst_background.cli:cli",
++    "emtk": "chisurf.plugins.burst.burst_background.gui.app:create_app"
+   },
+-  "operation_types": ["background_correction"],
++  "operation_types": [
++    "background_correction"
++  ],
+   "menu_hidden": true
+ }
+diff --git a/chisurf/plugins/burst/burst_background/view_model.py b/chisurf/plugins/burst/burst_background/view_model.py
+index 75960210a..8e03f86c7 100644
+--- a/chisurf/plugins/burst/burst_background/view_model.py
++++ b/chisurf/plugins/burst/burst_background/view_model.py
+@@ -162,6 +162,8 @@ class BackgroundViewModel:
+         self.files = []
+         self.backgrounds.clear()
+         self.diagnostics.clear()
++        self._interphoton.clear()
++        self.fit_from_ms = self.fit_to_ms = self.max_dt_ms = 0.0
+         self.notify("files")
+ 
+     # ── estimate ───────────────────────────────────────────────────────
+@@ -180,7 +182,7 @@ class BackgroundViewModel:
+             return "Please define at least one detector in the channel definition tab."
+         return None
+ 
+-    def estimate(self) -> None:
++    def estimate(self, cancel_check=None) -> None:
+         """Estimate per-file, per-detector background from every loaded file."""
+         reason = self.can_estimate()
+         if reason is not None:
+@@ -191,21 +193,32 @@ class BackgroundViewModel:
+ 
+         detectors = self._channels()
+         self._interphoton.clear()
++        unreadable = []
+         for path in self.files:
++            if callable(cancel_check):
++                cancel_check()
+             try:
+                 # Through the shared seam, so the measurement the burst search
+                 # and the diagnostics already opened is not read a fourth time.
+-                tttr = open_tttr(path)
++                provider = getattr(self, "tttr_provider", None)
++                tttr = provider(path) if callable(provider) else open_tttr(path)
+             except Exception as exc:
+                 logger.warning("background: could not read %s: %s", path, exc)
++                unreadable.append(os.path.basename(path))
+                 continue
+             scale = float(getattr(tttr.header, "macro_time_resolution", 1.0)) * 1000.0
+             self._interphoton[path] = {
+                 name: _burst.background._detector_interphoton_times(tttr, info, scale)
+                 for name, info in detectors.items()
+             }
++        if callable(cancel_check):
++            cancel_check()
++        if not self._interphoton:
++            raise ValueError("No readable TTTR measurements were loaded.")
+         self._seed_fit_window()
+         self.refit()
++        if unreadable:
++            self.status += " Unreadable files skipped: " + ", ".join(unreadable) + "."
+         self._write_containers()
+         self.notify("computed")
+ 
