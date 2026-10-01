@@ -49,6 +49,7 @@ class ModelRow:
     def as_record(self) -> dict[str, Any]:
         """The row as a flat table record."""
         return {
+            "key": self.key,
             "name": self.name,
             "experiment": self.experiment_label,
             "status": "disabled" if self.disabled else "enabled",

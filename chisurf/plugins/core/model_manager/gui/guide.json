@@ -1,38 +1,64 @@
 {
-  "_comment": "Guided tour of the model manager. Steps point at real controls.",
+  "_comment": "Guided tour of the model manager. Steps point at real controls. 'name' is the emtk control (table, action or attr); 'key' / 'action' with the toolbar glyph label keep the legacy Qt tool's spotlight working.",
   "steps": [
     {
       "title": "Every model, and who offers it",
-      "text": "One row per registered fitting model. The <b>Experiment</b> column says which experiment offers it — the same model name can appear under more than one.",
-      "target": {"key": "data_table"}
+      "text": "One row per registered fitting model. Click a header to sort, type in the <b>filter</b> box above the rows to keep rows containing the text, and read the <b>Experiment</b> column: the same model name can appear under more than one experiment.",
+      "target": {
+        "name": "model_rows",
+        "key": "data_table"
+      }
     },
     {
       "title": "Pick one",
-      "text": "Select a row. The right-hand pane shows what the model computes, the class that implements it, and how its parameter panel is described.",
-      "target": {"key": "data_table"},
-      "await": {"hint": "Click any row in the table."}
+      "text": "Click a row in the table. The pane on the right shows what the model computes, the class that implements it, and how its parameter panel is described.",
+      "target": {
+        "name": "row_selected",
+        "key": "data_table"
+      },
+      "await": {
+        "hint": "Click any row in the table."
+      }
     },
     {
       "title": "How the parameter panel is built",
       "text": "<b>Spec</b> and <b>Parameter UI</b> together say whether a model's parameter panel comes from a declarative view spec — the direction the codebase is moving — or from Qt code the model still carries. A row reading <code>missing file</code> declares a spec that is not on disk, which is a real defect worth reporting.",
-      "target": {"key": "data_table"}
+      "target": {
+        "name": "model_rows",
+        "key": "data_table"
+      }
     },
     {
       "title": "Switching a model off",
-      "text": "<b>Disabled</b> takes a model out of the drop-down without removing it. Watch the <b>Shared</b> column first: disabling matches on the <i>name</i>, so a name used by several experiments disables all of them at once.",
-      "target": {"attr": "selected_disabled"}
+      "text": "<b>Disabled</b> takes the selected model out of the drop-down without removing it. Watch the <b>Shared</b> column first: disabling matches on the <i>name</i>, so a name used by several experiments disables all of them at once. <b>Show disabled models</b> under the table hides or shows the switched-off rows.",
+      "target": {
+        "attr": "selected_disabled"
+      }
     },
     {
       "title": "Entries that do nothing",
-      "text": "A disabled entry naming a model that no longer exists just sits there. The status line counts them, and <b>🧹 Drop stale</b> clears them out.",
-      "target": {"action": "🧹 Drop stale"}
+      "text": "A disabled entry naming a model that no longer exists just sits there. The status line under the table counts them, and <b>Drop stale</b> clears them out after asking.",
+      "target": {
+        "name": "ask_drop_stale",
+        "action": "🧹 Drop stale"
+      }
     },
     {
       "title": "Nothing is saved until you say so",
-      "text": "<b>💾 Save</b> writes to your settings file; <b>♻️ Revert</b> throws the changes away. The drop-down picks up a save the next time you select a dataset.",
-      "target": {"action": "💾 Save"},
-      "await": {"hint": "Press <b>💾 Save</b>."},
-      "links": [{"text": "Settings reference", "doc": "docs/reference/settings.md"}]
+      "text": "<b>Save</b> writes to your settings file; <b>Revert</b> throws the changes away after asking. The status line says <i>unsaved changes</i> until you save. The drop-down picks up a save the next time you select a dataset.",
+      "target": {
+        "name": "save",
+        "action": "💾 Save"
+      },
+      "await": {
+        "hint": "Press <b>Save</b>."
+      },
+      "links": [
+        {
+          "text": "Settings reference",
+          "doc": "docs/reference/settings.md"
+        }
+      ]
     }
   ]
 }

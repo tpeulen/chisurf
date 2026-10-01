@@ -1,0 +1,117 @@
+{
+  "_comment": "Model manager, native emtk window. Drawn by emtk.view_form over ModelManagerModel (gui/model.py): 'registered' is the left window (actions, table, switch, status), 'selected' the right one (details, Disabled), 'confirm' the dialog the Qt tool asked with message boxes. The details text is Markdown, drawn by gui/app.py (a spec cannot draw Markdown).",
+  "title": "Models",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Registered models",
+      "name": "registered",
+      "description": "Every fitting model the experiments offer.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Save or revert the list of disabled models, read the registry again, drop dead entries, copy or export the table.",
+          "buttons": [
+            {"action": "save", "label": "Save",
+             "description": "Write the disabled-model list to your settings file. The model drop-down picks it up the next time you select a dataset."},
+            {"action": "ask_revert", "label": "Revert",
+             "description": "Discard every change made since the last save (asks first)."},
+            {"action": "rescan", "label": "Rescan",
+             "description": "Read the experiment registry again, in the background."},
+            {"action": "ask_drop_stale", "label": "Drop stale",
+             "description": "Remove disabled entries that match no registered model (asks first)."},
+            {"action": "request_copy", "label": "Copy",
+             "description": "Copy the rows the table shows now, with the column headers, to the clipboard as tab-separated text."},
+            {"action": "request_export", "label": "Export CSV",
+             "description": "Write the rows and columns the table shows now to a CSV file."}
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per model class. Click a header to sort, click it again to reverse; type in the filter box to keep rows containing the text in any column; right click a header to choose columns. 'Spec' says whether the model's parameter panel is described by a view spec; 'Shared' names other experiments offering a model of the same name.",
+          "options": {
+            "source": "model_rows",
+            "row_key": "key",
+            "selected_call": "select_row",
+            "editable": false,
+            "filter": true,
+            "status": true,
+            "column_picker": true,
+            "expand": true,
+            "reserve": 70,
+            "fit_columns": true,
+            "min_column_width": 60,
+            "columns": [
+              {"key": "name", "title": "Model", "width": 200,
+               "tooltip": "The name shown in the model drop-down. Disabling matches on this name."},
+              {"key": "experiment", "title": "Experiment", "width": 110,
+               "tooltip": "The experiment that offers the model."},
+              {"key": "status", "title": "Status", "width": 80,
+               "tooltip": "enabled, or disabled by plugins.disabled_models."},
+              {"key": "spec", "title": "Spec", "width": 90,
+               "tooltip": "Whether the model declares a view spec and whether that file resolves."},
+              {"key": "ui", "title": "Parameter UI", "width": 110,
+               "tooltip": "spec-driven models are Qt-free; a Qt class is remaining migration debt."},
+              {"key": "shared", "title": "Shared", "width": 130,
+               "tooltip": "Other experiments offering a model of the same name. Disabling matches on the name, so a shared name disables all of them."}
+            ]
+          }
+        },
+        {
+          "type": "toggle",
+          "label": "Show disabled models",
+          "attr": "show_disabled",
+          "description": "Include switched-off models in the table."
+        },
+        {
+          "type": "info",
+          "source": "status_text",
+          "description": "How many models were found, how many are off, how many disabled names match no model, and whether anything is unsaved."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Selected model",
+      "name": "selected",
+      "description": "What the selected model is and whether it is offered.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "model_details",
+          "title": "",
+          "description": "What the model computes, which class implements it, and how its parameter panel is described."
+        },
+        {
+          "type": "toggle",
+          "label": "Disabled",
+          "attr": "selected_disabled",
+          "description": "Keep this model out of the model drop-down. It is not removed; nothing else changes. Matches on the display name, so a shared name switches off every experiment offering it."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Confirm",
+      "name": "confirm",
+      "description": "Asks before discarding changes or dropping stale entries.",
+      "sections": [
+        {
+          "type": "info",
+          "source": "confirm_text",
+          "description": "What will happen if you confirm."
+        },
+        {
+          "type": "button_row",
+          "description": "Confirm or cancel.",
+          "buttons": [
+            {"action": "confirm_yes", "label": "OK", "description": "Do it."},
+            {"action": "confirm_no", "label": "Cancel", "description": "Leave everything as it is."}
+          ]
+        }
+      ]
+    }
+  ]
+}

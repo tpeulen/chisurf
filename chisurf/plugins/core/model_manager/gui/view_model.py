@@ -88,11 +88,16 @@ class ModelManagerViewModel:
     def select_row(self, record: Any) -> None:
         """Called by the table when the selection moves."""
         if isinstance(record, dict):
-            wanted = (record.get("module"), record.get("name"))
-            self._selected_key = next(
-                (r.key for r in self.visible_rows() if (r.module, r.name) == wanted),
-                "",
-            )
+            if record.get("key"):
+                self._selected_key = next(
+                    (r.key for r in self.visible_rows() if r.key == record["key"]), ""
+                )
+            else:
+                wanted = (record.get("module"), record.get("name"))
+                self._selected_key = next(
+                    (r.key for r in self.visible_rows() if (r.module, r.name) == wanted),
+                    "",
+                )
         elif isinstance(record, int) and 0 <= record < len(self.visible_rows()):
             self._selected_key = self.visible_rows()[record].key
         else:
@@ -106,8 +111,12 @@ class ModelManagerViewModel:
 
     # -- details ---------------------------------------------------------
 
-    def details_text(self) -> str:
-        """A markdown summary of the selected model."""
+    def details_text(self, callout: bool = False) -> str:
+        """A markdown summary of the selected model.
+
+        With *callout*, the shared-name warning is a ``> [!WARNING]`` block: the
+        painted renderer draws a plain ``>`` quote under an empty ``[]`` title.
+        """
         row = self.selected
         if row is None:
             return (
@@ -131,12 +140,14 @@ class ModelManagerViewModel:
             lines.append("- **View spec:** none declared")
 
         if row.shares_name_with:
+            body = (
+                f"Other experiments offer a model called `{row.name}` too "
+                f"({', '.join(row.shares_name_with)}). The disabled-model setting "
+                "matches on the name, so switching this one off switches off all of them."
+            )
             lines += [
                 "",
-                "> **Shared name.** Other experiments offer a model called "
-                f"`{row.name}` too ({', '.join(row.shares_name_with)}). The "
-                "disabled-model setting matches on the name, so switching this "
-                "one off switches off all of them.",
+                f"> [!WARNING] Shared name\n> {body}" if callout else f"> **Shared name.** {body}",
             ]
         return "\n".join(lines)
 
@@ -180,6 +191,9 @@ class ModelManagerViewModel:
         row = self.selected
         if row is None:
             return
+        # A message from an earlier action ("Unsaved changes discarded.") would
+        # otherwise hide the "unsaved changes" count the edit just made true.
+        self._status = ""
         if value and row.name not in self._disabled:
             self._disabled.append(row.name)
         elif not value:
