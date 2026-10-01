@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **burst_bva emtk app at parity** (EMTK-1, upgrade row): the controller now runs as the Qt tool does (auto update without
+  writing, the read table reused, unchanged → Restart, failed write keeps the result, Save plot as a window picture); the view
+  model no longer reuses one folder's bursts for the next; HEAD's Qt run (TypeError on file_type) fixed by the stream's
+  tool.py. [report](plugins/emtk-ports/burst_bva/REPORT.md).
+
 - **compute_bva leaves its input untouched** (found during the burst_bva upgrade): it appended its two result columns to the
   input table in place, so a recompute on the burst table the GUIs keep (the Qt tool's auto update, the emtk controller)
   failed with "both stores have a column 'Proximity Ratio Mean'". Now returns a copy; guard

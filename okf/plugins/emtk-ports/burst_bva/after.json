@@ -1,0 +1,174 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.0100s",
+    "0.05",
+    "0.1",
+    "0.15",
+    "0.2",
+    "0.25",
+    "0.3",
+    "0.35",
+    "0.4",
+    "0.6",
+    "0.8",
+    "1",
+    "10",
+    "51",
+    "analysisparameters",
+    "autoupdate",
+    "binsx",
+    "binsy",
+    "burstanalysisfolder",
+    "burstfolder",
+    "burstvarianceanalysis",
+    "bvasettings",
+    "channeldefinitions",
+    "clear",
+    "displayoptions",
+    "e0.20",
+    "e0.80",
+    "folder",
+    "guide",
+    "help",
+    "meanproximityratio",
+    "minwindowlength(s)",
+    "photonsperslice",
+    "plot",
+    "ready",
+    "restart",
+    "run",
+    "savedefaults",
+    "saveplot",
+    "showstaticline",
+    "staticline",
+    "std0.35",
+    "stdproximityratio",
+    "stop"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "🚀 Run",
+      "id": "🚀 Run",
+      "tooltip": "Compute the per-burst standard deviation of the proximity ratio (BVA) for the loaded bursts."
+    },
+    {
+      "kind": "button",
+      "label": "🔄 Restart",
+      "id": "🔄 Restart",
+      "tooltip": "Reset the analysis state and recompute from scratch."
+    },
+    {
+      "kind": "button",
+      "label": "⏹ Stop",
+      "id": "⏹ Stop",
+      "tooltip": "Stop the running BVA computation."
+    },
+    {
+      "kind": "button",
+      "label": "📁 Folder",
+      "id": "📁 Folder",
+      "tooltip": "Browse for the folder containing the burst analysis files."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Start a step-by-step guided tour of this tool."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "Open the help window with reference documentation."
+    },
+    {
+      "kind": "button",
+      "label": "🗑 Clear",
+      "id": "🗑 Clear",
+      "tooltip": "Clear the plotted BVA results and invalidate the cached analysis."
+    },
+    {
+      "kind": "button",
+      "label": "💾 Save plot",
+      "id": "💾 Save plot",
+      "tooltip": "Save the displayed BVA plot as a PNG image."
+    },
+    {
+      "kind": "button",
+      "label": "⚙ Save defaults",
+      "id": "⚙ Save defaults",
+      "tooltip": "Save the current analysis and display settings as defaults."
+    },
+    {
+      "kind": "input_text",
+      "label": "folder_path",
+      "id": "##folder_path",
+      "tooltip": "Path to the burst analysis folder; type a path or use Folder to browse."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "BVA Settings",
+      "id": "BVA Settings",
+      "tooltip": "Adjust analysis and display parameters."
+    },
+    {
+      "kind": "drag_float",
+      "label": "window_length",
+      "id": "##window_length",
+      "tooltip": "Minimum window length in seconds used to slice bursts into photon subsets."
+    },
+    {
+      "kind": "drag_float",
+      "label": "photons_per_slice",
+      "id": "##photons_per_slice",
+      "tooltip": "Number of photons per slice when splitting bursts for the variance analysis."
+    },
+    {
+      "kind": "drag_float",
+      "label": "bins_x",
+      "id": "##bins_x",
+      "tooltip": "Number of histogram bins along the mean proximity-ratio axis."
+    },
+    {
+      "kind": "drag_float",
+      "label": "bins_y",
+      "id": "##bins_y",
+      "tooltip": "Number of histogram bins along the standard-deviation axis."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show static line",
+      "id": "Show static line",
+      "tooltip": "Overlay the shot-noise limited static line on the BVA plot."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Auto update",
+      "id": "Auto update",
+      "tooltip": "Recompute the BVA automatically whenever a parameter changes."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Channel Definitions",
+      "id": "Channel Definitions",
+      "tooltip": "Set detector routing and microtime gates."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Plot",
+      "id": "Plot",
+      "tooltip": "Std of the proximity ratio per burst against its mean, with the static line."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
