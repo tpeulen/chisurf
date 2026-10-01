@@ -201,3 +201,6 @@ them into task cards only after the owner's tree is clean for that plugin.
 
 **Start order that is possible today:** only `trace_browser` has a clean tree and no claim; `burst_selection`,
 `burst_mle_analysis`, `burst_analysis` and `burst_h2mm` each have uncommitted edits to their `gui/app.py`.
+
+**Correction (2026-10-01, found in card T2):** the survey (and card T2's brief) called `StarRatingWidget` a "5-star" widget.
+It has **3 stars** (`self._stars = 3`; `StarCombo` offers 0..3), so the ported rating column is 0..3.
