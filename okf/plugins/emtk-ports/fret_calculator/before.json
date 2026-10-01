@@ -1,0 +1,49 @@
+{
+  "controls": [
+    "distanceda",
+    "distributions",
+    "efficiency",
+    "försterr0",
+    "kfret",
+    "khomo",
+    "lifetimed0",
+    "lifetimeda",
+    "parameters",
+    "r0",
+    "rda",
+    "trm",
+    "ρ",
+    "σ",
+    "τ0",
+    "χdistribution"
+  ],
+  "labels": [
+    "&Sigma;",
+    "&chi; distribution",
+    "&rho;",
+    "&tau;0",
+    "Distance DA",
+    "Efficiency",
+    "Förster R0",
+    "Lifetime D0",
+    "Lifetime DA",
+    "R0",
+    "R<sub>DA</sub>",
+    "k<sub>homo</sub>",
+    "kFRET",
+    "t<sub>RM</sub>"
+  ],
+  "buttons": [
+    "▼  Distributions",
+    "▼  Parameters"
+  ],
+  "line_edits": 14,
+  "combos": 0,
+  "spin_boxes": 14,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.calculator.fret_calculator.gui.tool:FretCalculatorTool (+HEAD no overlays)",
+  "size": [
+    1200,
+    800
+  ]
+}

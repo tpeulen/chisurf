@@ -1,0 +1,122 @@
+{
+ "hetero_default": {
+  "tau0": 4.0,
+  "R0": 52.0,
+  "tau": 1.7599,
+  "R": 50.0,
+  "sigma": 6.0,
+  "E": 0.560037,
+  "kFRET": 0.31823,
+  "chi": false
+ },
+ "homo_default": {
+  "tau0": 2.3,
+  "R0": 52.0,
+  "t_RM": 1.0,
+  "rho": 16.0,
+  "sigma": 6.0,
+  "k_homo": 0.0,
+  "R_DA": 51.35,
+  "chi": false
+ },
+ "hetero_forward_chi": {
+  "tau0": 3.5,
+  "R0": 60.0,
+  "tau": 1.4182,
+  "R": 55.0,
+  "sigma": 8.0,
+  "E": 0.594792,
+  "kFRET": 0.419391,
+  "chi": true
+ },
+ "hetero_from_E": {
+  "tau0": 3.5,
+  "R0": 60.0,
+  "tau": 0.7,
+  "R": 47.62,
+  "sigma": 8.0,
+  "E": 0.8,
+  "kFRET": 1.143429,
+  "chi": true
+ },
+ "hetero_from_tau": {
+  "tau0": 3.5,
+  "R0": 60.0,
+  "tau": 2.0,
+  "R": 62.95,
+  "sigma": 8.0,
+  "E": 0.428571,
+  "kFRET": 0.214393,
+  "chi": true
+ },
+ "hetero_from_k": {
+  "tau0": 3.5,
+  "R0": 60.0,
+  "tau": 1.2731,
+  "R": 54.66,
+  "sigma": 8.0,
+  "E": 0.636248,
+  "kFRET": 0.5,
+  "chi": true
+ },
+ "hetero_gaussian_again": {
+  "tau0": 3.5,
+  "R0": 60.0,
+  "tau": 1.2907,
+  "R": 54.66,
+  "sigma": 8.0,
+  "E": 0.63124,
+  "kFRET": 0.489083,
+  "chi": false
+ },
+ "hetero_E0": {
+  "tau0": 3.5,
+  "R0": 60.0,
+  "tau": 1.2907,
+  "R": 54.66,
+  "sigma": 8.0,
+  "E": 0.0,
+  "kFRET": 0.489083,
+  "chi": false
+ },
+ "hetero_E1": {
+  "tau0": 3.5,
+  "R0": 60.0,
+  "tau": 1.2907,
+  "R": 54.66,
+  "sigma": 8.0,
+  "E": 1.0,
+  "kFRET": 0.489083,
+  "chi": false
+ },
+ "homo_forward": {
+  "tau0": 2.5,
+  "R0": 55.0,
+  "t_RM": 1.5,
+  "rho": 20.0,
+  "sigma": 6.0,
+  "k_homo": 0.308333,
+  "R_DA": 57.44,
+  "chi": false
+ },
+ "homo_backmap": {
+  "tau0": 2.5,
+  "R0": 55.0,
+  "t_RM": 0.3681,
+  "rho": 20.0,
+  "sigma": 6.0,
+  "k_homo": 1.333402,
+  "R_DA": 45.0,
+  "chi": false
+ },
+ "homo_chi": {
+  "tau0": 2.5,
+  "R0": 55.0,
+  "t_RM": 0.3681,
+  "rho": 20.0,
+  "sigma": 10.0,
+  "k_homo": 1.333402,
+  "R_DA": 45.0,
+  "chi": true
+ }
+}

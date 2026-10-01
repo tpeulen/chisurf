@@ -1,0 +1,48 @@
+{
+  "steps": [
+    {
+      "title": "Donor lifetime",
+      "text": "Set the donor-only lifetime in ns.",
+      "target": {
+        "attr": "tau0"
+      },
+      "await": true
+    },
+    {
+      "title": "F\u00f6rster radius",
+      "text": "Set R0 in \u00c5 for the donor/acceptor pair.",
+      "target": {
+        "attr": "R0"
+      },
+      "await": true
+    },
+    {
+      "title": "Distance",
+      "text": "Enter donor\u2013acceptor distance in \u00c5; efficiency, lifetime and transfer rate update together.",
+      "target": {
+        "attr": "R"
+      },
+      "await": true
+    },
+    {
+      "title": "Inverse calculation",
+      "text": "Edit efficiency to solve the effective single distance. Broad distribution averages are not exactly invertible.",
+      "target": {
+        "attr": "E"
+      },
+      "await": true
+    },
+    {
+      "title": "Distribution width",
+      "text": "Set the width of the distance distribution in \u00c5 and inspect both plots.",
+      "target": {
+        "attr": "sigma"
+      },
+      "await": true
+    },
+    {
+      "title": "HomoFRET",
+      "text": "The HomoFRET tab links migration and rotational correlation time to distance. The rate is read-only."
+    }
+  ]
+}

@@ -25,6 +25,7 @@
     }
   },
   "entrypoints": {
+    "emtk": "chisurf.plugins.calculator.fret_calculator.gui.app:make_app",
     "gui": "chisurf.plugins.calculator.fret_calculator.gui.tool:FretCalculatorTool",
     "cli": null,
     "services": "chisurf.plugins.calculator.fret_calculator.backend.services:register_services"
