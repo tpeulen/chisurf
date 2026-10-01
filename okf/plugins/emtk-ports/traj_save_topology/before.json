@@ -1,0 +1,25 @@
+{
+  "controls": [
+    "savetopology",
+    "topology",
+    "trajectory"
+  ],
+  "labels": [
+    "Topology",
+    "Trajectory"
+  ],
+  "buttons": [
+    "…",
+    "▼  Save topology",
+    "💾 Save topology…"
+  ],
+  "line_edits": 2,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.traj.traj_save_topology.widget:SaveTopology (+HEAD view_model, sections)",
+  "size": [
+    1200,
+    800
+  ]
+}

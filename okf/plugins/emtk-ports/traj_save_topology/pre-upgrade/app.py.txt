@@ -1,0 +1,59 @@
+"""Native EMTK Save Topology tool."""
+from __future__ import annotations
+
+from emtk import im
+from emtk.app import ImApp
+
+from .strings import install_translations, tr
+from .view_model import SaveTopologyViewModel
+
+install_translations()
+
+
+class SaveTopologyApp(ImApp):
+    def __init__(self, model=None):
+        self.model = model or SaveTopologyViewModel()
+        self.target = ""
+        self.message = ""
+        super().__init__(self.render)
+
+    def render(self):
+        im.begin(tr("Save Topology"), (0, 0, *im.get_main_viewport().size))
+        im.heading(tr("Save topology from trajectory"), level=2)
+        for label, attr, tip in (("Trajectory", "trajectory_filename", "Trajectory file containing the first frame"), ("Topology", "topology_filename", "Optional structure file providing atom names"), ("Output", "target", "Destination PDB or structure file")):
+            im.text(tr(label))
+            im.same_line()
+            im.set_next_item_width(440)
+            changed, value = im.input_text("##" + attr, str(getattr(self, attr) if attr == "target" else getattr(self.model, attr)))
+            im.set_item_tooltip(tr(tip))
+            if changed:
+                if attr == "target":
+                    self.target = value
+                else:
+                    setattr(self.model, attr, value)
+        if im.button(tr("Save topology")):
+            try:
+                self.model.save_topology(self.target)
+                self.message = tr("Topology saved")
+            except Exception as exc:
+                self.message = f"{type(exc).__name__}: {exc}"
+        im.set_item_tooltip(tr("Load the first trajectory frame and write it as a topology"))
+        if self.message:
+            im.text_wrapped(self.message)
+        im.separator()
+        im.heading(tr("Log"), level=2)
+        for line in self.model.log_text():
+            im.text(line)
+        im.end()
+
+    def export_settings(self):
+        return {"trajectory_filename": self.model.trajectory_filename, "topology_filename": self.model.topology_filename, "target": self.target}
+
+    def restore_settings(self, settings):
+        self.model.trajectory_filename = str(settings.get("trajectory_filename", ""))
+        self.model.topology_filename = str(settings.get("topology_filename", ""))
+        self.target = str(settings.get("target", ""))
+
+
+def make_app():
+    return SaveTopologyApp()

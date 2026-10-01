@@ -1,0 +1,10 @@
+from emtk import i18n
+
+_CATALOGS = {"de": {"Save Topology":"Topologie speichern", "Save topology from trajectory":"Topologie aus Trajektorie speichern", "Trajectory":"Trajektorie", "Topology":"Topologie", "Output":"Ausgabe", "Save topology":"Topologie speichern", "Log":"Protokoll", "Topology saved":"Topologie gespeichert"}, "fr": {"Save Topology":"Enregistrer la topologie", "Save topology from trajectory":"Enregistrer la topologie depuis la trajectoire", "Trajectory":"Trajectoire", "Topology":"Topologie", "Output":"Sortie", "Save topology":"Enregistrer la topologie", "Log":"Journal", "Topology saved":"Topologie enregistrée"}, "es": {"Save Topology":"Guardar topología", "Save topology from trajectory":"Guardar topología desde trayectoria", "Trajectory":"Trayectoria", "Topology":"Topología", "Output":"Salida", "Save topology":"Guardar topología", "Log":"Registro", "Topology saved":"Topología guardada"}, "pt": {"Save Topology":"Guardar topologia", "Save topology from trajectory":"Guardar topologia da trajetória", "Trajectory":"Trajetória", "Topology":"Topologia", "Output":"Saída", "Save topology":"Guardar topologia", "Log":"Registo", "Topology saved":"Topologia guardada"}, "ru": {"Save Topology":"Сохранить топологию", "Save topology from trajectory":"Сохранить топологию из траектории", "Trajectory":"Траектория", "Topology":"Топология", "Output":"Вывод", "Save topology":"Сохранить топологию", "Log":"Журнал", "Topology saved":"Топология сохранена"}}
+
+def install_translations():
+    for locale, values in _CATALOGS.items():
+        i18n.add_translations(locale, values, context="Save Topology")
+
+def tr(text):
+    return i18n.tr(text, context="Save Topology")

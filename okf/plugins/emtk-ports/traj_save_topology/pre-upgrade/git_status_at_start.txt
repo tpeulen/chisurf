@@ -1,0 +1,6 @@
+ M chisurf/plugins/traj/traj_save_topology/__init__.py
+ M chisurf/plugins/traj/traj_save_topology/manifest.json
+ M chisurf/plugins/traj/traj_save_topology/view_model.py
+?? chisurf/plugins/traj/traj_save_topology/app.py
+?? chisurf/plugins/traj/traj_save_topology/strings.py
+?? chisurf/plugins/traj/traj_save_topology/test/test_native.py

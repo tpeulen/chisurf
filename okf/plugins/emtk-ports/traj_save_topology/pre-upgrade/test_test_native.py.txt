@@ -1,0 +1,24 @@
+from __future__ import annotations
+
+from emtk.testing import RecordingPainter
+
+from ..app import SaveTopologyApp
+
+
+def test_native_save_topology_state_roundtrip():
+    app = SaveTopologyApp()
+    app.model.trajectory_filename = "trajectory.dcd"
+    app.model.topology_filename = "structure.pdb"
+    app.target = "output.pdb"
+    state = app.export_settings()
+    other = SaveTopologyApp()
+    other.restore_settings(state)
+    assert other.model.trajectory_filename == "trajectory.dcd"
+    assert other.target == "output.pdb"
+
+
+def test_native_save_topology_renders_tooltips():
+    app = SaveTopologyApp()
+    painter = RecordingPainter()
+    app.draw(painter, 0, 0, 760, 520)
+    assert "Save topology from trajectory" in painter.strings
