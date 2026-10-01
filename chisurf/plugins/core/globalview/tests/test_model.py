@@ -225,6 +225,20 @@ def test_the_size_setting_scales_every_mark_but_keeps_their_ratio():
     assert after[0] / after[1] == pytest.approx(before[0] / before[1])
 
 
+def test_the_initial_node_size_is_the_plot_settings_default(monkeypatch):
+    """A new window's node-size control starts where Plot Settings says.
+
+    The panel's node-graph section owns the default; the window's own slider
+    is the authority from the first drag on.
+    """
+    from chisurf.core import settings as css
+
+    plot = css.cs_settings.setdefault("gui", {}).setdefault("plot", {})
+    monkeypatch.setitem(plot, "node_graph", {"node_size": 17.5})
+    model, _fits, _ = _session()
+    assert model.node_size == pytest.approx(17.5)
+
+
 def test_a_factor_is_a_square_and_a_parameter_a_disc():
     from emtk import nodes
 

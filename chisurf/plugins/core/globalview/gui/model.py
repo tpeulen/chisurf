@@ -33,8 +33,8 @@ import re
 import typing
 
 from chisurf.core.fitting import parameter_network as pn
-from chisurf.gui.widgets.node_editor.document import GraphDocument, GraphEdge, GraphNode
-from chisurf.gui.widgets.node_editor.model import PortSpec
+from chisurf.emtk.node_editor.document import GraphDocument, GraphEdge, GraphNode
+from chisurf.emtk.node_editor.model import PortSpec
 from chisurf.plugins.core.globalview.gui import emtk_view as ev
 
 __all__ = ["GRAPH_LAYOUTS", "LAYOUT_EXTENT", "GlobalViewModel", "to_pixels"]
@@ -191,20 +191,27 @@ class GlobalViewModel:
     representation_options = [REPRESENTATION_NETWORK, REPRESENTATION_FACTORS]
 
     def __init__(self, fits=None, groups=None, mutator=None) -> None:
-        from chisurf.gui.widgets.node_editor.emtk_control import GraphControl
+        from chisurf.emtk.node_editor.control import GraphControl
 
         self._fits = fits if fits is not None else _session_fits
         self._groups = groups if groups is not None else _registered_groups
         if mutator is None:
-            from chisurf.gui.widgets.fitting.parameter_mutator import FittingClientParamMutator
-
-            mutator = FittingClientParamMutator()
+            try:
+                from chisurf.gui.widgets.fitting.parameter_mutator import FittingClientParamMutator
+                mutator = FittingClientParamMutator()
+            except Exception:
+                mutator = None
         self.mutator = mutator
 
         # -- settings (globalview.view.json) --
         self.representation = REPRESENTATION_NETWORK
         self.graph_layout = GRAPH_LAYOUTS[0]
-        self.node_size = 13.0
+        # Where the View panel's node-size control starts. The Plot Settings
+        # panel's node-graph section owns the default; the slider owns it from
+        # here on.
+        from chisurf.emtk.node_editor.style_settings import node_graph_settings
+
+        self.node_size = float(node_graph_settings()["node_size"])
         self.graph_scale = 1.0
         self.connect_owners = False
         self.include_fixed = False

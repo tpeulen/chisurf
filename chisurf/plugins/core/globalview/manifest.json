@@ -16,6 +16,7 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.core.globalview.gui:GraphWizard",
+    "emtk": "chisurf.plugins.core.globalview.gui.app:make_app",
     "cli": null,
     "services": "chisurf.plugins.core.globalview.backend.services:register_services"
   },

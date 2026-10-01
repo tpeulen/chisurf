@@ -40,13 +40,13 @@ import typing
 from emtk import im
 from emtk import nodes as emtk_nodes
 
-from chisurf.gui.widgets.node_editor.document import (
+from chisurf.emtk.node_editor.document import (
     GraphDocument,
     GraphEdge,
     GraphNode,
 )
-from chisurf.gui.widgets.node_editor.emtk_control import NodeContentRenderer
-from chisurf.gui.widgets.node_editor.model import PortSpec
+from chisurf.emtk.node_editor.control import NodeContentRenderer
+from chisurf.emtk.node_editor.model import PortSpec
 
 __all__ = [
     "EDGE_COLOURS",
@@ -214,17 +214,15 @@ def apply_network_style(editor: typing.Any) -> None:
       the two centres, stops at each rim, and bows slightly -- which separates
       edges that would otherwise be drawn on top of each other and gives the
       eye something to follow between two distant marks.
-    * **A quieter grid.** The grid is a background here, not a workspace to
-      align things on; at the editor's default weight it competes with the
-      thin ownership edges, which are the same width and nearly the same
-      colour.
+    * **The grid comes from the settings.** :func:`GraphControl.__init__` has
+      already written the Plot Settings panel's ``node_graph`` section onto
+      the style -- width, opacity, spacing -- and this graph is a consumer of
+      that, not a second definition of it.
     * **No node outline.** Discs draw their own rim.
     """
     style = editor.style
     style.link_routing = emtk_nodes.LinkRouting.ARC
     style.flags &= ~emtk_nodes.StyleFlags.NODE_OUTLINE
-    style.colors[emtk_nodes.Col.GRID_LINE] = (255, 255, 255, 14)
-    style.colors[emtk_nodes.Col.GRID_LINE_PRIMARY] = (255, 255, 255, 24)
     style.colors[emtk_nodes.Col.GRID_BACKGROUND] = (24, 26, 31, 255)
     # A disc is its own connector, so the pointer must be able to catch it
     # anywhere on the mark rather than on a dot that is not drawn.

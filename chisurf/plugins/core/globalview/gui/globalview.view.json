@@ -186,12 +186,14 @@
               {
                 "key": "owner",
                 "title": "Owner",
-                "editable": false
+                "editable": false,
+                "description": "The fit or parameter group that holds the parameter."
               },
               {
                 "key": "parameter",
                 "title": "Parameter",
-                "editable": false
+                "editable": false,
+                "description": "The parameter's name in its model."
               },
               {
                 "key": "role",
@@ -202,23 +204,27 @@
               {
                 "key": "value",
                 "title": "Value",
-                "format": "%.6g"
+                "format": "%.6g",
+                "description": "Current value; type a new one to change it (not for a follower, whose value is its master's)."
               },
               {
                 "key": "fixed",
-                "title": "Fixed"
+                "title": "Fixed",
+                "description": "Held at its value instead of fitted; tick to fix, untick to fit it."
               },
               {
                 "key": "error",
                 "title": "Error",
                 "editable": false,
-                "format": "%.4g"
+                "format": "%.4g",
+                "description": "The fit's uncertainty estimate of the value, when the fit computed one."
               }
             ],
             "fit_columns": true,
             "min_column_width": 36,
             "columns_source": "selection_columns"
-          }
+          },
+          "description": "The parameters selected in the network: edit value or Fixed here; the first selected is the master Link uses."
         }
       ]
     },
@@ -253,12 +259,14 @@
                 "key": "row",
                 "title": "Row",
                 "editable": false,
-                "shade": false
+                "shade": false,
+                "description": "Row number of the parameter; type it into another parameter's Link row to make that one follow this."
               },
               {
                 "key": "owner",
                 "title": "Owner",
-                "editable": false
+                "editable": false,
+                "description": "The fit or parameter group that holds the parameter."
               },
               {
                 "key": "local",
@@ -269,40 +277,47 @@
               {
                 "key": "parameter",
                 "title": "Parameter",
-                "editable": false
+                "editable": false,
+                "description": "The parameter's name in its model."
               },
               {
                 "key": "value",
                 "title": "Value",
-                "format": "%.6g"
+                "format": "%.6g",
+                "description": "Current value; type a new one to change it (not for a follower, whose value is its master's)."
               },
               {
                 "key": "fixed",
                 "title": "Fixed",
-                "shade": false
+                "shade": false,
+                "description": "Held at its value instead of fitted; tick to fix, untick to fit it."
               },
               {
                 "key": "lo",
                 "title": "Lo",
                 "format": "%.4g",
-                "shade": false
+                "shade": false,
+                "description": "Lower bound, used while Bounds is on."
               },
               {
                 "key": "hi",
                 "title": "Hi",
                 "format": "%.4g",
-                "shade": false
+                "shade": false,
+                "description": "Upper bound, used while Bounds is on."
               },
               {
                 "key": "bounded",
                 "title": "Bounds",
-                "shade": false
+                "shade": false,
+                "description": "Whether Lo and Hi constrain the value during the fit."
               },
               {
                 "key": "error",
                 "title": "Error",
                 "editable": false,
-                "format": "%.4g"
+                "format": "%.4g",
+                "description": "The fit's uncertainty estimate of the value, when the fit computed one."
               },
               {
                 "key": "link",
@@ -313,7 +328,8 @@
             ],
             "fit_columns": true,
             "columns_source": "parameter_columns"
-          }
+          },
+          "description": "Every parameter of every fit: filter, sort, pick columns, edit values, bounds and links; a click selects the parameter in the network."
         },
         {
           "type": "panel",
