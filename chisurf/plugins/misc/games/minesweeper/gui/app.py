@@ -6,6 +6,7 @@ asset here avoids importing the Qt-bearing legacy GUI package in a native app.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 from emtk import i18n, im
@@ -14,6 +15,10 @@ from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_
 
 from ..core.game import DIFFICULTIES, GameStatus, MinesweeperGame
 from .translations import install_translations
+
+#: Held-direction auto-repeat, as the Qt view's (gui/tool.py REPEAT_DELAY / REPEAT_RATE).
+REPEAT_DELAY = 0.30
+REPEAT_RATE = 0.07
 
 GLYPHS = json.loads(Path(__file__).with_name("glyphs.json").read_text())
 CELL = 26.0
@@ -64,8 +69,11 @@ def pixel_text(draw, text, pos, height, colour, align="left", max_width=None):
 class MinesweeperApp(ImApp):
     window_size = (560, 620)
 
-    def __init__(self, game=None, audio_callback=None):
+    def __init__(self, game=None, audio_callback=None, clock=time.monotonic):
         self.game = game or MinesweeperGame()
+        #: Held directions and their repeat timers (seconds; negative = initial delay).
+        self.held: dict[tuple[int, int], float] = {}
+        self.clock, self.last_frame = clock, None
         self.difficulty_index = 0
         self.cursor_row, self.cursor_col = self.game.rows // 2, self.game.columns // 2
         self.message = ""
@@ -115,10 +123,13 @@ class MinesweeperApp(ImApp):
         direction = {KEY_UP: (-1, 0), KEY_DOWN: (1, 0), KEY_LEFT: (0, -1), KEY_RIGHT: (0, 1)}
         letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
         direction.update({ord("W"): (-1, 0), ord("S"): (1, 0), ord("A"): (0, -1), ord("D"): (0, 1)})
-        if key in direction:
-            self.move(*direction[key])
-        elif letter in {"w", "s", "a", "d"}:
-            self.move(*{"w": (-1, 0), "s": (1, 0), "a": (0, -1), "d": (0, 1)}[letter])
+        step = direction.get(key) or {"w": (-1, 0), "s": (1, 0), "a": (0, -1), "d": (0, 1)}.get(letter)
+        if step is not None:
+            # One step on the press; while held, the repeat timer steps (auto-
+            # repeated presses from the host are ignored, as chigame ignores them).
+            if step not in self.held:
+                self.move(*step)
+                self.held[step] = -REPEAT_DELAY
         elif key in {KEY_ENTER, KEY_RETURN, 32} or letter == " ":
             self.reveal()
         elif letter == "f":
@@ -131,6 +142,28 @@ class MinesweeperApp(ImApp):
             return False
         self.request_frame()
         return True
+
+    def key_release(self, key, text="", modifiers=0):
+        direction = {KEY_UP: (-1, 0), KEY_DOWN: (1, 0), KEY_LEFT: (0, -1), KEY_RIGHT: (0, 1)}
+        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
+        step = direction.get(key) or {"w": (-1, 0), "s": (1, 0), "a": (0, -1), "d": (0, 1)}.get(letter)
+        return self.held.pop(step, None) is not None if step is not None else False
+
+    def advance(self, dt):
+        """Step held directions, as the Qt view's _move_cursor does."""
+        dt = min(max(float(dt), 0.0), 0.1)
+        for step in list(self.held):
+            self.held[step] += dt
+            while self.held[step] >= REPEAT_RATE:
+                self.held[step] -= REPEAT_RATE
+                self.move(*step)
+
+    def animating(self):
+        return bool(self.held) or super().animating()
+
+    def focus_lost(self):
+        self.held.clear()
+        self.last_frame = None
 
     def export_settings(self):
         return {"rows": self.game.rows, "columns": self.game.columns, "mines": self.game.mines,
@@ -169,6 +202,10 @@ class MinesweeperApp(ImApp):
         self.sound_enabled = bool(state.get("sound_enabled", False))
 
     def render(self):
+        now = self.clock()
+        if self.last_frame is not None and self.held:
+            self.advance(now - self.last_frame)
+        self.last_frame = now
         viewport = im.get_main_viewport()
         x, y = viewport.pos
         w, h = viewport.size

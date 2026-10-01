@@ -145,3 +145,24 @@ def test_every_control_has_a_tooltip():
     from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory
 
     assert emtk_inventory(build_emtk_app("minesweeper"))["controls_without_tooltip"] == []
+
+
+def test_a_held_direction_repeats_like_the_qt_view():
+    """One step on the press, then one per 0.07 s after a 0.30 s delay; host repeats ignored."""
+    app = make_app()
+    app.cursor_row, app.cursor_col = 0, 0
+    app.key(KEY_RIGHT)
+    assert app.cursor_col == 1
+    app.key(KEY_RIGHT)                       # an auto-repeated press from the host
+    assert app.cursor_col == 1
+    def frames(seconds):                     # 10 ms frames (advance clamps one frame to 0.1 s)
+        for _ in range(round(seconds / 0.01)):
+            app.advance(0.01)
+
+    frames(0.29)
+    assert app.cursor_col == 1               # still in the initial delay
+    frames(0.16)
+    assert app.cursor_col == 3
+    app.key_release(KEY_RIGHT)
+    frames(0.5)
+    assert app.cursor_col == 3 and not app.held
