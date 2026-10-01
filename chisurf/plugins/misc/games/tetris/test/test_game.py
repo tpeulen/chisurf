@@ -6,40 +6,17 @@ whole simulation steps here with no Qt and no window.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
-pytest.importorskip("wgpu")
-pytest.importorskip("rendercanvas")
-
-from chisurf.gui import chigame  # noqa: E402
-from chisurf.gui.chigame.input import Action  # noqa: E402
-from chisurf.plugins.misc.games.tetris.tetris import (  # noqa: E402
-    BOARD_H,
-    BOARD_W,
-    SHAPE_NM,
-    SHAPES,
-    SQUARE,
-    TetrisGame,
-    rotated,
-)
+from ..app import Inputs
+from ..model import BOARD_H, BOARD_W, SHAPE_NM, SHAPES, SQUARE, TetrisModel, rotated
 
 
 @pytest.fixture
-def game(qapp):
-    """A game wired to a headless host.
-
-    Returns
-    -------
-    TetrisGame
-        Ready to step.
-    """
-    try:
-        context = chigame.create_offscreen(size=(160, 200))
-    except Exception as error:  # pragma: no cover - depends on the machine
-        pytest.skip(f"no usable GPU adapter: {error}")
-    instance = TetrisGame()
-    chigame.GameHost(instance, context, with_text=False, with_audio=False)
-    return instance
+def game():
+    return TetrisModel(SimpleNamespace(keys=Inputs(), audio=SimpleNamespace(sfx=lambda *args: None)))
 
 
 def test_a_new_game_starts_with_an_empty_well(game):
@@ -61,7 +38,7 @@ def test_the_square_piece_does_not_rotate(game):
     game.shape = SQUARE
     game.coords = list(SHAPES[SQUARE])
     before = list(game.coords)
-    game.host.keys.tap(Action.CONFIRM)
+    game.host.keys.pressed.add("confirm")
     game.update(1 / 60, game.host.keys)
     assert game.coords == before
 
@@ -75,7 +52,7 @@ def test_a_piece_cannot_leave_the_well(game):
 
 def test_a_hard_drop_settles_the_piece_on_the_floor(game):
     """The piece lands, is written into the well, and a new one appears."""
-    game.host.keys.tap(Action.SHOULDER_R)
+    game.host.keys.pressed.add("shoulder_r")
     game.update(1 / 60, game.host.keys)
     filled = [(r, c) for r in range(BOARD_H) for c in range(BOARD_W) if game.well[r][c] is not None]
     assert len(filled) == 4
@@ -130,12 +107,3 @@ def test_each_shape_has_its_own_wavelength():
     assert len(SHAPE_NM) == len(SHAPES)
     assert len(set(SHAPE_NM)) == len(SHAPES)
     assert SHAPE_NM == sorted(SHAPE_NM)
-
-
-def test_it_renders(qapp):
-    """A frame comes out with the well drawn on it."""
-    try:
-        frame = chigame.capture(TetrisGame(), size=(260, 310), frames=2, with_audio=False)
-    except Exception as error:  # pragma: no cover - depends on the machine
-        pytest.skip(f"no usable GPU adapter: {error}")
-    assert frame.shape == (310, 260, 4)

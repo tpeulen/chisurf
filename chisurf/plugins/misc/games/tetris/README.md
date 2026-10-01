@@ -1,61 +1,44 @@
 # Tetris Game Plugin
 
-This plugin provides a classic single-player Tetris game implemented using PyQt5.
+Spectral Tetris is available through the retained Qt widget and the standalone
+EMTK factory `chisurf.plugins.misc.games.tetris.app:make_app`. The native factory
+imports no Qt bindings, GUI host or chigame GPU package.
 
-## Features
+The two views share `TetrisModel`: a 10 × 22 well, seven tetrominoes, the original
+rotation and collision rules, delayed direction repeat, line scoring and faster
+falling every ten cleared lines. The model has no GUI or GPU imports.
 
-- Seven standard Tetromino shapes with rotation
-- Line clearing and score tracking
-- Keyboard controls for piece movement and game actions
-- Adjustable drop speed
-- Next-piece preview
-- Clean and intuitive interface
-- Pause and restart functionality
+Controls:
 
-## Overview
+- Left/Right or A/D: move.
+- Up or W: rotate; after game over, restart.
+- Down or S: soft drop.
+- Space: hard drop.
+- P: pause/resume.
+- R: restart.
 
-The Tetris Game plugin implements the classic puzzle game where shapes (Tetrominoes) fall from the top of the 
-board and the player must rotate and position them to complete horizontal lines. When a line is completed, 
-it disappears and the player earns points.
+The native surface releases held keys on focus loss and stops animation on close.
+Saved settings restore the well, falling piece, fall timer, score, lines, level,
+pause and game-over flags atomically. Malformed saved rounds leave the live round
+unchanged. Keyboard holds are not saved.
 
-The game features all seven standard Tetromino shapes (I, J, L, O, S, T, Z) with proper rotation mechanics. Players 
-can move pieces left and right, rotate them, and perform hard drops to place them quickly. The game includes a 
-preview of the next piece, allowing for strategic planning.
+Labels and tooltips are localized in English, German, French, Spanish,
+Portuguese and Russian. The well, count panel, pause/game-over overlays and
+control captions fit normal and narrow windows. The game-over overlay can also
+be clicked to restart.
 
-This plugin serves as both an entertaining diversion and a demonstration of using PyQt5 for creating responsive, 
-event-driven graphical applications within the ChiSurf framework.
+EMTK currently provides no audio backend. Native music and sound effects are
+unavailable and its Sound control is disabled with a localized explanation.
+The Qt widget retains its existing sound control. No platform-only audio
+dependencies were added. Neither current view has a next-piece preview; older
+metadata described one that the current rules and reference do not contain.
 
-## Requirements
+Verification:
 
-- Python packages:
-  - PyQt5
-  - chisurf core modules
+- `python -m pytest chisurf/plugins/misc/games/tetris/test -q`
+- `python -m chisurf.plugins.misc.games.tetris.test.capture_qt`
+- `python -m chisurf.plugins.misc.games.tetris.test.capture_native`
 
-## Usage
-
-1. Launch the plugin from the ChiSurf menu: Miscellaneous > Tetris
-2. Control the falling pieces using the keyboard:
-   - Left/Right arrow keys: Move piece horizontally
-   - Up arrow key: Rotate piece
-   - Down arrow key: Hard drop (instantly place the piece)
-   - P key: Pause/resume the game
-   - R key: Restart the game
-3. Complete horizontal lines to score points
-4. The game ends when the stack of pieces reaches the top of the board
-
-## Applications
-
-While primarily developed as a recreational plugin, the Tetris Game can be used for:
-- Demonstrating PyQt5 game development techniques
-- Providing a simple example for plugin developers
-- Offering a brief recreational break during data analysis sessions
-- Showcasing event-driven programming concepts
-- Testing the responsiveness of the ChiSurf plugin system
-
-## License
-
-This plugin is part of the ChiSurf package and is distributed under the same license.
-
-## Author
-
-This plugin was created as part of the ChiSurf project.
+Capture commands require a working GPU adapter. Genuine populated Qt and native
+normal/narrow screenshots are in `test/renders/`, alongside the visual verdict
+(95/100). Native renders include populated, paused and game-over states.

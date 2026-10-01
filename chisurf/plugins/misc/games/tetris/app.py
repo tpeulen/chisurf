@@ -1,0 +1,259 @@
+"""Standalone EMTK Tetris, driven by the same rules as the retained Qt view."""
+from __future__ import annotations
+
+import math
+import time
+from types import SimpleNamespace
+
+from emtk import i18n, im
+from emtk.app import ImApp
+from emtk.keys import KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_UP
+
+from .drawing import pixel_text, text_width
+from .model import BOARD_H, BOARD_W, SHAPE_NM, SHAPES, TetrisModel
+from .spectrum import wavelength_to_srgb
+
+
+def tr(text):
+    return i18n.tr(text, context="Tetris")
+
+
+class Inputs:
+    def __init__(self):
+        self.held = {}
+        self.pressed = set()
+
+    def just_pressed(self, action):
+        return action in self.pressed
+
+    def is_held(self, action):
+        return action in self.held.values()
+
+    def end_frame(self):
+        self.pressed.clear()
+
+
+class TetrisApp(ImApp):
+    window_size = (520, 620)
+
+    def __init__(self, audio=None, clock=time.monotonic):
+        self.clock = clock
+        self.last_frame = None
+        self.keys = Inputs()
+        self.closed = False
+        self.audio = audio
+        self.sound_enabled = False
+        # The rules call host.audio.sfx; this app is that audio, gated by the switch.
+        self.game = TetrisModel(SimpleNamespace(audio=self))
+        self.board = (0, 0, 1)
+        super().__init__(self.render)
+
+    @property
+    def window_title(self):
+        return tr("Tetris")
+
+    def sfx(self, name, frequency):
+        if self.audio is not None and self.sound_enabled:
+            self.audio.sfx(name, frequency)
+
+    def set_sound(self):
+        if self.audio is None:
+            return
+        self.sound_enabled = not self.sound_enabled
+        self.audio.set_enabled(self.sound_enabled)
+
+    def animating(self):
+        return not self.closed and (self.wants_frame or (not self.game.paused and not self.game.over))
+
+    def advance(self, dt):
+        if self.closed:
+            return
+        self.game.update(min(max(float(dt), 0), .1), self.keys)
+        self.keys.end_frame()
+
+    @staticmethod
+    def binding(key, text):
+        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
+        return {KEY_LEFT: "left", KEY_RIGHT: "right", KEY_DOWN: "down", KEY_UP: "confirm"}.get(key) or {
+            "a": "left", "d": "right", "s": "down", "w": "confirm", " ": "shoulder_r",
+            "p": "menu", "r": "cancel",
+        }.get(letter)
+
+    def key(self, key, text="", modifiers=0):
+        if modifiers or self.closed:
+            return False
+        action = self.binding(key, text)
+        if action is None:
+            return False
+        if key not in self.keys.held:
+            self.keys.pressed.add(action)
+        self.keys.held[key] = action
+        self.advance(0)
+        self.request_frame()
+        return True
+
+    def key_release(self, key, text="", modifiers=0):
+        action = self.keys.held.pop(key, None)
+        return action is not None or self.binding(key, text) is not None
+
+    def focus_lost(self):
+        self.keys.held.clear()
+        self.keys.end_frame()
+        self.game._repeat_action = None
+        self.game._repeat_timer = 0
+        self.last_frame = None
+        if self.audio is not None:
+            self.audio.set_enabled(False)
+
+    def close(self):
+        self.focus_lost()
+        self.closed = True
+        if self.audio is not None:
+            self.audio.close()
+
+    def control(self, action):
+        if self.closed:
+            return
+        self.keys.pressed.add(action)
+        self.advance(0)
+        self.request_frame()
+
+    def export_settings(self):
+        fields = ("shape", "x", "y", "score", "lines", "level", "paused", "muted", "over", "_fall_timer")
+        return {"game": {name: getattr(self.game, name) for name in fields},
+                "well": [list(row) for row in self.game.well], "coords": [list(c) for c in self.game.coords],
+                "sound_enabled": self.sound_enabled}
+
+    def restore_settings(self, state):
+        """Validate the whole round before replacing any live state."""
+        candidate = TetrisModel()
+        values = state["game"]
+        for name in self.export_settings()["game"]:
+            value = values[name]
+            if name in {"paused", "muted", "over"}:
+                if not isinstance(value, bool):
+                    raise ValueError("invalid round flag")
+            elif name == "_fall_timer":
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+                    raise ValueError("invalid fall timer")
+            elif isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError("invalid round integer")
+            setattr(candidate, name, value)
+        if not 0 <= candidate.shape < len(SHAPES) or min(candidate.score, candidate.lines) < 0 or candidate.level != 1 + candidate.lines // 10:
+            raise ValueError("invalid score or piece")
+        well = state["well"]
+        if len(well) != BOARD_H or any(len(row) != BOARD_W for row in well):
+            raise ValueError("invalid well dimensions")
+        if any(c is not None and (isinstance(c, bool) or not isinstance(c, int) or not 0 <= c < len(SHAPES)) for row in well for c in row):
+            raise ValueError("invalid well cell")
+        coords = state["coords"]
+        if len(coords) != 4 or any(len(c) != 2 or any(isinstance(v, bool) or not isinstance(v, int) for v in c) for c in coords):
+            raise ValueError("invalid piece coordinates")
+        rotations = [list(SHAPES[candidate.shape])]
+        for _ in range(3):
+            rotations.append([(-y, x) for x, y in rotations[-1]])
+        candidate.coords = [tuple(c) for c in coords]
+        if candidate.coords not in rotations:
+            raise ValueError("invalid piece rotation")
+        candidate.well = [list(row) for row in well]
+        if not all(0 <= candidate.x + dx < BOARD_W and 0 <= candidate.y + dy < BOARD_H for dx, dy in candidate.coords):
+            raise ValueError("piece outside well")
+        if not candidate.over and not candidate.fits(candidate.coords, candidate.x, candidate.y):
+            raise ValueError("piece intersects well")
+        enabled = state.get("sound_enabled", False)
+        if not isinstance(enabled, bool):
+            raise ValueError("invalid sound flag")
+        self.game = candidate
+        self.sound_enabled = enabled
+        self.focus_lost()
+        self.request_frame()
+
+    def render(self):
+        now = self.clock()
+        if self.last_frame is not None and not self.closed:
+            self.advance(now - self.last_frame)
+        self.last_frame = now
+        viewport = im.get_main_viewport()
+        x, y = viewport.pos
+        w, h = viewport.size
+        im.begin("##tetris", (x, y, w, h))
+        draw = im.get_window_draw_list()
+        draw.add_rect_filled((x, y), (x+w, y+h), (8, 9, 11, 255))
+        im.set_cursor_screen_pos((x+4, y+4))
+        # Greyed without an audio backend: emtk plays no sound (the Qt game's
+        # chigame audio is QtMultimedia).
+        im.begin_disabled(self.audio is None)
+        if im.checkbox(tr("Sound")+"##sound", self.sound_enabled)[0]:
+            self.set_sound()
+        im.end_disabled()
+        im.set_item_tooltip(tr("Music and sound effects (off by default).") if self.audio is not None
+                            else tr("No sound here: this window has no audio output."))
+        scale = min(max(w, 1)/420, max(h-37, 1)/588)
+        ox, oy = x+w/2-210*scale, y+37+(h-37-588*scale)/2+8*scale
+        self.board = ox, oy, scale
+        def at(xx, yy):
+            return ox+xx*scale, oy+yy*scale
+        def text(label, xx, yy, height, colour=(255,255,255,255), align="center", max_width=None):
+            translated = tr(label)
+            font_height = height*scale
+            if max_width is not None:
+                measured = text_width(draw, translated, font_height)
+                if measured > max_width:
+                    font_height *= max_width/measured
+            pixel_text(draw, translated, at(xx,yy), font_height, colour, align)
+        g = self.game
+        draw.add_rect_filled(at(37,27), at(263,517), (33,37,43,255), rounding=2*scale)
+        def cell(col, row, shape, live=False):
+            xx, yy = 40+(col+.5)*22, 30+(row+.5)*22
+            nm = SHAPE_NM[shape]
+            colour = tuple(round(c*255) for c in wavelength_to_srgb(nm))
+            if live:
+                for radius in range(16, 0, -2):
+                    draw.add_circle_filled(at(xx,yy), radius*scale, colour+(round(45*(1-radius/18)**2),))
+            energy = min(max((1/nm-1/680)/(1/405-1/680),0),1)
+            colour = tuple(round(c*(.78+.22*energy)) for c in colour)
+            draw.add_rect_filled(at(xx-9.5,yy-9.5), at(xx+9.5,yy+9.5), colour+(255,), rounding=2.85*scale)
+        for row in range(BOARD_H):
+            for col in range(BOARD_W):
+                if g.well[row][col] is not None:
+                    cell(col,row,g.well[row][col])
+        if not g.over:
+            for dx,dy in g.coords:
+                cell(g.x+dx,g.y+dy,g.shape,True)
+        dim = (112,122,140,255)
+        for label, value, top, baseline, height in (("COUNTS",g.score,60,84,24), ("LINES",g.lines,124,146,20), ("GAIN",g.level,184,206,20)):
+            text(label,330,top,13,dim,max_width=110*scale)
+            text(str(value),330,baseline,height,max_width=110*scale)
+        if g.paused:
+            text("HELD",150,272,36,(89,217,204,255),max_width=210*scale)
+        if g.over:
+            draw.add_rect_filled(at(38,224),at(262,320),(26,28,33,255))
+            text("Channel full",150,260,24,(230,82,77,255),max_width=210*scale)
+            text("Confirm to reset",150,290,14,max_width=210*scale)
+            im.set_cursor_screen_pos(at(38,224))
+            if im.invisible_button("##restart-overlay",(224*scale,96*scale)):
+                self.control("confirm")
+            im.set_item_tooltip(tr("Restart after game over (Up/W or R)."))
+        controls = (
+            (528,"Move  Confirm rotate  Down soft  R drop","Left/Right or A/D: move. Up/W: rotate. Down/S: soft drop. Space: hard drop."),
+            (544,"Menu hold  Cancel reset","P: pause/resume. R: restart."),
+        )
+        for yy,label,tip in controls:
+            text(label,180,yy,11,dim,max_width=w-16)
+            im.set_cursor_screen_pos((x+8,at(0,yy)[1]-9*scale))
+            im.invisible_button("##control-"+str(yy),(w-16,18*scale))
+            im.set_item_tooltip(tr(tip))
+        im.set_cursor_screen_pos(at(37,27))
+        im.invisible_button("##well",(226*scale,490*scale))
+        im.set_item_tooltip(tr("Left/Right or A/D: move. Up/W: rotate. Down/S: soft drop. Space: hard drop."))
+        im.end()
+
+
+def make_app(audio=None):
+    """The game; *audio* is an object with ``sfx``/``set_enabled``/``close`` (none in emtk yet)."""
+    from chisurf.emtk.i18n import install
+
+    from .translations import install_translations
+    install()
+    install_translations()
+    return TetrisApp(audio=audio)

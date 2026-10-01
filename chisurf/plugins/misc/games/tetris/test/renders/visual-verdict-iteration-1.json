@@ -1,0 +1,17 @@
+{
+  "score": 86,
+  "verdict": "revise",
+  "category_match": true,
+  "differences": [
+    "Native spectral cells are brighter and have extra settled-cell glow relative to the Qt reference.",
+    "The native well, statistics and controls are positioned three pixels above the reference.",
+    "Native cell corners are more square than the original rounded spectral packets.",
+    "Native sound control is dark and disabled because EMTK audio is unavailable; Qt uses an enabled system button."
+  ],
+  "suggestions": [
+    "Apply the original photon-energy brightness gain and remove glow from settled packets.",
+    "Use the 37-pixel Qt toolbar allocation before fitting the camera.",
+    "Match the original 0.30 corner-radius ratio on cells."
+  ],
+  "reasoning": "The game layout, font, populated well and statistics already match closely, and the narrow view fits. Packet styling and vertical camera allocation need another iteration before the 90 threshold."
+}

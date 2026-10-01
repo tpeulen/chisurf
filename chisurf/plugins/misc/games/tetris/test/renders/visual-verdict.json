@@ -1,0 +1,13 @@
+{
+  "score": 95,
+  "verdict": "pass",
+  "category_match": true,
+  "differences": [
+    "The native Sound control is a dark disabled checkbox; the Qt reference has an enabled system button in a light toolbar. Native audio remains unavailable.",
+    "Small edge-antialiasing differences remain on spectral packets and bitmap glyphs."
+  ],
+  "suggestions": [
+    "Keep the documented audio gap explicit until EMTK provides a host audio adapter."
+  ],
+  "reasoning": "Direct inspection of the genuine populated Qt reference and six genuine native GPU captures confirms matching well geometry, photon-energy colours, statistics, pixel captions and pause/game-over presentation. Both 520x620 and 360x620 native layouts keep the game and controls visible, meeting the 90-point threshold."
+}
