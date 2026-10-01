@@ -1,0 +1,106 @@
+{
+ "initial_status": "Edit the lifetime spectrum and press Generate.",
+ "spectrum": [
+  {
+   "amp": 1.0,
+   "tau": 1.2
+  },
+  {
+   "amp": 1.0,
+   "tau": 4.0
+  }
+ ],
+ "rotation": [
+  {
+   "b": 0.2,
+   "rho": 1.0
+  }
+ ],
+ "vm": {
+  "status": "Generated 256 bins (2 components).",
+  "n": 256,
+  "sum": 1.0,
+  "peak": 0.013580220334247963,
+  "r0": 0.2,
+  "r_last": 5.717247895948174e-05,
+  "series": [
+   "decay"
+  ],
+  "aniso": [
+   "r(t)"
+  ]
+ },
+ "vvvh": {
+  "status": "Generated VV/VH pair, 256 bins (3 lifetimes, 2 rotations, g=1.3, l1=0.02, l2=0.05).",
+  "n": 256,
+  "vv_sum": 125124.0,
+  "vh_sum": 75311.0,
+  "series": [
+   "VV",
+   "VH"
+  ],
+  "metadata": {
+   "polarization": "vv/vh",
+   "g_factor": 1.3,
+   "l1": 0.02,
+   "l2": 0.05,
+   "dt_ns": 0.032,
+   "dt": 0.032,
+   "n_bins": 256,
+   "lifetimes": "0.5, 4, 9",
+   "amplitudes": "1, 1, 0.25",
+   "rotation": "0.2/1, 0.1/2",
+   "source": "synthetic_decay"
+  }
+ },
+ "vvvh_saved": {
+  "status": "Saved VV/VH pair (256 bins) to pair.dat.",
+  "size": 2345,
+  "head": [
+   "2267",
+   "2198",
+   "2045"
+  ],
+  "tail": [
+   "# #lifetimes: 0.5, 4, 9",
+   "# #amplitudes: 1, 1, 0.25",
+   "# #rotation: 0.2/1, 0.1/2",
+   "# #source: synthetic_decay"
+  ]
+ },
+ "fit_sink": {
+  "calls": [
+   [
+    2,
+    true
+   ]
+  ],
+  "status": "Added synthetic dataset and fit group (2 curves)."
+ },
+ "vm_irf": {
+  "status": "Generated 256 bins (3 components).",
+  "peak_bin": 37,
+  "sum": 0.9999999999999999
+ },
+ "bad_irf": {
+  "status": "Error: IRF file does not exist: /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp.wiAAFU2Mg7/missing_irf.txt",
+  "n": 0
+ },
+ "loaded": {
+  "status": "Loaded 2 components from spec.csv.",
+  "rows": [
+   {
+    "amp": 0.3,
+    "tau": 1.2
+   },
+   {
+    "amp": 0.7,
+    "tau": 4.0
+   }
+  ]
+ },
+ "bad_load": "Load failed: could not convert string 'a' to float64 at row 0, column 1.",
+ "n128": 128,
+ "save_before_generate": "Nothing to save \u2014 press Generate first.",
+ "fit_before_generate": "Nothing to send \u2014 press Generate first."
+}

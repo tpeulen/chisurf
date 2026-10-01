@@ -30,7 +30,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool:SyntheticDecayTool",
     "cli": "synth-decay=chisurf.plugins.fluorescence_decay.synthetic_decay.cli.main:cli",
-    "services": "chisurf.plugins.fluorescence_decay.synthetic_decay.backend.services:register_services"
+    "services": "chisurf.plugins.fluorescence_decay.synthetic_decay.backend.services:register_services",
+    "emtk": "chisurf.plugins.fluorescence_decay.synthetic_decay.gui.app:make_app"
   },
   "rpc_methods": [
     {
