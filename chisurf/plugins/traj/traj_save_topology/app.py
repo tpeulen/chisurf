@@ -36,7 +36,7 @@ class SaveTopologyApp(TrajToolApp):
 
     def __init__(self, model: SaveTopologyViewModel | None = None) -> None:
         super().__init__(model or SaveTopologyViewModel(), HERE, "save_topology.view.json",
-                         "traj_save_topology_io", "💾 Save topology",
+                         "traj_save_topology_io", "Save topology",
                          [trajectory_field(), topology_field()], SAVE)
 
 
