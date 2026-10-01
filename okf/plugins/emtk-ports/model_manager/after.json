@@ -1,0 +1,137 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "40models·0disabled·2disabledname(s)matchnomodel",
+    "40rows×6columns",
+    "copy",
+    "disabled",
+    "dropstale",
+    "enabled",
+    "experiment",
+    "exportcsv",
+    "fcs",
+    "fcs(generaldiffusion+bunching/anticorr)",
+    "fcs(kinetics)",
+    "fcs,pcf",
+    "fcs,tcspc",
+    "fcsdyeshape",
+    "fcsmaxent",
+    "fcsmaxentrh",
+    "fcsmdf(gauss-lorentz)",
+    "fida",
+    "filter",
+    "fretacceptordensity(1,2or3dimensions)",
+    "fretdiscretedistances",
+    "fretgaussiandistances",
+    "fretisingtwo-statechain",
+    "fretmaxentdistances",
+    "fretself-avoidingchain(saw-ν)",
+    "fretstructurefit",
+    "fretworm-likechain",
+    "guide",
+    "help",
+    "ics2dgaussian(2sigma+angle)",
+    "imagecorrelation",
+    "imagecorrelation(rics/stics/tics/imsd)",
+    "lifetime",
+    "lifetimemaxent",
+    "lifetimemixture",
+    "model",
+    "nomodelselected",
+    "none",
+    "ok",
+    "parameterpanelisdescribed.",
+    "parameterui",
+    "parse-model",
+    "pcf",
+    "pcf,tcspc",
+    "pch",
+    "pchmulti-component",
+    "pda",
+    "pda2c-discrete",
+    "pda2c-gaussian-distance",
+    "pddempartialdonor-donorenergymigration",
+    "pickarowtoseewhatthemodelis,whichexperimentoffersit,andhowits",
+    "registeredmodels",
+    "rescan",
+    "revert",
+    "save",
+    "selectedmodel",
+    "shared",
+    "showdisabledmodels",
+    "spec",
+    "spec-driven",
+    "status",
+    "tcspc"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save##save",
+      "tooltip": "Write the disabled-model list to your settings file. The model drop-down picks it up the next time you select a dataset."
+    },
+    {
+      "kind": "button",
+      "label": "Revert",
+      "id": "Revert##ask_revert",
+      "tooltip": "Discard every change made since the last save (asks first)."
+    },
+    {
+      "kind": "button",
+      "label": "Rescan",
+      "id": "Rescan##rescan",
+      "tooltip": "Read the experiment registry again, in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Drop stale",
+      "id": "Drop stale##ask_drop_stale",
+      "tooltip": "Remove disabled entries that match no registered model (asks first)."
+    },
+    {
+      "kind": "button",
+      "label": "Copy",
+      "id": "Copy##request_copy",
+      "tooltip": "Copy the rows the table shows now, with the column headers, to the clipboard as tab-separated text."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write the rows and columns the table shows now to a CSV file."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show disabled models",
+      "id": "Show disabled models##show_disabled",
+      "tooltip": "Include switched-off models in the table."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the table, the Disabled switch and stale entries."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through picking a model, disabling it and saving."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Disabled",
+      "id": "Disabled##selected_disabled",
+      "tooltip": "Keep this model out of the model drop-down. It is not removed; nothing else changes. Matches on the display name, so a shared name switches off every experiment offering it."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
