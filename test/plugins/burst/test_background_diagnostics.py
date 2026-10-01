@@ -82,3 +82,23 @@ def test_diagnostics_from_bursts_per_detector():
     for name, diag in diags.items():
         assert isinstance(diag, bg.BackgroundDiagnostics)
         assert diag.centers.size > 0
+
+
+def test_a_window_far_out_in_the_tail_recovers_the_rate():
+    """A fit window that starts well past dt = 0 must not bias the rate.
+
+    The amplitude used to be fitted at dt = 0 and started from the histogram's first
+    bin; for a window out in the tail, A and the rate are then almost perfectly
+    correlated and L-BFGS-B stopped near its start, reporting success with 1.64 kHz
+    for a 1 kHz background (window 1.96-3.31 ms, the one the burst-background tool
+    seeds). The amplitude is now fitted at the window's first bin.
+    """
+    rng = np.random.default_rng(3)
+    for rate in (1.0, 2.0):
+        dt = _dt_ms(rng, bg_rate_khz=rate, n_bg=28000, n_burst=4000)
+        diag = bg.interphoton_time_diagnostics(dt, binsize_ms=0.1, tail_range_ms=(1.96, 3.31))
+        assert abs(diag.rate_khz - rate) / rate < 0.1, (rate, diag.rate_khz)
+        window = diag.tail_mask
+        model = diag.amplitude * np.exp(-diag.rate_khz * diag.centers[window])
+        assert np.allclose(model, diag.model[window])                   # amplitude still means A·exp(-λ·dt)
+        assert abs(model.sum() - diag.counts[window].sum()) / diag.counts[window].sum() < 0.05

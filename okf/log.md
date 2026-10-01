@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **Background tail fit unbiased for windows out in the tail** (found during the burst_background port): the amplitude was
+  fitted at dt = 0 from the first histogram bin, so for a window far from zero L-BFGS-B stopped near its start and reported
+  success with a biased rate (1.64 kHz for 1 kHz in the 1.96-3.31 ms window the tool seeds). Now fitted at the window's first
+  bin; guard `test_a_window_far_out_in_the_tail_recovers_the_rate`.
+
 - **burst_browser emtk app at parity** (EMTK-1): the stream's app never polled its loader nor drew its dialogs (a load never
   finished in the real app); now polled and drawn with the Qt dialog titles/filter. Shared drawing: table headers fit,
   size gate legible, guide rebuilt on real controls. [report](plugins/emtk-ports/burst_browser/REPORT.md).

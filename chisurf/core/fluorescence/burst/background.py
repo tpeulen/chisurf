@@ -88,12 +88,18 @@ def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts, ta
 
     xdata = centers[valid]
     ydata = counts[valid].astype(np.float64)
+    # The amplitude is fitted at the window's first bin, B = A·exp(-lam·x0), not
+    # at dt = 0. Anchored at zero, a window far out in the tail makes A and lam
+    # almost perfectly correlated (A ~ y·exp(lam·x)); started from the first
+    # histogram bin, L-BFGS-B stopped near its start and reported success with
+    # a biased rate -- 1.64 kHz for a 1 kHz background in a 1.96-3.31 ms window.
+    x0 = float(xdata[0])
 
     def neg_log_likelihood(params: np.ndarray) -> float:
-        A, lam = params
-        if A <= 0.0 or lam <= 0.0:
+        B, lam = params
+        if B <= 0.0 or lam <= 0.0:
             return np.inf
-        model = A * np.exp(-lam * xdata)
+        model = B * np.exp(-lam * (xdata - x0))
         eps = 1e-12
         model_safe = model + eps
         ratio = ydata / model_safe
@@ -101,7 +107,10 @@ def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts, ta
         return float(np.sum(term))
 
     A0 = float(counts[0]) if counts[0] > 0 else float(ydata.max())
-    lam0 = 3.0 / max_dt
+    B0 = max(float(ydata[0]), 1.0)
+    # The exponential's own estimate from the window: 1 / mean distance from x0.
+    spread = float(np.average(xdata - x0, weights=ydata)) if ydata.sum() > 0 else 0.0
+    lam0 = 1.0 / spread if spread > 0.0 else 3.0 / max_dt
     # The bounds must exclude zero. The objective is ``+inf`` at ``A == 0`` or
     # ``lam == 0``, and L-BFGS-B evaluates *on* its bounds while building the
     # finite-difference gradient — so a closed bound at zero yields ``inf - inf``,
@@ -110,7 +119,7 @@ def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts, ta
     # a different (and biased) estimator arriving with no error at all.
     result = minimize(
         neg_log_likelihood,
-        np.array([A0, lam0], dtype=float),
+        np.array([B0, lam0], dtype=float),
         method="L-BFGS-B",
         bounds=((_POSITIVE, None), (_POSITIVE, None)),
     )
@@ -118,8 +127,8 @@ def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts, ta
         mean_dt = float(np.mean(xdata))
         lam = 1.0 / mean_dt if mean_dt > 0.0 else 0.0
         return A0, max(lam, 0.0), valid, False
-    A, lam = float(result.x[0]), float(result.x[1])
-    return A, max(lam, 0.0), valid, True
+    B, lam = float(result.x[0]), float(result.x[1])
+    return B * np.exp(lam * x0), max(lam, 0.0), valid, True
 
 
 def _histogram_interphoton(dt_ms, binsize_ms):
