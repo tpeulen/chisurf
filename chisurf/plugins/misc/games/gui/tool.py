@@ -4,43 +4,7 @@ from __future__ import annotations
 
 from chisurf.gui.widgets.navigation import NavigationPanelTool
 
-GAME_PANELS = [
-    {
-        "name": "Number Quest",
-        "icon": "🔢",
-        "description": "Guess the hidden number in seven tries.",
-        "class_path": "chisurf.plugins.misc.games.number_quest.gui.tool",
-        "class_name": "NumberQuestWidget",
-    },
-    {
-        "name": "Minesweeper",
-        "icon": "💣",
-        "description": "Clear a minefield without triggering a mine; board size is configurable.",
-        "class_path": "chisurf.plugins.misc.games.minesweeper.gui.tool",
-        "class_name": "MinesweeperWidget",
-    },
-    {
-        "name": "Tetris",
-        "icon": "🟦",
-        "description": "Classic falling-block puzzle with line clearing and score tracking.",
-        "class_path": "chisurf.plugins.misc.games.tetris.tetris",
-        "class_name": "Tetris",
-    },
-    {
-        "name": "Pong",
-        "icon": "🏓",
-        "description": "Classic Pong against a CPU opponent, with sound and particle effects.",
-        "class_path": "chisurf.plugins.misc.games.pong.pong",
-        "class_name": "Pong",
-    },
-    {
-        "name": "Breakout",
-        "icon": "🧱",
-        "description": "Classic Breakout with progressive difficulty and multiple brick types.",
-        "class_path": "chisurf.plugins.misc.games.breakout.breakout",
-        "class_name": "Breakout",
-    },
-]
+from .registry import GAME_PANELS
 
 
 class GamesWidget(NavigationPanelTool):

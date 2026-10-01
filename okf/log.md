@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **Games launcher restyled** (owner feedback): sidebar of names (description as tooltip), header with
+  description and keys, the game fills the area; Tetris and Number Quest open their emtk apps; Breakout
+  listed "(not available)" until its port lands; `focus_lost` forwarded to the game. Evidence:
+  [games launcher](plugins/emtk-ports/games/README.md).
+
 * **fret_calculator emtk app at parity with the Qt tool (swap-candidate verification, SWAP4B).** Baseline is the committed AutoForm tool (HEAD `tool.py`; the stream rewrote it to host emtk). Same edits typed into the native fields give the Qt tool's numbers to 1e-9 (15 hetero + 10 homo edits). Fixed in the stream's app: results are rounded and clamped like the Qt spin boxes (R 47.62, not 47.622), numeric entry with arrows, the "takes no dropped files" notice, failed calculations (E 0 or 1, tau > tau0) reported on a status line, spec-drawn forms, settings round trip, a guide that waits on both tabs. Plugin folder 58 passed; compare exit 0. Open: the Qt HomoFRET k_homo field is stale after tau0/R0/rho edits (native shows the backend rate); help window draws Markdown links raw. Report `okf/plugins/emtk-ports/fret_calculator/REPORT.md`.
 
 * **kappa2_dist emtk app reworked by EMTK-1 in error (owner SWAP4B).** Spec-drawn form with the Qt labels, declared statistics table, legend marker, edits during a computation no longer dropped; model unchanged from the committed Qt tool; 28 passed. The code commit swept in another agent's staged deletion; repaired (54a665e47, deletion re-staged). Handed to SWAP4B for verification: `okf/plugins/emtk-ports/kappa2_dist/REPORT.md`.

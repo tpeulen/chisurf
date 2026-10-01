@@ -91,3 +91,22 @@ def test_focus_loss_releases_held_keys(qapp):
     _press(qapp, host, QtCore.Qt.Key_Up)
     qapp.sendEvent(host, QtGui.QFocusEvent(QtCore.QEvent.FocusOut))
     assert not app.keys.held
+
+
+def test_keys_reach_the_game_selected_in_the_launcher(qapp):
+    from chisurf.core.plugin import load_manifest
+    from chisurf.core.plugin.registry import build_plugin_widget
+
+    host = build_plugin_widget(load_manifest(GAMES / "manifest.json"))
+    hub = host.control
+    for name in ("Number Quest", "Tetris"):
+        assert hub.select(name) is not None, name           # every game opens (Tetris was 'pending')
+    child = hub.select("Number Quest")
+    start = child.estimate
+    for _ in range(2):
+        _press(qapp, host, QtCore.Qt.Key_Right)
+        _release(qapp, host, QtCore.Qt.Key_Right)
+    assert child.estimate == start + 2 and not child.held
+    _press(qapp, host, QtCore.Qt.Key_Right)
+    qapp.sendEvent(host, QtGui.QFocusEvent(QtCore.QEvent.FocusOut))
+    assert not child.held                                    # focus loss reaches the game
