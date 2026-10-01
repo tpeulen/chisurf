@@ -1,0 +1,22 @@
+[
+  {
+    "target": "add_files",
+    "title": "Queue files",
+    "text": "Add supported TTTR files, a folder, or datasets from MMFDB."
+  },
+  {
+    "target": "time_window",
+    "title": "Choose duration",
+    "text": "Set the duration in milliseconds; the preview boundaries update."
+  },
+  {
+    "target": "output",
+    "title": "Choose output",
+    "text": "Leave empty for an automatically chosen output folder."
+  },
+  {
+    "target": "process",
+    "title": "Process",
+    "text": "Write one BST file per input with inclusive photon boundaries."
+  }
+]

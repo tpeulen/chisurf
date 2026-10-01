@@ -1,0 +1,45 @@
+{
+  "controls": [
+    "1",
+    "browse",
+    "clear",
+    "database",
+    "droptttrfileshere",
+    "files",
+    "folder",
+    "help",
+    "outputfolder",
+    "previewfile",
+    "process",
+    "remove",
+    "selectafiletopreviewitsintensitytrace.",
+    "timewindow"
+  ],
+  "labels": [
+    "Drop TTTR files here",
+    "Output folder:",
+    "Preview file:",
+    "Select a file to preview its intensity trace.",
+    "Time window:"
+  ],
+  "buttons": [
+    "Browse…",
+    "ℹ️️ Help",
+    "➕ Files",
+    "➖ Remove",
+    "📁 Folder",
+    "🕐 Process",
+    "🗄️ Database",
+    "🗑️ Clear",
+    "🗑️️ Clear"
+  ],
+  "line_edits": 2,
+  "combos": 1,
+  "spin_boxes": 1,
+  "tables": 2,
+  "entrypoint": "HEAD:chisurf.plugins.tttr.tttr_time_windows.gui.tool:TTTRTimeWindowTool (+HEAD no overlays)",
+  "size": [
+    1200,
+    800
+  ]
+}

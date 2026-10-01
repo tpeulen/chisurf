@@ -1,0 +1,8 @@
+ M chisurf/plugins/tttr/tttr_time_windows/gui/tool.py
+ M chisurf/plugins/tttr/tttr_time_windows/manifest.json
+ M chisurf/plugins/tttr/tttr_time_windows/tests/test_construction_smoke.py
+?? chisurf/plugins/tttr/tttr_time_windows/gui/app.py
+?? chisurf/plugins/tttr/tttr_time_windows/gui/controller.py
+?? chisurf/plugins/tttr/tttr_time_windows/gui/guide.json
+?? chisurf/plugins/tttr/tttr_time_windows/gui/help.md
+?? chisurf/plugins/tttr/tttr_time_windows/tests/test_emtk_controller.py
