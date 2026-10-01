@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **IRF tool's background fitted in a seeded window** (found during the burst_irf_bg upgrade): `extract_irf_background`
+  fitted the background with the 80 %-of-longest-gap rule, which left a few one-count bins and reported 0.69 / 0.15 kHz where
+  the same photons give ~1.9 kHz on both detectors. The quantile seed burst_background already used moved to core
+  (`background.seed_tail_window`) and serves both; guard `test/plugins/burst/test_irf_background_window.py`.
+
 - **burst_gs emtk app at parity** (EMTK-1, upgrade row): Qt status line, messages, progress and export rules in the controller;
   the kinetics plot is a named bar per transition with the simulated truth (was generic labels and a drag line that fed
   nothing); the guide's nine targets drawn and its awaits live. [report](plugins/emtk-ports/burst_gs/REPORT.md).

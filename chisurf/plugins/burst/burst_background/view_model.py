@@ -41,22 +41,6 @@ def det_color(name: str) -> tuple[int, int, int]:
     return _FALLBACK[hash(key) % len(_FALLBACK)]
 
 
-#: Candidate window edges, as quantiles of each detector's own inter-photon
-#: times, tried in order until one leaves every detector something to fit.
-#:
-#: The first pair is the one that should normally win: ~q90 is past the
-#: burst-dominated short intervals, and q99.9 stops before the far tail thins
-#: out to bins holding one count, which carry no information and visibly pull
-#: the fitted line. But the window is **shared** by every detector, so it has to
-#: live in the *intersection* of their useful ranges -- and detectors whose
-#: count rates differ by more than about a factor of four have no such
-#: intersection at these quantiles. Rather than seed a window that is empty for
-#: one of them, the seed widens: a start that is slightly too early costs some
-#: bias in the fitted rate, while a window with no bins costs the whole
-#: estimate, silently.
-SEED_QUANTILES = ((0.90, 0.999), (0.75, 0.9999), (0.50, 1.0))
-
-
 class BackgroundViewModel:
     """State + logic for the Burst Background Estimation tool (no Qt)."""
 
@@ -259,39 +243,18 @@ class BackgroundViewModel:
             self.fit_to_ms = min(self.fit_to_ms, self.max_dt_ms)
             return
         # Start past the burst-dominated short intervals of *every* detector,
-        # end before the sparse far tail of *any* of them -- widening until the
-        # window is one that can actually be fitted.
-        for q_low, q_high in SEED_QUANTILES:
-            low = max(float(np.quantile(a, q_low)) for a in arrays)
-            high = (
-                min(float(np.max(a)) for a in arrays)
-                if q_high >= 1.0
-                else min(float(np.quantile(a, q_high)) for a in arrays)
-            )
-            if high > low and self._window_is_fittable(arrays, low, high):
-                self.fit_from_ms, self.fit_to_ms = low, high
-                return
+        # end before the sparse far tail of *any* of them (shared with the IRF tool).
+        from chisurf.core.fluorescence.burst.background import seed_tail_window
+
+        window = seed_tail_window(arrays, binsize_ms=self.binsize_ms, min_counts=self.min_counts,
+                                  min_tail_bins=self.MIN_TAIL_BINS)
+        if window is not None:
+            self.fit_from_ms, self.fit_to_ms = window
+            return
         # Nothing fits -- keep the legacy fraction rule rather than no window,
         # so the numbers are at worst the ones this tool used to produce.
         self.fit_from_ms = float(self.tail_fraction) * self.max_dt_ms
         self.fit_to_ms = self.max_dt_ms
-
-    def _window_is_fittable(self, arrays, low: float, high: float) -> bool:
-        """Does ``[low, high]`` hold enough populated bins for *every* stream?
-
-        Counting bins rather than events, because that is what the fit sees: a
-        thousand intervals in a single bin still constrain neither an amplitude
-        nor a rate.
-        """
-        binsize = max(float(self.binsize_ms), 1e-9)
-        edges = np.arange(low, high + binsize, binsize)
-        if edges.size < self.MIN_TAIL_BINS + 1:
-            return False
-        for a in arrays:
-            counts, _ = np.histogram(a, bins=edges)
-            if int((counts >= int(self.min_counts)).sum()) < self.MIN_TAIL_BINS:
-                return False
-        return True
 
     def fit_range(self) -> tuple[float, float] | None:
         """The fit window in ms, or ``None`` while the fraction rule still holds.

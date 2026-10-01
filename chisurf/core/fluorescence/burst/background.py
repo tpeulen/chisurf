@@ -131,6 +131,67 @@ def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts, ta
     return B * np.exp(lam * x0), max(lam, 0.0), valid, True
 
 
+#: Candidate tail-window edges, as quantiles of each detector's own inter-photon
+#: times, tried in order until one leaves every detector something to fit.
+#:
+#: The first pair is the one that should normally win: ~q90 is past the
+#: burst-dominated short intervals, and q99.9 stops before the far tail thins
+#: out to bins holding one count, which carry no information and visibly pull
+#: the fitted line. But the window is **shared** by every detector, so it has to
+#: live in the *intersection* of their useful ranges -- and detectors whose
+#: count rates differ by more than about a factor of four have no such
+#: intersection at these quantiles. Rather than seed a window that is empty for
+#: one of them, the seed widens: a start that is slightly too early costs some
+#: bias in the fitted rate, while a window with no bins costs the whole
+#: estimate, silently.
+SEED_QUANTILES = ((0.90, 0.999), (0.75, 0.9999), (0.50, 1.0))
+#: Fewer populated bins than this cannot constrain an amplitude and a rate.
+MIN_TAIL_BINS = 3
+
+
+def seed_tail_window(arrays, binsize_ms: float = 0.1, min_counts: int = 1,
+                     min_tail_bins: int = MIN_TAIL_BINS):
+    """A fit window ``(low, high)`` in ms that every inter-photon-time stream can be fitted in.
+
+    The seed is a pair of quantiles, not a fraction of the longest gap: that gap is one
+    outlier of one stream, and 80 % of it put windows where a detector had no bins at all
+    (a rate of 0.0 kHz) or one bin (a coincidence, not a fit). Returns ``None`` when no
+    quantile pair gives ``min_tail_bins`` populated bins in every stream.
+
+    Parameters
+    ----------
+    arrays : iterable of numpy.ndarray
+        Inter-photon times (ms), one array per detector stream.
+    binsize_ms : float
+        Histogram bin width the fit will use.
+    min_counts : int
+        A bin counts as populated from this many intervals.
+    min_tail_bins : int
+        Populated bins every stream needs inside the window.
+
+    Returns
+    -------
+    tuple of float or None
+    """
+    arrays = [np.asarray(a, dtype=float) for a in arrays]
+    arrays = [a for a in arrays if a.size > 1 and np.isfinite(a).all()]
+    if not arrays:
+        return None
+    binsize = max(float(binsize_ms), 1e-9)
+    for q_low, q_high in SEED_QUANTILES:
+        low = max(float(np.quantile(a, q_low)) for a in arrays)
+        high = (min(float(np.max(a)) for a in arrays) if q_high >= 1.0
+                else min(float(np.quantile(a, q_high)) for a in arrays))
+        if high <= low:
+            continue
+        edges = np.arange(low, high + binsize, binsize)
+        if edges.size < min_tail_bins + 1:
+            continue
+        if all(int((np.histogram(a, bins=edges)[0] >= int(min_counts)).sum()) >= min_tail_bins for a in arrays):
+            return low, high
+    return None
+
+
 def _histogram_interphoton(dt_ms, binsize_ms):
     """Return ``(centers, counts, max_dt)`` of the inter-photon-time histogram."""
     dt_ms = np.asarray(dt_ms, dtype=np.float64)
