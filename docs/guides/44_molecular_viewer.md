@@ -65,6 +65,11 @@ play — a trajectory, or a timeline you set with `mset`. The **Hierarchy**,
 them something to show; **View ▸ Panel Tabs** opens any of them by hand, and
 right-clicking a tab bar brings back one you have closed.
 
+Inside ChiSurf a line under the view counts the open objects and holds
+**Help** and **Guide**. Help summarises the window, the mouse and the command
+line; Guide walks through opening a structure, turning it and running a
+command, and waits at each step until you have done it.
+
 ## Loading and looking
 
 Open a structure with **File ▸ Open**, or from the command line inside the

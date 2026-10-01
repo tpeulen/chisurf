@@ -1,0 +1,30 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "chimol·0object(s)",
+    "guide",
+    "help"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the viewer: opening structures, the mouse, the command line and the object list."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through opening a structure, moving it, and running a command."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

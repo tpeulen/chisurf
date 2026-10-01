@@ -6097,3 +6097,22 @@ every default of the release, the thing the core avoids. *Not fixed here:* the e
 Qt wizard, and the fix is a decision about the wizard's meaning (report a missing user file as "defaults in use", not
 MISSING, and drop it from `settings_ok`). Both wizards need the same change in `boarding/utils.py` and
 `boarding/view_model.py`.
+
+## chimol: the toolkit-free host loads a PDB through a different route than the Qt window (found 2026-10-01)
+
+**Measured** with chimol's demo `148l.pdb`, same command `load <path>` on both hosts
+(`okf/plugins/emtk-ports/chimol/before_populated.png` Qt vs `after_populated_1200x800.png` emtk): both report 1363
+atoms and the same object list, but the Qt window draws the ligands/hetero groups as spheres and its sequence strip
+starts at residue 0 with an extra leading code and an "… and 1 more chains" line, while the emtk host (chimol's
+`ChimolApp`, the same one `python -m chimol` opens) draws no hetero spheres, numbers from 1 and shows the system-info
+panel on load. *Cause:* `chimol.hosts.qt.window.MolViewPluginWindow.load_structure_from_path` reads through
+`load_structure_payload(path, structure_factory=chisurf.core.structure.Structure)`; `chimol.hosts.base.ViewerHost.
+load_structure_from_path` passes no factory, so the built-in PDB parser and `viewer.apply_payload` build the scene
+(log: "No structure factory available ... falling back to the built-in PDB parser"). The info panel on load is
+deliberate in `ViewerHost` (unpinned, a click dismisses it). Reproduce (5 lines):
+`from chimol.io.structure import load_structure_payload; from chisurf.core.structure import Structure`;
+`p = Path(".../chimol/data/demos/148l.pdb")`; `load_structure_payload(p)` returns `(None, payload)`;
+`load_structure_payload(p, structure_factory=Structure)` returns `(Structure, None)`; render each.
+*Not fixed here:* the fix belongs in chimol (a structure-factory hook on `ViewerHost` that ChiSurf's plugin package
+injects, the way it injects the settings directory), not in the ChiSurf adapter, and chimol is a separate repository.
+Which rendering is right (hetero spheres; residue 0) is chimol's call.
