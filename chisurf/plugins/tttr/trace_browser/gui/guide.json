@@ -53,7 +53,7 @@
       "title": "Export what you selected",
       "text": "<b>Export</b> copies the selected files into a folder you choose. <b>CSV</b> writes each selected trace (time and one column per series) at the current bin window. <b>DOCX</b> writes a Word report into the opened folder and needs the python-docx package.",
       "target": {"name": "exported"},
-      "await": {"hint": "Press <b>Export</b> or <b>CSV</b> and choose a folder that is not the data folder."}
+      "await": {"hint": "Press <b>Export</b> or <b>CSV</b> and choose a folder."}
     },
     {
       "title": "Delete is a move",

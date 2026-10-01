@@ -439,45 +439,42 @@ def _grab_21_burst_mle():
 
 # ---------------------------------------------------------------- guide 22
 def _grab_22_trace_browser():
-    """Trace Browser on the ten BH SPC-132 smFRET files (copied: it writes a meta file)."""
-    from chisurf.plugins.tttr.trace_browser.gui.tool import TraceBrowserTool
+    """Trace Browser (emtk window) on the ten BH SPC-132 smFRET files, copied: it writes a meta file."""
+    import time
+
+    from emtk.export import save_png
+
+    from chisurf.plugins.tttr.trace_browser.gui.app import TraceBrowserApp
 
     work, _folder = _sm_dna_copy()
-    tool = TraceBrowserTool()
-    tool.resize(1400, 860)
-    tool.show()
-    _settle()
-    ws = tool._workspace
-    # Page 0: the detector definition (green 0/8, red 1/9, SPC-130), then Continue.
-    ws.detector_page.load_data_into_tables(
-        {"detectors": dict(_BH_DETECTORS), "windows": {}, "file_type": "SPC-130"}
+    app = TraceBrowserApp()
+    app.model.accept_setup(
+        {
+            "detectors": dict(_BH_DETECTORS),
+            "windows": {},
+            "tttr_reading": {"file_type": "SPC-130"},
+        }
     )
-    try:
-        ws.detector_page.file_type_combo.setCurrentText("SPC-130")
-    except Exception as exc:
-        print("file type combo:", exc)
-    ws._on_continue()
-    print("filetype:", ws.detector_page.filetype, "chs:", ws.selected_channels,
-          "exts:", sorted(ws._allowed_exts_for_setup()))
-    ws._open_folder(work)
-    _settle()
-    print("rows (as shipped):", ws.table.rowCount())
-    if ws.table.rowCount() == 0:
-        # Known defect: _is_clsm_compatible() calls every TTTR an image (an
-        # empty (1, 0, 0) CLSMImage has an ``intensity``), so point
-        # measurements are filtered out. Seed its cache with the right answer
-        # to show what the list does once that probe is fixed.
-        for p in work.glob("*.spc"):
-            ws._is_image_cache[p] = False
-        ws._scan_and_fill()
-        _settle()
-        print("rows (probe corrected):", ws.table.rowCount())
-    ws.table.selectRow(0)
-    _settle(40)
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(tool, "22")
-    _grab(tool, "22_trace_browser.png")
-    return tool
+    app.model.precompute_after_scan = False
+    app.model.request("open_folder", work)
+    from emtk.testing import RecordingPainter
+
+    def frames(n=1):
+        for _ in range(n):
+            app.draw(RecordingPainter(), 0, 0, 1200, 800)
+
+    deadline = time.time() + 120
+    frames()
+    while time.time() < deadline and (
+        app.job.busy or app._queue or app.load_job.busy or app.model.trace is None
+    ):
+        time.sleep(0.05)
+        frames()
+    frames(3)
+    print("rows:", len(app.model.rows), "selected:", app.model.current_file)
+    save_png(app, str(FIG / "22_trace_browser.png"), size=(1200, 800))
+    print("wrote 22_trace_browser.png")
+    app.close()
 
 
 # ---------------------------------------------------------------- guide 23

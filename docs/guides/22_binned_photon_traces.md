@@ -50,18 +50,34 @@ directly from TTTR data.
 
 ### Trace Browser
 
-**Spectroscopy ▸ Single-Molecule ▸ Trace Browser** pages through a folder of
-point measurements. The first page is the detector definition (which channels
-make which trace, and the file type, which also decides the listed
-extensions); *Continue* opens the browser: the file table (**File**,
-**Rating** 0–3 stars, **Size**), a **Filter** on the rating, the **bin** width
-(ms, fractional values allowed), fixed **Ymin/Ymax**, one trace per detector
-plus their sum with a count histogram beside each, and a free-text
-**Annotation** per file (ratings and annotations are stored in a metadata file
-in the folder). The toolbar opens a folder, clears the list or the trace
-caches, exports the selected files, CSV traces or a DOCX report, and hands the
-selected trace to *Intensity Trace* (**HMM**), *TTTR Time Window* (**TW**) or
-ndXplorer (**NDX**); **Subfolders** includes nested folders.
+**Spectroscopy ▸ Single-Molecule ▸ Trace Browser** opens an emtk window that
+pages through a folder of point measurements. The first page is the detector
+definition (which channels make which trace, and the file type, which also
+decides the listed extensions); **Continue** opens the browser (a setup that
+was used before opens it directly; **← Select setup** goes back). The left
+window holds the controls and the file table (**File**, **Rating** 0–3,
+**Size (MB)**, **Notes**; double click a rating or a note to edit it), the
+right window the trace of the selected file: one line per detector plus their
+sum, the count histogram beside it, and the **Annotation** box (the same text
+as the Notes cell; ratings and notes are stored in a metadata file in the
+folder). **Open** (or a dropped folder) chooses the folder, **Include
+subfolders**, **Filter** (rating), **Bin window [ms]** (fractional values
+allowed) and **Y min / Y max** shape the list and the plot; **Precompute**
+caches the traces of all listed files in the background, **Clear** and
+**Clear caches** reset the list or the caches.
+
+The buttons under the folder row act on the selected files (click a row, or
+**Select all**):
+
+| Button | What it does |
+|---|---|
+| **Export** | copies the selected files, unchanged, into a folder you choose |
+| **CSV** | writes each selected trace (time and one column per series, at the current bin window) into a folder you choose |
+| **DOCX** | writes a Word report (name, folder, rating, annotation, trace picture) into the opened folder; needs the optional `python-docx` package and is greyed without it |
+| **Delete** | after a confirmation, moves the selected files and the files that share their name to the `.trash` folder of the opened folder (nothing is deleted for good); the Delete key in the table does the same |
+| **HMM**, **TW**, **NDX** | open the first selected file in *Intensity Trace*, *TTTR Time Window* or ndXplorer; they need the ChiSurf main window and are greyed when the Trace Browser runs on its own (**NDX** first writes the burst table next to the data) |
+
+**Help** explains the window and **Guide** walks through the first steps.
 
 ```{figure} figures/22_trace_browser.png
 :name: fig-22-trace-browser
@@ -70,21 +86,18 @@ ndXplorer (**NDX**); **Subfolders** includes nested folders.
 Trace Browser on the ten BH SPC-132 smFRET files of the burst-selection test
 folder (green 0/8, red 1/9, SPC-130), `m000.spc` selected, 10 ms bins (the
 default). The coincident green/red spikes are FRET bursts; the right column is
-the count histogram of each trace. Taken with the image probe corrected — see
-*Known defects*.
+the count histogram of each trace. HMM, TW and NDX are greyed because this
+window runs without the ChiSurf main window; DOCX because `python-docx` is not
+installed.
 ```
 
-### Known defects
+### Known limits
 
-- **The list stays empty for point measurements.** `_is_clsm_compatible`
-  (`chisurf/plugins/tttr/trace_browser/__init__.py`, the image probe) counts a
-  file as an image when `tttrlib.CLSMImage` exposes an `intensity`; for these
-  SPC files it builds an empty `(1, 0, 0)` image, so every file is filtered out
-  as "image TTTR" and the table shows 0 rows. The figure above seeds the probe's
-  cache with the right answer.
-- Top row overlaps: the *Include subfolders* checkbox is clipped under
-  *← Select setup* and the folder path runs into *Filter:*; the per-trace y
-  tick labels (`1000` over `0`) collide between stacked plots.
+- The CSV written by the plugin's RPC export labels its first column
+  `time_ms`, but the values are seconds (the last row of a 62 s measurement
+  reads 62.32).
+- The list shows point measurements only: files that are scan images are
+  skipped.
 
 ## Result
 
