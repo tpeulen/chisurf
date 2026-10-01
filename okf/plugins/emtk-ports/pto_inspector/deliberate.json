@@ -1,0 +1,4 @@
+{
+  "?": "The Qt '?' help button; the emtk toolbar has a labelled Help button (help_emtk.md) next to Guide.",
+  "0rows×0columns": "The row-count line the Qt data table shows under an empty payload; the emtk Data window says 'No container open.' or 'The selected artifact is not a table.' instead, and the object table has no row-count line."
+}

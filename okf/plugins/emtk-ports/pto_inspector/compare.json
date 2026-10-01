@@ -1,14 +1,13 @@
 {
   "plugin": "pto_inspector",
-  "explained": {},
+  "explained": {
+    "0rows×0columns": "The row-count line the Qt data table shows under an empty payload; the emtk Data window says 'No container open.' or 'The selected artifact is not a table.' instead, and the object table has no row-count line.",
+    "?": "The Qt '?' help button; the emtk toolbar has a labelled Help button (help_emtk.md) next to Guide."
+  },
   "stale_explanations": [],
-  "lost": [
-    "0rows×0columns",
-    "?",
-    "operation"
-  ],
+  "lost": [],
   "gained": [
-    "containerholdsonemeasurementtheinstrumentfile",
+    "computedfromitbesideit.",
     "curve",
     "data",
     "database",
@@ -16,19 +15,17 @@
     "filter",
     "fitgraph",
     "help",
+    "holdsonemeasurementtheinstrumentfileverbatim,andeveryresult",
     "lineage",
-    "nocontaineropen.dropa.ptohere,oruse📂browse.a",
+    "nocontaineropen.",
+    "nocontaineropen.dropa.ptoonthiswindow,orpressopen.acontainer",
     "opena.ptocontainer.",
     "openaphotoncontainer.",
-    "operati.",
     "parameters",
     "parents",
     "provenance",
     "selectanartifact.",
-    "text",
-    "theselectedartifactisnotacurve.",
-    "theselectedartifactisnotatable.",
-    "verbatim,andeveryresultcomputedfromitbesideit."
+    "text"
   ],
   "untooltipped": [],
   "qt_free": {
@@ -36,5 +33,5 @@
     "output": "QT-FREE OK\n"
   },
   "before_controls": 15,
-  "after_controls": 33
+  "after_controls": 32
 }
