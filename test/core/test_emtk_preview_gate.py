@@ -27,8 +27,9 @@ def _manifest(plugin_id: str, emtk: str | None = "pkg.app:make", gui: str | None
 def test_the_list_is_read_and_ids_are_strings():
     ids = emtk_readiness.preview_ids()
     assert ids and all(isinstance(i, str) for i in ids)
-    assert emtk_readiness.is_preview("model_manager")
+    assert emtk_readiness.is_preview("plot_settings")
     assert not emtk_readiness.is_preview("fcs_channel_preset")
+    assert not emtk_readiness.is_preview("model_manager")      # accepted: swapped
 
 
 def test_a_missing_or_broken_file_means_nothing_is_a_preview(tmp_path, monkeypatch):
@@ -53,7 +54,7 @@ def _selector():
 
 def test_a_preview_plugin_opens_qt_in_auto_and_emtk_when_asked():
     select = _selector()
-    manifest = _manifest("model_manager")
+    manifest = _manifest("plot_settings")
     assert select(manifest, "auto") == ("qt", "pkg.tool:Tool")
     assert select(manifest, "emtk") == ("emtk", "pkg.app:make")
     assert select(manifest, "qt") == ("qt", "pkg.tool:Tool")
@@ -62,11 +63,12 @@ def test_a_preview_plugin_opens_qt_in_auto_and_emtk_when_asked():
 def test_an_accepted_plugin_opens_emtk_in_auto():
     select = _selector()
     assert select(_manifest("fcs_channel_preset"), "auto") == ("emtk", "pkg.app:make")
+    assert select(_manifest("model_manager"), "auto") == ("emtk", "pkg.app:make")
 
 
 def test_a_preview_plugin_without_a_qt_tool_still_opens_emtk():
     select = _selector()
-    assert select(_manifest("model_manager", gui=None), "auto") == ("emtk", "pkg.app:make")
+    assert select(_manifest("plot_settings", gui=None), "auto") == ("emtk", "pkg.app:make")
 
 
 # -- guards ---------------------------------------------------------------------------------

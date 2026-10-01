@@ -5,7 +5,6 @@
     "ai_settings",
     "plot_settings",
     "user_editor",
-    "model_manager",
     "plugin_manager",
     "setup_channel_definition",
     "tttr_lut_tools",

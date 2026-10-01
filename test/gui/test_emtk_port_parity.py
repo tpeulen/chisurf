@@ -115,7 +115,7 @@ def test_entry_overrides_the_manifest_so_a_partial_port_can_be_checked(tmp_path)
 
 def test_a_missing_entry_is_a_clear_error():
     with pytest.raises(ValueError, match="--entry"):
-        epp.build_emtk_app("trace_browser")      # no entrypoints.emtk until its last card
+        epp.build_emtk_app("acq")      # a plugin with no entrypoints.emtk (not planned for a port)
 
 
 def test_a_numeric_input_is_one_control_with_its_tooltip():
