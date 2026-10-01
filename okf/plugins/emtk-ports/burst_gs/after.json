@@ -1,0 +1,263 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0,8",
+    "0.000",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1,9",
+    "10",
+    "1000.000",
+    "2",
+    "200",
+    "2000",
+    "40",
+    "50.000",
+    "acceptorchannels",
+    "addatleastone.burbursttable,orticksimulate.",
+    "addburstfolder",
+    "auto",
+    "clearburstfiles",
+    "cross-checkh2mm",
+    "datainputchannels",
+    "decodestatetrajectories",
+    "donorchannels",
+    "drop.burbursttables(orticksimulate)andpressfit.",
+    "exchangefasterthananybin.",
+    "exportcsv",
+    "fitkinetics",
+    "fitsummaryconsole",
+    "fittedrates",
+    "fixefficiencies",
+    "fretstates",
+    "guide",
+    "help",
+    "initialrate(s⁻¹)",
+    "kineticmodelsettings",
+    "kineticscontrols",
+    "kineticsdynamics",
+    "loaded.burfiles0",
+    "macro-timetick(ns)",
+    "maximumbursts",
+    "maxiterations",
+    "minphotons/burst",
+    "mmfdbdatasets",
+    "nelder-mead",
+    "numberofstates",
+    "openburfiles",
+    "optimizer",
+    "rate(1/s)",
+    "ratematrixreport",
+    "scantransitiontime",
+    "simulatedphotonrate(khz)",
+    "simulatedphotons/burst",
+    "stopfit",
+    "thisfitskineticratesdirectlytothearrivaltimeandcolourofeveryphoton,soitresolves",
+    "transition",
+    "transitionscanpoints",
+    "tttrfiletype",
+    "tttrfolder",
+    "usesimulationmode",
+    "vdatainputchannels",
+    "vkineticmodelsettings"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Open BUR files",
+      "id": "Open BUR files",
+      "tooltip": "Choose burst tables containing photon ranges to fit."
+    },
+    {
+      "kind": "button",
+      "label": "Add burst folder",
+      "id": "Add burst folder",
+      "tooltip": "Find BUR tables recursively in an analysis folder."
+    },
+    {
+      "kind": "button",
+      "label": "MMFDB datasets",
+      "id": "MMFDB datasets",
+      "tooltip": "Select a burst analysis dataset from MMFDB."
+    },
+    {
+      "kind": "button",
+      "label": "Clear burst files",
+      "id": "Clear burst files",
+      "tooltip": "Remove the input tables and previous fitted result."
+    },
+    {
+      "kind": "button",
+      "label": "Stop fit",
+      "id": "Stop fit",
+      "tooltip": "Cancel the optimizer at its next progress checkpoint."
+    },
+    {
+      "kind": "button",
+      "label": "▶ Fit Kinetics",
+      "id": "▶ Fit Kinetics",
+      "tooltip": "Fit the photon-by-photon kinetic model (Gopich–Szabo). Load .bur files and set the channels below first."
+    },
+    {
+      "kind": "button",
+      "label": "💾 Export CSV",
+      "id": "💾 Export CSV",
+      "tooltip": "Run a fit first; the results are then exported as CSV."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Start a step-by-step guided tour of this tool."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "Open the help window with reference documentation."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Use Simulation Mode",
+      "id": "Use Simulation Mode",
+      "tooltip": "Generate simulated burst trains instead of reading .bur files, to test the fitting."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Data Input & Channels",
+      "id": "Data Input & Channels",
+      "tooltip": "Expand or collapse data input & channels controls."
+    },
+    {
+      "kind": "input_text",
+      "label": "Donor Channels",
+      "id": "Donor Channels",
+      "tooltip": "Comma-separated routing channels assigned to the donor (e.g. 0, 8)."
+    },
+    {
+      "kind": "input_text",
+      "label": "Acceptor Channels",
+      "id": "Acceptor Channels",
+      "tooltip": "Comma-separated routing channels assigned to the acceptor (e.g. 1, 9)."
+    },
+    {
+      "kind": "input_int",
+      "label": "Min Photons/Burst",
+      "id": "Min Photons/Burst",
+      "tooltip": "Bursts with fewer photons than this are excluded from the fit."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Kinetic Model Settings",
+      "id": "Kinetic Model Settings",
+      "tooltip": "Expand or collapse kinetic model settings controls."
+    },
+    {
+      "kind": "slider_int",
+      "label": "Number of States",
+      "id": "Number of States",
+      "tooltip": "Number of FRET states in the kinetic model (2–4)."
+    },
+    {
+      "kind": "input_float",
+      "label": "Initial Rate (s⁻¹)",
+      "id": "Initial Rate (s⁻¹)",
+      "tooltip": "Starting guess for all transition rates in s⁻¹."
+    },
+    {
+      "kind": "input_int",
+      "label": "Max Iterations",
+      "id": "Max Iterations",
+      "tooltip": "Maximum number of optimizer iterations before the fit gives up."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fix Efficiencies",
+      "id": "Fix Efficiencies",
+      "tooltip": "Keep the state FRET efficiencies fixed while fitting the rates."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Scan Transition Time",
+      "id": "Scan Transition Time",
+      "tooltip": "Scan a range of transition times and report the likelihood profile."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Decode State Trajectories",
+      "id": "Decode State Trajectories",
+      "tooltip": "Decode the most likely state sequence per photon and show the transition profile."
+    },
+    {
+      "kind": "input_text",
+      "label": "data_dir",
+      "id": "##data_dir",
+      "tooltip": "Resolve raw measurement filenames from the BUR table against this folder."
+    },
+    {
+      "kind": "input_text",
+      "label": "file_type",
+      "id": "##file_type",
+      "tooltip": "Use auto to detect the container, or specify SPC-130, PTU, HT3 or HDF."
+    },
+    {
+      "kind": "input_text",
+      "label": "method",
+      "id": "##method",
+      "tooltip": "Choose nelder-mead or l-bfgs-b."
+    },
+    {
+      "kind": "input_float",
+      "label": "Macro-time tick (ns)",
+      "id": "Macro-time tick (ns)",
+      "tooltip": "Zero reads the header resolution; an explicit tick rescales all fitted rates."
+    },
+    {
+      "kind": "input_float",
+      "label": "Simulated photon rate (kHz)",
+      "id": "Simulated photon rate (kHz)",
+      "tooltip": "Detected photons per millisecond within each simulated burst."
+    },
+    {
+      "kind": "input_int",
+      "label": "Maximum bursts",
+      "id": "Maximum bursts",
+      "tooltip": "Limit the input for a quick fit; zero uses all bursts."
+    },
+    {
+      "kind": "input_int",
+      "label": "Simulated photons / burst",
+      "id": "Simulated photons / burst",
+      "tooltip": "Number of photons in every simulated burst."
+    },
+    {
+      "kind": "input_int",
+      "label": "Transition scan points",
+      "id": "Transition scan points",
+      "tooltip": "Number of finite-transition-time hypotheses in the likelihood scan."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Cross-check H2MM",
+      "id": "Cross-check H2MM",
+      "tooltip": "Compare the photon-by-photon fit with the discrete-time H2MM method."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

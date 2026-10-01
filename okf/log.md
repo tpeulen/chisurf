@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **burst_gs emtk app at parity** (EMTK-1, upgrade row): Qt status line, messages, progress and export rules in the controller;
+  the kinetics plot is a named bar per transition with the simulated truth (was generic labels and a drag line that fed
+  nothing); the guide's nine targets drawn and its awaits live. [report](plugins/emtk-ports/burst_gs/REPORT.md).
+
 - **burst_fusion emtk app at parity** (EMTK-1, upgrade row): per-action sized dialogs, validated drop, result once, frames on
   demand; the fragments histogram shows every bar (a first COND_ONCE limits request on an existing plot is ignored by emtk);
   the guide finds its spec-field targets and waits. [report](plugins/emtk-ports/burst_fusion/REPORT.md).
