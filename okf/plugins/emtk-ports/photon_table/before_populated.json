@@ -1,0 +1,90 @@
+{
+ "n_photons": 183657,
+ "channels": [
+  0,
+  1,
+  8,
+  9
+ ],
+ "res": 1.35e-08,
+ "acq_s": 62.328804237,
+ "n_micro": 4096,
+ "status": "183,657 photons from /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp.LaQAi5dJ8M/BH_SPC132.spc",
+ "page0": [
+  {
+   "photon": 0,
+   "idx": 0,
+   "channel": 9,
+   "micro": 1440,
+   "macro": 0.768366
+  },
+  {
+   "photon": 1,
+   "idx": 1,
+   "channel": 8,
+   "micro": 864,
+   "macro": 1.2511124999999998
+  },
+  {
+   "photon": 2,
+   "idx": 2,
+   "channel": 8,
+   "micro": 820,
+   "macro": 4.6049445
+  },
+  {
+   "photon": 3,
+   "idx": 3,
+   "channel": 0,
+   "micro": 801,
+   "macro": 5.010255
+  },
+  {
+   "photon": 4,
+   "idx": 4,
+   "channel": 0,
+   "micro": 799,
+   "macro": 5.475708
+  }
+ ],
+ "filter_channel": 9,
+ "filtered_count": 24652,
+ "page_filtered": [
+  {
+   "photon": 0,
+   "idx": 0,
+   "channel": 9,
+   "micro": 1440,
+   "macro": 0.768366
+  },
+  {
+   "photon": 1,
+   "idx": 16,
+   "channel": 9,
+   "micro": 1079,
+   "macro": 12.695076
+  },
+  {
+   "photon": 2,
+   "idx": 19,
+   "channel": 9,
+   "micro": 877,
+   "macro": 14.591232000000002
+  },
+  {
+   "photon": 3,
+   "idx": 23,
+   "channel": 9,
+   "micro": 3541,
+   "macro": 16.573572000000002
+  },
+  {
+   "photon": 4,
+   "idx": 27,
+   "channel": 9,
+   "micro": 1071,
+   "macro": 18.9266625
+  }
+ ],
+ "error_status": "Could not open /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp.LaQAi5dJ8M/missing.spc: TTTR: unsupported container type for '/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp.LaQAi5dJ8M/missing.spc'. The file's format could not be determined, so nothing was read. Pass the container type explicitly -- TTTR(path, type) -- if the format is known. These formats claim this extension but cannot be recognised from content, so one of them has to be named: SPC-600_256 (3), SPC-600_4096 (4)."
+}

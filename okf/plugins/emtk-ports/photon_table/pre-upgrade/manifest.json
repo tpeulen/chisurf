@@ -1,0 +1,39 @@
+{
+  "id": "photon_table",
+  "version": "1.0.0",
+  "display_name": "Tools:Inspector:Photon Table",
+  "description": "Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "Inspector"
+  ],
+  "icon": "\ud83d\udd06",
+  "state_namespace": "photon_table",
+  "state_schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "input_file": {
+        "type": "string"
+      },
+      "rows_per_page": {
+        "type": "integer"
+      },
+      "channel_filter": {
+        "type": "integer"
+      }
+    }
+  },
+  "statefulness": true,
+  "entrypoints": {
+    "gui": "chisurf.plugins.tttr.photon_table.gui.tool:PhotonTableTool",
+    "emtk": "chisurf.plugins.tttr.photon_table.gui.controller:create_app"
+  },
+  "rpc_methods": [],
+  "events": [],
+  "optional_requires": {},
+  "menu_hidden": false
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "target": "open",
+    "title": "Open TTTR",
+    "text": "Open or drop a TTTR file to inspect photons."
+  },
+  {
+    "target": "filters",
+    "title": "Navigate and filter",
+    "text": "Set the first photon, page size, or routing channel."
+  },
+  {
+    "target": "copy",
+    "title": "Copy rows",
+    "text": "Copy the current page as tab-separated text."
+  }
+]
