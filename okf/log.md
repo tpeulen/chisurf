@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+* **minesweeper emtk view at parity with the Qt game (swap-candidate, session EMTK-1).** Same board, keys and scripted game as the Qt view driven with a stub host. Fixed: after a loss the emtk app overwrote the result with "Start a new game…" and played the effect on further presses; it now ignores them like Qt. Sound greyed (emtk audio known issue). 33 passed. Report: `okf/plugins/emtk-ports/minesweeper/REPORT.md`.
+
 * **tetris emtk view at parity with the Qt game (swap-candidate, session EMTK-1).** Rules moved into `model.TetrisModel` equal the committed `TetrisGame` (action names, view helpers moved); bindings compared with the Qt game in a subprocess. Sound switch now takes a backend (`make_app(audio=...)`) and stays greyed while emtk has no audio. 30 passed. Report: `okf/plugins/emtk-ports/tetris/REPORT.md`.
 
 * **pong emtk view at parity with the Qt game (swap-candidate, session EMTK-1).** The stream's rules move into `model.PongModel` equals the committed `PongGame` method for method (action names, host guard); bindings for both players compared with the Qt game in a subprocess. Sound switch greyed (emtk has no audio, known issue). 35 passed. Report: `okf/plugins/emtk-ports/pong/REPORT.md`.
