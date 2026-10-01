@@ -1,28 +1,61 @@
 {
-  "_comment": "Guided tour for Plot Settings. Sections are CollapsibleBox panels; the live preview at the bottom re-renders on every change, so each step says what to watch for there.",
+  "_comment": "Guided tour for Plot Settings (emtk app). 'name' is the control: a field's attr, a button's action, '<section>.fold' for a section header, 'preview_plot' for the sample plot. Steps with an 'await' wait for the user to use the control.",
   "steps": [
     {
-      "title": "Change it here, watch it below",
-      "text": "Everything in this window applies to a <b>live preview</b> at the bottom, before it applies to your working panels. If a setting does something you did not want, you see it on the preview first.<br/><br/>Settings are grouped into folding sections: backend, colours, appearance, and a pyqtgraph-only advanced section.",
-      "target": {}
-    },
-    {
-      "title": "The backend is the how, not the what",
-      "text": "Switching the rendering backend re-draws every open plot with a different engine — the curves, ranges and selections stay as they are. Try a switch and watch the preview: the <b>data</b> does not change, the <b>renderer</b> does.",
-      "await": {
-        "hint": "Pick a different backend and watch the preview re-render."
+      "title": "Change it on top, watch it below",
+      "text": "Every edit in the sections above shows at once on the <b>preview</b> below: three <b>sample</b> curves (data, model, instrument response) drawn with the colours, line width, grid and legend you choose. They preview the styling and are not your data.<br><br>Settings are grouped into folding sections: backend, colours, appearance, node graphs and a pyqtgraph-only section.",
+      "target": {
+        "name": "preview_plot"
       }
     },
     {
-      "title": "Colours reach new curves first",
-      "text": "The palette applies to curves drawn <b>after</b> the change; a fit already on screen keeps its colours until it is re-plotted. Appearance settings — fonts, grid, background — apply immediately.",
-      "target": {}
+      "title": "The backend is the how, not the what",
+      "text": "The rendering backend decides which engine draws a plot; the curves, ranges and selections stay as they are. A changed backend reaches plots that are created afterwards.",
+      "target": {
+        "name": "backend"
+      },
+      "await": {
+        "hint": "Open the list and pick a backend."
+      }
+    },
+    {
+      "title": "Pick a colour and watch the preview",
+      "text": "Click the <b>swatch</b> beside <b>Data curve</b> to open a colour picker, or type a hex value such as <code>#22cc44</code> and press Enter. The preview curve changes at once, and the status line says the edit is not applied yet.",
+      "target": {
+        "name": "color_data"
+      },
+      "await": {
+        "hint": "Change the data curve colour."
+      }
+    },
+    {
+      "title": "Apply uses it, Save keeps it",
+      "text": "<b>Apply</b> writes the edits into the active settings: curves drawn from now on take the new colours, a fit already on screen keeps its colours until it is re-plotted. <b>Save</b> also writes them to the settings file for the next start; <b>Reset</b> reloads everything from the active settings and drops edits you did not apply.",
+      "target": {
+        "name": "apply"
+      },
+      "await": {
+        "hint": "Press <b>Apply</b>."
+      }
+    },
+    {
+      "title": "Appearance: line width, grid, legend",
+      "text": "Line width, font size, grid opacity and which furniture the plots show. The grid and legend options change the preview too.",
+      "target": {
+        "name": "Appearance.fold"
+      },
+      "await": {
+        "hint": "Open the <b>Appearance</b> section."
+      }
     },
     {
       "title": "The folded section is engine-specific",
-      "text": "The advanced section holds the options that only exist on the pyqtgraph engine: anti-aliasing, downsampling, legend and SI-prefix behaviour. They are inert under a native backend — which is why they live in their own folded section rather than the main page.",
+      "text": "The advanced section holds the options that only exist on the pyqtgraph engine: anti-aliasing, panning and the background and foreground colours. They are inert under the native emtk backend, which is why they live in their own folded section. The preview follows the background.",
+      "target": {
+        "name": "Advanced: pyqtgraph Configuration.fold"
+      },
       "await": {
-        "hint": "Open the advanced section and toggle an option."
+        "hint": "Open the <b>Advanced: pyqtgraph Configuration</b> section."
       }
     }
   ]

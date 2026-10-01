@@ -207,6 +207,7 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         self._build_backend_section()
         self._build_colors_section()
         self._build_appearance_section()
+        self._build_node_graph_section()
         self._build_pyqtgraph_section()
         self._build_preview_section()
 
@@ -387,6 +388,67 @@ class PlotSettingsWidget(QtWidgets.QWidget):
 
         self._scroll_layout.addWidget(box)
 
+    def _build_node_graph_section(self):
+        """Controls for the node graphs: Global View and its siblings.
+
+        The grid here is a background under a diagram, not the plot grid of
+        the Appearance section -- hence its own opacity, and a width that
+        goes below a pixel, which is what keeps it a hairline on a HiDPI
+        screen.
+        """
+        box = CollapsibleBox("Node Graphs (Global View)", expanded=False)
+
+        self.ng_show_grid = QtWidgets.QCheckBox()
+        self.ng_show_grid.toggled.connect(self._on_changed)
+        box.add_widget(_check_row("Show grid", self.ng_show_grid))
+
+        self.ng_line_width = QtWidgets.QDoubleSpinBox()
+        self.ng_line_width.setRange(0.0, 4.0)
+        self.ng_line_width.setSingleStep(0.25)
+        self.ng_line_width.setDecimals(2)
+        self.ng_line_width.setSuffix(" px")
+        self.ng_line_width.setToolTip(
+            "Grid line thickness. Below one pixel draws a hairline; on a "
+            "HiDPI screen a full pixel doubles to two device pixels and the "
+            "grid starts to out-weigh the edges drawn on top of it."
+        )
+        self.ng_line_width.valueChanged.connect(self._on_changed)
+        box.add_widget(_spin_row("Grid line width", self.ng_line_width))
+
+        self.ng_grid_opacity = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.ng_grid_opacity.setRange(0, 100)
+        self.ng_grid_opacity.setToolTip("Grid line opacity, per cent.")
+        self.ng_grid_opacity.valueChanged.connect(self._on_changed)
+        box.add_widget(_slider_row("Grid opacity", self.ng_grid_opacity))
+
+        self.ng_grid_spacing = QtWidgets.QSpinBox()
+        self.ng_grid_spacing.setRange(4, 96)
+        self.ng_grid_spacing.setSuffix(" px")
+        self.ng_grid_spacing.valueChanged.connect(self._on_changed)
+        box.add_widget(_spin_row("Grid spacing", self.ng_grid_spacing))
+
+        self.ng_node_size = QtWidgets.QDoubleSpinBox()
+        self.ng_node_size.setRange(6.0, 30.0)
+        self.ng_node_size.setSingleStep(0.5)
+        self.ng_node_size.setSuffix(" px")
+        self.ng_node_size.setToolTip(
+            "The node radius a newly opened Global View starts its own "
+            "node-size control at. A window that is already open keeps the "
+            "value its slider holds."
+        )
+        self.ng_node_size.valueChanged.connect(self._on_changed)
+        box.add_widget(_spin_row("Node size (Global View)", self.ng_node_size))
+
+        hint = QtWidgets.QLabel(
+            "Grid and spacing apply to Global View, the light path, the "
+            "provenance inspector and the node editor; Apply also catches up "
+            "the windows that are open."
+        )
+        hint.setStyleSheet("color: gray; font-size: 10px;")
+        hint.setWordWrap(True)
+        box.add_widget(hint)
+        self._scroll_layout.addWidget(box)
+
     def _build_pyqtgraph_section(self):
         box = CollapsibleBox("Advanced: pyqtgraph Configuration", expanded=False)
 
@@ -493,6 +555,12 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         self.show_legend.setChecked(bool(ps.get("show_legend", False)))
         self.hide_title.setChecked(bool(ps.get("hideTitle", True)))
         self.label_axis.setChecked(bool(ps.get("label_axis", False)))
+        ng = ps.get("node_graph", {})
+        self.ng_show_grid.setChecked(bool(ng.get("show_grid", True)))
+        self.ng_line_width.setValue(float(ng.get("grid_line_width", 0.5)))
+        self.ng_grid_opacity.setValue(int(round(float(ng.get("grid_opacity", 0.06)) * 100)))
+        self.ng_grid_spacing.setValue(int(float(ng.get("grid_spacing", 24.0))))
+        self.ng_node_size.setValue(float(ng.get("node_size", 13.0)))
         pg = ps.get("pyqtgraph_config", {})
         self.pg_antialias.setChecked(bool(pg.get("antialias", False)))
         self.pg_left_button_pan.setChecked(bool(pg.get("leftButtonPan", True)))
@@ -524,6 +592,13 @@ class PlotSettingsWidget(QtWidgets.QWidget):
             "show_legend": self.show_legend.isChecked(),
             "hideTitle": self.hide_title.isChecked(),
             "label_axis": self.label_axis.isChecked(),
+            "node_graph": {
+                "show_grid": self.ng_show_grid.isChecked(),
+                "grid_line_width": self.ng_line_width.value(),
+                "grid_opacity": self.ng_grid_opacity.value() / 100.0,
+                "grid_spacing": float(self.ng_grid_spacing.value()),
+                "node_size": self.ng_node_size.value(),
+            },
             "pyqtgraph_config": {
                 "antialias": self.pg_antialias.isChecked(),
                 "background": self.pg_background.currentText(),
@@ -543,6 +618,14 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         existing.update(settings)
         gui["plot"] = existing
         self._update_preview()
+        # The node graphs read their style when they are built; an open Global
+        # View would keep the old grid until reopened without this.
+        try:
+            from chisurf.emtk.node_editor.style_settings import refresh_open_graphs
+
+            refresh_open_graphs()
+        except Exception:  # noqa: BLE001 - no Qt open: nothing to catch up
+            pass
 
     def _save_settings(self):
         self._apply_settings()

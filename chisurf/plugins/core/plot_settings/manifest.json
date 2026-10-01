@@ -15,6 +15,7 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.plot_settings.gui.tool:PlotSettingsWidget"
+    "gui": "chisurf.plugins.core.plot_settings.gui.tool:PlotSettingsWidget",
+    "emtk": "chisurf.plugins.core.plot_settings.gui.app:make_app"
   }
 }
