@@ -18,6 +18,7 @@ import emtk.implot as implot
 import numpy as np
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
@@ -29,6 +30,17 @@ WINDOW_BG = (30, 32, 38, 255)
 MAX_BOUNDARY_LINES = 300
 ACCENT_RED = (214, 80, 80, 255)
 BOUNDARY_COLOUR = (220, 220, 220, 180)
+
+
+#: The time-window duration, as a form field (typed, clamped to the Qt spin box's range).
+TIME_WINDOW_FIELD = [{
+    "type": "value", "attr": "time_window_ms", "label": "Time window (ms)", "kind": "float",
+    "minimum": 0.001, "maximum": 3_600_000.0, "decimals": 3, "step": 1.0, "style": "spin",
+    "call": "on_time_window",
+    "description": (
+        "Duration of each time window in milliseconds. Smaller values give more windows with "
+        "fewer photons each; the preview's dashed lines follow."),
+}]
 
 
 class TimeWindowGui(TourTarget):
@@ -53,6 +65,7 @@ class TimeWindowGui(TourTarget):
         self.on_help = on_help
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        self.form = FormState()
         #: Index of the queued file shown in the preview (-1 = none).
         self.preview_index: int = -1
         #: The preview data the plot draws: set by the tool on load.
@@ -213,24 +226,11 @@ class TimeWindowGui(TourTarget):
         self.remember("help")
         im.separator()
 
-        # Caption text + hidden-label field: the field's own label renders to
-        # its right and would collide with a same-line button or the window
-        # edge in a dock this narrow.
-        im.text("Time window (ms):")
-        im.same_line()
-        im.set_next_item_width(-1.0)
-        _, v = im.input_float("##time_window", tool.time_window_ms, step=1.0)
-        im.set_item_tooltip(
-            "Duration of each time window in milliseconds. Smaller values give "
-            "more windows with fewer photons each; the preview's dashed lines follow."
-        )
-        v = max(0.001, min(float(v), 3_600_000.0))
-        if v != tool.time_window_ms:
-            self._used("time_window")
-            tool.time_window_ms = v
-            # The preview's boundary lines follow the window duration.
-            self.refresh_preview()
-        self.remember("time_window")
+        # A typeable field (the view spec's ``value``): ``input_float`` is a drag field, which
+        # takes no typed number, and the Qt tool's spin box did.
+        draw_sections(TIME_WINDOW_FIELD, tool, self.form)
+        if "time_window_ms" in self.form.rects:
+            self.item_rects["time_window"] = self.form.rects["time_window_ms"]
 
         im.text("Output folder:")
         im.same_line()

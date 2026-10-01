@@ -55,6 +55,12 @@ class TimeWindowController:
             on_add_files=self._add_files_dialog,
         )
 
+    def on_time_window(self, _value=None):
+        """The duration field changed: the preview's boundaries follow, and the tour hears it."""
+        gui = self.app.time_window_gui
+        gui.refresh_preview()
+        gui._used("time_window")
+
     def notify(self, message, timeout=0):
         self.message = str(message)
 

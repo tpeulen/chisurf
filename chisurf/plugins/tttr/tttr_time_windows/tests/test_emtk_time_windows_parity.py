@@ -70,7 +70,7 @@ def test_a_status_message_does_not_cover_the_tool(app):
     app.tool.notify("Processing complete")
     painter = _draw(app)
     assert "Processing complete" in painter.strings
-    for label in ("Process", "TTTR files", "Processing log", "Time window (ms):"):
+    for label in ("Process", "TTTR files", "Processing log", "Time window (ms)"):
         assert label in painter.strings, label
 
 
@@ -87,7 +87,7 @@ def test_the_job_and_file_windows_are_sized(app):
 def test_labels_have_no_pictograms_and_draw_at_both_sizes(app, size):
     painter = _draw(app, size)
     assert [s for s in painter.strings if PICTOGRAM.search(s)] == []
-    assert "Time window (ms):" in painter.strings
+    assert "Time window (ms)" in painter.strings
 
 
 def test_process_is_a_plain_button():
