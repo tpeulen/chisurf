@@ -1,0 +1,23 @@
+{
+  "controls": [
+    "?",
+    "guide"
+  ],
+  "labels": [],
+  "buttons": [
+    "?",
+    "Guide",
+    "⏹️",
+    "▶️",
+    "🔁"
+  ],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.burst.burst_2cde.gui.tool:BurstTwoCdeTool",
+  "size": [
+    1200,
+    800
+  ]
+}

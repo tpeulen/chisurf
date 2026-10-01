@@ -1,0 +1,143 @@
+"""Toolkit-free asynchronous 2CDE workflow for native and browser hosts."""
+
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from threading import Event
+
+from chisurf.core.runtime import analysis_cache
+
+from ..core import computation as core
+
+
+class TwoCdeController:
+    def __init__(self, model):
+        self.model = model
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="2cde")
+        self._future = None
+        self._cancel = Event()
+        self._cache = analysis_cache.ResultCache()
+        self.dialog = None
+
+    def run(self, force=False):
+        if self.model.is_running:
+            return
+        folder = Path(self.model.folder).expanduser()
+        if not self.model.folder or not folder.is_dir():
+            self.model.status_text = "Select a valid burstwise analysis folder."
+            return
+        fingerprint = self.model.analysis_fingerprint()
+        stamp = folder / "2c4" / "2cde.stamp.json"
+        if (
+            not force
+            and self.model.df is not None
+            and self._cache.matches(fingerprint)
+            and analysis_cache.is_current(stamp, fingerprint)
+        ):
+            self.model.status_text = "Unchanged — Restart recomputes the previous result."
+            return
+        self._cancel.clear()
+        self.model.is_running = self.model.is_locked = True
+        self.model.status_text = "Reading burst data …"
+        self._fingerprint = fingerprint
+        self._future = self._executor.submit(
+            self._compute,
+            folder,
+            dict(self.model.settings()),
+            fingerprint,
+            self.model.input_files(),
+            self.model.fingerprint_params(),
+        )
+
+    def restart(self):
+        self.run(force=True)
+
+    def set_value(self, value):
+        if self._cancel.is_set():
+            raise InterruptedError("2CDE cancelled")
+
+    def _compute(self, folder, settings, fingerprint, inputs, params):
+        df, tttrs = core.read_burst_analysis(folder, settings["file_type"], pattern="bi4_bur")
+        self.set_value(0)
+        df = core.compute_2cde(
+            df,
+            tttrs,
+            donor_channels=settings["donor_channels"],
+            acceptor_channels=settings["acceptor_channels"],
+            donor_micro_time_ranges=[],
+            acceptor_micro_time_ranges=[],
+            tau=settings["tau_us"] * 1e-6,
+            kernel=settings["kernel"],
+            variant=settings["variant"],
+            progress_window=self,
+        )
+        self.set_value(0)
+        core.write_2cde_analysis(df, str(folder), variant=settings["variant"], progress_window=self)
+        analysis_cache.write_stamp(
+            folder / "2c4" / "2cde.stamp.json",
+            fingerprint,
+            params=params,
+            inputs=inputs,
+            outputs=sorted((folder / "2c4").glob("*.2c4")),
+            tool="2cde",
+        )
+        return df, settings["variant"]
+
+    def stop(self):
+        if self._future is not None:
+            self._cancel.set()
+            self._cache.abandon(self._fingerprint)
+            self.model.status_text = "Stopping the 2CDE computation …"
+
+    def poll(self):
+        if self._future is None or not self._future.done():
+            return
+        future, self._future = self._future, None
+        try:
+            result, variant = future.result()
+            if self._cancel.is_set():
+                raise InterruptedError("2CDE cancelled")
+            self.model.set_result(result, variant)
+            self._cache.remember(self._fingerprint)
+        except InterruptedError:
+            self.model.status_text = "2CDE cancelled."
+        except Exception as exc:
+            self._cache.invalidate()
+            self.model.status_text = f"Error: {exc}"
+        finally:
+            self.model.is_running = self.model.is_locked = False
+            self.model.notify("finished")
+
+    def browse(self):
+        from emtk.file_dialog import FileDialog
+
+        self.dialog = FileDialog(
+            "Select burstwise folder", mode="folder", directory=self.model.folder or None
+        )
+
+    def draw_dialog(self):
+        if self.dialog is None:
+            return
+        from emtk import im
+
+        if im.begin("Select burstwise folder"):
+            result = self.dialog.draw()
+            if result:
+                self.model.set_folder(result[0])
+                self.dialog = None
+                self.run()
+            elif result is False:
+                self.dialog = None
+        im.end()
+
+    def on_paths_dropped(self, paths):
+        if paths:
+            path = Path(paths[0])
+            if path.is_dir():
+                self.model.set_folder(path)
+                self.run()
+            else:
+                self.model.status_text = f"Not a folder: {path.name}"
+
+    def close(self):
+        self.stop()
+        self._executor.shutdown(wait=False, cancel_futures=True)

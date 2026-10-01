@@ -1,0 +1,289 @@
+diff --git a/chisurf/plugins/burst/burst_2cde/core/computation.py b/chisurf/plugins/burst/burst_2cde/core/computation.py
+index 2ac6a642a..d6075de7b 100644
+--- a/chisurf/plugins/burst/burst_2cde/core/computation.py
++++ b/chisurf/plugins/burst/burst_2cde/core/computation.py
+@@ -22,6 +22,8 @@ except ImportError:  # pragma: no cover - standalone use
+ 
+ import tttrlib
+ 
++from chisurf.plugins.burst.burst_bva.core.computation import read_burst_analysis
++
+ # Column names written into the burst dataframe.
+ COLUMN_FRET_2CDE = "FRET-2CDE"
+ COLUMN_ALEX_2CDE = "ALEX-2CDE"
+diff --git a/chisurf/plugins/burst/burst_2cde/gui/app.py b/chisurf/plugins/burst/burst_2cde/gui/app.py
+index 22cd846ca..a226a25c8 100644
+--- a/chisurf/plugins/burst/burst_2cde/gui/app.py
++++ b/chisurf/plugins/burst/burst_2cde/gui/app.py
+@@ -19,6 +19,8 @@ from emtk import im, implot
+ from emtk.app import ImApp
+ from emtk.im_core import Col
+ 
++from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
++
+ from .view_model import TwoCdeViewModel
+ 
+ __all__ = ["BurstTwoCdeApp", "BurstTwoCdeGui", "WINDOW_BG"]
+@@ -56,13 +58,8 @@ class BurstTwoCdeGui:
+         self.threshold_y: float = 10.0
+         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+         self.on_used: Callable[[str], None] | None = None
+-
+-        self.model.add_observer(self._on_model_event)
+-
+         from pathlib import Path
+ 
+-        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
+-
+         help_resource = Path(__file__).parent / "help.md"
+         guide_resource = Path(__file__).parent / "guide.json"
+         self.help_window = EmTkHelpWindow(
+@@ -73,10 +70,14 @@ class BurstTwoCdeGui:
+             size=(700.0, 520.0),
+         )
+         self.tour = EmTkGuidedTour(
+-            steps=guide_resource,
+-            get_target_rect=lambda k: self.item_rects.get(k),
+-            owner=self.model,
++            steps=guide_resource, get_target_rect=lambda k: self.item_rects.get(k), owner=self.model
+         )
++        self.model.add_observer(self._on_model_event)
++
++    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
++        r = rect if rect is not None else im.get_item_rect()
++        if r is not None:
++            self.item_rects[name] = tuple(r)
+ 
+     def start_guide(self) -> None:
+         """Start the in-EMTK guided tour."""
+@@ -89,12 +90,6 @@ class BurstTwoCdeGui:
+     def _on_model_event(self, event: str) -> None:
+         pass
+ 
+-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+-        """Store the item's screen rectangle for tour targeting."""
+-        r = rect if rect is not None else im.get_item_rect()
+-        if r is not None:
+-            self.item_rects[name] = tuple(r)
+-
+     def track(self, name: str) -> None:
+         """Record usage of a named control."""
+         if callable(self.on_used):
+@@ -113,14 +108,17 @@ class BurstTwoCdeGui:
+         if im.begin("2CDE Controls"):
+             self._draw_action_buttons()
+             im.spacing()
++            im.begin_disabled(self.model.is_locked or self.model.is_running)
+             self._draw_folder_input(left_w - 16.0)
+             im.spacing()
+             self._draw_settings(left_w - 16.0)
++            im.end_disabled()
+             im.spacing()
+             self._draw_status()
+-            im.end()
+             self.remember("controls", (4.0, 4.0, left_w, h - 8.0))
+ 
++        im.end()
++
+         # ── Right pane: Plot (Dockable) ──────────────────────────────────
+         plots_x = left_w + 8.0
+         im.set_next_window_pos((plots_x, 4.0), im.Cond.ALWAYS)
+@@ -129,9 +127,10 @@ class BurstTwoCdeGui:
+             avail_w, avail_h = im.get_content_region_avail()
+             avail_h = max(avail_h, 250.0)
+             self._draw_plot(avail_w, avail_h)
+-            im.end()
+             self.remember("twocde_plot", (plots_x, 4.0, right_w, h - 8.0))
+ 
++        im.end()
++
+         if self.help_window.open:
+             self.help_window.draw((0.0, 0.0, w, h))
+ 
+@@ -150,6 +149,9 @@ class BurstTwoCdeGui:
+             self.track("toolAction_run")
+             if not locked and callable(self.on_run):
+                 self.on_run()
++        im.set_item_tooltip(
++            "Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE."
++        )
+         self.remember("run")
+         self.remember("toolAction_run")
+         im.pop_style_color(3)
+@@ -159,6 +161,7 @@ class BurstTwoCdeGui:
+             self.track("toolAction_restart")
+             if not self.model.is_running and callable(self.on_restart):
+                 self.on_restart()
++        im.set_item_tooltip("Reset the analysis state and recompute the 2CDE values from scratch.")
+         self.remember("restart")
+         self.remember("toolAction_restart")
+ 
+@@ -171,6 +174,7 @@ class BurstTwoCdeGui:
+             self.track("toolAction_stop")
+             if self.model.is_running and callable(self.on_stop):
+                 self.on_stop()
++        im.set_item_tooltip("Stop the running 2CDE analysis.")
+         self.remember("stop")
+         self.remember("toolAction_stop")
+         if self.model.is_running:
+@@ -181,6 +185,7 @@ class BurstTwoCdeGui:
+             self.track("folder")
+             if callable(self.on_browse):
+                 self.on_browse()
++        im.set_item_tooltip("Browse for the folder containing the burst analysis files.")
+         self.remember("folder")
+ 
+         im.same_line()
+@@ -188,17 +193,22 @@ class BurstTwoCdeGui:
+             self.track("guide")
+             self.start_guide()
+         self.remember("guide")
++        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+ 
+         im.same_line()
+         if im.button("❓ Help"):
+             self.track("help")
+             self.show_help()
+         self.remember("help")
++        im.set_item_tooltip("Open the help window with reference documentation.")
+ 
+     def _draw_folder_input(self, width: float) -> None:
+         """Folder path input."""
+         im.text("Analysis folder:")
+         changed, text = im.input_text("##folder_path", self.model.folder, hint="Burst folder …")
++        im.set_item_tooltip(
++            "Path to the folder with the bursts to analyze; type a path or use Folder to browse."
++        )
+         if changed:
+             self.model.set_folder(text)
+ 
+@@ -214,7 +224,11 @@ class BurstTwoCdeGui:
+                 if im.selectable(var, var == self.model.variant):
+                     self.model.variant = var
+                     self.model.notify("variant")
++                im.set_item_tooltip("Choose this 2CDE variant.")
+             im.end_combo()
++        im.set_item_tooltip(
++            "FRET-2CDE uses donor excitation only; ALEX-2CDE also uses acceptor excitation."
++        )
+         self.remember("twocde_variant")
+ 
+         # Kernel
+@@ -224,7 +238,9 @@ class BurstTwoCdeGui:
+                 if im.selectable(k, k == self.model.kernel):
+                     self.model.kernel = k
+                     self.model.notify("kernel")
++                im.set_item_tooltip("Choose this smoothing kernel.")
+             im.end_combo()
++        im.set_item_tooltip("Smoothing kernel applied to the 2CDE values (laplace or gaussian).")
+         self.remember("twocde_kernel")
+ 
+         # tau
+@@ -232,6 +248,9 @@ class BurstTwoCdeGui:
+         changed, tau = im.drag_float(
+             "##twocde_tau", self.model.tau_us, 1.0, 1.0, 100000.0, "%.1f µs"
+         )
++        im.set_item_tooltip(
++            "Averaging window τ in microseconds used when computing the 2CDE metric."
++        )
+         if changed:
+             self.model.tau_us = max(1.0, float(tau))
+             self.model.notify("tau")
+@@ -240,6 +259,9 @@ class BurstTwoCdeGui:
+         # Donor channels
+         im.text("Donor routing channels:")
+         changed, donor = im.input_text("##twocde_donor", self.model.donor_channels_text, hint="0,8")
++        im.set_item_tooltip(
++            "Comma-separated TTTR routing channels assigned to the donor (e.g. 0,8)."
++        )
+         if changed:
+             self.model.donor_channels_text = donor
+             self.model.notify("donor")
+@@ -250,6 +272,9 @@ class BurstTwoCdeGui:
+         changed, acc = im.input_text(
+             "##twocde_acceptor", self.model.acceptor_channels_text, hint="1,9"
+         )
++        im.set_item_tooltip(
++            "Comma-separated TTTR routing channels assigned to the acceptor (e.g. 1,9)."
++        )
+         if changed:
+             self.model.acceptor_channels_text = acc
+             self.model.notify("acceptor")
+@@ -258,6 +283,7 @@ class BurstTwoCdeGui:
+         # File type
+         im.text("File type:")
+         changed, ft = im.input_text("##twocde_file_type", self.model.file_type, hint="SPC-130")
++        im.set_item_tooltip("TTTR file type of the source measurements (e.g. SPC-130, PTO).")
+         if changed:
+             self.model.file_type = ft
+             self.model.notify("file_type")
+@@ -341,6 +367,14 @@ class BurstTwoCdeApp(ImApp):
+         on_guide: Callable[[], None] | None = None,
+         on_help: Callable[[], None] | None = None,
+     ) -> None:
++        self.controller = None
++        if all(callback is None for callback in (on_run, on_restart, on_stop, on_browse)):
++            from .controller import TwoCdeController
++
++            model = model if model is not None else TwoCdeViewModel()
++            self.controller = TwoCdeController(model)
++            on_run, on_restart = self.controller.run, self.controller.restart
++            on_stop, on_browse = self.controller.stop, self.controller.browse
+         self.two_cde_gui = BurstTwoCdeGui(
+             model=model,
+             on_run=on_run,
+@@ -351,7 +385,9 @@ class BurstTwoCdeApp(ImApp):
+             on_help=on_help,
+         )
+         self.model = self.two_cde_gui.model
+-        super().__init__(gui=self._render, continuous=False)
++        self.item_rects = self.two_cde_gui.item_rects
++        self.two_cde_gui.remember = self.remember
++        super().__init__(gui=self._render, continuous=self.controller is not None)
+ 
+     def start_guide(self) -> None:
+         """Start guided tour inside EMTK."""
+@@ -361,6 +397,20 @@ class BurstTwoCdeApp(ImApp):
+         """Show help documentation inside EMTK."""
+         self.two_cde_gui.show_help()
+ 
++    def close(self) -> None:
++        """Cancel pending work and release the analysis executor."""
++        if self.controller is not None:
++            self.controller.close()
++
+     def _render(self) -> None:
++        if self.controller is not None:
++            self.controller.poll()
+         w, h = im.get_main_viewport().size
+         self.two_cde_gui.draw(float(w), float(h))
++        if self.controller is not None:
++            self.controller.draw_dialog()
++
++
++def create_app(**kwargs):
++    """Create the toolkit-free plugin control."""
++    return BurstTwoCdeApp(**kwargs)
+diff --git a/chisurf/plugins/burst/burst_2cde/manifest.json b/chisurf/plugins/burst/burst_2cde/manifest.json
+index 84099841f..dcca3fcd8 100644
+--- a/chisurf/plugins/burst/burst_2cde/manifest.json
++++ b/chisurf/plugins/burst/burst_2cde/manifest.json
+@@ -10,7 +10,7 @@
+     "Spectroscopy",
+     "Single-Molecule"
+   ],
+-  "icon": "⚡",
++  "icon": "\u26a1",
+   "state_namespace": "burst_2cde",
+   "statefulness": {
+     "enabled": true,
+@@ -22,7 +22,8 @@
+   "entrypoints": {
+     "gui": "chisurf.plugins.burst.burst_2cde.gui.tool:BurstTwoCdeTool",
+     "cli": "chisurf.plugins.burst.burst_2cde.cli.main:cli",
+-    "services": "chisurf.plugins.burst.burst_2cde.backend.services:register_services"
++    "services": "chisurf.plugins.burst.burst_2cde.backend.services:register_services",
++    "emtk": "chisurf.plugins.burst.burst_2cde.gui.app:create_app"
+   },
+   "rpc_methods": [
+     {

@@ -1,0 +1,6 @@
+ M chisurf/plugins/burst/burst_2cde/core/computation.py
+ M chisurf/plugins/burst/burst_2cde/gui/app.py
+ M chisurf/plugins/burst/burst_2cde/manifest.json
+?? chisurf/plugins/burst/burst_2cde/gui/controller.py
+?? chisurf/plugins/burst/burst_2cde/tests/demo_folder.py
+?? chisurf/plugins/burst/burst_2cde/tests/test_emtk_controller.py
