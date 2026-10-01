@@ -1,65 +1,30 @@
 # Trajectory Rotation and Translation Plugin
 
-This plugin provides functionality to apply rigid body transformations (rotations and translations) to molecular 
-dynamics trajectories.
+Applies one rigid-body transform, x′ = R x + t, to every frame of a molecular dynamics trajectory
+and writes the result as a new DCD.
 
 ## Features
 
-- Interactive 3D manipulation of structures
-- Precise numerical control of rotation angles and translation vectors
-- Ability to align structures based on selected atoms or residues
-- Support for multiple coordinate reference frames
-- Batch processing of multiple trajectory files
-- Visualization of transformations in real-time
-- Support for various trajectory file formats
-
-## Overview
-
-The Trajectory Rotation and Translation plugin enables users to apply rigid body transformations (rotations and 
-translations) to molecular dynamics trajectories. These transformations are essential for preparing structures for 
-analysis, comparing different conformations, or setting up new simulations with specific molecular orientations.
-
-The plugin provides both interactive 3D manipulation tools and precise numerical controls for applying rotations and 
-translations to molecular structures. Users can rotate structures around specific axes, translate them in any direction, 
-or align them based on selected atoms or residues. The plugin supports multiple coordinate reference frames, 
-allowing for transformations relative to different parts of the structure or external reference points.
+- A 3×3 rotation matrix R and a translation t (Å), entered numerically
+- A warning when R is not a rotation (RᵀR ≠ 1 shears or scales, det R = −1 mirrors)
+- Stride, with the source frame times kept
+- Chunked reading, so the trajectory need not fit in memory
 
 ## Requirements
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - mdtraj (for trajectory handling)
-  - matplotlib or pyqtgraph (for visualization)
-  - scipy (for transformation calculations)
-  - chisurf core modules
+- ChiSurf's trajectory readers and DCD writer (`chisurf.core.structure.trajectory_data`,
+  `chisurf.core.fio.trajectory`); no Qt for the emtk window (`app.py`), Qt only for the legacy
+  AutoForm widget (`widget.py`).
 
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Structure > Rotate/Translate Trajectory
-2. Load a trajectory file:
-   - Click "Browse" to select an input trajectory file
-   - The file format will be automatically detected
-3. Select transformation mode:
-   - Choose between interactive manipulation or numerical input
-   - Select the reference frame for transformations
-4. Apply transformations:
-   - If using interactive mode:
-     - Use the 3D controls to rotate and translate the structure
-     - Fine-tune the orientation using the adjustment sliders
-   - If using numerical input:
-     - Enter rotation angles (in degrees) for each axis
-     - Enter translation distances (in Angstroms) for each direction
-   - If aligning structures:
-     - Select atoms or residues to use for alignment
-     - Choose the target structure or orientation
-5. Preview the transformation:
-   - View the transformed structure in the 3D viewer
-   - Compare with the original structure if needed
-6. Save the transformed trajectory:
-   - Choose a directory and filename for the output
-   - Select the desired output format
-   - Click "Save" to write the transformed trajectory to disk
+1. Open *Structure > Trajectory > Rot Translate* (or the *Rot Translate* panel of Traj Tools).
+2. Choose the trajectory (**…** or drop a `.dcd`) and its topology (**…** or drop a `.pdb`).
+3. Enter R row by row in *Rotation matrix* and t in *Translation [Ang.]*.
+4. Set *Stride* to read every Nth frame.
+5. Press **💾 Save rotated/translated…** and pick the output `.dcd`; the log lists each step.
+
+**📖 Guide** walks through these steps; **❓ Help** has the details.
 
 ## Applications
 

@@ -149,8 +149,9 @@ many frames were kept, so read the output back to count them.
 Applies one rigid-body transform to every frame,
 **x′ = R x + t**: rotate first, then translate (Å). **Rotation matrix** is a
 3×3 grid, **Translation [Ang.]** a 3-vector, **Stride** reads every Nth frame, and
-**💾 Save rotated/translated…** writes the DCD. The matrix is not checked. A
-non-orthogonal matrix shears the molecule without any warning. A 90° rotation
+**💾 Save rotated/translated…** writes the DCD. The matrix is applied as given: one
+that is not a rotation shears, scales or mirrors the molecule. The window says so under the
+matrix (RᵀR ≠ 1, or det R = −1) but still saves. A 90° rotation
 about z plus 10 Å along x moves atom 0 of the example from (0.233, 8.831,
 −15.129) to (1.169, 0.233, −15.129), as expected.
 

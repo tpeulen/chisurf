@@ -1,0 +1,71 @@
+{
+  "_comment": "Guided tour for the Rotate/Translate-Trajectory tool. The file rows, the matrix, the translation and the save button live inside the traj_rotate_translate_io custom section, so they are targeted by name; stride is a spec attr. Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "One transform, every frame",
+      "text": "Every frame is rotated by <b>R</b> and then shifted by <b>t</b>: x′ = R x + t. Choose the files, set R and t, save.",
+      "target": {}
+    },
+    {
+      "title": "The trajectory",
+      "text": "The DCD to transform. Press <b>…</b> beside the row, or drop a <code>.dcd</code> on the window.",
+      "target": {
+        "name": "trajectory"
+      },
+      "await": {
+        "hint": "Press <b>…</b> and pick a trajectory."
+      }
+    },
+    {
+      "title": "The topology",
+      "text": "A DCD stores coordinates only; the atom names come from the PDB it was written for.",
+      "target": {
+        "name": "topology"
+      },
+      "await": {
+        "hint": "Press <b>…</b> and pick the PDB that names the atoms."
+      }
+    },
+    {
+      "title": "The rotation",
+      "text": "Rows of R. It is applied as given: if it is not a rotation (RᵀR ≠ 1 or det R = −1) the molecule is sheared or mirrored, and a warning appears under the matrix.",
+      "target": {
+        "name": "rotation_matrix"
+      },
+      "await": {
+        "hint": "Change an entry of the matrix."
+      }
+    },
+    {
+      "title": "The shift",
+      "text": "Added after the rotation, in Ångström.",
+      "target": {
+        "name": "translation"
+      }
+    },
+    {
+      "title": "Stride",
+      "text": "Read every Nth frame. The frame times are kept.",
+      "target": {
+        "attr": "stride"
+      }
+    },
+    {
+      "title": "Save",
+      "text": "Pick the output DCD; the frames are transformed chunk by chunk and written.",
+      "target": {
+        "name": "save"
+      },
+      "await": {
+        "hint": "Press <b>💾 Save rotated/translated…</b>."
+      }
+    },
+    {
+      "title": "What happened",
+      "text": "The log lists the files, the atom count and where the result went — or why it stopped.<br/><br/>The <b>?</b> button has the details.",
+      "target": {
+        "name": "log"
+      }
+    }
+  ]
+}

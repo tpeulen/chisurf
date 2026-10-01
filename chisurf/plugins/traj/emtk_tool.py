@@ -353,7 +353,7 @@ class TrajToolApp(TourTarget, ImApp):
         im.begin_child("##log", box[2:])
         lines = self.model.log_text()
         for line in lines:
-            im.text_unformatted(line)
+            im.text_wrapped(line)                 # paths are long; the Qt log wrapped them too
         if len(lines) != self._log_seen:      # follow new lines, as the Qt log does
             self._log_seen = len(lines)
             im.set_scroll_here_y(1.0)

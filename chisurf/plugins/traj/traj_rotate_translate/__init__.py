@@ -10,18 +10,23 @@ from __future__ import annotations
 # Plugin brand icon (unified emoji set)
 icon = "🔃"
 
-from chisurf.plugins.traj.traj_rotate_translate.widget import (
-    RotateTranslateTrajectoryWidget,
-)
-
 # Define the plugin name - this will appear in the Plugins menu
 name = "Structure:Trajectory:Rotate/Translate"
 
 __all__ = ["RotateTranslateTrajectoryWidget"]
 
 
+def __getattr__(attribute):
+    if attribute == "RotateTranslateTrajectoryWidget":
+        from chisurf.plugins.traj.traj_rotate_translate.widget import (
+            RotateTranslateTrajectoryWidget,
+        )
+        return RotateTranslateTrajectoryWidget
+    raise AttributeError(attribute)
+
+
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed
 if __name__ == "plugin":
-    window = RotateTranslateTrajectoryWidget()
+    window = __getattr__("RotateTranslateTrajectoryWidget")()
     window.show()
