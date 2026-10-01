@@ -1,0 +1,186 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "10.000",
+    "1000",
+    "all",
+    "annotation",
+    "binwindow[ms]",
+    "clear",
+    "clearcaches",
+    "csv",
+    "delete",
+    "docx",
+    "export",
+    "file",
+    "files",
+    "filter",
+    "folder",
+    "guide",
+    "help",
+    "hmm",
+    "includesubfolders",
+    "ndx",
+    "nofolderselected",
+    "notes",
+    "open",
+    "openafolderwithtttrfiles,thenselectafiletoshowitstrace.",
+    "openafolderwithtttrfiles.",
+    "precompute",
+    "precomputeafterscan",
+    "rating",
+    "selectafiletowriteanannotationforit.",
+    "selectall",
+    "selectsetup",
+    "size(mb)",
+    "stop",
+    "tracebrowser",
+    "traceplot",
+    "tw",
+    "ymax",
+    "ymin"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the Trace Browser: the setup page, the file table, the trace plot, exporting, deleting and the hand-offs to other tools."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through accepting a setup, opening a folder, selecting files and exporting them."
+    },
+    {
+      "kind": "button",
+      "label": "← Select setup",
+      "id": "← Select setup##back_to_setup",
+      "tooltip": "Go back to the detector setup page. The accepted setup, the folder and the file list stay as they are."
+    },
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open##choose_folder",
+      "tooltip": "Choose a folder with PTU/TTTR files. You can also drop a folder on the window."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##clear",
+      "tooltip": "Clear the file list, the selection and the shown trace. No file and no rating or note is changed."
+    },
+    {
+      "kind": "button",
+      "label": "Clear caches",
+      "id": "Clear caches##clear_caches",
+      "tooltip": "Delete the cached traces and the cached image probes of this folder, in memory and on disk. Traces are computed again when needed."
+    },
+    {
+      "kind": "button",
+      "label": "Select all",
+      "id": "Select all##select_all_files",
+      "tooltip": "Select every listed file, so that Export, CSV, DOCX, Delete and the hand-offs work on all of them. Click a row to go back to one file."
+    },
+    {
+      "kind": "button",
+      "label": "Export",
+      "id": "Export##export_selected",
+      "tooltip": "Copy the selected files, unchanged, into a folder you choose. Click a row, or Select all, first."
+    },
+    {
+      "kind": "button",
+      "label": "CSV",
+      "id": "CSV##export_csv",
+      "tooltip": "Write the binned trace of each selected file as a CSV file (time and one column per series, at the current bin window) into a folder you choose."
+    },
+    {
+      "kind": "button",
+      "label": "DOCX",
+      "id": "DOCX##export_docx",
+      "tooltip": "Write a Word report of the selected files (name, folder, rating, annotation, trace picture) into the opened folder. Needs the python-docx package: greyed when it is not installed."
+    },
+    {
+      "kind": "button",
+      "label": "Delete",
+      "id": "Delete##delete_selected",
+      "tooltip": "Move the selected files, and the files that share their name, to the .trash folder of the opened folder after you confirm. Nothing is deleted for good. The Delete key does the same."
+    },
+    {
+      "kind": "button",
+      "label": "HMM",
+      "id": "HMM##open_intensity_trace",
+      "tooltip": "Open the first selected file in Intensity Trace Analysis with the current bin window and setup. Needs the ChiSurf main window: greyed when this app runs on its own."
+    },
+    {
+      "kind": "button",
+      "label": "TW",
+      "id": "TW##open_time_window",
+      "tooltip": "Open the first selected file in TTTR Time Window with the current bin window. Needs the ChiSurf main window: greyed when this app runs on its own."
+    },
+    {
+      "kind": "button",
+      "label": "NDX",
+      "id": "NDX##open_ndxplorer",
+      "tooltip": "Cut the first selected file into windows of the current bin window, write the burst table beside the data and open it in ndX. Needs the ChiSurf main window: greyed when this app runs on its own."
+    },
+    {
+      "kind": "button",
+      "label": "Precompute",
+      "id": "Precompute##precompute_traces",
+      "tooltip": "Compute and cache the trace of every listed file in the background, with the current bin window. Selecting a file afterwards shows its trace at once."
+    },
+    {
+      "kind": "button",
+      "label": "Stop",
+      "id": "Stop##stop_precompute",
+      "tooltip": "Stop the running precompute after the file it is working on. The traces computed so far stay cached."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Precompute after scan",
+      "id": "Precompute after scan##precompute_after_scan",
+      "tooltip": "Run the precompute automatically after every scan of a folder, as the Qt browser did. Switch it off for big folders if you only look at a few files."
+    },
+    {
+      "kind": "input_text",
+      "label": "folder_text",
+      "id": "##folder_text",
+      "tooltip": "The folder whose files are listed. Use Open, or drop a folder on the window."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Include subfolders",
+      "id": "Include subfolders##include_subfolders",
+      "tooltip": "Also list the files in the sub-folders of the opened folder (the .trash folder is never listed). Switching it rescans the folder."
+    },
+    {
+      "kind": "input_text",
+      "label": "window_ms",
+      "id": "##window_ms",
+      "tooltip": "Width of the time bins of the intensity trace in milliseconds. Changing it loads the trace of the selected file again."
+    },
+    {
+      "kind": "input_text",
+      "label": "y_min",
+      "id": "##y_min",
+      "tooltip": "Lower limit of the trace plot's y axis (counts per bin). Entered the wrong way round with Y max, the two are swapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "y_max",
+      "id": "##y_max",
+      "tooltip": "Upper limit of the trace plot's y axis (counts per bin)."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  }
+}
