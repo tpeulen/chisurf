@@ -1,0 +1,125 @@
+diff --git a/chisurf/plugins/ai_settings/test/test_widgets.py b/chisurf/plugins/ai_settings/test/test_widgets.py
+index 699763f28..f12f33f2e 100644
+--- a/chisurf/plugins/ai_settings/test/test_widgets.py
++++ b/chisurf/plugins/ai_settings/test/test_widgets.py
+@@ -230,3 +230,120 @@ class TestAISettingsWidget:
+         qtbot.waitUntil(lambda: "successful" in widget.model.status_html.lower(), timeout=3000)
+         # The blocking request ran on a background thread, not the GUI thread.
+         assert seen["worker"] is not threading.main_thread()
++
++
++def test_native_ai_settings_actions_use_pure_services_and_no_preferences_secrets(monkeypatch):
++    from chisurf.core.settings import ai_settings
++    from chisurf.plugins.ai_settings.gui.app import AISettingsApp
++    monkeypatch.setattr(ai_settings, "get_api_settings", lambda provider=None: {"provider": provider or "local", "base_url": "http://localhost/v1", "text_model": "test-model", "image_model": "", "api_key": "", "temperature": 0.3, "top_p": 0.9, "max_tokens": 100})
++    saved = []
++    monkeypatch.setattr(ai_settings, "save_api_settings", lambda data, provider=None: saved.append(data.copy()) or True)
++    app = AISettingsApp()
++    model = app.settings_gui.model
++    model.base_url = "http://localhost:1234/v1"
++    model.save()
++    assert saved[-1]["base_url"] == "http://localhost:1234/v1"
++    assert "api_key" not in app.export_settings()
++    model.reset()
++    assert "not saved" in model.status_source() or "Press Save" in model.status_source()
++    app.close()
++
++
++def test_native_acp_command_is_saved_without_replacing_http_provider():
++    from chisurf.core.settings import ai_settings
++    ai_settings.save_api_settings({"provider": "local", "base_url": "http://localhost/v1", "text_model": "test-model"})
++    assert ai_settings.save_api_settings({"provider": "acp", "command": 'agent --stdio "quoted path"', "acp_backend_provider": "local"}, provider="acp")
++    assert ai_settings.get_api_settings("acp")["command"] == 'agent --stdio "quoted path"'
++    assert ai_settings.get_provider() == "local"
++
++
++def test_native_ai_settings_fetch_and_connection_callbacks(monkeypatch):
++    import time
++    from chisurf.plugins.ai_settings.gui.app import AISettingsGui
++    from chisurf.plugins.ai_settings.gui.model import AISettingsModel
++    monkeypatch.setattr(AISettingsModel, "_get_models", staticmethod(lambda url, key: {"data": [{"id": "text-test"}]}))
++    gui = AISettingsGui()
++    gui.select_provider("local")
++    gui.model.fetch_models()
++    deadline = time.monotonic() + 2
++    while gui.busy and time.monotonic() < deadline:
++        gui.process_events()
++        time.sleep(0.01)
++    assert "text-test" in gui.model.available_text_models()
++    gui.model.test_connection()
++    while gui.busy and time.monotonic() < deadline:
++        gui.process_events()
++        time.sleep(0.01)
++    assert "successful" in gui.model.status_source()
++    gui.close()
++
++
++def test_native_ai_settings_password_is_masked_and_actions_have_tooltips(monkeypatch):
++    from emtk import im
++    from emtk.testing import RecordingPainter
++    from chisurf.plugins.ai_settings.gui.app import AISettingsApp
++    app = AISettingsApp()
++    object.__setattr__(app.model, "api_key", "not-a-real-credential")
++    app.settings_gui.select_provider("local")
++    object.__setattr__(app.model, "api_key", "not-a-real-credential")
++    tooltips = []
++    monkeypatch.setattr(im, "set_item_tooltip", lambda text: tooltips.append(text))
++    painter = RecordingPainter()
++    with im.frame(painter, (0, 0, 800, 900)):
++        app._render()
++    assert "not-a-real-credential" not in "\n".join(painter.strings)
++    assert any("credential" in text or "token" in text for text in tooltips)
++    assert any("models" in text or "model" in text for text in tooltips)
++    app.close()
++
++
++def test_native_provider_settings_write_error_is_reported(monkeypatch):
++    from chisurf.core.settings import ai_settings
++    from chisurf.plugins.ai_settings.gui.app import AISettingsGui
++    gui = AISettingsGui()
++    def fail(*args, **kwargs):
++        raise PermissionError("settings directory is read-only")
++    monkeypatch.setattr(ai_settings, "save_api_settings", fail)
++    gui.model.base_url = "http://localhost:3456/v1"
++    assert "read-only" in gui.model.status_source()
++    gui.close()
++
++
++def test_native_provider_settings_connection_failure_returns_to_ui(monkeypatch):
++    import time
++    from chisurf.plugins.ai_settings.gui.app import AISettingsGui
++    from chisurf.plugins.ai_settings.gui.model import AISettingsModel
++    def fail(*args, **kwargs):
++        raise RuntimeError("endpoint unavailable")
++    monkeypatch.setattr(AISettingsModel, "_get_models", staticmethod(fail))
++    gui = AISettingsGui()
++    gui.select_provider("local")
++    gui.model.test_connection()
++    deadline = time.monotonic() + 2
++    while gui.busy and time.monotonic() < deadline:
++        gui.process_events()
++        time.sleep(0.01)
++    assert not gui.busy
++    assert "endpoint unavailable" in gui.model.status_source()
++    gui.close()
++
++
++def test_native_provider_key_reveal_resets_on_provider_change(monkeypatch):
++    from emtk import im
++    from emtk.testing import RecordingPainter
++    from chisurf.plugins.ai_settings.gui.app import AISettingsGui
++    gui = AISettingsGui()
++    gui.select_provider("local")
++    object.__setattr__(gui.model, "api_key", "fake-reveal-value")
++    monkeypatch.setattr(im, "button", lambda label, *args, **kwargs: label == "Show key")
++    with im.frame(RecordingPainter(), (0, 0, 800, 900)):
++        gui.draw()
++    assert gui.reveal_key
++    painter = RecordingPainter()
++    monkeypatch.setattr(im, "button", lambda *args, **kwargs: False)
++    with im.frame(painter, (0, 0, 800, 900)):
++        gui.draw()
++    assert any("fake-reveal-value" in value for value in painter.strings)
++    gui.select_provider("openai")
++    assert not gui.reveal_key
++    gui.close()

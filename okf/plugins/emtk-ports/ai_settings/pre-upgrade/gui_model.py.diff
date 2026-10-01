@@ -1,0 +1,55 @@
+diff --git a/chisurf/plugins/ai_settings/gui/model.py b/chisurf/plugins/ai_settings/gui/model.py
+index 098d971c9..e2c5cb9ba 100644
+--- a/chisurf/plugins/ai_settings/gui/model.py
++++ b/chisurf/plugins/ai_settings/gui/model.py
+@@ -26,7 +26,7 @@ _VIEW = pathlib.Path(__file__).with_name("ai_settings.view.json")
+ #: excluded on purpose: switching it *loads* another provider rather than editing
+ #: the current one, so it must not save the current fields under the new key.
+ _PERSIST_FIELDS = frozenset(
+-    {"base_url", "api_key", "text_model", "image_model", "temperature", "top_p", "max_tokens"}
++    {"base_url", "api_key", "text_model", "image_model", "temperature", "top_p", "max_tokens", "command", "acp_backend_provider"}
+ )
+ 
+ 
+@@ -222,6 +222,7 @@ class AISettingsModel:
+         re-triggering :meth:`__setattr__` auto-save.
+         """
+         self._saving = True
++        save_error = ""
+         try:
+             base_url = (self.base_url or "").strip()
+             if self.provider != "custom" and not base_url:
+@@ -236,17 +237,22 @@ class AISettingsModel:
+                     "temperature": float(self.temperature),
+                     "top_p": float(self.top_p),
+                     "max_tokens": int(self.max_tokens),
++                    "command": str(self.command),
++                    "acp_backend_provider": str(self.acp_backend_provider),
+                 }
+             )
+             if ok and base_url != self.base_url:
+                 self.base_url = base_url  # show the resolved URL (guarded: no re-save)
++        except Exception as error:
++            ok = False
++            save_error = f"Failed to save settings: {error}"
+         finally:
+             self._saving = False
+-        if not silent:
++        if not silent or not ok:
+             if ok:
+                 self._set_status("Settings saved.", "green")
+             else:
+-                self._set_status("Failed to save settings.", "red")
++                self._set_status(save_error or "Failed to save settings.", "red")
+         return ok
+ 
+     # -- internals ------------------------------------------------------------
+@@ -276,6 +282,8 @@ class AISettingsModel:
+             self.temperature = float(settings.get("temperature", 0.3))
+             self.top_p = float(settings.get("top_p", 0.9))
+             self.max_tokens = int(settings.get("max_tokens", 4096))
++            self.command = str(settings.get("command", "") or "")
++            self.acp_backend_provider = str(settings.get("acp_backend_provider", "") or "")
+         finally:
+             self._loading = False
+ 

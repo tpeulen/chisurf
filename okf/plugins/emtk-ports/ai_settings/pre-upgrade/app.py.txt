@@ -1,0 +1,190 @@
+"""Native provider configuration using the shared Qt-free settings model."""
+from __future__ import annotations
+
+import html
+import queue
+import re
+import threading
+
+from emtk import im
+from emtk.app import ImApp
+
+from .model import AISettingsModel
+
+
+class AISettingsGui:
+    """Native form and async delivery for the existing provider workflows."""
+
+    def __init__(self, model: AISettingsModel | None = None) -> None:
+        self.model = model or AISettingsModel()
+        self.events = queue.Queue()
+        self.busy = False
+        self._closed = False
+        self._generation = 0
+        self._token_pending = False
+        self._token_active = False
+        self.reveal_key = False
+        self.request_frame = None
+        self.model.async_runner = self._run_async
+        self.model.on_change = self._notify
+
+    def _notify(self) -> None:
+        if not self._closed and self.request_frame is not None:
+            self.request_frame()
+
+    def select_provider(self, provider: str) -> None:
+        self._generation += 1
+        self.busy = False
+        self.reveal_key = False
+        self._token_pending = self._token_active = False
+        self.model.set_provider(provider)
+
+    def _run_async(self, work, done) -> None:
+        generation = self._generation
+        self.busy = True
+        self._notify()
+        def task():
+            try:
+                result = work()
+            except Exception as error:
+                result = ("error", str(error))
+            if not self._closed:
+                self.events.put((generation, done, result))
+                self._notify()
+        threading.Thread(target=task, daemon=True).start()
+
+    def process_events(self) -> None:
+        while not self.events.empty():
+            generation, done, result = self.events.get_nowait()
+            if not self._closed and generation == self._generation:
+                self.busy = False
+                done(result)
+
+    def close(self) -> None:
+        self._closed = True
+        self._generation += 1
+        self.busy = False
+        self.reveal_key = False
+        self.model.on_change = None
+        self.model.async_runner = None
+        object.__setattr__(self.model, "api_key", "")  # Never overwrite the stored credential on close.
+        while not self.events.empty():
+            self.events.get_nowait()
+
+    def _field(self, label, attr, tip, secret=False) -> tuple[bool, bool]:
+        im.set_next_item_width(max(140.0, im.get_content_region_avail()[0] - 150.0))
+        changed, value = im.input_text(label, str(getattr(self.model, attr)),
+            flags=im.InputTextFlags.PASSWORD if secret else 0)
+        active = im.is_item_active()
+        im.set_item_tooltip(tip)
+        if changed:
+            setattr(self.model, attr, value)
+        return changed, active
+
+    def draw(self) -> None:
+        self.process_events()
+        im.begin_disabled(self.busy)
+        providers = self.model.available_providers()
+        keys = [key for key, _ in providers]
+        index = keys.index(self.model.provider) if self.model.provider in keys else 0
+        im.set_next_item_width(max(140.0, im.get_content_region_avail()[0] - 150.0))
+        changed, selected = im.combo("Provider", index, [label for _, label in providers])
+        im.set_item_tooltip("Load the saved configuration for an HTTP provider or an ACP transport")
+        if changed:
+            self.select_provider(keys[selected])
+        if im.button("Sign in via browser"):
+            self.model.sign_in()
+        im.set_item_tooltip("Open this provider's key-management console in your browser")
+        if self.model.provider == "acp":
+            self._field("ACP command", "command", "Executable and arguments for the stdio ACP agent; quoted paths are supported")
+            delegates = [(key, label) for key, label in providers if key != "acp"]
+            delegate_keys = ["selected"] + [key for key, _ in delegates]
+            current = getattr(self.model, "acp_backend_provider", "") or "selected"
+            changed, selected = im.combo("In-tree server API", delegate_keys.index(current) if current in delegate_keys else 0,
+                ["Selected HTTP provider"] + [label for _, label in delegates])
+            im.set_item_tooltip("HTTP provider used by the in-tree ACP server; external agents manage their own providers")
+            if changed:
+                self.model.acp_backend_provider = "" if selected == 0 else delegate_keys[selected]
+        else:
+            self._field("Base URL", "base_url", "OpenAI-compatible API root; edits are saved by the shared provider service")
+            changed, active = self._field("API key", "api_key", "Bearer token; changes are saved and checked on Enter or focus-out", secret=not self.reveal_key)
+            self._token_pending = self._token_pending or changed
+            if self._token_pending and ((active and im.is_key_pressed(im.Key.ENTER)) or (self._token_active and not active)):
+                self._token_pending = False
+                self.model.apply_token()
+            self._token_active = active
+            if im.button("Hide key" if self.reveal_key else "Show key"):
+                self.reveal_key = not self.reveal_key
+            im.set_item_tooltip("Temporarily reveal or mask the credential; changing provider restores masking")
+            for label, attr, options in [("Text model", "text_model", self.model.available_text_models()),
+                ("Image model", "image_model", self.model.available_image_models())]:
+                self._field(label, attr, "Type a model identifier or select one from the fetched list")
+                if options:
+                    current = getattr(self.model, attr)
+                    selected_index = options.index(current) if current in options else 0
+                    changed, selected = im.combo(f"Available {label.lower()}##{attr}", selected_index, options)
+                    im.set_item_tooltip("Select a model returned by the configured provider")
+                    if changed:
+                        setattr(self.model, attr, options[selected])
+            if im.button("Fetch models"):
+                self.model.fetch_models()
+            im.set_item_tooltip("Query the endpoint's model catalogue asynchronously and separate text/image capabilities")
+            im.same_line()
+            if im.button("Test connection"):
+                self.model.test_connection()
+            im.set_item_tooltip("Check the configured endpoint and credential using its model-list API")
+            changed, value = im.slider_float("Temperature", self.model.temperature, 0.0, 2.0)
+            im.set_item_tooltip("Sampling temperature; higher values make responses less deterministic")
+            if changed:
+                self.model.temperature = value
+            changed, value = im.slider_float("Top-p", self.model.top_p, 0.0, 1.0)
+            im.set_item_tooltip("Probability mass used for nucleus sampling")
+            if changed:
+                self.model.top_p = value
+            changed, value = im.input_int("Max tokens", self.model.max_tokens)
+            im.set_item_tooltip("Maximum response-token budget, between 1 and 1000000")
+            if changed:
+                self.model.max_tokens = max(1, min(1000000, value))
+        if im.button("Save settings"):
+            self.model.save()
+        im.set_item_tooltip("Explicitly save the current provider through the shared private credential store")
+        im.same_line()
+        if im.button("Reset fields"):
+            self.model.reset()
+        im.set_item_tooltip("Reset visible fields to provider defaults; keep stored settings until Save")
+        im.end_disabled()
+        status = html.unescape(re.sub(r"<[^>]*>", "", self.model.status_source()))
+        key = str(self.model.api_key or "")
+        if key:
+            status = status.replace(key, "[redacted]")
+        im.text_wrapped("Working…" if self.busy else status)
+
+
+class AISettingsApp(ImApp):
+    def __init__(self) -> None:
+        self.settings_gui = AISettingsGui()
+        self.model = self.settings_gui.model
+        super().__init__(gui=self._render, continuous=False)
+        self.settings_gui.request_frame = self.request_frame
+
+    def _render(self) -> None:
+        self.settings_gui.draw()
+
+    def animating(self) -> bool:
+        return not self.settings_gui._closed and (super().animating() or self.settings_gui.busy or not self.settings_gui.events.empty())
+
+    def export_settings(self) -> dict:
+        return {"provider": self.model.provider}  # Credentials are stored only by ai_settings services.
+
+    def restore_settings(self, settings: dict) -> None:
+        provider = settings.get("provider")
+        if provider in dict(self.model.available_providers()):
+            self.settings_gui.select_provider(provider)
+
+    def close(self) -> None:
+        self.settings_gui.close()
+
+
+def make_ai_settings_app() -> AISettingsApp:
+    """Construct the native provider settings form without Qt."""
+    return AISettingsApp()
