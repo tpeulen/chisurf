@@ -1,0 +1,192 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "(onelutperroutingchannel).2.settings.tttr.jsonis",
+    "0",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.loadaflat-lightfile,thenaddallchannelstosetup",
+    "1000",
+    "1100",
+    "1200",
+    "1300",
+    "1400",
+    "1500",
+    "1600",
+    "1700",
+    "1800",
+    "1900",
+    "2000",
+    "4096",
+    "500",
+    "500000",
+    "addallchannelstosetup",
+    "advanced",
+    "afterlinearization(correctedpreview)",
+    "auto-detectregion",
+    "channel+region.",
+    "clear",
+    "computealutperroutingchannel,thenaddallchannelsto",
+    "computelut",
+    "counts",
+    "database",
+    "equal-widthntacbin",
+    "exportcorrected",
+    "file",
+    "files",
+    "folder",
+    "guide",
+    "help",
+    "linearstart",
+    "linearstop",
+    "lutcontrols",
+    "noffset",
+    "nolut—loadauniform-illuminationfileandpicka",
+    "normalizebyregionmean",
+    "optionalitonlysaves/loadsasettings.tttr.jsonfile.",
+    "parameters",
+    "previewchannel",
+    "previewphotons",
+    "rawtachistogram(dragtheorangeregion)",
+    "remove",
+    "savelutfile",
+    "settings.tttr.json(optional)",
+    "setup.savingafileisoptional.",
+    "tacbin",
+    "tacchannelsrequired",
+    "tachistograms",
+    "uniform-illuminationtttrfile(s)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Add all channels to setup",
+      "id": "Add all channels to setup##add_all",
+      "tooltip": "Compute a LUT for EVERY routing channel in the loaded file (one per channel: TAC non-linearity is per channel) and assign them all to your detector setup. This is the normal way to use LUTs. Saving a .npy LUT or a settings.tttr.json is optional."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help##show_help",
+      "tooltip": "What do the two tabs do? Read the LUT workflow and the scientific notes."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##start_guide",
+      "tooltip": "A short guided tour: load a file, pick the plateau, add all channels."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Compute LUT",
+      "id": "Compute LUT##stage_name0",
+      "tooltip": "Compute LUT: MAKE a per-routing-channel LUT from a flat / uniform-illumination measurement (the main tool). settings.tttr.json: OPTIONAL, save or load a portable settings file, or assign LUT files to channels by hand."
+    },
+    {
+      "kind": "radio_button",
+      "label": "settings.tttr.json (optional)",
+      "id": "settings.tttr.json (optional)##stage_name1",
+      "tooltip": "Compute LUT: MAKE a per-routing-channel LUT from a flat / uniform-illumination measurement (the main tool). settings.tttr.json: OPTIONAL, save or load a portable settings file, or assign LUT files to channels by hand."
+    },
+    {
+      "kind": "button",
+      "label": "Files",
+      "id": "Files##request_add_files",
+      "tooltip": "Load uniform-illumination (or, on the settings tab, preview) TTTR files."
+    },
+    {
+      "kind": "button",
+      "label": "Folder",
+      "id": "Folder##request_add_folder",
+      "tooltip": "Load supported photon files recursively from a folder."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##request_database",
+      "tooltip": "Select photon files from the MMFDB object store."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove##remove_file",
+      "tooltip": "Unload the selected input file."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##clear_files",
+      "tooltip": "Unload all input files; assigned LUTs are kept."
+    },
+    {
+      "kind": "input_text",
+      "label": "linear_start",
+      "id": "##linear_start",
+      "tooltip": "First bin of the flat linear region (or drag the orange region in the plot)."
+    },
+    {
+      "kind": "input_text",
+      "label": "linear_stop",
+      "id": "##linear_stop",
+      "tooltip": "First bin after the flat linear region."
+    },
+    {
+      "kind": "input_text",
+      "label": "ntac_required",
+      "id": "##ntac_required",
+      "tooltip": "Target number of corrected NTAC bins (defaults to the input bin count)."
+    },
+    {
+      "kind": "input_text",
+      "label": "noffset",
+      "id": "##noffset",
+      "tooltip": "Offset subtracted from corrected NTAC indices (or drag the red line)."
+    },
+    {
+      "kind": "input_text",
+      "label": "preview_photons",
+      "id": "##preview_photons",
+      "tooltip": "How many photons to use for the corrected-preview histogram."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Normalize by region mean",
+      "id": "Normalize by region mean##normalize",
+      "tooltip": "Divide the displayed histogram by the region mean (display only)."
+    },
+    {
+      "kind": "button",
+      "label": "Auto-detect region",
+      "id": "Auto-detect region##autodetect",
+      "tooltip": "Auto-detect the flat linear plateau of the shown channel's histogram."
+    },
+    {
+      "kind": "button",
+      "label": "Save LUT file...",
+      "id": "Save LUT file...##request_save_lut",
+      "tooltip": "Optional: save this channel's LUT to a file (JSON, NumPy, CSV or text). Not needed: use Add all channels to setup for the normal workflow."
+    },
+    {
+      "kind": "button",
+      "label": "Export corrected...",
+      "id": "Export corrected...##request_export_corrected",
+      "tooltip": "Optional: export the corrected micro-times of all photons of the shown channel."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
