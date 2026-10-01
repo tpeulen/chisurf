@@ -19,7 +19,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.traj.potential_energy.widget:PotentialEnergyWidget"
+    "gui": "chisurf.plugins.traj.potential_energy.widget:PotentialEnergyWidget",
+    "emtk": "chisurf.plugins.traj.potential_energy.app:make_app"
   },
   "requires": {
     "traj_energy_calculator": "*"

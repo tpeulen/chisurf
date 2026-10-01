@@ -1,0 +1,50 @@
+{
+  "controls": [
+    "add",
+    "ca",
+    "ch",
+    "cn",
+    "cutoff",
+    "h",
+    "oh",
+    "on",
+    "potential",
+    "potentialenergy",
+    "process",
+    "stride",
+    "topology",
+    "trajectory",
+    "weight"
+  ],
+  "labels": [
+    "CA",
+    "H",
+    "Potential",
+    "Stride",
+    "Topology",
+    "Trajectory",
+    "Weight",
+    "cutoff"
+  ],
+  "buttons": [
+    "...",
+    "CH",
+    "CN",
+    "OH",
+    "ON",
+    "…",
+    "▼  Potential energy",
+    "⚙️ Process",
+    "✖",
+    "➕ Add"
+  ],
+  "line_edits": 7,
+  "combos": 1,
+  "spin_boxes": 4,
+  "tables": 3,
+  "entrypoint": "chisurf.plugins.traj.potential_energy.widget:PotentialEnergyWidget",
+  "size": [
+    1200,
+    800
+  ]
+}

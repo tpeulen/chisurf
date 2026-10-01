@@ -1,0 +1,152 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "/users/tpeulen/dev/chisurf/chisurf/core/structure/potential/database/hb.npy",
+    "1",
+    "1.000",
+    "3.000",
+    "8.000",
+    "[005316]ready",
+    "add",
+    "ch",
+    "cn",
+    "cutoffca",
+    "cutoffh",
+    "h-bond",
+    "log",
+    "oh",
+    "on",
+    "output",
+    "potential",
+    "potentialenergy",
+    "process",
+    "stride",
+    "topology",
+    "trajectory",
+    "weight"
+  ],
+  "interactive": [
+    {
+      "kind": "input_text",
+      "label": "Trajectory",
+      "id": "##Trajectory",
+      "tooltip": "DCD trajectory scored frame by frame; drop or type a path."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##browse_trajectory",
+      "tooltip": "Choose the trajectory file."
+    },
+    {
+      "kind": "input_text",
+      "label": "Topology",
+      "id": "##Topology",
+      "tooltip": "PDB naming the atoms. DCD stores coordinates only, so this is required for them."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##browse_topology",
+      "tooltip": "Choose the topology file."
+    },
+    {
+      "kind": "combo",
+      "label": "potential_type",
+      "id": "##potential_type",
+      "tooltip": "Type of potential to configure and add"
+    },
+    {
+      "kind": "input_float",
+      "label": "cutoff_ca",
+      "id": "##cutoff_ca",
+      "tooltip": "C-alpha distance cutoff in Å below which residues pair."
+    },
+    {
+      "kind": "input_float",
+      "label": "cutoff_hbond",
+      "id": "##cutoff_hbond",
+      "tooltip": "Heavy-atom distance cutoff in Å for a hydrogen bond."
+    },
+    {
+      "kind": "checkbox",
+      "label": "oh",
+      "id": "##oh",
+      "tooltip": "Include O···H pair interactions."
+    },
+    {
+      "kind": "checkbox",
+      "label": "on",
+      "id": "##on",
+      "tooltip": "Include O···N pair interactions."
+    },
+    {
+      "kind": "checkbox",
+      "label": "cn",
+      "id": "##cn",
+      "tooltip": "Include C···N pair interactions."
+    },
+    {
+      "kind": "checkbox",
+      "label": "ch",
+      "id": "##ch",
+      "tooltip": "Include C···H pair interactions."
+    },
+    {
+      "kind": "input_text",
+      "label": "potential",
+      "id": "##potential",
+      "tooltip": "NumPy table of the hydrogen-bond potential (the bundled hb.npy by default)."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##browse_potential",
+      "tooltip": "Choose the potential file."
+    },
+    {
+      "kind": "input_float",
+      "label": "weight",
+      "id": "##weight",
+      "tooltip": "Scaling factor applied to the next potential added"
+    },
+    {
+      "kind": "button",
+      "label": "Add",
+      "id": "Add##add_potential",
+      "tooltip": "Add the configured potential to the list of used potentials"
+    },
+    {
+      "kind": "input_int",
+      "label": "stride",
+      "id": "##stride",
+      "tooltip": "Only every Nth frame is scored; also seeds the emitted frame numbers"
+    },
+    {
+      "kind": "input_text",
+      "label": "energy_target",
+      "id": "##energy_target",
+      "tooltip": "CSV file receiving one energy row per scored frame"
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##browse_output",
+      "tooltip": "Choose where the energies are written."
+    },
+    {
+      "kind": "button",
+      "label": "Process",
+      "id": "Process##process",
+      "tooltip": "Score every frame of the trajectory and write the energies to a CSV"
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

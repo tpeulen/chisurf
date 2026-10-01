@@ -2,6 +2,9 @@
 
 ## 2026-10-01
 
+- **traj_energy declares the calculator's emtk app** (EMTK-1, upgrade row 36): manifest entrypoint and a lazy Qt export
+  that is actually lazy now (an eager import above it still loaded PyQt5). [report](plugins/emtk-ports/traj_energy/REPORT.md).
+
 - **project_browser emtk app at parity** (EMTK-1, upgrade row 34): a restore reopens the fits' windows as the Qt tool did; a
   guided tour on the real controls; columns that fit; the service's import numbering fixed (`2d095575f`).
   [report](plugins/emtk-ports/project_browser/REPORT.md).
