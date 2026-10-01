@@ -1,0 +1,150 @@
+diff --git a/chisurf/plugins/core/globalview/gui/__init__.py b/chisurf/plugins/core/globalview/gui/__init__.py
+index 633e81581..9d52fdd38 100644
+--- a/chisurf/plugins/core/globalview/gui/__init__.py
++++ b/chisurf/plugins/core/globalview/gui/__init__.py
+@@ -1,6 +1,13 @@
+-# GlobalView GUI layer
+-
+-from chisurf.plugins.core.globalview.gui.client import GlobalViewClient
+-from chisurf.plugins.core.globalview.gui.tool import GraphWizard
++# GlobalView GUI layer; keep Qt hosts lazy for native factory imports.
+ 
+ __all__ = ["GraphWizard", "GlobalViewClient"]
++
++
++def __getattr__(name):
++    if name == "GraphWizard":
++        from chisurf.plugins.core.globalview.gui.tool import GraphWizard
++        return GraphWizard
++    if name == "GlobalViewClient":
++        from chisurf.plugins.core.globalview.gui.client import GlobalViewClient
++        return GlobalViewClient
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/core/globalview/gui/emtk_view.py b/chisurf/plugins/core/globalview/gui/emtk_view.py
+index 9afcf0d74..041632c99 100644
+--- a/chisurf/plugins/core/globalview/gui/emtk_view.py
++++ b/chisurf/plugins/core/globalview/gui/emtk_view.py
+@@ -40,13 +40,13 @@ import typing
+ from emtk import im
+ from emtk import nodes as emtk_nodes
+ 
+-from chisurf.gui.widgets.node_editor.document import (
++from chisurf.emtk.node_editor.document import (
+     GraphDocument,
+     GraphEdge,
+     GraphNode,
+ )
+-from chisurf.gui.widgets.node_editor.emtk_control import NodeContentRenderer
+-from chisurf.gui.widgets.node_editor.model import PortSpec
++from chisurf.emtk.node_editor.control import NodeContentRenderer
++from chisurf.emtk.node_editor.model import PortSpec
+ 
+ __all__ = [
+     "EDGE_COLOURS",
+@@ -214,17 +214,15 @@ def apply_network_style(editor: typing.Any) -> None:
+       the two centres, stops at each rim, and bows slightly -- which separates
+       edges that would otherwise be drawn on top of each other and gives the
+       eye something to follow between two distant marks.
+-    * **A quieter grid.** The grid is a background here, not a workspace to
+-      align things on; at the editor's default weight it competes with the
+-      thin ownership edges, which are the same width and nearly the same
+-      colour.
++    * **The grid comes from the settings.** :func:`GraphControl.__init__` has
++      already written the Plot Settings panel's ``node_graph`` section onto
++      the style -- width, opacity, spacing -- and this graph is a consumer of
++      that, not a second definition of it.
+     * **No node outline.** Discs draw their own rim.
+     """
+     style = editor.style
+     style.link_routing = emtk_nodes.LinkRouting.ARC
+     style.flags &= ~emtk_nodes.StyleFlags.NODE_OUTLINE
+-    style.colors[emtk_nodes.Col.GRID_LINE] = (255, 255, 255, 14)
+-    style.colors[emtk_nodes.Col.GRID_LINE_PRIMARY] = (255, 255, 255, 24)
+     style.colors[emtk_nodes.Col.GRID_BACKGROUND] = (24, 26, 31, 255)
+     # A disc is its own connector, so the pointer must be able to catch it
+     # anywhere on the mark rather than on a dot that is not drawn.
+diff --git a/chisurf/plugins/core/globalview/gui/model.py b/chisurf/plugins/core/globalview/gui/model.py
+index 5b59bd535..321c255d4 100644
+--- a/chisurf/plugins/core/globalview/gui/model.py
++++ b/chisurf/plugins/core/globalview/gui/model.py
+@@ -33,8 +33,8 @@ import re
+ import typing
+ 
+ from chisurf.core.fitting import parameter_network as pn
+-from chisurf.gui.widgets.node_editor.document import GraphDocument, GraphEdge, GraphNode
+-from chisurf.gui.widgets.node_editor.model import PortSpec
++from chisurf.emtk.node_editor.document import GraphDocument, GraphEdge, GraphNode
++from chisurf.emtk.node_editor.model import PortSpec
+ from chisurf.plugins.core.globalview.gui import emtk_view as ev
+ 
+ __all__ = ["GRAPH_LAYOUTS", "LAYOUT_EXTENT", "GlobalViewModel", "to_pixels"]
+@@ -191,20 +191,27 @@ class GlobalViewModel:
+     representation_options = [REPRESENTATION_NETWORK, REPRESENTATION_FACTORS]
+ 
+     def __init__(self, fits=None, groups=None, mutator=None) -> None:
+-        from chisurf.gui.widgets.node_editor.emtk_control import GraphControl
++        from chisurf.emtk.node_editor.control import GraphControl
+ 
+         self._fits = fits if fits is not None else _session_fits
+         self._groups = groups if groups is not None else _registered_groups
+         if mutator is None:
+-            from chisurf.gui.widgets.fitting.parameter_mutator import FittingClientParamMutator
+-
+-            mutator = FittingClientParamMutator()
++            try:
++                from chisurf.gui.widgets.fitting.parameter_mutator import FittingClientParamMutator
++                mutator = FittingClientParamMutator()
++            except Exception:
++                mutator = None
+         self.mutator = mutator
+ 
+         # -- settings (globalview.view.json) --
+         self.representation = REPRESENTATION_NETWORK
+         self.graph_layout = GRAPH_LAYOUTS[0]
+-        self.node_size = 13.0
++        # Where the View panel's node-size control starts. The Plot Settings
++        # panel's node-graph section owns the default; the slider owns it from
++        # here on.
++        from chisurf.emtk.node_editor.style_settings import node_graph_settings
++
++        self.node_size = float(node_graph_settings()["node_size"])
+         self.graph_scale = 1.0
+         self.connect_owners = False
+         self.include_fixed = False
+diff --git a/chisurf/plugins/core/globalview/manifest.json b/chisurf/plugins/core/globalview/manifest.json
+index 5164aba7b..4460ac812 100644
+--- a/chisurf/plugins/core/globalview/manifest.json
++++ b/chisurf/plugins/core/globalview/manifest.json
+@@ -16,6 +16,7 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.core.globalview.gui:GraphWizard",
++    "emtk": "chisurf.plugins.core.globalview.gui.app:make_app",
+     "cli": null,
+     "services": "chisurf.plugins.core.globalview.backend.services:register_services"
+   },
+diff --git a/chisurf/plugins/core/globalview/tests/test_model.py b/chisurf/plugins/core/globalview/tests/test_model.py
+index 2ffb57d08..829256f60 100644
+--- a/chisurf/plugins/core/globalview/tests/test_model.py
++++ b/chisurf/plugins/core/globalview/tests/test_model.py
+@@ -225,6 +225,20 @@ def test_the_size_setting_scales_every_mark_but_keeps_their_ratio():
+     assert after[0] / after[1] == pytest.approx(before[0] / before[1])
+ 
+ 
++def test_the_initial_node_size_is_the_plot_settings_default(monkeypatch):
++    """A new window's node-size control starts where Plot Settings says.
++
++    The panel's node-graph section owns the default; the window's own slider
++    is the authority from the first drag on.
++    """
++    from chisurf.core import settings as css
++
++    plot = css.cs_settings.setdefault("gui", {}).setdefault("plot", {})
++    monkeypatch.setitem(plot, "node_graph", {"node_size": 17.5})
++    model, _fits, _ = _session()
++    assert model.node_size == pytest.approx(17.5)
++
++
+ def test_a_factor_is_a_square_and_a_parameter_a_disc():
+     from emtk import nodes
+ 

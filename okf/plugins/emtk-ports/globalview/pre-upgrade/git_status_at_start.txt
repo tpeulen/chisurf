@@ -1,0 +1,6 @@
+ M chisurf/plugins/core/globalview/gui/__init__.py
+ M chisurf/plugins/core/globalview/gui/emtk_view.py
+ M chisurf/plugins/core/globalview/gui/model.py
+ M chisurf/plugins/core/globalview/manifest.json
+ M chisurf/plugins/core/globalview/tests/test_model.py
+?? chisurf/plugins/core/globalview/gui/app.py

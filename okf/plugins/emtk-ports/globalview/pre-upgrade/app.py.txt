@@ -1,0 +1,14 @@
+"""Native Global View factory."""
+from __future__ import annotations
+
+from emtk.docking import LayoutStore
+
+from .model import GlobalViewModel
+from .surface import GlobalViewSurface
+
+
+def make_app():
+    model = GlobalViewModel()
+    model.rebuild(force=True)
+    store = LayoutStore("globalview")
+    return GlobalViewSurface(model, store=store)
