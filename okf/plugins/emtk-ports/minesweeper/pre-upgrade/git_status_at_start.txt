@@ -1,0 +1,9 @@
+ M chisurf/plugins/misc/games/minesweeper/gui/__init__.py
+ M chisurf/plugins/misc/games/minesweeper/manifest.json
+?? chisurf/plugins/misc/games/minesweeper/README.md
+?? chisurf/plugins/misc/games/minesweeper/gui/app.py
+?? chisurf/plugins/misc/games/minesweeper/gui/glyphs.json
+?? chisurf/plugins/misc/games/minesweeper/gui/translations.py
+?? chisurf/plugins/misc/games/minesweeper/test/capture_native.py
+?? chisurf/plugins/misc/games/minesweeper/test/renders/
+?? chisurf/plugins/misc/games/minesweeper/test/test_native.py

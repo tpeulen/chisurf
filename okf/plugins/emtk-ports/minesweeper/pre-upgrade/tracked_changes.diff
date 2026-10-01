@@ -1,0 +1,41 @@
+diff --git a/chisurf/plugins/misc/games/minesweeper/gui/__init__.py b/chisurf/plugins/misc/games/minesweeper/gui/__init__.py
+index 91f2c7241..93ce8188d 100644
+--- a/chisurf/plugins/misc/games/minesweeper/gui/__init__.py
++++ b/chisurf/plugins/misc/games/minesweeper/gui/__init__.py
+@@ -1,5 +1,10 @@
+ """Qt interface for Minesweeper."""
+ 
+-from .tool import MinesweeperWidget
++def __getattr__(name):
++    """Keep legacy widget imports lazy so native factories never import Qt."""
++    if name == "MinesweeperWidget":
++        from .tool import MinesweeperWidget
++        return MinesweeperWidget
++    raise AttributeError(name)
+ 
+ __all__ = ["MinesweeperWidget"]
+diff --git a/chisurf/plugins/misc/games/minesweeper/manifest.json b/chisurf/plugins/misc/games/minesweeper/manifest.json
+index f5b0c34dd..9ee286529 100644
+--- a/chisurf/plugins/misc/games/minesweeper/manifest.json
++++ b/chisurf/plugins/misc/games/minesweeper/manifest.json
+@@ -3,10 +3,17 @@
+   "version": "1.0.0",
+   "display_name": "Tools:Miscellaneous:Games:Minesweeper",
+   "description": "A Minesweeper game with selectable playfield size and mine count, contained in the Games hub.",
+-  "authors": ["ChiSurf contributors"],
+-  "categories": ["Tools", "Miscellaneous", "Games"],
++  "authors": [
++    "ChiSurf contributors"
++  ],
++  "categories": [
++    "Tools",
++    "Miscellaneous",
++    "Games"
++  ],
+   "entrypoints": {
+-    "gui": "chisurf.plugins.misc.games.minesweeper.gui.tool:MinesweeperWidget"
++    "gui": "chisurf.plugins.misc.games.minesweeper.gui.tool:MinesweeperWidget",
++    "emtk": "chisurf.plugins.misc.games.minesweeper.gui.app:make_app"
+   },
+   "dependencies": {},
+   "menu_hidden": true,
