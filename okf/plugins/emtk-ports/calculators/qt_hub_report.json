@@ -1,0 +1,66 @@
+{
+ "fret_calculator": {
+  "title": "🧮  FRET / homoFRET",
+  "subtitle": "Combined heteroFRET and homoFRET parameter calculator — convert between distance, efficiency, lifetime and rate.",
+  "page_widget": "FretCalculatorTool",
+  "stack_count": 2
+ },
+ "fret_line": {
+  "title": "📈  FRET line",
+  "subtitle": "Compute static, dynamic, WLC and mixture FRET lines for parameter ranges, ready to overlay on smFRET 2D histograms.",
+  "page_widget": "FRETLineTool",
+  "stack_count": 3
+ },
+ "fcs_calculator": {
+  "title": "🌀  FCS diffusion",
+  "subtitle": "Confocal-FCS diffusion/volume calculator — solve τ, D, rₕ, V_eff and concentration from one constraint.",
+  "page_widget": "ConfocalCalcWidget",
+  "stack_count": 4
+ },
+ "rics_precision": {
+  "title": "📐  RICS precision",
+  "subtitle": "Predict how precisely a raster scan would measure a diffusion coefficient, and sweep the pixel dwell time to find the one that measures it best — from the intended settings, before acquiring.",
+  "page_widget": "RicsPrecisionTool",
+  "stack_count": 5
+ },
+ "phasor": {
+  "title": "◐  Phasor plot",
+  "subtitle": "Interactive phasor plot — universal semicircle with a reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line.",
+  "page_widget": "PhasorCalculatorTool",
+  "stack_count": 6
+ },
+ "kappa2_dist": {
+  "title": "🎯  κ² distribution",
+  "subtitle": "Orientation-factor distribution p(κ²) for FRET — wobbling-in-cone, diffusion-with-traps and isotropic models with apparent-distance error.",
+  "page_widget": "Kappa2Dist",
+  "stack_count": 7
+ },
+ "f_test": {
+  "title": "📉  F-test / χ²-max",
+  "subtitle": "Compare two nested model fits (confidence ↔ χ² threshold) and compute the χ²-max upper limit of a single fit at a confidence level.",
+  "page_widget": "FTestTool",
+  "stack_count": 8
+ },
+ "fcs_saturation": {
+  "title": "🔆  FCS Saturation",
+  "subtitle": "Numerical calculation of excitation saturation and effective volume expansion in FCS across arbitrary multi-state kinetic schemes (e.g. Cy5).",
+  "page_widget": "QWidget",
+  "stack_count": 9
+ },
+ "psf_calculator": {
+  "title": "🔬  PSF calculator",
+  "subtitle": "Compute a 3-D point-spread function and view it as a volume: vectorial Richards-Wolf, scalar Airy or Gaussian, with the polarization entering the objective pupil.",
+  "page_widget": "QLabel",
+  "stack_count": 10
+ },
+ "items": 9,
+ "broken_first": {
+  "title": "X  Broken one",
+  "page_text": "Could not load 'Broken one':\nNo module named 'chisurf.nowhere'"
+ },
+ "empty": {
+  "title": "Calculators",
+  "subtitle": "Select a calculator on the left to get started.",
+  "page_text": "No calculator selected."
+ }
+}

@@ -1,0 +1,12 @@
+diff --git a/chisurf/plugins/calculator/hub/manifest.json b/chisurf/plugins/calculator/hub/manifest.json
+index fed8a279c..06f1cbc21 100644
+--- a/chisurf/plugins/calculator/hub/manifest.json
++++ b/chisurf/plugins/calculator/hub/manifest.json
+@@ -19,6 +19,7 @@
+     }
+   },
+   "entrypoints": {
++    "emtk": "chisurf.plugins.calculator.hub.gui.app:make_app",
+     "gui": "chisurf.plugins.calculator.hub.gui.tool:CalculatorHub"
+   },
+   "rpc_methods": [],

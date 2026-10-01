@@ -1,0 +1,39 @@
+{
+  "controls": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "combinedheterofretandhomofretparametercalculator—convertbetweendistance,efficiency,lifetimeandrate.",
+    "f-test/χ²-max",
+    "fcsdiffusion",
+    "fcssaturation",
+    "fret/homofret",
+    "fretline",
+    "nocalculatorselected.",
+    "phasorplot",
+    "psfcalculator",
+    "ricsprecision",
+    "κ²distribution"
+  ],
+  "labels": [
+    "Combined heteroFRET and homoFRET parameter calculator — convert between distance, efficiency, lifetime and rate.",
+    "No calculator selected.",
+    "🧮  FRET / homoFRET"
+  ],
+  "buttons": [],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 1,
+  "entrypoint": "chisurf.plugins.calculator.hub.gui.tool:CalculatorHub",
+  "size": [
+    1200,
+    800
+  ]
+}
