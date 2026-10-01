@@ -1,0 +1,6 @@
+{
+  "droptttrfileshere": "Qt drop-area caption 'Drop TTTR files here'; emtk 'Drop TTTR files here (.ptu, .ht3, .phu, …) — or use the buttons.' above the queue (same drop target).",
+  "previewfile": "Qt Preview-tab 'Preview file:' combo; in emtk a click on a file of the TTTR files list previews it (selected row highlighted, after_populated_preview_*.png).",
+  "selectafiletopreviewitsintensitytrace.": "Qt hint under the settings; emtk shows the same hint in the empty preview plot ('select a file to preview its trace').",
+  "timewindow": "Qt 'Time window:' with the unit as the spin box suffix ' ms'; emtk 'Time window (ms):' (the unit moved into the label: the emtk number field has no suffix)."
+}

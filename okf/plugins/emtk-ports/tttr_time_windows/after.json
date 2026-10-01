@@ -1,0 +1,122 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "10.000",
+    "auto(derivedfromfirstfile)",
+    "browse",
+    "buttons.",
+    "clear",
+    "database",
+    "droptttrfileshere(.ptu,.ht3,.phu,)—orusethe",
+    "files",
+    "folder",
+    "guide",
+    "help",
+    "intensity(counts)",
+    "intensitytracepreview",
+    "nofilesqueued.",
+    "outputfolder",
+    "process",
+    "processinglog",
+    "processinglogwillappearhere",
+    "remove",
+    "selectafiletopreviewitstrace",
+    "settings",
+    "time(s)",
+    "timewindow(ms)",
+    "tttrfiles"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Files",
+      "id": "Files",
+      "tooltip": "Pick TTTR files (.ptu, .ht3, .phu, …) and queue them for splitting."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear",
+      "tooltip": "Empty the file queue and reset the preview and the log."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "How this tool works: queue files, set the window, Process."
+    },
+    {
+      "kind": "button",
+      "label": "Folder",
+      "id": "Folder",
+      "tooltip": "Queue supported TTTR files from a folder recursively."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database",
+      "tooltip": "Select TTTR datasets from the session MMFDB database."
+    },
+    {
+      "kind": "button",
+      "label": "− Remove",
+      "id": "− Remove",
+      "tooltip": "Remove the selected preview file from the queue."
+    },
+    {
+      "kind": "button",
+      "label": "Process",
+      "id": "Process",
+      "tooltip": "Compute start/stop photon indices per time window for every queued file and write one .bst (BID) file each."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "The short help page, also behind Help ▸ About."
+    },
+    {
+      "kind": "input_float",
+      "label": "time_window",
+      "id": "##time_window",
+      "tooltip": "Duration of each time window in milliseconds. Smaller values give more windows with fewer photons each; the preview's dashed lines follow."
+    },
+    {
+      "kind": "input_text",
+      "label": "output_dir",
+      "id": "##output_dir",
+      "tooltip": "Where the .bst files go. Leave empty to create a folder next to the first input file."
+    },
+    {
+      "kind": "button",
+      "label": "Browse…",
+      "id": "Browse…",
+      "tooltip": "Choose the output folder manually."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
