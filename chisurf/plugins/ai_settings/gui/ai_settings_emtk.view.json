@@ -1,0 +1,275 @@
+{
+  "_comment": "AI Settings, native emtk window. The three collapsible panels, the Test / Save / Reset row and the result line of the Qt tool (ai_settings.view.json), drawn by emtk.view_form over AISettingsModel (gui/model.py). The Qt text/image model boxes are editable combos; emtk's choice is not, so each model is a text field (any id) plus a pick list of the fetched ids. The eye toggle of the Qt key field is the 'Show key' check box: two fields on the same attribute, one masked and one in clear text. 'settings' is the scrolling form, 'actions' the Test / Save / Reset bar and the result line, each a window of gui/app.py.",
+  "title": "AI Settings",
+  "sections": [
+    {
+      "type": "panel",
+      "name": "settings",
+      "title": "AI Settings",
+      "description": "The provider, its models and the generation settings.",
+      "sections": [
+        {
+          "type": "info",
+          "text": "Configure one endpoint per provider, with separate models for chat/code tasks and image generation.",
+          "description": "What this window is for."
+        },
+        {
+          "type": "panel",
+          "title": "API Configuration",
+          "collapsible": true,
+          "collapsed": false,
+          "description": "Which provider to use, where its API lives and the key that unlocks it.",
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "provider",
+              "label": "Provider",
+              "call": "set_provider",
+              "options_source": "available_providers",
+              "description": "Which AI provider to use. The list comes from the provider table in chisurf.core.settings.ai_settings, so it always matches what the rest of the app supports. Each provider keeps its own base URL, key and models."
+            },
+            {
+              "type": "panel",
+              "sections": [
+                {
+                  "type": "button_row",
+                  "buttons": [
+                    {
+                      "label": "Sign in via browser",
+                      "action": "sign_in",
+                      "description": "Open the provider's console to create or copy an API key."
+                    }
+                  ],
+                  "weight": 0
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "n_col": 2,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "base_url",
+                  "label": "Base URL",
+                  "kind": "str",
+                  "placeholder": "https://api.openai.com/v1",
+                  "description": "OpenAI-compatible API base URL for the selected provider."
+                },
+                {
+                  "type": "value",
+                  "attr": "api_key",
+                  "label": "API Key",
+                  "kind": "password",
+                  "call": "apply_token",
+                  "placeholder": "Paste API key - it is saved and tested automatically",
+                  "hidden_when": {
+                    "attr": "show_key",
+                    "equals": "true"
+                  },
+                  "description": "Bearer token for the endpoint, drawn as stars. Pasting a key (Enter, or a click elsewhere) auto-saves it and tests the connection. Not needed for most local servers."
+                },
+                {
+                  "type": "value",
+                  "attr": "api_key",
+                  "label": "API Key",
+                  "kind": "str",
+                  "call": "apply_token",
+                  "placeholder": "Paste API key - it is saved and tested automatically",
+                  "hidden_when": {
+                    "attr": "show_key",
+                    "equals": "false"
+                  },
+                  "description": "Bearer token for the endpoint, shown in clear text because Show key is on. Pasting a key (Enter, or a click elsewhere) auto-saves it and tests the connection."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "show_key",
+                  "label": "Show key",
+                  "description": "Show the API key in clear text instead of stars. For this session only: a provider switch hides it again, and the setting is never saved."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "command",
+                  "label": "ACP command",
+                  "kind": "str",
+                  "hidden_when": {
+                    "attr": "provider",
+                    "not_equals": "acp"
+                  },
+                  "description": "Executable and arguments of the stdio ACP agent; quoted paths are supported."
+                },
+                {
+                  "type": "choice",
+                  "attr": "acp_backend_provider",
+                  "label": "In-tree server API",
+                  "options_source": "acp_backend_options",
+                  "hidden_when": {
+                    "attr": "provider",
+                    "not_equals": "acp"
+                  },
+                  "description": "HTTP provider the in-tree ACP server uses; an external agent manages its own provider."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Models",
+          "collapsible": true,
+          "collapsed": false,
+          "description": "The model used for text (chat, code) and the one used for images.",
+          "sections": [
+            {
+              "type": "panel",
+              "n_col": 2,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "text_model",
+                  "label": "Text model",
+                  "kind": "str",
+                  "description": "Used for chat, code editing, explanations, and other text tasks. Type any model id, or pick one of the fetched models below."
+                },
+                {
+                  "type": "value",
+                  "attr": "image_model",
+                  "label": "Image model",
+                  "kind": "str",
+                  "description": "Used only for plugin icon and other image-generation tasks. Type any model id, or pick one of the fetched models below."
+                },
+                {
+                  "type": "choice",
+                  "attr": "text_model_pick",
+                  "label": "Fetched text models",
+                  "options_source": "text_model_choices",
+                  "hidden_when": {
+                    "attr": "has_text_models",
+                    "equals": "false"
+                  },
+                  "description": "The text-capable models the endpoint listed. Picking one sets the text model."
+                },
+                {
+                  "type": "choice",
+                  "attr": "image_model_pick",
+                  "label": "Fetched image models",
+                  "options_source": "image_model_choices",
+                  "hidden_when": {
+                    "attr": "has_image_models",
+                    "equals": "false"
+                  },
+                  "description": "The image-capable models the endpoint listed. Picking one sets the image model."
+                }
+              ]
+            },
+            {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "label": "Fetch models",
+                  "action": "fetch_models",
+                  "description": "Query the endpoint's /models list and split it into text and image models. Runs in the background."
+                }
+              ],
+              "weight": 0
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Generation Settings",
+          "collapsible": true,
+          "collapsed": true,
+          "description": "Sampling settings sent with every request. The defaults are sensible.",
+          "sections": [
+            {
+              "type": "panel",
+              "n_col": 2,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "temperature",
+                  "label": "Temperature",
+                  "kind": "float",
+                  "style": "spin",
+                  "minimum": 0.0,
+                  "maximum": 2.0,
+                  "step": 0.1,
+                  "decimals": 2,
+                  "description": "Sampling temperature (0 = deterministic, higher = more random)."
+                },
+                {
+                  "type": "value",
+                  "attr": "top_p",
+                  "label": "Top-p",
+                  "kind": "float",
+                  "style": "spin",
+                  "minimum": 0.0,
+                  "maximum": 1.0,
+                  "step": 0.05,
+                  "decimals": 2,
+                  "description": "Nucleus-sampling probability mass."
+                },
+                {
+                  "type": "value",
+                  "attr": "max_tokens",
+                  "label": "Max tokens",
+                  "kind": "int",
+                  "style": "spin",
+                  "minimum": 1,
+                  "maximum": 1000000,
+                  "description": "Maximum number of tokens to generate per response."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "actions",
+      "title": "Test / Save / Reset",
+      "description": "Check the endpoint, save the settings, or reset them; the result is shown below the buttons.",
+      "sections": [
+        {
+          "type": "panel",
+          "sections": [
+            {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "label": "Test connection",
+                  "action": "test_connection",
+                  "description": "Check the endpoint responds to a /models request. Runs in the background."
+                },
+                {
+                  "label": "Save",
+                  "action": "save",
+                  "description": "Persist the current provider's settings to ai_api_settings.json in the settings folder."
+                },
+                {
+                  "label": "Reset",
+                  "action": "reset",
+                  "description": "Reset the current provider's fields to defaults (not saved until you press Save)."
+                }
+              ],
+              "weight": 0
+            }
+          ]
+        },
+        {
+          "type": "info",
+          "source": "status_text",
+          "description": "The result of the last Fetch models, Test connection, Save or Reset."
+        }
+      ]
+    }
+  ]
+}

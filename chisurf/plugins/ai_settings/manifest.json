@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "display_name": "Tools:AI Settings",
   "description": "AI Settings plugin for configuring API providers and backends.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Tools"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools"
+  ],
   "icon": "🤖",
   "menu_hidden": true,
   "statefulness": {
@@ -15,6 +19,7 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.ai_settings.gui.tool:AISettingsWidget"
+    "gui": "chisurf.plugins.ai_settings.gui.tool:AISettingsWidget",
+    "emtk": "chisurf.plugins.ai_settings.gui.app:make_ai_settings_app"
   }
 }

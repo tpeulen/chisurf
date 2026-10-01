@@ -26,8 +26,25 @@ _VIEW = pathlib.Path(__file__).with_name("ai_settings.view.json")
 #: excluded on purpose: switching it *loads* another provider rather than editing
 #: the current one, so it must not save the current fields under the new key.
 _PERSIST_FIELDS = frozenset(
-    {"base_url", "api_key", "text_model", "image_model", "temperature", "top_p", "max_tokens"}
+    {"base_url", "api_key", "text_model", "image_model", "temperature", "top_p", "max_tokens", "command", "acp_backend_provider"}
 )
+
+
+#: Seconds a ``/models`` request may take before it is given up.
+REQUEST_TIMEOUT = 15
+
+
+def describe_error(error: BaseException) -> str:
+    """Return a readable one-line description of a failed request.
+
+    A timeout is named as one (the transport's own text is a bare ``timed out``),
+    and an exception with no message falls back to its class name instead of
+    producing an empty status.
+    """
+    text = str(error).strip()
+    if isinstance(error, TimeoutError) or "timed out" in text.lower():
+        return f"timed out: the endpoint did not answer within {REQUEST_TIMEOUT} s"
+    return text or type(error).__name__
 
 
 class AISettingsModel:
@@ -54,6 +71,16 @@ class AISettingsModel:
             | None
         ) = None
         self.status_html: str = ""
+        #: Plain-text twin of :attr:`status_html` (what the emtk result area draws).
+        self.status_text: str = ""
+        #: Whether the API key is shown in clear. Session only: never saved, and a
+        #: provider switch (or a new model) hides the key again.
+        self.show_key: bool = False
+        #: Bumped when the provider changes or the fields reset, so the answer of a
+        #: request started before that is dropped instead of filling the new provider's fields.
+        self._epoch: int = 0
+        #: True while a network request runs (set by the host that runs the jobs).
+        self.busy: bool = False
         self._text_models: list[str] = []
         self._image_models: list[str] = []
         # Populate every attribute from the currently selected provider.
@@ -97,6 +124,61 @@ class AISettingsModel:
         """Return the fetched image-capable model ids for the image-model combo."""
         return list(self._image_models)
 
+    # -- emtk-facing members (the Qt tool ignores them) -------------------------
+    @property
+    def has_text_models(self) -> bool:
+        """Whether a model list was fetched for the text-model pick list."""
+        return bool(self._text_models)
+
+    @property
+    def has_image_models(self) -> bool:
+        """Whether a model list was fetched for the image-model pick list."""
+        return bool(self._image_models)
+
+    @property
+    def text_model_pick(self) -> str:
+        """The text model, as the pick list shows it."""
+        return self.text_model
+
+    @text_model_pick.setter
+    def text_model_pick(self, value: str) -> None:
+        self.text_model = str(value)
+
+    @property
+    def image_model_pick(self) -> str:
+        """The image model, as the pick list shows it."""
+        return self.image_model
+
+    @image_model_pick.setter
+    def image_model_pick(self, value: str) -> None:
+        self.image_model = str(value)
+
+    def text_model_choices(self) -> list[str]:
+        """Fetched text models, plus the current one when it is not among them."""
+        return self._with_current(self._text_models, self.text_model)
+
+    def image_model_choices(self) -> list[str]:
+        """Fetched image models, plus the current one when it is not among them."""
+        return self._with_current(self._image_models, self.image_model)
+
+    @staticmethod
+    def _with_current(fetched: list[str], current: str) -> list[str]:
+        """Pick-list entries: the fetched ids, led by *current* when it is a custom id."""
+        current = (current or "").strip()
+        return [current, *fetched] if current and current not in fetched else list(fetched)
+
+    def acp_backend_options(self) -> list[tuple[str, str]]:
+        """``(key, label)`` pairs for the ACP server's HTTP provider; ``""`` follows the selected one."""
+        return [("", "Selected HTTP provider")] + [
+            (key, label) for key, label in self.available_providers() if key != "acp"
+        ]
+
+    def enabled(self, name: str) -> bool:
+        """Whether the action *name* may start now: a request runs one at a time."""
+        if name in ("fetch_models", "test_connection"):
+            return not self.busy
+        return True
+
     # -- status ---------------------------------------------------------------
     def status_source(self) -> str:
         """Live HTML for the status ``info`` section."""
@@ -106,11 +188,14 @@ class AISettingsModel:
     def set_provider(self, provider: str) -> None:
         """Load the saved settings for *provider* into the visible fields."""
         provider = ai_settings.normalize_provider_key(provider)
+        self._epoch += 1
         self._apply_settings(ai_settings.get_api_settings(provider))
         # Fetched model lists belong to the previous endpoint — drop them.
         self._text_models = []
         self._image_models = []
         self.status_html = ""
+        self.status_text = ""
+        self.show_key = False
         self._notify()
 
     def sign_in(self) -> None:
@@ -132,14 +217,17 @@ class AISettingsModel:
         self._set_status("Fetching models…", "blue")
         key = (self.api_key or "").strip()
         provider = self.provider
+        epoch = self._epoch
 
         def work():
             try:
                 return ("ok", self._get_models(base_url, key))
             except Exception as exc:  # network / parse errors are user-facing
-                return ("error", str(exc))
+                return ("error", describe_error(exc))
 
         def done(result):
+            if epoch != self._epoch:
+                return  # the provider changed while the request ran
             kind, payload = result
             if kind == "error":
                 self._set_status(f"Failed: {payload}", "red")
@@ -172,15 +260,20 @@ class AISettingsModel:
             return
         self._set_status("Testing connection…", "blue")
         key = (self.api_key or "").strip()
+        epoch = self._epoch
 
         def work():
             try:
                 self._get_models(base_url, key)
                 return ("Connection successful!", "green")
             except Exception as exc:
-                return (f"Connection failed: {exc}", "red")
+                return (f"Connection failed: {describe_error(exc)}", "red")
 
-        self._run(work, lambda result: self._set_status(*result))
+        def done(result):
+            if epoch == self._epoch:
+                self._set_status(*result)
+
+        self._run(work, done)
 
     def apply_token(self, value: str | None = None) -> None:
         """Paste-and-go: the token is already auto-saved, so just verify it.
@@ -205,6 +298,7 @@ class AISettingsModel:
         defaults = DEFAULT_PROVIDER_SETTINGS.get(
             self.provider, DEFAULT_PROVIDER_SETTINGS[ai_settings.DEFAULT_PROVIDER]
         )
+        self._epoch += 1
         self._apply_settings({**defaults, "provider": self.provider})
         self._text_models = []
         self._image_models = []
@@ -222,6 +316,7 @@ class AISettingsModel:
         re-triggering :meth:`__setattr__` auto-save.
         """
         self._saving = True
+        save_error = ""
         try:
             base_url = (self.base_url or "").strip()
             if self.provider != "custom" and not base_url:
@@ -236,17 +331,22 @@ class AISettingsModel:
                     "temperature": float(self.temperature),
                     "top_p": float(self.top_p),
                     "max_tokens": int(self.max_tokens),
+                    "command": str(self.command),
+                    "acp_backend_provider": str(self.acp_backend_provider),
                 }
             )
             if ok and base_url != self.base_url:
                 self.base_url = base_url  # show the resolved URL (guarded: no re-save)
+        except Exception as error:
+            ok = False
+            save_error = f"Failed to save settings: {error}"
         finally:
             self._saving = False
-        if not silent:
+        if not silent or not ok:
             if ok:
                 self._set_status("Settings saved.", "green")
             else:
-                self._set_status("Failed to save settings.", "red")
+                self._set_status(save_error or "Failed to save settings.", "red")
         return ok
 
     # -- internals ------------------------------------------------------------
@@ -260,7 +360,8 @@ class AISettingsModel:
         """
         runner = self.async_runner
         if callable(runner):
-            runner(work, done)
+            if runner(work, done) is False:  # the host runs one request at a time
+                self._set_status("Another request is still running. Try again in a moment.", "orange")
         else:
             done(work())
 
@@ -276,6 +377,8 @@ class AISettingsModel:
             self.temperature = float(settings.get("temperature", 0.3))
             self.top_p = float(settings.get("top_p", 0.9))
             self.max_tokens = int(settings.get("max_tokens", 4096))
+            self.command = str(settings.get("command", "") or "")
+            self.acp_backend_provider = str(settings.get("acp_backend_provider", "") or "")
         finally:
             self._loading = False
 
@@ -288,7 +391,7 @@ class AISettingsModel:
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
         url = base_url.rstrip("/") + "/models"
-        response = http.get(url, headers=headers, timeout=15)
+        response = http.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         if response.status_code != 200:
             raise RuntimeError(f"API error {response.status_code}: {response.text[:100]}")
         return response.json()
@@ -298,8 +401,15 @@ class AISettingsModel:
         # Escaped: ``message`` carries str(exc), which carries the provider's
         # response body. A server answering with markup would otherwise have it
         # rendered as rich text in the status label.
-        self.status_html = f"<span style='color: {color};'>{html.escape(str(message))}</span>"
+        message = self._redact(str(message))
+        self.status_html = f"<span style='color: {color};'>{html.escape(message)}</span>"
+        self.status_text = message
         self._notify()
+
+    def _redact(self, message: str) -> str:
+        """Return *message* without the API key: a provider may echo the key in an error body."""
+        key = (self.api_key or "").strip()
+        return message.replace(key, "[redacted]") if len(key) >= 6 else message
 
     def _notify(self) -> None:
         """Invoke the tool-supplied refresh callback, if any."""
@@ -308,3 +418,36 @@ class AISettingsModel:
                 self.on_change()
             except Exception:  # pragma: no cover - defensive
                 _LOG.warning("AISettingsModel.on_change failed", exc_info=True)
+
+
+class BackgroundCall:
+    """One request, as the target of a :class:`~chisurf.emtk.jobs.SnapshotJob`.
+
+    The job runs :meth:`run` on a copy of this object in a worker thread and
+    copies the result back, then calls :meth:`notify`; the answer is handed to
+    ``done`` there, on the thread that polls the job. The settings model itself
+    is never copied, so an edit made while a request runs is not overwritten by
+    the job's snapshot.
+    """
+
+    def __init__(self) -> None:
+        self.work: typing.Callable[[], typing.Any] | None = None
+        self.done: typing.Callable[[typing.Any], None] | None = None
+        self.result: typing.Any = None
+        self.status_text = ""
+        self._observers: list = []
+
+    def prepare(self, work, done) -> None:
+        """Set what the next job runs and where its answer goes."""
+        self.work, self.done, self.result = work, done, None
+
+    def run(self) -> None:
+        """Run the request (in the worker thread)."""
+        self.result = self.work()
+
+    def notify(self, event: str) -> None:
+        """Deliver the answer once, when the job's result has been copied back."""
+        if event == "updated" and self.result is not None and self.done is not None:
+            result, done = self.result, self.done
+            self.result = self.done = None
+            done(result)

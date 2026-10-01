@@ -32,13 +32,20 @@ Paste it and it is saved and tested straight away.
 and the field shows it as coming from the environment. A key you type here takes
 precedence over the environment.
 
+The key is drawn as stars. **Show key** (the eye button of the Qt window) shows it
+in clear text for this session only; changing the provider hides it again and the
+choice is never saved. Enter, or a click elsewhere, saves the key and tests the
+endpoint.
+
 To stop using a key, clear the field and press **Save**.
 
 ## Models
 
 **Fetch models** asks the provider what it offers and splits the answer into
-text-capable and image-capable models, filling both drop-downs. Both are
-editable: if the provider does not list a model you know exists, type its id.
+text-capable and image-capable models, in the background, and fills the two
+pick lists under the model fields (**Fetched text models**, **Fetched image
+models**). Each model is a text field, so if the provider does not list a model
+you know exists, type its id; a pick from the list sets the field.
 
 - **Text model** — the agent panel and curve triage.
 - **Image model** — plugin-icon generation only.
@@ -54,7 +61,14 @@ Collapsed by default because the defaults are sensible.
   amount, so an oversized value can be refused outright (HTTP 402) even when
   the reply would have been short.
 
-## Test connection
+## Test connection, Save and Reset
+
+**Save** writes the current provider's settings (they are also saved as you
+edit). **Reset** puts the provider's fields back to their defaults without
+saving; press **Save** to keep them. The result of each action appears in the
+line under the buttons.
+
+### Test connection
 
 Asks the endpoint for its model list. It checks that the URL is reachable and
 the key is accepted; it does not check that the model you selected can actually
