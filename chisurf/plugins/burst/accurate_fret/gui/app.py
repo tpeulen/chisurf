@@ -380,6 +380,13 @@ class AccurateFretGui(TourTarget):
                 implot.setup_axes_limits(-0.1, 1.1, -0.1, 1.1)
             elif title == "E–lifetime":
                 implot.setup_axes_limits(0.0, max(self.model.donor_lifetime * 1.1, 1.0), -0.1, 1.1)
+            else:
+                # Fitted to the counts: a range set before the data arrived cut the
+                # tallest peak off. COND_ONCE re-applies only when the data change,
+                # so a zoom or pan of the same result stays.
+                peaks = [np.asarray(entry.get("y", []), dtype=float) for entry in series]
+                peak = max((float(np.nanmax(y)) for y in peaks if y.size), default=0.0)
+                implot.setup_axes_limits(-0.1, 1.1, 0.0, max(peak * 1.1, 1.0))
             for entry in series:
                 x, y = (
                     np.asarray(entry.get("x", []), dtype=float),

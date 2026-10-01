@@ -180,3 +180,22 @@ def test_settings_round_trip(tmp_path):
             other.close()
     finally:
         app.close()
+
+
+def test_the_histogram_is_drawn_with_its_range_fitted_to_the_counts(tmp_path, monkeypatch):
+    """A range fixed before the data arrived cut the tallest peak off."""
+    from emtk import implot
+
+    limits = []
+    original = implot.setup_axes_limits
+    monkeypatch.setattr(implot, "setup_axes_limits",
+                        lambda *a, **k: (limits.append(a), original(*a, **k)))
+    app = _calibrated(_bursts(tmp_path))
+    try:
+        app.accurate_gui.docks.focus("hist")
+        painter = _draw(app)
+        assert "accurate E" in painter.strings
+        peak = max(float(np.max(s["y"])) for s in app.model.efficiency_histogram())
+        assert any(len(a) >= 4 and a[3] >= peak for a in limits), limits
+    finally:
+        app.close()
