@@ -2,7 +2,18 @@
 
 ## 2026-10-01
 
+* **trace_browser T4 (emtk port, last card): export, delete, hand-offs, help and guide, docs, gated manifest entry.** Export / CSV / DOCX / Delete (confirmation, to `.trash`) / Select all act on the table's selection; HMM, TW and NDX record requests on `model.requests` for a host callback `on_request(name, payload)` (greyed without a host; open item for the main window); Help window and 13-step guide; docs page 22, its figure (now an emtk render) and a plugin README; `entrypoints.emtk` added and `trace_browser` added to `emtk_preview.json` (the Qt tool stays the default until the report is accepted). 167 tests in the plugin folder (38 new), `compare` exit 0 (`lost` [], `stale_explanations` [], 96 explained), evidence `okf/plugins/emtk-ports/trace_browser/T4/`. Final report text delivered with the hand-over (the agent could not write `REPORT.md`).
+* **model_manager emtk app at parity with the Qt tool.** The emtk app drew plain text lines; it now draws, from `gui/models_emtk.view.json` (emtk.view_form) over the Qt-free `gui/model.py`, the Qt tool's controls: a `data_table` (Model / Experiment / Status / Spec / Parameter UI / Shared, sortable, filter box, column picker, row count), Save, Revert, Rescan (SnapshotJob), Drop stale, Copy, Export CSV, Show disabled models, the status line, the selected-model pane with the Disabled switch, confirmations, Help and Guide. Shared view model: a stale status message no longer hides "unsaved changes". Evidence `okf/plugins/emtk-ports/model_manager/` (compare exit 0, 84 explained table-cell entries, plugin folder 46 passed); the owner removes the plugin from `emtk_preview.json` after review. Commits 815579d57, da776d069.
+
 * **ndX phasor columns referenced to the IRF and cleared of background (tttrlib's DecayPhasor form).** The image table's pixel phasors sat outside the universal circle because `make_image_hdf5.py` called `CLSMImage.get_phasor` without an IRF. New constants `g_irf`, `s_irf`, `n_bg` (per channel) and `g_bg`, `s_bg`; equations `f_bg = n_bg / N`, `g corr`, `s corr` = (z - f_bg z_bg) / ((1 - f_bg) z_irf); `tau_phi`/`tau_m` read the corrected columns; axis patterns, shipped dates, mmfdb terms (mmfdb dcc3784). FRET > Phasor reference from IRF… computes `g_irf`/`s_irf` from an IRF or a known-lifetime dye and `n_bg` from the measurement with tttrlib (no tttrlib change needed). On the image table with `crn_clv_mirror.ht3`: g_irf 0.981, s_irf 0.181, n_bg 0.20; median pixel (0.69, 0.47) outside -> (0.79, 0.33) inside. Synthetic Gaussian-IRF decays: tau within 3 % for 0.5-8 ns. Re-derive: open a copy of `parity/.cache/data/image_test.h5` in `NdxApp(layout_store=None)` with scratch HOME, f_rep 32, add Universal circle, run the dialog's compute/apply, draw with `PilPainter`. ndxplorer 593a8e3, 486d5f4, 990ebe2. Docs: guide 46 "Referencing the phasor to the instrument". Resume: [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md) "Phasor IRF / background correction".
+
+* **trace_browser T3b (emtk port, card 3b): trace plot, annotation and precompute.** The "Trace plot" window draws the binned trace of the selected file with `emtk.implot` (one coloured line per series plus `Sum`, a log-scaled counts histogram with linked y axis, y range from the form, min/max decimation above 4000 points, display only), loaded on a `SnapshotJob` from `model.load_trace` with a visible "Loading ..." state and an error text; a scan selects the first row as the Qt tool did, a filter that hides the shown file clears the plot. The annotation box (`input_text_multiline`) is the Notes column's field (flushed 300 ms after the last edit, on a file switch and on close). The traces of all listed files are precomputed after a scan (as Qt, now optional) or on a button on a second job with a progress line, Stop and cancel by a new scan. Both jobs run on a helper that holds the model, because `SnapshotJob` writes every attribute of its copy back and would revert a rating or note edited meanwhile. 129 tests in the plugin folder (29 new), `compare` exit 0 (`lost` [], 104 explained, 15 gained), evidence `okf/plugins/emtk-ports/trace_browser/T3b/`, report `okf/plugins/emtk-ports/trace_browser/REPORT-T3b.md`. Open for T4: Export / CSV / DOCX / Delete / hand-offs, Help / Guide, manifest.
+
+* **trace_browser T2 (emtk port, card 2): native Browser stage.** `gui/trace_browser_emtk.view.json` drawn by `draw_form` (back button, folder, Open with a folder `FileDialog`, drop of a folder, Include subfolders, rating filter, bin window, Y min/max, Clear, Clear caches) and the file table as an editable `data_table` (rating 0..5 and notes written through the model into the folder's metadata, selection through `selected_call`); scanning runs on a `SnapshotJob`; the trace plot is a labelled placeholder (card T3). Include subfolders now really rescans (the Qt toolbar checkbox did nothing), the app opens on the Browser page when a setup is available (as the Qt constructor continues), settings keep folder, subfolders, filter, bin window and y range. 81 tests in the plugin folder (31 new, 5 legacy-engine trace tests still skipped for T3), `compare` exit 0 with 104 explained controls, evidence `okf/plugins/emtk-ports/trace_browser/T2/`; the report text was handed over in the agent's message (the report file could not be written by the agent). Open: `data_table` has no choice cell (rating is a validated number cell), the Qt star widget has 3 stars versus the card's 0..5, multi-row selection for T4.
+
+* **trace_browser T1 (emtk port, card 1): native Setup stage.** `gui/app.py` (`TraceBrowserApp`, `make_app`) draws the Setup page with the shared emtk setup editor, Continue (`TraceBrowserModel.accept_setup`: the Qt `_on_continue`) and Select setup (`back_to_setup`), and a labelled placeholder for the Browser page (card T2); `build_channel_labels` moved from the Qt widget into the model. Not in the manifest; checked with `--entry`. 55 tests in the plugin folder (11 new, hermetic: temp settings folder), `compare` exit 0 with 113 explained controls (later cards, renamed editor controls), report `okf/plugins/emtk-ports/trace_browser/REPORT-T1.md`, evidence `okf/plugins/emtk-ports/trace_browser/T1/`. Open: shared-editor TTTR-format list shorter than Qt's, T0 tests not hermetic.
+
+* **trace_browser T0 (emtk port, card 0): Qt-free model and de-duplication.** `gui/model.py` (`TraceBrowserModel`) holds folder, setup, channels, file rows, rating filter, bin window, y range, selection, caches and trace loading; the Qt `TraceBrowser` (moved to `widget.py`, package `__init__` now a lazy shim) delegates to it and its duplicated metadata/cache code is gone. Findings: the CLSM image probe hides every real TTTR with tttrlib 0.27 (kept), trace binning needs a Qt widget (a Qt-free binner is needed for T3). Evidence and report: `okf/plugins/emtk-ports/trace_browser/REPORT-T0.md`.
 
 ## 2026-09-30
 
@@ -40519,19 +40530,6 @@ side of the line.
   chisurf 2633b5853, 149703517, 30eb376cb; ndxplorer e5f8252, 6540087; guide 46
   "ndX in ChiSurf"; resume point in
   [ndxplorer-emtk-port](plugins/ndxplorer-emtk-port.md) "Hosted in ChiSurf".
-- 2026-09-29 — **chimol's emtk host fixed: resize renders at the window size,
-  playback advances without input.** Two defects in the embed adapter
-  (`chisurf/plugins/chimol/app.py`), chimol's own hosts unaffected: the
-  offscreen rendercanvas canvas was never resized (`set_logical_size` was not
-  called, so every frame was the 900x620 opening picture stretched by the
-  blit), and `animating()` never reported a playing movie, so emtk's
-  `ControlHost` stopped asking for frames the moment the mouse rested — the
-  movie only moved under the pointer. Fix: canvas grows first, then
-  `on_resize` re-projects; `animating()` reports `viewer.playback.running`.
-  Regression tests in `chisurf/plugins/chimol/test/test_emtk_host.py`, each
-  verified to fail against the pre-fix adapter; resume point in
-  [chimol-emtk](plugins/chimol-emtk.md) "Where to pick this up".
-
 - 2026-09-29 — ndX in ChiSurf: the Plot controls' FRET calibration / Save
   calibration / Load calibration buttons are gone; the three actions stay in
   the app's **FRET** menu (where the emtk port put them). The buttons were a
@@ -40564,3 +40562,29 @@ side of the line.
   on the result store. Evidence `okf/plugins/emtk-ports/region_mle/`
   (compare exit 0, 46 tests in the plugin folder); report text delivered with
   the hand-over (REPORT.md could not be written by the agent).
+
+- **2026-09-30 · flc-2d: native emtk port (Type B, Wave 2)**
+  - `_FlcModel` moved from `gui/tool.py` to `gui/model.py` (cut and paste) and gained the
+    work of the Qt button handlers (open stream/IRF, simulate, run with inversion, L-curve,
+    species correlation, 1D-MEM); the Qt tool delegates to it and gives identical arrays
+    (tested side by side). New `gui/app.py` + `gui/flc_2d_emtk.view.json`: Toolbar, Settings
+    and six result windows as one tab strip, `ImageCanvas` maps, `implot` plots and L-curve,
+    jobs on `SnapshotJob`, FileDialog and drop. Package and `gui` `__init__` made lazy so the
+    app imports without Qt. Evidence `okf/plugins/emtk-ports/flc-2d/` (compare exit 0, 49
+    deliberate entries, plugin folder 91 passed). emtk gaps found: radio `choice` draws no
+    tooltips (method is a drop-down), docked tab strip does not scroll. No docs guide page
+    exists for the tool. REPORT.md text delivered with the hand-over (the agent could not
+    write the file).
+
+- 2026-09-29 — **chimol's emtk host fixed: resize renders at the window size,
+  playback advances without input.** Two defects in the embed adapter
+  (`chisurf/plugins/chimol/app.py`), chimol's own hosts unaffected: the
+  offscreen rendercanvas canvas was never resized (`set_logical_size` was not
+  called, so every frame was the 900x620 opening picture stretched by the
+  blit), and `animating()` never reported a playing movie, so emtk's
+  `ControlHost` stopped asking for frames the moment the mouse rested — the
+  movie only moved under the pointer. Fix: canvas grows first, then
+  `on_resize` re-projects; `animating()` reports `viewer.playback.running`.
+  Regression tests in `chisurf/plugins/chimol/test/test_emtk_host.py`, each
+  verified to fail against the pre-fix adapter; resume point in
+  [chimol-emtk](plugins/chimol-emtk.md) "Where to pick this up".
