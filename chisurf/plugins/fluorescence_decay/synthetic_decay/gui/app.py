@@ -126,7 +126,7 @@ class SyntheticDecayApp(ImApp):
     def _plot(self, title, series, label, log=False):
         if implot.begin_plot(title, size=(-1., -1.)):
             implot.setup_axes("Micro-time (ns)", label)
-            if log:
+            if log and series:  # an empty plot keeps linear axes: a log axis would invent a 1e-21 range
                 implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             for curve in series:
                 values = np.asarray(curve["y"], dtype=float)

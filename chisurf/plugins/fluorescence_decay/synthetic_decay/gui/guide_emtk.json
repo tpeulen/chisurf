@@ -43,7 +43,7 @@
     },
     {
       "title": "Generate, then vary one thing at a time",
-      "text": "The decay appears in the plot below and the status line reports what was made; <b>Save</b> writes it as CSV, text, <code>.npy</code> or JSON.<br/><br/>Then the questions worth asking of anything you conclude here:<br/>• <b>Does the window hold the decay?</b> A truncated tail biases every long lifetime downward.<br/>• <b>Are you comparing amplitudes with amplitudes</b>, not with intensity fractions?<br/>• <b>Did you vary the seed?</b> One realisation is one realisation.<br/>• <b>Is the photon budget realistic?</b> A routine that works at 10⁶ photons and fails at 10⁴ has not been shown to work on your data.<br/><br/>The <b>?</b> button has the rest.",
+      "text": "The decay appears in the plot and the status line reports what was made; <b>Save</b> writes it as CSV, text, <code>.npy</code> or JSON.<br/><br/>Then ask of anything you conclude here: does the window hold the decay, are you comparing amplitudes with amplitudes, did you vary the seed, is the photon budget realistic, and was the IRF part of the test?",
       "target": {
         "action": "Generate"
       },

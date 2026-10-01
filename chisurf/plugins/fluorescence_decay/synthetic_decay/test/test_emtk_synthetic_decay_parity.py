@@ -377,6 +377,18 @@ def test_draws_empty_and_populated(size):
     assert any("Generated VV/VH pair" in s for s in draw(app, size).strings)
 
 
+def test_an_empty_decay_plot_keeps_linear_axes_and_a_curve_gets_the_log_axis(app, monkeypatch):
+    from emtk import implot
+
+    scales = []
+    monkeypatch.setattr(implot, "setup_axis_scale", lambda axis, scale: scales.append(scale))
+    draw(app)
+    assert scales == []  # nothing generated: no log axis that would invent a 1e-21 range
+    app.model.generate()
+    draw(app)
+    assert scales and set(scales) == {implot.SCALE_LOG10}
+
+
 def test_the_photon_budget_is_drawn_as_a_whole_number(app):
     strings = draw(app).strings
     assert "1000000" in strings and not any(t == "1e+06" for t in strings)
