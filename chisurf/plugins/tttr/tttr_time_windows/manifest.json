@@ -1,7 +1,7 @@
 {
   "id": "tttr_time_windows",
   "version": "2.0.0",
-  "display_name": "Tools:Converter:TTTR→Time-Window BIDs",
+  "display_name": "Tools:Converter:TTTR\u2192Time-Window BIDs",
   "description": "Split TTTR files into fixed-duration time-window BID (.bst) files.",
   "authors": [
     "Thomas-Otavio Peulen"
@@ -49,7 +49,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.tttr.tttr_time_windows.gui.tool:TTTRTimeWindowTool",
     "cli": "tttr-time-windows=chisurf.plugins.tttr.tttr_time_windows.cli:cli",
-    "services": "chisurf.plugins.tttr.tttr_time_windows.backend.services:register_services"
+    "services": "chisurf.plugins.tttr.tttr_time_windows.backend.services:register_services",
+    "emtk": "chisurf.plugins.tttr.tttr_time_windows.gui.controller:create_app"
   },
   "rpc_methods": [
     {

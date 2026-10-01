@@ -1,0 +1,170 @@
+"""Standalone EMTK controller behavior, with Qt imports forbidden."""
+
+import subprocess
+import sys
+from types import SimpleNamespace
+
+
+def test_factories_do_not_import_qt():
+    script = """
+import sys
+class BlockQt:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] in {'qtpy','PyQt5','PyQt6','PySide2','PySide6'}:
+            raise AssertionError('Qt imported: ' + fullname)
+sys.meta_path.insert(0, BlockQt())
+from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
+from chisurf.plugins.tttr.tttr_splitter.gui.controller import create_app as splitter
+from types import SimpleNamespace
+from chisurf.emtk.dataset_picker import DatasetPicker
+for app in (create_app(), splitter()):
+    app.tool.dataset_picker = DatasetPicker(client=SimpleNamespace(call=lambda *args: {"datasets": []}))
+    app.tool._add_from_database() if hasattr(app.tool, '_add_from_database') else app.tool._add_batch_database()
+    assert app.tool.dataset_picker is not None
+    assert app.tool.dataset_picker.is_open
+"""
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+def test_time_window_processing_preserves_backend_inputs(tmp_path):
+    from chisurf.plugins.tttr.tttr_time_windows.gui.controller import TimeWindowController
+
+    captured = {}
+
+    def analyze(files, **kwargs):
+        captured.update(files=files, **kwargs)
+        return dict(
+            files=[str(f) for f in files],
+            output_paths={},
+            n_windows={str(files[0]): 2},
+            metadata={"total_windows": 2, "output_dir": str(tmp_path)},
+        )
+
+    client = SimpleNamespace(load_preview=lambda *a: {}, analyze_files=analyze)
+    tool = TimeWindowController(client=client)
+    tool.add_paths(["/data/a.ptu", "/data/no.txt", "/data/a.ptu"])
+    tool.job.future.result(timeout=5)
+    tool.job.poll()
+    tool.time_window_ms = 12.5
+    tool._process_all()
+    tool.job.future.result(timeout=5)
+    tool.job.poll()
+    assert len(captured["files"]) == 1
+    assert captured["time_window_ms"] == 12.5
+    assert captured["output_dir"] is None
+    assert tool.output_dir_text == str(tmp_path)
+    assert tool._last_result.metadata["total_windows"] == 2
+
+
+def test_splitter_error_does_not_claim_complete(monkeypatch):
+    from chisurf.plugins.tttr.tttr_splitter.gui.controller import SplitterController
+
+    tool = SplitterController()
+    monkeypatch.setattr(tool._model, "can_split", lambda: None)
+
+    def fail(**kwargs):
+        kwargs["progress_cb"](25)
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(tool._model, "do_split", fail)
+    tool._run()
+    try:
+        tool.job.future.result(timeout=5)
+    except RuntimeError:
+        pass
+    tool.job.poll()
+    assert not tool.run_running
+    assert tool.run_progress == 25
+    assert "disk full" in tool.message
+
+
+def test_pure_apps_render_with_file_choosers():
+    # photon_table is covered by its own suite: its controller module was removed by its
+    # emtk port (the app owns the model now).
+    from chisurf.plugins.tttr.tttr_splitter.gui.controller import create_app as splitter
+    from chisurf.plugins.tttr.tttr_time_windows.gui.controller import create_app
+
+    from .test_construction_smoke import RecordingPainter
+
+    for factory, picker in (
+        (create_app, "_add_files_dialog"),
+        (splitter, "_browse_input"),
+    ):
+        app = factory()
+        getattr(app.tool, picker)()
+        painter = RecordingPainter()
+        app.draw(painter, 0, 0, 1000, 700)
+        assert painter.ops > 60
+        assert app.tool.dialog is not None
+
+
+def test_jobs_guard_busy_snapshot_settings_and_stop():
+    from pathlib import Path
+    from threading import Event
+
+    from chisurf.plugins.tttr.tttr_time_windows.gui.controller import TimeWindowController
+
+    entered, release = Event(), Event()
+    captured = {}
+
+    def analyze(files, **kwargs):
+        captured.update(files=files, **kwargs)
+        entered.set()
+        assert release.wait(5)
+        return dict(files=[str(f) for f in files], output_paths={}, n_windows={}, metadata={})
+
+    tool = TimeWindowController(client=SimpleNamespace(analyze_files=analyze))
+    tool._file_paths = [Path("/data/a.ptu")]
+    tool._process_all()
+    assert entered.wait(5)
+    future = tool.job.future
+    tool._file_paths.append(Path("/data/b.ptu"))
+    tool.time_window_ms = 100
+    tool._process_all()
+    assert tool.job.future is future
+    assert len(captured["files"]) == 1
+    assert captured["time_window_ms"] == 10
+    tool.job.stop()
+    release.set()
+    future.result(timeout=5)
+    tool.job.poll()
+    assert tool._last_result is None
+    assert not tool.job.running
+    tool.job.close()
+
+
+def test_splitter_snapshot_and_cooperative_stop(monkeypatch):
+    from threading import Event
+
+    from chisurf.plugins.tttr.tttr_splitter.gui.controller import SplitterController
+    from chisurf.plugins.tttr.tttr_splitter.gui.view_model import SplitterViewModel
+
+    entered, release = Event(), Event()
+    captured = {}
+    monkeypatch.setattr(SplitterViewModel, "can_split", lambda self: None)
+
+    def split(self, progress_cb):
+        captured["size"] = self.photons_per_file_k
+        entered.set()
+        assert release.wait(5)
+        progress_cb(50)
+        return "/output"
+
+    monkeypatch.setattr(SplitterViewModel, "do_split", split)
+    tool = SplitterController()
+    tool._run()
+    assert entered.wait(5)
+    tool._model.photons_per_file_k = 900
+    tool._run()
+    assert captured["size"] == 300
+    tool.job.stop()
+    release.set()
+    try:
+        tool.job.future.result(timeout=5)
+    except RuntimeError:
+        pass
+    tool.job.poll()
+    assert "stopped between chunks" in tool.message
+    assert tool.run_progress != 100
+    tool.job.close()

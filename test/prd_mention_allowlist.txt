@@ -137,5 +137,4 @@ chisurf/plugins/tttr/tttr_microtime_shifter/api/transformer.py
 chisurf/plugins/tttr/tttr_microtime_shifter/tests/test_gui.py
 chisurf/plugins/tttr/tttr_microtime_shifter/tests/test_replay.py
 chisurf/plugins/tttr/tttr_time_windows/__init__.py
-chisurf/plugins/tttr/tttr_time_windows/tests/test_construction_smoke.py
 chisurf/plugins/tttr/tttr_toolbox/__init__.py
