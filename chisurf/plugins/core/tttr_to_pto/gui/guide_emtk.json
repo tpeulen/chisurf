@@ -1,0 +1,31 @@
+{
+  "_comment": "Guided tour of the native converter. 'name' is the emtk control (a spec action, or the history table). The Qt tool keeps guide.json.",
+  "steps": [
+    {
+      "title": "The drop decides the direction",
+      "text": "There is no pack/unpack switch. Drop a vendor file (.ptu, .spc, .ht3) and it is packed <i>into</i> a .pto. Drop a <b>.pto</b> and it is unpacked <i>back out</i> to the vendor files and results it holds. The tool reads the suffix and goes. Every conversion becomes a row of this table.",
+      "target": {"name": "conversion_table"}
+    },
+    {
+      "title": "Nothing is ever deleted",
+      "text": "Packing writes the .pto <b>beside</b> the vendor file and keeps the original, then checks the container against its checksum. Unpacking writes the vendor files back and keeps the container. Either direction can be repeated or thrown away with no loss. <b>Add files...</b> does what a drop does, with a dialog.",
+      "target": {"name": "request_add"},
+      "await": {"hint": "Press <b>Add files...</b>, then pick a file or close the dialog."}
+    },
+    {
+      "title": "Files dropped together are one measurement",
+      "text": "A recording split across <b>m000.spc, m001.spc, ...</b> is one measurement, so files dropped together (or chosen together) are packed into <b>one</b> .pto, in file-name order. The row lists them in that order.",
+      "target": {"name": "conversion_table"}
+    },
+    {
+      "title": "The .set rides along, never leads",
+      "text": "A Becker &amp; Hickl <b>.set</b> is an .spc's sidecar. Next to its .spc it is picked up automatically with the file it belongs to; offered alone it is Rejected: it is not a measurement, it is the header of one.",
+      "target": {"name": "conversion_table"}
+    },
+    {
+      "title": "Tidy up",
+      "text": "<b>Clear history</b> removes the finished rows from the list. It never touches a file on disk.",
+      "target": {"name": "clear_history"}
+    }
+  ]
+}

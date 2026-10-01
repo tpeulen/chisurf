@@ -1,14 +1,12 @@
-"""Native drop grouping, lossless conversion, errors, state and translated UI."""
+"""Native drop grouping, lossless conversion, errors and state."""
 
 import json
 from pathlib import Path
 
 import pytest
-from emtk import i18n
-from emtk.testing import RecordingPainter
 
 from chisurf.core.fio.pto import Measurement
-from chisurf.plugins.core.tttr_to_pto.gui.app import _CATALOG, TttrToPtoApp, tr
+from chisurf.plugins.core.tttr_to_pto.gui.app import TttrToPtoApp
 
 DATA = Path(__file__).resolve().parents[4] / "plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna"
 
@@ -58,9 +56,9 @@ def test_drop_packs_sorted_group_sidecar_then_recovers_every_byte(tmp_path):
         assert app.add_paths([target])
         finish(app)
         assert app.rows[-1]["status"] == "verified"
-        state = json.loads(json.dumps(app.export_state()))
-        app.restore_state(state)
-        assert app.export_state() == state
+        state = json.loads(json.dumps(app.export_settings()))
+        app.restore_settings(state)
+        assert app.export_settings() == state
         assert not app.pending and not app.job.running
     finally:
         app.close()
@@ -91,32 +89,11 @@ def test_rejects_sidecar_missing_file_and_reports_async_errors(tmp_path):
 def test_restored_pending_operations_never_reexecute(tmp_path):
     app = TttrToPtoApp()
     try:
-        app.restore_state({"history": [{"paths": [str(tmp_path / "old.ptu")], "action": "pack", "status": "queued", "outputs": [], "error": ""}]})
+        app.restore_settings({"history": [{"paths": [str(tmp_path / "old.ptu")], "action": "pack", "status": "queued", "outputs": [], "error": ""}]})
         app.poll()
         assert not app.job.running and not app.pending
         assert app.rows[0]["status"] == "interrupted"
     finally:
-        app.close()
-
-
-def test_every_native_string_has_six_translations_and_ui_renders():
-    old_locale = i18n.get_locale()
-    app = TttrToPtoApp()
-    try:
-        sources = set(_CATALOG["en"])
-        for locale in ("en", "de", "fr", "es", "pt", "ru"):
-            assert set(_CATALOG[locale]) == sources
-            assert all(_CATALOG[locale].values())
-            i18n.set_locale(locale)
-            assert tr("Originals stay untouched") == _CATALOG[locale]["Originals stay untouched"]
-            for width, height in ((1200, 800), (800, 600)):
-                painter = RecordingPainter()
-                app.draw(painter, 0, 0, width, height)
-                assert painter.strings
-            assert app.help_locale == locale
-            assert len(app.tour.steps) == 4
-    finally:
-        i18n.set_locale(old_locale)
         app.close()
 
 
@@ -144,25 +121,5 @@ def test_content_detected_container_and_verification_failure_preserve_sources(tm
         app.poll()
         assert app.rows[-1]["status"] == "error"
         assert source.read_bytes() == original
-    finally:
-        app.close()
-
-
-def test_native_interactive_controls_and_drop_area_have_translated_tooltips(monkeypatch):
-    from chisurf.plugins.core.tttr_to_pto.gui import app as module
-
-    tips = []
-    monkeypatch.setattr(module.im, "set_item_tooltip", tips.append)
-    app = TttrToPtoApp()
-    try:
-        painter = RecordingPainter()
-        app.draw(painter, 0, 0, 800, 600)
-        expected = [
-            "Walk through packing, unpacking and sidecar handling.",
-            "Read the conversion rules and verification guarantees.",
-            "Remove completed status rows; files on disk stay untouched.",
-            "Drop multiple vendor files together to pack one measurement. Matching SET sidecars are included automatically.",
-        ]
-        assert all(tr(tip) in tips for tip in expected)
     finally:
         app.close()

@@ -1,220 +1,157 @@
-"""Standalone EMTK drop tool for lossless vendor ⇄ PTO conversion."""
+"""Native emtk TTTR <-> .pto converter: drop vendor files to pack, a .pto to unpack.
+
+The window is the view spec ``tttr_to_pto_emtk.view.json`` drawn by
+:func:`emtk.view_form.draw_sections` (the history is its ``data_table``). Only the
+Help / Guide buttons, the file dialog and the file drop are handled here; the
+queue, the worker and the conversions are :class:`~.model.TttrToPtoModel`.
+"""
 
 from __future__ import annotations
 
 import json
-from collections import deque
-from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
-from emtk import i18n, im
+from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region
+from emtk.file_dialog import FileDialog
+from emtk.view_form import FormState, draw_sections
 
-from chisurf.core.fio import staging
-from chisurf.core.fio.pto import SIDECAR_ONLY_EXTENSIONS, Measurement, is_measurement
-from chisurf.core.fio.pto import SUFFIX as PTO_SUFFIX
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.core.tttr_to_pto import api
-from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
-_CONTEXT = "TttrToPtoNative"
-_CATALOG = json.loads(Path(__file__).with_name("strings.json").read_text())
-for _locale, _translations in _CATALOG.items():
-    i18n.add_translations(_locale, _translations, context=_CONTEXT)
+from .model import FILE_FILTERS, TttrToPtoModel
 
-
-def tr(text):
-    return i18n.tr(text, context=_CONTEXT)
+HERE = Path(__file__).parent
+TABLE_NAME = "records"
 
 
 class TttrToPtoApp(ImApp):
-    """Serialize drops while publishing worker outcomes on the frame thread.
+    """Pack vendor photon files into a .pto, or unpack a .pto, by drop or by dialog."""
 
-    No cancellation is offered during a write: closing leaves the current
-    operation finishing safely and prevents later queued jobs from starting.
-    A saved history is documentary and is never replayed on restore.
-    """
-
-    def __init__(self, converter=None, extractor=None):
-        self.converter = converter or api.convert
-        self.extractor = extractor or api.extract
-        self.rows = []
-        self.pending = deque()
-        self.job = BackgroundJob()
-        self.closed = False
-        self.item_rects = {}
-        self.help_locale = None
-        self.help = None
-        self.tour = None
+    def __init__(self, converter=None, extractor=None) -> None:
+        self.model = TttrToPtoModel(converter, extractor)
+        spec = json.loads((HERE / "tttr_to_pto_emtk.view.json").read_text(encoding="utf-8"))
+        self.sections = spec["sections"]
+        self.form = FormState()
+        self.dialog: FileDialog | None = None
+        self.item_rects: dict[str, tuple] = {}
+        self.help_window = EmTkHelpWindow(
+            title="TTTR ⇄ .pto — Help", resource=HERE / "help_emtk.md", owner=self
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "guide_emtk.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
+        )
+        self.form.on_used = self.tour.notify_used
         self.docks = DockManager(Region("conversion"))
-        self.docks.add_window("conversion", "TTTR ⇄ .pto", self.draw_conversion, dock="conversion")
-        self.refresh_help()
-        super().__init__(gui=self.render, continuous=True)
-
-    @staticmethod
-    def accepts(path):
-        path = Path(path)
-        return path.is_file() and (
-            path.suffix.lower() == PTO_SUFFIX
-            or (path.suffix.lower() not in SIDECAR_ONLY_EXTENSIONS
-                and (path.suffix.lower() in staging.VENDOR_EXTENSIONS or is_measurement(path)))
+        self.docks.add_window(
+            "conversion", "TTTR ⇄ .pto", self.draw_conversion, dock="conversion"
         )
+        super().__init__(self.render, continuous=True)
 
-    def add_paths(self, paths):
-        """Unpack each container; pack all vendor files from one drop together."""
-        if self.closed:
-            return False
-        vendors = []
-        accepted = False
-        for value in dict.fromkeys(str(Path(p).expanduser().resolve()) for p in paths):
-            path = Path(value)
-            if not self.accepts(path):
-                self.rows.append({"paths": [value], "action": "reject", "status": "rejected",
-                                  "outputs": [], "error": "Sidecars need their .spc file."
-                                  if path.suffix.lower() in SIDECAR_ONLY_EXTENSIONS
-                                  else "Choose existing vendor photon files or PTO containers."})
-                continue
-            accepted = True
-            if path.suffix.lower() == PTO_SUFFIX or is_measurement(path):
-                self.enqueue("unpack", [value])
-            else:
-                vendors.append(value)
-        if vendors:
-            self.enqueue("pack", sorted(vendors, key=lambda p: Path(p).name))
-        self.start_next()
-        return accepted
+    # ── compatibility with the earlier app's surface ───────────────────
+    @property
+    def rows(self) -> list:
+        return self.model.rows
 
-    on_paths_dropped = add_paths
+    @property
+    def job(self):
+        return self.model.job
 
-    def enqueue(self, action, paths):
-        row = {"paths": paths, "action": action, "status": "queued", "outputs": [], "error": ""}
-        self.rows.append(row)
-        self.pending.append(row)
+    @property
+    def pending(self):
+        return self.model.pending
 
-    def start_next(self):
-        if self.closed or self.job.running or not self.pending:
-            return
-        row = self.pending.popleft()
-        row["status"] = "running"
+    accepts = staticmethod(TttrToPtoModel.accepts)
 
-        def work():
-            if row["action"] == "pack":
-                target = self.converter(row["paths"], keep_original=True)
-                # The explicit tool verifies every write, even when keeping sources.
-                with Measurement.open(target, writable=False) as check:
-                    problems = check.verify()
-                if problems:
-                    raise ValueError("; ".join(problems))
-                return [str(target)]
-            return [str(p) for p in self.extractor(row["paths"][0])]
+    def poll(self) -> None:
+        self.model.poll()
 
-        def publish(outputs):
-            row.update(status="verified", outputs=outputs)
+    def clear_history(self) -> None:
+        self.model.clear_history()
 
-        def error(exc):
-            row.update(status="error", error=str(exc))
+    def add_paths(self, paths: Any) -> bool:
+        """Queue dropped or chosen paths (see :meth:`TttrToPtoModel.add_paths`)."""
+        return self.model.add_paths(paths)
 
-        self.job.start(work, publish, error)
+    def files_dropped(self, paths: Any) -> bool:
+        """Host hook: files dropped on the window. ``True`` when any was accepted."""
+        return self.model.add_paths([str(p) for p in paths or []])
 
-    def poll(self):
-        self.job.poll()
-        self.start_next()
+    on_files_dropped = files_dropped
+    on_paths_dropped = files_dropped
 
-    def clear_history(self):
-        self.rows[:] = [row for row in self.rows if row["status"] in {"queued", "running"}]
+    # ── one frame ──────────────────────────────────────────────────────
+    def render(self) -> None:
+        self.model.poll()
+        vp = im.get_main_viewport()
+        box = (*vp.pos, *vp.size)
+        self.form.rects.clear()
+        self.docks.draw(box)
+        self._requests()
+        self._draw_file_dialog()
+        self.help_window.draw(box)
+        self.tour.draw(*vp.size)
 
-    def refresh_help(self):
-        locale = i18n.get_locale()
-        if locale == self.help_locale:
-            return
-        was_open = bool(self.help and self.help.open)
-        self.help_locale = locale
-        steps = [
-            {"title": tr("The drop decides the direction"), "text": tr("Drop vendor photon files to pack one PTO, or drop a PTO to recover its original files and analysis results."), "target": "drop"},
-            {"title": tr("Originals stay untouched"), "text": tr("Outputs are written beside the dropped files. Packing verifies the container; unpacking verifies the recovered instrument bytes. Originals are never deleted."), "target": "drop"},
-            {"title": tr("One recording, one container"), "text": tr("Vendor files dropped together are packed into one PTO in filename order. The first filename names the container."), "target": "drop"},
-            {"title": tr("Sidecars travel with their SPC"), "text": tr("A matching SET sidecar is embedded automatically with its SPC file. A SET file alone is rejected."), "target": "drop"},
-        ]
-        self.tour = EmTkGuidedTour(steps=steps, get_target_rect=self.item_rects.get)
-        self.help = EmTkHelpWindow(
-            title=tr("TTTR ⇄ PTO — Help"), text="\n\n".join(
-                "## " + step["title"] + "\n" + step["text"] for step in steps
-            ), on_start_guide=self.tour.start,
-        )
-        if was_open:
-            self.help.show()
-
-    def button(self, source, tip, callback):
-        if im.button(tr(source)):
-            callback()
-        im.set_item_tooltip(tr(tip))
-        self.item_rects[source] = im.get_item_rect()
-
-    def draw_conversion(self, box):
-        im.text_wrapped(tr("Drop vendor photon files to pack one PTO, or drop a PTO to recover its original files and analysis results."))
-        im.text_disabled(tr("Originals stay untouched"))
-        im.spacing()
-        self.button("Guide", "Walk through packing, unpacking and sidecar handling.", self.tour.start)
+    def draw_conversion(self, box: Any) -> None:
+        """The window: Help / Guide, the hint, the buttons, the status and the history."""
+        if im.button("Guide"):
+            self.tour.start()
+        im.set_item_tooltip("Walk through packing, unpacking and sidecar handling.")
+        self.item_rects["guide"] = im.get_item_rect()
         im.same_line()
-        self.button("Help", "Read the conversion rules and verification guarantees.", self.help.show)
-        im.same_line()
-        self.button("Clear history", "Remove completed status rows; files on disk stay untouched.", self.clear_history)
+        if im.button("Help"):
+            self.help_window.show()
+        im.set_item_tooltip("Read the conversion rules and verification guarantees.")
+        self.item_rects["help"] = im.get_item_rect()
         im.separator()
-        im.text_colored(tr("Drop photon files or PTO containers here"), (0.45, 0.75, 1.0, 1.0))
-        im.set_item_tooltip(tr("Drop multiple vendor files together to pack one measurement. Matching SET sidecars are included automatically."))
-        self.item_rects["drop"] = im.get_item_rect()
-        if self.job.running:
-            im.text_colored(tr("Converting…"), (1.0, 0.8, 0.35, 1.0))
-        if im.begin_child("conversion_history"):
-            if not self.rows:
-                im.text_disabled(tr("No conversions yet."))
-            for index, row in enumerate(self.rows):
-                names = ", ".join(Path(p).name for p in row["paths"])
-                status = {"queued": "Queued", "running": "Converting…", "verified": "Verified", "error": "Failed", "rejected": "Rejected", "interrupted": "Not completed"}[row["status"]]
-                colour = (0.45, 0.85, 0.55, 1.0) if row["status"] == "verified" else (1.0, 0.65, 0.4, 1.0) if row["status"] in {"error", "rejected"} else (0.8, 0.8, 0.8, 1.0)
-                im.text_colored(tr(status) + " · " + names, colour)
-                im.set_item_tooltip("\n".join(row["paths"]))
-                if row["outputs"]:
-                    im.text_wrapped("→ " + ", ".join(Path(p).name for p in row["outputs"]))
-                    im.set_item_tooltip("\n".join(row["outputs"]))
-                if row["error"]:
-                    im.text_wrapped(tr(row["error"]))
-                if index < len(self.rows) - 1:
-                    im.separator()
-        im.end_child()
+        draw_sections(self.sections, self.model, self.form, titles=False)
+        if TABLE_NAME in self.form.rects:
+            self.item_rects["conversion_table"] = self.form.rects[TABLE_NAME]
 
-    def render(self):
-        self.poll()
-        self.refresh_help()
-        viewport = im.get_main_viewport()
-        frame = (0.0, 0.0, *viewport.size)
-        self.docks.draw(frame)
-        if self.help.open:
-            self.help.draw(frame)
-        if self.tour.active:
-            self.tour.draw(*viewport.size)
+    # ── the file dialog ────────────────────────────────────────────────
+    def _requests(self) -> None:
+        request, self.model.request = self.model.request, ""
+        if request == "add" and self.dialog is None:
+            self.dialog = FileDialog(
+                "Add files",
+                filters=FILE_FILTERS,
+                directory=self.model.last_dir,
+                multiselect=True,
+            )
 
-    def export_state(self):
-        return {"history": deepcopy(self.rows), "docks": self.docks.state()}
+    def _draw_file_dialog(self) -> None:
+        if self.dialog is None:
+            return
+        if im.begin(self.dialog.title):
+            result = self.dialog.draw()
+            if result:
+                self.dialog = None
+                self.model.add_paths(result)
+            elif result is False:
+                self.dialog = None
+        im.end()
 
-    def restore_state(self, state):
-        if self.job.running:
-            raise RuntimeError("Cannot restore conversion history while a write is active.")
-        self.pending.clear()
-        self.rows = deepcopy(state.get("history", []))
-        for row in self.rows:
-            if row.get("status") in {"queued", "running"}:
-                row["status"] = "interrupted"
-        self.docks.restore(state.get("docks"))
+    # ── persistence ────────────────────────────────────────────────────
+    def export_settings(self) -> dict:
+        """What is remembered: the history (documentary) and the last folder."""
+        return self.model.export_settings()
 
-    def close(self):
-        self.closed = True
-        for row in self.pending:
-            row["status"] = "interrupted"
-        self.pending.clear()
-        self.job.close()
+    def restore_settings(self, settings: dict) -> None:
+        """Restore :meth:`export_settings`; the history is never replayed."""
+        self.model.restore_settings(settings)
+
+    def close(self) -> None:
+        """Stop queued conversions; a write in progress finishes safely."""
+        self.model.close()
 
 
-def create_app():
+def create_app() -> TttrToPtoApp:
+    """Build the converter app (the manifest's ``entrypoints.emtk``)."""
     return TttrToPtoApp()
+
+
+make_app = create_app

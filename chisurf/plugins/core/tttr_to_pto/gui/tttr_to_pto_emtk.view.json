@@ -1,0 +1,49 @@
+{
+  "_comment": "TTTR <-> .pto converter, native emtk window. Drawn by emtk.view_form over TttrToPtoModel (gui/model.py); Help and Guide, the file dialog and the drop are drawn or handled by gui/app.py.",
+  "title": "TTTR <-> .pto",
+  "sections": [
+    {
+      "type": "info", "key": "drop_hint",
+      "text": "Drop vendor photon file(s) (.ptu, .spc, .ht3, ...) to pack them into one .pto beside the first, or drop a .pto to unpack the original vendor file(s) back out. Whichever direction you drop, the file(s) you dropped are kept untouched.",
+      "description": "What the tool does: the drop decides the direction, and nothing you drop is changed or deleted."
+    },
+    {
+      "type": "button_row",
+      "description": "Add files with a dialog instead of dropping them, or forget the finished entries.",
+      "buttons": [
+        {"action": "request_add", "label": "Add files...",
+         "description": "Choose vendor photon files to pack into one .pto, or .pto containers to unpack. Same as dropping them on the window."},
+        {"action": "clear_history", "label": "Clear history",
+         "description": "Remove the finished entries from the list; the files on disk stay untouched."}
+      ]
+    },
+    {
+      "type": "info", "key": "status_text", "source": "status_text",
+      "description": "How many conversions were asked for and how they ended."
+    },
+    {
+      "type": "custom", "key": "data_table", "title": "",
+      "description": "One row per conversion, newest last. A vendor file is packed into a .pto beside it (files dropped together become one container, in file-name order); a .pto is unpacked to the vendor files and results it holds. Hover a row for the full paths.",
+      "options": {
+        "source": "records",
+        "row_key": "id",
+        "editable": false,
+        "tooltip_key": "detail",
+        "status": true,
+        "expand": true,
+        "reserve": 24,
+        "min_column_width": 60,
+        "columns": [
+          {"key": "status", "title": "Status", "width": 100,
+           "tooltip": "Queued, Converting, Verified (the written file passed its checksum), Failed, Rejected or Not completed."},
+          {"key": "action", "title": "Action", "width": 64,
+           "tooltip": "Pack: vendor file(s) into a .pto. Unpack: a .pto back to its vendor file(s) and results."},
+          {"key": "files", "title": "Files", "width": 220,
+           "tooltip": "The file(s) you dropped, in the order they are packed."},
+          {"key": "result", "title": "Result", "width": 260,
+           "tooltip": "The file(s) written, or why the conversion failed or the file was rejected."}
+        ]
+      }
+    }
+  ]
+}
