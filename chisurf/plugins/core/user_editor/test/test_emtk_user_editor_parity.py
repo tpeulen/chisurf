@@ -467,6 +467,36 @@ def test_save_writes_the_temporary_database(temp_db):
     assert [r["user"] for r in app.model.user_records() if r["username"] == "bob"] == ["Robert Baker"]
 
 
+def test_a_staged_password_alone_is_saved_and_works_for_sign_in(temp_db):
+    """Set bob's password on the real server, with no other edit, and sign in with it."""
+    app = loaded_app(temp_db)
+    click_row(app, "bob")
+    assert not app.model.enabled("do_save")
+    app.model.ask_password()
+    app.model.password_new = app.model.password_confirm = "Abcdef1!"
+    app.model.password_set()
+    assert app.model.enabled("do_save") and not app.model.dirty
+    app.model.do_save()
+    pump(app)
+    assert "Saved 'Bob Baker'" in app.model.status_text() and not app.model.password_staged
+    from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
+
+    fresh = MMFDBClient(inprocess=True)
+    assert fresh.login("bob", "Abcdef1!", quiet=True)["ok"]
+    with pytest.raises(Exception):
+        MMFDBClient(inprocess=True).login("bob", "wrong-password", quiet=True)
+
+
+def test_reverting_a_staged_password_forgets_it():
+    app = loaded_app()
+    click_row(app, "bob")
+    app.model.stage_password("abcdefgh")
+    app.model.ask_revert()
+    assert app.model.confirm == "revert"
+    app.model.confirm_yes()
+    assert not app.model.password_staged and not app.model.enabled("do_save")
+
+
 def test_rename_carries_the_session_token(temp_db, renames):
     app = loaded_app(temp_db)
     click_row(app, "erin")
@@ -767,17 +797,18 @@ def test_a_staged_password_is_sent_with_save_and_forgotten_after():
     app.model.password_set()
     assert app.model.password_new == "" and app.model.password_confirm == ""
     assert "a new password is staged" in app.model.status_text()
-    assert app.model.dirty is False and app.model.enabled("do_save") is False
-    app.model.display_name = "Bobby"
+    # a password can be set on its own: Save and Revert are usable without any field edit
+    assert app.model.dirty is False and app.model.enabled("do_save") and app.model.enabled("ask_revert")
     app.model.do_save()
     pump(app)
     assert client.saved[-1]["password"] == "S3cret!pw"
-    assert "staged" not in app.model.status_text()
-    assert not app.model.password_staged
+    assert client.saved[-1]["display_name"] == "Bob Baker"
+    assert "staged" not in app.model.status_text() and "Saved 'Bob Baker'" in app.model.status_text()
+    assert not app.model.password_staged and not app.model.enabled("do_save")
 
 
-def test_a_staged_password_alone_does_not_enable_save_but_dirty_edits_do_not_lose_it():
-    """As in the Qt tool: the password is applied with the next Save of an edited account."""
+def test_a_staged_password_travels_with_a_save_of_edited_fields_too():
+    """The password is applied with the next Save, whether or not fields were edited."""
     client = FakeServer(known_users())
     app = loaded_app(client)
     click_row(app, "bob")

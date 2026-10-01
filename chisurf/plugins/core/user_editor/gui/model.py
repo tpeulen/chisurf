@@ -168,10 +168,19 @@ class UserEditorModel(UserEditorViewModel):
 
     # -- what the controls may do ----------------------------------------
 
+    @property
+    def has_changes(self) -> bool:
+        """Whether Save has anything to write: edited fields or a staged password.
+
+        A password can be set on its own, so a staged one counts even when no
+        field was edited (the Qt tool's Save is always enabled).
+        """
+        return self.dirty or self.password_staged
+
     def enabled(self, name: str) -> bool:
         """Whether the control *name* is usable now."""
         if name in ("do_save", "ask_revert"):
-            return self.dirty and not self.busy and not self.confirm
+            return self.has_changes and not self.busy and not self.confirm
         if name == "ask_delete":
             return self.selected is not None and not self.busy and not self.confirm
         if name == "ask_password":
@@ -250,7 +259,7 @@ class UserEditorModel(UserEditorViewModel):
     def do_save(self) -> None:
         """Save the edited account: refuse early on a problem, else call the server."""
         self.notice = ""
-        if not self.dirty:
+        if not self.has_changes:
             self.notice = "Nothing to save."
             return
         problems = self.problems()
@@ -293,7 +302,7 @@ class UserEditorModel(UserEditorViewModel):
     def ask_revert(self) -> None:
         """Revert, after the user confirms; nothing to ask when nothing changed."""
         self.notice = ""
-        if not self.dirty:
+        if not self.has_changes:
             self.notice = "Nothing to revert."
             return
         self.confirm = "revert"
