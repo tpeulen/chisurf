@@ -1,0 +1,43 @@
+diff --git a/chisurf/plugins/misc/games/number_quest/gui/__init__.py b/chisurf/plugins/misc/games/number_quest/gui/__init__.py
+index 5522614e0..6f4413d38 100644
+--- a/chisurf/plugins/misc/games/number_quest/gui/__init__.py
++++ b/chisurf/plugins/misc/games/number_quest/gui/__init__.py
+@@ -1,5 +1,10 @@
+-"""Qt interface for Number Quest."""
+-
+-from .tool import NumberQuestWidget
++"""Lazy GUI exports so the native factory does not import Qt."""
+ 
+ __all__ = ["NumberQuestWidget"]
++
++
++def __getattr__(name):
++    if name == "NumberQuestWidget":
++        from .tool import NumberQuestWidget
++        return NumberQuestWidget
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/misc/games/number_quest/manifest.json b/chisurf/plugins/misc/games/number_quest/manifest.json
+index 76e5f2e8b..38a4ff44c 100644
+--- a/chisurf/plugins/misc/games/number_quest/manifest.json
++++ b/chisurf/plugins/misc/games/number_quest/manifest.json
+@@ -3,10 +3,17 @@
+   "version": "1.0.0",
+   "display_name": "Tools:Miscellaneous:Games:Number Quest",
+   "description": "A small number-guessing game contained in the Games hub.",
+-  "authors": ["ChiSurf contributors"],
+-  "categories": ["Tools", "Miscellaneous", "Games"],
++  "authors": [
++    "ChiSurf contributors"
++  ],
++  "categories": [
++    "Tools",
++    "Miscellaneous",
++    "Games"
++  ],
+   "entrypoints": {
+-    "gui": "chisurf.plugins.misc.games.number_quest.gui.tool:NumberQuestWidget"
++    "gui": "chisurf.plugins.misc.games.number_quest.gui.tool:NumberQuestWidget",
++    "emtk": "chisurf.plugins.misc.games.number_quest.app:make_app"
+   },
+   "dependencies": {},
+   "menu_hidden": true,

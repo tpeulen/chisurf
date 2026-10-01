@@ -1,0 +1,14 @@
+ M chisurf/plugins/misc/games/number_quest/gui/__init__.py
+ M chisurf/plugins/misc/games/number_quest/manifest.json
+?? chisurf/plugins/misc/games/number_quest/README.md
+?? chisurf/plugins/misc/games/number_quest/app.py
+?? chisurf/plugins/misc/games/number_quest/drawing.py
+?? chisurf/plugins/misc/games/number_quest/glyphs.json
+?? chisurf/plugins/misc/games/number_quest/gui/app.py
+?? chisurf/plugins/misc/games/number_quest/gui/translations.py
+?? chisurf/plugins/misc/games/number_quest/test/capture_native.py
+?? chisurf/plugins/misc/games/number_quest/test/capture_qt.py
+?? chisurf/plugins/misc/games/number_quest/test/renders/
+?? chisurf/plugins/misc/games/number_quest/test/test_emtk_app.py
+?? chisurf/plugins/misc/games/number_quest/test/test_native.py
+?? chisurf/plugins/misc/games/number_quest/translations.py

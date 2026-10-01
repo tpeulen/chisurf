@@ -1,0 +1,18 @@
+{
+  "controls": [
+    "sound"
+  ],
+  "labels": [],
+  "buttons": [
+    "Sound"
+  ],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.misc.games.number_quest.gui.tool:NumberQuestWidget",
+  "size": [
+    1200,
+    800
+  ]
+}
