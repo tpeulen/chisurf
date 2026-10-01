@@ -8,7 +8,7 @@
 | Port type and why | Upgrade of an existing emtk app (brief `UPGRADE_BRIEF.md`). The Qt wizard has eight steps with Back / Next; the emtk app had four pages and neither the detector nor the FCS editor. |
 | Agent / date | claude implementing agent, 2026-10-01 |
 | Effort spent (hours) | not measured |
-| Commits | `784470352` boarding: Qt baseline and current emtk state for the upgrade; `700906158` boarding: emtk app at parity with the Qt wizard; `fdd4dfd0d` boarding: layout at narrow widths (steps list minimum width, wrapped subtitle, table column widths); evidence and report: next commit (`boarding: evidence and report`) |
+| Commits | `784470352` boarding: Qt baseline and current emtk state for the upgrade; `700906158` boarding: emtk app at parity with the Qt wizard; `fdd4dfd0d` boarding: layout at narrow widths (steps list minimum width, wrapped subtitle, table column widths); `7c701f11b` boarding: evidence and report |
 | Agent-board entry | `T-20261001-BOARD` in `okf/agent-board.md` |
 
 ## 1. State at start (P1)
