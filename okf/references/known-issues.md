@@ -6060,3 +6060,27 @@ analysis of the user's data and is not. In the burst-analysis MLE step the real 
 mock is what is shown. Reproduce: open either app with no data and read the plot calls. Fix: draw only model results
 (an empty-state message when there are none); a demo is allowed only behind an explicit, labelled Demo action.
 PRD-153 now forbids invented data in a port. Survey: `okf/plugins/emtk-ports/burst-survey.md`.
+
+## Setup:Channel Definition: lost first save, Qt calibration and rename, shared-editor gaps (found 2026-10-01)
+
+Measured while giving `setup_channel_definition` its own tests; evidence and reproductions in
+`okf/plugins/emtk-ports/setup_channel_definition/REPORT.md`.
+
+* **The first setup save on a fresh MMFDB is lost without an error.** `setup_store.save_setup_row` calls
+  `db.ensure_user(user)` first; `ensure_user` inserts through `dao.insert` and leaves that insert in an open transaction,
+  and `save_setup`'s own transaction nests inside it and never commits, so closing the handle rolls both back
+  (`save_setups` still returns `True`, the Qt tool still says "saved successfully"). Reproduce (5 lines):
+  `db = MFDatabase(p); setup_store.save_setup_row(db, CONFIG, "Mine", {"windows": {}}, user_id="brand_new_user");
+  len(db.list_setups())` is 1; `db.close(); len(MFDatabase(p).list_setups())` is 0.
+  `test/fio/test_setup_store_fresh_database.py` passes because it reads on the same connection. Fix: commit in
+  `ensure_user` (mmfdb) or wrap it in `self._transaction()`; add the reopen assertion to that test.
+* **Qt calibration combo never lists a snapshot.** `DetectorWizardPage._populate_calibration_combo` and
+  `_on_calibration_changed` call `setup_id_for_name(name, user)`; the function takes `(name, user_id, prefix)`, the
+  `TypeError` is swallowed and the combo stays at "Latest". The emtk toolbar lists and applies snapshots.
+* **Qt rename drops the Public flag.** `tttr_detector_setups._setup_row_data` returns `setup_data` without `_is_public` /
+  `_owner`, so a renamed public setup is stored private. The emtk toolbar (core `ChannelDefinition`) keeps it.
+* **Shared editor (`chisurf/emtk/channel_definition.py`, another stream's) gaps**: detectors are stacked blocks, not a
+  table; the Setups tab stacks its buttons full width; the last tab cannot be restored (the editor owns the tab state);
+  microtime ranges reject `20:10`, `5:5` and `;` separators that Qt accepts; with a fixed File Type the reader accepts any
+  bytes and overwrites the timing (`xfail` test); no "Configure LUTs" / visual "Adjust shifts" hand-off; the last-used
+  setup is neither written on selection nor opened at start (`ChannelDefinition.refresh_setups` drops `last_used`).
