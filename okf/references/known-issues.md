@@ -6084,3 +6084,16 @@ Measured while giving `setup_channel_definition` its own tests; evidence and rep
   microtime ranges reject `20:10`, `5:5` and `;` separators that Qt accepts; with a fixed File Type the reader accepts any
   bytes and overwrites the timing (`xfail` test); no "Configure LUTs" / visual "Adjust shifts" hand-off; the last-used
   setup is neither written on selection nor opened at start (`ChannelDefinition.refresh_setups` drops `last_used`).
+
+## boarding wizard: "Create missing files" never creates `settings_chisurf.yaml` (found 2026-10-01)
+
+**Measured** on a fresh temporary settings folder (`CHISURF_SETTINGS_DIR`), Qt wizard and emtk app alike
+(`okf/plugins/emtk-ports/boarding/before_populated_step2_settings.png`, `test_create_missing_writes_only_missing_files`):
+the Settings step lists `settings_chisurf.yaml` as **MISSING** and, because the step's check mark needs that file
+(`BoardingViewModel.settings_ok`), the step has no mark; pressing **Create missing files** changes nothing about it.
+*Cause:* `copy_settings_to_user_folder` skips `settings_chisurf.yaml` on purpose (the core reads it as defaults overlaid
+by the user's file); the wizard still treats it as required. Only **Restore defaults (overwrite)** writes it, which pins
+every default of the release, the thing the core avoids. *Not fixed here:* the emtk port must stay at parity with the
+Qt wizard, and the fix is a decision about the wizard's meaning (report a missing user file as "defaults in use", not
+MISSING, and drop it from `settings_ok`). Both wizards need the same change in `boarding/utils.py` and
+`boarding/view_model.py`.

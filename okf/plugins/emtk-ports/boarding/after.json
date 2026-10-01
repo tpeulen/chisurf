@@ -1,0 +1,1094 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/bo",
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/boarding_after_n50jkuv.",
+    "0",
+    "0.000",
+    "0.667",
+    "02048",
+    "04095",
+    "0setupsavailable.",
+    "1",
+    "1.000",
+    "1.330",
+    "20",
+    "2048",
+    "20484095",
+    "32768",
+    "3dviewer(optional)",
+    "4095",
+    "4881.0,6401.0",
+    "50.000",
+    "8,0,3",
+    "9",
+    "9,1,2",
+    "a",
+    "acf",
+    "add",
+    "adddetector",
+    "addemissionsplitter",
+    "addfluorophore",
+    "addopticaldetector",
+    "addorselectapairtoeditit.",
+    "addpiewindow",
+    "anisotropy_corrections.json",
+    "appearintheadd-fitlist.",
+    "apply",
+    "applytaclutsandshifts",
+    "aquickguidedsetupforanewchisurfinstallation.",
+    "archivegcalibration",
+    "arding_after_n50jkuvn/cs",
+    "assignlutfile",
+    "assignorcomputeper-routing-channeltaclutsand",
+    "auto-detecttaclut",
+    "b",
+    "back",
+    "bandpass",
+    "bins",
+    "built-intemplate",
+    "calculategfrompreview",
+    "calibration",
+    "calibration.",
+    "calibrationrevision",
+    "cascades",
+    "ccf",
+    "channela",
+    "channelb",
+    "channelpresetsaved.",
+    "checkoptionalpythonpackagesusedbyspecificfeatures.",
+    "choosetemplate",
+    "close",
+    "combinations.",
+    "computetaclut",
+    "configurepie/channelwindowsfortttrworkflows.",
+    "connected",
+    "createmissingfiles",
+    "createmissingsettingsfilesorrestorepackageddefaults.",
+    "defineexcitationgatesanddetector/window",
+    "definewhichchannels/pairstocorrelateforfcsworkflows.",
+    "delayed",
+    "delete",
+    "deletepreset",
+    "deletesetup",
+    "dependencies",
+    "detectorname",
+    "detectors",
+    "detectorsetup",
+    "detectorsetups",
+    "editandsimulatetheinstrumentlightpath.",
+    "editroutingchannels,microtimegatesand",
+    "effectivemicrotimetick50ps",
+    "end",
+    "endtacchannel",
+    "excitationdichroic",
+    "excitationperiod50ns",
+    "experimentconfigurationalreadyuptodate.",
+    "experiments",
+    "exportchannellut",
+    "exportjson",
+    "exportsetupsfile",
+    "fcschannels",
+    "fcschannelsetups",
+    "fine",
+    "finish",
+    "fittingmodels(e.g.theautoformpdamodels)areregisteredfromexperiment_configs.yamlinyoursettingsfolder.ifchisurfshipsneworupdatedmodels,re-syncyourcopysothey",
+    "fix/initialize",
+    "g-factorchannelrange",
+    "gfactor",
+    "green",
+    "green_acf",
+    "green×red",
+    "guide",
+    "help",
+    "importerror",
+    "importjson",
+    "item",
+    "keepmysettings",
+    "kind",
+    "l1factor",
+    "l2factor",
+    "lab",
+    "laserlineswavelengthpower",
+    "latest",
+    "linearregionstart",
+    "linearregionstop",
+    "loaded",
+    "loadopticalpreset",
+    "loadsetupsfile",
+    "location",
+    "logs/",
+    "lut0entries",
+    "macro-timetick(ns)",
+    "managenamedsetupdefinitionsandcalibration",
+    "markdown",
+    "metadatastore(mmfdb)",
+    "micro-timetick(ps)",
+    "microtimebinning",
+    "microtimeranges",
+    "microtimeshift(bins)",
+    "missing",
+    "mmfdbconnected—nonedefinedyet",
+    "name",
+    "newdetectorname",
+    "newopticaldetectorname",
+    "newpiewindowname",
+    "next",
+    "nologicalchannels.definedetectorandexcitationwindowsfirst.",
+    "none",
+    "noneyet",
+    "off",
+    "ok",
+    "openadvancedgrapheditor",
+    "openhelp",
+    "openhelpfromthehelpmenuofthechisurfmainwindow.",
+    "openpluginmanager",
+    "opensettingseditor",
+    "opensettingsfolder",
+    "opticalsetup",
+    "optionaldependencies",
+    "orientationfactorκ²",
+    "overrideheadertiming",
+    "package",
+    "pairlabel(optional)",
+    "piewindows",
+    "plottinginthegui",
+    "plugins/",
+    "polarizationfactors.",
+    "polarizationresolved",
+    "prompt",
+    "public",
+    "publicsetup",
+    "pymol",
+    "pyqtgraph",
+    "quantumefficiency",
+    "readgcalibrationmeasurement",
+    "readtttrheaderanddecay",
+    "recommendednextsteps",
+    "red",
+    "refractiveindex",
+    "refresh",
+    "refreshcalibrationhistory",
+    "refreshopticalcatalogue",
+    "refreshsetups",
+    "reload",
+    "removechannellut",
+    "removedetector",
+    "removeopticaldetector",
+    "removethispair",
+    "removewindow",
+    "rename",
+    "renamedetector",
+    "renamesetup",
+    "renamewindow",
+    "renderingmarkdowndocsinhelp",
+    "replaceyourcurrentsettingsfilesintheusersettingsfolderwiththepackageddefaults?",
+    "restoredefaults",
+    "restoredefaults(overwrite)",
+    "reviewyourusersettingsfiles;opentheeditorwhenneeded.",
+    "revisions.",
+    "routingchannel",
+    "routingchannels",
+    "runtimesettings",
+    "save",
+    "saveopticalpreset",
+    "savesetup",
+    "selectformat,timing,binningandheader/decay",
+    "settings",
+    "settings_chisurf.yaml",
+    "settings_colors.yaml",
+    "settingsfileswithpackageddefaults.",
+    "settingsstatus",
+    "settingsupdated.",
+    "settingsyouchangedtherearelost.",
+    "setup",
+    "setupname",
+    "setups",
+    "shifts.",
+    "showmicrotimepreview",
+    "simulateopticalsetup",
+    "spc-130",
+    "start",
+    "starttacchannel",
+    "status",
+    "steps",
+    "styles/",
+    "taccorrections",
+    "thisupdatesonlyexperiment_configs.yaml;allothersettingsareleftuntouched.arestartisrequiredafterwards.",
+    "thiswizardhelpsyougetchisurfreadyforyourdataandworkflows.itfocusesontheusersettingsfolder(~/.chisurf)andafewkeyconfigurationfiles.",
+    "tttrformat",
+    "tttrlib",
+    "tttrreading",
+    "tttrreadingandanalysis",
+    "unsaved",
+    "updateexperiment/modelconfigurationsonewmodelsappear.",
+    "updateexperiments",
+    "usedfor",
+    "usersettingsdirectory",
+    "usethispageifchisurfreportsmissingsettings,ortoresettoaknown-goodbaseline.createmissingfilesonlywritesfilesthatdonotexistyet;restoredefaultsreplacesyourcurrentuser",
+    "vgreen",
+    "vred",
+    "vyellow",
+    "welcome",
+    "welcometochisurf",
+    "whatyoucandohere",
+    "windowname",
+    "yellow",
+    "youarereadytostartworking",
+    "youarereadytostartworking.",
+    "youcanclosethiswizardnow;itdoesnotneedtostayopen.",
+    "youcanrunthiswizardanytimefromthepluginmanager.",
+    "•checkwhetheryoursettingsfilesexistandlooksane.",
+    "•configuretttrdetectorsetupsand(optionally)fcschannelpresets.",
+    "•createorrestoredefaultsifsomethingismissingorbroken.",
+    "•forburst-wisefcsdefineatleastonefcschannelpreset.",
+    "•fortttrdatadefinedetectorsetups(pie/windows)onceperhardwareconfiguration.",
+    "•opensettingsandverifypaths/options(workingdirectory,plugins,guipreferences).",
+    "•usehelptobrowseexperiment-specificguidesandbuilt-indocumentation."
+  ],
+  "interactive": [
+    {
+      "kind": "selectable",
+      "label": "✓ Welcome",
+      "id": "✓ Welcome",
+      "tooltip": "A quick guided setup for a new ChiSurf installation."
+    },
+    {
+      "kind": "selectable",
+      "label": "  Settings",
+      "id": "  Settings",
+      "tooltip": "Review your user settings files; open the editor when needed."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Fix / Initialize",
+      "id": "✓ Fix / Initialize",
+      "tooltip": "Create missing settings files or restore packaged defaults."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Experiments",
+      "id": "✓ Experiments",
+      "tooltip": "Update experiment/model configuration so new models appear."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Dependencies",
+      "id": "✓ Dependencies",
+      "tooltip": "Check optional Python packages used by specific features."
+    },
+    {
+      "kind": "selectable",
+      "label": "  Detector setup",
+      "id": "  Detector setup",
+      "tooltip": "Configure PIE / channel windows for TTTR workflows."
+    },
+    {
+      "kind": "selectable",
+      "label": "  FCS channels",
+      "id": "  FCS channels",
+      "tooltip": "Define which channels/pairs to correlate for FCS workflows."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Finish",
+      "id": "✓ Finish",
+      "tooltip": "You are ready to start working."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back##go_back",
+      "tooltip": "Go to the previous step. Not available on the first step."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next##go_next",
+      "tooltip": "Go to the following step. Every step can be skipped; nothing has to be completed first."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the steps of the wizard."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the wizard step by step."
+    },
+    {
+      "kind": "button",
+      "label": "Open settings folder",
+      "id": "Open settings folder##open_settings_dir",
+      "tooltip": "Open the user settings folder (~/.chisurf) in your file manager."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh##refresh",
+      "tooltip": "Re-check the settings files."
+    },
+    {
+      "kind": "button",
+      "label": "Open settings editor",
+      "id": "Open settings editor##open_settings_editor",
+      "tooltip": "Open the ChiSurf settings editor to adjust paths and options."
+    },
+    {
+      "kind": "button",
+      "label": "Create missing files",
+      "id": "Create missing files##create_missing",
+      "tooltip": "Only writes settings files that do not exist yet."
+    },
+    {
+      "kind": "button",
+      "label": "Restore defaults (overwrite)",
+      "id": "Restore defaults (overwrite)##request_restore",
+      "tooltip": "Replace current user settings files with packaged defaults. Asks first."
+    },
+    {
+      "kind": "button",
+      "label": "Update experiments",
+      "id": "Update experiments##update_experiments",
+      "tooltip": "Re-sync experiment_configs.yaml from the packaged default so new fitting models (e.g. the AutoForm PDA models) show up. Requires a restart."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh##refresh",
+      "tooltip": "Re-check the optional dependencies."
+    },
+    {
+      "kind": "combo",
+      "label": "setup_choice",
+      "id": "##setup_choice",
+      "tooltip": "Choose a saved detector setup; its detectors, PIE windows, reading routine, LUTs and optical setup replace the working definition."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Ask for a name and store the working definition as a saved setup."
+    },
+    {
+      "kind": "button",
+      "label": "Rename",
+      "id": "Rename",
+      "tooltip": "Give the selected saved setup another name."
+    },
+    {
+      "kind": "button",
+      "label": "Delete",
+      "id": "Delete",
+      "tooltip": "Delete the selected saved setup after asking."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Public",
+      "id": "Public",
+      "tooltip": "When checked, the setup is visible to all users in the MMFDB; it takes effect with Save. Only the owner of a saved setup can change this."
+    },
+    {
+      "kind": "combo",
+      "label": "calibration_choice",
+      "id": "##calibration_choice",
+      "tooltip": "Pick a stored calibration snapshot of the selected setup: its G factor, l1 and l2 are applied to the detectors. Latest leaves the factors as they are."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the setups, the six tabs, units of micro-time ranges and LUTs."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through choosing, editing and saving a setup."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Setups",
+      "id": "Setups",
+      "tooltip": "Manage named setup definitions and calibration revisions."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh setups",
+      "id": "Refresh setups",
+      "tooltip": "Load available saved detector setups from MMFDB or the selected JSON file."
+    },
+    {
+      "kind": "combo",
+      "label": "channel_setup",
+      "id": "##channel_setup",
+      "tooltip": "Select a named instrument setup and restore all detector, timing and optical parameters."
+    },
+    {
+      "kind": "input_text",
+      "label": "Setup name",
+      "id": "##Setup name",
+      "tooltip": "Name used when saving or renaming the detector setup."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Public setup",
+      "id": "Public setup",
+      "tooltip": "Publish the saved setup for other users through the MMFDB setup store."
+    },
+    {
+      "kind": "button",
+      "label": "Save setup",
+      "id": "Save setup",
+      "tooltip": "Persist all channels, windows, corrections and optical configuration."
+    },
+    {
+      "kind": "button",
+      "label": "Rename setup",
+      "id": "Rename setup",
+      "tooltip": "Rename the selected saved setup to the entered name."
+    },
+    {
+      "kind": "button",
+      "label": "Delete setup",
+      "id": "Delete setup",
+      "tooltip": "Request deletion of the selected saved setup."
+    },
+    {
+      "kind": "button",
+      "label": "Load setups file",
+      "id": "Load setups file",
+      "tooltip": "Choose a detector-setup JSON library."
+    },
+    {
+      "kind": "button",
+      "label": "Export setups file",
+      "id": "Export setups file",
+      "tooltip": "Save all loaded named setups as a JSON library."
+    },
+    {
+      "kind": "combo",
+      "label": "calibration",
+      "id": "##calibration",
+      "tooltip": "Load stored G-factor and polarization-mixing values from this calibration revision."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh calibration history",
+      "id": "Refresh calibration history",
+      "tooltip": "Query calibration dates for this setup."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "TTTR reading",
+      "id": "TTTR reading",
+      "tooltip": "Select format, timing, binning and header/decay calibration."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Detectors",
+      "id": "Detectors",
+      "tooltip": "Edit routing channels, microtime gates and polarization factors."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "PIE windows",
+      "id": "PIE windows",
+      "tooltip": "Define excitation gates and detector/window combinations."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "TAC corrections",
+      "id": "TAC corrections",
+      "tooltip": "Assign or compute per-routing-channel TAC LUTs and shifts."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Optical setup",
+      "id": "Optical setup",
+      "tooltip": "Edit and simulate the instrument light path."
+    },
+    {
+      "kind": "combo",
+      "label": "Detector setup",
+      "id": "##Detector setup",
+      "tooltip": "Choose the detector setup whose logical channels are paired."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Public",
+      "id": "Public",
+      "tooltip": "Only the owner may change sharing with other MMFDB users."
+    },
+    {
+      "kind": "button",
+      "label": "Reload",
+      "id": "Reload",
+      "tooltip": "Reload saved detector setups and presets; discard editing drafts."
+    },
+    {
+      "kind": "combo",
+      "label": "A",
+      "id": "##A",
+      "tooltip": "First logical detector/excitation channel."
+    },
+    {
+      "kind": "combo",
+      "label": "B",
+      "id": "##B",
+      "tooltip": "Second channel; identical channels make an autocorrelation."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_name",
+      "id": "##new_name",
+      "tooltip": "Optional unique pair name; otherwise an ACF or cross-channel label is generated."
+    },
+    {
+      "kind": "button",
+      "label": "Add",
+      "id": "Add",
+      "tooltip": "Add a channel pair with the configured correlator defaults."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Validate and persist pairs for this detector setup."
+    },
+    {
+      "kind": "button",
+      "label": "Apply",
+      "id": "Apply",
+      "tooltip": "Save as the active preset and notify a connected correlator when provided."
+    },
+    {
+      "kind": "button",
+      "label": "Delete preset",
+      "id": "Delete preset",
+      "tooltip": "Delete only the FCS preset; retain its detector definition."
+    },
+    {
+      "kind": "button",
+      "label": "Import JSON",
+      "id": "Import JSON",
+      "tooltip": "Import and persist a channel preset library from JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Export JSON",
+      "id": "Export JSON",
+      "tooltip": "Export the full library including this current editing draft."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain logical channels, correlation pairs and per-pair settings."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through selecting a setup, creating pairs and saving."
+    },
+    {
+      "kind": "button",
+      "label": "Close",
+      "id": "Close",
+      "tooltip": "Close this native editor; exported host state preserves drafts."
+    },
+    {
+      "kind": "button",
+      "label": "Finish",
+      "id": "Finish##finish",
+      "tooltip": "Close the wizard. You can run it again from the Plugin Manager."
+    },
+    {
+      "kind": "button",
+      "label": "Open Help",
+      "id": "Open Help##open_help",
+      "tooltip": "Browse experiment-specific guides and built-in documentation."
+    },
+    {
+      "kind": "button",
+      "label": "Open Plugin Manager",
+      "id": "Open Plugin Manager##open_plugin_manager",
+      "tooltip": "Manage installed plugins."
+    },
+    {
+      "kind": "combo",
+      "label": "tttr_format",
+      "id": "##tttr_format",
+      "tooltip": "Choose the TTTR container type, or auto for header detection."
+    },
+    {
+      "kind": "input_float",
+      "label": "Macro-time tick (ns)",
+      "id": "##Macro-time tick (ns)",
+      "tooltip": "Seconds per macro-time tick expressed in nanoseconds."
+    },
+    {
+      "kind": "input_float",
+      "label": "Micro-time tick (ps)",
+      "id": "##Micro-time tick (ps)",
+      "tooltip": "Seconds per microtime channel expressed in picoseconds."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Override header timing",
+      "id": "Override header timing",
+      "tooltip": "Apply the entered macro/microtime calibration to newly read measurements; otherwise use their header."
+    },
+    {
+      "kind": "input_int",
+      "label": "Microtime binning",
+      "id": "Microtime binning",
+      "tooltip": "Number of original TAC channels per analysis bin."
+    },
+    {
+      "kind": "button",
+      "label": "Read TTTR header and decay",
+      "id": "Read TTTR header and decay",
+      "tooltip": "Read a measurement or BH SET calibration, including per-channel decay histograms."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show microtime preview",
+      "id": "Show microtime preview",
+      "tooltip": "Display routing-channel decays and detector/PIE windows."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Polarization resolved",
+      "id": "Polarization resolved",
+      "tooltip": "Treat paired routing streams as VV/VH polarization channels."
+    },
+    {
+      "kind": "input_text",
+      "label": "New detector name",
+      "id": "##New detector name",
+      "tooltip": "Name of the detector to add."
+    },
+    {
+      "kind": "button",
+      "label": "Add detector",
+      "id": "Add detector",
+      "tooltip": "Create a named detector with editable routing, gates and calibration factors."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "green",
+      "id": "green",
+      "tooltip": "Edit routing, microtime gates and polarization calibration for green."
+    },
+    {
+      "kind": "input_text",
+      "label": "Detector name",
+      "id": "##Detector name",
+      "tooltip": "New name for this detector; use Rename to retain all calibrations."
+    },
+    {
+      "kind": "button",
+      "label": "Rename detector",
+      "id": "Rename detector",
+      "tooltip": "Rename this detector while preserving channels, gates and calibration metadata."
+    },
+    {
+      "kind": "input_text",
+      "label": "Routing channels",
+      "id": "##Routing channels",
+      "tooltip": "Comma-separated TTTR routing channels."
+    },
+    {
+      "kind": "input_text",
+      "label": "Microtime ranges",
+      "id": "##Microtime ranges",
+      "tooltip": "One or more start:end TAC gates, separated by commas."
+    },
+    {
+      "kind": "input_float",
+      "label": "G factor",
+      "id": "##G factor",
+      "tooltip": "Polarization sensitivity correction for this detector."
+    },
+    {
+      "kind": "input_float",
+      "label": "l1 factor",
+      "id": "##l1 factor",
+      "tooltip": "Polarization mixing correction l1."
+    },
+    {
+      "kind": "input_float",
+      "label": "l2 factor",
+      "id": "##l2 factor",
+      "tooltip": "Polarization mixing correction l2."
+    },
+    {
+      "kind": "input_text",
+      "label": "G-factor channel range",
+      "id": "##G-factor channel range",
+      "tooltip": "TAC start:end tail range used to calculate the VV/VH G factor."
+    },
+    {
+      "kind": "button",
+      "label": "Calculate G from preview",
+      "id": "Calculate G from preview",
+      "tooltip": "Calculate a tail-matched G factor from the loaded parallel/perpendicular decays."
+    },
+    {
+      "kind": "button",
+      "label": "Archive G calibration",
+      "id": "Archive G calibration",
+      "tooltip": "Register the calculated reference decay and calibration provenance in MMFDB."
+    },
+    {
+      "kind": "button",
+      "label": "Read G calibration measurement",
+      "id": "Read G calibration measurement",
+      "tooltip": "Load parallel/perpendicular decays for G-factor calculation."
+    },
+    {
+      "kind": "button",
+      "label": "Remove detector",
+      "id": "Remove detector",
+      "tooltip": "Remove this detector from the working definition."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "red",
+      "id": "red",
+      "tooltip": "Edit routing, microtime gates and polarization calibration for red."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "yellow",
+      "id": "yellow",
+      "tooltip": "Edit routing, microtime gates and polarization calibration for yellow."
+    },
+    {
+      "kind": "input_text",
+      "label": "New PIE window name",
+      "id": "##New PIE window name",
+      "tooltip": "Name of the excitation-period microtime window."
+    },
+    {
+      "kind": "input_int",
+      "label": "Start TAC channel",
+      "id": "Start TAC channel",
+      "tooltip": "First TAC bin in the new PIE window."
+    },
+    {
+      "kind": "input_int",
+      "label": "End TAC channel",
+      "id": "End TAC channel",
+      "tooltip": "Exclusive upper TAC bin of the new PIE window."
+    },
+    {
+      "kind": "button",
+      "label": "Add PIE window",
+      "id": "Add PIE window",
+      "tooltip": "Add a named microtime window and publish the window/detector channel combinations."
+    },
+    {
+      "kind": "input_text",
+      "label": "Window name",
+      "id": "##Window name",
+      "tooltip": "New name for this excitation window; use Rename to commit it."
+    },
+    {
+      "kind": "button",
+      "label": "Rename window",
+      "id": "Rename window",
+      "tooltip": "Rename this PIE window and its detector/window combinations."
+    },
+    {
+      "kind": "input_int",
+      "label": "Start",
+      "id": "Start",
+      "tooltip": "First TAC bin of PIE window prompt."
+    },
+    {
+      "kind": "input_int",
+      "label": "End",
+      "id": "End",
+      "tooltip": "Exclusive upper TAC bin of PIE window prompt."
+    },
+    {
+      "kind": "button",
+      "label": "Remove window",
+      "id": "Remove window",
+      "tooltip": "Remove this PIE excitation window."
+    },
+    {
+      "kind": "input_int",
+      "label": "Start",
+      "id": "Start",
+      "tooltip": "First TAC bin of PIE window delayed."
+    },
+    {
+      "kind": "input_int",
+      "label": "End",
+      "id": "End",
+      "tooltip": "Exclusive upper TAC bin of PIE window delayed."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Apply TAC LUTs and shifts",
+      "id": "Apply TAC LUTs and shifts",
+      "tooltip": "Apply assigned TAC linearization and per-channel shifts to every analysis read using this setup."
+    },
+    {
+      "kind": "combo",
+      "label": "Routing channel",
+      "id": "Routing channel",
+      "tooltip": "Routing channel whose LUT and microtime shift are edited."
+    },
+    {
+      "kind": "input_int",
+      "label": "Microtime shift (bins)",
+      "id": "Microtime shift (bins)",
+      "tooltip": "Shift applied after linearization to align the selected detector decay."
+    },
+    {
+      "kind": "button",
+      "label": "Export channel LUT",
+      "id": "Export channel LUT",
+      "tooltip": "Save this channel correction as a reusable TAC table."
+    },
+    {
+      "kind": "button",
+      "label": "Assign LUT file",
+      "id": "Assign LUT file",
+      "tooltip": "Load a TAC linearization table for the selected routing channel."
+    },
+    {
+      "kind": "input_int",
+      "label": "Linear region start",
+      "id": "Linear region start",
+      "tooltip": "First channel of the uniform-illumination linear calibration region."
+    },
+    {
+      "kind": "input_int",
+      "label": "Linear region stop",
+      "id": "Linear region stop",
+      "tooltip": "Last channel of the linear calibration region; choose Auto to infer it."
+    },
+    {
+      "kind": "button",
+      "label": "Compute TAC LUT",
+      "id": "Compute TAC LUT",
+      "tooltip": "Build a TAC table from the selected channel histogram and the entered linear region."
+    },
+    {
+      "kind": "button",
+      "label": "Auto-detect TAC LUT",
+      "id": "Auto-detect TAC LUT",
+      "tooltip": "Infer a populated linear region and calculate its TAC correction."
+    },
+    {
+      "kind": "button",
+      "label": "Remove channel LUT",
+      "id": "Remove channel LUT",
+      "tooltip": "Remove the correction table from this channel."
+    },
+    {
+      "kind": "button",
+      "label": "Open advanced graph editor",
+      "id": "Open advanced graph editor",
+      "tooltip": "Edit arbitrary components and optical connections; apply the full graph back to this setup."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh optical catalogue",
+      "id": "Refresh optical catalogue",
+      "tooltip": "Load available dye, transmission and detector spectra from MMFDB."
+    },
+    {
+      "kind": "button",
+      "label": "Load optical preset",
+      "id": "Load optical preset",
+      "tooltip": "Load an easy-mode configuration or a light-path graph."
+    },
+    {
+      "kind": "button",
+      "label": "Save optical preset",
+      "id": "Save optical preset",
+      "tooltip": "Save the complete optical configuration including cached simulation results."
+    },
+    {
+      "kind": "combo",
+      "label": "optical_template",
+      "id": "##optical_template",
+      "tooltip": "Load a packaged instrument light-path template."
+    },
+    {
+      "kind": "input_text",
+      "label": "optical_lasers",
+      "id": "##optical_lasers",
+      "tooltip": "Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0."
+    },
+    {
+      "kind": "slider_float",
+      "label": "optical_kappa2",
+      "id": "##optical_kappa2",
+      "tooltip": "Parameter used in the Förster-radius calculation for the selected fluorophores."
+    },
+    {
+      "kind": "slider_float",
+      "label": "optical_n",
+      "id": "##optical_n",
+      "tooltip": "Parameter used in the Förster-radius calculation for the selected fluorophores."
+    },
+    {
+      "kind": "combo",
+      "label": "Excitation dichroic",
+      "id": "##Excitation dichroic",
+      "tooltip": "Select the measured spectrum used for excitation dichroic."
+    },
+    {
+      "kind": "combo",
+      "label": "Add fluorophore",
+      "id": "##Add fluorophore",
+      "tooltip": "Select the measured spectrum used for add fluorophore."
+    },
+    {
+      "kind": "button",
+      "label": "Add emission splitter",
+      "id": "Add emission splitter",
+      "tooltip": "Add a measured dichroic or polarizer in the detection path."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_optical_detector",
+      "id": "##new_optical_detector",
+      "tooltip": "Name of the optical detector channel to add."
+    },
+    {
+      "kind": "button",
+      "label": "Add optical detector",
+      "id": "Add optical detector",
+      "tooltip": "Add a detector channel with its bandpass and quantum-efficiency spectrum."
+    },
+    {
+      "kind": "combo",
+      "label": "Bandpass",
+      "id": "##Bandpass",
+      "tooltip": "Select the measured spectrum used for bandpass."
+    },
+    {
+      "kind": "combo",
+      "label": "Quantum efficiency",
+      "id": "##Quantum efficiency",
+      "tooltip": "Select the measured spectrum used for quantum efficiency."
+    },
+    {
+      "kind": "button",
+      "label": "Remove optical detector",
+      "id": "Remove optical detector",
+      "tooltip": "Remove this detector from the simulated light path."
+    },
+    {
+      "kind": "button",
+      "label": "Simulate optical setup",
+      "id": "Simulate optical setup",
+      "tooltip": "Calculate Förster radii and excitation/emission/detection crosstalk using the original optical backend."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Detector setup",
+      "id": "✓ Detector setup",
+      "tooltip": "Configure PIE / channel windows for TTTR workflows."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ FCS channels",
+      "id": "✓ FCS channels",
+      "tooltip": "Define which channels/pairs to correlate for FCS workflows."
+    },
+    {
+      "kind": "selectable",
+      "label": "green×red",
+      "id": "green×red##0",
+      "tooltip": "Select this pair to edit its channels and correlator overrides."
+    },
+    {
+      "kind": "selectable",
+      "label": "green_ACF",
+      "id": "green_ACF##1",
+      "tooltip": "Select this pair to edit its channels and correlator overrides."
+    },
+    {
+      "kind": "input_text",
+      "label": "pair_name",
+      "id": "##pair_name",
+      "tooltip": "Unique name used by the correlation tools and database."
+    },
+    {
+      "kind": "combo",
+      "label": "Channel A",
+      "id": "##Channel A",
+      "tooltip": "Choose an available logical channel from the detector setup."
+    },
+    {
+      "kind": "combo",
+      "label": "Channel B",
+      "id": "##Channel B",
+      "tooltip": "Choose an available logical channel from the detector setup."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bins",
+      "id": "##n_bins",
+      "tooltip": "Positive whole-number override; leave blank to inherit global settings."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_casc",
+      "id": "##n_casc",
+      "tooltip": "Positive whole-number override; leave blank to inherit global settings."
+    },
+    {
+      "kind": "combo",
+      "label": "Fine",
+      "id": "##Fine",
+      "tooltip": "Override the fine correlation grid or inherit its default."
+    },
+    {
+      "kind": "button",
+      "label": "Remove this pair",
+      "id": "Remove this pair",
+      "tooltip": "Remove the selected pair from this editing draft."
+    },
+    {
+      "kind": "button",
+      "label": "×",
+      "id": "×##boarding_confirm.header.×",
+      "tooltip": "Close this window (Escape)."
+    },
+    {
+      "kind": "button",
+      "label": "Restore defaults",
+      "id": "Restore defaults##confirm_yes",
+      "tooltip": "Replace your current user settings files with the packaged defaults."
+    },
+    {
+      "kind": "button",
+      "label": "Keep my settings",
+      "id": "Keep my settings##confirm_no",
+      "tooltip": "Close this question; nothing changes."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  },
+  "states_merged": 22
+}
