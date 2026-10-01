@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **fcs-lfcs-sim emtk app at parity** (EMTK-1): the spec-drawn form, strip and log-axis plot with the Qt pens replace the
+  stream's hand-drawn fields and linear plot; model moved to a Qt-free `model.py` shared by both hosts; the simulation runs on
+  a worker. [report](plugins/emtk-ports/fcs-lfcs-sim/REPORT.md).
+
 - **burst_2cde emtk run at parity** (EMTK-1): the toolkit-free controller now does what the Qt tool's run does (explicit Run
   forgets a Stop, show-time run, unchanged skip pointing at Restart, progress, write failure keeps the result, folder drop);
   shared drawing fixed (axis clipped the extreme bursts, Help cut off in a narrow pane). Demo burst folder for tests:

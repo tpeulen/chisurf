@@ -1,0 +1,115 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.000",
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.5000",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.000",
+    "1e-05",
+    "1e-06",
+    "4.000",
+    "400000",
+    "8.0000",
+    "?",
+    "d₁(µm²/ms)",
+    "d₂(µm²/ms)",
+    "filteredcorrelations",
+    "g(τ)",
+    "guide",
+    "k(1/ms)",
+    "kinetics/statistics",
+    "lagtime(ms)",
+    "lifetime-fcssimulator",
+    "photons",
+    "run",
+    "seed",
+    "setparametersandsimulate.",
+    "simulate+correlate",
+    "species(lifetime+diffusion)",
+    "τ₁(ns)",
+    "τ₂(ns)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Simulate + Correlate",
+      "id": "Simulate + Correlate",
+      "tooltip": "Generate synthetic photons, build lifetime filters and calculate correlations."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the simulator step by step."
+    },
+    {
+      "kind": "button",
+      "label": "?",
+      "id": "?",
+      "tooltip": "What the simulation does, the formulas and their assumptions."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau1_ns",
+      "id": "##tau1_ns",
+      "tooltip": "Fluorescence lifetime of species 1."
+    },
+    {
+      "kind": "input_text",
+      "label": "d1_um2_ms",
+      "id": "##d1_um2_ms",
+      "tooltip": "Translational diffusion coefficient of species 1. τ_D = w₀²/(4·D)."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau2_ns",
+      "id": "##tau2_ns",
+      "tooltip": "Fluorescence lifetime of species 2."
+    },
+    {
+      "kind": "input_text",
+      "label": "d2_um2_ms",
+      "id": "##d2_um2_ms",
+      "tooltip": "Translational diffusion coefficient of species 2."
+    },
+    {
+      "kind": "input_text",
+      "label": "exchange_rate_ms",
+      "id": "##exchange_rate_ms",
+      "tooltip": "Symmetric species interconversion rate (0 = static species). Set the two diffusion coefficients equal to isolate the exchange in the cross-correlation."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_photons",
+      "id": "##n_photons",
+      "tooltip": "Photon budget. More photons = cleaner filtered correlations (and a slower simulation)."
+    },
+    {
+      "kind": "input_text",
+      "label": "seed",
+      "id": "##seed",
+      "tooltip": "RNG seed (deterministic output)."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

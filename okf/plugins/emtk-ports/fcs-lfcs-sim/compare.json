@@ -1,0 +1,41 @@
+{
+  "plugin": "fcs-lfcs-sim",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "0",
+    "0.000",
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.5000",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.000",
+    "1e-05",
+    "1e-06",
+    "4.000",
+    "400000",
+    "8.0000",
+    "filteredcorrelations",
+    "g(τ)",
+    "lagtime(ms)",
+    "lifetime-fcssimulator"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 14,
+  "after_controls": 40
+}
