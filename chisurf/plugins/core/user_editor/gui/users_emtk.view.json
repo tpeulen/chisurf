@@ -1,0 +1,195 @@
+{
+  "_comment": "User editor, native emtk window. Drawn by emtk.view_form over UserEditorModel (gui/model.py): 'accounts' is the left window (actions, table, status), 'account' the right one (details, the account form), 'password' the password prompt and 'confirm' the dialog the Qt tool asked with message boxes. The details text is Markdown and the two masked password entries are drawn by gui/app.py (a spec cannot draw either; its 'password' kind is not masked).",
+  "title": "Users",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Accounts",
+      "name": "accounts",
+      "description": "Every user registered in the MMFDB. Listing them requires an administrator account.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Save or revert the account being edited, fetch the list again, create or delete an account, set a password, copy or export the table.",
+          "buttons": [
+            {"action": "do_save", "label": "Save",
+             "description": "Write the edited account back to the database. A rename also moves your stored session token, so you stay signed in."},
+            {"action": "ask_revert", "label": "Revert",
+             "description": "Discard the edits to this account (asks first)."},
+            {"action": "do_reload", "label": "Reload",
+             "description": "Fetch the user list again, in the background."},
+            {"action": "new_user", "label": "New",
+             "description": "Create a new account. Fill in a username and a display name, then press Save."},
+            {"action": "ask_delete", "label": "Delete",
+             "description": "Delete the selected account (asks first). Built-in accounts and the active account cannot be deleted."},
+            {"action": "ask_password", "label": "Password...",
+             "description": "Set or change this account's password. It is applied when you Save."},
+            {"action": "request_copy", "label": "Copy",
+             "description": "Copy the rows the table shows now, with the column headers, to the clipboard as tab-separated text."},
+            {"action": "request_export", "label": "Export CSV",
+             "description": "Write the rows and columns the table shows now to a CSV file."}
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per account. Click a header to sort, click it again to reverse; type in the filter box to keep rows containing the text in any column; right click a header to choose columns. A star marks the account ChiSurf uses for its own database connections.",
+          "options": {
+            "source": "user_records",
+            "row_key": "key",
+            "selected_call": "select_row",
+            "editable": false,
+            "filter": true,
+            "status": true,
+            "column_picker": true,
+            "expand": true,
+            "reserve": 64,
+            "fit_columns": true,
+            "min_column_width": 50,
+            "columns": [
+              {"key": "user", "title": "User", "width": 170,
+               "tooltip": "The display name, or the username when there is none."},
+              {"key": "username", "title": "Username", "width": 120,
+               "tooltip": "How the account is addressed. Renaming changes it."},
+              {"key": "role", "title": "Role", "width": 150,
+               "tooltip": "The account's role: free text with a list of common choices."},
+              {"key": "admin", "title": "Admin", "width": 56,
+               "tooltip": "Administrators can manage users and force deletions."},
+              {"key": "autologin", "title": "Autologin", "width": 76,
+               "tooltip": "The account may sign in without a password."},
+              {"key": "active", "title": "Active", "width": 56,
+               "tooltip": "The account ChiSurf uses for its own MMFDB connections."},
+              {"key": "email", "title": "E-mail", "width": 200, "visible": false,
+               "tooltip": "The contact address (hidden by default; choose it with the column picker)."}
+            ]
+          }
+        },
+        {
+          "type": "info",
+          "source": "status_text",
+          "description": "How many accounts were found, who you are signed in as, why an action was refused, and whether anything is unsaved."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Account",
+      "name": "account",
+      "n_col": 1,
+      "description": "The selected account's details, one control per row.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "account_details",
+          "title": "",
+          "description": "Context for the selected account, and any reason it cannot be saved yet."
+        },
+        {
+          "type": "value", "kind": "str", "label": "Username", "attr": "user_id",
+          "description": "How the account is addressed. Changing it renames the account; built-in accounts cannot be renamed."
+        },
+        {
+          "type": "value", "kind": "str", "label": "Display name", "attr": "display_name",
+          "description": "The name shown wherever the user appears."
+        },
+        {
+          "type": "value", "kind": "str", "label": "E-mail", "attr": "email",
+          "description": "Optional contact address."
+        },
+        {
+          "type": "choice", "label": "Role", "attr": "role", "options_source": "role_options",
+          "description": "The user's role. A role stored by a different tool is listed and kept as it is."
+        },
+        {
+          "type": "value", "kind": "str", "label": "Affiliation", "attr": "affiliation",
+          "description": "Institution or company."
+        },
+        {
+          "type": "value", "kind": "str", "label": "Department", "attr": "department",
+          "description": "Department or group."
+        },
+        {
+          "type": "value", "kind": "str", "label": "Phone", "attr": "phone",
+          "description": "Optional contact number."
+        },
+        {
+          "type": "value", "kind": "str", "label": "Website", "attr": "website",
+          "description": "Optional URL; must start with http:// or https://."
+        },
+        {
+          "type": "value", "kind": "str", "label": "Address", "attr": "address",
+          "description": "Postal address."
+        },
+        {
+          "type": "value", "kind": "str", "label": "Notes", "attr": "details",
+          "description": "Free-text notes about the account."
+        },
+        {
+          "type": "toggle", "label": "Administrator", "attr": "is_admin",
+          "description": "Administrators may list, edit and delete users. The server refuses to remove the last one."
+        },
+        {
+          "type": "toggle", "label": "Allow sign-in without a password", "attr": "allow_autologin",
+          "description": "Convenient on a single-user machine. Administrators may not use it."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Password",
+      "name": "password",
+      "description": "Sets or changes the password of the account being edited.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "password_fields",
+          "title": "",
+          "description": "The new password and its confirmation. What you type is shown as stars."
+        },
+        {
+          "type": "progress",
+          "attr": "password_fraction",
+          "text_source": "password_strength_text",
+          "description": "How strong the password is: length, lower case, upper case, a digit and a special character."
+        },
+        {
+          "type": "info",
+          "source": "password_feedback",
+          "description": "What the password still lacks, or why it was refused."
+        },
+        {
+          "type": "button_row",
+          "description": "Stage the password or cancel.",
+          "buttons": [
+            {"action": "password_set", "label": "Set password",
+             "description": "Check the two entries and hold the password until you press Save. Administrators need at least Medium strength."},
+            {"action": "password_cancel", "label": "Cancel",
+             "description": "Close this prompt and forget what was typed."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Confirm",
+      "name": "confirm",
+      "description": "Asks before discarding edits or deleting an account.",
+      "sections": [
+        {
+          "type": "info",
+          "source": "confirm_text",
+          "description": "What will happen if you confirm."
+        },
+        {
+          "type": "button_row",
+          "description": "Confirm or cancel.",
+          "buttons": [
+            {"action": "confirm_yes", "label": "OK", "description": "Do it."},
+            {"action": "confirm_no", "label": "Cancel", "description": "Leave everything as it is."}
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -99,8 +99,13 @@ class UserEditorViewModel:
             self.edited = UserRow()
         elif self._selected_id:
             self._select(self._selected_id)
-        self._status = f"{len(self.users)} user(s). Signed in as {active!r}."
+        self._status = self._summary(active)
         self.notify("reloaded")
+
+    def _summary(self, active: str | None = None) -> str:
+        """The status line when nothing else needs saying."""
+        who = active_user_id() if active is None else active
+        return f"{len(self.users)} user(s). Signed in as {who!r}."
 
     # -- table -----------------------------------------------------------
 
@@ -110,6 +115,10 @@ class UserEditorViewModel:
 
     def select_row(self, record: Any) -> None:
         """Called by the table when the selection moves."""
+        # A message about the previous account ("New account...", "Changes
+        # discarded.") must not outlive the selection it was about.
+        if self.users:
+            self._status = self._summary()
         if isinstance(record, dict):
             self._select(str(record.get("username") or ""))
         elif isinstance(record, int) and 0 <= record < len(self.users):
