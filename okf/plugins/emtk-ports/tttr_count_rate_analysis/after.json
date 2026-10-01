@@ -1,0 +1,178 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "addfiles",
+    "calculate",
+    "calibrationrevision",
+    "clear",
+    "countrate(khz)",
+    "countrateperfile",
+    "database",
+    "deletesetup",
+    "detectorchannels",
+    "detectorsetup",
+    "editorsection",
+    "exportsetupsfile",
+    "file#",
+    "folder",
+    "guide",
+    "help",
+    "latest",
+    "loadsetupsfile",
+    "nofilesqueued.",
+    "noresultsyet—presscalculate.",
+    "presscalculatetodrawthecountrates",
+    "publicsetup",
+    "refreshcalibrationhistory",
+    "refreshsetups",
+    "renamesetup",
+    "resultsperchannel",
+    "save",
+    "savesetup",
+    "setupname",
+    "setups",
+    "tttrfiles",
+    "unsaved"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Add files",
+      "id": "Add files",
+      "tooltip": "Queue TTTR files (.ptu, .ht3, .spc, …) for the analysis."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear",
+      "tooltip": "Drop the file queue and any computed results."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "The short help page."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through inputs, detector gates, calculation and export."
+    },
+    {
+      "kind": "button",
+      "label": "Folder…",
+      "id": "Folder…",
+      "tooltip": "Queue supported TTTR files recursively from a folder."
+    },
+    {
+      "kind": "button",
+      "label": "Database…",
+      "id": "Database…",
+      "tooltip": "Select TTTR datasets from MMFDB."
+    },
+    {
+      "kind": "combo",
+      "label": "channel_section",
+      "id": "##channel_section",
+      "tooltip": "Choose setup, reading, detector, PIE, TAC or optical configuration controls."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh setups",
+      "id": "Refresh setups",
+      "tooltip": "Load available saved detector setups from MMFDB or the selected JSON file."
+    },
+    {
+      "kind": "combo",
+      "label": "channel_setup",
+      "id": "##channel_setup",
+      "tooltip": "Select a named instrument setup and restore all detector, timing and optical parameters."
+    },
+    {
+      "kind": "input_text",
+      "label": "Setup name",
+      "id": "##Setup name",
+      "tooltip": "Name used when saving or renaming the detector setup."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Public setup",
+      "id": "Public setup",
+      "tooltip": "Publish the saved setup for other users through the MMFDB setup store."
+    },
+    {
+      "kind": "button",
+      "label": "Save setup",
+      "id": "Save setup",
+      "tooltip": "Persist all channels, windows, corrections and optical configuration."
+    },
+    {
+      "kind": "button",
+      "label": "Rename setup",
+      "id": "Rename setup",
+      "tooltip": "Rename the selected saved setup to the entered name."
+    },
+    {
+      "kind": "button",
+      "label": "Delete setup",
+      "id": "Delete setup",
+      "tooltip": "Request deletion of the selected saved setup."
+    },
+    {
+      "kind": "button",
+      "label": "Load setups file",
+      "id": "Load setups file",
+      "tooltip": "Choose a detector-setup JSON library."
+    },
+    {
+      "kind": "button",
+      "label": "Export setups file",
+      "id": "Export setups file",
+      "tooltip": "Save all loaded named setups as a JSON library."
+    },
+    {
+      "kind": "combo",
+      "label": "calibration",
+      "id": "##calibration",
+      "tooltip": "Load stored G-factor and polarization-mixing values from this calibration revision."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh calibration history",
+      "id": "Refresh calibration history",
+      "tooltip": "Query calibration dates for this setup."
+    },
+    {
+      "kind": "button",
+      "label": "Calculate",
+      "id": "Calculate",
+      "tooltip": "Compute count rates for all queued files."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Save the results table as tab-separated text."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
