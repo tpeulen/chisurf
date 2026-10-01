@@ -1,0 +1,23 @@
+{
+  "plugin": "traj_align",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "1",
+    "[013812]ready",
+    "dropadcdtrajectoryhereorbrowse",
+    "e.g.0,1,2,3(empty=allatoms)",
+    "guide",
+    "help",
+    "log",
+    "pdbnamingtheatoms—requiredfordcd"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 6,
+  "after_controls": 14
+}

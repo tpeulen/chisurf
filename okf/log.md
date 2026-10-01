@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **traj_align emtk app at parity** (EMTK-1, upgrade row 38) on the shared trajectory-tool app: rows with dialogs, the spec's
+  atom selection and stride, Save aligned… through a dialog, "Align failed" as the Qt box titled it, the alignment on a worker;
+  help and guide new. Window captions of the traj tools are now the spec panel titles.
+  [report](plugins/emtk-ports/traj_align/REPORT.md).
+
 - **traj_save_topology emtk app at parity** (EMTK-1, upgrade row 37), on a new shared trajectory-tool app
   (`chisurf/plugins/traj/emtk_tool.py`: the spec via draw_form, file rows with dialogs and typed drops, the save action on a
   worker, a scrolling log, Guide/Help) that the other four single-panel traj tools reuse; help.md and guide.json new, off the
