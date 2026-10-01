@@ -65,6 +65,7 @@ def test_an_accepted_plugin_opens_emtk_in_auto():
     assert select(_manifest("fcs_channel_preset"), "auto") == ("emtk", "pkg.app:make")
     assert select(_manifest("model_manager"), "auto") == ("emtk", "pkg.app:make")
     assert select(_manifest("trace_browser"), "auto") == ("emtk", "pkg.app:make")
+    assert select(_manifest("user_editor"), "auto") == ("emtk", "pkg.app:make")
 
 
 def test_a_preview_plugin_without_a_qt_tool_still_opens_emtk():
