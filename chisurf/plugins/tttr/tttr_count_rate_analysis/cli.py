@@ -14,20 +14,7 @@ import numpy as np
 import tttrlib
 
 from chisurf.core.cli.support import DidYouMeanGroup
-
-# Import from chisurf if available, otherwise handle standalone usage
-try:
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
-except ImportError:
-    # Simplified version for standalone usage
-    def load_detector_setups(file_path):
-        """Load detector setups from a JSON file."""
-        try:
-            with open(file_path) as f:
-                return json.load(f)
-        except Exception as e:
-            click.echo(f"Error loading detector setups: {e}", err=True)
-            return {"setups": {}}
+from chisurf.core.data_io.detector_setups import load_detector_setups
 
 
 def calculate_count_rates(

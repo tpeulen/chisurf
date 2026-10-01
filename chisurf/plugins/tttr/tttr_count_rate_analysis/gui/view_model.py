@@ -35,6 +35,8 @@ class CountRateViewModel:
 
     def __init__(self) -> None:
         self.files: list[str] = []
+        self.loader: Callable | None = None
+        self.macro_resolution_override: float | None = None
         #: Callable returning the DetectorWizardPage channels map (set by the GUI).
         self.channels_provider: Callable[[], dict] | None = None
 
@@ -101,7 +103,7 @@ class CountRateViewModel:
             logger.warning("count-rate: channels_provider failed", exc_info=True)
             return {}
 
-    def compute(self) -> None:
+    def compute(self, cancel_cb=None, progress_cb=None) -> None:
         """Compute per-file, per-channel count rates for every loaded file."""
         reason = self.can_compute()
         if reason is not None:
@@ -112,9 +114,17 @@ class CountRateViewModel:
         per_file_photons: dict[str, dict[str, int]] = {}
         meas_times: dict[str, float] = {}
 
-        for path in self.files:
-            tttr = tttrlib.TTTR(path)
-            mtr = tttr.header.macro_time_resolution
+        for index, path in enumerate(self.files):
+            if callable(cancel_cb) and cancel_cb():
+                raise RuntimeError("Count-rate analysis stopped between files.")
+            if callable(progress_cb):
+                progress_cb(index, len(self.files))
+            tttr = (self.loader or tttrlib.TTTR)(path)
+            mtr = (
+                self.macro_resolution_override
+                if self.macro_resolution_override is not None
+                else tttr.header.macro_time_resolution
+            )
             meas_time = float(tttr.macro_times[-1] * mtr) if len(tttr.macro_times) else 0.0
             meas_times[path] = meas_time
 

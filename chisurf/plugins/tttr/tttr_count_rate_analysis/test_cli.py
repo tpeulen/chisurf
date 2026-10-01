@@ -10,8 +10,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Add the repository root to the Python path if needed
-repo_root = Path(__file__).parent.parent.parent.parent
+# Add the repository root to the Python path if needed. Five levels up:
+# four lands inside the ``chisurf`` package, whose directory on sys.path
+# shadows the top-level ``emtk`` toolkit with ``chisurf/emtk``.
+repo_root = Path(__file__).parent.parent.parent.parent.parent
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 

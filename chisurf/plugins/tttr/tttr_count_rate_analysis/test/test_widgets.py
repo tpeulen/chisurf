@@ -5,9 +5,7 @@ from qtpy import QtWidgets
 
 
 def test_count_rate_analyzer_creation(qapp, qtbot):
-    pytest.importorskip("pyqtgraph")
     pytest.importorskip("tttrlib")
-    from chisurf.gui.autoform import AutoForm
     from chisurf.gui.autoform.sections.registry import get_section_factory
     from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.tool import CountRateAnalyzer
 
@@ -15,7 +13,11 @@ def test_count_rate_analyzer_creation(qapp, qtbot):
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QWidget)
     assert "Count Rate" in widget.windowTitle()
-    assert isinstance(widget.auto_form, AutoForm)
+    # The UI is the EMTK app; the AutoForm-era attribute is a repaint shim.
+    assert hasattr(widget.auto_form, "refresh_plots")
+    assert widget.app is widget.host.control
+    # The channel definition is injected into the model as the provider.
+    assert callable(widget._model.channels_provider)
     for key in ("count_rate_channels", "count_rate_run", "count_rate_results", "path_list"):
         assert get_section_factory(key) is not None
 
