@@ -151,6 +151,18 @@ class TraceBrowserModel:
         self.requests: list[dict[str, Any]] = []
         self.status_text = "Open a folder with TTTR files."
         self.error_text = ""
+        #: Why the trace of the current file could not be loaded (empty when it could).
+        self.trace_error = ""
+        #: Compute the traces of every listed file in the background after a scan (the Qt
+        #: browser did this after every scan, on a modal progress dialog).
+        self.precompute_after_scan = True
+        #: Set by :meth:`scan` and :meth:`precompute_traces`; the host starts the job and clears it.
+        self.precompute_pending = False
+        #: State of the precompute job; a dict that stays the same object, so the host's worker
+        #: and the draw loop see each other's writes.
+        self.precompute: dict[str, Any] = {
+            "running": False, "cancel": False, "done": 0, "total": 0, "name": "", "message": "",
+        }
         #: A dialog the host app should open (``"folder"``); the app clears it when it does.
         self.dialog = ""
         #: ``callable(method, *args)`` of a host that runs heavy methods off the draw thread
@@ -342,15 +354,37 @@ class TraceBrowserModel:
         """One line for the status area: the error, else what the last scan found."""
         if self.busy:
             return "Working..."
-        return self.error_text or self.status_text
+        text = self.error_text or self.trace_error or self.status_text
+        background = self.background_text
+        return f"{text}   |   {background}" if background else text
+
+    @property
+    def background_text(self) -> str:
+        """The precompute job's progress while it runs, else what the last run did."""
+        state = self.precompute
+        if state["running"]:
+            if state["total"]:
+                return f"Precomputing traces {state['done'] + 1}/{state['total']}: {state['name']}"
+            return "Precomputing traces..."
+        return str(state["message"])
 
     def filter_label_list(self) -> list[str]:
         """The rating filter's drop-down entries (:data:`FILTER_LABELS`)."""
         return list(FILTER_LABELS)
 
     def enabled(self, name: str) -> bool:
-        """Whether the control *name* may be used now (every control waits for a running scan)."""
-        return not self.busy
+        """Whether the control *name* may be used now.
+
+        Every control waits for a running scan, except *Stop*, which is live only while the
+        precompute job runs; *Precompute* needs listed files and no precompute running.
+        """
+        if name == "stop_precompute":
+            return bool(self.precompute["running"])
+        if self.busy:
+            return False
+        if name == "precompute_traces":
+            return bool(self.rows) and not self.precompute["running"]
+        return True
 
     def choose_folder(self) -> None:
         """Ask the host to open its folder chooser (the Qt *Open*)."""
@@ -385,6 +419,7 @@ class TraceBrowserModel:
         first = self.first_selected()
         if first != self.current_file:
             self.trace = None
+            self.trace_error = ""
         self.current_file = first
 
     def edit_cell(self, record: Any, key: str, value: Any) -> None:
@@ -422,7 +457,7 @@ class TraceBrowserModel:
             record["notes"] = self.get_notes(record["path"])
 
     def export_view(self) -> dict[str, Any]:
-        """What the Browser page remembers: folder, include-subfolders, filter, bin window, y range."""
+        """What the Browser page remembers: folder, include-subfolders, filter, bin window, y range, precompute."""
         return {
             "folder": str(self.current_folder) if self.current_folder else "",
             "include_subfolders": bool(self.include_subfolders),
@@ -430,6 +465,7 @@ class TraceBrowserModel:
             "window_ms": float(self.window_ms),
             "y_min": float(self.y_min),
             "y_max": float(self.y_max),
+            "precompute_after_scan": bool(self.precompute_after_scan),
         }
 
     def restore_view(self, state: dict | None) -> pathlib.Path | None:
@@ -443,6 +479,8 @@ class TraceBrowserModel:
         state = state or {}
         if "include_subfolders" in state:
             self.include_subfolders = bool(state["include_subfolders"])
+        if "precompute_after_scan" in state:
+            self.precompute_after_scan = bool(state["precompute_after_scan"])
         if state.get("rating_filter") in FILTER_LABELS:
             self.rating_filter = state["rating_filter"]
         for key in ("window_ms", "y_min", "y_max"):
@@ -524,9 +562,14 @@ class TraceBrowserModel:
         self.rows = [r for r in kept if self.accepts(int(r["rating"]), pathlib.Path(r["path"]), allowed)]
         keep = {r["path"] for r in self.rows}
         self.selected_files = [s for s in self.selected_files if s in keep]
-        if self.current_file is not None and not self.current_file.exists():
+        # A file the filter hides (or that vanished) is no longer shown: the Qt browser cleared its
+        # plot and annotation as soon as the selected row disappeared from the table.
+        if self.current_file is not None and (
+            not self.current_file.exists() or str(self.current_file) not in keep
+        ):
             self.current_file = None
             self.trace = None
+            self.trace_error = ""
         if self.current_folder is not None:
             self.status_text = (
                 f"{len(self.rows)} of {len(self.files)} file(s) in {self.current_folder}"
@@ -633,7 +676,18 @@ class TraceBrowserModel:
         except Exception as _e:
             logger.debug("TraceBrowser: Auto channel initialization skipped: %s", _e)
         self.files = [self._make_row(p) for p in files]
+        self.precompute["message"] = ""
         self.apply_filter()
+        # The Qt browser selects the first row after every scan and plots it (or clears the
+        # plot when nothing is listed), then precomputes the traces of the listed files.
+        if self.rows:
+            self.select_row(self.rows[0])
+            self.precompute_pending = bool(self.precompute_after_scan)
+        else:
+            self.set_selection([])
+            self.current_file = None
+            self.trace = None
+            self.trace_error = ""
         logger.debug(
             "TraceBrowser: Found %d files (%s), displaying %d after filter",
             len(files),
@@ -672,6 +726,7 @@ class TraceBrowserModel:
         self.selected_files = []
         self.current_file = None
         self.trace = None
+        self.trace_error = ""
         logger.info("TraceBrowser: Cleared file list")
         self.notify("rows")
 
@@ -938,15 +993,46 @@ class TraceBrowserModel:
             logger.exception("TraceBrowser: Failed to load %s: %s", path, e)
             return False
         self.error_text = ""
+        self.current_file = path
+        self.set_trace(path, time_axis, counts, labels)
+        return True
+
+    def set_trace(
+        self,
+        path: str | pathlib.Path,
+        time_axis: np.ndarray,
+        counts: np.ndarray,
+        labels: list[str],
+        window_ms: float | None = None,
+    ) -> None:
+        """Make ``(time_axis, counts, labels)`` the shown :attr:`trace` of *path*.
+
+        A host that loads the trace on a worker hands the result over here.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            The file the trace belongs to.
+        time_axis, counts, labels
+            What :meth:`load_trace` returned.
+        window_ms : float, optional
+            The bin window the trace was loaded with (default: the current one).
+        """
+        self.trace_error = ""
         self.trace = {
+            "path": str(path),
             "time_axis": time_axis,
             "counts": counts,
             "labels": labels,
-            "time_window_ms": float(self.window_ms),
+            "time_window_ms": float(self.window_ms if window_ms is None else window_ms),
         }
-        self.current_file = path
         self.notify("trace")
-        return True
+
+    def fail_trace(self, path: str | pathlib.Path, error: Any) -> None:
+        """Record that the trace of *path* could not be loaded (shown in the plot area)."""
+        self.trace = None
+        self.trace_error = f"Failed to load {pathlib.Path(path).name}: {error}"
+        self.notify("trace")
 
     def set_window_ms(self, value: Any = None) -> None:
         """Set the bin window (when given) and reload the trace of the current file."""
@@ -1016,6 +1102,51 @@ class TraceBrowserModel:
             if progress is not None:
                 progress(len(todo), len(todo), None)
         self.notify("traces")
+        return computed
+
+    def precompute_traces(self) -> None:
+        """Ask the host to precompute the traces of the listed files now (the *Precompute* button)."""
+        self.precompute_pending = True
+
+    def stop_precompute(self) -> None:
+        """Ask the running precompute job to stop after the file it is working on."""
+        self.precompute["cancel"] = True
+
+    def prepare_precompute(self) -> None:
+        """Mark the precompute job as running (the host calls this before it starts the worker)."""
+        self.precompute.update(running=True, cancel=False, done=0, total=0, name="", message="")
+
+    def run_precompute(self) -> int:
+        """Run :meth:`precompute_all_traces` with progress kept in :attr:`precompute`.
+
+        Meant for a worker thread: the draw loop reads :attr:`precompute`; :meth:`stop_precompute`
+        makes the loop stop after the current file.
+
+        Returns
+        -------
+        int
+            Number of traces computed.
+        """
+        state = self.precompute
+        state.update(running=True, done=0, total=0, name="")
+        computed = 0
+
+        def progress(i: int, total: int, path: pathlib.Path | None) -> bool:
+            state["total"] = total
+            if path is not None:
+                state.update(done=i, name=path.name)
+            return not state["cancel"]
+
+        try:
+            computed = self.precompute_all_traces(progress)
+        finally:
+            if state["cancel"]:
+                state["message"] = f"Precompute stopped after {computed} trace(s)."
+            elif state["total"] == 0:
+                state["message"] = "No traces to compute (all cached)."
+            else:
+                state["message"] = f"Precomputed {computed} trace(s)."
+            state["running"] = False
         return computed
 
     def clear_caches(self) -> int:

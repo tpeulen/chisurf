@@ -1,5 +1,5 @@
 {
-  "_comment": "Trace Browser, Browser page (card T2). Drawn by emtk.view_form over TraceBrowserModel (gui/model.py); the trace plot (card T3) and the export / hand-off controls (card T4) are not part of this spec yet.",
+  "_comment": "Trace Browser, Browser page (cards T2, T3b). Drawn by emtk.view_form over TraceBrowserModel (gui/model.py); the trace plot and the annotation box are drawn by gui/app.py (a plot cannot be a spec); the export / hand-off controls (card T4) are not part of this spec yet.",
   "title": "Trace browser",
   "sections": [
     {
@@ -15,6 +15,20 @@
         {"action": "clear_caches", "label": "Clear caches",
          "description": "Delete the cached traces and the cached image probes of this folder, in memory and on disk. Traces are computed again when needed."}
       ]
+    },
+    {
+      "type": "button_row",
+      "description": "Compute the traces of all listed files in the background, so that selecting a file shows its trace at once.",
+      "buttons": [
+        {"action": "precompute_traces", "label": "Precompute",
+         "description": "Compute and cache the trace of every listed file in the background, with the current bin window. Selecting a file afterwards shows its trace at once."},
+        {"action": "stop_precompute", "label": "Stop",
+         "description": "Stop the running precompute after the file it is working on. The traces computed so far stay cached."}
+      ]
+    },
+    {
+      "type": "toggle", "attr": "precompute_after_scan", "label": "Precompute after scan",
+      "description": "Run the precompute automatically after every scan of a folder, as the Qt browser did. Switch it off for big folders if you only look at a few files."
     },
     {
       "type": "value", "attr": "folder_text", "label": "Folder", "kind": "str",
@@ -34,7 +48,7 @@
     {
       "type": "value", "attr": "window_ms", "label": "Bin window [ms]", "kind": "float",
       "minimum": 0.001, "maximum": 10000.0, "decimals": 3, "step": 0.1,
-      "description": "Width of the time bins of the intensity trace in milliseconds. The trace itself is drawn by a later card; the value is kept and remembered."
+      "description": "Width of the time bins of the intensity trace in milliseconds. Changing it loads the trace of the selected file again."
     },
     {
       "type": "panel", "n_col": 2,

@@ -3,7 +3,7 @@
 Everything runs on temporary COPIES of repository sample data: the browser writes the metadata
 ``.trace_browser_meta.json`` and a trace cache beside the data files, so repo data is never opened
 in place. The hermetic autouse fixture in ``conftest.py`` redirects the settings folder, the MMFDB
-and the setups file. No trace is computed and none is drawn (card T3).
+and the setups file. The trace plot and annotation are card T3b (test_emtk_trace_browser_t3b.py).
 """
 
 import contextlib
@@ -68,6 +68,7 @@ def make_app(setups_file=None):
 
     app = TraceBrowserApp(setups_file=setups_file)
     app.continue_to_browser()
+    app.model.precompute_after_scan = False         # the T2 tests are about the page, not the precompute
     return app
 
 
@@ -84,7 +85,7 @@ def settle(app, size=(1200, 800), timeout=30.0):
     """Draw frames until the app's worker and its queue are idle; return the last frame's strings."""
     deadline = time.time() + timeout
     strings = frames(app, size, 1)
-    while (app.job.busy or app._queue) and time.time() < deadline:
+    while (app.job.busy or app._queue or app.load_job.busy or app.pre_job.busy) and time.time() < deadline:
         time.sleep(0.02)
         strings = frames(app, size, 1)
     assert not app.job.busy and not app._queue, "the worker did not finish"
@@ -181,7 +182,7 @@ def test_every_spec_key_exists_on_the_model():
             for call in ("selected_call", "edited_call"):
                 assert callable(getattr(model, options[call])), options[call]
             seen["table"] += 1
-    assert seen == {"attr": 7, "call": 3, "action": 4, "table": 1}, seen
+    assert seen == {"attr": 8, "call": 3, "action": 6, "table": 1}, seen   # T3b: Precompute, Stop, the toggle
     assert callable(model.enabled) and model.enabled("clear") is True
     model.busy = True
     assert model.enabled("clear") is False
@@ -195,7 +196,7 @@ def test_browser_page_draws_empty_and_populated(size, data_dir):
         text = " | ".join(frames(app, size))
         assert app.model.page == "browser"
         for label in ("Select setup", "Open", "Clear caches", "Include subfolders", "Bin window [ms]",
-                      "Y min", "Y max", "No folder selected", "Trace plot: card T3"):
+                      "Y min", "Y max", "No folder selected", "Select a file to write an annotation"):
             assert label in text, label
         for header in ("File", "Rating", "Size (MB)", "Notes"):
             assert header in text, header
@@ -378,28 +379,26 @@ def test_include_subfolders_really_rescans(data_dir):
         app.close()
 
 
-# 7. selection sets the model's selection and current file, and computes no trace
-def test_selecting_a_row_sets_selection_and_current_file_only(data_dir):
+# 7. selection sets the model's selection and current file (the trace it loads is card T3b's)
+def test_selecting_a_row_sets_selection_and_current_file(data_dir):
     app = make_app()
     try:
         app.model.request("open_folder", data_dir)
         settle(app)
         control = table(app)
-        control._select_position(1)                                # the table reports it: selected_call
         model = app.model
+        assert model.current_file == data_dir / "m000.spc"           # card T3b: a scan selects the first row
+        control._select_position(1)                                # the table reports it: selected_call
         assert model.selected_files == [str(data_dir / "m001.spc")]
-        assert model.current_file == data_dir / "m001.spc" and model.trace is None
+        assert model.current_file == data_dir / "m001.spc" and model.trace is None   # no trace until loaded
         text = " | ".join(frames(app))
-        assert "Selected file: m001.spc" in text
+        assert "m001.spc" in text
         control._select_position(0)
         assert model.selected_files == [str(data_dir / "m000.spc")]
-        # nothing was computed or cached: no trace, no cache folder beside the data
-        assert model.trace is None and not (data_dir / ".tttr_trace_cache").exists()
-        # a bin-window or y-range edit only stores the value: no trace is loaded
+        # a bin-window or y-range edit only stores the value
         commit(app, "window_ms", 1.0)
         commit(app, "y_max", 2500.0)
         assert model.window_ms == 1.0 and model.y_max == 2500.0 and model.y_range == (0.0, 2500.0)
-        assert model.trace is None and not (data_dir / ".tttr_trace_cache").exists()
         # selecting a row that a rescan removed does not leave a stale selection
         model.clear()
         assert model.selected_files == [] and model.current_file is None
@@ -414,7 +413,7 @@ def test_clear_and_clear_caches_buttons(data_dir, monkeypatch):
         app.model.request("open_folder", data_dir)
         settle(app)
         cache = data_dir / ".tttr_trace_cache"
-        cache.mkdir()
+        cache.mkdir(exist_ok=True)      # selecting the first row has loaded its trace (card T3b)
         (cache / "x.npz").write_bytes(b"cached")
         edit_cell(app, "m000.spc", "rating", "2")
         table(app)._select_position(0)
@@ -520,7 +519,7 @@ def test_the_app_opens_on_the_browser_page_when_a_setup_is_available(tmp_path):
     try:
         assert app.model.page == "browser"                           # _on_continue() at start-up
         assert app.model.selected_channels == [0, 1] and app.model.setup_filetype == "PTO"
-        assert "Trace plot: card T3" in " | ".join(frames(app))
+        assert "Select a file to write an annotation" in " | ".join(frames(app))
     finally:
         app.close()
 
@@ -599,7 +598,7 @@ def test_every_control_has_a_tooltip(data_dir):
             assert column.get("description"), column
             count += 1
         count += 1
-    assert count == 14, count     # 1 form + 8 sections, 1 table + 4 columns
+    assert count == 16, count     # 1 form + 10 sections, 1 table + 4 columns (T3b: a button row, a toggle)
 
 
 # 14. no Qt, no chisurf.gui

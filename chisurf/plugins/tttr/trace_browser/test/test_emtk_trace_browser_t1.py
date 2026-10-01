@@ -131,7 +131,7 @@ def test_continue_applies_the_setup_and_back_returns(setups_file, monkeypatch):
         assert model.setup_settings["detectors"]["red"]["chs"] == [0]
         assert model.setup_settings["setup_name"] == "ALEX Suite (auto)"
         browser = " | ".join(frames(app))
-        assert "Trace plot: card T3" in browser and "Files" in browser   # the Browser page (card T2)
+        assert "Select a file to write an annotation" in browser and "Files" in browser   # the Browser page (card T2)
         assert "Continue" not in browser            # the setup page is not drawn
         accepted = model.setup_settings
         with pressing(monkeypatch, "← Select setup"):
@@ -152,7 +152,7 @@ def test_continue_without_a_setup_auto_detects_channels(tmp_path):
         assert app.model.selected_channels is None     # the model then reads them from the files
         assert app.model.setup_filetype is None
         text = " | ".join(frames(app))
-        assert "Trace plot: card T3" in text and "No folder selected" in text
+        assert "Select a file to write an annotation" in text and "No folder selected" in text
     finally:
         app.close()
 
