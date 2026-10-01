@@ -1,0 +1,202 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.1.0",
+    "0.2.0",
+    "0rows×5columns",
+    "1.0.0",
+    "1.1.0",
+    "132rows×6columns",
+    "134plugins·2disabled·1needingattention",
+    "2.0.0",
+    "2.1.0",
+    "aboutchisurf",
+    "accuratefret",
+    "acquisition",
+    "aisettings",
+    "alex_suite",
+    "automatic",
+    "batch-analysis",
+    "bid→analysis",
+    "boardingwizard",
+    "bound",
+    "breakout",
+    "burst-wisefcs",
+    "burst_2cde",
+    "burstanalysis",
+    "burstbackgroundest.",
+    "burstbrowser",
+    "burstfusion",
+    "burstirfbackgrou.",
+    "burstmle",
+    "burstselection",
+    "bva",
+    "calculators",
+    "category",
+    "chimol",
+    "clionly",
+    "clsm-draw",
+    "clsmgenerator",
+    "codeeditor",
+    "copy",
+    "core",
+    "databaseconnector",
+    "dependencies",
+    "dependsonit.",
+    "disabled",
+    "ebfret",
+    "enabled",
+    "experimen.",
+    "exportcsv",
+    "filter",
+    "fps_json_editor",
+    "guide",
+    "guiruntime",
+    "h2mm",
+    "help",
+    "icon",
+    "imaging",
+    "install",
+    "installed",
+    "installedplugins",
+    "main",
+    "movedown",
+    "moveup",
+    "nopluginselected",
+    "openfolder",
+    "photon-by-photonkin.",
+    "pickarowtoseewhatitis,whatitdependson,andwhat",
+    "plugin",
+    "plugindefault",
+    "relation",
+    "rememberwindowstate",
+    "rename",
+    "requiredby",
+    "requires",
+    "rescan",
+    "revert",
+    "save",
+    "selectedplugin",
+    "showdisabledplugins",
+    "showinmaintoolbar",
+    "spectrosco.",
+    "status",
+    "structure",
+    "tools",
+    "uninstall",
+    "version",
+    "windowstate(allplugins)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save##save",
+      "tooltip": "Write the plugin settings. Menu changes take effect after a restart."
+    },
+    {
+      "kind": "button",
+      "label": "Revert",
+      "id": "Revert##ask_revert",
+      "tooltip": "Discard every change made since the last save (asks first)."
+    },
+    {
+      "kind": "button",
+      "label": "Rescan",
+      "id": "Rescan##rescan",
+      "tooltip": "Walk the plugin folders again and rebuild the list, in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Install…",
+      "id": "Install…##ask_install",
+      "tooltip": "Install a plugin from a .zip archive (or, if you cancel that, from a folder) into your personal plugin directory."
+    },
+    {
+      "kind": "button",
+      "label": "Uninstall",
+      "id": "Uninstall##ask_uninstall",
+      "tooltip": "Delete the selected plugin (asks first). Only plugins you installed yourself can be removed; built-in ones are switched off instead."
+    },
+    {
+      "kind": "button",
+      "label": "Move up",
+      "id": "Move up##move_up",
+      "tooltip": "Move the selected plugin earlier in the menus."
+    },
+    {
+      "kind": "button",
+      "label": "Move down",
+      "id": "Move down##move_down",
+      "tooltip": "Move the selected plugin later in the menus."
+    },
+    {
+      "kind": "button",
+      "label": "Rename…",
+      "id": "Rename…##ask_rename",
+      "tooltip": "Change the name this plugin shows in the menus. Edits the plugin's manifest, which is the field the menus actually read."
+    },
+    {
+      "kind": "button",
+      "label": "Icon…",
+      "id": "Icon…##ask_icon",
+      "tooltip": "Choose, generate or clear the icon shown beside this plugin."
+    },
+    {
+      "kind": "button",
+      "label": "Open folder",
+      "id": "Open folder##open_folder",
+      "tooltip": "Open the selected plugin's directory in the file browser."
+    },
+    {
+      "kind": "button",
+      "label": "Copy",
+      "id": "Copy##request_copy",
+      "tooltip": "Copy the rows the table shows now, with the column headers, to the clipboard as tab-separated text."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write the rows and columns the table shows now to a CSV file."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show disabled plugins",
+      "id": "Show disabled plugins##show_disabled",
+      "tooltip": "Include switched-off plugins in the table. Off, they are hidden entirely."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the table, the dependency columns and the switches."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through picking a plugin, switching it off and saving."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Disabled",
+      "id": "Disabled##selected_disabled",
+      "tooltip": "Switch this plugin off. If other plugins require it, you are told which before the change sticks."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show in main toolbar",
+      "id": "Show in main toolbar##selected_in_toolbar",
+      "tooltip": "Pin this plugin to the main window toolbar."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
