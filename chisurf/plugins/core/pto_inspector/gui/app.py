@@ -24,6 +24,9 @@ from .translations import install, tr
 from .view_model import PtoInspectorViewModel
 
 
+VENDOR_SUFFIXES = {'.ptu', '.spc', '.ht3', '.ht2', '.pt3', '.pt2', '.h5', '.hdf5'}
+
+
 class ProvenanceContent(NodeContentRenderer):
     def node_shape(self, node):
         return nodes.NodeShape.DISC, node.title, 21
@@ -75,7 +78,7 @@ class PtoInspectorApp(ImApp):
                 ('size', 'Size', 75, 'Stored payload size.'),
                 ('parents', 'Parents', 60, 'Number of recorded parent artifacts.'),
             ]], 'selected_call': 'select_row', 'activated_call': 'open_row',
-            'row_key': 'uid', 'filter': True, 'column_picker': True, 'min_column_width': 70, 'expand': True}, self.model)
+            'row_key': 'uid', 'filter': True, 'column_picker': True, 'min_column_width': 40, 'fit_columns': True, 'expand': True}, self.model)
         self.table = TableBinding({'source': 'payload', 'columns_source': 'payload_columns',
                                    'filter': True, 'column_picker': True, 'expand': True}, self)
         self.docks = DockManager(Split('h', .36, Region('container'),
@@ -86,8 +89,9 @@ class PtoInspectorApp(ImApp):
                                      ('details', 'Details', self.details_view), ('lineage', 'Lineage', self.lineage_view),
                                      ('parameters', 'Parameters', self.parameters_view), ('text', 'Text', self.text_view)]:
             self.docks.add_window(key, tr(title), callback, dock=key if key in {'data', 'curve', 'details'} else 'details', closable=False)
-        self.tour = EmTkGuidedTour(Path(__file__).with_name('guide.json'), get_target_rect=self.rects.get, owner=self)
-        self.help = EmTkHelpWindow(tr('Help'), resource=Path(__file__).with_name('help.md'), owner=self,
+        self.tour = EmTkGuidedTour(Path(__file__).with_name('guide_emtk.json'), get_target_rect=self.rects.get, owner=self,
+                                   wait_for_controls=True)
+        self.help = EmTkHelpWindow(tr('Help'), resource=Path(__file__).with_name('help_emtk.md'), owner=self,
                                   on_start_guide=self.tour.start)
         self.model.add_observer(self.changed)
         super().__init__(self.render, continuous=False)
@@ -98,6 +102,8 @@ class PtoInspectorApp(ImApp):
             self.safe(self.open_tool)
             return
         if event == 'opened':
+            if self.model.inspection is not None:
+                self.tour.notify_used('filename')
             self.graph.set_document(GraphDocument.from_dict(self.model.provenance_graph() or {'nodes': [], 'edges': []}))
             self._payload_uid = None
         self.tools = self.model.tool_manifests()
@@ -121,6 +127,7 @@ class PtoInspectorApp(ImApp):
         im.begin_disabled(not enabled)
         if im.button(tr(title)):
             self.safe(fn)
+            self.tour.notify_used(title)
         self.rects[title] = (*im.get_item_rect_min(), *im.get_item_rect_size())
         im.set_item_tooltip(tr(tip))
         im.end_disabled()
@@ -174,7 +181,8 @@ class PtoInspectorApp(ImApp):
         self.notice = tr('Exported') + ': ' + str(path)
 
     def verify(self):
-        self.notice = self.model.verify()
+        # one status line: the verdict's lines (the mismatching objects) are joined
+        self.notice = self.model.verify().replace('\n', ' ')
 
     def graph_selected(self, kind, node):
         if kind == 'node':
@@ -223,7 +231,10 @@ class PtoInspectorApp(ImApp):
         im.set_item_tooltip(tr('Container path.'))
         self.rects['filename'] = (*im.get_item_rect_min(), *im.get_item_rect_size())
         im.separator()
-        self.prose(self.model.summary_html())
+        if self.model.inspection is None:
+            im.text_wrapped(tr('No container open. Drop a .pto on this window, or press Open. A container holds one measurement: the instrument file verbatim, and every result computed from it beside it.'))
+        else:
+            self.prose(self.model.summary_html())
         im.separator()
         draw_table(self.artifacts, 'artifacts')
         self.rects['Objects'] = (*im.get_item_rect_min(), *im.get_item_rect_size())
@@ -273,7 +284,7 @@ class PtoInspectorApp(ImApp):
         self.rects['Data'] = box
         self.safe(self.refresh_payload)
         if self._store is None:
-            im.text_wrapped(tr('The selected artifact is not a table.'))
+            im.text_wrapped(tr('The selected artifact is not a table.') if self.model.inspection else tr('No container open.'))
         else:
             draw_table(self.table, 'payload')
 
@@ -281,7 +292,7 @@ class PtoInspectorApp(ImApp):
         self.rects['Curve'] = box
         curves = self.model.curve_series()
         if not curves:
-            im.text_wrapped(tr('The selected artifact is not a curve.'))
+            im.text_wrapped(tr('The selected artifact is not a curve.') if self.model.inspection else tr('No container open.'))
             return
         axes = self.model.curve_axes()
         _, height = im.get_content_region_avail()
@@ -404,13 +415,22 @@ class PtoInspectorApp(ImApp):
         return super().key(key, text, modifiers)
 
     def on_paths_dropped(self, paths):
+        """Open the first dropped .pto; dropped vendor files are offered for packing."""
         for path in paths:
             if str(path).lower().endswith('.pto'):
                 self.model.set_filename(str(path))
-                return
-        vendor = sorted([Path(p) for p in paths if Path(p).suffix.lower() in {'.ptu', '.spc', '.ht3', '.ht2', '.pt3', '.pt2', '.h5', '.hdf5'}], key=lambda p: p.name)
+                return True
+        vendor = sorted([Path(p) for p in paths if Path(p).suffix.lower() in VENDOR_SUFFIXES], key=lambda p: p.name)
         if vendor:
             self.vendor_paths = vendor
+            return True
+        return False
+
+    def files_dropped(self, paths):
+        """Host hook: emtk's Qt host accepts a drag only when the control has this (or on_files_dropped)."""
+        return bool(self.on_paths_dropped([str(p) for p in paths or []]))
+
+    on_files_dropped = files_dropped
 
     def export_settings(self):
         return {'filename': self.model.filename, 'selected_uid': self.model.selected_uid,

@@ -1,0 +1,47 @@
+{
+  "_comment": "Guided tour of the native PTO inspector. 'name' is the emtk control or window (the keys of PtoInspectorApp.rects); 'filename' is heard when a container has been opened, 'Verify' when the button is pressed. The Qt tool keeps guide.json.",
+  "steps": [
+    {
+      "title": "What a .pto is",
+      "text": "A <b>.pto</b> is one measurement in one file: the instrument file byte for byte, and every result computed from it beside it. This window only reads; it writes nothing.",
+      "target": {"name": "Container"}
+    },
+    {
+      "title": "Open a container",
+      "text": "Press <b>Open</b> and choose a .pto, pick one from the MMFDB database with <b>Database</b>, or drop one on the window. A vendor photon file dropped here is offered for packing into a new container first.",
+      "target": {"name": "filename"},
+      "await": {"hint": "Open a <b>.pto</b>: press <b>Open</b> and choose a file, or drop one on the window."}
+    },
+    {
+      "title": "What is in it",
+      "text": "The <b>Objects</b> list: one row per object, in the order it was written. <i>Kind</i> and <i>Operation</i> are the container's own dictionary terms; <i>Grain</i> says what one row is. Click a row and the graph, the data, the curve and the details follow.",
+      "target": {"name": "Objects"}
+    },
+    {
+      "title": "How it got there",
+      "text": "The <b>Provenance</b> graph: the instrument file on the left, the last result on the right, every arrow a recorded derivation. A node with two incoming arrows has two parents. Double-click a node to open the tool that made it.",
+      "target": {"name": "Provenance"}
+    },
+    {
+      "title": "The numbers",
+      "text": "<b>Data</b> shows a table payload with the unit each column states; <b>Curve</b> draws a stored curve with its units and scale. Neither shows anything for an object that is not a table or a curve.",
+      "target": {"name": "Data"}
+    },
+    {
+      "title": "The settings are the identity",
+      "text": "<b>Details</b> lists everything recorded about the selected object, including the settings: they are the identity of the run, not a label on it. <b>Lineage</b> is the path back to the primary data.",
+      "target": {"name": "Details"}
+    },
+    {
+      "title": "Open the tool that made it",
+      "text": "<b>Open tool</b> looks the selected object's operation up in the installed tools and opens the matching window on this file. A step no installed tool claims says so.",
+      "target": {"name": "Open tool"}
+    },
+    {
+      "title": "Before you delete the original",
+      "text": "<b>Verify</b> re-hashes every payload against the checksum recorded beside it. Restorable without verification is only probably restorable.",
+      "target": {"name": "Verify"},
+      "await": {"hint": "Press <b>Verify</b>."}
+    }
+  ]
+}
