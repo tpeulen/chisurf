@@ -1,0 +1,513 @@
+diff --git a/chisurf/plugins/misc/games/pong/README.md b/chisurf/plugins/misc/games/pong/README.md
+index 6764e90ac..4fd29b1f6 100644
+--- a/chisurf/plugins/misc/games/pong/README.md
++++ b/chisurf/plugins/misc/games/pong/README.md
+@@ -1,58 +1,43 @@
+-# Pong Game Plugin
+-
+-This plugin provides a classic Pong game implemented using PyQt5. It was developed primarily for testing the 
+-ChiSurf plugin system.
+-
+-## Features
+-
+-- Two-player gameplay with keyboard controls
+-- CPU opponent with basic AI
+-- Score tracking
+-- Adjustable game speed
+-- Simple and intuitive interface
+-- Pause functionality
+-
+-## Overview
+-
+-The Pong Game plugin implements the classic arcade game where players control paddles to hit a ball back and forth. 
+-While it provides a fun diversion, its primary purpose was to serve as a test case for the ChiSurf plugin system, 
+-demonstrating how interactive graphical applications can be integrated into the ChiSurf framework.
+-
+-The game features a player-controlled paddle on the left side (using the Up and Down arrow keys) and a CPU-controlled 
+-paddle on the right side. The ball bounces between the paddles, and points are scored when the ball passes a paddle.
+-
+-As a test plugin, it showcases various aspects of plugin development including:
+-- Integration with the ChiSurf menu system
+-- Creating interactive PyQt5 widgets
+-- Handling user input
+-- Implementing game logic with timers
+-
+-## Requirements
+-
+-- Python packages:
+-  - PyQt5
+-  - chisurf core modules
+-
+-## Usage
+-
+-1. Launch the plugin from the ChiSurf menu: Miscellaneous > Pong
+-2. Control your paddle (left side) using the Up and Down arrow keys
+-3. Try to hit the ball past the CPU-controlled paddle (right side)
+-4. Press P to pause/resume the game
+-5. The score is displayed at the top of the screen
+-
+-## Applications
+-
+-While primarily developed as a test plugin, the Pong Game can be used for:
+-- Demonstrating PyQt5 game development techniques
+-- Testing the plugin system's ability to handle interactive graphical applications
+-- Providing a simple example for plugin developers
+-- Offering a brief recreational break during data analysis sessions
+-
+-## License
+-
+-This plugin is part of the ChiSurf package and is distributed under the same license.
+-
+-## Author
+-
+-This plugin was created as part of the ChiSurf project.
+\ No newline at end of file
++# Pong
++
++Pong has a native EMTK view and the existing Qt/chigame view. Both use
++`model.py` for CPU tracking, paddle/wall collisions, spectral transfers,
++scoring, the one-second serve countdown, and the first-to-seven winner.
++
++Run the native view with:
++
++```sh
++python -m chisurf.emtk --plugin pong
++```
++
++Up/Down moves the left paddle. M switches between CPU and two-player mode;
++W/S moves the right paddle in two-player mode. P pauses, R resets, N toggles
++mute, and Enter/Space restarts after a win. The native view also supports
++mouse dragging on either paddle's half of the field, and clickable footer
++controls with tooltips. Narrow windows fit the whole field without losing a
++paddle. Text and tooltips cover English, German, French, Spanish, Portuguese,
++and Russian.
++
++The native app exports/restores the active round, including scores, paddle
++positions, the ball, serve countdown, mode, pause, mute and winner. It releases
++held inputs on key-up/focus loss and stops animation when closed. Transient
++impact sparks are regenerated during play rather than persisted.
++
++The current EMTK toolkit has no shared native audio backend. The native view
++preserves the sound preference and mute state, and accepts an injected audio
++adapter, but the default factory does not play music or effects. The Qt view
++retains its original audio playback.
++
++Verification:
++
++```sh
++QT_QPA_PLATFORM=offscreen python -m pytest chisurf/plugins/misc/games/pong/test -q
++python -m ruff check chisurf/plugins/misc/games/pong
++python -m chisurf.plugins.misc.games.pong.test.capture_native
++QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.misc.games.pong.test.capture_qt
++```
++
++`test/renders` contains the genuine Qt widget and legacy GPU reference plus
++native normal/narrow serve, rally, paused and winner captures. The visual
++verdict improved from 88 to 94 after measuring the original footer spacing.
++GPU captures need access to the platform graphics adapter.
+diff --git a/chisurf/plugins/misc/games/pong/__init__.py b/chisurf/plugins/misc/games/pong/__init__.py
+index e8364265c..e3c5aca33 100644
+--- a/chisurf/plugins/misc/games/pong/__init__.py
++++ b/chisurf/plugins/misc/games/pong/__init__.py
+@@ -8,20 +8,28 @@ from __future__ import annotations
+ import sys
+ from pathlib import Path
+ 
+-from qtpy.QtWidgets import QApplication
+-
+ from chisurf.core.plugin import load_manifest
+-from chisurf.plugins.misc.games.pong.pong import Pong
+ 
+ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
+ name = _manifest.display_name if _manifest is not None else "Tools:Miscellaneous:Games:Pong"
+ 
++def __getattr__(attribute):
++    if attribute == "Pong":
++        from .pong import Pong
++        return Pong
++    raise AttributeError(attribute)
++
++
+ if __name__ == "__main__":
++    from qtpy.QtWidgets import QApplication
++
++    from .pong import Pong
+     app = QApplication(sys.argv)
+     game = Pong()
+     game.show()
+     sys.exit(app.exec())
+ 
+ if __name__ == "plugin":
++    from .pong import Pong
+     game = Pong()
+     game.show()
+diff --git a/chisurf/plugins/misc/games/pong/manifest.json b/chisurf/plugins/misc/games/pong/manifest.json
+index a50fcced1..f84307616 100644
+--- a/chisurf/plugins/misc/games/pong/manifest.json
++++ b/chisurf/plugins/misc/games/pong/manifest.json
+@@ -3,9 +3,15 @@
+   "version": "2.0.0",
+   "display_name": "Tools:Miscellaneous:Games:Pong",
+   "description": "Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Tools", "Miscellaneous", "Games"],
+-  "icon": "🏓",
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Tools",
++    "Miscellaneous",
++    "Games"
++  ],
++  "icon": "\ud83c\udfd3",
+   "state_namespace": "pong_game",
+   "statefulness": {
+     "enabled": true,
+@@ -22,7 +28,8 @@
+   "entrypoints": {
+     "gui": "chisurf.plugins.misc.games.pong.pong:Pong",
+     "cli": null,
+-    "services": null
++    "services": null,
++    "emtk": "chisurf.plugins.misc.games.pong.app:make_app"
+   },
+   "rpc_methods": [],
+   "events": [],
+diff --git a/chisurf/plugins/misc/games/pong/pong.py b/chisurf/plugins/misc/games/pong/pong.py
+index 7e8c5ca34..588680848 100644
+--- a/chisurf/plugins/misc/games/pong/pong.py
++++ b/chisurf/plugins/misc/games/pong/pong.py
+@@ -30,29 +30,23 @@ except ImportError:  # pragma: no cover - stand-alone use
+         return lambda cls: cls
+ 
+ 
+-#: The two sides are a FRET pair: the left optic emits as a donor, the right
+-#: absorbs and re-emits as an acceptor. A photon crossing the field therefore
+-#: changes colour at each bounce, which is the transfer made visible rather
+-#: than a decoration -- and it is why the field is worth watching.
+-DONOR_NM = 520.0
+-ACCEPTOR_NM = 612.0
+-
+-#: Play field, in world units. Kept at the original board's pixel dimensions so
+-#: every speed and size below carries over without rescaling.
+-FIELD_W = 800.0
+-FIELD_H = 600.0
+-
+-PADDLE_W = 12.0
+-PADDLE_H = 90.0
+-PADDLE_SPEED = 480.0
+-
+-BALL_SIZE = 14.0
+-BASE_SPEED_X = 360.0
+-BASE_SPEED_Y = 300.0
+-CPU_SPEED = 420.0
+-
+-WIN_SCORE = 7
+-SERVE_DELAY = 1.0
++from .model import (
++    ACCEPTOR_NM,
++    BALL_SIZE,
++    BASE_SPEED_X,
++    BASE_SPEED_Y,
++    CPU_SPEED,
++    DONOR_NM,
++    FIELD_H,
++    FIELD_W,
++    PADDLE_H,
++    PADDLE_SPEED,
++    PADDLE_W,
++    SERVE_DELAY,
++    WIN_SCORE,
++    Particle,
++    PongModel,
++)
+ 
+ #: Arrows drive player one, WASD player two. The default binding table maps both
+ #: to the same actions, which is right for a single-player game and wrong here.
+@@ -69,51 +63,20 @@ P1_BINDINGS = {
+ P2_BINDINGS = {"w": Action.UP, "s": Action.DOWN}
+ 
+ 
+-class Particle:
+-    """A single impact spark.
++class _LegacyInput:
++    """Adapt the engine's enum actions to the shared simulation vocabulary."""
++    def __init__(self, keys):
++        self.keys = keys
+ 
+-    Parameters
+-    ----------
+-    x, y : float
+-        Starting position in world units.
+-    vx, vy : float
+-        Velocity in world units per second.
+-    color : tuple of float
+-        sRGB RGB.
+-    life : float, optional
+-        Lifetime in seconds.
+-    """
+-
+-    def __init__(self, x, y, vx, vy, color, life: float = 0.35) -> None:
+-        self.x = x
+-        self.y = y
+-        self.vx = vx
+-        self.vy = vy
+-        self.color = color
+-        self.life = life
+-        self.max_life = life
++    def just_pressed(self, action):
++        return self.keys.just_pressed(Action(action))
+ 
+-    def update(self, dt: float) -> None:
+-        """Advance the spark.
++    def axis(self):
++        return self.keys.axis()
+ 
+-        Parameters
+-        ----------
+-        dt : float
+-            Seconds elapsed.
+-        """
+-        self.x += self.vx * dt
+-        self.y += self.vy * dt
+-        self.vy += 600.0 * dt
+-        self.life -= dt
+-
+-
+-class PongGame(chigame.Game):
+-    """The rules and the drawing.
+-
+-    Holds no Qt and no GPU objects, so the whole game can be stepped in a test
+-    with a fixed timestep and no window.
+-    """
+ 
++class PongGame(PongModel, chigame.Game):
++    """Legacy Qt renderer over the shared, toolkit-free Pong rules."""
+     title = "Pong"
+     background = (0.030, 0.034, 0.042, 1.0)
+     music_context = "battle"
+@@ -133,221 +96,8 @@ class PongGame(chigame.Game):
+         host.camera.height = FIELD_H
+         self.restart()
+ 
+-    def restart(self) -> None:
+-        """Reset scores, paddles and serve state."""
+-        self.player_score = 0
+-        self.cpu_score = 0
+-        self.rally = 0
+-        self.paddle_y = FIELD_H * 0.5
+-        self.cpu_y = FIELD_H * 0.5
+-        self.particles: list[Particle] = []
+-        self.paused = False
+-        self.vs_computer = True
+-        self.muted = False
+-        self.winner: str | None = None
+-        self.begin_serve()
+-
+-    def begin_serve(self) -> None:
+-        """Centre the photon and start the serve countdown."""
+-        self.ball_nm = DONOR_NM
+-        self.ball_x = FIELD_W * 0.5
+-        self.ball_y = FIELD_H * 0.5
+-        self.ball_vx = 0.0
+-        self.ball_vy = 0.0
+-        self.serve_timer = SERVE_DELAY
+-
+-    def launch(self) -> None:
+-        """Send the ball out at a random angle."""
+-        angle = random.uniform(-0.4, 0.4)
+-        direction = random.choice((-1.0, 1.0))
+-        self.ball_vx = direction * BASE_SPEED_X * math.cos(angle)
+-        self.ball_vy = BASE_SPEED_Y * math.sin(angle)
+-
+-    def spawn_particles(self, x: float, y: float, color, count: int = 12) -> None:
+-        """Emit impact sparks.
+-
+-        Parameters
+-        ----------
+-        x, y : float
+-            Impact point.
+-        color : tuple of float
+-            sRGB RGB.
+-        count : int, optional
+-            Number of sparks.
+-        """
+-        for _ in range(count):
+-            angle = random.uniform(0, math.tau)
+-            speed = random.uniform(60.0, 260.0)
+-            self.particles.append(
+-                Particle(x, y, math.cos(angle) * speed, math.sin(angle) * speed, color)
+-            )
+-
+-    def _sfx(self, name: str, frequency: float) -> None:
+-        """Play a sound effect unless muted.
+-
+-        Parameters
+-        ----------
+-        name : str
+-            Effect name.
+-        frequency : float
+-            Pitch in Hz.
+-        """
+-        if not self.muted:
+-            self.host.audio.sfx(name, frequency)
+-
+-    def update(self, dt: float, keys) -> None:
+-        """Advance one frame.
+-
+-        Parameters
+-        ----------
+-        dt : float
+-            Seconds elapsed.
+-        keys : chisurf.gui.chigame.input.InputMap
+-            Player one's controller.
+-        """
+-        if keys.just_pressed(Action.MENU):
+-            self.paused = not self.paused
+-        if keys.just_pressed(Action.CANCEL):
+-            self.restart()
+-            return
+-        if keys.just_pressed(Action.SHOULDER_L):
+-            self.vs_computer = not self.vs_computer
+-        if keys.just_pressed(Action.SHOULDER_R):
+-            self.muted = not self.muted
+-        if self.winner is not None:
+-            if keys.just_pressed(Action.CONFIRM):
+-                self.restart()
+-            return
+-        if self.paused:
+-            return
+-
+-        half = PADDLE_H * 0.5
+-        move = keys.axis()[1]
+-        self.paddle_y = min(max(self.paddle_y + move * PADDLE_SPEED * dt, half), FIELD_H - half)
+-
+-        if self.vs_computer:
+-            self._move_cpu(dt)
+-        else:
+-            move2 = self.p2.axis()[1]
+-            self.cpu_y = min(max(self.cpu_y + move2 * PADDLE_SPEED * dt, half), FIELD_H - half)
+-
+-        if self.serve_timer > 0.0:
+-            self.serve_timer -= dt
+-            if self.serve_timer <= 0.0:
+-                self.launch()
+-        else:
+-            self._move_ball(dt)
+-
+-        for particle in self.particles:
+-            particle.update(dt)
+-        self.particles = [p for p in self.particles if p.life > 0.0]
+-
+-    def _move_cpu(self, dt: float) -> None:
+-        """Track the ball, leading it when it is incoming.
+-
+-        Parameters
+-        ----------
+-        dt : float
+-            Seconds elapsed.
+-        """
+-        target = self.ball_y
+-        if self.ball_vx > 0.0:
+-            time_to_reach = (FIELD_W - PADDLE_W - 20.0 - self.ball_x) / max(self.ball_vx, 1e-3)
+-            target += self.ball_vy * time_to_reach
+-        diff = target - self.cpu_y
+-        half = PADDLE_H * 0.5
+-        if abs(diff) > 6.0:
+-            self.cpu_y += CPU_SPEED * dt * (1.0 if diff > 0 else -1.0)
+-        self.cpu_y = min(max(self.cpu_y, half), FIELD_H - half)
+-
+-    def _move_ball(self, dt: float) -> None:
+-        """Advance the ball, bounce it, and score it.
+-
+-        Parameters
+-        ----------
+-        dt : float
+-            Seconds elapsed.
+-        """
+-        self.ball_x += self.ball_vx * dt
+-        self.ball_y += self.ball_vy * dt
+-        radius = BALL_SIZE * 0.5
+-
+-        if self.ball_y - radius <= 0.0:
+-            self.ball_y = radius
+-            self.ball_vy = abs(self.ball_vy)
+-            self._sfx("wall", 420.0)
+-        elif self.ball_y + radius >= FIELD_H:
+-            self.ball_y = FIELD_H - radius
+-            self.ball_vy = -abs(self.ball_vy)
+-            self._sfx("wall", 420.0)
+-
+-        half = PADDLE_H * 0.5
+-        player_x = 20.0 + PADDLE_W * 0.5
+-        cpu_x = FIELD_W - 20.0 - PADDLE_W * 0.5
+-
+-        if (
+-            self.ball_vx < 0.0
+-            and abs(self.ball_x - player_x) <= (PADDLE_W + BALL_SIZE) * 0.5
+-            and abs(self.ball_y - self.paddle_y) <= half + radius
+-        ):
+-            self._bounce(player_x, self.paddle_y, 1.0, DONOR_NM)
+-        elif (
+-            self.ball_vx > 0.0
+-            and abs(self.ball_x - cpu_x) <= (PADDLE_W + BALL_SIZE) * 0.5
+-            and abs(self.ball_y - self.cpu_y) <= half + radius
+-        ):
+-            self._bounce(cpu_x, self.cpu_y, -1.0, ACCEPTOR_NM)
+-
+-        if self.ball_x < -BALL_SIZE:
+-            self._score("cpu")
+-        elif self.ball_x > FIELD_W + BALL_SIZE:
+-            self._score("player")
+-
+-    def _bounce(self, paddle_x: float, paddle_y: float, direction: float, nm: float) -> None:
+-        """Reflect the ball off a paddle, steering by where it struck.
+-
+-        Parameters
+-        ----------
+-        paddle_x, paddle_y : float
+-            Paddle centre.
+-        direction : float
+-            ``1`` to send the photon right, ``-1`` to send it left.
+-        nm : float
+-            Wavelength the struck optic re-emits at.
+-        """
+-        offset = (self.ball_y - paddle_y) / (PADDLE_H * 0.5)
+-        angle = offset * 0.9
+-        speed = math.hypot(self.ball_vx, self.ball_vy) * 1.03
+-        self.ball_vx = direction * abs(math.cos(angle) * speed)
+-        self.ball_vy = math.sin(angle) * speed
+-        self.ball_x = paddle_x + direction * (PADDLE_W + BALL_SIZE) * 0.5
+-        self.rally += 1
+-        # The photon leaves at the struck optic's wavelength: donor on the left,
+-        # acceptor on the right.
+-        self.ball_nm = nm
+-        self.spawn_particles(self.ball_x, self.ball_y, wavelength_to_srgb(nm))
+-        self._sfx("paddle", 660.0)
+-
+-    def _score(self, who: str) -> None:
+-        """Award a point and either serve again or end the game.
+-
+-        Parameters
+-        ----------
+-        who : {'player', 'cpu'}
+-            Who scored.
+-        """
+-        if who == "player":
+-            self.player_score += 1
+-        else:
+-            self.cpu_score += 1
+-        self.rally = 0
+-        self._sfx("score", 880.0 if who == "player" else 220.0)
+-        if self.player_score >= WIN_SCORE:
+-            self.winner = "Donor"
+-        elif self.cpu_score >= WIN_SCORE:
+-            self.winner = "Acceptor" if self.vs_computer else "Optic 2"
+-        else:
+-            self.begin_serve()
++    def update(self, dt, keys):
++        super().update(dt, _LegacyInput(keys))
+ 
+     def draw(self, scene) -> None:
+         """Queue the frame.

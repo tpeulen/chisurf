@@ -1,0 +1,13 @@
+ M chisurf/plugins/misc/games/pong/README.md
+ M chisurf/plugins/misc/games/pong/__init__.py
+ M chisurf/plugins/misc/games/pong/manifest.json
+ M chisurf/plugins/misc/games/pong/pong.py
+?? chisurf/plugins/misc/games/pong/app.py
+?? chisurf/plugins/misc/games/pong/drawing.py
+?? chisurf/plugins/misc/games/pong/glyphs.json
+?? chisurf/plugins/misc/games/pong/model.py
+?? chisurf/plugins/misc/games/pong/test/capture_native.py
+?? chisurf/plugins/misc/games/pong/test/capture_qt.py
+?? chisurf/plugins/misc/games/pong/test/renders/
+?? chisurf/plugins/misc/games/pong/test/test_emtk_app.py
+?? chisurf/plugins/misc/games/pong/translations.py

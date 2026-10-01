@@ -1,0 +1,18 @@
+{
+  "controls": [
+    "sound"
+  ],
+  "labels": [],
+  "buttons": [
+    "Sound"
+  ],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.misc.games.pong.pong:Pong (+HEAD no overlays)",
+  "size": [
+    1200,
+    800
+  ]
+}
