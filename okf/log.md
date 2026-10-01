@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **f_test emtk app at parity** (EMTK-1): the From fit menu (a row per open fit and target, re-read on open), Guide and ?
+  replace the stream's combos; guide/help shared by both hosts. Trap: pointer tests must draw with `PixelPainter`, whose
+  line height `RecordingPainter` does not share. [report](plugins/emtk-ports/f_test/REPORT.md).
+
 * **kappa2_dist verified against the Qt tool and upgraded (swap-candidate, SWAP4B; first pass by EMTK-1).** Populated Qt baseline (five scenarios under seed 7); every edit typed into the native fields equals the committed AutoForm tool (results, histogram, CSV byte for byte). Fixed: a NaN statistic compared unequal to itself, so the window recomputed on every frame (busy flag stuck); Save enabled like the Qt button and in an in-app dialog with a "Saved to" status; spin arrows; failed or non-finite calculations explained; settings round trip; `make_app(kappa2=)`; guide step named the Qt `?`. Plugin folder 57 passed; compare exit 0. Open: the shared `calculator/export.py` Save window is untitled. Report `okf/plugins/emtk-ports/kappa2_dist/REPORT.md` (first pass kept as `REPORT_first_pass.md`).
 
 - **Games launcher restyled** (owner feedback): sidebar of names (description as tooltip), header with

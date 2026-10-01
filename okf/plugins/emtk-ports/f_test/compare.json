@@ -1,0 +1,26 @@
+{
+  "plugin": "f_test",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "0.68157",
+    "0.95000",
+    "1",
+    "1.0000",
+    "1.00000",
+    "1.03936",
+    "1.1000",
+    "100",
+    "98",
+    "chi-squareupperlimit",
+    "f-testcomparenestedfits"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 14,
+  "after_controls": 25
+}

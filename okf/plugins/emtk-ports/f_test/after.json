@@ -1,0 +1,112 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.68157",
+    "0.95000",
+    "1",
+    "1.0000",
+    "1.00000",
+    "1.03936",
+    "1.1000",
+    "100",
+    "98",
+    "?",
+    "chi-squareupperlimit",
+    "confidence",
+    "f-testcomparenestedfits",
+    "f-test—comparetwonestedmodels",
+    "fromfit",
+    "guide",
+    "n₁",
+    "n₂",
+    "params",
+    "ν(dof)",
+    "χ²(1)",
+    "χ²(2)",
+    "χ²-max—upperlimitfromonefit",
+    "χ²max",
+    "χ²min"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through loading fit statistics and comparing nested models."
+    },
+    {
+      "kind": "button",
+      "label": "?",
+      "id": "?",
+      "tooltip": "Explain the F-test, confidence threshold and chi-square upper limit."
+    },
+    {
+      "kind": "input_text",
+      "label": "chi2_1",
+      "id": "##chi2_1",
+      "tooltip": "Reduced χ² of the first (simpler) model."
+    },
+    {
+      "kind": "input_text",
+      "label": "n1",
+      "id": "##n1",
+      "tooltip": "Degrees of freedom of the first model."
+    },
+    {
+      "kind": "input_text",
+      "label": "chi2_2",
+      "id": "##chi2_2",
+      "tooltip": "Reduced χ² of the second (more complex) model; recomputed when the confidence changes."
+    },
+    {
+      "kind": "input_text",
+      "label": "n2",
+      "id": "##n2",
+      "tooltip": "Degrees of freedom of the second model (points minus free parameters)."
+    },
+    {
+      "kind": "input_text",
+      "label": "conf_level",
+      "id": "##conf_level",
+      "tooltip": "F-test confidence level; recomputed from the χ² ratio, or drives the χ²(2) threshold when edited."
+    },
+    {
+      "kind": "input_text",
+      "label": "chi2_min",
+      "id": "##chi2_min",
+      "tooltip": "Reduced χ² (minimum) of the fit."
+    },
+    {
+      "kind": "input_text",
+      "label": "npars",
+      "id": "##npars",
+      "tooltip": "Number of free parameters of the model."
+    },
+    {
+      "kind": "input_text",
+      "label": "dof",
+      "id": "##dof",
+      "tooltip": "Degrees of freedom (observations minus parameters)."
+    },
+    {
+      "kind": "input_text",
+      "label": "conf_level_2",
+      "id": "##conf_level_2",
+      "tooltip": "Confidence level for the χ² upper limit."
+    },
+    {
+      "kind": "input_text",
+      "label": "chi2_max",
+      "id": "##chi2_max",
+      "tooltip": "Resulting χ² upper limit at the chosen confidence level."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
