@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **burst_background emtk app at parity** (EMTK-1, backfill): sized per-action dialogs, frames on demand, folder drop no longer
+  adds the .pto container as a second measurement; shared drawing fixed (legend "Series", colliding fit tags, unnamed rate bars);
+  guide targets drawn. Found here: the background tail-fit bias (`8e2c1f892`). [report](plugins/emtk-ports/burst_background/REPORT.md).
+
 - **Background tail fit unbiased for windows out in the tail** (found during the burst_background port): the amplitude was
   fitted at dt = 0 from the first histogram bin, so for a window far from zero L-BFGS-B stopped near its start and reported
   success with a biased rate (1.64 kHz for 1 kHz in the 1.96-3.31 ms window the tool seeds). Now fitted at the window's first

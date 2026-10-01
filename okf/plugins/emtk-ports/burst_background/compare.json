@@ -1,0 +1,42 @@
+{
+  "plugin": "burst_background",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "0.001",
+    "0.100",
+    "addtttrfolder",
+    "binwidth(ms)",
+    "channeldefinition",
+    "clearfiles",
+    "detector",
+    "estimatebackground",
+    "file",
+    "filesloaded0",
+    "fitfrom(ms)",
+    "fitparameters",
+    "fitsettings",
+    "fitto(ms)",
+    "guide",
+    "help",
+    "inter-photontime",
+    "loadfiles,definedetectors,thenestimate.",
+    "measurementsdetectors",
+    "mincounts/bin",
+    "mmfdbdatasets",
+    "nointer-photontimedistributiondata.loadtttrfilesandestimate.",
+    "noratedataavailable.",
+    "opentttrfiles",
+    "rate(khz)",
+    "ratesresults",
+    "stopcomputation"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 1,
+  "after_controls": 28
+}

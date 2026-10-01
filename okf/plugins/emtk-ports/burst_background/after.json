@@ -1,0 +1,121 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.001",
+    "0.100",
+    "1",
+    "addtttrfolder",
+    "binwidth(ms)",
+    "channeldefinition",
+    "clearfiles",
+    "detector",
+    "estimatebackground",
+    "file",
+    "filesloaded0",
+    "fitfrom(ms)",
+    "fitparameters",
+    "fitsettings",
+    "fitto(ms)",
+    "guide",
+    "help",
+    "inter-photontime",
+    "loadfiles,definedetectors,thenestimate.",
+    "measurementsdetectors",
+    "mincounts/bin",
+    "mmfdbdatasets",
+    "nointer-photontimedistributiondata.loadtttrfilesandestimate.",
+    "noratedataavailable.",
+    "opentttrfiles",
+    "rate(khz)",
+    "ratesresults",
+    "stopcomputation"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Open TTTR files",
+      "id": "Open TTTR files",
+      "tooltip": "Choose one or more photon measurement files."
+    },
+    {
+      "kind": "button",
+      "label": "Add TTTR folder",
+      "id": "Add TTTR folder",
+      "tooltip": "Add supported photon measurements from a folder."
+    },
+    {
+      "kind": "button",
+      "label": "MMFDB datasets",
+      "id": "MMFDB datasets",
+      "tooltip": "Browse database measurements and resolve their local paths."
+    },
+    {
+      "kind": "button",
+      "label": "Clear files",
+      "id": "Clear files",
+      "tooltip": "Remove loaded files and analysis results."
+    },
+    {
+      "kind": "button",
+      "label": "Channel definition",
+      "id": "Channel definition",
+      "tooltip": "Open the complete detector setup, timing, calibration, PIE, TAC and optical editor."
+    },
+    {
+      "kind": "button",
+      "label": "Stop computation",
+      "id": "Stop computation",
+      "tooltip": "Cancel at the next file boundary and retain the previous results."
+    },
+    {
+      "kind": "drag_float",
+      "label": "fit_from",
+      "id": "##fit_from",
+      "tooltip": "Lower edge of the inter-photon-time tail window (in ms) fitted as background."
+    },
+    {
+      "kind": "drag_float",
+      "label": "fit_to",
+      "id": "##fit_to",
+      "tooltip": "Upper edge of the inter-photon-time tail window (in ms) fitted as background."
+    },
+    {
+      "kind": "drag_float",
+      "label": "bin_w",
+      "id": "##bin_w",
+      "tooltip": "Histogram bin width of the inter-photon-time distribution in milliseconds."
+    },
+    {
+      "kind": "drag_int",
+      "label": "min_cnt",
+      "id": "##min_cnt",
+      "tooltip": "Bins with fewer counts than this are ignored when fitting the tail."
+    },
+    {
+      "kind": "button",
+      "label": "Estimate Background",
+      "id": "Estimate Background",
+      "tooltip": "Fit the tail of the inter-photon-time distribution to get the per-detector background rates."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Start a step-by-step guided tour of this tool."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "Open the help window with reference documentation."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
