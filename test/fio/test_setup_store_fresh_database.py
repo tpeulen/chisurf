@@ -45,3 +45,13 @@ def test_saving_one_setup_for_an_unknown_user_creates_that_user(tmp_path):
     db = _fresh_db(tmp_path)
     setup_store.save_setup_row(db, CONFIG, "Mine", SETUP, user_id="brand_new_user")
     assert any(u["user_id"] == "brand_new_user" for u in db.get_users())
+
+
+def test_the_first_save_for_a_new_user_survives_closing_the_database(tmp_path):
+    path = str(tmp_path / "reopen.db")
+    db = mmfdb.MFDatabase(path)
+    setup_store.save_setup_row(db, CONFIG, "Mine", {"windows": {}}, user_id="new_user")
+    assert len(db.list_setups()) == 1
+    db.close()
+
+    assert len(mmfdb.MFDatabase(path).list_setups()) == 1

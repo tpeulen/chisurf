@@ -121,7 +121,14 @@ def save_setup_row(
     # ``detector_setups.json`` -- failed with "FOREIGN KEY constraint failed" and rolled back.
     ensure_user = getattr(db, "ensure_user", None)
     if user_id and callable(ensure_user):
-        ensure_user(user_id)
+        # Commit the user row on its own: left in the implicit transaction it made ``save_setup``
+        # join it instead of committing, so closing the handle rolled the first save back.
+        transaction = getattr(db, "transaction", None)
+        if callable(transaction):
+            with transaction():
+                ensure_user(user_id)
+        else:
+            ensure_user(user_id)
     db.save_setup(
         setup_id=setup_id_for_name(setup_name, user_id, config.id_prefix),
         name=setup_name,
