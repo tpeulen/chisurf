@@ -173,6 +173,9 @@ class AnisotropyApp(ImApp):
                     if result.modified:
                         model.region_bounds[index] = float(result.value)
                         model.compute()
+                    # where the line is on screen: what a person (or a test) grabs
+                    lx, ly = implot.plot_to_pixels(model.region_bounds[index], 0.5 * sum(R_LIMITS))
+                    self.item_rects[f"region_line_{index}"] = (lx - 3.0, ly - 3.0, 6.0, 6.0)
             else:
                 implot.plot_dummy(tr("Load a VV/VH file"))
             implot.end_plot()
@@ -184,6 +187,11 @@ class AnisotropyApp(ImApp):
         viewport = im.get_main_viewport()
         box = (*viewport.pos, *viewport.size)
         self.form.rects.clear()
+        if self.model.forget_selection:
+            # the table keeps its selection by row key: a removed file that is queued again
+            # would otherwise come back highlighted while the model has nothing selected
+            self.form.tables.pop("batch_file_rows", None)
+            self.model.forget_selection = False
         # The form needs about CONTROLS_HEIGHT pixels; a small window gives it a larger share.
         self.docks.layout.ratio = min(0.6, max(0.3, CONTROLS_HEIGHT / max(float(viewport.size[1]), 1.0)))
         self.docks.draw(box)

@@ -53,6 +53,8 @@ class AnisotropyModel:
         self.batch_open = False
         self.batch_snapshot = None
         self.selected_batch_file = ""
+        #: set when the queue lost its selected row: the window drops the table's own selection
+        self.forget_selection = False
 
     # -- the fields the window edits ---------------------------------------
     @property
@@ -302,6 +304,7 @@ class AnisotropyModel:
         if path in self.batch_files:
             self.batch_files.remove(path)
         self.selected_batch_file = ""
+        self.forget_selection = True
         if not self.batch_files:
             self.batch_results = []
 
@@ -310,6 +313,7 @@ class AnisotropyModel:
         self.batch_files = []
         self.batch_results = []
         self.selected_batch_file = ""
+        self.forget_selection = True
 
     def save_batch(self, path):
         if not self.batch_results:
