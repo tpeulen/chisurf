@@ -1,0 +1,46 @@
+diff --git a/chisurf/plugins/core/boarding/manifest.json b/chisurf/plugins/core/boarding/manifest.json
+index 4641ce01a..d75bec2cf 100644
+--- a/chisurf/plugins/core/boarding/manifest.json
++++ b/chisurf/plugins/core/boarding/manifest.json
+@@ -17,7 +17,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.core.boarding.wizard:WelcomeToChiSurfWizard"
++    "gui": "chisurf.plugins.core.boarding.wizard:WelcomeToChiSurfWizard",
++    "emtk": "chisurf.plugins.core.boarding.app:make_app"
+   },
+   "optional_requires": {
+     "fcs_channel_preset": "*",
+diff --git a/chisurf/plugins/core/boarding/utils.py b/chisurf/plugins/core/boarding/utils.py
+index db54a6774..bac27ed68 100644
+--- a/chisurf/plugins/core/boarding/utils.py
++++ b/chisurf/plugins/core/boarding/utils.py
+@@ -1,9 +1,8 @@
+ import html
++import os
+ import pathlib
+ import shutil
+ 
+-from qtpy import QtCore, QtGui
+-
+ import chisurf as cs
+ import chisurf.core.settings
+ 
+@@ -11,6 +10,7 @@ import chisurf.core.settings
+ def open_in_file_manager(path: pathlib.Path) -> None:
+     """Open *path* in the OS file manager (best-effort, never raises)."""
+     try:
++        from qtpy import QtCore, QtGui
+         url = QtCore.QUrl.fromLocalFile(str(path))
+         QtGui.QDesktopServices.openUrl(url)
+     except Exception:
+@@ -151,7 +151,7 @@ def fcs_setups_summary() -> dict:
+ 
+ def _status_row(label: str, status: str, color: str, detail: str = "") -> str:
+     """Render one table row with a coloured status word and an optional detail cell."""
+-    native = QtCore.QDir.toNativeSeparators(str(detail or ""))
++    native = str(detail or "").replace("/", os.sep)
+     detail_cell = _html_code(native) if native else ""
+     return (
+         "<tr>"
