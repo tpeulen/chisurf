@@ -1,0 +1,45 @@
+{
+  "controls": [
+    "?",
+    "d₁(µm²/ms)",
+    "d₂(µm²/ms)",
+    "guide",
+    "k(1/ms)",
+    "kinetics/statistics",
+    "photons",
+    "run",
+    "seed",
+    "setparametersandsimulate.",
+    "simulate+correlate",
+    "species(lifetime+diffusion)",
+    "τ₁(ns)",
+    "τ₂(ns)"
+  ],
+  "labels": [
+    "D₁ (µm²/ms)",
+    "D₂ (µm²/ms)",
+    "Photons",
+    "Seed",
+    "Set parameters and simulate.",
+    "k (1/ms)",
+    "τ₁ (ns)",
+    "τ₂ (ns)"
+  ],
+  "buttons": [
+    "?",
+    "Guide",
+    "Simulate + Correlate",
+    "▼  Kinetics / statistics",
+    "▼  Run",
+    "▼  Species (lifetime + diffusion)"
+  ],
+  "line_edits": 7,
+  "combos": 0,
+  "spin_boxes": 7,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.fcs.fcs_lfcs_sim.gui.tool:LifetimeFcsSimWidget",
+  "size": [
+    1200,
+    800
+  ]
+}

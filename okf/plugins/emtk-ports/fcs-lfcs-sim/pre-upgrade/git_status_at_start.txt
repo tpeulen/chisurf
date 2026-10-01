@@ -1,0 +1,7 @@
+ M chisurf/plugins/fcs/fcs_lfcs_sim/manifest.json
+?? chisurf/plugins/fcs/fcs_lfcs_sim/app.py
+?? chisurf/plugins/fcs/fcs_lfcs_sim/strings.py
+?? chisurf/plugins/fcs/fcs_lfcs_sim/test/capture_native.py
+?? chisurf/plugins/fcs/fcs_lfcs_sim/test/capture_qt.py
+?? chisurf/plugins/fcs/fcs_lfcs_sim/test/renders/
+?? chisurf/plugins/fcs/fcs_lfcs_sim/test/test_native.py

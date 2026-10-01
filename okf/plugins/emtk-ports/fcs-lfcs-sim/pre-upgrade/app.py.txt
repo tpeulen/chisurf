@@ -1,0 +1,118 @@
+"""Native EMTK surface for the lifetime-FCS simulator."""
+
+from __future__ import annotations
+
+import numpy as np
+from emtk import i18n, im, implot
+from emtk.app import ImApp
+
+from .strings import install_translations
+
+install_translations()
+
+
+def tr(text: str) -> str:
+    return i18n.tr(text, context="Lifetime-FCS simulator")
+
+
+class LifetimeFcsSimModel:
+    """Qt-free settings and computation for lifetime-filtered FCS."""
+
+    def __init__(self) -> None:
+        self.tau1_ns = 1.0
+        self.d1_um2_ms = 8.0
+        self.tau2_ns = 4.0
+        self.d2_um2_ms = 0.5
+        self.exchange_rate_ms = 0.0
+        self.n_photons = 400_000
+        self.seed = 1
+        self.datasets: list[dict] = []
+        self.condition_number = float("nan")
+
+    def run(self) -> list[dict]:
+        from chisurf.core.fluorescence.fcs.filtered import (
+            calc_ffcs_filters,
+            filter_condition_number,
+        )
+        from chisurf.core.fluorescence.fcs.simulate import simulate_lifetime_fcs
+        from chisurf.plugins.fcs.fcs_correlator.core import filtered_correlation_datasets
+
+        sim = simulate_lifetime_fcs(
+            lifetimes_ns=(float(self.tau1_ns), float(self.tau2_ns)),
+            diffusion_um2_ms=(float(self.d1_um2_ms), float(self.d2_um2_ms)),
+            exchange_rate_ms=float(self.exchange_rate_ms),
+            n_photons=int(self.n_photons), seed=int(self.seed),
+        )
+        self.condition_number = filter_condition_number(sim.total_decay, sim.reference_decays)
+        filters, _, _ = calc_ffcs_filters(sim.total_decay, sim.reference_decays)
+        labels = [f"τ={self.tau1_ns:g} ns", f"τ={self.tau2_ns:g} ns"]
+        self.datasets = filtered_correlation_datasets(
+            sim.macro_times, sim.micro_times, filters,
+            sim.macro_time_resolution_s, n_bins=8, n_casc=25, labels=labels,
+        )
+        return self.datasets
+
+
+class LifetimeFcsSimApp(ImApp):
+    """Configure, run and inspect lifetime-filtered correlation simulations."""
+
+    def __init__(self, model: LifetimeFcsSimModel | None = None) -> None:
+        self.model = model or LifetimeFcsSimModel()
+        self.message = tr("Set parameters and simulate.")
+        super().__init__(self.render)
+
+    def _float(self, label: str, attr: str, tip: str, minimum: float, maximum: float, step: float) -> None:
+        changed, value = im.input_float(tr(label), float(getattr(self.model, attr)), step=step, step_fast=step * 10)
+        im.set_item_tooltip(tr(tip))
+        if changed:
+            setattr(self.model, attr, min(max(float(value), minimum), maximum))
+
+    def _int(self, label: str, attr: str, tip: str, minimum: int, maximum: int, step: int) -> None:
+        changed, value = im.input_int(tr(label), int(getattr(self.model, attr)), step=step)
+        im.set_item_tooltip(tr(tip))
+        if changed:
+            setattr(self.model, attr, min(max(int(value), minimum), maximum))
+
+    def render(self) -> None:
+        im.begin(tr("Lifetime-FCS simulator"), (0, 0, *im.get_main_viewport().size))
+        im.heading(tr("Lifetime-FCS simulator"), level=2)
+        im.text_wrapped(tr("Simulate diffusing species with distinct lifetimes and recover them with lifetime filters."))
+        im.separator()
+        im.heading(tr("Species"), level=3)
+        self._float("τ₁ (ns)", "tau1_ns", "Fluorescence lifetime of species 1.", 0.05, 50.0, 0.1)
+        self._float("D₁ (µm²/ms)", "d1_um2_ms", "Diffusion coefficient of species 1.", 0.001, 100.0, 0.1)
+        self._float("τ₂ (ns)", "tau2_ns", "Fluorescence lifetime of species 2.", 0.05, 50.0, 0.1)
+        self._float("D₂ (µm²/ms)", "d2_um2_ms", "Diffusion coefficient of species 2.", 0.001, 100.0, 0.1)
+        im.heading(tr("Kinetics / statistics"), level=3)
+        self._float("k (1/ms)", "exchange_rate_ms", "Symmetric species interconversion rate.", 0.0, 1000.0, 0.5)
+        self._int("Photons", "n_photons", "Photon budget; larger values produce cleaner curves but take longer.", 50_000, 20_000_000, 50_000)
+        self._int("Seed", "seed", "Deterministic random seed.", 0, 1_000_000, 1)
+        if im.button(tr("Simulate + Correlate")):
+            im.set_item_tooltip(tr("Generate synthetic photons, build lifetime filters and calculate correlations."))
+            try:
+                self.model.run()
+                self.message = tr("Simulation complete: {count} curves; condition number {condition:.1f}.").format(
+                    count=len(self.model.datasets), condition=self.model.condition_number
+                )
+            except Exception as exc:  # noqa: BLE001
+                self.message = f"{type(exc).__name__}: {exc}"
+        else:
+            im.set_item_tooltip(tr("Generate synthetic photons, build lifetime filters and calculate correlations."))
+        im.text_wrapped(self.message)
+        if self.model.datasets:
+            im.separator()
+            if implot.begin_plot(tr("Filtered correlations"), (-1, 300)):
+                for data in self.model.datasets:
+                    x = np.asarray(data.get("x", []), dtype=float)
+                    y = np.asarray(data.get("y", []), dtype=float)
+                    good = x > 0
+                    if np.any(good):
+                        implot.plot_line(str(data.get("name", "G(τ)")), x[good], y[good])
+                implot.end_plot()
+        im.end()
+
+
+def make_app() -> LifetimeFcsSimApp:
+    from chisurf.emtk.i18n import install
+    install()
+    return LifetimeFcsSimApp()
