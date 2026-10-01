@@ -1,0 +1,168 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "#26a298",
+    "#4284f5",
+    "#d400cd",
+    "#df0101",
+    "#ff00ff",
+    "#ffa629",
+    "0",
+    "0.20",
+    "0.5",
+    "1",
+    "1.00",
+    "1.5",
+    "10",
+    "100",
+    "1000",
+    "2",
+    "2.5",
+    "3",
+    "3.5",
+    "4",
+    "4.5",
+    "5",
+    "5.5",
+    "50",
+    "6",
+    "6.5",
+    "7",
+    "7.5",
+    "8",
+    "8.5",
+    "9",
+    "9.5",
+    "activebackend",
+    "activetransparency",
+    "advancedpyqtgraphconfiguration",
+    "appearance",
+    "apply",
+    "apply/save/reset",
+    "autocorrelation",
+    "changesapplyonnextapplicationstartorwhenanewplotiscreated.",
+    "colors",
+    "counts",
+    "data",
+    "datacurve",
+    "emtk",
+    "guide",
+    "help",
+    "inactivetransparency",
+    "instrumentresponse",
+    "irf",
+    "model",
+    "modelcurve",
+    "nodegraphs(globalview)",
+    "plotsettings",
+    "preview(samplecurves)",
+    "regionalpha",
+    "regionselector",
+    "renderingbackend",
+    "reset",
+    "residuals",
+    "save",
+    "showingtheactiveplotsettings.",
+    "t/ns"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the sections, Apply, Save and Reset."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through changing a colour and applying it."
+    },
+    {
+      "kind": "input_text",
+      "label": "color_data",
+      "id": "##color_data",
+      "tooltip": "Colour of the data curve in decay plots. Click the swatch for a colour picker, or type a hex value such as #ffa52f."
+    },
+    {
+      "kind": "input_text",
+      "label": "color_model",
+      "id": "##color_model",
+      "tooltip": "Colour of the fitted model curve. Click the swatch for a colour picker, or type a hex value."
+    },
+    {
+      "kind": "input_text",
+      "label": "color_irf",
+      "id": "##color_irf",
+      "tooltip": "Colour of the instrument response function (IRF). Click the swatch for a colour picker, or type a hex value."
+    },
+    {
+      "kind": "input_text",
+      "label": "color_residuals",
+      "id": "##color_residuals",
+      "tooltip": "Colour of the weighted residuals panel. Click the swatch for a colour picker, or type a hex value."
+    },
+    {
+      "kind": "input_text",
+      "label": "color_auto_corr",
+      "id": "##color_auto_corr",
+      "tooltip": "Colour of the autocorrelation curve. Click the swatch for a colour picker, or type a hex value."
+    },
+    {
+      "kind": "input_text",
+      "label": "color_region_selector",
+      "id": "##color_region_selector",
+      "tooltip": "Colour of the draggable fit-range band. Click the swatch for a colour picker, or type a hex value."
+    },
+    {
+      "kind": "input_text",
+      "label": "region_alpha",
+      "id": "##region_alpha",
+      "tooltip": "Opacity of the fit-range band, 0 (invisible) to 255 (solid)."
+    },
+    {
+      "kind": "slider_int",
+      "label": "region_alpha.slider",
+      "id": "##region_alpha.slider",
+      "tooltip": "Opacity of the fit-range band, 0 (invisible) to 255 (solid)."
+    },
+    {
+      "kind": "input_text",
+      "label": "active_transparency",
+      "id": "##active_transparency",
+      "tooltip": "Opacity of the active plot, 0 to 1."
+    },
+    {
+      "kind": "input_text",
+      "label": "inactive_transparency",
+      "id": "##inactive_transparency",
+      "tooltip": "Opacity of plots that are not active, 0 to 1."
+    },
+    {
+      "kind": "button",
+      "label": "Apply",
+      "id": "Apply##apply",
+      "tooltip": "Write the edits into the active plot settings; plots created from now on use them, and open node graphs are re-styled."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save##save",
+      "tooltip": "Apply the edits and write them to settings_chisurf.yaml so they are kept for the next start."
+    },
+    {
+      "kind": "button",
+      "label": "Reset",
+      "id": "Reset##reset",
+      "tooltip": "Reload every control from the active settings, discarding edits that were not applied."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

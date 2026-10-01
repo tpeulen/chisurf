@@ -23,8 +23,8 @@ from typing import Any
 
 import numpy as np
 
-#: The registered chiplot backends, sorted as ``chisurf.gui.chiplot.available_backends()``
-#: returns them (that function lives under ``chisurf.gui``, which a Qt-free app must not
+#: The registered chiplot backends, sorted as chiplot's ``available_backends()`` returns
+#: them (that function lives in the Qt-dependent GUI package, which a Qt-free app must not
 #: import; a test keeps the two lists equal).
 BACKENDS = ("emtk", "pyqtgraph")
 
