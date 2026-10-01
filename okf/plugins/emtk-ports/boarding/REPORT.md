@@ -227,3 +227,10 @@ Open, for the reviewer:
 - [x] D8 docs: gap listed (section 9)
 - [x] D9 plugin tests green (section 6)
 - [x] D10 report written, evidence committed, board updated
+
+## Review (reviewer, 2026-10-01)
+Re-run by the reviewer: `chisurf/plugins/core/boarding` + `test/plugins/boarding` 64 passed; `compare` exit 0 with `lost` [] and `untooltipped` [], qt-free True; no Qt imports in the plugin's
+`app.py` / `model.py`; no file under the real `~/.chisurf` is newer than the report. Screenshots read: the step list with check marks and Back / Next / Help / Guide, the Settings step as a
+`data_table` (status OK / MISSING / connected, tooltip with the full path), the Detector step hosting the unedited channel-definition editor (setup choice, Save / Rename / Delete, Public, six tabs).
+Known open points carried from the agent: the wizard calls private draw methods of the two shared editors; `settings_chisurf.yaml` is reported MISSING by Qt as well (known issue);
+no docs page. **Accepted.** `boarding` is removed from `emtk_preview.json`.
