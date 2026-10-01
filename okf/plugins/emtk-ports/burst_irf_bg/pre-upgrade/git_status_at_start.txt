@@ -1,0 +1,5 @@
+ M chisurf/plugins/burst/burst_irf_bg/gui/app.py
+ M chisurf/plugins/burst/burst_irf_bg/gui/view_model.py
+ M chisurf/plugins/burst/burst_irf_bg/manifest.json
+?? chisurf/plugins/burst/burst_irf_bg/gui/controller.py
+?? chisurf/plugins/burst/burst_irf_bg/test/test_native.py
