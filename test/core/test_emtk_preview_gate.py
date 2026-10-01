@@ -64,6 +64,7 @@ def test_an_accepted_plugin_opens_emtk_in_auto():
     select = _selector()
     assert select(_manifest("fcs_channel_preset"), "auto") == ("emtk", "pkg.app:make")
     assert select(_manifest("model_manager"), "auto") == ("emtk", "pkg.app:make")
+    assert select(_manifest("trace_browser"), "auto") == ("emtk", "pkg.app:make")
 
 
 def test_a_preview_plugin_without_a_qt_tool_still_opens_emtk():
@@ -100,7 +101,5 @@ def test_no_plugin_with_an_accepted_report_stays_a_preview():
         text = report.read_text(encoding="utf-8")
         if re.search(r"\*\*Accepted\*\*|\*\*Accepted\.\*\*", text):
             accepted.add(report.parent.name)
-    # a multi-card port (trace_browser) is accepted card by card and swaps with its last card only
-    accepted -= {"trace_browser"}
     still_preview = sorted(i for i in emtk_readiness.preview_ids() if i.replace("_", "-") in accepted or i in accepted)
     assert not still_preview, f"accepted but still listed as preview: {still_preview}"

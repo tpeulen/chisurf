@@ -9,7 +9,6 @@
     "setup_channel_definition",
     "tttr_lut_tools",
     "boarding",
-    "switch_user",
-    "trace_browser"
+    "switch_user"
   ]
 }

@@ -61,3 +61,11 @@ complete except open item 1. The swap is NOT made**: the owner's rule is to swap
 of the Qt tool's features (HMM, time window, ndX) cannot be used from the emtk window in ChiSurf until a host fulfils the requests.
 Card T5 (host adapter, Qt allowed because it only *hosts*) closes this; `trace_browser` leaves `emtk_preview.json` after T5 is
 accepted.
+
+## Final review after card T5 (reviewer, 2026-10-01)
+
+Card T5 closed open item 1: HMM, time window and ndX open their windows from the emtk app inside ChiSurf ([REPORT-T5](REPORT-T5.md)),
+verified through a real `ControlHost` with real clicks. 185 plugin tests pass, compare exit 0, no Qt imports in the app or model.
+**Accepted.** `trace_browser` is removed from `emtk_preview.json`: its emtk window is now the default. The Qt tool files can be
+retired in a separate change. Remaining open items: the `time_ms` label that holds seconds in `api/io.py`, `python-docx` untested for
+real, emtk `DataTable` Ctrl/Shift-click, and a check in the full ChiSurf main window.
