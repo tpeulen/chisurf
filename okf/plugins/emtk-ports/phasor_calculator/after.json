@@ -1,0 +1,128 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-0.2",
+    "0",
+    "0.058",
+    "0.198",
+    "0.2",
+    "0.234",
+    "0.236",
+    "0.399",
+    "0.4",
+    "0.401",
+    "0.497",
+    "0.5",
+    "0.5,1,2,4,8",
+    "0.500",
+    "0.5ns",
+    "0.6",
+    "0.798",
+    "0.8",
+    "0.941",
+    "1",
+    "1ns",
+    "2",
+    "2ns",
+    "4",
+    "4.000ns",
+    "4ns",
+    "8",
+    "80.000mhz",
+    "8ns",
+    "controls",
+    "cursor",
+    "donortau0",
+    "effectivef=80mhz",
+    "frequency",
+    "frettrajectory",
+    "g",
+    "g(real)",
+    "guide",
+    "harmonic",
+    "help",
+    "iso-lifetimegrid",
+    "lifetimes(ns)",
+    "lifetimeticks",
+    "mixingregion",
+    "phasorplot",
+    "polargrid",
+    "referencegeometry",
+    "referencelifetimes",
+    "s",
+    "s(imaginary)",
+    "two-componentline",
+    "universalsemicircle",
+    "τ(ns)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "The short help page: reading the semicircle and every control."
+    },
+    {
+      "kind": "input_text",
+      "label": "frequency",
+      "id": "##frequency",
+      "tooltip": "Modulation frequency used to map lifetimes onto the phasor plot."
+    },
+    {
+      "kind": "input_text",
+      "label": "harmonic",
+      "id": "##harmonic",
+      "tooltip": "Harmonic number; the effective frequency is frequency x harmonic."
+    },
+    {
+      "kind": "input_text",
+      "label": "taus",
+      "id": "##taus",
+      "tooltip": "Comma-separated reference lifetimes (ns) drawn as the iso-lifetime grid and semicircle ticks."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Iso-lifetime grid",
+      "id": "Iso-lifetime grid##show_grid",
+      "tooltip": "Draw iso-phase and iso-modulation lines for the reference lifetimes."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Lifetime ticks",
+      "id": "Lifetime ticks##show_ticks",
+      "tooltip": "Mark the reference lifetimes on the universal semicircle."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Polar grid",
+      "id": "Polar grid##show_polar_grid",
+      "tooltip": "Draw a polar coordinate grid (concentric circles + angular spokes) for reading phase and modulation."
+    },
+    {
+      "kind": "checkbox",
+      "label": "FRET trajectory",
+      "id": "FRET trajectory##show_fret",
+      "tooltip": "Draw the quenched-donor FRET trajectory for the donor-only lifetime below."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_d0",
+      "id": "##tau_d0",
+      "tooltip": "Donor-only lifetime for the FRET trajectory (tau_DA = tau_D0 * (1 - E))."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

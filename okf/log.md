@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **phasor_calculator emtk app at parity** (EMTK-1, upgrade row 33): its controls are drawn from `phasor.view.json`, whose
+  groups moved into the spec; the plot keeps a short legend and equal scale (circles were ellipses).
+  [report](plugins/emtk-ports/phasor_calculator/REPORT.md).
+
 - **Guide 77 follows the phasor calculator's emtk window**: three docks instead of two tabs, the spec's groups, Guide and
   Help present, the **Reference lifetimes** table; two known defects removed (fields split across rows, Guide unreachable),
   figures regenerated (`okf/plugins/emtk-ports/phasor_calculator/scripts/make_guide77_figures.py`).
