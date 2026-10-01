@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **burst_irf_bg emtk app at parity** (EMTK-1, upgrade row): pattern export in the sized dialog (would have failed), status
+  once, frames on demand, headers that fit, guide targets drawn; the background rate it reports was corrected in core
+  (`b3652dca8`). [report](plugins/emtk-ports/burst_irf_bg/REPORT.md).
+
 - **Guide 57 background re-measured**: the §6 simulated folder (no dark counts, `true_responses()` background 0) reported
   0.335 kHz with the old tail fit; with `8e2c1f892` and `b3652dca8` it reports 0.001 kHz. The burst-analysis workflow's
   `bg_tail_fraction` is documented as the fallback it now is.

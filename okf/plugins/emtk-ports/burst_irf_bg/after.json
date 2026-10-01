@@ -1,0 +1,145 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.20",
+    "1",
+    "1.000",
+    "10",
+    "60",
+    "addtttrfolder",
+    "background(khz)",
+    "burst",
+    "burstsearchbaseline",
+    "channeldefinition",
+    "clearfiles",
+    "compute",
+    "dark-countfloor(quantile)",
+    "detector",
+    "exportmlepatterns",
+    "filesloaded0",
+    "guide",
+    "help",
+    "irfdecay",
+    "irfparameters",
+    "irfresults",
+    "loadfiles,definedetectors,thencompute.",
+    "measurementsdetectors",
+    "micro-timebinning",
+    "minphotons/burst",
+    "mmfdbdatasets",
+    "noirfdataavailable.loadtttrfiles,definedetectors,andcompute.",
+    "non-burst",
+    "opentttrfiles",
+    "photonwindow",
+    "prompt(ns)",
+    "sendtomle",
+    "stopcomputation",
+    "timewindow(ms)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Open TTTR files",
+      "id": "Open TTTR files",
+      "tooltip": "Choose one or more photon measurement files."
+    },
+    {
+      "kind": "button",
+      "label": "Add TTTR folder",
+      "id": "Add TTTR folder",
+      "tooltip": "Add supported photon measurements from a folder."
+    },
+    {
+      "kind": "button",
+      "label": "MMFDB datasets",
+      "id": "MMFDB datasets",
+      "tooltip": "Browse database measurements and resolve their local paths."
+    },
+    {
+      "kind": "button",
+      "label": "Clear files",
+      "id": "Clear files",
+      "tooltip": "Remove loaded files and analysis results."
+    },
+    {
+      "kind": "button",
+      "label": "Channel definition",
+      "id": "Channel definition",
+      "tooltip": "Open the complete detector setup, timing, calibration, PIE, TAC and optical editor."
+    },
+    {
+      "kind": "button",
+      "label": "Stop computation",
+      "id": "Stop computation",
+      "tooltip": "Cancel at the next file boundary and retain the previous results."
+    },
+    {
+      "kind": "drag_int",
+      "label": "min_photons",
+      "id": "##min_photons",
+      "tooltip": "Minimum photons per burst used when selecting bursts for the IRF/background estimate."
+    },
+    {
+      "kind": "drag_int",
+      "label": "photon_window",
+      "id": "##photon_window",
+      "tooltip": "Number of consecutive photons required inside the time window to call a burst."
+    },
+    {
+      "kind": "drag_float",
+      "label": "time_window",
+      "id": "##time_window",
+      "tooltip": "Sliding time window in milliseconds used by the burst search."
+    },
+    {
+      "kind": "slider_float",
+      "label": "quantile",
+      "id": "##quantile",
+      "tooltip": "Quantile of the non-burst micro-time counts used as the background (dark-count) floor."
+    },
+    {
+      "kind": "drag_int",
+      "label": "binning",
+      "id": "##binning",
+      "tooltip": "Micro-time binning factor applied before building the IRF histogram."
+    },
+    {
+      "kind": "button",
+      "label": "🌙 Compute",
+      "id": "🌙 Compute",
+      "tooltip": "Extract the instrument response (IRF) and the per-detector background rates from the loaded files."
+    },
+    {
+      "kind": "button",
+      "label": "🎯 Send to MLE",
+      "id": "🎯 Send to MLE",
+      "tooltip": "Send the extracted IRF and background patterns to the burst-MLE lifetime fit."
+    },
+    {
+      "kind": "button",
+      "label": "Export MLE patterns",
+      "id": "Export MLE patterns",
+      "tooltip": "Save per-detector IRF and background patterns in a NumPy archive for scripted MLE fitting."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Start a step-by-step guided tour of this tool."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "Open the help window with reference documentation."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
