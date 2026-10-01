@@ -1,0 +1,143 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "all",
+    "burstfilters",
+    "burstgates",
+    "burststable",
+    "cleardata",
+    "columnsdetectors",
+    "datacolumns",
+    "datasource",
+    "detector",
+    "draggableregionpresets",
+    "erange(notavailable)",
+    "exportgatedbursts",
+    "exportselectedbursts",
+    "guide",
+    "help",
+    "histogram",
+    "histogramcolumn",
+    "mmfdbdatasets",
+    "noburstsloaded.opena.burfolderorfile.",
+    "nodataloaded",
+    "nohistogramdataavailable.",
+    "openfile",
+    "openfolder",
+    "pathnodataloaded",
+    "regionfullrange[0.00-1.00]",
+    "regionhighfret[0.65-0.95]",
+    "regionlowfret[0.05-0.35]",
+    "regionmidfret[0.35-0.65]",
+    "sizerange(notavailable)",
+    "srange(notavailable)",
+    "stoploading",
+    "usetableselectionforhist"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Open Folder",
+      "id": "Open Folder",
+      "tooltip": "Open a folder of .bur burst files (with their companions)."
+    },
+    {
+      "kind": "button",
+      "label": "Open File",
+      "id": "Open File",
+      "tooltip": "Open a single .bur burst file or .pto container."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Start a step-by-step guided tour of this tool."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "Open the help window with reference documentation."
+    },
+    {
+      "kind": "button",
+      "label": "MMFDB datasets",
+      "id": "MMFDB datasets",
+      "tooltip": "Load a burst analysis dataset from the database."
+    },
+    {
+      "kind": "button",
+      "label": "Export gated bursts",
+      "id": "Export gated bursts",
+      "tooltip": "Save every burst passing the current gates as CSV."
+    },
+    {
+      "kind": "button",
+      "label": "Export selected bursts",
+      "id": "Export selected bursts",
+      "tooltip": "Save selected table rows that also pass the current gates."
+    },
+    {
+      "kind": "button",
+      "label": "Clear data",
+      "id": "Clear data",
+      "tooltip": "Remove the current table, histogram and row selection."
+    },
+    {
+      "kind": "button",
+      "label": "Stop loading",
+      "id": "Stop loading",
+      "tooltip": "Cancel between input files and retain the previous table."
+    },
+    {
+      "kind": "combo",
+      "label": "det",
+      "id": "##det",
+      "tooltip": "Detector (channel group) whose bursts are shown."
+    },
+    {
+      "kind": "combo",
+      "label": "col",
+      "id": "##col",
+      "tooltip": "Table column whose distribution is plotted in the histogram."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Use table selection for hist",
+      "id": "Use table selection for hist",
+      "tooltip": "Histogram only the rows currently selected in the bursts table."
+    },
+    {
+      "kind": "button",
+      "label": "Region: Low FRET [0.05-0.35]",
+      "id": "Region: Low FRET [0.05-0.35]",
+      "tooltip": "Apply the Low FRET FRET gate, or drag this button onto a plot."
+    },
+    {
+      "kind": "button",
+      "label": "Region: Mid FRET [0.35-0.65]",
+      "id": "Region: Mid FRET [0.35-0.65]",
+      "tooltip": "Apply the Mid FRET FRET gate, or drag this button onto a plot."
+    },
+    {
+      "kind": "button",
+      "label": "Region: High FRET [0.65-0.95]",
+      "id": "Region: High FRET [0.65-0.95]",
+      "tooltip": "Apply the High FRET FRET gate, or drag this button onto a plot."
+    },
+    {
+      "kind": "button",
+      "label": "Region: Full Range [0.00-1.00]",
+      "id": "Region: Full Range [0.00-1.00]",
+      "tooltip": "Apply the Full Range FRET gate, or drag this button onto a plot."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

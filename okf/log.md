@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **burst_browser emtk app at parity** (EMTK-1): the stream's app never polled its loader nor drew its dialogs (a load never
+  finished in the real app); now polled and drawn with the Qt dialog titles/filter. Shared drawing: table headers fit,
+  size gate legible, guide rebuilt on real controls. [report](plugins/emtk-ports/burst_browser/REPORT.md).
+
 * **accurate_fret verified against the Qt tool by a second session and given click coverage (SWAP4B; first pass by EMTK-1).** Drops through the host, error paths and `compare` re-checked (nothing wrong there). Fixed: the two result tables were hand-drawn (now `data_table` sections), the plot click/guide targets were the legend's rectangle, rectangles of collapsed panels stayed as targets, guide step 9 pointed at a histogram without donor-only bursts. 32 click-driven tests (file dialog, channel lists, Calibrate/Stop, tabs, headers, fields, data actions, export, Guide/Help, host drop); plugin folder 57 passed, 1 xfailed (wheel does not reach docked plots, emtk). Report addendum `okf/plugins/emtk-ports/accurate_fret/REPORT.md` section 12.
 
 - **fcs-lfcs-sim emtk app at parity** (EMTK-1): the spec-drawn form, strip and log-axis plot with the Qt pens replace the
