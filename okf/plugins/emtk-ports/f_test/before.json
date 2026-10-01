@@ -1,0 +1,45 @@
+{
+  "controls": [
+    "?",
+    "confidence",
+    "f-test—comparetwonestedmodels",
+    "fromfit",
+    "guide",
+    "n₁",
+    "n₂",
+    "params",
+    "ν(dof)",
+    "χ²(1)",
+    "χ²(2)",
+    "χ²-max—upperlimitfromonefit",
+    "χ²max",
+    "χ²min"
+  ],
+  "labels": [
+    "confidence",
+    "n₁",
+    "n₂",
+    "params",
+    "ν (dof)",
+    "χ² max",
+    "χ² min",
+    "χ²(1)",
+    "χ²(2)"
+  ],
+  "buttons": [
+    "?",
+    "Guide",
+    "▼  F-test — compare two nested models",
+    "▼  χ²-max — upper limit from one fit",
+    "📊 From fit"
+  ],
+  "line_edits": 10,
+  "combos": 0,
+  "spin_boxes": 10,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.core.f_test.gui.tool:FTestTool (+HEAD no overlays)",
+  "size": [
+    1200,
+    800
+  ]
+}

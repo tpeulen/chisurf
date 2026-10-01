@@ -1,0 +1,9 @@
+ M chisurf/plugins/core/f_test/__init__.py
+ M chisurf/plugins/core/f_test/__main__.py
+ M chisurf/plugins/core/f_test/gui/__init__.py
+ M chisurf/plugins/core/f_test/gui/tool.py
+ M chisurf/plugins/core/f_test/manifest.json
+?? chisurf/plugins/core/f_test/gui/app.py
+?? chisurf/plugins/core/f_test/gui/model.py
+?? chisurf/plugins/core/f_test/test/renders/
+?? chisurf/plugins/core/f_test/test/test_native.py

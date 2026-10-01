@@ -1,0 +1,211 @@
+diff --git a/chisurf/plugins/core/f_test/__init__.py b/chisurf/plugins/core/f_test/__init__.py
+index fb5e29a98..ee67d743f 100644
+--- a/chisurf/plugins/core/f_test/__init__.py
++++ b/chisurf/plugins/core/f_test/__init__.py
+@@ -12,14 +12,21 @@ from pathlib import Path
+ from chisurf.core.plugin import load_manifest
+ from chisurf.core.plugin.registry import apply_manifest_statefulness
+ 
+-from .gui.tool import FTestTool, FTestWidget  # noqa: F401
+-
+ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
+ name = _manifest.display_name if _manifest is not None else "Main:Tools:F-Test"
+ 
+ __all__ = ["FTestTool", "FTestWidget"]
+ 
++def __getattr__(name: str):
++    if name in {"FTestTool", "FTestWidget"}:
++        from .gui import tool
++
++        return getattr(tool, name)
++    raise AttributeError(name)
++
++
+ if __name__ == "plugin":
++    from .gui.tool import FTestTool
+     window = FTestTool()
+     if _manifest is not None:
+         apply_manifest_statefulness(window, _manifest)
+diff --git a/chisurf/plugins/core/f_test/__main__.py b/chisurf/plugins/core/f_test/__main__.py
+index 883c02a73..f8b8d456c 100644
+--- a/chisurf/plugins/core/f_test/__main__.py
++++ b/chisurf/plugins/core/f_test/__main__.py
+@@ -1,16 +1,11 @@
+-import sys
+-
+-from chisurf.gui import QtWidgets
+-from chisurf.plugins.core.f_test.gui.tool import FTestTool
++"""Launch the native F-test calculator."""
+ 
+ 
+ def main():
+-    """Launch the F-test / χ²-max calculator as a standalone window."""
+-    app = QtWidgets.QApplication(sys.argv)
+-    win = FTestTool()
+-    win.show()
+-    sys.exit(app.exec_())
++    from chisurf.emtk.__main__ import main as launch
++
++    return launch(["--plugin", "f_test", "--size", "900x850"])
+ 
+ 
+ if __name__ == "__main__":
+-    main()
++    raise SystemExit(main())
+diff --git a/chisurf/plugins/core/f_test/gui/__init__.py b/chisurf/plugins/core/f_test/gui/__init__.py
+index 19b500b05..da3bd0b25 100644
+--- a/chisurf/plugins/core/f_test/gui/__init__.py
++++ b/chisurf/plugins/core/f_test/gui/__init__.py
+@@ -1,5 +1,11 @@
+-"""GUI package for the F-test / χ²-max calculator."""
+-
+-from .tool import FTestTool, FTestWidget
++"""F-test native factory with lazy legacy Qt compatibility exports."""
+ 
+ __all__ = ["FTestTool", "FTestWidget"]
++
++
++def __getattr__(name: str):
++    if name in __all__:
++        from . import tool
++
++        return getattr(tool, name)
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/core/f_test/gui/tool.py b/chisurf/plugins/core/f_test/gui/tool.py
+index 611bdf7b9..3bc66eeef 100644
+--- a/chisurf/plugins/core/f_test/gui/tool.py
++++ b/chisurf/plugins/core/f_test/gui/tool.py
+@@ -25,72 +25,19 @@ from typing import Any
+ 
+ from qtpy import QtWidgets
+ 
+-from chisurf.core.dataspec import load_view_spec
+-from chisurf.core.math.statistics import chi2_max, f_test_chi2r, f_test_confidence
++from chisurf.core.dataspec import load_view_spec as load_view_spec
++from chisurf.core.math.statistics import (
++    chi2_max as chi2_max,
++    f_test_chi2r as f_test_chi2r,
++    f_test_confidence as f_test_confidence,
++)
+ from chisurf.gui.glyphs import Glyphs
+ from chisurf.gui.widgets.messages import Msg
+ from chisurf.gui.widgets.tools import ChisurfDockTool
+ 
+ _GUI_DIR = pathlib.Path(__file__).parent
+ 
+-#: Edited attr -> the recompute method it triggers (mirrors the legacy slots).
+-_CONF_ATTRS = frozenset({"chi2_2", "n1", "n2"})
+-_CHI2_2_ATTRS = frozenset({"chi2_1", "conf_level"})
+-_CHI2_MAX_ATTRS = frozenset({"chi2_min", "npars", "dof", "conf_level_2"})
+-
+-
+-class _FTestModel:
+-    """Backing model for the F-test / χ²-max calculator; fields in ftest.view.json."""
+-
+-    def __init__(self) -> None:
+-        # F-test: compare two nested models. The defaults describe a plausible
+-        # pair -- the extra parameters of model 2 buy a 10% lower reduced χ².
+-        self.chi2_1 = 1.1
+-        self.n1 = 100
+-        self.chi2_2 = 1.0
+-        self.n2 = 98
+-        self.conf_level = 0.95
+-        self.recompute_conf()
+-        # χ²-max: upper χ² limit from a single fit.
+-        self.chi2_min = 1.0
+-        self.npars = 1
+-        self.dof = 100
+-        self.conf_level_2 = 0.95
+-        self.chi2_max = 0.0
+-        self.recompute_chi2_max()
+-
+-    def view_spec(self):
+-        return load_view_spec(_GUI_DIR / "ftest.view.json")
+-
+-    def recompute_conf(self) -> None:
+-        """Confidence that model 2 is justified: ``F.cdf(χ²₁/χ²₂, n₁, n₂)``."""
+-        try:
+-            self.conf_level = f_test_confidence(
+-                chi2r_1=self.chi2_1, chi2r_2=self.chi2_2, nu_1=self.n1, nu_2=self.n2
+-            )
+-        except (ZeroDivisionError, ValueError):
+-            pass
+-
+-    def recompute_chi2_2(self) -> None:
+-        """χ²(2) threshold for the current confidence: ``χ²₁ / F.ppf(conf, n₁, n₂)``."""
+-        try:
+-            self.chi2_2 = f_test_chi2r(
+-                chi2r_1=self.chi2_1, conf_level=self.conf_level, nu_1=self.n1, nu_2=self.n2
+-            )
+-        except (ZeroDivisionError, ValueError):
+-            pass
+-
+-    def recompute_chi2_max(self) -> None:
+-        """Upper χ² limit of a fit at ``conf_level_2`` for ``npars`` parameters and ``dof``."""
+-        self.chi2_max = float(
+-            chi2_max(
+-                chi2_value=self.chi2_min,
+-                number_of_parameters=max(1, int(self.npars)),
+-                nu=max(1, int(self.dof)),
+-                conf_level=self.conf_level_2,
+-            )
+-        )
+-
++from .model import FTestModel as _FTestModel, _CONF_ATTRS, _CHI2_2_ATTRS, _CHI2_MAX_ATTRS
+ 
+ class FTestTool(ChisurfDockTool):
+     """F-test / χ²-max calculator; constructs with no required arguments (hub-embeddable).
+@@ -191,19 +138,7 @@ class FTestTool(ChisurfDockTool):
+ 
+     def _load_fit(self, fit: Any, target: str) -> None:
+         """Copy a fit's statistics into the selected target section, then recompute."""
+-        n_points = int(fit.model.n_points)
+-        n_free = int(fit.model.n_free)
+-        chi2r = float(fit.chi2r)
+-        m = self._model
+-        if target == "model1":
+-            m.chi2_1, m.n1 = chi2r, max(1, n_points - n_free)
+-            m.recompute_chi2_2()
+-        elif target == "model2":
+-            m.chi2_2, m.n2 = chi2r, max(1, n_points - n_free)
+-            m.recompute_conf()
+-        else:  # chi2max
+-            m.chi2_min, m.npars, m.dof = chi2r, n_free, max(1, n_points - n_free)
+-            m.recompute_chi2_max()
++        self._model.load_fit(fit, target)
+         self._form.sync_fields()
+ 
+     # ── field wiring: recompute on edit (dispatch by attr) ────────────
+diff --git a/chisurf/plugins/core/f_test/manifest.json b/chisurf/plugins/core/f_test/manifest.json
+index e6ed9ea2b..000690beb 100644
+--- a/chisurf/plugins/core/f_test/manifest.json
++++ b/chisurf/plugins/core/f_test/manifest.json
+@@ -3,9 +3,15 @@
+   "version": "2.0.0",
+   "display_name": "Main:Tools:F-Test",
+   "description": "F-test calculator: compare two nested model fits (confidence <-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Main", "Tools", "Statistics"],
+-  "icon": "📉",
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Main",
++    "Tools",
++    "Statistics"
++  ],
++  "icon": "\ud83d\udcc9",
+   "state_namespace": "f_test",
+   "statefulness": {
+     "enabled": true,
+@@ -15,7 +21,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.core.f_test.gui.tool:FTestTool"
++    "gui": "chisurf.plugins.core.f_test.gui.tool:FTestTool",
++    "emtk": "chisurf.plugins.core.f_test.gui.app:make_app"
+   },
+   "rpc_methods": [],
+   "dependencies": {},
