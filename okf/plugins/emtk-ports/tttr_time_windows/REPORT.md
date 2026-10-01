@@ -99,3 +99,37 @@ Dock layout as Qt (settings folder instead of QSettings); geometry is the host's
 ## 11. Self-check
 
 - [x] D1 · [x] D2 · [x] D3 · [x] D4 · [x] D5 · [x] D6 · [x] D7 · [x] D8 · [x] D9 · [x] D10
+
+## 12. Verification pass (2026-10-01, T-20261001-SWAP4B)
+
+Re-verified against the committed Qt tool (`scripts/qt_head.py`, `before_populated_*.png`). The earlier port stands; two real defects,
+one dropped log line and the guard failures were found.
+
+| # | Finding | Reproduction (5 lines) | Fix |
+|---|---|---|---|
+| 1 | **REGRESSION: dropped files did nothing, in every host.** The hook `on_paths_dropped` sat on the controller, not on the app; the Qt window also accepted dropped folders | `app = create_app(); [n for n in dir(app) if "drop" in n]` -> `[]` (the controller has `on_paths_dropped`) | `files_dropped` = `on_files_dropped` = `on_paths_dropped` on the app; a dropped folder is searched recursively; a drop with nothing supported says "Nothing to queue: ..." |
+| 2 | **Failures left the status line at "Processing files..."** (Qt showed "Processing failed" / "Preview failed") | `create_app(client=<raises in analyze_files>)`, add a file, `_process_all()`, poll -> `message == "Processing files…"`; only the log had the error | `_fail()` sets "Processing failed" / "Preview failed" and logs the detail |
+| 3 | The log lacked the Qt tool's first line `Processing N file(s) with time window = X ms…` | process, read `_log_lines[0]` | logged when Process starts |
+| 4 | Guide never waited and had bare-string targets (guards `test_guide_is_a_tour_not_a_slideshow`); help.md was a 12-line stub | seam test `-k tttr_time_windows` | 5-step guide with `{"action": ...}` targets and `await`s on Files, Time window and Process; `wait_for_controls=True`; fuller help |
+| 5 | Allow-list lines struck: `test/plugin_help_guide_allowlist.txt` (`tttr_time_windows/gui`) and `test/prd_mention_allowlist.txt` (`tttr_time_windows/__init__.py`, whose docstring named a PRD) | the two stale-entry tests | struck; the PRD name removed from the docstring |
+
+Checked and fine: Process with no files (log line), the byte-identical `.bst` (size, sha256), Remove/Clear, dock layout kept only when changed,
+status line not a window over the tool, Stop button, both sizes, Qt-free, tooltips.
+
+Tests added (`tests/test_emtk_time_windows_parity.py`): `test_dropped_files_and_folders_are_queued`,
+`test_a_failing_process_is_reported_not_left_as_processing`, `test_a_failing_preview_is_reported`,
+`test_process_without_files_says_so_and_a_good_run_logs_the_windows`, `test_remove_and_clear`, `test_guide_waits_for_the_user`.
+`tests/test_construction_smoke.py::test_help_and_guide_have_real_content` expected 4 guide steps, now 5 (queue, duration, output, preview, process).
+
+```
+$ python -m pytest chisurf/plugins/tttr/tttr_time_windows -q -p no:cacheprovider
+33 passed in 12.77s
+```
+
+Deliberate breakage (restored): the failure publisher reverted to log-only -> `test_a_failing_process_is_reported_not_left_as_processing`
+failed; the drop hook made to return `False` -> `test_dropped_files_and_folders_are_queued` failed.
+
+`after` / `compare`: `35 controls, 0 without tooltip, qt-free=yes`; `compare` exit 0 (lost [] / stale []).
+Screenshots read: `verify_process_failed_1200x800.png` (status line "Processing failed" and the reason in the log),
+`verify_drop_folder_1200x800.png` / `_800x600.png` (a dropped folder queued, preview), `verify_drop_nothing_1200x800.png`,
+`verify_guide_await_files_1200x800.png`. Script: `scripts/capture_verify.py`.

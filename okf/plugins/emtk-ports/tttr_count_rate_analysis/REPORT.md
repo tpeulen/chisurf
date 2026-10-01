@@ -99,3 +99,39 @@ Shared channel-editor gaps (section 5).
 ## 11. Self-check
 
 - [x] D1 · [x] D2 (shared-editor gaps declared) · [x] D3 · [x] D4 · [x] D5 · [x] D6 · [x] D7 · [x] D8 · [x] D9 · [x] D10
+
+## 12. Verification pass (2026-10-01, T-20261001-SWAP4B)
+
+Re-verified against the committed Qt tool (`before_populated_tab_*.png`, `scripts/qt_head.py`) with the lens of the first accepted
+batch (dead drop hooks, edits not reaching the model, undismissable errors). The earlier port stands; three real defects and the two
+guard failures were found.
+
+| # | Finding | Reproduction (5 lines) | Fix |
+|---|---|---|---|
+| 1 | **REGRESSION: drop reached nothing in the native and web hosts.** The Qt list took drops of files and folders; the app only had the Qt-era `on_paths_dropped` (the Qt host calls it, `emtk.native` / `emtk.web` call `files_dropped` / `on_files_dropped`) | `app = create_app(); hasattr(app, "files_dropped")` -> `False`; `app.on_files_dropped([ptu])` -> `AttributeError` | `files_dropped` = `on_files_dropped` = `on_paths_dropped` on the app; folders are expanded, non-TTTR drops say so on the status line |
+| 2 | Guide never waited (guard `test_guide_is_a_tour_not_a_slideshow`) and its targets were bare strings (guard `test_guide_steps_point_at_real_widgets` crashed with `'str' object has no attribute 'get'`) | `pytest test/test_plugin_help_guide_seam.py -k tttr_count_rate_analysis` | 5-step guide with `{"action": ...}` targets and three `await`s; the tour has `wait_for_controls=True` and the buttons call `notify_used` |
+| 3 | Adding files while an analysis runs was ignored without a word | `tool.calculate(); tool.add_paths([p])` -> `message == ""` | message "Wait for the running analysis to finish before adding files." |
+| 4 | Allow-list line `tttr_count_rate_analysis/gui` was stale (help.md and guide.json exist) | seam test `test_allowlist_has_no_stale_entries` | struck from `test/plugin_help_guide_allowlist.txt` |
+
+Checked and fine: Calculate with no files / no channels (status line, no box to dismiss), a failing file read (status line shows the
+reader's message, results stay empty), Save with nothing computed, Save writes the Qt table text, Remove/Clear, Stop analysis, settings
+round trip, Qt-free, tooltips in all six editor sections, both sizes.
+
+Tests added (`tests/test_emtk_count_rate_parity.py`, now 33 passed for the folder):
+`test_dropped_files_and_folders_are_queued`, `test_calculate_and_save_errors_reach_the_status_line`,
+`test_failing_read_is_reported_and_save_writes_the_table`, `test_guide_waits_for_the_user`.
+
+```
+$ python -m pytest chisurf/plugins/tttr/tttr_count_rate_analysis -q -p no:cacheprovider
+33 passed in 20.61s
+$ python -m pytest test/test_plugin_help_guide_seam.py test/test_prd_mentions.py -q -p no:cacheprovider -k "tttr_count_rate_analysis or tttr_time_windows"
+5 passed, 1 skipped, 239 deselected in 1.00s
+```
+
+Deliberate breakage (restored): renaming the app's drop hooks -> `test_dropped_files_and_folders_are_queued` failed; `wait_for_controls=False`
+-> `test_guide_waits_for_the_user` failed.
+
+`after` / `compare`: `43 controls, 0 without tooltip, qt-free=yes`; `compare` exit 0 (lost [] / stale []).
+Screenshots read: `verify_error_no_files_1200x800.png` (status line, not a box), `verify_populated_1200x800.png` / `_800x600.png`,
+`verify_guide_await_add_files_1200x800.png` (spotlight on Add files, Next disabled until pressed), `verify_guide_channels_1200x800.png`.
+Script: `scripts/capture_verify.py`.
