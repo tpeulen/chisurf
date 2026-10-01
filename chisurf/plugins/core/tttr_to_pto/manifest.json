@@ -14,7 +14,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.tttr_to_pto.gui.tool:TttrToPtoTool"
+    "gui": "chisurf.plugins.core.tttr_to_pto.gui.tool:TttrToPtoTool",
+    "emtk": "chisurf.plugins.core.tttr_to_pto.gui.app:create_app"
   },
   "operation_types": ["measurement_import"],
   "menu_hidden": true

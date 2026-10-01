@@ -1,0 +1,24 @@
+{
+  "controls": [
+    "1",
+    "?",
+    "dropvendorphotonfile(s)(.ptu,.spc,.ht3,)topackthemintoone.ptobesidethefirst,ordropa.ptotounpacktheoriginalvendorfile(s)backout.whicheverdirectionyoudrop,thefile(s)youdroppedarekeptuntouched.",
+    "guide"
+  ],
+  "labels": [
+    "Drop vendor photon file(s) (.ptu, .spc, .ht3, ...) to pack them into one .pto beside the first, or drop a .pto to unpack the original vendor file(s) back out. Whichever direction you drop, the file(s) you dropped are kept untouched."
+  ],
+  "buttons": [
+    "?",
+    "Guide"
+  ],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 1,
+  "entrypoint": "chisurf.plugins.core.tttr_to_pto.gui.tool:TttrToPtoTool",
+  "size": [
+    1200,
+    800
+  ]
+}

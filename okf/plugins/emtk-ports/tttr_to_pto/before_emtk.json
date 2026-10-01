@@ -1,0 +1,21 @@
+{
+ "host_would_accept_a_drop": false,
+ "rows": [
+  [
+   "pack",
+   "verified"
+  ],
+  [
+   "unpack",
+   "verified"
+  ],
+  [
+   "unpack",
+   "error"
+  ],
+  [
+   "reject",
+   "rejected"
+  ]
+ ]
+}

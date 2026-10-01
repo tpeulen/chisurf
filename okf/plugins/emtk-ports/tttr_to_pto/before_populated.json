@@ -1,0 +1,28 @@
+{
+ "accepts": {
+  "m000.spc": true,
+  "m000.set": false
+ },
+ "after_pack": [
+  "m000.spc, m001.spc \u2192 m000.pto"
+ ],
+ "pto": [
+  "m000.pto"
+ ],
+ "pto_size": 2423165,
+ "after_unpack": [
+  "m000.spc, m001.spc \u2192 m000.pto",
+  "m000.pto \u2192 m000.spc, m000.set, m001.spc"
+ ],
+ "recovered": [
+  "m000.set",
+  "m000.spc",
+  "m001.spc"
+ ],
+ "spc_equal": true,
+ "after_error": [
+  "m000.spc, m001.spc \u2192 m000.pto",
+  "m000.pto \u2192 m000.spc, m000.set, m001.spc",
+  "bad.pto: could not unpack (could not open /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp.VwRH5TR4VW/bad.pto: /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp.VwRH5TR4VW/bad.pto is not an EBML file)"
+ ]
+}
