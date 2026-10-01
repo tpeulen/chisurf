@@ -2,6 +2,8 @@
 
 ## 2026-09-30
 
+* **Burst survey reviewed; invented-data defect found.** `okf/plugins/emtk-ports/burst-survey.md` (five large burst/trace plugins: stages, Qt LOC, Qt-free logic, existing emtk apps, dirty trees, proposed cards; only `trace_browser` is clean). Verified in the source: `burst_mle_analysis/gui/app.py` and `burst_h2mm/gui/app.py` draw synthetic decays, a hard-coded rate table and a seeded random scatter as if they were results. Recorded in known issues; PRD-153 gains rule 8a (no invented data).
+
 * **Wave 3 plan** (`okf/plugins/emtk-ports/wave3-plan.md`): task cards for the updater (U1 updater tab, U2 package manager; the logic is already Qt-free in `updater.py`, tests must never run a real update or reach the network) and `fret_docking` (F1 form/actions/jobs, F2 results, F3 structure view pending a reviewer decision on embedding chimol), and a read-only survey (card S) of the large burst tools before they are cut into cards.
 
 * **emtk `export` module; tab-strip overflow deferred.** emtk 079ba24 adds `emtk.export` (`grab`, `png_bytes`, `save_png`): an ImApp or a bare `gui()` is drawn headless and written as a PNG, so a ported tool can keep a "Save picture" action (whole window, not a single plot). The docked tab-strip overflow (known issues) was not touched: `emtk/docking.py` has another stream's uncommitted rewrite of exactly that function (context menus, tooltips), so a scroll hunk would interleave with it. Wave 1 (`mfd_prepare`, `burst_ebfret`, `alex_suite`) stays skipped on the owner's decision: each has uncommitted edits to `gui/app.py`.

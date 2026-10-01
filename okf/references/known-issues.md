@@ -6049,3 +6049,14 @@ under `test.gui.emtk_port_parity` recording. flc-2d uses a drop-down for its sol
 Still open: `emtk.docking` tab strips neither scroll nor wrap: seven tabs need ~670 px, a narrower
 region cuts the last tab (flc-2d avoids it with one full-width strip). Fix direction: tooltip
 after the radio loop; an overflow menu or scrolling for tabs.
+
+## Ported burst apps draw invented data (found 2026-10-01)
+
+`chisurf/plugins/burst/burst_mle_analysis/gui/app.py` (around lines 280-340) and
+`chisurf/plugins/burst/burst_h2mm/gui/app.py` (around lines 395-505) fill their plots and tables with
+synthetic values -- a model IRF and decay built with `np.exp`, a lifetime histogram from `tau1`/`tau2`, a hard-coded
+rate table, a seeded `np.random.normal` FRET scatter -- instead of the analysis result, so the window looks like an
+analysis of the user's data and is not. In the burst-analysis MLE step the real wizard is created and hidden and the
+mock is what is shown. Reproduce: open either app with no data and read the plot calls. Fix: draw only model results
+(an empty-state message when there are none); a demo is allowed only behind an explicit, labelled Demo action.
+PRD-153 now forbids invented data in a port. Survey: `okf/plugins/emtk-ports/burst-survey.md`.
