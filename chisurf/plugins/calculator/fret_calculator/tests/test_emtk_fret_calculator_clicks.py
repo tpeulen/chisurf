@@ -249,8 +249,6 @@ def test_the_guide_button_starts_the_tour_and_close_tour_ends_it(app):
     assert not app.tour.active
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: 'Close Tour##tour', '◄ Prev##tour' and 'Next ►##tour' share one id (emtk takes only the "
-                   "text after ## as the id), so a click on Prev or Next never fires; see REPORT.md section 10")
 def test_the_tour_next_and_prev_buttons_can_be_clicked(app):
     press_text(app, "Guide")
     type_into(app, "tau0", "3")
@@ -261,7 +259,7 @@ def test_the_tour_next_and_prev_buttons_can_be_clicked(app):
 
 
 def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app):
-    """Every awaited control is operated with real clicks and typing; Next is the tour's own button (see the xfail above)."""
+    """Every awaited control is operated with real clicks and typing; Next is clicked in test_the_tour_next_and_prev_buttons_can_be_clicked."""
     press_text(app, "Guide")
     walked = 0
     while app.tour.active and walked < 3 * len(app.tour.steps):

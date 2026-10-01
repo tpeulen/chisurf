@@ -291,7 +291,7 @@ def test_guide_button_starts_the_tour_whose_awaited_step_waits_for_a_list_click(
     draw(app)
     click(app, app.item_rects["guide"])
     assert app.tour.active
-    app.tour.next()  # the Next button's callback (its click is the xfail below)
+    app.tour.next()  # the Next button's callback (its click is test_the_tour_next_button_can_be_clicked)
     draw(app)
     assert app.tour.awaiting
     click_entry(app, "phasor")
@@ -300,8 +300,6 @@ def test_guide_button_starts_the_tour_whose_awaited_step_waits_for_a_list_click(
     assert not app.tour.active
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: 'Close Tour##tour', '◄ Prev##tour' and 'Next ►##tour' share one id (emtk takes only the text "
-                   "after ## as the id), so a click on Prev or Next never fires; see REPORT.md section 10")
 def test_the_tour_next_button_can_be_clicked(app):
     draw(app)
     click(app, app.item_rects["guide"])
