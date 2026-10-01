@@ -1,0 +1,28 @@
+{
+  "plugin": "switch_user",
+  "explained": {
+    "1": "Row number of the inventory of the Qt combo popup lists (inventory artefact, not a control).",
+    "10.0.0.7": "An entry of the server-history list of the editable Server combo: the list is the 'Recent servers' choice, drawn only when opened (the app has no editable combo; a text field plus the picker replace it).",
+    "127.0.0.1": "An entry of the server-history list of the editable Server combo: the 'Recent servers' choice lists it when opened.",
+    "2": "Row number of the inventory of the Qt combo popup lists (inventory artefact, not a control).",
+    "3": "Row number of the inventory of the Qt combo popup lists (inventory artefact, not a control).",
+    "admin": "An entry of the account list of the editable User combo: the 'Select user' choice lists it when opened (a text field plus the picker replace the editable combo)."
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "9100",
+    "enteryourpasswordandpresslogin.",
+    "guide",
+    "help",
+    "port",
+    "recentservers"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 18,
+  "after_controls": 18
+}

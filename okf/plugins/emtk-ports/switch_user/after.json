@@ -1,0 +1,93 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "9100",
+    "alice",
+    "cancel",
+    "chisurf",
+    "enteryourpasswordandpresslogin.",
+    "guide",
+    "help",
+    "lab-server.example.org",
+    "login",
+    "loginautomaticallywhenallowed",
+    "password",
+    "port",
+    "recentservers",
+    "saveselecteduser",
+    "selectuser",
+    "server",
+    "signintothemmfdbworkspace",
+    "user"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the fields, the two remember options and what happens on Login."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through signing in as another account."
+    },
+    {
+      "kind": "input_text",
+      "label": "server",
+      "id": "##server",
+      "tooltip": "Host name or address of the MMFDB server. Type one, or pick a remembered server below."
+    },
+    {
+      "kind": "input_text",
+      "label": "port",
+      "id": "##port",
+      "tooltip": "Command port of the MMFDB server (1 to 65535). The publish port is the next one."
+    },
+    {
+      "kind": "input_text",
+      "label": "user",
+      "id": "##user",
+      "tooltip": "The account to sign in as. Type any account name, or pick one below."
+    },
+    {
+      "kind": "input_text",
+      "label": "password",
+      "id": "##password",
+      "tooltip": "The account's password. It is shown as stars and never stored."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Save selected user",
+      "id": "Save selected user##save_login",
+      "tooltip": "Remember this account as the default one for the next start."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Log in automatically when allowed",
+      "id": "Log in automatically when allowed##autologin",
+      "tooltip": "Keep a session token in the operating system's credential store so the next start signs in without a password."
+    },
+    {
+      "kind": "button",
+      "label": "Login",
+      "id": "Login##login",
+      "tooltip": "Authenticate against the MMFDB. On success the account and server are remembered and the window closes."
+    },
+    {
+      "kind": "button",
+      "label": "Cancel",
+      "id": "Cancel##cancel",
+      "tooltip": "Close without changing the active user."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
