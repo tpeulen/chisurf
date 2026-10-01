@@ -1,0 +1,192 @@
+"""EMTK host for the ChiMOL molecular viewer.
+
+ChiMOL ships its own toolkit-free desktop host (:mod:`chimol.hosts.native`)
+rendering through wgpu. This adapter embeds that viewer in ChiSurf's native
+plugin chrome: the chimol renderer draws offscreen, each frame is read back to
+a numpy image and blitted through :func:`emtk.im.image`, and pointer, wheel
+and keyboard events are forwarded to chimol's viewport canvas — the same
+handlers its own window drives, so orbit/pan/zoom behave identically.
+"""
+
+from __future__ import annotations
+
+import os
+
+import numpy as np
+from emtk import im
+from emtk.app import ImApp
+
+
+class ChimolHostApp(ImApp):
+    """Run ChiMOL inside an EMTK surface."""
+
+    #: Height of the status strip kept below the viewport.
+    STATUS_H = 26.0
+
+    def __init__(self, size: tuple[int, int] = (900, 620)):
+        self._chimol_size = size
+        self._chimol = None
+        self._chimol_error = ""
+        self._frame: np.ndarray | None = None
+        self._surface = size
+        super().__init__(self.render)
+
+    # ── chimol lifecycle (lazy: keep plugin import toolkit- and wgpu-free) ──
+    def _ensure_chimol(self) -> bool:
+        if self._chimol is not None or self._chimol_error:
+            return self._chimol is not None
+        try:
+            # The choice has to precede chimol.core.viewer's import: with the
+            # default "auto" and ChiSurf's Qt already loaded, Viewer binds a
+            # QWidget base and building one without a QApplication aborts.
+            # "none" is exactly what chimol's own toolkit-free host sets.
+            os.environ.setdefault("CHIMOL_TOOLKIT", "none")
+            from chimol.hosts.native.app import ChimolApp
+
+            self._chimol = ChimolApp(size=self._chimol_size, backend="offscreen")
+        except Exception as exc:  # noqa: BLE001 - surface the load error inline
+            self._chimol_error = f"{type(exc).__name__}: {exc}"
+            return False
+        # A movie started from the console, a macro or a script runs no input
+        # event, and chimol's own wake (`update()` -> `request_draw`) knocks on
+        # the rendercanvas loop -- which is not running inside this embed. The
+        # clock (Playback.pump) only turns inside a frame we draw, and the
+        # animating() chain below only *keeps* a chain going, never starts one.
+        # A command that ran is the one honest signal that the picture is now
+        # stale: wake the host (emtk.request_frame -> ControlHost.update) so
+        # one paint happens, and that paint's animating() check takes over.
+        try:
+            self._command_sub = self._chimol.viewer.bus.subscribe(
+                "command.executed",
+                lambda _line: self.request_frame(),
+                owner="chisurf-emtk-host",
+            )
+        except Exception:  # noqa: BLE001 - a viewer without its bus still draws
+            self._command_sub = None
+        return True
+
+    # ── frame pump ──────────────────────────────────────────────────────
+    def draw(self, painter, x, y, w, h):
+        # chimol's viewport lays out its sequence strip and panels for a
+        # desktop-size canvas; below ~760 px its text overprints. Render at
+        # the clamped size and let the blit scale to the actual width.
+        self._surface = (
+            max(760, int(w)),
+            max(420, int(h - self.STATUS_H)),
+        )
+        if self._ensure_chimol():
+            self._resize_chimol(*self._surface)
+            frame = self._chimol.renderer.draw_frame()
+            if frame is not None:
+                self._frame = frame
+        super().draw(painter, x, y, w, h)
+
+    def _resize_chimol(self, w, h) -> None:
+        renderer = self._chimol.renderer
+        canvas = renderer._canvas
+        try:
+            logical = canvas.get_logical_size()
+        except Exception:  # noqa: BLE001 - a canvas that cannot say is at its size
+            logical = None
+        if logical is not None and (int(w), int(h)) == (int(logical[0]), int(logical[1])):
+            return
+        # The canvas itself must grow first: rendercanvas only reports a new
+        # size after `set_logical_size` (its own resize events come from the
+        # window manager, and an offscreen canvas has no window manager).
+        # Telling the renderer alone (`on_resize`) resizes nothing -- its
+        # canvas answered 900x620 for the rest of the session and the blit
+        # stretched the stale frame over the grown widget.
+        set_logical = getattr(canvas, "set_logical_size", None)
+        if callable(set_logical):
+            try:
+                set_logical(int(w), int(h))
+            except Exception:  # noqa: BLE001 - a fixed-size canvas blits as before
+                pass
+        renderer.on_resize(int(w), int(h), 1.0)
+
+    def animating(self) -> bool:
+        # The host's repaint contract (emtk.qt_host.ControlHost.paintEvent):
+        # while `animating()` is True the widget asks for its next frame
+        # itself, and each frame ChimolHostApp.draw runs pumps the movie
+        # (`canvas.frame()` -> `Playback.pump`) -- that is the whole clock an
+        # embedded chimol has. Without this the movie ran only while the
+        # pointer kept producing events, because those were the only frames.
+        if self._chimol is not None:
+            playback = getattr(self._chimol.viewer, "playback", None)
+            if playback is not None and getattr(playback, "running", False):
+                return True
+        return super().animating()
+
+    def render(self):
+        width, height = im.get_main_viewport().size
+        im.begin("ChiMOL", (0, 0, width, height))
+        if self._chimol_error:
+            im.heading("ChiMOL unavailable", level=2)
+            im.text_wrapped(self._chimol_error)
+            im.end()
+            return
+        # Reserve a status strip: chimol's own viewport draws its command bar
+        # at the bottom of its frame, so overlaying text there collides.
+        viewport_h = max(1.0, height - self.STATUS_H)
+        if self._frame is not None:
+            im.image(self._frame, size=(width, viewport_h))
+        else:
+            im.text_disabled("Rendering…")
+        objects = 0
+        if self._chimol is not None:
+            try:
+                objects = len(self._chimol.viewer.objects)
+            except Exception:  # noqa: BLE001 - status is best-effort
+                objects = 0
+        im.text(f"ChiMOL · {objects} object(s)")
+        im.end()
+
+    # ── input forwarding (same handlers chimol's own window drives) ─────
+    def _inside(self, x, y) -> bool:
+        return True
+
+    def pointer_press(self, x, y, button, modifiers=0, clicks=1):
+        super().pointer_press(x, y, button, modifiers, clicks)
+        if self._ensure_chimol():
+            self._chimol.renderer.on_pointer_press(x, y, button, modifiers, double=clicks > 1)
+
+    def pointer_move(self, x, y, buttons=0, modifiers=0):
+        super().pointer_move(x, y, buttons, modifiers)
+        if self._ensure_chimol():
+            self._chimol.renderer.on_pointer_move(x, y, buttons, modifiers)
+
+    def pointer_release(self, x, y, button, modifiers=0):
+        super().pointer_release(x, y, button, modifiers)
+        if self._ensure_chimol():
+            self._chimol.renderer.on_pointer_release(x, y, button, modifiers)
+
+    def wheel(self, x, y, steps, modifiers=0):
+        super().wheel(x, y, steps, modifiers)
+        if self._ensure_chimol():
+            self._chimol.renderer.on_wheel(x, y, steps, modifiers)
+
+    def key(self, key, text="", modifiers=0):
+        consumed = super().key(key, text, modifiers)
+        if self._ensure_chimol():
+            # chimol keys on the typed character (emtk.keys' values pass through
+            # its on_key_press as DOM text + modifiers).
+            return self._chimol.renderer.on_key_press(key, text, modifiers) or consumed
+        return consumed
+
+    def close(self):
+        if self._chimol is not None:
+            sub = getattr(self, "_command_sub", None)
+            if sub is not None:
+                try:
+                    self._chimol.viewer.bus.unsubscribe(sub)
+                except Exception:  # noqa: BLE001 - teardown is best-effort
+                    pass
+                self._command_sub = None
+            close = getattr(self._chimol.renderer, "close", None)
+            if callable(close):
+                close()
+            self._chimol = None
+
+
+def make_app() -> ChimolHostApp:
+    return ChimolHostApp()

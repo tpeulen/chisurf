@@ -1,0 +1,8 @@
+ M chisurf/plugins/chimol/manifest.json
+?? chisurf/plugins/chimol/app.py
+?? chisurf/plugins/chimol/capture_native.py
+?? chisurf/plugins/chimol/test/renders/native-narrow.png
+?? chisurf/plugins/chimol/test/renders/native-normal.png
+?? chisurf/plugins/chimol/test/renders/qt/
+?? chisurf/plugins/chimol/test/renders/visual-verdict.json
+?? chisurf/plugins/chimol/test/test_emtk_host.py

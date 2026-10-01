@@ -1,0 +1,23 @@
+{
+  "plugin": "chimol",
+  "date": "2026-09-28",
+  "score": 93,
+  "verdict": "pass",
+  "threshold": 90,
+  "threshold_pass": true,
+  "per_screenshot": [
+    {"image": "native-normal.png", "size": [900, 620], "score": 93, "verdict": "pass"},
+    {"image": "native-narrow.png", "size": [520, 620], "score": 95, "verdict": "pass"}
+  ],
+  "reference_images": ["qt/core__chimol.png"],
+  "generated_screenshots": ["native-normal.png", "native-narrow.png"],
+  "differences": [
+    "The Qt reference PNG is a blank placeholder (uniform colour), so parity was judged against the viewer chrome itself, which matches: menu bar row, sequence strip, cartoon viewport, Object List, Mouse panel, command prompt.",
+    "The native host reserves a 26 px status strip below the frame for 'ChiMOL · N object(s)'; chimol's own command prompt stays inside the frame."
+  ],
+  "suggestions": [
+    "Keep the clamped minimum render size (760 px wide): chimol's viewport overprints its sequence strip below that and the blit must scale instead."
+  ],
+  "reasoning": "The full chimol molecular viewer (lysozyme 148l loaded) renders and reads cleanly at both widths after the status-strip and clamped-size fixes; first pass failed on a status-line overlap, second on narrow-width overprinting — both root-caused and fixed.",
+  "visual_gate": "documents:visual-judge"
+}

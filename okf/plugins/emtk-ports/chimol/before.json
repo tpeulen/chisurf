@@ -1,0 +1,18 @@
+{
+  "controls": [
+    "1"
+  ],
+  "labels": [],
+  "buttons": [
+    "✕"
+  ],
+  "line_edits": 2,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 1,
+  "entrypoint": "chimol.hosts.qt:MolViewPluginWindow",
+  "size": [
+    1200,
+    800
+  ]
+}
