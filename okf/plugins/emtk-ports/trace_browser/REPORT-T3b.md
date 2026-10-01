@@ -172,3 +172,14 @@ Nothing overlaps or is clipped; the Notes column is cut at 800 px width (full te
 ## Open (T4)
 
 Export, CSV, DOCX, Delete, Transfer to analysis, Time window, ndX, Help / Guide, `entrypoints.emtk`, docs, `guide.json`, `help.md`.
+
+## Review (reviewer, 2026-10-01)
+
+Verified, not taken from the hand-over: commits `fd040fd96` / `2714a2274` touch only trace_browser files, `T3b/` evidence and the
+agent's log hunk; `129 passed` (re-run); the real MMFDB file is untouched by the run; `compare` exit 0, `lost` `[]`,
+`stale_explanations` `[]`, 104 explained, 0 untooltipped; no Qt imports in `gui/app.py` / `gui/model.py`; the populated
+screenshot read against `before_populated.png`: same files and ratings, trace with `Sum` plus green/red/yellow, the counts
+histogram, and the annotation text equal to the Notes cell. **Accepted.** Deliberate differences carried to the final report:
+series are overlaid with a legend instead of stacked one row per series; equal y limits mean "fit the data" (Qt always applies
+the spin boxes, default 0..1000); precompute is an explicit job with Stop instead of a modal dialog and runs after a scan behind a
+remembered toggle.
