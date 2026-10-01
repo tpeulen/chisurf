@@ -1,0 +1,14 @@
+diff --git a/chisurf/plugins/core/user_editor/manifest.json b/chisurf/plugins/core/user_editor/manifest.json
+index 064102b1b..785bd5d35 100644
+--- a/chisurf/plugins/core/user_editor/manifest.json
++++ b/chisurf/plugins/core/user_editor/manifest.json
+@@ -18,7 +18,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.core.user_editor.gui.tool:UserEditorWidget"
++    "gui": "chisurf.plugins.core.user_editor.gui.tool:UserEditorWidget",
++    "emtk": "chisurf.plugins.core.user_editor.gui.app:make_app"
+   },
+   "optional_requires": {
+     "mmfdb_admin": "*"

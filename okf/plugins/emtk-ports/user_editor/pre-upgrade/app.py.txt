@@ -1,0 +1,130 @@
+"""Standalone EMTK User Editor over the existing Qt-free view model."""
+from __future__ import annotations
+
+from emtk import im
+from emtk.app import ImApp
+
+from .strings import install_translations, tr
+from .view_model import UserEditorViewModel
+
+install_translations()
+
+
+class UserEditorApp(ImApp):
+    def __init__(self, model=None):
+        self.model = model or UserEditorViewModel()
+        self.selected_index = -1
+        self.message = ""
+        self.password = ""
+        self.password_confirm = ""
+        super().__init__(self.render)
+
+    def action(self, callback):
+        try:
+            result = callback()
+            if isinstance(result, str) and result:
+                self.message = result
+        except Exception as exc:
+            self.message = f"{type(exc).__name__}: {exc}"
+        self.request_frame()
+
+    def _field(self, label, attr, tooltip):
+        im.text(tr(label))
+        im.same_line()
+        im.set_next_item_width(260)
+        changed, value = im.input_text("##" + attr, str(getattr(self.model, attr)))
+        im.set_item_tooltip(tr(tooltip))
+        if changed:
+            setattr(self.model, attr, value)
+
+    def _password_score(self):
+        value = self.password
+        return sum((len(value) >= 8, any(c.islower() for c in value),
+                    any(c.isupper() for c in value), any(c.isdigit() for c in value),
+                    any(c in "!@#$%^&*()_+-=[]{}|;':,./<>?" for c in value)))
+
+    def render(self):
+        im.begin(tr("User Editor"), (0, 0, *im.get_main_viewport().size))
+        if im.button(tr("Reload")):
+            self.action(self.model.reload)
+        im.set_item_tooltip(tr("Fetch the user list from the MMFDB"))
+        im.same_line()
+        if im.button(tr("New")):
+            self.model.new_user()
+            self.message = ""
+        im.set_item_tooltip(tr("Create a new user account"))
+        im.same_line()
+        if im.button(tr("Save")):
+            self.action(self.model.save)
+        im.set_item_tooltip(tr("Write the edited account to the MMFDB"))
+        im.same_line()
+        if im.button(tr("Revert")):
+            self.model.revert()
+        im.set_item_tooltip(tr("Discard unsaved edits"))
+        im.separator()
+        im.heading(tr("Users"), level=2)
+        rows = self.model.user_rows()
+        for index, row in enumerate(rows):
+            label = f"{row['user']} · {row['username']}"
+            if im.selectable(label, index == self.selected_index):
+                self.selected_index = index
+                self.model.select_row(index)
+            im.set_item_tooltip(tr("Select this account for editing"))
+        if not rows:
+            im.text_wrapped(self.model.status_text())
+        im.separator()
+        im.heading(tr("Details"), level=2)
+        if self.model.selected is None and not getattr(self.model, "_creating", False):
+            im.text_wrapped(tr("No user selected"))
+        else:
+            for label, attr, tip in (("Username", "user_id", "Account identifier"), ("Display name", "display_name", "Name shown in the user list"), ("E-mail", "email", "Optional e-mail address"), ("Role", "role", "Account role"), ("Affiliation", "affiliation", "Institution or group"), ("Department", "department", "Department name"), ("Phone", "phone", "Phone number"), ("Website", "website", "Website URL"), ("Address", "address", "Postal address"), ("Details", "details", "Additional account details")):
+                self._field(label, attr, tip)
+            changed, admin = im.checkbox(tr("Administrator"), self.model.is_admin)
+            im.set_item_tooltip(tr("Grant administrator privileges"))
+            if changed:
+                self.model.is_admin = admin
+            changed, auto = im.checkbox(tr("Allow autologin"), self.model.allow_autologin)
+            im.set_item_tooltip(tr("Allow passwordless login for this account"))
+            if changed:
+                self.model.allow_autologin = auto
+            im.separator()
+            im.text(tr("Password"))
+            im.same_line()
+            im.set_next_item_width(220)
+            changed, self.password = im.input_text("##password", self.password, flags=im.InputTextFlags.PASSWORD)
+            im.set_item_tooltip(tr("Stage a new password; it is written when Save is pressed"))
+            im.text(tr("Confirm password"))
+            im.same_line()
+            im.set_next_item_width(220)
+            changed, self.password_confirm = im.input_text("##password_confirm", self.password_confirm, flags=im.InputTextFlags.PASSWORD)
+            im.set_item_tooltip(tr("Repeat the staged password"))
+            score = self._password_score()
+            im.progress_bar(score / 5.0, size=(220, 10), overlay=tr(("Enter a password", "Weak", "Weak", "Medium", "Medium", "Strong")[score]))
+            if im.button(tr("Stage password")):
+                if self.password != self.password_confirm:
+                    self.message = tr("Passwords do not match.")
+                elif self.model.is_admin and score < 4:
+                    self.message = tr("Administrator password is too weak.")
+                else:
+                    self.model.stage_password(self.password)
+                    self.message = tr("Password staged for Save.")
+            im.set_item_tooltip(tr("Validate and stage the password for the next save"))
+            problems = self.model.problems()
+            if problems:
+                im.text_colored((245, 120, 110, 255), "\n".join(problems))
+        if self.message:
+            im.text_wrapped(self.message)
+        im.end()
+
+    def export_settings(self):
+        return {"selected_index": self.selected_index}
+
+    def restore_settings(self, settings):
+        self.selected_index = int(settings.get("selected_index", -1))
+
+    def close(self):
+        self.model._observers.clear()
+
+
+def make_app():
+    return UserEditorApp()
