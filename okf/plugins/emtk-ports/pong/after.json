@@ -1,0 +1,22 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "sound"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Sound",
+      "id": "Sound##sound",
+      "tooltip": "No sound here: this window has no audio output."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

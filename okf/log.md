@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+* **pong emtk view at parity with the Qt game (swap-candidate, session EMTK-1).** The stream's rules move into `model.PongModel` equals the committed `PongGame` method for method (action names, host guard); bindings for both players compared with the Qt game in a subprocess. Sound switch greyed (emtk has no audio, known issue). 35 passed. Report: `okf/plugins/emtk-ports/pong/REPORT.md`.
+
 * **number_quest emtk view at parity with the Qt chigame view (swap-candidate, session EMTK-1).** Same picture, rounds and keys (compared with the Qt game driven by a stub host in a subprocess). emtk has no audio output, so the games' Sound switch did nothing; greyed with an explaining tooltip, `make_app(audio=...)` ready for a backend. New known issue "emtk games have no sound" (all four games). 35 passed. Report: `okf/plugins/emtk-ports/number_quest/REPORT.md`.
 
 * **ndxplorer emtk factory wired like the Qt NdxWindow (swap-candidate, session EMTK-1).** Same `NdxApp` in both hosts; `make_app` now gives it ChiSurf's in-process RPC client and `session_autosave=True`, closes it when its emtk host window closes (session kept, Global View slot withdrawn), and keeps the Qt label "From MMFDB…". Slot helpers moved to the Qt-free `global_view_slot.py`; the route test accepts the emtk menu route (known issue of 2026-09-29 resolved). New systemic known issue: ChiSurf's menu host never calls an emtk app's `close()`. 58 passed. Report: `okf/plugins/emtk-ports/ndxplorer/REPORT.md`.
