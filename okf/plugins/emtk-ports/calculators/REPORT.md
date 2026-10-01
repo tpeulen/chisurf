@@ -50,7 +50,7 @@ Not a regression, found on the way: the Qt hub cannot show the PSF calculator at
 |---|---|
 | `gui/app.py` | the upgrade above; `make_app(entries=)` as before |
 | `gui/guide.json`, `gui/help.md` | new: 4 steps (1 awaits a list click); help with a live link |
-| `test/test_emtk_hub_parity.py` | new, 33 tests (1 strict xfail) |
+| `test/test_emtk_hub_parity.py` | new, 33 tests |
 | `core/registry.py`, `gui/tool.py`, `manifest.json` | untouched (the stream's `entrypoints.emtk` was already there) |
 
 ## 4. Automated evidence
@@ -71,7 +71,7 @@ the native hub shows the prompt then. Also: list icons are not drawn (rule 6), t
 
 ```
 $ python -m pytest chisurf/plugins/calculator/hub -q -p no:cacheprovider
-35 passed, 1 xfailed in 48.30s          (3 registry tests + 32 passing parity/click tests + 1 strict xfail)
+36 passed in 34.87s          (3 registry tests + 33 parity and click tests)
 $ python -m pytest chisurf/plugins/calculator/test -q -k "hub or native_factories"   -> 24 passed
 $ python -m pytest test/gui/test_emtk_port_parity.py -q                              -> 13 passed
 ```
@@ -85,7 +85,7 @@ $ python -m pytest test/gui/test_emtk_port_parity.py -q                         
 | 6, 7 | `test_every_control_has_a_tooltip_and_the_port_is_qt_free` | |
 | 8 persistence | `test_settings_round_trip_restores_the_selection_and_the_calculators_inputs`, `test_close_closes_every_built_calculator` | selection, opened calculators' inputs applied when built later; bad input ignored |
 
-Deliberate-breakage checks (restored, 35 passed again):
+Deliberate-breakage checks (restored; 36 passed again after the final changes):
 
 | What I broke | Result |
 |---|---|
@@ -104,7 +104,7 @@ Pre-existing failures I did not cause: `test/test_plugin_help_guide_seam.py` fai
 | Up / Down keys, clamped at both ends, not while a field is edited | `test_up_and_down_move_the_selection_unless_a_field_is_being_edited` |
 | wheel and hover forwarded only inside the calculator's box | `test_the_wheel_and_the_hover_are_forwarded_to_the_calculator_inside_its_box_only` |
 | frame request from the embedded calculator | `test_the_hub_is_asked_for_frames_by_the_embedded_calculator` |
-| Guide, awaited list click, Close Tour, tour walked to the end | `test_guide_button_starts_the_tour_whose_awaited_step_waits_for_a_list_click`, `test_the_tour_targets_are_drawn_and_the_tour_is_walked_to_the_end_by_the_user`; Next: `test_the_tour_next_button_can_be_clicked` (xfail, emtk gap 1) |
+| Guide, awaited list click, Close Tour, tour walked to the end | `test_guide_button_starts_the_tour_whose_awaited_step_waits_for_a_list_click`, `test_the_tour_targets_are_drawn_and_the_tour_is_walked_to_the_end_by_the_user`; Next: `test_the_tour_next_button_can_be_clicked` |
 | Help, Start Guided Tour, Close, Close Help, Escape | `test_help_button_opens_the_help_window_whose_buttons_work` |
 | file drop through the host (accepted and answered by the FRET calculator, refused by kappa2) | `test_a_file_dropped_on_the_host_goes_to_the_embedded_calculator` |
 
@@ -130,7 +130,7 @@ Help: 1 live link. Docs: no guide page for the hub (gap); the `README.md` of the
 
 ## 10. Blocked / open
 
-* emtk gap 1 (shared tour / help window buttons share one id: Next, Prev and the help section buttons cannot be clicked), emtk gap 2 (the wheel does not reach docked widgets) and emtk gap 3 (a text field keeps the keyboard after a click elsewhere), with reproductions, in
+* emtk gap 1 (buttons spelled `...##same` share one id: the tour's Next / Prev were fixed at 21:58 in the shared `chisurf/emtk/help_guide.py`, the help window's section buttons `##filter` still have it), emtk gap 2 (the wheel does not reach docked widgets) and emtk gap 3 (a text field keeps the keyboard after a click elsewhere), with reproductions, in
   `okf/plugins/emtk-ports/fret_calculator/REPORT.md` section 10. Gap 3 matters here: after a field of the embedded calculator was edited, Up and Down keep going to that field until the user clicks into another text field
   (the hub only moves the selection when the calculator does not take the key).
 * A drop on a calculator with no drop hook is accepted by `ControlHost` (it ignores the answer of a `files_dropped` hook) and then does nothing; the Qt widget refused it.
@@ -138,4 +138,4 @@ Help: 1 live link. Docs: no guide page for the hub (gap); the `README.md` of the
 
 ## 11. Self-check against the Definition of Done
 
-- [x] D1 [x] D2 [x] D3 [x] D4 [x] D5 [x] D6 [x] D7 [x] D8 (gap recorded) [x] D9 (35 passed, 1 xfail) [x] D10
+- [x] D1 [x] D2 [x] D3 [x] D4 [x] D5 [x] D6 [x] D7 [x] D8 (gap recorded) [x] D9 (36 passed) [x] D10

@@ -122,3 +122,51 @@ failed (`AssertionError: (6, 'Calibrate')`). Restored.
 ## 11. Self-check
 
 - [x] D1 · [x] D2 · [x] D3 · [x] D4 · [x] D5 · [x] D6 · [x] D7 · [x] D8 · [x] D9 · [x] D10
+
+## 12. Verification and click coverage by SWAP4B (2026-10-01, board `T-20261001-SWAP4B`)
+
+Verdict: **accept**. The first pass (EMTK-1, section 0-11 above, commits `f964c0eaf`, `dd38807de`, `7e5d806d8`, `96fbe8fb2`) holds up; checked independently, and four things were still wrong, fixed in the plugin's own app. Commits of this pass: the code and tests commit
+"accurate_fret: result tables as data_table sections, plot rectangles, click-driven tests" and the evidence commit "accurate_fret: verification addendum and click evidence". Nothing of EMTK-1's was redone; the Qt baseline of section 1 was re-read, not recaptured.
+
+**Probes that found nothing wrong** (each repeated by hand, outputs in the tests below): a drop through `ControlHost` (`dragEnterEvent` accepted, `dropEvent` loads, `test_a_file_dropped_on_the_host_loads_like_the_dialog`) - the app answers the host's `on_paths_dropped`, so the dead-drop-hook trap of the earlier batch does not apply;
+a missing file, a table that cannot be read, Calibrate without data, Export before a calibration, To ndX before a calibration each leave a status line and no stuck window; the file dialog is closed by Cancel; `compare` exit 0 (`lost []`, 41 controls, 0 without tooltip, qt-free).
+
+**What was wrong and is fixed:**
+
+1. The two result tables were drawn by hand (`im.begin_table`), against rule 4. They are `data_table` sections now (`_table` builds the spec; columns with descriptions and widths; the populations table at 1200x800 shows `0.3152 ± 0.0043` whole,
+   `click_5_after_click_on_the_Populations_tab`).
+2. The plot targets (`es_plot`, `lifetime_plot`, `histogram`, `E histogram`) were the rectangle of the last item drawn, the legend (35x14 px): a click or a guide spotlight there missed the plot. They are the window content now.
+3. Rectangles of fields in a panel that was collapsed again stayed as click and tour targets at their old positions (`form_state.rects` was never cleared). Cleared per frame, stale entries dropped from `item_rects`
+   (`test_the_collapsing_headers_open_and_close_with_a_click`).
+4. Guide step 9 asked the user to find the donor-only population in the E histogram, which bins only the FRET populations (open item of section 10 above). It points at the E-S plot now, where the donor-only population (S about 1, E about 0) is drawn.
+
+**Tests:** `test/test_emtk_accurate_fret_clicks.py`, 32 tests (31 passing, 1 strict xfail); the plugin folder: `57 passed, 1 xfailed` (26 first-pass + 31 click tests passing + 1 xfail; output pasted from the run after the IMP build finished: a rebuild of the imp-tricks libraries by another session
+made `IMP.bff` unimportable for about ten minutes and failed 22 tests of this folder in that window, not related to this change).
+
+**Click coverage (control -> test):**
+
+| Control | Test |
+|---|---|
+| Open burst table -> dialog -> file entry -> Open | `test_open_burst_table_dialog_loads_the_file_the_user_clicks` |
+| dialog Cancel; a table that cannot be read | `test_the_dialog_cancel_button_closes_it_and_loads_nothing`, `test_a_burst_table_that_cannot_be_read_says_so_and_the_dialog_is_not_stuck` |
+| drop on the host; a dropped missing path | `test_a_file_dropped_on_the_host_loads_like_the_dialog`, `test_a_dropped_path_that_does_not_exist_is_reported` |
+| the four channel lists (I_DD, I_DA, I_AA, lifetime) | `test_each_channel_list_opens_and_a_click_on_a_column_maps_it[4]` |
+| Calibrate (refused without data, then runs; factors equal the Qt tool's) | `test_calibrate_click_is_refused_with_the_reason_until_a_table_is_loaded_then_runs` |
+| Stop calibration / read | `test_the_stop_button_cancels_a_running_calibration_and_keeps_the_previous_state` |
+| result tabs: Correction factors, Populations, Report | `test_the_result_tabs_are_clicked_and_show_factors_populations_and_the_report` |
+| E-S plot drag; wheel zoom | `test_the_plots_show_the_classes_and_a_drag_pans_the_efficiency_plot`; `test_the_wheel_zooms_the_efficiency_plot` (strict xfail: emtk gap 2, a docked window consumes the wheel) |
+| collapsing headers (Data, Dyes, Photophysics, Background, ...) | `test_the_collapsing_headers_open_and_close_with_a_click` |
+| Photophysics / Background fields, Dynamic line toggle | `test_photophysics_and_background_fields_take_typed_values_and_the_toggle_is_clicked`, `test_dye_and_optics_fields_are_reachable_and_typed_values_reach_the_model` |
+| From ndX, To ndX, Share in session, Store on setup | `test_from_ndx_and_to_ndx_answer_with_a_status_when_no_ndx_source_exists`, `test_the_session_buttons_before_a_calibration_say_what_to_do[3]`, `test_the_session_share_and_setup_store_buttons_after_a_calibration` |
+| Export per-burst CSV (typed name, error before a calibration) | `test_export_per_burst_csv_through_the_dialog_with_a_typed_name`, `test_export_before_a_calibration_reports_the_error_and_closes_the_dialog` |
+| Refresh dye catalogue, Refresh optical priors, database path field | `test_the_catalogue_refresh_buttons_run_in_the_background_and_report`, `test_the_database_path_field_takes_typed_text` |
+| MMFDB burst datasets; Select / configure detector setup | `test_the_datasets_button_opens_the_database_window_and_it_can_be_closed`, `test_select_detector_setup_button_brings_the_detector_setup_dock_forward` |
+| Guide, awaited Calibrate step, Close Tour, Next / Prev | `test_guide_button_starts_the_tour_and_the_awaited_calibrate_step_waits_for_the_click`, `test_the_tour_next_and_prev_buttons_can_be_clicked` |
+| Help, Start Guided Tour, Close, Close Help, Escape | `test_help_button_opens_the_help_window_whose_buttons_work` |
+| small window | `test_the_load_and_calibrate_flow_works_in_the_small_window_too` |
+
+**Populated click sequence** (read at full size, `scripts/capture_clicks.py`): `click_0_before_any_click_empty`, `click_1_after_click_on_Open_burst_table_dialog`, `click_2_after_click_on_the_file_entry`, `click_3_after_click_on_Open_table_loaded_channels_mapped`,
+`click_4_after_click_on_Calibrate` (alpha 0.0798, beta 1.4283, gamma 0.6162, delta 0.0596, R0 52: the Qt tool's numbers on these bursts), `click_5_after_click_on_the_Populations_tab`, `click_6_after_click_on_the_Photophysics_header`,
+`click_7_typed_55_into_Forster_R0_Enter` (R0 = 55 in the model), `click_8_after_click_on_Export_per_burst_CSV_dialog`, `click_9_after_Cancel_and_click_on_Help`. `after_populated_*` were re-captured with the new tables.
+
+**Open (new):** the settings window cannot be scrolled with the wheel (emtk gap 2): the panels below Photophysics are reachable only by collapsing the ones above; the first draft of the click tests had to collapse Channels first. emtk gap 1 (id collisions) was fixed for the tour buttons during this pass; the help window's section buttons still share `##filter`.

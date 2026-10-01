@@ -58,7 +58,7 @@ Files edited that I did not write: none beyond the plugin's own (`gui/app.py` an
 | `gui/app.py` | the NaN fix, spin style, Save rule and dialog, status line, `export_settings`/`restore_settings`, `make_app(kappa2=)`, frame request, legend |
 | `gui/guide.json` | last step names Help |
 | `tests/test_emtk_kappa2_dist_verify.py` | new, 29 tests (numbers against the Qt tool, every edit typed into the real field) |
-| `tests/test_emtk_kappa2_dist_clicks.py` | new, 27 tests passing + 3 strict xfails: every control operated with simulated pointer and keys |
+| `tests/test_emtk_kappa2_dist_clicks.py` | new, 28 tests passing + 2 strict xfails: every control operated with simulated pointer and keys |
 | `gui/model.py`, `gui/tool.py`, `manifest.json` | EMTK-1's: the Qt model moved unchanged, the Qt host, `entrypoints.emtk` |
 
 ## 4. Automated evidence
@@ -79,7 +79,7 @@ the 50 ms debounce is "recompute when the edit commits" (a computation in flight
 
 ```
 $ python -m pytest chisurf/plugins/calculator/kappa2_dist -q -p no:cacheprovider
-83 passed, 3 xfailed in 39.96s     (28 first-pass + 29 verify + 26 click tests that pass; 3 strict xfails, section 10)
+84 passed, 2 xfailed in 31.65s     (28 first-pass + 29 verify + 27 click tests that pass; 2 strict xfails, section 10)
 $ python -m pytest chisurf/plugins/calculator/test -q -k kappa2      -> 1 passed
 ```
 
@@ -92,7 +92,7 @@ $ python -m pytest chisurf/plugins/calculator/test -q -k kappa2      -> 1 passed
 | 6, 7, 8 | `test_port_is_qt_free`, `test_every_control_has_a_tooltip`, `test_settings_round_trip_and_invalid_values_are_ignored` | |
 | also | guide targets drawn and the tour waits (model choice, Compute), Guide/Help buttons, help links live, `kappa2=`, idle window does not ask for frames, NaN does not recompute | |
 
-Deliberate-breakage checks (restored, 57 passed again):
+Deliberate-breakage checks (restored; 57 passed at the time, 84 passed and 2 xfailed after the click tests were added):
 
 | What I broke | Result |
 |---|---|
@@ -117,7 +117,7 @@ and read the visible outcome (model, statistics table, status line, dialog). Not
 | κ² distribution plot: drag pan | `test_a_drag_pans_the_distribution_plot`; wheel zoom: `test_the_wheel_zooms_the_distribution_plot` (xfail, emtk gap 2) |
 | Compute (also disabled while a run is in flight) | `test_the_compute_button_recomputes_and_is_disabled_while_a_run_is_in_flight` |
 | Save: opens the dialog, Cancel, the window's close button, a typed file name + the dialog's Save, disabled without a distribution | `test_save_click_opens_the_dialog_and_its_cancel_button_closes_it_writing_nothing`, `test_the_save_dialog_window_has_a_close_button_that_dismisses_it`, `test_save_with_a_typed_file_name_writes_the_csv_and_the_status_line_says_so`, `test_the_save_button_is_greyed_without_a_distribution_and_a_click_then_opens_nothing`; verify: unwritable folder, CSV equal to the Qt writer's |
-| Guide, Close Tour, awaited controls, tour walked to the end | `test_guide_button_starts_the_tour_and_the_tour_card_buttons_work`, `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`; Next: `test_the_tour_next_button_can_be_clicked` (xfail, emtk gap 1) |
+| Guide, Close Tour, awaited controls, tour walked to the end | `test_guide_button_starts_the_tour_and_the_tour_card_buttons_work`, `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`; Next: `test_the_tour_next_button_can_be_clicked` |
 | Help, Start Guided Tour, Close, Close Help, Escape | `test_help_button_opens_the_help_window_whose_buttons_work`; section buttons: `test_a_help_section_button_shows_only_that_section` (xfail, emtk gap 1) |
 | file drop on the host | `test_the_qt_host_refuses_a_dropped_file_as_the_qt_widget_did` (the Qt widget accepted none) |
 | small window | `test_the_flow_works_in_the_small_window_too` |
@@ -145,8 +145,8 @@ bin and probability). No data file is involved.
 
 ## 10. Blocked / open
 
-* **emtk gaps found by the click tests** (reproductions with the same code in `okf/plugins/emtk-ports/fret_calculator/REPORT.md` section 10): (1) the guided tour's Prev / Next buttons and the help window's section buttons share one id (emtk's `get_id` keeps only the text after `##`),
-  so they cannot be clicked (`test_the_tour_next_button_can_be_clicked`, `test_a_help_section_button_shows_only_that_section`, strict xfails); (2) the wheel does not reach implots or spin fields inside `DockManager` windows
+* **emtk gaps found by the click tests** (reproductions with the same code in `okf/plugins/emtk-ports/fret_calculator/REPORT.md` section 10): (1) buttons spelled `...##same` share one id (emtk's `get_id` keeps only the text after `##`): the tour's Next / Prev had it and were fixed at 21:58 in the shared
+  `chisurf/emtk/help_guide.py` (`test_the_tour_next_button_can_be_clicked` now passes); the help window's section buttons (`##filter`) still have it (`test_a_help_section_button_shows_only_that_section`, strict xfail); (2) the wheel does not reach implots or spin fields inside `DockManager` windows
   (`test_the_wheel_zooms_the_distribution_plot`); (3) a text field keeps the keyboard after a click on a checkbox or button (visible in `click_2_...`: the r_A∞ field is highlighted after the combo click).
 * Shared helper `chisurf/plugins/calculator/export.py` (the other calculators' Save): an untitled window at the top left with no close button; kappa2_dist no longer uses it.
 * The Qt tool showed 1e+308-like garbage for non-finite statistics; the native window shows `nan` and says so. The backend returns NaN for r_AD known with a large r_AD∞ (science, not changed).

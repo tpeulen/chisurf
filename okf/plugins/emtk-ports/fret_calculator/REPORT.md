@@ -70,7 +70,7 @@ Screenshots: `before.png`, `before_populated_{hetero_forward_chi,hetero_inverse,
 | `gui/tool.py` | changed | the Qt host now builds `FretCalcApp(model)`; PRD references removed |
 | `gui/guide.json`, `gui/help.md` | changed | 9 steps (8 wait for the user, both tabs); help without the Qt-era slider text and without Markdown marks |
 | `tests/test_emtk_fret_calculator_parity.py` | new | 39 tests (numbers against the Qt tool and the backend, every edit typed into the real field) |
-| `tests/test_emtk_fret_calculator_clicks.py` | new | 31 tests (5 of them strict xfails documenting emtk gaps): every control operated with simulated pointer and keys |
+| `tests/test_emtk_fret_calculator_clicks.py` | new | 31 tests (4 of them strict xfails documenting emtk gaps): every control operated with simulated pointer and keys |
 | `tests/test_emtk_app.py` | deleted | monkeypatched the old slider; its cases (coupled recompute, toggle, back-map, series, tabs) are in the new file |
 | `manifest.json` | unchanged by me | `entrypoints.emtk` already added by the stream |
 
@@ -98,7 +98,7 @@ Behaviour differences: status line for failed calculations (Qt: silent); k_homo 
 
 ```
 $ python -m pytest chisurf/plugins/calculator/fret_calculator -q -p no:cacheprovider
-84 passed, 5 xfailed in 43.01s     (19 existing + 39 parity + 26 click tests that pass; 5 strict xfails, section 10)
+85 passed, 4 xfailed in 36.38s     (19 existing + 39 parity + 27 click tests that pass; 4 strict xfails, section 10)
 $ python -m pytest chisurf/plugins/calculator/test -q -p no:cacheprovider -k "fret_calc or native_factories"
 24 passed
 $ python -m pytest test/gui/test_emtk_port_parity.py -q -p no:cacheprovider
@@ -145,7 +145,7 @@ drew), type with `key`, and read the visible outcome. Nothing calls a model meth
 | Parameters fold header | `test_the_parameters_fold_header_hides_and_shows_the_fields` |
 | distance / rate / anisotropy plots: drag pan | `test_a_drag_pans_a_plot`; wheel zoom: `test_the_wheel_zooms_a_plot` (xfail, emtk gap 2) |
 | wheel over a field | `test_the_wheel_over_a_field_steps_it` (xfail, emtk gap 2) |
-| Guide button, Close Tour, awaited controls, tour walked to the end | `test_the_guide_button_starts_the_tour_and_close_tour_ends_it`, `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`; Next / Prev: `test_the_tour_next_and_prev_buttons_can_be_clicked` (xfail, emtk gap 1) |
+| Guide button, Close Tour, awaited controls, tour walked to the end | `test_the_guide_button_starts_the_tour_and_close_tour_ends_it`, `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`; Next / Prev: `test_the_tour_next_and_prev_buttons_can_be_clicked` |
 | Help button, Start Guided Tour, Close, Close Help, Escape | `test_the_help_button_opens_a_window_with_working_buttons`; section buttons: `test_a_help_section_button_shows_only_that_section` (xfail, emtk gap 1) |
 | file drop on the host | `test_a_file_dropped_on_the_host_reaches_the_app_and_says_the_calculator_has_no_file_input` |
 | small window | `test_the_flow_works_in_the_small_window_too` |
@@ -177,15 +177,16 @@ Hetero: type the donor lifetime, R0, distance, sigma; efficiency, lifetime and r
 
 ## 10. Blocked / open
 
-* **emtk gap 1 (ids): the guided tour's Prev and Next buttons and the help window's section buttons cannot be clicked.** `emtk.im_core.get_id` keeps only the text after `##`, so `Close Tour##tour`, `◄ Prev##tour` and `Next ►##tour`
-  are one id (and every `…##filter` pill of the help window is one id): the first drawn button takes the release, the others never fire (Close Tour works, Next does not). Shared source: `chisurf/emtk/help_guide.py`; the fix is unique suffixes or hashing the whole label. Reproduction:
+* **emtk gap 1 (ids), half fixed while this pass ran.** `emtk.im_core.get_id` keeps only the text after `##`, so buttons spelled `...##same` share one id and only the first drawn one fires. The guided tour's `Close Tour##tour`, `◄ Prev##tour`
+  and `Next ►##tour` had this defect (Prev and Next could not be clicked); it was fixed at 21:58 in the shared `chisurf/emtk/help_guide.py` (`##tour_close`, `##tour_prev`, `##tour_next`) by another agent, and
+  `test_the_tour_next_and_prev_buttons_can_be_clicked` is now a normal passing test (it was a strict xfail until then). Still open in the same file: the help window's section buttons are all `f" {c} ##filter"` (line 204), so a click on any
+  but the first never fires. Reproduction:
   ```
-  tour = EmTkGuidedTour(steps=[{"title": "a", "text": "x"}, {"title": "b", "text": "y"}], get_target_rect=lambda k: None)
-  app = ImApp(lambda: tour.draw(*im.get_main_viewport().size)); tour.start()      # draw 2 frames (RecordingPainter), then
-  # pointer_move + pointer_press(x, y, 1) + draw + pointer_release at the centre of the drawn "Next ►" text, draw twice
-  print(tour.step_idx)   # 0 (expected 1); the same click on "Close Tour" ends the tour
+  w = EmTkHelpWindow(text="# A\nx\n# B\ny"); w.show()            # in an ImApp frame: w.draw((0, 0, 800, 600))
+  # draw 2 frames, click the drawn " B " button (move, press, draw, release, draw)
+  print(w.active_category)   # "All" (expected "B"); the same click on the first section button works
   ```
-  Tests: `test_the_tour_next_and_prev_buttons_can_be_clicked`, `test_a_help_section_button_shows_only_that_section` (strict xfail: they fail until it is fixed, then flip).
+  Test: `test_a_help_section_button_shows_only_that_section` (strict xfail: it flips when the id is fixed).
 * **emtk gap 2 (wheel in docked windows).** A `DockManager` window consumes the wheel: a spin field (`style: spin`) and an implot inside it never see it, so no docked plot zooms and no field steps with the wheel (both work in a plain `im.begin` window). Reproduction:
   ```
   dm = DockManager(Split("h", .5, Region("a"), Region("b"))); dm.add_window("a", "A", plot_fn, dock="a"); dm.add_window("b", "B", lambda box: im.text("b"), dock="b")
