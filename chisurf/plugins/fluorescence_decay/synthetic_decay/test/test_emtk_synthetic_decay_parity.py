@@ -377,6 +377,11 @@ def test_draws_empty_and_populated(size):
     assert any("Generated VV/VH pair" in s for s in draw(app, size).strings)
 
 
+def test_the_photon_budget_is_drawn_as_a_whole_number(app):
+    strings = draw(app).strings
+    assert "1000000" in strings and not any(t == "1e+06" for t in strings)
+
+
 def test_no_emoji_in_the_native_labels(app):
     strings = draw(app).strings
     assert all(ord(ch) < 0x2190 or ch in "τΔρΣ" for text in strings for ch in text), [

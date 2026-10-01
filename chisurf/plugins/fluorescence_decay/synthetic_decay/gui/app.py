@@ -59,6 +59,8 @@ class SyntheticDecayApp(ImApp):
             if section.get("type") == "table" and section.get("update_call"):
                 section["source"] = {"spectrum_source": "spectrum_records", "rotation_source": "rotation_records"}[section["source"]]
                 section["edited_call"] = "edit_cell"
+            if section.get("attr") == "photon_count":
+                section["decimals"] = 0  # a count: the default float format would draw 1e+06
             SyntheticDecayApp._bind_tables(section.get("sections", []))
 
     @staticmethod
