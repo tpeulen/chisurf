@@ -4,7 +4,7 @@ Agent: claude (Sonnet), 2026-10-01, per `UPGRADE_BRIEF.md`. Board entry `T-20261
 `a59fde86d`, `b34e8cde4`, `a102fb780`); this report verifies it against the Qt tool from a populated baseline and records what was still wrong. Verdict: **accept** after the upgrade; one real
 regression in the first-pass app (section 0, a NaN result recomputed on every frame), fixed in the plugin's own app.
 
-Commits (this pass): `9626d69fe` populated Qt baseline, `aa3f8d34c` gaps fixed in the emtk app (code, tests), then the evidence commit.
+Commits (this pass): `9626d69fe` populated Qt baseline, `aa3f8d34c` gaps fixed in the emtk app (code, tests), `2b1333a6a` evidence and report, then the click-coverage commit and its evidence.
 
 ## 0. REGRESSION found in the first-pass app: a result containing NaN recomputed forever
 
@@ -57,7 +57,8 @@ Files edited that I did not write: none beyond the plugin's own (`gui/app.py` an
 |---|---|
 | `gui/app.py` | the NaN fix, spin style, Save rule and dialog, status line, `export_settings`/`restore_settings`, `make_app(kappa2=)`, frame request, legend |
 | `gui/guide.json` | last step names Help |
-| `tests/test_emtk_kappa2_dist_verify.py` | new, 29 tests |
+| `tests/test_emtk_kappa2_dist_verify.py` | new, 29 tests (numbers against the Qt tool, every edit typed into the real field) |
+| `tests/test_emtk_kappa2_dist_clicks.py` | new, 27 tests passing + 3 strict xfails: every control operated with simulated pointer and keys |
 | `gui/model.py`, `gui/tool.py`, `manifest.json` | EMTK-1's: the Qt model moved unchanged, the Qt host, `entrypoints.emtk` |
 
 ## 4. Automated evidence
@@ -78,7 +79,7 @@ the 50 ms debounce is "recompute when the edit commits" (a computation in flight
 
 ```
 $ python -m pytest chisurf/plugins/calculator/kappa2_dist -q -p no:cacheprovider
-57 passed in 35.26s          (28 first-pass + 29 new)
+83 passed, 3 xfailed in 39.96s     (28 first-pass + 29 verify + 26 click tests that pass; 3 strict xfails, section 10)
 $ python -m pytest chisurf/plugins/calculator/test -q -k kappa2      -> 1 passed
 ```
 
@@ -100,6 +101,32 @@ Deliberate-breakage checks (restored, 57 passed again):
 
 Pre-existing failures I did not cause: none in this folder.
 
+## 6a. Click coverage (every control -> the test that operates it with simulated pointer / keyboard events)
+
+`tests/test_emtk_kappa2_dist_clicks.py` and the typing / combo helpers of the verify file press and release the pointer at the rectangle a control was drawn in (or at the text a button drew), type with `key`,
+and read the visible outcome (model, statistics table, status line, dialog). Nothing calls a model method to "click".
+
+| Control (Qt checklist item) | Test |
+|---|---|
+| Model choice (WIC / DWT / Isotropic) | `test_the_model_combo_lists_three_entries_and_each_can_be_clicked`, `test_escape_closes_the_open_model_list_without_choosing`, verify `test_defaults_and_every_edit_equal_the_qt_tool` (clicks the list) |
+| r0, r_D∞, r_A∞, r_AD∞, true κ², FRET E, Step, Bins: type + Enter | verify `test_defaults_and_every_edit_equal_the_qt_tool` (14 edits equal to the Qt tool), `test_typed_garbage_is_ignored_clamped_and_arrows_step` |
+| the same eight fields, up and down arrows | `test_each_arrow_steps_its_field_by_the_qt_step_and_recomputes[8 fields]`, `test_an_arrow_stops_at_the_qt_limit` |
+| click-away commit | `test_clicking_away_commits_a_typed_value` |
+| r_AD known (use δ) | `test_the_rad_known_checkbox_is_clicked_and_recomputes` |
+| Results (statistics table: rows, header) | `test_every_edit_recomputes_the_statistics_table_and_the_plot`, `test_a_click_on_a_statistics_row_selects_it_and_changes_no_value` |
+| κ² distribution plot: drag pan | `test_a_drag_pans_the_distribution_plot`; wheel zoom: `test_the_wheel_zooms_the_distribution_plot` (xfail, emtk gap 2) |
+| Compute (also disabled while a run is in flight) | `test_the_compute_button_recomputes_and_is_disabled_while_a_run_is_in_flight` |
+| Save: opens the dialog, Cancel, the window's close button, a typed file name + the dialog's Save, disabled without a distribution | `test_save_click_opens_the_dialog_and_its_cancel_button_closes_it_writing_nothing`, `test_the_save_dialog_window_has_a_close_button_that_dismisses_it`, `test_save_with_a_typed_file_name_writes_the_csv_and_the_status_line_says_so`, `test_the_save_button_is_greyed_without_a_distribution_and_a_click_then_opens_nothing`; verify: unwritable folder, CSV equal to the Qt writer's |
+| Guide, Close Tour, awaited controls, tour walked to the end | `test_guide_button_starts_the_tour_and_the_tour_card_buttons_work`, `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`; Next: `test_the_tour_next_button_can_be_clicked` (xfail, emtk gap 1) |
+| Help, Start Guided Tour, Close, Close Help, Escape | `test_help_button_opens_the_help_window_whose_buttons_work`; section buttons: `test_a_help_section_button_shows_only_that_section` (xfail, emtk gap 1) |
+| file drop on the host | `test_the_qt_host_refuses_a_dropped_file_as_the_qt_widget_did` (the Qt widget accepted none) |
+| small window | `test_the_flow_works_in_the_small_window_too` |
+
+Populated click sequence, read at full size (`scripts/capture_clicks.py`): `click_0_before_any_click`, `click_1_after_click_on_the_Model_combo`, `click_2_after_click_on_Isotropic_statistics_recomputed` (SD κ² 0.7182, SD R_app/R_DA 0.2354 as the Qt tool showed),
+`click_3_typed_0.2_in_r_D_inf_not_committed`, `click_4_after_Enter_distribution_and_statistics_follow`, `click_5_after_three_clicks_on_the_Bins_up_arrow` (131 -> 134), `click_6_after_click_on_Save_dialog_open`,
+`click_7_typed_my_k2_in_the_file_name_field`, `click_8_after_click_on_the_dialog_Save_status_line_says_where` (the file `my_k2.csv` exists, the status line names it), `click_9_after_click_on_Help`.
+A click bug found while writing the tests: the plot's guide/click rectangle was the legend's (35x14 px), not the plot's: now the window content.
+
 ## 7. Screenshots I looked at (full size)
 
 `after_populated_{default,isotropic,diffusion,cone_rAD_known,nan_results}_{1200x800,800x600}.png` (numbers equal `before_populated_*` and `qt_values.json`: diffusion E = 0.4 gives 0.7181 / 0.2499 / 1.0049 / 0.0541 / 57.66 in both),
@@ -118,6 +145,9 @@ bin and probability). No data file is involved.
 
 ## 10. Blocked / open
 
+* **emtk gaps found by the click tests** (reproductions with the same code in `okf/plugins/emtk-ports/fret_calculator/REPORT.md` section 10): (1) the guided tour's Prev / Next buttons and the help window's section buttons share one id (emtk's `get_id` keeps only the text after `##`),
+  so they cannot be clicked (`test_the_tour_next_button_can_be_clicked`, `test_a_help_section_button_shows_only_that_section`, strict xfails); (2) the wheel does not reach implots or spin fields inside `DockManager` windows
+  (`test_the_wheel_zooms_the_distribution_plot`); (3) a text field keeps the keyboard after a click on a checkbox or button (visible in `click_2_...`: the r_A∞ field is highlighted after the combo click).
 * Shared helper `chisurf/plugins/calculator/export.py` (the other calculators' Save): an untitled window at the top left with no close button; kappa2_dist no longer uses it.
 * The Qt tool showed 1e+308-like garbage for non-finite statistics; the native window shows `nan` and says so. The backend returns NaN for r_AD known with a large r_AD∞ (science, not changed).
 * `emtk_preview.json` untouched (reviewer removes `kappa2_dist` after accepting).
