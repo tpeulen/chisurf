@@ -25,6 +25,8 @@ if TYPE_CHECKING:
     from .tool import TTTRTimeWindowTool
 
 WINDOW_BG = (30, 32, 38, 255)
+#: More boundaries than this are not drawn (they would only cover the trace).
+MAX_BOUNDARY_LINES = 300
 ACCENT_RED = (214, 80, 80, 255)
 BOUNDARY_COLOUR = (220, 220, 220, 180)
 
@@ -280,7 +282,10 @@ class TimeWindowGui(TourTarget):
                 tw_s = float(data.get("time_window_ms", 0.0)) / 1000.0
                 if tw_s > 0 and time_axis[-1] > 0:
                     bounds = np.arange(tw_s, time_axis[-1] + tw_s, tw_s)
-                    if len(bounds):
+                    # Thousands of lines (10 ms over minutes) fill the plot and hide
+                    # the trace, as they did in the Qt tool; draw them only when
+                    # they can be told apart.
+                    if 0 < len(bounds) <= MAX_BOUNDARY_LINES:
                         implot.plot_inf_lines(
                             "window boundaries",
                             bounds,

@@ -132,3 +132,23 @@ def test_dock_layout_is_kept_only_when_changed(tmp_path, monkeypatch):
     monkeypatch.setattr(docks, "save", lambda: saved.append(1) or True)
     app.close()
     assert saved == [1]
+
+
+def test_window_boundaries_are_drawn_only_when_they_can_be_told_apart(app, monkeypatch):
+    """15 014 boundaries (10 ms over 150 s) filled the preview and hid the trace (Qt and emtk)."""
+    import numpy as np
+    from emtk import implot
+
+    from chisurf.plugins.tttr.tttr_time_windows.gui import app as app_module
+
+    drawn = []
+    original = implot.plot_inf_lines
+    monkeypatch.setattr(implot, "plot_inf_lines", lambda name, values, **k: (drawn.append(len(values)), original(name, values, **k)))
+    t = np.linspace(0.0, 150.0, 15014)
+    gui = app.time_window_gui
+    gui.preview = {"counts": np.ones_like(t), "time_axis": t, "time_window_ms": 10.0}
+    _draw(app)
+    assert drawn == []
+    gui.preview = {"counts": np.ones_like(t), "time_axis": t, "time_window_ms": 10000.0}
+    _draw(app)
+    assert drawn and max(drawn) == 15 and max(drawn) <= app_module.MAX_BOUNDARY_LINES
