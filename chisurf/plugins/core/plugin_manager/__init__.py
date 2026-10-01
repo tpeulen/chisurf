@@ -7,7 +7,6 @@ from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
 from chisurf.plugins.core.plugin_manager.api.icons import AIIconRateLimitError
 from chisurf.plugins.core.plugin_manager.api.records import read_module_docstring
-from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -21,7 +20,18 @@ icon = "🔌"
 
 def load():
     """Return the plugin manager widget."""
+    from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
+
     return PluginManagerWidget()
+
+
+def __getattr__(name):
+    """Load the legacy Qt panel only when a caller explicitly requests it."""
+    if name == "PluginManagerWidget":
+        from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
+
+        return PluginManagerWidget
+    raise AttributeError(name)
 
 
 __all__ = [
@@ -36,6 +46,8 @@ __all__ = [
 
 if __name__ == "plugin":
     try:
+        from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
+
         parent = getattr(cs, "cs", None)
         window = PluginManagerWidget(parent=parent)
         if _manifest is not None:

@@ -1,25 +1,25 @@
 {
-  "_comment": "Guided tour of the plugin manager. Every step points at a real control and waits for the user to press it -- watching a button being pressed does not teach anyone where it is.",
+  "_comment": "Guided tour of the plugin manager. Every step points at a real control; two wait for the user to press it -- watching a button being pressed does not teach anyone where it is. 'name' is the emtk control (table, action or attr); 'key' / 'action' with the toolbar glyph label keep the legacy Qt tool's spotlight working.",
   "steps": [
     {
       "title": "Everything ChiSurf found",
-      "text": "This table is one row per plugin. It is sorted and searchable: click a column header to sort, type in the search box to narrow it down, and right-click the header to show columns that start hidden — <b>Id</b>, <b>Source</b> and <b>Window state</b> among them.",
-      "target": {"key": "data_table"}
+      "text": "This table is one row per plugin. It is sorted and searchable: click a column header to sort, type in the <b>filter</b> box to narrow it down, and right-click the header to show columns that start hidden — <b>Id</b>, <b>Source</b> and <b>Window state</b> among them.",
+      "target": {"name": "plugin_rows", "key": "data_table"}
     },
     {
       "title": "Pick one",
-      "text": "Select any row. The right-hand panel fills in with what that plugin is, which folder it lives in, and how it is wired to the rest.",
-      "target": {"key": "data_table"},
+      "text": "Select any row. The right-hand window fills in with what that plugin is, which folder it lives in, and how it is wired to the rest.",
+      "target": {"name": "row_selected", "key": "data_table"},
       "await": {"hint": "Click any row in the table."}
     },
     {
       "title": "What it needs, and what needs it",
-      "text": "The <b>Requires</b> column is what must load <i>before</i> this plugin — a module-level import. <b>Required by</b> is the reverse, and it is the one that matters before you switch anything off: those plugins stop working.<br><br>The <b>Dependencies</b> table lower down shows both directions at once, with the version bound and whether the plugin at the other end is actually installed.",
-      "target": {"title": "Dependencies"}
+      "text": "The <b>Requires</b> column is what must load <i>before</i> this plugin — a module-level import. <b>Required by</b> is the reverse, and it is the one that matters before you switch anything off: those plugins stop working.<br><br>The <b>Dependencies</b> table on the right shows both directions at once, with the version bound and whether the plugin at the other end is actually installed.",
+      "target": {"name": "dependency_rows", "title": "Dependencies"}
     },
     {
       "title": "Switching a plugin off",
-      "text": "<b>Disabled</b> takes a plugin out of the menus without deleting anything. If other plugins require it, you are told which ones before the change sticks — that is what the reverse dependency index is for.",
+      "text": "<b>Disabled</b> takes a plugin out of the menus without deleting anything. If other plugins require it, the status line tells you which ones — that is what the reverse dependency index is for.",
       "target": {"attr": "selected_disabled"}
     },
     {
@@ -29,19 +29,19 @@
     },
     {
       "title": "Installing something new",
-      "text": "<b>📥 Install…</b> takes a plugin folder or a <code>.zip</code>. The manifest is validated first, so a broken plugin is refused with a reason instead of being copied in and silently ignored. It lands in your personal plugin directory (<code>~/.chisurf/plugins</code>), which needs no administrator rights.",
-      "target": {"action": "📥 Install…"}
+      "text": "<b>Install…</b> takes a <code>.zip</code> (cancel the file chooser to pick a plugin folder instead). The manifest is validated first, so a broken plugin is refused with a reason instead of being copied in and silently ignored, and you are asked before anything is copied. It lands in your personal plugin directory (<code>~/.chisurf/plugins</code>), which needs no administrator rights.",
+      "target": {"name": "ask_install", "action": "📥 Install…"}
     },
     {
       "title": "Nothing is saved until you say so",
-      "text": "Changes here live in a working copy. Press <b>💾 Save</b> to write them, or <b>♻️ Revert</b> to throw them away. Menu changes appear the next time ChiSurf starts.<br><br>Try it now.",
-      "target": {"action": "💾 Save"},
-      "await": {"hint": "Press <b>💾 Save</b>."}
+      "text": "Changes here live in a working copy. Press <b>Save</b> to write them, or <b>Revert</b> to throw them away (it asks first). Menu changes appear the next time ChiSurf starts.<br><br>Try it now.",
+      "target": {"name": "save", "action": "💾 Save"},
+      "await": {"hint": "Press <b>Save</b>."}
     },
     {
       "title": "Where to read more",
-      "text": "The <b>?</b> button explains every control on this panel, and how plugin dependencies are declared in a manifest.",
-      "target": {"action": "?"},
+      "text": "The <b>Help</b> button explains every control on this panel, and how plugin dependencies are declared in a manifest.",
+      "target": {"name": "help", "action": "?"},
       "links": [
         {"text": "Plugin architecture", "doc": "docs/development/plugin_architecture.md"}
       ]

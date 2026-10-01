@@ -1,0 +1,420 @@
+{
+  "_comment": "Plugin manager, native emtk window. Drawn by emtk.view_form over PluginManagerModel (gui/model.py): 'registered' is the left window (actions, the plugin table, the Show disabled switch, the status line), 'selected' the right one (details, switches, window-state choices, the dependency table), 'dialog' the in-app confirm / notice / rename dialog the Qt tool asked with message boxes, 'icon' the icon panel. The details text is Markdown and the icon preview an image, both drawn by gui/app.py (a spec cannot draw them).",
+  "title": "Plugins",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Installed plugins",
+      "name": "registered",
+      "description": "Every plugin ChiSurf discovered, from the shipped tree and from your own plugin directory.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Save or revert the plugin settings, rescan the plugin folders, install or uninstall a plugin.",
+          "buttons": [
+            {
+              "action": "save",
+              "label": "Save",
+              "description": "Write the plugin settings. Menu changes take effect after a restart."
+            },
+            {
+              "action": "ask_revert",
+              "label": "Revert",
+              "description": "Discard every change made since the last save (asks first)."
+            },
+            {
+              "action": "rescan",
+              "label": "Rescan",
+              "description": "Walk the plugin folders again and rebuild the list, in the background."
+            },
+            {
+              "action": "ask_install",
+              "label": "Install…",
+              "description": "Install a plugin from a .zip archive (or, if you cancel that, from a folder) into your personal plugin directory."
+            },
+            {
+              "action": "ask_uninstall",
+              "label": "Uninstall",
+              "description": "Delete the selected plugin (asks first). Only plugins you installed yourself can be removed; built-in ones are switched off instead."
+            }
+          ]
+        },
+        {
+          "type": "button_row",
+          "description": "Reorder, rename or re-icon the selected plugin, open its folder, copy or export the table.",
+          "buttons": [
+            {
+              "action": "move_up",
+              "label": "Move up",
+              "description": "Move the selected plugin earlier in the menus."
+            },
+            {
+              "action": "move_down",
+              "label": "Move down",
+              "description": "Move the selected plugin later in the menus."
+            },
+            {
+              "action": "ask_rename",
+              "label": "Rename…",
+              "description": "Change the name this plugin shows in the menus. Edits the plugin's manifest, which is the field the menus actually read."
+            },
+            {
+              "action": "ask_icon",
+              "label": "Icon…",
+              "description": "Choose, generate or clear the icon shown beside this plugin."
+            },
+            {
+              "action": "open_folder",
+              "label": "Open folder",
+              "description": "Open the selected plugin's directory in the file browser."
+            },
+            {
+              "action": "request_copy",
+              "label": "Copy",
+              "description": "Copy the rows the table shows now, with the column headers, to the clipboard as tab-separated text."
+            },
+            {
+              "action": "request_export",
+              "label": "Export CSV",
+              "description": "Write the rows and columns the table shows now to a CSV file."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per plugin. Click a header to sort, click it again to reverse; type in the filter box to keep rows containing the text in any column; right click a header to choose columns (Id, Optional, Source, Toolbar and Window state start hidden). 'Requires' is what must load first; 'Required by' is what breaks if you switch it off.",
+          "options": {
+            "source": "plugin_rows",
+            "row_key": "id",
+            "selected_call": "select_row",
+            "editable": false,
+            "filter": true,
+            "status": true,
+            "column_picker": true,
+            "expand": true,
+            "reserve": 70,
+            "min_column_width": 75,
+            "columns": [
+              {
+                "key": "name",
+                "title": "Plugin",
+                "width": 190,
+                "tooltip": "The name shown in the menus."
+              },
+              {
+                "key": "version",
+                "title": "Version",
+                "width": 70,
+                "tooltip": "The version from the plugin's manifest."
+              },
+              {
+                "key": "category",
+                "title": "Category",
+                "width": 100,
+                "tooltip": "The top-level menu section."
+              },
+              {
+                "key": "status",
+                "title": "Status",
+                "width": 90,
+                "tooltip": "enabled, disabled, library, cli only, or a maturity flag."
+              },
+              {
+                "key": "requires",
+                "title": "Requires",
+                "width": 170,
+                "tooltip": "Loaded before this plugin: a module-level import."
+              },
+              {
+                "key": "required_by",
+                "title": "Required by",
+                "width": 170,
+                "tooltip": "These stop working if this plugin is switched off."
+              },
+              {
+                "key": "optional",
+                "title": "Optional",
+                "visible": false,
+                "width": 170,
+                "tooltip": "Reached only after startup, from a button press or a guarded import."
+              },
+              {
+                "key": "id",
+                "title": "Id",
+                "visible": false,
+                "width": 150,
+                "tooltip": "The manifest id; settings are keyed by it."
+              },
+              {
+                "key": "source",
+                "title": "Source",
+                "visible": false,
+                "width": 80,
+                "tooltip": "built-in, or user for a plugin in your own directory."
+              },
+              {
+                "key": "toolbar",
+                "title": "Toolbar",
+                "visible": false,
+                "width": 70,
+                "tooltip": "yes when the plugin is pinned to the main toolbar."
+              },
+              {
+                "key": "state",
+                "title": "Window state",
+                "visible": false,
+                "width": 120,
+                "tooltip": "Whether the plugin's window remembers its size and position."
+              }
+            ]
+          }
+        },
+        {
+          "type": "toggle",
+          "label": "Show disabled plugins",
+          "attr": "show_disabled",
+          "description": "Include switched-off plugins in the table. Off, they are hidden entirely."
+        },
+        {
+          "type": "info",
+          "source": "status_text",
+          "description": "How many plugins were found, how many are off, how many need attention, and whether anything is unsaved."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Selected plugin",
+      "name": "selected",
+      "description": "What the selected plugin is, whether it is offered, and how it is wired to the others.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "plugin_details",
+          "title": "",
+          "description": "What the selected plugin is, where it lives, and how it is wired to the others."
+        },
+        {
+          "type": "toggle",
+          "label": "Disabled",
+          "attr": "selected_disabled",
+          "description": "Switch this plugin off. If other plugins require it, you are told which before the change sticks."
+        },
+        {
+          "type": "toggle",
+          "label": "Show in main toolbar",
+          "attr": "selected_in_toolbar",
+          "description": "Pin this plugin to the main window toolbar."
+        },
+        {
+          "type": "choice",
+          "label": "Remember window state",
+          "attr": "selected_statefulness",
+          "options_source": "selected_statefulness_labels",
+          "description": "Whether this one plugin's window reopens where you left it. 'Plugin default' defers to its manifest and the global setting below."
+        },
+        {
+          "type": "choice",
+          "label": "Window state (all plugins)",
+          "attr": "statefulness_mode",
+          "options_source": "statefulness_mode_labels",
+          "description": "Whether plugin windows remember their size and position. 'Plugin default' lets each manifest decide."
+        },
+        {
+          "type": "choice",
+          "label": "GUI runtime",
+          "attr": "gui_runtime",
+          "options_source": "gui_mode_labels",
+          "description": "Which interface plugins open in: the emtk version, the Qt version, or whichever the plugin prefers (Automatic)."
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "Dependencies",
+          "description": "Every dependency edge touching this plugin, in both directions, with the state of the plugin at the other end.",
+          "options": {
+            "source": "dependency_rows",
+            "row_key": "key",
+            "editable": false,
+            "filter": true,
+            "status": true,
+            "expand": true,
+            "reserve": 8,
+            "fit_columns": true,
+            "min_column_width": 50,
+            "columns": [
+              {
+                "key": "plugin",
+                "title": "Plugin",
+                "width": 150,
+                "tooltip": "The plugin at the other end of the edge."
+              },
+              {
+                "key": "relation",
+                "title": "Relation",
+                "width": 90,
+                "tooltip": "requires, optional, required by or optional for."
+              },
+              {
+                "key": "bound",
+                "title": "Bound",
+                "width": 60,
+                "tooltip": "The version bound the manifest asks for; any when it asks for none."
+              },
+              {
+                "key": "installed",
+                "title": "Installed",
+                "width": 70,
+                "tooltip": "The version of that plugin that is installed; a dash when it is not."
+              },
+              {
+                "key": "status",
+                "title": "Status",
+                "width": 80,
+                "tooltip": "The state of that plugin: enabled, disabled, missing and so on."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Plugin Manager",
+      "name": "dialog",
+      "description": "Asks before discarding changes, installing or deleting a plugin, and takes the new menu name.",
+      "sections": [
+        {
+          "type": "info",
+          "source": "dialog_text",
+          "description": "What will happen if you confirm."
+        },
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Menu name",
+          "attr": "dialog_input",
+          "hidden_when": {
+            "attr": "dialog_input_hidden",
+            "equals": "yes"
+          },
+          "description": "The new leaf name of the plugin's menu entry; the menu path is kept."
+        },
+        {
+          "type": "button_row",
+          "description": "Confirm or cancel.",
+          "buttons": [
+            {
+              "action": "dialog_ok",
+              "label": "OK",
+              "label_source": "dialog_ok_label",
+              "description": "Do it."
+            },
+            {
+              "action": "dialog_cancel",
+              "label": "Cancel",
+              "label_source": "dialog_cancel_label",
+              "hidden_when": {
+                "attr": "dialog_cancel_hidden",
+                "equals": "yes"
+              },
+              "description": "Leave everything as it is."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Icon",
+      "name": "icon",
+      "description": "Choose, generate or clear one plugin's icon.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "icon_preview",
+          "title": "",
+          "description": "The icon as it appears beside the plugin."
+        },
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Image",
+          "attr": "icon_path_text",
+          "elide": "start",
+          "description": "Path to an image to use as this plugin's icon. PNG is copied as is; other formats are rendered onto a square canvas."
+        },
+        {
+          "type": "button_row",
+          "description": "Pick, write, generate, edit or clear the icon.",
+          "buttons": [
+            {
+              "action": "icon_choose",
+              "label": "Choose…",
+              "description": "Pick an image file from disk."
+            },
+            {
+              "action": "icon_use",
+              "label": "Use",
+              "description": "Write the chosen image as this plugin's icon."
+            },
+            {
+              "action": "icon_generate",
+              "label": "Generate…",
+              "description": "Ask the configured AI provider for an icon, in the background."
+            },
+            {
+              "action": "icon_edit",
+              "label": "Edit",
+              "description": "Open the icon in the system image editor."
+            },
+            {
+              "action": "icon_clear",
+              "label": "Clear",
+              "description": "Remove the icon file and the manifest reference (asks first)."
+            }
+          ]
+        },
+        {
+          "type": "choice",
+          "label": "Provider",
+          "attr": "icon_provider_label",
+          "options_source": "icon_provider_labels",
+          "description": "Which image provider to ask. The API key is taken from AI Settings."
+        },
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Endpoint",
+          "attr": "icon_endpoint",
+          "description": "Base URL of the provider's API."
+        },
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Image model",
+          "attr": "icon_model",
+          "description": "Image model to request."
+        },
+        {
+          "type": "info",
+          "source": "icon_status",
+          "description": "What the last icon action did."
+        },
+        {
+          "type": "button_row",
+          "description": "Close the icon panel.",
+          "buttons": [
+            {
+              "action": "icon_close",
+              "label": "Close",
+              "description": "Close the panel; a changed icon rescans the plugins."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

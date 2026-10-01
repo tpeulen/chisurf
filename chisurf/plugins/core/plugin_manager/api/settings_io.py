@@ -32,6 +32,7 @@ OWNED_KEYS = (
     "icon_generation",
     "statefulness",
     "show_demo_plugins",
+    "gui_mode",
 )
 
 
@@ -56,6 +57,7 @@ class PluginSettings:
         self._data.setdefault("plugin_order", {})
         self._data.setdefault("statefulness", {})
         self._data.setdefault("hide_disabled_plugins", True)
+        self._data.setdefault("gui_mode", "auto")
         self._original = copy.deepcopy(self._data)
 
     # -- reads ----------------------------------------------------------
@@ -84,6 +86,17 @@ class PluginSettings:
     def hide_disabled(self) -> bool:
         """Whether disabled plugins are hidden from the table."""
         return bool(self._data.get("hide_disabled_plugins", True))
+
+    @property
+    def gui_mode(self) -> str:
+        value = str(self._data.get("gui_mode", "auto")).lower()
+        return value if value in {"auto", "emtk", "qt"} else "auto"
+
+    def set_gui_mode(self, value: str) -> None:
+        value = str(value).lower()
+        if value not in {"auto", "emtk", "qt"}:
+            raise ValueError("gui_mode must be auto, emtk or qt")
+        self._data["gui_mode"] = value
 
     @property
     def dirty(self) -> bool:

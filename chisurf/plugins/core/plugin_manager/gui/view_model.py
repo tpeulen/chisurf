@@ -53,7 +53,6 @@ class PluginManagerViewModel:
         self._rows: list[PluginRow] = []
         self._selected_id: str = ""
         self._status: str = ""
-        self.show_disabled: bool = not self.settings.hide_disabled
         self.reload()
 
     # -- observer plumbing ----------------------------------------------
@@ -122,6 +121,38 @@ class PluginManagerViewModel:
         if self.show_disabled:
             return list(self._rows)
         return [row for row in self._rows if not row.disabled]
+
+    @property
+    def show_disabled(self) -> bool:
+        """Whether switched-off plugins are listed; kept in the settings working copy.
+
+        It used to be a plain attribute that every reload reset from the settings,
+        so ticking "Show disabled plugins" and then switching a plugin off hid the
+        rows again.
+        """
+        return not self.settings.hide_disabled
+
+    @show_disabled.setter
+    def show_disabled(self, show: bool) -> None:
+        self._status = ""
+        self.settings.set_hide_disabled(not bool(show))
+        self.notify("changed")
+
+    def set_show_disabled(self, show: bool) -> None:
+        """Persist the table's disabled-plugin visibility preference in the working copy."""
+        self.show_disabled = show
+
+    @property
+    def gui_mode(self) -> str:
+        return self.settings.gui_mode
+
+    @gui_mode.setter
+    def gui_mode(self, value: str) -> None:
+        self.settings.set_gui_mode(value)
+        self.notify("changed")
+
+    def gui_mode_labels(self) -> list[str]:
+        return ["Automatic", "EMTK", "Qt"]
 
     def plugin_rows(self) -> list[dict[str, Any]]:
         """The table source: one flat record per visible plugin."""
@@ -282,6 +313,7 @@ class PluginManagerViewModel:
         row = self.selected
         if row is None:
             return []
+        self._status = ""  # an old message must not hide "unsaved changes"
         self.settings.set_disabled(row.plugin_id, disabled, aliases=self._aliases(row))
         blocking = row.blocking_dependants(self.settings.disabled) if disabled else []
         self.reload()
@@ -298,6 +330,7 @@ class PluginManagerViewModel:
         row = self.selected
         if row is None:
             return
+        self._status = ""
         self.settings.set_toolbar(row.plugin_id, bool(value), aliases=self._aliases(row))
         self.reload()
 
@@ -316,6 +349,7 @@ class PluginManagerViewModel:
 
     @statefulness_mode.setter
     def statefulness_mode(self, label: str) -> None:
+        self._status = ""
         for text, value in STATEFULNESS_MODES:
             if text == label:
                 self.settings.set_statefulness_mode(value)
@@ -327,6 +361,7 @@ class PluginManagerViewModel:
         row = self.selected
         if row is None:
             return
+        self._status = ""
         self.settings.set_statefulness_override(row.plugin_id, value)
         self.reload()
 
@@ -419,6 +454,7 @@ class PluginManagerViewModel:
         if row is None:
             return
         keys = [r.plugin_id for r in self.visible_rows()]
+        self._status = ""
         self.settings.move(row.plugin_id, keys, delta)
         self.reload()
 
@@ -429,8 +465,8 @@ class PluginManagerViewModel:
         """Whether there are unsaved changes."""
         return self.settings.dirty
 
-    def save(self) -> None:
-        """Write the settings to the user's settings file.
+    def save(self) -> bool:
+        """Write the settings to the user's settings file; returns whether it worked.
 
         This used to call a ``cs.core.settings.write_settings()`` that does not
         exist anywhere in the tree, inside a bare ``except: pass`` -- so the
@@ -445,6 +481,7 @@ class PluginManagerViewModel:
             self.set_status("Settings saved. Menu changes appear after a restart.")
         else:
             self.set_status("Could not write the settings file -- see the log for why.")
+        return bool(written)
 
     def revert(self) -> None:
         """Discard unsaved changes."""

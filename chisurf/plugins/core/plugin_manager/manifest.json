@@ -15,6 +15,7 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.plugin_manager.gui.tool:PluginManagerWidget"
+    "gui": "chisurf.plugins.core.plugin_manager.gui.tool:PluginManagerWidget",
+    "emtk": "chisurf.plugins.core.plugin_manager.gui.app:make_app"
   }
 }
