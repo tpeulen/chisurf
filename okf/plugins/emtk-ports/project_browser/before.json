@@ -1,0 +1,47 @@
+{
+  "controls": [
+    "2026-10-01223147",
+    "created",
+    "datasets",
+    "decaystudy(2versions)",
+    "deleteversion",
+    "export.cs.pto",
+    "fcstitration(1versions)",
+    "fits",
+    "id",
+    "importproject",
+    "notes",
+    "open/restore",
+    "owner",
+    "private",
+    "proj_e0c811fea22a",
+    "proj_efe156ad2c5e",
+    "project/version",
+    "public",
+    "refresh",
+    "savecurrentproject",
+    "showpublic",
+    "status",
+    "user_default",
+    "visibility"
+  ],
+  "labels": [],
+  "buttons": [
+    "Show public",
+    "💾 Save Current Project",
+    "📂 Open / Restore",
+    "📤 Export .cs.pto",
+    "📥 Import Project",
+    "🔄 Refresh",
+    "🗑️ Delete Version"
+  ],
+  "line_edits": 1,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 2,
+  "entrypoint": "chisurf.plugins.core.project_browser.gui.tool:ProjectBrowserTool",
+  "size": [
+    1200,
+    800
+  ]
+}

@@ -1,0 +1,8 @@
+ M chisurf/plugins/core/project_browser/README.md
+ M chisurf/plugins/core/project_browser/manifest.json
+?? chisurf/plugins/core/project_browser/gui/app.py
+?? chisurf/plugins/core/project_browser/gui/controller.py
+?? chisurf/plugins/core/project_browser/gui/help.md
+?? chisurf/plugins/core/project_browser/gui/model.py
+?? chisurf/plugins/core/project_browser/test/renders/
+?? chisurf/plugins/core/project_browser/test/test_native.py
