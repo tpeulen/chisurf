@@ -1,0 +1,189 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.0320",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.2",
+    "1000000",
+    "256",
+    "4",
+    "add",
+    "amp",
+    "anisotropy",
+    "anisotropyr(t)",
+    "b",
+    "bins",
+    "browseirf",
+    "counts",
+    "editthelifetimespectrumandpressgenerate.",
+    "fitgroup",
+    "generate",
+    "generatorsettings",
+    "guide",
+    "help",
+    "histogram",
+    "irf",
+    "irfnoise",
+    "lifetimespectrum",
+    "load",
+    "micro-time(ns)",
+    "mode",
+    "noise",
+    "photons",
+    "r(t)",
+    "remove",
+    "rotationspectrumr0=σb",
+    "sampleanisotropy",
+    "save",
+    "seed",
+    "start",
+    "syntheticdecay",
+    "synthetictcspcdecay",
+    "vm(magicangle)",
+    "vv/vh(polarized)",
+    "vv/vhdetectioncorrections",
+    "δt",
+    "ρ",
+    "τ"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Generate",
+      "id": "Generate",
+      "tooltip": "Generate the VM decay or VV/VH pair and the sample anisotropy curve."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Save CSV, text, NumPy, JSON or a VV/VH file with detection calibration."
+    },
+    {
+      "kind": "button",
+      "label": "Fit group",
+      "id": "Fit group",
+      "tooltip": "Register the generated dataset and create its lifetime fit group with calibration and shared parameters."
+    },
+    {
+      "kind": "button",
+      "label": "Browse IRF",
+      "id": "Browse IRF",
+      "tooltip": "Choose an optional instrument response to convolve with the ideal decay."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain lifetime spectra, anisotropy, convolution and noise."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through generation, export and creating a fit group."
+    },
+    {
+      "kind": "button",
+      "label": "Add",
+      "id": "Add##add_row",
+      "tooltip": "Add a lifetime component."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove##remove_row",
+      "tooltip": "Remove the selected lifetime component."
+    },
+    {
+      "kind": "button",
+      "label": "Load",
+      "id": "Load##load_spectrum",
+      "tooltip": "Load a lifetime spectrum from a CSV/text file (interleaved a,τ list or 2-column amplitude/lifetime table)."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bins",
+      "id": "##n_bins",
+      "tooltip": "Number of micro-time (TAC) bins in the decay histogram."
+    },
+    {
+      "kind": "input_text",
+      "label": "bin_width",
+      "id": "##bin_width",
+      "tooltip": "Micro-time bin width in nanoseconds."
+    },
+    {
+      "kind": "input_text",
+      "label": "start_bin",
+      "id": "##start_bin",
+      "tooltip": "Bin index where the ideal decay begins (prompt offset)."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_path",
+      "id": "##irf_path",
+      "tooltip": "Optional instrument response function file (text or .npy) to convolve with the decay. Empty = ideal decay."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Noise",
+      "id": "Noise##shot_noise",
+      "tooltip": "Poisson-sample a finite-count observation (uses Photons + Seed). Off = normalized ideal pattern."
+    },
+    {
+      "kind": "input_text",
+      "label": "photon_count",
+      "id": "##photon_count",
+      "tooltip": "Total photon count for the Poisson observation."
+    },
+    {
+      "kind": "input_text",
+      "label": "seed",
+      "id": "##seed",
+      "tooltip": "Random seed for the shot-noise realization (reproducible)."
+    },
+    {
+      "kind": "radio_button",
+      "label": "VM (magic angle)",
+      "id": "VM (magic angle)##polarization0",
+      "tooltip": "Detection mode. VM: magic angle — the decay carries no anisotropy. VV/VH: parallel and perpendicular channels generated with the rotation spectrum below; both share one photon budget when Noise is on."
+    },
+    {
+      "kind": "radio_button",
+      "label": "VV/VH (polarized)",
+      "id": "VV/VH (polarized)##polarization1",
+      "tooltip": "Detection mode. VM: magic angle — the decay carries no anisotropy. VV/VH: parallel and perpendicular channels generated with the rotation spectrum below; both share one photon budget when Noise is on."
+    },
+    {
+      "kind": "button",
+      "label": "Add",
+      "id": "Add##add_rotation_row",
+      "tooltip": "Add a rotational correlation component."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove##remove_rotation_row",
+      "tooltip": "Remove the selected rotational correlation component."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

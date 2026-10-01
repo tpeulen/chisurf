@@ -1,0 +1,9 @@
+{
+  "1.0": "A numeric table cell: the Qt table shows the Python repr (1.0, 4.0), the emtk table the shortest number (1, 4). The values are equal.",
+  "4.0": "A numeric table cell: the Qt table shows the Python repr (1.0, 4.0), the emtk table the shortest number (1, 4). The values are equal.",
+  "2": "The Qt table's row-number header of the second spectrum row (an item-view artefact); the emtk tables have no row-number column.",
+  "?": "The Qt '?' help button; the emtk window has a labelled Help button (help_emtk.md) next to Guide.",
+  "g": "g, l1 and l2 sit in the 'VV/VH detection corrections' panel, which is folded in VM mode in both windows (the labels exist in the Qt tree while folded); the emtk form draws them when the panel is open or the mode is VV/VH.",
+  "l1": "See g.",
+  "l2": "See g."
+}
