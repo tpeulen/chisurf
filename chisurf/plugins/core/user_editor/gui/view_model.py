@@ -82,7 +82,8 @@ class UserEditorViewModel:
             records = client.list_users()
         except Exception as exc:
             message = str(exc)
-            if "auth" in message.lower() or "admin" in message.lower():
+            lowered = message.lower()
+            if "auth" in lowered or "admin" in lowered or "permission" in lowered:
                 self._error = (
                     "Listing users requires an administrator account. Sign in as "
                     "an administrator, then press Reload."

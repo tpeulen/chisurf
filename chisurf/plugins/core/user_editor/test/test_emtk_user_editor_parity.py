@@ -311,7 +311,9 @@ def test_permission_denied_from_the_real_server_matches_the_qt_message(qapp, qtb
     app = loaded_app(plain)
     assert app.model.users == [] and shown(app) == []
     assert app.model.status_text() == qt_widget.model.status_text()
-    assert "Permission denied" in app.model.status_text()
+    # the server answered "Permission denied": that is a permission, not an unreachable server
+    assert app.model.status_text().startswith("Listing users requires an administrator account")
+    assert "Could not reach" not in app.model.status_text()
 
 
 def test_first_frame_loads_in_the_background():
