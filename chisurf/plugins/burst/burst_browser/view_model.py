@@ -185,7 +185,7 @@ class BurstBrowserViewModel:
         self.refresh()
         self.notify("data")
 
-    def load_folder(self, folder) -> None:
+    def load_folder(self, folder, cancel_check=None) -> None:
         """Load a burst analysis: a folder of ``.bur`` files, or a container.
 
         A `.pto` is addressed like a folder and *is* where a container-backed
@@ -207,6 +207,8 @@ class BurstBrowserViewModel:
             return
         parts: list[Any] = []
         for fn in bur_files:
+            if callable(cancel_check):
+                cancel_check()
             try:
                 part = burstio.read_bur_with_companions(fn)
                 # A dictionary-encoded text column: one string per file, not one
@@ -229,6 +231,7 @@ class BurstBrowserViewModel:
 
     # ── data prep (E / S / size columns + gating ranges) ───────────────
     def _prepare_table(self, table: Any) -> None:
+        self.selected_indices = []
         names = column_names(table)
         if "Number of Photons" in names:
             table = take_where(table, numeric_column(table, "Number of Photons") > 0)

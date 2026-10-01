@@ -27,8 +27,10 @@ from typing import Any
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
+from emtk.im_core import get_current_context
 
 from chisurf.core.datastore import column_names, column_values, is_missing
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
 from ..view_model import BurstBrowserViewModel
 
@@ -76,10 +78,7 @@ class BurstBrowserGui:
         self.page_size: int = 50
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
-
         from pathlib import Path
-
-        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
 
         help_resource = Path(__file__).parent / "help.md"
         guide_resource = Path(__file__).parent / "guide.json"
@@ -91,12 +90,43 @@ class BurstBrowserGui:
             size=(700.0, 520.0),
         )
         self.tour = EmTkGuidedTour(
-            steps=guide_resource,
-            get_target_rect=lambda k: self.item_rects.get(k),
-            owner=self.model,
+            steps=guide_resource, get_target_rect=lambda k: self.item_rects.get(k), owner=self.model,
+            wait_for_controls=True,
+        )
+        self.on_used = self.tour.notify_used  # an action step waits for its control
+        self.model.add_observer(self._on_model_event)
+        from emtk.docking import DockManager, Region, Split
+
+        self.docks = DockManager(
+            Split(
+                "h",
+                0.30,
+                Split("v", 0.5, Region("controls"), Region("gates")),
+                Split("h", 0.55, Region("table"), Region("histogram")),
+            ),
+            name="burst_browser",
+        )
+        self.docks.add_window("controls", "Data & columns", self._draw_controls, dock="controls")
+        self.docks.add_window(
+            "gates", "Burst gates", lambda box: self._draw_gating_controls(), dock="gates"
+        )
+        self.docks.add_window(
+            "table", "Bursts table", lambda box: self._draw_table_view(), dock="table"
+        )
+        self.docks.add_window(
+            "histogram", "Histogram", lambda box: self._draw_histogram_view(), dock="histogram"
         )
 
-        self.model.add_observer(self._on_model_event)
+    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+        r = rect if rect is not None else im.get_item_rect()
+        if r is not None:
+            self.item_rects[name] = tuple(r)
+
+    def _draw_controls(self, box):
+        self._draw_source_controls()
+        if getattr(self, "controller", None):
+            self.controller.draw_controls(remember=self.remember, track=self.track)
+        self._draw_column_selectors()
 
     def start_guide(self) -> None:
         """Start the in-EMTK guided tour."""
@@ -110,59 +140,13 @@ class BurstBrowserGui:
         if event in ("data", "gating"):
             self.page = 0
 
-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
-        """Store the item's screen rectangle for tour targeting."""
-        r = rect if rect is not None else im.get_item_rect()
-        if r is not None:
-            self.item_rects[name] = tuple(r)
-
     def track(self, name: str) -> None:
         """Record usage of a named control."""
         if callable(self.on_used):
             self.on_used(name)
 
     def draw(self, w: float, h: float) -> None:
-        """Draw the dockable Burst Browser into (w, h) display pixels."""
-        # Enable full dockspace over the viewport so all windows can be docked,
-        # split, tabbed, dragged, or undocked as floating windows.
-        im.dock_space_over_viewport(1)
-
-        ctrl_w = min(max(260.0, w * 0.26), 320.0)
-        remaining_w = max(w - ctrl_w - 16.0, 320.0)
-        tbl_w = max(remaining_w * 0.50, 200.0)
-        hist_w = max(remaining_w - tbl_w - 8.0, 180.0)
-
-        # ── Window 1: Controls (Source & Selection) ──────────────────────
-        im.set_next_window_pos((4.0, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((ctrl_w, (h - 12.0) * 0.42), im.Cond.FIRST_USE_EVER)
-        if im.begin("Controls"):
-            self._draw_source_controls()
-            im.spacing()
-            im.separator()
-            im.spacing()
-            self._draw_column_selectors()
-            im.end()
-
-        # ── Window 2: Gating (Interactive thresholds & region presets) ───
-        im.set_next_window_pos((4.0, 8.0 + (h - 12.0) * 0.42), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((ctrl_w, (h - 12.0) * 0.58), im.Cond.FIRST_USE_EVER)
-        if im.begin("Gating"):
-            self._draw_gating_controls()
-            im.end()
-
-        # ── Window 3: Bursts Table ───────────────────────────────────────
-        im.set_next_window_pos((8.0 + ctrl_w, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((tbl_w, h - 8.0), im.Cond.FIRST_USE_EVER)
-        if im.begin("Bursts Table"):
-            self._draw_table_view()
-            im.end()
-
-        # ── Window 4: Histogram (Live distribution & region dragging) ────
-        im.set_next_window_pos((12.0 + ctrl_w + tbl_w, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((hist_w, h - 8.0), im.Cond.FIRST_USE_EVER)
-        if im.begin("Histogram"):
-            self._draw_histogram_view()
-            im.end()
+        self.docks.draw((0.0, 0.0, float(w), float(h)))
 
         if self.help_window.open:
             self.help_window.draw((0.0, 0.0, float(w), float(h)))
@@ -178,6 +162,7 @@ class BurstBrowserGui:
             self.track("open_folder")
             if callable(self.on_open_folder):
                 self.on_open_folder()
+        im.set_item_tooltip("Open a folder of .bur burst files (with their companions).")
         self.remember("open_folder")
 
         im.same_line()
@@ -185,18 +170,21 @@ class BurstBrowserGui:
             self.track("open_file")
             if callable(self.on_open_file):
                 self.on_open_file()
+        im.set_item_tooltip("Open a single .bur burst file or .pto container.")
         self.remember("open_file")
 
         if im.button("📖 Guide", (btn_w, 24.0)):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
+        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
 
         im.same_line()
         if im.button("❓ Help", (btn_w, 24.0)):
             self.track("help")
             self.show_help()
         self.remember("help")
+        im.set_item_tooltip("Open the help window with reference documentation.")
 
         path = self.model.path_text
         if len(path) > 36:
@@ -213,8 +201,12 @@ class BurstBrowserGui:
         if self.model.detector in dets:
             cur_det_idx = dets.index(self.model.detector)
         im.set_next_item_width(avail_w)
-        changed, new_det_idx = im.combo("Detector##det", cur_det_idx, dets)
+        im.text("Detector:")
+        changed, new_det_idx = im.combo("##det", cur_det_idx, dets)
+        im.set_item_tooltip("Detector (channel group) whose bursts are shown.")
+        self.remember("detector")
         if changed and 0 <= new_det_idx < len(dets):
+            self.track("detector")
             self.model.on_detector_changed(dets[new_det_idx])
 
         im.spacing()
@@ -225,8 +217,12 @@ class BurstBrowserGui:
         if self.model.hist_column in cols:
             cur_col_idx = cols.index(self.model.hist_column)
         im.set_next_item_width(avail_w)
-        changed, new_col_idx = im.combo("Hist Column##col", cur_col_idx, cols)
+        im.text("Histogram column:")
+        changed, new_col_idx = im.combo("##col", cur_col_idx, cols)
+        im.set_item_tooltip("Table column whose distribution is plotted in the histogram.")
+        self.remember("hist_column")
         if changed and 0 <= new_col_idx < len(cols):
+            self.track("hist_column")
             self.model.hist_column = cols[new_col_idx]
             self.model.refresh()
 
@@ -241,10 +237,14 @@ class BurstBrowserGui:
             im.text("E Range:")
             im.set_next_item_width(half_w)
             ch_lo, new_e_lo = im.slider_float("##e_min", float(self.model.e_min), 0.0, 1.0, "%.3f")
+            im.set_item_tooltip("Lower FRET-efficiency gate; bursts below it are hidden.")
+            self.remember("e_range")
             im.same_line()
             im.set_next_item_width(half_w)
             ch_hi, new_e_hi = im.slider_float("##e_max", float(self.model.e_max), 0.0, 1.0, "%.3f")
+            im.set_item_tooltip("Upper FRET-efficiency gate; bursts above it are hidden.")
             if ch_lo or ch_hi:
+                self.track("e_range")
                 self.model.e_min = min(new_e_lo, new_e_hi)
                 self.model.e_max = max(new_e_lo, new_e_hi)
                 self.model.refresh()
@@ -256,9 +256,11 @@ class BurstBrowserGui:
             im.text("S Range:")
             im.set_next_item_width(half_w)
             ch_lo, new_s_lo = im.slider_float("##s_min", float(self.model.s_min), 0.0, 1.0, "%.3f")
+            im.set_item_tooltip("Lower stoichiometry gate; bursts below it are hidden.")
             im.same_line()
             im.set_next_item_width(half_w)
             ch_hi, new_s_hi = im.slider_float("##s_max", float(self.model.s_max), 0.0, 1.0, "%.3f")
+            im.set_item_tooltip("Upper stoichiometry gate; bursts above it are hidden.")
             if ch_lo or ch_hi:
                 self.model.s_min = min(new_s_lo, new_s_hi)
                 self.model.s_max = max(new_s_lo, new_s_hi)
@@ -270,14 +272,14 @@ class BurstBrowserGui:
         if self.model._col_size is not None:
             im.text("Photon Size Range:")
             im.set_next_item_width(half_w)
-            ch_lo, new_sz_lo = im.input_int(
-                "##sz_min", int(self.model.size_min), step=1, step_fast=50
-            )
+            # No -/+ buttons: at half the pane they left too little room and a
+            # 3-digit photon count showed as its first two digits.
+            ch_lo, new_sz_lo = im.input_int("##sz_min", int(self.model.size_min), step=0, step_fast=0)
+            im.set_item_tooltip("Minimum number of photons per burst.")
             im.same_line()
             im.set_next_item_width(half_w)
-            ch_hi, new_sz_hi = im.input_int(
-                "##sz_max", int(self.model.size_max), step=1, step_fast=50
-            )
+            ch_hi, new_sz_hi = im.input_int("##sz_max", int(self.model.size_max), step=0, step_fast=0)
+            im.set_item_tooltip("Maximum number of photons per burst.")
             if ch_lo or ch_hi:
                 self.model.size_min = max(0, min(new_sz_lo, new_sz_hi))
                 self.model.size_max = max(0, max(new_sz_lo, new_sz_hi))
@@ -287,6 +289,7 @@ class BurstBrowserGui:
 
         im.spacing()
         ch_sel, new_use_sel = im.checkbox("Use table selection for hist", self.model.use_selection)
+        im.set_item_tooltip("Histogram only the rows currently selected in the bursts table.")
         if ch_sel:
             self.model.use_selection = new_use_sel
             self.model.refresh()
@@ -303,10 +306,14 @@ class BurstBrowserGui:
             ("High FRET", 0.65, 0.95),
             ("Full Range", 0.0, 1.0),
         ]
-        for name, r_min, r_max in presets:
+        for i, (name, r_min, r_max) in enumerate(presets):
             if im.button(f"Region: {name} [{r_min:.2f}-{r_max:.2f}]", (avail_w, 22.0)):
+                self.track("region_presets")
                 self.model.e_min, self.model.e_max = r_min, r_max
                 self.model.refresh()
+            im.set_item_tooltip(f"Apply the {name} FRET gate, or drag this button onto a plot.")
+            if i == 0:
+                self.remember("region_presets")
             # Enable dragging region payload from button
             if im.begin_drag_drop_source():
                 payload = json.dumps({"min": r_min, "max": r_max, "name": name})
@@ -338,17 +345,22 @@ class BurstBrowserGui:
         # Pagination toolbar
         if im.button("<<", (28.0, 22.0)) and self.page > 0:
             self.page -= 1
+        im.set_item_tooltip("Previous page of bursts.")
         im.same_line()
         im.text(f"Page {self.page + 1} / {max_page + 1} ({total_rows} bursts)")
         im.same_line()
         if im.button(">>", (28.0, 22.0)) and self.page < max_page:
             self.page += 1
+        im.set_item_tooltip("Next page of bursts.")
 
         im.same_line()
+        if im.get_content_region_avail()[0] < 65.0:  # a narrow pane: on its own row, not cut off
+            im.new_line()
         if im.button("Clear Sel", (65.0, 22.0)):
             self.model.selected_indices.clear()
             if self.model.use_selection:
                 self.model.notify("selection")
+        im.set_item_tooltip("Deselect all rows in the table.")
 
         im.spacing()
 
@@ -361,10 +373,15 @@ class BurstBrowserGui:
             | im.TableFlags.RESIZABLE
         )
         tbl_h = max(60.0, avail_h - 32.0)
+        tx, ty = im.get_cursor_screen_pos()
+        self.remember("table", (tx, ty, avail_w, tbl_h))
         if im.begin_table("burst_data_table", len(names), flags, size=(avail_w, tbl_h)):
             im.table_setup_scroll_freeze(0, 1)
+            # Fixed widths that fit each header: stretched columns of a wide table
+            # were narrower than their names, which then overlapped.
             for name in names:
-                im.table_setup_column(name)
+                width = max(im.calc_text_size(name)[0], im.calc_text_size("0.0000")[0]) + 14.0
+                im.table_setup_column(name, im.TableColumnFlags.WIDTH_FIXED, width)
             im.table_headers_row()
 
             # Pre-extract column arrays for fast indexed lookup
@@ -384,7 +401,9 @@ class BurstBrowserGui:
                     f"{val_0}##r_{base_row}",
                     selected=is_selected,
                 )
+                im.set_item_tooltip("Click to select this burst row for the histogram.")
                 if clicked:
+                    self.track("table")
                     if is_selected:
                         self.model.selected_indices.remove(base_row)
                     else:
@@ -433,6 +452,7 @@ class BurstBrowserGui:
                     col=REGION_FILL,
                 )
                 if r_res.modified:
+                    self.track("browser_histogram")
                     self.model.e_min = max(0.0, min(r_res.x_min, r_res.x_max))
                     self.model.e_max = min(1.0, max(r_res.x_min, r_res.x_max))
                     self.model.refresh()
@@ -449,6 +469,7 @@ class BurstBrowserGui:
                     col=REGION_FILL,
                 )
                 if r_res.modified:
+                    self.track("browser_histogram")
                     self.model.s_min = max(0.0, min(r_res.x_min, r_res.x_max))
                     self.model.s_max = min(1.0, max(r_res.x_min, r_res.x_max))
                     self.model.refresh()
@@ -465,6 +486,7 @@ class BurstBrowserGui:
                     col=REGION_FILL,
                 )
                 if r_res.modified:
+                    self.track("browser_histogram")
                     self.model.size_min = max(0, int(min(r_res.x_min, r_res.x_max)))
                     self.model.size_max = max(0, int(max(r_res.x_min, r_res.x_max)))
                     self.model.refresh()
@@ -507,6 +529,19 @@ class BurstBrowserApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        self.controller = None
+        if on_open_folder is None and on_open_file is None:
+            from .controller import BurstBrowserController
+
+            model = model if model is not None else BurstBrowserViewModel()
+            self.controller = BurstBrowserController(model)
+
+            def on_open_folder():
+                self.controller.browse("folder")
+
+            def on_open_file():
+                self.controller.browse("file")
+
         self.browser_gui = BurstBrowserGui(
             model=model,
             on_open_folder=on_open_folder,
@@ -515,7 +550,10 @@ class BurstBrowserApp(ImApp):
             on_help=on_help,
         )
         self.model = self.browser_gui.model
-        super().__init__(gui=self._render, continuous=False)
+        self.item_rects = self.browser_gui.item_rects
+        self.browser_gui.remember = self.remember
+        self.browser_gui.controller = self.controller
+        super().__init__(gui=self._render)
 
     def start_guide(self) -> None:
         """Start guided tour inside EMTK."""
@@ -526,5 +564,40 @@ class BurstBrowserApp(ImApp):
         self.browser_gui.show_help()
 
     def _render(self) -> None:
+        if self.controller is not None:
+            self.controller.poll()
+            if self.controller.running:  # look again in 0.1 s while a read runs
+                ctx = get_current_context()
+                ctx.request_frame_at(ctx.io.now + 0.1)
         w, h = im.get_main_viewport().size
         self.browser_gui.draw(w, h)
+        if self.controller is not None:
+            self.controller.draw_dialogs((0.0, 0.0, float(w), float(h)))
+
+    @property
+    def table(self):
+        return self.model.table
+
+    def load_folder(self, folder):
+        if self.controller is not None:
+            self.controller.load(folder)
+        else:
+            self.model.load_folder(folder)
+
+    def load_bur(self, path):
+        self.load_folder(path)
+
+    def close(self):
+        if self.controller is not None:
+            self.controller.close()
+
+    def on_paths_dropped(self, paths):
+        if self.controller is not None:
+            self.controller.on_paths_dropped(paths)
+
+
+def create_app(**kwargs):
+    from chisurf.emtk.i18n import install
+
+    install()
+    return BurstBrowserApp(**kwargs)

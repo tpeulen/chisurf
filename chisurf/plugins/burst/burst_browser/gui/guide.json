@@ -1,22 +1,48 @@
-[
-  {
-    "title": "Welcome to Burst Browser",
-    "text": "The Burst Browser allows you to inspect, filter, and gate single-molecule bursts across all measurement runs.",
-    "target": {"name": "browser_controls"}
-  },
-  {
-    "title": "Data Source & Columns",
-    "text": "Select your burst data table and configure observable columns for inspection.",
-    "target": {"name": "browser_controls"}
-  },
-  {
-    "title": "Interactive Gating",
-    "text": "Set gate boundaries on burst size, duration, and FRET parameters to filter your sub-populations.",
-    "target": {"name": "browser_controls"}
-  },
-  {
-    "title": "Burst Table & Histograms",
-    "text": "Inspect the individual burst records in the table and live-updating histogram distributions.",
-    "target": {"name": "browser_controls"}
-  }
-]
+{
+  "_comment": "Guided tour for the Burst Browser. Each step points at a real control (its name is the key the app remembers the control's rectangle under) and the action steps wait for the user to use it. Read by chisurf.emtk.help_guide and chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Open the bursts",
+      "text": "<b>Open Folder</b> reads every <b>.bur</b> table under a burstwise analysis folder, with the per-burst companions beside it. A single .bur file or a .pto container goes through <b>Open File</b>.",
+      "target": {"name": "open_folder"},
+      "await": {"hint": "Press <b>Open Folder</b> and choose a folder with .bur files."}
+    },
+    {
+      "title": "Which detector",
+      "text": "Burst tables carry photon counts per detector group. Pick the group the columns refer to; <b>All</b> uses the whole-burst columns.",
+      "target": {"name": "detector"}
+    },
+    {
+      "title": "One column at a time",
+      "text": "The histogram shows one column of the table. <b>E</b> shows the FRET populations; <b>S</b> separates donor-only bursts (S near 1) from doubly labelled ones.",
+      "target": {"name": "hist_column"},
+      "await": {"hint": "Choose a column in <b>Histogram column</b>."}
+    },
+    {
+      "title": "Gates",
+      "text": "The gates keep the bursts inside an E, S and size range; the table, the histogram and the status line follow at once. Lower the S maximum to drop the donor-only bursts.",
+      "target": {"name": "e_range"}
+    },
+    {
+      "title": "A gate in one press",
+      "text": "A region preset sets the E gate in one press. Drag the button onto the histogram to apply it there.",
+      "target": {"name": "region_presets"},
+      "await": {"hint": "Press one of the <b>Region</b> presets."}
+    },
+    {
+      "title": "The bursts that pass",
+      "text": "Each row is a burst that passes the gates. Click rows to select them; <b>Use table selection for hist</b> histograms only the selected ones.",
+      "target": {"name": "table"}
+    },
+    {
+      "title": "Gate on the plot",
+      "text": "With E or S plotted, the shaded band is the gate: drag its edges and the gates follow.",
+      "target": {"name": "browser_histogram"}
+    },
+    {
+      "title": "Take them with you",
+      "text": "<b>Export gated bursts</b> writes every burst that passes the gates as CSV; <b>Export selected bursts</b> only the selected rows that also pass them.",
+      "target": {"name": "export_gated"}
+    }
+  ]
+}
