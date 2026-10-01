@@ -1,0 +1,73 @@
+"""Native EMTK model registry manager."""
+from __future__ import annotations
+
+from emtk import im
+from emtk.app import ImApp
+
+from .strings import install_translations, tr
+from .view_model import ModelManagerViewModel
+
+install_translations()
+
+
+class ModelManagerApp(ImApp):
+    def __init__(self, model=None):
+        self.model = model or ModelManagerViewModel()
+        self.selected_index = -1
+        super().__init__(self.render)
+
+    def render(self):
+        im.begin(tr("Model Manager"), (0, 0, *im.get_main_viewport().size))
+        changed, self.model.show_disabled = im.checkbox(tr("Show disabled models"), self.model.show_disabled)
+        im.set_item_tooltip(tr("Include disabled models in the registry list"))
+        im.same_line()
+        if im.button(tr("Reload")):
+            self.model.reload()
+        im.set_item_tooltip(tr("Re-read the registered model list"))
+        im.same_line()
+        if im.button(tr("Save")):
+            self.model.save()
+        im.set_item_tooltip(tr("Persist disabled model names"))
+        im.same_line()
+        if im.button(tr("Revert")):
+            self.model.revert()
+        im.set_item_tooltip(tr("Discard unsaved disabled-model changes"))
+        im.separator()
+        im.heading(tr("Models"), level=2)
+        rows = self.model.visible_rows()
+        for index, row in enumerate(rows):
+            label = f"{row.name} · {row.experiment_label} · {row.spec_text()}"
+            if im.selectable(label, index == self.selected_index):
+                self.selected_index = index
+                self.model.select_row(index)
+            im.set_item_tooltip(tr("Select this model to inspect its source and parameter UI"))
+        if im.button(tr("Drop stale entries")):
+            self.model.drop_stale()
+        im.set_item_tooltip(tr("Remove disabled names that no longer match a registered model"))
+        im.separator()
+        im.heading(tr("Details"), level=2)
+        row = self.model.selected
+        if row is not None:
+            changed, disabled = im.checkbox(tr("Disabled"), self.model.selected_disabled)
+            im.set_item_tooltip(tr("Disable this model by its shared display name"))
+            if changed:
+                self.model.selected_disabled = disabled
+            im.markdown(self.model.details_text())
+        else:
+            im.text_wrapped(tr("No model selected"))
+        im.text_wrapped(self.model.status_text())
+        im.end()
+
+    def export_settings(self):
+        return {"show_disabled": self.model.show_disabled, "selected_index": self.selected_index}
+
+    def restore_settings(self, settings):
+        self.model.show_disabled = bool(settings.get("show_disabled", True))
+        self.selected_index = int(settings.get("selected_index", -1))
+
+    def close(self):
+        self.model._observers.clear()
+
+
+def make_app():
+    return ModelManagerApp()
