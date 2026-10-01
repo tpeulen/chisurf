@@ -52,8 +52,8 @@ FILTER_LABELS = (
     "Only 0★",
 )
 
-#: Highest rating the browser stores (the rating column is a whole number from 0 to this).
-RATING_MAX = 5
+#: Highest rating (a whole number 0..this); the Qt star widget has 3 stars.
+RATING_MAX = 3
 
 #: Name of the per-folder trace cache directory (beside the data files).
 CACHE_DIRNAME = ".tttr_trace_cache"
@@ -776,7 +776,7 @@ class TraceBrowserModel:
         return False
 
     def get_rating(self, path: str | pathlib.Path) -> int:
-        """Return the 0..5 rating of *path* (0 when unrated)."""
+        """Return the 0..3 rating of *path* (0 when unrated)."""
         return int(self.meta_get(pathlib.Path(path)).get("rating", 0))
 
     def get_notes(self, path: str | pathlib.Path) -> str:
@@ -791,7 +791,7 @@ class TraceBrowserModel:
         path : str or pathlib.Path
             The file.
         rating : int
-            New rating (0..5).
+            New rating (0..3).
         flush : bool
             Also write the metadata file now (a host that debounces writes passes ``False``).
         """

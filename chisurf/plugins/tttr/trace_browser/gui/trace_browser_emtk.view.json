@@ -67,7 +67,7 @@
           {"key": "name", "title": "File", "width": 140,
            "description": "File name, relative to the opened folder. Click the header to sort."},
           {"key": "rating", "title": "Rating", "width": 58, "editable": true,
-           "description": "Rating from 0 (unrated) to 5. Double click, type a whole number and press Enter. Sorting by this column orders by the number."},
+           "description": "Rating from 0 (unrated) to 3, as the three stars of the Qt tool. Double click, type a whole number and press Enter. Sorting by this column orders by the number."},
           {"key": "size_mb", "title": "Size (MB)", "width": 82, "format": "%.3f",
            "description": "File size in megabytes."},
           {"key": "notes", "title": "Notes", "editable": true,

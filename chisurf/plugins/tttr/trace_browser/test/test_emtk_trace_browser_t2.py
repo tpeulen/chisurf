@@ -261,26 +261,26 @@ def test_rating_and_notes_edits_persist_and_show_after_a_rescan(data_dir):
     try:
         app.model.request("open_folder", data_dir)
         settle(app)
-        edit_cell(app, "m001.spc", "rating", "4")
+        edit_cell(app, "m001.spc", "rating", "2")
         edit_cell(app, "m001.spc", "notes", "good burst, dim acceptor")
         edit_cell(app, "m000.spc", "rating", "1")
         saved = json.loads((data_dir / META).read_text())
-        assert saved["m001.spc"] == {"rating": 4, "annotation": "good burst, dim acceptor"}
+        assert saved["m001.spc"] == {"rating": 2, "annotation": "good burst, dim acceptor"}
         assert saved["m000.spc"]["rating"] == 1
-        assert app.model.get_rating(data_dir / "m001.spc") == 4
-        assert names(app.model.rows) == [("m000.spc", 1), ("m001.spc", 4)]
+        assert app.model.get_rating(data_dir / "m001.spc") == 2
+        assert names(app.model.rows) == [("m000.spc", 1), ("m001.spc", 2)]
         assert {r["name"]: r["notes"] for r in app.model.rows}["m001.spc"] == "good burst, dim acceptor"
         # a rescan of the same folder (the toggle) and a brand-new app read it back from the disk
         app.model.request("scan")
         text = " | ".join(settle(app))
-        assert "good burst, dim acceptor" in text and names(app.model.rows) == [("m000.spc", 1), ("m001.spc", 4)]
+        assert "good burst, dim acceptor" in text and names(app.model.rows) == [("m000.spc", 1), ("m001.spc", 2)]
     finally:
         app.close()
     other = make_app()
     try:
         other.model.request("open_folder", data_dir)
         text = " | ".join(settle(other))
-        assert names(other.model.rows) == [("m000.spc", 1), ("m001.spc", 4)]
+        assert names(other.model.rows) == [("m000.spc", 1), ("m001.spc", 2)]
         assert "good burst, dim acceptor" in text
     finally:
         other.close()
@@ -292,10 +292,11 @@ def test_an_invalid_rating_is_refused_and_the_stored_value_stays(data_dir):
         app.model.request("open_folder", data_dir)
         settle(app)
         edit_cell(app, "m000.spc", "rating", "3")
+        edit_cell(app, "m000.spc", "rating", "4")                  # above the maximum
         edit_cell(app, "m000.spc", "rating", "9")                  # above the maximum
         assert app.model.get_rating(data_dir / "m000.spc") == 3
         assert next(r for r in app.model.rows if r["name"] == "m000.spc")["rating"] == 3
-        assert "whole number from 0 to 5" in app.model.error_text
+        assert "whole number from 0 to 3" in app.model.error_text
         edit_cell(app, "m000.spc", "rating", "2.5")                # not a whole number
         assert app.model.get_rating(data_dir / "m000.spc") == 3
         edit_cell(app, "m000.spc", "rating", "abc")                # a typo: the table keeps the cell
