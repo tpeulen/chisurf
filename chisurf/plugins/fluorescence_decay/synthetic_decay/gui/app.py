@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -36,18 +37,37 @@ class SyntheticDecayApp(ImApp):
                     section.setdefault("description", f"Expand or collapse {section['title']}.")
                     configure_panels(section.get("sections", []))
         configure_panels(self.spec["sections"])
+        self._plain_labels(self.spec["sections"])
+        self._bind_tables(self.spec["sections"])
         self.corrections = self.spec["sections"][3]["sections"][1]
         self.last_mode = None
         # File picking happens in a native overlay; the editable path still allows pasting.
         self.spec["sections"][2]["sections"][0]["kind"] = "str"
-        self.help_window = EmTkHelpWindow(title="Synthetic decay — Help", resource=Path(__file__).with_name("help.md"), owner=self)
-        self.tour = EmTkGuidedTour(steps=Path(__file__).with_name("guide.json"), get_target_rect=self.target_rect, owner=self, wait_for_controls=True, on_step_change=self.reveal_step)
+        self.help_window = EmTkHelpWindow(title="Synthetic decay — Help", resource=Path(__file__).with_name("help_emtk.md"), owner=self)
+        self.tour = EmTkGuidedTour(steps=Path(__file__).with_name("guide_emtk.json"), get_target_rect=self.target_rect, owner=self, wait_for_controls=True, on_step_change=self.reveal_step)
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(Split("h", .42, Region("settings"), Split("v", .66, Region("decay"), Region("anisotropy"))))
         self.docks.add_window("settings", "Generator settings", self.controls, dock="settings", closable=False)
         self.docks.add_window("decay", "Synthetic decay", self.decay_plot, dock="decay", closable=False)
         self.docks.add_window("anisotropy", "Anisotropy r(t)", self.anisotropy_plot, dock="anisotropy", closable=False)
         super().__init__(self.render, continuous=False)
+
+    @staticmethod
+    def _bind_tables(sections):
+        """Native tables edit the model's own rows (``edited_call``); the Qt spec's ``update_call`` is not read."""
+        for section in sections:
+            if section.get("type") == "table" and section.get("update_call"):
+                section["source"] = {"spectrum_source": "spectrum_records", "rotation_source": "rotation_records"}[section["source"]]
+                section["edited_call"] = "edit_cell"
+            SyntheticDecayApp._bind_tables(section.get("sections", []))
+
+    @staticmethod
+    def _plain_labels(sections):
+        """The shared spec carries the Qt buttons' emoji; the native window shows plain labels."""
+        for section in sections:
+            for item in section.get("buttons", []):
+                item["label"] = re.sub(r"^[^\w(]+\s*", "", str(item.get("label", "")))
+            SyntheticDecayApp._plain_labels(section.get("sections", []))
 
     def reveal_step(self, index, step):
         target = EmTkGuidedTour._target_key(step.get("target"))
@@ -151,6 +171,17 @@ class SyntheticDecayApp(ImApp):
             self.file_window.end()
         self.help_window.draw(box)
         self.tour.draw(*viewport.size)
+
+
+    # ── persistence ─────────────────────────────────────────────────────
+    def export_settings(self):
+        """The generator's inputs (not the generated curves)."""
+        return self.model.export_settings()
+
+    def restore_settings(self, settings):
+        """Restore :meth:`export_settings`; invalid entries are ignored."""
+        self.model.restore_settings(settings)
+        self.form.buffers.clear()
 
 
 def make_app():

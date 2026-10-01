@@ -77,6 +77,22 @@ class SyntheticDecayModel:
         except (ValueError, IndexError, TypeError):
             pass
 
+    def spectrum_records(self) -> list[dict[str, float]]:
+        """The spectrum rows themselves, for the native table: it edits a row in place."""
+        return self.spectrum_rows
+
+    def rotation_records(self) -> list[dict[str, float]]:
+        """The rotation rows themselves, for the native table: it edits a row in place."""
+        return self.rotation_rows
+
+    @staticmethod
+    def edit_cell(record: dict, key: str, value: Any) -> None:
+        """A cell was edited in the native table; the row dict is the model's own, keep it a float."""
+        try:
+            record[key] = float(value)
+        except (TypeError, ValueError):
+            pass
+
     def add_row(self) -> None:
         self.spectrum_rows.append({"amp": 1.0, "tau": 2.0})
         self._refresh_fields()
@@ -450,6 +466,57 @@ class SyntheticDecayModel:
         except Exception as exc:
             self.status = f"Fit group failed: {exc}"
         self._refresh_fields()
+
+    # ── persistence ──────────────────────────────────────────────────
+    #: Input fields and their limits (the view spec's minimum / maximum).
+    _INT_SETTINGS = {"n_bins": (2, 65535), "start_bin": (0, 65535), "seed": (0, 2147483647)}
+    _FLOAT_SETTINGS = {
+        "bin_width": (0.0001, 100.0),
+        "photon_count": (1.0, 1e9),
+        "g_factor": (0.001, 100.0),
+        "l1": (-10.0, 10.0),
+        "l2": (-10.0, 10.0),
+    }
+
+    def export_settings(self) -> dict:
+        """The inputs of the generator, as JSON-able values (the curves are not kept)."""
+        keys = [*self._INT_SETTINGS, *self._FLOAT_SETTINGS, "irf_path", "shot_noise", "polarization"]
+        out = {key: getattr(self, key) for key in keys}
+        out["spectrum_rows"] = [dict(row) for row in self.spectrum_rows]
+        out["rotation_rows"] = [dict(row) for row in self.rotation_rows]
+        return out
+
+    def restore_settings(self, settings: dict) -> None:
+        """Restore :meth:`export_settings`. A value that is not a number in range is ignored."""
+        for key, (low, high) in self._INT_SETTINGS.items():
+            try:
+                value = int(settings[key])
+            except (KeyError, TypeError, ValueError):
+                continue
+            setattr(self, key, min(max(value, low), high))
+        for key, (low, high) in self._FLOAT_SETTINGS.items():
+            try:
+                value = float(settings[key])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if value == value:  # not NaN
+                setattr(self, key, min(max(value, low), high))
+        if isinstance(settings.get("irf_path"), str):
+            self.irf_path = settings["irf_path"]
+        if isinstance(settings.get("shot_noise"), bool):
+            self.shot_noise = settings["shot_noise"]
+        if settings.get("polarization") in ("vm", "vv/vh"):
+            self.polarization = settings["polarization"]
+        for key, names in (("spectrum_rows", ("amp", "tau")), ("rotation_rows", ("b", "rho"))):
+            rows = settings.get(key)
+            if not isinstance(rows, list) or not rows:
+                continue
+            try:
+                clean = [{name: float(row[name]) for name in names} for row in rows]
+            except (KeyError, TypeError, ValueError):
+                continue
+            setattr(self, key, clean)
+        self.selected_row = self.selected_rotation_row = -1
 
     # ── refresh helpers ──────────────────────────────────────────────
     def _refresh_fields(self) -> None:

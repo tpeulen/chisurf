@@ -8,6 +8,7 @@
         {
           "type": "table",
           "source": "spectrum_source",
+          "description": "The lifetime components: an amplitude (pre-exponential weight, not brightness) and a lifetime in nanoseconds per row. Double click a cell to edit it; select a row to remove it.",
           "selected_attr": "selected_row",
           "editable": true,
           "update_call": "update_spectrum",
@@ -83,6 +84,7 @@
         {
           "type": "table",
           "source": "rotation_source",
+          "description": "The rotational correlation components of the sample: amplitude b and correlation time rho in nanoseconds per row; r(t) = sum of b exp(-t/rho). Double click a cell to edit it; select a row to remove it.",
           "selected_attr": "selected_rotation_row",
           "editable": true,
           "update_call": "update_rotation",
