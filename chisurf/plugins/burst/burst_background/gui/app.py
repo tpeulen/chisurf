@@ -27,6 +27,7 @@ from typing import Any
 import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
+from emtk.im_core import get_current_context
 
 from ..view_model import BackgroundViewModel
 
@@ -74,7 +75,7 @@ class BurstBackgroundGui:
 
         from pathlib import Path
 
-        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
+        from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
         help_resource = Path(__file__).parent / "help.md"
         guide_resource = Path(__file__).parent / "guide.json"
@@ -89,9 +90,39 @@ class BurstBackgroundGui:
             steps=guide_resource,
             get_target_rect=lambda k: self.item_rects.get(k),
             owner=self.model,
+            wait_for_controls=True,
         )
+        self.on_used = self.tour.notify_used  # the Run step waits for Estimate
 
         self.model.add_observer(self._on_model_event)
+
+        from emtk.docking import DockManager, Region, Split
+
+        self.docks = DockManager(
+            Split("h", 0.4, Region("controls"), Split("v", 0.6, Region("plot"), Region("results"))),
+            name="burst_background",
+        )
+        self.docks.add_window(
+            "controls", "Fit parameters", lambda box: self._draw_parameters(), dock="controls"
+        )
+        self.docks.add_window(
+            "plot", "Inter-photon time", lambda box: self._draw_iht_plot(), dock="plot"
+        )
+        self.docks.add_window(
+            "results", "Rates & results", lambda box: self._draw_rates_and_results(), dock="results"
+        )
+        self.docks.add_window(
+            "channels", "Channel definition", self._draw_channels, dock="controls"
+        )
+
+    def _draw_channels(self, box):
+        controller = getattr(self, "controller", None)
+        if controller is not None:
+            im.begin_disabled(controller.running)
+            controller.channel_definition.draw()
+            im.end_disabled()
+        else:
+            im.text_wrapped("Detector settings are supplied by the embedding host.")
 
     def start_guide(self) -> None:
         """Start the in-EMTK guided tour."""
@@ -104,44 +135,13 @@ class BurstBackgroundGui:
     def _on_model_event(self, event: str) -> None:
         pass
 
-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
-        """Store the item's screen rectangle for tour targeting."""
-        r = rect if rect is not None else im.get_item_rect()
-        if r is not None:
-            self.item_rects[name] = tuple(r)
-
     def track(self, name: str) -> None:
         """Record usage of a named control."""
         if callable(self.on_used):
             self.on_used(name)
 
     def draw(self, w: float, h: float) -> None:
-        """Draw the dockable Burst Background tool into (w, h) display pixels."""
-        im.dock_space_over_viewport(1)
-
-        left_w = min(max(280.0, w * 0.28), 340.0)
-        right_w = max(w - left_w - 16.0, 320.0)
-
-        # ── Window 1: Parameters & Actions ──────────────────────────────
-        im.set_next_window_pos((4.0, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((left_w, h - 8.0), im.Cond.FIRST_USE_EVER)
-        if im.begin("Fit Parameters"):
-            self._draw_parameters()
-            im.end()
-
-        # ── Window 2: Inter-photon Time Distribution Plot ───────────────
-        im.set_next_window_pos((8.0 + left_w, 4.0), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((right_w, (h - 12.0) * 0.60), im.Cond.FIRST_USE_EVER)
-        if im.begin("Inter-photon Time Distribution"):
-            self._draw_iht_plot()
-            im.end()
-
-        # ── Window 3: Background Rate Bars & Results ─────────────────────
-        im.set_next_window_pos((8.0 + left_w, 8.0 + (h - 12.0) * 0.60), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_size((right_w, (h - 12.0) * 0.40), im.Cond.FIRST_USE_EVER)
-        if im.begin("Rates & Results"):
-            self._draw_rates_and_results()
-            im.end()
+        self.docks.draw((0.0, 0.0, float(w), float(h)))
 
         if self.help_window.open:
             self.help_window.draw((0.0, 0.0, float(w), float(h)))
@@ -151,6 +151,9 @@ class BurstBackgroundGui:
 
     def _draw_parameters(self) -> None:
         avail_w = im.get_content_region_avail()[0]
+        if getattr(self, "controller", None) is not None:
+            self.controller.draw_inputs(remember=self.remember, track=self.track)
+        im.begin_disabled(bool(getattr(self, "controller", None) and self.controller.running))
         im.text_colored(ACCENT_BLUE, "Fit Settings")
 
         # Fit from / to (ms)
@@ -159,7 +162,10 @@ class BurstBackgroundGui:
         ch_lo, new_lo = im.drag_float(
             "##fit_from", float(self.model.fit_from_ms), 0.01, 0.001, 1000.0, "%.3f"
         )
-        if ch_lo and new_lo > 0:
+        im.set_item_tooltip(
+            "Lower edge of the inter-photon-time tail window (in ms) fitted as background."
+        )
+        if ch_lo and new_lo > 0 and (self.model.fit_to_ms <= 0 or new_lo < self.model.fit_to_ms):
             self.model.fit_from_ms = float(new_lo)
             self.model.update()
 
@@ -167,6 +173,9 @@ class BurstBackgroundGui:
         im.set_next_item_width(avail_w)
         ch_hi, new_hi = im.drag_float(
             "##fit_to", float(self.model.fit_to_ms), 0.01, 0.001, 1000.0, "%.3f"
+        )
+        im.set_item_tooltip(
+            "Upper edge of the inter-photon-time tail window (in ms) fitted as background."
         )
         if ch_hi and new_hi > self.model.fit_from_ms:
             self.model.fit_to_ms = float(new_hi)
@@ -177,6 +186,9 @@ class BurstBackgroundGui:
         ch_bin, new_bin = im.drag_float(
             "##bin_w", float(self.model.binsize_ms), 0.01, 0.001, 10.0, "%.3f"
         )
+        im.set_item_tooltip(
+            "Histogram bin width of the inter-photon-time distribution in milliseconds."
+        )
         if ch_bin and new_bin > 0:
             self.model.binsize_ms = float(new_bin)
             self.model.update()
@@ -184,6 +196,7 @@ class BurstBackgroundGui:
         im.text("Min counts / bin:")
         im.set_next_item_width(avail_w)
         ch_cnt, new_cnt = im.drag_int("##min_cnt", int(self.model.min_counts), 1, 0, 1000)
+        im.set_item_tooltip("Bins with fewer counts than this are ignored when fitting the tail.")
         if ch_cnt and new_cnt >= 0:
             self.model.min_counts = int(new_cnt)
             self.model.update()
@@ -192,14 +205,17 @@ class BurstBackgroundGui:
         im.separator()
         im.spacing()
 
+        im.end_disabled()
+
         # Action button
         from emtk.im_core import Col
 
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("🌑 Estimate Background", (avail_w, 28.0)):
+        if im.button("Estimate Background", (avail_w, 28.0)):
             self.track("toolAction_run")
+            self.track("bg_run")
             if callable(self.on_estimate):
                 self.on_estimate()
             else:
@@ -208,6 +224,10 @@ class BurstBackgroundGui:
                 except Exception:
                     pass
         self.remember("toolAction_run")
+        self.remember("bg_run")
+        im.set_item_tooltip(
+            "Fit the tail of the inter-photon-time distribution to get the per-detector background rates."
+        )
         im.pop_style_color(3)
 
         btn_half_w = max(50.0, (avail_w - 6.0) * 0.5)
@@ -216,12 +236,14 @@ class BurstBackgroundGui:
             self.track("guide")
             self.start_guide()
         self.remember("guide")
+        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
 
         im.same_line()
         if im.button("❓ Help", (btn_half_w, 24.0)):
             self.track("help")
             self.show_help()
         self.remember("help")
+        im.set_item_tooltip("Open the help window with reference documentation.")
 
         im.spacing()
         im.text_colored(ACCENT_GRAY, f"Files loaded: {len(self.model.files)}")
@@ -247,14 +269,16 @@ class BurstBackgroundGui:
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
 
             all_y = []
-            for s in series:
+            for i, s in enumerate(series):
                 x = np.asarray(s.get("x", []), dtype=float)
                 y = np.asarray(s.get("y", []), dtype=float)
                 if len(x) == 0 or len(y) == 0:
                     continue
                 all_y.append(y)
                 col = _hex_to_rgba(s.get("color", ACCENT_BLUE))
-                name = s.get("name", "Series")
+                # A fitted tail has no name: a hidden label keeps it out of the legend,
+                # where "Series" used to sit between the detectors.
+                name = s.get("name") or f"##tail-fit-{i}"
 
                 if s.get("symbol"):
                     implot.set_next_marker_style(implot.MARKER_CIRCLE, 3.0, fill=col)
@@ -280,13 +304,12 @@ class BurstBackgroundGui:
                     self.model.fit_to_ms = float(max(r_res.x_min, r_res.x_max))
                     self.model.update()
 
+                # One tag for the window: on a log axis its two edges sit close and
+                # two tags covered each other ("Fit from:" lost its value).
                 implot.tag_x(
-                    self.model.fit_from_ms,
+                    self.model.fit_to_ms,
                     REGION_BORDER,
-                    f"Fit from: {self.model.fit_from_ms:.2f} ms",
-                )
-                implot.tag_x(
-                    self.model.fit_to_ms, REGION_BORDER, f"Fit to: {self.model.fit_to_ms:.2f} ms"
+                    f"Fit {self.model.fit_from_ms:.2f}\u2013{self.model.fit_to_ms:.2f} ms",
                 )
 
             implot.end_plot()
@@ -316,9 +339,12 @@ class BurstBackgroundGui:
         # Left subpane: Rate bar chart
         rows = self.model.rate_rows()
         if rows:
+            rx, ry = im.get_cursor_screen_pos()
+            self.remember("bg_rate_plot", (rx, ry, half_w, avail_h - 10.0))
             if implot.begin_plot("Background Rate (kHz)##rate_bars", (half_w, avail_h - 10.0)):
                 implot.setup_axes("Detector", "Rate (kHz)")
                 xs = np.arange(len(rows), dtype=float)
+                implot.setup_axis_ticks(implot.AXIS_X1, xs, labels=[r.get("detector", "") for r in rows])
                 for i, r in enumerate(rows):
                     col = _hex_to_rgba(r.get("color", ACCENT_BLUE))
                     implot.set_next_fill_style(col)
@@ -371,6 +397,13 @@ class BurstBackgroundApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        self.controller = None
+        if on_estimate is None:
+            from .controller import BackgroundController
+
+            model = model if model is not None else BackgroundViewModel()
+            self.controller = BackgroundController(model)
+            on_estimate = self.controller.run
         self.bg_gui = BurstBackgroundGui(
             model=model,
             on_estimate=on_estimate,
@@ -378,7 +411,12 @@ class BurstBackgroundApp(ImApp):
             on_help=on_help,
         )
         self.model = self.bg_gui.model
-        super().__init__(gui=self._render, continuous=False)
+        self.item_rects = self.bg_gui.item_rects
+        self.bg_gui.remember = self.remember
+        self.bg_gui.controller = self.controller
+        if self.controller is not None:
+            self.controller.on_show_channels = lambda: self.bg_gui.docks.focus("channels")
+        super().__init__(gui=self._render)
 
     def start_guide(self) -> None:
         """Start guided tour inside EMTK."""
@@ -389,5 +427,27 @@ class BurstBackgroundApp(ImApp):
         self.bg_gui.show_help()
 
     def _render(self) -> None:
+        if self.controller is not None:
+            self.controller.poll()
+            if self.controller.running or self.controller.channel_definition._future is not None:
+                ctx = get_current_context()  # look again in 0.1 s while a worker runs
+                ctx.request_frame_at(ctx.io.now + 0.1)
         w, h = im.get_main_viewport().size
         self.bg_gui.draw(w, h)
+        if self.controller is not None:
+            self.controller.draw_dialogs((0, 0, w, h))
+
+    def close(self):
+        if self.controller is not None:
+            self.controller.close()
+
+    def on_paths_dropped(self, paths):
+        if self.controller is not None:
+            self.controller.on_paths_dropped(paths)
+
+
+def create_app(**kwargs):
+    from chisurf.emtk.i18n import install
+
+    install()
+    return BurstBackgroundApp(**kwargs)

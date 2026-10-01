@@ -162,6 +162,8 @@ class BackgroundViewModel:
         self.files = []
         self.backgrounds.clear()
         self.diagnostics.clear()
+        self._interphoton.clear()
+        self.fit_from_ms = self.fit_to_ms = self.max_dt_ms = 0.0
         self.notify("files")
 
     # ── estimate ───────────────────────────────────────────────────────
@@ -180,7 +182,7 @@ class BackgroundViewModel:
             return "Please define at least one detector in the channel definition tab."
         return None
 
-    def estimate(self) -> None:
+    def estimate(self, cancel_check=None) -> None:
         """Estimate per-file, per-detector background from every loaded file."""
         reason = self.can_estimate()
         if reason is not None:
@@ -191,21 +193,32 @@ class BackgroundViewModel:
 
         detectors = self._channels()
         self._interphoton.clear()
+        unreadable = []
         for path in self.files:
+            if callable(cancel_check):
+                cancel_check()
             try:
                 # Through the shared seam, so the measurement the burst search
                 # and the diagnostics already opened is not read a fourth time.
-                tttr = open_tttr(path)
+                provider = getattr(self, "tttr_provider", None)
+                tttr = provider(path) if callable(provider) else open_tttr(path)
             except Exception as exc:
                 logger.warning("background: could not read %s: %s", path, exc)
+                unreadable.append(os.path.basename(path))
                 continue
             scale = float(getattr(tttr.header, "macro_time_resolution", 1.0)) * 1000.0
             self._interphoton[path] = {
                 name: _burst.background._detector_interphoton_times(tttr, info, scale)
                 for name, info in detectors.items()
             }
+        if callable(cancel_check):
+            cancel_check()
+        if not self._interphoton:
+            raise ValueError("No readable TTTR measurements were loaded.")
         self._seed_fit_window()
         self.refit()
+        if unreadable:
+            self.status += " Unreadable files skipped: " + ", ".join(unreadable) + "."
         self._write_containers()
         self.notify("computed")
 

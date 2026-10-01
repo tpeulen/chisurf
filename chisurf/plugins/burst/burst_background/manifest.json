@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Single-Molecule:Burst Background Estimation",
   "description": "Estimate detector background rates from TTTR burst data.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Single-Molecule"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Single-Molecule"
+  ],
   "state_namespace": "burst_background",
   "statefulness": {
     "enabled": true,
@@ -15,8 +20,11 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.burst.burst_background:BurstBackgroundEstimator",
-    "cli": "burst-background=chisurf.plugins.burst.burst_background.cli:cli"
+    "cli": "burst-background=chisurf.plugins.burst.burst_background.cli:cli",
+    "emtk": "chisurf.plugins.burst.burst_background.gui.app:create_app"
   },
-  "operation_types": ["background_correction"],
+  "operation_types": [
+    "background_correction"
+  ],
   "menu_hidden": true
 }
