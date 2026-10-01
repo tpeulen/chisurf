@@ -2,6 +2,8 @@
 
 ## 2026-09-30
 
+* **emtk `export` module; tab-strip overflow deferred.** emtk 079ba24 adds `emtk.export` (`grab`, `png_bytes`, `save_png`): an ImApp or a bare `gui()` is drawn headless and written as a PNG, so a ported tool can keep a "Save picture" action (whole window, not a single plot). The docked tab-strip overflow (known issues) was not touched: `emtk/docking.py` has another stream's uncommitted rewrite of exactly that function (context menus, tooltips), so a scroll hunk would interleave with it. Wave 1 (`mfd_prepare`, `burst_ebfret`, `alex_suite`) stays skipped on the owner's decision: each has uncommitted edits to `gui/app.py`.
+
 * **PRD-153 `flc-2d` port reviewed and accepted; radio tooltips fixed in emtk.** Port by the agent (7c8ebf259, 999fe82a2, 8092d7f21; interrupted once by an API rate limit and resumed), report `okf/plugins/emtk-ports/flc-2d/REPORT.md`: 91 plugin tests pass, `compare` exit 0 (49 explained differences), Qt-free, the legacy Qt tool still constructs with its baseline's 79 controls, populated map and L-curve match the Qt baseline.
   - emtk 608be8c: `view_form` radio `choice` buttons now carry the section's tooltip (the port had to use a drop-down because they did not). Open: docked tab strips do not scroll or wrap (known issues).
 
