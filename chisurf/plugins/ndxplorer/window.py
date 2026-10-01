@@ -43,9 +43,13 @@ __all__ = [
     "published_group",
 ]
 
-#: The Global View slot of ChiSurf's ndX window -- the owner id the app's
-#: constants group is registered under (``ndxplorer.app.features.overlays``).
-GLOBAL_VIEW_OWNER = "ndxplorer"
+# The Global View slot lives in a Qt-free module the emtk app shares.
+from chisurf.plugins.ndxplorer.global_view_slot import (  # noqa: E402
+    GLOBAL_VIEW_OWNER,
+    published_group,
+)
+from chisurf.plugins.ndxplorer.global_view_slot import constants_group as _constants_group  # noqa: E402
+from chisurf.plugins.ndxplorer.global_view_slot import withdraw_constants as _withdraw_constants  # noqa: E402
 
 #: The window's first size, in logical pixels: the parity captures' size.
 WINDOW_SIZE = (1400, 900)
@@ -240,38 +244,3 @@ def build_ndxplorer_window(
     elif path:
         window.open_path(path)
     return window
-
-
-def _withdraw_constants(app) -> None:
-    """Empty the Global View slot if it still holds *app*'s constants."""
-    try:
-        from ndxplorer.core import parameters
-
-        group = _constants_group(app)
-        held = {owner: g for owner, _label, g in parameters.registered_groups()}
-        if group is not None and held.get(GLOBAL_VIEW_OWNER) is group:
-            parameters.unregister_group(GLOBAL_VIEW_OWNER)  # ndX's registry and ChiSurf's
-    except Exception:
-        logger.warning("Could not withdraw the ndX constants from the Global View",
-                       exc_info=True)
-
-
-def _constants_group(app):
-    """The app's constants :class:`~ndxplorer.core.parameters.ParameterGroup`, or ``None``."""
-    for feature in getattr(app, "features", ()):
-        constants = getattr(feature, "constants", None)
-        group = getattr(constants, "group", None)
-        if group is not None:
-            return group
-    return None
-
-
-def published_group():
-    """The ChiSurf group in the ndX Global View slot (``None``: empty)."""
-    from chisurf.core.registry.parameter_groups import iter_registered_parameter_groups
-
-    for owner_id, _label, group in iter_registered_parameter_groups():
-        if owner_id == GLOBAL_VIEW_OWNER:
-            return group
-    return None
-

@@ -58,8 +58,20 @@ def _open_from_ribbon():
     return context["ndx"]
 
 
+def _hosted_app(window):
+    """The NdxApp a route opened: the Qt ``NdxWindow``'s ``app`` or the emtk host's ``control``."""
+    return getattr(window, "app", None) or getattr(window, "control", None)
+
+
 def test_menu_and_ribbon_host_the_emtk_app(qapp):
-    """Both routes give an ``NdxWindow`` around an ``NdxApp`` with ChiSurf's client."""
+    """Both routes host an ``NdxApp`` with ChiSurf's client, sessions and Global View slot.
+
+    The menu follows the manifest's ``entrypoints.emtk`` (ndX's port is not on the
+    preview list), so it opens the emtk app in emtk's Qt host; the ribbon's macro
+    route still builds the Qt ``NdxWindow``. What the user gets is the same app,
+    built the same way (:func:`chisurf.plugins.ndxplorer.gui.app.make_app` mirrors
+    :func:`chisurf.plugins.ndxplorer.window.build_ndxplorer_window`).
+    """
     from emtk.qt_host import host_class
     from ndxplorer.app.frame import NdxApp
     from ndxplorer.core.chisurf_binding import chisurf_group
@@ -69,14 +81,19 @@ def test_menu_and_ribbon_host_the_emtk_app(qapp):
     for route, opener in (("menu", _open_from_menu), ("ribbon", _open_from_ribbon)):
         window = opener()
         try:
-            # By name: the ribbon's macro runner reloads the plugin's modules.
-            assert type(window).__name__ == NdxWindow.__name__, route
-            assert isinstance(window.app, NdxApp), route
-            assert isinstance(window.centralWidget(), host_class()), route
-            assert window.app.chisurf_rpc is not None, f"{route}: no ChiSurf RPC client"
-            assert window.app.session_autosave, f"{route}: the user's window keeps sessions"
-            window.host.grab()  # one frame, as on screen
-            group = _constants_group(window.app)
+            app = _hosted_app(window)
+            if route == "ribbon":
+                # By name: the ribbon's macro runner reloads the plugin's modules.
+                assert type(window).__name__ == NdxWindow.__name__, route
+                assert isinstance(window.centralWidget(), host_class()), route
+                window.host.grab()  # one frame, as on screen
+            else:
+                assert isinstance(window, host_class()), route
+                window.grab()
+            assert type(app).__name__ == NdxApp.__name__, route
+            assert app.chisurf_rpc is not None, f"{route}: no ChiSurf RPC client"
+            assert app.session_autosave, f"{route}: the user's window keeps sessions"
+            group = _constants_group(app)
             assert group is not None
             # The app's own constants, through their one mirror -- not a copy.
             assert published_group() is not None, f"{route}: no Global View binding"
