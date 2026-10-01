@@ -83,3 +83,9 @@ digest is unchanged). Deliberate breakage (history length +2 and an unstripped u
 * Not run in the real main window; no docs guide page exists for this plugin (docs gap). `test/renders/` of the earlier stream is left
   untracked (stale images of the old app). emtk gap: no editable combo.
 * `test/test_plugin_help_guide_seam.py` and `test_prd_mentions.py` have unrelated failures of other plugins (23 failed); none mention switch_user.
+
+## Review (reviewer, 2026-10-01)
+Re-run by the reviewer: 37 passed; `compare` exit 0, `lost` [], `untooltipped` []; no Qt imports in `app.py` / `model.py`. The edited-state screenshot shows the same fields as the Qt dialog
+(server, port, user, masked password, both toggles, Login / Cancel) plus Help, Guide and a recent-servers picker; the window is wide for a small login form (fills the 1200x800 canvas), which is
+a window-size choice of the host, not a missing control. The only file under `~/.chisurf` newer than the report is a session log (written by any ChiSurf import); the settings file digest is
+checked by the agent's test. **Accepted.** `switch_user` is removed from `emtk_preview.json`. Not run in the real main window.

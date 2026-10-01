@@ -35,6 +35,8 @@
 
 ## 2026-09-30
 
+* **switch_user swapped to emtk (accepted).** Login window with server/port/user/password, both toggles, full login persistence and error handling as the Qt `LoginDialog`; model tested against the real dialog offscreen; 37 tests, compare exit 0, real settings digest unchanged. Agent commits b6edf5f8a, 69ba7f91e, 853f30ec6; report `okf/plugins/emtk-ports/switch_user/REPORT.md`. Removed from `emtk_preview.json` (remaining: setup, setup_channel_definition).
+
 * **boarding swapped to emtk (accepted).** Eight-step wizard with step list, Back / Next / Finish, Settings and Dependencies as `data_table`s, and the unedited channel-definition and FCS-preset editors embedded; Help and a 7-step guide; check marks and Back/Next states equal the Qt `WizardWidget`. 64 tests, compare exit 0. Agent commits 784470352, 700906158, fdd4dfd0d, 7c701f11b, 22f6e9e3b; report `okf/plugins/emtk-ports/boarding/REPORT.md`. Removed from `emtk_preview.json` (remaining: setup, setup_channel_definition, switch_user).
 
 * **tttr_lut_tools swapped to emtk (accepted).** Both plots (draggable plateau region), file/LUT/channel `data_table`s, tab 2 and JSON window; numbers equal the Qt widget on the same file (LUTs, saved LUT, exported 56499 values); 63 tests, compare exit 0. Agent commits 3920e0c5e, a0db448fd, a2263cb32, 32e91085e; report `okf/plugins/emtk-ports/tttr_lut_tools/REPORT.md`. Removed from `emtk_preview.json`. `setup_channel_definition` stays on the preview list (shared-editor gaps); `setup_store` first save for a new user is now committed (b5d53dda5).

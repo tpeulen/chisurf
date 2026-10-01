@@ -27,7 +27,7 @@ def _manifest(plugin_id: str, emtk: str | None = "pkg.app:make", gui: str | None
 def test_the_list_is_read_and_ids_are_strings():
     ids = emtk_readiness.preview_ids()
     assert ids and all(isinstance(i, str) for i in ids)
-    assert emtk_readiness.is_preview("switch_user")
+    assert emtk_readiness.is_preview("setup")
     assert not emtk_readiness.is_preview("fcs_channel_preset")
     assert not emtk_readiness.is_preview("model_manager")      # accepted: swapped
 
@@ -54,7 +54,7 @@ def _selector():
 
 def test_a_preview_plugin_opens_qt_in_auto_and_emtk_when_asked():
     select = _selector()
-    manifest = _manifest("switch_user")
+    manifest = _manifest("setup")
     assert select(manifest, "auto") == ("qt", "pkg.tool:Tool")
     assert select(manifest, "emtk") == ("emtk", "pkg.app:make")
     assert select(manifest, "qt") == ("qt", "pkg.tool:Tool")
@@ -71,11 +71,12 @@ def test_an_accepted_plugin_opens_emtk_in_auto():
     assert select(_manifest("plugin_manager"), "auto") == ("emtk", "pkg.app:make")
     assert select(_manifest("tttr_lut_tools"), "auto") == ("emtk", "pkg.app:make")
     assert select(_manifest("boarding"), "auto") == ("emtk", "pkg.app:make")
+    assert select(_manifest("switch_user"), "auto") == ("emtk", "pkg.app:make")
 
 
 def test_a_preview_plugin_without_a_qt_tool_still_opens_emtk():
     select = _selector()
-    assert select(_manifest("switch_user", gui=None), "auto") == ("emtk", "pkg.app:make")
+    assert select(_manifest("setup", gui=None), "auto") == ("emtk", "pkg.app:make")
 
 
 # -- guards ---------------------------------------------------------------------------------
