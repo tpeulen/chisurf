@@ -54,6 +54,7 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.tttr.trace_browser.gui.tool:TraceBrowserTool",
+    "emtk": "chisurf.plugins.tttr.trace_browser.gui.app:make_app",
     "cli": "trace-browser=chisurf.plugins.tttr.trace_browser.cli:cli",
     "services": "chisurf.plugins.tttr.trace_browser.backend.services:register_services"
   },
