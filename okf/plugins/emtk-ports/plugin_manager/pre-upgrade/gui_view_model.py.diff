@@ -1,0 +1,37 @@
+diff --git a/chisurf/plugins/core/plugin_manager/gui/view_model.py b/chisurf/plugins/core/plugin_manager/gui/view_model.py
+index 42276b5d1..8bb0b4bc6 100644
+--- a/chisurf/plugins/core/plugin_manager/gui/view_model.py
++++ b/chisurf/plugins/core/plugin_manager/gui/view_model.py
+@@ -89,6 +89,7 @@ class PluginManagerViewModel:
+             re-scan -- the old one did, on every reorder click.
+ 
+         """
++        self.show_disabled = not self.settings.hide_disabled
+         import chisurf.plugins as plugins
+ 
+         if rescan:
+@@ -123,6 +124,24 @@ class PluginManagerViewModel:
+             return list(self._rows)
+         return [row for row in self._rows if not row.disabled]
+ 
++    def set_show_disabled(self, show: bool) -> None:
++        """Persist the table's disabled-plugin visibility preference in the working copy."""
++        self.show_disabled = bool(show)
++        self.settings.set_hide_disabled(not self.show_disabled)
++        self.notify("changed")
++
++    @property
++    def gui_mode(self) -> str:
++        return self.settings.gui_mode
++
++    @gui_mode.setter
++    def gui_mode(self, value: str) -> None:
++        self.settings.set_gui_mode(value)
++        self.notify("changed")
++
++    def gui_mode_labels(self) -> list[str]:
++        return ["Automatic", "EMTK", "Qt"]
++
+     def plugin_rows(self) -> list[dict[str, Any]]:
+         """The table source: one flat record per visible plugin."""
+         return [row.as_record() for row in self.visible_rows()]

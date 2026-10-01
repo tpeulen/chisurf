@@ -1,0 +1,38 @@
+diff --git a/chisurf/plugins/core/plugin_manager/api/settings_io.py b/chisurf/plugins/core/plugin_manager/api/settings_io.py
+index 662a097fe..31c9712ae 100644
+--- a/chisurf/plugins/core/plugin_manager/api/settings_io.py
++++ b/chisurf/plugins/core/plugin_manager/api/settings_io.py
+@@ -32,6 +32,7 @@ OWNED_KEYS = (
+     "icon_generation",
+     "statefulness",
+     "show_demo_plugins",
++    "gui_mode",
+ )
+ 
+ 
+@@ -56,6 +57,7 @@ class PluginSettings:
+         self._data.setdefault("plugin_order", {})
+         self._data.setdefault("statefulness", {})
+         self._data.setdefault("hide_disabled_plugins", True)
++        self._data.setdefault("gui_mode", "auto")
+         self._original = copy.deepcopy(self._data)
+ 
+     # -- reads ----------------------------------------------------------
+@@ -85,6 +87,17 @@ class PluginSettings:
+         """Whether disabled plugins are hidden from the table."""
+         return bool(self._data.get("hide_disabled_plugins", True))
+ 
++    @property
++    def gui_mode(self) -> str:
++        value = str(self._data.get("gui_mode", "auto")).lower()
++        return value if value in {"auto", "emtk", "qt"} else "auto"
++
++    def set_gui_mode(self, value: str) -> None:
++        value = str(value).lower()
++        if value not in {"auto", "emtk", "qt"}:
++            raise ValueError("gui_mode must be auto, emtk or qt")
++        self._data["gui_mode"] = value
++
+     @property
+     def dirty(self) -> bool:
+         """Whether anything has changed since load or the last :meth:`apply`."""

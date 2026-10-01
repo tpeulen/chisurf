@@ -1,0 +1,443 @@
+"""Native EMTK plugin manager backed by the existing Qt-free view model."""
+from __future__ import annotations
+
+import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+from emtk import im
+from emtk.app import ImApp
+from emtk.docking import DockManager, Region, Split
+
+from chisurf.plugins.core.plugin_manager.gui.view_model import PluginManagerViewModel
+
+
+class PluginManagerApp(ImApp):
+    """Browse, configure, install and remove plugins without a Qt host."""
+
+    window_title = "ChiSurf Plugin Manager"
+
+    def __init__(self, model=None):
+        self.model = model or PluginManagerViewModel()
+        if self.model.selected is None and self.model.visible_rows():
+            self.model.select_row({"id": self.model.visible_rows()[0].plugin_id})
+        self.query = ""
+        self.pending_remove = False
+        self.install_dialog = None
+        self.install_plan = None
+        self.icon_dialog = None
+        self.icon_confirm_clear = False
+        self.icon_generation = False
+        self.icon_endpoint = ""
+        self.icon_model = ""
+        self.icon_provider = "mistral"
+        self._icon_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="plugin-icon")
+        self._icon_future = None
+        self._icon_result = None
+        self._icon_lock = threading.Lock()
+        self.item_rects = {}
+        from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+        gui_dir = Path(__file__).parent
+        self.help_window = EmTkHelpWindow(
+            title="Plugin Manager Help", resource=gui_dir / "help.md", owner=self.model,
+            on_start_guide=self.start_guide, size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=gui_dir / "guide.json", get_target_rect=lambda key: self.item_rects.get(key),
+            owner=self.model,
+        )
+        self.docks = DockManager(Split(
+            "v", 0.76,
+            Split("h", 0.34, Region("plugins"), Region("details")),
+            Region("settings"),
+        ))
+        self.docks.add_window("plugins", "Installed plugins", self.draw_plugins, dock="plugins")
+        self.docks.add_window("details", "Selected plugin", self.draw_details, dock="details")
+        self.docks.add_window("settings", "Global plugin settings", self.draw_settings, dock="settings")
+        super().__init__(self.render)
+
+    def export_settings(self) -> dict:
+        return {"query": self.query, "selected": self.model.selected}
+
+    def restore_settings(self, settings: dict) -> None:
+        query = str(settings.get("query", ""))
+        if query:
+            self.query = query
+        selected = settings.get("selected")
+        if selected:
+            self.model.select_row({"id": selected})
+
+    def render(self):
+        viewport = im.get_main_viewport()
+        self.docks.draw((*viewport.pos, *viewport.size))
+        if self.help_window.open:
+            self.help_window.draw((*viewport.pos, *viewport.size))
+        if self.tour.active:
+            self.tour.draw(*viewport.size)
+
+    def start_guide(self):
+        self.tour.start()
+
+    def show_help(self):
+        self.help_window.show()
+
+    def _remember(self, key):
+        rect = im.get_item_rect()
+        if rect is not None:
+            self.item_rects[key] = tuple(rect)
+
+    def _visible(self):
+        query = self.query.strip().casefold()
+        return [r for r in self.model.visible_rows()
+                if not query or query in " ".join((r.name, r.plugin_id, r.description,
+                                                     r.category, r.source)).casefold()]
+
+    def draw_plugins(self, _box):
+        if im.button("Save"):
+            self.model.save()
+        self._remember("action:💾 Save")
+        im.set_item_tooltip("Write plugin menu, toolbar, disabled and window state preferences to ChiSurf settings.")
+        im.same_line()
+        if im.button("Revert"):
+            self.model.revert()
+        im.set_item_tooltip("Discard plugin manager edits since the last save.")
+        im.same_line()
+        if im.button("Rescan"):
+            self.model.reload(rescan=True)
+        im.set_item_tooltip("Rediscover built-in and user-installed plugins from disk.")
+        im.same_line()
+        if im.button("Install ZIP…"):
+            from emtk.file_dialog import FileDialog
+            self.install_dialog = FileDialog("Install plugin", filters="Plugin archives (*.zip);;All files (*)")
+        im.set_item_tooltip("Choose a plugin ZIP or folder. The package is validated before it is copied.")
+        self._remember("action:📥 Install…")
+        im.same_line()
+        if im.button("Install folder…"):
+            from emtk.file_dialog import FileDialog
+            self.install_dialog = FileDialog("Install plugin folder", mode="folder", action="Choose folder")
+        im.set_item_tooltip("Choose an existing plugin directory for validation and installation.")
+        if self.install_dialog is not None:
+            result = self.install_dialog.draw()
+            if result is False:
+                self.install_dialog = None
+            elif result:
+                self._install(result[0])
+                self.install_dialog = None
+        if self.install_plan is not None:
+            im.text_wrapped(f"Replace existing plugin {self.install_plan.plugin_name}?")
+            if im.button("Confirm replacement"):
+                self._finish_install(self.install_plan)
+            im.set_item_tooltip("Replace this user installed plugin after validating the package.")
+            im.same_line()
+            if im.button("Cancel replacement"):
+                self.install_plan = None
+            im.set_item_tooltip("Keep the existing plugin files unchanged.")
+        if im.button("Uninstall"):
+            self.pending_remove = True
+        im.set_item_tooltip("Remove the selected user-installed plugin. Built-in plugins can only be disabled.")
+        if im.button("Move up"):
+            self.model.move_selected(-1)
+        im.set_item_tooltip("Move the selected plugin earlier in menu order.")
+        im.same_line()
+        if im.button("Move down"):
+            self.model.move_selected(1)
+        im.set_item_tooltip("Move the selected plugin later in menu order.")
+        if self.pending_remove:
+            row = self.model.selected
+            text = (f"Permanently remove {row.name} from {row.package_dir}?" if row else "Select a plugin first.")
+            if row:
+                dependants = row.blocking_dependants(self.model.settings.disabled)
+                if dependants:
+                    text += "\nHard dependants will stop working: " + ", ".join(dependants)
+            im.text_wrapped(text)
+            if row:
+                if im.button("Confirm uninstall"):
+                    self._uninstall()
+                im.set_item_tooltip("Permanently delete the selected user plugin after dependency checks.")
+                im.same_line()
+            if im.button("Cancel uninstall"):
+                self.pending_remove = False
+            im.set_item_tooltip("Keep the selected plugin installed.")
+        changed, self.query = im.input_text("Search plugins", self.query, "Name, id, category, or description")
+        im.set_item_tooltip("Filter installed plugins by their name, id, category or description.")
+        rows = self._visible()
+        if im.begin_table("plugins", 1, im.TableFlags.BORDERS | im.TableFlags.ROW_BG):
+            self._remember("key:data_table")
+            im.table_setup_column("Available plugins", im.TableColumnFlags.WIDTH_STRETCH, 1.0)
+            for row in rows:
+                im.push_id(row.plugin_id)
+                im.table_next_row()
+                im.table_next_column()
+                display = f"{row.name} [{row.source}]"
+                if im.selectable(f"{display}##select", row.plugin_id == (self.model.selected.plugin_id if self.model.selected else "")):
+                    self.model.select_row({"id": row.plugin_id})
+                im.set_item_tooltip(f"Select {row.name} ({row.plugin_id}). {row.status_text()}. {row.description}")
+                im.pop_id()
+            im.end_table()
+        im.text_wrapped(self.model.status_text())
+
+    def draw_details(self, _box):
+        row = self.model.selected
+        if row is None:
+            im.text_wrapped("Select a plugin to inspect dependencies and change its settings.")
+            return
+        im.text(row.name)
+        im.text_wrapped(row.description or "No description provided.")
+        im.text_wrapped(f"Id: {row.plugin_id}  |  Version: {row.version or '—'}  |  Source: {row.source}")
+        im.text_wrapped(f"Folder: {row.package_dir}")
+        im.text_wrapped(f"Status: {row.status_text()}  |  Health: {row.health}{(' — ' + row.health_note) if row.health_note else ''}")
+        im.separator_text("Dependencies")
+        if not row.requires and not row.optional_requires and not row.required_by and not row.optional_for:
+            im.text_disabled("This plugin has no declared dependency edges.")
+        for relation, mapping in (("Requires", row.requires), ("Optional", row.optional_requires)):
+            for name, bound in mapping.items():
+                im.text_wrapped(f"{relation}: {name} {bound}")
+                im.set_item_tooltip("Plugins required by this plugin, with the manifest version bound.")
+        for label, names in (("Required by", row.required_by), ("Optionally used by", row.optional_for)):
+            for name in names:
+                im.text_wrapped(f"{label}: {name}")
+                im.set_item_tooltip("Other discovered plugins connected to this dependency.")
+        im.separator_text("Icon")
+        icon_path = Path(row.package_dir) / "icon.png"
+        im.text_wrapped(str(icon_path) if icon_path.is_file() else "No plugin icon file.")
+        im.set_item_tooltip("The plugin icon file used by the menu when the plugin manifest declares icon.png.")
+        if im.button("Choose icon…"):
+            from emtk.file_dialog import FileDialog
+            self.icon_dialog = FileDialog("Choose plugin icon", filters="Images (*.png *.jpg *.jpeg *.ico);;All files (*)")
+        im.set_item_tooltip("Choose an image file to install as this plugin's icon.")
+        if self.icon_dialog is not None:
+            result = self.icon_dialog.draw()
+            if result is False:
+                self.icon_dialog = None
+            elif result:
+                self._set_icon_from_file(row, result[0])
+                self.icon_dialog = None
+        if icon_path.is_file():
+            if im.button("Clear icon…"):
+                self.icon_confirm_clear = True
+            im.set_item_tooltip("Remove this plugin's icon file and manifest reference.")
+            if self.icon_confirm_clear:
+                im.text_wrapped("Clear this icon from the plugin manifest?")
+                if im.button("Confirm clear icon"):
+                    try:
+                        icon_path.unlink(missing_ok=True)
+                        self._set_manifest_icon(row, None)
+                        self.model.reload(rescan=True)
+                        self.model.set_status(f"Cleared icon for {row.name}.")
+                    except OSError as exc:
+                        self.model.set_status(f"Could not clear icon: {exc}")
+                    self.icon_confirm_clear = False
+                im.set_item_tooltip("Delete icon.png and remove the icon field from manifest.json.")
+                im.same_line()
+                if im.button("Cancel clear icon"):
+                    self.icon_confirm_clear = False
+                im.set_item_tooltip("Keep the current icon.")
+        if im.button("Generate icon…"):
+            self.icon_generation = not self.icon_generation
+        im.set_item_tooltip("Generate a plugin icon through the configured image provider on a background thread.")
+        if self.icon_generation:
+            providers = ("mistral", "openai")
+            changed, provider_index = im.combo("Icon provider", providers.index(self.icon_provider), providers)
+            if changed:
+                self.icon_provider = providers[provider_index]
+                self.icon_endpoint = self.icon_model = ""
+            im.set_item_tooltip("Choose the image provider configured in ChiSurf AI Settings.")
+            from chisurf.plugins.core.plugin_manager.api.icons import default_icon_generation_values
+            default_endpoint, default_model = default_icon_generation_values(self.icon_provider)
+            if not self.icon_endpoint:
+                self.icon_endpoint = default_endpoint
+            if not self.icon_model:
+                self.icon_model = default_model
+            _, self.icon_endpoint = im.input_text("Image endpoint", self.icon_endpoint)
+            im.set_item_tooltip("Image generation endpoint. API credentials are read from ChiSurf AI Settings.")
+            _, self.icon_model = im.input_text("Image model", self.icon_model)
+            im.set_item_tooltip("Image model identifier for the selected provider.")
+            if self._icon_future is None or self._icon_future.done():
+                if im.button("Start generation"):
+                    self._start_icon_generation(row)
+                im.set_item_tooltip("Request an icon image in a worker thread; this window remains responsive.")
+            else:
+                im.text_disabled("Generating icon…")
+            with self._icon_lock:
+                icon_result = self._icon_result
+                self._icon_result = None
+            if icon_result:
+                payload, error = icon_result
+                if error:
+                    self.model.set_status(f"Icon generation failed: {error}")
+                else:
+                    self._write_icon(row, payload)
+        changed, disabled = im.checkbox("Disabled", row.disabled)
+        self._remember("attr:selected_disabled")
+        im.set_item_tooltip("Remove this plugin from menus without deleting its files.")
+        if changed:
+            blocking = self.model.set_disabled(disabled)
+            if blocking:
+                self.model.set_status("Disabled; hard dependants now need attention: " + ", ".join(blocking))
+        changed, toolbar = im.checkbox("Show in main toolbar", row.in_toolbar)
+        self._remember("attr:selected_in_toolbar")
+        im.set_item_tooltip("Pin the plugin in the ChiSurf main window toolbar.")
+        if changed:
+            self.model.selected_in_toolbar = toolbar
+        labels = self.model.selected_statefulness_labels()
+        current = labels.index(self.model.selected_statefulness)
+        changed, selected = im.combo("Remember this window", current, labels)
+        im.set_item_tooltip("Choose the plugin default or override whether its window geometry is remembered.")
+        if changed:
+            self.model.selected_statefulness = labels[selected]
+        if im.button("Rename…"):
+            self.rename_open = True
+        im.set_item_tooltip("Rename the plugin in menus by editing its manifest display name.")
+        if getattr(self, "rename_open", False):
+            _, self.rename_text = im.input_text("Menu name", getattr(self, "rename_text", row.name.split(":")[-1]))
+            im.set_item_tooltip("Enter the new leaf name; the menu category remains unchanged.")
+            if im.button("Apply rename"):
+                error = self.model.rename_selected(self.rename_text)
+                self.model.set_status(error or "Plugin renamed.")
+                self.rename_open = False
+            im.set_item_tooltip("Write the new name to the plugin manifest.")
+            im.same_line()
+            if im.button("Cancel rename"):
+                self.rename_open = False
+            im.set_item_tooltip("Keep the current plugin name.")
+
+    def draw_settings(self, _box):
+        modes = self.model.gui_mode_labels()
+        current_mode = {"auto": "Automatic", "emtk": "EMTK", "qt": "Qt"}[self.model.gui_mode]
+        changed, selected_mode = im.combo("GUI runtime", modes.index(current_mode), modes)
+        im.set_item_tooltip("Choose whether plugin launches prefer EMTK, Qt, or automatic selection.")
+        if changed:
+            self.model.gui_mode = {"Automatic": "auto", "EMTK": "emtk", "Qt": "qt"}[modes[selected_mode]]
+        changed, show = im.checkbox("Show disabled plugins", self.model.show_disabled)
+        im.set_item_tooltip("Include plugins disabled in the menus.")
+        if changed:
+            self.model.set_show_disabled(show)
+        modes = self.model.statefulness_mode_labels()
+        current = modes.index(self.model.statefulness_mode)
+        changed, selected = im.combo("Plugin statefulness", current, modes)
+        im.set_item_tooltip("Choose whether plugin windows remember their size and position by default.")
+        if changed:
+            self.model.statefulness_mode = modes[selected]
+        im.text_wrapped("Per-plugin overrides are available in the selected plugin details.")
+        if im.button("Help & guided tour"):
+            self.show_help()
+        im.set_item_tooltip("Open the plugin manager reference or guided tour.")
+        self._remember("?")
+
+    def _install(self, source):
+        from chisurf.plugins.core.plugin_manager.api.install import inspect_source, install
+        plan = inspect_source(source)
+        if not plan.ok:
+            self.model.set_status("Install refused: " + "; ".join(plan.problems))
+            return
+        if plan.overwrites:
+            self.install_plan = plan
+            return
+        self._finish_install(plan)
+
+    def _finish_install(self, plan):
+        from chisurf.plugins.core.plugin_manager.api.install import install
+        try:
+            path = install(plan)
+        except Exception as exc:
+            self.model.set_status(f"Install failed: {exc}")
+            return
+        self.model.reload(rescan=True)
+        self.model.set_status(f"Installed {plan.plugin_name} to {path}.")
+        self.install_plan = None
+
+    @staticmethod
+    def _set_manifest_icon(row, value):
+        path = Path(row.package_dir) / "manifest.json"
+        if not path.is_file():
+            return
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if value is None:
+            data.pop("icon", None)
+        else:
+            data["icon"] = value
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    def _set_icon_from_file(self, row, source):
+        from PIL import Image
+        target = Path(row.package_dir) / "icon.png"
+        try:
+            with Image.open(source) as image:
+                scaled = image.convert("RGBA")
+                scale = min(128 / scaled.width, 128 / scaled.height)
+                scaled = scaled.resize((max(1, round(scaled.width * scale)),
+                                        max(1, round(scaled.height * scale))), Image.Resampling.LANCZOS)
+                canvas = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+                canvas.alpha_composite(scaled, ((128 - scaled.width) // 2, (128 - scaled.height) // 2))
+                canvas.save(target, format="PNG")
+            self._set_manifest_icon(row, "icon.png")
+            self.model.reload(rescan=True)
+            self.model.set_status(f"Updated icon for {row.name}.")
+        except Exception as exc:
+            self.model.set_status(f"Could not set icon: {exc}")
+
+    def _start_icon_generation(self, row):
+        from chisurf.plugins.core.plugin_manager.api.icons import IconConfig, request_icon_bytes
+        config = IconConfig(self.icon_provider, self.icon_endpoint, self.icon_model)
+        info = {"name": row.name, "doc": row.description}
+        self._icon_result = None
+        self._icon_future = self._icon_executor.submit(request_icon_bytes, config, info)
+
+        def finish(future):
+            try:
+                result = (future.result(), "")
+            except Exception as exc:
+                result = (b"", str(exc))
+            with self._icon_lock:
+                self._icon_result = result
+            self.request_frame()
+
+        self._icon_future.add_done_callback(finish)
+
+    def _write_icon(self, row, payload):
+        import io
+
+        from PIL import Image
+        try:
+            with Image.open(io.BytesIO(payload)) as image:
+                scaled = image.convert("RGBA")
+                scale = min(128 / scaled.width, 128 / scaled.height)
+                scaled = scaled.resize((max(1, round(scaled.width * scale)),
+                                        max(1, round(scaled.height * scale))), Image.Resampling.LANCZOS)
+                canvas = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+                canvas.alpha_composite(scaled, ((128 - scaled.width) // 2, (128 - scaled.height) // 2))
+                canvas.save(Path(row.package_dir) / "icon.png", format="PNG")
+            self._set_manifest_icon(row, "icon.png")
+            self.model.reload(rescan=True)
+            self.model.set_status("Plugin icon generated.")
+        except Exception as exc:
+            self.model.set_status(f"Could not use generated icon: {exc}")
+
+    def _uninstall(self):
+        from chisurf.plugins.core.plugin_manager.api.install import uninstall
+        row = self.model.selected
+        if row is None:
+            self.model.set_status("Select a plugin first.")
+        else:
+            try:
+                uninstall(row.package_dir)
+                self.model.reload(rescan=True)
+                self.model.set_status(f"Removed {row.name}.")
+            except Exception as exc:
+                self.model.set_status(f"Uninstall failed: {exc}")
+        self.pending_remove = False
+
+    def animating(self):
+        return self.install_dialog is not None or self.icon_dialog is not None or (
+            self._icon_future is not None and not self._icon_future.done()
+        ) or super().animating()
+
+    def close(self):
+        self._icon_executor.shutdown(wait=False, cancel_futures=True)
+
+
+def make_app():
+    from chisurf.emtk.i18n import install
+    install()
+    return PluginManagerApp()
