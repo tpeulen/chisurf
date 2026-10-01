@@ -106,7 +106,7 @@ class _Tab:
                 _series_plot(key, getattr(self.model, plot["source"])())
                 implot.end_plot()
                 im.set_item_tooltip(plot.get("description", ""))
-            self.item_rects[key] = im.get_item_rect()
+            self.item_rects[key] = tuple(box)  # the window's content: the plot fills it
 
         return draw
 
