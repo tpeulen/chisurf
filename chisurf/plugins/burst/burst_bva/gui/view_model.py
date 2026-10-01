@@ -49,6 +49,8 @@ class BvaViewModel:
         self.tttrs: Any | None = None
         self.status_text: str = "Ready"
         self.is_running: bool = False
+        #: A run was skipped as unchanged: Restart is what recomputes it.
+        self.restart_attention: bool = False
 
         self._observers: list[Callable[[str], None]] = []
 
@@ -85,15 +87,30 @@ class BvaViewModel:
         except Exception:
             return [1, 9]
 
+    def _drop_bursts(self) -> None:
+        """Forget the burst table read for the previous input.
+
+        Both runs reuse ``burst_df``/``tttrs`` instead of re-reading; kept across a
+        folder change, the next run computed the new folder's BVA on the old bursts.
+        """
+        self.burst_df = self.tttrs = self.df = None
+
     def set_folder(self, folder: str | pathlib.Path | None) -> None:
         if folder is None or not str(folder).strip():
-            self.data_folder = None
-            self.analysis_folder = None
+            new = None
         else:
-            p = pathlib.Path(folder)
-            self.data_folder = p
-            self.analysis_folder = p
+            new = pathlib.Path(folder)
+        if new != self.analysis_folder:
+            self._drop_bursts()
+        self.data_folder = self.analysis_folder = new
         self.notify("folder")
+
+    def set_file_type(self, file_type: str) -> None:
+        """Change the photon-file type the bursts are read with (drops the read table)."""
+        if file_type != self.file_type:
+            self._drop_bursts()
+        self.file_type = file_type
+        self.notify("file_type")
 
     def bva_settings(self) -> dict[str, Any]:
         return {

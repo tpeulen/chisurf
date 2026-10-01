@@ -118,6 +118,8 @@ class BVATool(ChisurfDockTool):
             on_stop=self.stop,
             on_browse=self._select_folder,
             on_clear=self._clear_plot,
+            on_save=self._save_plot,
+            on_save_settings=self._save_settings,
             on_guide=self._start_guide,
             on_help=self._show_help,
         )
@@ -274,7 +276,7 @@ class BVATool(ChisurfDockTool):
         self.addToolBar(self.toolbar)
 
     def _on_model_event(self, event: str) -> None:
-        if event in ("param", "channel", "folder"):
+        if event in ("param", "channel", "folder", "file_type"):
             self._on_param_changed()
         self.host.update()
 
@@ -471,7 +473,7 @@ class BVATool(ChisurfDockTool):
             burst_df,
             tttrs,
             progress_window=task.progress_window("Computing BVA..."),
-            **settings,
+            **{key: value for key, value in settings.items() if key != "file_type"},
         )
 
         if write_output and self.model.analysis_folder is not None:
