@@ -1,0 +1,320 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-1",
+    "/",
+    "0",
+    "0.00e+00",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.00e+00",
+    "31",
+    "81",
+    "auto",
+    "bid",
+    "browse",
+    "clear",
+    "cluster",
+    "colour",
+    "contrast",
+    "data",
+    "drawmask",
+    "dropfolderhe",
+    "enable",
+    "export",
+    "file",
+    "fret",
+    "help",
+    "histogram",
+    "inf",
+    "invert",
+    "load",
+    "log#",
+    "max",
+    "min",
+    "nan",
+    "overlays",
+    "parameter",
+    "parameters",
+    "path",
+    "playback",
+    "plot",
+    "plotcontrols",
+    "save",
+    "screenshot",
+    "selection",
+    "set",
+    "settings",
+    "update",
+    "view",
+    "viridis",
+    "weight",
+    "x",
+    "y",
+    "zaxis"
+  ],
+  "interactive": [
+    {
+      "kind": "input_text",
+      "label": "x_bins_1d",
+      "id": "##x_bins_1d",
+      "tooltip": "Number of 1D bins"
+    },
+    {
+      "kind": "input_text",
+      "label": "x_bins_2d",
+      "id": "##x_bins_2d",
+      "tooltip": "Number of 2D bins"
+    },
+    {
+      "kind": "checkbox",
+      "label": "x_log",
+      "id": "##x_log",
+      "tooltip": "Logarithmic axis"
+    },
+    {
+      "kind": "checkbox",
+      "label": "x_norm",
+      "id": "##x_norm",
+      "tooltip": "Normalized density"
+    },
+    {
+      "kind": "checkbox",
+      "label": "x_auto_scale",
+      "id": "##x_auto_scale",
+      "tooltip": "If checked the axis is changed and no default scale is defined the axis scale is updated."
+    },
+    {
+      "kind": "button",
+      "label": "Set",
+      "id": "Set##set_x_axis",
+      "tooltip": "Update default axis range. To save current default axis settings use the Settings->Save Menu."
+    },
+    {
+      "kind": "input_text",
+      "label": "y_bins_1d",
+      "id": "##y_bins_1d",
+      "tooltip": "Number of 1D bins"
+    },
+    {
+      "kind": "input_text",
+      "label": "y_bins_2d",
+      "id": "##y_bins_2d",
+      "tooltip": "Number of 2D bins"
+    },
+    {
+      "kind": "checkbox",
+      "label": "y_log",
+      "id": "##y_log",
+      "tooltip": "Logarithmic axis"
+    },
+    {
+      "kind": "checkbox",
+      "label": "y_norm",
+      "id": "##y_norm",
+      "tooltip": "Normalized density"
+    },
+    {
+      "kind": "checkbox",
+      "label": "y_auto_scale",
+      "id": "##y_auto_scale",
+      "tooltip": "If checked the axis is changed and no default scale is defined the axis scale is updated."
+    },
+    {
+      "kind": "button",
+      "label": "Set",
+      "id": "Set##set_y_axis",
+      "tooltip": "Update default axis range. To save current default axis settings use the Settings->Save Menu."
+    },
+    {
+      "kind": "input_text",
+      "label": "x_min",
+      "id": "##x_min",
+      "tooltip": "X axis minimum value"
+    },
+    {
+      "kind": "input_text",
+      "label": "x_max",
+      "id": "##x_max",
+      "tooltip": "X axis maximum value"
+    },
+    {
+      "kind": "button",
+      "label": "Auto",
+      "id": "Auto##auto_x",
+      "tooltip": "Auto-range the x axis to the data"
+    },
+    {
+      "kind": "input_text",
+      "label": "y_min",
+      "id": "##y_min",
+      "tooltip": "Y axis minimum value"
+    },
+    {
+      "kind": "input_text",
+      "label": "y_max",
+      "id": "##y_max",
+      "tooltip": "Y axis maximum value"
+    },
+    {
+      "kind": "button",
+      "label": "Auto",
+      "id": "Auto##auto_y",
+      "tooltip": "Auto-range the y axis to the data"
+    },
+    {
+      "kind": "checkbox",
+      "label": "weight",
+      "id": "weight##weight_enabled",
+      "tooltip": "If checked histogram as are weighted by selected axis"
+    },
+    {
+      "kind": "button",
+      "label": "Cluster",
+      "id": "Cluster##cluster",
+      "tooltip": "Open clustering dialog: find structure (PCA, UMAP, HDBSCAN, K-means) in chosen columns."
+    },
+    {
+      "kind": "input_text",
+      "label": "selected_cluster",
+      "id": "##selected_cluster",
+      "tooltip": "Show only this cluster; -1 shows all."
+    },
+    {
+      "kind": "checkbox",
+      "label": "colour",
+      "id": "colour##cluster_colours",
+      "tooltip": "Colour the 2-D map by cluster."
+    },
+    {
+      "kind": "button",
+      "label": "BID",
+      "id": "BID##save_burst_ids",
+      "tooltip": "Save the burst IDs of the selected bursts."
+    },
+    {
+      "kind": "button",
+      "label": "clear",
+      "id": "clear##clear_gates",
+      "tooltip": "Remove every gate."
+    },
+    {
+      "kind": "button",
+      "label": "load",
+      "id": "load##load_gates",
+      "tooltip": "Load gates from a file."
+    },
+    {
+      "kind": "button",
+      "label": "save",
+      "id": "save##save_gates",
+      "tooltip": "Save the gates to a file."
+    },
+    {
+      "kind": "input_text",
+      "label": "working_path",
+      "id": "##working_path",
+      "tooltip": "The working folder: where files are opened from."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##browse",
+      "tooltip": "Change working path"
+    },
+    {
+      "kind": "checkbox",
+      "label": "log # ",
+      "id": "log # ##log_counts",
+      "tooltip": "Colour the 2-D histogram by log10 of the counts."
+    },
+    {
+      "kind": "input_text",
+      "label": "vmin",
+      "id": "##vmin",
+      "tooltip": "Lower colour limit of the 2-D histogram."
+    },
+    {
+      "kind": "input_text",
+      "label": "vmax",
+      "id": "##vmax",
+      "tooltip": "Upper colour limit of the 2-D histogram."
+    },
+    {
+      "kind": "button",
+      "label": "Contrast",
+      "id": "Contrast##auto_contrast",
+      "tooltip": "Set the colour limits from the data."
+    },
+    {
+      "kind": "button",
+      "label": "Update",
+      "id": "Update##update_plots",
+      "tooltip": "Redraw the plots."
+    },
+    {
+      "kind": "input_text",
+      "label": "count_current",
+      "id": "##count_current",
+      "tooltip": "Points shown (after the gates)."
+    },
+    {
+      "kind": "input_text",
+      "label": "count_total",
+      "id": "##count_total",
+      "tooltip": "Points loaded."
+    },
+    {
+      "kind": "checkbox",
+      "label": "inf",
+      "id": "inf##mask_inf",
+      "tooltip": "Leave out points with an infinite value on a plotted axis."
+    },
+    {
+      "kind": "checkbox",
+      "label": "NaN",
+      "id": "NaN##mask_nan",
+      "tooltip": "Leave out points with no value on a plotted axis."
+    },
+    {
+      "kind": "button",
+      "label": "Screenshot",
+      "id": "Screenshot##screenshot",
+      "tooltip": "Save a picture of the window."
+    },
+    {
+      "kind": "button",
+      "label": "Data",
+      "id": "Data##show_data",
+      "tooltip": "Show the data table."
+    },
+    {
+      "kind": "button",
+      "label": "Export…",
+      "id": "Export…##export_figure",
+      "tooltip": "Export a publication figure."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##clear_plot",
+      "tooltip": "Clear the plots and the working path."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

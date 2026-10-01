@@ -6024,6 +6024,12 @@ View slot withdrawal, `session_autosave`, the geometry persistence, the MMFDB
 opener wiring. Decide the direction (wrap the emtk app in `NdxWindow` when a
 Qt host is available, or port the missing pieces) and fix one side.
 
+**Resolved 2026-10-01 (EMTK-1, commit dddeb4d1f):** the missing pieces were ported into `make_app`: the
+in-process RPC client, `session_autosave=True`, closing with the host (session kept, Global View slot
+withdrawn); the MMFDB opener is the emtk `DatasetPicker` under the Qt label "From MMFDB…". Geometry is the
+host's; the dock layout lives in ChiSurf's native-state store instead of ndX's settings file. The route test
+now checks the app's wiring on either host. Report: `okf/plugins/emtk-ports/ndxplorer/REPORT.md`.
+
 ## region_mle: the simulated demo reads as an empty image (found 2026-09-30)
 
 `region_mle`'s `preview_regions` / `fit_regions` (`core/region_mle.py`, around line 826) build
@@ -6116,3 +6122,17 @@ deliberate in `ViewerHost` (unpinned, a click dismisses it). Reproduce (5 lines)
 *Not fixed here:* the fix belongs in chimol (a structure-factory hook on `ViewerHost` that ChiSurf's plugin package
 injects, the way it injects the settings directory), not in the ChiSurf adapter, and chimol is a separate repository.
 Which rendering is right (hetero spheres; residue 0) is chimol's call.
+
+## emtk apps opened from ChiSurf's menu are never closed (found 2026-10-01)
+
+**Measured** with ndX (`okf/plugins/emtk-ports/ndxplorer/`): `chisurf.core.plugin.registry.build_plugin_widget` wraps an
+emtk factory's app in `emtk.qt_host.ControlHost(factory())` and returns the host; when that window closes,
+`ControlHost.closeEvent` only detaches the frame-request callback (`set_frame_request_callback(None)`) and nothing calls
+the app's `close()`. So every ported app's close -- saving a layout or session, stopping worker threads and executors,
+unsubscribing from fit events, withdrawing a Global View group -- does not run when the user closes it from the menu.
+Reproduce (5 lines): `w = build_plugin_widget(manifest_of_any_emtk_plugin)`; `closed = []`;
+`w.control.close = lambda: closed.append(1)`; `w.show(); w.close()`; `closed == []`.
+*Worked around in ndX only* (its factory closes when the callback is removed after one was set). *Not fixed here:* the
+fix belongs in `build_plugin_widget` (another stream's uncommitted change: call `control.close()` from the host window's
+close / `destroyed`) or in emtk's `ControlHost.closeEvent`; both are outside this session's scope.
+

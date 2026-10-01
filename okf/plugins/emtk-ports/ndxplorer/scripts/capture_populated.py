@@ -28,7 +28,7 @@ else:
     from emtk.testing import RecordingPainter
     from chisurf.plugins.ndxplorer.gui import app as ndxapp
     import inspect
-    kwargs = {"session_autosave": False, "layout_store": None} if "session_autosave" in inspect.signature(ndxapp.make_app).parameters else {}
+    kwargs = {"session_autosave": False} if "session_autosave" in inspect.signature(ndxapp.make_app).parameters else {}
     for size in [(1200, 800), (800, 600)]:
         a = ndxapp.make_app(**kwargs)
         a.model.set_source(source()); a.data_changed()
