@@ -43,7 +43,7 @@ class PhotonTableTool(ChisurfDockTool):
 
         from emtk.qt_host import ControlHost
 
-        from .app import WINDOW_BG, PhotonTableApp
+        from .qt_host_app import WINDOW_BG, PhotonTableApp
 
         self.app = PhotonTableApp(self, on_browse=self._browse)
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])

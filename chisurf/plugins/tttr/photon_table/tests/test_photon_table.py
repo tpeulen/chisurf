@@ -308,13 +308,12 @@ class BlockQt:
         if fullname.split('.')[0] in {'qtpy','PyQt5','PyQt6','PySide2','PySide6'}:
             raise AssertionError('Qt imported: ' + fullname)
 sys.meta_path.insert(0, BlockQt())
-from chisurf.plugins.tttr.photon_table.gui.controller import create_app
-app = create_app()
-assert app.tool.rows_per_page == 200
-assert app.tool.load_file('/missing/file.ptu') is False
-assert app.tool.error
-app.tool.browse()
-assert app.tool.dialog is not None
+# the standalone controller was replaced by the native app (gui/app.py, make_app)
+from chisurf.plugins.tttr.photon_table.gui.app import make_app
+app = make_app()
+assert app.model.rows_per_page == 200
+assert app.load_file('/missing/file.ptu') is True
+app.model.request_open()
 """
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr

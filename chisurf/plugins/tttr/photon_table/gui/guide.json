@@ -1,17 +1,39 @@
-[
-  {
-    "target": "open",
-    "title": "Open TTTR",
-    "text": "Open or drop a TTTR file to inspect photons."
-  },
-  {
-    "target": "filters",
-    "title": "Navigate and filter",
-    "text": "Set the first photon, page size, or routing channel."
-  },
-  {
-    "target": "copy",
-    "title": "Copy rows",
-    "text": "Copy the current page as tab-separated text."
-  }
-]
+{
+  "_comment": "Guided tour of the Photon Table. 'name' is the emtk control (a spec action or field, or a window the app draws).",
+  "steps": [
+    {
+      "title": "Open a TTTR file",
+      "text": "<b>Open TTTR...</b> chooses a .ptu, .ht3, .phu, .pt3 or other TTTR file; you can also drop one on the window. The photons are read in the background and the table starts at the first photon.",
+      "target": {"name": "request_open"},
+      "await": {"hint": "Press <b>Open TTTR...</b>, then pick a file or close the dialog."}
+    },
+    {
+      "title": "What the file holds",
+      "text": "The file name, the number of photons, the measurement time and the number of micro-time channels the header declares, then the routing channels (detectors) that occur in the data.",
+      "target": {"name": "file_summary"}
+    },
+    {
+      "title": "Move through the photons",
+      "text": "A file holds millions of photons, so the table shows one page. <b>Next</b> and <b>Prev</b> move by a page, <b>First</b> and <b>Last</b> jump to the ends. <b>First photon</b> and <b>Rows</b> set the page by number.",
+      "target": {"name": "go_next"},
+      "await": {"hint": "Press <b>Next</b> (it needs a loaded file with more than one page)."}
+    },
+    {
+      "title": "Show one channel",
+      "text": "Pick a routing channel to keep only its photons. The <b>Photon</b> column then counts the filtered photons while <b>File idx</b> keeps the position in the file.",
+      "target": {"name": "channel_filter"},
+      "await": {"hint": "Choose a channel in the list."}
+    },
+    {
+      "title": "The table",
+      "text": "One row per photon: the index among the filtered photons, the index in the file, the routing channel, the micro time and the macro time in milliseconds. Click a header to sort the page.",
+      "target": {"name": "photon_table"}
+    },
+    {
+      "title": "Copy the rows",
+      "text": "<b>Copy visible</b> puts the rows of the page on the clipboard as tab-separated text, with a header line.",
+      "target": {"name": "request_copy"},
+      "await": {"hint": "Press <b>Copy visible</b>."}
+    }
+  ]
+}

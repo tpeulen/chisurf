@@ -1,0 +1,120 @@
+{
+  "_comment": "Photon Table, native emtk window. Drawn by emtk.view_form over PhotonTableViewModel (gui/model.py): 'file' is the left window (open, copy, the file summary), 'photons' the right one (navigation, page fields, channel filter, the table of photons). Help and Guide are drawn by gui/app.py.",
+  "title": "Photon Table",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "TTTR file",
+      "name": "file",
+      "description": "The TTTR file and what it holds.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Open a TTTR file, or copy the rows shown now.",
+          "buttons": [
+            {"action": "request_open", "label": "Open TTTR...",
+             "description": "Open a TTTR file (.ptu, .ht3, .phu, ...). Dropping one on the window does the same."},
+            {"action": "request_copy", "label": "Copy visible",
+             "description": "Copy the visible rows to the clipboard as tab-separated text."}
+          ]
+        },
+        {
+          "type": "info", "key": "empty_hint",
+          "text": "Open a TTTR file, or drop one on this window, to inspect its photons.",
+          "hidden_when": {"attr": "loaded", "equals": "true"},
+          "description": "Shown until a file is loaded."
+        },
+        {
+          "type": "info", "key": "file_name", "source": "file_name",
+          "hidden_when": {"attr": "not_loaded", "equals": "true"},
+          "description": "The file whose photons are listed."
+        },
+        {
+          "type": "info", "key": "file_summary", "source": "summary_text",
+          "hidden_when": {"attr": "not_loaded", "equals": "true"},
+          "description": "How many photons the file holds, how long the measurement lasted (the last macro-time times the header's resolution) and how many micro-time channels the header declares."
+        },
+        {
+          "type": "info", "key": "file_channels", "source": "channels_text",
+          "hidden_when": {"attr": "not_loaded", "equals": "true"},
+          "description": "The routing channels that occur in the file."
+        },
+        {
+          "type": "info", "key": "status_text", "source": "status_text",
+          "description": "What was loaded, why a file could not be opened, or what was copied."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Photons",
+      "name": "photons",
+      "description": "The photons of the file, one row each, a page at a time.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Move through the photons of the filtered selection a page at a time.",
+          "buttons": [
+            {"action": "go_first", "label": "First",
+             "description": "Jump to the first photon of the filtered selection."},
+            {"action": "go_prev", "label": "Prev",
+             "description": "One page back."},
+            {"action": "go_next", "label": "Next",
+             "description": "One page forward."},
+            {"action": "go_last", "label": "Last",
+             "description": "Jump to the last full page of the filtered selection."}
+          ]
+        },
+        {
+          "type": "info", "key": "range_text", "source": "range_text",
+          "description": "Which photons of the filtered selection the table shows now."
+        },
+        {
+          "type": "value", "attr": "first_index", "label": "First photon", "kind": "int",
+          "minimum": 0, "maximum": 1000000000000, "step": 1, "spin": true,
+          "call": "set_first",
+          "description": "Index of the first photon shown, counted within the filtered selection. A value past the end is moved back so that the page stays full."
+        },
+        {
+          "type": "value", "attr": "rows_per_page", "label": "Rows", "kind": "int",
+          "minimum": 1, "maximum": 20000, "step": 1, "spin": true,
+          "call": "set_rows",
+          "description": "Rows shown at once (1 to 20000). Large pages are fine; the table only draws what fits the window."
+        },
+        {
+          "type": "choice", "attr": "channel_filter", "label": "Channel",
+          "options_source": "channel_labels", "call": "set_channel",
+          "description": "Show only the photons of one routing channel. 'All channels' keeps the file's order. Choosing a channel goes back to its first photon."
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per photon of the page. Photon is the index among the filtered photons, File idx the index in the file. Click a header to sort the page, click again to reverse; right click a header to choose columns.",
+          "options": {
+            "source": "rows",
+            "row_key": "idx",
+            "editable": false,
+            "status": true,
+            "column_picker": true,
+            "expand": true,
+            "reserve": 24,
+            "min_column_width": 50,
+            "columns": [
+              {"key": "photon", "title": "Photon", "width": 90, "shade": false,
+               "tooltip": "The photon's index among the filtered photons: the row number a script would address."},
+              {"key": "idx", "title": "File idx", "width": 90, "shade": false,
+               "tooltip": "The photon's index in the raw file."},
+              {"key": "channel", "title": "Channel", "width": 80, "shade": false,
+               "tooltip": "The routing channel (detector) of the photon."},
+              {"key": "micro", "title": "Micro time", "width": 100, "shade": false,
+               "tooltip": "The micro time: TCSPC channel of the photon after the laser pulse."},
+              {"key": "macro", "title": "Macro time [ms]", "width": 130, "format": "%.6f", "shade": false,
+               "tooltip": "The macro time in milliseconds (macro-time units times the header's resolution; raw units when the resolution is unknown)."}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
