@@ -1,0 +1,180 @@
+{
+  "_comment": "TTTR LUT Tools, native emtk window. Drawn by emtk.view_form over LutToolModel (gui/model.py). Panels: 'header' (flow hint, Add all channels, Apply, Help, Guide, tab choice), 'files' (input files), 'compute' (tab 1: Compute LUT), 'assign' (tab 2: settings.tttr.json), 'status' (last message). The two plots are drawn by gui/app.py (a spec cannot draw a plot).",
+  "title": "TTTR LUT Tools",
+  "sections": [
+    {
+      "type": "panel", "name": "header", "title": "LUT flow",
+      "description": "What the two tabs are for, the one-click bridge to the detector setup, and Help.",
+      "sections": [
+        {"type": "info", "source": "flow_hint",
+         "description": "The normal workflow: load a flat-light file, then Add all channels to setup. Saving a settings file is optional."},
+        {"type": "button_row",
+         "description": "Add every channel's LUT to the setup, apply it, open the help or the guided tour.",
+         "buttons": [
+           {"action": "add_all", "label": "Add all channels to setup",
+            "description": "Compute a LUT for EVERY routing channel in the loaded file (one per channel: TAC non-linearity is per channel) and assign them all to your detector setup. This is the normal way to use LUTs. Saving a .npy LUT or a settings.tttr.json is optional."},
+           {"action": "apply_setup", "label": "Apply to detector setup",
+            "description": "Send the assigned LUTs and shifts to the detector setup that opened this tool.",
+            "hidden_when": {"attr": "has_apply", "equals": false}},
+           {"action": "show_help", "label": "Help",
+            "description": "What do the two tabs do? Read the LUT workflow and the scientific notes."},
+           {"action": "start_guide", "label": "Guide",
+            "description": "A short guided tour: load a file, pick the plateau, add all channels."}
+         ]},
+        {"type": "choice", "attr": "stage_name", "label": "", "style": "radio_list",
+         "options": ["Compute LUT", "settings.tttr.json (optional)"],
+         "description": "Compute LUT: MAKE a per-routing-channel LUT from a flat / uniform-illumination measurement (the main tool). settings.tttr.json: OPTIONAL, save or load a portable settings file, or assign LUT files to channels by hand."}
+      ]
+    },
+    {
+      "type": "panel", "name": "files", "title": "Files",
+      "description": "The photon files the shown tab works on.",
+      "sections": [
+        {"type": "custom", "key": "data_table", "title": "Uniform-illumination TTTR file(s)",
+         "description": "The input files. Select a row and press Remove (or Delete) to unload it. Files can also be dropped on the window.",
+         "options": {
+           "source": "file_rows", "row_key": "path", "selected_call": "select_file",
+           "delete_call": "delete_file", "tooltip_key": "path", "editable": false, "height": 80,
+           "fit_columns": true,
+           "columns": [
+             {"key": "name", "title": "File", "width": 300, "tooltip": "File name; hover a row for the full path."}
+           ]}},
+        {"type": "button_row",
+         "description": "Add or remove input files.",
+         "buttons": [
+           {"action": "request_add_files", "label": "Files",
+            "description": "Load uniform-illumination (or, on the settings tab, preview) TTTR files."},
+           {"action": "request_add_folder", "label": "Folder",
+            "description": "Load supported photon files recursively from a folder."},
+           {"action": "request_database", "label": "Database",
+            "description": "Select photon files from the MMFDB object store."},
+           {"action": "remove_file", "label": "Remove",
+            "description": "Unload the selected input file."},
+           {"action": "clear_files", "label": "Clear",
+            "description": "Unload all input files; assigned LUTs are kept."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel", "name": "compute", "title": "Compute LUT",
+      "description": "Tab 1: tune one channel's region, then add all channels.",
+      "sections": [
+        {"type": "choice", "attr": "channel", "label": "Preview channel",
+         "options_source": "channels_options", "call": "channel_changed",
+         "description": "Preview / tune THIS routing channel's histogram and region. Add all channels to setup computes and assigns a LUT for ALL channels."},
+        {"type": "panel", "title": "Parameters", "n_col": 2, "collapsible": true,
+         "description": "The linear plateau and the size of the corrected axis.",
+         "sections": [
+           {"type": "value", "attr": "linear_start", "label": "Linear start", "kind": "int", "minimum": 0, "maximum": 1000000, "call": "param_changed",
+            "description": "First bin of the flat linear region (or drag the orange region in the plot)."},
+           {"type": "value", "attr": "linear_stop", "label": "Linear stop", "kind": "int", "minimum": 1, "maximum": 1000000, "call": "param_changed",
+            "description": "First bin after the flat linear region."},
+           {"type": "value", "attr": "ntac_required", "label": "TAC channels required", "kind": "int", "minimum": 2, "maximum": 1000000, "call": "param_changed",
+            "description": "Target number of corrected NTAC bins (defaults to the input bin count)."},
+           {"type": "value", "attr": "noffset", "label": "Noffset", "kind": "int", "minimum": 0, "maximum": 1000000, "call": "param_changed",
+            "description": "Offset subtracted from corrected NTAC indices (or drag the red line)."},
+           {"type": "value", "attr": "preview_photons", "label": "Preview photons", "kind": "int", "minimum": 1000, "maximum": 100000000, "call": "param_changed",
+            "description": "How many photons to use for the corrected-preview histogram."},
+           {"type": "toggle", "attr": "normalize", "label": "Normalize by region mean", "call": "param_changed",
+            "description": "Divide the displayed histogram by the region mean (display only)."}
+         ]},
+        {"type": "panel", "title": "Advanced", "n_col": 2, "collapsible": true, "collapsed": true,
+         "description": "Rarely needed: seed, low-count threshold, wrap-spike mitigation.",
+         "sections": [
+           {"type": "value", "attr": "seed", "label": "RNG seed", "kind": "int", "minimum": 0, "maximum": 2147483647, "call": "param_changed",
+            "description": "Seed for the stochastic rebinning (reproducible previews)."},
+           {"type": "value", "attr": "threshold", "label": "Low-count threshold", "kind": "float", "minimum": 0.0, "maximum": 1000000000.0, "decimals": 6, "call": "param_changed",
+            "description": "Bins at or below this count are zeroed before building the LUT (or drag the green line)."},
+           {"type": "toggle", "attr": "mitigate_wrap", "label": "Mitigate wrap spike (floor + ε)", "call": "param_changed",
+            "description": "Use floor rounding + a small epsilon to avoid a spike at the wrap boundary."},
+           {"type": "value", "attr": "eps", "label": "ε (wrap)", "kind": "float", "minimum": 0.0, "maximum": 0.01, "decimals": 9, "call": "param_changed",
+            "description": "Epsilon used when 'Mitigate wrap spike' is on."}
+         ]},
+        {"type": "button_row",
+         "description": "Find the plateau, then optionally save the LUT or the corrected micro-times.",
+         "buttons": [
+           {"action": "autodetect", "label": "Auto-detect region",
+            "description": "Auto-detect the flat linear plateau of the shown channel's histogram."},
+           {"action": "request_save_lut", "label": "Save LUT file...",
+            "description": "Optional: save this channel's LUT to a file (JSON, NumPy, CSV or text). Not needed: use Add all channels to setup for the normal workflow."},
+           {"action": "request_export_corrected", "label": "Export corrected...",
+            "description": "Optional: export the corrected micro-times of all photons of the shown channel."}
+         ]},
+        {"type": "info", "source": "info_text",
+         "description": "The LUT of the shown channel: region, width, scale factor f and the mean count n_mean."}
+      ]
+    },
+    {
+      "type": "panel", "name": "assign", "title": "settings.tttr.json",
+      "description": "Tab 2 (optional): assign LUT files to channels and save or load settings.tttr.json.",
+      "sections": [
+        {"type": "choice", "attr": "reading_name", "label": "Reading routine", "options_source": "reading_options", "call": "reading_changed",
+         "description": "Select the TTTR container format; Auto detects it from the file."},
+        {"type": "button_row",
+         "description": "Import a LUT file, or clear every LUT.",
+         "buttons": [
+           {"action": "request_load_lut", "label": "Load LUT",
+            "description": "Import a cumulative LUT from JSON, NumPy, CSV or text."},
+           {"action": "remove_lut", "label": "Remove LUT",
+            "description": "Remove the selected LUT from the import list; channel assignments are kept."},
+           {"action": "clear_luts", "label": "Clear LUTs",
+            "description": "Remove all loaded and assigned LUTs; shifts are kept."}
+         ]},
+        {"type": "custom", "key": "data_table", "title": "Loaded LUTs",
+         "description": "The LUTs available to assign. Select one, then Selected or All.",
+         "options": {
+           "source": "lut_rows", "row_key": "name", "selected_call": "select_lut", "delete_call": "delete_lut",
+           "editable": false, "height": 80, "fit_columns": true,
+           "columns": [
+             {"key": "name", "title": "LUT", "width": 120, "tooltip": "Name of the LUT (file name, or chN_lut when computed here)."},
+             {"key": "entries", "title": "Entries", "width": 60, "tooltip": "Number of cumulative NTAC entries."},
+             {"key": "channels", "title": "Assigned to", "width": 90, "tooltip": "Routing channels that currently use this LUT."}
+           ]}},
+        {"type": "button_row",
+         "description": "Assign the selected LUT.",
+         "buttons": [
+           {"action": "assign_selected", "label": "Selected",
+            "description": "Assign the selected LUT to the active routing channel."},
+           {"action": "assign_all", "label": "All",
+            "description": "Assign the selected LUT to every routing channel in the preview."}
+         ]},
+        {"type": "toggle", "attr": "show_lut", "label": "Show LUT panel",
+         "description": "Inspect the active channel's cumulative LUT and bin increments."},
+        {"type": "toggle", "attr": "log_y", "label": "Log counts",
+         "description": "Use a logarithmic histogram count axis."},
+        {"type": "custom", "key": "data_table", "title": "Channels",
+         "description": "The routing channels of the preview files. Tick Show to draw a channel; select a row to make it active.",
+         "options": {
+           "source": "channel_rows", "row_key": "channel", "selected_call": "select_channel", "edited_call": "edit_channel",
+           "editable": false, "height": 100, "fit_columns": true,
+           "columns": [
+             {"key": "channel", "title": "Channel", "width": 60, "tooltip": "Routing channel number."},
+             {"key": "show", "title": "Show", "width": 50, "editable": true, "tooltip": "Draw this channel's histograms in the plot."},
+             {"key": "photons", "title": "Photons", "width": 80, "tooltip": "Photons in this channel."},
+             {"key": "lut", "title": "LUT", "width": 40, "tooltip": "Whether a LUT is assigned to this channel."},
+             {"key": "shift", "title": "Shift", "width": 50, "tooltip": "Photon-level shift after LUT correction."}
+           ]}},
+        {"type": "value", "attr": "shift", "label": "Shift", "kind": "int", "minimum": -1000000, "maximum": 1000000,
+         "description": "Photon-level shift of the active channel after LUT correction."},
+        {"type": "button_row",
+         "description": "Inspect, load or save the portable settings.tttr.json.",
+         "buttons": [
+           {"action": "toggle_json", "label": "Show JSON",
+            "description": "Inspect the portable settings.tttr.json bundle."},
+           {"action": "request_load_json", "label": "Load JSON",
+            "description": "Restore per-channel LUTs, shifts and the reading routine from a settings.tttr.json."},
+           {"action": "request_save_json", "label": "Save JSON",
+            "description": "Save the portable TTTR correction settings."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel", "name": "status", "title": "Status",
+      "description": "The result of the last action.",
+      "sections": [
+        {"type": "info", "source": "status_text",
+         "description": "What just happened, or what to do next."}
+      ]
+    }
+  ]
+}

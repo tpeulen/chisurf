@@ -6,8 +6,6 @@ from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
 
-from .gui.tool import TTRLutToolsWidget
-
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
@@ -18,6 +16,17 @@ else:
 
 __all__ = ["TTRLutToolsWidget"]
 
+
+def __getattr__(name):
+    if name == "TTRLutToolsWidget":
+        from .gui.tool import TTRLutToolsWidget
+
+        return TTRLutToolsWidget
+    raise AttributeError(name)
+
+
 if __name__ == "plugin":
+    from .gui.tool import TTRLutToolsWidget
+
     window = TTRLutToolsWidget()
     window.show()

@@ -1,0 +1,43 @@
+{
+  "_comment": "Guided tour of TTTR LUT Tools (emtk app). 'target' names a real control: a field's attr or a button's action. Steps that need the user wait for the control to be used.",
+  "steps": [
+    {
+      "title": "Two tabs, one main tool",
+      "text": "<b>Compute LUT</b> is the main tool: it makes one LUT per routing channel from a flat-light measurement. <b>settings.tttr.json (optional)</b> only saves or loads a portable settings file. Stay on Compute LUT.",
+      "target": {"name": "stage_name"}
+    },
+    {
+      "title": "Load a uniform-illumination file",
+      "text": "Press <b>Files</b> and pick a flat-light TTTR file (or <b>Folder</b> / <b>Database</b>, or drop it on the window). The raw TAC histogram appears in the upper plot.",
+      "target": {"name": "request_add_files"},
+      "await": {"hint": "Press <b>Files</b> and choose a file."}
+    },
+    {
+      "title": "Pick the channel",
+      "text": "TAC non-linearity is per routing channel. The <b>Preview channel</b> chooses which channel's histogram, region and corrected preview you see.",
+      "target": {"name": "channel"}
+    },
+    {
+      "title": "Choose the linear plateau",
+      "text": "Drag the orange region in the upper plot onto the flat part of a uniform-illumination histogram, or set <b>Linear start</b> and <b>Linear stop</b> here. The lower plot shows the corrected preview; it should be flat.",
+      "target": {"name": "linear_start"}
+    },
+    {
+      "title": "Let the tool find it",
+      "text": "<b>Auto-detect region</b> searches for the plateau. If the histogram is not flat it says so in the status line; then set the region by hand.",
+      "target": {"name": "autodetect"},
+      "await": {"hint": "Press <b>Auto-detect region</b>."}
+    },
+    {
+      "title": "Add every channel to the setup",
+      "text": "<b>Add all channels to setup</b> computes a LUT for every routing channel and assigns them all. This is the normal end of the workflow; saving a file is optional.",
+      "target": {"name": "add_all"},
+      "await": {"hint": "Press <b>Add all channels to setup</b>."}
+    },
+    {
+      "title": "Optional: save a file",
+      "text": "<b>Save LUT file...</b> writes the shown channel's LUT, <b>Export corrected...</b> the corrected micro-times. Neither is needed to use the LUTs in a setup.",
+      "target": {"name": "request_save_lut"}
+    }
+  ]
+}

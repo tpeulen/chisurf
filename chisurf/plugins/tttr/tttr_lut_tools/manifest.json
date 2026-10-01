@@ -24,6 +24,7 @@
     }
   },
   "entrypoints": {
+    "emtk": "chisurf.plugins.tttr.tttr_lut_tools.gui.app:create_app",
     "gui": "chisurf.plugins.tttr.tttr_lut_tools.gui.tool:TTRLutToolsWidget",
     "cli": "lut-tools=chisurf.plugins.tttr.tttr_lut_tools.cli.main:cli",
     "services": "chisurf.plugins.tttr.tttr_lut_tools.backend.services:register_services"

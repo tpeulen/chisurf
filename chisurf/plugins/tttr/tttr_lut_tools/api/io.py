@@ -64,11 +64,11 @@ def load_microtimes(
     RuntimeError
         If no micro-times are found in any input file.
     """
-    import tttrlib
+    from chisurf.core.fio.staging import open_tttr
 
     parts: list[np.ndarray] = []
     for filename in file_list:
-        tttr = tttrlib.TTTR(filename) if not routine else tttrlib.TTTR(filename, routine)
+        tttr = open_tttr(filename, routine)
         if channel is not None:
             tttr = tttr.get_tttr_by_channel([int(channel)])
         microtimes = tttr.micro_times
@@ -98,12 +98,12 @@ def load_micro_and_routing(
     RuntimeError
         If no events are found in any input file.
     """
-    import tttrlib
+    from chisurf.core.fio.staging import open_tttr
 
     micro_parts: list[np.ndarray] = []
     route_parts: list[np.ndarray] = []
     for filename in file_list:
-        tttr = tttrlib.TTTR(filename) if not routine else tttrlib.TTTR(filename, routine)
+        tttr = open_tttr(filename, routine)
         micro = tttr.micro_times
         if micro is None or len(micro) == 0:
             continue
