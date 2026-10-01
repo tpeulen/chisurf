@@ -1,0 +1,4 @@
+ M chisurf/plugins/burst/burst_gs/gui/app.py
+ M chisurf/plugins/burst/burst_gs/manifest.json
+?? chisurf/plugins/burst/burst_gs/gui/controller.py
+?? chisurf/plugins/burst/burst_gs/test/test_native.py
