@@ -406,7 +406,7 @@ def _reconstruct_payload(
             "experiments": artifact_payload.get("experiments", {}),
             "ui": artifact_payload.get("ui_state", {}),
             # carry the operation-history projection through to the loader, which
-            # rehydrates cs.history from extra.history_events (PRD-43)
+            # rehydrates cs.history from extra.history_events
             "extra": artifact_payload.get("extra", {}),
             "chinet_sessions": artifact_payload.get("chinet_sessions", []),
             "parameters": artifact_payload.get("parameters", {}),
@@ -810,6 +810,23 @@ def _populate_mmfdb_from_export(
 
     project_id = origin.get("project_id", f"proj_{uuid.uuid4().hex[:12]}")
     version_number = origin.get("version_number", 1)
+    # The archive keeps its project id, so a version moved between databases joins its
+    # project. When that project is already here, the archive's own number usually is
+    # too: it took a second "v1". Number it after the project's newest version instead
+    # (branch-scoped, as saving numbers them).
+    branch_uuid = next((op.get("metadata", {}).get("branch_uuid") for op in deps.get("operations", [])
+                        if op.get("operation_type", "project") == "project"), None)
+    query = ("SELECT MAX(json_extract(metadata_json, '$.version_number')) AS max_vn FROM mmfdb_operation "
+             "WHERE operation_type = 'project' AND deleted_at IS NULL "
+             "AND json_extract(metadata_json, '$.project_id') = ?")
+    args: tuple = (project_id,)
+    if branch_uuid:
+        query += " AND json_extract(metadata_json, '$.branch_uuid') = ?"
+        args = (project_id, branch_uuid)
+    row = conn.execute(query, args).fetchone()
+    existing = dict(row).get("max_vn") if row else None
+    if existing:
+        version_number = int(existing) + 1
 
     parent_version_id = None
     with db.transaction():

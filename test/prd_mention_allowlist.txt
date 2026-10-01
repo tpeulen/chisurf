@@ -105,7 +105,6 @@ chisurf/plugins/core/mmfdb_admin/test/test_reagent_handlers.py
 chisurf/plugins/core/mmfdb_admin/test/test_reagents_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_studies_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_study_handlers.py
-chisurf/plugins/core/project_browser/backend/services.py
 chisurf/plugins/fcs/fcs_channel_preset/gui/fcs_channel_preset.view.json
 chisurf/plugins/fret_line/__init__.py
 chisurf/plugins/fret_line/backend/services.py

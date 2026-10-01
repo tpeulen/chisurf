@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **Project import numbers the version after its project's newest** (found during the project_browser upgrade): an archive
+  keeps its project id, and it also kept its version number, so importing v1 into a database that held the project gave it two
+  "v1" rows. Guard `project_browser/test/test_import_version_numbering.py`; `services.py` off the PRD-mention allow-list.
+
 - **phasor_calculator emtk app at parity** (EMTK-1, upgrade row 33): its controls are drawn from `phasor.view.json`, whose
   groups moved into the spec; the plot keeps a short legend and equal scale (circles were ellipses).
   [report](plugins/emtk-ports/phasor_calculator/REPORT.md).
