@@ -1,0 +1,142 @@
+diff --git a/chisurf/plugins/calculator/rics_precision/gui/guide.json b/chisurf/plugins/calculator/rics_precision/gui/guide.json
+index 4891f51e8..29667c20c 100644
+--- a/chisurf/plugins/calculator/rics_precision/gui/guide.json
++++ b/chisurf/plugins/calculator/rics_precision/gui/guide.json
+@@ -34,7 +34,7 @@
+       "title": "Read the trough as an order of magnitude, not a setting",
+       "text": "Your own dwell is marked on the curve, and the status line turns it into a sentence — how good it is, and how much better the best dwell would be.<br/><br/>Rough guide: <b>below 5 %</b> means differences between conditions will be measurable; <b>5–20 %</b> is usable for a large effect; above that the experiment is unlikely to answer the question.<br/><br/>Two honest limits. Each point is <b>itself a Monte-Carlo estimate</b> — about 10 % at the default repeat count — so the position of the minimum is an order of magnitude and not a value to dial in. And precision is quoted <b>per frame count, not per unit time</b>: a slower scan in this comparison is also a longer acquisition, so read the table's implied line and frame times before choosing.<br/><br/>The <b>?</b> button has the rest.",
+       "target": {
+-        "title": "Error vs dwell"
++        "key": "plot"
+       }
+     }
+   ]
+diff --git a/chisurf/plugins/calculator/rics_precision/gui/tool.py b/chisurf/plugins/calculator/rics_precision/gui/tool.py
+index 3d7bc966e..7f3c33774 100644
+--- a/chisurf/plugins/calculator/rics_precision/gui/tool.py
++++ b/chisurf/plugins/calculator/rics_precision/gui/tool.py
+@@ -1,4 +1,10 @@
+-"""GUI entry point for the RICS-precision calculator (toolbar + AutoForm)."""
++"""GUI entry point for the RICS-precision calculator (EMTK app in a Qt host).
++
++The UI is the EMTK app in :mod:`.app` (:class:`RicsPrecisionApp`) over the
++Qt-free :class:`~.view_model.PrecisionViewModel`; this window hosts it through
++:class:`emtk.qt_host.ControlHost` and keeps the off-thread sweep and the CSV
++export.
++"""
+ 
+ from __future__ import annotations
+ 
+@@ -6,7 +12,6 @@ import logging
+ 
+ from qtpy import QtCore, QtWidgets
+ 
+-from chisurf.gui.autoform import AutoForm
+ from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+ 
+ from .view_model import PrecisionViewModel
+@@ -43,8 +48,21 @@ class _ComputeTask(QtCore.QRunnable):
+         self.signals.finished.emit(ok)
+ 
+ 
++class _FormShim:
++    """Compatibility shim for callers expecting an AutoForm interface."""
++
++    def __init__(self, host: QtWidgets.QWidget) -> None:
++        self._host = host
++
++    def sync_fields(self) -> None:
++        self._host.update()
++
++    def refresh_plots(self) -> None:
++        self._host.update()
++
++
+ class RicsPrecisionTool(ChisurfDockTool):
+-    """RICS-precision calculator: action toolbar + ``AutoForm(view_model)``."""
++    """RICS-precision calculator: the EMTK app, the sweep off the UI thread."""
+ 
+     tool_settings_name = "RicsPrecisionTool"
+ 
+@@ -58,21 +76,19 @@ class RicsPrecisionTool(ChisurfDockTool):
+         self.setWindowTitle("RICS precision")
+         self.setMinimumSize(900, 600)
+ 
+-        toolbar = QtWidgets.QToolBar()
+-        toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+-        a_run = toolbar.addAction("▶ Predict")
+-        a_run.setToolTip("Predict the precision across a range of pixel dwell times.")
+-        a_run.triggered.connect(self.run_with_progress)
+-        a_csv = toolbar.addAction("💾 Export CSV")
+-        a_csv.setToolTip("Write the predicted error against dwell time to a CSV file.")
+-        a_csv.triggered.connect(self._export_csv)
+-        # Long help behind a ? at the far right of the toolbar — never inline text.
+-        self.add_toolbar_help(toolbar, resource="help.md", title="RICS precision — help")
+-        self.toolbar = toolbar
+-        self.addToolBar(toolbar)
+-
+-        self.auto_form = AutoForm(self.model)
+-        self.setCentralWidget(self.auto_form)
++        from emtk.qt_host import ControlHost
++
++        from .app import WINDOW_BG, RicsPrecisionApp
++
++        self.app = RicsPrecisionApp(
++            self,
++            on_predict=self.run_with_progress,
++            on_export=self._export_csv,
++        )
++        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
++        self.setCentralWidget(self.host)
++        self.auto_form = _FormShim(self.host)
++
+         self.modelEvent.connect(self._handle_model_event)
+         self.model.add_observer(self.modelEvent.emit)
+         self.restore_window_geometry()
+@@ -89,13 +105,14 @@ class RicsPrecisionTool(ChisurfDockTool):
+         QtCore.QThreadPool.globalInstance().start(task)
+ 
+     def _on_finished(self, ok: bool) -> None:
+-        """Refresh the form once the background run finished."""
++        """Refresh the canvas once the background run finished."""
+         self.statusBar().showMessage(self.model.status if ok else "Prediction failed", 8000)
+         self._refresh()
+ 
+     def _export_csv(self) -> None:
+         """Ask for a path and write the swept prediction to it."""
+         if self.model.sweep is None:
++            self.statusBar().showMessage("Predict something first.", 6000)
+             return
+         path, _ = QtWidgets.QFileDialog.getSaveFileName(
+             self, "Export precision sweep", "rics_precision.csv", "CSV (*.csv)"
+@@ -111,15 +128,9 @@ class RicsPrecisionTool(ChisurfDockTool):
+ 
+     # ── model / window plumbing ──
+     def _refresh(self) -> None:
+-        """Re-read the model into the form (values, tables and image docks)."""
+-        try:
+-            self.auto_form.sync_fields()
+-        except Exception:
+-            logger.debug("AutoForm field sync failed", exc_info=True)
+-        try:
+-            self.auto_form.refresh_plots()
+-        except Exception:
+-            logger.debug("AutoForm plot refresh failed", exc_info=True)
++        """Repaint the canvas (values, table and plot come from the model)."""
++        if hasattr(self, "host"):
++            self.host.update()
+ 
+     def _handle_model_event(self, event: str) -> None:
+         """React to view-model events on the GUI thread."""
+diff --git a/chisurf/plugins/calculator/rics_precision/manifest.json b/chisurf/plugins/calculator/rics_precision/manifest.json
+index 37c4980e7..c3b22240b 100644
+--- a/chisurf/plugins/calculator/rics_precision/manifest.json
++++ b/chisurf/plugins/calculator/rics_precision/manifest.json
+@@ -9,6 +9,7 @@
+   "state_namespace": "rics_precision",
+   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+   "entrypoints": {
++    "emtk": "chisurf.plugins.calculator.rics_precision.gui.app:make_app",
+     "gui": "chisurf.plugins.calculator.rics_precision.gui.tool:RicsPrecisionTool",
+     "cli": "rics-precision=chisurf.plugins.calculator.rics_precision.cli:cli"
+   }

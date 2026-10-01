@@ -1,0 +1,5 @@
+ M chisurf/plugins/calculator/rics_precision/gui/guide.json
+ M chisurf/plugins/calculator/rics_precision/gui/tool.py
+ M chisurf/plugins/calculator/rics_precision/manifest.json
+?? chisurf/plugins/calculator/rics_precision/gui/app.py
+?? chisurf/plugins/calculator/rics_precision/tests/
