@@ -6136,3 +6136,14 @@ Reproduce (5 lines): `w = build_plugin_widget(manifest_of_any_emtk_plugin)`; `cl
 fix belongs in `build_plugin_widget` (another stream's uncommitted change: call `control.close()` from the host window's
 close / `destroyed`) or in emtk's `ControlHost.closeEvent`; both are outside this session's scope.
 
+
+## emtk games have no sound (found 2026-10-01)
+
+**Measured** on the four ported games (number_quest, pong, tetris, minesweeper): the Qt games play music and effects through
+`chisurf.gui.chigame.audio.Audio`, which uses `qtpy.QtMultimedia.QSoundEffect`; the emtk apps take an `audio` object with
+`sfx` / `set_enabled` / `close`, and their factories pass none, because emtk has no audio output. Their Sound switch therefore
+changed nothing; it is now greyed with the tooltip "No sound here: this window has no audio output." (number_quest
+`bdf892ca5`, the other games in their own commits). Reproduce: `app = make_app(); app.set_sound(); app.sound_enabled` stays
+`False`. *Not fixed here:* an audio backend is new infrastructure (emtk or a shared ChiSurf module), not part of a port; the
+only Qt-free player in the tree is `chisurf/plugins/tttr/audifier/native_playback.py` (a WAV file per playback through
+`afplay`/`ffplay`/`aplay`), too coarse for music loops and per-event effects. The factories accept `audio=` for when one exists.

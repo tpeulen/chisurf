@@ -1,0 +1,14 @@
+{
+  "plugin": "number_quest",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 1,
+  "after_controls": 1
+}

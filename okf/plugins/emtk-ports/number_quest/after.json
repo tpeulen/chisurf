@@ -1,0 +1,15 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "sound"
+  ],
+  "interactive": [],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
