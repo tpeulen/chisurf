@@ -11,7 +11,7 @@
     "FRET",
     "Single-Molecule"
   ],
-  "icon": "🎯",
+  "icon": "\ud83c\udfaf",
   "state_namespace": "accurate_fret",
   "statefulness": {
     "enabled": true,
@@ -23,7 +23,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.burst.accurate_fret.gui.tool:AccurateFretTool",
     "cli": "accurate-fret=chisurf.plugins.burst.accurate_fret.cli:cli",
-    "services": "chisurf.plugins.burst.accurate_fret.backend.services:register_services"
+    "services": "chisurf.plugins.burst.accurate_fret.backend.services:register_services",
+    "emtk": "chisurf.plugins.burst.accurate_fret.gui.app:create_app"
   },
   "operation_types": [
     "calibration"

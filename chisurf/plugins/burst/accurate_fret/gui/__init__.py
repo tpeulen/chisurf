@@ -1,5 +1,9 @@
-"""GUI layer of the accurate-FRET plugin."""
+"""Native and lazy legacy accurate-FRET GUI surfaces."""
 
-from .tool import AccurateFretTool  # noqa: F401
 
-__all__ = ["AccurateFretTool"]
+def __getattr__(name):
+    if name == "AccurateFretTool":
+        from .tool import AccurateFretTool
+
+        return AccurateFretTool
+    raise AttributeError(name)

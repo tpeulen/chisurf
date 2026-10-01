@@ -240,6 +240,8 @@ class AccurateFretTool(ChisurfDockTool):
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt override)
         """Persist the window geometry on close."""
         self.save_window_geometry()
+        if hasattr(self, "app"):
+            self.app.close()
         super().closeEvent(event)
 
 

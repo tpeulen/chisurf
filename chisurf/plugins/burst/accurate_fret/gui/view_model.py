@@ -40,6 +40,7 @@ class AccurateFretViewModel:
         self._view_json = _VIEW_JSON
         # ── data source ──
         self.filename: str = ""
+        self.database_path: str | None = None
         self.column_i_dd: str = ""
         self.column_i_da: str = ""
         self.column_i_aa: str = ""
@@ -209,7 +210,9 @@ class AccurateFretViewModel:
             ``{"name": <setup>, "detectors": {...}}`` from the setup picker.
         """
         self.detectors = dict((payload or {}).get("detectors") or {})
-        self.setup_name = str((payload or {}).get("name") or "")
+        self.setup_name = str(
+            (payload or {}).get("name") or (payload or {}).get("setup_name") or ""
+        )
         self.load_calibration_from_setup()
         if self._columns:
             self._map_columns()
@@ -311,7 +314,7 @@ class AccurateFretViewModel:
         if not self._dyes:
             from chisurf.core.fluorescence.fret.dyes import list_dyes
 
-            self._dyes = list_dyes()
+            self._dyes = list_dyes(db_path=self.database_path)
         return ["", *[d.name for d in self._dyes]]
 
     def apply_dye_selection(self) -> str:
@@ -338,6 +341,7 @@ class AccurateFretViewModel:
             self.acceptor_dye,
             kappa2=self.kappa2,
             refractive_index=self.refractive_index,
+            db_path=self.database_path,
         )
         self._dye_pair = pair
         if pair is None:
@@ -361,12 +365,12 @@ class AccurateFretViewModel:
     def lightpath_names(self) -> list[str]:
         """Names of the saved light paths usable as the optics prior."""
         if not self._lightpaths:
-            self._lightpaths = _core.list_lightpaths()
+            self._lightpaths = _core.list_lightpaths(db_path=self.database_path)
         return ["", *[str(lp.get("name") or lp["operation_id"]) for lp in self._lightpaths]]
 
     def refresh_lightpaths(self) -> None:
         """Re-read the saved light paths from MMFDB."""
-        self._lightpaths = _core.list_lightpaths()
+        self._lightpaths = _core.list_lightpaths(db_path=self.database_path)
         self.notify("changed")
 
     # ── the run ──
@@ -391,7 +395,7 @@ class AccurateFretViewModel:
         if entry is None:
             return None
         try:
-            prior = _core.lightpath_prior(entry["operation_id"])
+            prior = _core.lightpath_prior(entry["operation_id"], db_path=self.database_path)
         except Exception as exc:
             logger.debug("light-path prior failed", exc_info=True)
             self.results_text = f"Light path could not be read: {exc}"
