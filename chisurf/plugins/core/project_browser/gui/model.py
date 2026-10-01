@@ -1,0 +1,223 @@
+"""Qt-free project browsing and the existing MMFDB version/archive contract."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+
+def current_context():
+    import chisurf
+
+    return getattr(chisurf, "cs", None) or chisurf
+
+
+def current_payload(name):
+    from chisurf.emtk.project import get_project_payload
+
+    payload = get_project_payload(name)
+    return payload.to_dict() if hasattr(payload, "to_dict") else payload
+
+
+def restore_payload(payload):
+    from chisurf.emtk.project import load_project_payload
+
+    return load_project_payload(payload, project_path=None)
+
+
+def restore_fit_windows(payload):
+    """Reopen the restored fits' windows, as the Qt tool did after a restore.
+
+    ``load_project_payload`` here skips window creation (it must run without Qt); inside
+    ChiSurf the main window then opens each fit's window, and without one this is a no-op.
+    """
+    from chisurf.macros.core_fit import restore_gui_from_fits
+
+    uids = [f.get("uid", f.get("uuid", "")) for f in (payload.get("fits") or []) if isinstance(f, dict)]
+    if uids:
+        restore_gui_from_fits(uids)
+
+
+class ProjectBrowserModel:
+    def __init__(self, client=None, payload_provider=None, payload_loader=None, context=None,
+                 window_restorer=None):
+        self._client = client
+        self.payload_provider = payload_provider or current_payload
+        self.payload_loader = payload_loader or restore_payload
+        self.window_restorer = window_restorer or restore_fit_windows
+        self.context = context if context is not None else current_context()
+        self.projects = []
+        self.selected_id = ""
+        self.search = ""
+        self.show_public = True
+        self.status = "Refresh to browse the project database."
+        self.artifacts = []
+        self.parameters = []
+        self.branches = []
+        self.graph = {}
+        self.last_directory = ""
+
+    @property
+    def client(self):
+        if self._client is None:
+            from .client import ProjectBrowserClient
+
+            self._client = ProjectBrowserClient(inprocess=True)
+        return self._client
+
+    @staticmethod
+    def checked(result):
+        if not isinstance(result, dict):
+            raise ValueError("The project service returned an invalid response.")
+        if not result.get("ok", True):
+            raise RuntimeError(result.get("error") or "The project operation failed.")
+        return result
+
+    @property
+    def selected(self):
+        for project in self.projects:
+            if project.get("project_id") == self.selected_id:
+                return project
+            for version in project.get("versions", []):
+                if version.get("version_id") == self.selected_id:
+                    return version
+        return None
+
+    def selected_version(self, latest=False):
+        selected = self.selected
+        if selected and selected.get("version_id"):
+            return selected
+        if latest and selected:
+            versions = selected.get("versions", [])
+            return next(
+                (v for v in versions if v.get("version_id") == selected.get("latest_version_id")),
+                versions[0] if versions else None,
+            )
+        return None
+
+    def require_version(self, latest=False):
+        version = self.selected_version(latest)
+        if version is None:
+            raise ValueError(
+                "Select a project or version to restore."
+                if latest
+                else "Select a version for this action."
+            )
+        return version
+
+    def refresh(self):
+        projects = self.client.list_projects(
+            show_public=self.show_public, search=self.search.strip() or None
+        )
+        if not isinstance(projects, list):
+            raise ValueError("The project list is invalid.")
+        self.projects = projects
+        if self.selected is None:
+            self.selected_id = ""
+        self.status = f"{len(projects)} projects loaded."
+        return projects
+
+    def fetch_restore(self, version):
+        result = self.checked(self.client.restore_project(version_id=version["version_id"]))
+        if not result.get("project_payload"):
+            raise ValueError("This version has no project payload.")
+        return result
+
+    def apply_restore(self, result, version_id):
+        self.payload_loader(result["project_payload"])
+        self.window_restorer(result["project_payload"])
+        self.update_current(result, version_id=version_id)
+        self.status = f"Restored {result.get('project_name', 'project')}."
+
+    def update_current(self, result, version_id=None):
+        for attr, value in (
+            ("_current_project_id", result.get("project_id")),
+            ("_current_project_version_id", version_id or result.get("version_id")),
+            ("_current_project_name", result.get("project_name", "")),
+            ("_current_project_visibility", result.get("visibility", "private")),
+        ):
+            setattr(self.context, attr, value)
+
+    def save_snapshot(self, name):
+        if not name.strip():
+            raise ValueError("A project name is required.")
+        payload = self.payload_provider(name.strip())
+        if hasattr(payload, "to_dict"):
+            payload = payload.to_dict()
+        if not isinstance(payload, dict):
+            raise ValueError("The current project payload is invalid.")
+        return payload
+
+    def save_remote(self, name, visibility, notes, payload):
+        if visibility not in ("private", "public"):
+            raise ValueError("Visibility must be private or public.")
+        return self.checked(
+            self.client.save_project(
+                project_name=name.strip(),
+                project_payload=payload,
+                project_id=getattr(self.context, "_current_project_id", None),
+                parent_version_id=getattr(self.context, "_current_project_version_id", None),
+                visibility=visibility,
+                notes=notes.strip(),
+                fit_count=len(payload.get("fits") or []),
+                dataset_count=len(payload.get("datasets") or {}),
+            )
+        )
+
+    def export(self, version, path):
+        path = Path(path)
+        if not path.name.endswith((".cs.pto", ".csp")):
+            path = path.with_name(path.name + ".cs.pto")
+        result = self.checked(
+            self.client.export_csp(version_id=version["version_id"], target_path=str(path))
+        )
+        if not path.is_file():
+            # Remote services can return the archive instead of writing locally.
+            import base64
+
+            encoded = result.get("archive_base64") or result.get("archive_bytes")
+            if not encoded:
+                raise OSError("The service did not create the exported project file.")
+            path.write_bytes(base64.b64decode(encoded, validate=True))
+        self.last_directory = str(path.parent)
+        return path
+
+    def preview_import(self, path):
+        path = Path(path)
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        return self.checked(self.client.import_preview(file_path=str(path)))
+
+    def import_archive(self, path, preview):
+        collisions = preview.get("collisions", {})
+        result = self.checked(
+            self.client.import_csp(
+                file_path=str(path),
+                resolve_collisions=any(bool(values) for values in collisions.values()),
+            )
+        )
+        self.last_directory = str(Path(path).parent)
+        return result
+
+    def delete(self, version):
+        return self.checked(self.client.delete_version(version_id=version["version_id"]))
+
+    def details(self, version):
+        return {
+            "artifacts": self.client.list_artifacts(version["version_id"]),
+            "parameters": self.client.list_parameters(version["version_id"]),
+            "branches": self.client.list_branches(version["project_id"]),
+            "graph": self.client.version_graph(version["project_id"]),
+        }
+
+    def export_preferences(self):
+        return {
+            "search": self.search,
+            "show_public": self.show_public,
+            "last_directory": self.last_directory,
+        }
+
+    def restore_preferences(self, settings):
+        self.search = str(settings.get("search", ""))
+        self.show_public = bool(settings.get("show_public", True))
+        self.last_directory = str(settings.get("last_directory", ""))

@@ -1,0 +1,43 @@
+{
+  "_comment": "Guided tour for the Project Browser. Each step points at a real control (the key the app remembers its rectangle under); the action steps wait for the user to use it. Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "Sessions you can come back to",
+      "text": "A <b>project</b> is a saved session — datasets, fits, parameters and instrument state — kept in the project database. Every save adds a <b>version</b>; nothing is overwritten.",
+      "target": {}
+    },
+    {
+      "title": "Load the list",
+      "text": "<b>Refresh</b> reads the projects you may see from the database: your own, and the public ones of other users while <b>Show public</b> is ticked.",
+      "target": {"name": "refresh"},
+      "await": {"hint": "Press <b>Refresh</b>."}
+    },
+    {
+      "title": "Find one",
+      "text": "The search matches project names, identifiers, owners and version notes.",
+      "target": {"name": "search"}
+    },
+    {
+      "title": "Project or exact version",
+      "text": "Selecting a <b>project</b> row means its newest version; <b>+</b> expands it to the stored versions, each with its notes. Select one.",
+      "target": {"name": "versions"},
+      "await": {"hint": "Click a project or version row."}
+    },
+    {
+      "title": "What is in it",
+      "text": "<b>Inspect stored version</b> lists the version's artifacts, fitted parameter values, branches and parents — check it before restoring over your current session.",
+      "target": {"name": "inspect"},
+      "await": {"hint": "Press <b>Inspect stored version</b>."}
+    },
+    {
+      "title": "Restore it",
+      "text": "<b>Open / Restore</b> replaces the current session with the selected version and reopens its fit windows. Double-clicking a row does the same.",
+      "target": {"name": "open"}
+    },
+    {
+      "title": "Keep your own work",
+      "text": "<b>Save Current Project</b> stores the session as a new version of the project it came from (or as a new project). <b>Export .cs.pto</b> and <b>Import Project</b> move one version between databases as a single file; an import checks for clashing IDs first.",
+      "target": {"name": "save"}
+    }
+  ]
+}

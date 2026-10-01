@@ -6,7 +6,6 @@
 #
 # This list only SHRINKS. Strike a line when the plugin ships both files;
 # adding a NEW line is a test failure, not a fix. Goal: empty.
-chisurf/plugins/burst/burst_browser/gui
 chisurf/plugins/burst/burst_fcs_correlator/gui
 chisurf/plugins/burst/burst_mle_analysis
 modules/chimol/chimol/hosts/qt
@@ -16,7 +15,6 @@ chisurf/plugins/core/help/gui
 chisurf/plugins/core/lightpath_simulator/gui
 chisurf/plugins/core/mmfdb_admin/gui
 chisurf/plugins/core/plugin_check/gui
-chisurf/plugins/core/project_browser/gui
 chisurf/plugins/core/setup/gui
 chisurf/plugins/core/updater
 chisurf/plugins/core/wizards/gui
