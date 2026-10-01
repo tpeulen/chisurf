@@ -1,0 +1,14 @@
+{
+  "controls": [],
+  "labels": [],
+  "buttons": [],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.ndxplorer.window:build_ndxplorer_window",
+  "size": [
+    1200,
+    800
+  ]
+}
