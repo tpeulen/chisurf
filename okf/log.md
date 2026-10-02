@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **traj_join emtk app at parity, and the join fixed** (EMTK-1, upgrade row 41): in time mode the join interleaved read chunks
+  (A0–99, B99–0, A100–199…; up to 88.9 Å off on hgbp1), truncated the longer file and reversed per chunk; it now appends
+  whole trajectories, reverses whole trajectories and raises on a mismatch (guide 81, known-issues item 7). This completes the
+  five single-panel traj tools on the shared `chisurf/plugins/traj/emtk_tool.py`.
+  [report](plugins/emtk-ports/traj_join/REPORT.md).
+
 - **traj_remove_clashes emtk app at parity** (EMTK-1, upgrade row 40) on the shared trajectory-tool app; two defects fixed for
   both hosts: the Qt save dialog asked for `.h5` while the tool writes DCD, and the log now says *Kept N of M frames* (guide 81
   updated). [report](plugins/emtk-ports/traj_remove_clashes/REPORT.md).

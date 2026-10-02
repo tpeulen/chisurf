@@ -1,0 +1,117 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "1000",
+    "[022430]ready",
+    "byatoms(stack)",
+    "bytime(appendframes)",
+    "chunksize",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "joinmode",
+    "jointrajectories",
+    "log",
+    "pdbnamingtheatoms—requiredfordcd",
+    "reversetrajectory1",
+    "reversetrajectory2",
+    "savejoined",
+    "topology",
+    "trajectory1",
+    "trajectory2"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What the tool does, what it writes, and the known limits."
+    },
+    {
+      "kind": "input_text",
+      "label": "trajectory_1",
+      "id": "##trajectory_1",
+      "tooltip": "The first trajectory: its frames come first (time) or its atoms first (atoms)."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##trajectory_1.browse",
+      "tooltip": "Open a DCD trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "trajectory_2",
+      "id": "##trajectory_2",
+      "tooltip": "The second trajectory: appended after the first (time) or beside it (atoms)."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##trajectory_2.browse",
+      "tooltip": "Open a DCD trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "topology",
+      "id": "##topology",
+      "tooltip": "The structure that names the atoms of both trajectories; a DCD stores coordinates only."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##topology.browse",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them."
+    },
+    {
+      "kind": "button",
+      "label": "💾 Save joined…",
+      "id": "💾 Save joined…",
+      "tooltip": "Join the two trajectories and write the result as a new DCD trajectory."
+    },
+    {
+      "kind": "radio_button",
+      "label": "By time (append frames)",
+      "id": "By time (append frames)##join_mode0",
+      "tooltip": "By time joins the trajectories along the frame axis (same topology, frames appended). By atoms stacks the trajectories along the atom axis (same number of frames, topologies merged)."
+    },
+    {
+      "kind": "radio_button",
+      "label": "By atoms (stack)",
+      "id": "By atoms (stack)##join_mode1",
+      "tooltip": "By time joins the trajectories along the frame axis (same topology, frames appended). By atoms stacks the trajectories along the atom axis (same number of frames, topologies merged)."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Reverse trajectory 1",
+      "id": "Reverse trajectory 1##reverse_traj_1",
+      "tooltip": "Reverse trajectory 1 in time (last frame first) before joining."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Reverse trajectory 2",
+      "id": "Reverse trajectory 2##reverse_traj_2",
+      "tooltip": "Reverse trajectory 2 in time (last frame first) before joining."
+    },
+    {
+      "kind": "input_text",
+      "label": "chunk_size",
+      "id": "##chunk_size",
+      "tooltip": "Frames written per block. The inputs are read whole; the block bounds the copy the join makes."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

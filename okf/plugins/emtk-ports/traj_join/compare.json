@@ -1,0 +1,22 @@
+{
+  "plugin": "traj_join",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "1000",
+    "[022430]ready",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "log",
+    "pdbnamingtheatoms—requiredfordcd"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 11,
+  "after_controls": 18
+}
