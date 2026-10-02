@@ -1,0 +1,254 @@
+"""Native IRF estimation with async deconvolution, data selection and export."""
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+import numpy as np
+from emtk import im, implot
+from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
+from emtk.docking import DockManager, Region, Split
+from emtk.file_dialog import FileDialog
+
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
+from ..core.estimation import estimate_irf
+from .view_model import IRFViewModel
+
+_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="irf-estimation")
+
+
+def open_datasets():
+    import chisurf
+    from chisurf.core.data import DataGroup
+
+    curves = []
+    def collect(dataset):
+        if isinstance(dataset, (list, tuple, DataGroup)):
+            for member in dataset:
+                collect(member)
+        elif (hasattr(dataset, "y") and hasattr(dataset, "x")) or hasattr(dataset, "data"):
+            curves.append(dataset)
+    for dataset in chisurf.imported_datasets:
+        collect(dataset)
+    return curves
+
+
+class IRFEstimatorApp(ImApp):
+    def __init__(self, model=None, dataset_provider=None, dataset_sink=None):
+        self.model = model or IRFViewModel()
+        self.dataset_provider = dataset_provider or open_datasets
+        self.dataset_sink = dataset_sink
+        self.datasets = []
+        self.dataset_index = 0
+        self.show_datasets = False
+        self.dialog = None
+        self.file_window = None
+        self.file_action = ""
+        self.future = None
+        self.rerun = False
+        self.item_rects = {}
+        self.pointer_text = ""
+        self.help_window = EmTkHelpWindow(title="IRF estimator — Help", resource=Path(__file__).with_name("help.md"), owner=self)
+        self.tour = EmTkGuidedTour(steps=Path(__file__).with_name("guide.json"), get_target_rect=lambda key: self.item_rects.get(key), owner=self, wait_for_controls=True)
+        self.docks = DockManager(Split("h", .32, Split("v", .70, Region("settings"), Region("results")), Region("plot")))
+        self.docks.add_window("settings", "IRF estimation settings", self.controls, dock="settings", closable=False)
+        self.docks.add_window("results", "Estimated parameters", self.results, dock="results", closable=False)
+        self.docks.add_window("plot", "Measured decay, IRF and forward model", self.plot, dock="plot", closable=False)
+        super().__init__(self.render, continuous=False)
+
+    def error(self, action):
+        try:
+            return action()
+        except Exception as exc:
+            self.model.status = f"Error: {exc}"
+            return None
+
+    def choose_file(self, save=False):
+        title = "Save estimated IRF" if save else "Load decay"
+        self.dialog = FileDialog(title, mode="save" if save else "open", filename="estimated_irf.dat" if save else "", filters="VV/VH data (*.dat *.txt);;All files (*)")
+        self.file_window = DialogWindow(title, size=(760, 540))
+        self.file_action = "save" if save else "load"
+
+    def refresh_datasets(self):
+        self.datasets = list(self.dataset_provider())
+        self.dataset_index = min(self.dataset_index, max(0, len(self.datasets) - 1))
+        self.show_datasets = True
+        if not self.datasets:
+            self.model.status = "No open datasets; load a file first."
+
+    def load_selected_dataset(self):
+        if not self.datasets:
+            raise ValueError("No dataset selected.")
+        self.model.load_dataset(self.datasets[self.dataset_index])
+        self.tour.notify_used("Load Decay")
+
+    def files_dropped(self, paths):
+        if paths and self.future is None:
+            self.error(lambda: self.model.load_file(paths[0]))
+            return True
+        return False
+
+    def start_estimate(self, quick=False):
+        if self.model.decay_data_original is None:
+            self.model.status = "Load a decay before estimating an IRF."
+            return
+        if self.future is not None:
+            self.rerun = self.rerun or bool(quick)
+            return
+        m = self.model
+        self.future = _EXECUTOR.submit(estimate_irf, m.decay_data_original.copy(), m.dt, m.settings(quick), m.channel_axis.copy())
+        self.model.status = "Estimating IRF…"
+        self.tour.notify_used("Estimate IRF")
+
+    def parameter_changed(self):
+        if self.model.auto_update_enabled and (self.model.result is not None or self.future is not None):
+            self.start_estimate(quick=True)
+
+    def poll(self):
+        if self.future is not None and self.future.done():
+            future, self.future = self.future, None
+            try:
+                self.model.result = future.result()
+                self.model.set_bin_width(self.model.dt)
+                self.model.status = "IRF estimation completed."
+            except Exception as exc:
+                self.model.status = f"Estimation failed: {exc}"
+            if self.rerun:
+                self.rerun = False
+                self.start_estimate(quick=True)
+
+    def animating(self):
+        return self.future is not None or super().animating()
+
+    def controls(self, box):
+        m = self.model
+        im.begin_disabled(self.future is not None)
+        actions = [
+            ("Load Decay", self.choose_file, "Load a measured decay from a VV/VH or single-channel file."),
+            ("From Dataset", self.refresh_datasets, "Select a decay already registered in this ChiSurf process."),
+            ("Estimate IRF", self.start_estimate, "Fit the decay tail and run full Richardson–Lucy deconvolution."),
+            ("Save IRF", lambda: self.choose_file(True), "Save identical VV/VH IRF channels with the correct time-bin width."),
+            ("Add to ChiSurf", lambda: m.transfer(self.dataset_sink), "Register the estimated IRF as a calibrated two-channel dataset."),
+        ]
+        for index, (label, action, tip) in enumerate(actions):
+            if im.button(label):
+                self.error(action)
+            im.set_item_tooltip(tip)
+            self.item_rects[label] = im.get_item_rect()
+            if index % 2 == 0 and index + 1 < len(actions):
+                im.same_line()
+        if self.show_datasets:
+            _, self.dataset_index = im.combo("Dataset", self.dataset_index, [getattr(ds, "name", "Dataset") for ds in self.datasets] or ["No datasets"])
+            im.set_item_tooltip("Choose an open decay curve; grouped datasets list each channel separately.")
+            if im.button("Load selected dataset"):
+                self.error(self.load_selected_dataset)
+            im.set_item_tooltip("Use the chosen curve's time axis and counts for IRF estimation.")
+        im.end_disabled()
+        for attr, label, minimum, maximum, kind, tip in [
+            ("dt", "Bin width (ns)", .001, 10., "float", "Time per channel in nanoseconds; rescale the time axis when changed."),
+            ("window_length", "SG window", 5, 500, "int", "Savitzky–Golay smoothing window; the estimator makes it odd."),
+            ("polyorder", "SG polynomial", 1, 10, "int", "Polynomial order used to locate the exponential tail."),
+            ("rl_iterations", "RL iterations", 5, 2000, "int", "Full Richardson–Lucy iterations; auto-update uses 50."),
+            ("regularization", "Regularization", 1, 51, "int", "Median-filter size; one disables regularization."),
+            ("manual_background", "Background", 0., 100000., "float", "Subtract a manual background once; zero leaves baseline fitting automatic."),
+        ]:
+            control = bounded_int if kind == "int" else bounded_float
+            changed, value = control(label, getattr(m, attr), minimum=minimum, maximum=maximum)
+            im.set_item_tooltip(tip)
+            self.item_rects["irf_background" if attr == "manual_background" else "irf_" + attr] = im.get_item_rect()
+            if changed:
+                if attr == "dt":
+                    m.set_bin_width(value)
+                else:
+                    setattr(m, attr, value)
+                self.parameter_changed()
+                self.tour.notify_used("irf_" + attr)
+        changed, m.use_range_selection = im.checkbox("Use range selection", m.use_range_selection)
+        im.set_item_tooltip("Limit estimation to selected channel indices; drag the two boundaries in the plot.")
+        if changed:
+            self.parameter_changed()
+        if m.use_range_selection and m.channel_axis is not None:
+            for index, label in enumerate(("First channel", "Last channel")):
+                changed, value = bounded_int(label, int(m.range_bounds[index]), minimum=0, maximum=len(m.channel_axis) - 1)
+                im.set_item_tooltip("Inclusive estimation boundary in histogram channels.")
+                if changed:
+                    m.range_bounds[index] = float(value)
+                    m.range_bounds.sort()
+                    self.parameter_changed()
+        changed, m.auto_update_enabled = im.checkbox("Auto-update IRF", m.auto_update_enabled)
+        im.set_item_tooltip("Re-estimate using 50 iterations after parameters, background or range change.")
+        if changed:
+            self.parameter_changed()
+        if im.button("Help"):
+            self.help_window.show()
+        im.set_item_tooltip("Explain blind IRF estimation and its limitations.")
+        im.same_line()
+        if im.button("Guide"):
+            self.tour.start()
+        im.set_item_tooltip("Walk through loading, background correction and deconvolution.")
+        im.text_wrapped(m.status)
+
+    def results(self, box):
+        result = self.model.result
+        if result is None:
+            im.text_wrapped("Estimate an IRF to obtain lifetime, rate, amplitude and baseline.")
+        else:
+            for label, value, unit in [("Lifetime", result.lifetime_ns, "ns"), ("Decay rate", result.decay_rate_ns, "ns⁻¹"), ("Amplitude", result.amplitude, "counts"), ("Offset", result.offset, "counts")]:
+                im.text(f"{label}: {value:.6g} {unit}")
+        if self.pointer_text:
+            im.text_wrapped(self.pointer_text)
+
+    def plot(self, box):
+        m = self.model
+        if implot.begin_plot("IRF estimation results", size=(-1., -1.)):
+            implot.setup_axes("Time (ns)", "Intensity (counts/channel)")
+            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+            for curve in m.plot_series():
+                values = np.asarray(curve["y"])
+                implot.plot_line(curve["name"], curve["x"], np.where(values > 0., values, np.nan))
+            if m.use_range_selection and m.channel_axis is not None:
+                lower, upper = [int(np.clip(bound, 0, len(m.channel_axis) - 1)) for bound in m.range_bounds]
+                limits = implot.get_plot_limits()
+                region = implot.drag_rect(1, float(m.channel_axis[lower]), max(limits.y_min, 1e-12), float(m.channel_axis[upper]), max(limits.y_max, 1e-12), col=(70, 200, 90, 180), flags=implot.DRAG_TOOL_FLAGS_NO_FIT)
+                if region.modified:
+                    m.range_bounds = sorted([float(np.argmin(np.abs(m.channel_axis - value))) for value in (region.x_min, region.x_max)])
+                    self.parameter_changed()
+            if implot.is_plot_hovered() and m.channel_axis is not None:
+                mouse = implot.get_plot_mouse_pos()
+                index = int(np.argmin(np.abs(m.channel_axis - mouse.x)))
+                self.pointer_text = f"Time: {m.channel_axis[index]:.4g} ns; intensity: {m.decay_data[index]:.5g}"
+                pos, size = implot.get_plot_pos(), implot.get_plot_size()
+                pixel = implot.plot_to_pixels(mouse.x, mouse.y)
+                draw = implot.get_plot_draw_list()
+                draw.add_line((pixel[0], pos[1]), (pixel[0], pos[1] + size[1]), (180, 180, 180, 180))
+                draw.add_line((pos[0], pixel[1]), (pos[0] + size[0], pixel[1]), (180, 180, 180, 180))
+                im.set_tooltip(self.pointer_text)
+            implot.end_plot()
+
+    def render(self):
+        self.poll()
+        viewport = im.get_main_viewport()
+        box = (*viewport.pos, *viewport.size)
+        im.begin_disabled(self.dialog is not None)
+        self.docks.draw(box)
+        im.end_disabled()
+        if self.dialog is not None:
+            pressed = self.file_window.begin(box)
+            result = self.dialog.draw()
+            if result:
+                action = self.file_action
+                self.dialog = None
+                self.error(lambda: self.model.save(result[0]) if action == "save" else self.model.load_file(result[0]))
+                if action == "load":
+                    self.tour.notify_used("Load Decay")
+            elif result is False or pressed == "close":
+                self.dialog = None
+            self.file_window.end()
+        self.help_window.draw(box)
+        self.tour.draw(*viewport.size)
+
+
+def make_app():
+    return IRFEstimatorApp()

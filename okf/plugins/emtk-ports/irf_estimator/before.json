@@ -1,0 +1,59 @@
+{
+  "controls": [
+    "?",
+    "amplitude(a)",
+    "auto-updateirf",
+    "decayrate(k)",
+    "estimateirf",
+    "guide",
+    "lifetime(τ)",
+    "loaddecay",
+    "loadfromdataset",
+    "manualbackground",
+    "nodataloaded",
+    "offset(c)",
+    "regularization",
+    "rliterations",
+    "saveirf",
+    "sgpolyorder",
+    "sgwindowlength",
+    "time/channel(ns)",
+    "timeaxisnotavailable",
+    "transfertochisurf",
+    "userangeselection"
+  ],
+  "labels": [
+    "Amplitude (A):",
+    "Decay Rate (k):",
+    "Lifetime (τ):",
+    "Manual Background:",
+    "No data loaded",
+    "Offset (C):",
+    "RL Iterations:",
+    "Regularization:",
+    "SG Poly Order:",
+    "SG Window Length:",
+    "Time axis: Not available",
+    "Time/Channel (ns):"
+  ],
+  "buttons": [
+    "?",
+    "Guide",
+    "💾 Save IRF",
+    "📂 Load Decay",
+    "📊 Load from Dataset",
+    "📍 Use Range Selection",
+    "🔄 Auto-Update IRF",
+    "🔮 Estimate IRF",
+    "🚀 Transfer to ChiSurf"
+  ],
+  "line_edits": 10,
+  "combos": 0,
+  "spin_boxes": 6,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.fluorescence_decay.irf_estimator.gui.tool:IRFEstimatorTool (+HEAD no overlays)",
+  "size": [
+    1200,
+    800
+  ]
+}

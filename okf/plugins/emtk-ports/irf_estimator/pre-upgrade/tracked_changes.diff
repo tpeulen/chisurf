@@ -1,0 +1,175 @@
+diff --git a/chisurf/plugins/fluorescence_decay/irf_estimator/__init__.py b/chisurf/plugins/fluorescence_decay/irf_estimator/__init__.py
+index 90a6772aa..4116b5657 100644
+--- a/chisurf/plugins/fluorescence_decay/irf_estimator/__init__.py
++++ b/chisurf/plugins/fluorescence_decay/irf_estimator/__init__.py
+@@ -19,7 +19,6 @@ if _manifest is not None:
+ else:
+     name = "Spectroscopy:Fluorescence decay:IRF Extraction"
+ 
+-from .gui.tool import IRFEstimatorTool
+ 
+ __all__ = ["IRFEstimatorTool"]
+ 
+@@ -27,6 +26,15 @@ __all__ = ["IRFEstimatorTool"]
+ # When the plugin is loaded as a module with __name__ == "plugin",
+ # the ChiSurf plugin host directly executes this file in a custom
+ # namespace.  In that case we instantiate and show the GUI.
++def __getattr__(name):
++    if name == "IRFEstimatorTool":
++        from .gui.tool import IRFEstimatorTool
++
++        return IRFEstimatorTool
++    raise AttributeError(name)
++
++
+ if __name__ == "plugin":
++    from .gui.tool import IRFEstimatorTool
+     gui = IRFEstimatorTool()
+     gui.show()
+diff --git a/chisurf/plugins/fluorescence_decay/irf_estimator/backend/services.py b/chisurf/plugins/fluorescence_decay/irf_estimator/backend/services.py
+index d69a064f4..302e7e51d 100644
+--- a/chisurf/plugins/fluorescence_decay/irf_estimator/backend/services.py
++++ b/chisurf/plugins/fluorescence_decay/irf_estimator/backend/services.py
+@@ -83,14 +83,10 @@ def load_decay_handler(path: str) -> dict[str, Any]:
+     try:
+         from chisurf.core.fio import read_vv_vh
+ 
+-        data, metadata = read_vv_vh(path, return_metadata=True)
+-        data = np.asarray(data, dtype=np.float32)
+-        # First half is VV, second half is VH in legacy format
+-        if len(data) % 2 == 0:
+-            vv = data[: len(data) // 2]
+-        else:
+-            vv = data
+-        dt = float(metadata.get("dt", 1.0))
++        channels, metadata = read_vv_vh(path, split=True, return_metadata=True)
++        vv = channels.get("VV", next(iter(channels.values()))) if isinstance(channels, dict) else channels[0]
++        vv = np.asarray(vv, dtype=np.float32)
++        dt = float(metadata.get("dt", metadata.get("dt_ns", 1.0)))
+         return service_success(
+             {
+                 "intensity": vv.tolist(),
+@@ -144,11 +140,9 @@ def save_irf_handler(path: str, irf_data: list[float], dt: float = 1.0) -> dict[
+         if not path.lower().endswith(".dat"):
+             path += ".dat"
+         irf_array = np.asarray(irf_data, dtype=float).flatten()
+-        write_vv_vh(
+-            path,
+-            data=np.column_stack((np.arange(len(irf_array)) * dt, irf_array)),
+-            metadata={"dt": dt},
+-        )
++        if not len(irf_array) or not np.isfinite(irf_array).all() or dt <= 0:
++            raise ValueError("IRF samples must be nonempty and finite, and dt must be positive")
++        write_vv_vh(path, vv=irf_array, vh=irf_array, metadata={"dt": dt})
+         if not os.path.exists(path) or os.path.getsize(path) == 0:
+             raise RuntimeError("Failed to save IRF file")
+         return service_success({"path": path})
+diff --git a/chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py b/chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py
+index 9d0063990..7190cf99e 100644
+--- a/chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py
++++ b/chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py
+@@ -497,18 +497,13 @@ class IRFEstimatorTool(ChisurfDockTool):
+         self.data_info_label.setText(str(file_path))
+ 
+         try:
+-            from chisurf.core.fio import read_vv_vh
++            from ..backend.services import load_decay_handler
+ 
+-            data, metadata = read_vv_vh(file_path, return_metadata=True)
+-            data = np.asarray(data, dtype=np.float32)
+-
+-            if len(data) % 2 == 0:
+-                half = len(data) // 2
+-                vv = data[:half]
+-            else:
+-                vv = data
+-
+-            dt = float(metadata.get("dt", 1.0))
++            response = load_decay_handler(file_path)
++            if not response["ok"]:
++                raise ValueError(response["error"])
++            vv = np.asarray(response["result"]["intensity"], dtype=np.float32)
++            dt = float(response["result"]["dt"])
+             time_axis = np.arange(len(vv), dtype=np.float32) * dt
+             decay_data = np.column_stack((time_axis, vv))
+             self._process_decay_data(decay_data, dt)
+@@ -674,7 +669,7 @@ class IRFEstimatorTool(ChisurfDockTool):
+             )
+ 
+             result = _estimate_irf(
+-                intensity=self.decay_data,
++                intensity=self.decay_data_original,
+                 dt=self.dt,
+                 settings=settings,
+                 channel_axis=self.channel_axis,
+@@ -712,7 +707,7 @@ class IRFEstimatorTool(ChisurfDockTool):
+                 range_bounds=self.range_bounds,
+             )
+             result = _estimate_irf(
+-                intensity=self.decay_data,
++                intensity=self.decay_data_original,
+                 dt=self.dt,
+                 settings=settings,
+                 channel_axis=self.channel_axis,
+diff --git a/chisurf/plugins/fluorescence_decay/irf_estimator/manifest.json b/chisurf/plugins/fluorescence_decay/irf_estimator/manifest.json
+index 4af29b835..e223aedd5 100644
+--- a/chisurf/plugins/fluorescence_decay/irf_estimator/manifest.json
++++ b/chisurf/plugins/fluorescence_decay/irf_estimator/manifest.json
+@@ -3,16 +3,33 @@
+   "version": "2.0.0",
+   "display_name": "Spectroscopy:Fluorescence decay:IRF Estimation",
+   "description": "Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Spectroscopy", "Fluorescence decay"],
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Spectroscopy",
++    "Fluorescence decay"
++  ],
+   "state_namespace": "irf_estimator",
+   "state_schema": {
+     "$schema": "http://json-schema.org/draft-07/schema#",
+     "type": "object",
+     "properties": {
+-      "last_file": {"type": ["string", "null"]},
+-      "settings": {"type": "object"},
+-      "last_result": {"type": ["object", "null"]}
++      "last_file": {
++        "type": [
++          "string",
++          "null"
++        ]
++      },
++      "settings": {
++        "type": "object"
++      },
++      "last_result": {
++        "type": [
++          "object",
++          "null"
++        ]
++      }
+     }
+   },
+   "statefulness": {
+@@ -25,7 +42,8 @@
+   "entrypoints": {
+     "gui": "chisurf.plugins.fluorescence_decay.irf_estimator.gui.tool:IRFEstimatorTool",
+     "cli": "irf-estimator=chisurf.plugins.fluorescence_decay.irf_estimator.cli:cli",
+-    "services": "chisurf.plugins.fluorescence_decay.irf_estimator.backend.services:register_services"
++    "services": "chisurf.plugins.fluorescence_decay.irf_estimator.backend.services:register_services",
++    "emtk": "chisurf.plugins.fluorescence_decay.irf_estimator.gui.app:make_app"
+   },
+   "rpc_methods": [
+     {
+@@ -91,6 +109,6 @@
+       "topic": "irf_estimator.jobs.*",
+       "description": "Job lifecycle events"
+     }
+- ],
+- "menu_hidden": true
++  ],
++  "menu_hidden": true
+ }
