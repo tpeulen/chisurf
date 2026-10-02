@@ -89,11 +89,11 @@ good FCS curve at every one of those powers, and still fits.
 :name: fig-56-fcs-saturation-tool
 :width: 100%
 
-The calculator on its default Rhodamine 6G scheme at 2 mW and 488 nm
+The calculator (emtk window, FCS curve tab) on its default Rhodamine 6G scheme at 0.2 mW and 488 nm
 (ε = 80 000 M⁻¹cm⁻¹, `w_r` = 200 nm, `w_z` = 1000 nm, D = 400 µm²/s). The
 saturated curve (red) sits on its own one-component fit (grey) — residual below
 it — although it is 2.39× slower than the unperturbed Gaussian (blue). The
-**Info** dock (hidden) reports a peak focal rate of 2392 µs⁻¹, G(0) 0.9959 →
+**Info** tab reports a peak focal rate of 2392 µs⁻¹, G(0) 0.9959 →
 1.265 and `V_eff/V₀` = 3.50.
 ```
 
@@ -107,24 +107,25 @@ it — although it is 2.39× slower than the unperturbed Gaussian (blue). The
 * **Volume(P)** and **Diffusion time** — the same two quantities swept over
   power, with your current power marked. This is the plot to look at before
   choosing an operating point: pick a power where the curve is still flat.
-* **Info** — the summary, in a dock of its own that starts hidden; restore it
-  from the dock's right-click menu. It holds the numbers: photon flux, ε(λ), the
+* **Info** — the summary tab. It holds the numbers: photon flux, ε(λ), the
   peak focal excitation rate, unperturbed and saturated G(0), `V_eff/V₀` —
   **the factor by which an unsaturated fit overestimates N** — the relaxation
   times of the scheme, the apparent one-component τ_D against the true one, and
   a two-diffusion-time fit.
 
-Each of these is a separate dock: drag it out, tab it with another, or close and
-restore it. The profile plots start tabbed together so each gets full width.
+The tabs (State diagram, FCS curve, Info, Volume profile, Volume(P), Diffusion
+time) sit right of the controls; the bar between them drags. Wheel zooms a plot,
+a drag pans it. **Compute** recomputes; every edit also updates the curves.
 
 ## 5. Build your own scheme
 
-The state diagram is interactive: drag nodes, drag the rate badges to curve the
-arcs, double-click a badge to edit a rate. Or edit the two matrices directly —
+The state diagram shows the scheme (dark transitions orange, excitation pink,
+the rate on each arrow). Edit a rate by double-clicking its cell in the **K_dark**
+or **K_exc** table on the left (type, Enter) — 
 `K_dark[to, from]` in the chosen rate unit, and the excitation cross-sections
 `K_exc[to, from]`. Diagonals are derived and stay read-only.
 
-**📂 / 💾** load and save schemes as JSON:
+**Load scheme** / **Save scheme** (or dropping a `.json` file on the window) read and write schemes as JSON:
 
 ```json
 {

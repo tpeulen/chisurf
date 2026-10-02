@@ -1,0 +1,234 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "(none,typetheextinction)",
+    "-0.70",
+    "0",
+    "0.0001",
+    "0.001",
+    "0.002",
+    "0.003",
+    "0.01",
+    "0.1",
+    "0.2",
+    "0.2000mw",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.8",
+    "1",
+    "1-componentfit",
+    "1-componentgaussianfit",
+    "1.2",
+    "1.4",
+    "1/us",
+    "10",
+    "100",
+    "1000",
+    "10000",
+    "2.5",
+    "250",
+    "3",
+    "488.0nm",
+    "bounds",
+    "bunchingdynamics",
+    "compute",
+    "diffusiontime",
+    "dye(mmfdb)",
+    "error",
+    "excitationλ",
+    "fcscurve",
+    "fcspredictions",
+    "fcssaturationeffect",
+    "fixed",
+    "from/to",
+    "g(τ)",
+    "guide",
+    "help",
+    "hi",
+    "info",
+    "k_dark(1/us),rowtocolumn",
+    "k_exccross-sections,rowtocolumn",
+    "laserpower",
+    "lo",
+    "loadscheme",
+    "loadsession",
+    "name",
+    "normalizeg(τ)to1.0",
+    "numberofstates",
+    "photophysicsandkinetics",
+    "power(log)",
+    "q(s0)",
+    "q(s1)",
+    "q(t1)",
+    "rateunits",
+    "residualvsonecomponent",
+    "rhodamine6g(3-state,triplet)",
+    "s0",
+    "s1",
+    "saturated",
+    "savescheme",
+    "savesession",
+    "scheme",
+    "statebrightnessq",
+    "statediagram",
+    "t1",
+    "unperturbedgaussian",
+    "value",
+    "vk_dark(1/us),rowtocolumn",
+    "vk_exccross-sections,rowtocolumn",
+    "volume(p)",
+    "volumeprofile",
+    "vstatebrightnessq",
+    "δg(τ)",
+    "τ(ms)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Compute",
+      "id": "Compute##compute",
+      "tooltip": "Recompute the FCS curves, the one-component and two-component fits, the radial profiles and the power sweeps from the current kinetics and optics. The plots also follow every edit."
+    },
+    {
+      "kind": "button",
+      "label": "Load scheme",
+      "id": "Load scheme##load_scheme",
+      "tooltip": "Load a photophysical scheme (states, labels, transition rates and brightness) from a JSON file."
+    },
+    {
+      "kind": "button",
+      "label": "Save scheme",
+      "id": "Save scheme##save_scheme",
+      "tooltip": "Export the state labels, every non-zero transition rate and the brightness as a JSON scheme file."
+    },
+    {
+      "kind": "button",
+      "label": "Load session",
+      "id": "Load session##load_session",
+      "tooltip": "Restore the optics, kinetics and display settings saved by Save session."
+    },
+    {
+      "kind": "button",
+      "label": "Save session",
+      "id": "Save session##save_session",
+      "tooltip": "Save the optics, kinetics and display settings to the per-user settings file, which is read again when the tool starts."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##guide",
+      "tooltip": "A step-by-step walk through a worked example: Rhodamine 6G at 488 nm."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help##help",
+      "tooltip": "Explain saturation, the scheme matrices and how to read the curves."
+    },
+    {
+      "kind": "input_text",
+      "label": "power_mW",
+      "id": "##power_mW",
+      "tooltip": "Total laser power measured at the objective (mW). It sets the photon flux and with it the peak excitation rate k_exc(0,0) = 2 sigma Phi / (pi w_r^2). At 0 the saturated curve is exactly the unsaturated Gaussian. Type a value or use the arrows."
+    },
+    {
+      "kind": "slider_float",
+      "label": "power_log.slider",
+      "id": "##power_log.slider",
+      "tooltip": "The same power on a logarithmic scale from 0.001 to 100 mW (the exponent is shown), because the interesting range spans decades."
+    },
+    {
+      "kind": "input_text",
+      "label": "wavelength_nm",
+      "id": "##wavelength_nm",
+      "tooltip": "Excitation wavelength. It sets the photon energy, so the same power delivers more photons at longer wavelengths, and the extinction read from a chosen dye."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Bunching dynamics",
+      "id": "Bunching dynamics##include_bunching",
+      "tooltip": "Include the photokinetic bunching factor in the saturated curve: the relaxation of the scheme on the diffusion timescale."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_states",
+      "id": "##n_states",
+      "tooltip": "Number of states of the scheme. Two is the minimum (ground and excited); add one for each dark, isomeric or bleached state."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "K_dark (1/us), row to column",
+      "id": "K_dark (1/us), row to column",
+      "tooltip": "The power-independent transitions between states. Row is the state a transition starts from, column where it ends."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "K_exc cross-sections, row to column",
+      "id": "K_exc cross-sections, row to column",
+      "tooltip": "Excitation transitions relative to the peak excitation rate; 1 means a full cross-section."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "State brightness Q",
+      "id": "State brightness Q",
+      "tooltip": "Relative fluorescence emitted by each state; dark states have zero."
+    },
+    {
+      "kind": "button",
+      "label": "State diagram",
+      "id": "State diagram",
+      "tooltip": "Show State diagram."
+    },
+    {
+      "kind": "button",
+      "label": "FCS curve",
+      "id": "FCS curve",
+      "tooltip": "Show FCS curve."
+    },
+    {
+      "kind": "button",
+      "label": "Info",
+      "id": "Info",
+      "tooltip": "Show Info."
+    },
+    {
+      "kind": "button",
+      "label": "Volume profile",
+      "id": "Volume profile",
+      "tooltip": "Show Volume profile."
+    },
+    {
+      "kind": "button",
+      "label": "Volume(P)",
+      "id": "Volume(P)",
+      "tooltip": "Show Volume(P)."
+    },
+    {
+      "kind": "button",
+      "label": "Diffusion time",
+      "id": "Diffusion time",
+      "tooltip": "Show Diffusion time."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Normalize G(τ) to 1.0",
+      "id": "Normalize G(τ) to 1.0##normalize_fcs",
+      "tooltip": "Scale both curves to G(0) = 1 to compare their shapes: the saturated curve is not only smaller but broader."
+    },
+    {
+      "kind": "checkbox",
+      "label": "1-component fit",
+      "id": "1-component fit##show_gaussian_fit",
+      "tooltip": "Overlay the best single-component 3D Gaussian fit of the saturated curve, what a standard FCS analysis would report."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

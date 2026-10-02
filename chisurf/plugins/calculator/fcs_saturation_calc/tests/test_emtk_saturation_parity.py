@@ -354,3 +354,17 @@ def test_the_session_round_trips_through_the_settings_file(app, tmp_path):
         assert m.saturation.n_states == 2
     finally:
         other.close()
+
+
+def test_the_real_user_settings_are_never_touched(app):
+    """Saving a session and closing the window write into the temporary settings folder, not the account's ~/.chisurf."""
+    import os
+    import pwd
+
+    real = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf" / "plugins" / "fcs_saturation_calc" / "settings.json"
+    before = real.stat().st_mtime_ns if real.exists() else None
+    app.model.power_mW = 3.0
+    app.save_session()
+    app.close()
+    assert (real.stat().st_mtime_ns if real.exists() else None) == before
+    assert Path(app.model.get_user_settings_path()) != real
