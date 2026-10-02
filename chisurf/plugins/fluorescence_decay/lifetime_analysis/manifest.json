@@ -19,7 +19,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool:LifetimeAnalysisTool"
+    "gui": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool:LifetimeAnalysisTool",
+    "emtk": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app:make_app"
   },
   "optional_requires": {
     "irf_estimator": "*",
