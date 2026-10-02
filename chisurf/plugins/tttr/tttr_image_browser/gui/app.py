@@ -559,7 +559,7 @@ class TTTRImageBrowserApp(ImApp):
         span_y = span_x * plot_h / plot_w
         cx, cy = (nx - 1.0) / 2.0, (ny - 1.0) / 2.0
         limits = (cx - span_x / 2, cx + span_x / 2, cy - span_y / 2, cy + span_y / 2)
-        key = (id(array), model.current_file)
+        key = (id(array), model.current_file, round(width), round(height))  # a resized window shows the whole mosaic again
         reset = model.reset_view_requested or key != self.view_key
         model.reset_view_requested = False
         self.view_key = key

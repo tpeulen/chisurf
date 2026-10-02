@@ -12,12 +12,12 @@
         {
           "type": "panel",
           "n_col": 2,
-          "description": "The actions of the Qt toolbar and its Subfolders check box.",
+          "description": "The actions of the toolbar and its Include subfolders check box.",
           "sections": [
             {
               "type": "button_row",
               "weight": 0,
-              "description": "The actions of the Qt toolbar.",
+              "description": "The toolbar actions.",
               "buttons": [
                 {
                   "action": "choose_folder",
@@ -112,7 +112,7 @@
               "attr": "multi_select",
               "label": "Multiple selection",
               "call": "set_multi_select",
-              "description": "A click on a row adds it to the selection or removes it (the Qt list used Ctrl and Shift). Copy raw files and TIFF act on the selection."
+              "description": "A click on a row adds it to the selection or removes it. Copy raw files and TIFF act on the selection."
             },
             {
               "type": "button_row",
@@ -144,23 +144,21 @@
               {
                 "key": "name",
                 "title": "File",
-                "width": 150,
                 "description": "File name relative to the opened folder. Click the header to sort."
               },
               {
                 "key": "size_mb",
                 "title": "MB",
-                "width": 78,
                 "format": "%.1f",
                 "description": "File size in megabytes."
               },
               {
                 "key": "rating",
                 "title": "Rating",
-                "width": 60,
                 "description": "Stars given to the file (0 to 3). Set them with the Rating buttons under the list."
               }
-            ]
+            ],
+            "fit_columns": true
           }
         },
         {
@@ -213,7 +211,7 @@
               "label": "Colormap",
               "options_source": "colormap_options",
               "width": 110,
-              "description": "Colour scale of the mosaic (the Qt image dock offered the same seven)."
+              "description": "Colour scale of the mosaic."
             },
             {
               "type": "value",

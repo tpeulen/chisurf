@@ -24,7 +24,16 @@ SP8 = "Leica_SP8.ptu"
 
 
 class BrowserDriver(Driver):
-    """The imaging driver, waiting for the browser's own workers (scan, mosaic load) as well."""
+    """The imaging driver, waiting for the browser's own workers (scan, mosaic load) as well.
+
+    A press is preceded by the pointer arriving (a person moves before pressing): a press that teleports makes
+    implot read the jump as a drag and pan the image.
+    """
+
+    def click_at(self, x: float, y: float, frames: int = 1) -> None:
+        self.app.pointer_move(x, y)
+        self.draw(1)
+        super().click_at(x, y, frames)
 
     def busy(self) -> bool:
         app = self.app
@@ -810,6 +819,17 @@ def test_settings_survive_a_restart_through_the_host_hooks(app, drv, shown):
     assert other.model.current_folder == str(shown) and other.model.current_file == str(shown / SP8)
     assert other.model.current_image() is not None  # loaded by drawn frames alone
     other.close()
+
+
+def test_resizing_the_window_shows_the_whole_mosaic_again(app, drv, shown):
+    cx, cy = mosaic_center(app)
+    notches(drv, cx, cy, 6)
+    zoomed = app.view_limits
+    drv.draw(2, size=(800, 600))
+    small = app.view_limits
+    assert small != zoomed
+    x0, x1, y0, y1 = small
+    assert x0 < 0 and x1 > 511 and y0 < 0 and y1 > 255  # the whole 512 x 256 mosaic is in view
 
 
 def test_the_window_draws_at_both_sizes_populated(app, drv, shown):

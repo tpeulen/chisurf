@@ -1,19 +1,27 @@
 # TTTR Image Browser Plugin
 
-This plugin provides an interactive browser for TTTR (time-tagged time-resolved) data.
+An interactive browser for folders of TTTR (time-tagged time-resolved) scan files.
 
 ## Features
 
-- Browse TTTR files in a folder and show intensity images for all DetectorWizard-defined windows.
-- Star-rating (0–3) and annotation per file.
-- Filtering and sorting by rating.
-- Export of selected files and optional DOCX reports compatible with the Trace Browser.
+- A folder (or a dropped folder, with subfolders on request) of photon files, listed with size and rating; text filter,
+  sortable columns, rating filter, single and multiple selection.
+- For the selected file the intensity image of every detector window of the detector setup, as a mosaic of tiles with the
+  detector, micro-time range and routing channels on each tile (summed over frames, 8 bit).
+- Mouse-wheel zoom and drag pan, colormap, gamma, display levels (a histogram with two draggable lines, or typed Min and
+  Max) and tile labels.
+- Star rating (0 to 3) and annotation per file, saved in `.image_browser_meta.json` beside the data.
+- Export: copy of the raw files, TIFF stacks per detector window, Word report of the listed files.
+- A hand-off of the picked image to the Intensity step of Imaging Tools.
 
 ## Usage
 
-- Open the plugin from the ChiSurf **Plugins → TTTR:Image Browser** menu.
-- Use the DetectorWizard page to define detectors and time windows.
-- Choose a folder with TTTR files and inspect the generated images.
-- Use the rating, annotation, and export controls to curate datasets.
+- Open the plugin from the ChiSurf **Imaging → Tools → Image Browser** menu (the emtk window; the Qt tool in
+  `gui/tool.py` is kept until it is removed).
+- The **Detector setup** tab is the shared setup editor; **Use setup and continue** applies it. Without a setup the
+  browser lists every supported file type and draws one tile with all channels.
+- Open or drop a folder, pick a file, inspect, rate, annotate and export.
+- Command line: `tttr-image-browser list|load|export-tiff|contract` (see `cli/main.py`).
 
-The source code lives in `chisurf/plugins/tttr_image_browser` and shares components with the Trace Browser plugin.
+The guide is `docs/guides/86_image_browser.md`. The Qt-free model is `gui/model.py` (it extends the view model of the Qt tool,
+`gui/view_model.py`); the emtk window is `gui/app.py` with its spec `gui/browser_emtk.view.json`.
