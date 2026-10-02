@@ -1,0 +1,229 @@
+{
+  "_comment": "Drift correction, drawn by emtk. Top-level panels are dock windows: the settings on the left, the views as tabs on the right. The Qt tool's AutoForm spec is drift.view.json.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Settings",
+      "dock": "settings",
+      "n_col": 1,
+      "description": "The image, the channel the drift is measured on, the reference and how the correction is applied.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Measure the drift, write the corrected stack or the shift table.",
+          "buttons": [
+            {
+              "action": "measure",
+              "label": "Measure",
+              "description": "Measure the inter-frame drift of the selected channel. Choosing a file measures it at once; press this after changing the reference, the estimator or the channel."
+            },
+            {
+              "action": "request_export_stack",
+              "label": "Export stack",
+              "description": "Write the drift-corrected stack as a multi-page TIFF (every channel is corrected with the shift measured on one)."
+            },
+            {
+              "action": "request_export_shifts",
+              "label": "Export shifts",
+              "description": "Write the per-frame displacements to a CSV file."
+            }
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "filename",
+          "label": "Image",
+          "kind": "str",
+          "call": "commit_filename",
+          "elide": "start",
+          "placeholder": "pick a file, drop one here, or load from the database",
+          "description": "The stack to correct: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image. Photon streams are corrected photon by photon, so the result stays usable for lifetime and correlation analysis."
+        },
+        {
+          "type": "button_row",
+          "description": "Pick the input from disk or from the database.",
+          "buttons": [
+            {
+              "action": "open_file",
+              "label": "Browse",
+              "description": "Browse for an image stack or photon-stream file on disk."
+            },
+            {
+              "action": "open_database",
+              "label": "Database",
+              "description": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+            }
+          ]
+        },
+        {
+          "type": "choice",
+          "attr": "channel",
+          "label": "Measure on",
+          "options_source": "channel_names",
+          "description": "Channel the drift is measured on. The sample moves as a whole, so one channel drives the estimate and the correction is applied to all of them. Pick the brightest, most structured channel — a flat, empty channel gives a soft correlation peak and an unreliable shift."
+        },
+        {
+          "type": "choice",
+          "attr": "reference",
+          "label": "Reference",
+          "options": [
+            "first",
+            "previous",
+            "mean"
+          ],
+          "labels": [
+            "First frame",
+            "Previous frame",
+            "Stack mean"
+          ],
+          "description": "Which frame each frame is compared with. 'First frame' is right for slow monotonic drift and never accumulates error. 'Previous frame' follows non-monotonic wander but lets small per-frame errors add up over a long series. 'Stack mean' is a compromise for noisy data."
+        },
+        {
+          "type": "choice",
+          "attr": "mode",
+          "label": "Apply by",
+          "options": [
+            "wrap",
+            "constant"
+          ],
+          "labels": [
+            "Wrapping (keep all signal)",
+            "Blanking (drop what leaves)"
+          ],
+          "description": "Wrapping rolls the content that leaves one edge back in at the other, conserving every photon but making the wrapped strip meaningless. Blanking discards it and leaves the vacated strip empty — honest, but the edges then carry no signal. Wrapping matches the reference implementation."
+        },
+        {
+          "type": "panel",
+          "title": "Estimator",
+          "collapsible": true,
+          "collapsed": true,
+          "n_col": 1,
+          "description": "How the correlation peak is found: the smoothing that guards against a noise-driven tie, and the sub-pixel refinement.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "smooth",
+              "label": "Smoothing (σ px)",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.0,
+              "maximum": 20.0,
+              "description": "Gaussian blur applied to the correlation before the peak is located. Guards against a noise-driven tie between two neighbouring pixels flipping the answer by one pixel. Zero disables it.",
+              "style": "spin",
+              "step": 1.0
+            },
+            {
+              "type": "toggle",
+              "attr": "subpixel",
+              "label": "Sub-pixel refinement",
+              "description": "Refine each integer peak by fitting a parabola through its neighbours. Useful for slow drift measured over many frames; the correction itself is still applied in whole pixels."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Drift trace",
+      "dock": "views",
+      "description": "Measured displacement per frame. A straight line is stage drift; a jump is a bump or a refocus; noise around zero means there was nothing to correct.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "series_plot",
+          "title": "Drift trace",
+          "description": "Measured displacement per frame. A straight line is stage drift; a jump is a bump or a refocus; noise around zero means there was nothing to correct.",
+          "options": {
+            "source": "drift_series",
+            "x_label": "frame",
+            "y_label": "displacement / px",
+            "legend": true,
+            "empty": "Choose an image or press Measure: the displacement of every frame is drawn here."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Projection",
+      "dock": "views",
+      "description": "The frame-summed image before and after the correction.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_pair",
+          "title": "Projection",
+          "description": "All frames summed before correction (left) and after (right): drift shows as a directional blur on the left; if the two look identical there was no drift to remove.",
+          "options": {
+            "images": [
+              {
+                "name": "before",
+                "title": "Before",
+                "source": "before_image",
+                "colormap_attr": "colormap",
+                "empty": "Measure a file: the summed frames before correction are shown here.",
+                "description": "All frames summed before correction. Drift shows up here as a directional blur."
+              },
+              {
+                "name": "after",
+                "title": "After",
+                "source": "after_image",
+                "colormap_attr": "colormap",
+                "empty": "Measure a file: the summed frames after correction are shown here.",
+                "description": "The same projection after correction. If the correction worked, features are sharper here than on the left; if the two look identical, there was no drift to remove."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Shifts",
+      "dock": "views",
+      "description": "The measured displacement of every frame.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "Shifts",
+          "description": "One row per frame: the displacement along the fast (dx) and slow (dy) scan axis and its magnitude. Click a header to sort.",
+          "options": {
+            "source": "shift_table_rows",
+            "expand": true,
+            "row_key": "frame",
+            "columns": [
+              {
+                "key": "frame",
+                "title": "Frame",
+                "width": 90,
+                "description": "Frame index."
+              },
+              {
+                "key": "dx",
+                "title": "dx / px",
+                "width": 110,
+                "format": "%+.2f",
+                "description": "Displacement along the fast (pixel) axis."
+              },
+              {
+                "key": "dy",
+                "title": "dy / px",
+                "width": 110,
+                "format": "%+.2f",
+                "description": "Displacement along the slow (line) axis."
+              },
+              {
+                "key": "magnitude",
+                "title": "|d| / px",
+                "width": 110,
+                "format": "%.2f",
+                "description": "Total displacement from the origin."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -165,6 +165,23 @@ class Driver:
         return bool(result)
 
 
+def walk(sections):
+    """Every section of a spec, depth first."""
+    for section in sections:
+        yield section
+        yield from walk(section.get("sections", []))
+
+
+def dialog_open(drv: Driver) -> bool:
+    """Whether a file dialog is on screen (its caption is the window title, which the painter does not draw)."""
+    return "Cancel" in drv.draw(1).strings and drv.app.dialog is not None
+
+
+def numeric_ticks(painter) -> list[str]:
+    """The numeric axis labels a frame drew (they change when a plot is panned or zoomed)."""
+    return [t for t in painter.strings if t.lstrip("-\u2212").replace(".", "").isdigit()]
+
+
 def hermetic_env(tmp_path, monkeypatch) -> None:
     """Settings, MMFDB and its database into a temporary folder; the user's own are never touched."""
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))

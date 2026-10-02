@@ -15,6 +15,7 @@ from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_sections
@@ -46,6 +47,7 @@ class ImagingToolApp(ImApp):
     """
 
     GUI_DIR: Path
+    LAYOUT = LAYOUT
     SPEC: str
     TITLE: str = ""
     HELP_TITLE: str = ""
@@ -61,12 +63,14 @@ class ImagingToolApp(ImApp):
         self.form = FormState()
         self.item_rects: dict[str, tuple] = {}
         self.dialog: FileDialog | None = None
+        self.dialog_window: DialogWindow | None = None
         self.dialog_kind = ""
         self.panels: dict[str, Any] = {}
         self.picker = DatasetPicker(formats=PICKER_FORMATS, on_paths=self._picked)
         self.form.custom.update(
             series_plot=lambda s, m, st, w: draw_series_plot(s, m, self),
             image_panel=lambda s, m, st, w: self._draw_image_panel(s),
+            image_pair=lambda s, m, st, w: self._draw_image_pair(s),
             quiver=lambda s, m, st, w: self._draw_quiver(s),
         )
         self.tour = EmTkGuidedTour(
@@ -76,7 +80,7 @@ class ImagingToolApp(ImApp):
                                           on_start_guide=self.tour.start)
         self.form.on_used = self.tour.notify_used
         self._reported_error = ""
-        self.docks = DockManager(LAYOUT)
+        self.docks = DockManager(self.LAYOUT)
         self.windows: dict[str, dict] = {}
         for panel in self.spec["sections"]:
             key = str(panel["title"])
@@ -105,6 +109,7 @@ class ImagingToolApp(ImApp):
             if control in self.form.rects:
                 self.item_rects[event] = self.form.rects[control]
             self.tour.notify_used(event)
+            self.tour.notify_used(control)
 
     # -- one frame --------------------------------------------------------- #
     def render(self) -> None:
@@ -119,7 +124,7 @@ class ImagingToolApp(ImApp):
         self._open_requested_dialog()
         self._follow_tour()
         self.docks.draw(box)
-        self._draw_dialog()
+        self._draw_dialog(box)
         self.picker.render(box)
         for event, control in self.OUTCOMES.items():
             if control in self.form.rects:
@@ -180,6 +185,20 @@ class ImagingToolApp(ImApp):
         if "image" in panel.rects and array is not None:
             self.item_rects[str(section.get("title", name))] = panel.rects["image"]
 
+    def _draw_image_pair(self, section: dict) -> None:
+        """Two image panels side by side (Qt: the Before and After docks), each in its own child region."""
+        left, right = section["options"]["images"]
+        width, height = im.get_content_region_avail()
+        x, y = im.get_cursor_screen_pos()
+        half = max(80.0, width / 2.0 - 2.0)
+        for i, spec in enumerate((left, right)):
+            im.begin_child((x + i * (half + 4.0), y, half, max(100.0, height - 4.0)), clip=True, child_id=f"pair_{i}")
+            im.text(str(spec.get("title", "")))
+            self._draw_image_panel({"title": spec.get("title", ""), "description": spec.get("description", ""),
+                                    "options": dict(spec, name=spec.get("name", spec.get("title", "")))})
+            im.end_child()
+        self.item_rects[str(section.get("title", "images"))] = (x, y, 2.0 * half + 4.0, height)
+
     def _draw_quiver(self, section: dict) -> None:
         panel = self._panel(str(section.get("title", "quiver")), QuiverPanel)
         panel.draw(section, self.model, self)
@@ -198,20 +217,22 @@ class ImagingToolApp(ImApp):
                                  directory=self.model.folder or None,
                                  filename=name_for(kind) if callable(name_for) and mode == "save" else "")
         self.dialog_kind = kind
+        self.dialog_window = DialogWindow(title, size=(640.0, 460.0), key=f"file_{kind}")
 
-    def _draw_dialog(self) -> None:
-        if self.dialog is None:
+    def _draw_dialog(self, frame: tuple) -> None:
+        """The file chooser in a titled window with a close button (Escape and the cross cancel)."""
+        if self.dialog is None or self.dialog_window is None:
             return
-        if im.begin(self.dialog.title):
-            result = self.dialog.draw()
-            if result:
-                kind, self.dialog = self.dialog_kind, None
-                self.tour.notify_used(kind)
-                self.model.remember_folder(result[0])
-                getattr(self.model, self.DIALOGS[kind][3])(result[0])
-            elif result is False:
-                self.dialog = None
-        im.end()
+        pressed = self.dialog_window.begin(frame)
+        result = self.dialog.draw()
+        self.dialog_window.end()
+        if result:
+            kind, self.dialog = self.dialog_kind, None
+            self.tour.notify_used(kind)
+            self.model.remember_folder(result[0])
+            getattr(self.model, self.DIALOGS[kind][3])(result[0])
+        elif result is False or pressed == "close":
+            self.dialog = None
 
     def _picked(self, paths: Any) -> None:
         self.model.open_path(str(paths[0]))

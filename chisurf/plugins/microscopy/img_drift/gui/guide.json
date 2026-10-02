@@ -1,41 +1,42 @@
 {
-  "_comment": "Guided tour for drift correction. Declarative AutoForm view (drift.view.json); steps target bound attributes and the plot/image section keys. The help page carries the long form -- these steps say which control decides the answer and what each failure looks like. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for drift correction in the emtk window. Targets are the spec's attr names and the windows and buttons the window draws; steps that need the user to act wait (await) and never press anything. The help page carries the long form.",
   "steps": [
     {
       "title": "A drift of one pixel is a resolution of one pixel",
-      "text": "Anything that accumulates frames — a long scan, an FRC measurement, a super-resolution reconstruction — averages the drift into the result. A stage that wanders a pixel over the acquisition puts a pixel of blur into every structure in it, and no amount of later processing takes it out.<br/><br/>Each frame is cross-correlated with a reference by FFT and the correlation peak gives the displacement. It assumes <b>pure translation</b>: a sample that rotates, or a cell that changes shape, is not corrected by this — and the giveaway is a drift trace that looks erratic rather than smooth.<br/><br/>Five steps.",
+      "text": "Anything that accumulates frames averages the drift into the result: a stage that wanders a pixel puts a pixel of blur into every structure. Each frame is cross-correlated with a reference and the correlation peak gives its displacement. This assumes <b>pure translation</b>: a rotating sample or a deforming cell is not corrected, and the giveaway is an erratic drift trace.",
       "target": {}
     },
     {
       "title": "Load the stack",
-      "text": "A frame stack or a photon stream. There has to be enough structure in it to correlate — a field of view that is nearly empty has no peak to find.",
-      "target": {
-        "attr": "filename"
-      },
-      "await": {
-        "hint": "Choose the image or photon file."
-      }
+      "text": "A frame stack or a photon stream. It needs enough structure to correlate: a nearly empty field of view has no peak to find. Choosing a file measures it at once.",
+      "target": {"attr": "filename"},
+      "await": {"hint": "Press <b>Browse</b> (or drop a file, or type a path and press Enter) and choose the image or photon file."}
     },
     {
       "title": "The reference decides which failure you get",
-      "text": "<b>First frame</b> — every frame against frame 0. Right for slow monotonic stage drift, and error <i>never accumulates</i>.<br/><b>Previous frame</b> — consecutive frames, shifts summed. Follows non-monotonic wander, but small per-frame errors add up over a long series.<br/><b>Stack mean</b> — against the average of all frames; the compromise for noisy data with no single good reference.<br/><br/>There is no universally right choice here — each trades a different error against a different one, and which is right depends on whether your drift is monotonic.",
-      "target": {
-        "attr": "reference"
-      }
+      "text": "<b>First frame</b>: error never accumulates, right for slow monotonic drift. <b>Previous frame</b>: follows non-monotonic wander but small errors add up. <b>Stack mean</b>: the compromise for noisy data. None is universally right.",
+      "target": {"attr": "reference"}
     },
     {
       "title": "Measure on one channel, correct them all",
-      "text": "The sample moves as a whole, so the shift is estimated from one channel and applied to every channel.<br/><br/>Choose the <b>brightest, most structured</b> one. A flat or empty channel gives a soft correlation peak and an unreliable shift — which then gets applied to all the good channels too.<br/><br/><i>Sub-pixel</i> interpolates the peak position rather than rounding it to the nearest pixel, which is what makes a sub-pixel drift correctable at all.",
-      "target": {
-        "attr": "channel"
-      }
+      "text": "The sample moves as a whole, so the shift is estimated from one channel and applied to every channel. Choose the brightest, most structured one: a flat channel gives a soft peak and an unreliable shift, which is then applied to the good channels too.",
+      "target": {"attr": "channel"}
+    },
+    {
+      "title": "Measure again after a change",
+      "text": "Changing the reference, the channel or the estimator does not re-run by itself. <b>Measure</b> repeats the measurement with the current settings.",
+      "target": {"name": "computed"},
+      "await": {"hint": "Press <b>Measure</b> and wait for the status line."}
     },
     {
       "title": "Read the trace first, the images second",
-      "text": "The <b>drift trace</b> is the diagnostic: real stage drift is smooth and mostly monotonic. Erratic jumps mean the correlation peak is being found in noise, or that the motion is not pure translation and this method does not apply.<br/><br/>Then the before/after images. The correction has to put the content somewhere: <b>wrapping</b> rolls what leaves one edge back in at the other — no signal is lost, but <b>the wrapped strip is meaningless and must not be analysed</b>. <b>Blanking</b> discards it instead and leaves the vacated strip empty, which is honest about the missing data at the cost of dead edges.<br/><br/>Either way, crop before you measure anything near an edge. The <b>?</b> button has the rest.",
-      "target": {
-        "title": "Drift trace"
-      }
+      "text": "Real stage drift is smooth and mostly monotonic. Erratic jumps mean the peak is found in noise, or the motion is not pure translation and this method does not apply.",
+      "target": {"title": "Drift trace"}
+    },
+    {
+      "title": "Wrapping or blanking",
+      "text": "<b>Wrapping</b> rolls what leaves one edge back in at the other: no signal is lost but the wrapped strip is meaningless. <b>Blanking</b> drops it and leaves the vacated strip empty. Crop before you measure anything near an edge. The Help button has the rest.",
+      "target": {"title": "Projection"}
     }
   ]
 }

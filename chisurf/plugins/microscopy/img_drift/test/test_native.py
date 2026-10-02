@@ -1,6 +1,6 @@
 """Qt-free checks for the native drift-correction surface."""
 
-from chisurf.plugins.microscopy.img_drift.app import ImgDriftApp, make_app
+from chisurf.plugins.microscopy.img_drift.gui.app import ImgDriftApp, make_app
 
 
 def test_native_factory_defaults():
