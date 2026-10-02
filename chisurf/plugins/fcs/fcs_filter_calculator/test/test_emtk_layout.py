@@ -51,3 +51,40 @@ def test_the_port_is_qt_free():
 
     verdict = qt_free("fcs_filter_calculator")
     assert verdict["ok"], verdict["output"]
+
+
+@pytest.fixture
+def qapp():
+    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
+    application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    yield application  # held: a collected QApplication takes the widgets down with it
+
+
+def test_native_filters_are_bit_identical_to_the_qt_widgets_for_the_same_inputs(qapp):
+    """Same total, species, nuisance patterns and fit range give the same filters: both call ``api.compute_filters``.
+
+    The example differs only by its detector table: the Qt widget leaves it empty (detector "default": width 0.2 ns,
+    no shift) while the native example fills "green" with the IRF the example patterns were generated with (width 0.16 ns,
+    shift 0.03 ns), so its scatter/IRF nuisance pattern is the matching one.
+    """
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui.model import FilterModel
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    widget.show()
+    end = time.monotonic() + 30
+    while widget._result is None and time.monotonic() < end:
+        qapp.processEvents()
+        time.sleep(0.02)
+    ds = widget.detector_selection
+    assert (ds.width("default"), ds.skew("default"), ds.shift("default")) == (0.2, 0.0, 0.0)
+    native = FilterModel()
+    assert (native.detectors.width("green"), native.detectors.shift("green")) == (0.16, pytest.approx(0.03))
+    native.detectors.set_width("green", 0.2)
+    native.detectors.set_skew("green", 0.0)
+    native.detectors.set_shift("green", 0.0)
+    native._fit_bounds = (10, 254)
+    native.compute()
+    assert np.array_equal(native._result.filters, widget._result.filters)
+    assert np.array_equal(native._result.reconstruction, widget._result.reconstruction)
+    widget.deleteLater()
