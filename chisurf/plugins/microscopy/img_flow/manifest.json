@@ -20,7 +20,7 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.microscopy.img_flow.gui.tool:ImgFlowTool",
-    "emtk": "chisurf.plugins.microscopy.img_flow.app:make_app",
+    "emtk": "chisurf.plugins.microscopy.img_flow.gui.app:make_app",
     "cli": "img-flow=chisurf.plugins.microscopy.img_flow.cli:cli",
     "services": "chisurf.plugins.microscopy.img_flow.backend.services:register_services"
   },

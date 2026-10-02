@@ -5,7 +5,7 @@ model and no fit: the velocity is read off *where a correlation peak is*, not
 off a parameter released in a transport model. That is what makes it a
 measurement of transport rather than an interpretation of one.
 
-If you have never run one, press **🧭** in the toolbar. The guided tour
+If you have never run one, press **Guide** at the top of the settings window. The guided tour
 simulates a scan whose flow profile is known and walks you through checking the
 answer against it.
 

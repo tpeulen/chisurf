@@ -113,7 +113,7 @@ def draw_series_plot(section: dict, model: Any, owner: Any) -> None:
             if entry.get("symbol"):
                 marker = getattr(implot, _MARKERS.get(str(entry["symbol"]), "MARKER_CIRCLE"))
                 implot.set_next_marker_style(marker, float(entry.get("symbol_size", 6.0)), colour)
-                implot.plot_scatter(f"{name}##points", x, y)
+                implot.plot_scatter(f"##{name}_points", x, y)  # no second legend entry
         plot_rect = (*implot.get_plot_pos(), *implot.get_plot_size())
         implot.end_plot()
         owner.item_rects[rect_name] = plot_rect
@@ -304,9 +304,9 @@ class QuiverPanel:
     def _caption(drawn: int, total: int, speeds: list, scale: float, units: str) -> str:
         """What the Qt section said under the field: how many arrows, how fast, at what display scale."""
         if not drawn:
-            return "No arrows - nothing passed the quality threshold, or the field is empty."
+            return "No arrows \u2014 nothing passed the quality threshold, or the field is empty."
         unit = f" {units}" if units else ""
         parts = [f"{drawn} of {total} arrows", f"fastest {max(speeds):.3g}{unit}"]
         if abs(scale - 1.0) > 1e-9:
             parts.append(f"drawn at {scale:g}x (display only)")
-        return " - ".join(parts)
+        return " \u00b7 ".join(parts)
