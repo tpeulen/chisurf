@@ -20,7 +20,7 @@
       "title": "Let the data say how many lifetimes there are",
       "text": "A multi-exponential fit needs the number of components declared <i>before</i> you fit, and that choice usually decides the answer. Two exponentials will describe a broad distribution; three will describe it slightly better.<br/><br/>Maximum entropy returns a <b>distribution</b> instead, so the data can say whether it has one peak or three. Use it to decide the model, then fit.",
       "target": {
-        "panel": "MaxEnt"
+        "panel": "MaxEnt MEM"
       },
       "await": {
         "hint": "Select <b>2. MaxEnt MEM</b>."
