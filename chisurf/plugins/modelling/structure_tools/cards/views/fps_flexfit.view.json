@@ -1,0 +1,31 @@
+{
+  "_comment": "FPS JSON editor, FlexFit tab: the residues and bonds of the selected FlexFit set (tables are data_table sections).",
+  "sections": [
+    {
+      "type": "panel", "title": "Flexible residues", "n_col": 1, "description": "Residues that may move in the FlexFit simulation.",
+      "sections": [
+        {"type": "custom", "key": "data_table",
+         "description": "The flexible residues of the set. Double-click a cell to type; Delete removes the selected row.",
+         "options": {"source": "res_rows", "editable": true, "height": 150, "row_key": "row", "selected_call": "select_residue",
+                     "edited_call": "edit_residue", "delete_call": "delete_residue",
+                     "columns": [{"key": "chain", "title": "Chain", "width": 90, "editable": true, "description": "Chain identifier of the residue."},
+                                 {"key": "residue", "title": "Residue", "editable": true, "description": "Residue sequence number."}]}}
+      ]
+    },
+    {
+      "type": "panel", "title": "Bonds", "n_col": 1, "description": "Bonds between two atoms that stay fixed or flexible in FlexFit.",
+      "sections": [
+        {"type": "custom", "key": "data_table",
+         "description": "The bonds of the set: two atoms each, by chain, residue and atom name. Double-click a cell to type.",
+         "options": {"source": "bond_rows", "editable": true, "height": 170, "row_key": "row", "selected_call": "select_bond",
+                     "edited_call": "edit_bond", "delete_call": "delete_bond",
+                     "columns": [{"key": "chain1", "title": "Chain 1", "editable": true, "description": "Chain of the first atom."},
+                                 {"key": "residue1", "title": "Residue 1", "editable": true, "description": "Residue number of the first atom."},
+                                 {"key": "atom1", "title": "Atom 1", "editable": true, "description": "Name of the first atom."},
+                                 {"key": "chain2", "title": "Chain 2", "editable": true, "description": "Chain of the second atom."},
+                                 {"key": "residue2", "title": "Residue 2", "editable": true, "description": "Residue number of the second atom."},
+                                 {"key": "atom2", "title": "Atom 2", "editable": true, "description": "Name of the second atom."}]}}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "_comment": "Guided tour for the docking card. Steps point at real controls; the ones with an await wait until the user presses the control.",
+  "steps": [
+    {
+      "title": "What this tool does",
+      "text": "FRET distances between dyes tell you how two or more rigid structures sit relative to each other. This tool moves the bodies until the distances the labels <i>should</i> give (from their accessible volumes) match the ones you measured, and scores how well they do.<br/><br/>You need the structures and an <b>fps.json</b> file that holds the labelling positions and the measured distances. Seven steps; you press the buttons, the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Load a project, or fill the inputs",
+      "text": "<b>Project</b> loads a docking project: the structures, the fps.json and the parameters in one file (the HIV reverse transcriptase example in the FRET plugin's examples folder is one). Or add the pieces yourself in the next steps.",
+      "target": {"key": "project"},
+      "await": {"hint": "Press <b>Project</b> and open a project, or go on."}
+    },
+    {
+      "title": "The rigid bodies",
+      "text": "One structure per rigid body, in the order of their body ids. <b>Add Files</b> adds one (so does dropping a .pdb on the window). The same file twice is a homodimer.",
+      "target": {"key": "pdb_rows"}
+    },
+    {
+      "title": "The restraints",
+      "text": "<b>fps.json</b> chooses the labelling and distance file. Build one with the FPS JSON editor in this window's list.",
+      "target": {"key": "fps_pick"},
+      "await": {"hint": "Press <b>fps.json</b> and choose the file."}
+    },
+    {
+      "title": "Choose what to do",
+      "text": "<b>Op</b> selects <i>dock</i> (rigid-body docking), <i>refine</i>, <i>screen</i> (rank a library of structures) or <i>score</i> (one structure). <b>Runs</b> above 1 repeats the docking from random starts to estimate how well the distances determine the result.",
+      "target": {"key": "operation"}
+    },
+    {
+      "title": "Run it",
+      "text": "Press <b>Run</b>. The bar shows the progress and the best score so far; <b>Stop</b> ends the run.",
+      "target": {"key": "run"},
+      "await": {"hint": "Press <b>Run</b>."}
+    },
+    {
+      "title": "Read the result",
+      "text": "Each result is a row of the <b>Results</b> table (best score first); select one to see its structure in the <b>Structure</b> tab and the <b>Score</b> tab for the trace. Press <b>Help</b> for the scores and the files written.",
+      "target": {"key": "tab_Results"}
+    }
+  ]
+}

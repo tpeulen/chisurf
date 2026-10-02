@@ -34,13 +34,16 @@ def test_native_unknown_tool_raises():
         app.select("Nope")
 
 
-def test_native_pending_panel_for_qt_only_tools():
+def test_every_hub_tool_has_a_native_app_and_no_pending_stub():
     app = make_app()
-    app.select("QuEst")
-    assert app.child is None
     painter = RecordingPainter()
-    app.draw(painter, 0, 0, 900, 640)
-    assert "Native version pending" in painter.strings
+    for panel in STRUCTURE_TOOL_PANELS:
+        assert panel["emtk"], panel["name"]
+        app.select(panel["name"])
+        assert app.child is not None, (panel["name"], app.error)
+        painter = RecordingPainter()
+        app.draw(painter, 0, 0, 1200, 800)
+        assert "Native version pending" not in painter.strings
 
 
 def test_native_state_roundtrip():
@@ -60,7 +63,7 @@ def test_native_renders_hub_and_children():
     app = make_app()
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 900, 640)
-    for expected in ("Available tools", "FPS JSON Editor", "Kappa2 Distribution", "HydroPro", "Trajectory Tools"):
+    for expected in ("Search...", "FPS JSON Editor", "Kappa2 Distribution", "HydroPro", "Trajectory Tools"):
         assert expected in painter.strings, expected
 
 
