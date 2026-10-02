@@ -123,6 +123,7 @@ irf_estimation
 72_psf_calculator
 77_phasor_calculator
 84_spot_finder
+86_image_browser
 45_scan_precision
 55_pair_correlation
 ```
@@ -249,6 +250,7 @@ irf_estimation
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Spectroscopy menu), Förster calculator (TCSPC FRET κ² row → calc R0) |
 | [Finding spots and objects in an image](84_spot_finder.md) | `spot_finder` (Image Tools hub), `csc spot-finder`, `spot_finder.core.spots` |
 | [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (no menu; CLI/RPC), `core.fluorescence.mfd.prepare` |
+| [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Imaging → Tools; Imaging Tools hub), `tttr-image-browser`, `core.image` |
 
 ## Regenerating the figures
 

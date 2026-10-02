@@ -2,6 +2,16 @@
 
 ## 2026-10-01
 
+- **tttr_image_browser emtk app upgraded to verified parity, layout and real input as acceptance criteria** (IMGBROWSER, audit row 81): the stream's app opened on the detector-setup page, hid the
+  browser behind a tab, stacked 14 full-width controls, drew the list by hand and could not zoom with the wheel. Now the browser is the first page: a toolbar row, a Files column (`data_table` with
+  filter, sort, rating, annotation, multi-selection) and an image window (wheel zoom about the pointer, drag pan, colormap, gamma, display levels as a histogram with two draggable lines, tile labels),
+  the shared setup editor hosted unchanged on a second tab, Copy / TIFF / DOCX exports (own OOXML writer; the Qt DOCX needs python-docx and silently wrote nothing here), a worker for scans and mosaics,
+  help and a 9-step tour. Mosaics, TIFF stacks, copies, metadata and filters equal the real Qt tool's (a Qt subprocess on the same CLSM files plus numbers pinned from the Qt window before the port).
+  Found: `get_magma_lut()` returned `None` on matplotlib 3.9 (grey DOCX pictures), the stream's app silently adopted the last used saved setup (a PTO setup listed no PTU), the multi-selection could not
+  toggle a selected row off. Gaps for emtk (repros in `scripts/`): the shared setup editor offers 8 of the Qt page's 15 TTTR formats and stretches its fields, `data_table` has no Ctrl-click selection,
+  `PixelPainter` ignores the clip stack for images, an implot's wheel notch stays pending and steps the next spin field. 130 passed in the plugin folder (117 new), compare exit 0, 4 deliberate breakages
+  caught. Evidence in `plugins/emtk-ports/tttr_image_browser/` (the report text went in the agent's reply: the environment refused the file write). Docs: guide 86, concept section, plugin reference.
+
 - **psf_calculator emtk app at parity with what the Qt tool offers** (EMTKUP4): the Qt tool cannot be built here (no 3-D volume renderer in the emtk chiplot
   backend), so the baseline drives it with a recording stand-in for the renderer; volume, summary and what the renderer is handed equal the Qt tool's, the rendered image
   is not comparable. The stream's app (hand-drawn drag sliders, Compute button, continuous redraw, a stretched slice, 12 legend entries over the 3-D plot) is now the Qt

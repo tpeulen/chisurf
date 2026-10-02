@@ -1,0 +1,210 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "1",
+    "1.00",
+    "2",
+    "255",
+    "3",
+    "all",
+    "annotation",
+    "autolevels",
+    "clear",
+    "clearcaches",
+    "colormap",
+    "copyrawfiles",
+    "detectorsetup",
+    "docx",
+    "file",
+    "files",
+    "filter",
+    "folder",
+    "gamma",
+    "guide",
+    "help",
+    "imagebrowser",
+    "includesubfolders",
+    "magma",
+    "max",
+    "mb",
+    "min",
+    "multipleselection",
+    "next→intensity",
+    "openafolderofphotonfiles,ordroponeonthewindow.",
+    "openafolderwithphotonfiles(ordroponehere)toseetheirdetector-windowmosaics.",
+    "openfolder",
+    "rating",
+    "ratingfilter",
+    "resetview",
+    "selectall",
+    "tiff",
+    "tilelabels"
+  ],
+  "interactive": [
+    {
+      "kind": "begin_tab_item",
+      "label": "Image browser",
+      "id": "Image browser",
+      "tooltip": "Browse the folder: file list, detector-window mosaic, ratings, annotations and exports."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Detector setup",
+      "id": "Detector setup",
+      "tooltip": "Detector routing, PIE windows, reading routine, TAC corrections and optical setup (the shared setup editor)."
+    },
+    {
+      "kind": "button",
+      "label": "Open folder",
+      "id": "Open folder##choose_folder",
+      "tooltip": "Choose a folder with TTTR photon files; its files are listed on the left. You can also drop a folder on the window."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##clear",
+      "tooltip": "Clear the file list and the preview. No file, rating or annotation is changed or deleted."
+    },
+    {
+      "kind": "button",
+      "label": "Clear caches",
+      "id": "Clear caches##clear_caches",
+      "tooltip": "Delete the cached mosaics of the opened folder (the .tttr_image_cache folders, in memory and on disk). They are rebuilt when a file is selected."
+    },
+    {
+      "kind": "button",
+      "label": "Copy raw files",
+      "id": "Copy raw files##copy_files",
+      "tooltip": "Copy the selected raw photon files into a folder you choose, keeping their paths relative to the opened folder. Select files first."
+    },
+    {
+      "kind": "button",
+      "label": "TIFF",
+      "id": "TIFF##export_tiff",
+      "tooltip": "Write the intensity stack of every detector window of the selected files as a TIFF into a folder you choose. Select files first."
+    },
+    {
+      "kind": "button",
+      "label": "DOCX",
+      "id": "DOCX##export_docx",
+      "tooltip": "Write a Word report of every listed file (name, rating, annotation and the mosaic) to the file you choose; it starts in the opened folder."
+    },
+    {
+      "kind": "button",
+      "label": "Next → Intensity",
+      "id": "Next → Intensity##next_step",
+      "tooltip": "Send the current image to the imaging pipeline and open its Intensity step. Only available when this browser runs inside Imaging Tools."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help##show_help",
+      "tooltip": "Explain the detector setup, the file list, the mosaic and the exports."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##start_guide",
+      "tooltip": "Walk through the browser step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Include subfolders",
+      "id": "Include subfolders##recursive",
+      "tooltip": "Also list the files of the sub-folders of the opened folder. Switching it lists the folder again."
+    },
+    {
+      "kind": "input_text",
+      "label": "folder_text",
+      "id": "##folder_text",
+      "tooltip": "The opened folder. Use Open folder, or drop a folder on the window."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Multiple selection",
+      "id": "Multiple selection##multi_select",
+      "tooltip": "A click on a row adds it to the selection or removes it. Copy raw files and TIFF act on the selection."
+    },
+    {
+      "kind": "button",
+      "label": "Select all",
+      "id": "Select all##select_all_files",
+      "tooltip": "Select every row the filters show, so that Copy raw files and TIFF act on all of them."
+    },
+    {
+      "kind": "radio_button",
+      "label": "0",
+      "id": "0##current_rating0",
+      "tooltip": "Stars for the file shown (0 clears the rating). Saved at once beside the data in .image_browser_meta.json; the filter above uses it."
+    },
+    {
+      "kind": "radio_button",
+      "label": "1",
+      "id": "1##current_rating1",
+      "tooltip": "Stars for the file shown (0 clears the rating). Saved at once beside the data in .image_browser_meta.json; the filter above uses it."
+    },
+    {
+      "kind": "radio_button",
+      "label": "2",
+      "id": "2##current_rating2",
+      "tooltip": "Stars for the file shown (0 clears the rating). Saved at once beside the data in .image_browser_meta.json; the filter above uses it."
+    },
+    {
+      "kind": "radio_button",
+      "label": "3",
+      "id": "3##current_rating3",
+      "tooltip": "Stars for the file shown (0 clears the rating). Saved at once beside the data in .image_browser_meta.json; the filter above uses it."
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "annotation",
+      "id": "##annotation",
+      "tooltip": "A note for the file shown. It is saved at once beside the data in .image_browser_meta.json."
+    },
+    {
+      "kind": "input_text",
+      "label": "gamma",
+      "id": "##gamma",
+      "tooltip": "Lift dim structures with a gamma above one. Display only: the pixel values and the exports are unchanged."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Auto levels",
+      "id": "Auto levels##auto_levels",
+      "tooltip": "Map the lowest and the highest pixel value of the mosaic to the ends of the colour scale. Switch it off to set the levels, or drag the two lines in the histogram."
+    },
+    {
+      "kind": "input_text",
+      "label": "level_low",
+      "id": "##level_low",
+      "tooltip": "Lower display level (0 to 254). Needs Auto levels off."
+    },
+    {
+      "kind": "input_text",
+      "label": "level_high",
+      "id": "##level_high",
+      "tooltip": "Upper display level (1 to 255). Needs Auto levels off."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Tile labels",
+      "id": "Tile labels##show_labels",
+      "tooltip": "Write each tile's detector, micro-time range and routing channels on the mosaic."
+    },
+    {
+      "kind": "button",
+      "label": "Reset view",
+      "id": "Reset view##reset_view",
+      "tooltip": "Show the whole mosaic again after zooming (mouse wheel) or panning (drag)."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  }
+}

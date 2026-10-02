@@ -48,6 +48,24 @@ apparent, intensity-weighted average. Two routes summarize a pixel:
 - **The phasor transform** — a fit-free, model-free projection that maps every
   pixel's *whole decay* to a single point in a 2-D plane.
 
+## Detector windows and the browse view
+
+Before any decay is fitted, the first question is *which photons belong to the
+image you mean to look at*. A detector's photons are selected by **routing
+channel** (which detector or polarisation channel recorded the photon) and by a
+**micro-time window** (a prompt window after a pulsed laser, a delayed one for
+the second colour in pulsed-interleaved excitation, a tail for the
+fluorescence only). Each combination is a *detector window*; its intensity image
+is the photon count per pixel of the photons that pass both gates, summed over
+the frames of the measurement. Two windows of one scan can differ in colour, in
+polarisation and in how much of the excitation pulse they contain, so a quick
+look at *all* of them side by side, one tile each, shows at once whether a
+channel is empty (a routing number that the file does not have gives a black
+tile), whether the gates cut the decay where intended, and which of many files
+is worth analysing. The Image Browser draws exactly that, scaled to 8 bit per
+tile, so it is a tool for choosing and checking, not for comparing brightness;
+the guide is {doc}`/guides/86_image_browser`.
+
 ## The phasor transform
 
 The phasor sends a pixel's decay $I(t)$ to a pair of coordinates $(g, s)$ — the
