@@ -1,0 +1,12 @@
+diff --git a/chisurf/plugins/core/hmm/manifest.json b/chisurf/plugins/core/hmm/manifest.json
+index d839a44dc..0bd67fcb7 100644
+--- a/chisurf/plugins/core/hmm/manifest.json
++++ b/chisurf/plugins/core/hmm/manifest.json
+@@ -16,6 +16,7 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.core.hmm.gui.tool:HmmTool",
++    "emtk": "chisurf.plugins.core.hmm.gui.app:make_app",
+     "cli": "hmm=chisurf.plugins.core.hmm.cli.main:cli",
+     "services": "chisurf.plugins.core.hmm.backend.services:register_services"
+   },

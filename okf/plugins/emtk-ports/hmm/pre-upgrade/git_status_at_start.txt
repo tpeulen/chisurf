@@ -1,0 +1,5 @@
+ M chisurf/plugins/core/hmm/manifest.json
+?? chisurf/plugins/core/hmm/gui/app.py
+?? chisurf/plugins/core/hmm/gui/strings.py
+?? chisurf/plugins/core/hmm/test/renders/
+?? chisurf/plugins/core/hmm/test/test_native.py
