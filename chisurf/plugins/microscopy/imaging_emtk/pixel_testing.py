@@ -116,7 +116,10 @@ def real_settings_state() -> dict:
     root = _REAL_HOME / ".chisurf"
     state = {}
     if root.exists():
-        for dirpath, _dirs, files in os.walk(root):
+        for dirpath, dirs, files in os.walk(root):
+            # chisurf's own session logger ignores CHISURF_SETTINGS_DIR and writes a log for every process that imports
+            # chisurf (other test runs and agents too): a log is not a setting.
+            dirs[:] = [d for d in dirs if d != "logs"]
             for name in files:
                 f = pathlib.Path(dirpath) / name
                 try:
