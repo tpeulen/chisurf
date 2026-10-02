@@ -57,3 +57,24 @@ def test_a_widget_deleted_while_its_worker_runs_does_not_abort_the_process(qapp)
         qapp.processEvents()
         time.sleep(0.01)
     assert all(w.isFinished() for w in pw._ALIVE)
+
+
+def test_search_results_of_conda_and_micromamba_are_flattened_to_the_rows_the_table_reads(fakes):
+    """Guardrail: ``search --json`` is a mapping for conda and a nested one for micromamba; the Qt table only read lists
+    (a real solver gave "Found 0 results")."""
+    from chisurf.plugins.core.updater.updater import PackageManager, normalize_search_results
+
+    from .fakes import SEARCH_CONDA, SEARCH_MICROMAMBA
+
+    expected = [{"name": "numpy", "version": "2.0.1", "channel": "conda-forge"},
+                {"name": "numpy", "version": "1.26.4", "channel": "conda-forge"},
+                {"name": "numpy", "version": "1.26.3", "channel": "conda-forge"}]
+    assert normalize_search_results(SEARCH_CONDA) == expected
+    assert normalize_search_results(SEARCH_MICROMAMBA) == expected
+    assert normalize_search_results([{"name": "a", "version": "1", "channel": "x"}]) == [{"name": "a", "version": "1", "channel": "x"}]
+    assert normalize_search_results(None) == []
+    for payload in (SEARCH_CONDA, SEARCH_MICROMAMBA):
+        fakes.search_payload = payload
+        ok, data, err = PackageManager().search("numpy")
+        assert ok and data == expected
+        assert fakes.solver_commands[-1] == ["/fake/bin/micromamba", "search", "numpy", "--json"]

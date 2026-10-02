@@ -27,6 +27,7 @@ from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import layout_spec
 
 from .model import UpdaterModel
+from .package_app import PackagePanel
 
 HERE = Path(__file__).parent
 
@@ -67,6 +68,9 @@ class UpdaterApp(ImApp):
         self.message_window = DialogWindow("ChiSurf Updater", size=(520.0, 190.0), key="updater_dialog", fit_height=True)
         self.progress_window = DialogWindow("Updating ChiSurf", size=(520.0, 130.0), key="updater_progress",
                                             fit_height=True, escape_closes=False)
+        #: The package manager window (the panel is built when it is first opened).
+        self.packages: PackagePanel | None = None
+        self.package_window = DialogWindow("ChiSurf Package Manager", size=(780.0, 560.0), key="updater_packages", escape_closes=False)
         self.item_rects: dict[str, tuple] = {}
         self._reported_error = ""
         self.exited = False
@@ -83,10 +87,10 @@ class UpdaterApp(ImApp):
         super().__init__(self.render, continuous=True)
 
     # -- jobs ------------------------------------------------------------------------------------------------------ #
-    def start_job(self, method: str) -> bool:
+    def start_job(self, method: str, *args: Any) -> bool:
         """Run the model method *method* on a snapshot in a worker thread."""
         self._reported_error = ""
-        return self.job.start(method)
+        return self.job.start(method, *args)
 
     # -- one frame --------------------------------------------------------------------------------------------------- #
     def render(self) -> None:
@@ -121,6 +125,7 @@ class UpdaterApp(ImApp):
             draw_sections(self.panels[_UPDATER]["sections"], model, self.form, titles=True)
             im.end_disabled()
         im.end()
+        self._draw_packages(box)
         self._draw_progress(box)
         self._draw_message(box)
         self.help_window.draw(box)
@@ -204,6 +209,24 @@ class UpdaterApp(ImApp):
         if pressed == "close":
             model.dialog_cancel() if model._dialog_cancel else model.dialog_ok()
 
+    def _draw_packages(self, box: Any) -> None:
+        """The package manager window, opened by the Package Manager button."""
+        model = self.model
+        if model.request == "package_manager":
+            model.request = ""
+            if self.packages is None:
+                self.packages = PackagePanel()
+                self.packages.on_used = self.tour.notify_used
+            self.package_window.show()
+        if self.packages is None or not self.package_window.open:
+            return
+        if self.package_window.begin(box) == "close":
+            self.package_window.hide()
+        else:
+            self.packages.draw_content()
+        self.package_window.end()
+        self.packages.draw_overlays(box)
+
     def _draw_progress(self, box: Any) -> None:
         """The window that shows the update's latest step while it is prepared (the Qt progress dialog)."""
         model = self.model
@@ -230,6 +253,8 @@ class UpdaterApp(ImApp):
     def close(self) -> None:
         """Detach the model's observers."""
         self.model._observers.clear()
+        if self.packages is not None:
+            self.packages.close()
 
 
 def make_app() -> UpdaterApp:

@@ -108,7 +108,7 @@ def test_the_window_with_nothing_found_says_what_to_do_and_greys_what_cannot_act
     assert "Changelog will appear here after checking for updates..." in painter.strings
     model = app.model
     assert [model.enabled(n) for n in ("check_for_updates", "ask_update", "selected_version", "open_package_manager", "development")] == [
-        True, False, False, False, False]
+        True, False, False, True, False]
     assert model.version_labels == [] and model.selected_version == ""
 
 

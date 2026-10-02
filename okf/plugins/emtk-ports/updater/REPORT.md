@@ -12,6 +12,6 @@ Tests: 85 passed, 1 xfailed (parity 28, real-input 40 incl. xfail wheel over the
 - Real runner ends with sys.exit inside the worker: model catches SystemExit and the app calls exit_hook.
 - emtk gaps: wheel over a choice does not step it; tour card does not block controls under it (Next dead where it covers a field/child; changelog capped at 640 px so the card has room at >=1100 px wide).
 ## Reuse / Docs
-Reused: data of ChiSurfUpdater, SnapshotJob, spec forms, DialogWindow, help/tour, emtk_layout. Duplicate flagged: dialog mixin vs plugin_manager's. Docs: new docs/guides/88_updater.md + index + figure updater_checked.png; reference page not regenerated.
+Reused: data of ChiSurfUpdater, SnapshotJob, spec forms, DialogWindow, help/tour, emtk_layout. Duplicate flagged: dialog mixin vs plugin_manager's. Docs: new docs/guides/90_updater.md + index + figure updater_checked.png; reference page not regenerated.
 ## Open
 U2 (package manager), manifest switch, search normalisation fix, quenching_estimator (not started), deliberate breakage x2, log.md hunk.

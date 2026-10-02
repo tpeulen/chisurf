@@ -1,0 +1,10 @@
+{
+  "_comment": "Guided tour of the package manager. Destructive buttons are explained, never awaited.",
+  "steps": [
+    {"title": "What is installed", "text": "The <b>Installed Packages</b> page lists the packages of the current environment. Type in <b>Filter</b> to narrow the list by name; click a header to sort.", "target": {"name": "installed_filter", "attr": "installed_filter"}},
+    {"title": "Find a package", "text": "Open <b>Search &amp; Install</b>, type a name and press Enter. Results are listed newest first; select one and <b>Install Selected</b> asks before it installs.", "target": {"name": "tab_search", "key": "tab_search"}, "await": {"hint": "Open the <b>Search &amp; Install</b> page."}},
+    {"title": "Environments", "text": "<b>Environments</b> lists the conda environments. Create, clone, remove, export to a YAML file or import one. Removing asks first.", "target": {"name": "tab_envs", "key": "tab_envs"}},
+    {"title": "Channels", "text": "<b>Channels</b> are where packages come from. Add one by name or URL, or remove the selected one.", "target": {"name": "tab_channels", "key": "tab_channels"}},
+    {"title": "The log", "text": "Everything the package manager does is written to the <b>Operation Log</b>, with the time. <b>Refresh All</b> reloads the lists.", "target": {"name": "log", "key": "operation_log"}}
+  ]
+}

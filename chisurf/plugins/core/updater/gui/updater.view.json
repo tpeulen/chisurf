@@ -97,7 +97,7 @@
                 {
                   "action": "open_package_manager",
                   "label": "Package Manager",
-                  "description": "Open the package manager to manage packages in your environment. Greyed for now: the package manager window is not in the native version yet."
+                  "description": "Open the package manager to manage packages in your environment."
                 }
               ]
             }

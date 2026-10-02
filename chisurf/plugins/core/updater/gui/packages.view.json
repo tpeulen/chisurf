@@ -1,0 +1,356 @@
+{
+  "_comment": "ChiSurf package manager, native emtk window. Drawn by emtk.view_form over PackageManagerModel (gui/package_model.py): one panel per page of the Qt tab widget, the operation log and Refresh All under them (drawn by gui/package_app.py), and the in-app confirm / text-entry dialog the Qt tool asked with message boxes. Tables are data_table sections; the Qt tables allowed several selected rows, a data_table selects one.",
+  "title": "ChiSurf Package Manager",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Installed Packages",
+      "name": "installed",
+      "description": "The packages installed in the current environment.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "env_line",
+          "title": "",
+          "description": "The environment the package manager works on."
+        },
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Filter",
+          "attr": "installed_filter",
+          "call": "apply_filter",
+          "description": "Show only the installed packages whose name contains this text (case-insensitive)."
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "Installed packages. Click a header to sort, click a row to select it.",
+          "options": {
+            "source": "installed_rows",
+            "row_key": "name",
+            "selected_call": "select_installed",
+            "editable": false,
+            "filter": false,
+            "status": true,
+            "expand": true,
+            "reserve": 262,
+            "min_column_width": 60,
+            "columns": [
+              {
+                "key": "name",
+                "title": "Name",
+                "width": 220,
+                "tooltip": "The package name."
+              },
+              {
+                "key": "version",
+                "title": "Version",
+                "width": 120,
+                "tooltip": "The package version."
+              },
+              {
+                "key": "channel",
+                "title": "Channel",
+                "width": 200,
+                "tooltip": "The channel the package comes from."
+              }
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "description": "Reload the list, update, or remove the selected package.",
+          "buttons": [
+            {
+              "action": "refresh_installed",
+              "label": "Refresh List",
+              "description": "Reload the installed packages from the package manager."
+            },
+            {
+              "action": "ask_update_selected",
+              "label": "Update Selected",
+              "description": "Update the selected package to the newest version the channels offer."
+            },
+            {
+              "action": "ask_update_all",
+              "label": "Update All",
+              "description": "Update every package in the current environment (asks first)."
+            },
+            {
+              "action": "ask_remove_selected",
+              "label": "Remove Selected",
+              "description": "Remove the selected package from the environment (asks first)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Search & Install",
+      "name": "search",
+      "description": "Look for packages in the configured channels and install one.",
+      "sections": [
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Package",
+          "attr": "search_query",
+          "call": "search_packages",
+          "description": "The package name to search for. Enter starts the search."
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "description": "Search, or install the selected result.",
+          "buttons": [
+            {
+              "action": "search_packages",
+              "label": "Search",
+              "description": "Search the configured channels for the package name."
+            },
+            {
+              "action": "ask_install_selected",
+              "label": "Install Selected",
+              "description": "Install the selected search result into the current environment (asks first)."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "Search results, newest version first. Click a row to select it.",
+          "options": {
+            "source": "search_rows",
+            "row_key": "id",
+            "selected_call": "select_search",
+            "editable": false,
+            "filter": false,
+            "status": true,
+            "expand": true,
+            "reserve": 262,
+            "min_column_width": 60,
+            "columns": [
+              {
+                "key": "name",
+                "title": "Name",
+                "width": 220,
+                "tooltip": "The package name."
+              },
+              {
+                "key": "version",
+                "title": "Version",
+                "width": 120,
+                "tooltip": "The package version."
+              },
+              {
+                "key": "channel",
+                "title": "Channel",
+                "width": 200,
+                "tooltip": "The channel the package comes from."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Environments",
+      "name": "envs",
+      "description": "The conda environments on this machine.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "Environments. Click a row to select one.",
+          "options": {
+            "source": "env_rows",
+            "row_key": "env",
+            "selected_call": "select_env",
+            "editable": false,
+            "filter": false,
+            "status": true,
+            "expand": true,
+            "reserve": 290,
+            "min_column_width": 60,
+            "columns": [
+              {
+                "key": "env",
+                "title": "Environment",
+                "width": 500,
+                "tooltip": "The path of the environment."
+              }
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "description": "Create, clone or remove an environment.",
+          "buttons": [
+            {
+              "action": "ask_create_env",
+              "label": "Create New",
+              "description": "Create an empty environment with a name you type."
+            },
+            {
+              "action": "ask_clone_env",
+              "label": "Clone Selected",
+              "description": "Copy the selected environment under a new name."
+            },
+            {
+              "action": "ask_remove_env",
+              "label": "Remove Selected",
+              "description": "Delete the selected environment (asks first)."
+            }
+          ]
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "description": "Save an environment to a file, or create one from a file.",
+          "buttons": [
+            {
+              "action": "request_export",
+              "label": "Export to File",
+              "description": "Write the selected (or the current) environment as a YAML file."
+            },
+            {
+              "action": "request_import",
+              "label": "Import from File",
+              "description": "Create an environment from a YAML file."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Channels",
+      "name": "channels",
+      "description": "The channels packages are searched and installed from.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "Configured channels. Click a row to select one.",
+          "options": {
+            "source": "channel_rows",
+            "row_key": "channel",
+            "selected_call": "select_channel",
+            "editable": false,
+            "filter": false,
+            "status": true,
+            "expand": true,
+            "reserve": 262,
+            "min_column_width": 60,
+            "columns": [
+              {
+                "key": "channel",
+                "title": "Channel",
+                "width": 400,
+                "tooltip": "A channel name or URL."
+              }
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "description": "Add or remove a channel.",
+          "buttons": [
+            {
+              "action": "ask_add_channel",
+              "label": "Add Channel",
+              "description": "Add a channel by name or URL."
+            },
+            {
+              "action": "remove_channel",
+              "label": "Remove Selected",
+              "description": "Remove the selected channel from the configuration."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Operation Log",
+      "name": "footer",
+      "description": "What the package manager did.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "operation_log",
+          "title": "Operation Log",
+          "description": "Every step the package manager took, with the time; newest last."
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "description": "Reload everything.",
+          "buttons": [
+            {
+              "action": "refresh_all",
+              "label": "Refresh All",
+              "description": "Reload the installed packages, environments and channels."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "ChiSurf Package Manager",
+      "name": "dialog",
+      "description": "Asks before an install, update-all or removal runs, and takes the names the Qt tool asked for in input boxes.",
+      "sections": [
+        {
+          "type": "info",
+          "source": "dialog_text",
+          "description": "What will happen if you confirm."
+        },
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Value",
+          "attr": "dialog_input",
+          "hidden_when": {
+            "attr": "dialog_input_hidden",
+            "equals": "yes"
+          },
+          "description": "The text the question asks for."
+        },
+        {
+          "type": "button_row",
+          "description": "Confirm or cancel.",
+          "buttons": [
+            {
+              "action": "dialog_ok",
+              "label": "OK",
+              "label_source": "dialog_ok_label",
+              "description": "Do it."
+            },
+            {
+              "action": "dialog_cancel",
+              "label": "Cancel",
+              "label_source": "dialog_cancel_label",
+              "hidden_when": {
+                "attr": "dialog_cancel_hidden",
+                "equals": "yes"
+              },
+              "description": "Leave everything as it is."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

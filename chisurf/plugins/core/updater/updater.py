@@ -1441,6 +1441,50 @@ def update_chisurf(callback=None, auto_restart=True) -> tuple[bool, str | None]:
     return updater.update(callback, auto_restart)
 
 
+_SUBDIRS = ("noarch", "osx-64", "osx-arm64", "linux-64", "linux-aarch64", "linux-ppc64le", "win-64", "win-arm64")
+
+
+def _channel_name(channel: Any) -> str:
+    """The channel a search record came from, as a short name: ``https://host/conda-forge/osx-arm64`` -> ``conda-forge``."""
+    text = str(channel or "")
+    if "://" not in text:
+        return text
+    parts = [p for p in text.split("://", 1)[1].split("/")[1:] if p]
+    if parts and parts[-1] in _SUBDIRS:
+        parts = parts[:-1]
+    return "/".join(parts) if parts else text
+
+
+def normalize_search_results(data: Any) -> list[dict[str, str]]:
+    """Flatten what ``search --json`` prints into ``[{"name", "version", "channel"}, ...]``.
+
+    conda prints ``{name: [build records]}``, micromamba ``{"result": {"pkgs": [records]}}``; a plain list of records is
+    accepted as it is. One entry per (name, version, channel), newest version first within a name; builds are dropped.
+    """
+    if isinstance(data, dict):
+        if isinstance(data.get("result"), dict) and isinstance(data["result"].get("pkgs"), list):
+            records = data["result"]["pkgs"]
+        elif isinstance(data.get("pkgs"), list):
+            records = data["pkgs"]
+        else:
+            records = [r for value in data.values() if isinstance(value, list) for r in value]
+    elif isinstance(data, list):
+        records = data
+    else:
+        records = []
+    seen: dict[tuple, dict[str, str]] = {}
+    for rec in records:
+        if not isinstance(rec, dict) or not rec.get("name"):
+            continue
+        key = (str(rec["name"]), str(rec.get("version", "")), _channel_name(rec.get("channel")))
+        seen.setdefault(key, {"name": key[0], "version": key[1], "channel": key[2]})
+
+    def version_key(version: str) -> tuple:
+        return tuple(int(p) if p.isdigit() else -1 for p in re.split(r"[^0-9A-Za-z]+", version) if p)
+
+    return sorted(seen.values(), key=lambda r: (r["name"].lower(), tuple(-v for v in version_key(r["version"]))))
+
+
 class PackageManager:
     """
     Lightweight package/environment/channels manager used by ChiSurf.
@@ -1587,7 +1631,7 @@ class PackageManager:
         data = None
         if ok:
             try:
-                data = json.loads(out)
+                data = normalize_search_results(json.loads(out))
             except Exception:
                 ok = False
                 err = err or "Failed to parse search JSON"

@@ -286,12 +286,15 @@ def test_a_failed_update_start_is_shown_in_the_status(checked, fakes, monkeypatc
 
 
 # ---------------------------------------------------------------------------------------------- Package Manager, Development
-def test_the_package_manager_button_is_greyed_and_a_press_opens_nothing(ui):
-    assert not ui.app.model.enabled("open_package_manager")
+def test_the_package_manager_button_opens_the_package_manager_window_and_its_close_button_closes_it(ui, fakes):
+    assert ui.app.model.enabled("open_package_manager") and ui.app.packages is None
     ui.click("open_package_manager")
-    assert ui.app.model.request == ""
+    ui.draw(4)
+    assert ui.app.package_window.open and ui.shown("Installed Packages") and ui.shown("Operation Log")
+    ui.press_text("\u00d7")
+    assert not ui.app.package_window.open
+    assert fakes.mutating_solver_commands == []
     assert tooltip_shown(ui, "open_package_manager", "Open the package manager to manage packages")
-    assert "Greyed for now" in __import__("json").loads((Path(__file__).parent.parent / "gui" / "updater.view.json").read_text())["sections"][0]["sections"][2]["sections"][1]["buttons"][2]["description"]
 
 
 def test_the_development_switch_is_on_and_a_press_does_not_turn_it_off(ui):

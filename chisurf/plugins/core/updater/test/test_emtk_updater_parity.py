@@ -398,11 +398,11 @@ def test_an_update_script_that_ends_the_process_asks_the_app_to_exit(fakes, monk
     app.close()
 
 
-def test_the_package_manager_button_asks_the_app_to_open_the_window(fakes):
+def test_the_package_manager_button_is_available(fakes):
     from chisurf.plugins.core.updater.gui.model import UpdaterModel
 
     model = UpdaterModel()
-    assert not model.package_manager_available and not model.enabled("open_package_manager")
+    assert model.package_manager_available and model.enabled("open_package_manager")
 
 
 # ---------------------------------------------------------------------------------------------- 5. spec and model agree

@@ -33,7 +33,6 @@ already have a burst list or a decay, jump straight to the analysis you need.
 74_intensity_traces_and_file_tools
 73_tttr_decay_and_correlation
 88_microtime_shifter
-88_microtime_shifter
 37_tttr_microtime_lut
 34_exporting_burst_data
 35_combining_repeats
@@ -128,7 +127,7 @@ irf_estimation
 86_image_browser
 87_channel_definition
 88_structure_tools
-88_updater
+90_updater
 45_scan_precision
 55_pair_correlation
 ```
@@ -255,11 +254,10 @@ irf_estimation
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Spectroscopy menu), Förster calculator (TCSPC FRET κ² row → calc R0) |
 | [Finding spots and objects in an image](84_spot_finder.md) | `spot_finder` (Image Tools hub), `csc spot-finder`, `spot_finder.core.spots` |
 | [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (no menu; CLI/RPC), `core.fluorescence.mfd.prepare` |
-| [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
 | [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Imaging → Tools; Imaging Tools hub), `tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
 | [Structure Tools: FPS JSON editor, docking and QuEst](88_structure_tools.md) | `structure_tools` (Structure → Structure Tools), the structure-modelling hub |
-| [Updating ChiSurf](88_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
+| [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
 
 ## Regenerating the figures

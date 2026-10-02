@@ -82,7 +82,8 @@ class PackageWorker(QThread):
                 if len(result) == 3:
                     self.finished.emit(result[0], result[1], result[2])
                 elif len(result) == 2:
-                    self.finished.emit(result[0], result[1], "")
+                    # (success, output) -- on failure the output is the error text
+                    self.finished.emit(result[0], result[1], "" if result[0] else str(result[1]))
                 else:
                     self.finished.emit(True, result, "")
             else:

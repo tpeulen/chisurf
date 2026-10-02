@@ -199,7 +199,7 @@ class UpdaterModel(DialogMixin):
         self.exit_requested = False
         #: What the app has to do now: ``"package_manager"`` opens the package manager window.
         self.request = ""
-        self.package_manager_available = False
+        self.package_manager_available = True
         self.dev_checked = True
         self.ignore_updates, self._check_on_startup = load_startup_settings(cs_settings)
         update_url = cs_settings.get("update_url", HARDCODED_URL)
@@ -335,12 +335,12 @@ class UpdaterModel(DialogMixin):
         return True
 
     # -- slow work -------------------------------------------------------------------------------------------------- #
-    def _run(self, method: str) -> None:
+    def _run(self, method: str, *args: Any) -> None:
         """Run *method* in the background when the app set a runner, else now."""
-        if self.runner is not None and self.runner(method):
+        if self.runner is not None and self.runner(method, *args):
             self.busy = True
         elif self.runner is None:
-            getattr(self, method)()
+            getattr(self, method)(*args)
 
     def check_for_updates(self) -> None:
         """Check for Updates: list the available versions and say whether a newer one exists (in the background)."""

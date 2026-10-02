@@ -34,4 +34,4 @@ Opens the window for the packages, environments and channels of this installatio
 
 ## Further reading
 
-- [Updating ChiSurf](docs/guides/88_updater.md)
+- [Updating ChiSurf](docs/guides/90_updater.md)
