@@ -1,0 +1,4 @@
+ M chisurf/plugins/modelling/hydropro/manifest.json
+?? chisurf/plugins/modelling/hydropro/app.py
+?? chisurf/plugins/modelling/hydropro/strings.py
+?? chisurf/plugins/modelling/hydropro/test/test_native.py
