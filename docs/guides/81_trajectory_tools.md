@@ -141,8 +141,8 @@ The test does not exclude bonded atoms and uses no per-element radii (see the
 concept). Use it on a sparse set such as Cα, with a threshold below the 3.8 Å
 spacing of consecutive Cα atoms. On the example: 0 frames are flagged at
 3.0 Å, 132 at 3.5 Å, 420 at 3.7 Å and all 894 at 3.8 Å. On all heavy atoms,
-2.0 Å flags every frame because of the covalent bonds. The log does not say how
-many frames were kept, so read the output back to count them.
+2.0 Å flags every frame because of the covalent bonds. The log says how many
+frames were kept (*Kept N of M frames*).
 
 ## Rot Translate
 

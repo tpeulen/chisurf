@@ -1,66 +1,30 @@
 # Trajectory Clash Removal Plugin
 
-This plugin identifies and removes frames from molecular dynamics trajectories that contain steric clashes or 
-other structural problems.
+Writes a new DCD with only the frames of a molecular dynamics trajectory in which no two selected
+atoms are closer than a minimum distance.
 
 ## Features
 
-- Detection of atom-atom clashes based on van der Waals radii
-- Customizable clash criteria and thresholds
-- Ability to focus on specific regions or residues
-- Options to repair clashed frames or remove them entirely
-- Statistical reporting on the number and types of clashes
-- Visualization of clash locations in 3D structures
-- Batch processing capabilities
-
-## Overview
-
-The Trajectory Clash Removal plugin enables users to identify and remove frames from molecular dynamics trajectories 
-that contain steric clashes or other structural problems. Removing clashed frames is important for preparing clean 
-trajectories for further analysis, especially when working with modeled structures or trajectories from enhanced 
-sampling methods.
-
-The plugin provides a comprehensive interface for detecting clashes based on atom-atom distances and van der Waals 
-radii. Users can customize the clash criteria and thresholds to suit their specific needs, and can focus the analysis 
-on particular regions or residues of interest. When clashes are detected, users have the option to either repair the 
-clashed frames using energy minimization or other methods, or remove them entirely from the trajectory.
-
-The statistical reporting features provide insights into the number and types of clashes present in the trajectory, 
-helping users understand the nature of the structural problems. This information can be valuable for improving modeling 
-or simulation protocols in future work.
+- Pairwise distance test on an atom selection (e.g. `name CA`), one threshold in Ångström
+- No bond exclusion and no per-element radii: use a sparse selection
+- Stride; the kept frames keep their source times (written beside the DCD)
+- The log reports how many frames were kept
+- Chunked reading, so the trajectory need not fit in memory
 
 ## Requirements
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - mdtraj (for trajectory handling)
-  - matplotlib (for visualization)
-  - scipy (for clash detection algorithms)
-  - chisurf core modules
+- ChiSurf's trajectory readers and DCD writer (`chisurf.core.structure.trajectory_data`,
+  `chisurf.core.fio.trajectory`); no Qt for the emtk window (`app.py`), Qt only for the legacy
+  AutoForm widget (`widget.py`).
 
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Structure > Remove Clashed Frames
-2. Load a trajectory file:
-   - Click "Browse" to select an input trajectory file
-   - The file format will be automatically detected
-3. Configure clash detection settings:
-   - Set distance thresholds for clash detection
-   - Choose atom types to include in the analysis
-   - Select specific regions or residues to analyze (optional)
-   - Configure clash criteria (number of clashes, severity, etc.)
-4. Run the clash detection:
-   - Click "Detect Clashes" to analyze the trajectory
-   - View the results in the clash report panel
-5. Handle clashed frames:
-   - Choose to repair or remove clashed frames
-   - If repairing, configure the repair method
-   - If removing, select which frames to exclude
-6. Save the processed trajectory:
-   - Choose a directory and filename for the output
-   - Select the desired output format
-   - Click "Save" to write the cleaned trajectory to disk
+1. Open *Structure > Trajectory > Remove Clashed* (or the *Remove Clashed* panel of Traj Tools).
+2. Choose the trajectory (**…** or drop a `.dcd`) and its topology (**…** or drop a `.pdb`).
+3. Enter the atom selection, the stride and the minimum distance (Å).
+4. Press **💾 Save clash-free…** and pick the output `.dcd`; the log says *Kept N of M frames*.
+
+**📖 Guide** walks through these steps; **❓ Help** has the details.
 
 ## Applications
 

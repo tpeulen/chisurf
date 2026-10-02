@@ -1,6 +1,6 @@
 """Custom AutoForm section for the Remove-Clashed-Frames tool.
 
-The trajectory picker (``…`` browse + drag-drop, H5 filter) and the
+The trajectory picker (``…`` browse + drag-drop, DCD filter) and the
 ``💾 Save clash-free…`` action button are a bespoke Qt widget registered here;
 the atom-selection, stride, minimum distance and log are plain built-in sections
 in ``remove_clashes.view.json``. The widget owns only Qt concerns and drives the
@@ -51,7 +51,7 @@ class _IoSection(QtWidgets.QWidget):
         row.addWidget(self._edit, 1)
         browse = QtWidgets.QToolButton()
         browse.setText("…")
-        browse.setToolTip("Open an H5 trajectory file.")
+        browse.setToolTip("Open a DCD trajectory.")
         browse.clicked.connect(self._browse_trajectory)
         row.addWidget(browse)
         layout.addLayout(row)
@@ -81,7 +81,7 @@ class _IoSection(QtWidgets.QWidget):
         self._save_btn = QtWidgets.QToolButton()
         self._save_btn.setText(f"{Glyphs.SAVE} Save clash-free…")
         self._save_btn.setToolTip(
-            "Drop every frame that contains an atom-atom clash and write a new H5 trajectory."
+            "Drop every frame that contains an atom-atom clash and write a new DCD trajectory."
         )
         self._save_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self._save_btn.clicked.connect(self._save_clash_free)
@@ -131,7 +131,7 @@ class _IoSection(QtWidgets.QWidget):
             dialogs.information(self, "No trajectory", "Open a trajectory first.")
             return
         target, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "H5-Trajectory file", "", "H5-File (*.h5)"
+            self, "Save clash-free trajectory", "", "DCD trajectory (*.dcd)"
         )
         if not target:
             self._model.append_log("Save cancelled")

@@ -95,9 +95,8 @@ class RemoveClashesViewModel:
         self.atom_selection: str = "name CA and resSeq 1 to 256"
         #: Read every ``stride``-th frame of the source trajectory.
         self.stride: int = 1
-        #: Raw minimum-distance spin value; the consumed threshold (in the
-        #: trajectory's length unit, nm) is this value divided by ten — see
-        #: :meth:`min_distance_nm`.
+        #: Minimum allowed distance between two selected atoms, in Ångström
+        #: (the unit of the coordinates).
         self.min_distance: float = 2.85
         self._log: list[str] = []
         self._observers: list[Callable[[str], None]] = []
@@ -127,6 +126,10 @@ class RemoveClashesViewModel:
         lines = "<br>".join(html.escape(line) for line in self._log)
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
+    def log_text(self) -> list[str]:
+        """Return the raw log lines (bound by the native app; no HTML)."""
+        return list(self._log)
+
     # ── file wiring ─────────────────────────────────────────────────────
     def set_topology(self, filename: str) -> None:
         """Set the topology (PDB) that names the atoms, and notify observers."""
@@ -147,7 +150,7 @@ class RemoveClashesViewModel:
         The trajectory is read in chunks (so it need not fit in memory). For each
         chunk, :func:`below_min_distance` flags frames whose selected atoms come
         closer than :attr:`min_distance` (Å); frames with a flag ``< 1`` are kept
-        and appended to a fresh HDF5 trajectory.
+        and appended to a fresh DCD; the log says how many frames were kept.
 
         The kept frames carry their **own** source times rather than a running
         write counter, so the gaps left by the discarded frames — and the read
@@ -156,7 +159,7 @@ class RemoveClashesViewModel:
         Parameters
         ----------
         target_filename : str
-            Destination ``.h5`` trajectory path.
+            Destination ``.dcd`` trajectory path.
         """
         from chisurf.core.fio.trajectory import DCDWriter
         from chisurf.core.structure import trajectory_data as md
@@ -179,9 +182,11 @@ class RemoveClashesViewModel:
 
         writer = None
         kept_times: list[float] = []
+        n_read = 0
         try:
             for chunk in md.iterload(filename, chunk=chunk_size, stride=stride, top=topology):
                 xyz = chunk.xyz.copy()
+                n_read += chunk.n_frames
                 frames_below = below_min_distance(
                     xyz=xyz, min_distance=min_distance, atom_list=atom_list
                 )
@@ -207,6 +212,9 @@ class RemoveClashesViewModel:
                 # (RF-708).
                 writer.write_times(kept_times)
                 writer.close()
+        # Without the count the only way to learn what the threshold did was to
+        # read the output back.
+        self.append_log(f"Kept {len(kept_times)} of {n_read} frames (min distance {min_distance:g} Å)")
         self.append_log(f"Clash-free trajectory saved: {target_filename}")
 
 

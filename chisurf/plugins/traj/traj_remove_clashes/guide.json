@@ -1,0 +1,48 @@
+{
+  "_comment": "Guided tour for the Remove-Clashed-Frames tool. The file rows and the save button live inside the traj_remove_clashes_io custom section, so they are targeted by name; atom_selection, stride and min_distance are spec attrs. Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "Keep the frames without clashes",
+      "text": "A frame is dropped when any two selected atoms come closer than the minimum distance. Choose the files, the atoms and the threshold, save, and read how many frames were kept.",
+      "target": {}
+    },
+    {
+      "title": "The trajectory",
+      "text": "The DCD to filter. Press <b>…</b> beside the row, or drop a <code>.dcd</code> on the window.",
+      "target": {"name": "trajectory"},
+      "await": {"hint": "Press <b>…</b> and pick a trajectory."}
+    },
+    {
+      "title": "The topology",
+      "text": "Names the atoms of the DCD and resolves the selection below.",
+      "target": {"name": "topology"},
+      "await": {"hint": "Press <b>…</b> and pick the PDB that names the atoms."}
+    },
+    {
+      "title": "Which atoms",
+      "text": "Every pair of these atoms is tested. There is <b>no bond exclusion</b>: on all atoms, bonded neighbours already clash. A sparse set such as <code>name CA</code> is the usual choice.",
+      "target": {"attr": "atom_selection"}
+    },
+    {
+      "title": "Stride",
+      "text": "Read every Nth frame. The kept frames keep their source times.",
+      "target": {"attr": "stride"}
+    },
+    {
+      "title": "The threshold",
+      "text": "In Ångström. For Cα, stay below the 3.8 Å between consecutive residues — at 3.8 Å every frame clashes.",
+      "target": {"attr": "min_distance"}
+    },
+    {
+      "title": "Save",
+      "text": "Pick the output DCD; the clash-free frames are written.",
+      "target": {"name": "save"},
+      "await": {"hint": "Press <b>💾 Save clash-free…</b>."}
+    },
+    {
+      "title": "How many went",
+      "text": "The log says <b>Kept N of M frames</b>. If most of the ensemble went, lower the threshold or thin the selection.<br/><br/>The <b>?</b> button has the details.",
+      "target": {"name": "log"}
+    }
+  ]
+}
