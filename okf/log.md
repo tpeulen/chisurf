@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- 2026-10-02: games (audit-all row 48) upgrade evidence: the emtk launcher (sidebar, header with keys, game fills the area) at parity with the Qt games hub; compare exit 0 with the hub's row numbers, stepper, "Ready", placeholders and the not-yet-ported Breakout in deliberate.json; new `test_launcher_frames.py` (frames follow the open game) closed the one breakage miss; 161 passed. Report: `okf/plugins/emtk-ports/games/REPORT.md`.
+
 - **img_calibration emtk app at parity; Apply refuses bad windows and publishes a snapshot** (EMTK-1, upgrade row 47): the
   model's Apply passed a shallow copy (later edits leaked into the calibration Phasor/MLE had received) and published empty
   windows unchecked; fixed for both hosts. The emtk controls are the spec the Qt tool renders.

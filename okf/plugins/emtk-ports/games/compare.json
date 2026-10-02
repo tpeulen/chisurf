@@ -1,0 +1,35 @@
+{
+  "plugin": "games",
+  "explained": {
+    "1": "a row number of the Qt navigation list's item view, not a control",
+    "2": "a row number of the Qt navigation list's item view, not a control",
+    "3": "a row number of the Qt navigation list's item view, not a control",
+    "4": "a row number of the Qt navigation list's item view, not a control",
+    "5": "a row number of the Qt navigation list's item view, not a control",
+    "back": "the Qt NavigationPanelTool stepper (◀ Back / ⏩ / Next ▶) runs a panel's Run action and moves on: meaningless for games, not reproduced",
+    "breakout": "listed as 'Breakout (not available)' until its own emtk port lands (audit-all row 87; another stream's uncommitted work)",
+    "cancel": "the Qt NavigationPanelTool stepper (◀ Back / ⏩ / Next ▶) runs a panel's Run action and moves on: meaningless for games, not reproduced",
+    "next": "the Qt NavigationPanelTool stepper (◀ Back / ⏩ / Next ▶) runs a panel's Run action and moves on: meaningless for games, not reproduced",
+    "ready": "the Qt status bar's idle text",
+    "selectbreakouttoload.": "the Qt hub's placeholder for a panel it has not built yet; the launcher builds a game when it is selected",
+    "selectminesweepertoload.": "the Qt hub's placeholder for a panel it has not built yet; the launcher builds a game when it is selected",
+    "selectnumberquesttoload.": "the Qt hub's placeholder for a panel it has not built yet; the launcher builds a game when it is selected",
+    "selectpongtoload.": "the Qt hub's placeholder for a panel it has not built yet; the launcher builds a game when it is selected",
+    "selecttetristoload.": "the Qt hub's placeholder for a panel it has not built yet; the launcher builds a game when it is selected"
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "breakout(notavailable)",
+    "games",
+    "guessthehiddennumberinseventries.",
+    "keysleft/rightdial·q/estepsoften·entersubmit·rnewround"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 20,
+  "after_controls": 9
+}

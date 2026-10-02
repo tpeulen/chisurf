@@ -1,0 +1,48 @@
+{
+  "controls": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "back",
+    "breakout",
+    "cancel",
+    "minesweeper",
+    "next",
+    "numberquest",
+    "pong",
+    "ready",
+    "selectbreakouttoload.",
+    "selectminesweepertoload.",
+    "selectnumberquesttoload.",
+    "selectpongtoload.",
+    "selecttetristoload.",
+    "sound",
+    "tetris"
+  ],
+  "labels": [
+    "Ready",
+    "Select Breakout to load.",
+    "Select Minesweeper to load.",
+    "Select Number Quest to load.",
+    "Select Pong to load.",
+    "Select Tetris to load."
+  ],
+  "buttons": [
+    "Cancel",
+    "Next ▶",
+    "Sound",
+    "⏩",
+    "◀ Back"
+  ],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 1,
+  "entrypoint": "HEAD:chisurf.plugins.misc.games.gui.tool:GamesWidget (+HEAD no overlays)",
+  "size": [
+    1200,
+    800
+  ]
+}

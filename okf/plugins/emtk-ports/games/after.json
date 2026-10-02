@@ -1,0 +1,54 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "breakout(notavailable)",
+    "games",
+    "guessthehiddennumberinseventries.",
+    "keysleft/rightdial·q/estepsoften·entersubmit·rnewround",
+    "minesweeper",
+    "numberquest",
+    "pong",
+    "sound",
+    "tetris"
+  ],
+  "interactive": [
+    {
+      "kind": "selectable",
+      "label": "Number Quest",
+      "id": "Number Quest##game-Number Quest",
+      "tooltip": "Guess the hidden number in seven tries."
+    },
+    {
+      "kind": "selectable",
+      "label": "Minesweeper",
+      "id": "Minesweeper##game-Minesweeper",
+      "tooltip": "Clear a minefield without triggering a mine; board size is configurable."
+    },
+    {
+      "kind": "selectable",
+      "label": "Tetris",
+      "id": "Tetris##game-Tetris",
+      "tooltip": "Classic falling-block puzzle with line clearing and score tracking."
+    },
+    {
+      "kind": "selectable",
+      "label": "Pong",
+      "id": "Pong##game-Pong",
+      "tooltip": "Classic Pong against a CPU opponent, with sound and particle effects."
+    },
+    {
+      "kind": "selectable",
+      "label": "Breakout (not available)",
+      "id": "Breakout (not available)##game-Breakout",
+      "tooltip": "Classic Breakout with progressive difficulty and multiple brick types."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
