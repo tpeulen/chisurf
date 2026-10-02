@@ -1,0 +1,52 @@
+{
+  "plugin": "img_pixel_nb",
+  "factory": "chisurf.plugins.microscopy.img_pixel_nb.gui.app:make_app",
+  "tests": {
+    "count": 7,
+    "result": "passed",
+    "seconds": 5.51
+  },
+  "qt_isolation": {
+    "result": "pass",
+    "sizes": [
+      [
+        1200,
+        800
+      ],
+      [
+        800,
+        600
+      ]
+    ],
+    "qt_modules": []
+  },
+  "numeric_evidence": [
+    "Independent sample variance/mean and mean-squared/variance, both detector windows",
+    "Cross N&B shape and independent window retention",
+    "Synthetic actual PTU monomer/dimer brightness and number ground truth",
+    "Real Leica source direct scanner stack equals native maps",
+    "HDF5 and PTO pixel table readback equals computed maps",
+    "Analog static-gradient gain calibration"
+  ],
+  "workflow_evidence": [
+    "Worker snapshot does not mutate UI state",
+    "Cancellation discards unfinished maps",
+    "File open does not compute synchronously",
+    "State and gates round trip",
+    "All ten views render in all six locales with Qt imports blocked",
+    "ndX callback and native pipeline Next",
+    "MMFDB output registration metadata and duplicate suppression",
+    "Draggable rectangle, ellipse center/axes/rotation and polygon vertex gates",
+    "Movie frame scrub, fps, play-once/loop and stop/rewind"
+  ],
+  "tooltips": "All plugin buttons, scientific fields, gate fields, selectors and imported common canvas controls have tooltip text; long scientific field descriptions reused from Qt metadata.",
+  "reference": "okf/plugins/emtk-references/img_pixel_nb_populated.png",
+  "native": "okf/plugins/emtk-native/img_pixel_nb.png",
+  "visual_score": 92,
+  "remaining_gaps": [
+    "No live MMFDB service round trip exercised; registration verified through an injected adapter.",
+    "Locale rendering uses all existing ChiSurf catalogs; strings missing from those catalogs retain English fallback.",
+    "Cancellation is cooperative at detector-window checkpoints and cannot interrupt a running native scanner fill."
+  ],
+  "full_workflow_parity_verified": false
+}

@@ -10,6 +10,7 @@ import numpy as np
 from chisurf.core.fluorescence.imaging import (
     add_maps_to_hdf5,
     build_clsm,
+    clsm_intensity_counts,
     nb_pipeline,
 )
 
@@ -39,7 +40,7 @@ def compute_nb(
 
     tttr = tttrlib.TTTR(filename)
     clsm = build_clsm(tttr, channels=tuple(channels))
-    intensity = np.asarray(clsm.get_intensity(), dtype=float)
+    intensity = clsm_intensity_counts(clsm)
     maps = nb_pipeline(intensity, params)
     maps["intensity"] = intensity.sum(axis=0) if intensity.ndim == 3 else intensity
     return {"maps": maps, "shape": maps["N"].shape}

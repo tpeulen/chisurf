@@ -1,0 +1,33 @@
+diff --git a/chisurf/plugins/microscopy/img_pixel_nb/core.py b/chisurf/plugins/microscopy/img_pixel_nb/core.py
+index 06051d96e..cb5491648 100644
+--- a/chisurf/plugins/microscopy/img_pixel_nb/core.py
++++ b/chisurf/plugins/microscopy/img_pixel_nb/core.py
+@@ -10,6 +10,7 @@ import numpy as np
+ from chisurf.core.fluorescence.imaging import (
+     add_maps_to_hdf5,
+     build_clsm,
++    clsm_intensity_counts,
+     nb_pipeline,
+ )
+ 
+@@ -39,7 +40,7 @@ def compute_nb(
+ 
+     tttr = tttrlib.TTTR(filename)
+     clsm = build_clsm(tttr, channels=tuple(channels))
+-    intensity = np.asarray(clsm.get_intensity(), dtype=float)
++    intensity = clsm_intensity_counts(clsm)
+     maps = nb_pipeline(intensity, params)
+     maps["intensity"] = intensity.sum(axis=0) if intensity.ndim == 3 else intensity
+     return {"maps": maps, "shape": maps["N"].shape}
+diff --git a/chisurf/plugins/microscopy/img_pixel_nb/manifest.json b/chisurf/plugins/microscopy/img_pixel_nb/manifest.json
+index 25b3ab57b..8002ba392 100644
+--- a/chisurf/plugins/microscopy/img_pixel_nb/manifest.json
++++ b/chisurf/plugins/microscopy/img_pixel_nb/manifest.json
+@@ -19,6 +19,7 @@
+     }
+   },
+   "entrypoints": {
++    "emtk": "chisurf.plugins.microscopy.img_pixel_nb.gui.app:make_app",
+     "gui": "chisurf.plugins.microscopy.img_pixel_nb.gui.tool:ImgPixelNBTool",
+     "cli": "img-pixel-nb=chisurf.plugins.microscopy.img_pixel_nb.cli:cli"
+   },
