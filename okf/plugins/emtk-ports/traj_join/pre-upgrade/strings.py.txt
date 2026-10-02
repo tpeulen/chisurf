@@ -1,0 +1,10 @@
+from emtk import i18n
+
+_CATALOGS = {"de": {"Join Trajectories":"Trajektorien verbinden", "Join trajectories":"Trajektorien verbinden", "Trajectory 1":"Trajektorie 1", "Trajectory 2":"Trajektorie 2", "Topology":"Topologie", "Output":"Ausgabe", "Save joined trajectory":"Verbundene Trajektorie speichern", "Log":"Protokoll", "Joined trajectory saved":"Verbundene Trajektorie gespeichert"}, "fr": {"Join Trajectories":"Joindre les trajectoires", "Join trajectories":"Joindre les trajectoires", "Trajectory 1":"Trajectoire 1", "Trajectory 2":"Trajectoire 2", "Topology":"Topologie", "Output":"Sortie", "Save joined trajectory":"Enregistrer la trajectoire jointe", "Log":"Journal", "Joined trajectory saved":"Trajectoire jointe enregistrée"}, "es": {"Join Trajectories":"Unir trayectorias", "Join trajectories":"Unir trayectorias", "Trajectory 1":"Trayectoria 1", "Trajectory 2":"Trayectoria 2", "Topology":"Topología", "Output":"Salida", "Save joined trajectory":"Guardar trayectoria unida", "Log":"Registro", "Joined trajectory saved":"Trayectoria unida guardada"}, "pt": {"Join Trajectories":"Juntar trajetórias", "Join trajectories":"Juntar trajetórias", "Trajectory 1":"Trajetória 1", "Trajectory 2":"Trajetória 2", "Topology":"Topologia", "Output":"Saída", "Save joined trajectory":"Guardar trajetória junta", "Log":"Registo", "Joined trajectory saved":"Trajetória junta guardada"}, "ru": {"Join Trajectories":"Объединить траектории", "Join trajectories":"Объединить траектории", "Trajectory 1":"Траектория 1", "Trajectory 2":"Траектория 2", "Topology":"Топология", "Output":"Вывод", "Save joined trajectory":"Сохранить объединённую траекторию", "Log":"Журнал", "Joined trajectory saved":"Траектория сохранена"}}
+
+def install_translations():
+    for locale, values in _CATALOGS.items():
+        i18n.add_translations(locale, values, context="Join Trajectories")
+
+def tr(text):
+    return i18n.tr(text, context="Join Trajectories")

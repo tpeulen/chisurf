@@ -1,0 +1,40 @@
+{
+  "controls": [
+    "byatoms(stack)",
+    "bytime(appendframes)",
+    "chunksize",
+    "joinmode",
+    "jointrajectories",
+    "reversetrajectory1",
+    "reversetrajectory2",
+    "savejoined",
+    "topology",
+    "trajectory1",
+    "trajectory2"
+  ],
+  "labels": [
+    "Chunk size",
+    "Join mode",
+    "Reverse trajectory 1",
+    "Reverse trajectory 2",
+    "Topology",
+    "Trajectory 1",
+    "Trajectory 2"
+  ],
+  "buttons": [
+    "By atoms (stack)",
+    "By time (append frames)",
+    "…",
+    "▼  Join trajectories",
+    "💾 Save joined…"
+  ],
+  "line_edits": 4,
+  "combos": 0,
+  "spin_boxes": 1,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.traj.traj_join.widget:JoinTrajectoriesWidget (+HEAD view_model, sections)",
+  "size": [
+    1200,
+    800
+  ]
+}

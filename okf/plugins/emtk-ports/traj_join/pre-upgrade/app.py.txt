@@ -1,0 +1,68 @@
+"""Native EMTK trajectory joiner."""
+from __future__ import annotations
+
+from emtk import im
+from emtk.app import ImApp
+
+from .strings import install_translations, tr
+from .view_model import JoinTrajectoriesViewModel
+
+install_translations()
+
+
+class JoinTrajectoriesApp(ImApp):
+    def __init__(self, model=None):
+        self.model = model or JoinTrajectoriesViewModel()
+        self.target = ""
+        self.message = ""
+        super().__init__(self.render)
+
+    def render(self):
+        im.begin(tr("Join Trajectories"), (0, 0, *im.get_main_viewport().size))
+        im.heading(tr("Join trajectories"), level=2)
+        for label, attr, tip in (("Trajectory 1", "trajectory_filename_1", "First input trajectory"), ("Trajectory 2", "trajectory_filename_2", "Second input trajectory"), ("Topology", "topology_filename", "Optional topology naming the atoms"), ("Output", "target", "Destination trajectory file")):
+            im.text(tr(label))
+            im.same_line()
+            im.set_next_item_width(440)
+            changed, value = im.input_text("##" + attr, str(getattr(self, attr) if attr == "target" else getattr(self.model, attr)))
+            im.set_item_tooltip(tr(tip))
+            if changed:
+                if attr == "target":
+                    self.target = value
+                else:
+                    setattr(self.model, attr, value)
+        changed, mode = im.combo("##join_mode", ["time", "atoms"].index(self.model.join_mode), ["time", "atoms"])
+        im.set_item_tooltip(tr("Join along time or atom axis"))
+        if changed:
+            self.model.join_mode = ["time", "atoms"][mode]
+        changed, self.model.reverse_traj_1 = im.checkbox(tr("Reverse trajectory 1"), self.model.reverse_traj_1)
+        im.set_item_tooltip(tr("Reverse frames from the first trajectory"))
+        changed, self.model.reverse_traj_2 = im.checkbox(tr("Reverse trajectory 2"), self.model.reverse_traj_2)
+        im.set_item_tooltip(tr("Reverse frames from the second trajectory"))
+        if im.button(tr("Save joined trajectory")):
+            try:
+                self.model.save_joined(self.target)
+                self.message = tr("Joined trajectory saved")
+            except Exception as exc:
+                self.message = f"{type(exc).__name__}: {exc}"
+        im.set_item_tooltip(tr("Join both trajectories and write the output"))
+        if self.message:
+            im.text_wrapped(self.message)
+        im.separator()
+        im.heading(tr("Log"), level=2)
+        for line in self.model.log_text():
+            im.text(line)
+        im.end()
+
+    def export_settings(self):
+        return {"trajectory_filename_1": self.model.trajectory_filename_1, "trajectory_filename_2": self.model.trajectory_filename_2, "topology_filename": self.model.topology_filename, "join_mode": self.model.join_mode, "target": self.target}
+
+    def restore_settings(self, settings):
+        for key in ("trajectory_filename_1", "trajectory_filename_2", "topology_filename", "join_mode"):
+            if key in settings:
+                setattr(self.model, key, settings[key])
+        self.target = str(settings.get("target", ""))
+
+
+def make_app():
+    return JoinTrajectoriesApp()
