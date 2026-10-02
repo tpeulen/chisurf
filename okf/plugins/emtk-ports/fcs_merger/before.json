@@ -1,0 +1,46 @@
+{
+  "controls": [
+    "?",
+    "back",
+    "cancel",
+    "clear",
+    "commit",
+    "correlationmerging",
+    "cra(khz)",
+    "crb(khz)",
+    "duration(s)",
+    "file",
+    "finish",
+    "guide",
+    "help",
+    "next>",
+    "save",
+    "target",
+    "use"
+  ],
+  "labels": [
+    "Correlation merging",
+    "Target"
+  ],
+  "buttons": [
+    "&Finish",
+    "&Next >",
+    "< &Back",
+    "?",
+    "Cancel",
+    "Commit",
+    "Guide",
+    "clear",
+    "help",
+    "save"
+  ],
+  "line_edits": 2,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 3,
+  "entrypoint": "chisurf.plugins.fcs.fcs_merger.wizard:ChisurfWizard",
+  "size": [
+    1200,
+    800
+  ]
+}

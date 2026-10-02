@@ -1,0 +1,3 @@
+ M chisurf/plugins/fcs/fcs_merger/manifest.json
+?? chisurf/plugins/fcs/fcs_merger/gui/app.py
+?? chisurf/plugins/fcs/fcs_merger/test/test_emtk.py

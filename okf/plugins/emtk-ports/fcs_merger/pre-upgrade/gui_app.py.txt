@@ -1,0 +1,333 @@
+"""Native EMTK curve screening, averaging and Kristine export."""
+
+from __future__ import annotations
+
+import gzip
+import json
+import re
+from pathlib import Path
+
+import numpy as np
+from emtk import im, implot
+from emtk.app import ImApp
+from emtk.docking import DockManager, Region, Split
+from emtk.file_dialog import FileDialog
+
+from chisurf.core.fluorescence.fcs.merge import _correlation_from_cor_array
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
+
+from ..api import compute_average_correlations, save_mean_correlation
+
+
+class MergerApp(ImApp):
+    def __init__(self, add_dataset=None):
+        self.correlations = []
+        self.labels = []
+        self.use = []
+        self.selected = -1
+        self.folder = ""
+        self.output = ""
+        self.message = ""
+        self.add_dataset = add_dataset
+        self.restored_selection = None
+        self.job = BackgroundJob()
+        self.dialog = None
+        self.dialog_callback = None
+        self.help = EmTkHelpWindow(
+            title="FCS merger help", resource=Path(__file__).parents[1] / "help.md"
+        )
+        self.tour = EmTkGuidedTour(steps=Path(__file__).parents[1] / "guide.json")
+        self.docks = DockManager(
+            Split("h", 0.36, Region("files"), Split("v", 0.5, Region("curves"), Region("mean")))
+        )
+        self.docks.add_window("files", "Curves and output", self.draw_files, dock="files")
+        self.docks.add_window("curves", "Individual correlations", self.draw_curves, dock="curves")
+        self.docks.add_window("mean", "Merged correlation", self.draw_mean, dock="mean")
+        super().__init__(gui=self.render, continuous=True)
+
+    @property
+    def mean_correlation(self):
+        selected = [c for c, enabled in zip(self.correlations, self.use) if enabled]
+        if not selected:
+            selected = self.correlations
+        if not selected:
+            return None
+        return compute_average_correlations(selected)
+
+    @staticmethod
+    def validate_correlations(correlations):
+        axis = None
+        for curve in correlations:
+            x = np.asarray(curve["x"], dtype=float)
+            y = np.asarray(curve["y"], dtype=float)
+            if x.ndim != 1 or y.ndim != 1 or len(x) != len(y) or len(x) < 2:
+                raise ValueError(
+                    "Each correlation needs matching one-dimensional lag and correlation arrays."
+                )
+            if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
+                raise ValueError("Correlation data must contain finite lag times and values.")
+            if axis is not None and (
+                len(x) != len(axis) or not np.allclose(x, axis, rtol=1e-9, atol=0)
+            ):
+                raise ValueError("Curves must share the same lag grid; resample before averaging.")
+            axis = x
+
+    def set_correlations(self, correlations, source_folder=None, labels=None):
+        self.validate_correlations(correlations)
+        self.correlations = correlations
+        self.labels = labels or [f"Curve {i + 1}" for i in range(len(correlations))]
+        self.use = [True] * len(correlations)
+        self.selected = 0 if correlations else -1
+        if source_folder:
+            self.folder = str(source_folder)
+            stem = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(source_folder).stem)
+            self.output = str(
+                Path(source_folder).parent
+                / ((stem if stem not in {"", ".", "..", "_"} else "correlation") + ".cor")
+            )
+
+    def load_folder(self, folder):
+        if self.job.running:
+            return False
+
+        def work():
+            curves, labels, errors = [], [], []
+            for path in sorted(Path(folder).glob("*.json.gz")) + sorted(Path(folder).glob("*.cor")):
+                try:
+                    if path.name.endswith(".json.gz"):
+                        with gzip.open(path, "rt") as stream:
+                            curve = json.load(stream)
+                    else:
+                        curve = _correlation_from_cor_array(np.loadtxt(path, delimiter="\t"))
+                    curves.append(curve)
+                    labels.append(path.name)
+                except Exception as exc:
+                    errors.append(f"{path.name}: {exc}")
+            if not curves:
+                raise ValueError("No readable .cor or .json.gz curves found.")
+            self.validate_correlations(curves)
+            return curves, labels, errors
+
+        def publish(result):
+            self.set_correlations(result[0], folder, result[1])
+            if self.restored_selection is not None:
+                state = self.restored_selection
+                if len(state.get("use", [])) == len(self.use):
+                    self.use = list(state["use"])
+                self.output = str(state.get("output") or self.output)
+                self.selected = min(int(state.get("selected", 0)), len(self.correlations) - 1)
+                self.restored_selection = None
+            self.message = f"Loaded {len(result[0])} curves." + (
+                " Skipped: " + "; ".join(result[2]) if result[2] else ""
+            )
+
+        return self.job.start(work, publish, lambda exc: setattr(self, "message", str(exc)))
+
+    def save(self, filename=None, add=False):
+        if self.job.running:
+            return False
+        mean = self.mean_correlation
+        if mean is None:
+            self.message = "Load curves first."
+            return False
+        output = Path(filename or self.output)
+
+        def publish(_):
+            self.message = f"Saved {output}"
+            if add:
+                if self.add_dataset:
+                    self.add_dataset(output)
+                else:
+                    from chisurf.core.actions import dispatch
+
+                    dispatch(name="experiment.set", payload={"name": "FCS"})
+                    dispatch(name="setup.select", payload={"name": "Seidel Kristine"})
+                    dispatch(
+                        name="dataset.add",
+                        payload={"filename": str(output), "experiment_reader": None},
+                    )
+
+        return self.job.start(
+            lambda: save_mean_correlation(mean, output),
+            publish,
+            lambda exc: setattr(self, "message", f"Export failed: {exc}"),
+        )
+
+    def choose(self, mode, callback):
+        self.dialog = FileDialog(
+            "Correlation folder" if mode == "folder" else "Save merged correlation",
+            mode=mode,
+            filters="Correlation (*.cor)",
+        )
+        self.dialog_callback = callback
+
+    def button(self, label, tip, callback):
+        if im.button(label):
+            callback()
+        im.set_item_tooltip(tip)
+
+    def draw_files(self, box):
+        self.button(
+            "Open folder…",
+            "Load .cor and legacy compressed JSON curves from a folder.",
+            lambda: self.choose("folder", lambda paths: self.load_folder(paths[0])),
+        )
+        self.button("Clear", "Remove all curves and the current merge.", self.clear)
+        self.button("Guide", "Walk through screening and merging acquisitions.", self.tour.start)
+        self.button("Help", "Read screening and averaging guidance.", self.help.show)
+        im.text("Correlation folder:")
+        im.set_next_item_width(-1)
+        _, self.folder = im.input_text_with_hint(
+            "##folder", self.folder, "Folder containing .cor / .json.gz chunks"
+        )
+        im.set_item_tooltip("Source folder containing correlation chunks.")
+        self.button(
+            "Load folder", "Load the folder typed above.", lambda: self.load_folder(self.folder)
+        )
+        for i, (label, curve) in enumerate(zip(self.labels, self.correlations)):
+            changed, enabled = im.checkbox(f"##use{i}", self.use[i])
+            im.set_item_tooltip("Include this acquisition in the merged curve.")
+            if changed:
+                self.use[i] = enabled
+            im.same_line()
+            if im.selectable(f"{label}##curve{i}", i == self.selected):
+                self.selected = i
+            if im.is_item_hovered() and im.is_mouse_double_clicked(0):
+                self.use[i] = not self.use[i]
+            im.set_item_tooltip(
+                f"Click to highlight, double-click to toggle inclusion; duration {float(curve.get('duration', 0)):.2f} s, count rate {float(curve.get('count_rate', 0)):.2f} kHz."
+            )
+            duration = float(curve.get("duration", 0))
+            rates = [
+                (float(curve.get(channel, {}).get("counts", 0)) / duration / 1000)
+                if duration > 0
+                else 0
+                for channel in ("channel_a", "channel_b")
+            ]
+            im.text_disabled(f"A {rates[0]:.2f} / B {rates[1]:.2f} kHz · {duration:.2f} s")
+            if im.begin_popup_context_item(f"curve-menu{i}"):
+                if im.menu_item("Toggle inclusion"):
+                    self.use[i] = not self.use[i]
+                im.set_item_tooltip("Include or exclude this acquisition.")
+                if im.menu_item("Remove curve"):
+                    for values in (self.correlations, self.labels, self.use):
+                        values.pop(i)
+                    self.selected = min(self.selected, len(self.correlations) - 1)
+                im.set_item_tooltip(
+                    "Remove the curve from this session without deleting its source."
+                )
+                im.end_popup()
+        if self.correlations and not any(self.use):
+            im.text_wrapped(
+                "No curves checked: averaging all curves, matching the original merger."
+            )
+        im.text("Output correlation file:")
+        im.set_next_item_width(-1)
+        _, self.output = im.input_text_with_hint(
+            "##output", self.output, "Merged correlation .cor filename"
+        )
+        im.set_item_tooltip(
+            "Kristine-format output path, including acquisition time and count rate."
+        )
+        self.button(
+            "Save merged", "Write the selected mean and uncertainty to the output file.", self.save
+        )
+        self.button(
+            "Save as…",
+            "Choose a different output filename.",
+            lambda: self.choose("save", lambda paths: self.save(paths[0])),
+        )
+        self.button(
+            "Add to ChiSurf",
+            "Save the current mean and add it to FCS datasets.",
+            lambda: self.save(add=True),
+        )
+        if self.job.running:
+            self.button(
+                "Stop",
+                "Discard pending load results; an export already writing may finish.",
+                self.job.stop,
+            )
+        im.text_wrapped(self.message)
+
+    def draw_curves(self, box):
+        if implot.begin_plot("##individual", (-1, -1)):
+            implot.setup_axes("Lag time", "Correlation")
+            implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
+            for i, curve in enumerate(self.correlations):
+                color = (
+                    (150, 150, 150, 255)
+                    if not self.use[i]
+                    else (60 + (i * 45) % 160, 180, 230, 255)
+                )
+                implot.plot_line(
+                    self.labels[i],
+                    np.asarray(curve["x"]),
+                    np.asarray(curve["y"]),
+                    spec=implot.PlotSpec(
+                        line_color=color,
+                        line_weight=3 if i == self.selected else 1,
+                        dash=(5, 4) if not self.use[i] else None,
+                    ),
+                )
+            implot.end_plot()
+
+    def draw_mean(self, box):
+        if implot.begin_plot("##merged", (-1, -1)):
+            implot.setup_axes("Lag time", "Correlation")
+            implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
+            mean = self.mean_correlation
+            if mean is not None:
+                implot.plot_line("Mean", mean["x"], mean["y"])
+            implot.end_plot()
+
+    def clear(self):
+        self.job.stop()
+        self.set_correlations([])
+        self.folder = self.output = self.message = ""
+
+    def export_state(self):
+        return {
+            "folder": self.folder,
+            "output": self.output,
+            "use": list(self.use),
+            "selected": self.selected,
+        }
+
+    def restore_state(self, state):
+        self.folder = str(state.get("folder", ""))
+        self.output = str(state.get("output", ""))
+        self.restored_selection = dict(state)
+        if self.folder and Path(self.folder).is_dir():
+            self.load_folder(self.folder)
+        elif len(state.get("use", [])) == len(self.use):
+            self.use = list(state["use"])
+            self.restored_selection = None
+
+    def render(self):
+        self.job.poll()
+        vp = im.get_main_viewport()
+        frame = (0.0, 0.0, *vp.size)
+        self.docks.draw(frame)
+        if self.help.open:
+            self.help.draw(frame)
+        if self.tour.active:
+            self.tour.draw(*vp.size)
+        if self.dialog:
+            if im.begin("Choose correlation path"):
+                result = self.dialog.draw()
+                if result:
+                    callback = self.dialog_callback
+                    self.dialog = None
+                    callback(result)
+                elif result is False:
+                    self.dialog = None
+            im.end()
+
+    def close(self):
+        self.job.close()
+
+
+def create_app(add_dataset=None):
+    return MergerApp(add_dataset=add_dataset)
