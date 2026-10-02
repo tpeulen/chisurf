@@ -28,6 +28,8 @@
 
 ## 2026-10-01
 
+- 2026-10-02: **ndX default axes follow the table** ([concept](plugins/ndxplorer-emtk-port.md)). Pixel tables open on the phasor (image mode then shows the image, Tau on z); bursts on Tau vs E, E vs S or E vs FRET-2CDE by their columns. Saved defaults are kept per data kind, and x/y/z are distinct. An axis without settings resets bins and scale, fixing striped E-S maps after an image. ndxplorer 7686fd8, 4f76c8a, 39e8e9e.
+
 - **tttr_image_browser emtk app upgraded to verified parity, layout and real input as acceptance criteria** (IMGBROWSER, audit row 81): the stream's app opened on the detector-setup page, hid the
   browser behind a tab, stacked 14 full-width controls, drew the list by hand and could not zoom with the wheel. Now the browser is the first page: a toolbar row, a Files column (`data_table` with
   filter, sort, rating, annotation, multi-selection) and an image window (wheel zoom about the pointer, drag pan, colormap, gamma, display levels as a histogram with two draggable lines, tile labels),

@@ -22,6 +22,37 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Default axes follow the table (2026-10-02)
+
+State: `ndxplorer/app/default_view.py` (`choose_axes`) decides what a table
+opens on, called from `ExplorerModel._apply_default_axes` (ndxplorer 7686fd8,
+4f76c8a, 39e8e9e).
+- **Order:**
+  1. The user's saved axes *for this kind of table* (`default_axes` for
+     bursts; `default_axes_image` for pixel tables, written by Settings >
+     Set default axis via `persist.write_default_axes(kind=...)`).
+  2. The first fitting view of `DEFAULT_VIEWS`, which the settings'
+     `default_views` can replace: phasor g/s (corrected first) for pixel
+     tables; Tau vs E (MFD), E vs S (ALEX/PIE) or E vs FRET-2CDE (cw) for
+     bursts.
+  3. The first varying, non-index columns.
+- **Matching:** presets match exact names, ignoring case. A substring match
+  is a trap: `s (green)` is inside `Number of Photons (green)`.
+- **Images:** for a pixel table with geometry, the io feature's image mode
+  then puts x pixel / y pixel on x/y and keeps z (Tau). That is deliberate
+  and not overridden.
+- **Fixed alongside:** `_setup_axis` without settings now resets bins and
+  scale. A burst table opened after an image had kept 256 pixel bins on
+  Stoichiometry, against E's 31, and the E-S map came out as stripes.
+- **Tests:** `tests/test_app/test_default_view.py`.
+- **Re-derive:** open `parity/.cache/data/image_test.h5`, then a burst table
+  without lifetimes (smfret-web's simulated µsALEX): the second must open on
+  E vs S at default bins.
+- **Open:**
+  - Default *colormap* and *log* per view are not chosen yet. An E-S map
+    with a few hundred bursts might read better with log counts.
+  - No per-kind weight toggle.
+
 ### Qt GUI deleted (2026-10-02)
 
 State: ndX has no Qt. Deleted from ndxplorer: `core/plot_main.py`,
