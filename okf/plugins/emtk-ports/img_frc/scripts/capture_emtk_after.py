@@ -39,6 +39,7 @@ def run(app, drv, **settings):
 
 
 def shot(app, name, size=SIZE):
+    app.pointer_move(-1.0, -1.0)  # no hover highlight under a leftover pointer position
     emtk_screenshot(app, out / f"after_populated_{name}_{size[0]}x{size[1]}.png", size)
 
 
@@ -88,4 +89,4 @@ if len(sys.argv) < 3 or sys.argv[2] != "docs":
 
 # the figure of docs/guides/51_frc_resolution.md: the photon stream, even / odd frames, 25 nm pixels
 app, drv = fresh(); load(app, drv, HT3); run(app, drv, pixel_size_nm=25.0)
-app.docks.focus("Halves"); emtk_screenshot(app, out / "docs_frc_workspace.png", SIZE)
+app.docks.focus("Halves"); app.pointer_move(-1.0, -1.0); emtk_screenshot(app, out / "docs_frc_workspace.png", SIZE)

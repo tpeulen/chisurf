@@ -33,6 +33,7 @@ def load(app, drv, path):
 
 
 def shot(app, name, size=SIZE):
+    app.pointer_move(-1.0, -1.0)  # no hover highlight under a leftover pointer position
     emtk_screenshot(app, out / f"after_populated_{name}_{size[0]}x{size[1]}.png", size)
 
 
@@ -82,8 +83,8 @@ if len(sys.argv) < 3 or sys.argv[2] != "docs":
 import numpy as np
 from PIL import Image
 app, drv = fresh(); load(app, drv, tif)
-app.docks.focus("Drift trace"); emtk_screenshot(app, out / "docs_drift_workspace.png", SIZE)
-app.docks.focus("Projection"); emtk_screenshot(app, out / "projection_full.png", SIZE)
+app.docks.focus("Drift trace"); app.pointer_move(-1.0, -1.0); emtk_screenshot(app, out / "docs_drift_workspace.png", SIZE)
+app.docks.focus("Projection"); app.pointer_move(-1.0, -1.0); emtk_screenshot(app, out / "projection_full.png", SIZE)
 drv.draw(3)
 full = Image.open(out / "projection_full.png").convert("RGB")
 for key, name in (("before.image", "drift_before"), ("after.image", "drift_after")):

@@ -187,3 +187,5 @@ Defect found in my first draft of the shared shell and fixed by the click tests:
 ## 11. Self-check against the Definition of Done
 
 D1 yes (4). D2 yes (2, 5). D3 yes (4). D4 yes (7). D5 yes (6, 8). D6 yes (9). D7 yes (9). D8 yes (9). D9 yes (6). D10: report, evidence, board.
+
+Evidence refreshed at the end of the imaging-family stream: every screenshot, `after.json` and `compare.json` were regenerated with the final shared shell (typed numbers kept to the decimals the field shows, wrapped messages, the file chooser as a titled window, an axis refit when a plot's data changes, the pointer parked off the window). Numbers, test counts and the compare result are those stated above.

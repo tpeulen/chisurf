@@ -44,21 +44,21 @@ for tab in ("Movie", "Trajectories", "MSD", "Track lengths", "Tracks"):
     draw(app, (1200, 800))
     inv = emtk_inventory(app, (1200, 800))
     union |= set(inv["controls"]); interactive += inv["interactive"]; missing |= set(inv["controls_without_tooltip"])
-    emtk_screenshot(app, out / f"after_populated_{tab.replace(' ', '_')}_1200x800.png", (1200, 800))
+    (app.pointer_move(-1.0, -1.0), emtk_screenshot)(app, out / f"after_populated_{tab.replace(' ', '_')}_1200x800.png", (1200, 800))
     if tab == "Movie":  # the colormap list opened: its entries are controls too
         drv = Driver(app, (1200, 800))
         combo = [t for t in drv.draw(2).texts if t[5] == "magma"][0][:4]
         drv.click_at(combo[0] + 10, combo[1] + combo[3] / 2)
         union |= set(emtk_inventory(app, (1200, 800))["controls"])
-        emtk_screenshot(app, out / "after_populated_Movie_colormap_open_1200x800.png", (1200, 800))
+        (app.pointer_move(-1.0, -1.0), emtk_screenshot)(app, out / "after_populated_Movie_colormap_open_1200x800.png", (1200, 800))
         drv.escape()
     if tab in ("Movie", "MSD"):
-        emtk_screenshot(app, out / f"after_populated_{tab.replace(' ', '_')}_800x600.png", (800, 600))
+        (app.pointer_move(-1.0, -1.0), emtk_screenshot)(app, out / f"after_populated_{tab.replace(' ', '_')}_800x600.png", (800, 600))
 drv = Driver(app, (1200, 800))
 app.docks.focus("Movie")
 drv.click("method")  # the detector list opened
 union |= set(emtk_inventory(app, (1200, 800))["controls"])
-emtk_screenshot(app, out / "after_populated_detector_list_open_1200x800.png", (1200, 800))
+(app.pointer_move(-1.0, -1.0), emtk_screenshot)(app, out / "after_populated_detector_list_open_1200x800.png", (1200, 800))
 drv.escape()
 (out / "after.json").write_text(json.dumps({"size": [1200, 800], "controls": sorted(union), "interactive": interactive,
                                             "controls_without_tooltip": sorted(missing),
@@ -77,4 +77,4 @@ draw(app, (1200, 800))
 print(app.model.status_line)
 for tab, name in (("Movie", "tracking_workspace"), ("Trajectories", "tracking_trajectories")):
     app.docks.focus(tab)
-    emtk_screenshot(app, out / f"docs_{name}.png", (1200, 800))
+    (app.pointer_move(-1.0, -1.0), emtk_screenshot)(app, out / f"docs_{name}.png", (1200, 800))

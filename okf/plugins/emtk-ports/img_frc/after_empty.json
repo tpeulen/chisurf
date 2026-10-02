@@ -1,0 +1,115 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.00",
+    "aredrawnhere.",
+    "browse",
+    "channel",
+    "criterion",
+    "database",
+    "estimator",
+    "even/oddframes",
+    "exportcsv",
+    "fixed1/7",
+    "frc",
+    "guide",
+    "half1",
+    "half2",
+    "halfisshownhere.",
+    "halves",
+    "halves,itsthresholdandthecrossing",
+    "help",
+    "image",
+    "loadatiffstackoraphotonstream,choosehowtosplititintotwoindependenthalves,andpress",
+    "measure",
+    "measure.",
+    "measureafilethefirst",
+    "measureafilethesecond",
+    "nextchannel",
+    "pickafile,droponehere,orloadfromth",
+    "pixelsize[nm]",
+    "pressmeasurethecorrelationofthetwo",
+    "resolution",
+    "rings",
+    "secondchannel",
+    "secondfile",
+    "settings",
+    "splitintohalvesby"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what frc resolution measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Measure",
+      "id": "Measure##measure",
+      "tooltip": "Correlate the two halves and read the resolution off the crossing. Runs in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write the curve, its threshold and the ring counts to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "The acquisition to measure: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image. A single-frame image cannot be split into halves by frame — use a channel split or a second file."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_file",
+      "tooltip": "Browse for an image stack or photon-stream file on disk."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_database",
+      "tooltip": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+    },
+    {
+      "kind": "input_text",
+      "label": "second_filename",
+      "id": "##second_filename",
+      "tooltip": "Only for a two-file split: a second acquisition of the same field of view. It must be independent of the first — the same file twice returns a correlation of 1 at every frequency and no resolution at all."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_second_file",
+      "tooltip": "Browse for the second acquisition of a two-file split."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_second_database",
+      "tooltip": "Load the second acquisition from the database."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size_nm",
+      "id": "##pixel_size_nm",
+      "tooltip": "Physical pixel size, which converts the answer from pixels into nanometres. Zero leaves it in pixels — still a resolution, just not one to quote in a figure. It scales the result linearly, so an uncertain pixel size is an uncertain resolution."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
