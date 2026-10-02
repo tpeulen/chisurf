@@ -42,7 +42,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui:MaxentDecayWidget",
     "cli": "maxent-decay=chisurf.plugins.fluorescence_decay.maxent_decay.cli.cli:cli",
-    "services": "chisurf.plugins.fluorescence_decay.maxent_decay.backend.services:register_services"
+    "services": "chisurf.plugins.fluorescence_decay.maxent_decay.backend.services:register_services",
+    "emtk": "chisurf.plugins.fluorescence_decay.maxent_decay.gui.app:make_app"
   },
   "rpc_methods": [
     {

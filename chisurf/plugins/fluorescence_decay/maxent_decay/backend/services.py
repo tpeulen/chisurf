@@ -6,7 +6,6 @@ from typing import Any
 
 import numpy as np
 
-import chisurf
 from chisurf.server.services import OPERATION_FAILED, service_error
 
 from ..api.contract import (
@@ -78,7 +77,9 @@ def _lcurve_corner_index(chi2: list[float], sol_norm: list[float]) -> int | None
     index = np.nonzero(usable)[0]
     if index.size < 3:
         return None
-    corner = chisurf.core.math.regularization.discrete_lcurve_corner(rho[index], eta[index])
+    from chisurf.core.math.regularization import discrete_lcurve_corner
+
+    corner = discrete_lcurve_corner(rho[index], eta[index])
     if corner is None:
         return None
     return int(index[corner])

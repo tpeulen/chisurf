@@ -1,0 +1,84 @@
+diff --git a/chisurf/plugins/fluorescence_decay/maxent_decay/backend/services.py b/chisurf/plugins/fluorescence_decay/maxent_decay/backend/services.py
+index 689d32a65..5d333375c 100644
+--- a/chisurf/plugins/fluorescence_decay/maxent_decay/backend/services.py
++++ b/chisurf/plugins/fluorescence_decay/maxent_decay/backend/services.py
+@@ -6,7 +6,6 @@ from typing import Any
+ 
+ import numpy as np
+ 
+-import chisurf
+ from chisurf.server.services import OPERATION_FAILED, service_error
+ 
+ from ..api.contract import (
+@@ -78,7 +77,9 @@ def _lcurve_corner_index(chi2: list[float], sol_norm: list[float]) -> int | None
+     index = np.nonzero(usable)[0]
+     if index.size < 3:
+         return None
+-    corner = chisurf.core.math.regularization.discrete_lcurve_corner(rho[index], eta[index])
++    from chisurf.core.math.regularization import discrete_lcurve_corner
++
++    corner = discrete_lcurve_corner(rho[index], eta[index])
+     if corner is None:
+         return None
+     return int(index[corner])
+diff --git a/chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py b/chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py
+index d807513a4..c47afa501 100644
+--- a/chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py
++++ b/chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py
+@@ -210,6 +210,7 @@ def _solve(
+     optimize_nuisance,
+     extra_parameters: dict[str, tuple[float, bool, float, float]],
+     scalars: dict[str, float] | None = None,
++    nuisance_free: dict[str, bool] | None = None,
+ ):
+     import IMP.bff as bff
+ 
+@@ -256,6 +257,9 @@ def _solve(
+         "instrument.scatter": (float(lamp_scatter) * lamp_area, False, -1e12, 1e12),
+         **extra_parameters,
+     }
++    for canonical,is_free in (nuisance_free or {}).items():
++        value,_,lower,upper=parameters[canonical]
++        parameters[canonical]=(value,bool(is_free),lower,upper)
+     for canonical, (value, is_free, lower, upper) in parameters.items():
+         spec.set_parameter(canonical, float(value), bool(is_free), float(lower), float(upper))
+     problem = spec.build()
+@@ -272,7 +276,7 @@ def _solve(
+         if prior_vec.size != bins:
+             raise ValueError("prior must have same length as the grid")
+         prior_port.set_value_vector(list(prior_vec))
+-    if free:
++    if any(value[1] for value in parameters.values()):
+         config = bff.ModelSearchConfig()
+         config.set_number_of_simulations(1)
+         config.set_seed(0)
+@@ -394,6 +398,7 @@ def solve_lifetime_mem(
+         irf_background,
+         optimize_nuisance,
+         {},
++        nuisance_free={"instrument.timeshift":optimize_nuisance and nuisance_step_timeshift!=0.,"instrument.background":optimize_nuisance and nuisance_step_background!=0.,"instrument.response_background":optimize_nuisance and nuisance_step_irf_background!=0.},
+     )
+     prepared = port("basis", "prepared_response")
+     result = _result(
+@@ -476,6 +481,7 @@ def solve_fret_mem(
+         optimize_nuisance,
+         extra,
+         scalars={"donor_lifetimes": donly_arr.size // 2},
++        nuisance_free={"instrument.timeshift":optimize_nuisance and nuisance_step_timeshift!=0.,"instrument.background":optimize_nuisance and nuisance_step_background!=0.,"instrument.response_background":optimize_nuisance and nuisance_step_irf_background!=0.,"fret.x_donly":optimize_nuisance and nuisance_step_x_donly!=0.},
+     )
+     # The design, per distance: the quenched donor species with their
+     # amplitudes, plus the donor-only part (FRETSpectrumNode's layout).
+diff --git a/chisurf/plugins/fluorescence_decay/maxent_decay/manifest.json b/chisurf/plugins/fluorescence_decay/maxent_decay/manifest.json
+index 4d8b6fc97..b947a070c 100644
+--- a/chisurf/plugins/fluorescence_decay/maxent_decay/manifest.json
++++ b/chisurf/plugins/fluorescence_decay/maxent_decay/manifest.json
+@@ -42,7 +42,8 @@
+   "entrypoints": {
+     "gui": "chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui:MaxentDecayWidget",
+     "cli": "maxent-decay=chisurf.plugins.fluorescence_decay.maxent_decay.cli.cli:cli",
+-    "services": "chisurf.plugins.fluorescence_decay.maxent_decay.backend.services:register_services"
++    "services": "chisurf.plugins.fluorescence_decay.maxent_decay.backend.services:register_services",
++    "emtk": "chisurf.plugins.fluorescence_decay.maxent_decay.gui.app:make_app"
+   },
+   "rpc_methods": [
+     {

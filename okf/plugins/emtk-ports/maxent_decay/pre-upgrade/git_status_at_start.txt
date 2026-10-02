@@ -1,0 +1,9 @@
+ M chisurf/plugins/fluorescence_decay/maxent_decay/backend/services.py
+ M chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py
+ M chisurf/plugins/fluorescence_decay/maxent_decay/manifest.json
+?? chisurf/plugins/fluorescence_decay/maxent_decay/gui/app.py
+?? chisurf/plugins/fluorescence_decay/maxent_decay/gui/controller.py
+?? chisurf/plugins/fluorescence_decay/maxent_decay/gui/model.py
+?? chisurf/plugins/fluorescence_decay/maxent_decay/gui/worker.py
+?? chisurf/plugins/fluorescence_decay/maxent_decay/test/renders/
+?? chisurf/plugins/fluorescence_decay/maxent_decay/test/test_native.py

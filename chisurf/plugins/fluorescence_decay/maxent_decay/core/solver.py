@@ -210,6 +210,7 @@ def _solve(
     optimize_nuisance,
     extra_parameters: dict[str, tuple[float, bool, float, float]],
     scalars: dict[str, float] | None = None,
+    nuisance_free: dict[str, bool] | None = None,
 ):
     import IMP.bff as bff
 
@@ -256,6 +257,9 @@ def _solve(
         "instrument.scatter": (float(lamp_scatter) * lamp_area, False, -1e12, 1e12),
         **extra_parameters,
     }
+    for canonical,is_free in (nuisance_free or {}).items():
+        value,_,lower,upper=parameters[canonical]
+        parameters[canonical]=(value,bool(is_free),lower,upper)
     for canonical, (value, is_free, lower, upper) in parameters.items():
         spec.set_parameter(canonical, float(value), bool(is_free), float(lower), float(upper))
     problem = spec.build()
@@ -272,7 +276,7 @@ def _solve(
         if prior_vec.size != bins:
             raise ValueError("prior must have same length as the grid")
         prior_port.set_value_vector(list(prior_vec))
-    if free:
+    if any(value[1] for value in parameters.values()):
         config = bff.ModelSearchConfig()
         config.set_number_of_simulations(1)
         config.set_seed(0)
@@ -394,6 +398,7 @@ def solve_lifetime_mem(
         irf_background,
         optimize_nuisance,
         {},
+        nuisance_free={"instrument.timeshift":optimize_nuisance and nuisance_step_timeshift!=0.,"instrument.background":optimize_nuisance and nuisance_step_background!=0.,"instrument.response_background":optimize_nuisance and nuisance_step_irf_background!=0.},
     )
     prepared = port("basis", "prepared_response")
     result = _result(
@@ -476,6 +481,7 @@ def solve_fret_mem(
         optimize_nuisance,
         extra,
         scalars={"donor_lifetimes": donly_arr.size // 2},
+        nuisance_free={"instrument.timeshift":optimize_nuisance and nuisance_step_timeshift!=0.,"instrument.background":optimize_nuisance and nuisance_step_background!=0.,"instrument.response_background":optimize_nuisance and nuisance_step_irf_background!=0.,"fret.x_donly":optimize_nuisance and nuisance_step_x_donly!=0.},
     )
     # The design, per distance: the quenched donor species with their
     # amplitudes, plus the donor-only part (FRETSpectrumNode's layout).
