@@ -145,33 +145,16 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
                     self.append_correlation(file, d)
             except Exception:
                 continue
-        # Load .cor chunk files
-        import numpy as _np
+        # Load .cor chunk files through the core reader. A local copy of it split
+        # ``count_rate * duration`` over the two channels -- a factor 2000 short of
+        # the kHz per-channel convention -- so the table and the merged count rate
+        # of every .cor folder were 2000 times too small.
+        from chisurf.core.fluorescence.fcs.merge import _correlation_from_cor_array
 
         for file in cor_files:
             try:
-                arr = _np.loadtxt(str(file), delimiter="\t")
-                if arr.ndim == 1 and arr.size >= 2:
-                    arr = arr.reshape(-1, arr.size)
-                x = arr[:, 0]
-                y = arr[:, 1]
-                # Third column encodes duration (row 0) and count_rate (row 1)
-                duration = float(arr[0, 2]) if arr.shape[1] > 2 and arr.shape[0] >= 1 else 0.0
-                count_rate = float(arr[1, 2]) if arr.shape[1] > 2 and arr.shape[0] >= 2 else 0.0
-                ey = arr[:, 3] if arr.shape[1] > 3 else _np.zeros_like(x)
-                # Derive per-channel counts by splitting total equally (best effort)
-                total_counts = count_rate * duration
-                half_counts = 0.5 * total_counts
-                d = {
-                    "x": x.tolist(),
-                    "y": y.tolist(),
-                    "ey": ey.tolist(),
-                    "duration": duration,
-                    "count_rate": count_rate,
-                    "channel_a": {"channels": [], "microtime_range": None, "counts": half_counts},
-                    "channel_b": {"channels": [], "microtime_range": None, "counts": half_counts},
-                }
-                self.append_correlation(file, d)
+                arr = np.loadtxt(str(file), delimiter="\t")
+                self.append_correlation(file, _correlation_from_cor_array(arr))
             except Exception:
                 continue
         cs.logging.info("Opening analysis folder...")
@@ -217,29 +200,14 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
 
     def save_mean_correlation(self, evt=None, filename: pathlib.Path = None):
         cs.logging.info("WizardFcsMerger::save_mean_correlation")
-        correlation = self.mean_correlation
+        # The core writer: same Kristine columns and format, and an exact-zero standard
+        # error is completed from the noise model rather than written as an infinite weight.
+        from chisurf.core.fluorescence.fcs.merge import save_mean_correlation
+
         if filename is None:
             filename = self.target_filepath
-        # Ensure parent directory exists (e.g., .../cr5)
-        try:
-            filename.parent.mkdir(parents=True, exist_ok=True)
-        except Exception:
-            pass
         cs.logging.info(f"Saving: {filename}")
-        suren_column = np.zeros_like(correlation["x"])
-        suren_column[0] = correlation["duration"]
-        suren_column[1] = correlation["count_rate"]
-
-        # Only include error column if it contains non-zero values (multiple curves merged)
-        if np.any(correlation["ey"] != 0):
-            c = np.vstack([correlation["x"], correlation["y"], suren_column, correlation["ey"]])
-        else:
-            # For single curve, save only 3 columns (x, y, suren)
-            c = np.vstack([correlation["x"], correlation["y"], suren_column])
-
-        # Use native path string to avoid UNC/as_posix issues on Windows
-        # Format with 5 significant digits, suppress scientific notation for small numbers
-        np.savetxt(str(filename), c.T, delimiter="\t", fmt="%.5g")
+        save_mean_correlation(self.mean_correlation, filename)
 
     def onRemoveRow(self):
         table = self.tableWidget
