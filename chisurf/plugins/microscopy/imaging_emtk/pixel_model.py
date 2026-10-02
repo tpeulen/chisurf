@@ -187,6 +187,8 @@ class PixelModelMixin(EmtkModelMixin):
         self.request_dialog("hdf5")
 
     def dialog_filename(self, kind: str) -> str:
+        if kind == "save_regions":
+            return "regions.json"
         return pathlib.Path(self._default_hdf5_path() or f"{self.artifact_name()}.imaging.h5").name
 
     def write_hdf5(self, path: str) -> None:
@@ -241,6 +243,58 @@ class PixelModelMixin(EmtkModelMixin):
         """Go on to the next analysis step (the app hands the file and the HDF5 to the coordinator)."""
         if callable(self.next_callback):
             self.next_callback()
+
+    # -- the tab that is shown (a choice, because a row of ten tabs does not fit a window) -------------------- #
+    view_tab: str = ""
+    tab_titles_list: tuple = ()
+
+    def tab_titles(self) -> list[str]:
+        return list(self.tab_titles_list)
+
+    def show_tab(self, value: str = "") -> None:
+        """The View choice changed: the app brings that tab forward."""
+        self.notify("view")
+
+    # -- regions drawn on a plane (cursors, gates) ------------------------------------------ #
+    #: name of the RegionCollection attribute (tools with a plane set it)
+    REGIONS_ATTR = ""
+
+    def save_regions(self, path: str) -> None:
+        """Save the regions as JSON, with their flags and the combine rule (the dialog's handler)."""
+        path = str(path)
+        if not path.lower().endswith(".json"):
+            path += ".json"
+        try:
+            getattr(self, self.REGIONS_ATTR).save(path)
+        except Exception as exc:
+            self.status_line = f"Could not save the regions: {exc}"
+            return
+        self.remember_folder(path)
+        self.status_line = f"Wrote {path}"
+
+    def load_regions(self, path: str) -> None:
+        """Append the regions of a JSON file (the dialog's handler)."""
+        from chisurf.core.roi import RegionCollection
+
+        try:
+            loaded = RegionCollection.load(str(path))
+        except Exception as exc:
+            self.status_line = f"Could not read the regions: {exc}"
+            return
+        collection = getattr(self, self.REGIONS_ATTR)
+        for entry in loaded:
+            collection.add(entry.roi, enabled=entry.enabled, invert=entry.invert)
+        self.remember_folder(str(path))
+        self.status_line = f"Loaded {len(loaded)} region(s) from {path}"
+        self.regions_changed()
+
+    def regions_changed(self) -> None:
+        """The regions were edited: the views that depend on them are redrawn."""
+        self.notify("regions")
+
+    def clear_regions(self) -> None:
+        getattr(self, self.REGIONS_ATTR).clear()
+        self.regions_changed()
 
     # -- the tool's settings ---------------------------------------------------------- #
     def export_settings(self) -> dict[str, Any]:

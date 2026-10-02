@@ -1,0 +1,155 @@
+{
+  "_comment": "Mean micro-time, drawn by emtk. The Qt tool's AutoForm spec is micro_time.view.json.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Settings",
+      "dock": "settings",
+      "n_col": 1,
+      "description": "The source file, the minimum photon count, the detector window that is shown and the actions that compute and write the maps.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Compute the maps, write them out, explore them or go on to the next step.",
+          "buttons": [
+            {
+              "action": "run_maps",
+              "label": "Run",
+              "description": "Compute the mean micro-time and intensity of every detector window, in the background. Nothing is recomputed when neither the file, the windows nor Min. photons changed."
+            },
+            {
+              "action": "request_hdf5",
+              "label": "Add mean micro-time to HDF5",
+              "description": "Add the mean micro-time columns to the imaging HDF5 of the pipeline (the file the Intensity step created); when none is remembered a file is asked for. Created if it does not exist."
+            },
+            {
+              "action": "save_container",
+              "label": "Save container",
+              "description": "Write the same table as a mean_micro_time artifact into the container beside the photon file (the Qt tool did this when it closed)."
+            },
+            {
+              "action": "open_ndx",
+              "label": "ndX",
+              "description": "Explore the per-pixel table in ndX, the shared live dataset. A Back button returns to the maps."
+            },
+            {
+              "action": "next_step",
+              "label": "Next",
+              "description": "Remember the file and the HDF5 and go to the next analysis step. Only available inside the Imaging Tools pipeline."
+            }
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "filename",
+          "label": "TTTR file",
+          "kind": "str",
+          "call": "commit_filename",
+          "elide": "start",
+          "placeholder": "pick a file, drop one here, or load from the database",
+          "description": "PTU/HT3 imaging file with line and frame markers (or drop one onto the window: it is loaded and run). Press Enter to select a typed path."
+        },
+        {
+          "type": "button_row",
+          "description": "Pick the photon file from disk or from the database.",
+          "buttons": [
+            {
+              "action": "open_file",
+              "label": "Browse",
+              "description": "Browse for a photon imaging file on disk."
+            },
+            {
+              "action": "open_database",
+              "label": "Database",
+              "description": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+            }
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "n_ph_min",
+          "label": "Min. photons",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 1000000,
+          "style": "spin",
+          "description": "Pixels with fewer photons than this are discriminated (set to 0); press Run to apply."
+        },
+        {
+          "type": "choice",
+          "attr": "display_window",
+          "label": "Detector window",
+          "options_source": "window_names",
+          "call": "refresh_display",
+          "description": "The detector window shown in the maps. Every window is computed and written; this only chooses which one is displayed. The windows come from the Detectors tab (or the Imaging Tools setup step); without any, the channel-0 window is used."
+        },
+        {
+          "type": "info",
+          "source": "summary_text",
+          "description": "What was computed: the file, the size of the image and the detector windows."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Intensity",
+      "dock": "views",
+      "description": "The summed photon counts per pixel of the displayed detector window.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Intensity",
+          "description": "The summed photon counts per pixel of the displayed detector window.",
+          "options": {
+            "name": "Intensity",
+            "source": "intensity_map",
+            "colormap_attr": "colormap",
+            "empty": "No intensity yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Mean micro-time (ns)",
+      "dock": "views",
+      "description": "The photon-weighted mean arrival time per pixel in nanoseconds; discriminated pixels are 0.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Mean micro-time (ns)",
+          "description": "The photon-weighted mean arrival time per pixel in nanoseconds; discriminated pixels are 0.",
+          "options": {
+            "name": "Mean micro-time",
+            "source": "mean_micro_time_map",
+            "colormap_attr": "colormap",
+            "empty": "No mean micro-time yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Mean micro-time movie",
+      "dock": "views",
+      "description": "The mean micro-time of every scanner frame, played as a movie (display only, not written to the HDF5).",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Mean micro-time movie",
+          "description": "The mean micro-time of every scanner frame, played as a movie (display only, not written to the HDF5).",
+          "options": {
+            "name": "Mean micro-time movie",
+            "source": "mean_micro_time_frames",
+            "colormap_attr": "colormap",
+            "movie": true,
+            "empty": "No movie yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    }
+  ]
+}

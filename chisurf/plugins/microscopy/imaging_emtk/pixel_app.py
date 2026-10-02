@@ -27,6 +27,7 @@ class PixelToolApp(ImagingToolApp):
 
     #: the role the imaging hub knows this tool by (``advance_from(ROLE)``)
     ROLE = ""
+    CANCELLABLE = True
     #: show the shared detector editor as a window (the tools compute one map set per detector window)
     DETECTOR_EDITOR = True
     DIALOGS = {
@@ -34,6 +35,10 @@ class PixelToolApp(ImagingToolApp):
         "hdf5": ("Create imaging HDF5", "save", HDF5_FILE_FILTER, "write_hdf5"),
     }
     OUTCOMES = {"file": "filename", "run": "run_maps", "saved": "request_hdf5", "ndx": "open_ndx"}
+    REGION_DIALOGS = {
+        "save_regions": ("Save regions", "save", "JSON (*.json)", "save_regions"),
+        "load_regions": ("Load regions", "open", "JSON (*.json)", "load_regions"),
+    }
 
     def __init__(self, model: Any, coordinator: Any = None, ndx_callback: Any = None, **binding: Any) -> None:
         if any(binding.get(key) for key in ("mmfdb_db", "mmfdb_source_artifact_id", "mmfdb_principal")):
@@ -49,8 +54,15 @@ class PixelToolApp(ImagingToolApp):
         self._ndx_box = (0.0, NDX_BAR, 1000.0, 700.0)
         self.editor = None
         self._editor_busy = False
+        self.planes: dict[str, Any] = {}
+        self.region_lists: dict[str, Any] = {}
         self._pending: dict[str, Any] = {}
         super().__init__(model)
+        self.DIALOGS = {**type(self).DIALOGS, **self.REGION_DIALOGS}
+        self.form.custom["plane"] = lambda section, m, st, w: self._draw_plane(section)
+        self.form.custom["region_list"] = lambda section, m, st, w: self._draw_region_list(section)
+        model.tab_titles_list = tuple(t for t, w in self.windows.items() if w.get("dock") == "views" and t != "Detectors") + (("Detectors",) if self.editor is not None or self.DETECTOR_EDITOR else ())
+        model.view_tab = model.tab_titles_list[0] if model.tab_titles_list else ""
         model.has_host = coordinator is not None
         model.next_callback = self.next_step
         model.pipeline_sink = model.pipeline_sink if callable(model.pipeline_sink) else None
@@ -96,6 +108,36 @@ class PixelToolApp(ImagingToolApp):
             self.item_rects.update({f"detectors.{k}": v for k, v in self.editor.item_rects.items()})
             if self.editor.item_rects.get("section_detectors"):
                 self.item_rects["Detectors"] = self.editor.item_rects["section_detectors"]
+
+    # -- planes and region lists ---------------------------------------------------------- #
+    def add_plane(self, name: str, panel: Any, regions: Any = None) -> None:
+        """Register a plane view (and the region list that edits what it shows) under the name a spec section refers to."""
+        self.planes[name] = panel
+        if regions is not None:
+            self.region_lists[name] = regions
+
+    def _draw_plane(self, section: dict) -> None:
+        name = str(section.get("options", {}).get("name", section.get("title", "")))
+        panel = self.planes[name]
+        panel.draw(self.model.colormap)
+        self.model.colormap = panel.canvas.colormap
+        if panel.rect[2] > 0:
+            self.item_rects[str(section.get("title", name))] = panel.rect
+
+    def _draw_region_list(self, section: dict) -> None:
+        from emtk import im as _im
+
+        name = str(section.get("options", {}).get("name", section.get("title", "")))
+        controls = self.region_lists[name]
+        controls.draw()
+        summary = getattr(self.model, str(section.get("options", {}).get("summary", "")), None)
+        if callable(summary):
+            _im.text_wrapped(summary())
+        if section.get("options", {}).get("clear", True):
+            if _im.button(f"Clear all##{name}"):
+                self.model.clear_regions()
+            _im.set_item_tooltip("Remove every region; all pixels are selected again.")
+            self.item_rects[f"{name}.clear"] = _im.get_item_rect()
 
     # -- hub contract ----------------------------------------------------------------- #
     def start(self, method: str = "compute_job", *args: Any) -> bool:
@@ -190,33 +232,13 @@ class PixelToolApp(ImagingToolApp):
 
         return ImagePanel(key)
 
-    # -- the toolbar: Help, Guide and Cancel ------------------------------------------- #
-    def _toolbar(self) -> None:
-        if im.button("Help"):
-            self.help_window.show()
-        im.set_item_tooltip(f"Explain what {self.TITLE.lower()} computes, which settings decide the answer and what to check.")
-        self.item_rects["help"] = im.get_item_rect()
-        im.same_line()
-        if im.button("Guide"):
-            self.tour.start()
-        im.set_item_tooltip("Walk through the tool step by step; each step waits for you to use the control it points at.")
-        self.item_rects["guide"] = im.get_item_rect()
-        im.same_line()
-        im.begin_disabled(not (self.job.busy or self.model.busy))
-        if im.button("Cancel"):
-            self.model.cancel()
-        im.set_item_tooltip("Stop at the next checkpoint of the running calculation and discard the unfinished result.")
-        self.item_rects["cancel"] = im.get_item_rect()
-        im.end_disabled()
-        message = f"{self.job.progress} {self.model.status_line}".strip() if self.job.busy else self.model.status_line
-        if message:
-            im.text_wrapped(message)
-        im.separator()
-
     # -- ndX over the maps ---------------------------------------------------------------- #
     def _on_event(self, event: str) -> None:
         super()._on_event(event)
-        if event == "ndx":
+        if event == "view":
+            if self.model.view_tab in self.windows:
+                self.docks.focus(self.model.view_tab)
+        elif event == "ndx":
             self.model.ndx_requested = False
             self.open_ndx()
         elif event in ("run", "saved") and self.ndx is not None:

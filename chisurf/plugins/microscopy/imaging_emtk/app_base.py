@@ -171,8 +171,11 @@ class ImagingToolApp(ImApp):
                 if isinstance(value, float) and value == value and round(value, int(decimals)) != value:
                     setattr(self.model, section["attr"], round(value, int(decimals)))
 
+    #: show a Cancel button (greyed while idle) that calls ``model.cancel()``
+    CANCELLABLE = False
+
     def _toolbar(self) -> None:
-        """Help and Guide, then the status line (what the Qt status bar showed)."""
+        """Help and Guide (and Cancel), then the status line (what the Qt status bar showed)."""
         if im.button("Help"):
             self.help_window.show()
         im.set_item_tooltip(f"Explain what {self.TITLE.lower()} measures, which settings decide the answer and what to check.")
@@ -182,6 +185,14 @@ class ImagingToolApp(ImApp):
             self.tour.start()
         im.set_item_tooltip("Walk through the tool step by step; each step waits for you to use the control it points at.")
         self.item_rects["guide"] = im.get_item_rect()
+        if self.CANCELLABLE:
+            im.same_line()
+            im.begin_disabled(not (self.job.busy or self.model.busy))
+            if im.button("Cancel"):
+                self.model.cancel()
+            im.set_item_tooltip("Stop at the next checkpoint of the running calculation and discard the unfinished result.")
+            self.item_rects["cancel"] = im.get_item_rect()
+            im.end_disabled()
         message = f"{self.job.progress} {self.model.status_line}".strip() if self.job.busy else self.model.status_line
         if message:
             im.text_wrapped(message)
@@ -235,9 +246,9 @@ class ImagingToolApp(ImApp):
             self.picker_target = "second" if kind == "database_second" else "main"
             self.picker.open()
             return
-        title, mode, filters, _handler = self.DIALOGS[kind]
+        title, mode, filters, _handler, *rest = self.DIALOGS[kind]
         name_for = getattr(self.model, "dialog_filename", None)
-        self.dialog = FileDialog(title, mode=mode, filters=filters,
+        self.dialog = FileDialog(title, mode=mode, filters=filters, multiselect=bool(rest and rest[0]),
                                  directory=self.model.folder or None,
                                  filename=name_for(kind) if callable(name_for) and mode == "save" else "")
         self.dialog_kind = kind
@@ -254,7 +265,8 @@ class ImagingToolApp(ImApp):
             kind, self.dialog = self.dialog_kind, None
             self.tour.notify_used(kind)
             self.model.remember_folder(result[0])
-            getattr(self.model, self.DIALOGS[kind][3])(result[0])
+            handler = getattr(self.model, self.DIALOGS[kind][3])
+            handler([str(p) for p in result] if len(self.DIALOGS[kind]) > 4 and self.DIALOGS[kind][4] else result[0])
         elif result is False or pressed == "close":
             self.dialog = None
 

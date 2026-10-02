@@ -14,6 +14,9 @@ LINES = PIX = 32
 FRAMES = 12
 DWELL = 20.0e-6
 TAU_LEFT_NS, TAU_RIGHT_NS = 1.0, 3.0
+#: laser period of the simulated stream (40 MHz): the macro-time clock ticks once per sync pulse, as a real TCSPC file's
+LASER_PERIOD = 25e-9
+K_TICKS = int(round(0.5 * DWELL / LASER_PERIOD))  # sync pulses per half pixel dwell
 MICRO_RES = 0.032e-9  # 32 ps bins, 256 bins = 8.2 ns
 SEED = 7
 
@@ -53,7 +56,8 @@ def flim_ptu(path, n_channels: int = 1, seed: int = SEED) -> str:
     n_ph = sum(m.size for m in macros)
     marker_macro = np.concatenate([line_starts, line_starts + np.uint64(2 * pixels), frame_starts])
     marker_chan = np.concatenate([np.full(line_starts.size, 1, np.int8), np.full(line_starts.size, 2, np.int8), np.full(frame_starts.size, 4, np.int8)])
-    macro = np.concatenate(macros + [marker_macro])
+    kk = np.uint64(K_TICKS)
+    macro = np.concatenate([m * kk for m in macros] + [marker_macro * kk])
     micro = np.concatenate(micros + [np.zeros(marker_macro.size, np.uint16)])
     chan = np.concatenate(chans + [marker_chan])
     event = np.concatenate([np.zeros(n_ph, np.int8), np.ones(marker_macro.size, np.int8)])
@@ -61,8 +65,9 @@ def flim_ptu(path, n_channels: int = 1, seed: int = SEED) -> str:
     order = np.lexsort((priority, macro))
     tttr = tttrlib.TTTR(macro[order], micro[order], chan[order], event[order])
     h = tttr.header
-    h.set_macro_time_resolution(0.5 * DWELL)
+    h.set_macro_time_resolution(LASER_PERIOD)
     h.set_micro_time_resolution(MICRO_RES)
+    h.set_number_of_micro_time_channels(256)
     for name, value in (("ImgHdr_LineStart", 1), ("ImgHdr_LineStop", 2), ("ImgHdr_Frame", 3), ("ImgHdr_PixX", pixels), ("ImgHdr_PixY", lines), ("ImgHdr_BiDirect", 0)):
         h.set_tag(name, int(value), TY_INT8)
     path = pathlib.Path(path)
@@ -80,9 +85,10 @@ def irf_ptu(path, seed: int = SEED + 5) -> str:
     n = 200000
     micro = np.clip(rng.normal(40, 2.0, n), 0, 255).astype(np.uint16)
     macro = np.cumsum(rng.integers(1, 40, n)).astype(np.uint64)
-    tttr = tttrlib.TTTR(macro, micro, np.zeros(n, np.int8), np.zeros(n, np.int8))
-    tttr.header.set_macro_time_resolution(1e-8)
+    tttr = tttrlib.TTTR(macro, micro, rng.integers(0, 2, n).astype(np.int8), np.zeros(n, np.int8))
+    tttr.header.set_macro_time_resolution(LASER_PERIOD)
     tttr.header.set_micro_time_resolution(MICRO_RES)
+    tttr.header.set_number_of_micro_time_channels(256)
     path = pathlib.Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     if not tttr.write(str(path), "PTU"):

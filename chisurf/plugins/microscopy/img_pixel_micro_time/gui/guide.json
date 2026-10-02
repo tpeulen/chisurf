@@ -1,20 +1,12 @@
 {
+  "_comment": "Guided tour of the mean micro-time tool in the emtk window. Steps point at real controls and wait for the user to use them.",
   "steps": [
-    {
-      "title": "Open source",
-      "text": "Open or drop a TTTR scanner file, or select an MMFDB dataset."
-    },
-    {
-      "title": "Detector windows",
-      "text": "Use shared Setup or enter detector channels and a micro-time gate. Set the minimum photon count."
-    },
-    {
-      "title": "Run and inspect",
-      "text": "Run computes all windows. Inspect mean-time maps and frame movies in nanoseconds."
-    },
-    {
-      "title": "Persist",
-      "text": "Create imaging HDF5 or Save container records the actual maps. ndX explores the table; Next advances the imaging pipeline."
-    }
+    {"title": "What this tool computes", "text": "For every <b>detector window</b> the photon-weighted <b>mean arrival time</b> of each pixel, in nanoseconds, plus the intensity. It is not a fitted lifetime: it is the first moment of the micro-time histogram, offset by the electronics delay. You press the buttons; the tour only points at them.", "target": {}},
+    {"title": "Choose the photon file", "text": "A PTU or HT3 file with line and frame markers. Type a path and press Enter, press <b>Browse</b> or <b>Database</b>, or drop a file on the window.", "target": {"name": "file", "action": "TTTR file"}, "await": {"hint": "Select a photon file. Nothing is computed until you press Run."}},
+    {"title": "Minimum photons", "text": "A mean of a few photons is noise. Pixels with fewer photons than this are discriminated and set to 0 (and drawn as the lowest colour). Changing it needs a new Run.", "target": {"attr": "n_ph_min"}},
+    {"title": "Compute", "text": "Run reads the photons and fills one set of maps per detector window in the background; the <b>Detectors</b> tab is the Setup tool's editor for the windows.", "target": {"name": "run", "action": "Run"}, "await": {"hint": "Press <b>Run</b> and wait until the status line is empty."}},
+    {"title": "The mean micro-time map", "text": "Short mean times (dark) are quenched or fast-decaying regions, long ones slow decays. Compare it with the intensity: a dim pixel may have a perfectly good lifetime.", "target": {"title": "Mean micro-time (ns)"}},
+    {"title": "The movie", "text": "The same estimate for each scanner frame, played as a movie; it shows whether the lifetime changes during the acquisition.", "target": {"title": "Mean micro-time movie"}},
+    {"title": "Write the result", "text": "<b>Add mean micro-time to HDF5</b> appends the columns to the pipeline's imaging HDF5 (or asks for a file); <b>Save container</b>, <b>ndX</b> and <b>Next</b> work as in the other per-pixel tools.", "target": {"name": "saved", "action": "Add mean micro-time to HDF5"}, "await": {"hint": "Press <b>Add mean micro-time to HDF5</b> and choose a file name."}}
   ]
 }

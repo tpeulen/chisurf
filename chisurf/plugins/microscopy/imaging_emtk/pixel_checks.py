@@ -31,6 +31,10 @@ class Tool:
     maps: dict[str, str] = field(default_factory=dict)
     #: patched ``compute_windows`` target of the cancel check (module, attribute)
     compute_hook: tuple[str, str] = ("chisurf.core.fluorescence.imaging", "compute_windows")
+    #: axis labels of tabs that do not draw 'x [px]' / 'y [px]'
+    axes: dict[str, tuple[str, str]] = field(default_factory=dict)
+    #: tabs that are empty until the user asks for them (they say how)
+    optional: tuple[str, ...] = ()
 
 
 # -- small operations --------------------------------------------------------------------------------------- #
@@ -291,7 +295,7 @@ def save_in_dialog(drv: Driver, name: str) -> None:
 
 
 def hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(
-        app: Any, drv: Driver, path: Any, tmp_path: Path) -> Path:
+        app: Any, drv: Driver, path: Any, tmp_path: Path, source_ref: bool = True) -> Path:
     from chisurf.core.datastore import column_names, numeric_column, row_count
     from chisurf.core.fluorescence.imaging import read_imaging_source, read_imaging_table
 
@@ -310,7 +314,8 @@ def hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_nex
     target = out / "result.imaging.h5"
     assert target.exists(), (app.model.status_line, app.job.error)
     assert app.model.pipeline_hdf5 == str(target) and app.model.status_line.startswith("added")
-    assert read_imaging_source(str(target)) == str(path)
+    if source_ref:  # only the tool that creates the file (Intensity) writes the back-reference to the photon file
+        assert read_imaging_source(str(target)) == str(path)
     table = read_imaging_table(str(target))
     names = column_names(table)
     assert names and set(app.model._columns) <= set(names)
@@ -396,14 +401,17 @@ def every_tab_draws_empty_with_a_message_and_populated_with_a_picture(app: Any, 
         app.docks.focus(tab)
         strings = drv.draw(3).strings
         assert any(s.startswith("No ") for s in strings), (tab, strings[:40])
-        assert tab not in app.item_rects or app.item_rects.get(tab) is None or True
     computed(app, drv, path)
     for tab in tool.tabs:
         app.docks.focus(tab)
+        if tab in tool.optional:
+            assert any(s.startswith("No ") for s in drv.draw(3).strings), tab
+            continue
         drv.draw(3)
         rect = app.item_rects.get(tab)
         assert rect and rect[2] > 100 and rect[3] > 100, (tab, rect)
-        assert "x [px]" in drv.draw(1).strings and "y [px]" in drv.draw(1).strings, f"{tab}: the image has no axes"
+        xl, yl = tool.axes.get(tab, ("x [px]", "y [px]"))
+        assert xl in drv.draw(1).strings and yl in drv.draw(1).strings, f"{tab}: the image has no axes"
 
 
 def colormap_list_offers_four_maps_and_a_click_changes_the_model(app: Any, drv: Driver, path: Any, tab: str) -> None:
@@ -431,8 +439,13 @@ def wheel_zooms_and_a_drag_pans_the_image(app: Any, drv: Driver, path: Any, tab:
     drv.wheel(x + w / 2, y + h / 2, 3)
     zoomed = numeric_ticks(drv.draw(2))
     assert zoomed != original
-    drv.drag((x + w * 0.5, y + h * 0.5), (x + w * 0.3, y + h * 0.4))
-    assert numeric_ticks(drv.draw(2)) != zoomed
+    panned = False
+    for end in ((0.3, 0.4), (0.7, 0.6), (0.4, 0.7)):  # a zoom that already shows the whole range may not move one way
+        drv.drag((x + w * 0.5, y + h * 0.5), (x + w * end[0], y + h * end[1]))
+        if numeric_ticks(drv.draw(2)) != zoomed:
+            panned = True
+            break
+    assert panned
 
 
 def movie_play_loop_stop_and_speed(app: Any, drv: Driver, path: Any, tab: str) -> None:
@@ -609,6 +622,7 @@ def every_control_has_a_tooltip(app: Any, drv: Driver, path: Any, tool: Tool) ->
 
 
 def texts_apart(painter: Any, ignore: tuple = ()) -> None:
+    ignore = (*ignore, "x [px]", "y [px]")  # a rotated axis label is recorded as a horizontal box over the tick labels
     """No two drawn strings overlap (a path in a file field is clipped by its field, so it is left out)."""
     from test.gui.emtk_layout_checks import _overlap, boxes
 
