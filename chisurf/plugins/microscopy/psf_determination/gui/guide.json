@@ -1,0 +1,44 @@
+[
+  {
+    "title": "A bead stack is a measurement of the PSF",
+    "text": "A sub-resolution bead is a point, so its image is the point-spread function of this objective, this medium and this alignment. The tool fits a three-dimensional Gaussian to each bead and reports the widths in nanometres: that is what you compare with the PSF calculator, and what a deconvolution or a super-resolution reconstruction needs.<br/><br/>Five steps.",
+    "target": {}
+  },
+  {
+    "title": "Load a stack",
+    "text": "Load a 3-D TIFF of beads, or press <b>Demo stack</b> for a generated stack whose answer is known (five beads, true FWHM 424 nm laterally and 2120 nm axially).",
+    "target": {
+      "name": "demo"
+    },
+    "await": {
+      "hint": "Press Demo stack (or Load stack to use your own file)."
+    }
+  },
+  {
+    "title": "Say what a pixel and a slice are worth",
+    "text": "<b>Pixel (nm)</b> and <b>Z step (nm)</b> turn the fitted sigmas into physical widths. They are the only way the fit knows the scale, so a wrong value gives a confident answer in the wrong units.",
+    "target": {
+      "attr": "pixel_size_nm"
+    }
+  },
+  {
+    "title": "Find the beads",
+    "text": "<b>Detect</b> marks the bright regions that are large enough and far enough from each other to be single beads. If it finds none, lower <b>Px/frame</b> or <b>Min area</b>; if it finds hot pixels, raise <b>Min area</b>.",
+    "target": {
+      "name": "detect_beads"
+    },
+    "await": {
+      "hint": "Press Detect."
+    }
+  },
+  {
+    "title": "Fit them all, then read the spread",
+    "text": "<b>Fit all</b> fits every bead and lists failures too. One bead is an anecdote: the scatter over the beads is the real error of the PSF width. Then look at the x, y and z profile tabs: the data should follow the red Gaussian.",
+    "target": {
+      "name": "fit_all"
+    },
+    "await": {
+      "hint": "Press Fit all."
+    }
+  }
+]

@@ -182,6 +182,37 @@ class PsfViewModel:
         )
         self.notify("stack")
 
+    def load_demo(self) -> None:
+        """Replace the stack by a generated one with a known answer (a demo, not data).
+
+        Five Gaussian beads with sigma (x, y, z) = (1.8, 1.8, 3.0) pixels / slices on a flat background of 5
+        counts with Poisson noise; with a 100 nm pixel and a 300 nm step the FWHM is 424 nm laterally and
+        2120 nm axially.
+        """
+        rng = np.random.default_rng(4)
+        z, y, x = np.indices((21, 110, 100))
+        image = np.full(z.shape, 5.0)
+        for bz, by, bx in ((10, 20, 20), (10, 22, 60), (10, 50, 30), (11, 55, 80), (9, 90, 50)):
+            image += 800 * np.exp(-0.5 * (((x - bx) / 1.8) ** 2 + ((y - by) / 1.8) ** 2 + ((z - bz) / 3.0) ** 2))
+        self.pixel_size_nm, self.z_step_nm = 100.0, 300.0
+        self.set_stack(rng.poisson(image).astype(np.float32))
+        self.filename = ""
+        self.results_text = (
+            "Demo stack loaded (generated: five beads, true FWHM 424 nm lateral and 2120 nm axial). "
+            "Press Detect, then Fit all."
+        )
+        self.notify("stack")
+
+    def enabled(self, name: str) -> bool:
+        """Whether the action *name* has what it needs (a stack, a selected bead, detected beads)."""
+        if name == "detect_beads":
+            return self.stack is not None
+        if name == "fit_selected":
+            return self.selected_bead is not None
+        if name in ("fit_all", "export_csv"):
+            return bool(self.detected_beads)
+        return True
+
     def set_stack(self, arr: np.ndarray) -> None:
         """Set the stack directly (for tests/scripts)."""
         self.stack = np.asarray(arr, dtype=np.float32)
