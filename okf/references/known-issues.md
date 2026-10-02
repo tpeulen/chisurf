@@ -6233,3 +6233,17 @@ version* as the start for every entry except the oldest, so the newest version s
 26.10.02". The start-up check shows the installed-to-newest text, the manual check the other (recorded in
 `okf/plugins/emtk-ports/updater/qt_values.json`, `initial` vs `checked`). Both hosts share the behaviour for parity. *Not fixed
 here:* decide the intended range (installed -> selected, or previous -> selected with a different caption) and change the model.
+
+## QuEst: the simulation core still imports Python modules IMP.bff moved to C++ (found 2026-10-02)
+
+**Measured** while porting `quenching_estimator`: `from IMP.bff.quenching import pet` raised ModuleNotFoundError (the PET model moved to C++; the
+Python module was deleted), so the tool, `quest template`, the form and the plugin tests failed. *Fixed here* (quest `3e197b9`): `_pet()` builds the
+tables from the top-level `IMP.bff` functions, and the interaction tables are plain mappings (the C++ `ResidueQuenching` objects cannot be deep-copied
+or serialised); guardrail `quest/tests/test_pet_chemistry_source.py`. *Not fixed:* **a simulation still fails** at the accessible volume
+(`No module named 'IMP.bff.av'`), and behind it every other removed entry point of `quest/core/av.py` and `photon.py`: `IMP.bff.av.compute.compute_av`
+(no top-level twin in the installed build), `IMP.bff.av._kernels.{density2points,random_distances}` (`density_to_points`, `random_distances`),
+`IMP.bff.distance_metrics`, `IMP.bff.quenching.{grid_center_index, slow_factor_grid, quenching_rate_grid, av_contact_mask, simulate_dye_diffusion
+(`simulate_probe_diffusion`), sphere_points, solvent_accessible_surface, fret_rate_trace, fret_rate_pair_trace, simulate_photon_trace,
+simulate_quenched_decay}`. Re-derive: `python -c "import quest.core.av as a; a._compute_av"` / run `quest/tests/test_core_api.py` (5 failures import the removed
+helpers). Blocks every numeric check of QuEst here (no baseline run exists on this machine; `okf/plugins/emtk-ports/quenching_estimator/` records the
+failure as the baseline). Porting `quest.core` to the C++ API against a pre-move simulation is the task; the emtk card and the Qt tool both stop at the same place.

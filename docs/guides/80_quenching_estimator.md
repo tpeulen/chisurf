@@ -2,7 +2,7 @@
 type: Guide
 title: 'QuEst: predicting dye quenching at a labelling site'
 description: Simulating the PET-quenched donor decay of a dye tethered to a protein with QuEst (accessible volume, Brownian dynamics, photon Monte-Carlo), choosing its settings, reading the quantum yield and decay, the headless CLI, and the current state of the plugin, which does not run against the installed IMP.bff.
-tags: [guides, structure, photophysics, fret, simulation]
+tags: [guides, fret, tcspc, decay, dynamics, photons, settings, headless]
 ---
 
 # QuEst: predicting dye quenching at a labelling site
@@ -19,28 +19,28 @@ For the physics (PET at contact, why the dye's motion matters, the rate table),
 see {ref}`concept-dye-quenching`.
 
 ```{warning}
-**QuEst does not currently run in ChiSurf.** The `quest` package imports
-`IMP.bff.quenching`, a Python module that IMP.bff removed when its quenching
-model moved to C++. The tool therefore fails before its window is built, and
-so do `quest template` and `quest simulate`. The settings and outputs below are
-documented from the QuEst code and its parameter catalogue. No simulation
-result is shown, because none could be computed. See
-[Known defects](#known-defects).
+**QuEst opens, but a simulation cannot run in ChiSurf yet.** The PET chemistry (the quencher
+tables and the per-residue interaction table) is now read from IMP.bff's compiled core, so the
+tool, `quest template` and `quest validate` work. A simulation still stops at the accessible
+volume: the core of `quest` imports Python modules of IMP.bff that moved to C++
+(`IMP.bff.av.compute`, `IMP.bff.av._kernels`, `IMP.bff.quenching.*`,
+`IMP.bff.distance_metrics`), so Simulate ends in a readable failure message. The settings and
+outputs below are documented from the QuEst code and its parameter catalogue; no simulation
+result is shown, because none could be computed. See [Known defects](#known-defects).
 ```
 
 ## Open the tool
 
 **Structure → Structure Tools**, then **💡 QuEst** in the left list. It has no
-ribbon button of its own. In the current state the panel shows the import
-error instead of the form:
+ribbon button of its own. In the current state the panel shows the form, and Simulate
+ends in the failure described below:
 
-```{figure} figures/quest_structure_tools.png
+```{figure} figures/quest_native_failure.png
 :name: fig-quest-structure-tools
 :width: 100%
 
-Structure Tools with QuEst selected. The panel reports
-`No module named 'IMP.bff.quenching'`: the QuEst form cannot be built against
-the installed IMP.bff. The other entries, including HydroPro, are unaffected.
+The native QuEst window with the T4 lysozyme structure (148L) loaded and chain E, residue 117 as the attachment
+site, after a press on **Simulate**: the State line reports the failure of the accessible-volume step (see Known defects).
 ```
 
 When it works, the panel is QuEst's own form, with a **Load PDB…** action on
@@ -157,13 +157,14 @@ and the same from Python through `quest.api.simulate(project)`. Over RPC the
 methods are `quest.template`, `quest.validate`, `quest.simulate` and
 `quest.scan`.
 
-Run in the arm64 environment, the first command already fails:
+Run in the arm64 environment, `quest template` and `quest validate` work; the first simulation
+fails when the accessible volume is computed:
 
 ```text
-$ csc quest template
-  File ".../quest/core/dye_diffusion.py", line 47, in _pet
-    from IMP.bff.quenching import pet
-ModuleNotFoundError: No module named 'IMP.bff.quenching'
+$ csc quest simulate project.json
+  File ".../quest/core/av.py", line 52, in _compute_av
+    from IMP.bff.av.compute import compute_av
+ModuleNotFoundError: No module named 'IMP.bff.av'
 ```
 
 ## Using it well
@@ -185,16 +186,20 @@ excitation lower the brightness without changing the simulated decay.
 
 ## Known defects
 
-- **QuEst does not import against the installed IMP.bff.** `quest` imports
-  `IMP.bff.quenching` (in `quest/core/dye_diffusion.py`, `quest/core/photon.py`
-  and `quest/core/av.py`), as well as `IMP.bff.av.compute`,
-  `IMP.bff.av._kernels` and `IMP.bff.distance_metrics`. The IMP.bff checkout
-  on `dev` removed these Python modules when its quenching model moved to C++
-  (commit "the PET quenching model to C++"). The same functions are now
-  top-level in `IMP.bff` (`amino_acid_quenching_defaults`,
-  `simulate_photon_trace`, `simulate_quenched_decay`, `QuenchedDonorDecay`, …).
-  As a result the tool, `quest template` and `quest simulate` all fail, and 3
-  of the 14 plugin tests fail for this reason.
+- **QuEst's core still imports Python modules that IMP.bff moved to C++.** The PET chemistry was
+  repaired (`quest/core/dye_diffusion.py` builds its tables from the top-level `IMP.bff`
+  functions; the project tables are plain dictionaries). What is left, in `quest/core/av.py` and
+  `quest/core/photon.py`: `IMP.bff.av.compute.compute_av`, `IMP.bff.av._kernels`
+  (`density2points`, `random_distances`), `IMP.bff.distance_metrics`, and
+  `IMP.bff.quenching` (`grid_center_index`, `slow_factor_grid`, `quenching_rate_grid`,
+  `av_contact_mask`, `simulate_dye_diffusion`, `sphere_points`, `solvent_accessible_surface`,
+  `fret_rate_trace`, `fret_rate_pair_trace`, `simulate_photon_trace`,
+  `simulate_quenched_decay`). Most have a top-level C++ twin with raw-array signatures
+  (`grid_center_index`, `slow_factor_grid`, `av_contact_mask`, `sphere_points`,
+  `fret_rate_trace`, `simulate_photon_trace`, `simulate_quenched_decay`,
+  `av_pair_statistics`, `mean_position_distance`, `simulate_probe_diffusion`,
+  `density_to_points`); `compute_av` has none in the installed build. Porting `quest.core` to
+  that API, with a baseline simulation to compare against, is the open task.
 - **Two import-hygiene tests fail under the documented `PYTHONPATH`.**
   `modules/imp-tricks/src/sitecustomize.py` imports IMP when the interpreter
   starts, so the plugin's "does not import IMP at startup" checks see IMP

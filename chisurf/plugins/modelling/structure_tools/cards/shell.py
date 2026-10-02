@@ -39,7 +39,7 @@ class CardShell(TourTarget, ImApp):
     def __init__(self, title: str, folder: Path, key: str) -> None:
         self.title = title
         self.folder = Path(folder)
-        self.key = key
+        self.card_key = key      # not `key`: that name is the host's keyboard entry point (ImApp.key)
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.status = ""
         self.status_error = False
@@ -187,7 +187,7 @@ class CardShell(TourTarget, ImApp):
         done = None
         if modal["kind"] == "prompt":
             im.set_next_item_width(-1)
-            changed, value = im.input_text(f"##{self.key}-prompt", modal["value"])
+            changed, value = im.input_text(f"##{self.card_key}-prompt", modal["value"])
             if changed:
                 modal["value"] = value
             self.remember("prompt", im.get_item_rect())

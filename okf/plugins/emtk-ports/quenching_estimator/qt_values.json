@@ -1,0 +1,198 @@
+{
+  "empty_status": "Not simulated yet.",
+  "empty_project_pdb": "structure.pdb",
+  "tabs": [
+    "Plots & Dynamics",
+    "3D Structure (ChiMol)",
+    "Quenching Chemistry",
+    "Project JSON"
+  ],
+  "loaded": {
+    "status": "Loaded 148l.pdb",
+    "attach": [
+      "E",
+      117,
+      "CB"
+    ],
+    "structure_label": "148l.pdb",
+    "problems": []
+  },
+  "quencher_rows_default": [
+    {
+      "residue": "ALA",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CB",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "ARG",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CZ, NE, NH1, NH2",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "ASN",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CG, OD1, ND2",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "ASP",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CG, OD1, OD2",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "CYS",
+      "kQ": 0.8,
+      "quench_radius": 7.0,
+      "quench_atoms": "SG",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "GLN",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CD, OE1, NE2",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "GLU",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CD, OE1, OE2",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "GLY",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CA",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "HIS",
+      "kQ": 1.0,
+      "quench_radius": 8.2,
+      "quench_atoms": "CG, ND1, CD2, CE1, NE2",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "ILE",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CB",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "LEU",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CB",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "LYS",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "NZ",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "MET",
+      "kQ": 1.67,
+      "quench_radius": 7.0,
+      "quench_atoms": "SD",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "PHE",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CG, CD1, CD2, CE1, CE2, CZ",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "PRO",
+      "kQ": 2.0,
+      "quench_radius": 7.5,
+      "quench_atoms": "N, CB, CG, CD",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "SER",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "OG",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "THR",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "OG1",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "TRP",
+      "kQ": 3.5,
+      "quench_radius": 8.5,
+      "quench_atoms": "CD2, CE2, CE3, CZ2, CZ3, CH2, NE1, CG, CD1",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "TYR",
+      "kQ": 2.0,
+      "quench_radius": 8.5,
+      "quench_atoms": "CG, CD1, CD2, CE1, CE2, CZ, OH",
+      "slow_factor": 0.1
+    },
+    {
+      "residue": "VAL",
+      "kQ": 0.0,
+      "quench_radius": null,
+      "quench_atoms": "CB",
+      "slow_factor": 0.1
+    }
+  ],
+  "run": {
+    "status": "Failed: QuEst's accessible volume requires `IMP.bff`, which is not importable. It is a hard dependency (PRD-109): build IMP with `modules/bff` symlinked at the imp.bff checkout, and put the build tree on the path.",
+    "results": null
+  },
+  "after_edit": {
+    "tyr": {
+      "residue": "TYR",
+      "kQ": 2.5,
+      "quench_radius": 8.5,
+      "quench_atoms": "CG, CD1, CD2, CE1, CE2, CZ, OH",
+      "slow_factor": 0.1
+    }
+  },
+  "saved_project_keys": [
+    "amino_acid_interactions",
+    "attachment",
+    "av_parameter",
+    "critical_distance",
+    "dg",
+    "fret",
+    "n_bins",
+    "n_photons",
+    "output_file",
+    "parallel_trajectories",
+    "pdb",
+    "random_seed",
+    "save_avs",
+    "skip_frame",
+    "slow_radius",
+    "t_max",
+    "t_step",
+    "tau0"
+  ],
+  "saved_pdb": "/Users/tpeulen/dev/quest/tests/148l.pdb",
+  "saved_tyr_kq": 2.5,
+  "project_json_text": "{\n  \"tau0\": 4.2,\n  \"n_photons\": 10000,\n  \"t_max\": 200.0,\n  \"t_step\": 0.02,\n  \"dg\": 0.5,\n  \"amino_acid_interactions\": {\n    \"ALA\": {\n      \"slow_factor\": 0.1,\n      \"kQ\": 0.0,\n      \"quench_radius\": nu"
+}

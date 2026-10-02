@@ -245,3 +245,14 @@ def test_nothing_is_written_under_the_home_folder(inputs, tmp_path):
     app.export_settings()
     app.close()
     assert not (Path.home() / ".chisurf").exists() and Path.home() == tmp_path
+
+
+def test_a_card_keeps_the_hosts_keyboard_entry_point():
+    """``CardShell`` stored its dock key in ``self.key``, which shadowed ``ImApp.key``: every typed key on a card (and
+    through the hub, which forwards keys to the open card) raised ``TypeError: 'str' object is not callable``."""
+    from chisurf.plugins.modelling.structure_tools.cards.quest import make_app
+
+    app = make_app()
+    assert callable(app.key)
+    app.key(ord("a"), "a", 0)
+    app.close()

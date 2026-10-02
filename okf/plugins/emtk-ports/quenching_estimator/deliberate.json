@@ -1,0 +1,18 @@
+{
+  "runsimulation": "renamed: Simulate (the card's toolbar label)",
+  "state": "the State line is drawn as 'State: <text>' above the form",
+  "reload": "Qt ChiMol viewer button; the native 3D tab is a CA-trace plot with the donor/acceptor sites, no reload needed",
+  "3dstructureviewport(nomodulenamed'chisurf.plugins.chimol.chimol')": "Qt ChiMol viewer error text (the Qt viewer does not build here); replaced by the native 3D Structure tab",
+  "pdbnone(3dviewportready)": "Qt ChiMol viewer status text; replaced by the native 3D Structure tab",
+  "sequencebarunavailable(needschisurf)": "Qt ChiMol sequence bar error text; residue picking in the viewer is not ported (set chain/residue in the form)",
+  ".*": "table/regex data of the Qt viewer, not a control",
+  "\\b": "table/regex data of the Qt viewer, not a control",
+  "aa": "Qt viewer data",
+  "averaged": "Qt viewer data",
+  "1.0": "table data (slow factors)",
+  "2.0": "table data (kQ values)",
+  "7.0": "table data (radii)",
+  "?": "Qt help glyph; the card has Help and Guide buttons",
+  "acceptor": "Qt label of the FRET panel; the card has the full 'Acceptor ...' fields",
+  "radius(å)": "Qt label of a FRET field; the card names it 'Acceptor dye radius (Å)'"
+}
