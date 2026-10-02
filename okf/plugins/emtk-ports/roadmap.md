@@ -28,3 +28,8 @@ Only after A and B: remove Qt tool entries, then host-level Qt (`ControlHost` st
 Maximize reuse across all plugins, Qt and emtk. Find duplicated UI: grep for re-implemented detector setup, dataset pickers, file choosers, image
 panels, tables and plot panels across `chisurf/plugins/*`; list them with the shared component that should replace each; replace in the owning plugin's
 next cycle, or extend the shared component first (detector editor: table layout, range-text parsing, last-used setup; dataset picker buttons id bug).
+
+## Track F: docs catch-up (owner rule, 2026-10-02)
+Every accepted emtk port needs its docs updated with the UI: guide text and figures from the emtk app, reference page regenerated. Known gaps from
+reports: no guide for `photon_table`, `boarding`, `switch_user`, `calculators`, `fret_calculator`, `kappa2_dist`, `accurate_fret`; guide 37 (`tttr_lut_tools`)
+and the lightpath reference page still describe Qt. Method: per plugin, regenerate figures with the capture scripts under `okf/plugins/emtk-ports/<id>/scripts`.

@@ -75,3 +75,11 @@ change. Every REPORT.md has a **Reuse** section: shared components used, local d
 Read screenshots at 1200x800 and 800x600: no clipped or overlapping text, grouped inputs, no misleading idle controls, image/plot area gets the space.
 The mouse wheel works wherever it applies (zoom on images, plots and node editors, scroll on lists), and every control has a real-input click test.
 Tour cards must not cover the control a step points at (they are draggable).
+
+## Docs travel with the UI (owner rule, 2026-10-02)
+
+Whenever you change a plugin's UI and take screenshots, update that plugin's docs in the same change and the same job: the numbered
+`docs/guides/NN_<topic>.md` (figures regenerated from the emtk app in a populated state, button and label names and the steps matching the emtk UI),
+the concept page if wording changed, and the generated plugin reference (`pixi run -e docs docs-plugins`, or edit `docs/reference/plugins/<id>.md`
+when the task cannot run). A plugin without a guide gets one (CLAUDE.md: theory + application). The REPORT.md has a **Docs** section listing files and
+figures changed. Already accepted ports whose guides still show the Qt tool are a follow-up list in `roadmap.md` (Track F).
