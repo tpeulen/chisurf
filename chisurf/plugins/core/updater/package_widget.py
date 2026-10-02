@@ -39,6 +39,12 @@ from qtpy.QtWidgets import (
 from .updater import PackageManager
 
 
+#: Workers that may still be running. The widget that started one can be deleted before it has finished (a window
+#: closed while a list loads), and a ``QThread`` destroyed while it runs aborts the whole process; so the module
+#: keeps every worker alive until it has finished.
+_ALIVE: list = []
+
+
 class PackageWorker(QThread):
     """
     Worker thread for running package manager commands asynchronously.
@@ -62,6 +68,8 @@ class PackageWorker(QThread):
         self.func = func
         self.args = args
         self.kwargs = kwargs
+        _ALIVE[:] = [w for w in _ALIVE if not w.isFinished()]
+        _ALIVE.append(self)
 
     def run(self):
         """Execute ``self.func`` and emit ``finished`` with the normalised result tuple."""
@@ -320,10 +328,22 @@ class PackageManagerWidget(QWidget):
         self.refresh_installed_btn.setEnabled(False)
         worker = PackageWorker(self.manager.list_installed)
         worker.finished.connect(self._on_installed_loaded)
-        worker.finished.connect(lambda: self.refresh_installed_btn.setEnabled(True))
+        worker.finished.connect(self._enable_refresh_installed)
         # Keep reference to avoid GC
         self._installed_worker = worker
         worker.start()
+
+    def _enable_refresh_installed(self, *_):
+        """Re-enable the refresh button when a worker has finished.
+
+        A bound method (not a lambda): the connection ends with this widget, so a worker that outlives the
+        dialog no longer reaches for a button that was deleted with it.
+        """
+        self.refresh_installed_btn.setEnabled(True)
+
+    def _enable_search(self, *_):
+        """Re-enable the search button when the search worker has finished (see :meth:`_enable_refresh_installed`)."""
+        self.search_btn.setEnabled(True)
 
     def _on_installed_loaded(self, success, data, error):
         """Handle the result of the installed packages worker.
@@ -389,7 +409,7 @@ class PackageManagerWidget(QWidget):
         self.search_btn.setEnabled(False)
         worker = PackageWorker(self.manager.search, query)
         worker.finished.connect(self._on_search_finished)
-        worker.finished.connect(lambda: self.search_btn.setEnabled(True))
+        worker.finished.connect(self._enable_search)
         self._search_worker = worker
         worker.start()
 
@@ -507,12 +527,6 @@ class PackageManagerWidget(QWidget):
         error : str
             Error message on failure.
         """
-        if success:
-            self.log("Operation completed successfully.")
-            self.refresh_all()
-        else:
-            self.log(f"Operation failed: {error}")
-            dialogs.error(self, "Error", f"The operation failed:\n{error}")
         if success:
             self.log("Operation completed successfully.")
             self.refresh_all()
@@ -744,3 +758,4 @@ class PackageManagerDialog(QDialog):
         close_btn.clicked.connect(self.accept)
         button_box.addWidget(close_btn)
         layout.addLayout(button_box)
+

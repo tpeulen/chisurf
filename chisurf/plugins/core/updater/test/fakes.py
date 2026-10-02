@@ -16,8 +16,13 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from typing import Any
+
+#: The real ``subprocess.run``, for the one proof that starts a Python child that only imports and draws the window.
+REAL_RUN = subprocess.run
+REAL_POPEN = subprocess.Popen
 
 #: The releases the fake download server lists, newest first (``_list_remote_versions`` returns them).
 RELEASES = [

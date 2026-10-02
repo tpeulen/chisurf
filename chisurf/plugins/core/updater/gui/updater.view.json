@@ -1,0 +1,180 @@
+{
+  "_comment": "ChiSurf updater, native emtk window. Drawn by emtk.view_form over UpdaterModel (gui/model.py): 'updater' is the window (version, status, startup switches, available versions, the three actions, the changelog), 'dialog' the in-app confirm / notice the Qt tool asked with message boxes, 'updating' the progress window the Qt tool showed while it prepared the update. The changelog is Markdown drawn by gui/app.py (a spec cannot draw it).",
+  "title": "ChiSurf Updater",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "ChiSurf Updater",
+      "name": "updater",
+      "description": "Check whether a newer ChiSurf exists, read what changed, and install it.",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Installed version",
+          "name": "installed",
+          "description": "The version of ChiSurf that is running and what the last check found.",
+          "sections": [
+            {
+              "type": "custom",
+              "key": "version_line",
+              "title": "",
+              "description": "The version of ChiSurf installed in this environment."
+            },
+            {
+              "type": "info",
+              "source": "status_text",
+              "description": "What the last check found, or what the update is doing."
+            },
+            {
+              "type": "info",
+              "source": "solver_text",
+              "description": "The package manager (micromamba, mamba or conda) that runs the update, and where it lives."
+            },
+            {
+              "type": "toggle",
+              "label": "Development",
+              "attr": "development",
+              "description": "ChiSurf currently has no stable release; updates check the development branch. The switch is on and cannot be changed."
+            },
+            {
+              "type": "info",
+              "source": "branch_text",
+              "description": "The branch the changelog is read from."
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "panel",
+          "title": "Startup behavior",
+          "name": "startup",
+          "description": "What ChiSurf does about updates when it starts. Both switches are saved at once.",
+          "sections": [
+            {
+              "type": "toggle",
+              "label": "Check for updates on startup",
+              "attr": "check_on_startup",
+              "description": "When enabled, ChiSurf will check for updates during startup."
+            },
+            {
+              "type": "toggle",
+              "label": "Ignore updates (do not prompt on startup)",
+              "attr": "ignore_updates_on_startup",
+              "description": "If enabled, ChiSurf will not prompt about updates during startup."
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "panel",
+          "title": "Update",
+          "name": "update",
+          "description": "Pick a version and install it.",
+          "sections": [
+            {
+              "type": "choice",
+              "label": "Available versions",
+              "attr": "selected_version",
+              "options_source": "version_labels",
+              "call": "on_version_changed",
+              "description": "The versions the update server lists, newest first. Picking one shows the changes up to it. Empty until Check for Updates has found some."
+            },
+            {
+              "type": "button_row",
+              "weight": 0,
+              "description": "Look for a newer version, install the selected one, or open the package manager.",
+              "buttons": [
+                {
+                  "action": "check_for_updates",
+                  "label": "Check for Updates",
+                  "description": "Ask the update server which versions exist and whether a newer one than yours is there."
+                },
+                {
+                  "action": "ask_update",
+                  "label": "Update Now",
+                  "description": "Install the selected version. Asks first: the update closes all ChiSurf windows and continues in a separate window. Greyed until a check has found a version."
+                },
+                {
+                  "action": "open_package_manager",
+                  "label": "Package Manager",
+                  "description": "Open the package manager to manage packages in your environment. Greyed for now: the package manager window is not in the native version yet."
+                }
+              ]
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "custom",
+          "key": "changelog",
+          "title": "Changes since your installed version",
+          "description": "What changed between the previous and the selected version, from the project's commit history. Fills in after a check."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "ChiSurf Updater",
+      "name": "dialog",
+      "description": "Asks before the update starts and reports what the check found.",
+      "sections": [
+        {
+          "type": "info",
+          "source": "dialog_text",
+          "description": "What will happen if you confirm."
+        },
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Value",
+          "attr": "dialog_input",
+          "hidden_when": {
+            "attr": "dialog_input_hidden",
+            "equals": "yes"
+          },
+          "description": "The text the question asks for."
+        },
+        {
+          "type": "button_row",
+          "description": "Confirm or cancel.",
+          "buttons": [
+            {
+              "action": "dialog_ok",
+              "label": "OK",
+              "label_source": "dialog_ok_label",
+              "description": "Do it."
+            },
+            {
+              "action": "dialog_cancel",
+              "label": "Cancel",
+              "label_source": "dialog_cancel_label",
+              "hidden_when": {
+                "attr": "dialog_cancel_hidden",
+                "equals": "yes"
+              },
+              "description": "Leave everything as it is."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Updating",
+      "name": "updating",
+      "description": "Shown while the update is prepared.",
+      "sections": [
+        {
+          "type": "info",
+          "source": "update_message",
+          "description": "The latest step of the update: download, command, hand-over to the update window."
+        },
+        {
+          "type": "progress",
+          "attr": "update_progress",
+          "description": "The update runs outside ChiSurf; this bar has no end because the length of the install is not known."
+        }
+      ]
+    }
+  ]
+}

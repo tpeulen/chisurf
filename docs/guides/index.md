@@ -32,6 +32,7 @@ already have a burst list or a decay, jump straight to the analysis you need.
 22_binned_photon_traces
 74_intensity_traces_and_file_tools
 73_tttr_decay_and_correlation
+88_microtime_shifter
 37_tttr_microtime_lut
 34_exporting_burst_data
 35_combining_repeats
@@ -125,6 +126,7 @@ irf_estimation
 84_spot_finder
 86_image_browser
 87_channel_definition
+88_updater
 45_scan_precision
 55_pair_correlation
 ```
@@ -253,6 +255,8 @@ irf_estimation
 | [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (no menu; CLI/RPC), `core.fluorescence.mfd.prepare` |
 | [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Imaging → Tools; Imaging Tools hub), `tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
+| [Updating ChiSurf](88_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
+| [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
 
 ## Regenerating the figures
 

@@ -1,0 +1,42 @@
+{
+  "_comment": "Guided tour of the updater. Every step points at a real control; the ones that need the user wait for the press (watching a button being pressed does not teach anyone where it is). Update Now is explained but never awaited: pressing it opens a confirmation, and the tour must not lead anyone into an update.",
+  "steps": [
+    {
+      "title": "What is installed",
+      "text": "<b>Current version</b> is the ChiSurf running now; the line below it says what the last check found, and the solver line says which package manager would run an update.",
+      "target": {"name": "current_version_text", "key": "version_line"}
+    },
+    {
+      "title": "Look for a newer version",
+      "text": "Press <b>Check for Updates</b>. ChiSurf asks the update server which versions it offers and compares the newest with yours. It runs in the background; the status line follows it.",
+      "target": {"name": "check_for_updates", "action": "check_for_updates"},
+      "await": {"hint": "Press <b>Check for Updates</b>."}
+    },
+    {
+      "title": "Pick a version",
+      "text": "<b>Available versions</b> lists what the server has, newest first. It is empty until a check found some. Open the list and choose a version: the changelog below follows your choice.",
+      "target": {"name": "selected_version", "attr": "selected_version"},
+      "await": {"hint": "Choose a version in the list."}
+    },
+    {
+      "title": "Read what changed",
+      "text": "The changes between the previous version and the selected one, from the project's commit history. Scroll it with the mouse wheel; links open in your browser.",
+      "target": {"name": "changelog", "key": "changelog"}
+    },
+    {
+      "title": "Startup behavior",
+      "text": "<b>Check for updates on startup</b> lets ChiSurf look when it starts; <b>Ignore updates</b> keeps it from asking about what it finds. Both are saved the moment you change them.",
+      "target": {"name": "check_on_startup", "attr": "check_on_startup"}
+    },
+    {
+      "title": "Installing",
+      "text": "<b>Update Now</b> installs the selected version, after one question: the update closes every ChiSurf window and continues in a separate window, so unsaved work is lost, and you restart ChiSurf yourself afterwards. Answer <b>No</b> to stay as you are. It is greyed until a check has found a version.",
+      "target": {"name": "ask_update", "action": "ask_update"}
+    },
+    {
+      "title": "Packages",
+      "text": "<b>Package Manager</b> opens the window for the packages, environments and channels of this installation.",
+      "target": {"name": "open_package_manager", "action": "open_package_manager"}
+    }
+  ]
+}
