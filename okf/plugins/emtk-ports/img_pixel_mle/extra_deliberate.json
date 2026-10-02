@@ -1,0 +1,5 @@
+{
+ "bi-exponential(fit24)": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "lifetimeselection(fit25)": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "singlelifetime+anisotropy(fit23)": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests)."
+}

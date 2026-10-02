@@ -2,7 +2,7 @@
 type: Guide
 title: Number & Brightness
 description: Map molecule number and brightness per pixel from a confocal image stack with the Number & Brightness step of Image Tools — corrections, analog calibration, gating a brightness population back onto the image, cross N&B, and the same analysis from the command line and Python.
-tags: [guides, imaging, brightness, oligomerization]
+tags: [guides, imaging, calibration, python]
 ---
 
 # Number & Brightness
@@ -24,7 +24,7 @@ out a brightness population and shows where it sits in the image.
 
 ## Try it on data whose answer is known
 
-Press **🧪 Load demo**. It writes a simulated scan as an ordinary PTU file —
+Press **Load demo**. It writes a simulated scan as an ordinary PTU file —
 monomers ($\varepsilon = 0.5$ counts per dwell, $n = 6$) on the left half, dimers
 ($\varepsilon = 1.0$, $n = 3$) on the right, both halves equally bright — and
 runs the analysis. The **Guide** button walks through the same steps.
@@ -40,15 +40,14 @@ Molecular brightness of the demo: about 0.5 on the monomer half, 1.0 on the dime
 
 On the **Parameter plane** (intensity horizontally, $B$ vertically) the two
 species are two clouds at the same intensity, $B \approx 1.5$ and $B \approx 2.0$.
-Draw a rectangle round the upper cloud with the rectangle button of **Gate
-regions**; **Gated pixels** then shows the right half, and the status box reports
+Open **Analysis regions** under *Parameter plane / gates*, press **Add rectangle** and drag its handles round the upper cloud; **Gated pixels** then shows the right half, and the status box reports
 the gated pixels' median $\varepsilon \approx 1.0$ and $n \approx 3$.
 
 ```{figure} figures/nb_parameter_plane.png
 :alt: Parameter plane of intensity versus apparent brightness with a gate rectangle over the dimer population
 :width: 100%
 
-The parameter plane with a gate over the brighter population.
+The parameter plane with a gate over the brighter population (the *View* list brings any of the ten tabs forward).
 ```
 
 ## Settings, in the order they matter
@@ -61,7 +60,7 @@ The parameter plane with a gate over the brighter population.
    back, because $B$ divides by it.
 2. **Detector.** For bright samples set the *dead time* and the *pixel dwell*.
    For an analog detector load a static-gradient calibration file, **Run**, press
-   **📐 Calibrate analog** (it fills *Gain S* and *Offset*), then load the
+   **Calibrate analog** (it fills *Gain S* and *Offset*), then load the
    measurement. *Read variance* comes from a dark measurement.
 3. **Estimator.** *Shape factor γ* is 1 for the values as Digman et al. define
    them and 0.3536 for the γ-corrected values other packages report. *Moment
@@ -92,7 +91,7 @@ maps = nb_pipeline(stack, {"detrend_segments": 5, "gamma": 1.0})
 dimers = nb_gate_mask(maps["mean"], maps["B"], RectangleROI(0, 1.75, 100, 3))
 ```
 
-On the demo file (**🧪 Load demo** writes it; `create_demo()` in
+On the demo file (**Load demo** writes it; `create_demo()` in
 `chisurf.plugins.microscopy.img_pixel_nb.demo` from Python) the gate keeps 496
 of 1024 pixels with median ε = 0.99 and n = 3.00. The CLI line above, with
 γ = 0.3536 and 3-pixel smoothing, prints `B mean=1.747 | epsilon median=2.120 |

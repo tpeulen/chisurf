@@ -1,0 +1,12 @@
+{
+ "average": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "disk": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "epsilon": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "frame_mean": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "gaussian": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "moving_average": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "n": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "pixel_mean": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "total_mean": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "gateregions": "Qt title of the region list; emtk's shared region list has its own header 'Analysis regions'."
+}

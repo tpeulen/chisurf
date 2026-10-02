@@ -1,0 +1,11 @@
+{
+ "allofthem": "Qt RegionEditor combine choice 'All of them'; emtk's shared RegionControls offers the same rule as the combine choice 'and'.",
+ "anyofthem": "Qt RegionEditor combine choice 'Any of them'; emtk: combine choice 'or'.",
+ "exactlyone": "Qt RegionEditor combine choice 'Exactly one'; emtk: combine choice 'xor'.",
+ "combine": "Qt RegionEditor combine label; emtk: 'Combine regions'.",
+ "region": "column header of the Qt region table; emtk lists each region as a selectable row with Enabled and Invert boxes.",
+ "shape": "column header of the Qt region table (Rectangle / Ellipse / Polygon); emtk names the shape in the region's row and its Add buttons.",
+ "measurement": "column header of the Qt region table (area / mean); emtk shows the area and mean of the selected region only for image regions, not for plane regions.",
+ "noregions": "Qt placeholder 'No regions'; emtk shows the selection summary line ('N of M px') instead.",
+ "phasorcursors": "Qt section title 'Phasor cursors'; emtk's shared region list has its own header 'Analysis regions' (shared chisurf/emtk/regions.py)."
+}

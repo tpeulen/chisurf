@@ -1,0 +1,6 @@
+{
+ "firstaxis": "an option of a Qt choice list; emtk's field lists the same options when it is opened (the capture shows the lists closed; each is picked in the tests).",
+ "gateregions": "Qt title of the region list; emtk's shared region list has its own header 'Analysis regions'.",
+ "nodetectors": "Qt setup picker placeholder; replaced by the Detectors tab (the shared Setup editor).",
+ "\u2014rawdetectorchannels\u2014": "Qt setup picker placeholder 'raw detector channels'; with no detector window the raw channels are used and the Detectors tab shows none."
+}

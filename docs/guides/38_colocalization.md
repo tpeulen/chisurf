@@ -37,10 +37,10 @@ Leave the setup empty to work with the raw detector channels stored in the file
 
 ### 2. Load an image
 
-Use the **Image** row: **📂** browses the disk, **🗄** loads a dataset registered
+Type a path into **Image** and press Enter, press **Browse** for the disk, or **Database** to load a dataset registered
 in the database (the database resolves it to a local file, wherever its object
 store keeps the data — local disk or an S3-compatible endpoint), and a file
-dropped on the window works too. Photon streams are
+dropped on the window works too. Choosing a file loads and runs it. Photon streams are
 reconstructed into a confocal-scan image (frame/line/pixel markers are read from
 the header); TIFFs are read with the axis order the file declares — ImageJ
 hyperstack and OME metadata are honoured, so a `TCYX` stack loads correctly. For
@@ -76,8 +76,8 @@ pixels above both thresholds.
 :name: fig-coloc-workspace
 :width: 100%
 
-The colocalization tool on a two-detector confocal image: detector setup and
-channel pair on the left, coefficients on the right.
+The colocalization tool on a simulated two-channel image (two Gaussian structures,
+the second one partly shifted): the settings and the channel pair on the left, the coefficients on the right.
 ```
 
 ### 6. Check registration, then significance
@@ -133,7 +133,7 @@ and independent puncta looks like.
 :name: fig-coloc-objects
 :width: 65%
 
-Segmented objects of both channels: 1 = channel A only, 2 = channel B only,
+Segmented objects of the simulated image: 1 = channel A only, 2 = channel B only,
 3 = both. Coincidence is read straight off the map.
 ```
 
@@ -141,14 +141,13 @@ Segmented objects of both channels: 1 = channel A only, 2 = channel B only,
 :name: fig-coloc-object-distances
 :width: 75%
 
-Nearest-neighbour distances in both directions. The spike near 1 px are the real
-partners; the flat tail is what chance looks like.
+Nearest-neighbour distances in both directions for the simulated image.
 ```
 
 ### 10. Gate a population in the scatter
 
 The **Intensity scatter** tab is the joint histogram (A horizontal, B vertical).
-Drag the blue rectangle over a region — a dim background cloud, a bright punctate
+Drag the blue rectangle's handles over a region — a dim background cloud, a bright punctate
 population — and the gated pixels get their own Pearson and Manders values in the
 table, while the *Colocalized pixels* map highlights them.
 
@@ -156,7 +155,8 @@ table, while the *Colocalized pixels* map highlights them.
 :name: fig-coloc-scatter
 :width: 70%
 
-Joint intensity histogram of the two channels with the draggable gate. The gated
+Joint intensity histogram of the simulated channels. A gate box is typed under *Scatter gate*,
+or added with **Add rectangle** in the *Analysis regions* list and dragged by its handles; the gated
 pixel population gets its own coefficients.
 ```
 

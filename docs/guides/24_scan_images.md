@@ -142,6 +142,37 @@ other per-pixel tools enrich.
 The Intensity tool on a simulated 32 x 32 scan (12 frames, brighter disc on a gradient): settings on the left, the summed photon counts on the right.
 ```
 
+### Mean micro-time, phasor and pixel-wise MLE
+
+The other per-pixel tools use the same shell as Intensity: **TTTR file**, **Detector window**, **Run** / **Cancel**, **Add ... to HDF5**, **ndX**, **Next**
+and the **Detectors** tab.
+
+- **Mean micro-time** (`img_pixel_micro_time`) shows the photon-weighted arrival time per pixel in ns, with **Min. photons** discriminating dim pixels, and a
+  per-frame movie. It is not a fitted lifetime.
+- **Phasor-FLIM** (`img_pixel_phasor`) computes (g, s) per pixel at the **Frequency** (MHz, -1 reads the header) with the **IRF reference** of each window.
+  On the **Phasor plot** add an ellipse, rectangle or polygon cursor under **Analysis regions** and drag its handles; the **Selected** tab shows the pixels
+  it picks out.
+- **Pixel-wise MLE** (`img_pixel_mle`) fits every pixel by Poisson maximum likelihood: add the photon files and the IRF, name the parallel and perpendicular
+  channels, set the fit window and the model, and press **Run**; the **Lifetime map** tab shows tau and each file's table is written beside it.
+
+```{figure} figures/24_micro_time_tool.png
+:width: 90%
+
+Mean micro-time of a simulated scan whose left half decays in 1 ns and right half in 3 ns.
+```
+
+```{figure} figures/24_phasor_tool.png
+:width: 90%
+
+The phasor plot of the same scan with an ellipse cursor round the 1 ns cluster; the universal semicircle is drawn in yellow.
+```
+
+```{figure} figures/24_mle_tool.png
+:width: 90%
+
+The pixel-wise MLE lifetime map of the simulated two-detector scan.
+```
+
 ## See also
 
 - `tttrlib.CLSMImage`; plugins in `chisurf/plugins/microscopy/`.
