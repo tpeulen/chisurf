@@ -17,6 +17,7 @@
     "window": {"enabled": true, "settings_key": null}
   },
   "entrypoints": {
+    "emtk": "chisurf.plugins.fcs.fcs_calculator.gui.app:make_app",
     "gui": "chisurf.plugins.fcs.fcs_calculator.wizard:ConfocalCalcWidget",
     "cli": "chisurf.plugins.fcs.fcs_calculator.cli.main:main",
     "services": "chisurf.plugins.fcs.fcs_calculator.backend.services:register_services"

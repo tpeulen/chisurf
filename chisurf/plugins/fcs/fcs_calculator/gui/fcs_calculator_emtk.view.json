@@ -1,0 +1,302 @@
+{
+  "_comment": "FCS confocal calculator, drawn by emtk.view_form over ConfocalModel (gui/model.py). The fields and descriptions of fcs_calculator.view.json (the Qt tool's spec); its custom constraint, dye and shape sections are spec sections here (radio choices, a dye choice, value fields, buttons). Computed fields are read-only through ConfocalModel.enabled. The custom section confocal_json (Export / Import JSON with file dialogs) is drawn by gui/app.py.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Constraint (choose one)",
+      "collapsible": true,
+      "description": "Which of D, rₕ and Veff you know; the other two are computed from it.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "constraint",
+          "label": "",
+          "style": "radio",
+          "call": "recompute",
+          "options": [
+            [
+              "D",
+              "Fix D"
+            ],
+            [
+              "rh",
+              "Fix rₕ"
+            ],
+            [
+              "V",
+              "Fix Veff"
+            ]
+          ],
+          "description": "Fix D, rₕ or Veff: that field is the input, the other two are computed and read-only."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Diffusion / volume",
+      "collapsible": true,
+      "n_col": 2,
+      "description": "Correlation time, diffusion, size, focus shape, temperature and viscosity.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "tau_us",
+          "label": "τ (µs)",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": 0.001,
+          "maximum": 1000000000.0,
+          "description": "Diffusion correlation time τ_D.",
+          "style": "spin",
+          "call": "recompute"
+        },
+        {
+          "type": "value",
+          "attr": "D_um2_s",
+          "label": "D (µm²/s)",
+          "kind": "float",
+          "decimals": 6,
+          "minimum": 0.0001,
+          "maximum": 1000000.0,
+          "description": "Translational diffusion coefficient (read-only unless 'Fix D').",
+          "style": "spin",
+          "call": "recompute"
+        },
+        {
+          "type": "value",
+          "attr": "rh_nm",
+          "label": "rₕ (nm)",
+          "kind": "float",
+          "decimals": 6,
+          "minimum": 0.001,
+          "maximum": 1000000.0,
+          "description": "Hydrodynamic radius (read-only unless 'Fix rₕ').",
+          "style": "spin",
+          "call": "recompute"
+        },
+        {
+          "type": "value",
+          "attr": "S",
+          "label": "S (wz/wxy)",
+          "kind": "float",
+          "decimals": 4,
+          "minimum": 0.1,
+          "maximum": 20.0,
+          "description": "Confocal aspect ratio (axial / lateral beam waist).",
+          "style": "spin",
+          "call": "recompute"
+        },
+        {
+          "type": "value",
+          "attr": "veff_fL",
+          "label": "Veff (fL)",
+          "kind": "float",
+          "decimals": 6,
+          "minimum": 1e-06,
+          "maximum": 1000000000.0,
+          "description": "Effective confocal volume (read-only unless 'Fix Veff').",
+          "style": "spin",
+          "call": "recompute"
+        },
+        {
+          "type": "value",
+          "attr": "temp_C",
+          "label": "T (°C)",
+          "kind": "float",
+          "decimals": 2,
+          "minimum": -50.0,
+          "maximum": 200.0,
+          "description": "Temperature.",
+          "style": "spin",
+          "call": "recompute"
+        },
+        {
+          "type": "value",
+          "attr": "eta_mPa_s",
+          "label": "η (mPa·s)",
+          "kind": "float",
+          "decimals": 4,
+          "minimum": 0.01,
+          "maximum": 10000.0,
+          "description": "Solvent viscosity; computed from the water model when 'Use water η(T)' is enabled.",
+          "style": "spin",
+          "call": "recompute"
+        },
+        {
+          "type": "toggle",
+          "attr": "use_water_eta",
+          "label": "Use water η(T)",
+          "description": "Use the temperature-dependent viscosity of water (Kapusta 2010 app note).",
+          "call": "recompute"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Occupancy",
+      "collapsible": true,
+      "n_col": 2,
+      "description": "Occupancy and concentration, linked through Veff.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "invN",
+          "label": "1/N",
+          "kind": "float",
+          "decimals": 9,
+          "minimum": 0.0,
+          "maximum": 1000000000.0,
+          "description": "Inverse occupancy G(0) = 1/N; exceeds 1 for sub-single-molecule occupancy.",
+          "style": "spin",
+          "call": "invN_edited"
+        },
+        {
+          "type": "value",
+          "attr": "num_mols",
+          "label": "N",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": 0.0,
+          "maximum": 1000000000000.0,
+          "step": 0.1,
+          "description": "Average number of molecules in Veff.",
+          "style": "spin",
+          "call": "N_edited"
+        },
+        {
+          "type": "value",
+          "attr": "conc_nM",
+          "label": "Conc (nM)",
+          "kind": "float",
+          "decimals": 6,
+          "minimum": 0.0,
+          "maximum": 1000000000.0,
+          "step": 0.01,
+          "description": "Concentration; N = 0.602214 × c_nM × Veff_fL.",
+          "style": "spin",
+          "call": "conc_edited"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Reference dye (D @ 25 °C, water)",
+      "collapsible": true,
+      "description": "Set D from a reference species with a known diffusion coefficient.",
+      "sections": [
+        {
+          "type": "panel",
+          "n_col": 2,
+          "description": "The reference species and the button that applies it.",
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "dye",
+              "label": "",
+              "options_source": "dye_names",
+              "min_chars": 18,
+              "description": "Reference species from MMFDB carrying a diffusion coefficient D(25 °C, water); curate them in the MMFDB admin tool."
+            },
+            {
+              "type": "button_row",
+              "weight": 0,
+              "description": "Apply the reference.",
+              "buttons": [
+                {
+                  "action": "apply_dye",
+                  "label": "Apply Dref",
+                  "description": "Set D from the selected reference (scaled as chosen below) and switch to Fix D."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "choice",
+          "attr": "scale_dref",
+          "label": "",
+          "style": "radio_list",
+          "call": "recompute",
+          "options": [
+            [
+              true,
+              "Apply with Temp/η scaling"
+            ],
+            [
+              false,
+              "Apply at 25 °C (no scaling)"
+            ]
+          ],
+          "description": "Scale the reference D from 25 °C water to the current temperature and viscosity (Stokes-Einstein), or use it as tabulated."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Molecular shape",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "Estimate D from an assumed shape and size.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "shape_type",
+          "label": "Type",
+          "options": [
+            "Sphere",
+            "Ellipsoid",
+            "Cylinder"
+          ],
+          "description": "Sphere (Stokes-Einstein), prolate ellipsoid (Perrin friction factor) or cylinder (Hansen approximation)."
+        },
+        {
+          "type": "value",
+          "attr": "shape_size_nm",
+          "label": "Size (nm)",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": 0.1,
+          "maximum": 1000000000.0,
+          "style": "spin",
+          "description": "Sphere diameter, ellipsoid minor-axis diameter or cylinder diameter, in nanometres."
+        },
+        {
+          "type": "value",
+          "attr": "shape_aspect",
+          "label": "Aspect",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": 0.1,
+          "maximum": 1000.0,
+          "style": "spin",
+          "description": "Ellipsoid major/minor axis ratio or cylinder length/diameter (not used for a sphere)."
+        },
+        {
+          "type": "button_row",
+          "description": "Apply the shape estimate.",
+          "buttons": [
+            {
+              "action": "apply_shape",
+              "label": "Apply shape→D",
+              "description": "Compute D for this shape at the current temperature and viscosity and switch to Fix D."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Settings JSON",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "Save or load every value, the constraint, the reference and the shape.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "confocal_json",
+          "description": "Export or import the calculator's settings as JSON."
+        }
+      ]
+    }
+  ]
+}
