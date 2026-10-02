@@ -22,8 +22,6 @@ from collections.abc import Callable
 
 import numpy as np
 
-from chisurf.gui.glyphs import Glyphs
-
 from ..core import fits as core_fits
 from ..core import irf as core_irf
 from ..core import spectra as core_spectra
@@ -65,7 +63,8 @@ class AnisotropyViewModel:
 
         return load_view_spec(_VIEW_JSON)
 
-    def __init__(self) -> None:
+    def __init__(self, *, persist: bool = True) -> None:
+        self.persist_preferences = persist
         self._observers: list[Callable[[str], None]] = []
         # file paths (bound to value/file sections)
         self.irf_vv_path = ""
@@ -86,16 +85,14 @@ class AnisotropyViewModel:
         self.region_ub = 100
         # instrument corrections (loaded from / saved to the settings JSON)
         self._corrections = {"g_factor": 1.0, "l1": 0.0, "l2": 0.0}
-        self._load_corrections()
+        if self.persist_preferences:
+            self._load_corrections()
         # spectra (lists of [amplitude, value] pairs)
         self.spk_path = ""
-        self.lifetime_spectrum: list[list[float]] = list(
-            core_spectra.DEFAULT_SPECTRA["lifetime_spectrum"]
-        )
-        self.rotation_spectrum: list[list[float]] = list(
-            core_spectra.DEFAULT_SPECTRA["rotation_spectrum"]
-        )
-        self._load_default_spectra()
+        self.lifetime_spectrum: list[list[float]] = [list(row) for row in core_spectra.DEFAULT_SPECTRA["lifetime_spectrum"]]
+        self.rotation_spectrum: list[list[float]] = [list(row) for row in core_spectra.DEFAULT_SPECTRA["rotation_spectrum"]]
+        if self.persist_preferences:
+            self._load_default_spectra()
         self._status_html = ""
 
     # ── observer hook ──────────────────────────────────────────────────
@@ -130,6 +127,8 @@ class AnisotropyViewModel:
             logger.debug("anisotropy: could not load corrections", exc_info=True)
 
     def _save_corrections(self) -> None:
+        if not self.persist_preferences:
+            return
         try:
             self._corrections_path().write_text(json.dumps(self._corrections))
         except Exception:
@@ -318,7 +317,7 @@ class AnisotropyViewModel:
             ("Data VH", self.data_vh_path),
         ):
             ok = bool(path) and pathlib.Path(path).is_file()
-            mark = Glyphs.SUCCESS if ok else "—"
+            mark = "✓" if ok else "—"
             rows.append(f"<tr><td>{label}</td><td>{mark}</td><td>{path or ''}</td></tr>")
         return "<table cellpadding='3'>" + "".join(rows) + "</table>"
 

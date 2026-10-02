@@ -1,0 +1,148 @@
+diff --git a/chisurf/plugins/fluorescence_decay/tr_anisotropy/__main__.py b/chisurf/plugins/fluorescence_decay/tr_anisotropy/__main__.py
+index 62c995836..adfd63a7e 100644
+--- a/chisurf/plugins/fluorescence_decay/tr_anisotropy/__main__.py
++++ b/chisurf/plugins/fluorescence_decay/tr_anisotropy/__main__.py
+@@ -1,19 +1,10 @@
+-"""Standalone launcher for the anisotropy wizard (``csg_anisotropy``)."""
++"""Launch the native time-resolved anisotropy workflow."""
+ 
+-from __future__ import annotations
+ 
++def main():
++    from chisurf.emtk.__main__ import main as launch
++    return launch(["--plugin","tr_anisotropy"])
+ 
+-def main() -> None:
+-    """Launch the anisotropy wizard as a standalone Qt application."""
+-    from qtpy import QtWidgets
+ 
+-    from .gui.tool import AnisotropyWizard
+-
+-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+-    win = AnisotropyWizard()
+-    win.show()
+-    app.exec_()
+-
+-
+-if __name__ == "__main__":
+-    main()
++if __name__=="__main__":
++    raise SystemExit(main())
+diff --git a/chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/__init__.py b/chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/__init__.py
+index cb8fb25dd..9ba908bb9 100644
+--- a/chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/__init__.py
++++ b/chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/__init__.py
+@@ -1,6 +1,13 @@
+-"""GUI layer for the anisotropy wizard (AutoForm host + view-model + widgets)."""
+-
+-from .tool import AnisotropyWizard, ChisurfWizard
+-from .view_model import AnisotropyViewModel
++"""Native anisotropy model with lazy legacy Qt exports."""
+ 
+ __all__ = ["AnisotropyWizard", "ChisurfWizard", "AnisotropyViewModel"]
++
++
++def __getattr__(name):
++    if name=="AnisotropyViewModel":
++        from .view_model import AnisotropyViewModel
++        return AnisotropyViewModel
++    if name in {"AnisotropyWizard","ChisurfWizard"}:
++        from . import tool
++        return getattr(tool,name)
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py b/chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py
+index 36b522a40..3800195c4 100644
+--- a/chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py
++++ b/chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py
+@@ -22,8 +22,6 @@ from collections.abc import Callable
+ 
+ import numpy as np
+ 
+-from chisurf.gui.glyphs import Glyphs
+-
+ from ..core import fits as core_fits
+ from ..core import irf as core_irf
+ from ..core import spectra as core_spectra
+@@ -65,7 +63,8 @@ class AnisotropyViewModel:
+ 
+         return load_view_spec(_VIEW_JSON)
+ 
+-    def __init__(self) -> None:
++    def __init__(self, *, persist: bool = True) -> None:
++        self.persist_preferences = persist
+         self._observers: list[Callable[[str], None]] = []
+         # file paths (bound to value/file sections)
+         self.irf_vv_path = ""
+@@ -86,16 +85,14 @@ class AnisotropyViewModel:
+         self.region_ub = 100
+         # instrument corrections (loaded from / saved to the settings JSON)
+         self._corrections = {"g_factor": 1.0, "l1": 0.0, "l2": 0.0}
+-        self._load_corrections()
++        if self.persist_preferences:
++            self._load_corrections()
+         # spectra (lists of [amplitude, value] pairs)
+         self.spk_path = ""
+-        self.lifetime_spectrum: list[list[float]] = list(
+-            core_spectra.DEFAULT_SPECTRA["lifetime_spectrum"]
+-        )
+-        self.rotation_spectrum: list[list[float]] = list(
+-            core_spectra.DEFAULT_SPECTRA["rotation_spectrum"]
+-        )
+-        self._load_default_spectra()
++        self.lifetime_spectrum: list[list[float]] = [list(row) for row in core_spectra.DEFAULT_SPECTRA["lifetime_spectrum"]]
++        self.rotation_spectrum: list[list[float]] = [list(row) for row in core_spectra.DEFAULT_SPECTRA["rotation_spectrum"]]
++        if self.persist_preferences:
++            self._load_default_spectra()
+         self._status_html = ""
+ 
+     # ── observer hook ──────────────────────────────────────────────────
+@@ -130,6 +127,8 @@ class AnisotropyViewModel:
+             logger.debug("anisotropy: could not load corrections", exc_info=True)
+ 
+     def _save_corrections(self) -> None:
++        if not self.persist_preferences:
++            return
+         try:
+             self._corrections_path().write_text(json.dumps(self._corrections))
+         except Exception:
+@@ -318,7 +317,7 @@ class AnisotropyViewModel:
+             ("Data VH", self.data_vh_path),
+         ):
+             ok = bool(path) and pathlib.Path(path).is_file()
+-            mark = Glyphs.SUCCESS if ok else "—"
++            mark = "✓" if ok else "—"
+             rows.append(f"<tr><td>{label}</td><td>{mark}</td><td>{path or ''}</td></tr>")
+         return "<table cellpadding='3'>" + "".join(rows) + "</table>"
+ 
+diff --git a/chisurf/plugins/fluorescence_decay/tr_anisotropy/manifest.json b/chisurf/plugins/fluorescence_decay/tr_anisotropy/manifest.json
+index 9b8caf86e..863bb2296 100644
+--- a/chisurf/plugins/fluorescence_decay/tr_anisotropy/manifest.json
++++ b/chisurf/plugins/fluorescence_decay/tr_anisotropy/manifest.json
+@@ -3,9 +3,14 @@
+   "version": "1.0.0",
+   "display_name": "Spectroscopy:Fluorescence decay:Anisotropy-Wizard",
+   "description": "Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Spectroscopy", "Fluorescence decay"],
+-  "icon": "🔃",
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Spectroscopy",
++    "Fluorescence decay"
++  ],
++  "icon": "\ud83d\udd03",
+   "state_namespace": "tr_anisotropy",
+   "statefulness": {
+     "enabled": true,
+@@ -16,7 +21,8 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.tool:AnisotropyWizard",
+-    "cli": "anisotropy=chisurf.plugins.fluorescence_decay.tr_anisotropy.cli:cli"
++    "cli": "anisotropy=chisurf.plugins.fluorescence_decay.tr_anisotropy.cli:cli",
++    "emtk": "chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app:make_app"
+   },
+   "rpc_methods": [],
+   "dependencies": {},

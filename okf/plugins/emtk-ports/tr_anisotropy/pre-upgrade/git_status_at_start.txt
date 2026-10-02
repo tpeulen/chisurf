@@ -1,0 +1,9 @@
+ M chisurf/plugins/fluorescence_decay/tr_anisotropy/__main__.py
+ M chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/__init__.py
+ M chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py
+ M chisurf/plugins/fluorescence_decay/tr_anisotropy/manifest.json
+?? chisurf/plugins/fluorescence_decay/tr_anisotropy/core/native_fits.py
+?? chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/app.py
+?? chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/model.py
+?? chisurf/plugins/fluorescence_decay/tr_anisotropy/test/renders/
+?? chisurf/plugins/fluorescence_decay/tr_anisotropy/test/test_native.py
