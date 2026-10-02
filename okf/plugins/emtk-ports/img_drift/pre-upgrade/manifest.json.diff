@@ -1,0 +1,12 @@
+diff --git a/chisurf/plugins/microscopy/img_drift/manifest.json b/chisurf/plugins/microscopy/img_drift/manifest.json
+index 001c693d4..58714e868 100644
+--- a/chisurf/plugins/microscopy/img_drift/manifest.json
++++ b/chisurf/plugins/microscopy/img_drift/manifest.json
+@@ -10,6 +10,7 @@
+   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+   "entrypoints": {
+     "gui": "chisurf.plugins.microscopy.img_drift.gui.tool:ImgDriftTool",
++    "emtk": "chisurf.plugins.microscopy.img_drift.app:make_app",
+     "cli": "img-drift=chisurf.plugins.microscopy.img_drift.cli:cli"
+   },
+   "operation_types": ["drift_correction"]

@@ -1,0 +1,26 @@
+{
+ "reference=first": {
+  "ok": true,
+  "status": "Max drift 24.6 px over 12 frames."
+ },
+ "reference=mean": {
+  "ok": true,
+  "status": "Max drift 13.4 px over 12 frames."
+ },
+ "reference=middle": {
+  "ok": false,
+  "status": "Drift measurement failed: unknown reference 'middle'; expected one of ('first', 'previous', 'mean')"
+ },
+ "mode=wrap": {
+  "ok": true,
+  "status": "Max drift 24.6 px over 12 frames."
+ },
+ "mode=nearest": {
+  "ok": false,
+  "status": "Drift measurement failed: unknown mode 'nearest'; expected 'wrap' or 'constant'"
+ },
+ "mode=reflect": {
+  "ok": false,
+  "status": "Drift measurement failed: unknown mode 'reflect'; expected 'wrap' or 'constant'"
+ }
+}
