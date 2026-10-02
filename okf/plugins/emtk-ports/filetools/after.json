@@ -1,0 +1,241 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    ".pto",
+    "1",
+    "300",
+    "auto",
+    "batch",
+    "bid→analysis",
+    "clear",
+    "convert/split",
+    "database",
+    "dropatttrfilehereorbrowse",
+    "dropatttrfileontothiswindowtoloadit.",
+    "files",
+    "filtertools",
+    "folder",
+    "formats",
+    "guide",
+    "help",
+    "input/output",
+    "inputfile",
+    "inputformat",
+    "keeporiginal",
+    "microtimebinning",
+    "nofilesqueued—addptufilesorafolder.",
+    "outputfolder",
+    "outputformat",
+    "outputnexttoeachfile",
+    "photonsperfile[k]",
+    "ptoinspector",
+    "ptu",
+    "resetmacrotimes",
+    "split",
+    "splitintofiles",
+    "splitlargetttrfilesintosegmentsandconvertbetweencontainerformats.",
+    "splitoptions",
+    "startbatch",
+    "tttrheader",
+    "tttrsplit/convert",
+    "tttr→timewindows",
+    "vformats",
+    "vsplit"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Walk through choosing a converter, inspecting a container and correcting metadata."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "Read the file-tools help and the workflows of all six tools."
+    },
+    {
+      "kind": "input_text",
+      "label": "File tool search",
+      "id": "##File tool search",
+      "tooltip": "Filter tools by name or description."
+    },
+    {
+      "kind": "selectable",
+      "label": "✂ TTTR Split / Convert",
+      "id": "✂ TTTR Split / Convert",
+      "tooltip": "Split large TTTR files into segments and convert between container formats."
+    },
+    {
+      "kind": "selectable",
+      "label": "📦 ⇄ .pto",
+      "id": "📦 ⇄ .pto",
+      "tooltip": "Pack a vendor photon file into a .pto container, or unpack the vendor file back out of one. Either direction keeps the dropped file and verifies the result byte-for-byte before anything is deleted."
+    },
+    {
+      "kind": "selectable",
+      "label": "🔎 PTO Inspector",
+      "id": "🔎 PTO Inspector",
+      "tooltip": "Read a .pto back: every object in it, the payload as a table or a curve, the settings that are the recipe, and the provenance drawn as a graph. Opens the tool that performs a step."
+    },
+    {
+      "kind": "selectable",
+      "label": "🏷 TTTR header",
+      "id": "🏷 TTTR header",
+      "tooltip": "View and edit the header tags of any TTTR file tttrlib can read — correcting metadata a vendor wrote, and adding tags of your own."
+    },
+    {
+      "kind": "selectable",
+      "label": "⏱ TTTR → Time Windows",
+      "id": "⏱ TTTR → Time Windows",
+      "tooltip": "Split TTTR files into fixed-duration time-window BID (.bst) files."
+    },
+    {
+      "kind": "selectable",
+      "label": "📁 BID → Analysis",
+      "id": "📁 BID → Analysis",
+      "tooltip": "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data."
+    },
+    {
+      "kind": "button",
+      "label": "✂ Convert / Split",
+      "id": "✂ Convert / Split",
+      "tooltip": "Split the loaded TTTR file into the output folder, one file per photon chunk, converting the container format when it differs."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "The short help page."
+    },
+    {
+      "kind": "input_text",
+      "label": "Input file",
+      "id": "##Input file",
+      "tooltip": "Input file — type a path, or drop it on the window, or press … to browse."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…",
+      "tooltip": "Browse for the input file."
+    },
+    {
+      "kind": "input_text",
+      "label": "Output folder",
+      "id": "##Output folder",
+      "tooltip": "Output folder — type a path, or drop it on the window, or press … to browse."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…",
+      "tooltip": "Browse for the output folder."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Formats",
+      "id": "Formats",
+      "tooltip": "Expand or collapse the input and output container settings."
+    },
+    {
+      "kind": "combo",
+      "label": "Input format",
+      "id": "Input format",
+      "tooltip": "How to read the input file. Auto detects the container from its content; pick the vendor format when the extension lies."
+    },
+    {
+      "kind": "combo",
+      "label": "Output format",
+      "id": "Output format",
+      "tooltip": "Container the output files are written in — the same format when it matches the input, a transcode otherwise."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Split",
+      "id": "Split",
+      "tooltip": "Expand or collapse photon chunking, timing and source retention settings."
+    },
+    {
+      "kind": "input_int",
+      "label": "Photons per file [k]",
+      "id": "Photons per file [k]",
+      "tooltip": "Chunk size in thousands of photons when Split into files is enabled."
+    },
+    {
+      "kind": "combo",
+      "label": "Micro time binning",
+      "id": "Micro time binning",
+      "tooltip": "Divide the micro-time resolution of the output by this factor."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Split into files",
+      "id": "Split into files",
+      "tooltip": "Split into photon chunks; disable to write a single converted file."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Reset macro times",
+      "id": "Reset macro times",
+      "tooltip": "Restart the macro-time clock at zero for each output file."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Keep original",
+      "id": "Keep original",
+      "tooltip": "Keep the input file; disabling deletes it after successful writing."
+    },
+    {
+      "kind": "button",
+      "label": "➕ Files",
+      "id": "➕ Files",
+      "tooltip": "Queue PTU files for the batch run."
+    },
+    {
+      "kind": "button",
+      "label": "📁 Folder",
+      "id": "📁 Folder",
+      "tooltip": "Queue .ptu files recursively from a folder, sorted by name."
+    },
+    {
+      "kind": "button",
+      "label": "🗑️ Clear",
+      "id": "🗑️ Clear",
+      "tooltip": "Empty the batch queue."
+    },
+    {
+      "kind": "button",
+      "label": "🗄 Database",
+      "id": "🗄 Database",
+      "tooltip": "Queue PTU datasets from the session MMFDB database."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Output next to each file",
+      "id": "Output next to each file",
+      "tooltip": "Write each file's output into its own folder instead of the shared output folder."
+    },
+    {
+      "kind": "button",
+      "label": "▶ Start batch",
+      "id": "▶ Start batch",
+      "tooltip": "Split every queued file with the options set above."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

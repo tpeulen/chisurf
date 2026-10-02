@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **filetools emtk hub at parity** (EMTK-1, upgrade row 46): frames on demand, captions without emoji variation selectors, a
+  guide on the real navigation that waits for a converter to be opened; the Qt stepper deliberately not reproduced. Children
+  untouched (tttr_to_pto / pto_inspector off-limits); notes for their owners in the report.
+  [report](plugins/emtk-ports/filetools/REPORT.md).
+
 - **traj_fret emtk app at parity; a topology row on both hosts** (EMTK-1, upgrade row 45): the Qt tool could not open a DCD
   (only `.h5` offered, no topology row); both hosts now take the trajectory and topology in either order, and the emtk app
   picks dye atoms by chain → residue → atom. Trap found: an attribute named `_index` shadows `ImApp._index(button)` and kills
