@@ -72,6 +72,7 @@ def test_an_accepted_plugin_opens_emtk_in_auto():
     assert select(_manifest("tttr_lut_tools"), "auto") == ("emtk", "pkg.app:make")
     assert select(_manifest("boarding"), "auto") == ("emtk", "pkg.app:make")
     assert select(_manifest("switch_user"), "auto") == ("emtk", "pkg.app:make")
+    assert select(_manifest("setup_channel_definition"), "auto") == ("emtk", "pkg.app:make")
 
 
 def test_a_preview_plugin_without_a_qt_tool_still_opens_emtk():
