@@ -1,0 +1,12 @@
+diff --git a/chisurf/plugins/calculator/psf_calculator/manifest.json b/chisurf/plugins/calculator/psf_calculator/manifest.json
+index b8951fa89..6fc20bd3f 100644
+--- a/chisurf/plugins/calculator/psf_calculator/manifest.json
++++ b/chisurf/plugins/calculator/psf_calculator/manifest.json
+@@ -19,6 +19,7 @@
+     "window": {"enabled": true, "settings_key": null}
+   },
+   "entrypoints": {
++    "emtk": "chisurf.plugins.calculator.psf_calculator.gui.app:make_app",
+     "gui": "chisurf.plugins.calculator.psf_calculator.gui.tool:PSFCalculator"
+   },
+   "rpc_methods": [],

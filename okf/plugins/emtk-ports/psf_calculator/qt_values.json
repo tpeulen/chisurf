@@ -1,0 +1,341 @@
+{
+ "scenarios": {
+  "default_vectorial_circular": {
+   "params": {
+    "na": 1.4,
+    "n_immersion": 1.518,
+    "wavelength_nm": 520.0,
+    "model": "vectorial",
+    "polarization": "circular",
+    "angle_deg": 0.0,
+    "nxy": 48,
+    "nz": 21,
+    "pixel_size_nm": 30.0,
+    "z_step_nm": 100.0,
+    "quality": "preview",
+    "threshold": 0.02,
+    "gamma": 0.6,
+    "colormap": "magma",
+    "show_polarization": true
+   },
+   "summary": "- volume **21 x 48 x 48** (30 nm px, 100 nm z)\n- lateral FWHM **211 nm**\n- axial FWHM **512 nm**\n- scalar 0.51 \u03bb/NA = 189 nm (1.12 x lateral)",
+   "shape": [
+    21,
+    48,
+    48
+   ],
+   "sum": 1044.5583446554765,
+   "max": 1.0,
+   "viewer_calls": [
+    [
+     "scale",
+     [
+      1.0,
+      1.0,
+      3.3333333333333335
+     ]
+    ],
+    [
+     "volume",
+     [
+      21,
+      48,
+      48
+     ],
+     "57fe67f9c51f",
+     "magma",
+     0.02,
+     0.6
+    ],
+    [
+     "vectors",
+     [
+      12,
+      2,
+      3
+     ]
+    ]
+   ]
+  },
+  "airy_linear_45": {
+   "params": {
+    "na": 1.4,
+    "n_immersion": 1.518,
+    "wavelength_nm": 520.0,
+    "model": "airy",
+    "polarization": "linear",
+    "angle_deg": 45.0,
+    "nxy": 48,
+    "nz": 21,
+    "pixel_size_nm": 30.0,
+    "z_step_nm": 100.0,
+    "quality": "preview",
+    "threshold": 0.02,
+    "gamma": 0.6,
+    "colormap": "magma",
+    "show_polarization": true
+   },
+   "summary": "- volume **21 x 48 x 48** (30 nm px, 100 nm z)\n- lateral FWHM **193 nm**\n- axial FWHM **2000 nm**\n- scalar 0.51 \u03bb/NA = 189 nm (1.02 x lateral)",
+   "shape": [
+    21,
+    48,
+    48
+   ],
+   "sum": 1009.2130322653757,
+   "max": 1.0,
+   "viewer_calls": [
+    [
+     "scale",
+     [
+      1.0,
+      1.0,
+      3.3333333333333335
+     ]
+    ],
+    [
+     "volume",
+     [
+      21,
+      48,
+      48
+     ],
+     "d57535703a46",
+     "magma",
+     0.02,
+     0.6
+    ],
+    [
+     "vectors",
+     null
+    ]
+   ]
+  },
+  "gaussian": {
+   "params": {
+    "na": 1.4,
+    "n_immersion": 1.518,
+    "wavelength_nm": 520.0,
+    "model": "gaussian",
+    "polarization": "linear",
+    "angle_deg": 45.0,
+    "nxy": 48,
+    "nz": 21,
+    "pixel_size_nm": 30.0,
+    "z_step_nm": 100.0,
+    "quality": "preview",
+    "threshold": 0.02,
+    "gamma": 0.6,
+    "colormap": "magma",
+    "show_polarization": true
+   },
+   "summary": "- volume **21 x 48 x 48** (30 nm px, 100 nm z)\n- lateral FWHM **189 nm**\n- axial FWHM **nan nm**\n- scalar 0.51 \u03bb/NA = 189 nm (1.00 x lateral)",
+   "shape": [
+    21,
+    48,
+    48
+   ],
+   "sum": 512.436752429709,
+   "max": 1.0,
+   "viewer_calls": [
+    [
+     "scale",
+     [
+      1.0,
+      1.0,
+      3.3333333333333335
+     ]
+    ],
+    [
+     "volume",
+     [
+      21,
+      48,
+      48
+     ],
+     "b5eb465c501e",
+     "magma",
+     0.02,
+     0.6
+    ],
+    [
+     "vectors",
+     null
+    ]
+   ]
+  },
+  "vectorial_radial": {
+   "params": {
+    "na": 1.4,
+    "n_immersion": 1.518,
+    "wavelength_nm": 520.0,
+    "model": "vectorial",
+    "polarization": "radial",
+    "angle_deg": 45.0,
+    "nxy": 48,
+    "nz": 21,
+    "pixel_size_nm": 30.0,
+    "z_step_nm": 100.0,
+    "quality": "preview",
+    "threshold": 0.02,
+    "gamma": 0.6,
+    "colormap": "magma",
+    "show_polarization": true
+   },
+   "summary": "- volume **21 x 48 x 48** (30 nm px, 100 nm z)\n- lateral FWHM **184 nm**\n- axial FWHM **540 nm**\n- scalar 0.51 \u03bb/NA = 189 nm (0.97 x lateral)",
+   "shape": [
+    21,
+    48,
+    48
+   ],
+   "sum": 1044.324452304277,
+   "max": 1.0,
+   "viewer_calls": [
+    [
+     "scale",
+     [
+      1.0,
+      1.0,
+      3.3333333333333335
+     ]
+    ],
+    [
+     "volume",
+     [
+      21,
+      48,
+      48
+     ],
+     "5a1a05fae6e9",
+     "magma",
+     0.02,
+     0.6
+    ],
+    [
+     "vectors",
+     [
+      12,
+      2,
+      3
+     ]
+    ]
+   ]
+  },
+  "display_viridis_no_vectors": {
+   "params": {
+    "na": 1.4,
+    "n_immersion": 1.518,
+    "wavelength_nm": 520.0,
+    "model": "vectorial",
+    "polarization": "radial",
+    "angle_deg": 45.0,
+    "nxy": 48,
+    "nz": 21,
+    "pixel_size_nm": 30.0,
+    "z_step_nm": 100.0,
+    "quality": "preview",
+    "threshold": 0.1,
+    "gamma": 1.0,
+    "colormap": "viridis",
+    "show_polarization": false
+   },
+   "summary": "- volume **21 x 48 x 48** (30 nm px, 100 nm z)\n- lateral FWHM **184 nm**\n- axial FWHM **540 nm**\n- scalar 0.51 \u03bb/NA = 189 nm (0.97 x lateral)",
+   "shape": [
+    21,
+    48,
+    48
+   ],
+   "sum": 1044.324452304277,
+   "max": 1.0,
+   "viewer_calls": [
+    [
+     "scale",
+     [
+      1.0,
+      1.0,
+      3.3333333333333335
+     ]
+    ],
+    [
+     "volume",
+     [
+      21,
+      48,
+      48
+     ],
+     "5a1a05fae6e9",
+     "viridis",
+     0.1,
+     1.0
+    ],
+    [
+     "vectors",
+     null
+    ]
+   ]
+  }
+ },
+ "controls": {
+  "values": [
+   "angle_deg",
+   "gamma",
+   "n_immersion",
+   "na",
+   "nxy",
+   "nz",
+   "pixel_size_nm",
+   "threshold",
+   "wavelength_nm",
+   "z_step_nm"
+  ],
+  "choices": [
+   "colormap",
+   "model",
+   "polarization",
+   "quality"
+  ],
+  "toggles": [
+   "show_polarization"
+  ],
+  "choice_labels": {
+   "model": [
+    "Vectorial (Richards-Wolf)",
+    "Airy (scalar, 2-D)",
+    "Gaussian"
+   ],
+   "polarization": [
+    "Circular",
+    "Linear x",
+    "Linear y",
+    "Linear at angle",
+    "Left circular",
+    "Unpolarized",
+    "Radial",
+    "Azimuthal"
+   ],
+   "quality": [
+    "Preview (fast)",
+    "Full"
+   ],
+   "colormap": [
+    "magma",
+    "inferno",
+    "viridis",
+    "gray"
+   ]
+  }
+ },
+ "export": {
+  ".npy": {
+   "exists": true,
+   "bytes": 387200
+  },
+  ".tif": {
+   "exists": true,
+   "bytes": 193576
+  },
+  "npy_equals_volume": true
+ },
+ "toolbar": [
+  "Export"
+ ]
+}

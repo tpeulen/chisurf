@@ -19,6 +19,7 @@
     "window": {"enabled": true, "settings_key": null}
   },
   "entrypoints": {
+    "emtk": "chisurf.plugins.calculator.psf_calculator.gui.app:make_app",
     "gui": "chisurf.plugins.calculator.psf_calculator.gui.tool:PSFCalculator"
   },
   "rpc_methods": [],
