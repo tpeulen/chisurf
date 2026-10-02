@@ -732,42 +732,14 @@ class FRETLineTool(QtWidgets.QWidget):
             dialogs.error(self, "Save error", str(exc))
 
     def _on_push(self) -> None:
+        # ndX is the emtk app now; its Overlays tab draws equation curves and
+        # has no way yet to take tabulated lines from another tool. The Qt
+        # overlay panel this used to find was deleted with ndX's Qt window.
         if not self._lines:
             return
-        try:
-            from ndxplorer.plotting.curve_overlay import CurveOverlayWidget
-        except ImportError:
-            dialogs.warning(
-                self,
-                "ndX not found",
-                "The ndX package is not installed or not importable.",
-            )
-            return
-        overlays = [
-            w
-            for w in QtWidgets.QApplication.allWidgets()
-            if isinstance(w, CurveOverlayWidget) and w.isVisible()
-        ]
-        if not overlays:
-            dialogs.information(self, "Push to ndX", "No visible ndX Overlay panel found.")
-            return
-
-        def _make_curve(line):
-            tau_f = np.asarray(line["result"]["tau_f"]).copy()
-            e_fret = np.asarray(line["result"]["e_fret"]).copy()
-
-            def _curve():
-                return tau_f, e_fret
-
-            return _curve
-
-        for ln in self._lines:
-            label = f"FRET line — {ln['name']} · {ln['sweep_label']}"
-            curve = _make_curve(ln)
-            for ov in overlays:
-                ov.add_curve(curve, is_function=True, base_name=label)
         dialogs.information(
             self,
-            "Pushed",
-            f"Added {len(self._lines)} line(s) to {len(overlays)} ndxplorer panel(s).",
+            "Push to ndX",
+            "ndX cannot receive FRET lines from this tool yet.\n"
+            "Save CSV keeps them in a file.",
         )
