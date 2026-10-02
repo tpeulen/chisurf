@@ -41,7 +41,8 @@ def test_render_pending_and_populated_child_with_tooltips(monkeypatch):
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 1060, 730)
     assert any("Number Quest" in value for value in painter.strings)
-    assert any("Breakout (not available)" in value for value in painter.strings)
+    assert any("Breakout" in value for value in painter.strings)
+    assert not any("not available" in value for value in painter.strings)      # every game is playable
     assert any("Guess the hidden number" in value for value in tips)
     app.select("Tetris")
     app.draw(painter, 0, 0, 1060, 730)

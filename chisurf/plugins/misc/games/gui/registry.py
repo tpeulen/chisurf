@@ -19,7 +19,6 @@ GAME_PANELS = [
      "keys": "Up/Down paddle · W/S second player · P pause · M mode · R reset"},
     {"name": "Breakout", "icon": "🧱", "description": "Classic Breakout with progressive difficulty and multiple brick types.",
      "class_path": "chisurf.plugins.misc.games.breakout.breakout", "class_name": "Breakout",
-     # emtk port incomplete (audit-all: the draw did not terminate); listed, not playable yet.
-     "emtk": None,
+     "emtk": "chisurf.plugins.misc.games.breakout.app:make_app",
      "keys": "Left/Right paddle · Space launch · P pause · R reset"},
 ]

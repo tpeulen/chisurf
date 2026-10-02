@@ -1,0 +1,14 @@
+{
+  "score": 62,
+  "verdict": "revise",
+  "category_match": true,
+  "differences": [
+    "The Qt hub reference shows an adapter error instead of a populated Minesweeper panel, so board fidelity cannot be judged from this capture.",
+    "The native hub uses a dark palette, compact text-only navigation, and a description header; the Qt shell is light with emoji icons and a footer stepper."
+  ],
+  "suggestions": [
+    "Recapture the Qt hub with an available GPU adapter before making a final visual acceptance decision.",
+    "Compare the populated game region and navigation under a common theme, then tune spacing and icon treatment if needed."
+  ],
+  "reasoning": "Native normal and narrow captures show a populated, usable game hub. The only available genuine Qt hub capture cannot render its child without a GPU adapter, so the 90-point visual threshold remains unverified."
+}

@@ -127,6 +127,7 @@ irf_estimation
 86_image_browser
 87_channel_definition
 88_structure_tools
+95_games
 90_updater
 91_vv_vh_g_factor
 92_hmm_binned_traces
@@ -260,6 +261,7 @@ irf_estimation
 | [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Imaging → Tools; Imaging Tools hub), `tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
 | [Structure Tools: FPS JSON editor, docking and QuEst](88_structure_tools.md) | `structure_tools` (Structure → Structure Tools), the structure-modelling hub |
+| [Games: a break between fits](95_games.md) | `games` hub (Tools → Miscellaneous → Games): Number Quest, Minesweeper, Tetris, Pong, Breakout |
 | [The PSF measured on beads](93_psf_determination.md) | `psf_determination` (Imaging), `psf-determination` CLI, `PsfViewModel`, `psf_determination.fit.run` RPC |
 | [States and rates from a binned trace](92_hmm_binned_traces.md) | `hmm` (Analysis → Kinetics), `csc hmm`, `HmmViewModel`, `hmm.fit` RPC |
 | [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
