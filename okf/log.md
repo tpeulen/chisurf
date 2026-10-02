@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **traj_convert emtk app at parity, and one frame selection for every mode** (EMTK-1, upgrade row 43): the last frame of a
+  range was exclusive (10–50 at stride 10 wrote 4 frames on both hosts), split ignored the stride and crashed on a range,
+  folder mode read the folder path; now one inclusive selection, folder PDBs joined, a missing target refused. The shared
+  trajectory app gained folder rows, multi-panel specs, dialog-free actions and a done notice. Known issue: a multi-model
+  PDB reads back as its first model. [report](plugins/emtk-ports/traj_convert/REPORT.md).
+
 - **microtime_shifter emtk app at parity** (EMTK-1, upgrade row 42): controls from a new `shifter.view.json` (the app is the
   model), Guide/Help at the top, sized dialogs, on-demand frames, a Remove button; parity on a demo whose detectors are offset
   by a known 400 bins (both hosts align 0 → 3904, 8 → 3504; saved photons = (micro + shift) mod N). Open: the tool has no docs

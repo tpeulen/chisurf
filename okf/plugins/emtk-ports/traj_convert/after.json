@@ -1,0 +1,131 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-1",
+    ".dcd",
+    "0",
+    "1",
+    "[032802]ready",
+    "convert",
+    "dropadcdtrajectory(or,infoldermode,afolderofpdbs)",
+    "filename",
+    "firstframe",
+    "foldertheconvertedfile(s)arewrittento",
+    "format",
+    "guide",
+    "help",
+    "input",
+    "inputisafolderofpdbs",
+    "lastframe",
+    "log",
+    "out",
+    "output",
+    "pdbnamingtheatoms—requiredfordcd",
+    "splitintoonefileperframe",
+    "stride",
+    "targetfolder",
+    "topology",
+    "trajectory",
+    "trajectory-converter"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What the tool does, what it writes, and the known limits."
+    },
+    {
+      "kind": "input_text",
+      "label": "topology",
+      "id": "##topology",
+      "tooltip": "Topology (PDB) — required for trajectory formats without topology."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##topology.browse",
+      "tooltip": "Topology (PDB) — required for trajectory formats without topology."
+    },
+    {
+      "kind": "input_text",
+      "label": "trajectory",
+      "id": "##trajectory",
+      "tooltip": "Input trajectory file, or a folder of PDBs when 'Input is a folder of PDBs' is on."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##trajectory.browse",
+      "tooltip": "Input trajectory file, or a folder of PDBs when 'Input is a folder of PDBs' is on."
+    },
+    {
+      "kind": "input_text",
+      "label": "target",
+      "id": "##target",
+      "tooltip": "Output directory the converted file(s) are written to."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##target.browse",
+      "tooltip": "Output directory the converted file(s) are written to."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Input is a folder of PDBs",
+      "id": "Input is a folder of PDBs##use_folder",
+      "tooltip": "When on, every *.pdb file in the chosen folder is processed instead of a single trajectory file."
+    },
+    {
+      "kind": "input_text",
+      "label": "first_frame",
+      "id": "##first_frame",
+      "tooltip": "First frame of the processed range."
+    },
+    {
+      "kind": "input_text",
+      "label": "last_frame",
+      "id": "##last_frame",
+      "tooltip": "Last frame of the processed range (-1 = all frames)."
+    },
+    {
+      "kind": "input_text",
+      "label": "stride",
+      "id": "##stride",
+      "tooltip": "Write only every Nth frame to the output."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "Output base name; the extension below is appended."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Split into one file per frame",
+      "id": "Split into one file per frame##split",
+      "tooltip": "Write each frame to its own {filename}_%08d{ending} file instead of one combined file."
+    },
+    {
+      "kind": "button",
+      "label": "▶ Convert",
+      "id": "▶ Convert",
+      "tooltip": "Convert the trajectory with the current settings."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

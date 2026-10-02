@@ -74,7 +74,10 @@ if which == "emtk-states":
     module, attr = manifest_of(tool)["entrypoints"]["emtk"].split(":")
     a = getattr(importlib.import_module(module), attr)()
     populate(a.model)
-    a.begin_save()
+    if a.action.dialog_title:
+        a.begin_save()
+    else:                                  # an action without a save dialog: show a row's browse dialog instead
+        a.browse(a.paths[-1])
     a.draw(RecordingPainter(), 0, 0, 1200, 800)
     emtk_screenshot(a, out / f"{prefix}_dialog_1200x800.png", (1200, 800))
     a.dialog = None

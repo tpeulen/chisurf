@@ -1,0 +1,4 @@
+{
+  ".pdb": "the second item of the Qt Format combo, not a control: the emtk Format combo offers the same items (`output_formats()`: .dcd, .pdb) and shows the selected one; test_every_spec_field_is_drawn_with_its_description commits '.pdb' through it",
+  "2": "a row number of the Qt Format combo's popup list (the inventory counts it as a table with rows 1, 2), not a control"
+}
