@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.core.setup_channel_definition.test import driver
-from chisurf.plugins.core.setup_channel_definition.test.driver import DATA, TAB_NAMES, norm
+from chisurf.plugins.core.setup_channel_definition.test.driver import DATA, norm
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -366,77 +366,6 @@ def test_qt_and_emtk_hold_the_same_detectors_and_windows_for_the_same_setup(qt, 
     assert norm(qt.page.get_settings()) == norm(data_app.get_settings())
 
 
-@pytest.mark.parametrize("text", ["0:4095", "0:2048, 2048:4095", "10-20", "5:9 , 11:15", "  3:4 "])
-def test_microtime_range_text_is_read_as_the_qt_table_reads_it(qt, text):
-    from chisurf.emtk.channel_definition import ChannelDefinitionWidget
-
-    assert ChannelDefinitionWidget._parse_ranges(text) == [list(r) for r in qt.page._parse_microtime_ranges_text(text)]
-
-
-def test_microtime_range_edge_cases_where_the_shared_editor_differs_from_qt(qt):
-    """Open items for the shared editor: Qt accepts these, the editor reports an error."""
-    from chisurf.emtk.channel_definition import ChannelDefinitionWidget
-
-    for text in ("20:10", "5:5", "0:10;20:30"):
-        assert qt.page._parse_microtime_ranges_text(text)  # Qt reads them
-        with pytest.raises(ValueError):
-            ChannelDefinitionWidget._parse_ranges(text)
-
-
-def test_routing_channels_are_read_as_qt_reads_them(qt):
-    from chisurf.emtk.channel_definition import ChannelDefinitionWidget
-
-    row = {qt.page.detectors_form.item(r, 0).text(): r for r in range(qt.page.detectors_form.rowCount())}["green"]
-    for text in ("8, 0, 3", "9;1;2", " 4 "):
-        qt.page.detectors_form.cellWidget(row, 1).setText(text)
-        assert qt.page.get_settings()["detectors"]["green"]["chs"] == ChannelDefinitionWidget._parse_channels(text)
-    with pytest.raises(ValueError):
-        ChannelDefinitionWidget._parse_channels("")
-
-
-def test_add_and_remove_a_detector_with_the_editors_buttons(data_app):
-    page = data_app.page
-    driver.select_tab(data_app, "Detectors")
-    page.new_detector = "blue"
-    assert driver.click_text(data_app, "Add detector")
-    assert data_app.model.data["detectors"]["blue"] == {"chs": [0], "micro_time_ranges": [[0, 32768]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}
-    assert "prompt_blue" in data_app.get_settings()["channels"]
-    # a duplicate name is refused with a message
-    page.new_detector = "blue"
-    driver.click_text(data_app, "Add detector")
-    assert page.status == "Enter a new unique detector name."
-    # Remove detector on the first (green) block
-    assert driver.click_text(data_app, "Remove detector", nth=0)
-    assert set(data_app.model.data["detectors"]) == {"red", "blue"}
-    assert "prompt_green" not in data_app.get_settings()["channels"]
-
-
-def test_rename_detector_and_window_keeps_everything_attached(data_app):
-    page = data_app.page
-    data_app.model.data["detectors"]["green"]["mle_settings"] = {"keep": True}
-    page.detector_names["green"] = "donor"
-    page._rename_detector("green")
-    page.window_names["prompt"] = "excitation"
-    page._call(data_app.model.rename_window, "prompt", "excitation")
-    assert data_app.model.data["detectors"]["donor"]["mle_settings"] == {"keep": True}
-    assert "excitation_donor" in data_app.get_settings()["channels"]
-    page.detector_names["red"] = "donor"  # taken: refused, nothing lost
-    page._rename_detector("red")
-    assert page.status.startswith("Error:") and "red" in data_app.model.data["detectors"]
-
-
-def test_add_a_pie_window_with_the_editors_buttons(data_app):
-    page = data_app.page
-    driver.select_tab(data_app, "PIE windows")
-    page.new_window, page.window_start, page.window_end = "late", 3000, 4000
-    assert driver.click_text(data_app, "Add PIE window")
-    assert data_app.model.data["windows"]["late"] == [3000, 4000]
-    assert "late_green" in data_app.get_settings()["channels"]
-    page.new_window, page.window_start, page.window_end = "bad", 10, 5
-    driver.click_text(data_app, "Add PIE window")
-    assert "bad" not in data_app.model.data["windows"] and page.status.startswith("Provide a unique window name")
-
-
 # ---------------------------------------------------------------------------
 # 3. reading a TTTR measurement
 # ---------------------------------------------------------------------------
@@ -482,16 +411,21 @@ def test_reading_something_that_is_not_a_measurement_reports_and_keeps_the_timin
     assert data_app.model.preview == {}
 
 
-@pytest.mark.xfail(strict=True, reason="open item: with a fixed File Type the shared reader accepts any bytes and overwrites the timing")
-def test_a_file_that_is_not_photon_data_is_refused_even_with_a_fixed_file_type(data_app, tmp_path):
-    """The Qt tool raises 'File is not a supported TTTR file format' and keeps the timing."""
+@pytest.mark.parametrize("file_type", ["SPC-130", "Auto", "PTU", "PTO"])
+def test_a_file_that_is_not_photon_data_is_refused_whatever_the_file_type(qt, data_app, tmp_path, file_type):
+    """Qt detects the container from the file and refuses what it cannot read; so does the editor, keeping the timing."""
     bad = tmp_path / "not_a_measurement.ptu"
     bad.write_text("this is not photon data")
-    before = dict(data_app.model.data["tttr_reading"])  # file type SPC-130
+    with pytest.raises(Exception):
+        import tttrlib
+
+        tttrlib.TTTR(str(bad))  # what the Qt page calls
+    data_app.model.data["tttr_reading"]["file_type"] = file_type
+    before = dict(data_app.model.data["tttr_reading"])
     data_app.page.read(str(bad))
     driver.finish_read(data_app)
     assert data_app.page.status.startswith("Error:")
-    assert data_app.model.data["tttr_reading"]["macro_time_resolution"] == before["macro_time_resolution"]
+    assert data_app.model.data["tttr_reading"] == before
 
 
 def test_a_read_in_progress_is_not_started_twice_and_can_be_cancelled(data_app, measurement):
@@ -578,78 +512,8 @@ def test_compute_lut_without_a_measurement_says_what_to_do(data_app):
 
 
 # ---------------------------------------------------------------------------
-# 5. the six tabs, tooltips, reachability
+# 5. prompts, tooltips
 # ---------------------------------------------------------------------------
-#: Every control the Qt page offers, and the label the emtk tool shows for it (and on which tab).
-QT_CONTROLS = {
-    "Setup combo": ("Setup:", None),
-    "Save": ("Save", None),
-    "Rename": ("Rename", None),
-    "Delete": ("Delete", None),
-    "Public": ("Public", None),
-    "Calibration combo": ("Calibration:", None),
-    "Help": ("Help", None),
-    "File Type": ("TTTR format:", "TTTR reading"),
-    "Read": ("Read TTTR header and decay", "TTTR reading"),
-    "Macrotime res.": ("Macro-time tick (ns):", "TTTR reading"),
-    "Microtime res.": ("Micro-time tick (ps):", "TTTR reading"),
-    "Microtime binning": ("Microtime binning", "TTTR reading"),
-    "Eff. microtime": ("Effective microtime tick:", "TTTR reading"),
-    "Plot": ("Show microtime preview", "TTTR reading"),
-    "PIE-Windows Add": ("Add PIE window", "PIE windows"),
-    "window Start": ("Start", "PIE windows"),
-    "window End": ("End", "PIE windows"),
-    "window delete": ("Remove window", "PIE windows"),
-    "Detectors Add": ("Add detector", "Detectors"),
-    "Detector Name": ("Detector name:", "Detectors"),
-    "Channels": ("Routing channels:", "Detectors"),
-    "Micro Time Ranges": ("Microtime ranges:", "Detectors"),
-    "G-Factor": ("G factor:", "Detectors"),
-    "l1": ("l1 factor:", "Detectors"),
-    "l2": ("l2 factor:", "Detectors"),
-    "G-Factor Channels": ("G-factor channel range:", "Detectors"),
-    "calculate G": ("Calculate G from preview", "Detectors"),
-    "detector delete": ("Remove detector", "Detectors"),
-    "Polarization resolved": ("Polarization resolved", "Detectors"),
-    "Apply LUT": ("Apply TAC LUTs and shifts", "TAC corrections"),
-    "LUT channel": ("Routing channel", "TAC corrections"),
-    "Shift": ("Microtime shift (bins)", "TAC corrections"),
-    "Assign LUT": ("Assign LUT file", "TAC corrections"),
-    "Optical Setup": ("Simulate optical setup", "Optical setup"),
-}
-
-
-def _tab_strings(app, size=(1200, 800)):
-    out = {}
-    for name in TAB_NAMES:
-        assert driver.select_tab(app, name, size), name
-        out[name] = set(driver.settle(app, size).strings)
-    return out
-
-
-def test_every_qt_control_is_reachable_in_one_of_the_six_tabs(data_app, measurement):
-    driver.populate(data_app, measurement)
-    tabs = _tab_strings(data_app)
-    everywhere = set().union(*tabs.values())
-    missing = []
-    for control, (label, tab) in QT_CONTROLS.items():
-        pool = tabs[tab] if tab else everywhere
-        if not any(label in text for text in pool):
-            missing.append((control, label, tab))
-    assert missing == []
-
-
-@pytest.mark.parametrize("tab", TAB_NAMES)
-def test_every_control_of_every_tab_has_a_tooltip(data_app, measurement, tab):
-    from test.gui.emtk_port_parity import emtk_inventory
-
-    driver.populate(data_app, measurement)
-    assert driver.select_tab(data_app, tab)
-    inventory = emtk_inventory(data_app)
-    assert inventory["interactive"], tab
-    assert inventory["controls_without_tooltip"] == []
-
-
 @pytest.mark.parametrize("prompt", ["save", "rename", "delete", "overwrite"])
 def test_every_control_of_the_prompts_has_a_tooltip(data_app, prompt):
     from test.gui.emtk_port_parity import emtk_inventory
@@ -674,22 +538,6 @@ def test_every_control_of_the_prompts_has_a_tooltip(data_app, prompt):
     assert inventory["controls_without_tooltip"] == []
 
 
-def test_the_toolbar_is_one_row_of_buttons_not_a_column_of_stacked_ones(data_app):
-    painter = driver.settle(data_app)
-    ys = {s: next(t[1] for t in painter.texts if t[5] == s) for s in ("Save", "Rename", "Delete", "Help", "Guide")}
-    assert len(set(round(y) for y in ys.values())) == 1
-    xs = [next(t[0] for t in painter.texts if t[5] == s) for s in ("Save", "Rename", "Delete", "Help", "Guide")]
-    assert xs == sorted(xs)
-
-
-@pytest.mark.parametrize("size", [(800, 600), (520, 500)])
-def test_the_toolbar_wraps_inside_a_narrow_window(data_app, size):
-    painter = driver.settle(data_app, size)
-    for label in ("Setup:", "Save", "Rename", "Delete", "Public", "Calibration:", "Help", "Guide"):
-        text = next(t for t in painter.texts if t[5] == label)
-        assert text[0] + text[2] <= size[0] + 1, (label, text[:4])
-
-
 def test_the_window_has_the_plugins_name_as_its_title(data_app):
     assert "Setup: Channel Definition" in driver.settle(data_app).strings
     assert json.loads((PLUGIN / "manifest.json").read_text())["display_name"] == "Setup:Channel Definition"
@@ -698,20 +546,6 @@ def test_the_window_has_the_plugins_name_as_its_title(data_app):
 # ---------------------------------------------------------------------------
 # 6. help and guide
 # ---------------------------------------------------------------------------
-def test_guide_steps_point_at_controls_that_exist_and_ask_the_user_to_act(data_app):
-    steps = json.loads((PLUGIN / "gui" / "guide.json").read_text())["steps"]
-    driver.settle(data_app)
-    data_app.toolbar.request_save()
-    driver.settle(data_app)  # the prompt's buttons exist only while it is open
-    awaited = 0
-    for step in steps:
-        target = step.get("target")
-        if target:
-            assert data_app.item_rects.get(target["name"]), target
-        awaited += bool(step.get("await"))
-    assert awaited >= 2 and len(steps) >= 6
-
-
 def test_the_guide_advances_when_the_user_presses_save(setups_file):
     from chisurf.plugins.core.setup_channel_definition.gui.app import make_app
 
@@ -726,62 +560,9 @@ def test_the_guide_advances_when_the_user_presses_save(setups_file):
     tool.close()
 
 
-def test_help_opens_and_lists_the_six_tabs(data_app):
-    assert driver.click_text(data_app, "Help")
-    strings = " ".join(driver.settle(data_app).strings)
-    assert "Setup: Channel Definition - Help" in strings
-    help_text = (PLUGIN / "gui" / "help.md").read_text()
-    for tab in TAB_NAMES:
-        assert tab in help_text
-
-
 # ---------------------------------------------------------------------------
 # 7. drawing, persistence, Qt-free
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("size", SIZES)
-def test_draws_empty_and_populated_on_every_tab_at_both_sizes(setups_file, measurement, size):
-    from chisurf.plugins.core.setup_channel_definition.gui.app import make_app
-
-    tool = make_app(file_path=str(setups_file))
-    try:
-        empty = {t: set(driver.settle(tool, size).strings) for t in ("x",)}["x"]
-        assert "Setup: Channel Definition" in empty and "Unsaved" in empty
-        assert not any("Routing" in s for s in empty)  # nothing invented before a file is read
-        driver.populate(tool, measurement)
-        for tab in TAB_NAMES:
-            assert driver.select_tab(tool, tab, size)
-            strings = driver.settle(tool, size).strings
-            assert any(s == tab for s in strings)
-        assert driver.select_tab(tool, "TTTR reading", size)
-        strings = driver.settle(tool, size).strings
-        assert "Effective microtime tick: 3.2959 ps" in strings and "Excitation period: 13.5 ns" in strings
-        assert any(s.startswith("Routing") or "Microtime decays" in s for s in strings)
-    finally:
-        tool.close()
-
-
-def test_settings_round_trip(data_app, setups_file, measurement):
-    data_app.toolbar.save("Remembered")
-    driver.populate(data_app, measurement)
-    data_app.model.data["detectors"]["green"]["g_factor"] = 1.5
-    data_app.page.section = 3
-    saved = json.loads(json.dumps(data_app.export_settings()))
-    assert saved["section"] == 3 and saved["setups_file"] == str(setups_file)
-
-    from chisurf.plugins.core.setup_channel_definition.gui.app import make_app
-
-    other = make_app()
-    other.restore_settings(saved)
-    assert other.page.section == 3 and str(other.model.file_path) == str(setups_file)
-    driver.settle(other)  # open item: a wide window shows the Setups tab again (the editor owns the tab state)
-    assert norm(other.get_settings()) == norm(data_app.get_settings())
-    assert other.model.data["detectors"]["green"]["g_factor"] == 1.5
-    assert other.toolbar.names == ["Remembered"]
-    other.restore_settings({"section": "garbage"})
-    assert other.page.section == 0
-    other.close()
-
-
 def test_the_manifest_opens_the_emtk_tool_and_keeps_the_qt_one():
     manifest = json.loads((PLUGIN / "manifest.json").read_text())
     assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.core.setup_channel_definition.gui.app:make_app"

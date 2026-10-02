@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the channel definition tool. Targets are the toolbar controls drawn by the app (item_rects names).",
+  "_comment": "Guided tour of the channel definition tool. Targets are controls of the page (item_rects names).",
   "steps": [
     {
       "title": "Choose or start a setup",
@@ -12,8 +12,11 @@
       }
     },
     {
-      "title": "Tabs: reading, detectors, windows",
-      "text": "Below the toolbar the editor has six tabs. <b>TTTR reading</b> takes timing from a measurement; <b>Detectors</b> and <b>PIE windows</b> hold the routing channels and the micro-time ranges. Click a tab to look at it; nothing changes until you edit a field."
+      "title": "One page, four sections",
+      "text": "Below the Setup row the page has four folding sections. <b>TTTR Reading routine</b> takes timing from a measurement; <b>Detectors</b> and <b>PIE Windows</b> hold the routing channels and the micro-time ranges; <b>LUT handling</b> the linearization tables. Click a header to fold it; nothing changes until you edit a cell (double-click, type, Enter).",
+      "target": {
+        "name": "section_detectors"
+      }
     },
     {
       "title": "Save under a name",
@@ -58,7 +61,7 @@
     },
     {
       "title": "Help",
-      "text": "<b>Help</b> explains the six tabs, the units of micro-time ranges and the LUT handling.",
+      "text": "<b>Help</b> explains the sections, the units of micro-time ranges and the LUT handling.",
       "target": {
         "name": "help"
       }

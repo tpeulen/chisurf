@@ -179,12 +179,12 @@ def test_calculate_with_no_detector_channel_asks_for_a_setup(ui, monkeypatch):
 
 
 def test_save_button_before_and_after_a_calculation(ui, monkeypatch, folder):
-    ui.click("Save")
+    ui.click("Save", nth=1)                                                      # the tool's (the editor's setup Save is drawn first)
     assert ui.app.tool.message == "There is no data to save." and ui.app.tool.dialog is None
     real_state(ui, monkeypatch, folder)
     ui.click("Calculate")
     settle(ui)
-    ui.click("Save")
+    ui.click("Save", nth=1)
     assert ui.app.tool.dialog is not None
     ui.click("file name")
     ui.type("rates.txt")
@@ -242,7 +242,7 @@ def test_guide_button_starts_the_tour_which_waits_for_each_awaited_button(ui):
     tour.start(4)
     ui.frame(2)
     assert tour.awaiting
-    ui.click("Save")
+    ui.click("Save", nth=1)
     assert not tour.awaiting
     ui.click("Close Tour")
     assert not tour.active
@@ -283,37 +283,37 @@ def test_a_drop_reaches_the_native_and_the_qt_host(ui, folder, qapp):
 
 
 # -- the channel editor (the shared detector-channel widget) -----------------------------------------------------------
-def test_the_editor_section_combo_switches_the_section(ui):
-    ui.click("Setups")                                                             # opens the combo list
-    ui.click("TTTR reading")
-    assert ui.app.tool.channel_editor.section == 1
-    assert ui.drawn("TTTR reading")
-    ui.click("TTTR reading")
-    ui.click("Detectors")
-    assert ui.app.tool.channel_editor.section == 2
-
-
-def test_refresh_setups_button_and_the_detector_setup_combo(ui, monkeypatch):
-    from chisurf.core.setup_channel_definition import ChannelDefinition
-
-    def refresh(self):
-        self.setups = {"Leica": {"detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]}},
-                                 "windows": {"all": None}}}
-
-    monkeypatch.setattr(ChannelDefinition, "refresh_setups", refresh)
-    ui.click("Refresh setups")
+def test_the_editor_section_headers_fold_and_unfold(ui):
     editor = ui.app.tool.channel_editor
-    assert "Leica" in editor.model.setups and editor.status == "Settings updated."
+    assert ui.drawn("File Type:") and not ui.drawn("Window Name")
+    ui.click("▼ TTTR Reading routine")                                             # folds the section
+    assert editor.open_sections["reading"] is False and not ui.drawn("File Type:")
+    ui.click("▶ TTTR Reading routine")
+    assert ui.drawn("File Type:")
+    ui.click("▶ PIE Windows")                                                      # folded at first, as in the Qt page
+    assert editor.open_sections["windows"] is True and ui.drawn("Window Name")
+
+
+def test_the_detector_setup_combo_lists_the_setups_and_a_pick_selects_it(ui):
+    editor = ui.app.tool.channel_editor
+    editor.model.setups = {"Leica": {"detectors": {"green": {"chs": [0], "micro_time_ranges": [[0, 4095]]}},
+                                     "windows": {"all": [0, 4095]}}}
+    ui.frame(2)
     ui.click("Unsaved")                                                            # the detector setup combo
-    assert ui.drawn("Leica")                                                       # the refreshed setup is listed
+    assert ui.drawn("Leica")                                                       # the saved setup is listed
     ui.click("Leica")
-    assert editor.model.current_name == "Leica" and editor.setup_name == "Leica"
-    assert ui.drawn("Leica")
-    assert list(ui.app.tool.channels()) == ["all_green"] or list(ui.app.tool.channels())
+    assert editor.model.current_name == "Leica" and ui.app.tool.channels() and ui.drawn("Leica")
 
 
-def test_the_editor_setup_name_field_takes_typed_text(ui):
-    ui.click("Public setup")                                                       # the check box
-    assert ui.app.tool.channel_editor.public is True
-    ui.click("Public setup")
-    assert ui.app.tool.channel_editor.public is False
+def test_the_public_check_box_is_available_for_a_saved_setup(ui):
+    editor = ui.app.tool.channel_editor
+    editor.model.setups = {"Leica": {"detectors": {}, "windows": {}}}
+    ui.frame(2)
+    ui.click("Public")                                                             # nothing saved is selected: inert
+    assert editor.public is False
+    ui.click("Unsaved")
+    ui.click("Leica")
+    ui.click("Public")
+    assert editor.public is True
+    ui.click("Public")
+    assert editor.public is False

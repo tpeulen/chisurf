@@ -1,4 +1,4 @@
-"""Drive the emtk app headlessly: settle frames, click a label, select a tab, read a file."""
+"""Drive the emtk app headlessly: settle frames, click a label, read a file."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from typing import Any
 
 from emtk.testing import RecordingPainter
 
-TAB_NAMES = ("Setups", "TTTR reading", "Detectors", "PIE windows", "TAC corrections", "Optical setup")
 LEFT = 1
 
 
@@ -48,11 +47,6 @@ def click_text(app: Any, label: str, size: tuple[int, int] = (1200, 800), nth: i
     app.pointer_release(x, y, LEFT)
     settle(app, size, 2)
     return True
-
-
-def select_tab(app: Any, name: str, size: tuple[int, int] = (1200, 800)) -> bool:
-    """Click the tab *name* of the editor."""
-    return click_text(app, name, size, nth=0)
 
 
 def finish_read(app: Any, timeout: float = 60.0) -> None:

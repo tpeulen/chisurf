@@ -266,8 +266,6 @@ def test_the_plots_show_the_classes_and_a_drag_pans_the_efficiency_plot(app, bur
     assert ticks(draw(app, frames=2)) != before
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot can be "
-                   "zoomed with it (works in a plain im.begin window); see the fret_calculator REPORT.md section 10")
 def test_the_wheel_zooms_the_efficiency_plot(app, bursts):
     load_by_clicks(app, bursts)
     calibrate_by_click(app)

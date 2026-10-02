@@ -405,9 +405,7 @@ def test_a_setup_chosen_on_the_setup_page_filters_the_list_and_the_tiles(app, dr
     assert [e["label"] for e in app.model.file_entries()] == ["corrupt.ptu", SP8]  # auto: every supported type
     drv.click("tab_setup")
     drv.draw(3)
-    drv.click_text("TTTR reading")
-    drv.draw(2)
-    combo = [t for t in drv.draw(1).texts if t[5] == "auto"][0][:4]
+    combo = [t for t in drv.draw(1).texts if t[5] == "Auto"][0][:4]       # the File Type combo of the one-page editor
     drv.click_at(combo[0] + 10, combo[1] + combo[3] / 2)
     drv.draw(2)
     drv.click_text("HT3", last=True)

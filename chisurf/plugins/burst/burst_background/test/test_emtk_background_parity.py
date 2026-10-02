@@ -73,9 +73,12 @@ print("FACTS" + json.dumps({"rates": rates, "window": [w.model.fit_from_ms, w.mo
 
 
 @pytest.fixture(scope="module")
-def qt(measurement):
+def qt(measurement, tmp_path_factory):
     pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+    # The Qt widget opens the last used detector setup of the user's settings; the reference must not see it.
+    private = tmp_path_factory.mktemp("qt_settings")
+    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", CHISURF_SETTINGS_DIR=str(private / "s"),
+               MMFDB_SETTINGS_DIR=str(private / "m"), MMFDB_DATABASE_PATH=str(private / "m" / "db.sqlite"))
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
     proc = subprocess.run([sys.executable, "-c", _QT, str(measurement)], capture_output=True, text=True,
                           timeout=300, env=env, cwd=str(REPO))

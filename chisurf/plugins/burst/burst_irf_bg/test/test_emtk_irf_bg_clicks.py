@@ -241,55 +241,66 @@ def test_the_binning_field_and_the_channel_editors_microtime_binning_are_one_val
     reading = app.controller.channel_definition.model.data["tttr_reading"]
     assert reading["micro_time_binning"] == 4
     press_text(app, "Channel definition", last=False)
-    draw(app)
-    click(app, text_rect(draw(app), "Setups"))                                      # the editor's section list
-    click(app, text_rect(draw(app), "TTTR reading"))
     strings = draw(app).strings
-    assert "Microtime binning" in strings and "4" in strings                         # the editor shows the value typed in the tool
+    assert "Microtime binning:" in strings and "4" in strings                        # the editor shows the value typed in the tool
 
 
 # -- the channel definition window (the shared editor) ----------------------------------------------------------------------------- #
 
 
-def open_section(app, section):
+def open_editor(app):
+    """Show the Channel definition dock tab: the one-page shared editor."""
     press_text(app, "Channel definition", last=False)
+    assert "TTTR Reading Routine:" in draw(app).strings
+
+
+def detector_cell(app, detector, key):
+    """Where a cell of the editor's Detectors table is drawn (its own geometry of the last frame)."""
     draw(app)
-    click(app, text_rect(draw(app), "Setups"))
-    click(app, text_rect(draw(app), section))
-    assert section in draw(app).strings
+    control = app.controller.channel_definition._detector_table.control
+    index = next(i for i, record in enumerate(control.records) if record["id"] == detector)
+    position = control.order().index(index)
+    _x, body_y, _w, _h = control._body_box
+    x = control._header_box[0]
+    for column, width in zip(control._shown, control._widths):
+        if column.key == key:
+            return (x, body_y + (position - control.bar.top) * control._row_h, width, control._row_h)
+        x += width
+    raise AssertionError(key)
 
 
-def routing_field(app):
-    """The first detector's routing-channels field (the field under its label; the Detectors section is open)."""
-    label = text_rect(draw(app), "Routing channels:", last=False)
-    return (label[0] + 5, label[1] + 22, 200.0, 20.0)
+def type_into_cell(app, detector, key, text):
+    """Double-click a cell of the Detectors table, type over its text and press Enter."""
+    click(app, detector_cell(app, detector, key), clicks=2)
+    assert app.controller.channel_definition._detector_table.control.editing is not None
+    app.key(keys.KEY_END, "")
+    for _ in range(24):                                                              # the cell opens with its text: empty it
+        app.key(keys.KEY_BACKSPACE, "")
+        draw(app, frames=1)
+    key_text(app, text)
 
 
 def test_the_channel_definition_button_opens_the_editor_and_a_typed_routing_reaches_the_detectors(app):
-    assert "Routing channels:" not in draw(app).strings
-    open_section(app, "Detectors")
+    assert "TTTR Reading Routine:" not in draw(app).strings
+    open_editor(app)
     strings = draw(app).strings
-    assert {"Routing channels:", "Microtime ranges:", "v green", "v red"} <= set(strings)
-    click(app, routing_field(app), fx=0.3)
-    assert app.io.want_capture_keyboard
-    key_text(app, "5")
-    assert app.model._channels()["green"]["chs"] == [5]                                 # one channel at a time: see the xfail below
+    assert {"Channels", "Micro Time Ranges", "green", "red", "▼ Detectors"} <= set(strings)
+    type_into_cell(app, "green", "chs", "5")
+    assert app.model._channels()["green"]["chs"] == [5]
     assert "5" in draw(app).strings
 
 
-@pytest.mark.xfail(strict=True, reason="shared editor gap (chisurf/emtk/channel_definition.py): the routing field is re-formatted from the "
-                   "parsed channels every frame, so the comma of '0, 8' is eaten as it is typed and '0, 8, 2' arrives as [82]; "
-                   "see REPORT.md 'gaps'")
 def test_a_typed_list_of_routing_channels_arrives_as_a_list(app):
-    open_section(app, "Detectors")
-    click(app, routing_field(app), fx=0.3)
-    key_text(app, "0, 8, 2")
+    """The table cell keeps the text as it is typed, so the comma of '0, 8' is not eaten (the old field re-formatted it)."""
+    open_editor(app)
+    type_into_cell(app, "green", "chs", "0, 8, 2")
     assert app.model._channels()["green"]["chs"] == [0, 8, 2]
+    assert "0, 8, 2" in draw(app).strings
 
 
 def test_the_ptu_reading_section_lists_its_fields(app):
-    open_section(app, "TTTR reading")
-    assert {"TTTR format:", "Macro-time tick (ns):", "Micro-time tick (ps):", "Read TTTR header and decay"} <= set(draw(app).strings)
+    open_editor(app)
+    assert {"File Type:", "Macrotime res. (ns):", "Microtime res. (ps):", "Microtime binning:", "Read"} <= set(draw(app).strings)
 
 
 # -- Send to MLE and the pattern export ----------------------------------------------------------------------------------------------- #
@@ -471,8 +482,6 @@ def test_a_drag_pans_the_irf_plot(app, measurement):
     assert tick_labels(draw(app, frames=2)) != before
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window (works in a plain "
-                   "im.begin window); see REPORT.md 'emtk gaps'")
 def test_the_wheel_zooms_the_irf_plot(app, measurement):
     load(app, measurement)
     compute(app)
@@ -489,9 +498,9 @@ def test_the_dock_tabs_switch_between_the_parameters_and_the_channel_editor(app)
     assert "Burst Search & Baseline" in draw(app).strings
     click(app, text_rect(draw(app), "Channel definition", last=False))
     strings = draw(app).strings
-    assert "Editor section:" in strings and "Burst Search & Baseline" not in strings
+    assert "TTTR Reading Routine:" in strings and "Burst Search & Baseline" not in strings
     click(app, text_rect(draw(app), "IRF parameters"))
-    assert "Burst Search & Baseline" in draw(app).strings and "Editor section:" not in draw(app).strings
+    assert "Burst Search & Baseline" in draw(app).strings and "TTTR Reading Routine:" not in draw(app).strings
 
 
 # -- Guide and Help ----------------------------------------------------------------------------------------------------------------------- #

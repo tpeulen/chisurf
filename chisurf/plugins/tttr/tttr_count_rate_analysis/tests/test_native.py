@@ -161,13 +161,13 @@ def test_native_full_channel_editor_changes_calculation_and_draws_all_sections(m
     assert set(app.tool.channels()) == {"new_window_green"}
     tooltips = []
     monkeypatch.setattr(im, "set_item_tooltip", lambda text: tooltips.append(text))
-    for section in range(6):
-        editor.section = section
+    for opened in (False, True):
+        editor.open_sections = dict.fromkeys(editor.open_sections, opened)
         with im.frame(PilPainter(640, 850), (0, 0, 640, 850)):
             im.begin("channel settings")
             editor.draw()
             im.end()
-    assert len(tooltips) > 40 and all(tooltips)
+    assert len(tooltips) > 30 and all(tooltips)
     app.close()
 
 

@@ -133,16 +133,16 @@ def test_port_is_qt_free():
     assert result["ok"], result["output"]
 
 
-# 7. tooltips, over every channel-editor section
+# 7. tooltips, with every channel-editor section folded and unfolded
 def test_every_control_has_a_tooltip():
     sys.path.insert(0, str(REPO))
     from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory
 
     app = build_emtk_app("tttr_count_rate_analysis")
-    for section in range(6):
-        app.tool.channel_editor.section = section
+    for opened in (False, True):
+        app.tool.channel_editor.open_sections = dict.fromkeys(app.tool.channel_editor.open_sections, opened)
         inv = emtk_inventory(app)
-        assert inv["controls_without_tooltip"] == [], (section, inv["controls_without_tooltip"])
+        assert inv["controls_without_tooltip"] == [], (opened, inv["controls_without_tooltip"])
 
 
 # 8. persistence

@@ -99,7 +99,7 @@ def test_setup_page_draws_empty_and_with_a_setup(size, setups_file, tmp_path):
     try:
         text = " | ".join(frames(empty, size))
         assert empty.model.page == "setup"
-        assert "Continue" in text and "Setup definition" in text and "Detector setup:" in text
+        assert "Continue" in text and "Setup definition" in text and "Setup:" in text and "TTTR Reading routine" in text
         assert "ALEX Suite (auto)" not in text      # nothing invented when none is saved
         assert empty.editor.model.get_settings()["detectors"] == {}
     finally:
@@ -109,7 +109,7 @@ def test_setup_page_draws_empty_and_with_a_setup(size, setups_file, tmp_path):
         text = " | ".join(frames(app, size))
         # the last used saved setup is selected, as in the Qt setup page
         assert app.editor.model.current_name == "ALEX Suite (auto)"
-        assert text.count("ALEX Suite (auto)") >= 2          # drop-down and name field
+        assert text.count("ALEX Suite (auto)") >= 1          # the Setup drop-down shows it
         assert "Continue" in text
         assert app.editor.model.get_settings()["detectors"]["green"]["chs"] == [1]
     finally:
@@ -217,7 +217,7 @@ def test_every_control_has_a_tooltip(setups_file):
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
         labels = {row["label"] for row in inv["interactive"]}
-        assert {"Continue", "Refresh setups", "Save setup"} <= labels
+        assert {"Continue", "Save", "Rename", "Delete", "Read", "Optical Setup..."} <= labels
         app.continue_to_browser()
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
