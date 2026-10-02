@@ -21,12 +21,16 @@ Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM,
 | Menu path | Spectroscopy → **Decay Analysis** |
 | Categories | Spectroscopy, Fluorescence decay |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 | State namespace | `lifetime_analysis` |
 
 ## Parameters
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+
+## Native window (emtk)
+
+The default window is drawn with emtk (`gui/app.py`): a search box and the list of the five tools (a `*` marks the experimental Lazy Lifetime Analysis, whose banner is shown above the tool), **Back** / **Next**, **Help**, **Guide**, and the selected tool built on its first selection and embedded under its description. Pointer, wheel, keys and file drops are forwarded to the tool; the selection and each built tool's settings are saved with the window.
 
 ## Theory and workflow
 

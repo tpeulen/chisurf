@@ -1,0 +1,1052 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.0",
+    "0.00",
+    "0.000",
+    "0.0000",
+    "0.0001",
+    "0.001",
+    "0.001000",
+    "0.01",
+    "0.010",
+    "0.016",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.380",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.68",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.0000",
+    "1.irfestimation",
+    "1.irfestimationready.",
+    "10",
+    "10.000",
+    "100",
+    "100.0",
+    "1000",
+    "11",
+    "12",
+    "16.000",
+    "192",
+    "1e-05",
+    "1e-06",
+    "2",
+    "2.maxentmem",
+    "2.maxentmemready.",
+    "200",
+    "3",
+    "3.lazylifetimeanalysis",
+    "3.lazylifetimeanalysis*",
+    "3.lazylifetimeanalysisready.",
+    "300",
+    "4",
+    "4.histogram-microtime",
+    "4.histogram-microtimeready.",
+    "400",
+    "5.vv/vhg-factor",
+    "5.vv/vhg-factorready.",
+    "500",
+    "6",
+    "6.000",
+    "600",
+    "700",
+    "8",
+    "800",
+    "900",
+    "alivefit.",
+    "all",
+    "allwindows",
+    "amplitude(a)",
+    "analysisoutput",
+    "analyzetcspcdecayswiththelltfworkflow.",
+    "anisotropyr(t)",
+    "archivereferencecalibration",
+    "auto",
+    "auto-updateirf",
+    "autosaveaftercompute",
+    "back",
+    "background(cts)",
+    "backgroundcorrection",
+    "backgroundstart(bin)",
+    "backgroundstop(bin)",
+    "batchanisotropy",
+    "beforeinterpretingthemodel.",
+    "binning",
+    "buildtttrmicrotimehistograms.",
+    "burstselections(bid/bur)",
+    "calculatedetectorg-factorsfromvv/vhdecays.",
+    "canceljob",
+    "channels",
+    "chi-square",
+    "clear",
+    "clearirf",
+    "compute",
+    "configfile",
+    "corrected",
+    "counts",
+    "database",
+    "decay,fitandirf",
+    "decayfile",
+    "decayrate(k)",
+    "detector",
+    "detectorandchannels",
+    "detectordefinition",
+    "distribution",
+    "donor",
+    "dt(ns/bin)",
+    "dt[ns]",
+    "edit",
+    "estimateinstrumentresponsefunctionsfromfluorescencedecays.",
+    "estimateirf",
+    "estresults",
+    "excitationwindow",
+    "expectedsteadyanisotr.",
+    "exportcalibrationjson",
+    "fast",
+    "fastreference",
+    "files",
+    "findoptimal",
+    "fit",
+    "fitandresiduals",
+    "fitnuisance(ts/bg/irfbg)",
+    "fitplotsappearafterasuccessfulanalysis.",
+    "fittingoptions",
+    "fixbackground",
+    "fixedorautomaticallyselectedlifetimecount,thenfit.analysisruns",
+    "fixirfbackground",
+    "fixtimeshift",
+    "flipvv/vh",
+    "folder",
+    "fwhm(vv+2gvh)0ns(0channels)",
+    "g-factor",
+    "g-factorandmixing",
+    "graw",
+    "gsd",
+    "guide",
+    "gused",
+    "help",
+    "information",
+    "information,outputandresults",
+    "inputfiles",
+    "inputsandoptions",
+    "instrument",
+    "intensity(counts/channel)",
+    "irfbackground(cts)",
+    "irfestimationparameters",
+    "irfestimationresults",
+    "irfestparameters",
+    "irffile",
+    "irfimpulseirf;chooseameasuredresponseor",
+    "json",
+    "l-curve",
+    "l-curveplot",
+    "l-curvespanandsampling",
+    "l1=l2",
+    "lampscatter",
+    "lazylifetimeanalysisisexperimentalandnotyetvalidated",
+    "lifetime",
+    "lifetime(ns)",
+    "lifetime(τ)",
+    "lifetimeestimate(ns)",
+    "lifetimegrid",
+    "lifetimeused(ns)",
+    "linkedl1",
+    "linkedl2",
+    "lltfinputsandoptions",
+    "load",
+    "loadavv/vhdecay(button,ordropafileonthewindow).",
+    "loaddecay",
+    "loaddecayandirffiles,configurethefit,then",
+    "loadfromdataset",
+    "loadthefast-rotatingreferencedyevv/vhdecay.",
+    "loadthemeasureddecayandirf,edityamlsettingsifneeded,choosea",
+    "logcounts",
+    "manualbackground",
+    "manualg",
+    "manuall1=l2",
+    "manuallifetime",
+    "manualtargetrs",
+    "manualtimestep",
+    "maxlifetimestotry",
+    "measureddecayandmemfit",
+    "memcontrols",
+    "memdistribution",
+    "memiterations",
+    "memsettings",
+    "microtimedecay",
+    "mixingestimate",
+    "mode",
+    "n/a",
+    "next",
+    "nodataloaded",
+    "none",
+    "noreferencedecayloaded",
+    "noslowreferenceloaded",
+    "nothingqueued.",
+    "notoolmatchesthesearch.",
+    "nu(reg)",
+    "nuisanceoptimization",
+    "numberoflifetimes",
+    "offset(c)",
+    "output",
+    "outputdirectory",
+    "parallel",
+    "period(ns)",
+    "periodicconvolution",
+    "perpendicular",
+    "photonfiles",
+    "plots",
+    "polarization",
+    "polarizationresolved",
+    "prior",
+    "priordefault1/tau",
+    "probability",
+    "probabilitythreshold",
+    "quantity",
+    "queuephotonfiles,thencompute.",
+    "r0",
+    "raw",
+    "readingandgates",
+    "ready",
+    "refresh",
+    "regularization",
+    "remove",
+    "residual/sigma",
+    "residuals",
+    "results",
+    "rho(ns)",
+    "rliterations",
+    "run",
+    "runanalysis.",
+    "runmaximumentropylifetimeandfret-distanceanalysis.",
+    "runmem",
+    "sample",
+    "save",
+    "saveas",
+    "saveirf",
+    "search",
+    "select",
+    "selectadecayorusealivefit.",
+    "separately;inspectitsoutput,fittedlifetimesandweightedresiduals",
+    "sgpolyorder",
+    "sgwindowlength",
+    "slow",
+    "slow-referencemixing",
+    "slowprotein",
+    "slowreference",
+    "solutionnorm",
+    "stop",
+    "tailmatching",
+    "tailstart(bin)",
+    "tailstop(bin)",
+    "targetrs",
+    "tau(ns)",
+    "taumax(ns)",
+    "taumin(ns)",
+    "taupoints",
+    "theanisotropyr(t)oftheloadeddecaysappearshere.",
+    "time(ns)",
+    "time/channel(ns)",
+    "timeaxisnotavailable",
+    "timeshift(ch)",
+    "timestep,g-factorandshifts",
+    "transfertochisurf",
+    "tttrformat",
+    "unavailable",
+    "userangeselection",
+    "value",
+    "verboseoutput",
+    "vh",
+    "vhshift(bins)",
+    "vhshift(channels)",
+    "vm",
+    "vv",
+    "vv+2gvh",
+    "vv/vhdecays",
+    "vvshift(channels)",
+    "warningloadfpvv/vhdatatoestimatel1/l2.",
+    "weightedresiduals",
+    "zz"
+  ],
+  "interactive": [
+    {
+      "kind": "input_text",
+      "label": "search_tools",
+      "id": "##search_tools",
+      "tooltip": "Filter the decay-analysis tools by their name or purpose."
+    },
+    {
+      "kind": "selectable",
+      "label": "1. IRF Estimation",
+      "id": "1. IRF Estimation",
+      "tooltip": "Estimate instrument response functions from fluorescence decays."
+    },
+    {
+      "kind": "selectable",
+      "label": "2. MaxEnt MEM",
+      "id": "2. MaxEnt MEM",
+      "tooltip": "Run maximum entropy lifetime and FRET-distance analysis."
+    },
+    {
+      "kind": "selectable",
+      "label": "3. Lazy Lifetime Analysis *",
+      "id": "3. Lazy Lifetime Analysis *",
+      "tooltip": "Analyze TCSPC decays with the LLTF workflow. (marked * : experimental, see the banner)"
+    },
+    {
+      "kind": "selectable",
+      "label": "4. Histogram-Microtime",
+      "id": "4. Histogram-Microtime",
+      "tooltip": "Build TTTR microtime histograms."
+    },
+    {
+      "kind": "selectable",
+      "label": "5. VV/VH G-Factor",
+      "id": "5. VV/VH G-Factor",
+      "tooltip": "Calculate detector G-factors from VV/VH decays."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Go to the previous tool in the order the analyses depend on each other."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Go to the next tool in the order the analyses depend on each other."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Read the calibration conventions and the limits of the linked mixing estimate."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the fast and slow references, the tail region and the export."
+    },
+    {
+      "kind": "button",
+      "label": "📂 Load Decay",
+      "id": "📂 Load Decay##request_load",
+      "tooltip": "Load a measured decay from a VV/VH file (.dat): the VV channel is used, the time per channel comes from the file."
+    },
+    {
+      "kind": "button",
+      "label": "📊  Load from Dataset",
+      "id": "📊  Load from Dataset##request_dataset",
+      "tooltip": "Choose a decay curve already open in ChiSurf; grouped datasets list each channel."
+    },
+    {
+      "kind": "button",
+      "label": "💾  Save IRF",
+      "id": "💾  Save IRF##request_save",
+      "tooltip": "Save the estimated IRF as a VV/VH file with identical VV and VH channels."
+    },
+    {
+      "kind": "button",
+      "label": "🚀  Transfer to ChiSurf",
+      "id": "🚀  Transfer to ChiSurf##request_transfer",
+      "tooltip": "Register the estimated IRF as a TCSPC VV/VH dataset (g = 1, 10 MHz) in ChiSurf."
+    },
+    {
+      "kind": "button",
+      "label": "📖  Guide",
+      "id": "📖  Guide##request_guide",
+      "tooltip": "Walk through loading a decay, subtracting the background and estimating the IRF."
+    },
+    {
+      "kind": "button",
+      "label": "❓  Help",
+      "id": "❓  Help##request_help",
+      "tooltip": "What blind IRF estimation does, its assumptions and its failure modes."
+    },
+    {
+      "kind": "input_text",
+      "label": "dt",
+      "id": "##dt",
+      "tooltip": "Time per channel in nanoseconds, set from the data. Correct it when the file carries none: the time axis, lifetime and rate are rescaled, the IRF per channel is unchanged."
+    },
+    {
+      "kind": "input_text",
+      "label": "window_length",
+      "id": "##window_length",
+      "tooltip": "Savitzky-Golay filter window length (channels) used to find the decay maximum; the estimator makes it odd."
+    },
+    {
+      "kind": "input_text",
+      "label": "polyorder",
+      "id": "##polyorder",
+      "tooltip": "Polynomial order of the Savitzky-Golay filter."
+    },
+    {
+      "kind": "input_text",
+      "label": "rl_iterations",
+      "id": "##rl_iterations",
+      "tooltip": "Richardson-Lucy deconvolution iterations. More iterations sharpen the IRF and amplify noise: where you stop is the regularisation. Auto-update uses 50."
+    },
+    {
+      "kind": "input_text",
+      "label": "regularization",
+      "id": "##regularization",
+      "tooltip": "Median filter size for regularization (1 = no regularization)."
+    },
+    {
+      "kind": "input_text",
+      "label": "manual_background",
+      "id": "##manual_background",
+      "tooltip": "Background counts per channel subtracted before the estimate (0 = auto-estimate). Loading a file sets it to the median of the last 10 % of channels."
+    },
+    {
+      "kind": "checkbox",
+      "label": "📍  Use Range Selection",
+      "id": "📍  Use Range Selection##use_range_selection",
+      "tooltip": "Use only a channel range for the estimate: drag the green region in the plot or type its first and last channel."
+    },
+    {
+      "kind": "checkbox",
+      "label": "🔄  Auto-Update IRF",
+      "id": "🔄  Auto-Update IRF##auto_update_enabled",
+      "tooltip": "Re-estimate the IRF (50 RL iterations) when a parameter, the background or the range changes, once an IRF exists."
+    },
+    {
+      "kind": "button",
+      "label": "🔮  Estimate IRF",
+      "id": "🔮  Estimate IRF##request_estimate",
+      "tooltip": "Fit the decay tail with a truncated exponential, then deconvolve it with Richardson-Lucy to obtain the IRF."
+    },
+    {
+      "kind": "button",
+      "label": "📂  Load Decay",
+      "id": "📂  Load Decay##request_load",
+      "tooltip": "Load a measured decay from a VV/VH file (.dat): the VV channel is used, the time per channel comes from the file."
+    },
+    {
+      "kind": "button",
+      "label": "Run MEM",
+      "id": "Run MEM",
+      "tooltip": "Solve the maximum-entropy inversion in an isolated, cancellable process."
+    },
+    {
+      "kind": "button",
+      "label": "L-curve",
+      "id": "L-curve",
+      "tooltip": "Run the 16-point nu sweep and pick the discrete corner."
+    },
+    {
+      "kind": "button",
+      "label": "Sample",
+      "id": "Sample",
+      "tooltip": "Run Q-MCMC sampling of the distribution and save chains, summaries and project metadata in a folder."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Export the distribution, observed and fitted curves, IRF, weighted residuals and metadata."
+    },
+    {
+      "kind": "button",
+      "label": "Cancel job",
+      "id": "Cancel job",
+      "tooltip": "Terminate the MEM or sampling process this window started."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh",
+      "tooltip": "List the datasets and fits of this running ChiSurf session."
+    },
+    {
+      "kind": "button",
+      "label": "Load decay",
+      "id": "Load decay",
+      "tooltip": "Load a measured two-column time/counts decay from a file."
+    },
+    {
+      "kind": "button",
+      "label": "IRF file",
+      "id": "IRF file",
+      "tooltip": "Load a measured instrument response and resample it onto the decay time axis."
+    },
+    {
+      "kind": "button",
+      "label": "Clear IRF",
+      "id": "Clear IRF",
+      "tooltip": "Drop the measured IRF: use the response of the live fit, or an impulse."
+    },
+    {
+      "kind": "button",
+      "label": "Prior",
+      "id": "Prior",
+      "tooltip": "Use a vector or axis/value prior for the current distribution grid."
+    },
+    {
+      "kind": "button",
+      "label": "Donor",
+      "id": "Donor",
+      "tooltip": "Load the amplitude/lifetime pairs of the donor-only decay (FRET mode)."
+    },
+    {
+      "kind": "button",
+      "label": "JSON",
+      "id": "JSON",
+      "tooltip": "Inspect and edit the declared preferences as JSON."
+    },
+    {
+      "kind": "input_text",
+      "label": "nu",
+      "id": "##nu",
+      "tooltip": "Entropy regularization weight: small values fit the noise, large ones smooth the distribution."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_iter",
+      "id": "##max_iter",
+      "tooltip": "Maximum iterations of the compiled MEM solver."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_min",
+      "id": "##tau_min",
+      "tooltip": "Smallest lifetime of the grid (set from the IRF width when data is taken from a fit)."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_max",
+      "id": "##tau_max",
+      "tooltip": "Largest lifetime of the grid."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_bins",
+      "id": "##tau_bins",
+      "tooltip": "Number of grid points."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Periodic convolution",
+      "id": "Periodic convolution##use_periodic",
+      "tooltip": "Include repeated excitation pulses instead of a single-shot decay."
+    },
+    {
+      "kind": "input_text",
+      "label": "period",
+      "id": "##period",
+      "tooltip": "Pulse separation used with periodic convolution (initialised from the decay window)."
+    },
+    {
+      "kind": "input_text",
+      "label": "timeshift",
+      "id": "##timeshift",
+      "tooltip": "Response shift in histogram channels."
+    },
+    {
+      "kind": "input_text",
+      "label": "background",
+      "id": "##background",
+      "tooltip": "Constant decay background."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_background",
+      "id": "##irf_background",
+      "tooltip": "Response baseline; zero selects the automatic baseline estimate."
+    },
+    {
+      "kind": "input_text",
+      "label": "lamp_scatter",
+      "id": "##lamp_scatter",
+      "tooltip": "Fixed amplitude of scattered excitation light."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fit nuisance (ts/bg/IRF BG)",
+      "id": "Fit nuisance (ts/bg/IRF BG)##optimize_nuisance",
+      "tooltip": "Let the solver fit the timeshift, background and IRF background whose fix switches are off."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix timeshift",
+      "id": "fix timeshift##fix_timeshift",
+      "tooltip": "Hold the timeshift at its value during nuisance optimization."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix background",
+      "id": "fix background##fix_background",
+      "tooltip": "Hold the background at its value during nuisance optimization."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix IRF background",
+      "id": "fix IRF background##fix_irf_background",
+      "tooltip": "Hold the IRF background at its value during nuisance optimization."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "L-curve span and sampling",
+      "id": "L-curve span and sampling",
+      "tooltip": "The decades the L-curve sweep covers and the Q-MCMC sampling options."
+    },
+    {
+      "kind": "button",
+      "label": "📖  Guide",
+      "id": "📖  Guide",
+      "tooltip": "A walk through queueing files, choosing the detector, computing and exporting."
+    },
+    {
+      "kind": "button",
+      "label": "❓  Help",
+      "id": "❓  Help",
+      "tooltip": "Histogram, burst-gate, shift and transfer conventions."
+    },
+    {
+      "kind": "input_text",
+      "label": "decay_file",
+      "id": "##decay_file",
+      "tooltip": "Measured two-column decay: time (ns) and counts."
+    },
+    {
+      "kind": "button",
+      "label": "Load...",
+      "id": "Load...##decay_file.browse",
+      "tooltip": "Choose the decay file."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_file",
+      "id": "##irf_file",
+      "tooltip": "Measured two-column instrument response: time (ns) and counts."
+    },
+    {
+      "kind": "button",
+      "label": "Load...",
+      "id": "Load...##irf_file.browse",
+      "tooltip": "Choose the irf file."
+    },
+    {
+      "kind": "input_text",
+      "label": "config_file",
+      "id": "##config_file",
+      "tooltip": "The LLTF YAML configuration: fit range, background, IRF shift, starting values, pile-up. Edit… opens it; the next run uses the edited text."
+    },
+    {
+      "kind": "button",
+      "label": "Edit...",
+      "id": "Edit...##config_file.browse",
+      "tooltip": "Open the configuration in the YAML editor (load another, edit, save)."
+    },
+    {
+      "kind": "input_text",
+      "label": "output_dir",
+      "id": "##output_dir",
+      "tooltip": "Where <decay>_fit.json and <decay>_fit.png are written (the decay's folder when empty)."
+    },
+    {
+      "kind": "button",
+      "label": "Select...",
+      "id": "Select...##output_dir.browse",
+      "tooltip": "Choose the output directory."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_lifetimes",
+      "id": "##n_lifetimes",
+      "tooltip": "Exponential components of the fit. Used when Find Optimal is off; it then also switches the configuration file's own find_optimal off."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Find Optimal",
+      "id": "Find Optimal##find_optimal",
+      "tooltip": "Find the optimal number of lifetimes: fit 1 … Max Lifetimes components and pick a count by the probability test. Read the χ²ᵣ sequence (Analysis Output, or optimal_fitting in the JSON) rather than taking the count as a verdict."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_lifetimes",
+      "id": "##max_lifetimes",
+      "tooltip": "Largest component count the search fits."
+    },
+    {
+      "kind": "input_text",
+      "label": "prob_threshold",
+      "id": "##prob_threshold",
+      "tooltip": "Probability a further component must reach to be kept. At the default 0.68 it needs about a 14 % drop in reduced χ², whatever the photon count."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Verbose Output",
+      "id": "Verbose Output##verbose",
+      "tooltip": "Print the fitter's progress and diagnostics in Analysis Output."
+    },
+    {
+      "kind": "button",
+      "label": "▶  Fit",
+      "id": "▶  Fit",
+      "tooltip": "Run the LLTF command line in a background process with these inputs and options; needs a decay and an IRF."
+    },
+    {
+      "kind": "button",
+      "label": "⏹  Stop",
+      "id": "⏹  Stop",
+      "tooltip": "Terminate the running fit; its captured output stays in Analysis Output."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Information",
+      "id": "Information",
+      "tooltip": "Show workflow guidance."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Analysis Output",
+      "id": "Analysis Output",
+      "tooltip": "Inspect live stdout and stderr from the fitting process."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Results",
+      "id": "Results",
+      "tooltip": "Inspect fitted lifetimes, fit statistics and exports."
+    },
+    {
+      "kind": "button",
+      "label": "▶  Compute",
+      "id": "▶  Compute##compute",
+      "tooltip": "Read the selected photons and burst gates in a background worker."
+    },
+    {
+      "kind": "button",
+      "label": "💾  Save",
+      "id": "💾  Save##save",
+      "tooltip": "Write the current shifted cumulative VV/VH decay to Output."
+    },
+    {
+      "kind": "button",
+      "label": "Save as…",
+      "id": "Save as…##save_as",
+      "tooltip": "Choose another decay filename."
+    },
+    {
+      "kind": "button",
+      "label": "Transfer to ChiSurf",
+      "id": "Transfer to ChiSurf##transfer",
+      "tooltip": "Save and add a TCSPC dataset with the current G-factor, time step and polarization."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Autosave after compute",
+      "id": "Autosave after compute##auto_save",
+      "tooltip": "Write the cumulative decay to Output once the computation succeeds."
+    },
+    {
+      "kind": "button",
+      "label": "➕  Files…",
+      "id": "➕  Files…",
+      "tooltip": "Queue TTTR/PTO photon files, with per-file inclusion controls."
+    },
+    {
+      "kind": "button",
+      "label": "📁  Folder…",
+      "id": "📁  Folder…",
+      "tooltip": "Queue photon files recursively from a folder."
+    },
+    {
+      "kind": "button",
+      "label": "🗄  Database…",
+      "id": "🗄  Database…",
+      "tooltip": "Select raw photon data from the MMFDB object store."
+    },
+    {
+      "kind": "button",
+      "label": "All",
+      "id": "All",
+      "tooltip": "Include every file of this list."
+    },
+    {
+      "kind": "button",
+      "label": "None",
+      "id": "None",
+      "tooltip": "Exclude every file of this list."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove",
+      "tooltip": "Remove the selected file from the list (it stays on disk)."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear",
+      "tooltip": "Remove every file of this list and the computed histogram."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Burst selections (BID/BUR)",
+      "id": "Burst selections (BID/BUR)",
+      "tooltip": "Restrict the photons to bursts: queue .bst/.bur photon-index files (inclusive bounds)."
+    },
+    {
+      "kind": "input_text",
+      "label": "parallel_text",
+      "id": "##parallel_text",
+      "tooltip": "Comma-separated routing channels of the parallel (VV) stream; choosing a detector fills them."
+    },
+    {
+      "kind": "input_text",
+      "label": "perpendicular_text",
+      "id": "##perpendicular_text",
+      "tooltip": "Comma-separated routing channels of the perpendicular (VH) stream; empty when polarization resolution is off."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Polarization resolved",
+      "id": "Polarization resolved##polarized",
+      "tooltip": "Split the detector channels into alternating VV/VH routes; unchecked gives one unpolarized stream."
+    },
+    {
+      "kind": "input_text",
+      "label": "dt_ns",
+      "id": "##dt_ns",
+      "tooltip": "Nanoseconds per binned TAC channel; reading derives it from the header. Typing a value keeps it (Manual time step)."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual time step",
+      "id": "Manual time step##dt_manual",
+      "tooltip": "Keep the entered time step instead of the file header's resolution."
+    },
+    {
+      "kind": "input_text",
+      "label": "g_factor",
+      "id": "##g_factor",
+      "tooltip": "Weights VH by 2G in the combined VV + 2G VH trace."
+    },
+    {
+      "kind": "input_text",
+      "label": "vv_shift",
+      "id": "##vv_shift",
+      "tooltip": "Pad or clip the VV histogram by this many bins; photon times are not wrapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "vh_shift",
+      "id": "##vh_shift",
+      "tooltip": "Pad or clip the VH histogram by this many bins; photon times are not wrapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "output",
+      "id": "##output",
+      "tooltip": "Single-column export: VV bins followed by VH bins, compatible with read_vv_vh."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Log counts",
+      "id": "Log counts",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    },
+    {
+      "kind": "checkbox",
+      "label": "VV",
+      "id": "VV",
+      "tooltip": "Show or hide the cumulative parallel decay."
+    },
+    {
+      "kind": "checkbox",
+      "label": "VH",
+      "id": "VH",
+      "tooltip": "Show or hide the cumulative perpendicular decay."
+    },
+    {
+      "kind": "checkbox",
+      "label": "VV + 2G VH",
+      "id": "VV + 2G VH",
+      "tooltip": "Show or hide the combined decay."
+    },
+    {
+      "kind": "button",
+      "label": "Fast reference...",
+      "id": "Fast reference...",
+      "tooltip": "Load the fast-rotating reference dye VV/VH decay used for the tail-matching G calibration."
+    },
+    {
+      "kind": "button",
+      "label": "Slow protein...",
+      "id": "Slow protein...",
+      "tooltip": "Load the slow-rotating protein VV/VH decay for the linked polarization-mixing estimate."
+    },
+    {
+      "kind": "button",
+      "label": "Export calibration JSON...",
+      "id": "Export calibration JSON...",
+      "tooltip": "Export values, uncertainty, mixing diagnostics and scientific settings."
+    },
+    {
+      "kind": "button",
+      "label": "Archive reference calibration",
+      "id": "Archive reference calibration",
+      "tooltip": "Register the raw reference decay, corrected traces, anisotropy and calibration provenance through the MMFDB RPC."
+    },
+    {
+      "kind": "button",
+      "label": "Stop",
+      "id": "Stop",
+      "tooltip": "Discard the pending result; an archival already running may finish."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Flip VV/VH",
+      "id": "Flip VV/VH##flip",
+      "tooltip": "The file has VV and VH swapped: exchange the parallel and perpendicular channels consistently across the calculation and the plots."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Background correction",
+      "id": "Background correction##background",
+      "tooltip": "Subtract separate channel means of the background region before matching the tails."
+    },
+    {
+      "kind": "input_text",
+      "label": "tail_start",
+      "id": "##tail_start",
+      "tooltip": "First TAC bin of the tail region used to match the reference dye channels."
+    },
+    {
+      "kind": "input_text",
+      "label": "tail_stop",
+      "id": "##tail_stop",
+      "tooltip": "Last TAC bin of the tail region."
+    },
+    {
+      "kind": "input_text",
+      "label": "background_start",
+      "id": "##background_start",
+      "tooltip": "First TAC bin of the signal-free region used for each channel's background (needs Background correction)."
+    },
+    {
+      "kind": "input_text",
+      "label": "background_stop",
+      "id": "##background_stop",
+      "tooltip": "Last TAC bin of the background region (needs Background correction)."
+    },
+    {
+      "kind": "input_text",
+      "label": "shift",
+      "id": "##shift",
+      "tooltip": "Shift the VH time axis by this many TAC bins, fractional bins included (the Qt tool's 'Shift Perpendicular Decay')."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual G",
+      "id": "Manual G##manual_g",
+      "tooltip": "Use the G-factor typed below instead of the calculated one (the Qt tool does this when its G field is edited)."
+    },
+    {
+      "kind": "input_text",
+      "label": "g_override",
+      "id": "##g_override",
+      "tooltip": "Positive detector sensitivity ratio used for the corrected anisotropy."
+    },
+    {
+      "kind": "input_text",
+      "label": "fp_dt_ns",
+      "id": "##fp_dt_ns",
+      "tooltip": "Nanoseconds per slow-reference bin."
+    },
+    {
+      "kind": "input_text",
+      "label": "fp_rho_ns",
+      "id": "##fp_rho_ns",
+      "tooltip": "Rotational correlation time used in the Perrin relation."
+    },
+    {
+      "kind": "input_text",
+      "label": "fp_r0",
+      "id": "##fp_r0",
+      "tooltip": "Limiting (fundamental) anisotropy of the reference fluorophore."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual lifetime",
+      "id": "Manual lifetime##manual_tau",
+      "tooltip": "Override the intensity first-moment lifetime of the slow reference."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_override",
+      "id": "##tau_override",
+      "tooltip": "Lifetime used in place of the estimate."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual target rS",
+      "id": "Manual target rS##manual_rs",
+      "tooltip": "Override the Perrin steady-state anisotropy target."
+    },
+    {
+      "kind": "input_text",
+      "label": "rs_override",
+      "id": "##rs_override",
+      "tooltip": "Steady-state anisotropy the slow reference should have."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual l1 = l2",
+      "id": "Manual l1 = l2##manual_l",
+      "tooltip": "Override the single linked polarization-mixing parameter."
+    },
+    {
+      "kind": "input_text",
+      "label": "l_override",
+      "id": "##l_override",
+      "tooltip": "Linked mixing parameter applied to l1 and l2."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fast reference",
+      "id": "Fast reference",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Slow reference",
+      "id": "Slow reference",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Raw",
+      "id": "Raw",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Corrected",
+      "id": "Corrected",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  },
+  "hosted_tools_without_tooltip": []
+}

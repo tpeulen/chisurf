@@ -1,0 +1,34 @@
+diff --git a/chisurf/plugins/fluorescence_decay/lifetime_analysis/gui/__init__.py b/chisurf/plugins/fluorescence_decay/lifetime_analysis/gui/__init__.py
+index e7088ce31..58d6fb570 100644
+--- a/chisurf/plugins/fluorescence_decay/lifetime_analysis/gui/__init__.py
++++ b/chisurf/plugins/fluorescence_decay/lifetime_analysis/gui/__init__.py
+@@ -1,7 +1,10 @@
+-"""GUI for the integrated lifetime analysis plugin."""
++"""Native lifetime hub with lazy legacy window exports."""
+ 
+-from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import (
+-    LifetimeAnalysisTool,
+-)
++__all__=["LifetimeAnalysisTool"]
+ 
+-__all__ = ["LifetimeAnalysisTool"]
++
++def __getattr__(name):
++    if name=="LifetimeAnalysisTool":
++        from .tool import LifetimeAnalysisTool
++        return LifetimeAnalysisTool
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/fluorescence_decay/lifetime_analysis/manifest.json b/chisurf/plugins/fluorescence_decay/lifetime_analysis/manifest.json
+index 694384813..00270073b 100644
+--- a/chisurf/plugins/fluorescence_decay/lifetime_analysis/manifest.json
++++ b/chisurf/plugins/fluorescence_decay/lifetime_analysis/manifest.json
+@@ -19,7 +19,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool:LifetimeAnalysisTool"
++    "gui": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool:LifetimeAnalysisTool",
++    "emtk": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app:make_app"
+   },
+   "optional_requires": {
+     "irf_estimator": "*",

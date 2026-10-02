@@ -1,0 +1,4 @@
+ M chisurf/plugins/fluorescence_decay/lifetime_analysis/gui/__init__.py
+ M chisurf/plugins/fluorescence_decay/lifetime_analysis/manifest.json
+?? chisurf/plugins/fluorescence_decay/lifetime_analysis/gui/app.py
+?? chisurf/plugins/fluorescence_decay/lifetime_analysis/test/

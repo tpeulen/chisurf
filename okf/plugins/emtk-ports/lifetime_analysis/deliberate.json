@@ -1,0 +1,11 @@
+{
+  "3.lazylifetimeanalysis⚠️": "Qt list text with the experimental warning pictogram: native '3. Lazy Lifetime Analysis *' with the banner text in the header",
+  "5": "numeral of a Qt page/list text that is part of the entry labels ('5. VV/VH G-Factor'); native keeps the numbers in the labels",
+  "?": "the Qt '?' help button is the Help button",
+  "cancel": "Qt shared status-bar Cancel for tasks of embedded panels: the hosted native tools have their own Cancel / Stop buttons",
+  "select1.irfestimationtoload.": "Qt placeholder page of a not yet built panel: the native hub builds the tool when its entry is selected",
+  "select2.maxentmemtoload.": "Qt placeholder page: see above",
+  "select3.lazylifetimeanalysistoload.": "Qt placeholder page: see above",
+  "select4.histogram-microtimetoload.": "Qt placeholder page: see above",
+  "select5.vv/vhg-factortoload.": "Qt placeholder page: see above"
+}

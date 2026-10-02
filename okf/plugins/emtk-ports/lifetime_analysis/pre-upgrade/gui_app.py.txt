@@ -1,0 +1,177 @@
+"""Native lifetime hub with all five original tools hosted lazily."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from types import SimpleNamespace
+
+from emtk import im
+from emtk.i18n import get_locale
+
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.plugins import load_plugin, manifests
+from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
+
+PANELS = [
+    (
+        "irf_estimator",
+        "1. IRF Estimation",
+        "🌊",
+        "Estimate instrument response functions from fluorescence decays.",
+        "IRF Estimation",
+    ),
+    (
+        "maxent_decay",
+        "2. MaxEnt MEM",
+        "📈",
+        "Run maximum entropy lifetime and FRET-distance analysis.",
+        "MaxEnt MEM",
+    ),
+    (
+        "lltf",
+        "3. Lazy Lifetime Analysis",
+        "⏱️",
+        "Analyze TCSPC decays with the LLTF workflow.",
+        "Lazy Lifetime",
+    ),
+    (
+        "microtime_histogram",
+        "4. Histogram-Microtime",
+        "📊",
+        "Build TTTR microtime histograms.",
+        "Histogram-Microtime",
+    ),
+    (
+        "vv_vh_g_factor",
+        "5. VV/VH G-Factor",
+        "⚖️",
+        "Calculate detector G-factors from VV/VH decays.",
+        "G-Factor",
+    ),
+]
+
+
+class LifetimeAnalysisApp(CalculatorHubApp):
+    def __init__(self):
+        entries = [
+            SimpleNamespace(id=id, label=label, icon=icon, description=description, alias=alias)
+            for id, label, icon, description, alias in PANELS
+        ]
+        super().__init__(entries=entries)
+        self.continuous = False
+        self.item_rects = {}
+        self.search = ""
+        self.metadata = manifests()
+        self.help_window = EmTkHelpWindow(
+            title="Lifetime Analysis — Help",
+            resource=Path(__file__).with_name("help.md"),
+            owner=self,
+        )
+        self.tour = EmTkGuidedTour(
+            steps=Path(__file__).with_name("guide.json"),
+            get_target_rect=lambda key: self.item_rects.get(key),
+            owner=self,
+            wait_for_controls=True,
+            on_step_change=self.reveal_step,
+        )
+
+    def select(self, id, notify=True):
+        if id not in {entry.id for entry in self.entries}:
+            raise ValueError("Unknown lifetime tool: " + id)
+        self.selected = id
+        self.error = ""
+        if id not in self.children:
+            try:
+                self.children[id] = load_plugin(
+                    id, locale=get_locale(), persist=getattr(self, "_native_state_bound", False)
+                )
+            except Exception as exc:
+                self.error = f"Native tool could not open: {exc}"
+        if notify:
+            entry = next(entry for entry in self.entries if entry.id == id)
+            self.tour.notify_used(entry.alias)
+        return self.children.get(id)
+
+    def reveal_step(self, index, step):
+        key = EmTkGuidedTour._target_key(step.get("target"))
+        entry = next((entry for entry in self.entries if entry.alias == key), None)
+        if entry is not None and not step.get("await"):
+            self.select(entry.id, notify=False)
+
+    def render(self):
+        vp = im.get_main_viewport()
+        width, height = vp.size
+        left = min(270.0, width * 0.25)
+        self.item_rects.clear()
+        im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
+        im.set_next_window_size((left, height), im.Cond.ALWAYS)
+        if im.begin("Decay Analysis", flags=im.WindowFlags.NO_RESIZE):
+            _, self.search = im.input_text("Search tools", self.search)
+            im.set_item_tooltip("Filter lifetime-analysis tools by their name or purpose.")
+            for entry in self.entries:
+                if self.search.casefold() not in (entry.label + " " + entry.description).casefold():
+                    continue
+                if im.selectable(
+                    entry.icon + " " + entry.label, selected=self.selected == entry.id
+                ):
+                    self.select(entry.id)
+                im.set_item_tooltip(entry.description)
+                self.item_rects[entry.alias] = im.get_item_rect()
+            if im.button("Help"):
+                self.help_window.show()
+            im.set_item_tooltip("Explain the complementary lifetime-analysis workflows.")
+            im.same_line()
+            if im.button("Guide"):
+                self.tour.start()
+            im.set_item_tooltip("Walk through the real analysis panels and their purpose.")
+        im.end()
+        im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
+        im.set_next_window_size((width - left, 70.0), im.Cond.ALWAYS)
+        if im.begin(
+            "Lifetime tool description",
+            flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE,
+        ):
+            entry = next(entry for entry in self.entries if entry.id == self.selected)
+            im.text(entry.label)
+            im.text_wrapped(entry.description)
+            metadata = self.metadata.get(entry.id, {})
+            if metadata.get("experimental"):
+                im.text_wrapped(
+                    metadata.get("experimental_message") or "This workflow is experimental."
+                )
+            if self.error:
+                im.text_wrapped(self.error)
+        im.end()
+        self.child_box = (left, 70.0, max(1.0, width - left), max(1.0, height - 70.0))
+        if self.child is not None:
+            self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
+        self.help_window.draw((0.0, 0.0, width, height))
+        self.tour.draw(width, height)
+
+    @property
+    def native_layouts(self):
+        layouts = {}
+        for id, child in self.children.items():
+            if hasattr(child, "docks"):
+                layouts[id] = child.docks
+        return layouts
+
+    def export_settings(self):
+        return {"selected": self.selected}
+
+    def restore_settings(self, settings):
+        if settings.get("selected") in {entry.id for entry in self.entries}:
+            self.selected = settings["selected"]
+
+    def animating(self):
+        return super().animating() or (self.child is not None and self.child.animating())
+
+    def next_frame_in(self):
+        values = [super().next_frame_in()]
+        if self.child is not None:
+            values.append(self.child.next_frame_in())
+        return min((value for value in values if value is not None), default=None)
+
+
+def make_app():
+    return LifetimeAnalysisApp()

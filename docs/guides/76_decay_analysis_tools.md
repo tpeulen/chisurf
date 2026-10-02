@@ -1,8 +1,8 @@
 ---
 type: Guide
-title: 'Decay Analysis window, Lazy Lifetime Analysis and synthetic decays'
+title: Decay Analysis window, Lazy Lifetime Analysis and synthetic decays
 description: The Spectroscopy:Decay Analysis window and its five panels; the Lazy Lifetime Analysis fit (automatic range, background, IRF shift and component count) and what its component-count scan really tests; and the Synthetic Decay Generator for decays whose answer is known.
-tags: [guides, tcspc, lifetime, decay, simulation]
+tags: [guides, tcspc, decay, lifetime, fitting, corrections]
 ---
 
 # Decay Analysis window, Lazy Lifetime Analysis and synthetic decays
@@ -42,9 +42,10 @@ acquisition device, through a separate editor.
 :name: fig-decay-analysis-hub
 :width: 100%
 
-**Spectroscopy → Decay Analysis**, opened on its first panel. The rail lists the
-five tools in the order they depend on each other; **Next ▶** and **◀ Back**
-walk it, **Guide** and **?** (top right) belong to the window.
+**Spectroscopy → Decay Analysis**, here on panel 5 with a fast dye and a slow protein loaded.
+The list on the left holds the five tools in the order they depend on each other (a `*` marks
+the experimental one, whose banner appears above the tool); **Back** and **Next** walk it, the
+search box filters it by name or purpose, **Help** and **Guide** belong to the window.
 ```
 
 | Panel | What it does | Guide |
@@ -55,8 +56,8 @@ walk it, **Guide** and **?** (top right) belong to the window.
 | 4. Histogram-Microtime | builds the decay from a TTTR photon file | {doc}`73_tttr_decay_and_correlation` |
 | 5. VV/VH G-Factor | $G$ from a pair of polarized decays | {doc}`10_lifetime_anisotropy_fitting` |
 
-Each panel is the standalone tool embedded unchanged; a panel keeps its state
-while you move along the rail. Nothing is passed from one panel to the next: an
+Each panel is the standalone tool embedded unchanged; the mouse, the wheel, the keyboard and
+dropped files go to the selected tool, and a panel keeps its state while you move along the list. Nothing is passed from one panel to the next: an
 IRF estimated in panel 1 has to be saved and loaded into the fit that uses it.
 
 ## Lazy Lifetime Analysis
