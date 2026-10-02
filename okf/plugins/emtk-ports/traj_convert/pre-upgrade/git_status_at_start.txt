@@ -1,0 +1,5 @@
+ M chisurf/plugins/traj/traj_convert/__init__.py
+ M chisurf/plugins/traj/traj_convert/manifest.json
+ M chisurf/plugins/traj/traj_convert/view_model.py
+?? chisurf/plugins/traj/traj_convert/app.py
+?? chisurf/plugins/traj/traj_convert/strings.py

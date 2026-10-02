@@ -1,0 +1,63 @@
+"""Native EMTK trajectory converter."""
+# ruff: noqa: E701, E702
+from __future__ import annotations
+
+from emtk import im
+from emtk.app import ImApp
+
+from .strings import install_translations, tr
+from .view_model import MDConverterViewModel
+
+install_translations()
+
+
+class MDConverterApp(ImApp):
+    def __init__(self, model=None):
+        self.model = model or MDConverterViewModel()
+        self.message = ""
+        super().__init__(self.render)
+
+    def render(self):
+        im.begin(tr("Trajectory Converter"), (0, 0, *im.get_main_viewport().size))
+        im.heading(tr("Convert trajectory structures"), level=2)
+        for label, attr, tip in (("Topology", "topology_path", "Optional topology file"), ("Trajectory", "trajectory", "Input trajectory or PDB folder"), ("Output folder", "target_directory", "Destination folder"), ("Filename", "filename", "Output base name")):
+            im.text(tr(label)); im.same_line(); im.set_next_item_width(460)
+            changed, value = im.input_text("##" + attr, str(getattr(self.model, attr)))
+            im.set_item_tooltip(tr(tip))
+            if changed: setattr(self.model, attr, value)
+        changed, self.model.use_folder = im.checkbox(tr("Use folder of PDB files"), self.model.use_folder)
+        im.set_item_tooltip(tr("Treat the input as a folder containing PDB frames"))
+        changed, self.model.split = im.checkbox(tr("Split frames"), self.model.split)
+        im.set_item_tooltip(tr("Write one output file per frame"))
+        options = self.model.output_formats()
+        index = options.index(self.model.ending) if self.model.ending in options else 0
+        changed, index = im.combo(tr("Format"), index, options)
+        im.set_item_tooltip(tr("Output trajectory format"))
+        if changed: self.model.ending = options[index]
+        for label, attr, tip in (("First frame", "first_frame", "First frame index"), ("Last frame", "last_frame", "Last frame; -1 means all"), ("Stride", "stride", "Read every Nth frame")):
+            im.text(tr(label)); im.same_line(); im.set_next_item_width(120)
+            changed, value = im.input_int("##" + attr, int(getattr(self.model, attr)))
+            im.set_item_tooltip(tr(tip))
+            if changed: setattr(self.model, attr, value)
+        if im.button(tr("Convert")):
+            try:
+                self.model.convert()
+                self.message = tr("Conversion complete")
+            except Exception as exc:
+                self.message = f"{type(exc).__name__}: {exc}"
+        im.set_item_tooltip(tr("Convert the selected trajectory using the current options"))
+        if self.message: im.text_wrapped(self.message)
+        im.separator(); im.heading(tr("Log"), level=2)
+        for line in self.model.log_text(): im.text(line)
+        im.end()
+
+    def export_settings(self):
+        return {"topology_path": self.model.topology_path, "trajectory": self.model.trajectory, "target_directory": self.model.target_directory, "filename": self.model.filename, "ending": self.model.ending, "split": self.model.split, "stride": self.model.stride}
+
+    def restore_settings(self, settings):
+        for key in ("topology_path", "trajectory", "target_directory", "filename", "ending", "split", "stride"):
+            if key in settings: setattr(self.model, key, settings[key])
+
+
+def make_app():
+    return MDConverterApp()

@@ -1,0 +1,56 @@
+diff --git a/chisurf/plugins/traj/traj_convert/__init__.py b/chisurf/plugins/traj/traj_convert/__init__.py
+index 339d34649..66887e4d4 100644
+--- a/chisurf/plugins/traj/traj_convert/__init__.py
++++ b/chisurf/plugins/traj/traj_convert/__init__.py
+@@ -8,7 +8,6 @@ icon = "🔄"
+ from pathlib import Path
+ 
+ from chisurf.core.plugin import load_manifest
+-from chisurf.plugins.traj.traj_convert.widget import MDConverter
+ 
+ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
+ if _manifest is not None:
+@@ -18,6 +17,13 @@ else:
+ 
+ __all__ = ["MDConverter"]
+ 
++
++def __getattr__(attribute):
++    if attribute == "MDConverter":
++        from chisurf.plugins.traj.traj_convert.widget import MDConverter
++        return MDConverter
++    raise AttributeError(attribute)
++
+ if __name__ == "plugin":
+-    window = MDConverter()
++    window = __getattr__("MDConverter")()
+     window.show()
+diff --git a/chisurf/plugins/traj/traj_convert/manifest.json b/chisurf/plugins/traj/traj_convert/manifest.json
+index 697088b1b..a21e93a70 100644
+--- a/chisurf/plugins/traj/traj_convert/manifest.json
++++ b/chisurf/plugins/traj/traj_convert/manifest.json
+@@ -14,7 +14,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.traj.traj_convert.widget:MDConverter"
++    "gui": "chisurf.plugins.traj.traj_convert.widget:MDConverter",
++    "emtk": "chisurf.plugins.traj.traj_convert.app:make_app"
+   },
+   "menu_hidden": true
+ }
+diff --git a/chisurf/plugins/traj/traj_convert/view_model.py b/chisurf/plugins/traj/traj_convert/view_model.py
+index 0c833c0a1..b98850878 100644
+--- a/chisurf/plugins/traj/traj_convert/view_model.py
++++ b/chisurf/plugins/traj/traj_convert/view_model.py
+@@ -118,6 +118,10 @@ class MDConverterViewModel:
+         lines = "<br>".join(html.escape(line) for line in self._log)
+         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
+ 
++    def log_text(self) -> list[str]:
++        """Return the raw log lines (bound by the native app; no HTML)."""
++        return list(self._log)
++
+     # ── file wiring ─────────────────────────────────────────────────────
+     @property
+     def topology_file(self) -> str | None:

@@ -1,0 +1,10 @@
+from emtk import i18n
+
+# ruff: noqa: E701, E702
+
+_CATALOGS = {"de": {"Trajectory Converter":"Trajektorien-Konverter", "Convert trajectory structures":"Trajektorienstrukturen konvertieren", "Topology":"Topologie", "Trajectory":"Trajektorie", "Output folder":"Ausgabeordner", "Filename":"Dateiname", "Format":"Format", "Convert":"Konvertieren", "Log":"Protokoll", "Conversion complete":"Konvertierung abgeschlossen"}, "fr": {"Trajectory Converter":"Convertisseur de trajectoires", "Convert trajectory structures":"Convertir les structures de trajectoire", "Topology":"Topologie", "Trajectory":"Trajectoire", "Output folder":"Dossier de sortie", "Filename":"Nom de fichier", "Format":"Format", "Convert":"Convertir", "Log":"Journal", "Conversion complete":"Conversion terminée"}, "es": {"Trajectory Converter":"Convertidor de trayectorias", "Convert trajectory structures":"Convertir estructuras de trayectoria", "Topology":"Topología", "Trajectory":"Trayectoria", "Output folder":"Carpeta de salida", "Filename":"Nombre de archivo", "Format":"Formato", "Convert":"Convertir", "Log":"Registro", "Conversion complete":"Conversión completada"}, "pt": {"Trajectory Converter":"Conversor de trajetórias", "Convert trajectory structures":"Converter estruturas de trajetória", "Topology":"Topologia", "Trajectory":"Trajetória", "Output folder":"Pasta de saída", "Filename":"Nome do ficheiro", "Format":"Formato", "Convert":"Converter", "Log":"Registo", "Conversion complete":"Conversão concluída"}, "ru": {"Trajectory Converter":"Конвертер траекторий", "Convert trajectory structures":"Конвертировать структуры траекторий", "Topology":"Топология", "Trajectory":"Траектория", "Output folder":"Папка вывода", "Filename":"Имя файла", "Format":"Формат", "Convert":"Конвертировать", "Log":"Журнал", "Conversion complete":"Преобразование завершено"}}
+
+def install_translations():
+    for locale, values in _CATALOGS.items(): i18n.add_translations(locale, values, context="Trajectory Converter")
+
+def tr(text): return i18n.tr(text, context="Trajectory Converter")

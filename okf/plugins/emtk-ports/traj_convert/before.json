@@ -1,0 +1,48 @@
+{
+  "controls": [
+    ".dcd",
+    ".pdb",
+    "1",
+    "2",
+    "convert",
+    "filename",
+    "firstframe",
+    "format",
+    "input",
+    "inputisafolderofpdbs",
+    "lastframe",
+    "output",
+    "splitintoonefileperframe",
+    "stride",
+    "targetfolder",
+    "topology",
+    "trajectory"
+  ],
+  "labels": [
+    "Filename",
+    "First frame",
+    "Format",
+    "Input is a folder of PDBs",
+    "Last frame",
+    "Split into one file per frame",
+    "Stride",
+    "Target folder",
+    "Topology",
+    "Trajectory"
+  ],
+  "buttons": [
+    "…",
+    "▶ Convert",
+    "▼  Input",
+    "▼  Output"
+  ],
+  "line_edits": 7,
+  "combos": 1,
+  "spin_boxes": 3,
+  "tables": 1,
+  "entrypoint": "HEAD:chisurf.plugins.traj.traj_convert.widget:MDConverter (+HEAD view_model, sections)",
+  "size": [
+    1200,
+    800
+  ]
+}
