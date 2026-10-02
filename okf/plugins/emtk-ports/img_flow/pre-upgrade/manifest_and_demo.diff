@@ -1,0 +1,24 @@
+diff --git a/chisurf/plugins/microscopy/img_flow/demo.py b/chisurf/plugins/microscopy/img_flow/demo.py
+index 8a7f91a32..572f7c07f 100644
+--- a/chisurf/plugins/microscopy/img_flow/demo.py
++++ b/chisurf/plugins/microscopy/img_flow/demo.py
+@@ -251,6 +251,7 @@ def create_demo(
+         ("ImgHdr_PixX", n_pixel),
+         ("ImgHdr_PixY", n_pixel),
+         ("ImgHdr_BiDirect", 0),
++        ("ChiSurf_DemoFrames", n_frames),
+     ):
+         header.set_tag(name, int(value), _TY_INT8)
+     if not tttr.write(str(target), "PTU"):
+diff --git a/chisurf/plugins/microscopy/img_flow/manifest.json b/chisurf/plugins/microscopy/img_flow/manifest.json
+index 211a9315b..4132c4ba7 100644
+--- a/chisurf/plugins/microscopy/img_flow/manifest.json
++++ b/chisurf/plugins/microscopy/img_flow/manifest.json
+@@ -20,6 +20,7 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.microscopy.img_flow.gui.tool:ImgFlowTool",
++    "emtk": "chisurf.plugins.microscopy.img_flow.app:make_app",
+     "cli": "img-flow=chisurf.plugins.microscopy.img_flow.cli:cli",
+     "services": "chisurf.plugins.microscopy.img_flow.backend.services:register_services"
+   },
