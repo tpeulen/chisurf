@@ -22,7 +22,7 @@ standalone as **Imaging → Flow Maps**. It maps a TIFF stack or a photon stream
 into one arrow per tile, with no model and no fit — the velocity is read off
 where a correlation peak *is*.
 
-If you have never run one, press **Guide** in its toolbar. The tour simulates a
+If you have never run one, press **Guide** at the top of its settings window. The tour simulates a
 scan whose flow profile is known — laminar flow through a channel, fastest in
 the middle and zero at the walls — and walks you through checking the answer
 against it. It points at the real buttons and waits for you to press them.
@@ -241,7 +241,7 @@ It is one-dimensional and per-pixel, which makes it the route for a flow profile
 ## Known defects
 
 - **The Flow tool's demo currently yields no arrows.** Measured 2026-09-23:
-  **🧪 Load demo** then **▶ Map flow** at the defaults (tile 24, 5 lags)
+  **Load demo** then **Map flow** at the defaults (tile 24, 5 lags)
   refuses all 25 tiles as escaped, and so do 2 or 3 lags; `pcf_from_stack` and
   `pcf_flow_map` on the same stack return no transit time. The analysis itself
   is sound — `stics_flow_map` on a numpy phantom drifting 1 px/frame recovers

@@ -1,0 +1,150 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.0000",
+    "0.50",
+    "100.00",
+    "20.000",
+    "24",
+    "4",
+    "5",
+    "browse",
+    "channel",
+    "database",
+    "displayandestimator",
+    "downtheframearedrawnhere.",
+    "estimator",
+    "exportcsv",
+    "flow",
+    "flowfield",
+    "framelags",
+    "frametime[ms]",
+    "guide",
+    "help",
+    "image",
+    "isdrawnhereoverthetime-averagedimage.",
+    "linetime[ms]",
+    "loaddemo",
+    "mapafile(orloadthedemo)onearrowpertile",
+    "mapafilethespeedandv_xagainstposition",
+    "mapflow",
+    "min.quality",
+    "noimageloaded.",
+    "pairdistance[px]",
+    "pickafile,droponehere,orloadfromthe",
+    "pixeldwell[µs]",
+    "pixelsize[nm]",
+    "profile",
+    "scanner",
+    "settings",
+    "stics—wherethepeakmoves",
+    "tile[px]",
+    "tiles"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what flow maps measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Map flow",
+      "id": "Map flow##map_flow",
+      "tooltip": "Track each tile's correlation peak and read its velocity. Runs in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Load demo",
+      "id": "Load demo##demo",
+      "tooltip": "Simulate a scan whose flow profile is known, and load it, so the arrows can be checked against a number. The first time it simulates the scan, which takes about twenty seconds; later it reuses the file."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write one row per tile: position, velocity and quality."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "The acquisition to map: a TIFF stack, or a photon stream (PTU/HT3/…) reconstructed into a confocal scan. It needs at least three frames — a flow map measures what moved *between* frames, so a single image carries no velocity at all. If you have never run one, press ▶ Load demo in the toolbar: it simulates a scan whose flow profile is known, so the arrows can be checked against a number."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_file",
+      "tooltip": "Browse for an image stack or photon-stream file on disk."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_database",
+      "tooltip": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+    },
+    {
+      "kind": "input_text",
+      "label": "tile",
+      "id": "##tile",
+      "tooltip": "Side of the sub-region each arrow is computed from — the spatial resolution of the map, and the setting that decides the whole result. Smaller localizes the flow but holds fewer molecules and leaves the peak less room to travel; larger averages distinct flows into one arrow. Several focus waists across is the usual compromise."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_lags",
+      "id": "##n_lags",
+      "tooltip": "STICS only: correlate frame i against frames i+0 … i+N-1. The peak has to stay inside its tile over that whole range — its displacement is v × lag × frame time ÷ pixel size. Overshoot and the correlation map, being periodic, wraps the peak round to the other side, where a straight line fits a confident velocity pointing the wrong way; such tiles are refused and counted rather than reported."
+    },
+    {
+      "kind": "input_text",
+      "label": "distance",
+      "id": "##distance",
+      "tooltip": "Pair correlation only: how far apart the two correlated points are. Too small and the transit time falls below the line period; too large and molecules do not survive the trip, so the peak drowns. Run two distances and check the scaling: a flow peak moves as δ, a diffusive one as δ²."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_quality",
+      "id": "##min_quality",
+      "tooltip": "Arrows below this are not drawn. It is not cosmetic: peak jitter fitted to a straight line always yields a slope, and a slope is a speed, so an unfiltered map paints a convincing flow field onto a sample that has none. Raise it until a region you know is static goes blank."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_duration_us",
+      "id": "##pixel_duration_us",
+      "tooltip": "Time the beam spends on each pixel. With the line and frame times left at zero they are derived from it, which is exact for a scanner without dead time between lines or frames."
+    },
+    {
+      "kind": "input_text",
+      "label": "frame_duration_ms",
+      "id": "##frame_duration_ms",
+      "tooltip": "Time between one frame and the next. This is the clock a STICS velocity is measured against, so an inter-frame dead time that is not accounted for scales every arrow. Zero derives it from the dwell."
+    },
+    {
+      "kind": "input_text",
+      "label": "line_duration_ms",
+      "id": "##line_duration_ms",
+      "tooltip": "Time between one line and the next; the clock the pair-correlation lags are measured against. Zero derives it from the dwell."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size_nm",
+      "id": "##pixel_size_nm",
+      "tooltip": "Physical pixel size. Every velocity scales linearly with it, so an uncertain pixel size is an equally uncertain µm/s."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

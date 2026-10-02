@@ -2,6 +2,14 @@
 
 ## 2026-10-01
 
+- **img_flow emtk app at parity; the demo workflow kept** (imaging family, port-incomplete row 86): Load demo, Map flow and the
+  guided tour that presses neither for the user; the settings (incl. the scanner clock the stream's page never exposed), the
+  summary, one arrow per tile over the time-averaged image, the profile with the demo's simulated truth and a sortable tile table.
+  Numbers equal the Qt window's, the live Qt tool's and the speed written into a test stack. Found: the demo PTU reconstructs to
+  an all-zero stack with the installed tttrlib (not the frame count of the known issue), so Load demo -> Map flow ends in "No
+  arrows" in both hosts; root cause and repro added to the known issue, a strict xfail pins the intended outcome. The Qt flow-field
+  image is drawn transposed. [report](plugins/emtk-ports/img_flow/REPORT.md).
+
 - 2026-10-02: fcs_merger (audit-all row 51) upgraded. The Qt page's own `.cor` reader had lost a factor 2000 in the channel count rates: every `.cor` folder showed 0.00 kHz and merged 0.00075 instead of 1.503 kHz on BH_SPC132.spc chunks. It now uses the core reader and writer, with guardrail `test_qt_cor_rates.py`. The emtk app is a Qt-free `MergerModel` and `fcs_merger_emtk.view.json` with the curves as a `data_table`. Rows, merge and saved file (byte-identical) equal the Qt page's on six real FCS repeats; 25 passed, breakage 14/14 twice; guide 75 gains the standalone window. Report: `okf/plugins/emtk-ports/fcs_merger/REPORT.md`.
 
 - **img_frc emtk app at parity** (imaging family, port-incomplete row 84): the stream's page (message "No image loaded." after a

@@ -1,0 +1,4 @@
+{
+  "?": "Qt toolbar help button '?'; emtk draws the same help as the 'Help' button at the top of the Settings window.",
+  "no arrows — nothing passed the quality threshold, or the field is empty.": "the Qt flow-field caption when no arrow is drawn; the emtk caption has the same words but wraps over several lines in the narrow field window (the test joins the lines)."
+}

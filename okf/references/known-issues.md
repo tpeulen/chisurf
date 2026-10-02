@@ -5975,6 +5975,17 @@ Open, highest value first:
    negative with bounds off; `fida_pch` ignores `profile`/`oversample`.
 5. **Flow demo draws no arrows** — demo PTU reads 29 of 30 frames, all 25
    tiles refused; plugin's own test fails. Guide 55 keeps the intended figure.
+   2026-10-02 (img_flow emtk port): the frame count is not the cause. With
+   tttrlib 0.27.0 the reconstruction puts no photon in any pixel: the stack
+   is all zeros (49 of 50 frames), `CLSMImage.get_line_duration()` is 0.0
+   and a line's record range holds 2-3 records. The same photons with the
+   tag `ImgHdr_Frame` written as 4 instead of 3 reconstruct as ONE 64-line
+   frame with every count, so the PTU marker decoding (tag 3 -> marker 4)
+   or the frame/line pairing of this build is what drops them (the simulator
+   writes `[line stop, frame, line start]` at a frame boundary). Repro:
+   `okf/plugins/emtk-ports/img_flow/scripts/gap_demo_ptu_zero.py` (seconds);
+   both hosts of the tool read through the same loader. The emtk port keeps the demo workflow and pins the "No arrows"
+   outcome plus a strict xfail for the intended one.
 6. **Acquisition**: routing-channel spinboxes never added to the dock (stay
    0–3) while the decay controller defaults to 8/9/10 → no decay at defaults;
    standalone window plot controllers overlap title bars.
