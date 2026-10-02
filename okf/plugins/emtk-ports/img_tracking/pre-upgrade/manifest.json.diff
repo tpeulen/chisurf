@@ -1,0 +1,12 @@
+diff --git a/chisurf/plugins/microscopy/img_tracking/manifest.json b/chisurf/plugins/microscopy/img_tracking/manifest.json
+index 9f87878ca..b9e40d600 100644
+--- a/chisurf/plugins/microscopy/img_tracking/manifest.json
++++ b/chisurf/plugins/microscopy/img_tracking/manifest.json
+@@ -13,6 +13,7 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.microscopy.img_tracking.gui.tool:ImgTrackingTool",
++    "emtk": "chisurf.plugins.microscopy.img_tracking.app:make_app",
+     "cli": "img-tracking=chisurf.plugins.microscopy.img_tracking.cli:cli",
+     "services": "chisurf.plugins.microscopy.img_tracking.backend.services:register_services"
+   },

@@ -1,0 +1,413 @@
+{
+ "empty_track": {
+  "status": "Load an image stack, or tick Simulate.",
+  "results_text": "Drop an image stack (or tick Simulate) and press Track.\n\nParticles are found in every frame, linked into trajectories, and the trajectories are turned into a diffusion coefficient.",
+  "can_run": "Load an image stack, or tick Simulate."
+ },
+ "simulated": {
+  "status": "6 tracks, D = 0.5581 \u00b1 0.098",
+  "results_text": "40 frames, 240 detections (6.0 per frame)\n6 tracks, median length 40, longest 40\n\nD = 0.5581 \u00b1 0.098 px\u00b2/frame\nalpha = 1 (fixed)\nlocalisation error = 0 px\nfrom 6 tracks over 9 MSD points\n\nRead with care:\n  - only 6 tracks contributed \u2014 D from this few is uncertain by tens of per cent however tight the curve looks",
+  "can_run": "",
+  "n_detections": 240,
+  "n_tracks": 6,
+  "detections_per_frame": 6.0,
+  "track_lengths": [
+   40,
+   40,
+   40,
+   40,
+   40,
+   40
+  ],
+  "tracks_table": [
+   {
+    "track": 0,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 5.517826067022067
+   },
+   {
+    "track": 1,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 6.346271280983957
+   },
+   {
+    "track": 2,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 6.578593952757163
+   },
+   {
+    "track": 3,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 6.669235725375416
+   },
+   {
+    "track": 4,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 10.778024067300116
+   },
+   {
+    "track": 5,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 7.23554969894807
+   }
+  ],
+  "n_markers": 240,
+  "n_track_series": 6,
+  "msd_series_names": [
+   "measured",
+   "fit"
+  ],
+  "length_series_len": 1,
+  "track_rows_head": [
+   {
+    "track": "0",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "5.52"
+   },
+   {
+    "track": "1",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "6.35"
+   },
+   {
+    "track": "2",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "6.58"
+   },
+   {
+    "track": "3",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "6.67"
+   },
+   {
+    "track": "4",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "10.78"
+   }
+  ],
+  "fit": {
+   "D": 0.558110484930705,
+   "D_err": 0.09795850050419502,
+   "alpha": 1.0,
+   "loc": 0.0,
+   "lags": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0
+   ],
+   "msd": [
+    1.9506667644751947,
+    4.102267156747216,
+    6.113227443597363,
+    8.444733593976967,
+    10.853480076720084,
+    13.009983486348593,
+    15.23668336920117,
+    17.508945080016844,
+    19.67924698197046
+   ]
+  }
+ },
+ "fit_alpha": {
+  "status": "6 tracks, D = 0.5256 \u00b1 0.13",
+  "results_text": "40 frames, 240 detections (6.0 per frame)\n6 tracks, median length 40, longest 40\n\nD = 0.5256 \u00b1 0.13 px\u00b2/frame\nalpha = 1.02 \u00b1 0.15\nlocalisation error = 0 px\nfrom 6 tracks over 9 MSD points\n\nRead with care:\n  - only 6 tracks contributed \u2014 D from this few is uncertain by tens of per cent however tight the curve looks\n  - D carries a 25 % standard error\n  - alpha = 1.02 +/- 0.15 is not resolved; if normal diffusion is expected, fix alpha = 1 and D becomes far better determined",
+  "can_run": "",
+  "n_detections": 240,
+  "n_tracks": 6,
+  "detections_per_frame": 6.0,
+  "track_lengths": [
+   40,
+   40,
+   40,
+   40,
+   40,
+   40
+  ],
+  "tracks_table": [
+   {
+    "track": 0,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 5.517826067022067
+   },
+   {
+    "track": 1,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 6.346271280983957
+   },
+   {
+    "track": 2,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 6.578593952757163
+   },
+   {
+    "track": 3,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 6.669235725375416
+   },
+   {
+    "track": 4,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 10.778024067300116
+   },
+   {
+    "track": 5,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 7.23554969894807
+   }
+  ],
+  "n_markers": 240,
+  "n_track_series": 6,
+  "msd_series_names": [
+   "measured",
+   "fit"
+  ],
+  "length_series_len": 1,
+  "track_rows_head": [
+   {
+    "track": "0",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "5.52"
+   },
+   {
+    "track": "1",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "6.35"
+   },
+   {
+    "track": "2",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "6.58"
+   },
+   {
+    "track": "3",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "6.67"
+   },
+   {
+    "track": "4",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "10.78"
+   }
+  ],
+  "fit": {
+   "D": 0.5256132965377145,
+   "D_err": 0.13382581064401491,
+   "alpha": 1.0239713570339966,
+   "loc": 0.0,
+   "lags": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0
+   ],
+   "msd": [
+    1.9506667644751947,
+    4.102267156747216,
+    6.113227443597363,
+    8.444733593976967,
+    10.853480076720084,
+    13.009983486348593,
+    15.23668336920117,
+    17.508945080016844,
+    19.67924698197046
+   ]
+  }
+ },
+ "file_loaded": {
+  "status": "6 tracks, D = 0.5256 \u00b1 0.13",
+  "results_text": "Loaded movie.tif. Press Track.",
+  "can_run": ""
+ },
+ "file_tracked": {
+  "status": "6 tracks, D = 0.5581 \u00b1 0.098",
+  "results_text": "40 frames, 240 detections (6.0 per frame)\n6 tracks, median length 40, longest 40\n\nD = 0.5581 \u00b1 0.098 px\u00b2/frame\nalpha = 1 (fixed)\nlocalisation error = 0 px\nfrom 6 tracks over 9 MSD points\n\nRead with care:\n  - only 6 tracks contributed \u2014 D from this few is uncertain by tens of per cent however tight the curve looks",
+  "can_run": "",
+  "n_detections": 240,
+  "n_tracks": 6,
+  "detections_per_frame": 6.0,
+  "track_lengths": [
+   40,
+   40,
+   40,
+   40,
+   40,
+   40
+  ],
+  "tracks_table": [
+   {
+    "track": 0,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 5.517826067022067
+   },
+   {
+    "track": 1,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 6.346271280983957
+   },
+   {
+    "track": 2,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 6.578593952757163
+   },
+   {
+    "track": 3,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 6.669235725375416
+   },
+   {
+    "track": 4,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 10.778024067300116
+   },
+   {
+    "track": 5,
+    "length": 40,
+    "first": 0,
+    "last": 39,
+    "net": 7.23554969894807
+   }
+  ],
+  "n_markers": 240,
+  "n_track_series": 6,
+  "msd_series_names": [
+   "measured",
+   "fit"
+  ],
+  "length_series_len": 1,
+  "track_rows_head": [
+   {
+    "track": "0",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "5.52"
+   },
+   {
+    "track": "1",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "6.35"
+   },
+   {
+    "track": "2",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "6.58"
+   },
+   {
+    "track": "3",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "6.67"
+   },
+   {
+    "track": "4",
+    "length": "40",
+    "frames": "0\u201339",
+    "net": "10.78"
+   }
+  ],
+  "fit": {
+   "D": 0.558110484930705,
+   "D_err": 0.09795850050419502,
+   "alpha": 1.0,
+   "loc": 0.0,
+   "lags": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0
+   ],
+   "msd": [
+    1.9506667644751947,
+    4.102267156747216,
+    6.113227443597363,
+    8.444733593976967,
+    10.853480076720084,
+    13.009983486348593,
+    15.23668336920117,
+    17.508945080016844,
+    19.67924698197046
+   ]
+  }
+ },
+ "missing_file": {
+  "status": "missing.tif does not exist.",
+  "results_text": "Loaded missing.tif. Press Track.",
+  "can_run": "missing.tif does not exist."
+ },
+ "corrupt_file": {
+  "status": "Tracking did not produce a result \u2014 see the report.",
+  "results_text": "Could not load the images: could not read image: /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp4smsuldy/bad.tif: tiff: '/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp4smsuldy/bad.tif': /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp4smsuldy/bad.tif: Not a TIFF or MDI file, bad magic number 28526 (0x6f6e)",
+  "can_run": ""
+ },
+ "export": {
+  "status": "Wrote /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp4smsuldy/tracks.csv",
+  "csv_head": [
+   "track,frame,y,x,intensity",
+   "0,0,81.8187,129.5243,666.993",
+   "0,1,81.8825,130.0520,631.693",
+   "0,2,83.5904,130.3663,620.362"
+  ],
+  "default_name_hint": "movie.tracks.csv"
+ }
+}
