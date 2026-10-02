@@ -22,5 +22,8 @@
     "gui": "chisurf.plugins.burst.burst_irf_bg.gui.tool:BurstIrfBackgroundTool",
     "emtk": "chisurf.plugins.burst.burst_irf_bg.gui.app:create_app"
   },
+  "requires": {
+    "burst_background": "*"
+  },
   "menu_hidden": true
 }
