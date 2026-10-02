@@ -24,16 +24,105 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
-from emtk.view_form import FormState, draw_form
+from emtk.view_form import FormState, draw_form, draw_sections
 
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
 from chisurf.emtk.dataset_picker import DatasetPicker
+from chisurf.plugins.emtk_layout import NUMBER_WIDTH, LabelColumn, icon_label, labelled, layout_spec
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .client import MicrotimeShifterClient
 
 HERE = Path(__file__).parent
+
+
+class SampleFields:
+    """The sample dialog's fields as attributes: each reads and writes one key of the app's ``sample_definition`` JSON.
+
+    ``name`` / ``description`` / ``buffer_description`` are the sample's, the entity fields those of its first
+    entity, ``donor`` / ``acceptor`` the first two probes; setting a probe also adds the FRET pair, as before.
+    """
+
+    ENTITY = {"entity_name": "name", "entity_type": "entity_type", "sequence": "sequence",
+              "uniprot_accession": "uniprot_accession", "pdb_id": "pdb_id", "pdb_chain_id": "pdb_chain_id",
+              "organism": "organism", "reference_sequence": "reference_sequence"}
+    SAMPLE = ("name", "description", "buffer_description")
+    PROBES = {"donor": 0, "acceptor": 1}
+
+    def __init__(self, app):
+        object.__setattr__(self, "_app", app)
+
+    def _data(self):
+        return json.loads(self._app.sample_definition)
+
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        data = self._data()
+        if name in self.SAMPLE:
+            return str(data.get(name) or "")
+        if name in self.ENTITY:
+            entities = data.get("entities") or [{}]
+            default = "protein" if name == "entity_type" else ""
+            return str(entities[0].get(self.ENTITY[name]) or default)
+        if name in self.PROBES:
+            probes = data.get("probes") or []
+            index = self.PROBES[name]
+            return str(probes[index].get("name", "")) if index < len(probes) else ""
+        raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        data = self._data()
+        if name in self.SAMPLE:
+            data[name] = value
+        elif name in self.ENTITY:
+            if not data.get("entities"):
+                data["entities"] = [{"name": "", "entity_type": "protein", "sequence": ""}]
+            data["entities"][0][self.ENTITY[name]] = value
+        elif name in self.PROBES:
+            probes = list(data.get("probes") or [])
+            index = self.PROBES[name]
+            while len(probes) <= index:
+                probes.append({"name": "", "entity_index": 0})
+            probes[index]["name"] = value
+            data["probes"] = [probe for probe in probes if probe.get("name")]
+            if len(data["probes"]) >= 2 and not data.get("fret_pairs"):
+                data["fret_pairs"] = [{"probe_1_index": 0, "probe_2_index": 1}]
+        else:
+            raise AttributeError(name)
+        self._app.sample_definition = json.dumps(data, indent=2)
+
+    def fetch_sample_reference(self):
+        self._app.fetch_sample_reference()
+
+    def diff_sample_reference(self):
+        self._app.diff_sample_reference()
+
+
+class ShiftFields:
+    """The per-channel shift rows' model: ``shift_<channel>`` fields (clamped to the bin count) and ``reset_<channel>`` actions."""
+
+    def __init__(self, app):
+        object.__setattr__(self, "_app", app)
+
+    def __getattr__(self, name):
+        app = self._app
+        if name.startswith("shift_") and name[6:].lstrip("-").isdigit():
+            return app.channel_shifts[int(name[6:])]
+        if name.startswith("reset_") and name[6:].lstrip("-").isdigit():
+            return lambda channel=int(name[6:]): app.reset_shift(channel)
+        raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        app = self._app
+        top = max(app.n_mt - 1, 0)
+        app.channel_shifts[int(name[6:])] = max(-top, min(int(value), top))
+        app.tour.notify_used("channel_shifts")
+
+    def bounds(self, name):
+        top = max(self._app.n_mt - 1, 0)
+        return (-top, top)
 
 
 class MicrotimeShifterApp(TourTarget, ImApp):
@@ -70,10 +159,24 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.samples = []
         self.sample_definition = None
         self.item_rects = {}
-        self.spec = json.loads((HERE / "shifter.view.json").read_text(encoding="utf-8"))
+        self.spec = layout_spec(json.loads((HERE / "shifter.view.json").read_text(encoding="utf-8")))
+        self.labels = LabelColumn()                  # one caption column for the fields of every panel
+        for panel in self.spec["sections"]:
+            for group in panel["sections"]:
+                for field in group.get("sections", ()):
+                    if field.get("attr") == "output_folder":
+                        field.pop("width", None)
         self.form = FormState()
         self.form.custom["channel_shifts"] = self.draw_channel_shifts
         self.form.custom["sample_list"] = self.draw_sample_list
+        self.sample_spec = layout_spec(json.loads((HERE / "sample.view.json").read_text(encoding="utf-8")))
+        self.sample_form = FormState()
+        self.sample_labels = LabelColumn()
+        self.shift_fields = ShiftFields(self)
+        self.shift_form = FormState()
+        self.shift_channels = ()
+        self.shift_sections = []
+        self.sample_fields = SampleFields(self)
         self.help = EmTkHelpWindow(
             title="Micro-time shifter — Help", resource=HERE / "help.md", owner=self,
             on_start_guide=self.start_guide, size=(700.0, 520.0),
@@ -83,7 +186,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
             owner=self, wait_for_controls=True, on_step_change=self.reveal_step,
         )
-        self.form.on_used = self.tour.notify_used
+        self.form.on_used = self.shift_form.on_used = self.tour.notify_used
         self.job = BackgroundJob()
         self.dialog = None
         self.dialog_callback = None
@@ -96,10 +199,10 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             )
         )
         for key, title, draw, dock in (
-            ("files", "📂 Files", self.draw_files, "files"),
+            ("files", icon_label("📂", "Files"), self.draw_files, "files"),
             ("controls", "↔ Micro-time shift", self.draw_controls, "controls"),
             ("status", "Status", self.draw_status, "controls"),
-            ("histogram", "📊 Micro-time histograms", self.draw_histogram, "histogram"),
+            ("histogram", icon_label("📊", "Micro-time histograms"), self.draw_histogram, "histogram"),
         ):
             self.docks.add_window(key, title, draw, dock=dock, closable=False)
         self.native_layouts = {"main": self.docks}
@@ -532,77 +635,28 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             self.message = str(exc)
 
     def draw_sample_form(self):
+        """The common sample fields as a spec form over the definition JSON (the full record is under Advanced)."""
         try:
-            data = json.loads(self.sample_definition)
+            json.loads(self.sample_definition)
         except ValueError:
             return
-        dirty = False
-        for key, label in (
-            ("name", "Sample name"),
-            ("description", "Description"),
-            ("buffer_description", "Buffer"),
-        ):
-            changed, data[key] = im.input_text(label, str(data.get(key, "")))
-            im.set_item_tooltip(
-                "Sample identity and experimental description recorded with shifted-file provenance."
-            )
-            dirty |= changed
-        entities = data.get("entities") or [{"name": "", "entity_type": "protein", "sequence": ""}]
-        entity = entities[0]
-        for key, label in (
-            ("name", "Entity name"),
-            ("entity_type", "Entity type"),
-            ("sequence", "Construct sequence"),
-            ("uniprot_accession", "UniProt accession"),
-            ("pdb_id", "PDB ID"),
-            ("pdb_chain_id", "PDB chain"),
-            ("organism", "Organism"),
-            ("reference_sequence", "Reference sequence"),
-        ):
-            changed, value = im.input_text(label, str(entity.get(key) or ""))
-            im.set_item_tooltip(
-                "Entity sequence or external reference; used to document construct mutations."
-            )
-            if changed:
-                entity[key] = value
-                dirty = True
-        probes = list(data.get("probes") or [])
-        for index, label in enumerate(("Donor dye", "Acceptor dye")):
-            name = probes[index].get("name", "") if index < len(probes) else ""
-            changed, name = im.input_text(label, name)
-            im.set_item_tooltip("Name of the fluorescence probe associated with the first entity.")
-            if changed and name:
-                while len(probes) <= index:
-                    probes.append({"name": "", "entity_index": 0})
-                probes[index]["name"] = name
-                dirty = True
-        if dirty:
-            data["entities"] = entities
-            data["probes"] = [probe for probe in probes if probe.get("name")]
-            if len(data["probes"]) >= 2 and not data.get("fret_pairs"):
-                data["fret_pairs"] = [{"probe_1_index": 0, "probe_2_index": 1}]
-            self.sample_definition = json.dumps(data, indent=2)
-        self.button(
-            "Fetch UniProt reference",
-            "Retrieve reference sequence and organism without blocking the interface.",
-            self.fetch_sample_reference,
-        )
-        self.button(
-            "Diff construct/reference",
-            "Record residue substitutions between the measured construct and its reference.",
-            self.diff_sample_reference,
-        )
+        if not self.sample_labels.ready:
+            self.sample_labels.measure([s["label"] for s in labelled(self.sample_spec["sections"])])
+            self.sample_labels.pad(self.sample_spec["sections"])
+        self.sample_form.rects.clear()
+        draw_form(self.sample_spec, self.sample_fields, self.sample_form)
+        self.item_rects.update({f"sample_{k}": v for k, v in self.sample_form.rects.items()})
 
     def draw_files(self, box):
-        self.button("📖 Guide", "A walk through the tool, pointing at each control.", self.start_guide, key="guide")
+        self.button("📖  Guide", "A walk through the tool, pointing at each control.", self.start_guide, key="guide")
         im.same_line()
-        self.button("❓ Help", "Shifts, alignment, what is written and the MMFDB archive.", self.help.show,
+        self.button("❓  Help", "Shifts, alignment, what is written and the MMFDB archive.", self.help.show,
                     key="help")
         im.separator()
         im.text_wrapped(self.message)
         if self.job.running:
             self.button(
-                "⏹ Stop",
+                "⏹  Stop",
                 "Discard pending results; a current file write or archive may finish.",
                 self.stop_operation,
                 key="stop",
@@ -610,15 +664,15 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         im.begin_disabled(self.job.running or self.dataset_picker.is_open or self.dialog is not None
                           or self.sample_definition is not None)
         buttons = (
-            ("➕ Files…", "Queue TTTR files; originals are retained when saving shifts.",
+            ("➕  Files…", "Queue TTTR files; originals are retained when saving shifts.",
              lambda: self.choose("TTTR inputs", self.add_paths, multiple=True), "add_files"),
-            ("📁 Folder…", "Queue supported TTTR files recursively from a folder.",
+            ("📁  Folder…", "Queue supported TTTR files recursively from a folder.",
              lambda: self.choose("TTTR folder", self.add_paths, mode="folder"), "add_folder"),
-            ("🗄 Database…", "Select TTTR inputs from the MMFDB object store.", self.dataset_picker.open,
+            ("🗄  Database…", "Select TTTR inputs from the MMFDB object store.", self.dataset_picker.open,
              "add_database"),
-            ("➖ Remove", "Remove the selected file from the queue (it stays on disk).", self.remove_selected,
+            ("➖  Remove", "Remove the selected file from the queue (it stays on disk).", self.remove_selected,
              "remove"),
-            ("🧹 Clear", "Remove queued files and preview shifts.", self.clear, "clear"),
+            ("🧹  Clear", "Remove queued files and preview shifts.", self.clear, "clear"),
         )
         pad = 2 * im.get_style().frame_padding[0] + im.get_style().item_spacing[0]
         for i, (label, tip, callback, key) in enumerate(buttons):
@@ -629,6 +683,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         for i, path in enumerate(list(self.files)):
             if im.selectable(f"{path.name}##file{i}", path == self.current_path):
                 self.load_files(self.files, path)
+            self.remember(f"file_{i}")
             im.set_item_tooltip(
                 f"{path} — select to reload metadata and reset shifts; right-click to remove."
             )
@@ -644,42 +699,39 @@ class MicrotimeShifterApp(TourTarget, ImApp):
     def draw_controls(self, box):
         im.begin_disabled(self.dataset_picker.is_open or self.dialog is not None
                           or self.sample_definition is not None)
+        if not self.labels.ready:
+            self.labels.measure([f["label"] for f in labelled(self.spec["sections"])] + ["Channel 00"])
+            self.labels.pad(self.spec["sections"])
         self.form.rects.clear()
         draw_form(self.spec, self, self.form)
         self.item_rects.update(self.form.rects)
         im.end_disabled()
 
     def draw_channel_shifts(self, section, model, state, width):
-        """One row per routing channel of the loaded file: its shift and a reset."""
+        """One spec row per routing channel of the loaded file: its shift (a spin field) and a reset."""
         if not self.channel_shifts:
             im.text_disabled("No file loaded.")
             self.remember("channel_shifts")
             return
         top = im.get_cursor_screen_pos()
-        for channel in sorted(self.channel_shifts):
-            self.shift_row(f"Routing channel {channel}", channel, width)
+        channels = tuple(sorted(self.channel_shifts))
+        if channels != self.shift_channels:
+            self.shift_channels = channels
+            rows = []
+            for channel in channels:
+                rows.append({"type": "value", "attr": f"shift_{channel}", "label": f"Channel {channel}",
+                             "kind": "int", "style": "spin", "step": 1, "width": NUMBER_WIDTH,
+                             "description": "Shift micro-times cyclically; the global and routing-channel shifts "
+                                            "are added modulo the bin count."})
+                rows.append({"type": "button_row", "weight": 0, "buttons": [
+                    {"action": f"reset_{channel}", "label": "↺",
+                     "description": f"Reset the shift of channel {channel} to zero."}]})
+            self.shift_sections = [{"type": "panel", "title": "", "n_col": 2, "sections": rows}]
+            self.labels.pad(self.shift_sections)
+        self.shift_form.rects.clear()
+        draw_sections(self.shift_sections, self.shift_fields, self.shift_form)
+        self.item_rects.update(self.shift_form.rects)
         self.remember("channel_shifts", (top[0], top[1], width, im.get_cursor_screen_pos()[1] - top[1]))
-
-    def shift_row(self, label, channel, width=0.0):
-        im.push_id(str(channel))
-        value = self.global_shift if channel is None else self.channel_shifts[channel]
-        im.text(label)
-        im.same_line()
-        self.button("↺ Reset", "Reset this shift to zero.", lambda: self.reset_shift(channel),
-                    key=f"reset_{channel}")
-        im.set_next_item_width(-1)
-        changed, value = im.input_int("##shift", int(value), step=1)
-        im.set_item_tooltip(
-            "Shift micro-times cyclically; the global and routing-channel shifts are added modulo the bin count."
-        )
-        if changed:
-            value = max(-(self.n_mt - 1), min(value, self.n_mt - 1)) if self.n_mt else 0
-            if channel is None:
-                self.global_shift = value
-            else:
-                self.channel_shifts[channel] = value
-            self.tour.notify_used("channel_shifts")
-        im.pop_id()
 
     def draw_sample_list(self, section, model, state, width):
         """The samples of the active database, once refreshed."""
@@ -709,6 +761,8 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             histograms = self.histograms()
             peak = max((int(np.max(hist)) for hist in histograms.values()), default=1)
             signature = (self.n_mt, self.log_y, peak)
+            if not self.n_mt:                         # nothing loaded: the bin axis of a typical TCSPC card
+                implot.setup_axes_limits(0, 4096, 0, 100, cond=implot.COND_ONCE)
             if self.n_mt:
                 implot.setup_axes_limits(
                     0,
@@ -843,18 +897,19 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             pressed = self.sample_window.begin(frame)
             im.begin_disabled(self.job.running)
             self.draw_sample_form()
-            _, self.sample_definition = im.input_text_multiline(
-                "Advanced sample definition", self.sample_definition, (-1, 200)
-            )
-            im.set_item_tooltip(
-                "Complete sample schema: name, description, entities, probes, FRET pairs, buffer, pH, "
-                "temperature and external-reference annotations."
-            )
+            if im.collapsing_header("Advanced sample definition"):
+                _, self.sample_definition = im.input_text_multiline(
+                    "##sample-json", self.sample_definition, (-1, 150)
+                )
+                im.set_item_tooltip(
+                    "Complete sample schema: name, description, entities, probes, FRET pairs, buffer, pH, "
+                    "temperature and external-reference annotations."
+                )
             self.button("Create sample", "Create the defined sample in the authenticated database.",
-                        self.create_sample)
+                        self.create_sample, key="sample_create")
             im.end_disabled()
             im.same_line()
-            self.button("Cancel sample", "Discard the sample definition.", self.cancel_sample)
+            self.button("Cancel sample", "Discard the sample definition.", self.cancel_sample, key="sample_cancel")
             self.sample_window.end()
             if pressed == "close":
                 self.cancel_sample()

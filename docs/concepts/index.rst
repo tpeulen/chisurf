@@ -99,6 +99,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    :maxdepth: 1
 
    photon_container
+   microtime_shift
    live_streaming_analysis
 
 .. rubric:: Structure & imaging

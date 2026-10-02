@@ -1,0 +1,135 @@
+{
+  "_comment": "The New MMFDB sample dialog: the common fields of a sample definition, drawn by view_form against the app's SampleFields proxy (each attr reads and writes one key of the app's sample_definition JSON, which stays the full record shown under Advanced).",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Sample",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "name",
+          "label": "Sample name",
+          "kind": "text",
+          "description": "Sample identity recorded with the shifted files' provenance."
+        },
+        {
+          "type": "value",
+          "attr": "description",
+          "label": "Description",
+          "kind": "text",
+          "description": "Free-text description of the sample and the experiment."
+        },
+        {
+          "type": "value",
+          "attr": "buffer_description",
+          "label": "Buffer",
+          "kind": "text",
+          "description": "Buffer composition recorded with the sample."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Entity",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "entity_name",
+          "label": "Entity name",
+          "kind": "text",
+          "description": "Name of the labelled molecule."
+        },
+        {
+          "type": "value",
+          "attr": "entity_type",
+          "label": "Entity type",
+          "kind": "text",
+          "description": "Kind of molecule (protein, DNA, RNA ...)."
+        },
+        {
+          "type": "value",
+          "attr": "sequence",
+          "label": "Construct sequence",
+          "kind": "text",
+          "description": "Sequence of the measured construct; compared with the reference to document mutations."
+        },
+        {
+          "type": "value",
+          "attr": "uniprot_accession",
+          "label": "UniProt accession",
+          "kind": "text",
+          "description": "UniProt entry the reference sequence is fetched from."
+        },
+        {
+          "type": "value",
+          "attr": "pdb_id",
+          "label": "PDB ID",
+          "kind": "text",
+          "description": "PDB entry of the structure."
+        },
+        {
+          "type": "value",
+          "attr": "pdb_chain_id",
+          "label": "PDB chain",
+          "kind": "text",
+          "description": "Chain of the PDB entry."
+        },
+        {
+          "type": "value",
+          "attr": "organism",
+          "label": "Organism",
+          "kind": "text",
+          "description": "Source organism."
+        },
+        {
+          "type": "value",
+          "attr": "reference_sequence",
+          "label": "Reference sequence",
+          "kind": "text",
+          "description": "Reference (wild-type) sequence, fetched from UniProt or typed."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Reference",
+      "sections": [
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "action": "fetch_sample_reference",
+              "label": "Fetch UniProt reference",
+              "description": "Retrieve reference sequence and organism without blocking the interface."
+            },
+            {
+              "action": "diff_sample_reference",
+              "label": "Diff construct/reference",
+              "description": "Record residue substitutions between the measured construct and its reference."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Probes",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "donor",
+          "label": "Donor dye",
+          "kind": "text",
+          "description": "Name of the donor probe on the first entity."
+        },
+        {
+          "type": "value",
+          "attr": "acceptor",
+          "label": "Acceptor dye",
+          "kind": "text",
+          "description": "Name of the acceptor probe on the first entity."
+        }
+      ]
+    }
+  ]
+}

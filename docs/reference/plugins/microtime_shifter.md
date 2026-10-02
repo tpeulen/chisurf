@@ -39,7 +39,9 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 
 ## Theory and workflow
 
+- **Workflow** — [Aligning detectors in micro time (Micro-time Shifter)](/guides/88_microtime_shifter.md)
 - **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+- **Theory** — [Micro-time shift: putting detectors on one time axis](/concepts/microtime_shift.md)
 
 ## Source
 

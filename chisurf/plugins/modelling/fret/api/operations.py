@@ -177,7 +177,7 @@ def estimate_errors(req: ErrorRequest | dict, stop_check=None) -> dict:
         r.output_dir,
         n_trials=r.n_trials,
         params=params,
-        minimize=(r.method != "mc"),
+        method=r.method,
         n_workers=r.n_workers,
         stop_check=stop_check,
     )

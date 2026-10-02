@@ -344,7 +344,7 @@ def test_draws_empty_and_populated(demo, size, monkeypatch):
     app = create_app()
     try:
         strings = _draw(app, size).strings
-        assert {"📖 Guide", "❓ Help", "➕ Files…", "Alignment", "Shifts", "Save"} <= set(strings)
+        assert {"📖  Guide", "❓  Help", "➕  Files…", "Alignment", "Shifts", "Save"} <= set(strings)
         assert "No file loaded." in strings
         app.load_files([demo])
         _settle(app, size=size)
@@ -361,7 +361,7 @@ def test_draws_empty_and_populated(demo, size, monkeypatch):
 
         monkeypatch.setattr(im, "button", button)
         strings = " ".join(_draw(app, size).strings)
-        assert "Routing channel 0" in strings and "Routing channel 8" in strings and "Routing 8" in strings
+        assert "Channel 0" in strings and "Channel 8" in strings and "Routing 8" in strings
         assert not clipped, clipped                                 # every button inside the window
         fx, fy, fw, fh = app.item_rects["files"]                    # and the file buttons inside their dock
         for key in ("add_files", "add_folder", "add_database", "remove", "clear"):

@@ -2,6 +2,7 @@
 
 ## 2026-10-02
 
+- 2026-10-02 microtime_shifter: layout, real-input (35 click tests, 16 layout cases) and docs upgrade; spin fields, one label column, Save panel no longer clipped at 800 px, sample dialog as a spec form; new guide 88 and concept microtime-shift. Evidence okf/plugins/emtk-ports/microtime_shifter/REPORT_UPGRADE2.md.
 - **ndX's Qt GUI deleted; the emtk app is the only ndX GUI** (2026-10-02, T-20261002-NDXQT, tpeulen "go ahead"):
   ndxplorer lost its Qt window and everything that served only it -- 69 modules (75 shipped files: ui 23, plotting 19,
   utils 9, widgets 8, analysis 6, top level 4, io 3, plugins 2, core 1) and 40 Qt-only test files; `python -m ndxplorer`

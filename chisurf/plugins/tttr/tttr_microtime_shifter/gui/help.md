@@ -28,7 +28,7 @@ delay them differently onto one time axis before a lifetime or PIE analysis.
 
 ## Shifts
 
-**Global shift** moves every channel; each **Routing channel** row adds its
+**Global shift** moves every channel; each **Channel** row adds its
 own shift. **↺ Reset** sets a row back to zero.
 
 ## Save
