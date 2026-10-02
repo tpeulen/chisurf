@@ -15,9 +15,6 @@ from pathlib import Path
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
 
-from .gui.tool import BurstFcsTool
-from .wizard import BurstWiseFCSWizard
-
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
@@ -30,8 +27,13 @@ menu_hidden = True
 __all__ = ["BurstFcsTool", "BurstWiseFCSWizard", "menu_hidden", "name"]
 
 
-if __name__ == "plugin":  # pragma: no cover
-    win = BurstFcsTool()
-    if _manifest is not None:
-        apply_manifest_statefulness(win, _manifest)
-    win.show()
+def __getattr__(name):
+    if name == "BurstFcsTool":
+        from .gui.tool import BurstFcsTool
+
+        return BurstFcsTool
+    if name == "BurstWiseFCSWizard":
+        from .wizard import BurstWiseFCSWizard
+
+        return BurstWiseFCSWizard
+    raise AttributeError(name)

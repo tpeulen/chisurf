@@ -1,0 +1,11 @@
+ M chisurf/plugins/burst/burst_fcs_correlator/__init__.py
+ M chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py
+ M chisurf/plugins/burst/burst_fcs_correlator/gui/__init__.py
+ M chisurf/plugins/burst/burst_fcs_correlator/gui/app.py
+ M chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py
+ M chisurf/plugins/burst/burst_fcs_correlator/manifest.json
+?? chisurf/plugins/burst/burst_fcs_correlator/gui/controller.py
+?? chisurf/plugins/burst/burst_fcs_correlator/gui/view_model.py
+?? chisurf/plugins/burst/burst_fcs_correlator/test/conftest.py
+?? chisurf/plugins/burst/burst_fcs_correlator/test/test_hermetic.py
+?? chisurf/plugins/burst/burst_fcs_correlator/test/test_native.py

@@ -504,6 +504,7 @@ def correlate_burst_file(
     pairs: list[PairConfig],
     settings: BurstFcsSettings,
     filetype=None,
+    cancel_check=None,
 ) -> list[dict[str, Any]]:
     """Correlate every (burst × pair) for one TTTR file.
 
@@ -552,6 +553,8 @@ def correlate_burst_file(
 
     curves: list[dict[str, Any]] = []
     for burst_index, (start, stop) in enumerate(ranges):
+        if callable(cancel_check):
+            cancel_check()
         try:
             s = int(start)
             e = int(stop)
@@ -580,6 +583,8 @@ def correlate_burst_file(
             continue
 
         for pair in pairs:
+            if callable(cancel_check):
+                cancel_check()
             tau, g = correlate_single_burst(
                 tttr_burst,
                 chs_a=pair.chs_a,

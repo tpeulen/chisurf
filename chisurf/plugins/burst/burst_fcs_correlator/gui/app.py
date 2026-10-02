@@ -66,7 +66,7 @@ class BurstFcsGui:
 
         from pathlib import Path
 
-        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
+        from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
         help_resource = Path(__file__).parent / "help.md"
         guide_resource = Path(__file__).parent / "guide.json"
@@ -84,6 +84,28 @@ class BurstFcsGui:
         )
 
         self._sync_from_tool()
+
+        from emtk.docking import DockManager, Region, Split
+
+        self.docks = DockManager(
+            Split("h", 0.4, Region("controls"), Split("v", 0.5, Region("results"), Region("plot"))),
+            name="burst_fcs_correlator",
+        )
+        self.docks.add_window(
+            "controls", "FCS controls", self._render_controls_window, dock="controls"
+        )
+        self.docks.add_window(
+            "results", "Correlation G(τ)", self._render_corr_window, dock="results"
+        )
+        self.docks.add_window(
+            "plot", "Diffusion distribution", self._render_dist_window, dock="plot"
+        )
+
+    @staticmethod
+    def _section(label, flags=0):
+        expanded = im.collapsing_header(label, flags)
+        im.set_item_tooltip(f"Expand or collapse {label.lower()} controls.")
+        return expanded
 
     def start_guide(self) -> None:
         """Start the in-EMTK guided tour."""
@@ -113,12 +135,6 @@ class BurstFcsGui:
             m.fit_mode = str(self.fit_mode)
             m.make_fine = bool(self.make_fine)
 
-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
-        """Store the item's screen rectangle for tour targeting."""
-        r = rect if rect is not None else im.get_item_rect()
-        if r is not None:
-            self.item_rects[name] = tuple(r)
-
     def track(self, name: str) -> None:
         """Record usage of a named control."""
         if callable(self.on_used):
@@ -126,11 +142,7 @@ class BurstFcsGui:
 
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         # Full viewport dockspace
-        im.dock_space_over_viewport(1)
-
-        self._render_controls_window()
-        self._render_corr_window()
-        self._render_dist_window()
+        self.docks.draw((0.0, 0.0, float(w), float(h)))
 
         if self.help_window.open:
             self.help_window.draw((0.0, 0.0, float(w), float(h)))
@@ -138,12 +150,10 @@ class BurstFcsGui:
         if self.tour.active:
             self.tour.draw(float(w), float(h))
 
-    def _render_controls_window(self) -> None:
-        im.set_next_window_size((380, 520), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_pos((10, 10), im.Cond.FIRST_USE_EVER)
+    def _render_controls_window(self, box=None) -> None:
 
-        if not im.begin("Burst FCS Controls & Settings"):
-            return
+        if hasattr(self.tool, "draw_controls"):
+            self.tool.draw_controls()
 
         # Action Buttons
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
@@ -154,6 +164,7 @@ class BurstFcsGui:
             self._sync_to_tool()
             if hasattr(self.tool, "_on_run"):
                 self.tool._on_run()
+        im.set_item_tooltip("Correlate the bursts and compute the FCS curves G(τ).")
         self.remember("run")
         im.pop_style_color(3)
 
@@ -162,45 +173,61 @@ class BurstFcsGui:
             self.track("guide")
             self.start_guide()
         self.remember("guide")
+        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
 
         im.same_line()
         if im.button("❓ Help"):
             self.track("help")
             self.show_help()
         self.remember("help")
+        im.set_item_tooltip("Open the help window with reference documentation.")
 
         im.separator()
 
         # FCS Settings
-        if im.collapsing_header("Correlator Settings", im.TreeNodeFlags.DEFAULT_OPEN):
+        if self._section("Correlator Settings", im.TreeNodeFlags.DEFAULT_OPEN):
             im.set_next_item_width(120)
             ch_b, new_b = im.input_int("Bins per cascade", self.n_bins, step=1)
+            im.set_item_tooltip("Number of bins per cascade level of the multi-tau correlator.")
             if ch_b and new_b > 0:
                 self.n_bins = new_b
                 self._sync_to_tool()
 
             im.set_next_item_width(120)
             ch_c, new_c = im.input_int("Cascade levels", self.n_casc, step=1)
+            im.set_item_tooltip("Number of cascade levels; determines the lag-time range of G(τ).")
             if ch_c and new_c > 0:
                 self.n_casc = new_c
                 self._sync_to_tool()
 
             im.set_next_item_width(120)
             ch_p, new_p = im.input_float("Padding (ms)", self.padding_ms, step=10.0)
+            im.set_item_tooltip(
+                "Padding added around each burst in milliseconds before correlating."
+            )
             if ch_p and new_p >= 0:
                 self.padding_ms = new_p
                 self._sync_to_tool()
 
             im.set_next_item_width(140)
-            fit_modes = ["simple", "maxent"]
-            if im.begin_combo("Fit mode", self.fit_mode):
+            im.text("Fit mode:")
+            im.same_line()
+            fit_modes = ["none", "simple", "maxent"]
+            if im.begin_combo("##fit_mode", self.fit_mode):
                 for fm in fit_modes:
                     if im.selectable(fm, fm == self.fit_mode):
                         self.fit_mode = fm
                         self._sync_to_tool()
+                    im.set_item_tooltip("Fit G(τ) with this model.")
                 im.end_combo()
+            im.set_item_tooltip(
+                "Fit model applied to G(τ): simple exponential or maximum-entropy (maxent)."
+            )
 
             ch_f, new_f = im.checkbox("Fine correlation grid", self.make_fine)
+            im.set_item_tooltip(
+                "Use a finer lag-time grid for the correlation curve (slower but smoother)."
+            )
             if ch_f:
                 self.make_fine = new_f
                 self._sync_to_tool()
@@ -208,24 +235,17 @@ class BurstFcsGui:
         im.separator()
 
         # Channel Pairs
-        if im.collapsing_header("Channel Pairs & Files", im.TreeNodeFlags.DEFAULT_OPEN):
+        if self._section("Channel Pairs & Files", im.TreeNodeFlags.DEFAULT_OPEN):
             pairs = getattr(self.tool, "_pair_presets", [])
             im.text(f"Configured Pairs: {len(pairs)}")
             for p in pairs[:4]:
-                name = p.get("name", "Pair")
-                im.text_colored(f"• {name}", (0.7, 0.8, 0.9, 1.0))
+                name = p.get("pair_name", p.get("name", "Pair"))
+                im.text_colored((180, 200, 230, 255), f"• {name}")
 
             curves = getattr(self.tool, "_curves", [])
             im.text(f"Calculated Curves: {len(curves)}")
 
-        im.end()
-
-    def _render_corr_window(self) -> None:
-        im.set_next_window_size((500, 260), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_pos((400, 10), im.Cond.FIRST_USE_EVER)
-
-        if not im.begin("Correlation G(τ) Curve"):
-            return
+    def _render_corr_window(self, box=None) -> None:
 
         if implot.begin_plot("Autocorrelation & Fit G(tau)", (-1, -1)):
             implot.setup_axes("Lag Time tau (ms)", "G(tau)")
@@ -243,6 +263,8 @@ class BurstFcsGui:
             if res_rect.modified:
                 self.gate_tau_min = max(1e-4, res_rect.x_min)
                 self.gate_tau_max = max(self.gate_tau_min * 2.0, res_rect.x_max)
+                self.tool._model.tmin_fit = self.gate_tau_min
+                self.tool._model.tmax_fit = self.gate_tau_max
 
             implot.tag_x(
                 self.gate_tau_min, (0.3, 0.8, 0.4, 1.0), fmt=f"tau_min: {self.gate_tau_min:.4f} ms"
@@ -260,11 +282,6 @@ class BurstFcsGui:
                     ys = np.asarray(s.get("y", []), dtype=np.float64)
                     if len(xs) > 0 and len(xs) == len(ys):
                         implot.plot_line(s.get("name", "G(tau)"), xs, ys)
-            else:
-                # Simulated FCS curve preview
-                taus = np.logspace(-3, 2, 100, dtype=np.float64)
-                g_demo = 1.0 + 0.8 / ((1.0 + taus / 0.5) * np.sqrt(1.0 + taus / (0.5 * 25.0)))
-                implot.plot_line("G(tau) preview", taus, g_demo)
 
             implot.end_plot()
 
@@ -283,14 +300,7 @@ class BurstFcsGui:
                     pass
             im.end_drag_drop_target()
 
-        im.end()
-
-    def _render_dist_window(self) -> None:
-        im.set_next_window_size((500, 270), im.Cond.FIRST_USE_EVER)
-        im.set_next_window_pos((400, 280), im.Cond.FIRST_USE_EVER)
-
-        if not im.begin("Diffusion Time Distribution P(τ_D)"):
-            return
+    def _render_dist_window(self, box=None) -> None:
 
         if implot.begin_plot("Diffusion Distribution", (-1, -1)):
             implot.setup_axes("Diffusion Time tau_D (ms)", "Probability P")
@@ -304,15 +314,8 @@ class BurstFcsGui:
                     ys = np.asarray(s.get("y", []), dtype=np.float64)
                     if len(xs) > 0 and len(xs) == len(ys):
                         implot.plot_line(s.get("name", "P(tau_D)"), xs, ys)
-            else:
-                # Simulated diffusion distribution peak
-                tds = np.logspace(-2, 2, 80, dtype=np.float64)
-                p_demo = np.exp(-((np.log10(tds) - np.log10(0.5)) ** 2) / (2.0 * 0.25**2))
-                implot.plot_line("P(tau_D) preview", tds, p_demo)
 
             implot.end_plot()
-
-        im.end()
 
 
 class BurstFcsApp(ImApp):
@@ -320,17 +323,24 @@ class BurstFcsApp(ImApp):
 
     def __init__(
         self,
-        tool: BurstFcsTool,
+        tool: BurstFcsTool | None = None,
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
+        self.controller = None
+        if tool is None:
+            from .controller import BurstFcsController
+
+            tool = self.controller = BurstFcsController()
         self.fcs_gui = BurstFcsGui(
             tool=tool,
             on_guide=on_guide,
             on_help=on_help,
         )
         self.tool = self.fcs_gui.tool
-        super().__init__(gui=self._render, continuous=False)
+        self.item_rects = self.fcs_gui.item_rects
+        self.fcs_gui.remember = self.remember
+        super().__init__(gui=self._render, continuous=self.controller is not None)
 
     def start_guide(self) -> None:
         """Start guided tour inside EMTK."""
@@ -341,5 +351,25 @@ class BurstFcsApp(ImApp):
         self.fcs_gui.show_help()
 
     def _render(self) -> None:
+        if self.controller is not None:
+            self.controller.poll()
+            self.fcs_gui._sync_from_tool()
         w, h = im.get_main_viewport().size
         self.fcs_gui.draw(float(w), float(h))
+        if self.controller is not None:
+            self.controller.draw_dialogs((0, 0, w, h))
+
+    def close(self):
+        if self.controller is not None:
+            self.controller.close()
+
+    def on_paths_dropped(self, paths):
+        if self.controller is not None:
+            self.controller.on_paths_dropped(paths)
+
+
+def create_app(**kwargs):
+    from chisurf.emtk.i18n import install
+
+    install()
+    return BurstFcsApp(**kwargs)

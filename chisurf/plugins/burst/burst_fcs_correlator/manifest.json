@@ -10,7 +10,7 @@
     "Spectroscopy",
     "Fluorescence Correlation Spectroscopy"
   ],
-  "icon": "🌀",
+  "icon": "\ud83c\udf00",
   "state_namespace": "burst_fcs_correlator",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -37,9 +37,12 @@
   "entrypoints": {
     "gui": "chisurf.plugins.burst.burst_fcs_correlator.gui.tool:BurstFcsTool",
     "cli": null,
-    "services": "chisurf.plugins.burst.burst_fcs_correlator.backend.services:register_services"
+    "services": "chisurf.plugins.burst.burst_fcs_correlator.backend.services:register_services",
+    "emtk": "chisurf.plugins.burst.burst_fcs_correlator.gui.app:create_app"
   },
-  "operation_types": ["burst_correlation"],
+  "operation_types": [
+    "burst_correlation"
+  ],
   "rpc_methods": [
     {
       "name": "burst_fcs.parse_bst",
