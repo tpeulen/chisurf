@@ -21,7 +21,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 | Menu path | Imaging → **PSF Determination** |
 | Categories | Imaging |
 | Version | 2.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `psf_determination` |
 
 ## Parameters
@@ -51,6 +51,17 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | results_text | `results_text` | text |  |  | Latest single-bead fit report or batch summary. |
 
+## Native window (emtk)
+
+The default window is drawn with emtk (`gui/app.py`; the fields come from the same `gui/psf.view.json` as the Qt tool).
+
+| Area | Controls |
+| --- | --- |
+| Actions | **Load stack** (or drop a TIFF), **Demo stack**, **MMFDB dataset**, **Detect**, **Fit selected**, **Fit all**, **Export CSV**, **Save settings**, **Load settings**, **Help**, **Guide** |
+| Parameters | *Pixel (nm)*, *Z step (nm)*, *ROI xy*, *ROI z*; detection *Px/frame*, *Min dist*, *Min area*; *Bead index* |
+| Stack | z slider, colormap, display gamma, automatic levels, **Reset view**, wheel zoom, drag pan, click a bead to fit it, bead markers and the fitted lateral FWHM circle |
+| Results | x / y / z profile tabs with the Gaussian fit, the fit report |
+
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
@@ -60,6 +71,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Guide** — [The PSF measured on beads](/guides/93_psf_determination.md)
 - **Theory** — [Deconvolution](/concepts/deconvolution.md)
 
 ## Source

@@ -1,0 +1,411 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "(inpixelsandslices)",
+    "**beadsize**a100nmbeadwidensa200nmpsfnoticeably;thefittedwidthistheconvolution",
+    "**detect**findsbeadswithanadaptivequantilethreshold(*px/frame*),aminimum",
+    "**fitselected**fitsthebeadyouclickedintheimage(ortheonechosenwith*bead",
+    "**loadstack**(a3-dtiff,ordropitonthewindow)or**demostack**foragenerated",
+    "**theaxialratio**sigma-zoversigma-xyisapropertyoftheobjectiveandthemedium(about3",
+    "**thespreadoverbeads**fitallgivesonevalueperbead;thescatteristhehonesterrorof",
+    "**thex,yandzprofiletabs**thedatapointsshouldfollowtheredgaussian.aflattopora",
+    "*this*alignment.thetoolfindsthebeadsinthestack,fitsathree-dimensionalgaussiantoeach",
+    "---fitquality---",
+    "---fitted(pixels)---",
+    "---physical(nm)---",
+    "-100",
+    "-150",
+    "-50",
+    "0",
+    "0.000",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "0detectedbeads",
+    "1",
+    "1.",
+    "1.0",
+    "1.000",
+    "10",
+    "100",
+    "100.00",
+    "12",
+    "14",
+    "15",
+    "150",
+    "2",
+    "2.",
+    "20",
+    "200",
+    "200.00",
+    "250",
+    "3.",
+    "300",
+    "300.00",
+    "4",
+    "4.",
+    "40",
+    "400",
+    "4detectedbeads",
+    "5.0",
+    "50",
+    "500",
+    "6",
+    "60",
+    "600",
+    "700",
+    "8",
+    "80",
+    "800",
+    "[thepoint-spreadfunction](docs/concepts/point_spread_function.md)theairypattern,the",
+    "[thepsfcalculator](docs/guides/72_psf_calculator.md)thewidthaperfectobjectivewould",
+    "all",
+    "amplitude805.8offset5.0",
+    "and**loadsettings**restoresthemandreopensthestoredstackwhenitstillexists.",
+    "andreportsthe",
+    "apoint-spreadfunctionistheimageamicroscopemakesofapoint.sub-resolutionfluorescent",
+    "asinglebeadisananecdote.",
+    "automaticlevels",
+    "axialratio(σz/σxy)5.00",
+    "beadcluster,asaturatedbeadorabeadthatisnotsub-resolution.",
+    "beadindex",
+    "beadpositionx=20,y=20,z=10(pixels)",
+    "beads",
+    "beadsaresuch",
+    "beadstack",
+    "browsethesliceswiththezslider;thecolormap,gammaandlevelschangeonlythedisplay.",
+    "centerx=6.99,y=6.99,z=7.00",
+    "close",
+    "closehelp",
+    "colormap",
+    "controls",
+    "data",
+    "demostack",
+    "detect",
+    "detection",
+    "displaygamma",
+    "displaymaximum",
+    "displayminimum",
+    "displaysettingstojson",
+    "everydetectedbeadandreportsfailurestoo;**exportcsv**writesthebatch.",
+    "exportcsv",
+    "fit",
+    "fitall",
+    "fitresults",
+    "fitselected",
+    "fittedfwhm",
+    "fitwillobject.",
+    "forthetails,",
+    "furtherreading",
+    "fwhmx424.8fwhmy423.1fwhmz2119.0",
+    "fwhmxy(avg)423.9",
+    "give,tocomparewiththemeasurement.",
+    "gray",
+    "guide",
+    "help",
+    "high-naoilobjective).aratiofarfromthatmeansawrongzstep,orarefractive-indexmismatch",
+    "index*);**fitall**fits",
+    "inferno",
+    "intensity",
+    "intophysicalwidths.awrongzstepscalestheaxialwidthbythesamefactor,andnothinginthe",
+    "loadanimageorrunpreviewtoinspectpixels.",
+    "loadastack,thendetectorclickabead.",
+    "loadsettings",
+    "loadstack",
+    "magma",
+    "markthebeadson",
+    "medium,with",
+    "minarea(px)",
+    "mindist(px)",
+    "minimumarea(*minarea*;asinglebrightpixelisahotcamerapixel,notabead).greensquares",
+    "mmfdbdataset",
+    "nostackloaded.",
+    "ofboth.",
+    "pixel(nm)",
+    "pointsaz-stackofbeadsisadirectmeasurementofthepsfof*this*objective,in*this*sample",
+    "psfdeterminationhelp",
+    "psfdeterminationthefocusmeasuredonbeads",
+    "psffitresults===",
+    "psfparameters",
+    "px/frame",
+    "resetview",
+    "residualnorm7.51e+04successtrue",
+    "richards-wolffocusandwhatpolarizationdoestoit.",
+    "roisize15×15×15(xy×z)",
+    "roixy(px)",
+    "roiz(sl)",
+    "savesettings",
+    "separation(*mindist*)anda",
+    "set**pixel(nm)**and**zstep(nm)**fromyouracquisitiontheyturnthefittedsigmas",
+    "settings",
+    "shouldermeansa",
+    "sigmaσx=1.80,σy=1.80,σz=3.00",
+    "smallenoughtoexcludeneighbours.**savesettings**writescalibration,roi,detectionand",
+    "stackwithaknownanswer.",
+    "thatstretchesz.",
+    "thecurrentslice.",
+    "thepsfwidth.",
+    "theregionofinterest(*roixy*,*roiz*)istheboxcutaroundabeadforthefitlargeenough",
+    "to5fora",
+    "viridis",
+    "whattocheck",
+    "whatyoudo",
+    "widthsinnanometres.",
+    "x/y/zprofiles",
+    "x[pixels]",
+    "x[px]",
+    "xprofile",
+    "y[pixels]",
+    "y[px]",
+    "yprofile",
+    "z[slices]",
+    "zprofile",
+    "zslice",
+    "zstep(nm)",
+    "σxy180.0σz899.8"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Load stack",
+      "id": "Load stack",
+      "tooltip": "Load a 2-D TIFF image or a 3-D TIFF bead stack (or drop the file on the window)."
+    },
+    {
+      "kind": "button",
+      "label": "Demo stack",
+      "id": "Demo stack",
+      "tooltip": "Replace the stack by a generated one with five beads of known size (a demo, not data)."
+    },
+    {
+      "kind": "button",
+      "label": "MMFDB dataset",
+      "id": "MMFDB dataset",
+      "tooltip": "Select a registered TIFF dataset from the MMFDB catalog."
+    },
+    {
+      "kind": "button",
+      "label": "Detect",
+      "id": "Detect",
+      "tooltip": "Find beads using the adaptive quantile threshold and the separation filters."
+    },
+    {
+      "kind": "button",
+      "label": "Fit selected",
+      "id": "Fit selected",
+      "tooltip": "Fit a 3-D Gaussian to the clicked or selected bead."
+    },
+    {
+      "kind": "button",
+      "label": "Fit all",
+      "id": "Fit all",
+      "tooltip": "Fit every detected bead and report the complete batch including failures."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV",
+      "tooltip": "Refit and export all detected beads with physical widths and fit quality."
+    },
+    {
+      "kind": "button",
+      "label": "Save settings",
+      "id": "Save settings",
+      "tooltip": "Save calibration, ROI, detection and display settings to JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Load settings",
+      "id": "Load settings",
+      "tooltip": "Restore settings and reopen the stored source stack when available."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain how a bead stack gives the PSF and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through loading, detection, fitting and the checks."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size_nm",
+      "id": "##pixel_size_nm",
+      "tooltip": "Lateral camera/scanner pixel size in nm; scales σx/σy to physical FWHM."
+    },
+    {
+      "kind": "input_text",
+      "label": "z_step_nm",
+      "id": "##z_step_nm",
+      "tooltip": "Axial distance between z-slices in nm; scales σz to physical FWHM."
+    },
+    {
+      "kind": "input_text",
+      "label": "roi_xy",
+      "id": "##roi_xy",
+      "tooltip": "Lateral ROI size (pixels) cut around a bead for the 3D Gaussian fit."
+    },
+    {
+      "kind": "input_text",
+      "label": "roi_z",
+      "id": "##roi_z",
+      "tooltip": "Axial ROI size (slices) cut around a bead for the 3D Gaussian fit."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixels_per_frame",
+      "id": "##pixels_per_frame",
+      "tooltip": "Expected bright pixels per frame; sets the adaptive quantile threshold for bead detection."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_distance",
+      "id": "##min_distance",
+      "tooltip": "Minimum lateral distance between accepted beads (pixels); rejects clustered candidates."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_area",
+      "id": "##min_area",
+      "tooltip": "Smallest connected bright region that can be a bead. A bead covers several pixels; a single one is a hot camera pixel. Set to 1 to keep every speck."
+    },
+    {
+      "kind": "input_text",
+      "label": "bead_index",
+      "id": "##bead_index",
+      "tooltip": "Zero-based index of the detected bead; selecting a bead fits it and opens its z slice."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "x profile",
+      "id": "x profile",
+      "tooltip": "Inspect the measured x profile and Gaussian fit through the bead center."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "y profile",
+      "id": "y profile",
+      "tooltip": "Inspect the measured y profile and Gaussian fit through the bead center."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "z profile",
+      "id": "z profile",
+      "tooltip": "Inspect the measured z profile and Gaussian fit through the bead center."
+    },
+    {
+      "kind": "slider_int",
+      "label": "Z slice",
+      "id": "Z slice",
+      "tooltip": "Browse the axial stack; image picks and bead overlays refer to this slice."
+    },
+    {
+      "kind": "combo",
+      "label": "Colormap",
+      "id": "##Colormap",
+      "tooltip": "Color scale of the image; pixel values and fits remain unchanged."
+    },
+    {
+      "kind": "slider_float",
+      "label": "Display gamma",
+      "id": "##Display gamma",
+      "tooltip": "Lift dim structures with gamma above one; display changes do not affect detection or fitting."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Automatic levels",
+      "id": "Automatic levels",
+      "tooltip": "Map the minimum and maximum finite image values to the color range."
+    },
+    {
+      "kind": "button",
+      "label": "Reset view",
+      "id": "Reset view",
+      "tooltip": "Restore the full-image view after zooming or panning."
+    },
+    {
+      "kind": "input_float",
+      "label": "Display minimum",
+      "id": "Display minimum",
+      "tooltip": "Set the lower display level without changing stored pixel values."
+    },
+    {
+      "kind": "input_float",
+      "label": "Display maximum",
+      "id": "Display maximum",
+      "tooltip": "Set the upper display level without changing stored pixel values."
+    },
+    {
+      "kind": "button",
+      "label": "×",
+      "id": "×##help_PSF determination: Help.header.×",
+      "tooltip": "Close this window (Escape)."
+    },
+    {
+      "kind": "button",
+      "label": "Close",
+      "id": "Close##help_top",
+      "tooltip": "Close this help window."
+    },
+    {
+      "kind": "button",
+      "label": " All ",
+      "id": " All ##filter_All",
+      "tooltip": "Show all help sections."
+    },
+    {
+      "kind": "button",
+      "label": " PSF determination: the focus measured on beads ",
+      "id": " PSF determination: the focus measured on beads ##filter_PSF determination: the focus measured on beads",
+      "tooltip": "Show the PSF determination: the focus measured on beads help section."
+    },
+    {
+      "kind": "button",
+      "label": " What you do ",
+      "id": " What you do ##filter_What you do",
+      "tooltip": "Show the What you do help section."
+    },
+    {
+      "kind": "button",
+      "label": " What to check ",
+      "id": " What to check ##filter_What to check",
+      "tooltip": "Show the What to check help section."
+    },
+    {
+      "kind": "button",
+      "label": " Settings ",
+      "id": " Settings ##filter_Settings",
+      "tooltip": "Show the Settings help section."
+    },
+    {
+      "kind": "button",
+      "label": " Further reading ",
+      "id": " Further reading ##filter_Further reading",
+      "tooltip": "Show the Further reading help section."
+    },
+    {
+      "kind": "button",
+      "label": "Close Help",
+      "id": "Close Help##footer",
+      "tooltip": "Close this help window."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "3": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "5": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "7": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "blur": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "divide": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "subtract": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "mean": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "operation": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "roi": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "menu": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "timerange": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "frame": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "t": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "off": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "x": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "y": "pyqtgraph ImageView built-in (image-view toolbar): not part of the PSF measurement; the native stack view has the z slider, colormap, gamma, levels, wheel zoom and pan",
+  "bead#": "Qt 'Bead #' spin box: native 'Bead index' field",
+  "nostackloaded": "Qt placeholder text: native 'Load an image or run Preview to inspect pixels.'",
+  "cividis": "Qt colormap list entry (the Qt image view offers many maps): the native canvas offers magma, inferno, viridis and gray (shared canvas)",
+  "plasma": "Qt colormap list entry (the Qt image view offers many maps): the native canvas offers magma, inferno, viridis and gray (shared canvas)",
+  "turbo": "Qt colormap list entry (the Qt image view offers many maps): the native canvas offers magma, inferno, viridis and gray (shared canvas)"
+}
