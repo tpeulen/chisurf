@@ -1,5 +1,15 @@
 # Update Log
 
+## 2026-10-02
+
+- **Shared detector setup editor reworked into one page like the Qt page** (CHANNELEDITOR): `chisurf/emtk/channel_definition.py` was six tabs of stacked full-width fields (8 of 15 file types, detectors as blocks); it is now the Qt
+  `DetectorWizardPage` in one scroll: Setup row, TTTR Reading routine (all 15 file types, two-column label/field grid at capped widths, Plot), PIE Windows (folded), Detectors and LUT handling as real `data_table`
+  tables (typed cells, Enter / click-away commit, Qt's range text `20:10`, `5:5`, `0:10;20:30`), Assign / Configure LUTs / Adjust shifts, Optical Setup. The Setup row state moved to `chisurf/emtk/channel_setup_bar.py`.
+  Core: last used setup written on choice and opened at start (file and MMFDB), a LUT switches the gate on, a file that is not photon data raises like Qt whatever the File Type, a rename keeps its place. Consumers
+  (boarding, image browser, trace browser, count rate, burst_background / irf_bg / accurate_fret / bid_to_analysis, audifier, microtime histogram) updated and run; guide 87 new, guides 86 and 37 and their figures regenerated.
+  Found: `burst_background`'s Qt reference read the user's real last used setup (made hermetic), two strict xfails had started to pass (the emtk wheel gap is gone; removed).
+  Gaps for emtk (5-line repros in the report): `data_table` has no action column, `input_int` is a drag field, `collapsing_header` takes no right-hand widget. Duplicate flagged: `burst_analysis/gui/setup_selection_app.py`.
+
 ## 2026-10-01
 
 - **tttr_image_browser emtk app upgraded to verified parity, layout and real input as acceptance criteria** (IMGBROWSER, audit row 81): the stream's app opened on the detector-setup page, hid the

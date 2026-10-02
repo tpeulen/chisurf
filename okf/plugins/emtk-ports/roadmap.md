@@ -18,7 +18,7 @@ Cards per `wave3-plan.md`; `mfd_prepare`, `burst_ebfret`, `alex_suite` wait for 
 - `DataTable`: Ctrl/Shift multi-select, column resize/reorder, per-column filters, cell editors.
 - Docking: tab-strip overflow; public draw API for shared editors (the boarding wizard calls private `_draw_window`/`_draw_prompt`).
 - `ImageCanvas`: more colormaps (cividis, plasma, turbo), PNG export, whole-body region drag in `implot.drag_rect`.
-- Shared detector/FCS editor: table layout, range-text parsing, last-used setup (the `setup_channel_definition` blockers).
+- Shared detector editor: DONE 2026-10-02 (one page, tables, Qt range text, last-used setup; `channel_editor/REPORT.md`). Left for emtk: a `data_table` action column and single-click cell editing (`_ButtonCells` in the editor works around the first), typed `input_int`.
 - Platform: IME/text input, accessibility, HiDPI, native + web hosts parity; docs and an emtk widget gallery with screenshots.
 
 ## Track D: retire Qt
@@ -27,7 +27,7 @@ Only after A and B: remove Qt tool entries, then host-level Qt (`ControlHost` st
 ## Track E: reuse audit (owner rule, 2026-10-02)
 Maximize reuse across all plugins, Qt and emtk. Find duplicated UI: grep for re-implemented detector setup, dataset pickers, file choosers, image
 panels, tables and plot panels across `chisurf/plugins/*`; list them with the shared component that should replace each; replace in the owning plugin's
-next cycle, or extend the shared component first (detector editor: table layout, range-text parsing, last-used setup; dataset picker buttons id bug).
+next cycle, or extend the shared component first (detector editor: done 2026-10-02, but `burst_analysis/gui/setup_selection_app.py` still duplicates it; dataset picker buttons id bug).
 
 ## Track F: docs catch-up (owner rule, 2026-10-02)
 Every accepted emtk port needs its docs updated with the UI: guide text and figures from the emtk app, reference page regenerated. Known gaps from

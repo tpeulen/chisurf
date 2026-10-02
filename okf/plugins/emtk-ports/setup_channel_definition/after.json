@@ -4,37 +4,82 @@
     800
   ],
   "controls": [
-    "0setupsavailable.",
+    "0",
+    "0.0",
+    "02048",
+    "04095",
+    "1",
+    "1.0",
+    "2",
+    "20484095",
+    "3",
+    "3setupsavailable.",
+    "50.0",
+    "50.000000",
+    "8",
+    "8,0,3",
+    "9",
+    "9,1,2",
+    "?",
+    "add",
+    "adjustshifts",
+    "applytaclinearization(lut)whenreading",
+    "assignlut",
+    "calcg",
     "calibration",
-    "calibrationrevision",
+    "channel",
+    "channels",
+    "configureluts",
     "delete",
-    "deletesetup",
+    "detectorname",
     "detectors",
-    "detectorsetup",
-    "exportsetupsfile",
+    "eff.microtime(ps)",
+    "filetype",
+    "g-factor",
+    "g-factorchannels",
+    "green",
     "guide",
     "help",
+    "l1",
+    "l2",
     "latest",
-    "loadsetupsfile",
+    "lut",
+    "luthandling(taclinearization)",
+    "macrotimeres.(ns)",
+    "microtimebinning",
+    "microtimeranges",
+    "microtimeres.(ps)",
     "opticalsetup",
     "piewindows",
+    "plot",
+    "polarizationresolved",
     "public",
-    "publicsetup",
-    "refreshcalibrationhistory",
-    "refreshsetups",
+    "read",
+    "red",
     "rename",
-    "renamesetup",
     "save",
-    "savesetup",
     "setup",
     "setupchanneldefinition",
-    "setupname",
-    "setups",
-    "taccorrections",
-    "tttrreading",
-    "unsaved"
+    "shift",
+    "spc-130",
+    "tttrreadingroutine",
+    "unsaved",
+    "yellow",
+    "—none—"
   ],
   "interactive": [
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through choosing, editing and saving a setup."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the page: setups, the reading routine, PIE windows, detectors, units of micro-time ranges and LUTs."
+    },
     {
       "kind": "combo",
       "label": "setup_choice",
@@ -73,117 +118,117 @@
     },
     {
       "kind": "button",
-      "label": "Help",
-      "id": "Help",
-      "tooltip": "Explain the setups, the six tabs, units of micro-time ranges and LUTs."
+      "label": "?",
+      "id": "?##page_help",
+      "tooltip": "Explain the page: setups, reading routine, PIE windows, detectors and the units of micro-time ranges."
     },
     {
-      "kind": "button",
-      "label": "Guide",
-      "id": "Guide",
-      "tooltip": "Walk through choosing, editing and saving a setup."
-    },
-    {
-      "kind": "begin_tab_item",
-      "label": "Setups",
-      "id": "Setups",
-      "tooltip": "Manage named setup definitions and calibration revisions."
-    },
-    {
-      "kind": "button",
-      "label": "Refresh setups",
-      "id": "Refresh setups",
-      "tooltip": "Load available saved detector setups from MMFDB or the selected JSON file."
+      "kind": "selectable",
+      "label": "▼ TTTR Reading routine",
+      "id": "▼ TTTR Reading routine##section_reading",
+      "tooltip": "File type, timing and binning used to read TTTR files."
     },
     {
       "kind": "combo",
-      "label": "channel_setup",
-      "id": "##channel_setup",
-      "tooltip": "Select a named instrument setup and restore all detector, timing and optical parameters."
+      "label": "tttr_format",
+      "id": "##tttr_format",
+      "tooltip": "The TTTR container format used to read measurements; Auto detects it from the file."
+    },
+    {
+      "kind": "button",
+      "label": "Read",
+      "id": "Read",
+      "tooltip": "Read a measurement or BH SET calibration: macro and micro time resolution from the header, and the decay of every routing channel."
     },
     {
       "kind": "input_text",
-      "label": "Setup name",
-      "id": "##Setup name",
-      "tooltip": "Name used when saving or renaming the detector setup."
+      "label": "macro_time_resolution",
+      "id": "##macro_time_resolution",
+      "tooltip": "Macro-time tick (the excitation period) in nanoseconds."
     },
     {
-      "kind": "checkbox",
-      "label": "Public setup",
-      "id": "Public setup",
-      "tooltip": "Publish the saved setup for other users through the MMFDB setup store."
-    },
-    {
-      "kind": "button",
-      "label": "Save setup",
-      "id": "Save setup",
-      "tooltip": "Persist all channels, windows, corrections and optical configuration."
-    },
-    {
-      "kind": "button",
-      "label": "Rename setup",
-      "id": "Rename setup",
-      "tooltip": "Rename the selected saved setup to the entered name."
-    },
-    {
-      "kind": "button",
-      "label": "Delete setup",
-      "id": "Delete setup",
-      "tooltip": "Request deletion of the selected saved setup."
-    },
-    {
-      "kind": "button",
-      "label": "Load setups file",
-      "id": "Load setups file",
-      "tooltip": "Choose a detector-setup JSON library."
-    },
-    {
-      "kind": "button",
-      "label": "Export setups file",
-      "id": "Export setups file",
-      "tooltip": "Save all loaded named setups as a JSON library."
+      "kind": "input_text",
+      "label": "micro_time_resolution",
+      "id": "##micro_time_resolution",
+      "tooltip": "Micro-time channel width in picoseconds."
     },
     {
       "kind": "combo",
-      "label": "calibration",
-      "id": "##calibration",
-      "tooltip": "Load stored G-factor and polarization-mixing values from this calibration revision."
+      "label": "binning",
+      "id": "##binning",
+      "tooltip": "Number of original TAC channels per analysis bin."
+    },
+    {
+      "kind": "input_text",
+      "label": "effective",
+      "id": "##effective",
+      "tooltip": "Microtime resolution times the binning (read-only)."
     },
     {
       "kind": "button",
-      "label": "Refresh calibration history",
-      "id": "Refresh calibration history",
-      "tooltip": "Query calibration dates for this setup."
+      "label": "Plot",
+      "id": "Plot",
+      "tooltip": "Show or hide the micro-time decay preview with the PIE windows and detector gates overlaid."
     },
     {
-      "kind": "begin_tab_item",
-      "label": "TTTR reading",
-      "id": "TTTR reading",
-      "tooltip": "Select format, timing, binning and header/decay calibration."
+      "kind": "selectable",
+      "label": "▶ PIE Windows",
+      "id": "▶ PIE Windows##section_windows",
+      "tooltip": "PIE excitation windows (start and end TAC channel)."
     },
     {
-      "kind": "begin_tab_item",
-      "label": "Detectors",
-      "id": "Detectors",
-      "tooltip": "Edit routing channels, microtime gates and polarization factors."
+      "kind": "selectable",
+      "label": "▼ Detectors",
+      "id": "▼ Detectors##section_detectors",
+      "tooltip": "Detectors: routing channels, micro-time gates and polarization factors."
     },
     {
-      "kind": "begin_tab_item",
-      "label": "PIE windows",
-      "id": "PIE windows",
-      "tooltip": "Define excitation gates and detector/window combinations."
+      "kind": "checkbox",
+      "label": "Polarization resolved",
+      "id": "Polarization resolved",
+      "tooltip": "ON: each detector's routing channels are interleaved parallel/perpendicular (VV/VH) for anisotropy. OFF: one unpolarized stream per detector."
     },
     {
-      "kind": "begin_tab_item",
-      "label": "TAC corrections",
-      "id": "TAC corrections",
-      "tooltip": "Assign or compute per-routing-channel TAC LUTs and shifts."
+      "kind": "button",
+      "label": "Add",
+      "id": "Add##add_detector",
+      "tooltip": "Add a detector (channels 0, 1; range 0:2048) with a free name; rename and edit it in the table."
     },
     {
-      "kind": "begin_tab_item",
-      "label": "Optical setup",
-      "id": "Optical setup",
-      "tooltip": "Edit and simulate the instrument light path."
+      "kind": "selectable",
+      "label": "▼ LUT handling (TAC linearization)",
+      "id": "▼ LUT handling (TAC linearization)##section_lut",
+      "tooltip": "TAC linearization tables and micro-time shifts per routing channel."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Apply TAC linearization (LUT) when reading",
+      "id": "Apply TAC linearization (LUT) when reading",
+      "tooltip": "When checked, each routing channel's assigned LUT linearizes the raw micro-times at read time (needed for e.g. SPC-130). If a used channel has no LUT, you are offered the LUT calculator."
+    },
+    {
+      "kind": "button",
+      "label": "Assign LUT...",
+      "id": "Assign LUT...",
+      "tooltip": "Assign a LUT file (.npy / .npz / .txt) to the selected channel row."
+    },
+    {
+      "kind": "button",
+      "label": "Configure LUTs...",
+      "id": "Configure LUTs...",
+      "tooltip": "Open the LUT tools: compute a LUT from the loaded calibration decay (linear region or automatic), assign, export or remove it."
+    },
+    {
+      "kind": "button",
+      "label": "Adjust shifts...",
+      "id": "Adjust shifts...",
+      "tooltip": "Visually align the per-channel micro-time shifts on the (LUT-corrected) calibration decay; read a calibration file first."
+    },
+    {
+      "kind": "button",
+      "label": "Optical Setup...",
+      "id": "Optical Setup...",
+      "tooltip": "Open the light-path editor: configure filters, dyes and detectors, and compute Foerster radii and cross-talk."
     }
   ],
   "controls_without_tooltip": [],

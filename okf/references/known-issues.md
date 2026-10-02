@@ -6113,11 +6113,9 @@ Measured while giving `setup_channel_definition` its own tests; evidence and rep
   `TypeError` is swallowed and the combo stays at "Latest". The emtk toolbar lists and applies snapshots.
 * **Qt rename drops the Public flag.** `tttr_detector_setups._setup_row_data` returns `setup_data` without `_is_public` /
   `_owner`, so a renamed public setup is stored private. The emtk toolbar (core `ChannelDefinition`) keeps it.
-* **Shared editor (`chisurf/emtk/channel_definition.py`, another stream's) gaps**: detectors are stacked blocks, not a
-  table; the Setups tab stacks its buttons full width; the last tab cannot be restored (the editor owns the tab state);
-  microtime ranges reject `20:10`, `5:5` and `;` separators that Qt accepts; with a fixed File Type the reader accepts any
-  bytes and overwrites the timing (`xfail` test); no "Configure LUTs" / visual "Adjust shifts" hand-off; the last-used
-  setup is neither written on selection nor opened at start (`ChannelDefinition.refresh_setups` drops `last_used`).
+* **Shared editor gaps: resolved 2026-10-02** (`okf/plugins/emtk-ports/channel_editor/REPORT.md`). The editor is one page with real `data_table` tables, Qt's range-text rules,
+  all 15 file types, Configure LUTs / Adjust shifts windows, the last used setup written on choice and opened at start, section state restored, and a file that is not photon data refused
+  whatever File Type is chosen. Open: `burst_analysis/gui/setup_selection_app.py` (2178 lines) is a second hand-written detector / PIE editor that should be replaced by the shared one.
 
 ## boarding wizard: "Create missing files" never creates `settings_chisurf.yaml` (found 2026-10-01)
 
