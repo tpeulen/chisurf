@@ -16,6 +16,13 @@ from a shell.
 
 Press **Guide** in the tool for a five-step walk through the buttons.
 
+```{figure} figures/maxent_decay_window.png
+:name: fig-maxent-decay-window
+:width: 100%
+
+The MaxEnt window after a run on a synthetic two-lobe decay (1.1 and 3.6 ns). **Left**, the actions (Run MEM, L-curve, Sample, Save), the data buttons (Refresh, Load decay, IRF file, Clear IRF, Prior, Donor, JSON) and the settings forms; **right**, the decay with fit, IRF and fit range, the recovered distribution, the weighted residuals and the L-curve. The mouse wheel zooms every plot and a drag on the box in the decay plot moves the fit range.
+```
+
 ## When to reach for it
 
 Use MEM when you suspect a continuum rather than states: a dye sampling many
@@ -30,8 +37,11 @@ information, only choose which of the many fitting answers you are shown.
 
 ## Step 1 — decay and IRF
 
-**Refresh** picks up the decay from the current fit; **IRF** selects the
-instrument response. MEM fits in convolved space like every other TCSPC
+**Refresh** lists the fits and datasets of the session (choose one and press
+**Fit**: the decay, the fit range, the response, the background and the grid start
+follow it); **Load decay** and **IRF file** read two-column files instead, and
+dropping files on the window loads the first as the decay and the second as the
+IRF. The instrument response MEM fits in convolved space like every other TCSPC
 analysis, so both are required.
 
 An instrument response taken on a different day, at a different count rate, or
@@ -41,7 +51,7 @@ structure ({ref}`fundamentals-photon-counting`).
 
 ## Step 2 — run once, and distrust the answer
 
-Press **Run**. You get a smooth, positive distribution that depends entirely on
+Press **Run MEM**. You get a smooth, positive distribution that depends entirely on
 the regularization weight $\nu$ you have not chosen yet. That is the honest
 state of the result, not a defect: the inversion is ill-posed, so $\nu$ decides
 how much structure you are shown.
@@ -109,7 +119,7 @@ distribution at one $\nu$, with no error bars on the bins and strong correlation
 between them — so a bin-wise uncertainty is not available and should not be
 invented ({ref}`concept-parameter-uncertainty`).
 
-**Save** writes the result out; **JSON settings** edits the run configuration.
+**Save** writes the result out; **JSON** edits the run configuration.
 
 ## Headless
 

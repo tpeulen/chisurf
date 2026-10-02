@@ -1,0 +1,18 @@
+{
+  "?": "the Qt '?' help button is the Help button",
+  "background[cts]": "Qt caption: native field 'background (cts)'",
+  "irfbackground[cts]": "Qt caption: native field 'IRF background (cts)'",
+  "timeshift[ch]": "Qt caption: native field 'timeshift (ch)'",
+  "period[ns]": "Qt caption: native field 'Period (ns)' (shown greyed until Periodic convolution is ticked, the Qt tool hid it)",
+  "tau0[ns]": "Qt caption: native field 'tau0 (ns)' in the Distance grid panel (FRET mode)",
+  "r0[å]": "Qt caption: native field 'R0 (A)' (FRET mode)",
+  "r/r0range": "Qt 'R/R0 range' three stacked boxes: native 'R/R0 min', 'R/R0 max' and 'R points' (FRET mode)",
+  "taugrid[ns]": "Qt 'tau grid [ns]' three stacked boxes: native 'tau min (ns)', 'tau max (ns)', 'tau points'",
+  "l-curvespan[dec]": "Qt 'L-curve span [dec]' two boxes: native 'decades below nu' / 'decades above nu' in the L-curve span and sampling section",
+  "fix": "Qt per-field 'fix' boxes: native 'fix timeshift', 'fix background', 'fix IRF background', 'fix donor-only fraction'; the Qt 'fix' of lamp scatter is not read by the Qt tool and has no native counterpart",
+  "irf": "Qt toolbar 'IRF' (choose an IRF dataset): native 'IRF file' (file) and, with a live session, 'Use as IRF' for a dataset",
+  "run": "Qt toolbar 'Run': native 'Run MEM'",
+  "start@fracofpeak": "Qt keeps this box permanently hidden; the setting stays at 0.9 and is still part of the JSON preferences",
+  "irfmodel.convolve.irf(default)": "Qt label 'IRF: model.convolve.irf (default)': native line 'IRF: <name>' with the real source",
+  "donorspectrumtau0only": "Qt label 'Donor spectrum: tau0 only' (FRET mode): native 'Donor spectrum: required in FRET mode (Donor).' / '<n> components'"
+}

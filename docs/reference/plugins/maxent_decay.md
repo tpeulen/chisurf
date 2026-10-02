@@ -21,12 +21,25 @@ Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance).
 | Menu path | Spectroscopy → Fluorescence decay → **MaxEnt MEM** |
 | Categories | Spectroscopy, Fluorescence decay |
 | Version | 2.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `maxent_decay` |
 
 ## Parameters
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+
+## Native window (emtk)
+
+The default window is drawn with emtk (`gui/app.py`, forms `gui/maxent_emtk.view.json`).
+
+| Area | Controls |
+| --- | --- |
+| Actions | **Run MEM**, **L-curve**, **Sample**, **Save**, **Cancel job** (Sample and Save need a result; FRET needs a donor spectrum) |
+| Data | **Refresh** (session fits and datasets, **Fit**, **Use as decay**, **Use as IRF**), **Load decay**, **IRF file**, **Clear IRF**, **Prior**, **Donor**, **Donor from fit**, **JSON** preferences; file drops (decay, IRF, preferences) |
+| MEM settings | *Mode*, *nu (reg)*, *MEM iterations*; *Lifetime grid* (tau min/max/points) or *Distance grid* (tau0, R0, R/R0 min/max, R points, donor-only fraction) |
+| Periodic, instrument | *Periodic convolution* and *Period (ns)*; *timeshift*, *background*, *IRF background*, *lamp scatter*; *Fit nuisance* and the fix switches |
+| L-curve span and sampling | decades below/above nu; Q-MCMC steps, thinning, walkers, chunk size, CPUs, vectorized |
+| Plots | decay with fit, IRF and a draggable fit-range box; distribution (with sampling band); weighted residuals; L-curve (click a point to take its nu) |
 
 ## JSON-RPC methods
 

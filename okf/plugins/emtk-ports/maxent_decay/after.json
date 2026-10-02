@@ -1,0 +1,540 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "\"background\"",
+    "\"extra\"",
+    "\"fit_start_fraction\"",
+    "\"irf_background\"",
+    "\"lamp_scatter\"",
+    "\"lifetime\",",
+    "\"max_iter\"",
+    "\"mode\"",
+    "\"nu\"",
+    "\"optimize_nuisance\"",
+    "\"period\"",
+    "\"r0\"",
+    "\"r_bins\"",
+    "\"r_max_frac\"",
+    "\"r_min_frac\"",
+    "\"settings\"",
+    "\"tau0\"",
+    "\"tau_bins\"",
+    "\"tau_max\"",
+    "\"tau_min\"",
+    "\"timeshift\"",
+    "\"tol\"",
+    "\"use_periodic\"",
+    "\"x_donly\"",
+    "-1",
+    "-2",
+    "0",
+    "0.0",
+    "0.0,",
+    "0.000",
+    "0.0000",
+    "0.0001",
+    "0.0001,",
+    "0.001",
+    "0.001,",
+    "0.001000",
+    "0.01",
+    "0.010",
+    "0.1",
+    "0.1,",
+    "0.100",
+    "0.113",
+    "0.113,",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "0.9,",
+    "1",
+    "10",
+    "10.000",
+    "100",
+    "1000",
+    "10000",
+    "100000",
+    "150000",
+    "192",
+    "1e-05",
+    "1e-06",
+    "2",
+    "2.00",
+    "200",
+    "200,",
+    "200000",
+    "250000",
+    "3",
+    "3.0,",
+    "3.000",
+    "300000",
+    "32",
+    "32,",
+    "350000",
+    "4",
+    "4.1,",
+    "4.100",
+    "5",
+    "5.0",
+    "5.0,",
+    "50",
+    "50.0",
+    "50.0,",
+    "500",
+    "50000",
+    "6",
+    "6.000",
+    "7",
+    "8",
+    "8.0,",
+    "8.000",
+    "8.24,",
+    "8.240",
+    "96",
+    "96,",
+    "applysettings",
+    "background(cts)",
+    "canceljob",
+    "channel).",
+    "chi-square",
+    "chunksize(substeps)",
+    "clearirf",
+    "closesettings",
+    "counts",
+    "cpus(0=auto)",
+    "dataset",
+    "decadesabovenu",
+    "decadesbelownu",
+    "decay,fitandirf",
+    "distancegrid",
+    "distancepriordefaultflat",
+    "distribution",
+    "donor",
+    "donor-onlyfraction",
+    "donorfromfit",
+    "donorspectrum1components",
+    "false,",
+    "fit",
+    "fitnuisance(ts/bg/irfbg)",
+    "fixbackground",
+    "fixdonor-onlyfraction",
+    "fixirfbackground",
+    "fixtimeshift",
+    "fret",
+    "guide",
+    "help",
+    "instrument",
+    "irfbackground(cts)",
+    "irffile",
+    "irfimpulseirf;chooseameasuredresponseoralivefit.",
+    "irfirf.dat",
+    "irfscaled",
+    "json",
+    "jsonpreferences",
+    "l-curve",
+    "l-curveplot",
+    "l-curvespanandsampling",
+    "lampscatter",
+    "lifetime",
+    "lifetime(ns)",
+    "lifetimegrid",
+    "livefit",
+    "loaddecay",
+    "loadedtwo_lifetimes.dat(256channels,0.0323nsper",
+    "loadedtwo_lifetimes.dat(256channels,0.0323nsperchannel).",
+    "measureddecayandmemfit",
+    "mem",
+    "memcontrols",
+    "memdistribution",
+    "memfit",
+    "memiterations",
+    "memsettings",
+    "mode",
+    "nodataloaded",
+    "nu(reg)",
+    "nuisanceoptimization",
+    "observed",
+    "period(ns)",
+    "periodicconvolution",
+    "prior",
+    "priordefault1/tau",
+    "probability",
+    "q-mcmcsteps",
+    "q-mcmcthinning",
+    "r/r0max",
+    "r/r0min",
+    "r0(a)",
+    "refresh",
+    "residual/sigma",
+    "residuals",
+    "rpoints",
+    "runmem",
+    "sample",
+    "sampling",
+    "save",
+    "selectadecayorusealivefit.",
+    "solutionnorm",
+    "tau0(ns)",
+    "taumax(ns)",
+    "taumin(ns)",
+    "taupoints",
+    "time(ns)",
+    "timeshift(ch)",
+    "two_lifetimes.dat",
+    "useasdecay",
+    "useasirf",
+    "vectorizedsampling",
+    "vl-curvespanandsampling",
+    "walkers(0=auto)",
+    "weightedresiduals",
+    "{",
+    "{}",
+    "},"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Run MEM",
+      "id": "Run MEM",
+      "tooltip": "Solve the maximum-entropy inversion in an isolated, cancellable process."
+    },
+    {
+      "kind": "button",
+      "label": "L-curve",
+      "id": "L-curve",
+      "tooltip": "Run the 16-point nu sweep and pick the discrete corner."
+    },
+    {
+      "kind": "button",
+      "label": "Sample",
+      "id": "Sample",
+      "tooltip": "Run Q-MCMC sampling of the distribution and save chains, summaries and project metadata in a folder."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Export the distribution, observed and fitted curves, IRF, weighted residuals and metadata."
+    },
+    {
+      "kind": "button",
+      "label": "Cancel job",
+      "id": "Cancel job",
+      "tooltip": "Terminate the MEM or sampling process this window started."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh",
+      "tooltip": "List the datasets and fits of this running ChiSurf session."
+    },
+    {
+      "kind": "button",
+      "label": "Load decay",
+      "id": "Load decay",
+      "tooltip": "Load a measured two-column time/counts decay from a file."
+    },
+    {
+      "kind": "button",
+      "label": "IRF file",
+      "id": "IRF file",
+      "tooltip": "Load a measured instrument response and resample it onto the decay time axis."
+    },
+    {
+      "kind": "button",
+      "label": "Clear IRF",
+      "id": "Clear IRF",
+      "tooltip": "Drop the measured IRF: use the response of the live fit, or an impulse."
+    },
+    {
+      "kind": "button",
+      "label": "Prior",
+      "id": "Prior",
+      "tooltip": "Use a vector or axis/value prior for the current distribution grid."
+    },
+    {
+      "kind": "button",
+      "label": "Donor",
+      "id": "Donor",
+      "tooltip": "Load the amplitude/lifetime pairs of the donor-only decay (FRET mode)."
+    },
+    {
+      "kind": "button",
+      "label": "JSON",
+      "id": "JSON",
+      "tooltip": "Inspect and edit the declared preferences as JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain maximum entropy, FRET priors and uncertainty."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Tour the real input, regularization and run controls."
+    },
+    {
+      "kind": "input_text",
+      "label": "nu",
+      "id": "##nu",
+      "tooltip": "Entropy regularization weight: small values fit the noise, large ones smooth the distribution."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_iter",
+      "id": "##max_iter",
+      "tooltip": "Maximum iterations of the compiled MEM solver."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_min",
+      "id": "##tau_min",
+      "tooltip": "Smallest lifetime of the grid (set from the IRF width when data is taken from a fit)."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_max",
+      "id": "##tau_max",
+      "tooltip": "Largest lifetime of the grid."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_bins",
+      "id": "##tau_bins",
+      "tooltip": "Number of grid points."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Periodic convolution",
+      "id": "Periodic convolution##use_periodic",
+      "tooltip": "Include repeated excitation pulses instead of a single-shot decay."
+    },
+    {
+      "kind": "input_text",
+      "label": "period",
+      "id": "##period",
+      "tooltip": "Pulse separation used with periodic convolution (initialised from the decay window)."
+    },
+    {
+      "kind": "input_text",
+      "label": "timeshift",
+      "id": "##timeshift",
+      "tooltip": "Response shift in histogram channels."
+    },
+    {
+      "kind": "input_text",
+      "label": "background",
+      "id": "##background",
+      "tooltip": "Constant decay background."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_background",
+      "id": "##irf_background",
+      "tooltip": "Response baseline; zero selects the automatic baseline estimate."
+    },
+    {
+      "kind": "input_text",
+      "label": "lamp_scatter",
+      "id": "##lamp_scatter",
+      "tooltip": "Fixed amplitude of scattered excitation light."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fit nuisance (ts/bg/IRF BG)",
+      "id": "Fit nuisance (ts/bg/IRF BG)##optimize_nuisance",
+      "tooltip": "Let the solver fit the timeshift, background and IRF background whose fix switches are off."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix timeshift",
+      "id": "fix timeshift##fix_timeshift",
+      "tooltip": "Hold the timeshift at its value during nuisance optimization."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix background",
+      "id": "fix background##fix_background",
+      "tooltip": "Hold the background at its value during nuisance optimization."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix IRF background",
+      "id": "fix IRF background##fix_irf_background",
+      "tooltip": "Hold the IRF background at its value during nuisance optimization."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "L-curve span and sampling",
+      "id": "L-curve span and sampling",
+      "tooltip": "The decades the L-curve sweep covers and the Q-MCMC sampling options."
+    },
+    {
+      "kind": "combo",
+      "label": "Live fit",
+      "id": "Live fit",
+      "tooltip": "Choose a fit for the observed data, the fit range and the instrument values."
+    },
+    {
+      "kind": "button",
+      "label": "Fit",
+      "id": "Fit",
+      "tooltip": "Take data, range, response and nuisance values from the selected live fit."
+    },
+    {
+      "kind": "button",
+      "label": "Donor from fit",
+      "id": "Donor from fit",
+      "tooltip": "Use the selected fit's lifetime components as the donor-only spectrum."
+    },
+    {
+      "kind": "combo",
+      "label": "Dataset",
+      "id": "Dataset",
+      "tooltip": "Choose an existing measured curve."
+    },
+    {
+      "kind": "button",
+      "label": "Use as decay",
+      "id": "Use as decay",
+      "tooltip": "Use the selected dataset's counts and time axis as the decay."
+    },
+    {
+      "kind": "button",
+      "label": "Use as IRF",
+      "id": "Use as IRF",
+      "tooltip": "Resample the selected dataset to the decay grid as the response."
+    },
+    {
+      "kind": "input_text",
+      "label": "lcurve_left",
+      "id": "##lcurve_left",
+      "tooltip": "Decades below the current nu scanned by the L-curve."
+    },
+    {
+      "kind": "input_text",
+      "label": "lcurve_right",
+      "id": "##lcurve_right",
+      "tooltip": "Decades above the current nu scanned by the L-curve."
+    },
+    {
+      "kind": "input_text",
+      "label": "sample_steps",
+      "id": "##sample_steps",
+      "tooltip": "Total ensemble steps."
+    },
+    {
+      "kind": "input_text",
+      "label": "sample_thin",
+      "id": "##sample_thin",
+      "tooltip": "Keep every n-th step."
+    },
+    {
+      "kind": "input_text",
+      "label": "sample_walkers",
+      "id": "##sample_walkers",
+      "tooltip": "Number of walkers; zero uses the sampler default."
+    },
+    {
+      "kind": "input_text",
+      "label": "sample_substeps",
+      "id": "##sample_substeps",
+      "tooltip": "Steps per progress update and saved chunk."
+    },
+    {
+      "kind": "input_text",
+      "label": "sample_nprocs",
+      "id": "##sample_nprocs",
+      "tooltip": "Worker processes; zero selects a platform default."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Vectorized sampling",
+      "id": "Vectorized sampling##sample_vectorized",
+      "tooltip": "Evaluate ensemble log probabilities in vectorized batches."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau0",
+      "id": "##tau0",
+      "tooltip": "Unquenched donor reference lifetime."
+    },
+    {
+      "kind": "input_text",
+      "label": "R0",
+      "id": "##R0",
+      "tooltip": "Foerster radius used to convert FRET rates to distances."
+    },
+    {
+      "kind": "input_text",
+      "label": "r_min_frac",
+      "id": "##r_min_frac",
+      "tooltip": "Lower distance boundary relative to R0."
+    },
+    {
+      "kind": "input_text",
+      "label": "r_max_frac",
+      "id": "##r_max_frac",
+      "tooltip": "Upper distance boundary relative to R0."
+    },
+    {
+      "kind": "input_text",
+      "label": "r_bins",
+      "id": "##r_bins",
+      "tooltip": "Number of distance grid points."
+    },
+    {
+      "kind": "input_text",
+      "label": "x_donly",
+      "id": "##x_donly",
+      "tooltip": "Fraction of unquenched donor in the sample."
+    },
+    {
+      "kind": "checkbox",
+      "label": "fix donor-only fraction",
+      "id": "fix donor-only fraction##fix_x_donly",
+      "tooltip": "Keep the donor-only fraction at its value during nuisance optimization."
+    },
+    {
+      "kind": "button",
+      "label": "×",
+      "id": "×##MEM settings.header.×",
+      "tooltip": "Close this window (Escape)."
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "JSON preferences",
+      "id": "JSON preferences",
+      "tooltip": "Edit declared grids, nuisance controls, regularization and sampling preferences; live arrays are not persisted."
+    },
+    {
+      "kind": "button",
+      "label": "Apply settings",
+      "id": "Apply settings",
+      "tooltip": "Apply valid JSON preferences to the next MEM job."
+    },
+    {
+      "kind": "button",
+      "label": "Close settings",
+      "id": "Close settings",
+      "tooltip": "Close this settings editor."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
