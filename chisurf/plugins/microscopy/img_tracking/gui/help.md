@@ -31,7 +31,7 @@ the cheapest diagnostic in the whole tool and it catches most problems:
 | markers flicker on and off | threshold too high |
 | detections on empty background | threshold too low, or `Min area` = 1 |
 
-Scrub the frame slider on the **Movie** view: markers that follow the particles
+Scrub the **Z slice** slider on the **Movie** view (or press **Play**): markers that follow the particles
 mean detection is working.
 
 ### 2. Link
