@@ -110,3 +110,15 @@ def test_keys_reach_the_game_selected_in_the_launcher(qapp):
     _press(qapp, host, QtCore.Qt.Key_Right)
     qapp.sendEvent(host, QtGui.QFocusEvent(QtCore.QEvent.FocusOut))
     assert not child.held                                    # focus loss reaches the game
+
+
+def test_the_game_shown_when_the_hub_opens_takes_keys_without_a_click(qapp):
+    """The hub opens on its first game; that game must exist and receive keys before any click."""
+    host = _host(qapp, "")
+    hub = host.control
+    assert hub.child is not None, "the first game was only built after clicking its list entry"
+    seen = []
+    original = hub.child.key
+    hub.child.key = lambda key, text="", modifiers=0: (seen.append(key), original(key, text, modifiers))[1]
+    _press(qapp, host, QtCore.Qt.Key_Left)
+    assert seen == [int(QtCore.Qt.Key_Left)]

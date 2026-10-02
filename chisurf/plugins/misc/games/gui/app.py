@@ -28,6 +28,9 @@ class GamesHubApp(ImApp):
         self.child_box = (180.0, 86.0, 880.0, 644.0)
         self._painter = None
         super().__init__(self.render)
+        # The game shown on first open must exist at once: it used to be built only when its list
+        # entry was clicked, so the first game took no keys and drew nothing until then.
+        self.select(self.selected)
 
     @property
     def child(self):
