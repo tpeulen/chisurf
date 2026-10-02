@@ -1,0 +1,53 @@
+diff --git a/chisurf/plugins/microscopy/img_pixel_phasor/core.py b/chisurf/plugins/microscopy/img_pixel_phasor/core.py
+index 7e90f8d8e..5e17a9f28 100644
+--- a/chisurf/plugins/microscopy/img_pixel_phasor/core.py
++++ b/chisurf/plugins/microscopy/img_pixel_phasor/core.py
+@@ -9,6 +9,7 @@ import numpy as np
+ from chisurf.core.fluorescence.imaging import (
+     add_maps_to_hdf5,
+     build_clsm,
++    clsm_intensity_counts,
+     phasor_maps,
+ )
+ 
+@@ -51,7 +52,7 @@ def compute_phasor(
+     clsm = build_clsm(tttr, channels=tuple(channels))
+     irf = tttrlib.TTTR(irf_filename) if irf_filename else None
+     maps = phasor_maps(clsm, tttr, frequency=frequency, tttr_irf=irf, n_ph_min=n_ph_min)
+-    intensity = np.asarray(clsm.get_intensity(), dtype=float)
++    intensity = clsm_intensity_counts(clsm)
+     maps["intensity"] = intensity.sum(axis=0) if intensity.ndim == 3 else intensity
+     return {"maps": maps, "shape": maps["g"].shape}
+ 
+diff --git a/chisurf/plugins/microscopy/img_pixel_phasor/manifest.json b/chisurf/plugins/microscopy/img_pixel_phasor/manifest.json
+index 9dbe6ebdf..a10f009ea 100644
+--- a/chisurf/plugins/microscopy/img_pixel_phasor/manifest.json
++++ b/chisurf/plugins/microscopy/img_pixel_phasor/manifest.json
+@@ -10,7 +10,7 @@
+     "Imaging",
+     "Phasor-FLIM"
+   ],
+-  "icon": "◐",
++  "icon": "\u25d0",
+   "state_namespace": "img_pixel_phasor",
+   "statefulness": {
+     "enabled": true,
+@@ -22,7 +22,8 @@
+   "entrypoints": {
+     "gui": "chisurf.plugins.microscopy.img_pixel_phasor.gui.tool:ImgPixelPhasorTool",
+     "cli": "img-pixel-phasor=chisurf.plugins.microscopy.img_pixel_phasor.cli:cli",
+-    "services": "chisurf.plugins.microscopy.img_pixel_phasor.backend.services:register_services"
++    "services": "chisurf.plugins.microscopy.img_pixel_phasor.backend.services:register_services",
++    "emtk": "chisurf.plugins.microscopy.img_pixel_phasor.gui.app:make_app"
+   },
+   "rpc_methods": [
+     {
+@@ -184,7 +185,7 @@
+           },
+           "roi": {
+             "type": "object",
+-            "description": "A serialised region gating the phasor plane — a polygon round a cluster, or a combination of cursors. Replaces center/kind."
++            "description": "A serialised region gating the phasor plane \u2014 a polygon round a cluster, or a combination of cursors. Replaces center/kind."
+           }
+         },
+         "required": [

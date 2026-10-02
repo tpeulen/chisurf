@@ -9,6 +9,7 @@ import numpy as np
 from chisurf.core.fluorescence.imaging import (
     add_maps_to_hdf5,
     build_clsm,
+    clsm_intensity_counts,
     phasor_maps,
 )
 
@@ -51,7 +52,7 @@ def compute_phasor(
     clsm = build_clsm(tttr, channels=tuple(channels))
     irf = tttrlib.TTTR(irf_filename) if irf_filename else None
     maps = phasor_maps(clsm, tttr, frequency=frequency, tttr_irf=irf, n_ph_min=n_ph_min)
-    intensity = np.asarray(clsm.get_intensity(), dtype=float)
+    intensity = clsm_intensity_counts(clsm)
     maps["intensity"] = intensity.sum(axis=0) if intensity.ndim == 3 else intensity
     return {"maps": maps, "shape": maps["g"].shape}
 

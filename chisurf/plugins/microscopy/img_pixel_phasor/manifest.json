@@ -10,7 +10,7 @@
     "Imaging",
     "Phasor-FLIM"
   ],
-  "icon": "◐",
+  "icon": "\u25d0",
   "state_namespace": "img_pixel_phasor",
   "statefulness": {
     "enabled": true,
@@ -22,7 +22,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.microscopy.img_pixel_phasor.gui.tool:ImgPixelPhasorTool",
     "cli": "img-pixel-phasor=chisurf.plugins.microscopy.img_pixel_phasor.cli:cli",
-    "services": "chisurf.plugins.microscopy.img_pixel_phasor.backend.services:register_services"
+    "services": "chisurf.plugins.microscopy.img_pixel_phasor.backend.services:register_services",
+    "emtk": "chisurf.plugins.microscopy.img_pixel_phasor.gui.app:make_app"
   },
   "rpc_methods": [
     {
@@ -184,7 +185,7 @@
           },
           "roi": {
             "type": "object",
-            "description": "A serialised region gating the phasor plane — a polygon round a cluster, or a combination of cursors. Replaces center/kind."
+            "description": "A serialised region gating the phasor plane \u2014 a polygon round a cluster, or a combination of cursors. Replaces center/kind."
           }
         },
         "required": [
