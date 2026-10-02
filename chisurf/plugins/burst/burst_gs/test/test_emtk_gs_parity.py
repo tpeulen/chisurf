@@ -242,7 +242,8 @@ def test_every_guide_target_is_drawn():
         app.controller.run()
         _settle(app)
         keys = {app.gs_gui.tour._target_key(s.get("target")) for s in app.gs_gui.tour.steps} - {""}
-        assert keys and keys <= set(app.item_rects), keys - set(app.item_rects)
+        drawn = set(app.item_rects) | set(app.gs_gui.form_state.rects)         # buttons, and the spec's fields
+        assert keys and keys <= drawn, keys - drawn
     finally:
         app.close()
 
@@ -257,6 +258,7 @@ def test_the_simulate_and_fit_steps_wait_for_their_controls():
         def press(key):
             x, y, w, h = app.item_rects[key]
             app.pointer_move(x + w / 2, y + h / 2)
+            _draw(app, size, n=2, painter=PixelPainter)    # a frame between the tour's overlay going and the press, as a host has
             app.press(x + 8, y + h / 2)
             _draw(app, size, n=1, painter=PixelPainter)
             app.release()
@@ -287,7 +289,7 @@ def test_draws_empty_and_populated(size):
         app.controller.run()
         _settle(app)
         strings = _draw(app, size).strings
-        assert "Fitted rates" in strings and "State 1" in strings
+        assert "Fitted rates" in strings and "1 → 2" in strings and "Transition" in strings   # the spec's rates table
     finally:
         app.close()
 

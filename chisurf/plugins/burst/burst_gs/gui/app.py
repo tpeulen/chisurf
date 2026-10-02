@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 from emtk.app import ImApp
 from emtk.im_core import get_current_context
+from emtk.view_form import FormState, draw_sections, find_section
+from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
@@ -56,11 +58,23 @@ class BurstGsGui:
             on_start_guide=self.start_guide,
             size=(700.0, 520.0),
         )
+        # The settings are the AutoForm spec's own fields (typed, clamped to the ranges it declares); the results tables are its
+        # two table sections. Hand-drawn drag / step widgets had no typed entry and no limits (a step below zero was possible).
+        self.form_state = FormState()
+        self.spec = load_view_spec(str(Path(__file__).parent / "burst_gs.view.json"))
+        dock = self.spec["sections"][0]
+        self._fields = self._leaf_sections(dock)
+        self.tables = [find_section(dock, "Rates"), find_section(dock, "States")]
+        for section, height in zip(self.tables, (150, 110)):   # compact: the report text stays under them
+            section["height"] = height
         self.tour = EmTkGuidedTour(
-            steps=guide_resource, get_target_rect=lambda k: self.item_rects.get(k), owner=self.model,
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k) or self.form_state.rects.get(k),
+            owner=self.model,
             wait_for_controls=True,
         )
         self.on_used = self.tour.notify_used  # the Simulate and Fit steps wait for their control
+        self.form_state.on_used = self.tour.notify_used
         self.docks = DockManager(
             Split("h", 0.4, Region("controls"), Split("v", 0.5, Region("results"), Region("plot"))),
             name="burst_gs",
@@ -75,6 +89,19 @@ class BurstGsGui:
         self.docks.add_window(
             "efficiency", "FRET states", self._render_efficiency_window, dock="plot"
         )
+
+    @staticmethod
+    def _leaf_sections(section: dict) -> dict[str, dict]:
+        """Every field of the spec by its attribute name."""
+        found: dict[str, dict] = {}
+        for child in section.get("sections", []) or []:
+            if child.get("attr"):
+                found[child["attr"]] = child
+            found.update(BurstGsGui._leaf_sections(child))
+        return found
+
+    def _group(self, *attrs: str) -> list[dict]:
+        return [self._fields[a] for a in attrs]
 
     def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
         r = rect if rect is not None else im.get_item_rect()
@@ -107,7 +134,17 @@ class BurstGsGui:
             self.help_window.draw((0.0, 0.0, w, h))
 
         if self.tour.active:
-            self.tour.draw(w, h)
+            if self.tour.awaiting:
+                self.tour.draw(w, h)           # the highlighted control must stay clickable: no overlay window over the docks
+            else:
+                # In a window of its own, over the docks: drawn into the root window the card's buttons sat under the dock
+                # windows (a button is hovered only when no other window is under the pointer), so Close Tour, Prev and
+                # most Next presses never arrived.
+                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
+                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
+                im.begin("##gs_tour_overlay", (0.0, 0.0, float(w), float(h)), flags)
+                self.tour.draw(w, h)
+                im.end()
 
     def _render_controls_window(self, box=None) -> None:
 
@@ -167,7 +204,16 @@ class BurstGsGui:
 
         im.separator()
 
-        im.begin_disabled(bool(getattr(self, "controller", None) and self.controller.running))
+        running = bool(getattr(self, "controller", None) and self.controller.running)
+        target = self.model
+        if running:
+            # ``begin_disabled`` greys the spec's fields but they still take typing; they draw against a throw-away copy
+            # while a fit is in flight, so an edit is refused instead of being typed into a run that has its own snapshot.
+            import copy
+
+            target = copy.copy(self.model)
+            target._observers = []
+        im.begin_disabled(running)
 
         # Simulation Mode Toggle
         toggled, self.model.use_simulation = im.checkbox("Use Simulation Mode", self.model.use_simulation)
@@ -177,221 +223,30 @@ class BurstGsGui:
         self.remember("use_simulation")
         if toggled:
             self.track("use_simulation")
+        form = self.form_state
+        draw_sections(self._group("macro_time_resolution_ns"), target, form)
         if self.model.use_simulation:
             if self._section("Simulation Parameters", im.TreeNodeFlags.DEFAULT_OPEN):
-                im.set_next_item_width(120)
-                _, self.model.sim_k_forward = im.input_float(
-                    "k_forward (s⁻¹)", self.model.sim_k_forward, step=100.0
-                )
-                im.set_item_tooltip(
-                    "Forward transition rate of the simulated two-state model in s⁻¹."
-                )
-                self.remember("sim_k_forward")
-                im.set_next_item_width(120)
-                _, self.model.sim_k_backward = im.input_float(
-                    "k_backward (s⁻¹)", self.model.sim_k_backward, step=100.0
-                )
-                im.set_item_tooltip(
-                    "Backward transition rate of the simulated two-state model in s⁻¹."
-                )
-                im.set_next_item_width(120)
-                _, self.model.sim_e1 = im.slider_float("E₁ (State 1)", self.model.sim_e1, 0.0, 1.0)
-                im.set_item_tooltip("FRET efficiency of simulated state 1.")
-                im.set_next_item_width(120)
-                _, self.model.sim_e2 = im.slider_float("E₂ (State 2)", self.model.sim_e2, 0.0, 1.0)
-                im.set_item_tooltip("FRET efficiency of simulated state 2.")
-                im.set_next_item_width(120)
-                _, self.model.sim_n_bursts = im.input_int(
-                    "N Bursts", self.model.sim_n_bursts, step=50
-                )
-                im.set_item_tooltip("Number of simulated bursts to generate.")
-                im.set_next_item_width(120)
-                _, self.model.sim_seed = im.input_int("Seed", self.model.sim_seed, step=1)
-                im.set_item_tooltip(
-                    "Random seed for the simulation; identical seeds reproduce identical bursts."
-                )
-        else:
-            if self._section("Data Input & Channels", im.TreeNodeFlags.DEFAULT_OPEN):
-                im.text(f"Loaded .bur files: {len(self.model.bur_files)}")
-                im.set_next_item_width(180)
-                _, self.model.donor_channels = im.input_text(
-                    "Donor Channels", self.model.donor_channels
-                )
-                im.set_item_tooltip(
-                    "Comma-separated routing channels assigned to the donor (e.g. 0, 8)."
-                )
-                im.set_next_item_width(180)
-                _, self.model.acceptor_channels = im.input_text(
-                    "Acceptor Channels", self.model.acceptor_channels
-                )
-                im.set_item_tooltip(
-                    "Comma-separated routing channels assigned to the acceptor (e.g. 1, 9)."
-                )
-                im.set_next_item_width(120)
-                _, self.model.min_photons = im.input_int(
-                    "Min Photons/Burst", self.model.min_photons, step=5
-                )
-                im.set_item_tooltip(
-                    "Bursts with fewer photons than this are excluded from the fit."
-                )
-
+                draw_sections(self._group("sim_k_forward", "sim_k_backward", "sim_e1", "sim_e2", "sim_photon_rate_khz",
+                                          "sim_n_bursts", "sim_photons_per_burst", "sim_seed"), target, form)
+        elif self._section("Data Input & Channels", im.TreeNodeFlags.DEFAULT_OPEN):
+            im.text(f"Loaded .bur files: {len(self.model.bur_files)}")
+            draw_sections(self._group("data_dir", "file_type", "donor_channels", "acceptor_channels", "min_photons",
+                                      "max_bursts"), target, form)
         im.separator()
-
-        # Model Parameters
         if self._section("Kinetic Model Settings", im.TreeNodeFlags.DEFAULT_OPEN):
-            im.set_next_item_width(120)
-            _, self.model.n_states = im.slider_int("Number of States", self.model.n_states, 2, 4)
-            im.set_item_tooltip("Number of FRET states in the kinetic model (2–4).")
-            self.remember("n_states")
-            im.set_next_item_width(120)
-            _, self.model.initial_rate = im.input_float(
-                "Initial Rate (s⁻¹)", self.model.initial_rate, step=100.0
-            )
-            im.set_item_tooltip("Starting guess for all transition rates in s⁻¹.")
-            im.set_next_item_width(120)
-            _, self.model.max_iterations = im.input_int(
-                "Max Iterations", self.model.max_iterations, step=200
-            )
-            im.set_item_tooltip("Maximum number of optimizer iterations before the fit gives up.")
-            _, self.model.fix_efficiencies = im.checkbox(
-                "Fix Efficiencies", self.model.fix_efficiencies
-            )
-            im.set_item_tooltip("Keep the state FRET efficiencies fixed while fitting the rates.")
-            _, self.model.scan_transition_time = im.checkbox(
-                "Scan Transition Time", self.model.scan_transition_time
-            )
-            im.set_item_tooltip(
-                "Scan a range of transition times and report the likelihood profile."
-            )
-            _, self.model.decode_states = im.checkbox(
-                "Decode State Trajectories", self.model.decode_states
-            )
-            im.set_item_tooltip(
-                "Decode the most likely state sequence per photon and show the transition profile."
-            )
-
-        self._draw_remaining_parameters()
+            draw_sections(self._group("n_states", "initial_rate", "fix_efficiencies", "method", "max_iterations"), target, form)
+        if self._section("Extras", im.TreeNodeFlags.DEFAULT_OPEN):
+            draw_sections(self._group("scan_transition_time", "transit_points", "decode_states", "cross_check_h2mm"),
+                          target, form)
         im.end_disabled()
 
-    def _draw_remaining_parameters(self):
-        im.separator()
-        for attr, label, tooltip in (
-            (
-                "data_dir",
-                "TTTR folder",
-                "Resolve raw measurement filenames from the BUR table against this folder.",
-            ),
-            (
-                "file_type",
-                "TTTR file type",
-                "Use auto to detect the container, or specify SPC-130, PTU, HT3 or HDF.",
-            ),
-            ("method", "Optimizer", "Choose nelder-mead or l-bfgs-b."),
-        ):
-            im.text(label + ":")
-            changed, value = im.input_text("##" + attr, getattr(self.model, attr))
-            im.set_item_tooltip(tooltip)
-            if changed:
-                setattr(self.model, attr, value)
-        for attr, label, minimum, tooltip in (
-            (
-                "macro_time_resolution_ns",
-                "Macro-time tick (ns)",
-                0.0,
-                "Zero reads the header resolution; an explicit tick rescales all fitted rates.",
-            ),
-            (
-                "sim_photon_rate_khz",
-                "Simulated photon rate (kHz)",
-                0.1,
-                "Detected photons per millisecond within each simulated burst.",
-            ),
-        ):
-            changed, value = im.input_float(label, getattr(self.model, attr))
-            im.set_item_tooltip(tooltip)
-            self.remember(attr)  # the guide points at these by attribute
-            if changed:
-                setattr(self.model, attr, max(minimum, value))
-        for attr, label, minimum, tooltip in (
-            (
-                "max_bursts",
-                "Maximum bursts",
-                0,
-                "Limit the input for a quick fit; zero uses all bursts.",
-            ),
-            (
-                "sim_photons_per_burst",
-                "Simulated photons / burst",
-                5,
-                "Number of photons in every simulated burst.",
-            ),
-            (
-                "transit_points",
-                "Transition scan points",
-                2,
-                "Number of finite-transition-time hypotheses in the likelihood scan.",
-            ),
-        ):
-            changed, value = im.input_int(label, getattr(self.model, attr))
-            im.set_item_tooltip(tooltip)
-            self.remember(attr)
-            if changed:
-                setattr(self.model, attr, max(minimum, value))
-        changed, value = im.checkbox("Cross-check H2MM", self.model.cross_check_h2mm)
-        im.set_item_tooltip("Compare the photon-by-photon fit with the discrete-time H2MM method.")
-        if changed:
-            self.model.cross_check_h2mm = value
-
     def _render_results_window(self, box=None) -> None:
-
         ana = self.model.analysis
         if ana is not None:
-            im.text_colored("Fitted Kinetic Rates (s⁻¹):", (0.3, 0.85, 0.4, 1.0))
-            self.remember("Rates")  # the guide's "Rates" table
-            rates = ana.fit.rate_matrix
-            if rates is not None:
-                rates_arr = np.asarray(rates)
-                n = rates_arr.shape[0] if rates_arr.ndim == 2 else self.model.n_states
-                if im.begin_table(
-                    "rates_table", n + 1, im.TableFlags.BORDERS | im.TableFlags.ROW_BG
-                ):
-                    im.table_setup_column("From \\ To", im.TableColumnFlags.WIDTH_FIXED, 70.0)
-                    for j in range(n):
-                        im.table_setup_column(f"State {j + 1}", im.TableColumnFlags.WIDTH_STRETCH)
-                    im.table_headers_row()
-
-                    for i in range(n):
-                        im.table_next_row()
-                        im.table_set_column_index(0)
-                        im.text(f"State {i + 1}")
-                        for j in range(n):
-                            im.table_set_column_index(j + 1)
-                            if i == j:
-                                im.text_colored("—", (0.5, 0.5, 0.5, 1.0))
-                            else:
-                                val = rates_arr[j, i] if rates_arr.ndim == 2 else 0.0
-                                im.text(f"{val:.1f}")
-                    im.end_table()
-
-            im.spacing()
-            effs = ana.fit.efficiencies
-            if effs is not None:
-                im.text_colored("State Efficiencies:", (0.3, 0.8, 1.0, 1.0))
-                eff_strs = [f"E_{i + 1} = {e:.3f}" for i, e in enumerate(effs)]
-                im.text(" | ".join(eff_strs))
-                if im.begin_table(
-                    "state_populations", 3, im.TableFlags.BORDERS | im.TableFlags.ROW_BG
-                ):
-                    for title in ("State", "Efficiency", "Equilibrium population"):
-                        im.table_setup_column(title)
-                    im.table_headers_row()
-                    for row in self.model.state_rows():
-                        im.table_next_row()
-                        for index, key in enumerate(("state", "efficiency", "population")):
-                            im.table_set_column_index(index)
-                            im.text(row[key])
-                    im.end_table()
-
+            # The spec's own table sections (``rate_rows``, ``state_rows``): sortable, selectable, tooltips per column.
+            draw_sections(self.tables, self.model, self.form_state)
+            self.item_rects["Rates"] = self.form_state.rects.get("rate_rows", self.item_rects.get("Rates", (0, 0, 0, 0)))
             im.separator()
 
         im.text_colored("Fit Summary & Console:", (0.8, 0.8, 0.8, 1.0))
@@ -517,6 +372,16 @@ class BurstGsApp(ImApp):
     def on_paths_dropped(self, paths):
         if self.controller is not None:
             self.controller.on_paths_dropped(paths)
+
+    def files_dropped(self, paths) -> bool:
+        """A host's file drop (Qt, the desktop window, a page): the same as ``on_paths_dropped``.
+
+        Without this name only the Qt host reached the controller: the desktop and web hosts deliver ``files_dropped`` /
+        ``on_files_dropped`` and found nothing to call.
+        """
+        paths = list(paths)
+        self.on_paths_dropped(paths)
+        return bool(paths) and self.controller is not None
 
 
 def create_app(**kwargs):
