@@ -1,0 +1,1921 @@
+{
+  "entrypoint": "chisurf.plugins.modelling.structure_tools.gui.tool:StructureToolsTool",
+  "source_revision": "0289fabcc148e021739eddf135b1250668dc23c6",
+  "status": "captured",
+  "image": "modelling__structure_tools.png",
+  "width": 1200,
+  "height": 750,
+  "checkout_supplements": [],
+  "historical_asset_aliases": [
+    "chisurf/plugins/test",
+    "chisurf/plugins/tests",
+    "chisurf/plugins/backend",
+    "chisurf/plugins/cli",
+    "chisurf/plugins/gui",
+    "chisurf/plugins/api",
+    "chisurf/plugins/pong_game",
+    "chisurf/plugins/breakout_game",
+    "chisurf/plugins/tetris_game",
+    "chisurf/plugins/ptu_header_edit",
+    "chisurf/plugins/ptu_alex_creator",
+    "chisurf/plugins/audifier",
+    "chisurf/plugins/tttr_time_windows",
+    "chisurf/plugins/tttr_microtime_lut",
+    "chisurf/plugins/tttr_settings_generator",
+    "chisurf/plugins/tttr_splitter",
+    "chisurf/plugins/tttr_microtime_shifter",
+    "chisurf/plugins/tttr_histogram",
+    "chisurf/plugins/microtime_histogram",
+    "chisurf/plugins/tttr_count_rate_analysis",
+    "chisurf/plugins/trace_browser",
+    "chisurf/plugins/tttr_lut_tools",
+    "chisurf/plugins/tttr_image_browser",
+    "chisurf/plugins/tttr_correlate",
+    "chisurf/plugins/intensity_trace",
+    "chisurf/plugins/tttr_toolbox",
+    "chisurf/plugins/plugin_check",
+    "chisurf/plugins/menu_switch",
+    "chisurf/plugins/screenshot",
+    "chisurf/plugins/project_browser",
+    "chisurf/plugins/style_manager",
+    "chisurf/plugins/plugin_manager",
+    "chisurf/plugins/mfdb_admin",
+    "chisurf/plugins/setup",
+    "chisurf/plugins/user_editor",
+    "chisurf/plugins/updater",
+    "chisurf/plugins/about",
+    "chisurf/plugins/switch_user",
+    "chisurf/plugins/lightpath_simulator",
+    "chisurf/plugins/setup_channel_definition",
+    "chisurf/plugins/database_connector",
+    "chisurf/plugins/f_test",
+    "chisurf/plugins/code_editor",
+    "chisurf/plugins/batch_analysis",
+    "chisurf/plugins/wizards",
+    "chisurf/plugins/boarding",
+    "chisurf/plugins/model_manager",
+    "chisurf/plugins/globalview",
+    "chisurf/plugins/acq",
+    "chisurf/plugins/help",
+    "chisurf/plugins/fret_calculator",
+    "chisurf/plugins/phasor_calculator",
+    "chisurf/plugins/hub",
+    "chisurf/plugins/structure_tools",
+    "chisurf/plugins/hydropro",
+    "chisurf/plugins/fret",
+    "chisurf/plugins/fps_json_editor",
+    "chisurf/plugins/proteinmc",
+    "chisurf/plugins/fcs_filter_calculator",
+    "chisurf/plugins/flc_2d",
+    "chisurf/plugins/fcs_correlator",
+    "chisurf/plugins/fcs_merger",
+    "chisurf/plugins/fcs_calculator",
+    "chisurf/plugins/fcs_toolbox",
+    "chisurf/plugins/fcs_channel_preset",
+    "chisurf/plugins/fcs_convert",
+    "chisurf/plugins/fluorophore_db",
+    "chisurf/plugins/{{cookiecutter.plugin_name}}",
+    "chisurf/plugins/burst_mle_analysis",
+    "chisurf/plugins/burst_background",
+    "chisurf/plugins/bid_to_analysis",
+    "chisurf/plugins/burst_selection",
+    "chisurf/plugins/burst_browser",
+    "chisurf/plugins/burst_analysis",
+    "chisurf/plugins/burst_bva",
+    "chisurf/plugins/burst_fcs_correlator",
+    "chisurf/plugins/fret_trajectory",
+    "chisurf/plugins/traj_energy",
+    "chisurf/plugins/traj_remove_clashes",
+    "chisurf/plugins/potential_energy",
+    "chisurf/plugins/traj_tools",
+    "chisurf/plugins/traj_convert",
+    "chisurf/plugins/traj_save_topology",
+    "chisurf/plugins/traj_align",
+    "chisurf/plugins/traj_rotate_translate",
+    "chisurf/plugins/traj_join",
+    "chisurf/plugins/lifetime_analysis",
+    "chisurf/plugins/lltf",
+    "chisurf/plugins/maxent_decay",
+    "chisurf/plugins/irf_estimator",
+    "chisurf/plugins/tr_anisotropy",
+    "chisurf/plugins/sm_image_mle",
+    "chisurf/plugins/img_pixel_mle",
+    "chisurf/plugins/img_calibration",
+    "chisurf/plugins/imaging_common",
+    "chisurf/plugins/img_pixel_intensity",
+    "chisurf/plugins/imaging_tools",
+    "chisurf/plugins/clsm",
+    "chisurf/plugins/img_pixel_nb",
+    "chisurf/plugins/psf_determination",
+    "chisurf/plugins/img_pixel_micro_time",
+    "chisurf/plugins/img_pixel_phasor"
+  ],
+  "controls": [
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QSplitter",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QStackedWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "\ud83d\udcc2 Load",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "\ud83d\udcbe Save",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Update UI models from JSON editor text",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "\ud83d\uddd1\ufe0f Clear",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Show help and documentation",
+      "visible": true
+    },
+    {
+      "class": "FpsJsonEditor",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "DockArea",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "DockDropOverlay",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "DockTabWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QStackedWidget",
+      "name": "qt_tabwidget_stackedwidget",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "MolView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QtGLRenderer",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QRubberBand",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPlainTextEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "TextEditor",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "FindBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Close (Esc)",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Previous match (Shift+F3)",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Next match (F3 / Enter)",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Match case",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Whole word",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Regular expression",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "LineNumberArea",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "FlexFitPanel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "Add a new FlexFit set",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "Remove the current FlexFit set",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QTableWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QTableWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "DistancePanel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolBar",
+      "name": "fpsJsonEditorMainToolbar",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "qt_toolbar_ext_button",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QMenu",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "toolbarAddRow",
+      "tooltip": "\u2795 Add Row",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "scoreSetTinyButton",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "scoreSetTinyButton",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QTableWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CenteredCheckBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QCheckBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "<b>Distance restraint details:</b><br>Type: dRDA<br>Forster radius (R\u2080): 52.0 \u00c5<br>Distance (d): 50.0 \u00c5<br>Error Neg (err\u207b): 5.0 \u00c5<br>Error Pos (err\u207a): 5.0 \u00c5",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "PositionPanel",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolBar",
+      "name": "fpsJsonEditorMainToolbar",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "qt_toolbar_ext_button",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QMenu",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "toolbarAddRow",
+      "tooltip": "\u2795 Add Row",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "toolbarComputeAV",
+      "tooltip": "\ud83d\ude80 Compute AVs",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "toolbarSaveMRC",
+      "tooltip": "Save selected computed AV(s) as MRC density map(s)",
+      "visible": true
+    },
+    {
+      "class": "QTableWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "CenteredCheckBox",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QCheckBox",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "PdbSelectWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "<b>AV/Dye Parameter Details:</b><br>Linker Length (L): 20.0 \u00c5<br>Linker Width (W): 4.5 \u00c5<br>Radius 1 (R1): 3.5 \u00c5<br>Radius 2 (R2): 0.0 \u00c5<br>Radius 3 (R3): 0.0 \u00c5<br>Body ID: 0<br>Allowed Sphere Rad: 1.5 \u00c5<br>Grid Resolution: 1.5 \u00c5<br>Chain Weighting: False<br>Contact Vol Thickness: 0.0 \u00c5<br>Contact Vol Trapped Frac: -1.0<br>Min Sphere Vol Frac: 0.0",
+      "visible": true
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QPushButton",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QProgressBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "DockTabBar",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "ScrollLeftButton",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "ScrollRightButton",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QSplitterHandle",
+      "name": "qt_splithandle_",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QSplitterHandle",
+      "name": "qt_splithandle_",
+      "tooltip": "",
+      "visible": true
+    }
+  ]
+}

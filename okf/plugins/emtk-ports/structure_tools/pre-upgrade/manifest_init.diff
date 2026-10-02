@@ -1,0 +1,30 @@
+diff --git a/chisurf/plugins/modelling/structure_tools/manifest.json b/chisurf/plugins/modelling/structure_tools/manifest.json
+index cf8af42db..d34d7c0e3 100644
+--- a/chisurf/plugins/modelling/structure_tools/manifest.json
++++ b/chisurf/plugins/modelling/structure_tools/manifest.json
+@@ -9,7 +9,7 @@
+   "categories": [
+     "Structure"
+   ],
+-  "icon": "🧬",
++  "icon": "\ud83e\uddec",
+   "statefulness": {
+     "enabled": true,
+     "window": {
+@@ -18,7 +18,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.modelling.structure_tools.gui.tool:StructureToolsTool"
++    "gui": "chisurf.plugins.modelling.structure_tools.gui.tool:StructureToolsTool",
++    "emtk": "chisurf.plugins.modelling.structure_tools.app:make_app"
+   },
+   "optional_requires": {
+     "fps_json_editor": "*",
+@@ -28,4 +29,4 @@
+     "quenching_estimator": "*",
+     "traj_tools": "*"
+   }
+-}
++}
+\ No newline at end of file

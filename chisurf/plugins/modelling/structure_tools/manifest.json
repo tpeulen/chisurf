@@ -9,7 +9,7 @@
   "categories": [
     "Structure"
   ],
-  "icon": "🧬",
+  "icon": "\ud83e\uddec",
   "statefulness": {
     "enabled": true,
     "window": {
@@ -18,7 +18,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.modelling.structure_tools.gui.tool:StructureToolsTool"
+    "gui": "chisurf.plugins.modelling.structure_tools.gui.tool:StructureToolsTool",
+    "emtk": "chisurf.plugins.modelling.structure_tools.app:make_app"
   },
   "optional_requires": {
     "fps_json_editor": "*",

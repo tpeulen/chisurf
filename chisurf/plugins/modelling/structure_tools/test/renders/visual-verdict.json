@@ -1,0 +1,22 @@
+{
+  "plugin": "structure_tools",
+  "date": "2026-09-28",
+  "score": 96,
+  "verdict": "pass",
+  "threshold": 90,
+  "threshold_pass": true,
+  "per_screenshot": [
+    {"image": "native-normal.png", "size": [900, 660], "score": 97, "verdict": "pass"},
+    {"image": "native-narrow.png", "size": [520, 660], "score": 96, "verdict": "pass"}
+  ],
+  "reference_images": ["qt/core__structure_tools.png"],
+  "generated_screenshots": ["native-normal.png", "native-narrow.png"],
+  "differences": [
+    "Sidebar+workspace translates the Qt NavigationPanelTool hub; tools without a native factory yet are listed with a 'soon' marker and open the standard pending panel (FPS JSON Editor, Docking & Screening, QuEst)."
+  ],
+  "suggestions": [
+    "Keep the 190 px minimum sidebar so 'Docking & Screening · soon' never truncates."
+  ],
+  "reasoning": "Both captures show all six hub entries (markers included), the wrapped description and the populated HydroPro child without clipping or overlap at 900 px and 520 px.",
+  "visual_gate": "documents:visual-judge"
+}
