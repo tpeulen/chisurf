@@ -26,9 +26,14 @@ then apply automatically at read time.
 
 ### Compute a LUT per channel and add it to the setup
 
-In the **Channel Definition** editor, the **LUT handling** box has a
-**Configure LUTs…** button that opens **LUT Tools**. The **① Compute LUT** tab is
-the tool you use; tab ② (settings.tttr.json) is optional file interchange.
+In the **Channel Definition** editor ([guide 87](87_channel_definition.md)), the
+**LUT handling (TAC linearization)** section lists every routing channel with its LUT
+and micro-time shift. **Assign LUT…** assigns a LUT file to the selected row;
+**Configure LUTs…** opens the LUT tools window of the editor (compute from the
+read calibration decay with a linear region or automatically, assign, export, remove
+for one channel); **Adjust shifts…** aligns the channels on the decay. The standalone
+**LUT Tools** plugin below does the same on its own, with the **① Compute LUT** tab
+as the tool you use; tab ② (settings.tttr.json) is optional file interchange.
 
 Load one or more TTTR files of a **uniform-illumination** (uncorrelated-light /
 scatter) measurement — light that *should* produce a flat TAC histogram. Because
@@ -47,7 +52,7 @@ optional.
 
 ### It lands in the detector setup
 
-Back in the editor, the **LUT handling** box now lists the per-channel LUT you
+Back in the editor, the **LUT handling** section now lists the per-channel LUT you
 added. Tick **Apply TAC linearization (LUT) when reading** and the correction is
 applied to every read of that setup — hover a LUT to see its plot.
 
@@ -55,7 +60,7 @@ applied to every read of that setup — hover a LUT to see its plot.
 :name: fig-lut-channel-box
 :width: 90%
 
-The LUT-handling box in the channel-definition editor.
+The LUT handling section of the channel-definition editor: channel 0 has an assigned LUT (named by its file), channel 8 a shift of 3 bins, and the gate is on.
 ```
 
 From then on, any reader that selects the setup linearizes photons at read time

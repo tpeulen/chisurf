@@ -43,17 +43,17 @@ above the image; the histogram on the right is the display levels.
 The tiles follow the detector setup. Without one the browser lists every
 supported file type and draws **one tile with all channels** (the file is
 shown, nothing is gated). To define detectors, open the **Detector setup** tab:
-it is the same editor as in *Setup / Channel Definition*: routing channels,
-micro-time windows (PIE windows), the reading routine (**TTTR format**), TAC
-corrections and the optical setup. Press **Use setup and continue** to use the
-settings; the file list then shows only the file types the setup reads (a setup
-that reads **HT3** lists no PTU file).
+it is the same one-page editor as in *Setup / Channel Definition* ([guide 87](87_channel_definition.md)):
+the Setup row, the **TTTR Reading routine** (**File Type**, timing, binning), the
+**PIE Windows** and **Detectors** tables, **LUT handling** and **Optical Setup...**.
+Press **Use setup and continue** to use the settings; the file list then shows only
+the file types the setup reads (a setup that reads **HT3** lists no PTU file).
 
 ```{figure} figures/image_browser_setup.png
 :name: fig-image-browser-setup
 :width: 100%
 
-The **TTTR reading** tab of the shared setup editor on the Detector setup page.
+The shared setup editor on the Detector setup page: the Setup row, the reading routine, the detector table and the LUT handling, in one page (read with a BH SPC-132 measurement).
 ```
 
 A detector with routing channels `0, 1` and the micro-time range `0:4095`

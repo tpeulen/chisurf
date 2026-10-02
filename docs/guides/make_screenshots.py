@@ -2451,34 +2451,8 @@ def main():
     tool.dock_area.setCurrentWidget(tool.tac_panel)
     _grab(tool, "lut_tools_workspace.png")
 
-    # Channel-definition editor with the LUT-handling box.
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition import (
-        DetectorWizardPage,
-    )
-
-    data = {
-        "windows": {"prompt": [0, 2048]},
-        "detectors": {"green": {"chs": [0, 8]}, "red": {"chs": [1, 9]}},
-        "tttr_reading": {
-            "file_type": "SPC-130",
-            "macro_time_resolution": 1.0,
-            "micro_time_resolution": 0.032,
-            "micro_time_binning": 1,
-        },
-        "apply_lut": True,
-        "channel_luts": {"0": np.linspace(0, 4096, 4096).tolist()},
-        "channel_shifts": {"8": 3},
-        "channel_lut_sources": {"0": "uniform.spc"},
-    }
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
-        json.dump(data, fh)
-        setup_json = fh.name
-    page = DetectorWizardPage(json_file=setup_json, show_setup_selection=False)
-    page.resize(680, 900)
-    for box in (page._box_reading, page._box_windows, page._box_detectors, page._box_lut):
-        box.set_expanded(box is page._box_detectors or box is page._box_lut)
-    _grab(page, "lut_channel_box.png")
-    os.unlink(setup_json)
+    # The channel-definition editor (LUT handling section, lut_channel_box.png) is the one-page emtk editor:
+    # docs/guides/screenshots/channel_editor_emtk.py draws it.
 
     print("screenshots written to", FIG)
 

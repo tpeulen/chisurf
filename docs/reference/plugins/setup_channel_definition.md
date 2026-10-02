@@ -21,7 +21,7 @@ Detector Channel and PIE-window definition wizard
 | Menu path | Setup → **Channel Definition** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 
 ## Parameters
 
@@ -31,3 +31,8 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 
 - Plugin package: `chisurf/plugins/core/setup_channel_definition/`
 - Manifest: {src}`chisurf/plugins/core/setup_channel_definition/manifest.json`
+
+## Theory and workflow
+
+- **Workflow** — [Detector setup: channels, PIE windows, timing and LUTs](/guides/87_channel_definition.md)
+- **Workflow** — [TTTR micro-time LUT](/guides/37_tttr_microtime_lut.md)
