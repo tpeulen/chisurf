@@ -1,0 +1,12 @@
+diff --git a/chisurf/plugins/microscopy/img_frc/manifest.json b/chisurf/plugins/microscopy/img_frc/manifest.json
+index c30512b3b..8ef6b084a 100644
+--- a/chisurf/plugins/microscopy/img_frc/manifest.json
++++ b/chisurf/plugins/microscopy/img_frc/manifest.json
+@@ -20,6 +20,7 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.microscopy.img_frc.gui.tool:ImgFrcTool",
++    "emtk": "chisurf.plugins.microscopy.img_frc.app:make_app",
+     "cli": "img-frc=chisurf.plugins.microscopy.img_frc.cli:cli",
+     "services": "chisurf.plugins.microscopy.img_frc.backend.services:register_services"
+   },
