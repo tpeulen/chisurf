@@ -13,10 +13,12 @@ from pathlib import Path
 import chisurf as cs
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
-from chisurf.plugins.core.plugin_check.gui.tool import (
-    PluginCheckTool,
-    PluginCheckWidget,
-)
+
+def __getattr__(attribute):
+    if attribute in {'PluginCheckTool', 'PluginCheckWidget'}:
+        from chisurf.plugins.core.plugin_check.gui import tool
+        return getattr(tool, attribute)
+    raise AttributeError(f"module {__name__!r} has no attribute {attribute!r}")
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -35,6 +37,8 @@ icon = "🧪"
 
 def load():
     """Return the plugin check tool."""
+    from chisurf.plugins.core.plugin_check.gui.tool import PluginCheckTool
+
     return PluginCheckTool()
 
 
@@ -48,6 +52,8 @@ __all__ = [
 ]
 
 if __name__ == "plugin":
+    from chisurf.plugins.core.plugin_check.gui.tool import PluginCheckTool
+
     try:
         parent = getattr(cs, "cs", None)
         window = PluginCheckTool(parent=parent)
