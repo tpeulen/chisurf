@@ -29,23 +29,10 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "convert_structures.view.json"
 #:
 #: Only what can actually be *written*. The list used to also offer ``.xtc`` and
 #: ``.h5``: XTC support was dropped entirely on 2026-08-11 (DCD is lossless and
-#: enough) and HDF5 trajectories were retired with
-#: :doc:`PRD-80 </prds/prd-80>`. Offering an unwritable format in a combo box
+#: enough) and HDF5 trajectories were retired. Offering an unwritable format in a combo box
 #: turns a wrong choice into a traceback at save time, after the user has picked
 #: a directory and a name.
 ENDINGS = (".dcd", ".pdb")
-
-
-class Object:
-    """Plain argument holder for the conversion parameters.
-
-    The conversion parameters were assembled for an external converter that took
-    an ``argparse``-style namespace. The shell-out is gone -- it was this same
-    read/write loop with an ``argv`` in the middle -- but the holder is kept as
-    the one place the parameters are gathered and validated before the loop runs.
-    """
-
-    pass
 
 
 class MDConverterViewModel:
@@ -118,6 +105,10 @@ class MDConverterViewModel:
         lines = "<br>".join(html.escape(line) for line in self._log)
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
+    def log_text(self) -> list[str]:
+        """Return the raw log lines (bound by the native app; no HTML)."""
+        return list(self._log)
+
     # ── file wiring ─────────────────────────────────────────────────────
     @property
     def topology_file(self) -> str | None:
@@ -154,68 +145,69 @@ class MDConverterViewModel:
         self._notify("target")
 
     # ── action ──────────────────────────────────────────────────────────
-    def convert(self) -> None:
-        """Convert the input trajectory using the current settings.
+    def frame_selection(self, n_frames: int) -> range:
+        """The frames to write: :attr:`first_frame` to :attr:`last_frame` *inclusive*, every :attr:`stride`-th.
 
-        When :attr:`split` is set, every frame is iterated and written to its own
-        ``{filename}_%08d{ending}`` file in :attr:`target_directory`; otherwise the
-        whole trajectory is read and written as a single ``{filename}{ending}``
-        file. A non-default :attr:`first_frame` /
-        :attr:`last_frame` range switches the reader from chunked/strided reads to
-        an index slice, mirroring the legacy tool.
+        ``last_frame = -1`` means the last frame. The range used to be built as
+        ``slice(first, last, stride)``, which left the last frame out -- and with
+        ``-1`` dropped the trajectory's final frame.
+        """
+        last = n_frames - 1 if self.last_frame < 0 else min(int(self.last_frame), n_frames - 1)
+        return range(max(0, int(self.first_frame)), last + 1, max(1, int(self.stride)))
+
+    def input_files(self) -> list[str]:
+        """The files to read: the trajectory, or (folder mode) every ``*.pdb`` in it, in name order."""
+        if not self.use_folder:
+            return [self.trajectory]
+        files = sorted(glob.glob(os.path.join(self.trajectory, "*.pdb")))
+        if not files:
+            raise ValueError(f"No *.pdb files in {self.trajectory}")
+        return files
+
+    def convert(self) -> None:
+        """Convert the input using the current settings.
+
+        The input -- one trajectory, or every PDB of a folder joined in name
+        order as consecutive frames -- is read, the frames of
+        :meth:`frame_selection` are taken, and written either as one
+        ``{filename}{ending}`` file or, with :attr:`split`, one
+        ``{filename}_{frame:08d}{ending}`` file per frame (numbered by the source
+        frame) in :attr:`target_directory`.
+
+        The selection used to apply only to the single-file path: split mode
+        ignored the stride and crashed on a frame range, and folder mode built
+        the list of PDBs and then read the folder path itself.
         """
         from chisurf.core.structure import trajectory_data as md
 
+        if not self.target_directory or not os.path.isdir(self.target_directory):
+            raise ValueError("Choose an existing target folder first.")
         self.append_log("Starting trajectory conversion")
-        args = Object()
-        args.topology = self.topology_file
-        args.input = (
-            [self.trajectory]
-            if not self.use_folder
-            else glob.glob(os.path.join(self.trajectory, "*.pdb"))
-        )
-        args.index = None
-        args.chunk = 1000
-        args.stride = self.stride
-
-        if self.first_frame != 0 or self.last_frame != -1:
-            args.index = slice(self.first_frame, self.last_frame, self.stride)
-            args.stride = None
-            args.chunk = None
-
-        args.force = True
-        args.atom_indices = None
-        self.append_log(f"Input frames: {self.first_frame}:{self.last_frame} stride={self.stride}")
-
+        inputs = self.input_files()
+        parts = [md.load(path, top=self.topology_file) for path in inputs]
+        whole = parts[0] if len(parts) == 1 else md.join(parts)
+        if len(inputs) > 1:
+            self.append_log(f"Read {len(inputs)} files as {whole.n_frames} frames")
+        frames = list(self.frame_selection(whole.n_frames))
+        self.append_log(f"Input frames: {self.first_frame}..{self.last_frame} stride={self.stride} "
+                        f"({len(frames)} of {whole.n_frames})")
+        if not frames:
+            raise ValueError("The frame range selects no frames.")
+        selected = whole[frames]
         if self.split:
-            i = 0
-            for chunk in md.iterload(self.trajectory, chunk=args.chunk, top=self.topology_file):
-                for s in chunk:
-                    try:
-                        fn = os.path.join(
-                            self.target_directory,
-                            self.filename + f"_{i:08d}" + self.ending,
-                        )
-                        self.append_log(f"Saving frame {i}: {fn}")
-                        s.save(fn)
-                    except Exception as exc:  # noqa: BLE001
-                        self.append_log(f"Frame {i} failed: {exc}")
-                    i += 1
+            for frame, single in zip(frames, (selected[i] for i in range(len(frames)))):
+                fn = os.path.join(self.target_directory, f"{self.filename}_{frame:08d}{self.ending}")
+                single.save(fn)
+            self.append_log(f"Wrote {len(frames)} files of {whole.n_atoms} atoms: "
+                            f"{self.filename}_{frames[0]:08d}{self.ending} … {self.filename}_{frames[-1]:08d}{self.ending}")
         else:
-            args.output = os.path.join(self.target_directory, self.filename + self.ending)
-            self.append_log(f"Output: {args.output}")
-            # One file: read the whole trajectory and write it out. This used
-            # to shell out to an external converter, which is the same loop
-            # with an argv in the middle.
-            whole = md.load(self.trajectory, top=self.topology_file or None, stride=args.stride)
-            if args.index is not None:
-                whole = whole[args.index]
-            whole.save(args.output)
-            # Say what was written. "Conversion done" over a zero-frame output
-            # reads exactly like a good run -- and a stride or an index that
-            # selects nothing is the easy way to get one.
-            self.append_log(f"Wrote {whole.n_frames} frames of {whole.n_atoms} atoms")
+            output = os.path.join(self.target_directory, self.filename + self.ending)
+            self.append_log(f"Output: {output}")
+            selected.save(output)
+            # Say what was written: "Conversion done" over a zero-frame output
+            # reads exactly like a good run.
+            self.append_log(f"Wrote {selected.n_frames} frames of {selected.n_atoms} atoms")
         self.append_log("Conversion done")
 
 
-__all__ = ["MDConverterViewModel", "Object", "ENDINGS"]
+__all__ = ["MDConverterViewModel", "ENDINGS"]

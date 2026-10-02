@@ -5927,9 +5927,10 @@ Open:
    and gets a hard-coded input (20 °C, 0.01 P, 1e5 Da); only D_t parsed; job
    folders overwritten; `_DOWNLOAD_URL` is the HYDRO++ page; the startup
    dialog's "don't show" is never saved. No macOS HYDROPRO binary exists.
-7. **Trajectory tools:** Convert split mode ignores stride and crashes with a
+7. **Trajectory tools:** ~~Convert split mode ignores stride and crashes with a
    frame range (`chunk=None`); folder mode loads the folder itself; "Last
-   frame" exclusive. ~~Join interleaves chunks A,B,A… and truncates to the
+   frame" exclusive~~ — fixed 2026-10-02 in the traj_convert upgrade (one frame
+   selection for every mode, inclusive, folder PDBs joined in name order). ~~Join interleaves chunks A,B,A… and truncates to the
    shorter trajectory~~ — fixed 2026-10-02 in the traj_join upgrade (whole
    trajectories appended, whole-trajectory reversal, a mismatch raises). FRET tab
    has no topology row, so a DCD cannot be opened;
@@ -6194,3 +6195,12 @@ the repo's `test` is imported first). The move is not a `list.insert` on `sys.pa
 probably a slice assignment or an import hook; the guarded insert in `chisurf/plugins/ndxplorer/__init__.py` only runs as a
 plugin. Workaround: import `test.gui` before any plugin. *Not fixed here:* find the mover, and rename ndxplorer's top-level
 `test` package (or stop putting the module root on the path) so the two cannot collide.
+
+## `trajectory_data.load` reads a multi-model PDB as its first model (found 2026-10-02)
+
+**Measured** in the traj_convert upgrade: Convert writes frames 0, 10, 20 of hgbp1 to one `.pdb` with three `MODEL`
+blocks (correct), but `chisurf.core.structure.trajectory_data.load` returns one frame for it — by its docstring a
+structure file is "read as a single frame" (`Topology.from_file` reads the first model). So a multi-frame PDB ChiSurf
+writes cannot be read back by ChiSurf as a trajectory; the converter's parity test reads the models from the PDB columns
+instead. *Not fixed here:* reading every `MODEL` block into the frame axis belongs in core (`trajectory_data.load` /
+`chisurf/core/fio/structure`), with a round-trip test; guide 81 lists it under Known defects.

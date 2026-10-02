@@ -61,6 +61,9 @@ class PathField:
         Text shown in the empty field, on the field and on ``…``.
     dialog_title : str
         Title of the browse dialog.
+    folder : bool or callable
+        The row takes a folder instead of a file -- always, or when
+        ``folder(model)`` says so (a toggle that switches the input kind).
     """
 
     key: str
@@ -72,6 +75,10 @@ class PathField:
     tooltip: str
     browse_tooltip: str
     dialog_title: str
+    folder: Any = False
+
+    def takes_folder(self, model) -> bool:
+        return bool(self.folder(model) if callable(self.folder) else self.folder)
 
 
 @dataclass
@@ -82,21 +89,25 @@ class SaveAction:
     chosen first (``None`` when the action can run); ``suggest(model)`` is the
     file name the save dialog starts with; ``failure`` heads the message a
     failed run leaves in the window (the Qt tool's error-box title) and
-    ``cancelled`` is what a closed save dialog logs.
+    ``cancelled`` is what a closed save dialog logs. Without a
+    ``dialog_title`` the action runs at once (the target comes from the
+    tool's own fields) and ``run`` gets ``None``; ``done`` is said in the
+    window after a run that did not fail (the Qt tool's confirmation box).
     """
 
     key: str
     label: str
     tooltip: str
-    dialog_title: str
+    dialog_title: str | None
     filters: list
-    run: Callable[[Any, str], Any]
+    run: Callable[[Any, str | None], Any]
     missing: Callable[[Any], str | None] = lambda model: (
         None if model.trajectory_filename else "Open a trajectory first."
     )
     suggest: Callable[[Any], str] = lambda model: ""
     failure: str = "Save failed"
     cancelled: str = "Save cancelled"
+    done: str = ""
 
 
 def trajectory_field(**overrides) -> PathField:
@@ -150,10 +161,17 @@ class TrajToolApp(TourTarget, ImApp):
         The file rows, in order.
     action : SaveAction
         The action button under the rows.
+    action_key : str, optional
+        A custom section of the spec of its own for the action button (the
+        Qt converter put it under its output fields); without one the button
+        closes the io section.
+
+    A spec of one panel is drawn as that panel's sections under the window
+    caption; a spec of several panels keeps them, titled.
     """
 
     def __init__(self, model, folder: pathlib.Path, spec_name: str, io_key: str, title: str,
-                 paths: Sequence[PathField], action: SaveAction) -> None:
+                 paths: Sequence[PathField], action: SaveAction, action_key: str | None = None) -> None:
         self.model = model
         self.folder = pathlib.Path(folder)
         self.title = title
@@ -161,6 +179,7 @@ class TrajToolApp(TourTarget, ImApp):
         self.action = action
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.status = ""
+        self.notice = ""
         self.future: concurrent.futures.Future | None = None
         self._executor = concurrent.futures.ThreadPoolExecutor(1, thread_name_prefix=io_key)
         self.dialog: FileDialog | None = None
@@ -170,10 +189,16 @@ class TrajToolApp(TourTarget, ImApp):
 
         spec = json.loads((self.folder / spec_name).read_text(encoding="utf-8"))
         panel = spec["sections"][0]
-        self.spec = {"sections": [self._host_section(s) for s in panel.get("sections", [])]}
+        top = panel.get("sections", []) if len(spec["sections"]) == 1 else [
+            dict(s, collapsible=True) if s.get("type") == "panel" else s for s in spec["sections"]
+        ]                                                   # several panels fold, as the Qt AutoForm panels do
+        self.spec = {"sections": [self._host_section(s) for s in top]}
         self.form = FormState()
         self.form.custom[io_key] = self._draw_io
         self.form.custom[LOG_KEY] = self._draw_log
+        self.action_key = action_key
+        if action_key:
+            self.form.custom[action_key] = lambda *args: self._draw_action()
         self.docks = DockManager(Region("main"))
         self.docks.add_window("main", title, self._draw_main, dock="main", closable=False)
         self.native_layouts = {"main": self.docks}
@@ -190,11 +215,13 @@ class TrajToolApp(TourTarget, ImApp):
         self.form.on_used = self.tour.notify_used
         super().__init__(gui=self.render, continuous=False)
 
-    @staticmethod
-    def _host_section(section: dict) -> dict:
+    @classmethod
+    def _host_section(cls, section: dict) -> dict:
         """The log ``info`` section becomes a scrolling region; everything else draws as declared."""
         if section.get("type") == "info" and section.get("source") == "log_html":
             return {"type": "custom", "key": LOG_KEY}
+        if isinstance(section.get("sections"), list):
+            return dict(section, sections=[cls._host_section(s) for s in section["sections"]])
         return section
 
     # ── state ─────────────────────────────────────────────────────────────
@@ -210,9 +237,11 @@ class TrajToolApp(TourTarget, ImApp):
         self.help_window.show()
 
     def set_path(self, path_field: PathField, path: str) -> bool:
-        """Put *path* into a file row, as the Qt row does: only a file that exists."""
-        if not path or not pathlib.Path(path).is_file():
-            self.status = f"Not a file: {path}" if path else ""
+        """Put *path* into a row, as the Qt row does: only a file (or folder, for a folder row) that exists."""
+        folder = path_field.takes_folder(self.model)
+        exists = pathlib.Path(path).is_dir() if folder else pathlib.Path(path).is_file()
+        if not path or not exists:
+            self.status = f"Not a {'folder' if folder else 'file'}: {path}" if path else ""
             return False
         getattr(self.model, path_field.setter)(str(path))
         self.status = ""
@@ -221,8 +250,10 @@ class TrajToolApp(TourTarget, ImApp):
     def browse(self, path_field: PathField) -> None:
         """Open the row's file dialog; the pick goes into the row."""
         current = getattr(self.model, path_field.attr) or ""
-        self._open_dialog(FileDialog(path_field.dialog_title, mode="open", filters=path_field.filters,
-                                     directory=os.path.dirname(current) or None),
+        folder = path_field.takes_folder(self.model)
+        start = current if folder and os.path.isdir(current) else os.path.dirname(current)
+        self._open_dialog(FileDialog(path_field.dialog_title, mode="folder" if folder else "open",
+                                     filters=path_field.filters, directory=start or None),
                           lambda path: self.set_path(path_field, path))
 
     def begin_save(self) -> None:
@@ -231,18 +262,21 @@ class TrajToolApp(TourTarget, ImApp):
         if missing:
             self.status = missing
             return
+        if not self.action.dialog_title:
+            self.save(None)
+            return
         source = getattr(self.model, self.paths[0].attr) or ""     # the first row is the source
         self._open_dialog(FileDialog(self.action.dialog_title, mode="save", filters=self.action.filters,
                                      directory=os.path.dirname(source) or None,
                                      filename=self.action.suggest(self.model)),
                           self.save, on_cancel=lambda: self.model.append_log(self.action.cancelled))
 
-    def save(self, target: str) -> None:
+    def save(self, target: str | None) -> None:
         """Run the action on *target* on the worker; the result lands in the log and status."""
         if self.running:
             return
-        self.status = ""
-        self.future = self._executor.submit(self.action.run, self.model, str(target))
+        self.status = self.notice = ""
+        self.future = self._executor.submit(self.action.run, self.model, None if target is None else str(target))
 
     def poll(self) -> None:
         if self.future is None or not self.future.done():
@@ -252,6 +286,8 @@ class TrajToolApp(TourTarget, ImApp):
             future.result()
         except Exception as exc:  # the view model has logged it; the window says so too
             self.status = f"{self.action.failure}: {exc}"
+        else:
+            self.notice = self.action.done
 
     def _open_dialog(self, dialog: FileDialog, on_pick: Callable[[str], Any],
                      on_cancel: Callable[[], Any] | None = None) -> None:
@@ -263,9 +299,12 @@ class TrajToolApp(TourTarget, ImApp):
         """A drop fills the row whose filter matches each file (an empty row first)."""
         taken = False
         for path in paths:
-            if not os.path.isfile(path):
+            if os.path.isdir(path):
+                rows = [p for p in self.paths if p.takes_folder(self.model)]
+            elif os.path.isfile(path):
+                rows = [p for p in self.paths if not p.takes_folder(self.model) and _matches(path, p.filters)]
+            else:
                 continue
-            rows = [p for p in self.paths if _matches(path, p.filters)]
             rows.sort(key=lambda p: bool(getattr(self.model, p.attr)))
             if rows and self.set_path(rows[0], path):
                 taken = True
@@ -334,6 +373,10 @@ class TrajToolApp(TourTarget, ImApp):
             im.set_item_tooltip(path_field.browse_tooltip)
             self.remember(f"{path_field.key}_browse")
         self.draw_extra_io(width)
+        if not self.action_key:
+            self._draw_action()                       # else the action section draws it, and the status, once
+
+    def _draw_action(self) -> None:
         if im.button(self.action.label):
             self.tour.notify_used(self.action.key)
             self.begin_save()
@@ -344,6 +387,8 @@ class TrajToolApp(TourTarget, ImApp):
             im.text_disabled("Working…")
         if self.status:
             im.text_colored(ERROR, self.status)
+        elif self.notice:
+            im.text_wrapped(self.notice)
 
     def draw_extra_io(self, width: float) -> None:
         """Controls a tool's io section has between the file rows and the action (none here)."""
@@ -376,7 +421,7 @@ class TrajToolApp(TourTarget, ImApp):
     def restore_settings(self, settings: dict) -> None:
         for path_field in self.paths:
             value = str(settings.get(path_field.attr) or "")
-            if value and os.path.isfile(value):
+            if value and os.path.exists(value):
                 setattr(self.model, path_field.attr, value)
         for section in _fields(self.spec["sections"]):
             if section["attr"] in settings:

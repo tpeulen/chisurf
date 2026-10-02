@@ -1,0 +1,53 @@
+{
+  "_comment": "Guided tour for the trajectory converter. The file rows and the Convert button live inside the custom traj_convert_io / traj_convert_run sections, so they are targeted by name; the toggles, frame range and output fields are spec attrs. Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "A range of frames, rewritten",
+      "text": "Read a trajectory (or a folder of PDBs), take a range of its frames, and write them as one DCD or PDB, or one file per frame.",
+      "target": {}
+    },
+    {
+      "title": "The topology",
+      "text": "A DCD stores coordinates only; the atom names come from the PDB it was written for.",
+      "target": {"name": "topology"}
+    },
+    {
+      "title": "The input",
+      "text": "The DCD to read. Press <b>…</b> or drop a <code>.dcd</code>.",
+      "target": {"name": "trajectory"},
+      "await": {"hint": "Press <b>…</b> and pick a trajectory."}
+    },
+    {
+      "title": "Or a folder of PDBs",
+      "text": "With this on, the row above takes a folder, and its PDBs are read in name order as consecutive frames.",
+      "target": {"attr": "use_folder"}
+    },
+    {
+      "title": "Where it goes",
+      "text": "The folder the output is written to; it must exist.",
+      "target": {"name": "target"},
+      "await": {"hint": "Press <b>…</b> and choose the target folder."}
+    },
+    {
+      "title": "Which frames",
+      "text": "From the first to the last frame <b>inclusive</b>, every stride-th. Last frame −1 is the end.",
+      "target": {"attr": "first_frame"}
+    },
+    {
+      "title": "One file or many",
+      "text": "The name and format of the output — or, with <b>Split</b>, one file per frame, numbered by the frame it came from.",
+      "target": {"attr": "split"}
+    },
+    {
+      "title": "Convert",
+      "text": "The log says how many frames, or files, were written.",
+      "target": {"name": "convert"},
+      "await": {"hint": "Press <b>▶ Convert</b>."}
+    },
+    {
+      "title": "What happened",
+      "text": "Every step lands in the log, with the frame count — or why it stopped.<br/><br/>The <b>?</b> button has the details.",
+      "target": {"name": "log"}
+    }
+  ]
+}

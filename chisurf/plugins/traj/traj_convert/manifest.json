@@ -14,7 +14,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.traj.traj_convert.widget:MDConverter"
+    "gui": "chisurf.plugins.traj.traj_convert.widget:MDConverter",
+    "emtk": "chisurf.plugins.traj.traj_convert.app:make_app"
   },
   "menu_hidden": true
 }

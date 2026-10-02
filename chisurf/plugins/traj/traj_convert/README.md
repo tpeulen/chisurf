@@ -4,11 +4,9 @@ This plugin provides tools for converting molecular dynamics trajectory files be
 
 ## Features
 
-- Support for multiple output formats
-- Options to select specific frames or time ranges
-- Ability to filter atoms or residues
-- Support for topology conversion
-- Batch processing capabilities
+- DCD and multi-model PDB output, as one file or one file per frame
+- A frame range (first to last, inclusive) and a stride
+- A folder of PDBs read as consecutive frames
 
 ## Overview
 
@@ -25,29 +23,19 @@ packages, allowing researchers to leverage the strengths of multiple tools in th
 
 ## Requirements
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - mdtraj (for trajectory handling)
-  - chisurf core modules
+- ChiSurf's trajectory readers and writers (`chisurf.core.structure.trajectory_data`); no Qt for
+  the emtk window (`app.py`), Qt only for the legacy AutoForm widget (`widget.py`).
 
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Structure > Trajectory Converter
-2. Load a trajectory file:
-   - Click "Browse" to select an input trajectory file
-   - The file format will be automatically detected
-3. Configure conversion settings:
-   - Select the desired output format
-   - Choose frames to include (all, range, or specific frames)
-   - Select atoms or residues to include (optional)
-   - Specify topology handling options
-4. Set the output location:
-   - Choose a directory and filename for the converted trajectory
-5. Start the conversion:
-   - Click "Convert" to begin the process
-   - A progress bar will show the status of the conversion
-   - The converted file will be saved to the specified location
+1. Open *Structure > Trajectory > Convert* (or the *Convert* panel of Traj Tools).
+2. Choose the topology, the trajectory (or, with *Input is a folder of PDBs*, a folder) and the
+   target folder (**…**, or drop files and folders).
+3. Set *First frame*, *Last frame* (inclusive; −1 = the end) and *Stride*.
+4. Set *Filename* and *Format* (`.dcd` or `.pdb`); tick *Split* for one file per frame.
+5. Press **▶ Convert**; the log says how many frames or files were written.
+
+**📖 Guide** walks through these steps; **❓ Help** has the details.
 
 ## Applications
 

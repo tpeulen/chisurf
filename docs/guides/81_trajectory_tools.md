@@ -84,17 +84,19 @@ Convert writing every tenth frame of the ensemble to one DCD: 90 frames of
 ```
 
 **Input:** **Topology**, **Trajectory**, **Target folder**; **First frame**,
-**Last frame** (−1 = to the end; otherwise *exclusive*: 10 → 20 writes frames
-10–19) and **Stride**. **Output:** **Filename** (base name), **Format**
+**Last frame** (inclusive, −1 = to the end: 10 → 20 writes frames 10–20) and
+**Stride**. **Output:** **Filename** (base name), **Format**
 (`.dcd` or `.pdb`), **Split into one file per frame**
-(`{filename}_00000000.pdb`, …), then **▶ Convert**. The log reports how many
-frames and atoms were written. Check that line: a range or stride that
-selects nothing also finishes with "Conversion done".
+(`{filename}_00000010.pdb`, … numbered by the source frame), then **▶ Convert**.
+The log reports how many frames (or files) and atoms were written; a range
+that selects nothing stops with "The frame range selects no frames."
 
-Several combinations currently fail or ignore settings. See
-[Known defects](#known-defects) before relying on `.pdb` output, *Split* or
-*Input is a folder of PDBs*. Writing a DCD, with or without stride and frame
-range, works.
+*Input is a folder of PDBs* turns the Trajectory row into a folder row and
+reads every `*.pdb` in it, in name order, as consecutive frames. The target
+folder must exist: a missing one is refused rather than written into the
+working directory. A multi-frame `.pdb` holds one MODEL per frame; ChiSurf's
+own reader takes a PDB as a single frame (see
+[Known defects](#known-defects)), so write a DCD for anything ChiSurf reads back.
 
 ## Join
 
@@ -314,21 +316,9 @@ index.
 
 Measured on the example data. File references are to the current tree.
 
-* **Multi-frame PDB output fails.** Convert with Format `.pdb` (no split)
-  raises `Invalid reading_routine "a+"`: `Trajectory.save_pdb` appends models
-  through `write_pdb(..., append_model=True)`
-  (`chisurf/core/fio/structure/coordinates.py:111` opens with mode `"a+"`),
-  which `open_maybe_zipped` does not accept (`chisurf/core/fio/zipped.py:68`).
-* **Split ignores the stride and fails with a frame range.** With *Split* on,
-  stride 100 still writes all 894 files, because `iterload` is called without
-  `stride`. A first/last frame together with *Split* raises
-  `TypeError: int() … 'NoneType'`, because `chunk=None` reaches `iterload`
-  (`traj_convert/view_model.py`, `convert`).
-* **"Input is a folder of PDBs" does nothing useful.** The folder listing is
-  built and never used. `md.load` is called on the folder path itself, and the
-  run ends with "Wrote 1 frames of 1 atoms".
-* **Last frame is exclusive**, so First frame > 0 with Last frame −1 drops the
-  final frame (`slice(first, -1, stride)`).
+* **A multi-model PDB reads back as its first model.**
+  `trajectory_data.load` takes a structure file as a single frame, so a
+  multi-frame `.pdb` written by Convert opens in ChiSurf with one frame.
 * **The FRET panel has no topology row.** Picking a DCD there raises
   `'…dcd' stores coordinates only; pass top=`. The view model has
   `set_topology`, but the `fret_traj_io` section does not expose it.
