@@ -1,0 +1,250 @@
+"""Native EMTK Structure2Transfer (Trajectory → FRET) app.
+
+A direct port of the Qt ``Structure2Transfer`` AutoForm onto the immediate-mode
+EMTK API. All state and compute stay in the Qt-free
+:class:`~.view_model.FretTrajectoryViewModel` (which drives the owned
+``CalculateTransfer`` engine); the four PDBSelector atom pickers become atom-name
+combos built from the model's structured first-frame array. This module never
+imports Qt.
+"""
+
+from __future__ import annotations
+
+from emtk import im
+from emtk.app import ImApp
+
+from .strings import install_translations, tr
+from .view_model import FretTrajectoryViewModel
+
+install_translations()
+
+#: X offset of the aligned input column; every labelled row's editor starts here.
+_LABEL_COL = 110.0
+
+
+def _label_col() -> float:
+    """The aligned input-column x, clamped for narrow hosts."""
+    width, _ = im.get_main_viewport().size
+    return min(_LABEL_COL, max(70.0, width * 0.3))
+
+
+def _row_input_width(fixed: float | None = None) -> float:
+    """Width for a row editor: *fixed*, or fill the row up to 200 px."""
+    avail = im.get_content_region_avail()[0]
+    if fixed is None:
+        return max(90.0, min(200.0, avail - 8))
+    return max(60.0, min(fixed, avail - 8))
+
+
+def _atom_label(atom) -> str:
+    """Human-readable label for one structured-array atom record."""
+    try:
+        resname, resseq, name = atom[3], atom[4], atom[6]
+        return f"{resname}{resseq}:{name}"
+    except Exception:  # pragma: no cover - defensive for odd records
+        return f"atom {atom[0]}"
+
+
+class FretTrajectoryApp(ImApp):
+    """Calculate FRET observables from a molecular-dynamics trajectory."""
+
+    def __init__(self, model: FretTrajectoryViewModel | None = None):
+        self.model = model or FretTrajectoryViewModel()
+        self.target = ""
+        self.message = ""
+        #: Atom-combo indices for the four pickers (d1, d2, a1, a2).
+        self._selection = [0, 1, 2, 3]
+        super().__init__(self.render)
+
+    # ── helpers ─────────────────────────────────────────────────────────
+    def _atom_labels(self) -> list[str]:
+        pdb = self.model.pdb
+        if pdb is None or len(pdb) == 0:
+            return []
+        return [_atom_label(atom) for atom in pdb]
+
+    # ── render ──────────────────────────────────────────────────────────
+    def render(self):
+        width, height = im.get_main_viewport().size
+        im.begin(tr("Structure2Transfer"), (0, 0, width, height))
+        im.heading(tr("Trajectory to FRET"), level=2)
+
+        self._render_reference()
+        im.separator()
+        self._render_atom_pairs()
+        im.separator()
+        self._render_parameters()
+        im.separator()
+        self._render_process()
+
+        if self.message:
+            im.text_wrapped(self.message)
+        im.separator()
+        im.heading(tr("Log"), level=2)
+        for line in self.model.log_text():
+            im.text(line)
+        im.end()
+
+    def _render_reference(self):
+        for label, getter, setter, tip in (
+            ("Trajectory", lambda: self.model.trajectory_file,
+             lambda v: self.model.set_trajectory(v),
+             "H5 trajectory scored frame by frame; type a path"),
+            ("Topology", lambda: self.model.topology_filename,
+             lambda v: self.model.set_topology(v),
+             "PDB naming the atoms. DCD stores coordinates only, so this is "
+             "required for them; empty is fine for self-describing files"),
+        ):
+            im.text(tr(label))
+            im.same_line(_label_col())
+            im.set_next_item_width(-1)
+            changed, value = im.input_text("##" + label, str(getter()))
+            im.set_item_tooltip(tr(tip))
+            if changed and value != getter():
+                setter(value)
+        im.text(tr("Stride"))
+        im.same_line()
+        im.same_line(_label_col())
+        im.set_next_item_width(_row_input_width(120))
+        changed, stride = im.input_int("##stride", int(self.model.stride), step=1)
+        im.set_item_tooltip(tr("Read every Nth frame of the source trajectory"))
+        if changed and stride >= 1:
+            self.model.stride = int(stride)
+
+    def _render_atom_pairs(self):
+        labels = self._atom_labels()
+        im.push_text_wrap_pos()
+        im.text_disabled(tr(
+            "Two atoms per dye define the transition dipole; with dipoles off "
+            "only the first atom of each dye is used"))
+        im.pop_text_wrap_pos()
+        # The pair row starts at the label column; both selectors share what
+        # remains of the row, measured from that column (not the full row).
+        row_width = im.get_main_viewport().size[0] - _label_col() - 8
+        pair_width = max(120.0, row_width / 2)
+        for role, tip_role, indices in (
+            (tr("Donor"), "donor", (0, 1)),
+            (tr("Acceptor"), "acceptor", (2, 3)),
+        ):
+            im.text(role)
+            if not labels:
+                im.same_line(_label_col())
+                im.set_next_item_width(_row_input_width(190))
+                im.combo(f"##atom_empty_{indices[0]}", 0, [tr("Load a trajectory")])
+                im.set_item_tooltip(tr("Select a trajectory and topology to pick atoms"))
+                continue
+            im.same_line(_label_col())
+            for slot, index_slot in enumerate(indices):
+                if slot:
+                    im.same_line()
+                current = min(self._selection[index_slot], len(labels) - 1)
+                im.set_next_item_width(pair_width)
+                changed, index = im.combo(f"##atom_{index_slot}", current, labels)
+                im.set_item_tooltip(tr(f"Atom of the {tip_role} dipole"))
+                if changed:
+                    self._selection[index_slot] = int(index)
+            i, j = (min(self._selection[k], len(labels) - 1) for k in indices)
+            if indices == (0, 1):
+                self.model.donor = (i, j)
+            else:
+                self.model.acceptor = (i, j)
+
+    def _render_parameters(self):
+        for label, attr, step, step_fast, tip in (
+            ("R_{0} [Å]", "forster_radius", 0.1, 1.0,
+             "Foerster radius of the donor-acceptor dye pair, in Angstrom"),
+            ("tau_{0} [ns]", "tau0", 0.1, 1.0,
+             "Fluorescence lifetime of the donor in the absence of FRET, in nanoseconds"),
+            ("t-step [ns]", "t_step", 0.001, 0.1,
+             "Time between successive trajectory frames, in nanoseconds"),
+        ):
+            im.text(tr(label))
+            im.same_line(_label_col())
+            im.set_next_item_width(_row_input_width(140))
+            changed, value = im.input_float(
+                "##" + attr, float(getattr(self.model, attr)), step=step, step_fast=step_fast
+            )
+            im.set_item_tooltip(tr(tip))
+            if changed:
+                setattr(self.model, attr, float(value))
+        # The checkbox follows a row that may still have room; force it onto
+        # its own line instead of letting it flow beside the t-step input.
+        im.new_line()
+        changed, dipoles = im.checkbox(tr("Dipole (kappa2)"), bool(self.model.dipoles))
+        im.set_item_tooltip(tr(
+            "Use two atoms per fluorophore and compute the orientation factor "
+            "kappa2 per frame; otherwise only the first atom of each dye "
+            "defines the distance and the fixed isotropic kappa2 = 2/3 is used"))
+        if changed:
+            self.model.dipoles = bool(dipoles)
+        im.new_line()
+
+    def _render_process(self):
+        im.text(tr("Output"))
+        im.same_line()
+        im.same_line(_label_col())
+        im.set_next_item_width(-1)
+        changed, target = im.input_text("##fret_target", self.target)
+        im.set_item_tooltip(tr("CSV file receiving the per-frame FRET observables"))
+        if changed:
+            self.target = target
+        if im.button(f"{tr('Process')}##process"):
+            self.message = self._run()
+        im.set_item_tooltip(tr("Compute the FRET time-series for every trajectory file"))
+
+    # ── actions ─────────────────────────────────────────────────────────
+    def _run(self) -> str:
+        if not (self.model.filenames or self.model.trajectory_file):
+            return tr("Open a trajectory first.")
+        if not self.target:
+            return tr("Choose an output CSV file.")
+        try:
+            result = self.model.calc(self.target)
+        except Exception as exc:  # noqa: BLE001 - surface compute errors inline
+            return f"{tr('Processing failed')}: {type(exc).__name__}: {exc}"
+        return tr("Processed {} frame(s).").format(int(result.shape[0]))
+
+    # ── persistence ─────────────────────────────────────────────────────
+    def export_settings(self) -> dict:
+        return {
+            "trajectory_file": self.model.trajectory_file,
+            "topology_filename": self.model.topology_filename,
+            "stride": int(self.model.stride),
+            "forster_radius": float(self.model.forster_radius),
+            "tau0": float(self.model.tau0),
+            "t_step": float(self.model.t_step),
+            "dipoles": bool(self.model.dipoles),
+            "donor": list(self.model.donor),
+            "acceptor": list(self.model.acceptor),
+            "target": self.target,
+        }
+
+    def restore_settings(self, settings: dict) -> None:
+        # Restore through the plain property setters: persistence must not
+        # trigger the eager trajectory/topology (re)loads the set_* helpers do.
+        if "trajectory_file" in settings:
+            self.model.trajectory_file = str(settings["trajectory_file"])
+        if "topology_filename" in settings:
+            self.model.topology_filename = str(settings["topology_filename"])
+        if "stride" in settings:
+            self.model.stride = int(settings["stride"])
+        if "forster_radius" in settings:
+            self.model.forster_radius = float(settings["forster_radius"])
+        if "tau0" in settings:
+            self.model.tau0 = float(settings["tau0"])
+        if "t_step" in settings:
+            self.model.t_step = float(settings["t_step"])
+        if "dipoles" in settings:
+            self.model.dipoles = bool(settings["dipoles"])
+        if "donor" in settings:
+            self.model.donor = tuple(settings["donor"])
+            self._selection[0], self._selection[1] = (int(settings["donor"][0]), int(settings["donor"][1]))
+        if "acceptor" in settings:
+            self.model.acceptor = tuple(settings["acceptor"])
+            self._selection[2], self._selection[3] = (int(settings["acceptor"][0]), int(settings["acceptor"][1]))
+        if "target" in settings:
+            self.target = str(settings["target"])
+
+
+def make_app() -> FretTrajectoryApp:
+    return FretTrajectoryApp()

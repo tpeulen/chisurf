@@ -1,0 +1,60 @@
+diff --git a/chisurf/plugins/traj/fret_trajectory/__init__.py b/chisurf/plugins/traj/fret_trajectory/__init__.py
+index 96568116c..313b288c4 100644
+--- a/chisurf/plugins/traj/fret_trajectory/__init__.py
++++ b/chisurf/plugins/traj/fret_trajectory/__init__.py
+@@ -8,7 +8,6 @@ icon = "🎞️"
+ from pathlib import Path
+ 
+ from chisurf.core.plugin import load_manifest
+-from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
+ 
+ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
+ if _manifest is not None:
+@@ -18,6 +17,17 @@ else:
+ 
+ __all__ = ["Structure2Transfer"]
+ 
++
++def __getattr__(attribute):
++    # Lazy export: the Qt widget (and its qtpy import) must not load before the
++    # native EMTK factory declared in the manifest.
++    if attribute == "Structure2Transfer":
++        from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
++
++        return Structure2Transfer
++    raise AttributeError(attribute)
++
++
+ if __name__ == "plugin":
+-    window = Structure2Transfer()
++    window = __getattr__("Structure2Transfer")()
+     window.show()
+diff --git a/chisurf/plugins/traj/fret_trajectory/manifest.json b/chisurf/plugins/traj/fret_trajectory/manifest.json
+index 3960e9f94..b3dd4ffb4 100644
+--- a/chisurf/plugins/traj/fret_trajectory/manifest.json
++++ b/chisurf/plugins/traj/fret_trajectory/manifest.json
+@@ -14,7 +14,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.traj.fret_trajectory.gui:Structure2Transfer"
++    "gui": "chisurf.plugins.traj.fret_trajectory.gui:Structure2Transfer",
++    "emtk": "chisurf.plugins.traj.fret_trajectory.app:make_app"
+   },
+   "menu_hidden": true
+ }
+diff --git a/chisurf/plugins/traj/fret_trajectory/view_model.py b/chisurf/plugins/traj/fret_trajectory/view_model.py
+index 51b432bed..51710b750 100644
+--- a/chisurf/plugins/traj/fret_trajectory/view_model.py
++++ b/chisurf/plugins/traj/fret_trajectory/view_model.py
+@@ -90,6 +90,10 @@ class FretTrajectoryViewModel:
+         lines = "<br>".join(html.escape(line) for line in self._log)
+         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
+ 
++    def log_text(self) -> list[str]:
++        """Return the raw log lines (bound by the native app; no HTML)."""
++        return list(self._log)
++
+     # ── proxied engine parameters ───────────────────────────────────────
+     @property
+     def trajectory_file(self) -> str:

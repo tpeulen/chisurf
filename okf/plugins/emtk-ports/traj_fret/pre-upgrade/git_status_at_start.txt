@@ -1,0 +1,8 @@
+ M chisurf/plugins/traj/fret_trajectory/__init__.py
+ M chisurf/plugins/traj/fret_trajectory/manifest.json
+ M chisurf/plugins/traj/fret_trajectory/view_model.py
+?? chisurf/plugins/traj/fret_trajectory/app.py
+?? chisurf/plugins/traj/fret_trajectory/strings.py
+?? chisurf/plugins/traj/fret_trajectory/test/capture_native.py
+?? chisurf/plugins/traj/fret_trajectory/test/renders/
+?? chisurf/plugins/traj/fret_trajectory/test/test_native.py

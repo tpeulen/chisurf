@@ -1,0 +1,47 @@
+{
+  "controls": [
+    "atom",
+    "chain",
+    "dipole(κ2)",
+    "dipoleatoms",
+    "parameters",
+    "process",
+    "processtrajectory",
+    "r0[ang]",
+    "reference",
+    "residue",
+    "stride",
+    "t-step[ns]",
+    "trajectory",
+    "τ0[ns]"
+  ],
+  "labels": [
+    "&tau;0 [ns]",
+    "Atom",
+    "Chain",
+    "Dipole (&kappa;2)",
+    "R0 [Ang]",
+    "Residue",
+    "Stride",
+    "Trajectory",
+    "t-step [ns]"
+  ],
+  "buttons": [
+    "…",
+    "▶ Process trajectory",
+    "▼  Dipole atoms",
+    "▼  Parameters",
+    "▼  Process",
+    "▼  Reference",
+    "✖"
+  ],
+  "line_edits": 5,
+  "combos": 12,
+  "spin_boxes": 4,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.traj.fret_trajectory.gui:Structure2Transfer (+HEAD view_model, sections)",
+  "size": [
+    1200,
+    800
+  ]
+}

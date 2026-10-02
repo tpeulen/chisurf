@@ -1,0 +1,161 @@
+"""Qt-free tests for the native Structure2Transfer EMTK app."""
+
+from __future__ import annotations
+
+import pytest
+from emtk.testing import RecordingPainter
+
+from ..app import FretTrajectoryApp, make_app
+from .test_view_model import _fret_trajectory
+
+
+def test_native_state_roundtrip():
+    app = FretTrajectoryApp()
+    # The model loads the topology eagerly when a DCD trajectory is set, so the
+    # topology has to be wired first (as in the Qt flow's re-read logic).
+    app.model.set_topology("structure.pdb")
+    app.model.trajectory_file = "run.dcd"
+    app.model.stride = 2
+    app.model.forster_radius = 55.0
+    app.model.tau0 = 3.2
+    app.model.t_step = 0.4
+    app.model.dipoles = False
+    app.target = "fret.csv"
+    state = app.export_settings()
+
+    other = FretTrajectoryApp()
+    other.restore_settings(state)
+    assert other.model.trajectory_file == "run.dcd"
+    assert other.model.topology_filename == "structure.pdb"
+    assert other.model.stride == 2
+    assert other.model.forster_radius == 55.0
+    assert other.model.tau0 == 3.2
+    assert other.model.t_step == 0.4
+    assert other.model.dipoles is False
+    assert other.target == "fret.csv"
+
+
+def test_native_renders_and_labels():
+    app = make_app()
+    painter = RecordingPainter()
+    app.draw(painter, 0, 0, 760, 640)
+    for expected in (
+        "Trajectory to FRET",
+        "Trajectory",
+        "Topology",
+        "Stride",
+        "Donor",
+        "Acceptor",
+        "R₀ [Å]",  # the R_{0} label markup renders converted
+        "tau₀ [ns]",
+        "t-step [ns]",
+        "Dipole (kappa2)",
+        "Output",
+        "Process",
+        "Log",
+    ):
+        assert expected in painter.strings, expected
+
+
+def test_native_atom_pick_pushes_selection(tmp_path):
+    """Loading a populated trajectory feeds the four atom combos and the model."""
+    pdb = _fret_trajectory(tmp_path / "traj.dcd")
+    app = make_app()
+    app.model.set_topology(pdb)
+    app.model.set_trajectory(str(tmp_path / "traj.dcd"))
+    assert app._atom_labels(), "atom labels must come from the loaded first frame"
+    app._selection = [0, 1, 2, 3]
+    app.draw(RecordingPainter(), 0, 0, 760, 640)
+    assert tuple(app.model.donor) == (0, 1)
+    assert tuple(app.model.acceptor) == (2, 3)
+    app._selection = [1, 2, 0, 3]
+    app.draw(RecordingPainter(), 0, 0, 760, 640)
+    assert tuple(app.model.donor) == (1, 2)
+    assert tuple(app.model.acceptor) == (0, 3)
+
+
+def test_native_process_guards():
+    app = make_app()
+    assert app._run() == "Open a trajectory first."
+    app.model.trajectory_file = "missing.dcd"
+    assert app._run() == "Choose an output CSV file."
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_native_process_writes_fret_table(tmp_path):
+    """Genuine workflow: DCD + topology through the app's model writes the CSV."""
+    pdb = _fret_trajectory(tmp_path / "traj.dcd", n_frames=5)
+    app = make_app()
+    app.model.set_topology(pdb)
+    app.model.set_trajectory(str(tmp_path / "traj.dcd"))
+    target = str(tmp_path / "fret.csv")
+    app.target = target
+    message = app._run()
+    assert "5" in message
+    rows = open(target).read().strip().splitlines()
+    assert len(rows) == 6  # header + 5 frames
+    assert len(rows[1].split()) >= 6  # frame, time, rda, kappa, kappa2, rate
+
+
+def test_native_renders_narrow():
+    app = make_app()
+    painter = RecordingPainter()
+    app.draw(painter, 0, 0, 420, 600)
+    for expected in ("Donor", "Acceptor", "Process", "Log"):
+        assert expected in painter.strings, expected
+
+
+def test_native_control_tooltips_in_all_locales(monkeypatch):
+    """Every interactive control carries a tooltip, in every supported locale."""
+    from emtk import im
+    from emtk.i18n import get_locale, set_locale
+
+    previous = get_locale()
+    app = make_app()
+    tips: list[str] = []
+    original = im.set_item_tooltip
+
+    def capture(text, *args, **kwargs):
+        tips.append(str(text))
+        return original(text, *args, **kwargs)
+
+    monkeypatch.setattr(im, "set_item_tooltip", capture)
+    try:
+        for locale in ("en", "de", "fr", "es", "pt", "ru"):
+            set_locale(locale)
+            tips.clear()
+            app.draw(RecordingPainter(), 0, 0, 760, 640)
+            # Trajectory + topology + stride + R0 + tau0 + t-step + dipoles +
+            # output + process.
+            assert len(tips) >= 9, (locale, tips)
+            assert all(tip.strip() for tip in tips), locale
+    finally:
+        set_locale(previous)
+
+
+def test_native_localized_labels():
+    """Every supported locale must translate the headline strings."""
+    from emtk import i18n
+
+    from ..strings import install_translations, tr
+
+    install_translations()
+    expected = {
+        "de": ("Struktur2Transfer", "Trajektorie zu FRET", "Verarbeiten"),
+        "fr": ("Structure2Transfer", "Trajectoire vers FRET", "Traiter"),
+        "es": ("Structure2Transfer", "Trayectoria a FRET", "Procesar"),
+        "pt": ("Structure2Transfer", "Trajetória para FRET", "Processar"),
+        "ru": ("Structure2Transfer", "Траектория → FRET", "Обработать"),
+    }
+    for locale in ("de", "fr", "es", "pt", "ru"):
+        i18n.set_locale(locale)
+        try:
+            assert tr("Trajectory to FRET") == expected[locale][1], locale
+            assert tr("Process") == expected[locale][2], locale
+            assert tr("Structure2Transfer") == expected[locale][0], locale
+            app = FretTrajectoryApp()
+            painter = RecordingPainter()
+            app.draw(painter, 0, 0, 760, 640)
+            assert expected[locale][1] in painter.strings, locale
+        finally:
+            i18n.set_locale("en")
