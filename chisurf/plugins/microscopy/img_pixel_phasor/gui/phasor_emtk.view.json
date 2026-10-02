@@ -1,0 +1,348 @@
+{
+  "_comment": "Phasor-FLIM, drawn by emtk. The Qt tool's AutoForm spec is phasor.view.json.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Settings",
+      "dock": "settings",
+      "n_col": 1,
+      "description": "The source file, the phasor settings, the IRF reference, the detector window that is shown, the cursors and the actions.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Compute the maps, write them out, explore them or go on to the next step.",
+          "buttons": [
+            {
+              "action": "run_maps",
+              "label": "Run",
+              "description": "Compute the phasor (g, s) and the photon counts of every detector window, in the background. Nothing is recomputed when neither the file, the windows, the reference nor the settings changed."
+            },
+            {
+              "action": "request_hdf5",
+              "label": "Add phasor to HDF5",
+              "description": "Add the g and s columns of every window to the imaging HDF5 of the pipeline; when none is remembered a file is asked for."
+            },
+            {
+              "action": "save_container",
+              "label": "Save container",
+              "description": "Write the phasor table as a phasor artifact into the container beside the photon file (the Qt tool did this when it closed)."
+            },
+            {
+              "action": "open_ndx",
+              "label": "ndX",
+              "description": "Explore the per-pixel table in ndX, the shared live dataset. A Back button returns to the maps."
+            },
+            {
+              "action": "next_step",
+              "label": "Next",
+              "description": "Remember the file and the HDF5 and go to the next analysis step. Only available inside the Imaging Tools pipeline."
+            }
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "filename",
+          "label": "TTTR file",
+          "kind": "str",
+          "call": "commit_filename",
+          "elide": "start",
+          "placeholder": "pick a file, drop one here, or load from the database",
+          "description": "PTU/HT3 imaging file with line and frame markers (or drop one onto the window: it is loaded and run). The scanner geometry is read from its header. Press Enter to select a typed path."
+        },
+        {
+          "type": "button_row",
+          "description": "Pick the photon file from disk or from the database.",
+          "buttons": [
+            {
+              "action": "open_file",
+              "label": "Browse",
+              "description": "Browse for a photon imaging file on disk."
+            },
+            {
+              "action": "open_database",
+              "label": "Database",
+              "description": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+            }
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "n_ph_min",
+          "label": "Min photons",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 10000,
+          "style": "spin",
+          "description": "Minimum photons per pixel for a valid phasor; Run applies a changed value."
+        },
+        {
+          "type": "value",
+          "attr": "frequency",
+          "label": "Frequency (MHz, -1=auto)",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": -1.0,
+          "maximum": 1000.0,
+          "step": 1.0,
+          "style": "spin",
+          "description": "Modulation frequency in MHz; -1 derives it from the TTTR header. Run applies a changed value."
+        },
+        {
+          "type": "choice",
+          "attr": "view_tab",
+          "label": "View",
+          "options_source": "tab_titles",
+          "call": "show_tab",
+          "description": "Bring any map or plot tab forward, also when the row of tabs is wider than the window."
+        },
+        {
+          "type": "choice",
+          "attr": "display_window",
+          "label": "Detector window",
+          "options_source": "window_names",
+          "call": "refresh_display",
+          "description": "The detector window shown in the maps. Every window is computed and written; this only chooses which one is drawn. The windows come from the Detectors tab (or the Imaging Tools setup step); without any, the channel-0 window is used."
+        },
+        {
+          "type": "panel",
+          "title": "IRF reference",
+          "collapsible": true,
+          "collapsed": true,
+          "n_col": 1,
+          "description": "The instrument response of a detector window, used to calibrate its phasors. Inside the Imaging Tools pipeline it comes from the IRF & BG step.",
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "irf_window",
+              "label": "Window",
+              "options_source": "irf_window_choices",
+              "description": "The detector window whose IRF is edited."
+            },
+            {
+              "type": "value",
+              "attr": "irf_path",
+              "label": "IRF file",
+              "kind": "str",
+              "call": "commit_irf",
+              "elide": "start",
+              "placeholder": "none: the raw phasor is computed",
+              "description": "Photon file of the instrument response of this window. Empty: the uncalibrated phasor. Press Enter to adopt a typed path."
+            },
+            {
+              "type": "button_row",
+              "description": "Pick the IRF file.",
+              "buttons": [
+                {
+                  "action": "open_irf",
+                  "label": "Browse IRF",
+                  "description": "Browse for the IRF photon file of the chosen window."
+                },
+                {
+                  "action": "clear_irf",
+                  "label": "Clear IRF",
+                  "description": "Remove the IRF reference of the chosen window: the uncalibrated phasor is computed."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "info",
+          "source": "summary_text",
+          "description": "What was computed: the file, the size of the image and the detector windows."
+        },
+        {
+          "type": "custom",
+          "key": "region_list",
+          "title": "Phasor cursors",
+          "description": "Cursors on the (g, s) plane: draw an ellipse round a lifetime cluster, a polygon round one that is neither round nor elliptical, or several combined; Invert selects everything outside. The Selected tab shows the pixels they pick out.",
+          "options": {
+            "name": "cursors",
+            "summary": "cursor_summary"
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Intensity",
+      "dock": "views",
+      "description": "The summed photon counts per pixel of the displayed detector window.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Intensity",
+          "description": "The summed photon counts per pixel of the displayed detector window.",
+          "options": {
+            "name": "Intensity",
+            "source": "intensity_map",
+            "colormap_attr": "colormap",
+            "empty": "No intensity yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Selected",
+      "dock": "views",
+      "description": "The intensity of the pixels the phasor cursors select: the image, gated by lifetime. Without a cursor every pixel is selected.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Selected",
+          "description": "The intensity of the pixels the phasor cursors select: the image, gated by lifetime. Without a cursor every pixel is selected.",
+          "options": {
+            "name": "Selected",
+            "source": "masked_intensity_map",
+            "colormap_attr": "colormap",
+            "empty": "No selected yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Phasor g",
+      "dock": "views",
+      "description": "The phasor coordinate g (cosine component) per pixel.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Phasor g",
+          "description": "The phasor coordinate g (cosine component) per pixel.",
+          "options": {
+            "name": "Phasor g",
+            "source": "g_map",
+            "colormap_attr": "colormap",
+            "empty": "No phasor g yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Phasor s",
+      "dock": "views",
+      "description": "The phasor coordinate s (sine component) per pixel.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Phasor s",
+          "description": "The phasor coordinate s (sine component) per pixel.",
+          "options": {
+            "name": "Phasor s",
+            "source": "s_map",
+            "colormap_attr": "colormap",
+            "empty": "No phasor s yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Phasor g movie",
+      "dock": "views",
+      "description": "The phasor g of every scanner frame, played as a movie.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Phasor g movie",
+          "description": "The phasor g of every scanner frame, played as a movie.",
+          "options": {
+            "name": "Phasor g movie",
+            "source": "g_frames",
+            "colormap_attr": "colormap",
+            "movie": true,
+            "empty": "No phasor g movie yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Phasor s movie",
+      "dock": "views",
+      "description": "The phasor s of every scanner frame, played as a movie.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Phasor s movie",
+          "description": "The phasor s of every scanner frame, played as a movie.",
+          "options": {
+            "name": "Phasor s movie",
+            "source": "s_frames",
+            "colormap_attr": "colormap",
+            "movie": true,
+            "empty": "No phasor s movie yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Frames (movie)",
+      "dock": "views",
+      "description": "The raw per-frame intensity stack of the displayed detector window.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Frames (movie)",
+          "description": "The raw per-frame intensity stack of the displayed detector window.",
+          "options": {
+            "name": "Frames",
+            "source": "frame_stack",
+            "colormap_attr": "colormap",
+            "movie": true,
+            "empty": "No frames yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Phasor plot",
+      "dock": "views",
+      "description": "The 2-D density of the per-pixel phasor cloud (g horizontal, s vertical) with the universal semicircle; the cursors are drawn on it and dragged by their handles.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "plane",
+          "title": "Phasor plot",
+          "description": "The 2-D density of the per-pixel phasor cloud (g horizontal, s vertical) with the universal semicircle; the cursors are drawn on it and dragged by their handles.",
+          "options": {
+            "name": "phasor"
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Phasor plot movie",
+      "dock": "views",
+      "description": "The phasor density of every scanner frame, played as a movie (bins of g across, s up).",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Phasor plot movie",
+          "description": "The phasor density of every scanner frame, played as a movie (bins of g across, s up).",
+          "options": {
+            "name": "Phasor plot movie",
+            "source": "phasor_histogram_frames",
+            "colormap_attr": "colormap",
+            "movie": true,
+            "empty": "No phasor plot movie yet. Select a photon file and press Run."
+          }
+        }
+      ]
+    }
+  ]
+}

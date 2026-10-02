@@ -53,7 +53,24 @@ class PhasorImgViewModel(ImagingMapViewModel):
 
     def _window_params(self) -> dict:
         """Return phasor worker params (IRF comes per-detector from the IRF & BG step)."""
-        return {"frequency": float(self.frequency), "n_ph_min": int(self.n_ph_min)}
+        return {"frequency": self._frequency_per_channel(), "frequency_mhz": float(self.frequency), "n_ph_min": int(self.n_ph_min)}
+
+    def _frequency_per_channel(self) -> float:
+        """The field is in MHz, ``-1`` meaning "from the header"; tttrlib's ``get_phasor`` takes cycles per micro-time channel.
+
+        A frequency passed through as typed (40 for 40 MHz) made every phasor degenerate to (1, 0): the unit was never converted. The
+        conversion needs the micro-time resolution of the file; without a readable header the value is passed on unchanged.
+        """
+        freq = float(self.frequency)
+        if freq < 0 or not self.filename:
+            return -1.0
+        try:
+            from chisurf.core.fluorescence.imaging import get_tttr
+
+            resolution = float(getattr(get_tttr(self.filename).header, "micro_time_resolution", 0.0) or 0.0)
+        except Exception:
+            return freq
+        return freq * 1e6 * resolution if resolution > 0 else freq
 
     # ── image accessors ──
     def g_map(self):
@@ -87,7 +104,7 @@ class PhasorImgViewModel(ImagingMapViewModel):
         key = (
             self.filename,
             self.display_window,
-            float(self.frequency),
+            self._frequency_per_channel(),
             int(self.n_ph_min),
             tuple(irf_files),
         )
@@ -110,7 +127,7 @@ class PhasorImgViewModel(ImagingMapViewModel):
             result = phasor_frames(
                 clsm,
                 tttr,
-                frequency=float(self.frequency),
+                frequency=self._frequency_per_channel(),
                 tttr_irf=tttr_irf,
                 n_ph_min=int(self.n_ph_min),
             )

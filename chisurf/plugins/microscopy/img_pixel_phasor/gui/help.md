@@ -1,11 +1,28 @@
-# Phasor-FLIM
+# Phasor-FLIM imaging
 
-Open or drop a TTTR scanner image, import the detector setup if needed, and press Run. The estimator, channels, microtime windows and per-detector reference IRFs are shared with the Qt workflow. Each detector remains a separate set of persisted columns. Use Detector calibration to edit channels, JSON microtime ranges and a reference IRF path. A blank reference computes raw phasors. Frequency is in MHz; -1 derives the frequency from the TTTR header. Min photons excludes undersampled pixels.
+This tool computes, for every detector window, the **phasor** (g, s) of each pixel: the cosine and sine transform of its micro-time decay at one
+frequency. It needs no fit: a single-exponential decay lies on the universal semicircle (short lifetimes at the right, long ones at the left), a mixture
+inside it. Press **Guide** at the top of the settings window for a walk-through.
 
-The g/s maps are dimensionless. The phasor plot places g horizontally and s vertically, overlays the universal semicircle, and shows log-density or individual valid pixels. Ellipse, rectangle and polygon cursors select lifetime populations. Move or resize cursors in the plot, or edit their geometry in Gate regions. Enable, invert, duplicate, rename, combine, save and load cursors. Selected pixels shows the corresponding intensity image.
+## Workflow
 
-Photon, g, s and density movies use acquisition frames. Play, Stop, Loop, frame selection and FPS control playback. This is temporal scanner data, not axial slices. Image views offer colormap, gamma and intensity-level controls.
+1. Select a **TTTR file** (type a path and press Enter, **Browse**, **Database**, or drop a file; a drop is also run).
+2. Set **Min photons** (pixels with fewer are discriminated) and the **Frequency** (-1 reads it from the file header).
+3. Optionally give a detector window an **IRF reference** (the instrument response); the Detectors tab edits the windows themselves.
+4. Press **Run**; **Cancel** discards the unfinished result. Nothing is recomputed when nothing changed.
+5. Read the maps: **Intensity**, **Phasor g**, **Phasor s**, their per-frame movies, the **Frames (movie)** and the **Phasor plot** with its movie.
 
-Create imaging HDF5 merges all detector columns. Save container stores the phasor artifact and provenance in PTO. MMFDB uses the authenticated shared source picker and existing provenance registration. ndX explores the live per-pixel table. Next advances an attached native imaging pipeline and retains source/output paths.
+## Cursors
 
-Ctrl/Cmd+Enter runs the calculation. Escape requests cancellation. Cancellation is cooperative at compute checkpoints; an active tttrlib calculation may finish its current detector before stopping. Cancelled snapshots never replace displayed results. Settings restore scientific parameters before scheduling recomputation.
+A cursor is a region on the (g, s) plane. Under **Analysis regions** add a rectangle, an ellipse or a polygon (placed in phasor units), drag its handles in
+the plot or type its geometry, tick **Invert** to select everything outside it, and choose how several combine (or / and / xor). The **Selected** tab shows the
+intensity of the pixels the cursors select; the line under the list says how many that is. **Save regions** / **Load regions** keep them as JSON.
+
+## Writing and handing on
+
+**Add phasor to HDF5** appends the columns to the imaging HDF5 the pipeline remembers (otherwise a file is asked for); **Save container** writes the
+`phasor` artifact beside the photon file; **ndX** explores the table; **Next** hands the file on inside the Imaging Tools pipeline.
+
+## Further reading
+
+[Scan images](docs/guides/24_scan_images.md), [FLIM phasors](docs/concepts/imaging_flim_phasor.md)
