@@ -97,10 +97,23 @@
           "type": "choice",
           "attr": "rating_filter",
           "label": "Rating filter",
-          "options_source": "rating_filter_options",
           "call": "set_rating_filter",
           "width": 150,
-          "description": "Show all files, the files with at least 1, 2 or 3 stars, or only the unrated files."
+          "description": "Show all files, the files with at least 1, 2 or 3 stars, or only the unrated files.",
+          "options": [
+            "All",
+            "≥ 1★",
+            "≥ 2★★",
+            "≥ 3★★★",
+            "Only 0★"
+          ],
+          "labels": [
+            "All",
+            "≥ 1  ★",
+            "≥ 2  ★★",
+            "≥ 3  ★★★",
+            "Only 0  ★"
+          ]
         },
         {
           "type": "panel",

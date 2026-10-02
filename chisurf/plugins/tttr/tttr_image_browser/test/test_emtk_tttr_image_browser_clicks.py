@@ -555,9 +555,9 @@ def test_the_rating_filter_choice_lists_the_five_filters_and_applies_one(app, dr
     assert app.model.rating_of(str(shown / SP8)) == 2
     drv.click("rating_filter")
     drv.draw(2)
-    for label in ("All", "≥ 1★", "≥ 2★★", "≥ 3★★★", "Only 0★"):
-        assert label in strings(drv), label
-    drv.click_text("≥ 2★★", last=True)
+    for label in ("All", "≥ 1  ★", "≥ 2  ★★", "≥ 3  ★★★", "Only 0  ★"):
+        assert label in strings(drv), label  # a gap before the stars: they are drawn wider than they measure
+    drv.click_text("≥ 2  ★★", last=True)
     drv.settle()
     assert app.model.rating_filter == "≥ 2★★"
     assert [e["label"] for e in app.model.file_entries()] == [SP8] and "corrupt.ptu" not in strings(drv)
@@ -819,6 +819,32 @@ def test_settings_survive_a_restart_through_the_host_hooks(app, drv, shown):
     assert other.model.current_folder == str(shown) and other.model.current_file == str(shown / SP8)
     assert other.model.current_image() is not None  # loaded by drawn frames alone
     other.close()
+
+
+def test_the_imaging_hub_contract(app, drv, photon_folder):
+    """The hub hands the shared setup (``apply_setup_settings``), the current source (``apply_pipeline_context``) and
+    itself (the ``_coordinator`` attribute, as it does for every child)."""
+    calls = []
+
+    class Hub:
+        def set_pipeline(self, **kw):
+            calls.append(pathlib.Path(kw["source"]).name)
+
+    app.apply_setup_settings(two_detector_setup())
+    assert set(app.model.setup_settings["detectors"]) == {"green", "red"} and "2 detector(s)" in app.model.status_line
+    app._coordinator = Hub()
+    app.model.can_next = True
+    app.apply_pipeline_context({"file": str(photon_folder / SP8)})
+    drv.settle()
+    assert app.model.current_folder == str(photon_folder) and app.model.current_file == str(photon_folder / SP8)
+    assert app.model.current_image() is not None and calls == [SP8]
+    drv.click("tab_setup")
+    drv.draw(3)
+    drv.click_text("Detectors")
+    drv.draw(3)
+    assert "green" in strings(drv) and "red" in strings(drv)  # the shared editor holds the hub's setup
+    app.apply_pipeline_context({})  # nothing to open: ignored
+    assert app.model.current_file == str(photon_folder / SP8)
 
 
 def test_resizing_the_window_shows_the_whole_mosaic_again(app, drv, shown):

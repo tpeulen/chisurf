@@ -542,6 +542,15 @@ def test_every_spec_key_exists_on_the_model():
     assert {s["window"] for s in json.loads(SPEC.read_text())["sections"]} == {"toolbar", "files", "display"}
 
 
+def test_the_rating_filter_choice_carries_the_qt_values_with_spaced_labels():
+    from chisurf.plugins.tttr.tttr_image_browser.gui.model import ImageBrowserModel
+
+    section = next(s for s in spec_sections() if s.get("attr") == "rating_filter")
+    assert section["options"] == ImageBrowserModel().rating_filter_options()  # the values are the Qt filter strings
+    assert [l.replace(" ", "") for l in section["labels"]] == [o.replace(" ", "") for o in section["options"]]  # same words, a gap before the stars
+    assert len(section["labels"]) == 5
+
+
 def test_every_spec_section_column_and_button_has_a_description():
     for section in spec_sections():
         assert section.get("description"), section.get("attr") or section.get("title") or section.get("type")
