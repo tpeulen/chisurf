@@ -18,6 +18,10 @@ from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 from .model import FilterModel
 
 
+#: Lowest count drawn on the logarithmic decay axis: an IRF tail of 1e-298 would otherwise stretch the view over 300 decades.
+FLOOR = 0.5
+
+
 class FilterApp(ImApp):
     def __init__(self, workflow_context=None, parameter_linker=None):
         self.model = FilterModel()
@@ -976,9 +980,14 @@ class FilterApp(ImApp):
                 if getattr(entry["result"], attr, None) is not None
             ]
             if peaks:
-                implot.setup_axes_limits(
-                    0, self.model._current_n_bins(), 1, max(max(peaks) * 1.2, 2)
-                )
+                # Frame the decay whenever its size or range changes (a limits request on an existing plot is ignored
+                # unless it is COND_ALWAYS; the plot then showed the default 1e-6..1 window and none of the data).
+                signature = (self.model._current_n_bins(), round(max(peaks), 3))
+                if signature != getattr(self, "_recon_signature", None):
+                    self._recon_signature = signature
+                    implot.setup_axes_limits(
+                        0, self.model._current_n_bins(), 1, max(max(peaks) * 1.2, 2), implot.COND_ALWAYS
+                    )
             for entry in self.model.results():
                 for role in ("", "par", "perp"):
                     result = entry["result"]
@@ -989,12 +998,15 @@ class FilterApp(ImApp):
                         continue
                     x = np.arange(len(total))
                     label = f"{entry['detector']} {role}"
-                    implot.plot_line(label + " measured", x, total)
-                    implot.plot_line(label + " reconstruction", x, recon)
+                    implot.set_next_line_style((255, 255, 255, 255), 1.5)
+                    implot.plot_line(label + " measured", x, np.clip(total, FLOOR, None))
+                    implot.set_next_line_style((230, 40, 40, 255), 1.5)
+                    implot.plot_line(label + " reconstruction", x, np.clip(recon, FLOOR, None))
                     irf = self.model._irf_by_detector.get(entry["detector"])
                     if irf is not None and np.max(irf) > 0:
+                        implot.set_next_line_style((0, 200, 230, 255), 1.5)
                         implot.plot_line(
-                            label + " IRF", np.arange(len(irf)), irf / np.max(irf) * np.max(total)
+                            label + " IRF", np.arange(len(irf)), np.clip(irf / np.max(irf) * np.max(total), FLOOR, None)
                         )
             lo, hi = self.model._fit_bounds
             left = implot.drag_line_x(101, float(lo))
