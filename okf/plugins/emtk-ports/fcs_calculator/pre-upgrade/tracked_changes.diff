@@ -1,0 +1,12 @@
+diff --git a/chisurf/plugins/fcs/fcs_calculator/manifest.json b/chisurf/plugins/fcs/fcs_calculator/manifest.json
+index 41dc20064..19b4e6128 100644
+--- a/chisurf/plugins/fcs/fcs_calculator/manifest.json
++++ b/chisurf/plugins/fcs/fcs_calculator/manifest.json
+@@ -17,6 +17,7 @@
+     "window": {"enabled": true, "settings_key": null}
+   },
+   "entrypoints": {
++    "emtk": "chisurf.plugins.fcs.fcs_calculator.gui.app:make_app",
+     "gui": "chisurf.plugins.fcs.fcs_calculator.wizard:ConfocalCalcWidget",
+     "cli": "chisurf.plugins.fcs.fcs_calculator.cli.main:main",
+     "services": "chisurf.plugins.fcs.fcs_calculator.backend.services:register_services"

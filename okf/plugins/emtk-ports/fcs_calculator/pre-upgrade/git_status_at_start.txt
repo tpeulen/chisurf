@@ -1,0 +1,2 @@
+ M chisurf/plugins/fcs/fcs_calculator/manifest.json
+?? chisurf/plugins/fcs/fcs_calculator/gui/app.py

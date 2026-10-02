@@ -1,0 +1,153 @@
+"""Native confocal FCS solver with linked occupancy and physical reference models."""
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+from emtk import im
+from emtk.app import ImApp
+from emtk.file_dialog import FileDialog
+
+from chisurf.plugins.calculator.inputs import bounded_float
+from chisurf.plugins.calculator.native_form import fields
+
+from ..core import algorithms as physics
+
+
+class ConfocalApp(ImApp):
+    def __init__(self):
+        self.model = SimpleNamespace(tau_us=70., D_um2_s=400., rh_nm=.5, S=5., veff_fL=.4, temp_C=20., eta_mPa_s=.89, use_water_eta=True, invN=0., num_mols=.2408856, conc_nM=1.)
+        self.constraint = 'D'
+        self.last_edited = 'conc'
+        self.dye = ''
+        self.scale_dref = True
+        self.shape = 0
+        self.shape_size = 1.
+        self.shape_aspect = 2.
+        self.dialog = None
+        self.error = ''
+        self.spec = json.loads(Path(__file__).parents[1].joinpath('fcs_calculator.view.json').read_text())['sections']
+        self.compute()
+        super().__init__(self.render, continuous=False)
+
+    def compute(self):
+        result = physics.compute_confocal(**vars(self.model), constraint=self.constraint, last_edited=self.last_edited)
+        for key, value in result.items():
+            setattr(self.model, key, value)
+
+    def edited(self, attr):
+        self.last_edited = {'num_mols': 'N', 'invN': 'invN', 'conc_nM': 'conc'}.get(attr, self.last_edited)
+        self.compute()
+
+    def apply_dye(self):
+        info = physics.get_dye(self.dye)
+        if not info:
+            raise ValueError('Select a reference dye with a diffusion coefficient.')
+        value = float(info['d25_um2_s'])
+        if self.scale_dref:
+            value = physics.scale_D_from_25C(value, self.model.temp_C + 273.15, physics.mPa_s_to_Pa_s(self.model.eta_mPa_s))
+        self.model.D_um2_s = value
+        self.constraint = 'D'
+        self.compute()
+
+    def apply_shape(self):
+        m = self.model
+        T, eta = m.temp_C + 273.15, physics.mPa_s_to_Pa_s(m.eta_mPa_s)
+        diameter = physics.nm_to_m(self.shape_size)
+        if self.shape == 0:
+            value = physics.m2s_to_um2s(physics.stokes_einstein_D(T, eta, diameter / 2))
+        elif self.shape == 1:
+            value = physics.diffusion_ellipsoid(T, eta, diameter / 2 * self.shape_aspect, diameter / 2)
+        else:
+            value = physics.diffusion_cylinder(T, eta, diameter * self.shape_aspect, diameter)
+        m.D_um2_s = value
+        self.constraint = 'D'
+        self.compute()
+
+    def settings(self):
+        return dict(vars(self.model), fix_mode=self.constraint, dye=self.dye, scale_dref=self.scale_dref, shape_type=['Sphere','Ellipsoid','Cylinder'][self.shape], shape_size_nm=self.shape_size, shape_aspect=self.shape_aspect)
+
+    def apply_settings(self, data):
+        for key in vars(self.model):
+            if key in data:
+                setattr(self.model, key, data[key])
+        self.constraint = data.get('fix_mode', self.constraint)
+        if self.constraint not in ('D', 'rh', 'V'):
+            raise ValueError('Unknown constraint.')
+        self.dye = data.get('dye', self.dye)
+        self.scale_dref = data.get('scale_dref', self.scale_dref)
+        self.shape = ['Sphere','Ellipsoid','Cylinder'].index(data.get('shape_type', ['Sphere','Ellipsoid','Cylinder'][self.shape]))
+        self.shape_size = data.get('shape_size_nm', self.shape_size)
+        self.shape_aspect = data.get('shape_aspect', self.shape_aspect)
+        self.compute()
+
+    def render(self):
+        vp = im.get_main_viewport()
+        im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
+        im.set_next_window_size(vp.size, im.Cond.ALWAYS)
+        if im.begin('Confocal FCS calculator', flags=im.WindowFlags.NO_TITLE_BAR):
+            modes = ['D','rh','V']
+            changed, index = im.combo('Fixed constraint', modes.index(self.constraint), ['Fix D', 'Fix hydrodynamic radius', 'Fix volume'])
+            im.set_item_tooltip('Choose the measured physical quantity; the other two are derived and read-only.')
+            if changed:
+                self.constraint = modes[index]
+                self.compute()
+            for section in self.spec:
+                if section.get('title') in ('Diffusion / volume', 'Occupancy'):
+                    im.separator()
+                    im.text_unformatted(section['title'])
+                    for original in section['sections']:
+                        child = dict(original)
+                        attr = child['attr']
+                        child['read_only'] = (attr in ('D_um2_s', 'rh_nm', 'veff_fL') and attr != {'D':'D_um2_s','rh':'rh_nm','V':'veff_fL'}[self.constraint]) or (attr == 'eta_mPa_s' and self.model.use_water_eta)
+                        fields(self.model, [child], lambda attr=attr: self.edited(attr))
+            names = [''] + list(physics.dye_names())
+            _, i = im.combo('Reference dye', names.index(self.dye) if self.dye in names else 0, names)
+            im.set_item_tooltip('MMFDB reference species with a measured diffusion coefficient at 25 °C in water.')
+            self.dye = names[i]
+            _, self.scale_dref = im.checkbox('Scale reference to current temperature/viscosity', self.scale_dref)
+            im.set_item_tooltip('Apply the Stokes–Einstein temperature and viscosity correction to the reference diffusion coefficient.')
+            if im.button('Apply reference dye'):
+                try:
+                    self.apply_dye()
+                except Exception as exc:
+                    self.error = str(exc)
+            im.set_item_tooltip('Set the selected reference diffusion coefficient and switch to Fix D.')
+            _, self.shape = im.combo('Molecular shape', self.shape, ['Sphere', 'Ellipsoid', 'Cylinder'])
+            im.set_item_tooltip('Choose a hydrodynamic shape for estimating diffusion.')
+            _, self.shape_size = bounded_float('Diameter [nm]', self.shape_size, minimum=.001, maximum=1e6, step=.1)
+            im.set_item_tooltip('Sphere diameter, ellipsoid minor-axis diameter, or cylinder diameter in nanometres.')
+            im.begin_disabled(self.shape == 0)
+            _, self.shape_aspect = bounded_float('Aspect ratio', self.shape_aspect, minimum=.001, maximum=1e6, step=.1)
+            im.set_item_tooltip('Ellipsoid major/minor axis ratio or cylinder length/diameter.')
+            im.end_disabled()
+            if im.button('Apply shape'):
+                self.apply_shape()
+            im.set_item_tooltip('Estimate diffusion from this shape using current temperature and viscosity; switch to Fix D.')
+            for label, mode in [('Export JSON','save'),('Import JSON','open')]:
+                if im.button(label):
+                    self.dialog = FileDialog(label, mode=mode, filename='confocal.json' if mode == 'save' else '', filters='JSON (*.json)')
+                im.set_item_tooltip(f'{label}: all numeric inputs, reference dye, molecular shape and fixed constraint.')
+            if self.error:
+                im.text_wrapped(self.error)
+        im.end()
+        if self.dialog:
+            if im.begin('Confocal settings file'):
+                result = self.dialog.draw()
+                if result:
+                    try:
+                        if self.dialog.mode == 'save':
+                            Path(result[0]).write_text(json.dumps(self.settings(), indent=2))
+                        else:
+                            self.apply_settings(json.loads(Path(result[0]).read_text()))
+                        self.dialog = None
+                    except Exception as exc:
+                        self.error = str(exc)
+                elif result is False:
+                    self.dialog = None
+            im.end()
+
+
+def make_app(**kwargs):
+    from chisurf.emtk.i18n import install
+    install()
+    return ConfocalApp()
