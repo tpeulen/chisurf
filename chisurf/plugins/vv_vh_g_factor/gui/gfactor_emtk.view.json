@@ -1,0 +1,327 @@
+{
+ "_comment": "The emtk forms of the G-factor calculator, drawn by emtk.view_form.draw_form over GFactorModel. The Qt tool keeps ../wizard.ui.",
+ "panels": {
+  "tail": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Channels",
+     "description": "How the two channels of the reference file are used.",
+     "sections": [
+      {
+       "type": "toggle",
+       "attr": "flip",
+       "label": "Flip VV/VH",
+       "description": "The file has VV and VH swapped: exchange the parallel and perpendicular channels consistently across the calculation and the plots."
+      },
+      {
+       "type": "toggle",
+       "attr": "background",
+       "label": "Background correction",
+       "description": "Subtract separate channel means of the background region before matching the tails."
+      }
+     ]
+    },
+    {
+     "type": "panel",
+     "title": "Tail matching",
+     "description": "Region of the fast-rotating reference whose VV/VH ratio gives G, the background region and the VH shift.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "tail_start",
+       "label": "Tail start (bin)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000000.0,
+       "decimals": 1,
+       "step": 1.0,
+       "description": "First TAC bin of the tail region used to match the reference dye channels."
+      },
+      {
+       "type": "value",
+       "attr": "tail_stop",
+       "label": "Tail stop (bin)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000000.0,
+       "decimals": 1,
+       "step": 1.0,
+       "description": "Last TAC bin of the tail region."
+      },
+      {
+       "type": "value",
+       "attr": "background_start",
+       "label": "Background start (bin)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000000.0,
+       "decimals": 1,
+       "step": 1.0,
+       "description": "First TAC bin of the signal-free region used for each channel's background (needs Background correction)."
+      },
+      {
+       "type": "value",
+       "attr": "background_stop",
+       "label": "Background stop (bin)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000000.0,
+       "decimals": 1,
+       "step": 1.0,
+       "description": "Last TAC bin of the background region (needs Background correction)."
+      },
+      {
+       "type": "value",
+       "attr": "shift",
+       "label": "VH shift (bins)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": -1000.0,
+       "maximum": 1000.0,
+       "decimals": 3,
+       "step": 0.1,
+       "description": "Shift the VH time axis by this many TAC bins, fractional bins included (the Qt tool's 'Shift Perpendicular Decay')."
+      }
+     ]
+    },
+    {
+     "type": "panel",
+     "title": "Manual G",
+     "description": "Use a G-factor of your own instead of the calculated one.",
+     "sections": [
+      {
+       "type": "toggle",
+       "attr": "manual_g",
+       "label": "Manual G",
+       "description": "Use the G-factor typed below instead of the calculated one (the Qt tool does this when its G field is edited)."
+      },
+      {
+       "type": "value",
+       "attr": "g_override",
+       "label": "G used",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.001,
+       "maximum": 100.0,
+       "decimals": 4,
+       "step": 0.01,
+       "description": "Positive detector sensitivity ratio used for the corrected anisotropy."
+      }
+     ]
+    }
+   ]
+  },
+  "mixing": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Slow-reference mixing",
+     "description": "Linked polarization-mixing estimate l1 = l2 from the slow protein reference and the Perrin relation.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "fp_dt_ns",
+       "label": "dt (ns/bin)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0001,
+       "maximum": 1000.0,
+       "decimals": 4,
+       "step": 0.01,
+       "description": "Nanoseconds per slow-reference bin."
+      },
+      {
+       "type": "value",
+       "attr": "fp_rho_ns",
+       "label": "rho (ns)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.001,
+       "maximum": 100000.0,
+       "decimals": 3,
+       "step": 1.0,
+       "description": "Rotational correlation time used in the Perrin relation."
+      },
+      {
+       "type": "value",
+       "attr": "fp_r0",
+       "label": "r0",
+       "kind": "float",
+       "style": "spin",
+       "minimum": -0.2,
+       "maximum": 0.4,
+       "decimals": 3,
+       "step": 0.01,
+       "description": "Limiting (fundamental) anisotropy of the reference fluorophore."
+      },
+      {
+       "type": "toggle",
+       "attr": "manual_tau",
+       "label": "Manual lifetime",
+       "description": "Override the intensity first-moment lifetime of the slow reference."
+      },
+      {
+       "type": "value",
+       "attr": "tau_override",
+       "label": "tau (ns)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 100000.0,
+       "decimals": 3,
+       "step": 0.1,
+       "description": "Lifetime used in place of the estimate."
+      },
+      {
+       "type": "toggle",
+       "attr": "manual_rs",
+       "label": "Manual target rS",
+       "description": "Override the Perrin steady-state anisotropy target."
+      },
+      {
+       "type": "value",
+       "attr": "rs_override",
+       "label": "Target rS",
+       "kind": "float",
+       "style": "spin",
+       "minimum": -0.2,
+       "maximum": 0.4,
+       "decimals": 4,
+       "step": 0.01,
+       "description": "Steady-state anisotropy the slow reference should have."
+      },
+      {
+       "type": "toggle",
+       "attr": "manual_l",
+       "label": "Manual l1 = l2",
+       "description": "Override the single linked polarization-mixing parameter."
+      },
+      {
+       "type": "value",
+       "attr": "l_override",
+       "label": "l1 = l2",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 0.5,
+       "decimals": 4,
+       "step": 0.01,
+       "description": "Linked mixing parameter applied to l1 and l2."
+      }
+     ]
+    }
+   ]
+  },
+  "results": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "G-factor",
+     "description": "Results of the tail matching.",
+     "sections": [
+      {
+       "type": "custom",
+       "key": "data_table",
+       "options": {
+        "source": "result_rows",
+        "height": 150,
+        "editable": false,
+        "columns": [
+         {
+          "key": "quantity",
+          "title": "Quantity",
+          "tooltip": "What is reported."
+         },
+         {
+          "key": "value",
+          "title": "Value",
+          "tooltip": "The value for the current settings."
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "mixing_results": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Mixing estimate",
+     "description": "Result of the slow-reference estimate.",
+     "sections": [
+      {
+       "type": "custom",
+       "key": "data_table",
+       "options": {
+        "source": "mixing_rows",
+        "height": 140,
+        "editable": false,
+        "columns": [
+         {
+          "key": "quantity",
+          "title": "Quantity",
+          "tooltip": "What is reported."
+         },
+         {
+          "key": "value",
+          "title": "Value",
+          "tooltip": "The value for the current settings."
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "batch": {
+   "sections": [
+    {
+     "type": "custom",
+     "key": "data_table",
+     "options": {
+      "source": "batch_rows",
+      "delete_call": "remove_batch",
+      "expand": true,
+      "reserve": 40,
+      "height": 200,
+      "columns": [
+       {
+        "key": "file",
+        "title": "File",
+        "tooltip": "Queued VV/VH decay; select and press Delete to remove it from the queue."
+       },
+       {
+        "key": "r_inf",
+        "title": "r(inf)",
+        "tooltip": "Mean corrected anisotropy over the tail region with the frozen calibration."
+       },
+       {
+        "key": "region",
+        "title": "Region",
+        "tooltip": "Bins averaged."
+       },
+       {
+        "key": "g_factor",
+        "title": "G",
+        "tooltip": "G-factor applied."
+       },
+       {
+        "key": "error",
+        "title": "Error",
+        "tooltip": "Why the file could not be evaluated."
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

@@ -52,6 +52,88 @@ class GFactorModel:
     def snapshot(self):
         return deepcopy(self)
 
+    # -- scalar views of the region lists, for the form ----------------------------------------- #
+    def _bound(index, attr):  # noqa: N805 (property factory)
+        def get(self):
+            return float(getattr(self, attr)[index])
+
+        def put(self, value):
+            getattr(self, attr)[index] = float(value)
+
+        return property(get, put)
+
+    tail_start = _bound(0, "region")
+    tail_stop = _bound(1, "region")
+    background_start = _bound(0, "background_region")
+    background_stop = _bound(1, "background_region")
+    del _bound
+
+    busy = False
+
+    def enabled(self, name):
+        """Whether the control *name* means something now (no idle controls)."""
+        if self.busy:
+            return False
+        if name in ("background_start", "background_stop"):
+            return self.background
+        if name in ("g_override",):
+            return self.manual_g
+        if name == "tau_override":
+            return self.manual_tau
+        if name == "rs_override":
+            return self.manual_rs
+        if name == "l_override":
+            return self.manual_l
+        if name in ("tail_start", "tail_stop", "shift", "flip", "background", "manual_g", "manual_tau",
+                    "manual_rs", "manual_l") and self.fast is None:
+            return False
+        if name in ("fp_dt_ns", "fp_rho_ns", "fp_r0"):
+            return self.slow is not None
+        return True
+
+    def remove_batch(self, record=None):
+        """Drop the queued file of *record* (and its result row)."""
+        path = (record or {}).get("path")
+        if path in self.batch_files:
+            self.batch_files.remove(path)
+        self.batch_results = [r for r in self.batch_results if r.get("file") != path]
+
+    def result_rows(self):
+        """The G-factor results as ``{quantity, value}`` rows (what the Qt tool shows in its read-only fields)."""
+        keys = [("G raw", "g_factor_uncorrected"), ("G SD", "g_factor_stddev_uncorrected")]
+        if self.background:
+            keys += [("G corrected", "g_factor_corrected"),
+                     ("G corrected SD", "g_factor_stddev_corrected"),
+                     ("Background VV", "bg_parallel_avg"), ("Background VH", "bg_perpendicular_avg")]
+        rows = []
+        for label, key in keys:
+            value = self.result.get(key)
+            rows.append({"quantity": label, "value": f"{float(value):.6g}" if value is not None else "unavailable"})
+        if self.manual_g:
+            rows.append({"quantity": "G used (manual)", "value": f"{float(self.g_override):.6g}"})
+        return rows
+
+    def mixing_rows(self):
+        rows = []
+        for label, key in (("Lifetime estimate (ns)", "tau_estimate_ns"), ("Lifetime used (ns)", "tau_used_ns"),
+                           ("Expected steady anisotropy", "r_expected"), ("Linked l1", "l1"), ("Linked l2", "l2")):
+            value = self.fp_result.get(key) if self.fp_result else None
+            rows.append({"quantity": label, "value": f"{float(value):.6g}" if value is not None else "none"})
+        return rows
+
+    def batch_rows(self):
+        done = {r["file"]: r for r in self.batch_results}
+        rows = []
+        for path in self.batch_files:
+            r = done.get(path, {})
+            r_inf = r.get("r_inf")
+            rows.append({"file": Path(path).name, "path": path,
+                         "r_inf": f"{r_inf:.5g}" if r_inf is not None else ("" if not r else "failed"),
+                         "region": f"{r['region_start']}-{r['region_stop']}" if "region_start" in r else "",
+                         "g_factor": f"{r['g_factor']:.5g}" if r.get("g_factor") is not None else "",
+                         "error": r.get("error", "")})
+        return rows
+
     def load(self, path, slow=False):
         vv, vh = read_vv_vh(str(path), split=True)
         vv = np.asarray(vv, dtype=float)

@@ -7,3 +7,8 @@ A slow protein reference provides a first-moment lifetime and Perrin steady anis
 
 ## Outputs
 Export calibration JSON or apply a frozen current calibration to a batch of VV/VH decays and save the resulting anisotropy table. Archive uses the existing MMFDB calibration/provenance RPC, preserving corrected traces and the reference source.
+
+## Further reading
+
+- [Time-resolved fluorescence anisotropy](docs/concepts/anisotropy.md)
+- [Fluorescence lifetime and anisotropy decay fitting](docs/guides/10_lifetime_anisotropy_fitting.md)

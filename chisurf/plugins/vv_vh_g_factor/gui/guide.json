@@ -1,14 +1,39 @@
 [
   {
-    "title": "Load reference",
-    "text": "Load fast dye and optionally slow protein VV/VH decays."
+    "title": "Load the fast reference",
+    "text": "G is the detection-efficiency ratio of the two polarisation channels. It is measured on a dye that depolarises within the pulse width, so its true anisotropy is zero in the tail and VV/VH there is G alone. Load that dye's VV/VH decay (or drop the file on the window).",
+    "target": {
+      "name": "load_fast"
+    },
+    "await": {
+      "hint": "Press Fast reference... and choose the VV/VH file."
+    }
   },
   {
-    "title": "Match tails",
-    "text": "Choose tail/background regions, shift and correction options."
+    "title": "Match the tails",
+    "text": "The yellow lines in the decay plot (and the Tail start / Tail stop fields) mark the region whose ratio gives G. Choose a stretch where the dye has fully depolarised and the decay is still well above the background. Turn on Background correction and set the blue background region when the pre-pulse level matters.",
+    "target": {
+      "attr": "tail_start"
+    },
+    "await": {
+      "hint": "Change Tail start (type a bin and press Enter, or use the arrows)."
+    }
   },
   {
-    "title": "Inspect and export",
-    "text": "Check raw/corrected decays and anisotropy before exporting or archiving."
+    "title": "Load a slow protein reference",
+    "text": "A slow-rotating, long-lived reference has a known steady-state anisotropy. Its measured value constrains the polarisation mixing: only the single linked estimate l1 = l2 can be determined from one observable, and values outside 0 to 0.5 are shown but not applied.",
+    "target": {
+      "name": "load_slow"
+    },
+    "await": {
+      "hint": "Press Slow protein... and choose the file."
+    }
+  },
+  {
+    "title": "Export the calibration",
+    "text": "Check the corrected anisotropy r(t) of both references first: the fast dye should sit near zero in the tail, the slow protein near its Perrin value. Then export the values as JSON or archive them with their provenance.",
+    "target": {
+      "name": "export"
+    }
   }
 ]
