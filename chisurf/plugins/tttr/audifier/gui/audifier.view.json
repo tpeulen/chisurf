@@ -10,14 +10,20 @@
           "type": "panel",
           "title": "Setup",
           "sections": [
-            {"type": "custom", "key": "audifier_setup"}
+            {
+              "type": "custom",
+              "key": "audifier_setup"
+            }
           ]
         },
         {
           "type": "panel",
           "title": "Mixer",
           "sections": [
-            {"type": "custom", "key": "audifier_mix"}
+            {
+              "type": "custom",
+              "key": "audifier_mix"
+            }
           ]
         },
         {
@@ -25,25 +31,90 @@
           "title": "Audio",
           "n_col": 1,
           "sections": [
-            {"type": "value", "attr": "bin_width", "label": "Bin width", "kind": "float",
-             "decimals": 3, "minimum": 0.001, "maximum": 1.0, "step": 0.01, "suffix": " s",
-             "description": "Macro-time bin width used to build the amplitude envelope."},
-            {"type": "choice", "attr": "env_mode", "label": "Envelope",
-             "options": ["linear", "sqrt", "log"],
-             "description": "Envelope compression applied to per-bin photon counts."},
-            {"type": "value", "attr": "sample_rate", "label": "Sample rate", "kind": "int",
-             "minimum": 8000, "maximum": 192000, "step": 100,
-             "description": "Audio sample rate (Hz)."},
-            {"type": "value", "attr": "master_gain", "label": "Master gain", "kind": "float",
-             "decimals": 2, "minimum": 0.0, "maximum": 2.0, "step": 0.05},
-            {"type": "value", "attr": "env_floor", "label": "Env floor", "kind": "float",
-             "decimals": 2, "minimum": 0.0, "maximum": 0.99, "step": 0.05},
-            {"type": "value", "attr": "env_scale", "label": "Env scale", "kind": "float",
-             "decimals": 2, "minimum": 0.1, "maximum": 10.0, "step": 0.1},
-            {"type": "value", "attr": "attack_frames", "label": "Attack", "kind": "int",
-             "minimum": 0, "maximum": 100},
-            {"type": "value", "attr": "release_frames", "label": "Release", "kind": "int",
-             "minimum": 0, "maximum": 200}
+            {
+              "type": "value",
+              "attr": "bin_width",
+              "label": "Bin width",
+              "kind": "float",
+              "decimals": 3,
+              "minimum": 0.001,
+              "maximum": 1.0,
+              "step": 0.01,
+              "suffix": " s",
+              "description": "Macro-time bin width used to build the amplitude envelope."
+            },
+            {
+              "type": "choice",
+              "attr": "env_mode",
+              "label": "Envelope",
+              "options": [
+                "linear",
+                "sqrt",
+                "log"
+              ],
+              "description": "Envelope compression applied to per-bin photon counts."
+            },
+            {
+              "type": "value",
+              "attr": "sample_rate",
+              "label": "Sample rate",
+              "kind": "int",
+              "minimum": 8000,
+              "maximum": 192000,
+              "step": 100,
+              "description": "Audio sample rate (Hz)."
+            },
+            {
+              "type": "value",
+              "attr": "master_gain",
+              "label": "Master gain",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.0,
+              "maximum": 2.0,
+              "step": 0.05,
+              "description": "Overall output gain of the rendered audio (0 to 2)."
+            },
+            {
+              "type": "value",
+              "attr": "env_floor",
+              "label": "Env floor",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.0,
+              "maximum": 0.99,
+              "step": 0.05,
+              "description": "Lowest envelope level; counts below it are silent (0 to 0.99)."
+            },
+            {
+              "type": "value",
+              "attr": "env_scale",
+              "label": "Env scale",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.1,
+              "maximum": 10.0,
+              "step": 0.1,
+              "description": "Multiplier applied to the envelope before it is compressed (0.1 to 10)."
+            },
+            {
+              "type": "value",
+              "attr": "attack_frames",
+              "label": "Attack",
+              "kind": "int",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Frames over which a channel's envelope rises when photons start."
+            },
+            {
+              "type": "value",
+              "attr": "release_frames",
+              "label": "Release",
+              "kind": "int",
+              "minimum": 0,
+              "maximum": 200,
+              "description": "Frames over which a channel's envelope falls when photons stop."
+            }
           ]
         },
         {
@@ -51,9 +122,17 @@
           "title": "Waterfall params",
           "n_col": 1,
           "sections": [
-            {"type": "choice", "attr": "waterfall_mode", "label": "Mode",
-             "options": ["microtime", "lifetime"], "style": "radio",
-             "description": "Show a micro-time histogram waterfall or an ILT lifetime waterfall."},
+            {
+              "type": "choice",
+              "attr": "waterfall_mode",
+              "label": "Mode",
+              "options": [
+                "microtime",
+                "lifetime"
+              ],
+              "style": "radio",
+              "description": "Show a micro-time histogram waterfall or an ILT lifetime waterfall."
+            },
             {
               "type": "panel",
               "title": "Micro-time",
@@ -61,11 +140,33 @@
               "collapsed": false,
               "n_col": 1,
               "sections": [
-                {"type": "value", "attr": "wf_bin_width", "label": "Bin width", "kind": "float",
-                 "decimals": 3, "minimum": 0.001, "maximum": 1.0, "step": 0.01, "suffix": " s"},
-                {"type": "value", "attr": "wf_micro_bins", "label": "Micro bins", "kind": "int",
-                 "minimum": 32, "maximum": 1024},
-                {"type": "toggle", "attr": "wf_log", "label": "Log scale"}
+                {
+                  "type": "value",
+                  "attr": "wf_bin_width",
+                  "label": "Bin width",
+                  "kind": "float",
+                  "decimals": 3,
+                  "minimum": 0.001,
+                  "maximum": 1.0,
+                  "step": 0.01,
+                  "suffix": " s",
+                  "description": "Macro-time bin width of the micro-time waterfall."
+                },
+                {
+                  "type": "value",
+                  "attr": "wf_micro_bins",
+                  "label": "Micro bins",
+                  "kind": "int",
+                  "minimum": 32,
+                  "maximum": 1024,
+                  "description": "Number of micro-time bins of the waterfall."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "wf_log",
+                  "label": "Log scale",
+                  "description": "Show log(1+counts) instead of counts."
+                }
               ]
             },
             {
@@ -75,20 +176,75 @@
               "collapsed": true,
               "n_col": 1,
               "sections": [
-                {"type": "value", "attr": "lt_bin_width", "label": "Bin width", "kind": "float",
-                 "decimals": 3, "minimum": 0.001, "maximum": 1.0, "step": 0.01, "suffix": " s"},
-                {"type": "value", "attr": "lt_tau_min", "label": "τ min", "kind": "float",
-                 "decimals": 2, "minimum": 0.1, "maximum": 100.0, "suffix": " ns"},
-                {"type": "value", "attr": "lt_tau_max", "label": "τ max", "kind": "float",
-                 "decimals": 2, "minimum": 0.1, "maximum": 100.0, "suffix": " ns"},
-                {"type": "value", "attr": "lt_n_tau", "label": "N τ points", "kind": "int",
-                 "minimum": 20, "maximum": 500},
-                {"type": "value", "attr": "lt_reg", "label": "Regularization", "kind": "float",
-                 "decimals": 4, "minimum": 1e-06, "maximum": 1.0, "step": 0.001},
-                {"type": "toggle_row", "items": [
-                  {"attr": "lt_log_tau", "label": "Log τ"},
-                  {"attr": "lt_log_amp", "label": "Log amplitude"}
-                ]}
+                {
+                  "type": "value",
+                  "attr": "lt_bin_width",
+                  "label": "Bin width",
+                  "kind": "float",
+                  "decimals": 3,
+                  "minimum": 0.001,
+                  "maximum": 1.0,
+                  "step": 0.01,
+                  "suffix": " s",
+                  "description": "Macro-time bin width of the lifetime waterfall."
+                },
+                {
+                  "type": "value",
+                  "attr": "lt_tau_min",
+                  "label": "τ min",
+                  "kind": "float",
+                  "decimals": 2,
+                  "minimum": 0.1,
+                  "maximum": 100.0,
+                  "suffix": " ns",
+                  "description": "Shortest lifetime of the lifetime grid."
+                },
+                {
+                  "type": "value",
+                  "attr": "lt_tau_max",
+                  "label": "τ max",
+                  "kind": "float",
+                  "decimals": 2,
+                  "minimum": 0.1,
+                  "maximum": 100.0,
+                  "suffix": " ns",
+                  "description": "Longest lifetime of the lifetime grid."
+                },
+                {
+                  "type": "value",
+                  "attr": "lt_n_tau",
+                  "label": "N τ points",
+                  "kind": "int",
+                  "minimum": 20,
+                  "maximum": 500,
+                  "description": "Number of lifetimes of the grid."
+                },
+                {
+                  "type": "value",
+                  "attr": "lt_reg",
+                  "label": "Regularization",
+                  "kind": "float",
+                  "decimals": 4,
+                  "minimum": 1e-06,
+                  "maximum": 1.0,
+                  "step": 0.001,
+                  "description": "Regularization strength of the lifetime inversion."
+                },
+                {
+                  "type": "toggle_row",
+                  "items": [
+                    {
+                      "attr": "lt_log_tau",
+                      "label": "Log τ",
+                      "description": "Space the lifetime axis logarithmically."
+                    },
+                    {
+                      "attr": "lt_log_amp",
+                      "label": "Log amplitude",
+                      "description": "Show log(1+amplitude)."
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -97,9 +253,18 @@
           "type": "panel",
           "title": "Waterfall",
           "sections": [
-            {"type": "custom", "key": "waterfall", "target": "waterfall_payload",
-             "options": {"position_source": "waterfall_position"}},
-            {"type": "custom", "key": "audifier_transport"}
+            {
+              "type": "custom",
+              "key": "waterfall",
+              "target": "waterfall_payload",
+              "options": {
+                "position_source": "waterfall_position"
+              }
+            },
+            {
+              "type": "custom",
+              "key": "audifier_transport"
+            }
           ]
         }
       ]

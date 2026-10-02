@@ -1,6 +1,26 @@
-[
- {"title":"Load photons","text":"Load or drop a TTTR stream and inspect its setup."},
- {"title":"Choose the mix","text":"Enable channels and set chord, pitch, gain and micro-time gates."},
- {"title":"Compute the waterfall","text":"Select micro-time or lifetime mode, then Update."},
- {"title":"Listen and export","text":"Play, pause/resume or save the same synthesis settings as WAV."}
-]
+{
+  "_comment": "Guided tour for the TTTR audifier. Steps point at real controls; the ones with an await wait until the user presses the control.",
+  "steps": [
+    {"title": "What the audifier does",
+     "text": "It turns a photon stream into sound and shows the same stream as a waterfall: macro-time (when) against micro-time or lifetime (how long after the pulse), each detector in its own colour. Louder means more photons.<br/><br/>Seven steps; you press the buttons, the tour only points at them.",
+     "target": {}},
+    {"title": "Load a stream",
+     "text": "Press <b>Load TTTR</b> and pick a photon file (or drop it on the window). A Becker &amp; Hickl <i>.spc</i> needs its subtype chosen in the <b>Detector setup</b> window first (File Type).",
+     "target": {"key": "load"}, "await": {"hint": "Press <b>Load TTTR</b>."}},
+    {"title": "Detectors and colours",
+     "text": "<b>Detector colours</b> lists the detectors of the setup. <b>Show</b> includes one in the waterfall; double-click its colour to type another (#rrggbb).",
+     "target": {"key": "detector_rows"}},
+    {"title": "Channel notes",
+     "text": "Every routing channel plays its own chord. In <b>Channel notes</b> switch channels on and off, set pitch, gain and micro-time gate, and choose the chord of the selected row below the table.",
+     "target": {"key": "channel_rows"}},
+    {"title": "Compute the waterfall",
+     "text": "Choose micro-time or lifetime in <b>Waterfall parameters</b>, then press <b>Update</b>. The picture appears with its axes; wheel and drag zoom it.",
+     "target": {"key": "update"}, "await": {"hint": "Press <b>Update</b>."}},
+    {"title": "Listen",
+     "text": "<b>Play / Resume</b> renders the selected channels and range with the <b>Audio parameters</b>; <b>Pause</b>, <b>Stop</b> and <b>Revert</b> control it, and a line follows the playback in the waterfall.",
+     "target": {"key": "play"}, "await": {"hint": "Press <b>Play / Resume</b>."}},
+    {"title": "Export",
+     "text": "<b>Save WAV</b> writes the same sound as a 16-bit mono WAV file. Press <b>Help</b> for the parameters.",
+     "target": {"key": "save_wav"}}
+  ]
+}

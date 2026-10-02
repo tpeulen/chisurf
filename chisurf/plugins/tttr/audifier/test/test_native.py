@@ -153,27 +153,6 @@ def test_native_true_pause_resume_revert_stop_cleanup():
     assert not path.exists() and player.state == "stopped"
 
 
-def test_native_colour_controls_convert_between_byte_and_float_rgb(monkeypatch):
-    from emtk import im
-    from emtk.pil_painter import PilPainter
-
-    app = create_app()
-    app.model.set_detectors_from_settings({"detectors": {"red": {"chs": [0]}}})
-    seen = []
-
-    def colour(label, values):
-        seen.append(values)
-        return True, (0, 128, 255)
-
-    monkeypatch.setattr(im, "color_edit3", colour)
-    try:
-        app.draw(PilPainter(1200, 800), 0, 0, 1200, 800)
-        assert seen[0][0] == 255
-        np.testing.assert_allclose(app.model.detectors[0]["color"], (0, 128 / 255, 1))
-    finally:
-        app.close()
-
-
 def test_async_load_snapshot_range_gate_and_wav_export(tmp_path):
     entered, release = Event(), Event()
 

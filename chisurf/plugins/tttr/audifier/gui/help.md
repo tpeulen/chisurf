@@ -2,7 +2,8 @@
 
 Load or drop a TTTR file, then define detectors and update channels. If no
 detectors are defined, routing channels receive separate default detectors.
-Detector enable and RGB colour control the waterfall; channel enable, chord,
+A Becker & Hickl .spc file needs its subtype chosen in the detector setup (File Type) first.
+Detector Show and colour (#rrggbb in the table) control the waterfall; channel enable, chord,
 pitch, gain and micro-time gates control audio. Micro-time gate endpoints are
 inclusive first bin and exclusive last bin.
 
@@ -19,6 +20,10 @@ parameters as playback, writing 16-bit mono PCM. Rendering remains available
 when no OS audio device/player is available.
 
 The waterfall has elapsed time horizontally and micro-time or lifetime vertically,
-increasing downward. Detector hue and normalized amplitude brightness encode
+increasing upward, on a plot with axes (the wheel zooms, a drag pans). Detector hue and normalized amplitude brightness encode
 the contributing stream. The white line follows playback position. Lifetime
 diagnostics use an ILT model and are not a substitute for calibrated fitting.
+
+## Further reading
+
+[Audifier guide](docs/guides/94_tttr_audifier.md) · [Detector setup](docs/guides/87_channel_definition.md)

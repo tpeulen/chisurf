@@ -1,0 +1,299 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.0",
+    "0.000000",
+    "0.000s",
+    "1",
+    "?",
+    "add",
+    "adjustshifts",
+    "applytaclinearization(lut)whenreading",
+    "assignlut",
+    "audioparameters",
+    "auto",
+    "calibration",
+    "channel",
+    "channelnotes",
+    "channels",
+    "configureluts",
+    "delete",
+    "detectorcolours",
+    "detectorname",
+    "detectors",
+    "detectorsetup",
+    "detectorvisibility.",
+    "eff.microtime(ps)",
+    "filetype",
+    "g-factor",
+    "guide",
+    "help",
+    "latest",
+    "loadastreamordefinedetectorstochoosethedetectorcolours.",
+    "loadatttrstreamtorenderaudioanditswaterfall.",
+    "loadtttr",
+    "lut",
+    "luthandling(taclinearization)",
+    "macrotimeres.(ns)",
+    "microtimebinning",
+    "microtimeranges",
+    "microtimeres.(ps)",
+    "opticalsetup",
+    "pause",
+    "piewindows",
+    "play/resume",
+    "plot",
+    "polarizationresolved",
+    "public",
+    "rangeend",
+    "rangestart",
+    "read",
+    "rename",
+    "revert",
+    "save",
+    "savewav",
+    "setup",
+    "shift",
+    "stop",
+    "stopped0.00/0.00s",
+    "tttrreadingroutine",
+    "unsaved",
+    "update",
+    "updatechannels",
+    "updatecomputesawaterfallusingtheenableddetectors.audiochannelselectionisindependentof",
+    "waterfallandaudiotransport",
+    "waterfallparameters"
+  ],
+  "interactive": [
+    {
+      "kind": "combo",
+      "label": "setup_choice",
+      "id": "##setup_choice",
+      "tooltip": "Choose a saved detector setup; its detectors, PIE windows, reading routine, LUTs and optical setup replace the working definition."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Ask for a name and store the working definition as a saved setup."
+    },
+    {
+      "kind": "button",
+      "label": "Rename",
+      "id": "Rename",
+      "tooltip": "Give the selected saved setup another name."
+    },
+    {
+      "kind": "button",
+      "label": "Delete",
+      "id": "Delete",
+      "tooltip": "Delete the selected saved setup after asking."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Public",
+      "id": "Public",
+      "tooltip": "When checked, the setup is visible to all users in the MMFDB; it takes effect with Save. Only the owner of a saved setup can change this."
+    },
+    {
+      "kind": "combo",
+      "label": "calibration_choice",
+      "id": "##calibration_choice",
+      "tooltip": "Pick a stored calibration snapshot of the selected setup: its G factor, l1 and l2 are applied to the detectors. Latest leaves the factors as they are."
+    },
+    {
+      "kind": "button",
+      "label": "?",
+      "id": "?##page_help",
+      "tooltip": "Explain the page: setups, reading routine, PIE windows, detectors and the units of micro-time ranges."
+    },
+    {
+      "kind": "selectable",
+      "label": "▼ TTTR Reading routine",
+      "id": "▼ TTTR Reading routine##section_reading",
+      "tooltip": "File type, timing and binning used to read TTTR files."
+    },
+    {
+      "kind": "combo",
+      "label": "tttr_format",
+      "id": "##tttr_format",
+      "tooltip": "The TTTR container format used to read measurements; Auto detects it from the file."
+    },
+    {
+      "kind": "button",
+      "label": "Read",
+      "id": "Read",
+      "tooltip": "Read a measurement or BH SET calibration: macro and micro time resolution from the header, and the decay of every routing channel."
+    },
+    {
+      "kind": "input_text",
+      "label": "macro_time_resolution",
+      "id": "##macro_time_resolution",
+      "tooltip": "Macro-time tick (the excitation period) in nanoseconds."
+    },
+    {
+      "kind": "input_text",
+      "label": "micro_time_resolution",
+      "id": "##micro_time_resolution",
+      "tooltip": "Micro-time channel width in picoseconds."
+    },
+    {
+      "kind": "combo",
+      "label": "binning",
+      "id": "##binning",
+      "tooltip": "Number of original TAC channels per analysis bin."
+    },
+    {
+      "kind": "input_text",
+      "label": "effective",
+      "id": "##effective",
+      "tooltip": "Microtime resolution times the binning (read-only)."
+    },
+    {
+      "kind": "button",
+      "label": "Plot",
+      "id": "Plot",
+      "tooltip": "Show or hide the micro-time decay preview with the PIE windows and detector gates overlaid."
+    },
+    {
+      "kind": "selectable",
+      "label": "▶ PIE Windows",
+      "id": "▶ PIE Windows##section_windows",
+      "tooltip": "PIE excitation windows (start and end TAC channel)."
+    },
+    {
+      "kind": "selectable",
+      "label": "▼ Detectors",
+      "id": "▼ Detectors##section_detectors",
+      "tooltip": "Detectors: routing channels, micro-time gates and polarization factors."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Polarization resolved",
+      "id": "Polarization resolved",
+      "tooltip": "ON: each detector's routing channels are interleaved parallel/perpendicular (VV/VH) for anisotropy. OFF: one unpolarized stream per detector."
+    },
+    {
+      "kind": "button",
+      "label": "Add",
+      "id": "Add##add_detector",
+      "tooltip": "Add a detector (channels 0, 1; range 0:2048) with a free name; rename and edit it in the table."
+    },
+    {
+      "kind": "selectable",
+      "label": "▼ LUT handling (TAC linearization)",
+      "id": "▼ LUT handling (TAC linearization)##section_lut",
+      "tooltip": "TAC linearization tables and micro-time shifts per routing channel."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Apply TAC linearization (LUT) when reading",
+      "id": "Apply TAC linearization (LUT) when reading",
+      "tooltip": "When checked, each routing channel's assigned LUT linearizes the raw micro-times at read time (needed for e.g. SPC-130). If a used channel has no LUT, you are offered the LUT calculator."
+    },
+    {
+      "kind": "button",
+      "label": "Assign LUT...",
+      "id": "Assign LUT...",
+      "tooltip": "Assign a LUT file (.npy / .npz / .txt) to the selected channel row."
+    },
+    {
+      "kind": "button",
+      "label": "Configure LUTs...",
+      "id": "Configure LUTs...",
+      "tooltip": "Open the LUT tools: compute a LUT from the loaded calibration decay (linear region or automatic), assign, export or remove it."
+    },
+    {
+      "kind": "button",
+      "label": "Adjust shifts...",
+      "id": "Adjust shifts...",
+      "tooltip": "Visually align the per-channel micro-time shifts on the (LUT-corrected) calibration decay; read a calibration file first."
+    },
+    {
+      "kind": "button",
+      "label": "Optical Setup...",
+      "id": "Optical Setup...",
+      "tooltip": "Open the light-path editor: configure filters, dyes and detectors, and compute Foerster radii and cross-talk."
+    },
+    {
+      "kind": "button",
+      "label": "Update channels",
+      "id": "Update channels",
+      "tooltip": "Rebuild detector colours and audio channels from the current setup."
+    },
+    {
+      "kind": "button",
+      "label": "Load TTTR",
+      "id": "Load TTTR",
+      "tooltip": "Load a photon stream. Drag and drop is also supported."
+    },
+    {
+      "kind": "button",
+      "label": "Update",
+      "id": "Update",
+      "tooltip": "Compute the selected detector waterfall in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Play / Resume",
+      "id": "Play / Resume",
+      "tooltip": "Render current settings, or resume the paused audio without restarting."
+    },
+    {
+      "kind": "button",
+      "label": "Pause",
+      "id": "Pause",
+      "tooltip": "Pause the native audio process at its current position."
+    },
+    {
+      "kind": "button",
+      "label": "Stop",
+      "id": "Stop",
+      "tooltip": "Stop audio and return the playback indicator to its beginning."
+    },
+    {
+      "kind": "button",
+      "label": "Revert",
+      "id": "Revert",
+      "tooltip": "Restart from the beginning if playing, otherwise reset the position."
+    },
+    {
+      "kind": "button",
+      "label": "Save WAV",
+      "id": "Save WAV",
+      "tooltip": "Render selected channels and range to a 16-bit mono WAV file."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Step-by-step audification workflow."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Audio, lifetime and timing workflow reference."
+    },
+    {
+      "kind": "input_text",
+      "label": "range_start",
+      "id": "##range_start",
+      "tooltip": "Start relative to the first photon in the source."
+    },
+    {
+      "kind": "input_text",
+      "label": "range_end",
+      "id": "##range_end",
+      "tooltip": "Exclusive end; zero includes all remaining photons."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
