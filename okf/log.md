@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **img_calibration emtk app at parity; Apply refuses bad windows and publishes a snapshot** (EMTK-1, upgrade row 47): the
+  model's Apply passed a shallow copy (later edits leaked into the calibration Phasor/MLE had received) and published empty
+  windows unchecked; fixed for both hosts. The emtk controls are the spec the Qt tool renders.
+  [report](plugins/emtk-ports/img_calibration/REPORT.md).
+
 - **filetools emtk hub at parity** (EMTK-1, upgrade row 46): frames on demand, captions without emoji variation selectors, a
   guide on the real navigation that waits for a converter to be opened; the Qt stepper deliberately not reproduced. Children
   untouched (tttr_to_pto / pto_inspector off-limits); notes for their owners in the report.

@@ -1,0 +1,36 @@
+{
+  "plugin": "img_calibration",
+  "explained": {
+    "1": "a row number of the Qt IRF file list (its item view), not a control"
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "(background)regionsonthedecay—thegrey",
+    "(conv/fit),green(irf)andgrey",
+    "0",
+    "0.00",
+    "0.000",
+    "calibration",
+    "choosesourcephotondata",
+    "configuredetectorwindowsinimagingtools",
+    "data.transferredtophasorandmle.skipto",
+    "decayirf",
+    "guide",
+    "help",
+    "loadphotondataandconfigureadetectortoviewdecay",
+    "noirffiletherawdataareused",
+    "opentttr",
+    "perdetectoraddirffile(s);dragtheblue",
+    "refresh",
+    "regionestimatesvv/vhbackgroundsfromthe",
+    "userawdata."
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 16,
+  "after_controls": 34
+}

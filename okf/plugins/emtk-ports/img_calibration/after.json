@@ -1,0 +1,151 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "(background)regionsonthedecay—thegrey",
+    "(conv/fit),green(irf)andgrey",
+    "0",
+    "0.00",
+    "0.000",
+    "apply→",
+    "backgroundvh(⊥)",
+    "backgroundvv(∥)",
+    "calibration",
+    "choosesourcephotondata",
+    "clear",
+    "configuredetectorwindowsinimagingtools",
+    "convstart",
+    "convstop",
+    "data.transferredtophasorandmle.skipto",
+    "database",
+    "decayirf",
+    "detector",
+    "files",
+    "guide",
+    "help",
+    "irffiles(thisdetector)",
+    "irfstart",
+    "irfstop",
+    "loadphotondataandconfigureadetectortoviewdecay",
+    "noirffiletherawdataareused",
+    "opentttr",
+    "perdetectoraddirffile(s);dragtheblue",
+    "refresh",
+    "regionestimatesvv/vhbackgroundsfromthe",
+    "remove",
+    "shiftvh(⊥,ch)",
+    "shiftvv(∥,ch)",
+    "userawdata."
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A walk through calibrating one detector."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What the windows and backgrounds mean, and where they go."
+    },
+    {
+      "kind": "button",
+      "label": "📂 Open TTTR…",
+      "id": "📂 Open TTTR…",
+      "tooltip": "Open the source photon data whose decay is shown."
+    },
+    {
+      "kind": "button",
+      "label": "🔄 Refresh",
+      "id": "🔄 Refresh",
+      "tooltip": "Bin the histograms again after correcting the source files."
+    },
+    {
+      "kind": "button",
+      "label": "➕ Files…",
+      "id": "➕ Files…",
+      "tooltip": "Add IRF photon files for this detector; they are summed."
+    },
+    {
+      "kind": "button",
+      "label": "🗄 Database…",
+      "id": "🗄 Database…",
+      "tooltip": "Pick IRF files from the MMFDB object store."
+    },
+    {
+      "kind": "button",
+      "label": "➖ Remove",
+      "id": "➖ Remove",
+      "tooltip": "Remove the selected IRF file."
+    },
+    {
+      "kind": "button",
+      "label": "🧹 Clear",
+      "id": "🧹 Clear",
+      "tooltip": "Clear this detector's IRF files."
+    },
+    {
+      "kind": "input_text",
+      "label": "sel_conv_start",
+      "id": "##sel_conv_start",
+      "tooltip": "Convolution/fit window start (micro-time channel). Drag the blue region."
+    },
+    {
+      "kind": "input_text",
+      "label": "sel_conv_stop",
+      "id": "##sel_conv_stop",
+      "tooltip": "Convolution/fit window stop (micro-time channel). Drag the blue region."
+    },
+    {
+      "kind": "input_text",
+      "label": "sel_irf_start",
+      "id": "##sel_irf_start",
+      "tooltip": "IRF window start (separate from the conv window). Drag the green region."
+    },
+    {
+      "kind": "input_text",
+      "label": "sel_irf_stop",
+      "id": "##sel_irf_stop",
+      "tooltip": "IRF window stop (separate from the conv window). Drag the green region."
+    },
+    {
+      "kind": "input_text",
+      "label": "sel_bg_vv",
+      "id": "##sel_bg_vv",
+      "tooltip": "Parallel-channel background subtracted from the VV IRF (0 = auto baseline)."
+    },
+    {
+      "kind": "input_text",
+      "label": "sel_bg_vh",
+      "id": "##sel_bg_vh",
+      "tooltip": "Perpendicular-channel background subtracted from the VH IRF (0 = auto baseline)."
+    },
+    {
+      "kind": "input_text",
+      "label": "sel_shift_vv",
+      "id": "##sel_shift_vv",
+      "tooltip": "Circular (wrap-around) shift of the VV IRF, in micro-time channels."
+    },
+    {
+      "kind": "input_text",
+      "label": "sel_shift_vh",
+      "id": "##sel_shift_vh",
+      "tooltip": "Circular (wrap-around) shift of the VH IRF, in micro-time channels."
+    },
+    {
+      "kind": "button",
+      "label": "Apply →",
+      "id": "Apply →##apply",
+      "tooltip": "Transfer IRF / convolution-range / background to Phasor and MLE."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
