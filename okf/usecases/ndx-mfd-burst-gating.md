@@ -29,9 +29,9 @@ fits), `BID/` (burst-ID files) and `Info/` (the Paris setup log). The raw
 
 ## Steps
 
-1. Open **Tools → 🔭 ndX** (`chisurf.plugins.ndxplorer.rpc_bridge:make_ndxplorer`,
-   which injects the in-process ChiSurf RPC client so the phasor/FRET-line
-   overlays and the "Send selection to …" menu are live). The window opens on the
+1. Open **Tools → 🔭 ndX** (`chisurf.plugins.ndxplorer.window:build_ndxplorer_window`,
+   the emtk app with the in-process ChiSurf RPC client, so the "Send
+   selection to …" menu is live). The window opens on the
    ndX splash with every plot control blank — nothing is loaded yet.
 2. **File → Import → Analysis-Folder** and pick the `burstwise_All …` folder (the
    folder that *contains* `bi4_bur/`, not `bi4_bur/` itself). The reader

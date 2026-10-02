@@ -1,15 +1,15 @@
 ---
 type: Plugin
 title: ndX on emtk (the port off PyQt)
-description: The ndXplorer emtk app (modules/ndxplorer/ndxplorer/app), which is replacing the Qt window. It runs on a desktop and in a browser, and parity is proven scenario by scenario from screenshots.
+description: The ndXplorer emtk app (modules/ndxplorer/ndxplorer/app), ndX's only GUI since the Qt window was deleted (2026-10-02). It runs on a desktop and in a browser; parity was proven scenario by scenario from screenshots.
 resource: modules/ndxplorer/ndxplorer/app/
 tags: [plugins, ndxplorer, emtk, port, parity]
 timestamp: '2026-09-23T00:00:00Z'
 ---
 
 The owner decided that ndX moves off PyQt onto emtk. The new app (`ndxplorer/app/`)
-lives beside the Qt window until it reaches parity, and then the Qt GUI is
-deleted. The same app object runs in a native window, in a browser (Pyodide +
+lived beside the Qt window until it reached parity; the Qt GUI was then deleted
+(2026-10-02, see "Qt GUI deleted" below) and `python -m ndxplorer` opens the app. The same app object runs in a native window, in a browser (Pyodide +
 WebGPU through `emtk.web`) and in the headless capture. Parity is judged by
 **control inventory** against the Qt baseline shots: `tools/parity/scenarios.json`,
 `parity/qt/`, the checklist `tools/parity/features.md`, and
@@ -21,6 +21,77 @@ registers through `create(app) -> Feature` (hooks are documented in
 [ndxplorer.md](ndxplorer.md).
 
 ## Where to pick this up
+
+### Qt GUI deleted (2026-10-02)
+
+State: ndX has no Qt. Deleted from ndxplorer: `core/plot_main.py`,
+`plotting/plot_main.ui`, `plot_control` (.py/.ui) and `plotting/controls/`,
+the pyqtgraph modules (`pg_image_widget`, `image_items`, `curve_overlay`,
+`colormaps`, `plot_helpers`, `plot_umap`, `plot_panels_view_model`, `api`,
+`scatter`), `ui/` and `widgets/`, the Qt halves of `analysis` (`clustering`,
+`clustering_helpers`, `gaussian_fit`, `send_menu`, `umap_helpers`,
+`umap_progress`), `io.file_operations` / `file_open_helpers` /
+`async_loader`, `report_tool`, `settings_helpers`, `deps_installer`,
+`phasor_integration`, the napari plugin, the Qt `utils` helpers, and the
+duck-typed helpers that took the window as an argument
+(`plotting.histograms`, `plotting.plot_update_helpers`,
+`utils.histogram_helpers`, `render_current_view`, ...): 69 modules, 75
+shipped files with the `.ui`/resource files (ui 23, plotting 19, utils 9,
+widgets 8, analysis 6, top level 4, io 3, plugins 2, core 1), plus 40
+Qt-only test files. `io.writer` lost `save_burst_ids` (Qt
+progress window), `utils.histogram_export` its clipboard copies; the app's
+resources moved to `app/resources/` and `app/features/playback_export/`.
+pyqtgraph's colormap files are copied into `plotting/colormap_data/`
+(`SOURCE.txt`), so the maps do not need pyqtgraph. `python -m ndxplorer` (and
+the `ndxplorer` / `ndxplorer-gui` scripts) opens the emtk app; `--emtk`,
+`--test-data`, `--processed-data-id`, `--experiment-id`, `--zmq-port` are
+gone. PyQt5, qtpy and pyqtgraph are out of pyproject, environment.yml and the
+conda recipe. Guards: ndxplorer `ndxplorer/tests/test_no_qt.py` (every module
+imports with the bindings and pyqtgraph blocked; no source imports them) and
+chisurf `chisurf/plugins/ndxplorer/tests/test_no_qt_ndx_window.py` (now also
+fails on any deleted module). Commits: ndxplorer beed52e (baseline doc),
+4c551f4 (launcher), 21c5a53, 07bb244, 62ceab0 (deletions), 734e056 (guard),
+929245a (deps), 8ad10b2 (colormap data), 6da795e (README), 3cbfa6d; chisurf
+2003ab2b4 (Qt tests deleted, guard widened, FRET-line *Push to ndX*),
+0b29bf67d (guide 46 launch section; guide grabs of 26/46/47/52 drive the app
+through `docs/guides/screenshots/ndx_emtk.py`). The ndxplorer gitlink is not
+bumped (its commits are local).
+
+**Baseline recapture.** The last commit with the Qt window is ndxplorer
+**`990ebe2`**. `parity/qt/` is gitignored; rebuild it with
+`git archive 990ebe2 ndxplorer | tar -x -C /tmp/ndx_qt` and
+`capture_qt.py --app-root /tmp/ndx_qt` (`tools/parity/README.md`, *Recapturing
+the Qt baseline*; checked on `open_mfd_folder`). Without `--app-root` the
+script refuses. Trap: the `"host": "chisurf"` scenarios build the window
+through ChiSurf's plugin, which hosts the emtk app now, so recapturing those
+as Qt needs a ChiSurf checkout from before 2633b5853 as well.
+
+Open front:
+
+1. **`performance_config.plot_backend`** (default `"pyqtgraph"`) is a setting
+   only the Qt window read; the Settings > Performance panel still shows it
+   ("kept in the settings for it"). Drop the field and the note
+   (`utils/performance_config.py`, `app/features/settings.py`) -- left alone
+   here because another session had `performance_config.py` uncommitted.
+2. **Accurate FRET capture target** `TOOLBAR_TARGET` in
+   `app/features/accurate_fret.py` still spells the Qt toolbar
+   (`win.findChild(QtWidgets.QToolBar, ...)`): it is the scenario's capture
+   key, not an import; rename it with the scenario when that file is free
+   (it had another session's uncommitted edits).
+3. **Push FRET lines to ndX**: ChiSurf's FRET-line tool pushed lines into the
+   Qt overlay panel. The app's Overlays tab takes equations only, so the Qt
+   tool's *Push to ndX* now says it cannot, and the emtk FRET-line app waits
+   for a host overlay connection. Needs an app API for tabulated curves
+   (x/y arrays) on the Overlays tab.
+4. **`rpc.lines`** (`PhasorLines` / `FretLines`) has no GUI user left (the Qt
+   `phasor_integration` was its only one); only `tests/test_rpc.py` calls it.
+   Keep for a future overlay connection or delete with item 3 decided.
+5. **Guide 47's figure** `47_ndx_bridge_pda.png` is still the Qt grab: the
+   ported `_grab_47_pda_bridge` (emtk) fails in this env because the
+   IMP.bff build on the path is stale (`_IMP_bff has no attribute
+   IMP_BFF_HAS_IMP_ISD` inside `pda.from_bursts`). Re-run
+   `docs/guides/screenshots/run.py guides_47_52 _grab_47_pda_bridge` once
+   IMP.bff is rebuilt, and read the PNG.
 
 ### Phasor IRF / background correction (2026-10-01)
 
@@ -220,9 +291,7 @@ Open front:
    on close) and no Global View withdraw for that window.
 5. **Imaging live sync** hands a new table each run (`show_source`), which
    clears the gates; the Qt window did the same through `data_source`.
-6. Deleting ndX's own Qt GUI (`ndxplorer/core/plot_main.py`, `ui/`) is a
-   separate, user-confirmed step; `ndxplorer/phasor_integration.py`,
-   `ui/phasor_toolbar.py`, `ui/phasor_panel.py` go with it.
+6. ~~Deleting ndX's own Qt GUI~~ done 2026-10-02 (see "Qt GUI deleted").
 
 ### Session state in the measurement (2026-09-28)
 

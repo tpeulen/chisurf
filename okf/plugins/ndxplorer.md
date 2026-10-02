@@ -36,9 +36,18 @@ pattern). The menu and the ribbon (both `run_plugin_from_dir` ->
 `__init__.py`, `mmfdb_launcher.open_path_in_ndxplorer` (burst selection's
 output, MMFDB), the trace browser, the MMFDB admin, imaging (`show_source`,
 image mode on every new table), H2MM (dwell table) and the ALEX Suite's E-S
-step (`open_paths`, `refresh_stored_constants`) all call it. Nothing in
-`chisurf/` touches the Qt window any more: `tests/test_no_qt_ndx_window.py`
-fails on `ndxplorer.core.plot_main`, `NDXplorer` or `make_ndxplorer`.
+step (`open_paths`, `refresh_stored_constants`) all call it.
+
+**ndX has no Qt GUI** (2026-10-02). The Qt window (`core/plot_main.py`,
+`ui/`, `widgets/`, the pyqtgraph plotting modules, ~70 modules) was deleted
+after ndxplorer `990ebe2`, the last commit that has it; `python -m ndxplorer`
+opens the emtk app, and the parity baseline is rebuilt from that commit
+(`modules/ndxplorer/tools/parity/README.md`, *Recapturing the Qt baseline*).
+Guards: ndxplorer `ndxplorer/tests/test_no_qt.py` (every module imports with
+the Qt bindings and pyqtgraph blocked; no source file imports them) and
+chisurf `tests/test_no_qt_ndx_window.py` (no `chisurf/` module names
+`ndxplorer.core.plot_main`, `NDXplorer`, `make_ndxplorer` or any deleted
+module). History: [ndX on emtk](ndxplorer-emtk-port.md).
 
 What the host adds (the app stays ChiSurf-free): `app.chisurf_rpc` = the
 in-process client of `rpc_bridge.make_inprocess_chisurf_client` (Send
@@ -395,9 +404,8 @@ theory of the three scores is `docs/concepts/multidimensional_exploration.md`
 | --- | --- | --- |
 | framework | `ndxplorer/analysis/vizrank.py` | Qt-free `Ranker` / `AttrRanker` / `AttrPairRanker`, `run_vizrank` (score, then check cancel; throttled batches), `ScoreList`, `RunState` |
 | scores | `ndxplorer/analysis/projection_scores.py` | `RankingTable` (one shared subsample, displayed coordinates), `knn_separation`, `correlation`, `cluster_index`, `ProjectionRanker`, `ParameterRanker` |
-| panel | `ndxplorer/analysis/vizrank.view.json` + `analysis/vizrank_model.py` | the spec (drawn by `emtk.view_form`, the table a `data_table` section) and the Qt-free `VizRankModel`. It runs on an injected *runner* and continues through an injected `defer`: `chisurf.gui.task.run_in_background` and a zero-timer in the Qt window, `emtk.tasks` slices and the next frame in the emtk app |
-| context + model | `ndxplorer/analysis/projection_rank_model.py` | `build_context` (numeric columns, axis settings as views, gates → rows, classes) and `ProjectionRankModel`, shared by both GUIs |
-| Qt wiring | `ndxplorer/ui/projection_rank.py` + `ui/vizrank_panel.py` | `collect_context` (reads the Qt window, calls `build_context`), the controller (menu entries, apply, auto-select) and the Qt host window `VizRankWindow` |
+| panel | `ndxplorer/analysis/vizrank.view.json` + `analysis/vizrank_model.py` | the spec (drawn by `emtk.view_form`, the table a `data_table` section) and the Qt-free `VizRankModel`. It runs on an injected *runner* and continues through an injected `defer`: `emtk.tasks` slices and the next frame in the emtk app |
+| context + model | `ndxplorer/analysis/projection_rank_model.py` | `build_context` (numeric columns, axis settings as views, gates → rows, classes) and `ProjectionRankModel` |
 | emtk wiring | `ndxplorer/app/features/playback_export.py` | the same panel in an `emtk.dialog_window.DialogWindow`, with its Guide tour and `?` help |
 
 **What the classes are.** The gate (inside vs outside; all rows ranked), each
@@ -440,9 +448,9 @@ contains "time". They are now one:
 | Piece | Where | What it owns |
 | --- | --- | --- |
 | `PlaybackController` | `ndxplorer/core/playback.py` | Qt-free. Axis, mode, step, step count, bounds; produces the keep-mask and the scalar key it was built from. |
-| `PlaybackViewModel` | `ndxplorer/plotting/playback_view_model.py` | The form binding, used by both GUIs, with no toolkit. Every field is a property forwarding to the controller. Playing is a flag plus a due time: `tick(now)` steps when a step is due, at most one per call. The emtk app ticks it from its frame loop, so it plays in a browser; the Qt window drives it with a `QTimer` it re-times on `on_timing`. |
+| `PlaybackViewModel` | `ndxplorer/plotting/playback_view_model.py` | The form binding, with no toolkit. Every field is a property forwarding to the controller. Playing is a flag plus a due time: `tick(now)` steps when a step is due, at most one per call. The emtk app ticks it from its frame loop, so it plays in a browser. |
 | `playback.view.json` | `ndxplorer/plotting/` | The panel: axis combo, step count, step slider, transport row, mode radios, speed slider, live readout. Rendered by ChiSurf's [AutoForm](../subsystems/gui-autoform.md) as a foldable `panel`. |
-| `setup_playback` | `plot_control.py` | Picks the axis after **every** load — frame index first, then macro time, else idle with all columns offered. |
+| playback axis on load | `app/features/playback_export.py` (`frame_column`, `macro_time_column`) | Picks the axis after **every** load — frame index first, then macro time, else idle with all columns offered. |
 
 The panel opens **folded** — it is the block a user sets up once and then wants
 out of the way — and the fold state is remembered on the view model rather than

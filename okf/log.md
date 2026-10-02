@@ -2,6 +2,18 @@
 
 ## 2026-10-02
 
+- **ndX's Qt GUI deleted; the emtk app is the only ndX GUI** (2026-10-02, T-20261002-NDXQT, tpeulen "go ahead"):
+  ndxplorer lost its Qt window and everything that served only it -- 69 modules (75 shipped files: ui 23, plotting 19,
+  utils 9, widgets 8, analysis 6, top level 4, io 3, plugins 2, core 1) and 40 Qt-only test files; `python -m ndxplorer`
+  opens the emtk app (no `--emtk`); PyQt5/qtpy/pyqtgraph out of its dependencies; pyqtgraph's colormap files copied into
+  `plotting/colormap_data/`. Last commit with the Qt window: ndxplorer `990ebe2` (recapture: `tools/parity/README.md`).
+  Guards: ndxplorer `tests/test_no_qt.py`; chisurf `test_no_qt_ndx_window.py` now fails on any deleted module. ChiSurf:
+  the two Qt ParameterEditor tests and `test/gui/ndxplorer` deleted, the FRET-line Qt tool's *Push to ndX* no longer
+  looks for the deleted Qt overlay panel, the guide grabs of guides 26/46/47/52 drive the emtk app
+  (`docs/guides/screenshots/ndx_emtk.py`; figures 26, 52 and `ndxplorer_gaussian_panel.png` regrabbed and read; 47's
+  grab blocked by a stale IMP.bff build), guide 46 launch section rewritten. Resume point:
+  [ndX on emtk](plugins/ndxplorer-emtk-port.md) "Qt GUI deleted".
+
 - **Shared detector setup editor reworked into one page like the Qt page** (CHANNELEDITOR): `chisurf/emtk/channel_definition.py` was six tabs of stacked full-width fields (8 of 15 file types, detectors as blocks); it is now the Qt
   `DetectorWizardPage` in one scroll: Setup row, TTTR Reading routine (all 15 file types, two-column label/field grid at capped widths, Plot), PIE Windows (folded), Detectors and LUT handling as real `data_table`
   tables (typed cells, Enter / click-away commit, Qt's range text `20:10`, `5:5`, `0:10;20:30`), Assign / Configure LUTs / Adjust shifts, Optical Setup. The Setup row state moved to `chisurf/emtk/channel_setup_bar.py`.
