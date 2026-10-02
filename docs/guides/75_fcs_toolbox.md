@@ -200,6 +200,13 @@ remain. The plot docks are resizable — drag the splitter down to enlarge them.
 * **Add to ChiSurf** saves (if needed) and loads that file as an FCS dataset,
   ready for {doc}`09_diffusion_fcs`.
 
+The standalone **FCS-Merger** window (`chisurf/plugins/fcs/fcs_merger/`) has the
+same table for a folder of chunks you already have: drop the folder (or one of
+its files) on the window, or **📂 Open folder…**. A click on **Use** or a double
+click on a row includes or excludes a curve, and **Delete** removes it from the
+list (not from disk). **Target** is the file **💾 Save** writes, `<folder>.cor`
+beside the folder by default; **Save as…** writes elsewhere.
+
 Averaging assumes every ticked curve measures the same thing: the same
 concentration (the mean of $1/N$ is not $1/\bar N$), the same focus (a drifting
 $\tau_D$ broadens the mean) and no bleaching trend (a slow component every chunk

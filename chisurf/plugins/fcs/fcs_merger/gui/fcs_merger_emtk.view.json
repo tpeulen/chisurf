@@ -1,0 +1,145 @@
+{
+  "_comment": "FCS curve merger, drawn by emtk.view_form over the app's form adapter (gui/app.py _Form: MergerModel's fields and table, the app's actions). The Qt page's folder field (drops), the Use / File / CR A / CR B / Duration table (a click on Use or a double click toggles a curve), the Target field and save, Guide and ?. The custom section status is drawn by gui/app.py; the two plots are dock windows.",
+  "sections": [
+    {
+      "type": "panel",
+      "description": "Open a folder, clear, and the help and guided tour.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Folder actions, guided tour and help.",
+          "buttons": [
+            {
+              "action": "request_open",
+              "label": "📂 Open folder…",
+              "description": "Choose a folder of .cor (or legacy .json.gz) correlation curves; dropping the folder on the window does the same."
+            },
+            {
+              "action": "request_clear",
+              "label": "🧹 Clear",
+              "description": "Remove every curve and the merge (the files stay on disk)."
+            },
+            {
+              "action": "request_guide",
+              "label": "📖 Guide",
+              "description": "Walk through screening the repeats and saving the merge."
+            },
+            {
+              "action": "request_help",
+              "label": "❓ Help",
+              "description": "Why repeats are screened before averaging, and what the merge assumes."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "value",
+      "attr": "folder",
+      "label": "Folder",
+      "kind": "str",
+      "elide": "start",
+      "call": "folder_entered",
+      "placeholder": "Drop a folder of correlation curves",
+      "description": "The folder whose curves are listed; type a path and press Enter, or drop a folder."
+    },
+    {
+      "type": "custom",
+      "key": "data_table",
+      "description": "One row per curve: tick Use to merge it; a double click toggles it; Delete removes it from the list.",
+      "options": {
+        "source": "curve_rows",
+        "editable": true,
+        "editable_call": "cell_editable",
+        "edited_call": "use_edited",
+        "selected_call": "select_curve",
+        "activated_call": "toggle_curve",
+        "delete_call": "remove_curve",
+        "tooltip_key": "path",
+        "muted_key": "muted",
+        "expand": true,
+        "reserve": 96,
+        "columns": [
+          {
+            "key": "use",
+            "title": "Use",
+            "tooltip": "Merge this curve; unticked curves are drawn dashed and grey."
+          },
+          {
+            "key": "file",
+            "title": "File",
+            "tooltip": "The curve's file (its path is the row's tooltip)."
+          },
+          {
+            "key": "cr_a",
+            "title": "CR A",
+            "format": "%.2f",
+            "tooltip": "Count rate of channel A, in kHz."
+          },
+          {
+            "key": "cr_b",
+            "title": "CR B",
+            "format": "%.2f",
+            "tooltip": "Count rate of channel B, in kHz."
+          },
+          {
+            "key": "duration",
+            "title": "Duration",
+            "format": "%.2f",
+            "tooltip": "Acquisition time of the curve, in seconds."
+          }
+        ],
+        "fit_columns": true
+      }
+    },
+    {
+      "type": "value",
+      "attr": "output",
+      "label": "Target",
+      "kind": "str",
+      "elide": "start",
+      "description": "The merged curve's file (Kristine .cor: lag, G, duration and count rate, standard error); the folder's name beside the folder by default."
+    },
+    {
+      "type": "panel",
+      "description": "Write the merge.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Save the merge, or save it and add it to ChiSurf.",
+          "buttons": [
+            {
+              "action": "request_save",
+              "label": "💾 Save",
+              "description": "Write the merge of the ticked curves to the target file."
+            },
+            {
+              "action": "request_save_as",
+              "label": "Save as…",
+              "description": "Choose another target file and write the merge there."
+            },
+            {
+              "action": "request_add",
+              "label": "🚀 Add to ChiSurf",
+              "description": "Save the merge and add it to ChiSurf as an FCS dataset (Seidel Kristine)."
+            },
+            {
+              "action": "request_stop",
+              "label": "⏹ Stop",
+              "hidden_when": {
+                "attr": "busy",
+                "equals": "false"
+              },
+              "description": "Discard the folder being read; a file already being written finishes."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "custom",
+      "key": "status",
+      "description": "What the merger did, or why it could not."
+    }
+  ]
+}
