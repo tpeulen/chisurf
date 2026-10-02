@@ -1,0 +1,17 @@
+[
+  {
+    "title": "Queue photon files",
+    "target": "Files\u2026",
+    "text": "Add TTTR files, a folder, or objects from MMFDB."
+  },
+  {
+    "title": "Shift or align",
+    "target": "Auto align",
+    "text": "Adjust global/per-channel offsets, or align detector rising edges to the target threshold crossing."
+  },
+  {
+    "title": "Save results",
+    "target": "Save shifted\u2026",
+    "text": "Write shifted copies. For provenance, select an MMFDB sample and Register shifts."
+  }
+]

@@ -1,0 +1,9 @@
+ M chisurf/plugins/tttr/tttr_microtime_shifter/api/shift.py
+ M chisurf/plugins/tttr/tttr_microtime_shifter/backend/services.py
+ M chisurf/plugins/tttr/tttr_microtime_shifter/manifest.json
+?? chisurf/plugins/tttr/tttr_microtime_shifter/gui/app.py
+?? chisurf/plugins/tttr/tttr_microtime_shifter/gui/guide.json
+?? chisurf/plugins/tttr/tttr_microtime_shifter/gui/help.md
+?? chisurf/plugins/tttr/tttr_microtime_shifter/gui/shifter.view.json
+?? chisurf/plugins/tttr/tttr_microtime_shifter/tests/demo_data.py
+?? chisurf/plugins/tttr/tttr_microtime_shifter/tests/test_native.py

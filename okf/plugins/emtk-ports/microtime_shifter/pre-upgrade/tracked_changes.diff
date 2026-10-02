@@ -1,0 +1,105 @@
+diff --git a/chisurf/plugins/tttr/tttr_microtime_shifter/api/shift.py b/chisurf/plugins/tttr/tttr_microtime_shifter/api/shift.py
+index c5065b1a9..601b72d20 100644
+--- a/chisurf/plugins/tttr/tttr_microtime_shifter/api/shift.py
++++ b/chisurf/plugins/tttr/tttr_microtime_shifter/api/shift.py
+@@ -93,6 +93,9 @@ def _load_tttr(path: str, filetype: str | None = None) -> tttrlib.TTTR:
+ from chisurf.core.fio.tttr_shift import (  # noqa: E402
+     apply_shifts as _apply_shifts,
+ )
++from chisurf.core.fio.tttr_shift import (
++    compute_effective_shifts as _compute_effective_shifts,
++)
+ 
+ 
+ def shift_file(
+diff --git a/chisurf/plugins/tttr/tttr_microtime_shifter/backend/services.py b/chisurf/plugins/tttr/tttr_microtime_shifter/backend/services.py
+index 632d8e6cb..7849409ae 100644
+--- a/chisurf/plugins/tttr/tttr_microtime_shifter/backend/services.py
++++ b/chisurf/plugins/tttr/tttr_microtime_shifter/backend/services.py
+@@ -6,6 +6,7 @@ the ``api/`` layer, and return JSON-safe results.
+ 
+ from __future__ import annotations
+ 
++from collections import Counter
+ from collections.abc import Callable
+ from pathlib import Path
+ from typing import TYPE_CHECKING, Any
+@@ -155,13 +156,17 @@ def apply_handler(
+             target_output_dir = temp_dir
+ 
+         try:
+-            for path in request.files:
++            names = Counter(Path(path).name.casefold() for path in request.files)
++            for index, path in enumerate(request.files):
++                file_output_dir = target_output_dir
++                if file_output_dir and names[Path(path).name.casefold()] > 1:
++                    file_output_dir = str(Path(file_output_dir) / f"input-{index:04d}")
+                 out_path, applied = shift_file(
+                     path,
+                     global_shift=request.global_shift,
+                     channel_shifts=norm_ch,
+                     filetype=request.filetype,
+-                    output_dir=target_output_dir,
++                    output_dir=file_output_dir,
+                 )
+                 norm_in = str(Path(path).expanduser().resolve())
+                 result.output_paths_by_file[norm_in] = out_path
+diff --git a/chisurf/plugins/tttr/tttr_microtime_shifter/manifest.json b/chisurf/plugins/tttr/tttr_microtime_shifter/manifest.json
+index f9fe8a6f3..931521787 100644
+--- a/chisurf/plugins/tttr/tttr_microtime_shifter/manifest.json
++++ b/chisurf/plugins/tttr/tttr_microtime_shifter/manifest.json
+@@ -3,18 +3,33 @@
+   "version": "2.0.0",
+   "display_name": "Tools:TTTR:Microtime Shifter",
+   "description": "Apply global and per-channel micro-time shifts to TTTR files.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Tools", "TTTR", "Editor"],
+-  "icon": "↔️",
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Tools",
++    "TTTR",
++    "Editor"
++  ],
++  "icon": "\u2194\ufe0f",
+   "menu_hidden": true,
+   "state_namespace": "microtime_shifter",
+   "state_schema": {
+     "$schema": "http://json-schema.org/draft-07/schema#",
+     "type": "object",
+     "properties": {
+-      "last_file": {"type": ["string", "null"]},
+-      "global_shift": {"type": "integer"},
+-      "channel_shifts": {"type": "object"}
++      "last_file": {
++        "type": [
++          "string",
++          "null"
++        ]
++      },
++      "global_shift": {
++        "type": "integer"
++      },
++      "channel_shifts": {
++        "type": "object"
++      }
+     }
+   },
+   "statefulness": {
+@@ -23,9 +38,12 @@
+   "entrypoints": {
+     "gui": "chisurf.plugins.tttr.tttr_microtime_shifter.gui.tool:MicrotimeShifterTool",
+     "cli": "microtime-shift=chisurf.plugins.tttr.tttr_microtime_shifter.cli.main:cli",
+-    "services": "chisurf.plugins.tttr.tttr_microtime_shifter.backend.services:register_services"
++    "services": "chisurf.plugins.tttr.tttr_microtime_shifter.backend.services:register_services",
++    "emtk": "chisurf.plugins.tttr.tttr_microtime_shifter.gui.app:create_app"
+   },
+-  "operation_types": ["microtime_shift"],
++  "operation_types": [
++    "microtime_shift"
++  ],
+   "rpc_methods": [
+     {
+       "name": "microtime_shift.apply",

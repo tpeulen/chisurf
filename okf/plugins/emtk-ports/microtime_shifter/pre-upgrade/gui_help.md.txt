@@ -1,0 +1,18 @@
+# Micro-time Shifter
+
+Queue TTTR files, a folder, or MMFDB datasets. Each input must have the same
+micro-time bin count. The preview combines all queued files by routing channel.
+Global and per-channel shifts are added modulo the micro-time bin count.
+
+## Align rising edges
+Set a count threshold and a target micro-time bin. Auto Align finds the first
+threshold crossing on each detector's rising edge and shifts it to the target.
+You can drag the plot guides; alignment runs on release. Log Y retains actual
+count units. Reset restores an individual shift to zero.
+
+## Export and provenance
+Save Shifted writes a named file for one input, or a folder for multiple inputs.
+Input files are retained. Register Shifts uses the authenticated MMFDB session
+and records inputs, parameters, outputs and the selected sample. Registration
+warnings are shown in Status. Stop discards pending UI results; a current file
+write or archival operation may complete.

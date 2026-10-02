@@ -1,0 +1,47 @@
+{
+  "controls": [
+    "1",
+    "autoalign",
+    "clear",
+    "database",
+    "files",
+    "folder",
+    "histogram",
+    "level",
+    "logy",
+    "micro-timeshift",
+    "nofileloaded.",
+    "pos",
+    "remove",
+    "save",
+    "showtrigger"
+  ],
+  "labels": [
+    "Files",
+    "Histogram",
+    "Level:",
+    "Micro-time Shift",
+    "No file loaded.",
+    "Pos:"
+  ],
+  "buttons": [
+    "⚡ Auto Align",
+    "➕ Files",
+    "➖ Remove",
+    "🎯 Show Trigger",
+    "💾 Save",
+    "📁 Folder",
+    "📈 Log Y",
+    "🗄️ Database",
+    "🗑️ Clear"
+  ],
+  "line_edits": 2,
+  "combos": 0,
+  "spin_boxes": 2,
+  "tables": 1,
+  "entrypoint": "HEAD:chisurf.plugins.tttr.tttr_microtime_shifter.gui.tool:MicrotimeShifterTool (+HEAD no overlays)",
+  "size": [
+    1200,
+    800
+  ]
+}
