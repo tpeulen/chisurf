@@ -1,4 +1,4 @@
-from chisurf.plugins.microscopy.img_frc.app import ImgFrcApp, make_app
+from chisurf.plugins.microscopy.img_frc.gui.app import ImgFrcApp, make_app
 
 
 def test_native_factory_defaults():
@@ -10,4 +10,3 @@ def test_empty_model_reports_no_image():
     app = ImgFrcApp()
     assert app.model.compute() is False
     assert "No image" in app.model.status
-

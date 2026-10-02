@@ -66,6 +66,7 @@ class ImagingToolApp(ImApp):
         self.dialog_window: DialogWindow | None = None
         self.dialog_kind = ""
         self.panels: dict[str, Any] = {}
+        self.picker_target = "main"
         self.picker = DatasetPicker(formats=PICKER_FORMATS, on_paths=self._picked)
         self.form.custom.update(
             series_plot=lambda s, m, st, w: draw_series_plot(s, m, self),
@@ -147,6 +148,20 @@ class ImagingToolApp(ImApp):
         im.begin_disabled(is_settings and bool(self.model.busy))
         draw_sections(panel.get("sections") or [], self.model, self.form, int(panel.get("n_col") or 1))
         im.end_disabled()
+        if is_settings:
+            self._round_to_decimals(panel)
+
+    def _round_to_decimals(self, panel: dict) -> None:
+        """A typed number is kept to the decimals the field shows, as the Qt spin box did (the value is the one on screen)."""
+        stack = [panel]
+        while stack:
+            section = stack.pop()
+            stack.extend(section.get("sections") or [])
+            decimals = section.get("decimals")
+            if section.get("type") == "value" and section.get("kind") == "float" and decimals is not None and section.get("attr"):
+                value = getattr(self.model, section["attr"], None)
+                if isinstance(value, float) and value == value and round(value, int(decimals)) != value:
+                    setattr(self.model, section["attr"], round(value, int(decimals)))
 
     def _toolbar(self) -> None:
         """Help and Guide, then the status line (what the Qt status bar showed)."""
@@ -208,7 +223,8 @@ class ImagingToolApp(ImApp):
         kind, self.model.dialog = self.model.dialog, ""
         if not kind or self.dialog is not None or self.picker.is_open:
             return
-        if kind == "database":
+        if kind.startswith("database"):
+            self.picker_target = "second" if kind == "database_second" else "main"
             self.picker.open()
             return
         title, mode, filters, _handler = self.DIALOGS[kind]
@@ -235,7 +251,10 @@ class ImagingToolApp(ImApp):
             self.dialog = None
 
     def _picked(self, paths: Any) -> None:
-        self.model.open_path(str(paths[0]))
+        if getattr(self, "picker_target", "main") == "second":
+            self.model.open_second_path(str(paths[0]))
+        else:
+            self.model.open_path(str(paths[0]))
 
     # -- drops, settings, hub contract --------------------------------------- #
     def files_dropped(self, paths: Any) -> bool:
@@ -243,6 +262,9 @@ class ImagingToolApp(ImApp):
         paths = [str(p) for p in paths]
         if not paths or self.job.busy or self.model.busy:
             return False
+        route = getattr(self.model, "on_paths_dropped", None)
+        if callable(route):
+            return bool(route(paths))
         self.model.open_path(paths[0])
         return True
 

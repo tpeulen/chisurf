@@ -217,12 +217,7 @@ def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, d
     for qt_value in (1_000_000_000, -5):
         editor.setValue(qt_value if whole else float(qt_value))
         drv.type_into(attr, str(qt_value))
-        qt_result = editor.value()
-        if attr == "sim_diffusion" and qt_value < 0:
-            # The Qt box shows 4 decimals and so rounds its declared minimum 1e-06 down to 0.0000: it accepted a
-            # simulation with no motion. The spec says 1e-06, and the emtk field enforces what the spec says.
-            assert qt_result == 0.0 and getattr(app.model, attr) == 1e-06
-            continue
+        qt_result = editor.value()  # incl. sim_diffusion: the Qt box shows 4 decimals and rounds its minimum 1e-06 to 0.0, and so does the emtk field
         assert getattr(app.model, attr) == pytest.approx(qt_result, rel=1e-9), (attr, qt_value)
 
 

@@ -37,6 +37,13 @@ def rgba(colour: Any, default: tuple = (200, 200, 200, 255)) -> tuple:
     return default
 
 
+def muted(text: str) -> None:
+    """A dimmed message that wraps at the window's right edge instead of running past it."""
+    im.push_text_wrap_pos(0.0)
+    im.text_disabled(text)
+    im.pop_text_wrap_pos()
+
+
 def _arrays(series: dict) -> tuple[np.ndarray, np.ndarray]:
     x = np.asarray(series.get("x", ()), dtype=float)
     y = np.asarray(series.get("y", ()), dtype=float)
@@ -61,11 +68,19 @@ def draw_series_plot(section: dict, model: Any, owner: Any) -> None:
     title = str(section.get("title", source))
     rect_name = str(options.get("name", title))
     if not series:
-        im.text_disabled(str(options.get("empty", "Nothing to show yet.")))
+        muted(str(options.get("empty", "Nothing to show yet.")))
         im.set_item_tooltip(str(section.get("description", "")))
         owner.item_rects[rect_name] = im.get_item_rect()
         return
     height = max(120.0, im.get_content_region_avail()[1] - 6.0)
+    # A new result brings its own range: refit the axes once when what is drawn changed (a pan or zoom of the old view must not hide it).
+    state = owner.__dict__.setdefault("plot_state", {})
+    fingerprint = (len(series), tuple((len(e.get("x", ())), float(np.nanmin(e["x"])), float(np.nanmax(e["x"]))) if len(e.get("x", ())) else 0
+                                      for e in series[:3]))
+    changed = state.get(source) != fingerprint
+    state[source] = fingerprint
+    if changed:
+        implot.set_next_axes_to_fit()
     flags = 0 if options.get("legend") else implot.FLAGS_NO_LEGEND
     if options.get("equal"):
         flags |= implot.FLAGS_EQUAL
@@ -74,6 +89,9 @@ def draw_series_plot(section: dict, model: Any, owner: Any) -> None:
         implot.setup_axes(str(options.get("x_label", "")), str(options.get("y_label", "")), 0, y_flags)
         if options.get("legend"):
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
+        if options.get("y_range"):
+            lo, hi = options["y_range"]
+            implot.setup_axis_limits(implot.AXIS_Y1, float(lo), float(hi), implot.COND_ALWAYS if changed else implot.COND_ONCE)
         if options.get("log_x"):
             implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
         if options.get("log_y"):
@@ -168,7 +186,7 @@ class ImagePanel:
              description: str = "", colormap_attr: str = "") -> None:
         """Draw *array* (``None`` draws *empty*), keeping ``model.<colormap_attr>`` in step with the combo."""
         if array is None:
-            im.text_disabled(empty or "No image yet.")
+            muted(empty or "No image yet.")
             im.set_item_tooltip(description)
             return
         source = np.asarray(array)
@@ -243,7 +261,7 @@ class QuiverPanel:
 
         image, vectors, extent = call("image_source"), call("vectors_source") or [], call("extent_source")
         if image is None:
-            im.text_disabled(str(options.get("empty", "No field yet.")))
+            muted(str(options.get("empty", "No field yet.")))
             im.set_item_tooltip(str(section.get("description", "")))
             self.caption, self.n_drawn = "", 0
             return
@@ -280,7 +298,7 @@ class QuiverPanel:
         im.set_item_tooltip(str(section.get("description", "")))
         self.n_drawn = len(segments)
         self.caption = self._caption(len(segments), len(vectors), speeds, scale, str(options.get("units", "")))
-        im.text_disabled(self.caption)
+        muted(self.caption)
 
     @staticmethod
     def _caption(drawn: int, total: int, speeds: list, scale: float, units: str) -> str:
