@@ -1,0 +1,203 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0rows×10columns",
+    "3dview",
+    "addrow",
+    "atom",
+    "av(a^3)",
+    "avnotcomputed",
+    "back",
+    "browsepdb",
+    "chain",
+    "clear",
+    "color",
+    "computeavs",
+    "deleterow",
+    "distances",
+    "dockingscreening",
+    "dyemodel",
+    "dyepreset",
+    "editfps.jsonfilesforfretaccessible-volumemodellingandfetchreferencepdbs.",
+    "flexfit",
+    "fpsjsoneditor",
+    "guide",
+    "help",
+    "hydropro",
+    "json",
+    "kappa2distribution",
+    "load",
+    "name",
+    "next",
+    "positions",
+    "quest",
+    "res",
+    "save",
+    "saveavmrc",
+    "search",
+    "show",
+    "structure",
+    "trajectorytools",
+    "update"
+  ],
+  "interactive": [
+    {
+      "kind": "input_text",
+      "label": "toolsearch",
+      "id": "##toolsearch",
+      "tooltip": "Type to list only the tools whose name or description matches."
+    },
+    {
+      "kind": "selectable",
+      "label": "FPS JSON Editor",
+      "id": "FPS JSON Editor",
+      "tooltip": "Edit fps.json files for FRET accessible-volume modelling and fetch reference PDBs."
+    },
+    {
+      "kind": "selectable",
+      "label": "Docking & Screening",
+      "id": "Docking & Screening",
+      "tooltip": "FRET-restrained rigid-body docking, refinement and structure-library screening (IMP + IMP.bff)."
+    },
+    {
+      "kind": "selectable",
+      "label": "Kappa2 Distribution",
+      "id": "Kappa2 Distribution",
+      "tooltip": "Calculate and visualise the κ² orientation-factor distribution for FRET."
+    },
+    {
+      "kind": "selectable",
+      "label": "QuEst",
+      "id": "QuEst",
+      "tooltip": "Quenching estimator — dye-diffusion simulation of fluorescence quenching and decays."
+    },
+    {
+      "kind": "selectable",
+      "label": "HydroPro",
+      "id": "HydroPro",
+      "tooltip": "Run HYDROPRO / HYDRO++ hydrodynamic calculations on structural files."
+    },
+    {
+      "kind": "selectable",
+      "label": "Trajectory Tools",
+      "id": "Trajectory Tools",
+      "tooltip": "Combined workspace for trajectory alignment, conversion, energy, FRET, joining, clash removal, rotation/translation and topology saving."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Go to the previous tool of the list."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Go to the next tool of the list."
+    },
+    {
+      "kind": "button",
+      "label": "Load",
+      "id": "Load",
+      "tooltip": "Open an fps.json labelling file (a dropped .json file does the same)."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Save the whole configuration as an fps.json file."
+    },
+    {
+      "kind": "button",
+      "label": "Update",
+      "id": "Update",
+      "tooltip": "Update the editor from the text of the JSON tab."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear",
+      "tooltip": "Remove all positions and distances to start from scratch (asks first)."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "What the tool does, what it writes, and its limits."
+    },
+    {
+      "kind": "button",
+      "label": "Positions",
+      "id": "Positions",
+      "tooltip": "Labelling positions: structure, chain, residue, atom and the dye of each."
+    },
+    {
+      "kind": "button",
+      "label": "Distances",
+      "id": "Distances",
+      "tooltip": "Distance restraints between two positions, and the scoring groups."
+    },
+    {
+      "kind": "button",
+      "label": "FlexFit",
+      "id": "FlexFit",
+      "tooltip": "Flexible residues and bonds for the FlexFit simulation."
+    },
+    {
+      "kind": "button",
+      "label": "JSON",
+      "id": "JSON",
+      "tooltip": "The raw fps.json text; edit it and press Update."
+    },
+    {
+      "kind": "button",
+      "label": "3D View",
+      "id": "3D View",
+      "tooltip": "The accessible volumes and distance lines of the computed positions."
+    },
+    {
+      "kind": "button",
+      "label": "Add Row",
+      "id": "Add Row",
+      "tooltip": "Add an empty position row; it becomes a position once it has a name."
+    },
+    {
+      "kind": "button",
+      "label": "Delete Row",
+      "id": "Delete Row",
+      "tooltip": "Remove the selected row (asks first; the distances that use a position go with it)."
+    },
+    {
+      "kind": "button",
+      "label": "Browse PDB...",
+      "id": "Browse PDB...",
+      "tooltip": "Choose the structure file of the selected row."
+    },
+    {
+      "kind": "button",
+      "label": "Compute AVs",
+      "id": "Compute AVs",
+      "tooltip": "Recompute the accessible volume of every named position."
+    },
+    {
+      "kind": "button",
+      "label": "Save AV MRC",
+      "id": "Save AV MRC",
+      "tooltip": "Save the selected position's computed accessible volume (else every one) as an MRC density map."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

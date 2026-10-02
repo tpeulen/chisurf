@@ -234,3 +234,14 @@ def test_quest_card_draws_and_reports_when_unavailable(monkeypatch):
             assert any("QuEst cannot start here" in t for t in painter.strings)
             assert "retry" in app.item_rects
     app.close()
+
+
+def test_nothing_is_written_under_the_home_folder(inputs, tmp_path):
+    """The cards write only where they are told (the fixture points HOME into the temp folder)."""
+    app = make_fps()
+    app.editor.auto_av = False
+    app.load_path(str(inputs))
+    app.save_path(str(tmp_path / "o.fps.json"))
+    app.export_settings()
+    app.close()
+    assert not (Path.home() / ".chisurf").exists() and Path.home() == tmp_path
