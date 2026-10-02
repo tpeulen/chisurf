@@ -22,6 +22,7 @@
     "filesloaded0",
     "guide",
     "help",
+    "irfandbackgroundperdetector",
     "irfdecay",
     "irfparameters",
     "irfresults",
@@ -77,34 +78,34 @@
       "tooltip": "Cancel at the next file boundary and retain the previous results."
     },
     {
-      "kind": "drag_int",
+      "kind": "input_text",
       "label": "min_photons",
       "id": "##min_photons",
-      "tooltip": "Minimum photons per burst used when selecting bursts for the IRF/background estimate."
+      "tooltip": "Burst-search minimum photons. Photons NOT in a burst are treated as background/scatter."
     },
     {
-      "kind": "drag_int",
+      "kind": "input_text",
       "label": "photon_window",
       "id": "##photon_window",
-      "tooltip": "Number of consecutive photons required inside the time window to call a burst."
+      "tooltip": "Sliding photon window used by the burst search to estimate the local count rate."
     },
     {
-      "kind": "drag_float",
-      "label": "time_window",
-      "id": "##time_window",
-      "tooltip": "Sliding time window in milliseconds used by the burst search."
+      "kind": "input_text",
+      "label": "time_window_ms",
+      "id": "##time_window_ms",
+      "tooltip": "Burst-search time window (ms)."
     },
     {
-      "kind": "slider_float",
-      "label": "quantile",
-      "id": "##quantile",
-      "tooltip": "Quantile of the non-burst micro-time counts used as the background (dark-count) floor."
+      "kind": "input_text",
+      "label": "baseline_quantile",
+      "id": "##baseline_quantile",
+      "tooltip": "Quantile of the non-burst micro-time histogram taken as the flat dark-count floor, subtracted before normalising the IRF."
     },
     {
-      "kind": "drag_int",
-      "label": "binning",
-      "id": "##binning",
-      "tooltip": "Micro-time binning factor applied before building the IRF histogram."
+      "kind": "input_text",
+      "label": "micro_time_binning",
+      "id": "##micro_time_binning",
+      "tooltip": "Micro-time coarsening for the MLE IRF/background patterns (match the burst-MLE binning)."
     },
     {
       "kind": "button",
@@ -140,6 +141,6 @@
   "controls_without_tooltip": [],
   "qt_free": {
     "ok": true,
-    "output": "QT-FREE OK\n"
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
   }
 }

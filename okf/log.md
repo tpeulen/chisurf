@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **burst_irf_bg real-input pass** (EMTK-1B follow-up): 42 click tests (+2 strict xfails for emtk / shared-editor gaps) operate every
+  control with pointer, keys, drag, wheel and host drops; they found that four of the five parameters could not be set (drag fields that
+  applied nothing, no typed entry) and that the guided tour could not be finished by clicking under the dock windows; the parameters are
+  now the authored spec's fields (typed, clamped), the results table a data_table, the tour card gets a window of its own, host drops reach
+  the app. [report](plugins/emtk-ports/burst_irf_bg/REPORT.md).
+
 - **burst_gs real-input pass** (EMTK-1B follow-up): 32 click tests (+1 strict xfail for an emtk gap) operate every control with
   pointer, keys, drag, wheel and host drops; they found that the hand-drawn settings had no typed entry and no limits (a negative
   rate was reachable) and that the guided tour could not be finished by clicking under the dock windows; the settings and the two

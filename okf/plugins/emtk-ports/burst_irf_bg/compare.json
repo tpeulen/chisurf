@@ -22,6 +22,7 @@
     "filesloaded0",
     "guide",
     "help",
+    "irfandbackgroundperdetector",
     "irfdecay",
     "irfparameters",
     "irfresults",
@@ -42,8 +43,8 @@
   "untooltipped": [],
   "qt_free": {
     "ok": true,
-    "output": "QT-FREE OK\n"
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
   },
   "before_controls": 0,
-  "after_controls": 34
+  "after_controls": 35
 }
