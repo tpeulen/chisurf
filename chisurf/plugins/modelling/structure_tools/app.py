@@ -1,9 +1,10 @@
 """Native EMTK structure-modelling workspace.
 
 The native counterpart of the Qt ``StructureToolsTool`` navigation hub: a nav
-sidebar of the structure tools with lazy, state-preserving child apps, in the
-same mechanics as the trajectory-tools and games hubs. Tools without a native
-factory yet are listed and open a "native version pending" panel.
+sidebar of the structure tools (with the Qt hub's search box and its Back and
+Next steppers) and lazy, state-preserving child apps, in the same mechanics as
+the trajectory-tools and games hubs. Every tool has a native app: the FPS JSON
+editor, docking and QuEst are the cards in ``cards/``.
 """
 
 from __future__ import annotations
@@ -32,6 +33,8 @@ class StructureToolsHubApp(ImApp):
         self.children: dict[str, ImApp] = {}
         self._pending_state: dict[str, dict] = {}
         self.error = ""
+        self.search = ""
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.child_box = (180.0, 86.0, 880.0, 644.0)
         self._painter = None
         super().__init__(self.render)
@@ -47,7 +50,9 @@ class StructureToolsHubApp(ImApp):
         self.selected = name
         self.error = ""
         factory = entry["emtk"]
-        if factory and name not in self.children:
+        if not factory:
+            self.error = f"{tr('Tool unavailable')}: no native app"
+        elif name not in self.children:
             try:
                 module, attr = factory.split(":", 1)
                 self.children[name] = getattr(importlib.import_module(module), attr)()
@@ -86,6 +91,19 @@ class StructureToolsHubApp(ImApp):
         finally:
             self._painter = None
 
+    def visible_entries(self) -> list[dict]:
+        """The tools the search box lets through (all of them while it is empty)."""
+        needle = self.search.strip().lower()
+        if not needle:
+            return list(self.entries)
+        return [e for e in self.entries if needle in e["name"].lower() or needle in e["description"].lower()]
+
+    def step(self, direction: int):
+        """The Back / Next buttons: the neighbouring tool of the list (the ends stay where they are)."""
+        names = [e["name"] for e in self.entries]
+        index = max(0, min(len(names) - 1, names.index(self.selected) + direction))
+        return self.select(names[index])
+
     # ── render ──────────────────────────────────────────────────────────
     def render(self):
         width, height = im.get_main_viewport().size
@@ -96,15 +114,37 @@ class StructureToolsHubApp(ImApp):
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((nav_width, height), im.Cond.ALWAYS)
         if im.begin(tr("Structure Tools"), flags=im.WindowFlags.NO_RESIZE):
-            im.text_disabled(tr("Available tools"))
+            im.set_next_item_width(-1)
+            changed, value = im.input_text("##toolsearch", self.search, hint=tr("Search..."))
+            if changed:
+                self.search = value
+            self.remember("tool_search")
+            im.set_item_tooltip(tr("Type to list only the tools whose name or description matches."))
             im.separator()
-            for panel in self.entries:
+            shown = self.visible_entries()
+            last_group = None
+            for panel in shown:
+                group = panel.get("group")
+                if last_group is not None and group != last_group and not self.search.strip():
+                    im.separator()
+                last_group = group
                 label = tr(panel["name"])
-                if not panel["emtk"]:
-                    label += f" · {tr('soon')}"
                 if im.selectable(label, self.selected == panel["name"]):
                     self.select(panel["name"])
+                self.remember(f"nav_{panel['name']}")
                 im.set_item_tooltip(tr(panel["description"]))
+            if not shown:
+                im.text_disabled(tr("No tool matches."))
+            im.separator()
+            if im.button(tr("Back")):
+                self.step(-1)
+            im.set_item_tooltip(tr("Go to the previous tool of the list."))
+            self.remember("back")
+            im.same_line()
+            if im.button(tr("Next")):
+                self.step(1)
+            im.set_item_tooltip(tr("Go to the next tool of the list."))
+            self.remember("next")
         im.end()
 
         im.set_next_window_pos((nav_width, 0), im.Cond.ALWAYS)
@@ -123,11 +163,9 @@ class StructureToolsHubApp(ImApp):
             im.set_next_window_pos((nav_width + 16, 102), im.Cond.ALWAYS)
             im.set_next_window_size((max(1.0, width - nav_width - 32), max(1.0, height - 118)), im.Cond.ALWAYS)
             if im.begin("Tool status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
-                im.heading(tr("Native version pending") if not entry["emtk"] else tr("Tool unavailable"), level=2)
-                im.text_wrapped(
-                    tr("This tool is available in the Qt hub. Its native version is pending.")
-                    if not entry["emtk"] else self.error
-                )
+                im.heading(tr("Tool unavailable"), level=2)
+                im.text_wrapped(self.error)
+                self.remember("tool_error")
             im.end()
 
     # ── input forwarding into the visible child ─────────────────────────
@@ -157,6 +195,11 @@ class StructureToolsHubApp(ImApp):
         super().wheel(x, y, steps, modifiers)
         if self.child and self._inside_child(x, y):
             self.child.wheel(*self._child_xy(x, y), steps, modifiers)
+
+    def on_files_dropped(self, paths):
+        """A drop goes to the visible tool (the hub itself takes no files)."""
+        handler = getattr(self.child, "on_files_dropped", None)
+        return bool(handler(paths)) if callable(handler) else False
 
     def key(self, key, text="", modifiers=0):
         return self.child.key(key, text, modifiers) if self.child else super().key(key, text, modifiers)

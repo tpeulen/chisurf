@@ -1,0 +1,367 @@
+{
+  "_comment": "FPS JSON editor, Positions tab: the positions table and the form of the selected position (the Qt tool's Details dialog and its row combos). Tables are data_table sections.",
+  "sections": [
+    {
+      "type": "custom",
+      "key": "data_table",
+      "description": "The labelling positions of the document, one row each. Click a row to edit it below; double-click a cell of Name, PDB, Chain, Res or Atom to type; the Show box switches the accessible volume in the 3D tab.",
+      "options": {
+        "source": "pos_rows",
+        "editable": true,
+        "expand": true,
+        "reserve": 250,
+        "row_key": "row",
+        "status": true,
+        "selected_call": "select_row",
+        "edited_call": "edit_row",
+        "delete_call": "delete_row",
+        "columns": [
+          {
+            "key": "show",
+            "title": "Show",
+            "width": 54,
+            "editable": true,
+            "description": "Whether the position's accessible volume is drawn in the 3D tab and written as visible."
+          },
+          {
+            "key": "name",
+            "title": "Name",
+            "width": 120,
+            "editable": true,
+            "description": "The label of the position; an empty row is named from its chain and residue (A132)."
+          },
+          {
+            "key": "pdb",
+            "title": "Structure",
+            "editable": false,
+            "description": "The structure file name (the full path is in the tooltip) or the PDB ID; change it in the form below or with Browse PDB..."
+          },
+          {
+            "key": "chain",
+            "title": "Chain",
+            "width": 56,
+            "editable": true,
+            "description": "Chain of the attachment atom."
+          },
+          {
+            "key": "res",
+            "title": "Res",
+            "width": 60,
+            "editable": true,
+            "description": "Residue sequence number of the attachment atom."
+          },
+          {
+            "key": "atom",
+            "title": "Atom",
+            "width": 60,
+            "editable": true,
+            "description": "Atom the linker is attached to (CB, CA ...)."
+          },
+          {
+            "key": "preset",
+            "title": "Dye Preset",
+            "width": 90,
+            "description": "The dye definition the dimensions were taken from (change it in the form below)."
+          },
+          {
+            "key": "dye_model",
+            "title": "Dye Model",
+            "width": 84,
+            "description": "Accessible-volume model: AV1, AV0, AV3 or ROTAMER (change it in the form below)."
+          },
+          {
+            "key": "color",
+            "title": "Color",
+            "width": 76,
+            "description": "Colour of the accessible volume in the 3D tab (change it in the form below)."
+          },
+          {
+            "key": "volume",
+            "title": "AV (A^3)",
+            "width": 70,
+            "align": "right",
+            "description": "Volume of the computed accessible volume; empty until it is computed."
+          }
+        ]
+      }
+    },
+    {
+      "type": "panel",
+      "title": "Selected position",
+      "n_col": 1,
+      "collapsible": true,
+      "description": "Dye and simulation settings of the selected row (the Qt tool's Details dialog).",
+      "hidden_when": {
+        "attr": "has_position",
+        "equals": "false"
+      },
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Structure and attachment",
+          "n_col": 3,
+          "description": "Where the linker is attached. The lists come from the structure once it is loaded.",
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "p_chain",
+              "label": "Chain",
+              "options_source": "chain_options",
+              "description": "Chain of the attachment atom, from the loaded structure."
+            },
+            {
+              "type": "choice",
+              "attr": "p_res",
+              "label": "Residue",
+              "options_source": "residue_options",
+              "description": "Residue of the attachment atom, from the loaded structure."
+            },
+            {
+              "type": "choice",
+              "attr": "p_atom",
+              "label": "Atom",
+              "options_source": "atom_options",
+              "description": "Attachment atom, from the loaded structure (CB when the residue has one)."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "",
+          "n_col": 1,
+          "description": "The structure of the row.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "p_pdb",
+              "kind": "str",
+              "label": "PDB file or ID",
+              "elide": "start",
+              "description": "The structure file of the row, or a four-character PDB ID that is downloaded. Press Enter to load it."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Dye",
+          "n_col": 3,
+          "description": "The dye of the position.",
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "p_preset",
+              "label": "Dye preset",
+              "options_source": "preset_options",
+              "description": "A dye definition: sets linker length and width, radii and the model. Custom keeps the values below."
+            },
+            {
+              "type": "choice",
+              "attr": "p_model",
+              "label": "Dye model",
+              "options": [
+                "AV1",
+                "AV0",
+                "AV3",
+                "ROTAMER"
+              ],
+              "description": "AV1: one dye radius; AV0: a point dye; AV3: three radii; ROTAMER: rotamer library."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "",
+          "n_col": 1,
+          "description": "Colour of the accessible volume.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "p_color",
+              "kind": "color",
+              "label": "Color",
+              "description": "Colour of the accessible volume (the transparency stays as it was)."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Dye dimensions",
+          "n_col": 3,
+          "description": "Size of the dye in angstrom.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "linker_length",
+              "kind": "float",
+              "style": "spin",
+              "label": "Linker length",
+              "minimum": 0.0,
+              "maximum": 200.0,
+              "decimals": 2,
+              "step": 1.0,
+              "description": "Length of the flexible linker."
+            },
+            {
+              "type": "value",
+              "attr": "linker_width",
+              "kind": "float",
+              "style": "spin",
+              "label": "Linker width",
+              "minimum": 0.0,
+              "maximum": 50.0,
+              "decimals": 2,
+              "step": 0.5,
+              "description": "Width of the linker."
+            },
+            {
+              "type": "value",
+              "attr": "radius1",
+              "kind": "float",
+              "style": "spin",
+              "label": "Radius 1",
+              "minimum": 0.0,
+              "maximum": 50.0,
+              "decimals": 2,
+              "step": 0.5,
+              "description": "First dye radius."
+            },
+            {
+              "type": "value",
+              "attr": "radius2",
+              "kind": "float",
+              "style": "spin",
+              "label": "Radius 2",
+              "minimum": 0.0,
+              "maximum": 50.0,
+              "decimals": 2,
+              "step": 0.5,
+              "description": "Second dye radius (AV3 only)."
+            },
+            {
+              "type": "value",
+              "attr": "radius3",
+              "kind": "float",
+              "style": "spin",
+              "label": "Radius 3",
+              "minimum": 0.0,
+              "maximum": 50.0,
+              "decimals": 2,
+              "step": 0.5,
+              "description": "Third dye radius (AV3 only)."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Simulation",
+          "n_col": 3,
+          "description": "How the accessible volume is sampled.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "body_id",
+              "kind": "int",
+              "style": "spin",
+              "label": "Body ID",
+              "minimum": 0,
+              "maximum": 10000,
+              "description": "The rigid body the position belongs to (docking)."
+            },
+            {
+              "type": "value",
+              "attr": "allowed_sphere_radius",
+              "kind": "float",
+              "style": "spin",
+              "label": "Allowed sphere",
+              "minimum": 0.0,
+              "maximum": 50.0,
+              "decimals": 2,
+              "step": 0.5,
+              "description": "Radius of the sphere around the attachment point where the dye may clash."
+            },
+            {
+              "type": "value",
+              "attr": "simulation_grid_resolution",
+              "kind": "float",
+              "style": "spin",
+              "label": "Grid resolution",
+              "minimum": 0.1,
+              "maximum": 10.0,
+              "decimals": 2,
+              "step": 0.1,
+              "description": "Grid spacing of the accessible volume, in angstrom."
+            },
+            {
+              "type": "value",
+              "attr": "anchor_atoms",
+              "kind": "str",
+              "label": "Anchor atoms",
+              "description": "Atoms the linker is anchored to, if not the attachment atom."
+            },
+            {
+              "type": "value",
+              "attr": "strip_mask",
+              "kind": "str",
+              "label": "Strip mask",
+              "description": "Atoms removed before the volume is computed."
+            }
+          ],
+          "collapsible": true,
+          "collapsed": true
+        },
+        {
+          "type": "panel",
+          "title": "Advanced",
+          "n_col": 3,
+          "description": "Contact volume and chain weighting.",
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "chain_weighting",
+              "label": "Chain weighting",
+              "description": "Weight the sampled positions by the chain length."
+            },
+            {
+              "type": "value",
+              "attr": "contact_volume_thickness",
+              "kind": "float",
+              "style": "spin",
+              "label": "Contact thickness",
+              "minimum": 0.0,
+              "maximum": 50.0,
+              "decimals": 2,
+              "step": 0.5,
+              "description": "Thickness of the contact volume around the surface."
+            },
+            {
+              "type": "value",
+              "attr": "contact_volume_trapped_fraction",
+              "kind": "float",
+              "style": "spin",
+              "label": "Contact trapped",
+              "minimum": -1.0,
+              "maximum": 1.0,
+              "decimals": 2,
+              "step": 0.05,
+              "description": "Fraction of dyes trapped in the contact volume; -1 = not used."
+            },
+            {
+              "type": "value",
+              "attr": "min_sphere_volume_fraction",
+              "kind": "float",
+              "style": "spin",
+              "label": "Min sphere volume",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "decimals": 2,
+              "step": 0.05,
+              "description": "Smallest accepted fraction of the sphere volume."
+            }
+          ],
+          "collapsible": true,
+          "collapsed": true
+        }
+      ]
+    }
+  ]
+}
