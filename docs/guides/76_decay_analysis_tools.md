@@ -155,14 +155,16 @@ plugin's `lifetime_settings.yml`, copied once into the system temp folder.
 | `lifetime_fit_parameter.randomize_initial_values.min_lifetime`, `max_lifetime` | 0.2, 5.0 ns | starting lifetimes of the scan, spaced evenly between these |
 | `…randomize_initial_values.enabled` | false | a fixed-$n$ fit starts from these too; off, it starts from 1, 3, 5, … ns (the scan always uses them) |
 | `…amplitude_variation` | 0.5 | random spread of starting amplitudes |
-| `…plot_probabilities`, `…plot_weighted_residuals` | true | extra Matplotlib figures during the scan (see *Known defects*) |
+| `…plot_probabilities`, `…plot_weighted_residuals` | true | extra Matplotlib figures during an interactive scan from Python; the CLI (and so the panel) switches them off and writes `<decay>_fit.png` instead |
 | `pile_up_correction.enabled`, `rep_rate` (MHz), `dead_time` (ns), `measurement_time` (s) | off, 80, 85, 60 | Coates-type pile-up applied to the model |
 
 The file's `lifetime_fit_parameter` block also holds `find_optimal`,
 `maximum_number_of_lifetimes`, `prob_threshold` and `selection_mode`. With
 *Find Optimal* ticked, the panel's values override the first three and
-`selection_mode` is forced to `lower` (below). Leave `find_optimal` false in the
-file: set true, it runs the scan even when the box is unticked.
+`selection_mode` is forced to `lower` (below). Unticked, the panel passes its
+*Number of Lifetimes* and that switches the file's `find_optimal` off: the
+panel decides. (It used to be ignored, so the shipped example, which sets
+`find_optimal: true`, ran the scan with the box unticked.)
 
 ### Reading the output
 
@@ -361,8 +363,8 @@ print(res["optimal_fitting"]["scores"])               # [10.403 1.101 1.102]
 The generator underneath is
 {src}`chisurf/core/fluorescence/decay.py#synthetic_decay`, which also takes a
 laser `period` (periodic convolution) and an IRF `time_shift` that the GUI does
-not expose. Run LLTF with `MPLBACKEND=Agg` when there is no display; the scan
-calls `plt.show()`.
+not expose. The LLTF command line shows no figures (it writes the plot file), so
+it runs without a display.
 
 ## Using it well
 
@@ -408,10 +410,10 @@ default 4 ns component.
 - **The config file is created once** in the system temp folder
   (`lltf_config.yml`) and never refreshed, so a changed default in a new ChiSurf
   version does not reach it; delete it to get the current defaults.
-- **Matplotlib windows during the scan.** The scan calls `plt.show()` — once
-  unconditionally for the selected fit, and again for each `plot_*` option. The
-  child process inherits the user's Matplotlib backend; with an interactive one
-  these windows open, and the fit waits for them.
+- **Runs are not reproducible** while `randomize_initial_values.enabled` is on
+  (the example config): the starting values are drawn unseeded, so two runs of
+  the same fit differ — on the example by 0.0014 ns in the long lifetime and
+  0.003 ns in the short one.
 - **Reduced $\chi^2$ equals $\chi^2$** when `Decay.fit(find_optimal=True)` is
   called from Python without `fixed`: the degrees of freedom are set to 0
   (measured: `dof` 0, `reduced_chi_square` 31671). The CLI and GUI pass `fixed`

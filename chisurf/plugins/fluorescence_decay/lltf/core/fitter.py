@@ -746,8 +746,10 @@ class Decay:
             plt.tight_layout()
             plt.show()
 
-        # Generate decay curve plot for the selected fit
-        self.plot_decay_curve(best_n_lifetimes)
+        # Generate decay curve plot for the selected fit -- on screen, so only when the screen
+        # figures were asked for (it ended in plt.show() even with both switched off)
+        if plot_probabilities or plot_weighted_residuals:
+            self.plot_decay_curve(best_n_lifetimes)
 
         # Restore the best parameters
         self.lifetime_spectrum = best_params[best_idx]["lifetime_spectrum"]

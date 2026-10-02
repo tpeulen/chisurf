@@ -32,12 +32,8 @@ in fluorescence spectroscopy.
 
 ## Requirements
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - scipy
-  - matplotlib
-  - lmfit (for fitting algorithms)
+- numpy, scipy, PyYAML and matplotlib (the fit writes `<decay>_fit.png`; no figure is shown on screen).
+- The emtk window (`gui/app.py`) needs no Qt; the legacy Qt wizard (`lltf_gui.py`) does.
 
 ## Usage
 

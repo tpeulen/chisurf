@@ -38,8 +38,9 @@ def cli():
     "--n-lifetimes",
     "-n",
     type=int,
-    default=1,
-    help="Number of lifetimes to fit (ignored if --find-optimal is used)",
+    default=None,
+    help="Number of lifetimes to fit; given without --find-optimal it also switches off a "
+    "configuration's find_optimal (default 1)",
 )
 @click.option(
     "--find-optimal", "-f", is_flag=True, help="Find optimal number of lifetimes automatically"
@@ -153,11 +154,15 @@ def fit(
         plot = os.path.join(output_dir, plot)
 
     # Fit lifetime
-    # If find_optimal is specified, add it to the config
+    # The command line decides over the configuration: -f searches, an explicit -n fixes the
+    # count. -n used to be ignored whenever the configuration had find_optimal: true (the
+    # shipped example does), so a GUI asking for 2 lifetimes got a search and 3.
+    if find_optimal or n_lifetimes is not None:
+        config_dict.setdefault("lifetime_fit_parameter", {})["find_optimal"] = bool(find_optimal)
+    n_lifetimes = 1 if n_lifetimes is None else n_lifetimes
     if find_optimal:
         if "lifetime_fit_parameter" not in config_dict:
             config_dict["lifetime_fit_parameter"] = {}
-        config_dict["lifetime_fit_parameter"]["find_optimal"] = find_optimal
         config_dict["lifetime_fit_parameter"]["maximum_number_of_lifetimes"] = max_lifetimes
         config_dict["lifetime_fit_parameter"]["prob_threshold"] = prob_threshold
         config_dict["lifetime_fit_parameter"]["selection_mode"] = selection_mode
@@ -191,9 +196,15 @@ def fit(
             "Note: Intermediate results will not be saved because --find-optimal is not enabled"
         )
 
-    # Always disable plotting to screen
+    # Always disable plotting to screen: the fit is written to the plot file instead. The
+    # optimal-number search's probability and residual figures are switched by their own keys;
+    # left on, their plt.show() blocks a run started from a GUI or without a display.
     if "plot_resulting_fit" in config_dict:
         config_dict["plot_resulting_fit"] = False
+    fit_parameters = config_dict.get("lifetime_fit_parameter")
+    if isinstance(fit_parameters, dict):
+        fit_parameters["plot_probabilities"] = False
+        fit_parameters["plot_weighted_residuals"] = False
 
     result = fit_lifetime(
         decay_file=decay_file,

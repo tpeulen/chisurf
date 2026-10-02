@@ -178,6 +178,9 @@ class ProcessOutputWidget(QtWidgets.QWidget):
                 cwd=cwd,
                 bufsize=1,
                 universal_newlines=True,
+                # No interactive figures from the fit subprocess: they opened windows that
+                # blocked the run until closed (and hung it without a display).
+                env={**os.environ, "MPLBACKEND": "Agg"},
             )
 
             # Start a thread to read the output
