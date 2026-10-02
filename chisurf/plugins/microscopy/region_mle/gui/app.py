@@ -495,6 +495,9 @@ class RegionMleApp(ImApp):
         """Nothing to release: workers are daemon threads and no file stays open."""
 
 
-def make_app() -> RegionMleApp:
-    """Factory named by the manifest's ``entrypoints.emtk``."""
+def make_app(coordinator=None) -> RegionMleApp:
+    """Factory named by the manifest's ``entrypoints.emtk``.
+
+    The Imaging Tools hub passes itself as ``coordinator`` and registers it on the app afterwards.
+    """
     return RegionMleApp()
