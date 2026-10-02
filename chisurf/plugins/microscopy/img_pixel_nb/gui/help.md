@@ -28,7 +28,7 @@ between detectors — and N_cross = ⟨a⟩⟨b⟩/C.
 
 ## Workflow
 
-1. **Load a file** (or press **🧪 Load demo**). The step-0 detector setup decides
+1. **Load a file** (type a path and press Enter, **Browse**, **Database**, or drop one) or press **Load demo**. The **Detectors** tab (the Setup tool's editor) or the Imaging Tools setup step decides
    which windows are analysed; every window is computed.
 2. **Correct the stack.** Bleaching and immobile structure add variance that is
    not number fluctuation: use *Detrend segments* for bleaching, *Subtract* /
@@ -36,9 +36,9 @@ between detectors — and N_cross = ⟨a⟩⟨b⟩/C.
    subtracting one — B divides by it.
 3. **Set the detector.** Dead time (with the pixel dwell) for bright samples; for
    an analog detector, image a static gradient, Run, and press
-   **📐 Calibrate analog**.
+   **Calibrate analog**.
 4. **Run**, then read the ε and n maps.
-5. **Gate.** Draw regions on the *Parameter plane* (default intensity versus B);
+5. **Gate.** Under *Analysis regions* add a rectangle, ellipse or polygon on the *Parameter plane* (default intensity versus B) and drag its handles;
    *Gated pixels* shows where that population is in the image.
 6. **Add N&B to HDF5** to keep the maps beside other per-pixel results.
 
