@@ -3,18 +3,33 @@
   "version": "2.0.0",
   "display_name": "Tools:TTTR:Microtime Shifter",
   "description": "Apply global and per-channel micro-time shifts to TTTR files.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Tools", "TTTR", "Editor"],
-  "icon": "↔️",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "TTTR",
+    "Editor"
+  ],
+  "icon": "\u2194\ufe0f",
   "menu_hidden": true,
   "state_namespace": "microtime_shifter",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "last_file": {"type": ["string", "null"]},
-      "global_shift": {"type": "integer"},
-      "channel_shifts": {"type": "object"}
+      "last_file": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "global_shift": {
+        "type": "integer"
+      },
+      "channel_shifts": {
+        "type": "object"
+      }
     }
   },
   "statefulness": {
@@ -23,9 +38,12 @@
   "entrypoints": {
     "gui": "chisurf.plugins.tttr.tttr_microtime_shifter.gui.tool:MicrotimeShifterTool",
     "cli": "microtime-shift=chisurf.plugins.tttr.tttr_microtime_shifter.cli.main:cli",
-    "services": "chisurf.plugins.tttr.tttr_microtime_shifter.backend.services:register_services"
+    "services": "chisurf.plugins.tttr.tttr_microtime_shifter.backend.services:register_services",
+    "emtk": "chisurf.plugins.tttr.tttr_microtime_shifter.gui.app:create_app"
   },
-  "operation_types": ["microtime_shift"],
+  "operation_types": [
+    "microtime_shift"
+  ],
   "rpc_methods": [
     {
       "name": "microtime_shift.apply",

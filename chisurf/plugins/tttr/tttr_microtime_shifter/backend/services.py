@@ -6,6 +6,7 @@ the ``api/`` layer, and return JSON-safe results.
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -155,13 +156,17 @@ def apply_handler(
             target_output_dir = temp_dir
 
         try:
-            for path in request.files:
+            names = Counter(Path(path).name.casefold() for path in request.files)
+            for index, path in enumerate(request.files):
+                file_output_dir = target_output_dir
+                if file_output_dir and names[Path(path).name.casefold()] > 1:
+                    file_output_dir = str(Path(file_output_dir) / f"input-{index:04d}")
                 out_path, applied = shift_file(
                     path,
                     global_shift=request.global_shift,
                     channel_shifts=norm_ch,
                     filetype=request.filetype,
-                    output_dir=target_output_dir,
+                    output_dir=file_output_dir,
                 )
                 norm_in = str(Path(path).expanduser().resolve())
                 result.output_paths_by_file[norm_in] = out_path

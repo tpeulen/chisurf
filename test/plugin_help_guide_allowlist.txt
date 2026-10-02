@@ -46,5 +46,4 @@ chisurf/plugins/tttr/audifier/gui
 chisurf/plugins/tttr/microtime_histogram
 chisurf/plugins/tttr/ptu_alex_creator/gui
 chisurf/plugins/tttr/tttr_image_browser/gui
-chisurf/plugins/tttr/tttr_microtime_shifter/gui
 chisurf/plugins/vv_vh_g_factor/gui

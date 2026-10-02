@@ -1,0 +1,73 @@
+{
+  "_comment": "Controls of the micro-time shifter, drawn by emtk's view_form against the app (gui/app.py), which is the model: attrs are its fields, button actions its methods, `enabled(name)` and `bounds(name)` its hooks. The per-channel shift rows depend on the loaded file, so they are the custom `channel_shifts` section; the MMFDB sample list is the custom `sample_list` section.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Alignment",
+      "collapsible": true,
+      "sections": [
+        {"type": "toggle", "attr": "show_trigger", "label": "Show trigger lines",
+         "description": "Display the draggable count threshold (yellow) and target bin (green) on the histogram."},
+        {"type": "toggle", "attr": "log_y", "label": "Log Y",
+         "description": "Display histogram photon counts on a logarithmic axis."},
+        {"type": "value", "attr": "trigger_level", "label": "Trigger level", "kind": "int", "minimum": 1,
+         "call": "auto_align",
+         "description": "Count threshold: auto-align finds, per detector, the first bin up to the peak at or above this level (the rising edge)."},
+        {"type": "value", "attr": "trigger_position", "label": "Target bin", "kind": "int", "minimum": 0,
+         "call": "auto_align",
+         "description": "Auto-align shifts each detector's rising edge to this micro-time bin."},
+        {"type": "button_row", "buttons": [
+          {"action": "auto_align", "label": "⚡ Auto align",
+           "description": "Shift each detector so its rising-edge threshold crossing lands on the target bin."}
+        ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Shifts",
+      "collapsible": true,
+      "sections": [
+        {"type": "value", "attr": "global_shift", "label": "Global shift", "kind": "int", "step": 1,
+         "description": "Added to every routing channel's shift; the micro-times wrap modulo the bin count."},
+        {"type": "custom", "key": "channel_shifts"}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Save",
+      "collapsible": true,
+      "sections": [
+        {"type": "button_row", "buttons": [
+          {"action": "save_dialog", "label": "💾 Save shifted…",
+           "description": "One file: choose the shifted file's name. Several: choose a folder; one shifted file is written per input. Inputs are never changed."}
+        ]},
+        {"type": "value", "attr": "output_folder", "label": "Batch folder", "kind": "text",
+         "placeholder": "Choose an output directory",
+         "description": "Directory for a batch of shifted files; the inputs stay unchanged."},
+        {"type": "button_row", "buttons": [
+          {"action": "browse_output_folder", "label": "📁 Browse…", "description": "Choose the batch output directory."},
+          {"action": "save_batch", "label": "Save batch", "description": "Write one shifted file per queued input into the batch folder."}
+        ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "MMFDB",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {"type": "custom", "key": "sample_list"},
+        {"type": "value", "attr": "sample_id", "label": "Sample ID", "kind": "text",
+         "description": "The MMFDB sample that owns the registered shifted files; choose one from the list or enter its identifier."},
+        {"type": "button_row", "buttons": [
+          {"action": "refresh_samples", "label": "🔄 Refresh samples", "description": "Load the sample names from the active MMFDB database."},
+          {"action": "new_sample", "label": "➕ New sample…", "description": "Create a sample with its full structured definition."}
+        ]},
+        {"type": "button_row", "buttons": [
+          {"action": "register", "label": "🗄 Register shifts in MMFDB",
+           "description": "Write the shifted files into the object store with their provenance, under the chosen sample, using the verified session."}
+        ]}
+      ]
+    }
+  ]
+}

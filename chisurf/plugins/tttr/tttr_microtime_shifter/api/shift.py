@@ -93,6 +93,9 @@ def _load_tttr(path: str, filetype: str | None = None) -> tttrlib.TTTR:
 from chisurf.core.fio.tttr_shift import (  # noqa: E402
     apply_shifts as _apply_shifts,
 )
+from chisurf.core.fio.tttr_shift import (
+    compute_effective_shifts as _compute_effective_shifts,
+)
 
 
 def shift_file(

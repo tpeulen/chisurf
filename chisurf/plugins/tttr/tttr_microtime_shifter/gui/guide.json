@@ -1,0 +1,53 @@
+{
+  "_comment": "Guided tour for the micro-time shifter. Targets: by name for the app's own buttons and rects (add_files, channel_shifts, histogram), by attr for the spec fields (trigger_level, trigger_position) and by name for the spec button actions (auto_align, save_dialog, register), which are not section keys. Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "One time axis for every detector",
+      "text": "Cables and electronics delay each detector differently, so the same photon arrives at a different micro-time on each. This tool shifts each routing channel's micro-times (cyclically, modulo the bin count) until the rising edges coincide, and writes shifted copies.",
+      "target": {}
+    },
+    {
+      "title": "Queue the files",
+      "text": "Add TTTR files, a folder, or datasets from the database — or drop them on the window. All must have the same number of micro-time bins; the preview sums them by routing channel.",
+      "target": {"name": "add_files"},
+      "await": {"hint": "Press <b>➕ Files…</b> and pick a photon file."}
+    },
+    {
+      "title": "The rising edges",
+      "text": "Each detector's histogram, with the <b>yellow</b> threshold and the <b>green</b> target bin. The first bin up to a peak that reaches the threshold is that detector's rising edge. Drag either line; alignment runs when you let go.",
+      "target": {"name": "histogram"}
+    },
+    {
+      "title": "Threshold",
+      "text": "Pick it where the edges are steep: below the background the edge becomes the first bin, above the peak it falls back to the peak.",
+      "target": {"attr": "trigger_level"}
+    },
+    {
+      "title": "Target bin",
+      "text": "Where every rising edge should land.",
+      "target": {"attr": "trigger_position"}
+    },
+    {
+      "title": "Align",
+      "text": "Each channel's shift becomes (shift + target − edge) mod N.",
+      "target": {"name": "auto_align"},
+      "await": {"hint": "Press <b>⚡ Auto align</b>."}
+    },
+    {
+      "title": "The shifts",
+      "text": "One row per routing channel, plus the global shift that moves them all. Edit a row to fine-tune; <b>↺ Reset</b> sets it back to zero.",
+      "target": {"name": "channel_shifts"}
+    },
+    {
+      "title": "Write the shifted files",
+      "text": "One file: name the copy. Several: choose a folder. The inputs are never changed.",
+      "target": {"name": "save_dialog"},
+      "await": {"hint": "Press <b>💾 Save shifted…</b>."}
+    },
+    {
+      "title": "Or archive them",
+      "text": "With a database configured, the shifted files go into the object store with their inputs and shifts as provenance, under the sample you choose.<br/><br/>The <b>?</b> button has the details.",
+      "target": {"name": "register"}
+    }
+  ]
+}
