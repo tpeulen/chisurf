@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **burst_fusion real-input pass** (EMTK-1B follow-up): 35 click tests (+2 strict xfails for emtk gaps) operate every control
+  with pointer, keys, paste, drag, wheel and host drops; they found that edits typed into the form during a run were silently
+  lost, that a host file drop reached nothing outside Qt (`files_dropped` missing) and that the status told the user to press a
+  button that does not exist ("Analyze" for Estimate); fixed. [report](plugins/emtk-ports/burst_fusion/REPORT.md).
+
 - **img_tracking emtk app at parity** (imaging family, port-incomplete row 83): the 70-line page becomes the full tool: every
   Qt setting with its range and arrows, Track / Open / Export CSV, the movie with Play / Loop / Stop / fps / Z slice and the
   detections of the shown frame, trajectories, MSD, track lengths and a sortable table; numbers equal the Qt window's (pinned
