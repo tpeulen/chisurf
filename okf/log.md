@@ -2,6 +2,7 @@
 
 ## 2026-10-02
 
+- 2026-10-02 irf_estimator: layout (spin fields, one label column, icon spacing, idle axes), 27 click + 11 layout tests (typed/stepped/wheel fields, range-edge drags, estimate on the worker, save/transfer, dataset combo), guide irf_estimation figure regenerated from the emtk app. Evidence okf/plugins/emtk-ports/irf_estimator/REPORT_UPGRADE2.md.
 - 2026-10-02 lltf: layout (file paths under their captions, spin fields, results tab complete at 800x600, icon spacing), 22 click + 11 layout tests incl. a real fit through the buttons; guide 76 figures regenerated from the emtk app. Evidence okf/plugins/emtk-ports/lltf/REPORT_UPGRADE2.md.
 - 2026-10-02 microtime_histogram: emtk app rebuilt on a view spec (two dock tabs, run buttons on top, spin shifts, sized dialogs, tour), exact numeric parity with the Qt wizard on BH_SPC132.spc, 35 click + 17 layout + 4 parity tests; guide 89 and concept microtime-histogram. Evidence okf/plugins/emtk-ports/microtime_histogram/REPORT.md.
 - 2026-10-02: fcs_filter_calculator (audit-all row 71) emtk app rebuilt: native-vs-Qt filter difference isolated (the example's detector table and fit range, no algorithm bug; guardrail tests), spec forms and tables, component forms instead of a JSON box, shared one-page detector editor embedded, recompute keeps edits made while it runs; real-input tests of every control, guide 17 and its figures regenerated. [report](plugins/emtk-ports/fcs_filter_calculator/REPORT.md).

@@ -11,22 +11,22 @@
           "buttons": [
             {
               "action": "request_load",
-              "label": "📂 Load Decay",
+              "label": "📂  Load Decay",
               "description": "Load a measured decay from a VV/VH file (.dat): the VV channel is used, the time per channel comes from the file."
             },
             {
               "action": "request_dataset",
-              "label": "📊 Load from Dataset",
+              "label": "📊  Load from Dataset",
               "description": "Choose a decay curve already open in ChiSurf; grouped datasets list each channel."
             },
             {
               "action": "request_save",
-              "label": "💾 Save IRF",
+              "label": "💾  Save IRF",
               "description": "Save the estimated IRF as a VV/VH file with identical VV and VH channels."
             },
             {
               "action": "request_transfer",
-              "label": "🚀 Transfer to ChiSurf",
+              "label": "🚀  Transfer to ChiSurf",
               "description": "Register the estimated IRF as a TCSPC VV/VH dataset (g = 1, 10 MHz) in ChiSurf."
             }
           ]
@@ -37,12 +37,12 @@
           "buttons": [
             {
               "action": "request_guide",
-              "label": "📖 Guide",
+              "label": "📖  Guide",
               "description": "Walk through loading a decay, subtracting the background and estimating the IRF."
             },
             {
               "action": "request_help",
-              "label": "❓ Help",
+              "label": "❓  Help",
               "description": "What blind IRF estimation does, its assumptions and its failure modes."
             }
           ]
@@ -69,6 +69,7 @@
           "attr": "dt",
           "label": "Time/Channel (ns)",
           "kind": "float",
+          "style": "spin",
           "decimals": 4,
           "minimum": 0.001,
           "maximum": 10.0,
@@ -80,6 +81,7 @@
           "attr": "window_length",
           "label": "SG Window Length",
           "kind": "int",
+          "style": "spin",
           "minimum": 5,
           "maximum": 500,
           "step": 2,
@@ -90,6 +92,7 @@
           "attr": "polyorder",
           "label": "SG Poly Order",
           "kind": "int",
+          "style": "spin",
           "minimum": 1,
           "maximum": 10,
           "step": 1,
@@ -100,6 +103,7 @@
           "attr": "rl_iterations",
           "label": "RL Iterations",
           "kind": "int",
+          "style": "spin",
           "minimum": 5,
           "maximum": 2000,
           "step": 10,
@@ -110,6 +114,7 @@
           "attr": "regularization",
           "label": "Regularization",
           "kind": "int",
+          "style": "spin",
           "minimum": 1,
           "maximum": 51,
           "step": 2,
@@ -120,6 +125,7 @@
           "attr": "manual_background",
           "label": "Manual Background",
           "kind": "float",
+          "style": "spin",
           "decimals": 2,
           "minimum": 0.0,
           "maximum": 100000.0,
@@ -133,13 +139,13 @@
             {
               "type": "toggle",
               "attr": "use_range_selection",
-              "label": "📍 Use Range Selection",
+              "label": "📍  Use Range Selection",
               "description": "Use only a channel range for the estimate: drag the green region in the plot or type its first and last channel."
             },
             {
               "type": "toggle",
               "attr": "auto_update_enabled",
-              "label": "🔄 Auto-Update IRF",
+              "label": "🔄  Auto-Update IRF",
               "description": "Re-estimate the IRF (50 RL iterations) when a parameter, the background or the range changes, once an IRF exists."
             }
           ]
@@ -153,6 +159,7 @@
               "attr": "first_channel",
               "label": "First channel",
               "kind": "int",
+          "style": "spin",
               "minimum": 0,
               "maximum": 100000,
               "step": 1,
@@ -167,6 +174,7 @@
               "attr": "last_channel",
               "label": "Last channel",
               "kind": "int",
+          "style": "spin",
               "minimum": 0,
               "maximum": 100000,
               "step": 1,
@@ -190,7 +198,7 @@
           "buttons": [
             {
               "action": "request_estimate",
-              "label": "🔮 Estimate IRF",
+              "label": "🔮  Estimate IRF",
               "description": "Fit the decay tail with a truncated exponential, then deconvolve it with Richardson-Lucy to obtain the IRF."
             }
           ]

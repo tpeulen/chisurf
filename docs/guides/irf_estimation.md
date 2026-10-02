@@ -63,11 +63,13 @@ chisurf/plugins/fluorescence_decay/irf_estimator/
 :name: fig-irf-estimator
 :width: 100%
 
-The **IRF Estimator** plugin on a simulated decay whose answer is known — a
-single exponential at $\tau = 4.0$ ns reconvolved with a Gaussian instrument
-response of 1.18 ns FWHM centred at 5.0 ns. The recovered IRF (**green**) peaks
-at 5 ns with about the right width; the ragged tail beyond it is
-Richardson-Lucy ringing at the one-count level, not instrument response. The
+The **IRF Estimator** window (parameters left, plot top right, results under it)
+on a simulated decay whose answer is known — a single exponential at
+$\tau = 4.0$ ns reconvolved with a Gaussian instrument response of 1.18 ns FWHM
+centred at 5.0 ns. The recovered IRF (**green**) rises and peaks near 5–6 ns; the
+ragged tail beyond it is Richardson-Lucy ringing at the one-count level, not
+instrument response, and the fitted lifetime comes back at 3.6 ns, 10 % low (the
+estimate is blind, not exact). The
 orange **forward model** is the check that matters: it is the estimated IRF
 reconvolved with the fitted exponential, so where it lies on the measured decay
 (**blue**) the estimate reproduces the data — across the whole 50 ns here. The
@@ -85,7 +87,8 @@ fitted offset comes back at 10 counts against a true 8.
    rescales the lifetime and rate without re-estimating.
 3. **🔮 Estimate IRF** runs the tail fit and the Richardson–Lucy deconvolution
    in the background. **📍 Use Range Selection** limits the estimate to the
-   green region (drag it in the plot, or type the first and last channel).
+   green region (drag its left or right edge in the plot, or type the first and
+   last channel; the fields are shown only while the range is on).
    **🔄 Auto-Update IRF** re-estimates with 50 iterations after a change, once
    an IRF exists.
 4. **💾 Save IRF** writes identical VV and VH channels. **🚀 Transfer to

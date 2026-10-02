@@ -20,6 +20,7 @@ from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.emtk_layout import LabelColumn, labelled, layout_spec
 from ..core.estimation import estimate_irf
 from .view_model import IRFViewModel
 
@@ -155,7 +156,8 @@ class IRFEstimatorApp(ImApp):
         self.error = ""
         self.item_rects = {}
         self.pointer_text = ""
-        self.spec = _spec()
+        self.spec = layout_spec(_spec())
+        self.labels = LabelColumn()                       # one caption column for the parameter fields
         self.form_model = _Form(self)
         self.form = FormState(on_used=self._used)
         self.form.custom["datasets"] = self.draw_datasets
@@ -284,6 +286,9 @@ class IRFEstimatorApp(ImApp):
     # -- windows -----------------------------------------------------------------------
     def controls(self, box):
         self.item_rects["controls"] = tuple(box)
+        if not self.labels.ready:
+            self.labels.measure([f["label"] for f in labelled(self.spec["sections"])])
+            self.labels.pad(self.spec["sections"])
         self.form.rects.clear()
         draw_form(self.spec, self.form_model, self.form)
         self.item_rects.update(self.form.rects)
@@ -327,6 +332,8 @@ class IRFEstimatorApp(ImApp):
         if implot.begin_plot("IRF Estimation Results", size=(-1., -1.)):
             implot.setup_axes("Time (ns)", "Intensity (counts/channel)")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+            if m.decay_data_original is None:                 # nothing loaded: sensible empty axes, not 1e-4 .. 1
+                implot.setup_axes_limits(0.0, 1000.0, 1.0, 1000.0, cond=implot.COND_ONCE)
             for curve in m.plot_series():
                 values = np.asarray(curve["y"], dtype=float)
                 colour, dash = PENS.get(curve["name"].split(" (BG=")[0], (None, None))

@@ -374,7 +374,7 @@ def test_draws_inside_the_docks(size):
     app = IRFEstimatorApp()
     try:
         strings = _draw(app, size).strings
-        assert {"📂 Load Decay", "🔮 Estimate IRF", "Time axis: Not available", "N/A"} <= set(strings)
+        assert {"📂  Load Decay", "🔮  Estimate IRF", "Time axis: Not available", "N/A"} <= set(strings)
         app.file_chosen(DECAY)
         app.model.rl_iterations = 20
         app.start_estimate()

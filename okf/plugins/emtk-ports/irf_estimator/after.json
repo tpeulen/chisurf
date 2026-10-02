@@ -6,25 +6,21 @@
   "controls": [
     "0",
     "0.00",
-    "0.0001",
-    "0.001",
-    "0.01",
-    "0.1",
-    "0.2",
-    "0.3",
-    "0.4",
-    "0.5",
-    "0.6",
-    "0.7",
-    "0.8",
-    "0.9",
     "1",
     "1.0000",
+    "10",
+    "100",
+    "1000",
     "11",
-    "1e-05",
-    "1e-06",
+    "200",
     "3",
+    "300",
+    "400",
     "500",
+    "600",
+    "700",
+    "800",
+    "900",
     "amplitude(a)",
     "auto-updateirf",
     "decayrate(k)",
@@ -59,38 +55,38 @@
   "interactive": [
     {
       "kind": "button",
-      "label": "📂 Load Decay",
-      "id": "📂 Load Decay##request_load",
+      "label": "📂  Load Decay",
+      "id": "📂  Load Decay##request_load",
       "tooltip": "Load a measured decay from a VV/VH file (.dat): the VV channel is used, the time per channel comes from the file."
     },
     {
       "kind": "button",
-      "label": "📊 Load from Dataset",
-      "id": "📊 Load from Dataset##request_dataset",
+      "label": "📊  Load from Dataset",
+      "id": "📊  Load from Dataset##request_dataset",
       "tooltip": "Choose a decay curve already open in ChiSurf; grouped datasets list each channel."
     },
     {
       "kind": "button",
-      "label": "💾 Save IRF",
-      "id": "💾 Save IRF##request_save",
+      "label": "💾  Save IRF",
+      "id": "💾  Save IRF##request_save",
       "tooltip": "Save the estimated IRF as a VV/VH file with identical VV and VH channels."
     },
     {
       "kind": "button",
-      "label": "🚀 Transfer to ChiSurf",
-      "id": "🚀 Transfer to ChiSurf##request_transfer",
+      "label": "🚀  Transfer to ChiSurf",
+      "id": "🚀  Transfer to ChiSurf##request_transfer",
       "tooltip": "Register the estimated IRF as a TCSPC VV/VH dataset (g = 1, 10 MHz) in ChiSurf."
     },
     {
       "kind": "button",
-      "label": "📖 Guide",
-      "id": "📖 Guide##request_guide",
+      "label": "📖  Guide",
+      "id": "📖  Guide##request_guide",
       "tooltip": "Walk through loading a decay, subtracting the background and estimating the IRF."
     },
     {
       "kind": "button",
-      "label": "❓ Help",
-      "id": "❓ Help##request_help",
+      "label": "❓  Help",
+      "id": "❓  Help##request_help",
       "tooltip": "What blind IRF estimation does, its assumptions and its failure modes."
     },
     {
@@ -131,20 +127,20 @@
     },
     {
       "kind": "checkbox",
-      "label": "📍 Use Range Selection",
-      "id": "📍 Use Range Selection##use_range_selection",
+      "label": "📍  Use Range Selection",
+      "id": "📍  Use Range Selection##use_range_selection",
       "tooltip": "Use only a channel range for the estimate: drag the green region in the plot or type its first and last channel."
     },
     {
       "kind": "checkbox",
-      "label": "🔄 Auto-Update IRF",
-      "id": "🔄 Auto-Update IRF##auto_update_enabled",
+      "label": "🔄  Auto-Update IRF",
+      "id": "🔄  Auto-Update IRF##auto_update_enabled",
       "tooltip": "Re-estimate the IRF (50 RL iterations) when a parameter, the background or the range changes, once an IRF exists."
     },
     {
       "kind": "button",
-      "label": "🔮 Estimate IRF",
-      "id": "🔮 Estimate IRF##request_estimate",
+      "label": "🔮  Estimate IRF",
+      "id": "🔮  Estimate IRF##request_estimate",
       "tooltip": "Fit the decay tail with a truncated exponential, then deconvolve it with Richardson-Lucy to obtain the IRF."
     }
   ],
