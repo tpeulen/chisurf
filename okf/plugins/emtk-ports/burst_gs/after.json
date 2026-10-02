@@ -6,7 +6,7 @@
   "controls": [
     "0",
     "0,8",
-    "0.000",
+    "0.0000",
     "0.1",
     "0.2",
     "0.3",
@@ -19,24 +19,24 @@
     "1",
     "1,9",
     "10",
-    "1000.000",
+    "1000.0",
     "2",
-    "200",
     "2000",
     "40",
-    "50.000",
     "acceptorchannels",
     "addatleastone.burbursttable,orticksimulate.",
     "addburstfolder",
     "auto",
     "clearburstfiles",
-    "cross-checkh2mm",
+    "container",
+    "cross-checkwithh2mm",
     "datainputchannels",
-    "decodestatetrajectories",
+    "decodestatepath",
     "donorchannels",
     "drop.burbursttables(orticksimulate)andpressfit.",
     "exchangefasterthananybin.",
     "exportcsv",
+    "extras",
     "fitkinetics",
     "fitsummaryconsole",
     "fittedrates",
@@ -44,33 +44,31 @@
     "fretstates",
     "guide",
     "help",
-    "initialrate(s⁻¹)",
+    "initialrate[1/s]",
     "kineticmodelsettings",
     "kineticscontrols",
     "kineticsdynamics",
     "loaded.burfiles0",
-    "macro-timetick(ns)",
-    "maximumbursts",
+    "macro-timetick[ns]",
+    "maxbursts",
     "maxiterations",
     "minphotons/burst",
     "mmfdbdatasets",
     "nelder-mead",
-    "numberofstates",
     "openburfiles",
-    "optimizer",
+    "optimiser",
     "rate(1/s)",
     "ratematrixreport",
+    "scanpoints",
     "scantransitiontime",
-    "simulatedphotonrate(khz)",
-    "simulatedphotons/burst",
+    "states",
     "stopfit",
     "thisfitskineticratesdirectlytothearrivaltimeandcolourofeveryphoton,soitresolves",
     "transition",
-    "transitionscanpoints",
-    "tttrfiletype",
     "tttrfolder",
     "usesimulationmode",
     "vdatainputchannels",
+    "vextras",
     "vkineticmodelsettings"
   ],
   "interactive": [
@@ -135,6 +133,12 @@
       "tooltip": "Generate simulated burst trains instead of reading .bur files, to test the fitting."
     },
     {
+      "kind": "input_text",
+      "label": "macro_time_resolution_ns",
+      "id": "##macro_time_resolution_ns",
+      "tooltip": "Seconds per macro-time tick, in nanoseconds. Zero reads it from the file header. Every fitted rate is proportional to this, so a wrong value rescales the whole answer silently."
+    },
+    {
       "kind": "collapsing_header",
       "label": "Data Input & Channels",
       "id": "Data Input & Channels",
@@ -142,21 +146,33 @@
     },
     {
       "kind": "input_text",
-      "label": "Donor Channels",
-      "id": "Donor Channels",
-      "tooltip": "Comma-separated routing channels assigned to the donor (e.g. 0, 8)."
+      "label": "data_dir",
+      "id": "##data_dir",
+      "tooltip": "Folder the raw TTTR files named in the burst table resolve against. Left empty, the burst table's own folder is used."
     },
     {
       "kind": "input_text",
-      "label": "Acceptor Channels",
-      "id": "Acceptor Channels",
-      "tooltip": "Comma-separated routing channels assigned to the acceptor (e.g. 1, 9)."
+      "label": "donor_channels",
+      "id": "##donor_channels",
+      "tooltip": "Routing channels counted as donor photons, comma separated. This is colour 0."
     },
     {
-      "kind": "input_int",
-      "label": "Min Photons/Burst",
-      "id": "Min Photons/Burst",
-      "tooltip": "Bursts with fewer photons than this are excluded from the fit."
+      "kind": "input_text",
+      "label": "acceptor_channels",
+      "id": "##acceptor_channels",
+      "tooltip": "Routing channels counted as acceptor photons, comma separated. This is colour 1. Photons in neither list — acceptor-excitation photons, for instance — are dropped."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_photons",
+      "id": "##min_photons",
+      "tooltip": "Bursts with fewer photons are dropped. A burst too short to show a spread of interphoton gaps contributes nothing to the kinetics and only costs time."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_bursts",
+      "id": "##max_bursts",
+      "tooltip": "Keep at most this many bursts; 0 uses all of them. Lower it for a quick first look."
     },
     {
       "kind": "collapsing_header",
@@ -165,99 +181,63 @@
       "tooltip": "Expand or collapse kinetic model settings controls."
     },
     {
-      "kind": "slider_int",
-      "label": "Number of States",
-      "id": "Number of States",
-      "tooltip": "Number of FRET states in the kinetic model (2–4)."
-    },
-    {
-      "kind": "input_float",
-      "label": "Initial Rate (s⁻¹)",
-      "id": "Initial Rate (s⁻¹)",
-      "tooltip": "Starting guess for all transition rates in s⁻¹."
-    },
-    {
-      "kind": "input_int",
-      "label": "Max Iterations",
-      "id": "Max Iterations",
-      "tooltip": "Maximum number of optimizer iterations before the fit gives up."
-    },
-    {
-      "kind": "checkbox",
-      "label": "Fix Efficiencies",
-      "id": "Fix Efficiencies",
-      "tooltip": "Keep the state FRET efficiencies fixed while fitting the rates."
-    },
-    {
-      "kind": "checkbox",
-      "label": "Scan Transition Time",
-      "id": "Scan Transition Time",
-      "tooltip": "Scan a range of transition times and report the likelihood profile."
-    },
-    {
-      "kind": "checkbox",
-      "label": "Decode State Trajectories",
-      "id": "Decode State Trajectories",
-      "tooltip": "Decode the most likely state sequence per photon and show the transition profile."
+      "kind": "input_text",
+      "label": "n_states",
+      "id": "##n_states",
+      "tooltip": "Number of kinetic states. Add one only when the BIC clearly falls: every extra state costs n more rates and always fits a little better."
     },
     {
       "kind": "input_text",
-      "label": "data_dir",
-      "id": "##data_dir",
-      "tooltip": "Resolve raw measurement filenames from the BUR table against this folder."
-    },
-    {
-      "kind": "input_text",
-      "label": "file_type",
-      "id": "##file_type",
-      "tooltip": "Use auto to detect the container, or specify SPC-130, PTU, HT3 or HDF."
-    },
-    {
-      "kind": "input_text",
-      "label": "method",
-      "id": "##method",
-      "tooltip": "Choose nelder-mead or l-bfgs-b."
-    },
-    {
-      "kind": "input_float",
-      "label": "Macro-time tick (ns)",
-      "id": "Macro-time tick (ns)",
-      "tooltip": "Zero reads the header resolution; an explicit tick rescales all fitted rates."
-    },
-    {
-      "kind": "input_float",
-      "label": "Simulated photon rate (kHz)",
-      "id": "Simulated photon rate (kHz)",
-      "tooltip": "Detected photons per millisecond within each simulated burst."
-    },
-    {
-      "kind": "input_int",
-      "label": "Maximum bursts",
-      "id": "Maximum bursts",
-      "tooltip": "Limit the input for a quick fit; zero uses all bursts."
-    },
-    {
-      "kind": "input_int",
-      "label": "Simulated photons / burst",
-      "id": "Simulated photons / burst",
-      "tooltip": "Number of photons in every simulated burst."
-    },
-    {
-      "kind": "input_int",
-      "label": "Transition scan points",
-      "id": "Transition scan points",
-      "tooltip": "Number of finite-transition-time hypotheses in the likelihood scan."
+      "label": "initial_rate",
+      "id": "##initial_rate",
+      "tooltip": "Starting value for every rate. Rates are optimised in log space, so this only needs to be the right order of magnitude."
     },
     {
       "kind": "checkbox",
-      "label": "Cross-check H2MM",
-      "id": "Cross-check H2MM",
-      "tooltip": "Compare the photon-by-photon fit with the discrete-time H2MM method."
+      "label": "Fix efficiencies",
+      "id": "Fix efficiencies##fix_efficiencies",
+      "tooltip": "Hold the per-state efficiencies at their starting values and fit only the rates. Worth doing when the efficiencies are known from a static measurement: rates and efficiencies are the most strongly correlated pair in this problem."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_iterations",
+      "id": "##max_iterations",
+      "tooltip": "Optimiser iteration cap."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Extras",
+      "id": "Extras",
+      "tooltip": "Expand or collapse extras controls."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Scan transition time",
+      "id": "Scan transition time##scan_transition_time",
+      "tooltip": "After fitting, insert an explicit intermediate the molecule must cross and scan how long it takes. Two states only. Usually this returns an upper bound rather than a measurement, which is itself the useful answer."
+    },
+    {
+      "kind": "input_text",
+      "label": "transit_points",
+      "id": "##transit_points",
+      "tooltip": "Points in the transition-time scan, spread logarithmically from 1 µs to 1 ms."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Decode state path",
+      "id": "Decode state path##decode_states",
+      "tooltip": "Compute the most likely state of every photon (Viterbi). An illustration of the fitted model, not a measurement: it draws a definite path even where the photons support none."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Cross-check with H2MM",
+      "id": "Cross-check with H2MM##cross_check_h2mm",
+      "tooltip": "Fit the same photons with the discrete-time H2MM engine and compare. The two share no code and parameterise time differently, so agreement is real evidence — and disagreement is worth chasing before you believe either."
     }
   ],
   "controls_without_tooltip": [],
   "qt_free": {
     "ok": true,
-    "output": "QT-FREE OK\n"
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
   }
 }
