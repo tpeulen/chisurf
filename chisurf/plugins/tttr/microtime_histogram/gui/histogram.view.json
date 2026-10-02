@@ -1,0 +1,193 @@
+{
+  "_comment": "Options of the micro-time histogram, drawn by emtk's view_form against HistogramFields in gui/app.py (attrs are its fields, button actions the app's methods, `enabled(name)` its hook). The detector definition itself is the shared channel-definition editor (its own dock tab).",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Run",
+      "sections": [
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "action": "compute",
+              "label": "▶  Compute",
+              "description": "Read the selected photons and burst gates in a background worker."
+            },
+            {
+              "action": "save",
+              "label": "💾  Save",
+              "description": "Write the current shifted cumulative VV/VH decay to Output."
+            },
+            {
+              "action": "save_as",
+              "label": "Save as…",
+              "description": "Choose another decay filename."
+            },
+            {
+              "action": "transfer",
+              "label": "Transfer to ChiSurf",
+              "description": "Save and add a TCSPC dataset with the current G-factor, time step and polarization."
+            }
+          ]
+        },
+        {
+          "type": "toggle",
+          "attr": "auto_save",
+          "label": "Autosave after compute",
+          "description": "Write the cumulative decay to Output once the computation succeeds."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Detector and channels",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "detector",
+              "label": "Detector",
+              "options_source": "detector_options",
+              "description": "Detector of the setup whose interleaved routing channels (parallel, perpendicular, parallel, ...) and G-factor are used."
+            },
+            {
+              "type": "value",
+              "attr": "parallel_text",
+              "label": "Parallel",
+              "kind": "text",
+              "description": "Comma-separated routing channels of the parallel (VV) stream; choosing a detector fills them."
+            },
+            {
+              "type": "value",
+              "attr": "perpendicular_text",
+              "label": "Perpendicular",
+              "kind": "text",
+              "description": "Comma-separated routing channels of the perpendicular (VH) stream; empty when polarization resolution is off."
+            }
+          ]
+        },
+        {
+          "type": "toggle",
+          "attr": "polarized",
+          "label": "Polarization resolved",
+          "description": "Split the detector channels into alternating VV/VH routes; unchecked gives one unpolarized stream."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Reading and gates",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "window",
+          "label": "Excitation window",
+          "options_source": "window_options",
+          "description": "Apply this inclusive excitation micro-time gate, or include all windows."
+        },
+        {
+          "type": "choice",
+          "attr": "filetype",
+          "label": "TTTR format",
+          "options_source": "format_options",
+          "description": "Container reader override; Auto uses the file header (headerless SPC data needs its subtype)."
+        },
+        {
+          "type": "choice",
+          "attr": "binning",
+          "label": "Binning",
+          "options": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            32
+          ],
+          "description": "Group this many adjacent micro-time bins."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Time step, G-factor and shifts",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "dt_ns",
+          "label": "dt [ns]",
+          "kind": "float",
+          "minimum": 0.0,
+          "description": "Nanoseconds per binned TAC channel; reading derives it from the header. Typing a value keeps it (Manual time step)."
+        },
+        {
+          "type": "toggle",
+          "attr": "dt_manual",
+          "label": "Manual time step",
+          "description": "Keep the entered time step instead of the file header's resolution."
+        },
+        {
+          "type": "value",
+          "attr": "g_factor",
+          "label": "G-Factor",
+          "kind": "float",
+          "minimum": 0.0,
+          "description": "Weights VH by 2G in the combined VV + 2G VH trace."
+        },
+        {
+          "type": "value",
+          "attr": "vv_shift",
+          "label": "VV shift (channels)",
+          "kind": "int",
+          "style": "spin",
+          "step": 1,
+          "description": "Pad or clip the VV histogram by this many bins; photon times are not wrapped."
+        },
+        {
+          "type": "value",
+          "attr": "vh_shift",
+          "label": "VH shift (channels)",
+          "kind": "int",
+          "style": "spin",
+          "step": 1,
+          "description": "Pad or clip the VH histogram by this many bins; photon times are not wrapped."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Output",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "output",
+              "label": "Output",
+              "kind": "text",
+              "description": "Single-column export: VV bins followed by VH bins, compatible with read_vv_vh."
+            },
+            {
+              "type": "choice",
+              "attr": "polarization",
+              "label": "Polarization",
+              "options": [
+                "vm",
+                "vv",
+                "vh"
+              ],
+              "description": "TCSPC reader polarization mode used when the saved decay is transferred."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

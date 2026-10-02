@@ -1,0 +1,246 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.016",
+    "0.1",
+    "1",
+    "10",
+    "100",
+    "12",
+    "2",
+    "4",
+    "6",
+    "8",
+    "all",
+    "allwindows",
+    "auto",
+    "autosaveaftercompute",
+    "binning",
+    "burstselections(bid/bur)",
+    "clear",
+    "compute",
+    "counts",
+    "database",
+    "detector",
+    "detectorandchannels",
+    "detectordefinition",
+    "dt[ns]",
+    "excitationwindow",
+    "files",
+    "folder",
+    "fwhm(vv+2gvh)0ns(0channels)",
+    "g-factor",
+    "guide",
+    "help",
+    "inputsandoptions",
+    "logcounts",
+    "manualtimestep",
+    "microtimedecay",
+    "none",
+    "nothingqueued.",
+    "output",
+    "parallel",
+    "perpendicular",
+    "photonfiles",
+    "polarization",
+    "polarizationresolved",
+    "queuephotonfiles,thencompute.",
+    "readingandgates",
+    "remove",
+    "run",
+    "save",
+    "saveas",
+    "time(ns)",
+    "timestep,g-factorandshifts",
+    "transfertochisurf",
+    "tttrformat",
+    "vh",
+    "vhshift(channels)",
+    "vm",
+    "vv",
+    "vv+2gvh",
+    "vvshift(channels)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖  Guide",
+      "id": "📖  Guide",
+      "tooltip": "A walk through queueing files, choosing the detector, computing and exporting."
+    },
+    {
+      "kind": "button",
+      "label": "❓  Help",
+      "id": "❓  Help",
+      "tooltip": "Histogram, burst-gate, shift and transfer conventions."
+    },
+    {
+      "kind": "button",
+      "label": "▶  Compute",
+      "id": "▶  Compute##compute",
+      "tooltip": "Read the selected photons and burst gates in a background worker."
+    },
+    {
+      "kind": "button",
+      "label": "💾  Save",
+      "id": "💾  Save##save",
+      "tooltip": "Write the current shifted cumulative VV/VH decay to Output."
+    },
+    {
+      "kind": "button",
+      "label": "Save as…",
+      "id": "Save as…##save_as",
+      "tooltip": "Choose another decay filename."
+    },
+    {
+      "kind": "button",
+      "label": "Transfer to ChiSurf",
+      "id": "Transfer to ChiSurf##transfer",
+      "tooltip": "Save and add a TCSPC dataset with the current G-factor, time step and polarization."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Autosave after compute",
+      "id": "Autosave after compute##auto_save",
+      "tooltip": "Write the cumulative decay to Output once the computation succeeds."
+    },
+    {
+      "kind": "button",
+      "label": "➕  Files…",
+      "id": "➕  Files…",
+      "tooltip": "Queue TTTR/PTO photon files, with per-file inclusion controls."
+    },
+    {
+      "kind": "button",
+      "label": "📁  Folder…",
+      "id": "📁  Folder…",
+      "tooltip": "Queue photon files recursively from a folder."
+    },
+    {
+      "kind": "button",
+      "label": "🗄  Database…",
+      "id": "🗄  Database…",
+      "tooltip": "Select raw photon data from the MMFDB object store."
+    },
+    {
+      "kind": "button",
+      "label": "All",
+      "id": "All",
+      "tooltip": "Include every file of this list."
+    },
+    {
+      "kind": "button",
+      "label": "None",
+      "id": "None",
+      "tooltip": "Exclude every file of this list."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove",
+      "tooltip": "Remove the selected file from the list (it stays on disk)."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear",
+      "tooltip": "Remove every file of this list and the computed histogram."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Burst selections (BID/BUR)",
+      "id": "Burst selections (BID/BUR)",
+      "tooltip": "Restrict the photons to bursts: queue .bst/.bur photon-index files (inclusive bounds)."
+    },
+    {
+      "kind": "input_text",
+      "label": "parallel_text",
+      "id": "##parallel_text",
+      "tooltip": "Comma-separated routing channels of the parallel (VV) stream; choosing a detector fills them."
+    },
+    {
+      "kind": "input_text",
+      "label": "perpendicular_text",
+      "id": "##perpendicular_text",
+      "tooltip": "Comma-separated routing channels of the perpendicular (VH) stream; empty when polarization resolution is off."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Polarization resolved",
+      "id": "Polarization resolved##polarized",
+      "tooltip": "Split the detector channels into alternating VV/VH routes; unchecked gives one unpolarized stream."
+    },
+    {
+      "kind": "input_text",
+      "label": "dt_ns",
+      "id": "##dt_ns",
+      "tooltip": "Nanoseconds per binned TAC channel; reading derives it from the header. Typing a value keeps it (Manual time step)."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual time step",
+      "id": "Manual time step##dt_manual",
+      "tooltip": "Keep the entered time step instead of the file header's resolution."
+    },
+    {
+      "kind": "input_text",
+      "label": "g_factor",
+      "id": "##g_factor",
+      "tooltip": "Weights VH by 2G in the combined VV + 2G VH trace."
+    },
+    {
+      "kind": "input_text",
+      "label": "vv_shift",
+      "id": "##vv_shift",
+      "tooltip": "Pad or clip the VV histogram by this many bins; photon times are not wrapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "vh_shift",
+      "id": "##vh_shift",
+      "tooltip": "Pad or clip the VH histogram by this many bins; photon times are not wrapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "output",
+      "id": "##output",
+      "tooltip": "Single-column export: VV bins followed by VH bins, compatible with read_vv_vh."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Log counts",
+      "id": "Log counts",
+      "tooltip": "Use a positive logarithmic intensity axis."
+    },
+    {
+      "kind": "checkbox",
+      "label": "VV",
+      "id": "VV",
+      "tooltip": "Show or hide the cumulative parallel decay."
+    },
+    {
+      "kind": "checkbox",
+      "label": "VH",
+      "id": "VH",
+      "tooltip": "Show or hide the cumulative perpendicular decay."
+    },
+    {
+      "kind": "checkbox",
+      "label": "VV + 2G VH",
+      "id": "VV + 2G VH",
+      "tooltip": "Show or hide the combined decay."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

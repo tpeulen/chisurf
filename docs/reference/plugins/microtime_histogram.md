@@ -30,7 +30,9 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 
 ## Theory and workflow
 
+- **Workflow** — [Histogramming micro times per detector and polarization](/guides/89_microtime_histogram.md)
 - **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+- **Theory** — [Micro-time histograms](/concepts/microtime_histogram.md)
 
 ## Source
 

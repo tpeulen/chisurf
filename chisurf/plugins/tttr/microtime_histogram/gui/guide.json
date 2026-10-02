@@ -1,14 +1,28 @@
-[
-  {
-    "title": "Configure inputs",
-    "text": "Choose a detector setup, photon files and optional BID/BUR index selections."
-  },
-  {
-    "title": "Compute and inspect",
-    "text": "Compute in the background; inspect VV/VH, combined intensity and FWHM."
-  },
-  {
-    "title": "Save or transfer",
-    "text": "Write a flattened VV/VH decay or transfer it with its TCSPC parameters."
-  }
-]
+{
+  "_comment": "Guided tour of the micro-time histogram. Targets: names the app remembers (photon_files, detector, ...) and spec attrs/actions (parallel_text, dt_ns, compute, transfer). Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {"title": "From photons to a decay",
+     "text": "This tool histograms the micro-times of photon files per detector, polarization and excitation window, shows the decay and writes it for the TCSPC analysis. Use <b>Detector definition</b> (the other tab of this dock) for the channels, windows and G-factor of your setup.",
+     "target": {}},
+    {"title": "Queue photon files",
+     "text": "Add files, a folder or datasets from the database, or drop them on the window. Untick a file to leave it out; Burst selections (BID/BUR) restrict the photons to bursts.",
+     "target": {"name": "photon_files"},
+     "await": {"hint": "Press <b>➕  Files…</b> and pick a photon file."}},
+    {"title": "Detector and channels",
+     "text": "The detector chooses the interleaved routing channels (parallel, perpendicular, ...) and the G-factor; edit the lists by hand when needed.",
+     "target": {"attr": "parallel_text"}},
+    {"title": "Time step and shifts",
+     "text": "The time step comes from the file header; shifts pad or clip a histogram to line the VV and VH decays up (they do not wrap photon times).",
+     "target": {"attr": "dt_ns"}},
+    {"title": "Compute",
+     "text": "Reads the photons in the background and fills the plot with VV, VH and VV + 2G VH.",
+     "target": {"name": "compute"},
+     "await": {"hint": "Press <b>▶  Compute</b>."}},
+    {"title": "The decay",
+     "text": "Cumulative decays of the selected files. The FWHM of the combined trace is shown under the options; Log counts and the trace toggles are above the plot.",
+     "target": {"name": "plot"}},
+    {"title": "Save or transfer",
+     "text": "Save writes VV bins followed by VH bins as one integer column; Transfer to ChiSurf also adds the TCSPC dataset with the current G-factor, time step and polarization.",
+     "target": {"name": "transfer"}}
+  ]
+}

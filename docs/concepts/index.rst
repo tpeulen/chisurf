@@ -100,6 +100,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
 
    photon_container
    microtime_shift
+   microtime_histogram
    live_streaming_analysis
 
 .. rubric:: Structure & imaging
