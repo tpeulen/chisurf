@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **burst_bva real-input pass** (EMTK-1B follow-up): 40 click tests operate every control with pointer, keys, drag, wheel and
+  host drops; they found that the four drag fields changed nothing (no live flag), that "/" and half-typed microtime ranges
+  could not be typed (the field re-formatted the model each frame) and that the guide did not wait on Folder / Run; all fixed in
+  the app both hosts draw. emtk gaps (drag without typed entry, raw markdown in help) in the report.
+  [report](plugins/emtk-ports/burst_bva/REPORT.md).
+
 - 2026-10-02: games (audit-all row 48) upgrade evidence: the emtk launcher (sidebar, header with keys, game fills the area) at parity with the Qt games hub; compare exit 0 with the hub's row numbers, stepper, "Ready", placeholders and the not-yet-ported Breakout in deliberate.json; new `test_launcher_frames.py` (frames follow the open game) closed the one breakage miss; 161 passed. Report: `okf/plugins/emtk-ports/games/REPORT.md`.
 
 - **img_calibration emtk app at parity; Apply refuses bad windows and publishes a snapshot** (EMTK-1, upgrade row 47): the

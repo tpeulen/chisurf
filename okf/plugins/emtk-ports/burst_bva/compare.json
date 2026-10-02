@@ -53,7 +53,7 @@
   "untooltipped": [],
   "qt_free": {
     "ok": true,
-    "output": "QT-FREE OK\n"
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
   },
   "before_controls": 3,
   "after_controls": 45
