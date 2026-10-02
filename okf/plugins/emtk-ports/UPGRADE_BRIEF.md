@@ -60,3 +60,18 @@ Environment: `cd ~/dev/chisurf; export QT_QPA_PLATFORM=offscreen; export PYTHONP
 If a "When to stop and ask" condition applies (an emtk gap), stop and report with a 5-line reproduction.
 
 Final reply: commits (hash + subject), test results (pasted counts), what changed, the parity checklist (done / deliberate / blocked), report path.
+
+## Reuse first (owner rule, 2026-10-02: applies to ALL emtk and Qt plugins)
+
+Never reimplement a control that another plugin already has. Before writing UI, search for the shared component and embed it: the detector /
+channel-definition editor (`chisurf/emtk/channel_definition.py`, hosted by `setup_channel_definition`, `boarding`, `fcs_channel_preset`), the dataset
+picker, file chooser, image canvas and imaging shell (`chisurf/plugins/microscopy/imaging_emtk/`), plot panels, `data_table` and spec forms,
+`chisurf/plugins/emtk_layout.py`, help window and guided tour. If the shared piece lacks something, extend it (or, where it is off-limits, report the gap
+with a 5-line repro and use the smallest wrapper in your plugin) instead of forking. A duplicate you find while touching a plugin is replaced in the same
+change. Every REPORT.md has a **Reuse** section: shared components used, local duplicates replaced or flagged.
+
+## Layout and input (owner rules)
+
+Read screenshots at 1200x800 and 800x600: no clipped or overlapping text, grouped inputs, no misleading idle controls, image/plot area gets the space.
+The mouse wheel works wherever it applies (zoom on images, plots and node editors, scroll on lists), and every control has a real-input click test.
+Tour cards must not cover the control a step points at (they are draggable).

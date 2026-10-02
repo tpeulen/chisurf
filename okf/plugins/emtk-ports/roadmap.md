@@ -23,3 +23,8 @@ Cards per `wave3-plan.md`; `mfd_prepare`, `burst_ebfret`, `alex_suite` wait for 
 
 ## Track D: retire Qt
 Only after A and B: remove Qt tool entries, then host-level Qt (`ControlHost` stays as an optional host). Gate: zero plugins on the preview list and zero Qt-only manifests.
+
+## Track E: reuse audit (owner rule, 2026-10-02)
+Maximize reuse across all plugins, Qt and emtk. Find duplicated UI: grep for re-implemented detector setup, dataset pickers, file choosers, image
+panels, tables and plot panels across `chisurf/plugins/*`; list them with the shared component that should replace each; replace in the owning plugin's
+next cycle, or extend the shared component first (detector editor: table layout, range-text parsing, last-used setup; dataset picker buttons id bug).
