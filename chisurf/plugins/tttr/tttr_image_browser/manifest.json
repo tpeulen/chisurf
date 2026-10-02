@@ -47,6 +47,7 @@
     }
   },
   "entrypoints": {
+    "emtk": "chisurf.plugins.tttr.tttr_image_browser.gui.app:make_app",
     "gui": "chisurf.plugins.tttr.tttr_image_browser.gui.tool:TTTRImageBrowserTool",
     "cli": "tttr-image-browser=chisurf.plugins.tttr.tttr_image_browser.cli:cli",
     "services": "chisurf.plugins.tttr.tttr_image_browser.backend.services:register_services"

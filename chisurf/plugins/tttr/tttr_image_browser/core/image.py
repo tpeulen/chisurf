@@ -20,7 +20,32 @@ except Exception:
 _log = logging.getLogger(__name__)
 
 CACHE_DIR_NAME = ".tttr_image_cache"
-CACHE_VERSION = "1"
+CACHE_VERSION = "2"
+
+
+def scanner_params(file_path):
+    """Read explicitly identified simulated scanner geometry, never guess vendor layouts."""
+    sidecar = pathlib.Path(file_path).with_suffix(".json")
+    if not sidecar.is_file():
+        return {}
+    try:
+        layout = json.loads(sidecar.read_text()).get("scan_layout", {})
+        if layout.get("kind") != "chisurf-simulated-raster":
+            return {}
+        pixels = int(layout.get("n_pixel_per_line", 0))
+        if pixels <= 0:
+            raise ValueError("Simulated raster grid must be positive.")
+        return dict(
+            marker_frame_start=[4],
+            marker_line_start=1,
+            marker_line_stop=2,
+            n_pixel_per_line=pixels,
+            use_pixel_markers=True,
+            marker_pixel=8,
+            settings={"n_lines": pixels},
+        )
+    except (OSError, AttributeError, json.JSONDecodeError):
+        return {}
 
 
 def cache_dir_for(file_path: pathlib.Path) -> pathlib.Path:
@@ -73,6 +98,7 @@ def mosaic_hash(
         st = file_path.stat()
         payload = {
             "v": CACHE_VERSION,
+            "scanner": scanner_params(file_path),
             "file": str(file_path.name),
             "mtime_ns": getattr(st, "st_mtime_ns", int(st.st_mtime * 1e9)),
             "reading": str(reading_routine) if reading_routine is not None else "Auto",
@@ -154,6 +180,7 @@ def entry_hash(
         st = file_path.stat()
         payload = {
             "v": CACHE_VERSION,
+            "scanner": scanner_params(file_path),
             "file": str(file_path.name),
             "mtime_ns": getattr(st, "st_mtime_ns", int(st.st_mtime * 1e9)),
             "reading": str(reading_routine) if reading_routine is not None else "Auto",
@@ -206,8 +233,14 @@ def compute_entry_stack_cached(
         except Exception:
             pass
 
+    params.update(scanner_params(file_path))
     clsm = tttrlib.CLSMImage(**params)
-    img = np.array(clsm.intensity)
+    from chisurf.core.fluorescence.imaging import clsm_intensity_counts
+
+    intensity = clsm_intensity_counts(clsm)
+    if not np.asarray(intensity).size:
+        raise ValueError("No scanner image reconstructed; check marker/pixel-layout metadata.")
+    img = np.array(intensity)
     if img.ndim == 2:
         img3 = img[None, ...]
     elif img.ndim == 3:
@@ -263,12 +296,14 @@ def get_combo_stack(
     return sum_stacks_with_padding(stacks)
 
 
-def is_clsm_compatible(tttr_obj: Any) -> bool:
+def is_clsm_compatible(tttr_obj: Any, file_path=None) -> bool:
     """Check if the TTTR file has valid CLSM headers."""
     try:
-        clsm = tttrlib.CLSMImage(tttr_data=tttr_obj)
+        clsm = tttrlib.CLSMImage(
+            tttr_data=tttr_obj, **(scanner_params(file_path) if file_path is not None else {})
+        )
         _ = getattr(clsm, "intensity", None)
-        return _ is not None
+        return _ is not None and bool(np.asarray(_).size)
     except Exception:
         return False
 
@@ -368,7 +403,7 @@ def render_mosaic_array(
         return None
     try:
         tttr_obj = open_tttr(path, reading_routine)
-        if not is_clsm_compatible(tttr_obj):
+        if not is_clsm_compatible(tttr_obj, path):
             return None
     except Exception:
         return None

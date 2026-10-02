@@ -64,6 +64,8 @@ class ImageBrowserViewModel:
     def open_folder(self, folder: str) -> None:
         """Open *folder*, load its metadata and list its image files."""
         self.current_folder = str(folder)
+        self.current_file = None
+        self.selected_files = []
         try:
             self.meta = self._client.get_metadata(self.current_folder)
         except Exception:
@@ -260,6 +262,7 @@ class ImageBrowserViewModel:
 
     def select_file(self, path) -> None:
         """image_browser ``select_call``: record the selection and notify."""
+        self.current_file = path or None
         self.selected_files = [path] if path else []
         self.notify("select")
 
@@ -269,6 +272,7 @@ class ImageBrowserViewModel:
         if not payload:
             return
         self.setup_settings = payload
+        self._mosaic_cache.clear()
         if self.current_folder:
             self._rescan()
         self.notify("setup")

@@ -1,0 +1,299 @@
+{
+  "fixture": [
+    "Leica_SP8.ptu",
+    "corrupt.ptu",
+    "notes.txt",
+    "sub/Leica_SP5.ptu"
+  ],
+  "messages": [
+    [
+      "Caches cleared",
+      "Image caches have been cleared."
+    ]
+  ],
+  "setup_page_settings": {
+    "file_type": "PTU",
+    "macro_time_resolution": 50.0,
+    "micro_time_resolution": 16.0,
+    "micro_time_binning": 1,
+    "effective_micro_time_resolution": 16.0,
+    "excitation_period": 50.0
+  },
+  "info_empty": "<i>Open a folder (or drop one here) with TTTR imaging files.</i>",
+  "entries_nonrecursive": [
+    {
+      "id": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/ib_qt_mav_6hl0/imgs/corrupt.ptu",
+      "label": "corrupt.ptu",
+      "badge": "0.0 MB",
+      "rating": 0
+    },
+    {
+      "id": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/ib_qt_mav_6hl0/imgs/Leica_SP8.ptu",
+      "label": "Leica_SP8.ptu",
+      "badge": "12.0 MB",
+      "rating": 0
+    }
+  ],
+  "info_folder": "<i>2 image(s) in imgs</i>",
+  "mosaic_SP8": {
+    "shape": [
+      256,
+      512
+    ],
+    "cols": 2,
+    "rows": 1,
+    "labels": [
+      "green  |  mt: 0-4095  |  ch: 0,1",
+      "red  |  mt: 0-4095  |  ch: 2"
+    ],
+    "sum": 547933,
+    "max": 212,
+    "mean": 4.180397033691406,
+    "sha1": "c12bdf5fb28317ad7abfe2aef4b8836eb7756997",
+    "tile_labels": [
+      {
+        "x": 3,
+        "y": 3,
+        "text": "green  |  mt: 0-4095  |  ch: 0,1"
+      },
+      {
+        "x": 259,
+        "y": 3,
+        "text": "red  |  mt: 0-4095  |  ch: 2"
+      }
+    ]
+  },
+  "info_selected": "<i>2 image(s) in imgs</i>",
+  "colormaps": [
+    "viridis",
+    "magma",
+    "inferno",
+    "plasma",
+    "cividis",
+    "turbo",
+    "gray"
+  ],
+  "colormap_default": "magma",
+  "colormap_after": "viridis",
+  "rating_selected": 2,
+  "note_selected": "good cell, bleached after frame 3",
+  "meta_file": {
+    "Leica_SP8.ptu": {
+      "rating": 2,
+      "annotation": "good cell, bleached after frame 3"
+    }
+  },
+  "entries_after_rating": [
+    {
+      "id": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/ib_qt_mav_6hl0/imgs/corrupt.ptu",
+      "label": "corrupt.ptu",
+      "badge": "0.0 MB",
+      "rating": 0
+    },
+    {
+      "id": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/ib_qt_mav_6hl0/imgs/Leica_SP8.ptu",
+      "label": "Leica_SP8.ptu",
+      "badge": "12.0 MB  \u2605\u2605",
+      "rating": 2
+    }
+  ],
+  "entries_recursive": [
+    {
+      "id": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/ib_qt_mav_6hl0/imgs/corrupt.ptu",
+      "label": "corrupt.ptu",
+      "badge": "0.0 MB",
+      "rating": 0
+    },
+    {
+      "id": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/ib_qt_mav_6hl0/imgs/sub/Leica_SP5.ptu",
+      "label": "sub/Leica_SP5.ptu",
+      "badge": "30.7 MB",
+      "rating": 0
+    },
+    {
+      "id": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/ib_qt_mav_6hl0/imgs/Leica_SP8.ptu",
+      "label": "Leica_SP8.ptu",
+      "badge": "12.0 MB  \u2605\u2605",
+      "rating": 2
+    }
+  ],
+  "mosaic_SP5": {
+    "shape": [
+      512,
+      34
+    ],
+    "cols": 2,
+    "rows": 1,
+    "labels": [
+      "green  |  mt: 0-4095  |  ch: 0,1",
+      "red  |  mt: 0-4095  |  ch: 2"
+    ],
+    "sum": 13610,
+    "max": 69,
+    "mean": 0.7818244485294118,
+    "sha1": "f0c5aab7335256fc31c33806321be8b77e1e753a",
+    "tile_labels": [
+      {
+        "x": 3,
+        "y": 3,
+        "text": "green  |  mt: 0-4095  |  ch: 0,1"
+      },
+      {
+        "x": 20,
+        "y": 3,
+        "text": "red  |  mt: 0-4095  |  ch: 2"
+      }
+    ]
+  },
+  "entries_filter[\u2265 2\u2605\u2605]": [
+    "Leica_SP8.ptu"
+  ],
+  "entries_filter[Only 0\u2605]": [
+    "corrupt.ptu",
+    "sub/Leica_SP5.ptu"
+  ],
+  "entries_filter[\u2265 1\u2605]": [
+    "Leica_SP8.ptu"
+  ],
+  "entries_filter[\u2265 3\u2605\u2605\u2605]": [],
+  "entries_filter[All]": [
+    "corrupt.ptu",
+    "sub/Leica_SP5.ptu",
+    "Leica_SP8.ptu"
+  ],
+  "text_filter_sp5_visible": [
+    "sub/Leica_SP5.ptu    30.7 MB"
+  ],
+  "selected_files": [
+    "corrupt.ptu",
+    "Leica_SP5.ptu",
+    "Leica_SP8.ptu"
+  ],
+  "export_copy": [
+    "Leica_SP5.ptu",
+    "Leica_SP8.ptu",
+    "corrupt.ptu"
+  ],
+  "export_copy_md5_equal_source": {
+    "corrupt.ptu": true,
+    "Leica_SP8.ptu": true
+  },
+  "export_tiff": [
+    "Leica_SP5_green.tiff",
+    "Leica_SP5_red.tiff",
+    "Leica_SP8_green.tiff",
+    "Leica_SP8_red.tiff"
+  ],
+  "export_tiff_shapes": {
+    "Leica_SP5_green.tiff": [
+      7921,
+      256
+    ],
+    "Leica_SP5_red.tiff": [
+      7921,
+      256
+    ],
+    "Leica_SP8_green.tiff": [
+      93,
+      512,
+      512
+    ],
+    "Leica_SP8_red.tiff": [
+      93,
+      512,
+      512
+    ]
+  },
+  "export_tiff_sums": {
+    "Leica_SP5_green.tiff": 443139,
+    "Leica_SP5_red.tiff": 0,
+    "Leica_SP8_green.tiff": 2710575,
+    "Leica_SP8_red.tiff": 0
+  },
+  "export_docx_new_files": [],
+  "export_docx_note": "python-docx is not installed in this environment: the Qt DOCX export returns without writing anything (workspace.Document is None)",
+  "messages_after_exports": [],
+  "next_calls": [
+    [
+      "set_pipeline",
+      {
+        "source": "Leica_SP8.ptu"
+      }
+    ],
+    [
+      "set_pipeline",
+      {
+        "source": "Leica_SP8.ptu"
+      }
+    ],
+    [
+      "set_pipeline",
+      {
+        "source": "Leica_SP8.ptu"
+      }
+    ],
+    [
+      "goto_role",
+      "pixel_intensity"
+    ],
+    [
+      "autorun_role",
+      "pixel_intensity"
+    ]
+  ],
+  "corrupt_image_is_none": true,
+  "cache_dirs_before": [
+    ".tttr_image_cache",
+    "sub/.tttr_image_cache"
+  ],
+  "cache_files_before": 6,
+  "cache_dirs_after": [],
+  "messages_after_caches": [
+    [
+      "Caches cleared",
+      "Image caches have been cleared."
+    ]
+  ],
+  "entries_after_clear": [],
+  "drop_folder": [
+    "Leica_SP5.ptu"
+  ],
+  "drop_current_folder": "sub",
+  "help_title": "TTTR Image Browser Help",
+  "help_text": "TTTR Image Browser\n\nBrowse TTTR files in a folder and preview intensity images for all DetectorWizard-defined detector windows. The toolbar replaces the old inline buttons:\n\n\u2022 \ud83d\udcc2 Open: choose a folder containing TTTR images\n\u2022 \ud83e\uddf9 Clear: clear the current file list\n\u2022 \u267b\ufe0f Caches: clear in-memory and on-disk image caches\n\u2022 \ud83d\udce4 Export: copy selected raw image files\n\u2022 TIFF: export intensity images as TIFF stacks\n\u2022 DOCX: export selected images and annotations as a DOCX report\n\nThe GUI talks to the TTTR Image Browser backend through RPC for file listing, metadata, and image loading. The command line interface uses Click:\n\n  tttr-image-browser list FOLDER [--recursive]\n  tttr-image-browser load FILE [--max-side 512]\n  tttr-image-browser export-tiff FILE [FILE ...] --output-dir DIR\n  tttr-image-browser contract\n",
+  "qt_has_back_to_setup_button": false,
+  "toolbar": [
+    [
+      "\ud83d\udcc2 Open",
+      "Pick a folder with TTTR images"
+    ],
+    [
+      "\ud83e\uddf9 Clear",
+      "Clear the file list"
+    ],
+    [
+      "\u267b\ufe0f Caches",
+      "Clear image caches"
+    ],
+    [
+      "\ud83d\udce4 Export",
+      "Export selected image files"
+    ],
+    [
+      "TIFF",
+      "Save intensity images as TIFF stacks"
+    ],
+    [
+      "DOCX",
+      "Export selected images as DOCX"
+    ],
+    [
+      "Next \u25b6 Intensity",
+      "Send the current image to the imaging pipeline (Intensity step)."
+    ],
+    [
+      "\u2754 Help",
+      "Show what TTTR Image Browser does, how the toolbar works, and how to use the CLI"
+    ]
+  ]
+}
