@@ -2,8 +2,19 @@
 
 from __future__ import annotations
 
+import pytest
+
 from chisurf.core.dataspec import WizardSection, WizardStepSection
 from chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.view_model import AnisotropyViewModel
+
+
+@pytest.fixture(autouse=True)
+def hermetic_settings(tmp_path, monkeypatch):
+    """The view-model stores the corrections in the settings folder: keep it out of the user's ``~/.chisurf``."""
+    import chisurf.core.settings as settings
+
+    monkeypatch.setattr(settings, "chisurf_settings_path", tmp_path / "settings", raising=False)
+    (tmp_path / "settings").mkdir()
 
 
 def test_view_spec_is_a_wizard_of_steps():

@@ -1,0 +1,97 @@
+{
+  "_comment": "The emtk form of the anisotropy wizard: one panel per step, drawn by emtk.view_form.draw_form over NativeAnisotropyModel. The Qt wizard keeps ../anisotropy.view.json.",
+  "panels": {
+    "reader": {
+      "sections": [
+        {"type": "panel", "title": "Reader settings", "description": "How the text decays are read: the Qt wizard used whatever reader the active setup had; here the settings are visible.", "sections": [
+          {"type": "toggle", "attr": "stacked_files", "label": "Two stacked VV/VH files",
+           "description": "Each IRF/data file holds both polarization channels (one IRF file, one data file); otherwise choose four separate files."},
+          {"type": "toggle", "attr": "first_column_is_time", "label": "First column is time (ns)",
+           "description": "Keep a measured time axis unchanged; otherwise the first column is treated as channel indices. Not used with stacked files."},
+          {"type": "toggle", "attr": "use_header", "label": "Use file header",
+           "description": "Read available channel/calibration information from the file header."},
+          {"type": "value", "attr": "bin_width", "label": "Bin width (ns)", "kind": "float", "style": "spin",
+           "minimum": 1e-6, "maximum": 100.0, "decimals": 4, "step": 0.01,
+           "description": "Time per histogram channel for channel-index or stacked files; a time-axis column is preserved."},
+          {"type": "value", "attr": "rep_rate", "label": "Repetition rate (MHz)", "kind": "float", "style": "spin",
+           "minimum": 0.001, "maximum": 10000.0, "decimals": 3, "step": 1.0,
+           "description": "Excitation repetition rate used to initialize the lifetime fits."},
+          {"type": "value", "attr": "skiprows", "label": "Header rows", "kind": "int", "style": "spin",
+           "minimum": 0, "maximum": 100000, "step": 1,
+           "description": "Number of header rows to skip while reading text decays."}
+        ]}
+      ]
+    },
+    "background": {
+      "sections": [
+        {"type": "panel", "title": "Background region", "description": "The signal-free channels whose mean is subtracted from both IRFs; drag the green box in the plot or type the channel numbers.", "sections": [
+          {"type": "value", "attr": "region_lb", "label": "Background from", "kind": "int", "style": "spin",
+           "minimum": 0, "maximum": 1000000, "step": 1, "call": "region_edited",
+           "description": "First background channel, inclusive; choose a signal-free region."},
+          {"type": "value", "attr": "region_ub", "label": "Background to", "kind": "int", "style": "spin",
+           "minimum": 0, "maximum": 1000000, "step": 1, "call": "region_edited",
+           "description": "Last background channel boundary, exclusive."}
+        ]}
+      ]
+    },
+    "corrections": {
+      "sections": [
+        {"type": "panel", "title": "Instrument corrections", "description": "Detection-efficiency and channel-mixing corrections applied to the VV/VH fits.", "sections": [
+          {"type": "value", "attr": "g_factor", "label": "g-factor", "kind": "float", "style": "spin",
+           "minimum": 0.001, "maximum": 100.0, "decimals": 4, "step": 0.01,
+           "description": "Detection-efficiency ratio between the VV and VH channels; it scales the anisotropy as a whole."},
+          {"type": "value", "attr": "l1", "label": "l1", "kind": "float", "style": "spin",
+           "minimum": -10.0, "maximum": 10.0, "decimals": 4, "step": 0.01,
+           "description": "Channel-mixing correction l1 of the parallel channel (high-aperture objectives)."},
+          {"type": "value", "attr": "l2", "label": "l2", "kind": "float", "style": "spin",
+           "minimum": -10.0, "maximum": 10.0, "decimals": 4, "step": 0.01,
+           "description": "Channel-mixing correction l2 of the perpendicular channel."}
+        ]}
+      ]
+    },
+    "lifetime": {
+      "sections": [
+        {"type": "panel", "title": "Lifetime spectrum", "description": "The fluorescence lifetime components shared by the VV and VH fits.", "sections": [
+          {"type": "custom", "key": "data_table", "options": {
+            "source": "rows", "selected_call": "select", "edited_call": "edit",
+            "delete_call": "delete", "editable": true, "row_key": "row", "expand": true, "reserve": 112, "height": 120,
+            "columns": [
+              {"key": "row", "title": "#", "width": 36, "tooltip": "Component number."},
+              {"key": "amplitude", "title": "Amplitude", "format": "%.4g", "tooltip": "Relative amplitude of the lifetime component; double-click to edit."},
+              {"key": "value", "title": "Lifetime (ns)", "format": "%.4g", "tooltip": "Fluorescence lifetime of the component in nanoseconds; double-click to edit."}
+            ]}},
+          {"type": "value", "attr": "new_amplitude", "label": "Amplitude", "kind": "float", "style": "spin",
+           "minimum": 0.0, "maximum": 1000000.0, "decimals": 3, "step": 0.1, "description": "Amplitude of the component to add."},
+          {"type": "value", "attr": "new_value", "label": "Lifetime (ns)", "kind": "float", "style": "spin",
+           "minimum": 0.001, "maximum": 1000000.0, "decimals": 3, "step": 0.1, "description": "Lifetime of the component to add, in nanoseconds."},
+          {"type": "button_row", "buttons": [
+            {"label": "Add component", "action": "add", "description": "Append the entered amplitude and lifetime."},
+            {"label": "Remove selected", "action": "delete", "description": "Remove the selected row (the last one when none is selected)."}
+          ]}
+        ]}
+      ]
+    },
+    "rotation": {
+      "sections": [
+        {"type": "panel", "title": "Rotation spectrum", "description": "The rotational correlation components shared by the VV and VH fits.", "sections": [
+          {"type": "custom", "key": "data_table", "options": {
+            "source": "rows", "selected_call": "select", "edited_call": "edit",
+            "delete_call": "delete", "editable": true, "row_key": "row", "expand": true, "reserve": 112, "height": 120,
+            "columns": [
+              {"key": "row", "title": "#", "width": 36, "tooltip": "Component number."},
+              {"key": "amplitude", "title": "Amplitude", "format": "%.4g", "tooltip": "Absolute anisotropy contribution of the component; double-click to edit."},
+              {"key": "value", "title": "Correlation time (ns)", "format": "%.4g", "tooltip": "Rotational correlation time of the component in nanoseconds; double-click to edit."}
+            ]}},
+          {"type": "value", "attr": "new_amplitude", "label": "Amplitude", "kind": "float", "style": "spin",
+           "minimum": 0.0, "maximum": 1000000.0, "decimals": 3, "step": 0.1, "description": "Amplitude of the component to add."},
+          {"type": "value", "attr": "new_value", "label": "Correlation time (ns)", "kind": "float", "style": "spin",
+           "minimum": 0.001, "maximum": 1000000.0, "decimals": 3, "step": 0.1, "description": "Rotational correlation time of the component to add, in nanoseconds."},
+          {"type": "button_row", "buttons": [
+            {"label": "Add component", "action": "add", "description": "Append the entered amplitude and correlation time."},
+            {"label": "Remove selected", "action": "delete", "description": "Remove the selected row (the last one when none is selected)."}
+          ]}
+        ]}
+      ]
+    }
+  }
+}

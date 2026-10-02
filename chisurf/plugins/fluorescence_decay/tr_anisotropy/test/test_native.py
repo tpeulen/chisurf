@@ -43,9 +43,9 @@ def test_native_load_normalize_export_and_component_order(tmp_path):
     saved, metadata = read_vv_vh(path, split=True, return_metadata=True)
     assert np.allclose(saved["VV"], vv.y)
     assert metadata["dt"] == pytest.approx(0.1)
-    model.new_lifetime_amplitude = 0.25
-    model.new_lifetime_value = 3.5
-    model.add_lifetime()
+    model.lifetime.new_amplitude = 0.25
+    model.lifetime.new_value = 3.5
+    model.lifetime.add()
     assert model.lifetime_spectrum[-1] == [0.25, 3.5]
     spectra = tmp_path / "components.spk.json"
     model.save_spectra(spectra)

@@ -15,6 +15,61 @@ from ..core.native_fits import create_linked_fits
 from .view_model import AnisotropyViewModel
 
 
+class SpectrumTable:
+    """One editable ``[amplitude, value]`` spectrum as the rows a ``data_table`` section reads.
+
+    The rows are fresh records (``row`` is the 1-based position); an edit, a delete or an add writes the
+    model's list, so the Qt tool and the native one hold the spectra the same way.
+    """
+
+    def __init__(self, model, attr, new_attr):
+        self.model, self._attr, self._new = model, attr, new_attr
+        self.selected = -1
+        self.new_amplitude = 0.5
+        self.new_value = 1.0
+
+    @property
+    def spectrum(self):
+        return getattr(self.model, self._attr)
+
+    def rows(self):
+        return [
+            {"row": i + 1, "amplitude": float(a), "value": float(v)}
+            for i, (a, v) in enumerate(self.spectrum)
+        ]
+
+    def select(self, record):
+        self.selected = int(record["row"]) - 1 if record else -1
+
+    def edit(self, record, key, value):
+        index = int(record["row"]) - 1
+        value = float(value)
+        if not np.isfinite(value) or (key == "value" and value <= 0) or value < 0:
+            self.model.status = "A component needs a nonnegative amplitude and a positive time."
+            return
+        self.spectrum[index][0 if key == "amplitude" else 1] = value
+        self.model.update()
+
+    def delete(self, record=None):
+        index = int(record["row"]) - 1 if record else self.selected
+        if not 0 <= index < len(self.spectrum):
+            index = len(self.spectrum) - 1
+        if 0 <= index < len(self.spectrum):
+            self.spectrum.pop(index)
+            self.selected = -1
+            self.model.update()
+
+    def add(self):
+        if self.new_amplitude < 0 or self.new_value <= 0:
+            self.model.status = "A component needs a nonnegative amplitude and a positive time."
+            return
+        self.spectrum.append([float(self.new_amplitude), float(self.new_value)])
+        self.model.update()
+
+    def enabled(self, name):
+        return bool(self.spectrum) if name == "delete" else True
+
+
 class NativeAnisotropyModel(AnisotropyViewModel):
     def __init__(self):
         super().__init__(persist=False)
@@ -27,12 +82,54 @@ class NativeAnisotropyModel(AnisotropyViewModel):
         self.fit_groups = None
         self.loaded_signature = None
         self.status = "Select the polarization-resolved inputs."
-        self.selected_lifetime_row = -1
-        self.selected_rotation_row = -1
-        self.new_lifetime_amplitude = 0.5
-        self.new_lifetime_value = 1.0
-        self.new_rotation_amplitude = 0.5
-        self.new_rotation_value = 1.0
+        self.lifetime = SpectrumTable(self, "lifetime_spectrum", "new_lifetime")
+        self.rotation = SpectrumTable(self, "rotation_spectrum", "new_rotation")
+
+    # -- what the form may touch now ------------------------------------------------------------ #
+    def enabled(self, name):
+        """Whether the control *name* means something in the current state (no idle controls)."""
+        if name == "first_column_is_time":
+            return not self.stacked_files
+        if name == "bin_width":
+            # a measured time column keeps its own axis; channel-index and stacked files take the bin width
+            return self.stacked_files or not self.first_column_is_time
+        if name in ("region_lb", "region_ub"):
+            return self.data["irf_vv"] is not None
+        if name == "load_data":
+            return self.files_ready()
+        if name == "export_irfs":
+            return self.data["irf_vv_bg_norm"] is not None
+        if name == "create_fits":
+            return self.data["irf_vv_bg_norm"] is not None and self.components_ready
+        return True
+
+    def bounds(self, name):
+        if name in ("region_lb", "region_ub"):
+            n = min(
+                (len(self.data[k].y) for k in ("irf_vv", "irf_vh") if self.data[k] is not None),
+                default=0,
+            )
+            return 0, n
+        raise KeyError(name)
+
+    def region_edited(self, _value=None):
+        self.apply_region(self.region_lb, self.region_ub)
+
+    def step_complete(self, index):
+        """The wizard's check marks: Data needs the files, Components needs both spectra, the rest are always ticked."""
+        if index == 1:
+            return self.data_ready
+        if index == 4:
+            return self.components_ready
+        return True
+
+    def error(self, action, *args):
+        """Run *action*; a failure becomes the status line instead of escaping."""
+        try:
+            return action(*args)
+        except Exception as exc:  # noqa: BLE001
+            self.status = f"Error: {exc}"
+            return None
 
     def _pairs(self):
         return [
@@ -154,46 +251,6 @@ class NativeAnisotropyModel(AnisotropyViewModel):
             self.status = f"Fit creation failed: {exc}"
             self._set_status(False, self.status)
             return None
-
-    def spectrum_source(self):
-        return [{"amplitude": row[0], "value": row[1]} for row in self.lifetime_spectrum]
-
-    def rotation_source(self):
-        return [{"amplitude": row[0], "value": row[1]} for row in self.rotation_spectrum]
-
-    def _edit(self, rows, row, key, value):
-        rows[int(row)][0 if key == "amplitude" else 1] = float(value)
-        self.update()
-
-    def edit_lifetime(self, row, key, value):
-        self._edit(self.lifetime_spectrum, row, key, value)
-
-    def edit_rotation(self, row, key, value):
-        self._edit(self.rotation_spectrum, row, key, value)
-
-    def add_lifetime(self):
-        self.lifetime_spectrum.append([self.new_lifetime_amplitude, self.new_lifetime_value])
-
-    def add_rotation(self):
-        self.rotation_spectrum.append([self.new_rotation_amplitude, self.new_rotation_value])
-
-    def remove_lifetime(self):
-        index = (
-            self.selected_lifetime_row
-            if self.selected_lifetime_row >= 0
-            else len(self.lifetime_spectrum) - 1
-        )
-        if 0 <= index < len(self.lifetime_spectrum):
-            self.lifetime_spectrum.pop(index)
-
-    def remove_rotation(self):
-        index = (
-            self.selected_rotation_row
-            if self.selected_rotation_row >= 0
-            else len(self.rotation_spectrum) - 1
-        )
-        if 0 <= index < len(self.rotation_spectrum):
-            self.rotation_spectrum.pop(index)
 
     def save_spectra(self, path=None):
         path = Path(path or self.spk_path)

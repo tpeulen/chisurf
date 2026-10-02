@@ -1,7 +1,8 @@
-"""Native six-step anisotropy workflow with pure linked-fit construction."""
+"""Native six-step anisotropy workflow (emtk): forms from ``anisotropy_emtk.view.json``, the IRF plot, pure linked fits."""
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
@@ -14,335 +15,303 @@ from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, _clean_html_text
-from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
 
 from .model import NativeAnisotropyModel
 
-
-def spectrum_spec(label, source, selected, update, add, remove, prefix, value_label):
-    return {
-        "sections": [
-            {
-                "type": "table",
-                "title": label,
-                "source": source,
-                "selected_attr": selected,
-                "editable": True,
-                "update_call": update,
-                "height": 180,
-                "description": f"Edit {label.lower()} amplitude/value pairs.",
-                "columns": [
-                    {
-                        "key": "amplitude",
-                        "label": "Amplitude",
-                        "description": "Relative lifetime amplitude or absolute anisotropy contribution.",
-                    },
-                    {
-                        "key": "value",
-                        "label": value_label,
-                        "description": "Lifetime or rotational correlation time in nanoseconds.",
-                    },
-                ],
-            },
-            {
-                "type": "value",
-                "attr": prefix + "_amplitude",
-                "label": "New amplitude",
-                "kind": "float",
-                "minimum": 0.0,
-                "maximum": 1e6,
-                "description": "Amplitude of the component to add.",
-            },
-            {
-                "type": "value",
-                "attr": prefix + "_value",
-                "label": value_label,
-                "kind": "float",
-                "minimum": 0.0,
-                "maximum": 1e6,
-                "description": "Time of the component to add, in nanoseconds.",
-            },
-            {
-                "type": "button_row",
-                "buttons": [
-                    {
-                        "label": "Add component",
-                        "action": add,
-                        "description": "Append the entered amplitude/time pair.",
-                    },
-                    {
-                        "label": "Remove selected",
-                        "action": remove,
-                        "description": "Remove the selected component, or the last one when none is selected.",
-                    },
-                ],
-            },
-        ]
-    }
+HERE = Path(__file__).parent
+VV_COLOUR, VH_COLOUR = (59, 120, 255), (255, 91, 91)
+#: Below this width the two spectra stack instead of sitting side by side.
+SIDE_BY_SIDE = 760.0
+FILE_FIELDS = (
+    ("irf_vv_path", "IRF VV"),
+    ("irf_vh_path", "IRF VH"),
+    ("data_vv_path", "Data VV"),
+    ("data_vh_path", "Data VH"),
+)
+STACKED_FIELDS = (("irf_vv_path", "IRF VV/VH"), ("data_vv_path", "Data VV/VH"))
+#: The tour target of each step that waits for a control, and the step it lives on.
+TARGET_STEP = {"data_vv_path": 1, "load_data": 2, "g_factor": 3, "lifetime.add": 4, "create_fits": 5}
 
 
 class AnisotropyApp(ImApp):
     def __init__(self, model=None):
         self.model = model or NativeAnisotropyModel()
-        self.steps = json.loads(
-            (Path(__file__).parent.parent / "anisotropy.view.json").read_text()
-        )["sections"][0]["steps"]
+        self.steps = json.loads((HERE.parent / "anisotropy.view.json").read_text())["sections"][0]["steps"]
+        for step in self.steps:
+            step.pop("icon", None)          # the Qt wizard's pictograms: emtk draws text
+        if model is None:
+            self.model.error(self.model.restore_preferences, {})   # the stored defaults the Qt wizard starts from
         self.step_index = 0
+        self.plot_info = {}
         self.item_rects = {}
-        self.forms = [FormState(), FormState()]
-        self.spectrum_specs = [
-            spectrum_spec(
-                "Lifetime spectrum",
-                "spectrum_source",
-                "selected_lifetime_row",
-                "edit_lifetime",
-                "add_lifetime",
-                "remove_lifetime",
-                "new_lifetime",
-                "Lifetime (ns)",
-            ),
-            spectrum_spec(
-                "Rotation spectrum",
-                "rotation_source",
-                "selected_rotation_row",
-                "edit_rotation",
-                "add_rotation",
-                "remove_rotation",
-                "new_rotation",
-                "Correlation time (ns)",
-            ),
-        ]
+        panels = json.loads((HERE / "anisotropy_emtk.view.json").read_text())["panels"]
+        self.panels = {name: layout_spec(copy.deepcopy(spec)) for name, spec in panels.items()}
+        self.forms = {name: FormState() for name in panels}
+        self.labels = {name: LabelColumn() for name in panels}
         self.dialog = None
         self.file_window = None
         self.file_action = ""
+        self.last_dir = ""
         self.help_window = EmTkHelpWindow(
-            title="Time-resolved anisotropy — Help",
-            resource=Path(__file__).with_name("help.md"),
-            owner=self,
+            title="Time-resolved anisotropy: Help", resource=HERE / "help.md", owner=self
         )
         self.tour = EmTkGuidedTour(
-            steps=Path(__file__).with_name("guide.json"),
-            get_target_rect=lambda key: self.item_rects.get(key),
+            steps=HERE / "guide.json",
+            get_target_rect=self.target_rect,
             owner=self,
             wait_for_controls=True,
             on_step_change=self.reveal_step,
         )
-        self.docks = DockManager(Split("h", 0.20, Region("navigation"), Region("step")))
-        self.docks.add_window(
-            "navigation", "Anisotropy workflow", self.navigation, dock="navigation", closable=False
-        )
+        for name, form in self.forms.items():
+            form.on_used = (lambda n, prefix=name: self.tour.notify_used(f"{prefix}.{n}")) if name in (
+                "lifetime", "rotation") else self.tour.notify_used
+        self.docks = DockManager(Split("h", 0.20, Region("navigation"), Region("step")), name="tr_anisotropy")
+        self.docks.add_window("navigation", "Anisotropy workflow", self.navigation, dock="navigation", closable=False)
         self.docks.add_window("step", "Workflow step", self.content, dock="step", closable=False)
         super().__init__(self.render, continuous=False)
 
+    # -- settings, tour, files ----------------------------------------------------------------- #
     def restore_settings(self, settings):
         self.model.restore_preferences(settings)
-        self.step_index = max(0, min(int(settings.get("step_index", 0)), len(self.steps) - 1))
+        self.last_dir = str(settings.get("last_dir", "")) if isinstance(settings, dict) else ""
+        try:
+            self.step_index = max(0, min(int(settings.get("step_index", 0)), len(self.steps) - 1))
+        except (TypeError, ValueError):
+            self.step_index = 0
 
     def export_settings(self):
-        return {**self.model.export_preferences(), "step_index": self.step_index}
+        return {**self.model.export_preferences(), "step_index": self.step_index, "last_dir": self.last_dir}
 
-    def select_step(self, index):
-        self.step_index = max(0, min(int(index), len(self.steps) - 1))
-        self.tour.notify_used(self.steps[self.step_index]["title"])
+    def target_rect(self, key):
+        return self.item_rects.get(key) or next(
+            (f.rects[key] for f in self.forms.values() if key in f.rects), None
+        )
 
     def reveal_step(self, index, step):
         key = EmTkGuidedTour._target_key(step.get("target"))
-        targets = {
-            "data_vv_path": 1,
-            "Normalize IRF": 2,
-            "g_factor": 3,
-            "Components": 4,
-            "Finish": 5,
-        }
-        if key in targets:
-            self.step_index = targets[key]
-        elif index == 0:
-            self.step_index = 0
+        self.step_index = TARGET_STEP.get(key, 0 if index == 0 else self.step_index)
 
-    def error(self, action):
-        try:
-            return action()
-        except Exception as exc:
-            self.model.status = f"Error: {exc}"
-            return None
+    def select_step(self, index):
+        self.step_index = max(0, min(int(index), len(self.steps) - 1))
 
     def choose(self, action):
+        """Open the in-app file dialog for *action* (a path attribute, or one of the spectra / export actions)."""
         self.file_action = action
-        mode = "save" if action in ("save_spectra", "export_irfs") else "open"
-        title = (
-            "Save spectra"
-            if action == "save_spectra"
-            else "Load spectra"
-            if action == "load_spectra"
-            else "Export corrected IRFs"
-            if action == "export_irfs"
-            else "Select polarized decay"
-        )
-        filename = (
-            "anisotropy.spk.json"
-            if action == "save_spectra"
-            else "corrected_irfs.dat"
-            if action == "export_irfs"
-            else ""
-        )
+        saving = action in ("save_spectra", "export_irfs")
+        title = {
+            "save_spectra": "Save spectra",
+            "load_spectra": "Load spectra",
+            "export_irfs": "Export corrected IRFs",
+        }.get(action, "Select polarized decay")
+        filename = {"save_spectra": "anisotropy.spk.json", "export_irfs": "corrected_irfs.dat"}.get(action, "")
         filters = (
             "Spectra (*.spk.json *.json);;All files (*)"
             if "spectra" in action
             else "TCSPC data (*.dat *.txt *.csv *.npy *.thd *.pqres);;All files (*)"
         )
-        self.dialog = FileDialog(title, mode=mode, filename=filename, filters=filters)
+        self.dialog = FileDialog(
+            title, mode="save" if saving else "open", filename=filename, filters=filters,
+            directory=self.last_dir or None,
+        )
         self.file_window = DialogWindow(title, size=(760, 540))
 
+    def files_dropped(self, paths):
+        """Host drop: a ``.json`` loads the spectra, other files fill the next empty path (IRF VV, IRF VH, Data VV, Data VH)."""
+        paths = [str(p) for p in paths]
+        if not paths:
+            return False
+        for path in paths:
+            self.last_dir = str(Path(path).parent)
+            if path.lower().endswith(".json"):
+                self.model.error(self.model.load_spectra, path)
+                self.select_step(4)
+                continue
+            fields = STACKED_FIELDS if self.model.stacked_files else FILE_FIELDS
+            empty = [attr for attr, _ in fields if not getattr(self.model, attr)]
+            attr = empty[0] if empty else fields[0][0]
+            setattr(self.model, attr, path)
+            self.select_step(1)
+        if self.model.files_ready():
+            self.tour.notify_used("data_vv_path")
+        return True
+
+    on_files_dropped = files_dropped
+
+    def _file_chosen(self, result):
+        action = self.file_action
+        self.last_dir = str(Path(result[0]).parent)
+        if action == "load_spectra":
+            self.model.error(self.model.load_spectra, result[0])
+        elif action == "save_spectra":
+            self.model.error(self.model.save_spectra, result[0])
+        elif action == "export_irfs":
+            if self.model.error(self.model.export_irfs, result[0]) is not None:
+                self.model.status = f"Exported the corrected IRFs to {result[0]}."
+        else:
+            setattr(self.model, action, str(result[0]))
+            if self.model.files_ready():
+                self.tour.notify_used("data_vv_path")
+
+    # -- navigation ---------------------------------------------------------------------------- #
     def navigation(self, box):
-        for index, step in enumerate(self.steps):
-            if im.selectable(
-                f"{step.get('icon', '')} {step['title']}##anisotropy{index}",
-                selected=self.step_index == index,
-            ):
-                self.select_step(index)
-            im.set_item_tooltip(step.get("subtitle", step["title"]))
-            self.item_rects[step["title"]] = im.get_item_rect()
-        if im.button("Back"):
-            self.select_step(self.step_index - 1)
-        im.set_item_tooltip("Return to the previous workflow step.")
-        im.same_line()
-        ready = (self.step_index != 1 or self.model.data_ready) and (
-            self.step_index != 4 or self.model.components_ready
-        )
-        im.begin_disabled(not ready or self.step_index == len(self.steps) - 1)
-        if im.button("Next"):
-            self.select_step(self.step_index + 1)
-        im.set_item_tooltip(
-            "Continue to the next step; required files or components must be present."
-        )
-        im.end_disabled()
         if im.button("Help"):
             self.help_window.show()
-        im.set_item_tooltip(
-            "Explain polarized decays, background correction and parameter linking."
-        )
+        im.set_item_tooltip("Explain polarized decays, background correction and parameter linking.")
         im.same_line()
         if im.button("Guide"):
             self.tour.start()
         im.set_item_tooltip("Follow a guided tour through the real wizard controls.")
-        im.text_wrapped(self.model.status)
+        im.separator()
+        for index, step in enumerate(self.steps):
+            mark = "[x]" if self.model.step_complete(index) else "[ ]"
+            if im.selectable(f"{mark} {step['title']}##anisotropy{index}", selected=self.step_index == index):
+                self.select_step(index)
+            im.set_item_tooltip(step.get("subtitle", step["title"]))
+            self.item_rects[step["title"]] = im.get_item_rect()
+
+    # -- one step -------------------------------------------------------------------------------- #
+    def form(self, name, model=None):
+        """Draw the panel *name*; its captions share one column."""
+        spec, column = self.panels[name], self.labels[name]
+        if not column.ready:
+            column.measure([f["label"] for f in labelled(spec["sections"])])
+        column.pad(spec["sections"])
+        draw_form(spec, model or self.model, self.forms[name])
 
     def data_step(self):
         m = self.model
-        _, m.stacked_files = im.checkbox("Two stacked VV/VH files", m.stacked_files)
-        im.set_item_tooltip(
-            "Each IRF/data file contains both polarization channels; otherwise choose four separate files."
-        )
-        fields = [
-            ("irf_vv_path", "IRF VV/VH" if m.stacked_files else "IRF VV"),
-            ("data_vv_path", "Data VV/VH" if m.stacked_files else "Data VV"),
-        ]
-        if not m.stacked_files:
-            fields = [
-                ("irf_vv_path", "IRF VV"),
-                ("irf_vh_path", "IRF VH"),
-                ("data_vv_path", "Data VV"),
-                ("data_vh_path", "Data VH"),
-            ]
+        fields = STACKED_FIELDS if m.stacked_files else FILE_FIELDS
+        label_w = max(im.calc_text_size(label)[0] for _, label in fields) + 12.0
+        browse_w = im.calc_text_size("Browse")[0] + 2 * im.get_style().frame_padding[0]
+        spacing = im.get_style().item_spacing[0]
+        field_w = max(160.0, min(520.0, im.get_content_region_avail()[0] - label_w - browse_w - 80.0 - 3 * spacing))
+        im.text_disabled("Files")
         for attr, label in fields:
-            changed, value = im.input_text(label, getattr(m, attr))
-            im.set_item_tooltip(f"Path to the {label} curve; paste a path or use Browse.")
+            im.text(label)
+            im.same_line(label_w)
+            im.set_next_item_width(field_w)
+            changed, value = im.input_text(f"##{attr}", getattr(m, attr), elide_start=True)
+            im.set_item_tooltip(f"Path to the {label} curve: type or paste it, press Enter, or use Browse.")
             self.item_rects[attr] = im.get_item_rect()
             if changed:
                 setattr(m, attr, value)
                 if m.files_ready():
                     self.tour.notify_used("data_vv_path")
-            if im.button(f"Browse {label}##{attr}"):
+            im.same_line()
+            if im.button(f"Browse##browse_{attr}"):
                 self.choose(attr)
             im.set_item_tooltip(f"Choose the {label} file from disk.")
-        if not m.stacked_files:
-            _, m.first_column_is_time = im.checkbox(
-                "First column is time (ns)", m.first_column_is_time
-            )
-            im.set_item_tooltip(
-                "Keep a measured time axis unchanged; otherwise treat the first column as channel indices."
-            )
-        _, m.bin_width = bounded_float("Bin width (ns)", m.bin_width, minimum=1e-6, maximum=100.0)
-        im.set_item_tooltip(
-            "Time per histogram channel for channel-index or stacked files; time-axis columns are preserved."
-        )
-        _, m.rep_rate = bounded_float(
-            "Repetition rate (MHz)", m.rep_rate, minimum=0.001, maximum=1e4
-        )
-        im.set_item_tooltip("Excitation repetition rate used to initialize the lifetime fits.")
-        _, m.skiprows = bounded_int("Header rows", m.skiprows, minimum=0, maximum=100000)
-        im.set_item_tooltip("Number of header rows to skip while reading text decays.")
-        _, m.use_header = im.checkbox("Use file header", m.use_header)
-        im.set_item_tooltip("Read available channel/calibration information from the file header.")
+            im.same_line()
+            ok = bool(getattr(m, attr)) and Path(getattr(m, attr)).is_file()
+            im.text("found" if ok else "missing")
+            im.set_item_tooltip("Whether the file exists." if ok else "No file at this path yet.")
+        im.spacing()
+        self.form("reader")
         im.text_wrapped(
-            "All required files are ready."
+            "All required files are ready: continue to Normalize IRF."
             if m.files_ready()
-            else "Select each required file before continuing."
+            else "Select each required file before loading the data. Dropping files on the window fills the next empty path."
         )
 
     def normalization_step(self):
         m = self.model
-        if im.button("Load / reload data"):
-            self.error(m.load_data)
-        im.set_item_tooltip(
-            "Read all selected IRF and decay files, then initialize a background region."
+        pressed = button_row(
+            [
+                {"label": "Load / reload data", "key": "load_data", "enabled": m.enabled("load_data"),
+                 "tip": "Read all selected IRF and decay files, then initialize a background region."},
+                {"label": "Export corrected IRFs", "key": "export_irfs", "enabled": m.enabled("export_irfs"),
+                 "tip": "Save the two background-subtracted, intensity-matched IRFs with their time-bin width."},
+            ],
+            remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),
         )
-        if im.button("Export corrected IRFs"):
+        if pressed == "load_data":
+            m.error(m.load_data)
+            self.tour.notify_used("load_data")
+        elif pressed == "export_irfs":
             self.choose("export_irfs")
-        im.set_item_tooltip(
-            "Save the two background-subtracted, intensity-matched IRFs with their time-bin width."
-        )
-        maximum = min(
-            (len(m.data[key].y) for key in ("irf_vv", "irf_vh") if m.data[key] is not None),
-            default=1000000,
-        )
-        changed, lower = bounded_int("Background from", m.region_lb, minimum=0, maximum=maximum)
-        im.set_item_tooltip("First background channel, inclusive; choose a signal-free region.")
-        changed2, upper = bounded_int("Background to", m.region_ub, minimum=0, maximum=maximum)
-        im.set_item_tooltip("Last background channel boundary, exclusive.")
-        if changed or changed2:
-            self.error(lambda: m.apply_region(lower, upper))
+        self.form("background")
+        series = m.plot_series()
+        if not series:
+            im.text_wrapped("Load the data to see the IRFs.")
+            return
         if implot.begin_plot("IRF normalization", size=(-1.0, -1.0)):
             implot.setup_axes("Channel", "IRF counts")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-            series = m.plot_series()
+            implot.setup_legend(implot.LOCATION_NORTH_EAST)
             for curve in series:
                 y = np.asarray(curve["y"])
+                base = VV_COLOUR if "VV" in curve["name"] else VH_COLOUR
+                corrected = "corrected" in curve["name"]
+                implot.set_next_line_style((*base, 255 if corrected else 110), 2.0 if corrected else 1.0)
                 implot.plot_line(curve["name"], np.asarray(curve["x"]), np.where(y > 0, y, np.nan))
-            if series:
-                positive = np.concatenate(
-                    [np.asarray(curve["y"])[np.asarray(curve["y"]) > 0] for curve in series]
-                )
-                minimum = max(float(positive.min()) * 0.5, 1e-12) if positive.size else 1e-12
-                maximum = max(float(positive.max()), minimum) * 1.1 if positive.size else 1.0
-                region = implot.drag_rect(
-                    1,
-                    float(m.region_lb),
-                    minimum,
-                    float(m.region_ub),
-                    maximum,
-                    col=(70, 200, 90, 180),
-                    flags=implot.DRAG_TOOL_FLAGS_NO_FIT,
-                )
-                if region.modified:
-                    self.error(lambda: m.apply_region(int(region.x_min), int(region.x_max)))
+            positive = np.concatenate([np.asarray(c["y"])[np.asarray(c["y"]) > 0] for c in series])
+            low = max(float(positive.min()) * 0.5, 1e-12) if positive.size else 1e-12
+            high = max(float(positive.max()), low) * 1.1 if positive.size else 1.0
+            region = implot.drag_rect(
+                1, float(m.region_lb), low, float(m.region_ub), high,
+                col=(70, 200, 90, 180), flags=implot.DRAG_TOOL_FLAGS_NO_FIT,
+            )
+            if region.modified:
+                m.error(m.apply_region, int(round(region.x_min)), int(round(region.x_max)))
+            mid = (low * high) ** 0.5
+            self.plot_info = {          # where the plot and the box edges are on screen (tour, tests)
+                "pos": implot.get_plot_pos(), "size": implot.get_plot_size(),
+                "lb": implot.plot_to_pixels(float(m.region_lb), mid), "ub": implot.plot_to_pixels(float(m.region_ub), mid),
+            }
             implot.end_plot()
 
+    def corrections_step(self):
+        self.form("corrections")
+        im.text_wrapped(
+            "g scales every anisotropy: a 10 % error in g is about 10 % in r(t). l1 and l2 compensate the "
+            "polarization mixing of a high-aperture objective (zero on a low-NA setup)."
+        )
+
     def components_step(self):
-        if im.button("Save spectra"):
-            if self.model.spk_path:
-                self.error(self.model.save_spectra)
+        m = self.model
+        pressed = button_row(
+            [
+                {"label": "Save spectra", "key": "save_spectra", "tip": "Save the lifetime and rotation components as amplitude/value pairs in JSON."},
+                {"label": "Load spectra", "key": "load_spectra", "tip": "Replace both component lists from a saved spectrum file."},
+            ],
+            remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),
+        )
+        if pressed == "save_spectra":
+            if m.spk_path:
+                m.error(m.save_spectra)
             else:
                 self.choose("save_spectra")
-        im.set_item_tooltip(
-            "Save the lifetime and rotation components as amplitude/value pairs in JSON."
-        )
-        im.same_line()
-        if im.button("Load spectra"):
+        elif pressed == "load_spectra":
             self.choose("load_spectra")
-        im.set_item_tooltip("Replace both component lists from a saved spectrum file.")
-        for spec, state in zip(self.spectrum_specs, self.forms):
-            draw_form(spec, self.model, state)
+        avail_w, avail_h = im.get_content_region_avail()
+        side = avail_w >= SIDE_BY_SIDE
+        width = (avail_w - im.get_style().item_spacing[0]) / 2 if side else avail_w
+        height = max(200.0, avail_h if side else (avail_h - im.get_style().item_spacing[1]) / 2)
+        for index, (name, table) in enumerate((("lifetime", m.lifetime), ("rotation", m.rotation))):
+            if side and index:
+                im.same_line()
+            if im.begin_child(f"{name}_spectrum", (width, height)):
+                im.push_id(name)                    # both tables name their buttons "add" and "delete"
+                self.form(name, table)
+                im.pop_id()
+                self.item_rects[f"{name}.add"] = self.forms[name].rects.get("add")
+            im.end_child()
+
+    def finish_step(self):
+        m = self.model
+        im.text_wrapped(_clean_html_text(m.finish_html().split("<p style")[0]))
+        if im.button("Create fits", ) and m.enabled("create_fits"):
+            m.error(m.create_fits)
+            self.tour.notify_used("create_fits")
+        im.set_item_tooltip(
+            "Create the VV, VH and global fits with configured spectra, corrected IRFs and linked parameters."
+            if m.enabled("create_fits")
+            else "Load the data and define both spectra first."
+        )
+        self.item_rects["create_fits"] = im.get_item_rect()
+        if m.fit_groups:
+            im.text("Created: " + ", ".join(str(getattr(g, "name", g)) for g in m.fit_groups))
 
     def content(self, box):
         m = self.model
@@ -350,45 +319,50 @@ class AnisotropyApp(ImApp):
         im.text(step["title"])
         im.text_wrapped(step.get("subtitle", ""))
         im.separator()
-        if self.step_index == 0:
-            im.text_wrapped(_clean_html_text(m.welcome_html()))
-        elif self.step_index == 1:
-            self.data_step()
-        elif self.step_index == 2:
-            self.normalization_step()
-        elif self.step_index == 3:
-            for attr, label, tip in [
-                ("g_factor", "g-factor", "Detection-efficiency ratio between VV and VH channels."),
-                ("l1", "l1", "Polarization-mixing correction of the parallel channel."),
-                ("l2", "l2", "Polarization-mixing correction of the perpendicular channel."),
-            ]:
-                changed, value = bounded_float(
-                    label,
-                    getattr(m, attr),
-                    minimum=0.001 if attr == "g_factor" else -10.0,
-                    maximum=100.0 if attr == "g_factor" else 10.0,
-                    step=0.01,
-                )
-                im.set_item_tooltip(tip)
-                self.item_rects[attr] = im.get_item_rect()
-                if changed:
-                    setattr(m, attr, value)
-                    self.tour.notify_used(attr)
-        elif self.step_index == 4:
-            self.components_step()
-        else:
-            im.text_wrapped(_clean_html_text(m.finish_html()))
-            if im.button("Create fits"):
-                self.error(m.create_fits)
-            im.set_item_tooltip(
-                "Create the VV, VH and global fits with configured spectra, corrected IRFs and linked parameters."
-            )
+        avail_w, avail_h = im.get_content_region_avail()
+        bar = 34.0
+        if im.begin_child("step_body", (avail_w, max(60.0, avail_h - bar))):
+            if self.step_index == 0:
+                im.text_wrapped(_clean_html_text(m.welcome_html()))
+            elif self.step_index == 1:
+                self.data_step()
+            elif self.step_index == 2:
+                self.normalization_step()
+            elif self.step_index == 3:
+                self.corrections_step()
+            elif self.step_index == 4:
+                self.components_step()
+            else:
+                self.finish_step()
+        im.end_child()
+        # bottom bar: the status line, then Back / Next at the right (as the Qt wizard)
+        im.separator()
+        back_w = im.calc_text_size("Back")[0] + 2 * im.get_style().frame_padding[0]
+        status_w = max(100.0, avail_w - 2 * (back_w + 24.0) - 30.0)
+        im.begin_child("status", (status_w, 22.0), scrollable=False)
+        im.text_disabled(m.status[:200])
+        im.end_child()
+        spacing = im.get_style().item_spacing[0]
+        next_w = im.calc_text_size("Next")[0] + 2 * im.get_style().frame_padding[0]
+        im.same_line(max(0.0, avail_w - back_w - next_w - 2 * spacing))
+        im.begin_disabled(self.step_index == 0)
+        if im.button("Back"):
+            self.select_step(self.step_index - 1)
+        im.end_disabled()
+        im.set_item_tooltip("Return to the previous workflow step.")
+        im.same_line()
+        im.begin_disabled(self.step_index == len(self.steps) - 1)
+        if im.button("Next"):
+            self.select_step(self.step_index + 1)
+        im.end_disabled()
+        im.set_item_tooltip("Continue to the next workflow step.")
 
+    # -- one frame ------------------------------------------------------------------------------- #
     def render(self):
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         self.item_rects.clear()
-        for form in self.forms:
+        for form in self.forms.values():
             form.rects.clear()
         im.begin_disabled(self.dialog is not None)
         self.docks.draw(box)
@@ -397,18 +371,8 @@ class AnisotropyApp(ImApp):
             pressed = self.file_window.begin(box)
             result = self.dialog.draw()
             if result:
-                action = self.file_action
                 self.dialog = None
-                if action == "load_spectra":
-                    self.error(lambda: self.model.load_spectra(result[0]))
-                elif action == "save_spectra":
-                    self.error(lambda: self.model.save_spectra(result[0]))
-                elif action == "export_irfs":
-                    self.error(lambda: self.model.export_irfs(result[0]))
-                else:
-                    setattr(self.model, action, str(result[0]))
-                    if self.model.files_ready():
-                        self.tour.notify_used("data_vv_path")
+                self._file_chosen(result)
             elif result is False or pressed == "close":
                 self.dialog = None
             self.file_window.end()
