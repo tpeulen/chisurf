@@ -1,0 +1,13 @@
+ M chisurf/plugins/core/lightpath_simulator/__init__.py
+ M chisurf/plugins/core/lightpath_simulator/api/client.py
+ M chisurf/plugins/core/lightpath_simulator/backend/crosstalk.py
+ M chisurf/plugins/core/lightpath_simulator/backend/simulator.py
+ M chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py
+ M chisurf/plugins/core/lightpath_simulator/gui/emtk_view.py
+ M chisurf/plugins/core/lightpath_simulator/gui/node_types.py
+ M chisurf/plugins/core/lightpath_simulator/gui/tool.py
+ M chisurf/plugins/core/lightpath_simulator/manifest.json
+?? chisurf/plugins/core/lightpath_simulator/gui/app.py
+?? chisurf/plugins/core/lightpath_simulator/gui/controller.py
+?? chisurf/plugins/core/lightpath_simulator/tests/test_native.py
+?? chisurf/plugins/core/lightpath_simulator/tests/test_native_ui.py

@@ -2034,3 +2034,8 @@ class LightPathEasyDialog(QtWidgets.QDialog):
 
     def get_optical_config(self) -> dict:
         return self.easy_widget.get_optical_config()
+
+# Canonical conversions are shared with native detector setup editing.
+from chisurf.core.optical_configuration import build_easy_graph, _graph_to_config
+
+from chisurf.core.optical_configuration import normalize_lightpath_graph

@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.gui.widgets.node_editor.graph import GraphDef
+from chisurf.core.graph_definition import GraphDef
 
 from .crosstalk import WAVELENGTHS, propagate_node, split_emission_key
 

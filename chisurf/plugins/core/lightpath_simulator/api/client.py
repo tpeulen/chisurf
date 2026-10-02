@@ -31,21 +31,21 @@ class LightPathClient:
         )
 
         import chisurf.core.settings as cs_settings
-        from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
+        from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient, client_config
+        from chisurf.plugins.core.mmfdb_admin.gui.session import cached_token
 
         mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
-        server_host = mmfdb_settings.get("last_server", "127.0.0.1")
-        server_port = int(mmfdb_settings.get("last_port", 8765))
-        user_id = mmfdb_settings.get("default_user_id", "user_default")
-        client = MMFDBClient(
-            host=server_host,
-            cmd_port=server_port,
-            pub_port=server_port + 1,
-            timeout_ms=timeout_ms,
-        )
-        token = load_runtime_session_token(server_host, server_port, user_id)
+        config = client_config(mmfdb_settings)
+        # The shared client owns canonical nested settings and legacy fallbacks.
+        # Overriding it with last_server/last_port ignored current profiles.
+        client = MMFDBClient(timeout_ms=timeout_ms)
+        server_host,server_port = client.host,client.cmd_port
+        user_id = config['username']
+        token = cached_token(client.host,client.cmd_port,client.pub_port)
         if token is None:
-            token = load_session_token(server_host, server_port, user_id)
+            token = load_runtime_session_token(server_host,server_port,user_id)
+        if token is None:
+            token = load_session_token(server_host,server_port,user_id)
         if token:
             client.token = token
             store_runtime_session_token(server_host, server_port, user_id, token)

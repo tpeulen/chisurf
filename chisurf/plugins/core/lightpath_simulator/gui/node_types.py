@@ -1,7 +1,7 @@
 import logging
 
-from chisurf.gui.widgets.node_editor.model import PortSpec
-from chisurf.gui.widgets.node_editor.registry import NodeRegistry, NodeType
+from chisurf.emtk.node_editor.model import PortSpec
+from chisurf.emtk.node_editor.registry import NodeRegistry, NodeType
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ def build_optical_registry():
             id="light_source",
             title="Light Source",
             inputs=[],
-            outputs=[PortSpec("Light", True)],
+            outputs=[PortSpec("Light", True, port_type="spectral")],
             category="Optical",
             default_config={
                 "source_mode": "manual",

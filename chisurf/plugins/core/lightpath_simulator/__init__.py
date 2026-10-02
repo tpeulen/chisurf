@@ -16,12 +16,19 @@ else:
     icon = "🔦"
     cli_entrypoint = "lightpath-simulator=chisurf.plugins.core.lightpath_simulator.cli:cli"
 
-from chisurf.plugins.core.lightpath_simulator.gui.tool import LightPathSimulatorWidget
 
 __all__ = ["LightPathSimulatorWidget"]
 
+def __getattr__(name):
+    if name == 'LightPathSimulatorWidget':
+        from .gui.tool import LightPathSimulatorWidget
+        return LightPathSimulatorWidget
+    raise AttributeError(name)
+
+
 # When the plugin is loaded, this code will be executed
 if __name__ == "plugin":
+    from .gui.tool import LightPathSimulatorWidget
     window = LightPathSimulatorWidget()
     if _manifest is not None:
         apply_manifest_statefulness(window, _manifest)

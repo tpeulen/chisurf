@@ -1,0 +1,260 @@
+{
+ "probes": 7,
+ "nodes": [
+  "light_source",
+  "sample",
+  "splitter",
+  "filter",
+  "detector",
+  "filter",
+  "detector",
+  "forster_radius"
+ ],
+ "signals": [
+  {
+   "laser": "488 nm",
+   "detector": "Green Channel",
+   "dye": "Atto 488",
+   "intensity": 16390.55578709847
+  },
+  {
+   "laser": "488 nm",
+   "detector": "Red Channel",
+   "dye": "Atto 488",
+   "intensity": 0.05770078866364687
+  },
+  {
+   "laser": "488 nm",
+   "detector": "Red Channel",
+   "dye": "Atto 647N",
+   "intensity": 1.747773857303249e-12
+  },
+  {
+   "laser": "640 nm",
+   "detector": "Green Channel",
+   "dye": "Atto 488",
+   "intensity": 1.5036452360509332e-09
+  },
+  {
+   "laser": "640 nm",
+   "detector": "Green Channel",
+   "dye": "Atto 647N",
+   "intensity": 1.2737718103400918e-06
+  },
+  {
+   "laser": "640 nm",
+   "detector": "Red Channel",
+   "dye": "Atto 647N",
+   "intensity": 33462.53665599172
+  }
+ ],
+ "matrices": {
+  "excitation": {
+   "rows": [
+    "488 nm",
+    "640 nm"
+   ],
+   "columns": [
+    "Atto 488",
+    "Atto 647N"
+   ]
+  },
+  "emission": {
+   "rows": [
+    "Atto 488",
+    "Atto 647N"
+   ],
+   "columns": [
+    "Green Channel",
+    "Red Channel"
+   ]
+  },
+  "detected": {
+   "rows": [
+    "488 nm | Atto 488",
+    "488 nm | Atto 647N",
+    "640 nm | Atto 488",
+    "640 nm | Atto 647N"
+   ],
+   "columns": [
+    "Green Channel",
+    "Red Channel"
+   ]
+  }
+ },
+ "table_rows": {},
+ "tables": {
+  "Signals": {
+   "rows": 6,
+   "cols": 4,
+   "header": [
+    "Laser Source",
+    "Detector Name",
+    "Dye",
+    "Detected Intensity"
+   ],
+   "cells": [
+    [
+     "488 nm",
+     "Green Channel",
+     "Atto 488",
+     "1.6391e+04"
+    ],
+    [
+     "488 nm",
+     "Red Channel",
+     "Atto 488",
+     "5.7701e-02"
+    ],
+    [
+     "488 nm",
+     "Red Channel",
+     "Atto 647N",
+     "1.7478e-12"
+    ],
+    [
+     "640 nm",
+     "Green Channel",
+     "Atto 488",
+     "1.5036e-09"
+    ],
+    [
+     "640 nm",
+     "Green Channel",
+     "Atto 647N",
+     "1.2738e-06"
+    ],
+    [
+     "640 nm",
+     "Red Channel",
+     "Atto 647N",
+     "3.3463e+04"
+    ]
+   ]
+  },
+  "Excitation": {
+   "rows": 2,
+   "cols": 2,
+   "header": [
+    "Atto 488",
+    "Atto 647N"
+   ],
+   "cells": [
+    [
+     "7.1717e+04",
+     "7.5381e-12"
+    ],
+    [
+     "6.5792e-09",
+     "1.4432e+05"
+    ]
+   ]
+  },
+  "Emission": {
+   "rows": 2,
+   "cols": 2,
+   "header": [
+    "Green Channel",
+    "Red Channel"
+   ],
+   "cells": [
+    [
+     "2.2854e-01",
+     "8.0456e-07"
+    ],
+    [
+     "8.8258e-12",
+     "2.3186e-01"
+    ]
+   ]
+  },
+  "Detected": {
+   "rows": 4,
+   "cols": 2,
+   "header": [
+    "Green Channel",
+    "Red Channel"
+   ],
+   "cells": [
+    [
+     "1.6391e+04",
+     "5.7701e-02"
+    ],
+    [
+     "0.0000e+00",
+     "1.7478e-12"
+    ],
+    [
+     "1.5036e-09",
+     "0.0000e+00"
+    ],
+    [
+     "1.2738e-06",
+     "3.3463e+04"
+    ]
+   ]
+  }
+ },
+ "palette_added": 1,
+ "after_reset_nodes": 8,
+ "graph_saved": true,
+ "graph_saved_nodes": 8,
+ "instrument_saved": true,
+ "mmfdb_save_dialog": [
+  "information",
+  "Saved to MMFDB",
+  "Saved operation lightpath_20261002T070008095154Z_be861bd1"
+ ],
+ "mmfdb_load_dialogs": [],
+ "mmfdb_items": [
+  [
+   "My preset (lightpath_20261002T070008095154Z_be861bd1)"
+  ]
+ ],
+ "load_missing": [
+  [
+   "error",
+   "Load Failed",
+   "Could not load graph:\n[Errno 2] No such file or directory: '/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/lp_oo42_b6l/missing.json'"
+  ]
+ ],
+ "preset_saved": false,
+ "menu": [
+  "Easy Mode (Dialog)\u2026",
+  "Export Instrument Setting (JSON)...",
+  "Save Simulation to MMFDB...",
+  "Load Simulation from MMFDB...",
+  "Save Graph...",
+  "Load Graph...",
+  "Save as Optical Path Preset..."
+ ],
+ "toolbar": [
+  "Save Graph",
+  "Load Graph",
+  "Save Preset",
+  "Save to MMFDB",
+  "Load from MMFDB"
+ ],
+ "toolbar_tooltips": {
+  "Save Graph": "Save the current graph to a JSON file",
+  "Load Graph": "Load a graph from a JSON file",
+  "Save Preset": "Save as optical path preset for the Easy Mode",
+  "Save to MMFDB": "Persist the current graph and simulation to MMFDB",
+  "Load from MMFDB": "Load a previously saved graph from MMFDB"
+ },
+ "palette_items": [
+  "Light Source",
+  "Sample / Fluorophore",
+  "Filter",
+  "Splitter (Dichroic/Pol)",
+  "Detector",
+  "Combiner",
+  "F\u00f6rster Radius"
+ ],
+ "dock_tabs": [
+  "Optical Path",
+  "Optical Components",
+  "Emission Probability",
+  "Easy Mode"
+ ]
+}

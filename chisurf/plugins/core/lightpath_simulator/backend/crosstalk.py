@@ -220,7 +220,7 @@ def propagate_node(node_type, config, input_spectra, db):
 
     if node_type == "light_source":
         mode = config.get("source_mode", "database")
-        if mode == "database":
+        if mode in ("database", "probe"):
             probe_id = config.get("probe_id", config.get("spectrum_id"))
             if probe_id:
                 with db:
@@ -233,6 +233,8 @@ def propagate_node(node_type, config, input_spectra, db):
         else:
             # Parse discrete lines, e.g., "488", "488:1.0, 561:0.5"
             lines_str = config.get("manual_lines", "")
+            if isinstance(lines_str,(list,tuple,np.ndarray)):
+                lines_str = ", ".join(str(value) for value in lines_str)
             out_dict = {}
             sum_y = np.zeros_like(WAVELENGTHS)
 
