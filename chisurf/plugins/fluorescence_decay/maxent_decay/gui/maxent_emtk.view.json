@@ -1,0 +1,413 @@
+{
+ "_comment": "emtk forms of the MaxEnt MEM tool over MEMForm; the Qt tool builds the same fields by hand in gui/gui.py.",
+ "panels": {
+  "mode": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "MEM settings",
+     "description": "Mode, regularization and the iteration limit of the maximum-entropy inversion.",
+     "sections": [
+      {
+       "type": "choice",
+       "attr": "mode",
+       "label": "Mode",
+       "options": [
+        "lifetime",
+        "fret"
+       ],
+       "labels": [
+        "Lifetime",
+        "FRET"
+       ],
+       "description": "Invert a lifetime spectrum or a FRET-distance distribution (the FRET mode needs a donor-only spectrum)."
+      },
+      {
+       "type": "value",
+       "attr": "nu",
+       "label": "nu (reg)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 1e-08,
+       "maximum": 1.0,
+       "step": 0.001,
+       "description": "Entropy regularization weight: small values fit the noise, large ones smooth the distribution.",
+       "decimals": 6
+      },
+      {
+       "type": "value",
+       "attr": "max_iter",
+       "label": "MEM iterations",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 1,
+       "maximum": 100000,
+       "step": 10,
+       "description": "Maximum iterations of the compiled MEM solver."
+      }
+     ]
+    }
+   ]
+  },
+  "lifetime": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Lifetime grid",
+     "description": "Evenly spaced lifetime grid of the inversion.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "tau_min",
+       "label": "tau min (ns)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.001,
+       "maximum": 1000.0,
+       "step": 0.01,
+       "description": "Smallest lifetime of the grid (set from the IRF width when data is taken from a fit).",
+       "decimals": 3
+      },
+      {
+       "type": "value",
+       "attr": "tau_max",
+       "label": "tau max (ns)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.001,
+       "maximum": 1000.0,
+       "step": 0.1,
+       "description": "Largest lifetime of the grid.",
+       "decimals": 3
+      },
+      {
+       "type": "value",
+       "attr": "tau_bins",
+       "label": "tau points",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 2,
+       "maximum": 10000,
+       "step": 1,
+       "description": "Number of grid points."
+      }
+     ]
+    }
+   ]
+  },
+  "fret": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Distance grid",
+     "description": "Donor reference, Foerster radius and the distance grid of the FRET inversion.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "tau0",
+       "label": "tau0 (ns)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.01,
+       "maximum": 100.0,
+       "step": 0.1,
+       "description": "Unquenched donor reference lifetime.",
+       "decimals": 3
+      },
+      {
+       "type": "value",
+       "attr": "R0",
+       "label": "R0 (A)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 10.0,
+       "maximum": 100.0,
+       "step": 1.0,
+       "description": "Foerster radius used to convert FRET rates to distances.",
+       "decimals": 1
+      },
+      {
+       "type": "value",
+       "attr": "r_min_frac",
+       "label": "R/R0 min",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.001,
+       "maximum": 10.0,
+       "step": 0.05,
+       "description": "Lower distance boundary relative to R0.",
+       "decimals": 3
+      },
+      {
+       "type": "value",
+       "attr": "r_max_frac",
+       "label": "R/R0 max",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.001,
+       "maximum": 10.0,
+       "step": 0.05,
+       "description": "Upper distance boundary relative to R0.",
+       "decimals": 3
+      },
+      {
+       "type": "value",
+       "attr": "r_bins",
+       "label": "R points",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 2,
+       "maximum": 10000,
+       "step": 1,
+       "description": "Number of distance grid points."
+      },
+      {
+       "type": "value",
+       "attr": "x_donly",
+       "label": "donor-only fraction",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1.0,
+       "step": 0.05,
+       "description": "Fraction of unquenched donor in the sample.",
+       "decimals": 3
+      },
+      {
+       "type": "toggle",
+       "attr": "fix_x_donly",
+       "label": "fix donor-only fraction",
+       "description": "Keep the donor-only fraction at its value during nuisance optimization."
+      }
+     ]
+    }
+   ]
+  },
+  "period": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Periodic convolution",
+     "description": "Include the tails of earlier excitation pulses.",
+     "sections": [
+      {
+       "type": "toggle",
+       "attr": "use_periodic",
+       "label": "Periodic convolution",
+       "description": "Include repeated excitation pulses instead of a single-shot decay."
+      },
+      {
+       "type": "value",
+       "attr": "period",
+       "label": "Period (ns)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.1,
+       "maximum": 1000.0,
+       "step": 1.0,
+       "description": "Pulse separation used with periodic convolution (initialised from the decay window).",
+       "decimals": 3
+      }
+     ]
+    }
+   ]
+  },
+  "instrument": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Instrument",
+     "description": "Response shift, backgrounds and scatter of the forward model.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "timeshift",
+       "label": "timeshift (ch)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": -100.0,
+       "maximum": 100.0,
+       "step": 0.01,
+       "description": "Response shift in histogram channels.",
+       "decimals": 4
+      },
+      {
+       "type": "value",
+       "attr": "background",
+       "label": "background (cts)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000000000.0,
+       "step": 1.0,
+       "description": "Constant decay background.",
+       "decimals": 1
+      },
+      {
+       "type": "value",
+       "attr": "irf_background",
+       "label": "IRF background (cts)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000000000.0,
+       "step": 1.0,
+       "description": "Response baseline; zero selects the automatic baseline estimate.",
+       "decimals": 3
+      },
+      {
+       "type": "value",
+       "attr": "lamp_scatter",
+       "label": "lamp scatter",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000.0,
+       "step": 0.001,
+       "description": "Fixed amplitude of scattered excitation light.",
+       "decimals": 4
+      }
+     ]
+    },
+    {
+     "type": "panel",
+     "title": "Nuisance optimization",
+     "description": "Let the solver adjust the shift, background and IRF background, except the ones fixed here.",
+     "sections": [
+      {
+       "type": "toggle",
+       "attr": "optimize_nuisance",
+       "label": "Fit nuisance (ts/bg/IRF BG)",
+       "description": "Let the solver fit the timeshift, background and IRF background whose fix switches are off."
+      },
+      {
+       "type": "toggle",
+       "attr": "fix_timeshift",
+       "label": "fix timeshift",
+       "description": "Hold the timeshift at its value during nuisance optimization."
+      },
+      {
+       "type": "toggle",
+       "attr": "fix_background",
+       "label": "fix background",
+       "description": "Hold the background at its value during nuisance optimization."
+      },
+      {
+       "type": "toggle",
+       "attr": "fix_irf_background",
+       "label": "fix IRF background",
+       "description": "Hold the IRF background at its value during nuisance optimization."
+      }
+     ]
+    }
+   ]
+  },
+  "lcurve": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "L-curve",
+     "description": "Span of the 16-point regularization sweep around nu, in decades.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "lcurve_left",
+       "label": "decades below nu",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 6.0,
+       "step": 0.5,
+       "description": "Decades below the current nu scanned by the L-curve.",
+       "decimals": 2
+      },
+      {
+       "type": "value",
+       "attr": "lcurve_right",
+       "label": "decades above nu",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 6.0,
+       "step": 0.5,
+       "description": "Decades above the current nu scanned by the L-curve.",
+       "decimals": 2
+      }
+     ]
+    }
+   ]
+  },
+  "sampling": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Sampling",
+     "description": "Q-MCMC sampling of the distribution uncertainty.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "sample_steps",
+       "label": "Q-MCMC steps",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 10,
+       "maximum": 1000000,
+       "step": 100,
+       "description": "Total ensemble steps."
+      },
+      {
+       "type": "value",
+       "attr": "sample_thin",
+       "label": "Q-MCMC thinning",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 1,
+       "maximum": 1000,
+       "step": 1,
+       "description": "Keep every n-th step."
+      },
+      {
+       "type": "value",
+       "attr": "sample_walkers",
+       "label": "Walkers (0=auto)",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 0,
+       "maximum": 1000000,
+       "step": 1,
+       "description": "Number of walkers; zero uses the sampler default."
+      },
+      {
+       "type": "value",
+       "attr": "sample_substeps",
+       "label": "Chunk size (substeps)",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 1,
+       "maximum": 1000000,
+       "step": 10,
+       "description": "Steps per progress update and saved chunk."
+      },
+      {
+       "type": "value",
+       "attr": "sample_nprocs",
+       "label": "CPUs (0=auto)",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 0,
+       "maximum": 64,
+       "step": 1,
+       "description": "Worker processes; zero selects a platform default."
+      },
+      {
+       "type": "toggle",
+       "attr": "sample_vectorized",
+       "label": "Vectorized sampling",
+       "description": "Evaluate ensemble log probabilities in vectorized batches."
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

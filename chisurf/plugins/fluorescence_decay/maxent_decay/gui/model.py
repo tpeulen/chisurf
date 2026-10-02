@@ -206,6 +206,7 @@ class MEMModel:
         self.source = name
         self.fitrange = None
         self.fit = None
+        self.status = f"Loaded {name} ({time.size} channels, {self.dt:.4g} ns per channel)."
         self.reset_results()
 
     def load_dataset(self, data):
@@ -214,6 +215,7 @@ class MEMModel:
     def load_fit(self, fit):
         self.load_dataset(fit.data)
         self.fit = fit
+        self._after_refresh = True
         self.fitrange = (max(0, int(fit.xmin)), min(len(self.decay) - 1, int(fit.xmax)))
         convolve = getattr(fit.model, "convolve", None)
         if convolve is not None:
@@ -226,6 +228,28 @@ class MEMModel:
         generic = getattr(fit.model, "generic", None)
         if generic is not None and hasattr(generic, "background"):
             self.settings.background = float(generic.background)
+        # what the Qt tool's Refresh did next: the smallest lifetime follows the IRF width, the period the time window
+        fwhm = self.irf_fwhm()
+        if fwhm:
+            self.settings.tau_min = round(fwhm, 3)       # the Qt spin box shows three decimals
+        span = float(self.time[-1] - self.time[0])
+        if span > 0:
+            self.settings.period = round(span, 2)         # and two for the period
+
+    def irf_fwhm(self):
+        """Half the width at half maximum of the IRF on the decay axis (the Qt tool's estimate), or None."""
+        try:
+            lamp = self.lamp()
+        except ValueError:
+            return None
+        t, lamp = np.asarray(self.time, float), np.asarray(lamp, float)
+        if t.size < 3 or not np.isfinite(lamp.max()) or lamp.max() <= 0:
+            return None
+        above = np.nonzero(lamp >= 0.5 * lamp.max())[0]
+        if above.size < 2:
+            return float(np.mean(np.diff(t))) or None
+        fwhm = float(t[above[-1]] - t[above[0]]) / 2.0
+        return fwhm if fwhm > 0 else float(np.mean(np.diff(t)))
 
     def load_file(self, path, irf=False):
         try:
@@ -469,3 +493,40 @@ class MEMModel:
         for key in self.parameters():
             if key != "settings" and key in settings:
                 setattr(self, key, settings[key])
+
+
+class MEMForm:
+    """What a spec form sees: every setting of the MEM run and of the tool as plain attributes of one object.
+
+    ``attr`` names resolve on :class:`~..api.models.MEMSettings` first, then on the model (``use_periodic``,
+    the ``fix_*`` switches, the L-curve span and the sampling options). ``enabled`` greys what means nothing now.
+    """
+
+    def __init__(self, model):
+        object.__setattr__(self, "_m", model)
+
+    def __getattr__(self, name):
+        m = object.__getattribute__(self, "_m")
+        if name in MEMSettings.__slots__:
+            value = getattr(m.settings, name)
+            return 0.0 if value is None and name == "irf_background" else value
+        return getattr(m, name)
+
+    def __setattr__(self, name, value):
+        m = object.__getattribute__(self, "_m")
+        if name in MEMSettings.__slots__:
+            setattr(m.settings, name, value)
+            if name in ("mode",):
+                m.reset_results()
+        else:
+            setattr(m, name, value)
+
+    def enabled(self, name):
+        m = object.__getattribute__(self, "_m")
+        if getattr(m, "busy", False):
+            return False
+        if name == "period":
+            return bool(m.use_periodic)
+        if name in ("timeshift", "background", "irf_background"):
+            return True
+        return True

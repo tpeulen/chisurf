@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
@@ -11,17 +12,27 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
 
 from .controller import MEMJobs
-from .model import MEMModel, open_datasets, open_fits
+from .model import MEMForm, MEMModel, open_datasets, open_fits
+
+HERE = Path(__file__).parent
+#: Tour targets from the Qt era -> the button that answers them.
+ALIASES = {"maxentBtnRefresh": "refresh", "maxentBtnRun": "run", "maxentBtnLcurve": "lcurve"}
 
 
 class MaxentApp(ImApp):
     def __init__(self, model=None):
         self.model = model or MEMModel()
+        self.mform = MEMForm(self.model)
+        panels = json.loads((HERE / "maxent_emtk.view.json").read_text())["panels"]
+        self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
+        self.forms = {n: FormState() for n in panels}
+        self.columns = {n: LabelColumn() for n in panels}
         self.jobs = MEMJobs(self.model)
         self.fits = []
         self.datasets = []
@@ -31,6 +42,8 @@ class MaxentApp(ImApp):
         self.file_window = None
         self.file_action = ""
         self.item_rects = {}
+        self.plot_info = {}
+        self.last_dir = ""
         self.edit_settings = False
         self.settings_text = ""
         self.settings_window = DialogWindow("MEM settings", size=(780, 600))
@@ -39,29 +52,31 @@ class MaxentApp(ImApp):
         )
         self.tour = EmTkGuidedTour(
             steps=Path(__file__).with_name("guide.json"),
-            get_target_rect=lambda key: self.item_rects.get(key),
+            get_target_rect=lambda key: self.item_rects.get(key) or self.item_rects.get(ALIASES.get(key, key)),
             owner=self,
             wait_for_controls=True,
         )
+        for form in self.forms.values():
+            form.on_used = self.tour.notify_used
         self.docks = DockManager(
             Split(
                 "h",
-                0.31,
+                0.38,
                 Region("controls"),
                 Split(
                     "v",
                     0.6,
-                    Split("h", 0.65, Region("decay"), Region("distribution")),
-                    Split("h", 0.65, Region("residuals"), Region("lcurve")),
+                    Split("h", 0.55, Region("decay"), Region("distribution")),
+                    Split("h", 0.55, Region("residuals"), Region("lcurve")),
                 ),
             )
         )
         for key, title, draw in [
             ("controls", "MEM controls", self.controls),
             ("decay", "Decay, fit and IRF", self.decay_plot),
-            ("distribution", "Lifetime / distance distribution", self.distribution_plot),
-            ("residuals", "Weighted residuals", self.residuals_plot),
-            ("lcurve", "L-curve diagnostics", self.lcurve_plot),
+            ("distribution", "Distribution", self.distribution_plot),
+            ("residuals", "Residuals", self.residuals_plot),
+            ("lcurve", "L-curve plot", self.lcurve_plot),
         ]:
             self.docks.add_window(key, title, draw, dock=key, closable=False)
         super().__init__(self.render, continuous=False)
@@ -91,375 +106,136 @@ class MaxentApp(ImApp):
             "sample": "Sample MEM distribution into folder",
         }[action]
         self.dialog = FileDialog(
-            title, mode=mode, filters="Data (*.txt *.dat *.csv);;All files (*)"
+            title, mode=mode, filters="Data (*.txt *.dat *.csv);;All files (*)", directory=self.last_dir or None
         )
         self.file_window = DialogWindow(title, size=(760, 540))
 
-    def field(self, owner, attr, label, low, high, tip, integer=False, step=0.01):
-        control = bounded_int if integer else bounded_float
-        changed, value = control(
-            label, getattr(owner, attr), minimum=low, maximum=high, step=1 if integer else step
-        )
-        im.set_item_tooltip(tip)
-        self.item_rects[attr] = im.get_item_rect()
-        if changed:
-            setattr(owner, attr, value)
+    def remember(self, name):
+        rect = im.get_item_rect()
+        self.item_rects[name] = rect
+        for alias, target in ALIASES.items():          # the Qt-era tour names
+            if target == name:
+                self.item_rects[alias] = rect
 
-    def action(self, label, tip, call):
-        aliases = {
-            "Refresh live sources": "maxentBtnRefresh",
-            "Run MEM": "maxentBtnRun",
-            "L-curve": "maxentBtnLcurve",
+    def form(self, name):
+        """Draw the panel *name*; its captions share one column."""
+        spec, column = self.panels[name], self.columns[name]
+        if not column.ready:
+            column.measure([f["label"] for f in labelled(spec["sections"])])
+        column.pad(spec["sections"])
+        draw_form(spec, self.mform, self.forms[name])
+
+    def do(self, key):
+        """Run what the button *key* does; its tour aliases are told."""
+        m = self.model
+        actions = {
+            "refresh": self.refresh_sources,
+            "load_decay": lambda: self.choose("decay"),
+            "load_irf": lambda: self.choose("irf"),
+            "clear_irf": m.clear_irf,
+            "load_prior": lambda: self.choose("prior"),
+            "load_donor": lambda: self.choose("donor"),
+            "donor_fit": lambda: m.donor_from_fit(self.fits[self.fit_index]),
+            "use_fit": lambda: m.load_fit(self.fits[self.fit_index]),
+            "use_decay": lambda: m.load_dataset(self.datasets[self.dataset_index]),
+            "use_irf": lambda: m.select_irf(self.datasets[self.dataset_index]),
+            "run": lambda: self.jobs.start("run"),
+            "lcurve": lambda: self.jobs.start("lcurve"),
+            "sample": lambda: self.choose("sample"),
+            "save": lambda: self.choose("export"),
+            "cancel": self.jobs.cancel,
+            "settings": self.open_settings,
+            "help": self.help_window.show,
+            "guide": self.tour.start,
         }
-        if im.button(label):
-            self.error(call)
-            self.tour.notify_used(label)
-            if label in aliases:
-                self.tour.notify_used(aliases[label])
-        im.set_item_tooltip(tip)
-        self.item_rects[label] = im.get_item_rect()
-        if label in aliases:
-            self.item_rects[aliases[label]] = im.get_item_rect()
+        self.error(actions[key])
+        self.tour.notify_used(key)
+        for alias, target in ALIASES.items():
+            if target == key:
+                self.tour.notify_used(alias)
+
+    def buttons(self, rows):
+        pressed = button_row(rows, remember=lambda name: self.remember(name))
+        if pressed:
+            self.do(pressed)
 
     def controls(self, box):
-        m = self.model
-        s = m.settings
-        im.begin_disabled(self.jobs.process is not None)
-        for label, tip, call in [
-            (
-                "Refresh live sources",
-                "List datasets and individual fits from this running ChiSurf session.",
-                self.refresh_sources,
-            ),
-            (
-                "Load decay file",
-                "Load a measured two-column time/counts decay.",
-                lambda: self.choose("decay"),
-            ),
-            (
-                "Load IRF file",
-                "Load and resample a measured response onto the decay time axis.",
-                lambda: self.choose("irf"),
-            ),
-            (
-                "Clear IRF",
-                "Use the current fit response or an impulse when no measured response is selected.",
-                m.clear_irf,
-            ),
-        ]:
-            self.action(label, tip, call)
-        if self.fits:
-            _, self.fit_index = im.combo(
-                "Live fit", self.fit_index, [getattr(fit, "name", "Fit") for fit in self.fits]
-            )
-            im.set_item_tooltip("Choose a fit for observed data, fit range and instrument values.")
-            self.action(
-                "Use selected fit",
-                "Copy data, current range and response from the selected live fit.",
-                lambda: m.load_fit(self.fits[self.fit_index]),
-            )
-        if self.datasets:
-            _, self.dataset_index = im.combo(
-                "Dataset",
-                self.dataset_index,
-                [getattr(ds, "name", "Dataset") for ds in self.datasets],
-            )
-            im.set_item_tooltip("Choose an existing measured curve or IRF.")
-            self.action(
-                "Use dataset as decay",
-                "Use the selected dataset counts and time axis.",
-                lambda: m.load_dataset(self.datasets[self.dataset_index]),
-            )
-            self.action(
-                "Use dataset as IRF",
-                "Resample the selected response to the observed decay grid.",
-                lambda: m.select_irf(self.datasets[self.dataset_index]),
-            )
+        m, s = self.model, self.model.settings
+        m.busy = self.jobs.process is not None
+        idle = self.jobs.process is None and self.dialog is None and not self.edit_settings
+        have_data = m.decay is not None
+        fret = s.mode == "fret"
+        self.buttons([
+            {"label": "Run MEM", "key": "run", "enabled": idle and have_data and (not fret or m.donor is not None),
+             "tip": "Solve the maximum-entropy inversion in an isolated, cancellable process."},
+            {"label": "L-curve", "key": "lcurve", "enabled": idle and have_data and (not fret or m.donor is not None),
+             "tip": "Run the 16-point nu sweep and pick the discrete corner."},
+            {"label": "Sample", "key": "sample", "enabled": idle and m.result is not None,
+             "tip": "Run Q-MCMC sampling of the distribution and save chains, summaries and project metadata in a folder."},
+            {"label": "Save", "key": "save", "enabled": idle and m.result is not None,
+             "tip": "Export the distribution, observed and fitted curves, IRF, weighted residuals and metadata."},
+            {"label": "Cancel job", "key": "cancel", "enabled": not idle and self.jobs.process is not None,
+             "tip": "Terminate the MEM or sampling process this window started."},
+        ])
+        self.buttons([
+            {"label": "Refresh", "key": "refresh", "enabled": idle,
+             "tip": "List the datasets and fits of this running ChiSurf session."},
+            {"label": "Load decay", "key": "load_decay", "enabled": idle,
+             "tip": "Load a measured two-column time/counts decay from a file."},
+            {"label": "IRF file", "key": "load_irf", "enabled": idle,
+             "tip": "Load a measured instrument response and resample it onto the decay time axis."},
+            {"label": "Clear IRF", "key": "clear_irf", "enabled": idle and m.irf is not None,
+             "tip": "Drop the measured IRF: use the response of the live fit, or an impulse."},
+            {"label": "Prior", "key": "load_prior", "enabled": idle,
+             "tip": "Use a vector or axis/value prior for the current distribution grid."},
+            {"label": "Donor", "key": "load_donor", "enabled": idle and fret,
+             "tip": "Load the amplitude/lifetime pairs of the donor-only decay (FRET mode)."},
+            {"label": "JSON", "key": "settings", "enabled": idle,
+             "tip": "Inspect and edit the declared preferences as JSON."},
+            {"label": "Help", "key": "help", "tip": "Explain maximum entropy, FRET priors and uncertainty."},
+            {"label": "Guide", "key": "guide", "tip": "Tour the real input, regularization and run controls."},
+        ])
+        if self.fits or self.datasets:
+            if self.fits:
+                _, self.fit_index = im.combo("Live fit", self.fit_index, [getattr(f, "name", "Fit") for f in self.fits])
+                im.set_item_tooltip("Choose a fit for the observed data, the fit range and the instrument values.")
+                self.buttons([
+                    {"label": "Fit", "key": "use_fit", "enabled": idle, "tip": "Take data, range, response and nuisance values from the selected live fit."},
+                    {"label": "Donor from fit", "key": "donor_fit", "enabled": idle and fret,
+                     "tip": "Use the selected fit's lifetime components as the donor-only spectrum."},
+                ])
+            if self.datasets:
+                _, self.dataset_index = im.combo("Dataset", self.dataset_index, [getattr(d, "name", "Dataset") for d in self.datasets])
+                im.set_item_tooltip("Choose an existing measured curve.")
+                self.buttons([
+                    {"label": "Use as decay", "key": "use_decay", "enabled": idle, "tip": "Use the selected dataset's counts and time axis as the decay."},
+                    {"label": "Use as IRF", "key": "use_irf", "enabled": idle, "tip": "Resample the selected dataset to the decay grid as the response."},
+                ])
+        im.separator()
         im.text_wrapped(m.source)
         im.text_wrapped("IRF: " + m.irf_source)
-        changed, index = im.combo("Mode", 0 if s.mode == "lifetime" else 1, ["Lifetime", "FRET"])
-        im.set_item_tooltip("Invert a lifetime spectrum or a FRET-distance distribution.")
-        if changed:
-            s.mode = "lifetime" if index == 0 else "fret"
-            m.reset_results()
-        self.action(
-            "Load prior",
-            "Use a vector or axis/value prior for the current distribution grid.",
-            lambda: self.choose("prior"),
-        )
-        self.action(
-            "Load donor spectrum",
-            "Load amplitude/lifetime pairs required for FRET inversion.",
-            lambda: self.choose("donor"),
-        )
-        if self.fits:
-            self.action(
-                "Donor spectrum from fit",
-                "Use the selected fit's active lifetime components as the donor-only spectrum.",
-                lambda: m.donor_from_fit(self.fits[self.fit_index]),
-            )
-        im.text_wrapped(
-            "Donor spectrum: "
-            + (
-                f"{len(m.donor) // 2} components"
-                if m.donor is not None
-                else "required in FRET mode"
-            )
-        )
-        expanded = im.collapsing_header("MEM inversion", im.TreeNodeFlags.DEFAULT_OPEN)
-        im.set_item_tooltip("Set regularization and the lifetime or distance grid.")
-        if expanded:
-            self.field(
-                s,
-                "nu",
-                "Regularization nu",
-                1e-8,
-                1.0,
-                "Entropy regularization weight.",
-                step=0.001,
-            )
-            if s.mode == "lifetime":
-                self.field(
-                    s,
-                    "tau_min",
-                    "Minimum lifetime (ns)",
-                    0.001,
-                    1000.0,
-                    "Smallest lifetime represented by the grid.",
-                )
-                self.field(
-                    s,
-                    "tau_max",
-                    "Maximum lifetime (ns)",
-                    0.001,
-                    1000.0,
-                    "Largest lifetime represented by the grid.",
-                )
-                self.field(
-                    s,
-                    "tau_bins",
-                    "Lifetime grid points",
-                    2,
-                    10000,
-                    "Evenly spaced lifetime-grid resolution.",
-                    True,
-                )
-            else:
-                for attr, label, low, high, tip in [
-                    (
-                        "tau0",
-                        "Donor reference lifetime (ns)",
-                        0.01,
-                        100.0,
-                        "Unquenched donor reference lifetime.",
-                    ),
-                    (
-                        "R0",
-                        "Forster radius (A)",
-                        10.0,
-                        100.0,
-                        "Forster radius for converting FRET rates to distance.",
-                    ),
-                    (
-                        "r_min_frac",
-                        "Minimum R/R0",
-                        0.001,
-                        10.0,
-                        "Lower distance boundary relative to R0.",
-                    ),
-                    (
-                        "r_max_frac",
-                        "Maximum R/R0",
-                        0.001,
-                        10.0,
-                        "Upper distance boundary relative to R0.",
-                    ),
-                    (
-                        "x_donly",
-                        "Donor-only fraction",
-                        0.0,
-                        1.0,
-                        "Unquenched donor fraction in the sample.",
-                    ),
-                ]:
-                    self.field(s, attr, label, low, high, tip)
-                self.field(
-                    s,
-                    "r_bins",
-                    "Distance grid points",
-                    2,
-                    10000,
-                    "Evenly spaced distance-grid resolution.",
-                    True,
-                )
-                _, m.fix_x_donly = im.checkbox("Fix donor-only fraction", m.fix_x_donly)
-                im.set_item_tooltip("Keep this fraction fixed during nuisance optimization.")
-            _, m.use_periodic = im.checkbox("Periodic convolution", m.use_periodic)
-            im.set_item_tooltip(
-                "Include repeated excitation pulses rather than a single-shot decay."
-            )
-            self.field(
-                s,
-                "period",
-                "Excitation period (ns)",
-                0.1,
-                1000.0,
-                "Pulse separation used when periodic convolution is enabled.",
-            )
-            self.field(
-                s,
-                "fit_start_fraction",
-                "Start fraction of peak",
-                0.1,
-                1.0,
-                "Automatic fitting starts near this fraction of the decay peak.",
-            )
-            self.field(
-                s,
-                "max_iter",
-                "MEM iterations",
-                1,
-                100000,
-                "Maximum iterations of the actual compiled MEM solver.",
-                True,
-            )
-        expanded = im.collapsing_header("Instrument / nuisance parameters")
-        im.set_item_tooltip("Set or optimize response shift, backgrounds and donor-only fraction.")
-        if expanded:
-            _, s.optimize_nuisance = im.checkbox("Optimize nuisance", s.optimize_nuisance)
-            im.set_item_tooltip("Fit all nuisance values whose Fix controls are off.")
-            for attr, label, low, high, tip, fix in [
-                (
-                    "timeshift",
-                    "Timeshift (channels)",
-                    -100.0,
-                    100.0,
-                    "Response shift, in histogram channels.",
-                    "fix_timeshift",
-                ),
-                (
-                    "background",
-                    "Background (counts)",
-                    0.0,
-                    1e9,
-                    "Constant decay background.",
-                    "fix_background",
-                ),
-                (
-                    "irf_background",
-                    "IRF background",
-                    0.0,
-                    1e9,
-                    "Response baseline; zero selects automatic baseline estimation.",
-                    "fix_irf_background",
-                ),
-            ]:
-                if getattr(s, attr) is None:
-                    setattr(s, attr, 0.0)
-                self.field(s, attr, label, low, high, tip)
-                _, value = im.checkbox("Fix " + label, getattr(m, fix))
-                setattr(m, fix, value)
-                im.set_item_tooltip("Hold this nuisance parameter at its configured value.")
-            self.field(
-                s,
-                "lamp_scatter",
-                "Lamp scatter",
-                0.0,
-                1000.0,
-                "Fixed amplitude of scattered excitation light.",
-            )
-        expanded = im.collapsing_header("L-curve and sampling")
-        im.set_item_tooltip(
-            "Scan regularization or sample distribution uncertainty with the original Q-MCMC engine."
-        )
-        if expanded:
-            for attr, label, low, high, tip, integer in [
-                (
-                    "lcurve_left",
-                    "Decades below nu",
-                    0.0,
-                    6.0,
-                    "Lower log10 span of the16-point regularization sweep.",
-                    False,
-                ),
-                (
-                    "lcurve_right",
-                    "Decades above nu",
-                    0.0,
-                    6.0,
-                    "Upper log10 span of the regularization sweep.",
-                    False,
-                ),
-                ("sample_steps", "MCMC steps", 10, 1000000, "Total ensemble-sampling steps.", True),
-                ("sample_thin", "Thinning", 1, 1000, "Keep every nth ensemble step.", True),
-                (
-                    "sample_walkers",
-                    "Walkers (0 auto)",
-                    0,
-                    1000000,
-                    "Number of walkers; zero uses the sampler default.",
-                    True,
-                ),
-                (
-                    "sample_substeps",
-                    "Sampling chunk size",
-                    1,
-                    1000000,
-                    "Steps per progress update and saved sampling chunk.",
-                    True,
-                ),
-                (
-                    "sample_nprocs",
-                    "CPUs (0 auto)",
-                    0,
-                    64,
-                    "Worker-process count; zero selects a platform default.",
-                    True,
-                ),
-            ]:
-                self.field(m, attr, label, low, high, tip, integer)
-            _, m.sample_vectorized = im.checkbox("Vectorized sampling", m.sample_vectorized)
-            im.set_item_tooltip("Evaluate ensemble log probabilities in vectorized batches.")
-        self.action(
-            "Run MEM",
-            "Solve the maximum-entropy inversion in an isolated cancellable process.",
-            lambda: self.jobs.start("run"),
-        )
-        self.action(
-            "L-curve",
-            "Run the16-point nu sweep and choose a discrete corner.",
-            lambda: self.jobs.start("lcurve"),
-        )
-        self.action(
-            "Sample distribution",
-            "Run actual Q-MCMC and save chains, posterior summaries and project metadata.",
-            lambda: self.choose("sample"),
-        )
-        self.action(
-            "Save result",
-            "Export distribution, observed/fit curves, IRF, weighted residuals and metadata.",
-            lambda: self.choose("export"),
-        )
-        self.action(
-            "Edit advanced settings",
-            "Inspect and edit the declared JSON preferences.",
-            self.open_settings,
-        )
-        im.end_disabled()
-        self.action(
-            "Cancel job", "Terminate only the owned MEM or sampling process.", self.jobs.cancel
-        )
-        self.action(
-            "Help", "Explain maximum entropy, FRET priors and uncertainty.", self.help_window.show
-        )
-        self.action(
-            "Guide", "Tour the actual input, regularization and run controls.", self.tour.start
-        )
+        prior = m.priors[s.mode]
+        im.text_wrapped(("Prior: " + ("loaded" if prior is not None else "default 1/tau")) if not fret
+                        else ("Distance prior: " + ("loaded" if prior is not None else "default flat")))
+        if fret:
+            im.text_wrapped(f"Donor spectrum: {len(m.donor) // 2} components" if m.donor is not None
+                            else "Donor spectrum: required in FRET mode (Donor).")
         im.text_wrapped(m.status)
         if self.jobs.progress[1]:
             im.text(f"Progress: {self.jobs.progress[0]}/{self.jobs.progress[1]}")
+            im.set_item_tooltip("Iterations or sweep points done by the running job.")
         if self.jobs.output:
-            im.text_wrapped(self.jobs.output[-1])
+            im.text_disabled(self.jobs.output[-1][:90])
+        im.separator()
+        self.form("mode")
+        self.form("fret" if fret else "lifetime")
+        self.form("period")
+        self.form("instrument")
+        opened = im.collapsing_header("L-curve span and sampling")
+        im.set_item_tooltip("The decades the L-curve sweep covers and the Q-MCMC sampling options.")
+        if opened:
+            self.form("lcurve")
+            self.form("sampling")
 
     def open_settings(self):
         self.settings_text = json.dumps(self.model.parameters(), indent=2)
@@ -511,6 +287,12 @@ class MaxentApp(ImApp):
                                 for v in (region.x_min, region.x_max)
                             )
                         )
+                    mid = (minimum * maximum) ** 0.5
+                    self.plot_info["decay"] = {
+                        "pos": implot.get_plot_pos(), "size": implot.get_plot_size(),
+                        "left": implot.plot_to_pixels(float(m.time[low]), mid),
+                        "right": implot.plot_to_pixels(float(m.time[high]), mid),
+                    }
             implot.end_plot()
 
     def distribution_plot(self, box):
@@ -551,6 +333,8 @@ class MaxentApp(ImApp):
             if curve is not None:
                 implot.plot_line("Regularization sweep", curve["chi2r"], curve["sol_norm"])
                 implot.plot_scatter("nu values", curve["chi2r"], curve["sol_norm"])
+                self.plot_info["lcurve"] = [implot.plot_to_pixels(float(x), float(y))
+                                            for x, y in zip(curve["chi2r"], curve["sol_norm"])]
                 if implot.is_plot_hovered() and im.is_mouse_clicked(0):
                     mouse = implot.get_plot_mouse_pos()
                     if mouse.x > 0 and mouse.y > 0:
@@ -564,11 +348,30 @@ class MaxentApp(ImApp):
                         )
             implot.end_plot()
 
+    def files_dropped(self, paths):
+        """Host drop: the first file is the decay, the second the IRF, a ``.json`` loads preferences."""
+        paths = [str(p) for p in paths]
+        if not paths:
+            return False
+        slots = iter(("decay", "irf"))
+        for path in paths:
+            if path.lower().endswith(".json"):
+                self.error(lambda p=path: self.model.restore_preferences(json.loads(Path(p).read_text())))
+                continue
+            slot = next(slots, None)
+            if slot is None:
+                break
+            self.error(lambda p=path, irf=slot == "irf": self.model.load_file(p, irf=irf))
+        return True
+
+    on_files_dropped = files_dropped
+
     def restore_settings(self, settings):
         self.model.restore_preferences(settings)
+        self.last_dir = str((settings or {}).get("last_dir", ""))
 
     def export_settings(self):
-        return self.model.parameters()
+        return {**self.model.parameters(), "last_dir": self.last_dir}
 
     def close(self):
         self.jobs.close()
@@ -578,7 +381,10 @@ class MaxentApp(ImApp):
 
     def render(self):
         self.item_rects.clear()
+        for form in self.forms.values():
+            form.rects.clear()
         self.jobs.poll()
+        self.mform = MEMForm(self.model)
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         im.begin_disabled(self.dialog is not None or self.edit_settings)
@@ -606,6 +412,7 @@ class MaxentApp(ImApp):
             if result:
                 action = self.file_action
                 self.dialog = None
+                self.last_dir = str(result[0]) if action in ("export", "sample") else str(Path(result[0]).parent)
                 if action in ("decay", "irf"):
                     self.error(lambda: self.model.load_file(result[0], irf=action == "irf"))
                 elif action == "prior":

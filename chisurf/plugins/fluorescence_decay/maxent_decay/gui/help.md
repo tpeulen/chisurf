@@ -4,7 +4,7 @@ A multi-exponential fit asks "which two or three lifetimes?" — which presuppos
 that there are two or three. This tool asks instead **what distribution of decay
 times is consistent with the data**, without assuming a shape.
 
-If you have not run it before, press **🧭** for the guided tour.
+If you have not run it before, press **Guide** for the guided tour.
 
 Use it when you suspect a continuum — a dye sampling many environments, a
 quencher at a range of distances, a disordered chain — or when you want to check
