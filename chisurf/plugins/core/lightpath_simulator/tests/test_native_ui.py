@@ -26,7 +26,15 @@ def _ensure_app():
 
 
 @pytest.fixture
-def tool(qapp):
+def tool(qapp, tmp_path, monkeypatch):
+    """The Qt host, on a temporary home and settings, leaving no MMFDB session token behind for the next test."""
+    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
+    monkeypatch.setenv("MMFDB_SETTINGS_DIR", str(tmp_path / "mmfdb"))
+    monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "mmfdb.sqlite"))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
+
+    tokens = dict(_RUNTIME_SESSION_TOKENS)
     _ensure_app()
     from chisurf.plugins.core.lightpath_simulator.gui.tool import (
         LightPathSimulatorWidget,
@@ -35,6 +43,8 @@ def tool(qapp):
     tool = LightPathSimulatorWidget()
     yield tool
     tool.close()
+    _RUNTIME_SESSION_TOKENS.clear()
+    _RUNTIME_SESSION_TOKENS.update(tokens)
 
 
 @_needs_qt

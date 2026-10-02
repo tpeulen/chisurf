@@ -48,7 +48,7 @@ class LightPathController:
         self.result = {}
         self.probes = []
         self.saved = []
-        self.status = 'Configure the optical path, load its spectra, then simulate.'
+        self.status = 'Configure the optical path, then press Calculate Emission Intensity.'
         self.running = False
         self.auto_update = True
         self.pending = False
@@ -64,6 +64,7 @@ class LightPathController:
         self.operation_name = 'Light path simulation'
         self.last_operation_id = ''
         self.reset()
+        self._default_revision = self.revision
         if self.state_path is not None and self.state_path.exists():
             self.load_graph(self.state_path)
 
@@ -73,7 +74,7 @@ class LightPathController:
     def changed(self):
         self.revision += 1
         self.pending = self.auto_update
-        self.status = 'Optical path changed; simulation update queued.' if self.pending else 'Optical path changed; press Simulate to update.'
+        self.status = 'Optical path changed; simulation update queued.' if self.pending else 'Optical path changed; press Calculate Emission Intensity to update.'
         if callable(self.on_easy_sync):
             self.on_easy_sync(_graph_to_config(self.graph()))
 
@@ -121,19 +122,60 @@ class LightPathController:
         self.status = 'Optical nodes arranged by signal flow.'
 
     def reset(self):
-        config = {'lasers':'488:1.0, 640:1.0','dyes':{},'detectors':[{'name':'green'},{'name':'red'}],'emission_splitters':[{'type':'Dichroic','probe_id':None}],'kappa2':2/3,'n':1.33}
-        for probe in self.probes:
-            name = str(probe.get('name','')).lower()
-            if ('atto 488' in name or 'atto 647' in name) and probe.get('has_em'):
-                config['dyes'][str(probe['probe_id'])] = {'qy':probe.get('qy',1.),'ec':probe.get('ec',1.)}
-            if '561lp' in name and probe.get('has_trans'):
-                config['emission_splitters'][0]['probe_id'] = probe['probe_id']
-            for detector,wavelength in zip(config['detectors'],('500','650')):
-                if 'bp' in name and wavelength in name and probe.get('has_trans'):
-                    detector['bandpass_probe_id'] = probe['probe_id']
-        self.load_document(build_easy_graph(config))
-        self.arrange()
+        """Restore the Qt tool's default path: laser, sample, dichroic, a filter and a detector per colour, Foerster radius."""
+        self.load_document(self.default_graph(self.probes))
         self.status = 'Default optical path restored.'
+
+    @staticmethod
+    def default_graph(probes):
+        """The canonical default light-path graph of the Qt tool's ``_build_default_path`` (same nodes, ids, positions, wiring)."""
+        green_dye = red_dye = dichroic = green_filter = red_filter = None
+        for p in probes:
+            name = str(p.get('name', '')).lower().replace('-', ' ')
+            pid = p['probe_id']
+            if 'atto 488' in name and not green_dye and p.get('has_em'):
+                green_dye = pid
+            if 'atto 647n' in name and not red_dye and p.get('has_em'):
+                red_dye = pid
+            if '561lp' in name and not dichroic and p.get('has_trans'):
+                dichroic = pid
+            if 'bp' in name and '500' in name and not green_filter and p.get('has_trans'):
+                green_filter = pid
+            if 'bp' in name and '650' in name and not red_filter and p.get('has_trans'):
+                red_filter = pid
+
+        def node(type_id, pos, node_id=None):
+            d = optical_registry.get(type_id)
+            return GraphNode(node_id or type_id, d.id, d.title, list(d.inputs), list(d.outputs), copy.deepcopy(d.default_config or {}), pos)
+
+        document = GraphDocument()
+        source = node('light_source', (30., 260.))
+        source.config['source_mode'] = 'manual'
+        source.config['manual_lines'] = '488:1.0, 640:1.0'
+        sample = node('sample', (300., 260.))
+        dyes = [d for d in (green_dye, red_dye) if d]
+        if dyes:
+            sample.config['probe_ids'] = dyes
+        splitter = node('splitter', (570., 260.))
+        if dichroic:
+            splitter.config['probe_id'] = dichroic
+        red_f = node('filter', (840., 90.), 'red_filter')
+        if red_filter:
+            red_f.config['probe_id'] = red_filter
+        red_d = node('detector', (1110., 90.), 'red_detector')
+        red_d.config['detector_name'] = 'Red Channel'
+        green_f = node('filter', (840., 430.), 'green_filter')
+        if green_filter:
+            green_f.config['probe_id'] = green_filter
+        green_d = node('detector', (1110., 430.), 'green_detector')
+        green_d.config['detector_name'] = 'Green Channel'
+        forster = node('forster_radius', (300., 560.))  # the Qt tool put it at y=460, over the sample node
+        for n in (source, sample, splitter, red_f, red_d, green_f, green_d, forster):
+            document.add_node(n)
+        for src, sp, dst, dp in ((source, 0, sample, 0), (sample, 0, splitter, 0), (sample, 1, forster, 0), (splitter, 0, red_f, 0),
+                                 (red_f, 0, red_d, 0), (splitter, 1, green_f, 0), (green_f, 0, green_d, 0)):
+            document.add_edge(GraphEdge(src.id, sp, dst.id, dp))
+        return document.to_dict()
 
     def add_node(self, type_id, pos=(50.,50.)):
         if self.running:
@@ -284,6 +326,10 @@ class LightPathController:
                 elif self._action=='catalogue':
                     self.probes = result
                     if callable(self.on_probes):self.on_probes(result)
+                    if self.revision == self._default_revision:
+                        # Nothing was edited yet: the default path picks its components from the catalogue (as the Qt tool did).
+                        self.load_document(self.default_graph(result))
+                        self._default_revision = self.revision
                     self.status = f'{len(result)} optical spectra available.'
                 elif self._action=='save':
                     self.last_operation_id = str(result.get('operation_id',''))

@@ -1,0 +1,66 @@
+{
+  "steps": [
+    {
+      "title": "The optical path",
+      "text": "The graph shows the light from the source, through the sample and the optics, to the detectors. Drag nodes to move them, drag from a pin to connect, scroll to zoom, right-click for the component menu.",
+      "target": {}
+    },
+    {
+      "title": "Add a component",
+      "text": "Click a component in the list, then press Add to Graph. It appears in the middle of the visible graph. Double-clicking a row does the same.",
+      "target": {
+        "action": "add_selected"
+      },
+      "window": "controls",
+      "await": true
+    },
+    {
+      "title": "Start from the standard path",
+      "text": "Reset to Default replaces the graph with the standard two-colour path. Press it to follow the rest of the tour on a complete path.",
+      "target": {
+        "action": "reset"
+      },
+      "window": "controls",
+      "await": true
+    },
+    {
+      "title": "Simulate",
+      "text": "Calculate Emission Intensity propagates the spectra through the graph. The tables below fill with the detected signals and the crosstalk matrices.",
+      "target": {
+        "action": "calculate"
+      },
+      "window": "results",
+      "await": true
+    },
+    {
+      "title": "Read the results",
+      "text": "Signals lists the detected intensity per laser line, detector and dye. Excitation, Emission and Detected are the crosstalk matrices; Förster radius lists R0 per donor and acceptor.",
+      "target": {
+        "name": "results"
+      },
+      "window": "results"
+    },
+    {
+      "title": "Easy Mode",
+      "text": "The Easy Mode tab edits the same path as a form: lasers, dichroic, dyes and detectors. Its changes update the graph.",
+      "target": {
+        "name": "easy"
+      },
+      "window": "easy"
+    },
+    {
+      "title": "Keep your work",
+      "text": "Save Graph writes the graph to a JSON file; Save Preset keeps it as an Easy Mode preset; Save to MMFDB stores the simulation.",
+      "target": {
+        "action": "save_graph"
+      }
+    },
+    {
+      "title": "More help",
+      "text": "The Help button explains the components, the simulation and the files in detail.",
+      "target": {
+        "action": "help"
+      }
+    }
+  ]
+}

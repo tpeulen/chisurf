@@ -2,58 +2,78 @@
 
 import copy
 import json
+import types
 from pathlib import Path
 
 from emtk import im
 from emtk.app import ImApp
-from emtk.docking import DockManager, Region, Split
+from emtk.dialog_window import DialogWindow
 from emtk.im_core import Col
+from emtk.docking import DockManager, Region, Split
 
-ACCENT_GREEN = (46, 160, 67, 255)
 from emtk import nodes as _nodes
 
 from chisurf.core.optical_configuration import _graph_to_config, extract_forster
 from chisurf.emtk.node_editor.control import GraphControl
 from chisurf.emtk.optical_configuration import OpticalConfigurationWidget
 
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from emtk.view_form import FormState, draw_form
+
 from .controller import LightPathController
 from .emtk_view import BeampathContent
 from .node_types import optical_registry
+from .panel import LightPathPanel
 
 RIGHT_BUTTON = 2
 
 
-class TextInputDialog:
-    """A small modal text prompt (rename and the like), drawn in-canvas."""
+class _Modal:
+    """A titled, closable window over the app (emtk's DialogWindow); subclasses draw :meth:`body`."""
+
+    size = (400.0, 170.0)
+
+    def __init__(self, title: str) -> None:
+        self.title = title
+        self.finished = False
+        self.window = DialogWindow(title, size=self.size, key=title, fit_height=True)
+        self.window.show()
+
+    def draw(self, box) -> bool:
+        """Render one frame; True when the dialog is finished."""
+        pressed = self.window.begin(box)
+        self.body()
+        self.window.end()
+        return self.finished or pressed == "close"
+
+    def body(self) -> None:
+        raise NotImplementedError
+
+
+class TextInputDialog(_Modal):
+    """A small modal text prompt (a preset name, a simulation name), drawn in-canvas."""
 
     def __init__(self, title: str, label: str, value: str = "", on_ok=None) -> None:
-        self.title = title
+        super().__init__(title)
         self.label = label
         self.value = str(value)
         self.on_ok = on_ok
 
-    def draw(self) -> bool:
-        """Render one frame; True when the dialog is finished."""
-        done = False
-        im.set_next_window_pos(
-            (im.get_main_viewport().size[0] / 2.0 - 180.0, 200.0), im.Cond.APPEARING
-        )
-        im.set_next_window_size((360.0, 0.0), im.Cond.APPEARING)
-        if im.begin(self.title, close_button=True):
-            im.text(self.label)
-            _, self.value = im.input_text("##prompt_value", self.value)
-            im.spacing()
-            if im.button("OK"):
-                if callable(self.on_ok) and self.value.strip():
-                    self.on_ok(self.value.strip())
-                done = True
-            im.same_line()
-            if im.button("Cancel"):
-                done = True
-        else:
-            done = True
-        im.end()
-        return done
+    def body(self) -> None:
+        im.text(self.label)
+        im.set_next_item_width(-1.0)
+        _, self.value = im.input_text("##prompt_value", self.value)
+        im.set_item_tooltip("Type the name, then press OK.")
+        im.spacing()
+        if im.button("OK"):
+            if callable(self.on_ok) and self.value.strip():
+                self.on_ok(self.value.strip())
+            self.finished = True
+        im.set_item_tooltip("Use this name. An empty name does nothing.")
+        im.same_line()
+        if im.button("Cancel"):
+            self.finished = True
+        im.set_item_tooltip("Close without doing anything.")
 
 
 class OpticalGraphControl(GraphControl):
@@ -80,9 +100,10 @@ class OpticalGraphControl(GraphControl):
         super().press(px, py, box, modifiers=modifiers, clicks=clicks)
 
     def draw_context_menu(self) -> bool:
-        """Open and render the context popup a right-press requested."""
+        """Open the popup a right-press requested and rebuild it every frame while it is open (emtk popups are immediate)."""
         if self.context is None:
             return False
+        ctx = im.get_current_context()
         if self.context[0] == "pending":
             _, px, py = self.context
             number = _nodes.is_node_hovered(self.editor)
@@ -91,8 +112,8 @@ class OpticalGraphControl(GraphControl):
             self.context = (
                 ("node", node.id, (px, py)) if node is not None else ("canvas", None, (px, py))
             )
+            ctx.open_context_popup("##optical_context", (px, py))
         kind, payload, (px, py) = self.context
-        im.get_current_context().open_context_popup("##optical_context", (px, py))
         if not im.begin_popup("##optical_context"):
             self.context = None  # dismissed without a pick
             return False
@@ -101,7 +122,8 @@ class OpticalGraphControl(GraphControl):
         else:
             self._draw_canvas_menu((px, py))
         im.end_popup()
-        self.context = None
+        if not ctx.state(("context_popup", "##optical_context")).get("open"):
+            self.context = None  # a row was picked or focus was lost
         return False
 
     def _menu_row(self, label: str, tooltip: str, action) -> None:
@@ -117,24 +139,22 @@ class OpticalGraphControl(GraphControl):
         node = self.host_app.controller.document.node(node_id)
         if node is None:
             return
-        im.separator_text(node.title)
         self._menu_row(
-            "✎ Rename…", "Type a new title for this node.", lambda: self.rename_node_dialog(node_id)
+            "Rename...", "Type a new title for this node.", lambda: self.rename_node_dialog(node_id)
         )
         self._menu_row(
-            "⧉ Duplicate",
+            "Duplicate",
             "Copy this node and its component settings beside the original.",
             lambda: self.duplicate_node(node_id),
         )
         im.separator()
         self._menu_row(
-            "🗑 Delete node",
+            "Delete Node",
             "Remove this node and its connections.",
             lambda: self.delete_node(node_id),
         )
 
     def _draw_canvas_menu(self, screen_pos: tuple) -> None:
-        im.separator_text("Add to graph")
         for descriptor in optical_registry.all_types().values():
             self._menu_row(
                 f"+ {descriptor.title}",
@@ -198,8 +218,78 @@ class OpticalGraphControl(GraphControl):
         self.host_app._call(self.host_app.controller.add_node, type_id, grid)
 
 
-class LightPathApp(ImApp):
+HERE = Path(__file__).parent
+SPEC = json.loads((HERE / "lightpath.view.json").read_text(encoding="utf-8"))
+
+
+class MessageDialog(_Modal):
+    """A small modal message (an error box, a confirmation of what was saved), drawn in-canvas."""
+
+    def __init__(self, title: str, text: str) -> None:
+        super().__init__(title)
+        self.text = text
+
+    def body(self) -> None:
+        im.text_wrapped(self.text)
+        im.spacing()
+        if im.button("OK"):
+            self.finished = True
+        im.set_item_tooltip("Close this message.")
+
+
+class SavedChooser(_Modal):
+    """Choose one of the simulations stored in MMFDB (the Qt tool's input-item dialog)."""
+
+    size = (460.0, 330.0)
+
+    def __init__(self, app: "LightPathApp") -> None:
+        super().__init__("Load Simulation from MMFDB")
+        self.app = app
+        self.state = FormState(on_used=app.tour.notify_used)
+
+    def body(self) -> None:
+        panel = self.app.panel
+        self.state.rects.clear()
+        draw_form(SPEC["mmfdb_list"], panel, self.state, titles=False)
+        im.begin_disabled(not panel.selected_saved)
+        if im.button("Load"):
+            panel.load_saved()
+            self.finished = True
+        im.set_item_tooltip("Load the selected simulation: its graph and its numerical result.")
+        im.end_disabled()
+        im.same_line()
+        if im.button("Cancel"):
+            panel.want_list = False
+            self.finished = True
+        im.set_item_tooltip("Close this list without loading anything.")
+
+
+class FileChooser(_Modal):
+    """The in-app file dialog of a graph, an instrument setting."""
+
+    size = (560.0, 420.0)
+
+    def __init__(self, title: str, mode: str, filename: str | None) -> None:
+        super().__init__(title)
+        from emtk.file_dialog import FileDialog
+
+        self.dialog = FileDialog(title, mode=mode, filters=[("JSON", ["*.json"])], filename=filename)
+        self.result = None
+
+    def body(self) -> None:
+        result = self.dialog.draw()
+        if result:
+            self.result = result[0]
+            self.finished = True
+        elif result is False:
+            self.finished = True
+
+
+class LightPathApp(TourTarget, ImApp):
+    """The light-path simulator window: graph, components, Easy Mode and the simulation results, docked."""
+
     def __init__(self, db_path=None, client=None, state_path=None, owner_id="lightpath"):
+        self.item_rects: dict = {}
         self.controller = LightPathController(db_path, client, state_path, owner_id)
         self.content = BeampathContent()
         self.graph_control = OpticalGraphControl(
@@ -220,61 +310,62 @@ class LightPathApp(ImApp):
         self.dialog = None
         self.dialog_action = "load"
         self.selected_node = ""
-        self.source_node = self.target_node = ""
-        self.source_port = self.target_port = 0
         self.results_tab = "Signals"
-        #: The MMFDB catalogue is requested once on the first frame -- the old
-        #: tool loaded it at startup, and without it the easy setup's spectrum
-        #: and sample dropdowns open empty.
         self._catalogue_requested = False
-        # The graph is the workspace and fills the canvas; everything else
-        # starts as floating tool windows over it. Every window is movable,
-        # resizable and dockable -- drag a title bar, or drag a docked tab off
-        # its strip, to rearrange or float it.
+        self._last_operation = ""
+        self._was_running = False
+        self.help_window = EmTkHelpWindow(
+            title="Light Path Simulator - Help & Reference",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "guide.json",
+            get_target_rect=lambda key: self.item_rects.get(key),
+            owner=self,
+            wait_for_controls=True,
+        )
+        self.panel = LightPathPanel(
+            self.controller,
+            self.graph_control,
+            browse=self.browse,
+            ask_name=self.ask_name,
+            show_help=self.help_window.show,
+            start_guide=self.start_guide,
+        )
+        self.forms = {name: FormState(on_used=self.tour.notify_used) for name in ("toolbar", "palette", "view", "backend", "connections", "mmfdb", "calc", "table")}
+        # Graph | (components and Easy Mode as tabs over the results): every window is docked, none floats over
+        # the graph; a title bar can still be dragged to rearrange or float one.
         self.docks = DockManager(
-            Split("h", 0.72, Region("graph"), Region("results")), name="lightpath"
+            Split("h", 0.55, Split("v", 0.62, Region("graph"), Region("results")), Region("setup")),
+            name="lightpath",
         )
-        self.docks.add_window("graph", "Light path graph", self._draw_graph, dock="graph")
-        self.docks.add_window(
-            "results", "Signals and crosstalk", self._draw_results, dock="results"
-        )
-        self.docks.add_window(
-            "controls",
-            "Optical components",
-            self._draw_controls,
-            box=(16.0, 52.0, 300.0, 540.0),
-        )
-        self.docks.add_window(
-            "easy",
-            "Easy optical setup",
-            self._draw_easy,
-            box=(0.0, 52.0, 340.0, 560.0),
-        )
-        # The easy window starts at the right edge: positioned on the first
-        # frame, when the viewport size is known (the constructor runs outside
-        # any frame, so im.get_main_viewport() is unavailable there).
-        self._easy_placed = False
+        self.docks.add_window("graph", "Optical Path", self._draw_graph, dock="graph", closable=False)
+        self.docks.add_window("controls", "Optical Components", self._draw_controls, dock="setup", closable=False)
+        self.docks.add_window("easy", "Easy Mode", self._draw_easy, dock="setup", closable=False)
+        self.docks.add_window("results", "Emission Probability", self._draw_results, dock="results", closable=False)
+        self.docks.focus("controls")
+        self.native_layouts = {"main": self.docks}
         self.graph_control.fit()
         super().__init__(gui=self._render, continuous=False)
 
-    def animating(self) -> bool:
-        """Request frames only while there is something to wait for.
+    # -- plumbing ------------------------------------------------------------------------------------------ #
+    @property
+    def form(self):
+        """The rectangles every form drew (what the click tests and the tour read)."""
+        return types.SimpleNamespace(rects=self.item_rects)
 
-        A background job (a simulation, a catalogue load, a queued auto-update)
-        needs frames so ``controller.poll()`` can pick it up; an idle editor
-        does not -- repainting the graph at full frame rate made the whole UI
-        laggy. Editing and dragging repaint through the host's input events.
-        """
+    def animating(self) -> bool:
+        """Frames only while a backend job needs polling; an idle editor repaints on input events."""
         controller = self.controller
         if controller.running or controller.pending:
             return True
         return super().animating()
 
-    @staticmethod
-    def _button(label, tooltip, callback):
-        if im.button(label):
-            callback()
-        im.set_item_tooltip(tooltip)
+    def start_guide(self) -> None:
+        self.tour.start()
 
     def _call(self, function, *args):
         try:
@@ -312,328 +403,166 @@ class LightPathApp(ImApp):
         self.controller.apply_easy(self.easy.config)
         return self.controller.start()
 
+    def _form(self, name: str, spec: dict, titles: bool = False) -> None:
+        state = self.forms[name]
+        state.rects.clear()
+        draw_form(spec, self.panel, state, titles=titles)
+        self.item_rects.update(state.rects)
+
+    # -- windows ------------------------------------------------------------------------------------------- #
+    def _draw_graph(self, box):
+        self._form("toolbar", SPEC["toolbar"])
+        x, y = im.get_cursor_screen_pos()
+        gx, gy, gw, gh = box
+        top = max(y - gy + 2.0, 0.0)
+        canvas = (gx, gy + top, gw, max(gh - top, 40.0))
+        self.graph_control._box = canvas
+        self.graph_control.io = self.io
+        self.graph_control.read_only = self.controller.running
+        self.graph_control._draw_graph(canvas)
+        io = self.io
+        px, py = io.mouse_pos
+        if (io.mouse_clicked[1] and not self.controller.running and self.graph_control.context is None
+                and canvas[0] <= px <= canvas[0] + canvas[2] and canvas[1] <= py <= canvas[1] + canvas[3]):
+            # A right press on the canvas asks for the component menu (the node under it is resolved on the next draw).
+            self.graph_control.context = ("pending", px, py)
+        im.set_item_tooltip(
+            "Drag nodes to arrange; drag pins to connect; wheel zooms; right-click for the component menu; "
+            "select items and use Delete Selected to remove them."
+        )
+        self.item_rects["graph"] = canvas
+
     def _draw_controls(self, box):
-        controller = self.controller
-        im.begin_disabled(controller.running)
-
-        # The two headline actions stay at the top, always visible.
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        self._button(
-            "▶ Simulate light path",
-            "Propagate spectra and calculate detector signals, Förster radii and crosstalk.",
-            controller.start,
-        )
-        im.pop_style_color(3)
-        im.same_line()
-        self._button(
-            "⟳ Reset to default",
-            "Restore the standard two-color laser/sample/dichroic/detector path.",
-            controller.reset,
-        )
-
-        im.separator()
-        if im.collapsing_header("Backend", 1):
-            self._button(
-                "Load optical catalogue",
-                "Load dye, transmission and detector spectra from the selected backend.",
-                lambda: controller.start("catalogue"),
-            )
-            changed, controller.remote = im.checkbox("Use configured RPC server", controller.remote)
-            im.set_item_tooltip(
-                "Use the existing ChiSurf/MMFDB connection and session token rather than the local scientific backend."
-            )
-            im.text("Spectra database path:")
-            changed, path = im.input_text("##lightpath_db", controller.db_path or "")
-            im.set_item_tooltip(
-                "Optional MMFDB spectra database path; leave empty to use the configured database."
-            )
-            if changed:
-                controller.db_path = path or None
-            _, controller.auto_update = im.checkbox(
-                "Auto update optical changes", controller.auto_update
-            )
-            im.set_item_tooltip(
-                "Queue one fresh simulation after graph or easy-mode parameter edits."
-            )
-
-        if im.collapsing_header("Graph files", 1):
-            for label, action, tip in (
-                ("Load graph", "load", "Open a saved optical graph or easy-mode preset."),
-                (
-                    "Save graph",
-                    "save",
-                    "Save nodes, connections, component choices and layout as JSON.",
-                ),
-                (
-                    "Save optical preset",
-                    "preset",
-                    "Save this optical path for the easy setup editor.",
-                ),
-                (
-                    "Export instrument setting",
-                    "instrument",
-                    "Export the simulated instrument setting as JSON.",
-                ),
-            ):
-                self._button(label, tip, lambda a=action: self.browse(a))
-
-        if im.collapsing_header("Add optical component", 1):
-            for descriptor in optical_registry.all_types().values():
-                self._button(
-                    descriptor.title,
-                    f"Add a {descriptor.title.lower()} node to the graph.",
-                    lambda type_id=descriptor.id: self._add_component(type_id),
-                )
-            self._button(
-                "Delete selected graph items",
-                "Delete the selected nodes and connections from the optical graph.",
-                self._delete_selection,
-            )
-
-        if im.collapsing_header("Graph view", 1):
-            self._button(
-                "Arrange optical graph",
-                "Lay out nodes by optical signal flow and frame the complete graph.",
-                lambda: self._call(controller.arrange),
-            )
-            self._button(
-                "Fit graph to view",
-                "Frame the entire beam path without changing its saved node positions.",
-                self.graph_control.fit,
-            )
-            _, self.graph_control.show_minimap = im.checkbox(
-                "Show graph minimap", self.graph_control.show_minimap
-            )
-            im.set_item_tooltip("Show a small overview for navigating a large optical network.")
-
-        # Collapsed by default: the graph's own ports drag-connect, and this
-        # numeric form is the fallback for precise port indices.
-        if im.collapsing_header("Connections", 0):
-            self._draw_connections()
-
-        if im.collapsing_header("MMFDB", 1):
-            im.text("Saved simulation name:")
-            _, controller.operation_name = im.input_text(
-                "##simulation_name", controller.operation_name
-            )
-            im.set_item_tooltip("Name stored with the simulation and its MMFDB artifacts.")
-            self._button(
-                "Save simulation to MMFDB",
-                "Persist this graph and its numerical outputs using the existing lightpath backend.",
-                lambda: controller.start("save"),
-            )
-            self._button(
-                "Browse saved simulations",
-                "List previously stored light-path simulations from MMFDB.",
-                lambda: controller.start("list"),
-            )
-            for record in controller.saved:
-                operation = str(record["operation_id"])
-                self._button(
-                    f"{record.get('name') or operation}##{operation}",
-                    "Restore the selected saved graph and numerical result.",
-                    lambda key=operation: controller.start("get", key),
-                )
-
-        im.end_disabled()
-        if controller.running:
-            self._button(
-                "⏹ Stop backend operation",
-                "Discard a pending simulation when its backend call finishes; an MMFDB save completes consistently.",
-                controller.stop,
-            )
-        im.separator()
-        status = controller.status or ""
-        if status.startswith("Error"):
-            im.text_colored(status, (1.0, 0.45, 0.4, 1.0))
-        elif controller.running:
-            im.text_disabled(f"⏳ {status}")
-        else:
-            im.text_disabled(status)
+        panel = self.panel
+        self._form("palette", SPEC["palette"])
+        self._form("palette", SPEC["palette_buttons"])
+        self._form("view", SPEC["view"], True)
+        self._form("backend", SPEC["backend"], True)
+        self._form("connections", SPEC["connections"], True)
+        self._form("mmfdb", SPEC["mmfdb"], True)
+        self.remember("components", tuple(box))
 
     def _add_component(self, type_id):
         x, y, width, height = self.graph_control._box
         position = self.graph_control.editor.canvas.to_grid((x + width / 2, y + height / 2))
         return self._call(self.controller.add_node, type_id, position)
 
-    def _draw_connections(self):
-        document = self.controller.document
-        ids = [node.id for node in document.nodes]
-        if not ids:
-            return
-        labels = [f"{node.title} [{node.id[:6]}]" for node in document.nodes]
-        if self.source_node not in ids:
-            self.source_node = ids[0]
-        if self.target_node not in ids:
-            self.target_node = ids[-1]
-        im.text("Connect nodes:")
-        im.text("From:")
-        im.same_line()
-        im.set_next_item_width(-1.0)
-        changed, index = im.combo("##source_node", ids.index(self.source_node), labels)
-        im.set_item_tooltip("Node producing the optical spectrum or scalar parameter.")
-        if changed:
-            self.source_node = ids[index]
-        im.text("To:")
-        im.same_line()
-        im.set_next_item_width(-1.0)
-        changed, index = im.combo("##target_node", ids.index(self.target_node), labels)
-        im.set_item_tooltip("Node that consumes the selected source output.")
-        if changed:
-            self.target_node = ids[index]
-        half = max(im.get_content_region_avail()[0] * 0.5 - 6.0, 60.0)
-        im.text("Out port:")
-        im.same_line()
-        im.set_next_item_width(half)
-        _, self.source_port = im.input_int("##source_output", self.source_port)
-        im.set_item_tooltip("Zero-based output-port index on the source node.")
-        im.same_line()
-        im.text("In port:")
-        im.same_line()
-        im.set_next_item_width(-1.0)
-        _, self.target_port = im.input_int("##target_input", self.target_port)
-        im.set_item_tooltip("Zero-based input-port index on the target node.")
-        if im.button("🔗 Connect ports"):
-            self._call(
-                self.controller.connect,
-                self.source_node,
-                self.source_port,
-                self.target_node,
-                self.target_port,
-            )
-        im.set_item_tooltip("Create an optical connection; one source may feed each input.")
-        if document.edges:
-            im.separator()
-        for edge in list(document.edges):
-            label = f"{edge.source[:6]}:{edge.source_port} → {edge.target[:6]}:{edge.target_port}"
-            im.text(label)
-            im.same_line()
-            if im.small_button(f"✕##{edge.key()}"):
-                self.controller.remove_edge(edge)
-            im.set_item_tooltip("Remove this optical link.")
-
-    def _delete_selection(self):
-        self.graph_control.delete_selection()
-
-    def _draw_graph(self, box):
-        self.graph_control._box = box
-        self.graph_control.io = self.io
-        self.graph_control.read_only = self.controller.running
-        self.graph_control._draw_graph(box)
-        im.set_item_tooltip(
-            "Drag nodes to arrange; drag pins to connect; wheel zooms; select items and use Delete selected graph items to remove them."
-        )
-
     def _draw_easy(self, box):
         im.begin_disabled(self.controller.running)
+        # The form's inputs take the whole line otherwise; a short number does not need 500 px.
+        im.push_item_width(max(min(float(box[2]) * 0.55, 320.0), 120.0))
         self.easy.draw()
+        im.pop_item_width()
         im.end_disabled()
+        self.remember("easy", tuple(box))
 
     def _draw_results(self, box):
-        result = self.controller.result
-        if not result:
-            im.text_wrapped(
-                "Simulate a configured light path to inspect detector signals and spectral crosstalk."
-            )
-            return
+        controller = self.controller
+        self._form("calc", SPEC["results_buttons"])
+        status = controller.status or ""
+        if status.startswith("Error"):
+            im.push_style_color(Col.TEXT, (255, 115, 100, 255))
+            im.text_wrapped(status)
+            im.pop_style_color(1)
+        elif status:
+            im.text_wrapped(status)
+        if not controller.result and not controller.running:
+            im.text_wrapped("Press Calculate Emission Intensity to simulate the light path; the results appear in these tabs.")
         if im.begin_tab_bar("lightpath_results"):
-            for title in ("Signals", "Excitation", "Emission", "Detected", "Förster radius"):
+            for title in self.panel.TABS:
                 opened = im.begin_tab_item(title)
-                im.set_item_tooltip(
-                    f"Inspect calculated {title.lower()} values for this optical path."
-                )
+                im.set_item_tooltip(f"Inspect the calculated {title.lower()} values for this optical path.")
                 if opened:
-                    if title == "Signals":
-                        self._signal_table(result.get("detector_signals", []))
-                    elif title == "Förster radius":
-                        self.easy._draw_matrix(title, extract_forster(result))
-                    else:
-                        self.easy._draw_matrix(
-                            title, result.get("crosstalk_matrices", {}).get(title.lower(), {})
-                        )
+                    self.results_tab = title
+                    key = {"Förster radius": "forster"}.get(title, title.lower())
+                    self._form("table", SPEC["tables"][key])
                     im.end_tab_item()
             im.end_tab_bar()
+        self.remember("results", tuple(box))
 
-    @staticmethod
-    def _signal_table(signals):
-        columns = ("dye", "detector", "intensity")
-        if im.begin_table(
-            "optical_signals",
-            3,
-            im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.SCROLL_Y,
-        ):
-            for title in ("Fluorophore", "Detector", "Intensity"):
-                im.table_setup_column(title)
-            im.table_headers_row()
-            for row in signals:
-                im.table_next_row()
-                for key in columns:
-                    im.table_next_column()
-                    value = row.get(key, "")
-                    im.text(f"{value:.5g}" if isinstance(value, (int, float)) else str(value))
-            im.end_table()
+    # -- dialogs and files ----------------------------------------------------------------------------------- #
+    def ask_name(self, title, label, value, on_ok):
+        self.dialog = TextInputDialog(title, label, value, on_ok=on_ok)
 
     def browse(self, action):
-        from emtk.file_dialog import FileDialog
-
         self.dialog_action = action
-        self.dialog = FileDialog(
-            "Light-path graph / preset / instrument",
-            mode="open" if action == "load" else "save",
-            filters=[("Optical JSON", ["*.json"])],
-            filename="lightpath.json" if action != "load" else None,
+        names = {"load": None, "save": "lightpath.json", "instrument": "instrument_setting.json"}
+        self.dialog = FileChooser(
+            {"load": "Open Graph", "save": "Save Graph", "instrument": "Export Instrument Setting"}[action],
+            "open" if action == "load" else "save",
+            names[action],
         )
 
-    def _draw_dialog(self):
+    def _draw_dialog(self, box):
         if self.dialog is None:
             return
-        if isinstance(self.dialog, TextInputDialog):
-            if self.dialog.draw():
-                self.dialog = None
-            return
-        if im.begin("Light-path file chooser"):
-            result = self.dialog.draw()
-            if result:
-                action = {
-                    "load": self.controller.load_graph,
-                    "save": self.controller.save_graph,
-                    "preset": self.controller.save_preset,
-                    "instrument": self.controller.export_instrument,
+        dialog = self.dialog
+        if dialog.draw(box):
+            self.dialog = None
+            if isinstance(dialog, FileChooser) and dialog.result:
+                title, function = {
+                    "load": ("Load Failed", self.controller.load_graph),
+                    "save": ("Save Failed", self.controller.save_graph),
+                    "instrument": ("Export Failed", self.controller.export_instrument),
                 }[self.dialog_action]
-                self._call(action, result[0])
-                self.dialog = None
-            elif result is False:
-                self.dialog = None
-        im.end()
+                self.panel._try(title, function, dialog.result)
+                if self.dialog_action == "load":
+                    self.graph_control.fit()
+
+    def _after_poll(self):
+        """Announce what a finished backend call means to the user, as the Qt tool's message boxes did."""
+        controller, panel = self.controller, self.panel
+        if panel.message is not None and not isinstance(self.dialog, MessageDialog):
+            title, text = panel.message
+            panel.message = None
+            self.dialog = MessageDialog(title, text)
+        running = controller.running
+        if self._was_running and not running:
+            action = getattr(controller, "_action", "")
+            failed = controller.status.startswith("Error")
+            if action == "save" and not failed and controller.last_operation_id != self._last_operation:
+                self._last_operation = controller.last_operation_id
+                self.dialog = MessageDialog("Saved to MMFDB", f"Saved operation {controller.last_operation_id}")
+            elif action in ("save", "list", "get") and failed:
+                self.dialog = MessageDialog({"save": "MMFDB Save Failed"}.get(action, "MMFDB Load Failed"), controller.status[7:])
+            elif action == "list" and panel.want_list:
+                if controller.saved:
+                    panel.selected_saved = ""
+                    self.dialog = SavedChooser(self)
+                else:
+                    panel.want_list = False
+                    self.dialog = MessageDialog("MMFDB", "No saved light path simulations found.")
+            elif action == "get" and not failed:
+                self.graph_control.fit()
+        self._was_running = running
 
     def _render(self):
-        if not self._easy_placed:
-            # First frame: slide the floating easy window to the right edge,
-            # clear of the components window on the left. Only when the user
-            # has not already moved or docked it (a saved layout restores the
-            # window with its own dock id, which this must not override).
-            self._easy_placed = True
-            easy = self.docks.windows.get("easy")
-            if easy is not None and self.docks.region_of("easy") is None:
-                x, y, w, h = easy.box or (0.0, 52.0, 340.0, 560.0)
-                easy.box = (max(im.get_main_viewport().size[0] - w - 16.0, 16.0), y, w, h)
         if not self._catalogue_requested:
-            # First frame: request the MMFDB spectra catalogue, so the easy
-            # setup's spectrum/sample dropdowns open populated. The load runs
-            # on the controller's executor, so showing the window never blocks
-            # on ZMQ -- the same reason the old tool deferred it to a timer.
+            # First frame: request the spectra catalogue so the component choosers open populated; it runs on the
+            # controller's executor, so showing the window never blocks on the backend.
             self._catalogue_requested = True
             if not self.controller.probes:
                 self.controller.start("catalogue")
         self.controller.poll()
+        self._after_poll()
         width, height = im.get_main_viewport().size
-        self.docks.draw((0.0, 0.0, float(width), float(height)))
+        box = (0.0, 0.0, float(width), float(height))
+        self._follow_tour()
+        self.docks.draw(box)
         if self.graph_control.draw_context_menu():
             pass  # the popup stays open until a row is picked or focus is lost
-        self._draw_dialog()
-        self.easy.draw_dialogs((0.0, 0.0, float(width), float(height)))
+        self._draw_dialog(box)
+        self.easy.draw_dialogs(box)
+        self.help_window.draw(box)
+        self.tour.draw(float(width), float(height))
+
+    def _follow_tour(self):
+        """Bring the tab forward while a tour step points at a control inside one of the tabs."""
+        if self.tour.active and self.tour.steps:
+            step = self.tour.steps[self.tour.step_idx]
+            window = step.get("window")
+            if window in self.docks.windows:
+                self.docks.focus(window)
 
     def key(self, key, text, modifiers):
         if not self.io.want_text_input and self.graph_control.key(key, text, modifiers):
@@ -703,9 +632,16 @@ class LightPathApp(ImApp):
         else:
             super().release()
 
-    def on_paths_dropped(self, paths):
-        if paths:
-            self._call(self.controller.load_graph, paths[0])
+    def files_dropped(self, paths):
+        """A dropped ``.json`` graph replaces the document (the Qt tool's drop handler); anything else is ignored."""
+        path = next((str(p) for p in paths if str(p).endswith(".json")), "")
+        if not path or self.controller.running:
+            return False
+        self.panel._try("Load Failed", self.controller.load_graph, path)
+        self.graph_control.fit()
+        return True
+
+    on_paths_dropped = files_dropped
 
     def close(self):
         self.controller.close()

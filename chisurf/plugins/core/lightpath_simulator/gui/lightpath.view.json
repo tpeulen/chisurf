@@ -1,0 +1,457 @@
+{
+  "_comment": "Light Path Simulator, drawn by emtk.view_form over LightPathPanel (gui/panel.py). The graph itself, the connection form and the Easy Mode setup are drawn by gui/app.py (a canvas and a shared widget a spec cannot express).",
+  "toolbar": {
+    "title": "Toolbar",
+    "sections": [
+      {
+        "type": "button_row",
+        "description": "Save and load the optical graph, keep it as a preset for Easy Mode, store the simulation in MMFDB, export the instrument setting, open the guide or the help.",
+        "buttons": [
+          {
+            "action": "save_graph",
+            "label": "Save Graph",
+            "description": "Save the current graph (nodes, connections, component choices and layout) to a JSON file."
+          },
+          {
+            "action": "load_graph",
+            "label": "Load Graph",
+            "description": "Load a graph, or an Easy Mode preset, from a JSON file. You can also drop the file on the window."
+          },
+          {
+            "action": "save_preset",
+            "label": "Save Preset",
+            "description": "Save the current graph under a name as an optical path preset for Easy Mode."
+          },
+          {
+            "action": "save_mmfdb",
+            "label": "Save to MMFDB",
+            "description": "Persist the current graph and its simulation in MMFDB under a name you give."
+          },
+          {
+            "action": "load_mmfdb",
+            "label": "Load from MMFDB",
+            "description": "Choose a previously saved simulation from MMFDB and load its graph."
+          },
+          {
+            "action": "export_instrument",
+            "label": "Export",
+            "description": "Export the simulated instrument setting as a JSON file. Greyed until a simulation has been calculated."
+          },
+          {
+            "action": "guide",
+            "label": "Guide",
+            "description": "A step-by-step walk through the tool."
+          },
+          {
+            "action": "help",
+            "label": "Help",
+            "description": "The help page: components, simulation, results and files."
+          }
+        ]
+      }
+    ]
+  },
+  "palette_buttons": {
+    "title": "Palette",
+    "sections": [
+      {
+        "type": "button_row",
+        "description": "Add the selected component to the middle of the visible graph, or restore the standard two-colour path.",
+        "buttons": [
+          {
+            "action": "add_selected",
+            "label": "Add to Graph",
+            "description": "Add the component selected in the list above to the middle of the graph. Double-clicking a row does the same."
+          },
+          {
+            "action": "reset",
+            "label": "Reset to Default",
+            "description": "Restore the standard path: two lasers, a sample, a dichroic splitter, two filters and two detectors. Replaces the graph."
+          }
+        ]
+      }
+    ]
+  },
+  "palette": {
+    "title": "Optical Path",
+    "sections": [
+      {
+        "type": "custom",
+        "key": "data_table",
+        "description": "The optical components you can add to the graph. Select one and press Add to Graph, or double-click it.",
+        "options": {
+          "source": "palette_rows",
+          "editable": false,
+          "height": 150,
+          "selected_call": "select_palette",
+          "activated_call": "activate_palette",
+          "columns": [
+            {
+              "key": "title",
+              "title": "Component",
+              "description": "The kind of optical component."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "view": {
+    "sections": [
+      {
+        "type": "panel",
+        "title": "Graph view",
+        "collapsible": true,
+        "sections": [
+          {
+            "type": "button_row",
+            "description": "Arrange the nodes by signal flow, frame the whole graph, or remove the selected nodes and links.",
+            "buttons": [
+              {
+                "action": "arrange",
+                "label": "Arrange",
+                "description": "Lay out the nodes by optical signal flow and frame the complete graph."
+              },
+              {
+                "action": "fit",
+                "label": "Fit",
+                "description": "Frame the entire beam path without changing the saved node positions."
+              },
+              {
+                "action": "delete_selection",
+                "label": "Delete Selected",
+                "description": "Delete the selected nodes and connections. Greyed while nothing is selected."
+              }
+            ]
+          },
+          {
+            "type": "toggle",
+            "attr": "show_minimap",
+            "label": "Show minimap",
+            "description": "Show a small overview of the graph for navigating a large optical network."
+          }
+        ]
+      }
+    ]
+  },
+  "backend": {
+    "sections": [
+      {
+        "type": "panel",
+        "title": "Backend",
+        "collapsible": true,
+        "collapsed": true,
+        "sections": [
+          {
+            "type": "toggle_row",
+            "description": "Backend options.",
+            "items": [
+              {
+                "attr": "remote",
+                "label": "Use configured RPC server",
+                "description": "Use the existing ChiSurf/MMFDB connection and session token instead of the local scientific backend."
+              },
+              {
+                "attr": "auto_update",
+                "label": "Auto update",
+                "description": "Queue one fresh simulation after every edit of the graph or the Easy Mode setup."
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "sections": [
+              {
+                "type": "value",
+                "attr": "db_path",
+                "kind": "str",
+                "label": "Spectra database",
+                "description": "Path of the MMFDB spectra database; empty uses the configured database.",
+                "elide": "start"
+              }
+            ]
+          },
+          {
+            "type": "button_row",
+            "description": "Reload the catalogue of dye, transmission and detector spectra from the selected backend.",
+            "buttons": [
+              {
+                "action": "load_catalogue",
+                "label": "Load Catalogue",
+                "description": "Load the dye, transmission and detector spectra from the selected backend."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "mmfdb": {
+    "sections": [
+      {
+        "type": "panel",
+        "title": "MMFDB",
+        "collapsible": true,
+        "collapsed": true,
+        "sections": [
+          {
+            "type": "value",
+            "attr": "operation_name",
+            "kind": "str",
+            "label": "Name",
+            "description": "Name stored with the simulation and its MMFDB artifacts when you press Save to MMFDB."
+          }
+        ]
+      }
+    ]
+  },
+  "results_buttons": {
+    "title": "Calculate",
+    "sections": [
+      {
+        "type": "button_row",
+        "description": "Run the simulation of the current graph; stop a running backend call.",
+        "buttons": [
+          {
+            "action": "calculate",
+            "label": "Calculate Emission Intensity",
+            "description": "Propagate the spectra through the graph and fill the detector signals, the excitation, emission and detected crosstalk matrices and the Förster radii."
+          },
+          {
+            "action": "stop",
+            "label": "Stop",
+            "hidden_when": {
+              "attr": "running",
+              "equals": "false"
+            },
+            "description": "Discard the pending simulation when its backend call finishes; an MMFDB save completes consistently."
+          }
+        ]
+      }
+    ]
+  },
+  "mmfdb_list": {
+    "title": "Saved simulations",
+    "sections": [
+      {
+        "type": "custom",
+        "key": "data_table",
+        "description": "Simulations stored in MMFDB. Select one and press Load.",
+        "options": {
+          "source": "saved_rows",
+          "editable": false,
+          "height": 200,
+          "selected_call": "select_saved",
+          "activated_call": "activate_saved",
+          "columns": [
+            {
+              "key": "name",
+              "title": "Name",
+              "description": "The name the simulation was saved under."
+            },
+            {
+              "key": "operation_id",
+              "title": "Operation",
+              "description": "The MMFDB operation id."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "tables": {
+    "signals": {
+      "title": "Signals",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "Detected intensity per laser line, detector and dye.",
+          "options": {
+            "source": "signals.rows",
+            "editable": false,
+            "expand": true,
+            "columns": [
+              {
+                "key": "laser",
+                "title": "Laser Source",
+                "description": "The excitation line."
+              },
+              {
+                "key": "detector",
+                "title": "Detector Name",
+                "description": "The detector channel."
+              },
+              {
+                "key": "dye",
+                "title": "Dye",
+                "description": "The fluorophore."
+              },
+              {
+                "key": "intensity",
+                "title": "Detected Intensity",
+                "description": "Detected intensity of this dye in this channel for this laser line.",
+                "format": "%.4e"
+              }
+            ],
+            "fit_columns": true
+          }
+        }
+      ]
+    },
+    "excitation": {
+      "title": "Excitation",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "Excitation probability: laser line (rows) by dye (columns).",
+          "options": {
+            "source": "excitation.rows",
+            "columns_source": "excitation.columns",
+            "editable": false,
+            "expand": true,
+            "fit_columns": true
+          }
+        }
+      ]
+    },
+    "emission": {
+      "title": "Emission",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "Emission probability: dye (rows) by detector channel (columns).",
+          "options": {
+            "source": "emission.rows",
+            "columns_source": "emission.columns",
+            "editable": false,
+            "expand": true,
+            "fit_columns": true
+          }
+        }
+      ]
+    },
+    "detected": {
+      "title": "Detected",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "Detected crosstalk: laser line and dye (rows) by detector channel (columns).",
+          "options": {
+            "source": "detected.rows",
+            "columns_source": "detected.columns",
+            "editable": false,
+            "expand": true,
+            "fit_columns": true
+          }
+        }
+      ]
+    },
+    "forster": {
+      "title": "Förster radius",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "Förster radius of each donor and acceptor pair, from the simulated spectra.",
+          "options": {
+            "source": "forster.rows",
+            "columns_source": "forster.columns",
+            "editable": false,
+            "expand": true,
+            "fit_columns": true
+          }
+        }
+      ]
+    }
+  },
+  "connections": {
+    "sections": [
+      {
+        "type": "panel",
+        "title": "Connections",
+        "collapsible": true,
+        "collapsed": true,
+        "sections": [
+          {
+            "type": "choice",
+            "attr": "source_node",
+            "label": "From",
+            "options_source": "node_options",
+            "description": "The node producing the optical spectrum or scalar parameter."
+          },
+          {
+            "type": "value",
+            "attr": "source_port",
+            "kind": "int",
+            "label": "Out port",
+            "minimum": 0,
+            "maximum": 99,
+            "description": "Zero-based output-port index on the source node.",
+            "width": 90
+          },
+          {
+            "type": "choice",
+            "attr": "target_node",
+            "label": "To",
+            "options_source": "node_options",
+            "description": "The node that consumes the selected source output."
+          },
+          {
+            "type": "value",
+            "attr": "target_port",
+            "kind": "int",
+            "label": "In port",
+            "minimum": 0,
+            "maximum": 99,
+            "description": "Zero-based input-port index on the target node.",
+            "width": 90
+          },
+          {
+            "type": "button_row",
+            "description": "Create the connection described above, or remove the selected one.",
+            "buttons": [
+              {
+                "action": "connect_ports",
+                "label": "Connect Ports",
+                "description": "Create an optical connection from the chosen output port to the chosen input port; one source may feed each input."
+              },
+              {
+                "action": "remove_link",
+                "label": "Remove Link",
+                "description": "Remove the link selected in the list below. Greyed while none is selected. The Delete key does the same."
+              }
+            ]
+          },
+          {
+            "type": "custom",
+            "key": "data_table",
+            "description": "The optical links of the graph. Select one to remove it.",
+            "options": {
+              "source": "link_rows",
+              "editable": false,
+              "height": 110,
+              "selected_call": "select_link",
+              "delete_call": "delete_link",
+              "columns": [
+                {
+                  "key": "source",
+                  "title": "From",
+                  "description": "The node and output port the link starts at."
+                },
+                {
+                  "key": "target",
+                  "title": "To",
+                  "description": "The node and input port the link ends at."
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
