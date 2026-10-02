@@ -1,0 +1,350 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-1.00",
+    "-10",
+    "-10.00",
+    "-11.00",
+    "-2.00",
+    "-3.00",
+    "-4.00",
+    "-5",
+    "-5.00",
+    "-50",
+    "-6.00",
+    "-7.00",
+    "-8.00",
+    "-9.00",
+    "0",
+    "0.00",
+    "1",
+    "1.0",
+    "10",
+    "10.00",
+    "100",
+    "11",
+    "11.18",
+    "12.00",
+    "120",
+    "13.42",
+    "14.00",
+    "15",
+    "15.65",
+    "150",
+    "16.00",
+    "17.89",
+    "18.00",
+    "2",
+    "2.00",
+    "2.24",
+    "20",
+    "20.00",
+    "20.12",
+    "200",
+    "22.00",
+    "22.36",
+    "24.60",
+    "3",
+    "4",
+    "4.00",
+    "4.47",
+    "40",
+    "5",
+    "50",
+    "6",
+    "6.00",
+    "6.71",
+    "60",
+    "7",
+    "8",
+    "8.00",
+    "8.94",
+    "80",
+    "9",
+    "after",
+    "applyby",
+    "automaticlevels",
+    "before",
+    "blanking(dropwhatleaves)",
+    "browse",
+    "ch0",
+    "colormap",
+    "database",
+    "displacement/px",
+    "displaygamma",
+    "drifttrace",
+    "dx",
+    "dx/px",
+    "dy",
+    "dy/px",
+    "d|",
+    "d|/px",
+    "estimator",
+    "exportshifts",
+    "exportstack",
+    "firstframe",
+    "frame",
+    "gray",
+    "guide",
+    "help",
+    "image",
+    "inferno",
+    "intensity",
+    "magma",
+    "maxdrift24.6pxover12frames.",
+    "measure",
+    "measureon",
+    "previousframe",
+    "projection",
+    "reference",
+    "resetview",
+    "settings",
+    "shifts",
+    "smoothing(σpx)",
+    "stackmean",
+    "sub-pixelrefinement",
+    "viridis",
+    "wrapping(keepallsignal)",
+    "x[px]",
+    "xwq_hq52rl_t0f9xjk3g5c00000gn/t/tmp4qnsz5gm/drift.tif",
+    "y[px]"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what drift correction measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Measure",
+      "id": "Measure##measure",
+      "tooltip": "Measure the inter-frame drift of the selected channel. Choosing a file measures it at once; press this after changing the reference, the estimator or the channel."
+    },
+    {
+      "kind": "button",
+      "label": "Export stack",
+      "id": "Export stack##request_export_stack",
+      "tooltip": "Write the drift-corrected stack as a multi-page TIFF (every channel is corrected with the shift measured on one)."
+    },
+    {
+      "kind": "button",
+      "label": "Export shifts",
+      "id": "Export shifts##request_export_shifts",
+      "tooltip": "Write the per-frame displacements to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "The stack to correct: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image. Photon streams are corrected photon by photon, so the result stays usable for lifetime and correlation analysis."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_file",
+      "tooltip": "Browse for an image stack or photon-stream file on disk."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_database",
+      "tooltip": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+    },
+    {
+      "kind": "input_text",
+      "label": "smooth",
+      "id": "##smooth",
+      "tooltip": "Gaussian blur applied to the correlation before the peak is located. Guards against a noise-driven tie between two neighbouring pixels flipping the answer by one pixel. Zero disables it."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Sub-pixel refinement",
+      "id": "Sub-pixel refinement##subpixel",
+      "tooltip": "Refine each integer peak by fitting a parabola through its neighbours. Useful for slow drift measured over many frames; the correction itself is still applied in whole pixels."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what drift correction measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Measure",
+      "id": "Measure##measure",
+      "tooltip": "Measure the inter-frame drift of the selected channel. Choosing a file measures it at once; press this after changing the reference, the estimator or the channel."
+    },
+    {
+      "kind": "button",
+      "label": "Export stack",
+      "id": "Export stack##request_export_stack",
+      "tooltip": "Write the drift-corrected stack as a multi-page TIFF (every channel is corrected with the shift measured on one)."
+    },
+    {
+      "kind": "button",
+      "label": "Export shifts",
+      "id": "Export shifts##request_export_shifts",
+      "tooltip": "Write the per-frame displacements to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "The stack to correct: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image. Photon streams are corrected photon by photon, so the result stays usable for lifetime and correlation analysis."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_file",
+      "tooltip": "Browse for an image stack or photon-stream file on disk."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_database",
+      "tooltip": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+    },
+    {
+      "kind": "input_text",
+      "label": "smooth",
+      "id": "##smooth",
+      "tooltip": "Gaussian blur applied to the correlation before the peak is located. Guards against a noise-driven tie between two neighbouring pixels flipping the answer by one pixel. Zero disables it."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Sub-pixel refinement",
+      "id": "Sub-pixel refinement##subpixel",
+      "tooltip": "Refine each integer peak by fitting a parabola through its neighbours. Useful for slow drift measured over many frames; the correction itself is still applied in whole pixels."
+    },
+    {
+      "kind": "combo",
+      "label": "Colormap",
+      "id": "##Colormap",
+      "tooltip": "Color scale of the image; pixel values and fits remain unchanged."
+    },
+    {
+      "kind": "slider_float",
+      "label": "Display gamma",
+      "id": "##Display gamma",
+      "tooltip": "Lift dim structures with gamma above one; display changes do not affect detection or fitting."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Automatic levels",
+      "id": "Automatic levels",
+      "tooltip": "Map the minimum and maximum finite image values to the color range."
+    },
+    {
+      "kind": "button",
+      "label": "Reset view",
+      "id": "Reset view",
+      "tooltip": "Restore the full-image view after zooming or panning."
+    },
+    {
+      "kind": "combo",
+      "label": "Colormap",
+      "id": "##Colormap",
+      "tooltip": "Color scale of the image; pixel values and fits remain unchanged."
+    },
+    {
+      "kind": "slider_float",
+      "label": "Display gamma",
+      "id": "##Display gamma",
+      "tooltip": "Lift dim structures with gamma above one; display changes do not affect detection or fitting."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Automatic levels",
+      "id": "Automatic levels",
+      "tooltip": "Map the minimum and maximum finite image values to the color range."
+    },
+    {
+      "kind": "button",
+      "label": "Reset view",
+      "id": "Reset view",
+      "tooltip": "Restore the full-image view after zooming or panning."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what drift correction measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Measure",
+      "id": "Measure##measure",
+      "tooltip": "Measure the inter-frame drift of the selected channel. Choosing a file measures it at once; press this after changing the reference, the estimator or the channel."
+    },
+    {
+      "kind": "button",
+      "label": "Export stack",
+      "id": "Export stack##request_export_stack",
+      "tooltip": "Write the drift-corrected stack as a multi-page TIFF (every channel is corrected with the shift measured on one)."
+    },
+    {
+      "kind": "button",
+      "label": "Export shifts",
+      "id": "Export shifts##request_export_shifts",
+      "tooltip": "Write the per-frame displacements to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "The stack to correct: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image. Photon streams are corrected photon by photon, so the result stays usable for lifetime and correlation analysis."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_file",
+      "tooltip": "Browse for an image stack or photon-stream file on disk."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_database",
+      "tooltip": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+    },
+    {
+      "kind": "input_text",
+      "label": "smooth",
+      "id": "##smooth",
+      "tooltip": "Gaussian blur applied to the correlation before the peak is located. Guards against a noise-driven tie between two neighbouring pixels flipping the answer by one pixel. Zero disables it."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Sub-pixel refinement",
+      "id": "Sub-pixel refinement##subpixel",
+      "tooltip": "Refine each integer peak by fitting a parabola through its neighbours. Useful for slow drift measured over many frames; the correction itself is still applied in whole pixels."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

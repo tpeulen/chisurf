@@ -41,7 +41,7 @@ afterwards.
    frame* for a long series that bleaches or wanders.
 4. **Apply by** — *Wrapping* keeps all signal but makes the edge strip
    meaningless; *Blanking* drops what leaves the frame.
-5. Press **▶ Measure**.
+5. Press **Measure**. Choosing a file measures it at once; press **Measure** again after changing the reference, the channel or the estimator.
 
 ```{figure} figures/drift_workspace.png
 :name: fig-drift-workspace
@@ -89,9 +89,9 @@ the correction did not work — do not export it.
 
 ## Export
 
-* **💾 Export shifts** — a CSV with `frame, dx_px, dy_px, magnitude_px`, for
+* **Export shifts** — a CSV with `frame, dx_px, dy_px, magnitude_px`, for
   plotting the drift rate or feeding another tool.
-* **💾 Export stack** — the corrected stack as a multi-page TIFF, all channels
+* **Export stack** — the corrected stack as a multi-page TIFF, all channels
   corrected with the single estimate.
 
 ## Correcting before an image correlation

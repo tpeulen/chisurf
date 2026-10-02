@@ -1,0 +1,83 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "applyby",
+    "browse",
+    "chooseanimageorpressmeasurethedisplacementofeveryframeisdrawnhere.",
+    "database",
+    "drifttrace",
+    "estimator",
+    "exportshifts",
+    "exportstack",
+    "firstframe",
+    "guide",
+    "help",
+    "image",
+    "measure",
+    "measureon",
+    "pickafile,droponehere,orloadfromthedatabase",
+    "projection",
+    "reference",
+    "settings",
+    "shifts",
+    "wrapping(keepallsignal)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what drift correction measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Measure",
+      "id": "Measure##measure",
+      "tooltip": "Measure the inter-frame drift of the selected channel. Choosing a file measures it at once; press this after changing the reference, the estimator or the channel."
+    },
+    {
+      "kind": "button",
+      "label": "Export stack",
+      "id": "Export stack##request_export_stack",
+      "tooltip": "Write the drift-corrected stack as a multi-page TIFF (every channel is corrected with the shift measured on one)."
+    },
+    {
+      "kind": "button",
+      "label": "Export shifts",
+      "id": "Export shifts##request_export_shifts",
+      "tooltip": "Write the per-frame displacements to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "The stack to correct: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image. Photon streams are corrected photon by photon, so the result stays usable for lifetime and correlation analysis."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_file",
+      "tooltip": "Browse for an image stack or photon-stream file on disk."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_database",
+      "tooltip": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
