@@ -1,0 +1,634 @@
+{
+  "_comment": "Colocalization, drawn by emtk. The Qt tool's AutoForm spec is coloc.view.json.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Settings",
+      "dock": "settings",
+      "n_col": 1,
+      "description": "The image, the channel pair, the background and thresholds, the scatter gate, the region of interest, the object analysis and the significance settings.",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "button_row",
+              "description": "Compute the colocalization of the selected channel pair, estimate the backgrounds, or write the coefficients.",
+              "buttons": [
+                {
+                  "action": "run_coloc",
+                  "label": "Run",
+                  "description": "Compute the colocalization coefficients for the selected channel pair, in the background."
+                },
+                {
+                  "action": "estimate_background",
+                  "label": "Estimate background",
+                  "description": "Set both channel backgrounds from the low intensity quantile and recompute."
+                },
+                {
+                  "action": "request_export",
+                  "label": "Export CSV",
+                  "description": "Write the coefficient table, with the source and the channel identities, to a CSV file."
+                }
+              ]
+            }
+          ],
+          "description": "The actions."
+        },
+        {
+          "type": "value",
+          "attr": "filename",
+          "label": "Image",
+          "kind": "str",
+          "call": "commit_filename",
+          "elide": "start",
+          "placeholder": "pick a file, drop one here, or load from the database",
+          "description": "The image to analyse: a TIFF stack, or a photon-stream file (PTU/HT3/...) reconstructed into a confocal-scan image - one channel per detector window (the Detectors tab), or per raw routing channel when there is no window. Choosing or dropping a file loads and runs it. Press Enter to select a typed path."
+        },
+        {
+          "type": "button_row",
+          "description": "Pick the photon file from disk or from the database.",
+          "buttons": [
+            {
+              "action": "open_file",
+              "label": "Browse",
+              "description": "Browse for a photon imaging file on disk."
+            },
+            {
+              "action": "open_database",
+              "label": "Database",
+              "description": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+            }
+          ]
+        },
+        {
+          "type": "choice",
+          "attr": "view_tab",
+          "label": "View",
+          "options_source": "tab_titles",
+          "call": "show_tab",
+          "description": "Bring any result view forward, also when the row of tabs is wider than the window."
+        },
+        {
+          "type": "info",
+          "source": "summary_text",
+          "description": "The loaded image, the pair of channels and the Pearson coefficient; a warning of the analysis when there is one."
+        },
+        {
+          "type": "choice",
+          "attr": "channel_a",
+          "label": "Channel A",
+          "options_source": "channel_names",
+          "call": "refresh_display",
+          "description": "First channel of the pair. With a detector setup this lists its named windows (green, red, …); otherwise the channels found in the file (available after the first run)."
+        },
+        {
+          "type": "choice",
+          "attr": "channel_b",
+          "label": "Channel B",
+          "options_source": "channel_names",
+          "call": "refresh_display",
+          "description": "Second channel of the pair. Manders M1 answers 'how much of A sits with B', M2 the mirror question, so the A/B order matters for those two coefficients."
+        },
+        {
+          "type": "value",
+          "attr": "frame",
+          "label": "Frame",
+          "kind": "int",
+          "minimum": -1,
+          "maximum": 100000,
+          "step": 1,
+          "description": "Which frame of the stack to analyse. -1 (default) sums every frame, which maximises the signal-to-noise of the coefficients; pick a single frame to follow a time series.",
+          "style": "spin"
+        },
+        {
+          "type": "choice",
+          "attr": "channel_axis_mode",
+          "label": "Axis order",
+          "options": [
+            "auto",
+            "first axis"
+          ],
+          "description": "Only for images whose axes are unlabelled. 'auto' treats a short leading axis (≤ 4 planes) as the channels and anything longer as frames; 'first axis' forces the leading axis to be the channels. TIFFs written with ImageJ/OME metadata are read exactly as labelled and ignore this."
+        },
+        {
+          "type": "panel",
+          "title": "Background / thresholds",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "auto_background",
+              "label": "Auto background",
+              "description": "Estimate each channel's background as a low intensity quantile of that channel and subtract it. Background offsets bias Pearson and, much more strongly, Manders' overlap coefficient, so subtracting them is not optional for comparable numbers."
+            },
+            {
+              "type": "value",
+              "attr": "background_quantile",
+              "label": "Quantile",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 0.5,
+              "step": 0.01,
+              "decimals": 3,
+              "description": "Quantile used by the automatic background estimate. 0.05 (the lower 5 %) is the conventional choice: low enough to sit in dark/out-of-cell pixels, high enough not to be a single outlier.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "background_a",
+              "label": "Background A",
+              "kind": "float",
+              "decimals": 4,
+              "description": "Intensity subtracted from channel A before anything else. Filled in by the estimate; type your own value (e.g. a measured dark level) to override it.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "background_b",
+              "label": "Background B",
+              "kind": "float",
+              "decimals": 4,
+              "description": "Intensity subtracted from channel B before anything else.",
+              "style": "spin"
+            },
+            {
+              "type": "toggle",
+              "attr": "auto_threshold",
+              "label": "Costes thresholds",
+              "description": "Derive both thresholds from the data instead of by hand: an orthogonal regression of the channel pair is walked downwards until the pixels below it are no longer positively correlated. Everything below that point is indistinguishable from uncorrelated background. Hand-picked thresholds are the single largest source of irreproducible colocalization numbers."
+            },
+            {
+              "type": "value",
+              "attr": "threshold_a",
+              "label": "Threshold A",
+              "kind": "float",
+              "decimals": 4,
+              "description": "A pixel counts as 'channel A present' above this background-subtracted intensity. Filled in by the Costes search when that is enabled.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "threshold_b",
+              "label": "Threshold B",
+              "kind": "float",
+              "decimals": 4,
+              "description": "A pixel counts as 'channel B present' above this background-subtracted intensity.",
+              "style": "spin"
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "panel",
+          "title": "Scatter gate",
+          "collapsed": true,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "gate_enabled",
+              "label": "Gate active",
+              "description": "Restrict the gated coefficients to a rectangle in the intensity-vs-intensity plane. Drag the blue rectangle on the 'Intensity scatter' tab to set it, or type the bounds below; the gated pixels are highlighted in the 'Colocalized pixels' map."
+            },
+            {
+              "type": "toggle",
+              "attr": "paint_gate",
+              "label": "Paint gate",
+              "description": "Paint a population on the intensity scatter with the brush; it combines with the typed box and the drawn regions. Right-drag pans while painting."
+            },
+            {
+              "type": "value",
+              "attr": "gate_a_min",
+              "label": "A min",
+              "kind": "float",
+              "decimals": 4,
+              "description": "Lower channel-A intensity of the gate rectangle.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "gate_a_max",
+              "label": "A max",
+              "kind": "float",
+              "decimals": 4,
+              "description": "Upper channel-A intensity of the gate rectangle.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "gate_b_min",
+              "label": "B min",
+              "kind": "float",
+              "decimals": 4,
+              "description": "Lower channel-B intensity of the gate rectangle.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "gate_b_max",
+              "label": "B max",
+              "kind": "float",
+              "decimals": 4,
+              "description": "Upper channel-B intensity of the gate rectangle.",
+              "style": "spin"
+            },
+            {
+              "type": "custom",
+              "key": "region_list",
+              "target": "gates",
+              "title": "Gate regions",
+              "options": {
+                "name": "gates"
+              },
+              "description": "Every gate on the intensity scatter in one list: the typed box, a painted population, an ellipse or polygon drawn on the plane. Tick to include, ~ for everything outside, and pick how they combine — a cloud AND a threshold, not one overriding the other."
+            },
+            {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "label": "Clear gate",
+                  "action": "clear_gate",
+                  "description": "Drop every gate region and recompute the coefficients over all thresholded pixels."
+                }
+              ],
+              "description": "Drop every gate region."
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "panel",
+          "title": "Region of interest",
+          "collapsed": true,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "paint_roi",
+              "label": "Paint ROI",
+              "description": "Paint an analysis region on the Channel A map with the brush; releasing the pointer recomputes with that region. (The Qt tool painted with a modifier key.)"
+            },
+            {
+              "type": "toggle",
+              "attr": "erase",
+              "label": "Erase",
+              "description": "Erase painted pixels (region or scatter gate) with the same brush instead of adding."
+            },
+            {
+              "type": "value",
+              "attr": "brush_size",
+              "label": "Brush (px)",
+              "kind": "int",
+              "minimum": 1,
+              "maximum": 64,
+              "description": "Edge length of the square brush used to paint the region of interest on the Channel A map. Painting restricts every coefficient — thresholds, the null model and the profiles — to that region, the way a hand-drawn cell outline should.",
+              "style": "spin"
+            },
+            {
+              "type": "button_row",
+              "buttons": [
+                {
+                  "label": "Clear ROI",
+                  "action": "clear_roi",
+                  "description": "Discard the painted region and analyse the whole image again."
+                }
+              ],
+              "description": "Discard the painted region."
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "panel",
+          "title": "Objects (punctate signal)",
+          "collapsed": true,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "object_analysis",
+              "label": "Object analysis",
+              "description": "Segment both channels into discrete particles and count how many coincide. This is the right question for puncta (vesicles, foci): on sparse spots the intensity coefficients are dominated by the empty background between them and report almost nothing."
+            },
+            {
+              "type": "value",
+              "attr": "object_distance",
+              "label": "Tolerance (px)",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "step": 0.5,
+              "decimals": 2,
+              "description": "Centre-to-centre distance within which two objects count as coincident. Set it to the optical resolution — nothing can be localised better than the PSF, so demanding an identical centroid would only measure noise.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "object_min_size",
+              "label": "Min size (px)",
+              "kind": "int",
+              "minimum": 1,
+              "maximum": 10000,
+              "description": "Objects smaller than this are discarded as noise.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "object_smoothing",
+              "label": "Smoothing (σ px)",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 10.0,
+              "step": 0.5,
+              "decimals": 2,
+              "description": "Gaussian smoothing applied before segmenting; use it when shot noise fragments single objects into several.",
+              "style": "spin"
+            },
+            {
+              "type": "toggle",
+              "attr": "object_split",
+              "label": "Split touching objects",
+              "description": "Separate objects that touch, with a distance-transform watershed. Helps dense puncta; over-segments irregular shapes."
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "panel",
+          "title": "Significance / profile",
+          "collapsed": true,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "costes_test",
+              "label": "Costes randomization test",
+              "description": "Scramble one channel in PSF-sized blocks many times and compare the measured correlation against that null distribution. It answers the question the coefficients cannot: is this correlation more than what random co-occurrence of two dense stainings would give? Colocalization is conventionally called significant at p > 0.95. Costs one correlation per randomization."
+            },
+            {
+              "type": "value",
+              "attr": "costes_block",
+              "label": "Block (px)",
+              "kind": "int",
+              "minimum": 1,
+              "maximum": 64,
+              "description": "Edge length of the scrambled blocks. Use the PSF width in pixels: smaller blocks destroy the image's own texture and make almost anything look significant, larger ones throw away resolution.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "costes_randomizations",
+              "label": "Randomizations",
+              "kind": "int",
+              "minimum": 10,
+              "maximum": 10000,
+              "description": "Size of the null distribution. 100–200 is enough for a p-value quoted to two decimals; more only sharpens the tail.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "costes_seed",
+              "label": "Seed",
+              "kind": "int",
+              "minimum": 0,
+              "maximum": 1000000,
+              "description": "Seed of the random generator, so the same image and settings always give the same p-value (a reported number stays reproducible).",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "ccf_max_shift",
+              "label": "van Steensel shift (px)",
+              "kind": "int",
+              "minimum": 0,
+              "maximum": 200,
+              "description": "Largest horizontal shift of the cross-correlation profile; 0 disables it. The profile peaks at 0 for true colocalization and away from 0 when the channels are misregistered — the standard check for chromatic aberration before trusting any coefficient.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "profile_bins",
+              "label": "Profile bins",
+              "kind": "int",
+              "minimum": 4,
+              "maximum": 200,
+              "description": "Number of intensity bins in the 'PCC vs intensity' profiles. Fewer bins average more pixels per point (smaller error bars), more bins resolve where in the brightness range the correlation changes.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "bins",
+              "label": "Histogram bins",
+              "kind": "int",
+              "minimum": 8,
+              "maximum": 1024,
+              "description": "Bins per axis of the intensity scatter (joint histogram). More bins resolve fine structure in the cloud; fewer make sparse images look continuous.",
+              "style": "spin"
+            },
+            {
+              "type": "toggle",
+              "attr": "log_histogram",
+              "label": "Log histogram",
+              "description": "Show the intensity scatter on a logarithmic count scale, so the sparse bright tail stays visible next to the dense background cloud."
+            }
+          ],
+          "collapsible": true
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Coefficients",
+      "dock": "views",
+      "description": "Every coefficient of the selected channel pair.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "Coefficients",
+          "description": "Colocalization coefficients (see Help for what each one answers); 'n/a' when a coefficient is undefined for this selection.",
+          "options": {
+            "source": "metric_rows",
+            "expand": true,
+            "fit_columns": true,
+            "columns": [
+              {
+                "key": "name",
+                "title": "Coefficient",
+                "width": 260,
+                "description": "Colocalization coefficient (see the Help for what each one answers)."
+              },
+              {
+                "key": "value",
+                "title": "Value",
+                "width": 140,
+                "description": "Computed value; 'n/a' when it is undefined for this selection (e.g. no pixel above threshold)."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Channels",
+      "dock": "views",
+      "description": "The background-subtracted maps of channel A and channel B side by side; paint a region of interest on channel A.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "channels",
+          "title": "Channels",
+          "description": "Background-subtracted maps of channel A (paint on it to restrict the analysis to a region of interest) and channel B.",
+          "options": {
+            "name": "Channels"
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Colocalized pixels",
+      "dock": "views",
+      "description": "Pixels above both thresholds; gated pixels are brighter when a scatter gate is active.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Colocalized pixels",
+          "description": "Pixels above both thresholds; gated pixels are brighter when a scatter gate is active.",
+          "options": {
+            "name": "Colocalized pixels",
+            "source": "coloc_mask_image",
+            "colormap_attr": "colormap",
+            "empty": "No colocalized pixels yet. Choose an image and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Intensity scatter",
+      "dock": "views",
+      "description": "Joint histogram of the two channels (A horizontal, B vertical); drag the blue region handles to gate a pixel population, or paint one.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "plane",
+          "title": "Intensity scatter",
+          "description": "Joint histogram of the two channels (A horizontal, B vertical); drag the blue region handles to gate a pixel population, or paint one.",
+          "options": {
+            "name": "gates"
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "van Steensel CCF",
+      "dock": "views",
+      "description": "Pearson coefficient against the horizontal shift of channel B.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "series_plot",
+          "title": "van Steensel CCF",
+          "description": "The profile peaks at 0 for true colocalization and away from 0 when the channels are misregistered. Set van Steensel shift above 0 and press Run.",
+          "options": {
+            "source": "ccf_series",
+            "x_label": "shift / px",
+            "y_label": "PCC",
+            "legend": false,
+            "empty": "No CCF yet. Set van Steensel shift (Significance / profile) above 0 and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "CCF map (2-D)",
+      "dock": "views",
+      "description": "The full 2-D cross-correlation plane: the peak sits at the shift that realigns the channels.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "CCF map (2-D)",
+          "description": "The full 2-D cross-correlation plane: the peak sits at the shift that realigns the channels.",
+          "options": {
+            "name": "CCF map",
+            "source": "ccf_map_image",
+            "colormap_attr": "colormap",
+            "empty": "No CCF map yet. Set van Steensel shift above 0 and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "PCC vs intensity",
+      "dock": "views",
+      "description": "Pearson coefficient in bins of channel A, channel B and their ratio.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "series_plot",
+          "title": "PCC vs intensity",
+          "description": "Where in the brightness range the correlation holds.",
+          "options": {
+            "source": "profile_series",
+            "x_label": "intensity / ratio",
+            "y_label": "PCC",
+            "legend": true,
+            "empty": "No profile yet. Choose an image and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Objects",
+      "dock": "views",
+      "description": "Segmented objects: 1 = channel A only, 2 = channel B only, 3 = both.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Objects",
+          "description": "Segmented objects: 1 = channel A only, 2 = channel B only, 3 = both.",
+          "options": {
+            "name": "Objects",
+            "source": "object_map_image",
+            "colormap_attr": "colormap",
+            "empty": "No objects yet. Turn on Object analysis (Objects) and press Run."
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Object distances",
+      "dock": "views",
+      "description": "Nearest-neighbour distances between the objects of the two channels.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "series_plot",
+          "title": "Object distances",
+          "description": "A peak at short distance is real coincidence; a broad distribution centred on the mean inter-object spacing is what chance looks like.",
+          "options": {
+            "source": "object_distance_series",
+            "x_label": "nearest-neighbour distance / px",
+            "y_label": "objects",
+            "legend": true,
+            "empty": "No distances yet. Turn on Object analysis (Objects) and press Run."
+          }
+        }
+      ]
+    }
+  ]
+}

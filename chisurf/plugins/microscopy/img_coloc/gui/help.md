@@ -7,14 +7,15 @@ question.
 
 ## Workflow
 
-1. **Pick a detector setup** (optional). Its named windows — green, red,
-   yellow… — become the channels you can choose from, so you work in the same
-   vocabulary as the rest of ChiSurf. Leave it empty to use the raw detector
-   channels stored in the file.
+1. **Define the detector windows** (optional, photon streams only) in the
+   **Detectors** tab, the Setup tool's editor (its Setup row picks a saved
+   setup). Its named windows — green, red, yellow… — become the channels you can
+   choose from, so you work in the same vocabulary as the rest of ChiSurf. With
+   no window the raw detector channels stored in the file are used.
 2. **Load an image.** Either a TIFF stack (camera data) or a photon-stream file
-   (PTU/HT3/…), which is reconstructed into a confocal-scan image. **📂** browses
-   the disk, **🗄** loads a dataset registered in the database, and dropping a
-   file on the window works too.
+   (PTU/HT3/…), which is reconstructed into a confocal-scan image. Type a path
+   into **Image** and press Enter, press **Browse** or **Database**, or drop a
+   file on the window; choosing a file loads and runs it.
 3. **Choose channel A and B.**
 4. **Set background and thresholds** — see below; this is where reproducibility
    is won or lost.
@@ -118,10 +119,10 @@ coincidence, a broad one = chance).
 
 ## Analysing only part of the image
 
-Open **Region of interest**, pick a brush size and paint on the *Channel A* map.
+Open **Region of interest**, pick a brush size and paint on the *Channel A* map (**Channels** tab).
 Background, thresholds, the null model, the profiles and every coefficient are
 then computed inside that region only, and its area fraction is reported.
-**🧽 Clear ROI** restores the whole image.
+Switch on **Paint ROI** (and **Erase** to take pixels back), paint with the brush, and release the pointer to recompute. **Clear ROI** restores the whole image.
 
 ## Headless use
 

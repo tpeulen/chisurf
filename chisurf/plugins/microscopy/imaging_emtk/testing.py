@@ -105,6 +105,15 @@ class Driver:
     def click_text(self, label: str, last: bool = False) -> None:
         self.click(self.text_rect(label, last))
 
+    def click_text_scrolling(self, label: str, x: float = 100.0) -> None:
+        """Click the drawn text *label*, first scrolling the window at column *x* with the wheel until it is on screen."""
+        for _ in range(14):
+            rect = self.text_rect(label)
+            if 0 <= rect[1] and rect[1] + rect[3] <= self.size[1] - 6:
+                break
+            self.wheel(x, min(max(rect[1], 60), self.size[1] - 60), -3 if rect[1] > 0 else 3)
+        self.click(self.text_rect(label))
+
     def drag(self, start: tuple[float, float], end: tuple[float, float], steps: int = 6) -> None:
         """Press at *start*, move to *end* in *steps* moves (a frame each), release."""
         self.app.pointer_move(*start)

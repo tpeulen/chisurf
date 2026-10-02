@@ -97,6 +97,9 @@ class ImagingToolApp(ImApp):
     def _draw_main(self, box: tuple) -> None:
         """Hook: what fills the frame under the dialogs (the dock windows)."""
         self.docks.draw(box)
+        shown = self.docks.selected.get("views")
+        if shown and hasattr(self.model, "view_tab") and shown in self.windows and self.model.view_tab != shown:
+            self.model.view_tab = shown  # the View choice follows the tab that was clicked
 
     # -- worker ----------------------------------------------------------- #
     def start_job(self, method: str) -> bool:
@@ -207,6 +210,7 @@ class ImagingToolApp(ImApp):
         options = section.get("options") or {}
         name = str(options.get("name", section.get("title", "image")))
         panel = self._panel(name, lambda key: ImagePanel(key, movie=bool(options.get("movie"))))
+        panel.canvas.image_label = str(options.get("label", section.get("title", name)))  # the legend names what is drawn
         fn = getattr(self.model, str(options.get("source", "")), None)
         array = fn() if callable(fn) else None
         marks = getattr(self.model, str(options.get("markers", "")), None)

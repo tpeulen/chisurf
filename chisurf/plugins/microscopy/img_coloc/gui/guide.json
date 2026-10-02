@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for colocalization. Declarative AutoForm view (coloc.view.json); steps target bound attributes and the CCF/image section keys. The help page carries the long form -- these steps put the checks in the order that decides whether any coefficient means anything. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for colocalization in the emtk window. Steps point at real controls; the help page carries the long form.",
   "steps": [
     {
       "title": "Every coefficient answers a different question",
@@ -8,19 +8,20 @@
     },
     {
       "title": "Load the image and name the two channels",
-      "text": "Two channels of the same field of view. Which is A and which is B matters for M1 and M2 — they are not symmetric, and reporting one without saying which channel it belongs to makes it unreadable.",
+      "text": "Two channels of the same field of view: a TIFF stack or a photon-stream file. Choosing or dropping a file loads and runs it. Which channel is A and which is B matters for M1 and M2 — they are not symmetric, and reporting one without saying which channel it belongs to makes it unreadable.",
       "target": {
-        "attr": "channel_a"
+        "name": "file",
+        "action": "Image"
       },
       "await": {
-        "hint": "Choose the image file and its two channels."
+        "hint": "Choose the image file (type a path and press Enter, Browse, or drop one)."
       }
     },
     {
       "title": "Check the registration before anything else",
       "text": "The <b>van Steensel CCF</b> shifts channel B horizontally and recomputes Pearson at every offset:<br/><br/>• a peak at shift <b>0</b> — the channels are registered and the correlation is real;<br/>• a peak <b>away from 0</b> — chromatic aberration or a misaligned detector, and <b>every coefficient is meaningless until you fix it</b>;<br/>• a <b>flat</b> profile — there is no spatial relation at all.<br/><br/>This is first for a reason. A registration error of one pixel can turn genuine colocalization into apparent exclusion, and nothing downstream will tell you.",
       "target": {
-        "attr": "ccf_max_shift"
+        "name": "Significance / profile.fold"
       }
     },
     {
@@ -34,14 +35,14 @@
       "title": "Ask whether it beats chance",
       "text": "A high coefficient on a densely labelled image can arise from nothing but the fact that both channels fill the field. The randomisation test asks the question directly — scramble one channel's blocks and recompute — and gives the coefficient a null distribution to be compared against.<br/><br/>Report the coefficient <i>with</i> that comparison. \"PCC = 0.6\" and \"PCC = 0.6, above the 99th percentile of randomised images\" are very different claims.",
       "target": {
-        "title": "Coefficients"
+        "name": "metric_rows"
       }
     },
     {
       "title": "And if the signal is punctate, count instead",
-      "text": "Pixel-wise correlation assumes the signal fills space in a way that can co-vary. <b>Punctate signal breaks that assumption</b>: two sets of spots that never quite overlap correlate at nearly zero even when every spot has a partner a pixel away, because the correlation is computed pixel by pixel and the spots are narrower than their separation.<br/><br/>For puncta, count objects and their overlaps rather than correlating pixels — and use a region to restrict the analysis to the cell rather than the whole field, since empty background contributes agreement that is about the background, not the biology.<br/><br/>The <b>?</b> button has the rest.",
+      "text": "Pixel-wise correlation assumes the signal fills space in a way that can co-vary. <b>Punctate signal breaks that assumption</b>: two sets of spots that never quite overlap correlate at nearly zero even when every spot has a partner a pixel away, because the correlation is computed pixel by pixel and the spots are narrower than their separation.<br/><br/>For puncta, count objects and their overlaps rather than correlating pixels — and use a region to restrict the analysis to the cell rather than the whole field, since empty background contributes agreement that is about the background, not the biology.<br/><br/>The <b>Help</b> button has the rest.",
       "target": {
-        "key": "region_list"
+        "name": "Objects (punctate signal).fold"
       }
     }
   ]

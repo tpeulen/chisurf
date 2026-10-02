@@ -64,11 +64,16 @@ class PlanePanel:
 
     def __init__(self, key: str, *, collection: Callable[[], Any], image: Callable[[], Any], extent: Callable[[], tuple],
                  x_label: str, y_label: str, on_change: Callable[[], None], overlay: Callable[[], list] | None = None,
-                 empty: str = "Nothing to show yet.", tooltip: str = "") -> None:
+                 empty: str = "Nothing to show yet.", tooltip: str = "", transpose: bool = False,
+                 paint: Callable[[int, int], None] | None = None, painting: Callable[[], bool] | None = None) -> None:
         self.key = key
         self.collection, self.image, self.extent = collection, image, extent
         self.x_label, self.y_label, self.on_change = x_label, y_label, on_change  # str or callable returning str
         self.overlay, self.empty, self.tooltip = overlay, empty, tooltip
+        #: the histogram is indexed [horizontal, vertical] (colocalization): drawn transposed
+        self.transpose = transpose
+        #: ``paint(i, j)`` is called for each histogram bin under the pointer while ``painting()`` is true and the button is down
+        self.paint, self.painting = paint, painting
         self.canvas = ImageCanvas(key)
         self.rect: tuple = (0.0, 0.0, 0.0, 0.0)
         self.hover = ""
@@ -96,17 +101,29 @@ class PlanePanel:
         if implot.begin_plot(f"##{self.key}", (-1.0, height), flags):
             implot.setup_axes(self.x_label() if callable(self.x_label) else self.x_label, self.y_label() if callable(self.y_label) else self.y_label)
             implot.setup_axes_limits(x0, x1, y0, y1, implot.COND_ONCE)
-            implot.plot_image("##histogram", self.canvas.texture(np.asarray(array, dtype=float)), (x0, y0), (x1, y1))
+            shown = np.asarray(array, dtype=float)
+            shown = shown.T if self.transpose else shown
+            # row 0 is the lowest value of the vertical axis: uv is flipped so it is drawn at the bottom, as an image view with y up would
+            implot.plot_image("##histogram", self.canvas.texture(shown), (x0, y0), (x1, y1), uv0=(0, 1), uv1=(1, 0))
             for i, line in enumerate(self.overlay() if self.overlay else []):
                 implot.set_next_line_style(line.get("color", (230, 230, 230, 255)), 1.5)
                 implot.plot_line(f"##overlay{i}", np.asarray(line["x"], dtype=float), np.asarray(line["y"], dtype=float))
-            self._regions()
+            used = self._regions()
+            if self.paint is not None and self.painting is not None and self.painting() and not used and implot.is_plot_hovered() and im.is_mouse_down(0):
+                position = implot.get_plot_mouse_pos()
+                ia = int((position.x - x0) / (x1 - x0) * shown.shape[1])
+                ib = int((position.y - y0) / (y1 - y0) * shown.shape[0])
+                na, nb = (shown.shape[1], shown.shape[0])
+                if 0 <= ia < na and 0 <= ib < nb:
+                    self.paint(ia, ib)
             self.rect = (*implot.get_plot_pos(), *implot.get_plot_size())
             implot.end_plot()
         if self.tooltip:
             im.set_item_tooltip(self.tooltip)
 
-    def _regions(self) -> None:
+    def _regions(self) -> bool:
+        """Draw the regions with their handles; True while a handle is held (a brush must not paint then)."""
+        used = False
         for i, entry in enumerate(self.collection()):
             if not entry.enabled:
                 continue
@@ -117,17 +134,20 @@ class PlanePanel:
                 implot.plot_line(f"{entry.name}##region{i}", points[:, 0], points[:, 1])
             if isinstance(roi, RectangleROI):
                 result = implot.drag_rect(i * 100, roi.x0, roi.y0, roi.x1, roi.y1)
+                used |= bool(result.held or result.clicked)
                 if result.modified:
                     roi.x0, roi.y0, roi.x1, roi.y1 = result.x_min, result.y_min, result.x_max, result.y_max
                     self.on_change()
             elif isinstance(roi, EllipseROI):
                 centre = implot.drag_point(i * 100, roi.cx, roi.cy)
+                used |= bool(centre.held or centre.clicked)
                 if centre.modified:
                     roi.cx, roi.cy = centre.x, centre.y
                     self.on_change()
                 for slot, attr, angle in ((1, "rx", roi.angle), (2, "ry", roi.angle + np.pi / 2)):
                     radius = getattr(roi, attr)
                     handle = implot.drag_point(i * 100 + slot, roi.cx + radius * np.cos(angle), roi.cy + radius * np.sin(angle))
+                    used |= bool(handle.held or handle.clicked)
                     if handle.modified:
                         setattr(roi, attr, float(np.hypot(handle.x - roi.cx, handle.y - roi.cy)))
                         if attr == "rx":
@@ -136,9 +156,11 @@ class PlanePanel:
             elif isinstance(roi, PolygonROI):
                 for vertex, (x, y) in enumerate(roi.vertices):
                     handle = implot.drag_point(i * 100 + vertex, float(x), float(y))
+                    used |= bool(handle.held or handle.clicked)
                     if handle.modified:
                         roi.vertices[vertex] = [handle.x, handle.y]
                         self.on_change()
+        return used
 
 
 def semicircle(n: int = 120) -> dict:
