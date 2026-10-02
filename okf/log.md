@@ -2,6 +2,13 @@
 
 ## 2026-10-01
 
+- **img_tracking emtk app at parity** (imaging family, port-incomplete row 83): the 70-line page becomes the full tool: every
+  Qt setting with its range and arrows, Track / Open / Export CSV, the movie with Play / Loop / Stop / fps / Z slice and the
+  detections of the shown frame, trajectories, MSD, track lengths and a sortable table; numbers equal the Qt window's (pinned
+  from a pre-port capture and the live Qt tool). New shared Qt-free shell `microscopy/imaging_emtk` for the four imaging tools.
+  Found: the Qt simulation-D box rounded its 1e-06 minimum to 0. emtk gaps (tour card over a control cannot be pressed, wheel
+  lost inside docked windows, 4 colormaps) in the report. [report](plugins/emtk-ports/img_tracking/REPORT.md).
+
 - **burst_bva real-input pass** (EMTK-1B follow-up): 40 click tests operate every control with pointer, keys, drag, wheel and
   host drops; they found that the four drag fields changed nothing (no live flag), that "/" and half-typed microtime ranges
   could not be typed (the field re-formatted the model each frame) and that the guide did not wait on Folder / Run; all fixed in

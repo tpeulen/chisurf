@@ -1,0 +1,1007 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "#",
+    "-100",
+    "-50",
+    "-only6trackscontributed—dfromthisfewisuncertainbytensofpercenthowevertightthe",
+    "0",
+    "0.5000",
+    "0–39",
+    "1",
+    "1.0",
+    "1.00000",
+    "1.000000",
+    "1.detect",
+    "10",
+    "10.0",
+    "10.78",
+    "100",
+    "10fps",
+    "120",
+    "140",
+    "150",
+    "160",
+    "2",
+    "2.link",
+    "20",
+    "200",
+    "250",
+    "250.0",
+    "3",
+    "3.00",
+    "3.transport",
+    "39.6",
+    "39.7",
+    "39.8",
+    "39.9",
+    "4",
+    "4.00",
+    "40",
+    "40.1",
+    "40.2",
+    "40.3",
+    "40.4",
+    "40frames,240detections(6.0perframe)",
+    "5",
+    "5.00",
+    "5.52",
+    "50",
+    "6",
+    "6.35",
+    "6.58",
+    "6.67",
+    "60",
+    "6tracks,d=0.5581±0.098",
+    "6tracks,medianlength40,longest40",
+    "7",
+    "7.24",
+    "8",
+    "80",
+    "9",
+    "alpha=1(fixed)",
+    "automaticlevels",
+    "background",
+    "bootstrapresamples",
+    "channel",
+    "colormap",
+    "curvelooks",
+    "d=0.5581±0.098px²/frame",
+    "detected/selected",
+    "detector",
+    "displaygamma",
+    "exportcsv",
+    "field[px]",
+    "fit",
+    "fitanomalousexponent",
+    "frameinterval[s]",
+    "frames",
+    "from6tracksover9msdpoints",
+    "gray",
+    "guide",
+    "help",
+    "imagestack",
+    "inferno",
+    "intensity",
+    "lag",
+    "localisationerror=0px",
+    "loop",
+    "magma",
+    "maxframes",
+    "maxgap[frames]",
+    "maxstep[px]",
+    "measured",
+    "minarea[px]",
+    "minseparation[px]",
+    "mintracklength",
+    "movie",
+    "msd",
+    "net[px]",
+    "open",
+    "particles",
+    "pathofamovie,ordropafilehere",
+    "pixelsize[µm]",
+    "play",
+    "playbackspeed",
+    "points",
+    "quantile",
+    "readwithcare",
+    "report",
+    "resetview",
+    "seed",
+    "settings",
+    "simulate",
+    "simulateinstead",
+    "spotamplitude",
+    "stop",
+    "threshold[σ]",
+    "track",
+    "tracklength/frames",
+    "tracklengths",
+    "tracks",
+    "tracksdrawn",
+    "trajectories",
+    "trued[px²/frame]",
+    "viridis",
+    "wavelet",
+    "x/px",
+    "x[px]",
+    "y/px",
+    "y[px]",
+    "zslice"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what particle tracking measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Track",
+      "id": "Track##track",
+      "tooltip": "Detect particles in every frame, link them into trajectories, and fit the diffusion coefficient. Runs in the background; the status line counts the frames."
+    },
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open##open_file",
+      "tooltip": "Choose an image stack or photon-stream file to track."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write every linked detection (track, frame, y, x, intensity) to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "TIFF-like image stack or photon-stream file. Tracking runs on one channel at a time, because combining channels first would blur the very spots it has to localise."
+    },
+    {
+      "kind": "input_text",
+      "label": "channel",
+      "id": "##channel",
+      "tooltip": "Which channel to track in."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frames",
+      "id": "##max_frames",
+      "tooltip": "Track at most this many frames; 0 uses all of them. Lower it for a first look at a long acquisition."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Simulate",
+      "id": "Simulate##use_simulation",
+      "tooltip": "Track a simulated movie instead of the loaded file."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_diffusion",
+      "id": "##sim_diffusion",
+      "tooltip": "Diffusion coefficient of the simulated particles, in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_particles",
+      "id": "##sim_n_particles",
+      "tooltip": "How many particles. Crowding is what breaks tracking: when particles come within the linking distance of one another the assignment is genuinely ambiguous and identities get swapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_frames",
+      "id": "##sim_n_frames",
+      "tooltip": "Number of simulated frames."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_size",
+      "id": "##sim_size",
+      "tooltip": "Width and height of the simulated frame. Memory grows as frames × size²; a very large request is refused rather than allowed to exhaust the machine."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_amplitude",
+      "id": "##sim_amplitude",
+      "tooltip": "Peak counts of a particle above background."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_background",
+      "id": "##sim_background",
+      "tooltip": "Background level; shot noise is applied on top."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_seed",
+      "id": "##sim_seed",
+      "tooltip": "Random seed, so a simulation can be reproduced."
+    },
+    {
+      "kind": "input_text",
+      "label": "threshold",
+      "id": "##threshold",
+      "tooltip": "Detection threshold in robust standard deviations of the wavelet response. Check the detections per frame in the report against what you expect before lowering it — noise admitted here becomes short spurious tracks that bias everything downstream."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_area",
+      "id": "##min_area",
+      "tooltip": "Smallest connected bright region that can be a particle. A diffraction-limited spot is always wider than one pixel; a dead or hot camera pixel is exactly one."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_separation",
+      "id": "##min_separation",
+      "tooltip": "Two particles closer than this in the same frame are collapsed to the brighter one. Spots nearer than the point-spread function cannot be told apart anyway, and admitting both invents a particle for the linker to mis-assign."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_distance",
+      "id": "##max_distance",
+      "tooltip": "Largest displacement that may be called the same particle between consecutive frames. This is the whole safety margin — set it from the physics (a Brownian particle moves about sqrt(4·D·dt) per frame), never from what makes the tracks look longest."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frame_gap",
+      "id": "##max_frame_gap",
+      "tooltip": "How many missing frames a track may bridge; 0 disables gap closing. Every closed gap asserts that nothing else could have been there, so keep it small and check what changing it does to the answer."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size",
+      "id": "##pixel_size",
+      "tooltip": "Physical pixel size. Leave at 1 to report D in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "frame_interval",
+      "id": "##frame_interval",
+      "tooltip": "Time between frames. Leave at 1 to report D per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_track_length",
+      "id": "##min_track_length",
+      "tooltip": "Shortest track admitted to the fit. Short tracks are not merely noisy but biased: a particle is likelier to be found twice in a row if it happened to stay put, so the shortest tracks over-represent the slowest motion."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fit anomalous exponent",
+      "id": "Fit anomalous exponent##fit_alpha",
+      "tooltip": "Fit α as well as D instead of holding it at 1. Do this only when the question actually is whether the motion is anomalous: α and D are nearly degenerate, and fitting both roughly quadruples the spread of D."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bootstrap",
+      "id": "##n_bootstrap",
+      "tooltip": "Resamples of the track set behind the error bars. The fit covariance cannot be used here — MSD lags share displacements and are strongly correlated, so its error bar covers the truth about one run in five."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_drawn_tracks",
+      "id": "##max_drawn_tracks",
+      "tooltip": "Upper limit of trajectories drawn in the plot, longest first. The fit always uses all of them."
+    },
+    {
+      "kind": "button",
+      "label": "Play",
+      "id": "Play##movie_play",
+      "tooltip": "Play the frame stack; it stops at the last frame unless Loop is on."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Loop",
+      "id": "Loop##movie_loop",
+      "tooltip": "Wrap around to the first frame at the end of the stack."
+    },
+    {
+      "kind": "button",
+      "label": "Stop",
+      "id": "Stop##movie_stop",
+      "tooltip": "Stop playback and return to the first frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "fps",
+      "id": "##fps",
+      "tooltip": "Playback speed in frames per second (1 to 120)."
+    },
+    {
+      "kind": "slider_int",
+      "label": "Z slice",
+      "id": "Z slice",
+      "tooltip": "Browse the axial stack; image picks and bead overlays refer to this slice."
+    },
+    {
+      "kind": "combo",
+      "label": "Colormap",
+      "id": "##Colormap",
+      "tooltip": "Color scale of the image; pixel values and fits remain unchanged."
+    },
+    {
+      "kind": "slider_float",
+      "label": "Display gamma",
+      "id": "##Display gamma",
+      "tooltip": "Lift dim structures with gamma above one; display changes do not affect detection or fitting."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Automatic levels",
+      "id": "Automatic levels",
+      "tooltip": "Map the minimum and maximum finite image values to the color range."
+    },
+    {
+      "kind": "button",
+      "label": "Reset view",
+      "id": "Reset view",
+      "tooltip": "Restore the full-image view after zooming or panning."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what particle tracking measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Track",
+      "id": "Track##track",
+      "tooltip": "Detect particles in every frame, link them into trajectories, and fit the diffusion coefficient. Runs in the background; the status line counts the frames."
+    },
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open##open_file",
+      "tooltip": "Choose an image stack or photon-stream file to track."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write every linked detection (track, frame, y, x, intensity) to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "TIFF-like image stack or photon-stream file. Tracking runs on one channel at a time, because combining channels first would blur the very spots it has to localise."
+    },
+    {
+      "kind": "input_text",
+      "label": "channel",
+      "id": "##channel",
+      "tooltip": "Which channel to track in."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frames",
+      "id": "##max_frames",
+      "tooltip": "Track at most this many frames; 0 uses all of them. Lower it for a first look at a long acquisition."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Simulate",
+      "id": "Simulate##use_simulation",
+      "tooltip": "Track a simulated movie instead of the loaded file."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_diffusion",
+      "id": "##sim_diffusion",
+      "tooltip": "Diffusion coefficient of the simulated particles, in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_particles",
+      "id": "##sim_n_particles",
+      "tooltip": "How many particles. Crowding is what breaks tracking: when particles come within the linking distance of one another the assignment is genuinely ambiguous and identities get swapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_frames",
+      "id": "##sim_n_frames",
+      "tooltip": "Number of simulated frames."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_size",
+      "id": "##sim_size",
+      "tooltip": "Width and height of the simulated frame. Memory grows as frames × size²; a very large request is refused rather than allowed to exhaust the machine."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_amplitude",
+      "id": "##sim_amplitude",
+      "tooltip": "Peak counts of a particle above background."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_background",
+      "id": "##sim_background",
+      "tooltip": "Background level; shot noise is applied on top."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_seed",
+      "id": "##sim_seed",
+      "tooltip": "Random seed, so a simulation can be reproduced."
+    },
+    {
+      "kind": "input_text",
+      "label": "threshold",
+      "id": "##threshold",
+      "tooltip": "Detection threshold in robust standard deviations of the wavelet response. Check the detections per frame in the report against what you expect before lowering it — noise admitted here becomes short spurious tracks that bias everything downstream."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_area",
+      "id": "##min_area",
+      "tooltip": "Smallest connected bright region that can be a particle. A diffraction-limited spot is always wider than one pixel; a dead or hot camera pixel is exactly one."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_separation",
+      "id": "##min_separation",
+      "tooltip": "Two particles closer than this in the same frame are collapsed to the brighter one. Spots nearer than the point-spread function cannot be told apart anyway, and admitting both invents a particle for the linker to mis-assign."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_distance",
+      "id": "##max_distance",
+      "tooltip": "Largest displacement that may be called the same particle between consecutive frames. This is the whole safety margin — set it from the physics (a Brownian particle moves about sqrt(4·D·dt) per frame), never from what makes the tracks look longest."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frame_gap",
+      "id": "##max_frame_gap",
+      "tooltip": "How many missing frames a track may bridge; 0 disables gap closing. Every closed gap asserts that nothing else could have been there, so keep it small and check what changing it does to the answer."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size",
+      "id": "##pixel_size",
+      "tooltip": "Physical pixel size. Leave at 1 to report D in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "frame_interval",
+      "id": "##frame_interval",
+      "tooltip": "Time between frames. Leave at 1 to report D per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_track_length",
+      "id": "##min_track_length",
+      "tooltip": "Shortest track admitted to the fit. Short tracks are not merely noisy but biased: a particle is likelier to be found twice in a row if it happened to stay put, so the shortest tracks over-represent the slowest motion."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fit anomalous exponent",
+      "id": "Fit anomalous exponent##fit_alpha",
+      "tooltip": "Fit α as well as D instead of holding it at 1. Do this only when the question actually is whether the motion is anomalous: α and D are nearly degenerate, and fitting both roughly quadruples the spread of D."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bootstrap",
+      "id": "##n_bootstrap",
+      "tooltip": "Resamples of the track set behind the error bars. The fit covariance cannot be used here — MSD lags share displacements and are strongly correlated, so its error bar covers the truth about one run in five."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_drawn_tracks",
+      "id": "##max_drawn_tracks",
+      "tooltip": "Upper limit of trajectories drawn in the plot, longest first. The fit always uses all of them."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what particle tracking measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Track",
+      "id": "Track##track",
+      "tooltip": "Detect particles in every frame, link them into trajectories, and fit the diffusion coefficient. Runs in the background; the status line counts the frames."
+    },
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open##open_file",
+      "tooltip": "Choose an image stack or photon-stream file to track."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write every linked detection (track, frame, y, x, intensity) to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "TIFF-like image stack or photon-stream file. Tracking runs on one channel at a time, because combining channels first would blur the very spots it has to localise."
+    },
+    {
+      "kind": "input_text",
+      "label": "channel",
+      "id": "##channel",
+      "tooltip": "Which channel to track in."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frames",
+      "id": "##max_frames",
+      "tooltip": "Track at most this many frames; 0 uses all of them. Lower it for a first look at a long acquisition."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Simulate",
+      "id": "Simulate##use_simulation",
+      "tooltip": "Track a simulated movie instead of the loaded file."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_diffusion",
+      "id": "##sim_diffusion",
+      "tooltip": "Diffusion coefficient of the simulated particles, in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_particles",
+      "id": "##sim_n_particles",
+      "tooltip": "How many particles. Crowding is what breaks tracking: when particles come within the linking distance of one another the assignment is genuinely ambiguous and identities get swapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_frames",
+      "id": "##sim_n_frames",
+      "tooltip": "Number of simulated frames."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_size",
+      "id": "##sim_size",
+      "tooltip": "Width and height of the simulated frame. Memory grows as frames × size²; a very large request is refused rather than allowed to exhaust the machine."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_amplitude",
+      "id": "##sim_amplitude",
+      "tooltip": "Peak counts of a particle above background."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_background",
+      "id": "##sim_background",
+      "tooltip": "Background level; shot noise is applied on top."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_seed",
+      "id": "##sim_seed",
+      "tooltip": "Random seed, so a simulation can be reproduced."
+    },
+    {
+      "kind": "input_text",
+      "label": "threshold",
+      "id": "##threshold",
+      "tooltip": "Detection threshold in robust standard deviations of the wavelet response. Check the detections per frame in the report against what you expect before lowering it — noise admitted here becomes short spurious tracks that bias everything downstream."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_area",
+      "id": "##min_area",
+      "tooltip": "Smallest connected bright region that can be a particle. A diffraction-limited spot is always wider than one pixel; a dead or hot camera pixel is exactly one."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_separation",
+      "id": "##min_separation",
+      "tooltip": "Two particles closer than this in the same frame are collapsed to the brighter one. Spots nearer than the point-spread function cannot be told apart anyway, and admitting both invents a particle for the linker to mis-assign."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_distance",
+      "id": "##max_distance",
+      "tooltip": "Largest displacement that may be called the same particle between consecutive frames. This is the whole safety margin — set it from the physics (a Brownian particle moves about sqrt(4·D·dt) per frame), never from what makes the tracks look longest."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frame_gap",
+      "id": "##max_frame_gap",
+      "tooltip": "How many missing frames a track may bridge; 0 disables gap closing. Every closed gap asserts that nothing else could have been there, so keep it small and check what changing it does to the answer."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size",
+      "id": "##pixel_size",
+      "tooltip": "Physical pixel size. Leave at 1 to report D in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "frame_interval",
+      "id": "##frame_interval",
+      "tooltip": "Time between frames. Leave at 1 to report D per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_track_length",
+      "id": "##min_track_length",
+      "tooltip": "Shortest track admitted to the fit. Short tracks are not merely noisy but biased: a particle is likelier to be found twice in a row if it happened to stay put, so the shortest tracks over-represent the slowest motion."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fit anomalous exponent",
+      "id": "Fit anomalous exponent##fit_alpha",
+      "tooltip": "Fit α as well as D instead of holding it at 1. Do this only when the question actually is whether the motion is anomalous: α and D are nearly degenerate, and fitting both roughly quadruples the spread of D."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bootstrap",
+      "id": "##n_bootstrap",
+      "tooltip": "Resamples of the track set behind the error bars. The fit covariance cannot be used here — MSD lags share displacements and are strongly correlated, so its error bar covers the truth about one run in five."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_drawn_tracks",
+      "id": "##max_drawn_tracks",
+      "tooltip": "Upper limit of trajectories drawn in the plot, longest first. The fit always uses all of them."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what particle tracking measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Track",
+      "id": "Track##track",
+      "tooltip": "Detect particles in every frame, link them into trajectories, and fit the diffusion coefficient. Runs in the background; the status line counts the frames."
+    },
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open##open_file",
+      "tooltip": "Choose an image stack or photon-stream file to track."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write every linked detection (track, frame, y, x, intensity) to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "TIFF-like image stack or photon-stream file. Tracking runs on one channel at a time, because combining channels first would blur the very spots it has to localise."
+    },
+    {
+      "kind": "input_text",
+      "label": "channel",
+      "id": "##channel",
+      "tooltip": "Which channel to track in."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frames",
+      "id": "##max_frames",
+      "tooltip": "Track at most this many frames; 0 uses all of them. Lower it for a first look at a long acquisition."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Simulate",
+      "id": "Simulate##use_simulation",
+      "tooltip": "Track a simulated movie instead of the loaded file."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_diffusion",
+      "id": "##sim_diffusion",
+      "tooltip": "Diffusion coefficient of the simulated particles, in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_particles",
+      "id": "##sim_n_particles",
+      "tooltip": "How many particles. Crowding is what breaks tracking: when particles come within the linking distance of one another the assignment is genuinely ambiguous and identities get swapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_frames",
+      "id": "##sim_n_frames",
+      "tooltip": "Number of simulated frames."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_size",
+      "id": "##sim_size",
+      "tooltip": "Width and height of the simulated frame. Memory grows as frames × size²; a very large request is refused rather than allowed to exhaust the machine."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_amplitude",
+      "id": "##sim_amplitude",
+      "tooltip": "Peak counts of a particle above background."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_background",
+      "id": "##sim_background",
+      "tooltip": "Background level; shot noise is applied on top."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_seed",
+      "id": "##sim_seed",
+      "tooltip": "Random seed, so a simulation can be reproduced."
+    },
+    {
+      "kind": "input_text",
+      "label": "threshold",
+      "id": "##threshold",
+      "tooltip": "Detection threshold in robust standard deviations of the wavelet response. Check the detections per frame in the report against what you expect before lowering it — noise admitted here becomes short spurious tracks that bias everything downstream."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_area",
+      "id": "##min_area",
+      "tooltip": "Smallest connected bright region that can be a particle. A diffraction-limited spot is always wider than one pixel; a dead or hot camera pixel is exactly one."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_separation",
+      "id": "##min_separation",
+      "tooltip": "Two particles closer than this in the same frame are collapsed to the brighter one. Spots nearer than the point-spread function cannot be told apart anyway, and admitting both invents a particle for the linker to mis-assign."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_distance",
+      "id": "##max_distance",
+      "tooltip": "Largest displacement that may be called the same particle between consecutive frames. This is the whole safety margin — set it from the physics (a Brownian particle moves about sqrt(4·D·dt) per frame), never from what makes the tracks look longest."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frame_gap",
+      "id": "##max_frame_gap",
+      "tooltip": "How many missing frames a track may bridge; 0 disables gap closing. Every closed gap asserts that nothing else could have been there, so keep it small and check what changing it does to the answer."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size",
+      "id": "##pixel_size",
+      "tooltip": "Physical pixel size. Leave at 1 to report D in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "frame_interval",
+      "id": "##frame_interval",
+      "tooltip": "Time between frames. Leave at 1 to report D per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_track_length",
+      "id": "##min_track_length",
+      "tooltip": "Shortest track admitted to the fit. Short tracks are not merely noisy but biased: a particle is likelier to be found twice in a row if it happened to stay put, so the shortest tracks over-represent the slowest motion."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fit anomalous exponent",
+      "id": "Fit anomalous exponent##fit_alpha",
+      "tooltip": "Fit α as well as D instead of holding it at 1. Do this only when the question actually is whether the motion is anomalous: α and D are nearly degenerate, and fitting both roughly quadruples the spread of D."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bootstrap",
+      "id": "##n_bootstrap",
+      "tooltip": "Resamples of the track set behind the error bars. The fit covariance cannot be used here — MSD lags share displacements and are strongly correlated, so its error bar covers the truth about one run in five."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_drawn_tracks",
+      "id": "##max_drawn_tracks",
+      "tooltip": "Upper limit of trajectories drawn in the plot, longest first. The fit always uses all of them."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what particle tracking measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Track",
+      "id": "Track##track",
+      "tooltip": "Detect particles in every frame, link them into trajectories, and fit the diffusion coefficient. Runs in the background; the status line counts the frames."
+    },
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open##open_file",
+      "tooltip": "Choose an image stack or photon-stream file to track."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write every linked detection (track, frame, y, x, intensity) to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "TIFF-like image stack or photon-stream file. Tracking runs on one channel at a time, because combining channels first would blur the very spots it has to localise."
+    },
+    {
+      "kind": "input_text",
+      "label": "channel",
+      "id": "##channel",
+      "tooltip": "Which channel to track in."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frames",
+      "id": "##max_frames",
+      "tooltip": "Track at most this many frames; 0 uses all of them. Lower it for a first look at a long acquisition."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Simulate",
+      "id": "Simulate##use_simulation",
+      "tooltip": "Track a simulated movie instead of the loaded file."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_diffusion",
+      "id": "##sim_diffusion",
+      "tooltip": "Diffusion coefficient of the simulated particles, in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_particles",
+      "id": "##sim_n_particles",
+      "tooltip": "How many particles. Crowding is what breaks tracking: when particles come within the linking distance of one another the assignment is genuinely ambiguous and identities get swapped."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_n_frames",
+      "id": "##sim_n_frames",
+      "tooltip": "Number of simulated frames."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_size",
+      "id": "##sim_size",
+      "tooltip": "Width and height of the simulated frame. Memory grows as frames × size²; a very large request is refused rather than allowed to exhaust the machine."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_amplitude",
+      "id": "##sim_amplitude",
+      "tooltip": "Peak counts of a particle above background."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_background",
+      "id": "##sim_background",
+      "tooltip": "Background level; shot noise is applied on top."
+    },
+    {
+      "kind": "input_text",
+      "label": "sim_seed",
+      "id": "##sim_seed",
+      "tooltip": "Random seed, so a simulation can be reproduced."
+    },
+    {
+      "kind": "input_text",
+      "label": "threshold",
+      "id": "##threshold",
+      "tooltip": "Detection threshold in robust standard deviations of the wavelet response. Check the detections per frame in the report against what you expect before lowering it — noise admitted here becomes short spurious tracks that bias everything downstream."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_area",
+      "id": "##min_area",
+      "tooltip": "Smallest connected bright region that can be a particle. A diffraction-limited spot is always wider than one pixel; a dead or hot camera pixel is exactly one."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_separation",
+      "id": "##min_separation",
+      "tooltip": "Two particles closer than this in the same frame are collapsed to the brighter one. Spots nearer than the point-spread function cannot be told apart anyway, and admitting both invents a particle for the linker to mis-assign."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_distance",
+      "id": "##max_distance",
+      "tooltip": "Largest displacement that may be called the same particle between consecutive frames. This is the whole safety margin — set it from the physics (a Brownian particle moves about sqrt(4·D·dt) per frame), never from what makes the tracks look longest."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frame_gap",
+      "id": "##max_frame_gap",
+      "tooltip": "How many missing frames a track may bridge; 0 disables gap closing. Every closed gap asserts that nothing else could have been there, so keep it small and check what changing it does to the answer."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size",
+      "id": "##pixel_size",
+      "tooltip": "Physical pixel size. Leave at 1 to report D in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "frame_interval",
+      "id": "##frame_interval",
+      "tooltip": "Time between frames. Leave at 1 to report D per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_track_length",
+      "id": "##min_track_length",
+      "tooltip": "Shortest track admitted to the fit. Short tracks are not merely noisy but biased: a particle is likelier to be found twice in a row if it happened to stay put, so the shortest tracks over-represent the slowest motion."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fit anomalous exponent",
+      "id": "Fit anomalous exponent##fit_alpha",
+      "tooltip": "Fit α as well as D instead of holding it at 1. Do this only when the question actually is whether the motion is anomalous: α and D are nearly degenerate, and fitting both roughly quadruples the spread of D."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bootstrap",
+      "id": "##n_bootstrap",
+      "tooltip": "Resamples of the track set behind the error bars. The fit covariance cannot be used here — MSD lags share displacements and are strongly correlated, so its error bar covers the truth about one run in five."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_drawn_tracks",
+      "id": "##max_drawn_tracks",
+      "tooltip": "Upper limit of trajectories drawn in the plot, longest first. The fit always uses all of them."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

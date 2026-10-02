@@ -1,0 +1,176 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "1",
+    "1.00000",
+    "1.000000",
+    "1.detect",
+    "10",
+    "2",
+    "2.link",
+    "200",
+    "3.00",
+    "3.transport",
+    "5.00",
+    "60",
+    "bootstrapresamples",
+    "channel",
+    "detector",
+    "diffusioncoefficient.",
+    "dropanimagestack(orticksimulate)andpresstrack.",
+    "exportcsv",
+    "fitanomalousexponent",
+    "frameinterval[s]",
+    "guide",
+    "help",
+    "imagestack",
+    "maxframes",
+    "maxgap[frames]",
+    "maxstep[px]",
+    "minarea[px]",
+    "minseparation[px]",
+    "mintracklength",
+    "movie",
+    "msd",
+    "open",
+    "particlesarefoundineveryframe,linkedintotrajectories,andthetrajectoriesareturnedintoa",
+    "pathofamovie,ordropafilehere",
+    "pixelsize[µm]",
+    "presstrack(orticksimulate)themovieisshownherewitheverydetectionmarked.",
+    "report",
+    "settings",
+    "simulateinstead",
+    "threshold[σ]",
+    "track",
+    "tracklengths",
+    "tracks",
+    "tracksdrawn",
+    "trajectories",
+    "wavelet"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what particle tracking measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Track",
+      "id": "Track##track",
+      "tooltip": "Detect particles in every frame, link them into trajectories, and fit the diffusion coefficient. Runs in the background; the status line counts the frames."
+    },
+    {
+      "kind": "button",
+      "label": "Open",
+      "id": "Open##open_file",
+      "tooltip": "Choose an image stack or photon-stream file to track."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write every linked detection (track, frame, y, x, intensity) to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "TIFF-like image stack or photon-stream file. Tracking runs on one channel at a time, because combining channels first would blur the very spots it has to localise."
+    },
+    {
+      "kind": "input_text",
+      "label": "channel",
+      "id": "##channel",
+      "tooltip": "Which channel to track in."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frames",
+      "id": "##max_frames",
+      "tooltip": "Track at most this many frames; 0 uses all of them. Lower it for a first look at a long acquisition."
+    },
+    {
+      "kind": "input_text",
+      "label": "threshold",
+      "id": "##threshold",
+      "tooltip": "Detection threshold in robust standard deviations of the wavelet response. Check the detections per frame in the report against what you expect before lowering it — noise admitted here becomes short spurious tracks that bias everything downstream."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_area",
+      "id": "##min_area",
+      "tooltip": "Smallest connected bright region that can be a particle. A diffraction-limited spot is always wider than one pixel; a dead or hot camera pixel is exactly one."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_separation",
+      "id": "##min_separation",
+      "tooltip": "Two particles closer than this in the same frame are collapsed to the brighter one. Spots nearer than the point-spread function cannot be told apart anyway, and admitting both invents a particle for the linker to mis-assign."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_distance",
+      "id": "##max_distance",
+      "tooltip": "Largest displacement that may be called the same particle between consecutive frames. This is the whole safety margin — set it from the physics (a Brownian particle moves about sqrt(4·D·dt) per frame), never from what makes the tracks look longest."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_frame_gap",
+      "id": "##max_frame_gap",
+      "tooltip": "How many missing frames a track may bridge; 0 disables gap closing. Every closed gap asserts that nothing else could have been there, so keep it small and check what changing it does to the answer."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size",
+      "id": "##pixel_size",
+      "tooltip": "Physical pixel size. Leave at 1 to report D in pixels squared per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "frame_interval",
+      "id": "##frame_interval",
+      "tooltip": "Time between frames. Leave at 1 to report D per frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_track_length",
+      "id": "##min_track_length",
+      "tooltip": "Shortest track admitted to the fit. Short tracks are not merely noisy but biased: a particle is likelier to be found twice in a row if it happened to stay put, so the shortest tracks over-represent the slowest motion."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fit anomalous exponent",
+      "id": "Fit anomalous exponent##fit_alpha",
+      "tooltip": "Fit α as well as D instead of holding it at 1. Do this only when the question actually is whether the motion is anomalous: α and D are nearly degenerate, and fitting both roughly quadruples the spread of D."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bootstrap",
+      "id": "##n_bootstrap",
+      "tooltip": "Resamples of the track set behind the error bars. The fit covariance cannot be used here — MSD lags share displacements and are strongly correlated, so its error bar covers the truth about one run in five."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_drawn_tracks",
+      "id": "##max_drawn_tracks",
+      "tooltip": "Upper limit of trajectories drawn in the plot, longest first. The fit always uses all of them."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

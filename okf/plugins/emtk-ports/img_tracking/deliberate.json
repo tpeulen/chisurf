@@ -1,0 +1,19 @@
+{
+  "?": "Qt toolbar help button '?'; emtk draws the same help as the 'Help' button at the top of the Settings window.",
+  "cividis": "colormap entry of the pyqtgraph movie dock; the emtk image canvas (chisurf/emtk/image_canvas.py, shared, not editable here) offers magma, inferno, viridis and gray only. Blocked, see REPORT.md section 10.",
+  "plasma": "same as cividis: not in the emtk image canvas colormap list.",
+  "turbo": "same as cividis: not in the emtk image canvas colormap list.",
+  "blur": "pyqtgraph ImageView internal (normalisation panel); no control for it is visible in the Qt window (before_tab_Movie.png), the emtk canvas has gamma and display levels instead.",
+  "divide": "pyqtgraph ImageView normalisation internal, hidden in the Qt window.",
+  "subtract": "pyqtgraph ImageView normalisation internal, hidden in the Qt window.",
+  "operation": "pyqtgraph ImageView normalisation internal, hidden in the Qt window.",
+  "mean": "pyqtgraph ImageView normalisation internal, hidden in the Qt window.",
+  "off": "pyqtgraph ImageView normalisation internal (time-range 'off' radio), hidden in the Qt window.",
+  "timerange": "pyqtgraph ImageView normalisation internal, hidden in the Qt window.",
+  "roi": "pyqtgraph ImageView ROI button, hidden in the Qt window (the dock was built without it).",
+  "menu": "pyqtgraph ImageView menu button, hidden in the Qt window.",
+  "frame": "pyqtgraph ImageView time-axis widget name; the emtk movie has the 'Z slice' slider.",
+  "t": "pyqtgraph ImageView axis name (time axis ruler); the emtk slider shows the frame number.",
+  "x": "pyqtgraph ImageView axis name; the emtk image plot labels its axes 'x [px]' and 'y [px]'.",
+  "y": "pyqtgraph ImageView axis name; the emtk image plot labels its axes 'x [px]' and 'y [px]'."
+}

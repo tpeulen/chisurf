@@ -29,8 +29,8 @@ the two afterwards.
 Tracked on a simulated movie with known kinetics: 8 particles at
 D = 0.5 px²/frame. The tool recovers 8 tracks of the full 60 frames and
 D = 0.504 ± 0.1 — and still prints a *"Read with care"* note, because eight
-tracks is not many. The Movie view marks every detection; scrub the frame slider
-and they should follow the particles.
+tracks is not many. The Movie view marks every detection; scrub the **Z slice** slider
+(or press **Play**) and they should follow the particles.
 ```
 
 ## Start with a simulation
@@ -55,7 +55,7 @@ report. This is the cheapest diagnostic in the tool and it catches most problems
 | markers flicker on and off between frames | threshold too high |
 | markers sitting on empty background | threshold too low, or **Min area** = 1 |
 
-Then scrub the frame slider on the **Movie** view and watch. Markers that travel
+Then scrub the **Z slice** slider (or press **Play**) on the **Movie** view and watch. Markers that travel
 with the particles mean detection is working; nothing else needs checking.
 
 **Wavelet** is the default and the right choice almost always: a multiscale
