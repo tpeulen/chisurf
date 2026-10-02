@@ -1,0 +1,34 @@
+diff --git a/chisurf/plugins/microscopy/img_coloc/manifest.json b/chisurf/plugins/microscopy/img_coloc/manifest.json
+index 0dd8f113f..df97bdab7 100644
+--- a/chisurf/plugins/microscopy/img_coloc/manifest.json
++++ b/chisurf/plugins/microscopy/img_coloc/manifest.json
+@@ -3,13 +3,24 @@
+   "version": "1.0.0",
+   "display_name": "Imaging:Colocalization",
+   "description": "Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and photon-stream images, with an interactive intensity scatter gate.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Imaging"],
+-  "icon": "🔬",
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Imaging"
++  ],
++  "icon": "\ud83d\udd2c",
+   "state_namespace": "img_coloc",
+-  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
++  "statefulness": {
++    "enabled": true,
++    "window": {
++      "enabled": true,
++      "settings_key": null
++    }
++  },
+   "entrypoints": {
+     "gui": "chisurf.plugins.microscopy.img_coloc.gui.tool:ImgColocTool",
+-    "cli": "img-coloc=chisurf.plugins.microscopy.img_coloc.cli:cli"
++    "cli": "img-coloc=chisurf.plugins.microscopy.img_coloc.cli:cli",
++    "emtk": "chisurf.plugins.microscopy.img_coloc.gui.app:make_app"
+   }
+ }

@@ -1,0 +1,229 @@
+{
+ "tabs": [
+  "Channel B",
+  "Channel A",
+  "Coefficients",
+  "Channels",
+  "Colocalized pixels",
+  "Intensity scatter",
+  "van Steensel CCF",
+  "CCF map (2-D)",
+  "PCC vs intensity",
+  "Objects",
+  "Object distances",
+  "Views",
+  "Settings"
+ ],
+ "truth_intensity_sum": 38488.0,
+ "results_text": "pair.tif \u00b7 64\u00d764 px \u00b7 ch0 vs ch1 \u00b7 PCC = 0.675",
+ "image_a": {
+  "shape": [
+   64,
+   64
+  ],
+  "sum": 48824.0,
+  "mean": 11.919921875,
+  "min": -7.0,
+  "max": 105.0,
+  "row0": [
+   10.0,
+   3.0,
+   10.0,
+   3.0,
+   2.0,
+   6.0,
+   2.0,
+   7.0,
+   5.0,
+   8.0,
+   6.0,
+   9.0,
+   4.0,
+   11.0,
+   3.0,
+   6.0,
+   8.0,
+   -1.0,
+   6.0,
+   4.0,
+   -3.0,
+   3.0,
+   11.0,
+   7.0,
+   8.0,
+   5.0,
+   5.0,
+   19.0,
+   8.0,
+   12.0,
+   15.0,
+   7.0,
+   7.0,
+   12.0,
+   7.0,
+   5.0,
+   6.0,
+   3.0,
+   5.0,
+   12.0,
+   7.0,
+   4.0,
+   1.0,
+   11.0,
+   5.0,
+   10.0,
+   9.0,
+   2.0,
+   1.0,
+   16.0,
+   4.0,
+   16.0,
+   6.0,
+   9.0,
+   5.0,
+   5.0,
+   -2.0,
+   2.0,
+   8.0,
+   4.0,
+   2.0,
+   11.0,
+   7.0,
+   7.0
+  ]
+ },
+ "image_b": {
+  "shape": [
+   64,
+   64
+  ],
+  "sum": 45869.0,
+  "mean": 11.198486328125,
+  "min": -5.0,
+  "max": 112.0,
+  "row0": [
+   3.0,
+   1.0,
+   1.0,
+   6.0,
+   0.0,
+   11.0,
+   7.0,
+   3.0,
+   6.0,
+   7.0,
+   1.0,
+   11.0,
+   5.0,
+   5.0,
+   7.0,
+   6.0,
+   9.0,
+   15.0,
+   2.0,
+   4.0,
+   3.0,
+   7.0,
+   8.0,
+   2.0,
+   7.0,
+   7.0,
+   6.0,
+   -1.0,
+   9.0,
+   -4.0,
+   5.0,
+   7.0,
+   5.0,
+   12.0,
+   3.0,
+   4.0,
+   9.0,
+   5.0,
+   6.0,
+   -3.0,
+   2.0,
+   -2.0,
+   10.0,
+   2.0,
+   1.0,
+   13.0,
+   3.0,
+   3.0,
+   1.0,
+   0.0,
+   9.0,
+   6.0,
+   3.0,
+   2.0,
+   2.0,
+   1.0,
+   3.0,
+   3.0,
+   8.0,
+   4.0,
+   9.0,
+   4.0,
+   -4.0,
+   7.0
+  ]
+ },
+ "metric_rows": [
+  {
+   "name": "Pearson PCC (thresholded)",
+   "value": "0.6753"
+  },
+  {
+   "name": "Pearson PCC (all pixels)",
+   "value": "0.6431"
+  },
+  {
+   "name": "Manders overlap MOC",
+   "value": "0.8084"
+  },
+  {
+   "name": "Manders M1 (A with B)",
+   "value": "0.9444"
+  },
+  {
+   "name": "Manders M2 (B with A)",
+   "value": "0.9477"
+  },
+  {
+   "name": "Li ICQ",
+   "value": "0.2583"
+  },
+  {
+   "name": "Spearman rank",
+   "value": "0.3158"
+  },
+  {
+   "name": "Colocalized area fraction",
+   "value": "0.8555"
+  },
+  {
+   "name": "Threshold A",
+   "value": "0"
+  },
+  {
+   "name": "Threshold B",
+   "value": "0"
+  },
+  {
+   "name": "Background A",
+   "value": "14"
+  },
+  {
+   "name": "Background B",
+   "value": "10"
+  },
+  {
+   "name": "Pixels above threshold",
+   "value": "3504"
+  },
+  {
+   "name": "Pixels total",
+   "value": "4096"
+  }
+ ]
+}
