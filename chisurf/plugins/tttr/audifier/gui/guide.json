@@ -1,0 +1,6 @@
+[
+ {"title":"Load photons","text":"Load or drop a TTTR stream and inspect its setup."},
+ {"title":"Choose the mix","text":"Enable channels and set chord, pitch, gain and micro-time gates."},
+ {"title":"Compute the waterfall","text":"Select micro-time or lifetime mode, then Update."},
+ {"title":"Listen and export","text":"Play, pause/resume or save the same synthesis settings as WAV."}
+]

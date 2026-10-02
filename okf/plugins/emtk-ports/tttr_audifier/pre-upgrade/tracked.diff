@@ -1,0 +1,322 @@
+diff --git a/chisurf/plugins/tttr/audifier/__init__.py b/chisurf/plugins/tttr/audifier/__init__.py
+index 59c58bfe0..80f1bee49 100644
+--- a/chisurf/plugins/tttr/audifier/__init__.py
++++ b/chisurf/plugins/tttr/audifier/__init__.py
+@@ -23,27 +23,26 @@ menu_hidden = True
+ 
+ # Dynamic icon that changes based on plugin state (idle/playing/paused/...).
+ icon = "🎵"
+-try:
+-    from chisurf.plugins.tttr.audifier.dynamic_icons import get_icon_manager
+ 
+-    _icon_manager = get_icon_manager()
+ 
+-    def get_current_icon():
+-        """Return the current dynamic icon."""
+-        return _icon_manager.get_current_icon()
++def get_current_icon():
++    """Load legacy Qt icon support only when a Qt host requests it."""
++    try:
++        from .dynamic_icons import get_icon_manager
+ 
+-    def set_icon_state(state: str):
+-        """Set the icon state (idle, playing, paused, processing, error, loaded)."""
+-        _icon_manager.set_state(state)
++        return get_icon_manager().get_current_icon()
++    except ImportError:
++        return icon
+ 
+-except ImportError:  # pragma: no cover
+ 
+-    def get_current_icon():
+-        """Return the default icon (dynamic icons unavailable)."""
+-        return icon
++def set_icon_state(state: str):
++    """Update legacy host icons without importing Qt in native factories."""
++    try:
++        from .dynamic_icons import get_icon_manager
+ 
+-    def set_icon_state(state: str):
+-        """No-op fallback when dynamic icons are unavailable."""
++        get_icon_manager().set_state(state)
++    except ImportError:
++        pass
+ 
+ 
+ # Qt-free lifetime-analysis helpers exposed for direct access.
+diff --git a/chisurf/plugins/tttr/audifier/core.py b/chisurf/plugins/tttr/audifier/core.py
+index e7ed2341c..fcea774a3 100644
+--- a/chisurf/plugins/tttr/audifier/core.py
++++ b/chisurf/plugins/tttr/audifier/core.py
+@@ -11,7 +11,6 @@ import wave
+ from collections.abc import Iterable
+ from dataclasses import dataclass
+ 
+-import matplotlib.pyplot as plt
+ import numpy as np
+ 
+ # -----------------------------
+@@ -82,7 +81,7 @@ class ChannelConfig:
+ # -----------------------------
+ 
+ 
+-def load_tttr_with_tttrlib(path: str) -> TTTRData:
++def load_tttr_with_tttrlib(path: str, setup=None) -> TTTRData:
+     """
+     Load a TTTR file using tttrlib.
+ 
+@@ -93,7 +92,19 @@ def load_tttr_with_tttrlib(path: str) -> TTTRData:
+     except Exception as e:
+         raise ImportError("tttrlib not available. Install or pass arrays via TTTRData.") from e
+ 
+-    tttr = tttrlib.TTTR(path)
++    if setup is None:
++        tttr = tttrlib.TTTR(path)
++    else:
++        from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
++        from chisurf.core.fio.staging import open_tttr
++
++        reading = setup.get("tttr_reading") or {}
++        filetype = reading.get("file_type") or "Auto"
++        if str(path).lower().endswith(".spc") and filetype in {"Auto", "auto"}:
++            raise ValueError("Select the SPC subtype in TTTR reading before loading.")
++        tttr = open_tttr(
++            path, None if filetype in {"Auto", "auto"} else filetype, **setup_lut_open_kwargs(setup)
++        )
+ 
+     # Get routing channel
+     routing = np.asarray(tttr.routing_channels, dtype=np.int32)
+@@ -126,6 +137,12 @@ def load_tttr_with_tttrlib(path: str) -> TTTRData:
+             micro_unit_s = micro_unit_s()
+         micro_unit_s = float(micro_unit_s)
+ 
++    reading = (setup or {}).get("tttr_reading") or {}
++    if reading.get("override_timing"):
++        if float(reading.get("macro_time_resolution", 0)) > 0:
++            macro_unit_s = float(reading["macro_time_resolution"]) * 1e-9
++        if float(reading.get("micro_time_resolution", 0)) > 0:
++            micro_unit_s = float(reading["micro_time_resolution"]) * 1e-12
+     return TTTRData(
+         routing=routing,
+         macro_ticks=macro,
+@@ -670,15 +687,17 @@ def compute_microtime_waterfall(
+     if macro.size == 0:
+         raise ValueError("No photons in the selected subset (channel/gate).")
+ 
+-    t0 = int(macro.min())
+-    t1 = int(macro.max()) + 1
++    # All detectors share one time and micro-time grid, even when their first
++    # photon arrives later. Per-detector local origins misalign the RGB mix.
++    t0 = int(data.macro_ticks.min())
++    t1 = int(data.macro_ticks.max()) + 1
+     ticks_per_bin = max(1, int(round(macro_bin_width_s / data.macro_time_unit_s)))
+     n_macro = int(math.ceil((t1 - t0) / ticks_per_bin))
+     macro_edges = t0 + np.arange(n_macro + 1, dtype=np.int64) * ticks_per_bin
+ 
+     if micro_bins_range is None:
+-        m0 = int(micro.min())
+-        m1 = int(micro.max()) + 1
++        m0 = int(data.micro_bins.min())
++        m1 = int(data.micro_bins.max()) + 1
+     else:
+         m0, m1 = micro_bins_range
+ 
+@@ -717,6 +736,8 @@ def plot_waterfall(
+     if log_scale:
+         M = np.log1p(M)
+ 
++    import matplotlib.pyplot as plt
++
+     plt.figure()
+     # y-axis is macro bin index; label with seconds at edges
+     extent = [micro_centers[0], micro_centers[-1], macro_t_s[-1], macro_t_s[0]]
+diff --git a/chisurf/plugins/tttr/audifier/gui/view_model.py b/chisurf/plugins/tttr/audifier/gui/view_model.py
+index 16aae85fe..f2bdd05f1 100644
+--- a/chisurf/plugins/tttr/audifier/gui/view_model.py
++++ b/chisurf/plugins/tttr/audifier/gui/view_model.py
+@@ -18,6 +18,7 @@ import colorsys
+ import dataclasses
+ import logging
+ import pathlib
++import tempfile
+ from collections.abc import Callable
+ 
+ import numpy as np
+@@ -205,7 +206,15 @@ class AudifierViewModel:
+         """
+         payload = None
+         if self.data is not None:
+-            enabled = [d for d in self.detectors if d.get("enabled")]
++            if not len(self.data.macro_ticks):
++                raise ValueError("No photons in the selected range.")
++            if self.waterfall_mode == "lifetime" and not 0 < self.lt_tau_min < self.lt_tau_max:
++                raise ValueError("Lifetime limits must satisfy 0 < minimum < maximum.")
++            enabled = [
++                d
++                for d in self.detectors
++                if d.get("enabled") and np.any(np.isin(self.data.routing, d["channels"]))
++            ]
+             if enabled:
+                 payload = (
+                     self._lifetime_waterfall(enabled)
+@@ -241,6 +250,8 @@ class AudifierViewModel:
+             rgb[:, :, 2] += w_det * b
+         mask = total > 0
+         rgb[mask] /= total[mask, np.newaxis]
++        if total.max() > 0:
++            rgb *= (total / total.max())[:, :, np.newaxis]
+         return {
+             "rgb_data": rgb.transpose(1, 0, 2),
+             "macro_t_s": macro_t_s,
+@@ -256,10 +267,12 @@ class AudifierViewModel:
+     def _lifetime_waterfall(self, dets: list[dict]) -> dict | None:
+         if compute_lifetime_waterfall is None:
+             raise RuntimeError("Lifetime analysis not available.")
++        if not self.data.micro_time_unit_s or self.data.micro_time_unit_s <= 0:
++            raise ValueError("A positive micro-time resolution is required for lifetime analysis.")
+         chans = [(ch, det) for det in dets for ch in det["channels"]]
+         if not chans:
+             return None
+-        per_channel = {}
++        per_channel = []
+         for ch, det in chans:
+             try:
+                 a, macro_t_s, tau = compute_lifetime_waterfall(
+@@ -272,16 +285,16 @@ class AudifierViewModel:
+                     n_tau=self.lt_n_tau,
+                     lam=self.lt_reg,
+                 )
+-                per_channel[ch] = (a, macro_t_s, tau, det)
++                per_channel.append((a, macro_t_s, tau, det))
+             except Exception:
+                 logger.warning("lifetime waterfall failed for channel %s", ch, exc_info=True)
+         if not per_channel:
+             return None
+-        a_ref, macro_t_s, tau, _ = next(iter(per_channel.values()))
++        a_ref, macro_t_s, tau, _ = per_channel[0]
+         n_macro, n_tau = a_ref.shape
+         rgb = np.zeros((n_macro, n_tau, 3), dtype=np.float32)
+         total = np.zeros((n_macro, n_tau), dtype=np.float32)
+-        for a, _, _, det in per_channel.values():
++        for a, _, _, det in per_channel:
+             a_plot = np.log1p(a) if self.lt_log_amp else a.copy()
+             total += a_plot
+             r, g, b = det["color"]
+@@ -290,6 +303,8 @@ class AudifierViewModel:
+             rgb[:, :, 2] += a_plot * b
+         mask = total > 0
+         rgb[mask] /= total[mask, np.newaxis]
++        if total.max() > 0:
++            rgb *= (total / total.max())[:, :, np.newaxis]
+         return {
+             "rgb_data": rgb.transpose(1, 0, 2),
+             "macro_t_s": macro_t_s,
+@@ -307,6 +322,8 @@ class AudifierViewModel:
+         """Return ``None`` when audio can be rendered, else a reason string."""
+         if self.data is None:
+             return "No data loaded."
++        if len(self.data.macro_ticks) == 0:
++            return "The selected photon range is empty."
+         if not self.selected_channels():
+             return "No channels selected."
+         if not self.selected_configs():
+@@ -315,21 +332,16 @@ class AudifierViewModel:
+ 
+     def build_audio(self):
+         """Synthesize audio for the enabled channels; ``(wav_data, duration)``."""
+-        from ..sound_playback import create_tttr_audio
+-
+-        return create_tttr_audio(
+-            data=self.data,
+-            channels=self.selected_channels(),
+-            channel_cfg=self.selected_configs(),
+-            bin_width_s=self.bin_width,
+-            sample_rate=self.sample_rate,
+-            env_mode=self.env_mode,
+-            master_gain=self.master_gain,
+-        )
++        with tempfile.TemporaryDirectory(prefix="chisurf-audifier-") as folder:
++            wav = self.save_wav(str(pathlib.Path(folder) / "preview.wav"))
++        return wav, len(wav) / self.sample_rate
+ 
+     def save_wav(self, path: str) -> None:
+         """Render audio for the enabled channels and write it to *path* as WAV."""
+-        tttr_to_wav(
++        reason = self.can_render()
++        if reason:
++            raise ValueError(reason)
++        wav, _, _ = tttr_to_wav(
+             data=self.data,
+             out_wav_path=path,
+             channels=self.selected_channels(),
+@@ -343,6 +355,7 @@ class AudifierViewModel:
+             release_frames=self.release_frames,
+             master_gain=self.master_gain,
+         )
++        return wav
+ 
+ 
+ __all__ = ["AudifierViewModel"]
+diff --git a/chisurf/plugins/tttr/audifier/lifetime_analysis.py b/chisurf/plugins/tttr/audifier/lifetime_analysis.py
+index 665d5ce14..a2bf816c6 100644
+--- a/chisurf/plugins/tttr/audifier/lifetime_analysis.py
++++ b/chisurf/plugins/tttr/audifier/lifetime_analysis.py
+@@ -12,7 +12,6 @@ from __future__ import annotations
+ 
+ from typing import TYPE_CHECKING
+ 
+-import matplotlib.pyplot as plt
+ import numpy as np
+ 
+ if TYPE_CHECKING:
+@@ -219,15 +218,16 @@ def compute_lifetime_waterfall(
+     micro_filtered = micro[mask]
+ 
+     # Create macro time bins
+-    t0 = int(macro_filtered.min())
+-    t1 = int(macro_filtered.max()) + 1
++    t0 = int(macro.min())
++    t1 = int(macro.max()) + 1
+     ticks_per_bin = max(1, int(round(macro_bin_width_s / data.macro_time_unit_s)))
+     n_macro = int(math.ceil((t1 - t0) / ticks_per_bin))
+     macro_edges = t0 + np.arange(n_macro + 1, dtype=np.int64) * ticks_per_bin
+ 
+     # Convert macro edges to seconds
+     (macro_edges - macro_edges[0]) * data.macro_time_unit_s
+-    macro_centers = 0.5 * (macro_edges[:-1] + macro_edges[1:])
++    macro_centers = (0.5 * (macro_edges[:-1] + macro_edges[1:]) - t0) * data.macro_time_unit_s
++    tau = np.logspace(np.log10(tau_min), np.log10(tau_max), n_tau)
+ 
+     # Initialize output array
+     A = np.zeros((n_macro, n_tau), dtype=np.float64)
+@@ -322,6 +322,8 @@ def plot_lifetime_waterfall(
+         plot_data = np.log1p(plot_data)
+ 
+     # Create the plot
++    import matplotlib.pyplot as plt
++
+     plt.figure(figsize=(10, 6))
+ 
+     # Set extent for imshow: [left, right, bottom, top]
+@@ -404,6 +406,8 @@ def plot_lifetime_waterfall_multichannel(
+ 
+     # Create subplots (stacked vertically)
+     n_channels = len(channels)
++    import matplotlib.pyplot as plt
++
+     fig, axes = plt.subplots(n_channels, 1, figsize=(10, 3 * n_channels), sharex=True, sharey=True)
+ 
+     if n_channels == 1:
+diff --git a/chisurf/plugins/tttr/audifier/manifest.json b/chisurf/plugins/tttr/audifier/manifest.json
+index 3e38bc12e..4b095eb30 100644
+--- a/chisurf/plugins/tttr/audifier/manifest.json
++++ b/chisurf/plugins/tttr/audifier/manifest.json
+@@ -9,6 +9,7 @@
+   "menu_hidden": true,
+   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+   "entrypoints": {
+-    "gui": "chisurf.plugins.tttr.audifier.gui.tool:TTTRAudifierWidget"
++    "gui": "chisurf.plugins.tttr.audifier.gui.tool:TTTRAudifierWidget",
++    "emtk": "chisurf.plugins.tttr.audifier.gui.app:create_app"
+   }
+ }

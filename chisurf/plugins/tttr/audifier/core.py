@@ -11,7 +11,6 @@ import wave
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 # -----------------------------
@@ -82,7 +81,7 @@ class ChannelConfig:
 # -----------------------------
 
 
-def load_tttr_with_tttrlib(path: str) -> TTTRData:
+def load_tttr_with_tttrlib(path: str, setup=None) -> TTTRData:
     """
     Load a TTTR file using tttrlib.
 
@@ -93,7 +92,19 @@ def load_tttr_with_tttrlib(path: str) -> TTTRData:
     except Exception as e:
         raise ImportError("tttrlib not available. Install or pass arrays via TTTRData.") from e
 
-    tttr = tttrlib.TTTR(path)
+    if setup is None:
+        tttr = tttrlib.TTTR(path)
+    else:
+        from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
+        from chisurf.core.fio.staging import open_tttr
+
+        reading = setup.get("tttr_reading") or {}
+        filetype = reading.get("file_type") or "Auto"
+        if str(path).lower().endswith(".spc") and filetype in {"Auto", "auto"}:
+            raise ValueError("Select the SPC subtype in TTTR reading before loading.")
+        tttr = open_tttr(
+            path, None if filetype in {"Auto", "auto"} else filetype, **setup_lut_open_kwargs(setup)
+        )
 
     # Get routing channel
     routing = np.asarray(tttr.routing_channels, dtype=np.int32)
@@ -126,6 +137,12 @@ def load_tttr_with_tttrlib(path: str) -> TTTRData:
             micro_unit_s = micro_unit_s()
         micro_unit_s = float(micro_unit_s)
 
+    reading = (setup or {}).get("tttr_reading") or {}
+    if reading.get("override_timing"):
+        if float(reading.get("macro_time_resolution", 0)) > 0:
+            macro_unit_s = float(reading["macro_time_resolution"]) * 1e-9
+        if float(reading.get("micro_time_resolution", 0)) > 0:
+            micro_unit_s = float(reading["micro_time_resolution"]) * 1e-12
     return TTTRData(
         routing=routing,
         macro_ticks=macro,
@@ -670,15 +687,17 @@ def compute_microtime_waterfall(
     if macro.size == 0:
         raise ValueError("No photons in the selected subset (channel/gate).")
 
-    t0 = int(macro.min())
-    t1 = int(macro.max()) + 1
+    # All detectors share one time and micro-time grid, even when their first
+    # photon arrives later. Per-detector local origins misalign the RGB mix.
+    t0 = int(data.macro_ticks.min())
+    t1 = int(data.macro_ticks.max()) + 1
     ticks_per_bin = max(1, int(round(macro_bin_width_s / data.macro_time_unit_s)))
     n_macro = int(math.ceil((t1 - t0) / ticks_per_bin))
     macro_edges = t0 + np.arange(n_macro + 1, dtype=np.int64) * ticks_per_bin
 
     if micro_bins_range is None:
-        m0 = int(micro.min())
-        m1 = int(micro.max()) + 1
+        m0 = int(data.micro_bins.min())
+        m1 = int(data.micro_bins.max()) + 1
     else:
         m0, m1 = micro_bins_range
 
@@ -716,6 +735,8 @@ def plot_waterfall(
     M = W.copy()
     if log_scale:
         M = np.log1p(M)
+
+    import matplotlib.pyplot as plt
 
     plt.figure()
     # y-axis is macro bin index; label with seconds at edges

@@ -18,6 +18,7 @@ import colorsys
 import dataclasses
 import logging
 import pathlib
+import tempfile
 from collections.abc import Callable
 
 import numpy as np
@@ -205,7 +206,15 @@ class AudifierViewModel:
         """
         payload = None
         if self.data is not None:
-            enabled = [d for d in self.detectors if d.get("enabled")]
+            if not len(self.data.macro_ticks):
+                raise ValueError("No photons in the selected range.")
+            if self.waterfall_mode == "lifetime" and not 0 < self.lt_tau_min < self.lt_tau_max:
+                raise ValueError("Lifetime limits must satisfy 0 < minimum < maximum.")
+            enabled = [
+                d
+                for d in self.detectors
+                if d.get("enabled") and np.any(np.isin(self.data.routing, d["channels"]))
+            ]
             if enabled:
                 payload = (
                     self._lifetime_waterfall(enabled)
@@ -241,6 +250,8 @@ class AudifierViewModel:
             rgb[:, :, 2] += w_det * b
         mask = total > 0
         rgb[mask] /= total[mask, np.newaxis]
+        if total.max() > 0:
+            rgb *= (total / total.max())[:, :, np.newaxis]
         return {
             "rgb_data": rgb.transpose(1, 0, 2),
             "macro_t_s": macro_t_s,
@@ -256,10 +267,12 @@ class AudifierViewModel:
     def _lifetime_waterfall(self, dets: list[dict]) -> dict | None:
         if compute_lifetime_waterfall is None:
             raise RuntimeError("Lifetime analysis not available.")
+        if not self.data.micro_time_unit_s or self.data.micro_time_unit_s <= 0:
+            raise ValueError("A positive micro-time resolution is required for lifetime analysis.")
         chans = [(ch, det) for det in dets for ch in det["channels"]]
         if not chans:
             return None
-        per_channel = {}
+        per_channel = []
         for ch, det in chans:
             try:
                 a, macro_t_s, tau = compute_lifetime_waterfall(
@@ -272,16 +285,16 @@ class AudifierViewModel:
                     n_tau=self.lt_n_tau,
                     lam=self.lt_reg,
                 )
-                per_channel[ch] = (a, macro_t_s, tau, det)
+                per_channel.append((a, macro_t_s, tau, det))
             except Exception:
                 logger.warning("lifetime waterfall failed for channel %s", ch, exc_info=True)
         if not per_channel:
             return None
-        a_ref, macro_t_s, tau, _ = next(iter(per_channel.values()))
+        a_ref, macro_t_s, tau, _ = per_channel[0]
         n_macro, n_tau = a_ref.shape
         rgb = np.zeros((n_macro, n_tau, 3), dtype=np.float32)
         total = np.zeros((n_macro, n_tau), dtype=np.float32)
-        for a, _, _, det in per_channel.values():
+        for a, _, _, det in per_channel:
             a_plot = np.log1p(a) if self.lt_log_amp else a.copy()
             total += a_plot
             r, g, b = det["color"]
@@ -290,6 +303,8 @@ class AudifierViewModel:
             rgb[:, :, 2] += a_plot * b
         mask = total > 0
         rgb[mask] /= total[mask, np.newaxis]
+        if total.max() > 0:
+            rgb *= (total / total.max())[:, :, np.newaxis]
         return {
             "rgb_data": rgb.transpose(1, 0, 2),
             "macro_t_s": macro_t_s,
@@ -307,6 +322,8 @@ class AudifierViewModel:
         """Return ``None`` when audio can be rendered, else a reason string."""
         if self.data is None:
             return "No data loaded."
+        if len(self.data.macro_ticks) == 0:
+            return "The selected photon range is empty."
         if not self.selected_channels():
             return "No channels selected."
         if not self.selected_configs():
@@ -315,21 +332,16 @@ class AudifierViewModel:
 
     def build_audio(self):
         """Synthesize audio for the enabled channels; ``(wav_data, duration)``."""
-        from ..sound_playback import create_tttr_audio
-
-        return create_tttr_audio(
-            data=self.data,
-            channels=self.selected_channels(),
-            channel_cfg=self.selected_configs(),
-            bin_width_s=self.bin_width,
-            sample_rate=self.sample_rate,
-            env_mode=self.env_mode,
-            master_gain=self.master_gain,
-        )
+        with tempfile.TemporaryDirectory(prefix="chisurf-audifier-") as folder:
+            wav = self.save_wav(str(pathlib.Path(folder) / "preview.wav"))
+        return wav, len(wav) / self.sample_rate
 
     def save_wav(self, path: str) -> None:
         """Render audio for the enabled channels and write it to *path* as WAV."""
-        tttr_to_wav(
+        reason = self.can_render()
+        if reason:
+            raise ValueError(reason)
+        wav, _, _ = tttr_to_wav(
             data=self.data,
             out_wav_path=path,
             channels=self.selected_channels(),
@@ -343,6 +355,7 @@ class AudifierViewModel:
             release_frames=self.release_frames,
             master_gain=self.master_gain,
         )
+        return wav
 
 
 __all__ = ["AudifierViewModel"]

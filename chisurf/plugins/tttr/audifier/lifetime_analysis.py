@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 if TYPE_CHECKING:
@@ -219,15 +218,16 @@ def compute_lifetime_waterfall(
     micro_filtered = micro[mask]
 
     # Create macro time bins
-    t0 = int(macro_filtered.min())
-    t1 = int(macro_filtered.max()) + 1
+    t0 = int(macro.min())
+    t1 = int(macro.max()) + 1
     ticks_per_bin = max(1, int(round(macro_bin_width_s / data.macro_time_unit_s)))
     n_macro = int(math.ceil((t1 - t0) / ticks_per_bin))
     macro_edges = t0 + np.arange(n_macro + 1, dtype=np.int64) * ticks_per_bin
 
     # Convert macro edges to seconds
     (macro_edges - macro_edges[0]) * data.macro_time_unit_s
-    macro_centers = 0.5 * (macro_edges[:-1] + macro_edges[1:])
+    macro_centers = (0.5 * (macro_edges[:-1] + macro_edges[1:]) - t0) * data.macro_time_unit_s
+    tau = np.logspace(np.log10(tau_min), np.log10(tau_max), n_tau)
 
     # Initialize output array
     A = np.zeros((n_macro, n_tau), dtype=np.float64)
@@ -322,6 +322,8 @@ def plot_lifetime_waterfall(
         plot_data = np.log1p(plot_data)
 
     # Create the plot
+    import matplotlib.pyplot as plt
+
     plt.figure(figsize=(10, 6))
 
     # Set extent for imshow: [left, right, bottom, top]
@@ -404,6 +406,8 @@ def plot_lifetime_waterfall_multichannel(
 
     # Create subplots (stacked vertically)
     n_channels = len(channels)
+    import matplotlib.pyplot as plt
+
     fig, axes = plt.subplots(n_channels, 1, figsize=(10, 3 * n_channels), sharex=True, sharey=True)
 
     if n_channels == 1:

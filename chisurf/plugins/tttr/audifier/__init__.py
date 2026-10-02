@@ -23,27 +23,26 @@ menu_hidden = True
 
 # Dynamic icon that changes based on plugin state (idle/playing/paused/...).
 icon = "🎵"
-try:
-    from chisurf.plugins.tttr.audifier.dynamic_icons import get_icon_manager
 
-    _icon_manager = get_icon_manager()
 
-    def get_current_icon():
-        """Return the current dynamic icon."""
-        return _icon_manager.get_current_icon()
+def get_current_icon():
+    """Load legacy Qt icon support only when a Qt host requests it."""
+    try:
+        from .dynamic_icons import get_icon_manager
 
-    def set_icon_state(state: str):
-        """Set the icon state (idle, playing, paused, processing, error, loaded)."""
-        _icon_manager.set_state(state)
-
-except ImportError:  # pragma: no cover
-
-    def get_current_icon():
-        """Return the default icon (dynamic icons unavailable)."""
+        return get_icon_manager().get_current_icon()
+    except ImportError:
         return icon
 
-    def set_icon_state(state: str):
-        """No-op fallback when dynamic icons are unavailable."""
+
+def set_icon_state(state: str):
+    """Update legacy host icons without importing Qt in native factories."""
+    try:
+        from .dynamic_icons import get_icon_manager
+
+        get_icon_manager().set_state(state)
+    except ImportError:
+        pass
 
 
 # Qt-free lifetime-analysis helpers exposed for direct access.

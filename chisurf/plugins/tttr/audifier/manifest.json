@@ -9,6 +9,7 @@
   "menu_hidden": true,
   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
   "entrypoints": {
-    "gui": "chisurf.plugins.tttr.audifier.gui.tool:TTTRAudifierWidget"
+    "gui": "chisurf.plugins.tttr.audifier.gui.tool:TTTRAudifierWidget",
+    "emtk": "chisurf.plugins.tttr.audifier.gui.app:create_app"
   }
 }
