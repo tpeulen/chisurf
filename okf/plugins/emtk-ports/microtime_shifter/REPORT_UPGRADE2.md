@@ -19,7 +19,7 @@ Numeric parity vs the Qt tool stays in test_emtk_shifter_parity.py (Qt subproces
 - emtk repro (5 lines, `scratchpad` -> okf scripts not committed): `ImApp` drawing only `im.input_int("##v", 5, step=1)` in a window; click it at 70% width; `app.io.want_capture_keyboard` stays False and typed keys change nothing, whereas `im.input_text` takes the click. (It works after any input_text was clicked once.)
 
 ## Deliberate breakage (14 mutations, two rounds)
-Round 1: 12 of 14 caught. Missed: "channel shift not clamped" (equivalent: the spec's bounds clamp first), "log_y ignored" (test gap: added the decades-only assertion). Round 2 after that fix: see final reply.
+Round 1: 12 of 14 caught. Missed: "channel shift not clamped" (equivalent: the spec's bounds clamp first), "log_y ignored" (test gap: added the decades-only assertion). Round 2 (13 mutations, the equivalent one dropped): 13/13 caught. A test asserts a full session leaves the real ~/.chisurf (pwd home) untouched.
 
 ## Reuse
 LabelColumn / layout_spec / icon_label (chisurf/plugins/emtk_layout.py), draw_form + draw_sections spec forms (channel rows, sample dialog), FileDialog, DatasetPicker, help/tour. Replaced local: hand-drawn sample form, hand-drawn channel rows.

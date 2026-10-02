@@ -476,3 +476,22 @@ def test_no_tour_card_button_is_dead_on_any_step():
 
     assert dead_tour_buttons(create_app, SIZE) == []
     assert dead_tour_buttons(create_app, (800, 600)) == []
+
+
+def _real_chisurf_state():
+    import os
+    import pwd
+
+    root = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
+    return {str(p): p.stat().st_mtime_ns for p in root.rglob("*")} if root.exists() else {}
+
+
+def test_a_full_session_leaves_the_real_chisurf_folder_untouched(loaded, tmp_path):
+    before = _real_chisurf_state()
+    loaded.click("auto_align")
+    loaded.click("save_dialog")
+    loaded.save_dialog_type_name(str(tmp_path / "hermetic.spc"))
+    loaded.press_text("Save")
+    loaded.settle()
+    loaded.app.export_settings()
+    assert _real_chisurf_state() == before
