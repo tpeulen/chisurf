@@ -14,23 +14,35 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
+import json
+
 import emtk.im as im
 import emtk.implot as implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
-from emtk.im_core import Col
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
 
 if TYPE_CHECKING:
     from .tool import PhasorCalculatorTool, _PhasorCalcModel
 
 WINDOW_BG = (30, 32, 38, 255)
-ACCENT_GREEN = (46, 160, 67, 255)
 
-_TABLE_FLAGS = im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.RESIZABLE
+def _leaves(section: dict):
+    """Every section inside *section*, toggles of a row included."""
+    for inner in section.get("sections") or []:
+        yield inner
+        yield from _leaves(inner)
+    for item in section.get("items") or []:
+        yield dict(item, type="toggle")
+
+
+def _has_attr(section: dict, attr: str) -> bool:
+    """Whether *section* or one inside it edits the model field *attr*."""
+    if section.get("attr") == attr or any(i.get("attr") == attr for i in section.get("items") or []):
+        return True
+    return any(_has_attr(inner, attr) for inner in section.get("sections") or [])
 
 #: pyqtgraph's single-letter colours, which the shared overlay builder emits.
 _LETTER_COLOURS = {
@@ -64,6 +76,40 @@ def _in_legend(name: str) -> bool:
     return not name.startswith(_GRID_PREFIXES)
 
 
+SPEC = json.loads((Path(__file__).parent / "phasor_emtk.view.json").read_text(encoding="utf-8"))
+
+#: The model attributes that make up a saved session (everything the controls edit).
+SETTINGS = ("frequency", "harmonic", "taus", "show_grid", "show_ticks", "show_polar_grid", "show_fret", "tau_d0",
+            "show_component", "g1", "s1", "g2", "s2", "show_mixing", "frac1", "show_cursor", "cursor_g", "cursor_s",
+            "cursor_radius")
+
+
+class PhasorForm:
+    """What the specs read and call: the model's fields, and the derived texts and rows of the results."""
+
+    def __init__(self, gui: "PhasorGui") -> None:
+        object.__setattr__(self, "_gui", gui)
+
+    def __getattr__(self, name: str):
+        return getattr(self._gui.model, name)
+
+    def __setattr__(self, name: str, value) -> None:
+        setattr(self._gui.model, name, value)
+
+    def effective_text(self) -> str:
+        m = self._gui.model
+        return f"Effective f = {float(m.frequency) * int(m.harmonic):g} MHz"
+
+    def reference_rows(self) -> list[dict]:
+        return [{"tau": tau, "g": g, "s": s} for tau, g, s in self._gui._rows()]
+
+    def guide(self) -> None:
+        self._gui.start_guide()
+
+    def help(self) -> None:
+        self._gui.show_help()
+
+
 class PhasorGui(TourTarget):
     """EMTK GUI for the phasor calculator."""
 
@@ -79,46 +125,28 @@ class PhasorGui(TourTarget):
 
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
 
-        # Both halves of the left column must fit: four collapsible groups
-        # above, and the τ/g/s table below with all five reference rows
-        # visible — a share either way clips one of them.
+        # The controls on the left over the reference table; the plot takes the rest.
         layout = Split(
             "h",
-            0.38,
-            Split("v", 0.70, Region("controls"), Region("results")),
+            0.36,
+            Split("v", 0.66, Region("controls"), Region("results")),
             Region("plot"),
         )
         self.docks = DockManager(layout)
-        self.docks.add_window(
-            "controls",
-            "🎛️ Controls",
-            self._draw_controls,
-            dock="controls",
-            closable=False,
-        )
-        self.docks.add_window(
-            "results",
-            "🔢 Reference lifetimes",
-            self._draw_results,
-            dock="results",
-            closable=False,
-        )
-        self.docks.add_window(
-            "plot",
-            "📍 Phasor plot",
-            self._draw_plot,
-            dock="plot",
-            closable=False,
-        )
+        self.docks.add_window("controls", "Controls", self._draw_controls, dock="controls", closable=False)
+        self.docks.add_window("results", "Reference lifetimes", self._draw_results, dock="results", closable=False)
+        self.docks.add_window("plot", "Phasor plot", self._draw_plot, dock="plot", closable=False)
 
         self.help_window = EmTkHelpWindow(
-            title="Phasor calculator — Help & Reference",
+            title="Phasor calculator - Help & Reference",
             resource=Path(__file__).parent / "help.md",
             owner=tool,
             on_start_guide=self.start_guide,
             size=(700.0, 520.0),
         )
         self.form = FormState()
+        self.results_form = FormState()
+        self.toolbar_form = FormState()
         self.tour = EmTkGuidedTour(
             steps=Path(__file__).parent / "guide.json",
             get_target_rect=lambda k: self.item_rects.get(k) or self.form.rects.get(k),
@@ -126,9 +154,11 @@ class PhasorGui(TourTarget):
             wait_for_controls=True,
             on_step_change=self.reveal_step,
         )
-        self.form.on_used = self.tour.notify_used
+        for state in (self.form, self.results_form, self.toolbar_form):
+            state.on_used = self.tour.notify_used
+        self.panel = PhasorForm(self)
 
-    # ── plumbing ──────────────────────────────────────────────────────────
+    # -- plumbing ------------------------------------------------------------------------------------------ #
 
     @property
     def model(self) -> _PhasorCalcModel:
@@ -140,7 +170,6 @@ class PhasorGui(TourTarget):
     def show_help(self) -> None:
         self.help_window.show()
 
-
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         vp = im.get_main_viewport()
         width = float(w or vp.size[0] or 780.0)
@@ -151,44 +180,26 @@ class PhasorGui(TourTarget):
         if self.tour.active:
             self.tour.draw(width, height)
 
-    # ── controls ──────────────────────────────────────────────────────────
+    # -- controls ------------------------------------------------------------------------------------------ #
 
     def _controls_spec(self) -> dict:
-        """The spec's Controls panel without its Results panel (drawn as a table in its own dock)."""
-        if getattr(self, "_spec", None) is None:
-            import json
-
-            spec = json.loads((Path(__file__).parent / "phasor.view.json").read_text())
-            controls = spec["sections"][0]["sections"][0]
-            sections = [s for s in controls["sections"] if s.get("title") != "Results"]
-            for section in sections:  # the groups fold, as the Qt AutoForm panels do
-                if section.get("type") == "panel":
-                    section["collapsible"] = True
-            self._spec = {"sections": sections}
-        return self._spec
+        """The Controls specs (a copy the folds of which are this form's state)."""
+        return SPEC["controls"]
 
     def reveal_step(self, index, step) -> None:
         """Unfold the group a guide step points into (Fraction c1 sits in a folded one)."""
         target = EmTkGuidedTour._target_key(step.get("target"))
-        for panel in self._controls_spec()["sections"]:
-            if panel.get("type") == "panel" and any(f.get("attr") == target for f in panel.get("sections", [])):
+        for panel in SPEC["controls"]["sections"]:
+            if panel.get("type") == "panel" and _has_attr(panel, target):
                 self.form.folds[panel["title"]] = True
 
     def _draw_controls(self, box: tuple[float, float, float, float]) -> None:
-        if im.button("📖 Guide"):
-            self.start_guide()
-        im.set_item_tooltip("A step-by-step walk through the tool.")
-        self.remember("guide")
-        im.same_line()
-        if im.button("❓ Help"):
-            self.show_help()
-        im.set_item_tooltip("The short help page: reading the semicircle and every control.")
-        self.remember("help")
+        self.toolbar_form.rects.clear()
+        draw_form(SPEC["toolbar"], self.panel, self.toolbar_form, titles=False)
+        self.item_rects.update(self.toolbar_form.rects)
         im.separator()
-        # The form is the spec the Qt tool renders (phasor.view.json): one declaration,
-        # labels, bounds and tooltips (its descriptions) shared by both hosts.
         self.form.rects.clear()
-        draw_form(self._controls_spec(), self.model, self.form)
+        draw_form(SPEC["controls"], self.panel, self.form)
         self.model.harmonic = max(1, int(self.model.harmonic))
         self.model.frac1 = min(max(float(self.model.frac1), 0.0), 1.0)
         self.item_rects.update(self.form.rects)
@@ -264,8 +275,8 @@ class PhasorGui(TourTarget):
                 "a single exponential of lifetime τ sits on the semicircle, a "
                 "mixture inside on the chord between its components."
             )
-        self.remember("plot")
-        self.remember("phasor")  # the spec's name for the plot section, which the guide targets
+        self.remember("plot", tuple(box))  # the window's content: the plot fills it
+        self.remember("phasor", tuple(box))  # the spec's name for the plot section, which the guide targets
         if im.is_item_clicked():
             self.tour.notify_used("plot")
             self.tour.notify_used("phasor")
@@ -280,29 +291,10 @@ class PhasorGui(TourTarget):
         return [(tau, *analysis.lifetime_to_phasor(tau, freq)) for tau in m._tau_list()]
 
     def _draw_results(self, box: tuple[float, float, float, float]) -> None:
-        m = self.model
-        freq = float(m.frequency) * int(m.harmonic)
-        im.text_colored(f"Effective f = {freq:g} MHz", (0.35, 0.75, 1.0, 1.0))
-        rows = self._rows()
-        table_h = min(float(box[3]) - 46.0, len(rows) * 24.0 + 34.0)
-        if im.begin_table("phasor_rows", 3, _TABLE_FLAGS, (0, max(60.0, table_h))):
-            im.table_setup_column("τ (ns)", im.TableColumnFlags.WIDTH_STRETCH)
-            im.table_setup_column("g", im.TableColumnFlags.WIDTH_STRETCH)
-            im.table_setup_column("s", im.TableColumnFlags.WIDTH_STRETCH)
-            im.table_headers_row()
-            im.set_item_tooltip(
-                "Each reference lifetime τ and its phasor coordinates at the "
-                "effective frequency: g the real part, s the imaginary part."
-            )
-            for tau, g, s in rows:
-                im.table_next_row()
-                im.table_set_column_index(0)
-                im.text_unformatted(f"{tau:g}")
-                im.table_set_column_index(1)
-                im.text_unformatted(f"{g:.3f}")
-                im.table_set_column_index(2)
-                im.text_unformatted(f"{s:.3f}")
-            im.end_table()
+        self.results_form.rects.clear()
+        draw_form(SPEC["results"], self.panel, self.results_form, titles=False)
+        self.item_rects.update(self.results_form.rects)
+        self.remember("results", tuple(box))
 
 
 class PhasorCalcApp(ImApp):
@@ -330,6 +322,35 @@ class PhasorCalcApp(ImApp):
 
     def _render(self) -> None:
         self.phasor_gui.draw()
+
+    # -- persistence: the session's inputs (the Qt tool kept the window geometry only) ----------------------- #
+    def export_settings(self) -> dict:
+        """Every value the controls edit."""
+        model = self.tool._model
+        return {name: getattr(model, name) for name in SETTINGS}
+
+    def restore_settings(self, settings: dict) -> None:
+        """Restore :meth:`export_settings`; unusable entries are ignored and numbers are clamped to the field's range."""
+        if not isinstance(settings, dict):
+            return
+        model = self.tool._model
+        limits = {s["attr"]: s for s in _leaves(SPEC["controls"]) if s.get("type") == "value"}
+        for name in SETTINGS:
+            if name not in settings:
+                continue
+            value, current = settings[name], getattr(model, name)
+            if isinstance(current, bool):
+                if isinstance(value, bool):
+                    setattr(model, name, value)
+            elif isinstance(current, (int, float)):
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
+                    continue
+                spec = limits.get(name, {})
+                lo, hi = spec.get("minimum"), spec.get("maximum")
+                value = min(max(value, lo if lo is not None else value), hi if hi is not None else value)
+                setattr(model, name, int(value) if isinstance(current, int) else float(value))
+            elif isinstance(current, str) and isinstance(value, str):
+                setattr(model, name, value)
 
 
 __all__ = ["PhasorCalcApp", "WINDOW_BG"]

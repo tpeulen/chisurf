@@ -19,7 +19,7 @@ choose. Nothing is loaded and nothing is written.
 
 - **Frequency**, **Harmonic** — use the laser repetition rate; the harmonic
   multiplies it. Aim for nωτ ≈ 1 for the lifetimes you want to separate.
-- **Lifetimes (ns)** — reference points; their g, s are listed under **Results**.
+- **Lifetimes (ns)** — reference points; their g, s are listed in the **Reference lifetimes** table.
 - **Iso-lifetime grid**, **Lifetime ticks**, **Polar grid** — reading aids.
 - **FRET trajectory**, **Donor τ0** — a mono-exponential donor quenched as
   τDA = τD0(1 − E). Real samples with a donor-only fraction fall off it, towards

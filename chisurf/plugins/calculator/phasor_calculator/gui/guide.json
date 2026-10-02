@@ -18,7 +18,7 @@
     },
     {
       "title": "Place the lifetimes you expect",
-      "text": "Each lifetime becomes a tick on the semicircle, with an iso-phase ray and an iso-modulation arc through it. Their g and s appear under <b>Results</b>.",
+      "text": "Each lifetime becomes a tick on the semicircle, with an iso-phase ray and an iso-modulation arc through it. Their g and s appear in the <b>Reference lifetimes</b> table.",
       "target": {
         "attr": "taus"
       },
@@ -45,7 +45,7 @@
     },
     {
       "title": "A two-species mixture",
-      "text": "Copy two lifetimes' g and s from <b>Results</b> into g1/s1 and g2/s2, tick <b>Mixing region</b> and move <b>Fraction c1</b>. The mixture point slides along the chord in proportion to the <b>photon</b> fraction, not the amplitude.",
+      "text": "Copy two lifetimes' g and s from the <b>Reference lifetimes</b> table into g1/s1 and g2/s2, tick <b>Mixing region</b> and move <b>Fraction c1</b>. The mixture point slides along the chord in proportion to the <b>photon</b> fraction, not the amplitude.",
       "target": {
         "attr": "frac1"
       }

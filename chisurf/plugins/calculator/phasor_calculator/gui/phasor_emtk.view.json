@@ -1,0 +1,321 @@
+{
+  "_comment": "Phasor calculator for the emtk window: the controls of phasor.view.json (the AutoForm spec the Qt tool rendered), grouped, with spin arrows and two columns for the g/s pairs; the results table is a data_table. Drawn by emtk.view_form.",
+  "toolbar": {
+    "sections": [
+      {
+        "type": "button_row",
+        "description": "The guided tour and the help page.",
+        "buttons": [
+          {
+            "action": "guide",
+            "label": "Guide",
+            "description": "A step-by-step walk through the tool."
+          },
+          {
+            "action": "help",
+            "label": "Help",
+            "description": "The help page: reading the semicircle and every control."
+          }
+        ]
+      }
+    ]
+  },
+  "controls": {
+    "sections": [
+      {
+        "type": "panel",
+        "title": "Excitation",
+        "collapsible": true,
+        "description": "The laser repetition rate, its harmonic and the reference lifetimes.",
+        "sections": [
+          {
+            "type": "value",
+            "attr": "frequency",
+            "label": "Frequency",
+            "kind": "float",
+            "decimals": 3,
+            "minimum": 0.001,
+            "maximum": 10000.0,
+            "step": 1.0,
+            "suffix": " MHz",
+            "description": "Modulation frequency used to map lifetimes onto the phasor plot.",
+            "style": "spin"
+          },
+          {
+            "type": "value",
+            "attr": "harmonic",
+            "label": "Harmonic",
+            "kind": "int",
+            "minimum": 1,
+            "maximum": 16,
+            "description": "Harmonic number; the effective frequency is frequency x harmonic.",
+            "style": "spin",
+            "step": 1
+          },
+          {
+            "type": "value",
+            "attr": "taus",
+            "label": "Lifetimes (ns)",
+            "kind": "str",
+            "description": "Comma-separated reference lifetimes (ns) drawn as the iso-lifetime grid and semicircle ticks."
+          }
+        ]
+      },
+      {
+        "type": "panel",
+        "title": "Reference geometry",
+        "collapsible": true,
+        "sections": [
+          {
+            "type": "panel",
+            "n_col": 2,
+            "sections": [
+              {
+                "type": "toggle",
+                "attr": "show_grid",
+                "label": "Iso-lifetime grid",
+                "description": "Draw iso-phase and iso-modulation lines for the reference lifetimes."
+              },
+              {
+                "type": "toggle",
+                "attr": "show_ticks",
+                "label": "Lifetime ticks",
+                "description": "Mark the reference lifetimes on the universal semicircle."
+              },
+              {
+                "type": "toggle",
+                "attr": "show_polar_grid",
+                "label": "Polar grid",
+                "description": "Draw a polar coordinate grid (concentric circles + angular spokes) for reading phase and modulation."
+              },
+              {
+                "type": "toggle",
+                "attr": "show_fret",
+                "label": "FRET trajectory",
+                "description": "Draw the quenched-donor FRET trajectory for the donor-only lifetime below."
+              }
+            ]
+          },
+          {
+            "type": "value",
+            "attr": "tau_d0",
+            "label": "Donor τ0",
+            "kind": "float",
+            "decimals": 3,
+            "minimum": 0.001,
+            "maximum": 1000.0,
+            "suffix": " ns",
+            "description": "Donor-only lifetime for the FRET trajectory (tau_DA = tau_D0 * (1 - E)).",
+            "style": "spin",
+            "step": 0.1
+          }
+        ]
+      },
+      {
+        "type": "panel",
+        "title": "Two-component line",
+        "collapsible": true,
+        "collapsed": true,
+        "sections": [
+          {
+            "type": "panel",
+            "sections": [
+              {
+                "type": "toggle",
+                "attr": "show_component",
+                "label": "Two-component line",
+                "description": "Draw a mixing line between the two component phasors below."
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "n_col": 2,
+            "sections": [
+              {
+                "type": "value",
+                "attr": "g1",
+                "label": "g1",
+                "kind": "float",
+                "decimals": 4,
+                "minimum": -0.1,
+                "maximum": 1.1,
+                "step": 0.01,
+                "description": "Component 1 g.",
+                "style": "spin"
+              },
+              {
+                "type": "value",
+                "attr": "s1",
+                "label": "s1",
+                "kind": "float",
+                "decimals": 4,
+                "minimum": -0.1,
+                "maximum": 0.7,
+                "step": 0.01,
+                "description": "Component 1 s.",
+                "style": "spin"
+              },
+              {
+                "type": "value",
+                "attr": "g2",
+                "label": "g2",
+                "kind": "float",
+                "decimals": 4,
+                "minimum": -0.1,
+                "maximum": 1.1,
+                "step": 0.01,
+                "description": "Component 2 g.",
+                "style": "spin"
+              },
+              {
+                "type": "value",
+                "attr": "s2",
+                "label": "s2",
+                "kind": "float",
+                "decimals": 4,
+                "minimum": -0.1,
+                "maximum": 0.7,
+                "step": 0.01,
+                "description": "Component 2 s.",
+                "style": "spin"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "panel",
+        "title": "Mixing region",
+        "collapsible": true,
+        "collapsed": true,
+        "sections": [
+          {
+            "type": "panel",
+            "sections": [
+              {
+                "type": "toggle",
+                "attr": "show_mixing",
+                "label": "Mixing region",
+                "description": "Draw the two-component mixing geometry and the fraction-weighted mixture point (uses g1/s1, g2/s2 as the components)."
+              }
+            ]
+          },
+          {
+            "type": "value",
+            "attr": "frac1",
+            "label": "Fraction c1",
+            "kind": "float",
+            "decimals": 3,
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "step": 0.05,
+            "description": "Fractional intensity of component 1 (component 2 gets the remainder); sets the mixture point.",
+            "style": "spin"
+          }
+        ]
+      },
+      {
+        "type": "panel",
+        "title": "Cursor",
+        "collapsible": true,
+        "collapsed": true,
+        "sections": [
+          {
+            "type": "panel",
+            "sections": [
+              {
+                "type": "toggle",
+                "attr": "show_cursor",
+                "label": "Cursor",
+                "description": "Draw a circular gating-cursor outline at the position below."
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "n_col": 2,
+            "sections": [
+              {
+                "type": "value",
+                "attr": "cursor_g",
+                "label": "Cursor g",
+                "kind": "float",
+                "decimals": 4,
+                "minimum": -0.1,
+                "maximum": 1.1,
+                "step": 0.01,
+                "description": "Cursor centre g.",
+                "style": "spin"
+              },
+              {
+                "type": "value",
+                "attr": "cursor_s",
+                "label": "Cursor s",
+                "kind": "float",
+                "decimals": 4,
+                "minimum": -0.1,
+                "maximum": 0.7,
+                "step": 0.01,
+                "description": "Cursor centre s.",
+                "style": "spin"
+              }
+            ]
+          },
+          {
+            "type": "value",
+            "attr": "cursor_radius",
+            "label": "Cursor radius",
+            "kind": "float",
+            "decimals": 4,
+            "minimum": 0.001,
+            "maximum": 0.5,
+            "step": 0.01,
+            "description": "Radius of the circular gating cursor.",
+            "style": "spin"
+          }
+        ]
+      }
+    ]
+  },
+  "results": {
+    "sections": [
+      {
+        "type": "info",
+        "source": "effective_text",
+        "description": "The effective frequency: the laser repetition rate times the harmonic."
+      },
+      {
+        "type": "custom",
+        "key": "data_table",
+        "description": "Each reference lifetime tau and its phasor coordinates at the effective frequency: g the real part, s the imaginary part.",
+        "options": {
+          "source": "reference_rows",
+          "editable": false,
+          "expand": true,
+          "fit_columns": true,
+          "columns": [
+            {
+              "key": "tau",
+              "title": "τ (ns)",
+              "format": "%g",
+              "description": "The reference lifetime in nanoseconds."
+            },
+            {
+              "key": "g",
+              "title": "g",
+              "format": "%.3f",
+              "description": "The real phasor coordinate g = 1/(1+(ωτ)²)."
+            },
+            {
+              "key": "s",
+              "title": "s",
+              "format": "%.3f",
+              "description": "The imaginary phasor coordinate s = ωτ/(1+(ωτ)²)."
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
