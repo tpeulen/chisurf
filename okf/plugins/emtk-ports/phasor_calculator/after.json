@@ -35,8 +35,9 @@
     "8ns",
     "controls",
     "cursor",
-    "donortau0",
+    "donorτ0",
     "effectivef=80mhz",
+    "excitation",
     "frequency",
     "frettrajectory",
     "g",
@@ -61,15 +62,15 @@
   "interactive": [
     {
       "kind": "button",
-      "label": "📖 Guide",
-      "id": "📖 Guide",
+      "label": "Guide",
+      "id": "Guide##guide",
       "tooltip": "A step-by-step walk through the tool."
     },
     {
       "kind": "button",
-      "label": "❓ Help",
-      "id": "❓ Help",
-      "tooltip": "The short help page: reading the semicircle and every control."
+      "label": "Help",
+      "id": "Help##help",
+      "tooltip": "The help page: reading the semicircle and every control."
     },
     {
       "kind": "input_text",

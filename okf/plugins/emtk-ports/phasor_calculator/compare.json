@@ -35,8 +35,9 @@
     "8ns",
     "controls",
     "cursor",
-    "donortau0",
+    "donorτ0",
     "effectivef=80mhz",
+    "excitation",
     "frequency",
     "frettrajectory",
     "g",
@@ -64,5 +65,5 @@
     "output": "QT-FREE OK\n"
   },
   "before_controls": 0,
-  "after_controls": 53
+  "after_controls": 54
 }

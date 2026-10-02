@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **phasor_calculator re-verified with real input; layout fixed** (EMTKUP4): the committed port drew emoji glyphs against its labels and window titles, stretched every
+  number field, put the toggles at different indents, drew the reference table by hand and could not be saved or restored. Now one emtk spec (`phasor_emtk.view.json`:
+  spin arrows, the g/s pairs two to a row, toggles aligned), a `data_table`, `export_settings` / `restore_settings`, and 45 tests (every Qt label, every control with pointer,
+  Enter, drag, wheel, the folds, the guide; layout at 1200x800 and 800x600 with the groups open). The tour's plot step and the plot item are the whole plot window now.
+  Guide 77's figures regenerated. Evidence in `plugins/emtk-ports/phasor_calculator/` (`layout_before_*` is the committed state this pass started from).
+
 - **lightpath_simulator emtk app upgraded to verified parity, layout as an acceptance criterion** (EMTKUP4): the stream's app drew three floating windows
   over the graph and the results; it is now one docked layout (graph and results left, components and Easy Mode tabbed right) with the toolbar, palette,
   Backend / Connections / MMFDB panels and the result tables as view-spec forms and `data_table`s. Found by real-input tests: the right-click menus never
