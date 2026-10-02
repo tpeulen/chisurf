@@ -1,0 +1,469 @@
+{
+  "initial": {
+    "status": "Update available: version 26.10.02",
+    "tooltip": "Solver: micromamba\nLocation: /fake/bin/micromamba",
+    "branch": "",
+    "dev_checked": true,
+    "dev_enabled": false,
+    "check_on_start": true,
+    "ignore": false,
+    "items": [
+      "Version 26.10.02",
+      "Version 26.09.20",
+      "Version 26.08.01"
+    ],
+    "dropdown_enabled": true,
+    "update_enabled": true,
+    "check_enabled": true,
+    "changelog_plain": "Changes between 26.dev6243 and 26.10.02: \n2026-10-01 Add the updater tour (by Ada) \n2026-09-25 Fix <b>bold</b> & ampersand handling (by Cy)\nMore details: https://github.com/Fluorescence-Tools/chisurf/commits",
+    "current_version": "26.dev6243"
+  },
+  "checked": {
+    "status": "Update available: version 26.10.02",
+    "items": [
+      "Version 26.10.02",
+      "Version 26.09.20",
+      "Version 26.08.01"
+    ],
+    "index": 0,
+    "changelog_plain": "Changes between 26.09.20 and 26.10.02: \n2026-10-01 Add the updater tour (by Ada) \n2026-09-25 Fix <b>bold</b> & ampersand handling (by Cy)\nMore details: https://github.com/Fluorescence-Tools/chisurf/commits",
+    "html": "<b>Changes between 26.09.20 and 26.10.02:</b>\n<ul>\n  <li>2026-10-01 Add the updater tour (by Ada)</li>\n  <li>2026-09-25 Fix &lt;b&gt;bold&lt;/b&gt; &amp; ampersand handling (by Cy)</li>\n</ul>\n<p>More details: <a href=\"https://github.com/Fluorescence-Tools/chisurf/commits\">https://github.com/Fluorescence-Tools/chisurf/commits</a></p>"
+  },
+  "html_by_index": {
+    "0": "<b>Changes between 26.09.20 and 26.10.02:</b>\n<ul>\n  <li>2026-10-01 Add the updater tour (by Ada)</li>\n  <li>2026-09-25 Fix &lt;b&gt;bold&lt;/b&gt; &amp; ampersand handling (by Cy)</li>\n</ul>\n<p>More details: <a href=\"https://github.com/Fluorescence-Tools/chisurf/commits\">https://github.com/Fluorescence-Tools/chisurf/commits</a></p>",
+    "1": "<b>Changes between 26.08.01 and 26.09.20:</b>\n<ul>\n  <li>2026-10-01 Add the updater tour (by Ada)</li>\n  <li>2026-09-25 Fix &lt;b&gt;bold&lt;/b&gt; &amp; ampersand handling (by Cy)</li>\n</ul>\n<p>More details: <a href=\"https://github.com/Fluorescence-Tools/chisurf/commits\">https://github.com/Fluorescence-Tools/chisurf/commits</a></p>",
+    "2": "<b>Changes between 26.dev6243 and 26.08.01:</b>\n<ul>\n  <li>2026-10-01 Add the updater tour (by Ada)</li>\n  <li>2026-09-25 Fix &lt;b&gt;bold&lt;/b&gt; &amp; ampersand handling (by Cy)</li>\n</ul>\n<p>More details: <a href=\"https://github.com/Fluorescence-Tools/chisurf/commits\">https://github.com/Fluorescence-Tools/chisurf/commits</a></p>"
+  },
+  "startup_saved": {
+    "plugins": {
+      "updater": {
+        "ignore_updates_on_startup": true,
+        "check_on_startup": false
+      }
+    }
+  },
+  "update_declined": {
+    "status": "Update cancelled by user.",
+    "commands": [],
+    "asked": [
+      [
+        "information",
+        "Update Available",
+        "A new version of ChiSurf (26.10.02) is available."
+      ],
+      [
+        "confirm",
+        "Update Warning",
+        "The update process will close all ChiSurf windows and continue in a separate window.\n\nAll unsaved work will be lost. After the update completes, you will need to restart ChiSurf manually.\n\nDo you want to continue?"
+      ]
+    ]
+  },
+  "update_accepted": {
+    "status": "Updating to version 26.10.02...",
+    "commands": [
+      [
+        "separate_process",
+        [
+          "/fake/bin/micromamba",
+          "install",
+          "--yes",
+          "--update-deps",
+          "--force-reinstall",
+          "--prefix",
+          "/Users/tpeulen/mambaforge/envs/arm64",
+          "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/chisurf_update_1zkqk9d4/chisurf-macos-26.10.02.tar.bz2"
+        ]
+      ]
+    ],
+    "asked": [
+      [
+        "confirm",
+        "Update Warning",
+        "The update process will close all ChiSurf windows and continue in a separate window.\n\nAll unsaved work will be lost. After the update completes, you will need to restart ChiSurf manually.\n\nDo you want to continue?"
+      ]
+    ]
+  },
+  "no_versions": {
+    "status": "ChiSurf is up to date (version 26.dev6243).",
+    "items": 0,
+    "update_enabled": false,
+    "changelog_plain": ""
+  },
+  "standard_update_commands": [
+    [
+      "separate_process",
+      [
+        "/fake/bin/micromamba",
+        "install",
+        "-y",
+        "--update-deps",
+        "--prefix",
+        "/Users/tpeulen/mambaforge/envs/arm64",
+        "chisurf",
+        "-c",
+        "conda-forge",
+        "-c",
+        "defaults"
+      ]
+    ]
+  ],
+  "http": [
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-18T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=development",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-20T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=development",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-18T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=main",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-18T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=development",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-20T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=development",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-18T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=main",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-20T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=development",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-08-01T00:00:00+00:00&until=2026-09-21T00:00:00+00:00&per_page=100&sha=development",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-07-18T00:00:00+00:00&until=2026-08-02T00:00:00+00:00&per_page=100&sha=development",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-20T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=development",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-18T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=main",
+    "https://api.github.com/repos/Fluorescence-Tools/chisurf/commits?since=2026-09-18T00:00:00+00:00&until=2026-10-03T00:00:00+00:00&per_page=100&sha=main"
+  ],
+  "format_changelog": {
+    "input": "Changes between 26.09.20 and 26.10.02:\n- 2026-10-01 Add <the> updater (by Ada)\nplain line & more\n\nMore details: https://github.com/Fluorescence-Tools/chisurf/commits",
+    "html": "<b>Changes between 26.09.20 and 26.10.02:</b>\n<ul>\n  <li>2026-10-01 Add &lt;the&gt; updater (by Ada)</li>\n</ul>\n<p>plain line &amp; more</p>\n<p>More details: <a href=\"https://github.com/Fluorescence-Tools/chisurf/commits\">https://github.com/Fluorescence-Tools/chisurf/commits</a></p>",
+    "empty": "<i>No changelog available.</i>"
+  },
+  "pm_initial": {
+    "env": "/Users/tpeulen/mambaforge/envs/arm64",
+    "installed": [
+      [
+        "numpy",
+        "1.26.4",
+        "conda-forge"
+      ],
+      [
+        "scipy",
+        "1.13.1",
+        "conda-forge"
+      ],
+      [
+        "python",
+        "3.11.9",
+        "conda-forge"
+      ],
+      [
+        "chisurf",
+        "26.09.20",
+        "chisurf-local"
+      ],
+      [
+        "Numba",
+        "0.59.1",
+        "defaults"
+      ]
+    ],
+    "envs": [
+      "/fake/mambaforge",
+      "/fake/mambaforge/envs/arm64",
+      "/fake/mambaforge/envs/analysis"
+    ],
+    "channels": [
+      "conda-forge",
+      "defaults"
+    ],
+    "log": "[15:30:56] Refreshing installed packages...\n[15:30:56] Loaded 5 packages.",
+    "tabs": [
+      "Installed Packages",
+      "Search & Install",
+      "Environments",
+      "Channels"
+    ],
+    "startup_commands": [
+      [
+        "/fake/bin/micromamba",
+        "list",
+        "--json",
+        "-p",
+        "/Users/tpeulen/mambaforge/envs/arm64"
+      ],
+      [
+        "/fake/bin/micromamba",
+        "config",
+        "--show",
+        "--json"
+      ],
+      [
+        "/fake/bin/micromamba",
+        "env",
+        "list",
+        "--json"
+      ]
+    ]
+  },
+  "pm_filter": [
+    [
+      "numpy",
+      "1.26.4",
+      "conda-forge"
+    ],
+    [
+      "Numba",
+      "0.59.1",
+      "defaults"
+    ]
+  ],
+  "pm_search_rows": 0,
+  "pm_search_log": "[15:30:56] Refreshing installed packages...\n[15:30:56] Loaded 5 packages.\n[15:30:58] Searching for 'numpy'...\n[15:30:58] Found 0 results.",
+  "pm_search_rows_list_payload": [
+    [
+      "numpy",
+      "2.0.1",
+      "conda-forge"
+    ],
+    [
+      "numpy-base",
+      "1.26.4",
+      "defaults"
+    ]
+  ],
+  "pm_install": {
+    "asked": [
+      [
+        "question",
+        "Confirm Installation",
+        "Are you sure you want to install:\nnumpy?"
+      ]
+    ],
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "install",
+        "-y",
+        "--update-deps",
+        "-p",
+        "/Users/tpeulen/mambaforge/envs/arm64",
+        "numpy"
+      ],
+      [
+        "/fake/bin/micromamba",
+        "env",
+        "list",
+        "--json"
+      ],
+      [
+        "/fake/bin/micromamba",
+        "config",
+        "--show",
+        "--json"
+      ],
+      [
+        "/fake/bin/micromamba",
+        "env",
+        "list",
+        "--json"
+      ],
+      [
+        "/fake/bin/micromamba",
+        "config",
+        "--show",
+        "--json"
+      ]
+    ]
+  },
+  "pm_update_selected": {
+    "asked": [],
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "update",
+        "-y",
+        "-p",
+        "/Users/tpeulen/mambaforge/envs/arm64",
+        "scipy"
+      ]
+    ]
+  },
+  "pm_update_all": {
+    "asked": [
+      [
+        "question",
+        "Update All",
+        "Update all packages in the current environment?"
+      ]
+    ],
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "update",
+        "-y",
+        "-p",
+        "/Users/tpeulen/mambaforge/envs/arm64",
+        "--all"
+      ]
+    ]
+  },
+  "pm_remove_declined": {
+    "asked": [
+      [
+        "question",
+        "Confirm Removal",
+        "Are you sure you want to remove:\nscipy?"
+      ]
+    ],
+    "commands": []
+  },
+  "pm_remove": {
+    "asked": [
+      [
+        "question",
+        "Confirm Removal",
+        "Are you sure you want to remove:\nscipy?"
+      ]
+    ],
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "remove",
+        "-y",
+        "-p",
+        "/Users/tpeulen/mambaforge/envs/arm64",
+        "scipy"
+      ]
+    ]
+  },
+  "pm_create_env": {
+    "asked": [
+      [
+        "input",
+        "New Environment",
+        "Enter environment name:"
+      ]
+    ],
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "create",
+        "-y",
+        "-n",
+        "scratch"
+      ]
+    ]
+  },
+  "pm_clone_env": {
+    "asked": [
+      [
+        "input",
+        "Clone Environment",
+        "Enter new name for clone of '/fake/mambaforge/envs/analysis':"
+      ]
+    ],
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "create",
+        "-y",
+        "-n",
+        "analysis-copy",
+        "--clone",
+        "/fake/mambaforge/envs/analysis"
+      ]
+    ]
+  },
+  "pm_remove_env": {
+    "asked": [
+      [
+        "question",
+        "Confirm removal",
+        "Remove environment '/fake/mambaforge/envs/arm64'?"
+      ]
+    ],
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "env",
+        "remove",
+        "-y",
+        "-p",
+        "/fake/mambaforge/envs/arm64"
+      ]
+    ]
+  },
+  "pm_export_env": {
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "env",
+        "export",
+        "-p",
+        "/fake/mambaforge/envs/analysis"
+      ]
+    ],
+    "file": "name: fake\nchannels:\n  - conda-forge\ndependencies:\n  - numpy=1.26.4\n"
+  },
+  "pm_import_env": {
+    "asked": [
+      [
+        "input",
+        "Import Environment",
+        "Enter name for new environment (optional):"
+      ]
+    ],
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "env",
+        "create",
+        "-f",
+        "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/upd_qt_m30ykq5f/env.yaml",
+        "-n",
+        "imported"
+      ]
+    ]
+  },
+  "pm_add_channel": {
+    "asked": [
+      [
+        "input",
+        "Add Channel",
+        "Enter channel name or URL:"
+      ]
+    ],
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "config",
+        "--add",
+        "channels",
+        "bioconda"
+      ]
+    ]
+  },
+  "pm_remove_channel": {
+    "commands": [
+      [
+        "/fake/bin/micromamba",
+        "config",
+        "--remove",
+        "channels",
+        "conda-forge"
+      ]
+    ]
+  },
+  "pm_log_end": "[15:30:56] Refreshing installed packages...\n[15:30:56] Loaded 5 packages.\n[15:30:58] Searching for 'numpy'...\n[15:30:58] Found 0 results.\n[15:30:58] Searching for 'numpy'...\n[15:30:58] Found 2 results.\n[15:30:59] Installing numpy...\n[15:30:59] Operation completed successfully.\n[15:30:59] Refreshing installed packages...\n[15:30:59] Operation completed successfully.\n[15:30:59] Refreshing installed packages...\n[15:30:59] Loaded 5 packages.\n[15:30:59] Loaded 5 packages.\n[15:30:59] Updating scipy...\n[15:30:59] Operation completed successfully.\n[15:30:59] Refreshing installed packages...\n[15:30:59] Operation completed successfully.\n[15:30:59] Refreshing installed packages...\n[15:30:59] Loaded 5 packages.\n[15:30:59] Loaded 5 packages.\n[15:30:59] Updating all packages...\n[15:30:59] Operation completed successfully.\n[15:30:59] Refreshing installed packages...\n[15:30:59] Operation completed successfully.\n[15:30:59] Refreshing installed packages...\n[15:30:59] Loaded 5 packages.\n[15:30:59] Loaded 5 packages.\n[15:31:00] Removing scipy...\n[15:31:00] Operation completed successfully.\n[15:31:00] Refreshing installed packages...\n[15:31:00] Operation completed successfully.\n[15:31:00] Refreshing installed packages...\n[15:31:00] Loaded 5 packages.\n[15:31:00] Loaded 5 packages.\n[15:31:01] Creating environment 'scratch'...\n[15:31:01] Operation completed successfully.\n[15:31:01] Refreshing installed packages...\n[15:31:01] Operation completed successfully.\n[15:31:01] Refreshing installed packages...\n[15:31:01] Loaded 5 packages.\n[15:31:01] Loaded 5 packages.\n[15:31:01] Cloning environment '/fake/mambaforge/envs/analysis' to 'analysis-copy'...\n[15:31:01] Operation completed successfully.\n[15:31:01] Refreshing installed packages...\n[15:31:01] Operation completed successfully.\n[15:31:01] Refreshing installed packages...\n[15:31:01] Loaded 5 packages.\n[15:31:01] Loaded 5 packages.\n[15:31:02] Removing environment '/fake/mambaforge/envs/arm64'...\n[15:31:02] Operation completed successfully.\n[15:31:02] Refreshing installed packages...\n[15:31:02] Operation completed successfully.\n[15:31:02] Refreshing installed packages...\n[15:31:02] Loaded 5 packages.\n[15:31:02] Loaded 5 packages.\n[15:31:02] Exporting environment to /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/upd_qt_m30ykq5f/exported.yaml...\n[15:31:02] Exported successfully to /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/upd_qt_m30ykq5f/exported.yaml\n[15:31:02] Importing environment from /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/upd_qt_m30ykq5f/env.yaml...\n[15:31:02] Operation completed successfully.\n[15:31:02] Refreshing installed packages...\n[15:31:02] Operation completed successfully.\n[15:31:02] Refreshing installed packages...\n[15:31:02] Loaded 5 packages.\n[15:31:02] Loaded 5 packages.\n[15:31:03] Adding channel 'bioconda'...\n[15:31:03] Operation completed successfully.\n[15:31:03] Refreshing installed packages...\n[15:31:03] Operation completed successfully.\n[15:31:03] Refreshing installed packages...\n[15:31:03] Loaded 5 packages.\n[15:31:03] Loaded 5 packages.\n[15:31:04] Removing channel 'conda-forge'...\n[15:31:04] Operation completed successfully.\n[15:31:04] Refreshing installed packages...\n[15:31:04] Operation completed successfully.\n[15:31:04] Refreshing installed packages...\n[15:31:04] Loaded 5 packages.\n[15:31:04] Loaded 5 packages.",
+  "pm_failure": {
+    "asked": [
+      [
+        "question",
+        "Confirm Removal",
+        "Are you sure you want to remove:\nnumpy?"
+      ],
+      [
+        "error",
+        "Error",
+        "The operation failed:\n"
+      ],
+      [
+        "error",
+        "Error",
+        "The operation failed:\n"
+      ]
+    ]
+  },
+  "safety": {
+    "process_attempts": 0,
+    "mutating_solver_commands_in_failure": 1
+  }
+}
