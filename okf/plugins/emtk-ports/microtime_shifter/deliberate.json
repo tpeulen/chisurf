@@ -1,0 +1,6 @@
+{
+  "histogram": "the Qt dock header 'Histogram' (and its tab): the emtk dock is titled '📊 Micro-time histograms' and draws the same plot",
+  "level": "the Qt toolbar label 'Level:' is the spec field 'Trigger level' (same count threshold, same auto-align)",
+  "pos": "the Qt toolbar label 'Pos:' is the spec field 'Target bin' (same bin, same auto-align)",
+  "showtrigger": "the Qt toolbar toggle 'Show Trigger' is the spec toggle 'Show trigger lines'"
+}

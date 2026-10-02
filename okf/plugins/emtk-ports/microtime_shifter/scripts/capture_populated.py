@@ -29,7 +29,7 @@ if which == "qt":
         qapp.processEvents()
     w.grab().save(str(out / f"{prefix}.png"))
     print("QT", w._channel_shifts, w._trigger_level, w._trigger_pos)
-else:
+elif which == "emtk":
     from emtk.testing import RecordingPainter
     from test.gui.emtk_port_parity import emtk_screenshot, manifest_of
     module, attr = manifest_of("microtime_shifter")["entrypoints"]["emtk"].split(":")
@@ -46,3 +46,30 @@ else:
         emtk_screenshot(a, out / f"{prefix}_{size[0]}x{size[1]}.png", size)
         print("EMTK", a.channel_shifts, a.trigger_level, a.trigger_position)
         a.close()
+
+if which == "emtk-states":
+    # the save dialog over the aligned tool, the guide's Auto-align step, the help page
+    from emtk.testing import RecordingPainter
+    from test.gui.emtk_port_parity import emtk_screenshot
+    from chisurf.plugins.tttr.tttr_microtime_shifter.gui.app import create_app
+
+    a = create_app()
+    a.load_files([path])
+    while a.job.running or not a.n_mt:
+        time.sleep(0.05); a.draw(RecordingPainter(), 0, 0, 1200, 800)
+    a.auto_align()
+    a.save_dialog()
+    a.draw(RecordingPainter(), 0, 0, 1200, 800)
+    emtk_screenshot(a, out / f"{prefix}_dialog_1200x800.png", (1200, 800))
+    a.dialog = None
+    step = next(i for i, s in enumerate(a.tour.steps) if s.get("target", {}).get("name") == "auto_align")
+    a.tour.start(step)
+    for _ in range(2):
+        a.draw(RecordingPainter(), 0, 0, 800, 600)
+    emtk_screenshot(a, out / f"{prefix}_guide_800x600.png", (800, 600))
+    a.tour.stop()
+    a.help.show()
+    for _ in range(2):
+        a.draw(RecordingPainter(), 0, 0, 1200, 800)
+    emtk_screenshot(a, out / f"{prefix}_help_1200x800.png", (1200, 800))
+    a.close()

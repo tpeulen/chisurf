@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **microtime_shifter emtk app at parity** (EMTK-1, upgrade row 42): controls from a new `shifter.view.json` (the app is the
+  model), Guide/Help at the top, sized dialogs, on-demand frames, a Remove button; parity on a demo whose detectors are offset
+  by a known 400 bins (both hosts align 0 → 3904, 8 → 3504; saved photons = (micro + shift) mod N). Open: the tool has no docs
+  page; known issue filed for `modules/ndxplorer`'s `test` package shadowing the repo's.
+  [report](plugins/emtk-ports/microtime_shifter/REPORT.md).
+
 - **traj_join emtk app at parity, and the join fixed** (EMTK-1, upgrade row 41): in time mode the join interleaved read chunks
   (A0–99, B99–0, A100–199…; up to 88.9 Å off on hgbp1), truncated the longer file and reversed per chunk; it now appends
   whole trajectories, reverses whole trajectories and raises on a mismatch (guide 81, known-issues item 7). This completes the

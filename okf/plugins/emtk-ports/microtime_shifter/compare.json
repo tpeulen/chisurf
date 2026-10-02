@@ -1,0 +1,48 @@
+{
+  "plugin": "microtime_shifter",
+  "explained": {
+    "histogram": "the Qt dock header 'Histogram' (and its tab): the emtk dock is titled '📊 Micro-time histograms' and draws the same plot",
+    "level": "the Qt toolbar label 'Level:' is the spec field 'Trigger level' (same count threshold, same auto-align)",
+    "pos": "the Qt toolbar label 'Pos:' is the spec field 'Target bin' (same bin, same auto-align)",
+    "showtrigger": "the Qt toolbar toggle 'Show Trigger' is the spec toggle 'Show trigger lines'"
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "0",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "alignment",
+    "batchfolder",
+    "browse",
+    "chooseanoutputdirectory",
+    "counts",
+    "globalshift",
+    "guide",
+    "help",
+    "micro-timebin",
+    "micro-timehistograms",
+    "mmfdb",
+    "savebatch",
+    "saveshifted",
+    "shifts",
+    "showtriggerlines",
+    "status",
+    "targetbin",
+    "triggerlevel"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 15,
+  "after_controls": 39
+}

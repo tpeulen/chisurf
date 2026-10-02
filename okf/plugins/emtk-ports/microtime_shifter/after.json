@@ -1,0 +1,156 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "alignment",
+    "autoalign",
+    "batchfolder",
+    "browse",
+    "chooseanoutputdirectory",
+    "clear",
+    "counts",
+    "database",
+    "files",
+    "folder",
+    "globalshift",
+    "guide",
+    "help",
+    "logy",
+    "micro-timebin",
+    "micro-timehistograms",
+    "micro-timeshift",
+    "mmfdb",
+    "nofileloaded.",
+    "remove",
+    "save",
+    "savebatch",
+    "saveshifted",
+    "shifts",
+    "showtriggerlines",
+    "status",
+    "targetbin",
+    "triggerlevel"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "Shifts, alignment, what is written and the MMFDB archive."
+    },
+    {
+      "kind": "button",
+      "label": "➕ Files…",
+      "id": "➕ Files…",
+      "tooltip": "Queue TTTR files; originals are retained when saving shifts."
+    },
+    {
+      "kind": "button",
+      "label": "📁 Folder…",
+      "id": "📁 Folder…",
+      "tooltip": "Queue supported TTTR files recursively from a folder."
+    },
+    {
+      "kind": "button",
+      "label": "🗄 Database…",
+      "id": "🗄 Database…",
+      "tooltip": "Select TTTR inputs from the MMFDB object store."
+    },
+    {
+      "kind": "button",
+      "label": "➖ Remove",
+      "id": "➖ Remove",
+      "tooltip": "Remove the selected file from the queue (it stays on disk)."
+    },
+    {
+      "kind": "button",
+      "label": "🧹 Clear",
+      "id": "🧹 Clear",
+      "tooltip": "Remove queued files and preview shifts."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show trigger lines",
+      "id": "Show trigger lines##show_trigger",
+      "tooltip": "Display the draggable count threshold (yellow) and target bin (green) on the histogram."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Log Y",
+      "id": "Log Y##log_y",
+      "tooltip": "Display histogram photon counts on a logarithmic axis."
+    },
+    {
+      "kind": "input_text",
+      "label": "trigger_level",
+      "id": "##trigger_level",
+      "tooltip": "Count threshold: auto-align finds, per detector, the first bin up to the peak at or above this level (the rising edge)."
+    },
+    {
+      "kind": "input_text",
+      "label": "trigger_position",
+      "id": "##trigger_position",
+      "tooltip": "Auto-align shifts each detector's rising edge to this micro-time bin."
+    },
+    {
+      "kind": "button",
+      "label": "⚡ Auto align",
+      "id": "⚡ Auto align##auto_align",
+      "tooltip": "Shift each detector so its rising-edge threshold crossing lands on the target bin."
+    },
+    {
+      "kind": "input_text",
+      "label": "global_shift",
+      "id": "##global_shift",
+      "tooltip": "Added to every routing channel's shift; the micro-times wrap modulo the bin count."
+    },
+    {
+      "kind": "button",
+      "label": "💾 Save shifted…",
+      "id": "💾 Save shifted…##save_dialog",
+      "tooltip": "One file: choose the shifted file's name. Several: choose a folder; one shifted file is written per input. Inputs are never changed."
+    },
+    {
+      "kind": "input_text",
+      "label": "output_folder",
+      "id": "##output_folder",
+      "tooltip": "Directory for a batch of shifted files; the inputs stay unchanged."
+    },
+    {
+      "kind": "button",
+      "label": "📁 Browse…",
+      "id": "📁 Browse…##browse_output_folder",
+      "tooltip": "Choose the batch output directory."
+    },
+    {
+      "kind": "button",
+      "label": "Save batch",
+      "id": "Save batch##save_batch",
+      "tooltip": "Write one shifted file per queued input into the batch folder."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

@@ -6184,3 +6184,13 @@ modal renders the same files as rich text and routes links to the documentation 
 `help.md` is affected. *Not fixed here:* `chisurf/emtk/*` is a shared helper outside the EMTK-1 claim; the fix is to join
 a paragraph's lines before wrapping and to render (or at least strip) inline markup, with links going through
 `chisurf/gui/widgets/tools/doc_links.py`'s routing.
+
+## Importing a tttr plugin moves `modules/ndxplorer` to the front of `sys.path`; its `test` package shadows the repo's (found 2026-10-02)
+
+**Measured**: with the repo root at `sys.path[0]`, `import chisurf.plugins.tttr.tttr_microtime_shifter.tests.demo_data` leaves
+`sys.path[0] == ".../modules/ndxplorer"`, and a following `import test` resolves to `modules/ndxplorer/test/__init__.py` —
+so `from test.gui.emtk_port_parity import …` fails with `No module named 'test.gui'` in a script (pytest is unaffected when
+the repo's `test` is imported first). The move is not a `list.insert` on `sys.path` (a profile hook on it saw nothing), so
+probably a slice assignment or an import hook; the guarded insert in `chisurf/plugins/ndxplorer/__init__.py` only runs as a
+plugin. Workaround: import `test.gui` before any plugin. *Not fixed here:* find the mover, and rename ndxplorer's top-level
+`test` package (or stop putting the module root on the path) so the two cannot collide.
