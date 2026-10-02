@@ -1,26 +1,36 @@
 {
-  "_comment": "Guided tour for the File Tools hub. The window is a navigation list plus a lazy panel area, so the tour is about choosing the right panel for the operation you actually mean.",
+  "_comment": "Guided tour for the File tools hub (emtk app gui/app.py; the Qt hub reads it too). Targets are the hub's own rects by name: the navigation entries nav_<role>, the search field, the description strip and the panel box. The converter step waits for the user to open one.",
   "steps": [
     {
       "title": "One hub, one kind of work",
-      "text": "Everything in this window acts on a <b>file</b>: it moves a measurement between containers, reads one back, or corrects a header. No panel here measures anything — the analyses live elsewhere on purpose.<br/><br/>Pick a tool on the left; its panel opens on the right.",
+      "text": "Everything in this window acts on a <b>file</b>: it moves a measurement between containers, reads one back, or corrects a header. No panel here measures anything — the analyses live elsewhere on purpose.",
       "target": {}
     },
     {
       "title": "The converters move, they do not change",
       "text": "<b>TTTR Split / Convert</b>, <b>TTTR → Time Windows</b> and <b>⇄ .pto</b> all rewrite a recording into a different container. Conversion never touches the photons — if a count comes out different afterwards, the header was wrong, not the conversion.",
-      "await": {
-        "hint": "Select a converter panel from the list."
-      }
+      "target": {"name": "nav_split_convert"},
+      "await": {"hint": "Open <b>TTTR Split / Convert</b> in the list."}
+    },
+    {
+      "title": "What the open tool does",
+      "text": "The strip above the panel says what the selected tool is for; the panel below it is that tool, unchanged — its own Guide and Help work as in its own window, and a file dropped on the hub goes to it.",
+      "target": {"name": "description"}
     },
     {
       "title": "Inspect before you trust",
-      "text": "<b>PTO Inspector</b> reads what a .pto actually contains, and the <b>TTTR header editor</b> shows the tags a vendor wrote — the ones every later step takes on faith. Wrong micro-time card, wrong resolution, wrong detector number: this is where those are caught.",
-      "target": {}
+      "text": "<b>PTO Inspector</b> reads what a .pto actually contains, and the <b>TTTR header</b> editor shows the tags a vendor wrote — the ones every later step takes on faith. Wrong micro-time card, wrong resolution, wrong detector number: this is where those are caught.",
+      "target": {"name": "nav_tttr_header_edit"}
+    },
+    {
+      "title": "Find a tool",
+      "text": "The filter matches the tools' names and descriptions.",
+      "target": {"name": "search"}
     },
     {
       "title": "One broken tool breaks one panel",
-      "text": "Panels load lazily and independently, so a sub-tool whose dependencies are missing shows an error panel and the rest of the hub still works. If a panel fails to open, the problem is that tool's — not the file you dropped on another one."
+      "text": "Panels load lazily and independently, so a tool whose dependencies are missing shows an error here, with Retry, and the rest of the hub still works. If a panel fails to open, the problem is that tool's — not the file you dropped on another one.",
+      "target": {"name": "panel"}
     }
   ]
 }
