@@ -1,1 +1,48 @@
-{"steps":[{"title":"Load photon data","text":"Open or drop a TTTR scanner image; MMFDB dataset resolves registered data."},{"title":"Choose detector windows","text":"The shared detector setup supplies routing channels, polarization splits and microtime windows. Standalone defaults to channel 0."},{"title":"Run and inspect","text":"Run computes all detector windows. Inspect intensity, background-corrected count rate and the raw frame movie."},{"title":"Persist or explore","text":"Create imaging HDF5 or Save container preserves the real per-pixel table. ndX explores its live columns. Next advances an attached pipeline."}]}
+{
+  "_comment": "Guided tour for the per-pixel intensity tool in the emtk window. Steps point at real controls and wait for the user to use them; the tour never presses a button for the user. Targets are the spec's attr names, the names of the buttons, and the windows (tabs) the window draws.",
+  "steps": [
+    {
+      "title": "What this tool computes",
+      "text": "From a confocal photon stream this tool builds, for every <b>detector window</b>, the photon counts of each pixel, the count rate in kHz and the raw frames. It also writes the <b>imaging HDF5</b> that the N&B, micro-time and phasor tools enrich. You press the buttons; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Choose the photon file",
+      "text": "A PTU or HT3 file with line and frame markers: the scanner geometry is read from its header. Type a path and press Enter, press <b>Browse</b> or <b>Database</b>, or drop a file on the window (a dropped file is loaded and run at once).",
+      "target": {"name": "file", "action": "TTTR file"},
+      "await": {"hint": "Select a photon file. Nothing is computed until you press Run."}
+    },
+    {
+      "title": "Detector windows",
+      "text": "One set of maps is computed for every detector window; this field chooses which window is drawn. Without a setup the single channel-0 window is used. The <b>Detectors</b> tab is the same editor as the Setup tool: windows defined there (or handed over by the Imaging Tools setup step) are computed with the next run.",
+      "target": {"attr": "display_window"}
+    },
+    {
+      "title": "Compute the maps",
+      "text": "Run reads the photons and fills one image per window in the background. When neither the file nor the windows changed since the last run nothing is recomputed.",
+      "target": {"name": "run", "action": "Run"},
+      "await": {"hint": "Press <b>Run</b> and wait until the status line is empty."}
+    },
+    {
+      "title": "Intensity and count rate",
+      "text": "The intensity is the photon count per pixel summed over all frames. The count rate divides it by the pixel dwell and subtracts the calibrated detector background, so it is in kHz and never negative. The <b>Detector window</b> field chooses which window is drawn; wheel zooms, drag pans.",
+      "target": {"title": "Count rate (kHz)"}
+    },
+    {
+      "title": "The frames",
+      "text": "The raw per-frame stack, played as a movie: a time series of scanner frames, not an axial stack.",
+      "target": {"title": "Frames (movie)"}
+    },
+    {
+      "title": "Write the table",
+      "text": "<b>Create imaging HDF5</b> writes the per-pixel table (counts, count rates, the number of photons and the back-reference to the photon file). Inside the Imaging Tools pipeline the file is remembered, so the next steps enrich the same one.",
+      "target": {"name": "saved", "action": "Create imaging HDF5"},
+      "await": {"hint": "Press <b>Create imaging HDF5</b> and choose a file name."}
+    },
+    {
+      "title": "Explore and go on",
+      "text": "<b>ndX</b> opens the same table in the explorer (a Back button returns here); <b>Save container</b> writes it into the container beside the photon file; <b>Next</b> hands the file on to the next analysis step when the tool is used inside the Imaging Tools pipeline.",
+      "target": {"name": "open_ndx", "action": "ndX"}
+    }
+  ]
+}

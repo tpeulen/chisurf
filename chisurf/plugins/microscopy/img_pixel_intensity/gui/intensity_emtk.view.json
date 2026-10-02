@@ -1,0 +1,76 @@
+{
+  "_comment": "Per-pixel intensity, drawn by emtk. The settings window on the left (file, detector window, the actions), the maps as tabs on the right. The Qt tool's AutoForm spec is intensity.view.json.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Settings",
+      "dock": "settings",
+      "n_col": 1,
+      "description": "The source file, the detector window that is shown and the actions that compute and write the maps.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Compute the maps, write them out, explore them or go on to the next step.",
+          "buttons": [
+            {"action": "run_maps", "label": "Run", "description": "Compute the per-pixel photon counts and count rates of every detector window, in the background. Nothing is recomputed when neither the file nor the detector windows changed."},
+            {"action": "request_hdf5", "label": "Create imaging HDF5", "description": "Write the per-pixel table (counts, count rates, number of photons, the back-reference to the photon file) to the imaging HDF5 the next analysis steps enrich. With a file already remembered by the pipeline it is written there; otherwise a file is asked for."},
+            {"action": "save_container", "label": "Save container", "description": "Write the same table as a pixel-map artifact into the container beside the photon file (the Qt tool did this when it closed)."},
+            {"action": "open_ndx", "label": "ndX", "description": "Explore the per-pixel table in ndX, the shared live dataset. A Back button returns to the maps."},
+            {"action": "next_step", "label": "Next", "description": "Remember the file and the HDF5 and go to the next analysis step. Only available inside the Imaging Tools pipeline."}
+          ]
+        },
+        {
+          "type": "value", "attr": "filename", "label": "TTTR file", "kind": "str", "call": "commit_filename", "elide": "start",
+          "placeholder": "pick a file, drop one here, or load from the database",
+          "description": "PTU/HT3 imaging file with line and frame markers (or drop one onto the window: it is loaded and run). The scanner geometry is read from its header. Press Enter to select a typed path."
+        },
+        {
+          "type": "button_row",
+          "description": "Pick the photon file from disk or from the database.",
+          "buttons": [
+            {"action": "open_file", "label": "Browse", "description": "Browse for a photon imaging file on disk."},
+            {"action": "open_database", "label": "Database", "description": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."}
+          ]
+        },
+        {
+          "type": "choice", "attr": "display_window", "label": "Detector window", "options_source": "window_names", "call": "refresh_display",
+          "description": "The detector window shown in the maps. Every window is computed and written; this only chooses which one is displayed. The windows come from the Detectors tab (or the Imaging Tools setup step); without any, the channel-0 window is used."
+        },
+        {
+          "type": "info", "source": "summary_text",
+          "description": "What was computed: the file, the size of the image and the detector windows."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Intensity",
+      "dock": "views",
+      "description": "The summed photon counts per pixel of the displayed detector window.",
+      "sections": [
+        {"type": "custom", "key": "image_panel", "title": "Intensity", "description": "Photon counts per pixel, summed over all frames. Wheel zooms, drag pans; the colormap, gamma and levels change the display only.",
+         "options": {"name": "Intensity", "source": "intensity_map", "colormap_attr": "colormap", "empty": "No intensity yet. Select a photon file and press Run."}}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Count rate (kHz)",
+      "dock": "views",
+      "description": "The count rate per pixel: photons divided by the pixel dwell, with the detector background subtracted.",
+      "sections": [
+        {"type": "custom", "key": "image_panel", "title": "Count rate (kHz)", "description": "Count rate in kHz: total photons divided by the scanner dwell time of the pixel, minus the calibrated background of the detector, never below zero.",
+         "options": {"name": "Count rate", "source": "count_rate_map", "colormap_attr": "colormap", "empty": "No count rate yet. Select a photon file and press Run."}}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Frames (movie)",
+      "dock": "views",
+      "description": "The raw per-frame intensity stack of the displayed detector window.",
+      "sections": [
+        {"type": "custom", "key": "image_panel", "title": "Frames (movie)", "description": "The scanner frames one after the other: play, loop, stop and the playback speed. This is a time series, not an axial stack.",
+         "options": {"name": "Frames", "source": "frame_stack", "colormap_attr": "colormap", "movie": true, "empty": "No frames yet. Select a photon file and press Run."}}
+      ]
+    }
+  ]
+}

@@ -1,11 +1,41 @@
 # Per-pixel intensity
 
-Open or drop a photon imaging file, or resolve an MMFDB dataset. Run computes all detector windows supplied by the shared detector setup. Without a setup, channel 0 is used. Scanner marker geometry is read from the TTTR header.
+This tool turns a confocal photon stream into **images of photon counts**: for every detector window, the counts per pixel, the count rate in kHz and the
+raw frames. It is also the step that creates the **imaging HDF5** the other per-pixel tools (N&B, mean micro-time, phasor) add their columns to.
+If you have never used it, press **Guide** at the top of the settings window.
 
-Each window keeps parallel, perpendicular and total photon counts. Count rate is total photons divided by scanner dwell time in seconds and by 1000, reported in kHz. Per-detector calibrated background in kHz is subtracted from rates and clipped at zero; photon-count columns remain raw counts.
+## Workflow
 
-The intensity and count-rate maps use the selected detector window. Raw frames preserve the scanner frame stack. Use Frame to select a scanner frame, or Play movie and Frames per second to animate it. Colormap, gamma and levels affect only the display.
+1. Select a **TTTR file**: type a path and press Enter, press **Browse** or **Database**, or drop a file on the window (a dropped file is loaded and run
+   at once). The scanner markers (line start, line stop, frame) are read from the file header.
+2. Check the **Detectors** tab: one set of maps is computed for every detector window. Without a setup the single channel-0 window is used. The tab is the
+   shared detector editor of the Setup tool; inside the Imaging Tools pipeline the windows of its setup step are used.
+3. Press **Run**. The maps are computed in the background (**Cancel** discards the unfinished result). Nothing is recomputed when neither the file nor the
+   windows changed.
+4. Read the maps: **Intensity**, **Count rate (kHz)** and the **Frames (movie)**. The **Detector window** field chooses the window that is drawn.
 
-Create imaging HDF5 writes the real per-pixel table, including detector count columns, MFD count-rate names, Number of Photons and the original source back-reference. Save container writes the pixel-map artifact beside the photon stream. An explicitly bound MMFDB session preserves the existing registration and ACL workflows. Closing a computed session flushes its standard HDF5 and container, matching the existing persistence contract.
+## What is computed
 
-ndX opens the same live table in the native explorer. Next remembers the source/HDF5 and advances an attached Imaging Tools coordinator; standalone tools identify that missing host integration. Computation and output jobs work on snapshots, then publish results on the UI thread. Setup, pipeline and calibration updates received during a job are applied after delivery.
+For every detector window the parallel, perpendicular and total photon counts per pixel (`N{c}-p-all`, `N{c}-s-all`, `N{c}-all`), the count rate and a
+global **Number of Photons** column. The count rate is the total photons divided by the scanner dwell time of the pixel (in seconds) and by 1000, so it is
+in kHz; the calibrated background of the detector (kHz, from the IRF and background step) is subtracted and the result is clipped at zero. The count
+columns stay raw counts.
+
+## The maps
+
+The colormap, gamma and display levels change only the picture, never the stored numbers. Wheel zooms and a drag pans; **Reset view** shows the whole
+image. The **Frames (movie)** tab plays the scanner frames: **Play**, **Loop**, **Stop** and the playback speed (1 to 120 frames per second).
+
+## Writing and handing on
+
+- **Create imaging HDF5** writes the per-pixel table with the back-reference to the photon file. When the pipeline already remembers a file it is written
+  there, otherwise a file is asked for.
+- **Save container** writes the same table as a pixel-map artifact into the container beside the photon file (the Qt tool did this when it closed).
+- **ndX** opens the live table in the explorer; **Back to the maps** returns.
+- **Next** remembers the file and the HDF5 and goes on to the next analysis step; it is available inside the Imaging Tools pipeline only.
+
+Closing a computed session flushes the standard HDF5 and the container, as the Qt tool does.
+
+## Further reading
+
+[Scan images](docs/guides/24_scan_images.md)

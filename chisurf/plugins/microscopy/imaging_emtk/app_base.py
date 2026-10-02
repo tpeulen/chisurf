@@ -59,7 +59,7 @@ class ImagingToolApp(ImApp):
         self.job = SnapshotJob(model)
         model.runner = self.start_job
         model.add_observer(self._on_event)
-        self.spec = json.loads((self.GUI_DIR / self.SPEC).read_text(encoding="utf-8"))
+        self.spec = self.prepare_spec(json.loads((self.GUI_DIR / self.SPEC).read_text(encoding="utf-8")))
         self.form = FormState()
         self.item_rects: dict[str, tuple] = {}
         self.dialog: FileDialog | None = None
@@ -89,6 +89,14 @@ class ImagingToolApp(ImApp):
             self.docks.add_window(key, key, lambda box, p=panel: self._draw_window(p),
                                   dock=str(panel.get("dock", "views")), closable=False)
         super().__init__(self.render, continuous=False)
+
+    def prepare_spec(self, spec: dict) -> dict:
+        """Hook: the spec as loaded (a subclass may lay it out or extend it)."""
+        return spec
+
+    def _draw_main(self, box: tuple) -> None:
+        """Hook: what fills the frame under the dialogs (the dock windows)."""
+        self.docks.draw(box)
 
     # -- worker ----------------------------------------------------------- #
     def start_job(self, method: str) -> bool:
@@ -124,7 +132,7 @@ class ImagingToolApp(ImApp):
         self.form.rects.clear()
         self._open_requested_dialog()
         self._follow_tour()
-        self.docks.draw(box)
+        self._draw_main(box)
         self._draw_dialog(box)
         self.picker.render(box)
         for event, control in self.OUTCOMES.items():
