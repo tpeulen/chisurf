@@ -1,0 +1,12 @@
+diff --git a/chisurf/plugins/microscopy/psf_determination/manifest.json b/chisurf/plugins/microscopy/psf_determination/manifest.json
+index f4aa46720..bd4fbf111 100644
+--- a/chisurf/plugins/microscopy/psf_determination/manifest.json
++++ b/chisurf/plugins/microscopy/psf_determination/manifest.json
+@@ -19,6 +19,7 @@
+     }
+   },
+   "entrypoints": {
++    "emtk": "chisurf.plugins.microscopy.psf_determination.gui.app:make_app",
+     "gui": "chisurf.plugins.microscopy.psf_determination.gui.tool:PsfDeterminationTool",
+     "cli": "psf-determination=chisurf.plugins.microscopy.psf_determination.cli:cli",
+     "services": "chisurf.plugins.microscopy.psf_determination.backend.services:register_services"

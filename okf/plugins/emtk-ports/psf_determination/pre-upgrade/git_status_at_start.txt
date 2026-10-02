@@ -1,0 +1,6 @@
+ M chisurf/plugins/microscopy/psf_determination/manifest.json
+?? chisurf/plugins/microscopy/psf_determination/EMTK_CHECKLIST.md
+?? chisurf/plugins/microscopy/psf_determination/gui/app.py
+?? chisurf/plugins/microscopy/psf_determination/gui/canvas.py
+?? chisurf/plugins/microscopy/psf_determination/gui/jobs.py
+?? chisurf/plugins/microscopy/psf_determination/tests/

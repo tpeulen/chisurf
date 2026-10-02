@@ -19,6 +19,7 @@
     }
   },
   "entrypoints": {
+    "emtk": "chisurf.plugins.microscopy.psf_determination.gui.app:make_app",
     "gui": "chisurf.plugins.microscopy.psf_determination.gui.tool:PsfDeterminationTool",
     "cli": "psf-determination=chisurf.plugins.microscopy.psf_determination.cli:cli",
     "services": "chisurf.plugins.microscopy.psf_determination.backend.services:register_services"
