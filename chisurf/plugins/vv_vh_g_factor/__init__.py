@@ -20,12 +20,19 @@ else:
     cli_entrypoint = ""
 
 # Re-export the main widget class
-from .gui.tool import VvVhGFactorCalculator
 
 __all__ = ["VvVhGFactorCalculator"]
 
 
+def __getattr__(name):
+    if name == 'VvVhGFactorCalculator':
+        from .gui.tool import VvVhGFactorCalculator
+        return VvVhGFactorCalculator
+    raise AttributeError(name)
+
+
 if __name__ == "plugin":
+    from .gui.tool import VvVhGFactorCalculator
     window = VvVhGFactorCalculator()
     if _manifest is not None:
         apply_manifest_statefulness(window, _manifest)

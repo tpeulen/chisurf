@@ -1,0 +1,7 @@
+ M chisurf/plugins/vv_vh_g_factor/__init__.py
+ M chisurf/plugins/vv_vh_g_factor/manifest.json
+?? chisurf/plugins/vv_vh_g_factor/gui/app.py
+?? chisurf/plugins/vv_vh_g_factor/gui/guide.json
+?? chisurf/plugins/vv_vh_g_factor/gui/help.md
+?? chisurf/plugins/vv_vh_g_factor/gui/model.py
+?? chisurf/plugins/vv_vh_g_factor/test/test_native.py

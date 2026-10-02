@@ -1,0 +1,63 @@
+{
+  "controls": [
+    "backgroundcorrection",
+    "batch",
+    "bgparallel",
+    "bgperpendicular",
+    "correctedg-factor",
+    "correctedstddev",
+    "dt[ns/ch]",
+    "flipvvvh(dataswappedinvv/vh)",
+    "g-factor",
+    "l1/l2",
+    "loadfpvv/vhfile",
+    "loadvv/vhfile",
+    "r0",
+    "rho[ns]",
+    "shiftperpendiculardecay(channels)",
+    "showcorrected",
+    "showfastdye",
+    "showraw",
+    "showslowdye",
+    "stddev",
+    "targetrs",
+    "tau[ns]",
+    "warningloadfpvv/vhdatatoestimatel1/l2."
+  ],
+  "labels": [
+    "BG Parallel:",
+    "BG Perpendicular:",
+    "Corrected G-Factor:",
+    "Corrected StdDev:",
+    "G-Factor:",
+    "Shift Perpendicular Decay (channels):",
+    "StdDev:",
+    "Target rS:",
+    "Warning: Load FP VV/VH data to estimate l1/l2.",
+    "dt [ns/ch]:",
+    "l1/l2:",
+    "r0:",
+    "rho [ns]:",
+    "tau [ns]:"
+  ],
+  "buttons": [
+    "Background Correction",
+    "Batch...",
+    "Flip VV<->VH (data swapped in VV/VH)",
+    "Load FP VV/VH File",
+    "Load VV/VH File",
+    "Show corrected",
+    "Show fast dye",
+    "Show raw",
+    "Show slow dye"
+  ],
+  "line_edits": 15,
+  "combos": 0,
+  "spin_boxes": 7,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.vv_vh_g_factor.gui.tool:VvVhGFactorCalculator",
+  "size": [
+    1200,
+    800
+  ]
+}

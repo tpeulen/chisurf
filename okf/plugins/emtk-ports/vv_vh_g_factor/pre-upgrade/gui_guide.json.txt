@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Load reference",
+    "text": "Load fast dye and optionally slow protein VV/VH decays."
+  },
+  {
+    "title": "Match tails",
+    "text": "Choose tail/background regions, shift and correction options."
+  },
+  {
+    "title": "Inspect and export",
+    "text": "Check raw/corrected decays and anisotropy before exporting or archiving."
+  }
+]

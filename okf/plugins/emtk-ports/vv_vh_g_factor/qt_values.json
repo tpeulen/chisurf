@@ -1,0 +1,33 @@
+{
+ "g_factor": 1.2187137034875877,
+ "g_factor_uncorrected": 1.2145038119193052,
+ "g_factor_stddev": null,
+ "g_factor_corrected": 1.2187137034875877,
+ "l1_estimate": null,
+ "l2_estimate": null,
+ "fp_tau_estimate_ns": 8.864208010992826,
+ "fp_rs_expected": 0.24452819881944135,
+ "region_bounds": [
+  358.0,
+  460.0
+ ],
+ "bg_region_bounds": [
+  25.0,
+  76.0
+ ],
+ "fields": {
+  "g_factor_value": "1.2145",
+  "g_factor_stddev_value": "0.1514",
+  "corrected_g_factor_value": "1.2187",
+  "bg_parallel_value": "2.7451",
+  "bg_perpendicular_value": "2.7843"
+ },
+ "fp": {
+  "fp_tau_value": 8.864208,
+  "fp_rs_value": 0.244528,
+  "fp_l1_value": 0.0,
+  "fp_rho_spinbox": 16.0,
+  "fp_r0_spinbox": 0.38,
+  "fp_dt_spinbox": 0.05
+ }
+}

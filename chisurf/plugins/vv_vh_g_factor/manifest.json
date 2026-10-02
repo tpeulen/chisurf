@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Fluorescence decay:VV/VH G-Factor Calculator",
   "description": "Calculate detector G-factors using tail-matching on VV/VH format files.",
-  "authors": ["Thomas-Otavio Peulen <thomas.peulen@tu-dortmund.de>"],
-  "categories": ["Spectroscopy", "Fluorescence decay"],
-  "icon": "⚖️",
+  "authors": [
+    "Thomas-Otavio Peulen <thomas.peulen@tu-dortmund.de>"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Fluorescence decay"
+  ],
+  "icon": "\u2696\ufe0f",
   "state_namespace": "vv_vh_g_factor",
   "statefulness": {
     "enabled": true,
@@ -17,9 +22,12 @@
   "entrypoints": {
     "gui": "chisurf.plugins.vv_vh_g_factor.gui.tool:VvVhGFactorCalculator",
     "cli": "vv-vh-g-factor=chisurf.plugins.vv_vh_g_factor.cli:cli",
-    "services": "chisurf.plugins.vv_vh_g_factor.backend.services:register_services"
+    "services": "chisurf.plugins.vv_vh_g_factor.backend.services:register_services",
+    "emtk": "chisurf.plugins.vv_vh_g_factor.gui.app:create_app"
   },
-  "operation_types": ["calibration"],
+  "operation_types": [
+    "calibration"
+  ],
   "rpc_methods": [
     {
       "name": "vv_vh_g_factor.calculate",
@@ -37,6 +45,6 @@
       "name": "vv_vh_g_factor.archive_g_factor",
       "summary": "Register reference decay and archive G-factor calibration in MMFDB."
     }
- ],
- "menu_hidden": true
+  ],
+  "menu_hidden": true
 }

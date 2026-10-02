@@ -1,0 +1,71 @@
+diff --git a/chisurf/plugins/vv_vh_g_factor/__init__.py b/chisurf/plugins/vv_vh_g_factor/__init__.py
+index 8e39ff96b..1c57068c4 100644
+--- a/chisurf/plugins/vv_vh_g_factor/__init__.py
++++ b/chisurf/plugins/vv_vh_g_factor/__init__.py
+@@ -20,12 +20,19 @@ else:
+     cli_entrypoint = ""
+ 
+ # Re-export the main widget class
+-from .gui.tool import VvVhGFactorCalculator
+ 
+ __all__ = ["VvVhGFactorCalculator"]
+ 
+ 
++def __getattr__(name):
++    if name == 'VvVhGFactorCalculator':
++        from .gui.tool import VvVhGFactorCalculator
++        return VvVhGFactorCalculator
++    raise AttributeError(name)
++
++
+ if __name__ == "plugin":
++    from .gui.tool import VvVhGFactorCalculator
+     window = VvVhGFactorCalculator()
+     if _manifest is not None:
+         apply_manifest_statefulness(window, _manifest)
+diff --git a/chisurf/plugins/vv_vh_g_factor/manifest.json b/chisurf/plugins/vv_vh_g_factor/manifest.json
+index ed2ba5102..bbd9b2854 100644
+--- a/chisurf/plugins/vv_vh_g_factor/manifest.json
++++ b/chisurf/plugins/vv_vh_g_factor/manifest.json
+@@ -3,9 +3,14 @@
+   "version": "1.0.0",
+   "display_name": "Spectroscopy:Fluorescence decay:VV/VH G-Factor Calculator",
+   "description": "Calculate detector G-factors using tail-matching on VV/VH format files.",
+-  "authors": ["Thomas-Otavio Peulen <thomas.peulen@tu-dortmund.de>"],
+-  "categories": ["Spectroscopy", "Fluorescence decay"],
+-  "icon": "⚖️",
++  "authors": [
++    "Thomas-Otavio Peulen <thomas.peulen@tu-dortmund.de>"
++  ],
++  "categories": [
++    "Spectroscopy",
++    "Fluorescence decay"
++  ],
++  "icon": "\u2696\ufe0f",
+   "state_namespace": "vv_vh_g_factor",
+   "statefulness": {
+     "enabled": true,
+@@ -17,9 +22,12 @@
+   "entrypoints": {
+     "gui": "chisurf.plugins.vv_vh_g_factor.gui.tool:VvVhGFactorCalculator",
+     "cli": "vv-vh-g-factor=chisurf.plugins.vv_vh_g_factor.cli:cli",
+-    "services": "chisurf.plugins.vv_vh_g_factor.backend.services:register_services"
++    "services": "chisurf.plugins.vv_vh_g_factor.backend.services:register_services",
++    "emtk": "chisurf.plugins.vv_vh_g_factor.gui.app:create_app"
+   },
+-  "operation_types": ["calibration"],
++  "operation_types": [
++    "calibration"
++  ],
+   "rpc_methods": [
+     {
+       "name": "vv_vh_g_factor.calculate",
+@@ -37,6 +45,6 @@
+       "name": "vv_vh_g_factor.archive_g_factor",
+       "summary": "Register reference decay and archive G-factor calibration in MMFDB."
+     }
+- ],
+- "menu_hidden": true
++  ],
++  "menu_hidden": true
+ }
