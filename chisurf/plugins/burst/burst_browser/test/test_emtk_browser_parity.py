@@ -95,8 +95,10 @@ def _qt_facts(root):
     proc = subprocess.run([sys.executable, "-c", _QT, str(root), json.dumps(GATES)], capture_output=True, text=True,
                           timeout=300, env=env, cwd=str(REPO))
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None:
-        pytest.skip(f"the Qt widget could not be built here: {proc.stderr[-800:]}")
+    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
+    # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
+    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
     return json.loads(line[len("FACTS"):])
 
 
