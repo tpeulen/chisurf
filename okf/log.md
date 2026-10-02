@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- 2026-10-02: irf_estimator (audit-all row 49) upgraded: the emtk app's form is a view spec (`irf_estimator_emtk.view.json`) with the Qt tool's control states, captions, data label, time-axis line and result formats, and the Qt window layout. The plot cuts the scaled IRF below one count and uses the Qt pens: the log axis had run to 1e-54 and the forward model was green on the green range region. Values equal the Qt widget's on a measured donor decay; 29 passed, breakage 14/14 twice; guide `irf_estimation.md` gains the window workflow. Report: `okf/plugins/emtk-ports/irf_estimator/REPORT.md`.
+
 - **burst_fusion real-input pass** (EMTK-1B follow-up): 35 click tests (+2 strict xfails for emtk gaps) operate every control
   with pointer, keys, paste, drag, wheel and host drops; they found that edits typed into the form during a run were silently
   lost, that a host file drop reached nothing outside Qt (`files_dropped` missing) and that the status told the user to press a

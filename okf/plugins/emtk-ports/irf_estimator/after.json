@@ -1,0 +1,156 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.00",
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.0000",
+    "11",
+    "1e-05",
+    "1e-06",
+    "3",
+    "500",
+    "amplitude(a)",
+    "auto-updateirf",
+    "decayrate(k)",
+    "estimateirf",
+    "estresults",
+    "guide",
+    "help",
+    "intensity(counts/channel)",
+    "irfestimationparameters",
+    "irfestimationresults",
+    "irfestparameters",
+    "lifetime(τ)",
+    "loaddecay",
+    "loadfromdataset",
+    "manualbackground",
+    "n/a",
+    "nodataloaded",
+    "offset(c)",
+    "plots",
+    "ready",
+    "regularization",
+    "rliterations",
+    "saveirf",
+    "sgpolyorder",
+    "sgwindowlength",
+    "time(ns)",
+    "time/channel(ns)",
+    "timeaxisnotavailable",
+    "transfertochisurf",
+    "userangeselection"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📂 Load Decay",
+      "id": "📂 Load Decay##request_load",
+      "tooltip": "Load a measured decay from a VV/VH file (.dat): the VV channel is used, the time per channel comes from the file."
+    },
+    {
+      "kind": "button",
+      "label": "📊 Load from Dataset",
+      "id": "📊 Load from Dataset##request_dataset",
+      "tooltip": "Choose a decay curve already open in ChiSurf; grouped datasets list each channel."
+    },
+    {
+      "kind": "button",
+      "label": "💾 Save IRF",
+      "id": "💾 Save IRF##request_save",
+      "tooltip": "Save the estimated IRF as a VV/VH file with identical VV and VH channels."
+    },
+    {
+      "kind": "button",
+      "label": "🚀 Transfer to ChiSurf",
+      "id": "🚀 Transfer to ChiSurf##request_transfer",
+      "tooltip": "Register the estimated IRF as a TCSPC VV/VH dataset (g = 1, 10 MHz) in ChiSurf."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide##request_guide",
+      "tooltip": "Walk through loading a decay, subtracting the background and estimating the IRF."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help##request_help",
+      "tooltip": "What blind IRF estimation does, its assumptions and its failure modes."
+    },
+    {
+      "kind": "input_text",
+      "label": "dt",
+      "id": "##dt",
+      "tooltip": "Time per channel in nanoseconds, set from the data. Correct it when the file carries none: the time axis, lifetime and rate are rescaled, the IRF per channel is unchanged."
+    },
+    {
+      "kind": "input_text",
+      "label": "window_length",
+      "id": "##window_length",
+      "tooltip": "Savitzky-Golay filter window length (channels) used to find the decay maximum; the estimator makes it odd."
+    },
+    {
+      "kind": "input_text",
+      "label": "polyorder",
+      "id": "##polyorder",
+      "tooltip": "Polynomial order of the Savitzky-Golay filter."
+    },
+    {
+      "kind": "input_text",
+      "label": "rl_iterations",
+      "id": "##rl_iterations",
+      "tooltip": "Richardson-Lucy deconvolution iterations. More iterations sharpen the IRF and amplify noise: where you stop is the regularisation. Auto-update uses 50."
+    },
+    {
+      "kind": "input_text",
+      "label": "regularization",
+      "id": "##regularization",
+      "tooltip": "Median filter size for regularization (1 = no regularization)."
+    },
+    {
+      "kind": "input_text",
+      "label": "manual_background",
+      "id": "##manual_background",
+      "tooltip": "Background counts per channel subtracted before the estimate (0 = auto-estimate). Loading a file sets it to the median of the last 10 % of channels."
+    },
+    {
+      "kind": "checkbox",
+      "label": "📍 Use Range Selection",
+      "id": "📍 Use Range Selection##use_range_selection",
+      "tooltip": "Use only a channel range for the estimate: drag the green region in the plot or type its first and last channel."
+    },
+    {
+      "kind": "checkbox",
+      "label": "🔄 Auto-Update IRF",
+      "id": "🔄 Auto-Update IRF##auto_update_enabled",
+      "tooltip": "Re-estimate the IRF (50 RL iterations) when a parameter, the background or the range changes, once an IRF exists."
+    },
+    {
+      "kind": "button",
+      "label": "🔮 Estimate IRF",
+      "id": "🔮 Estimate IRF##request_estimate",
+      "tooltip": "Fit the decay tail with a truncated exponential, then deconvolve it with Richardson-Lucy to obtain the IRF."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

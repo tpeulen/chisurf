@@ -1,0 +1,48 @@
+{
+  "plugin": "irf_estimator",
+  "explained": {
+    "?": "the Qt toolbar help button: the same help as ❓ Help (a rename, kept beside 📖 Guide)"
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "0",
+    "0.00",
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.0000",
+    "11",
+    "1e-05",
+    "1e-06",
+    "3",
+    "500",
+    "estresults",
+    "help",
+    "intensity(counts/channel)",
+    "irfestimationparameters",
+    "irfestimationresults",
+    "irfestparameters",
+    "n/a",
+    "plots",
+    "ready",
+    "time(ns)"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 21,
+  "after_controls": 51
+}
