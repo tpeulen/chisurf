@@ -1,0 +1,308 @@
+{
+  "_comment": "PSF calculator for the emtk window: the parameter panels of psf_calculator.view.json (the AutoForm spec the Qt tool rendered) with spin arrows, drawn by emtk.view_form over PSFPanel (gui/panel.py). The 3-D volume and the slice are drawn by gui/app.py (plots).",
+  "toolbar": {
+    "sections": [
+      {
+        "type": "button_row",
+        "description": "Export the computed volume, open the guided tour or the help.",
+        "buttons": [
+          {
+            "action": "export_npy",
+            "label": "Export .npy",
+            "description": "Save the computed volume as a NumPy array at full float precision, without metadata. Greyed until a volume exists."
+          },
+          {
+            "action": "export_tif",
+            "label": "Export .tif",
+            "description": "Save the computed volume as a 32-bit ImageJ TIFF stack that carries the voxel size, so ImageJ scales it correctly. Greyed until a volume exists."
+          },
+          {
+            "action": "guide",
+            "label": "Guide",
+            "description": "A step-by-step walk through the tool."
+          },
+          {
+            "action": "help",
+            "label": "Help",
+            "description": "Explain the optical models, the polarization and how to read the volume."
+          }
+        ]
+      }
+    ]
+  },
+  "parameters": {
+    "sections": [
+      {
+        "type": "panel",
+        "title": "Objective",
+        "collapsible": true,
+        "description": "The objective: numerical aperture, immersion index and the wavelength.",
+        "sections": [
+          {
+            "type": "value",
+            "attr": "na",
+            "label": "NA",
+            "kind": "float",
+            "decimals": 2,
+            "minimum": 0.05,
+            "maximum": 1.7,
+            "step": 0.05,
+            "description": "Numerical aperture. Above about 1.0 the scalar models stop being trustworthy and the vectorial one should be used.",
+            "style": "spin",
+            "call": "edited"
+          },
+          {
+            "type": "value",
+            "attr": "n_immersion",
+            "label": "n (immersion)",
+            "kind": "float",
+            "decimals": 3,
+            "minimum": 1.0,
+            "maximum": 2.0,
+            "step": 0.01,
+            "description": "Refractive index of the immersion medium: 1.518 oil, 1.33 water, 1.0 air. The NA cannot exceed it.",
+            "style": "spin",
+            "call": "edited"
+          },
+          {
+            "type": "value",
+            "attr": "wavelength_nm",
+            "label": "λ (nm)",
+            "kind": "float",
+            "decimals": 0,
+            "minimum": 300.0,
+            "maximum": 1200.0,
+            "step": 10.0,
+            "description": "Emission or excitation wavelength in nanometres.",
+            "style": "spin",
+            "call": "edited"
+          }
+        ]
+      },
+      {
+        "type": "panel",
+        "title": "Model",
+        "collapsible": true,
+        "description": "The optical model that computes the focus.",
+        "sections": [
+          {
+            "type": "choice",
+            "attr": "model",
+            "label": "Optical model",
+            "options": [
+              "vectorial",
+              "airy",
+              "gaussian"
+            ],
+            "labels": [
+              "Vectorial (Richards-Wolf)",
+              "Airy (scalar, 2-D)",
+              "Gaussian"
+            ],
+            "description": "Vectorial accounts for the longitudinal field and the input polarization; Airy is the exact scalar focal-plane result and is repeated unchanged along z, so it shows no defocus; Gaussian adds a paraxial axial envelope but has no wings.",
+            "call": "edited"
+          }
+        ]
+      },
+      {
+        "type": "panel",
+        "title": "Polarization",
+        "collapsible": true,
+        "description": "The polarization of the light at the objective pupil (the vectorial model only; the angle only for linear polarization at an angle).",
+        "sections": [
+          {
+            "type": "choice",
+            "attr": "polarization",
+            "label": "Polarization",
+            "options": [
+              "circular",
+              "x",
+              "y",
+              "linear",
+              "left",
+              "unpolarized",
+              "radial",
+              "azimuthal"
+            ],
+            "labels": [
+              "Circular",
+              "Linear x",
+              "Linear y",
+              "Linear at angle",
+              "Left circular",
+              "Unpolarized",
+              "Radial",
+              "Azimuthal"
+            ],
+            "description": "State of the light entering the pupil. Linear elongates the focus along its own axis; radial has a strong longitudinal core (tighter than linear only with an annular aperture); azimuthal is a doughnut with a zero on axis.",
+            "call": "edited"
+          },
+          {
+            "type": "value",
+            "attr": "angle_deg",
+            "label": "Angle (°)",
+            "kind": "float",
+            "decimals": 0,
+            "minimum": 0.0,
+            "maximum": 180.0,
+            "step": 5.0,
+            "description": "Orientation of the linear state, measured from the x axis. Used only when Polarization is 'Linear at angle'.",
+            "style": "spin",
+            "call": "edited"
+          }
+        ]
+      },
+      {
+        "type": "panel",
+        "title": "Sampling",
+        "collapsible": true,
+        "description": "The grid the volume is computed on, and how finely the aperture integral is evaluated.",
+        "sections": [
+          {
+            "type": "value",
+            "attr": "nxy",
+            "label": "Lateral size (px)",
+            "kind": "int",
+            "minimum": 16,
+            "maximum": 192,
+            "step": 8,
+            "description": "Pixels per lateral side of the volume.",
+            "style": "spin",
+            "call": "edited"
+          },
+          {
+            "type": "value",
+            "attr": "nz",
+            "label": "Planes",
+            "kind": "int",
+            "minimum": 3,
+            "maximum": 81,
+            "step": 2,
+            "description": "Number of axial planes, centred on focus.",
+            "style": "spin",
+            "call": "edited"
+          },
+          {
+            "type": "value",
+            "attr": "pixel_size_nm",
+            "label": "Pixel (nm)",
+            "kind": "float",
+            "decimals": 1,
+            "minimum": 1.0,
+            "maximum": 200.0,
+            "step": 5.0,
+            "description": "Lateral sampling in nanometres.",
+            "style": "spin",
+            "call": "edited"
+          },
+          {
+            "type": "value",
+            "attr": "z_step_nm",
+            "label": "z step (nm)",
+            "kind": "float",
+            "decimals": 1,
+            "minimum": 5.0,
+            "maximum": 1000.0,
+            "step": 25.0,
+            "description": "Axial spacing between planes.",
+            "style": "spin",
+            "call": "edited"
+          },
+          {
+            "type": "choice",
+            "attr": "quality",
+            "label": "Quality",
+            "options": [
+              "preview",
+              "full"
+            ],
+            "labels": [
+              "Preview (fast)",
+              "Full"
+            ],
+            "description": "Preview uses a coarser aperture quadrature. The vectorial model is expensive, so live editing stays on preview and the full calculation is worth waiting for only once the parameters are settled.",
+            "call": "edited"
+          }
+        ]
+      },
+      {
+        "type": "panel",
+        "title": "Display",
+        "collapsible": true,
+        "description": "How the volume is drawn; none of these recompute it.",
+        "sections": [
+          {
+            "type": "value",
+            "attr": "threshold",
+            "label": "Threshold",
+            "kind": "float",
+            "decimals": 3,
+            "minimum": 0.0,
+            "maximum": 0.9,
+            "step": 0.01,
+            "description": "Hide voxels below this fraction of the peak. A diffraction-limited focus is mostly empty space and renders as fog without it.",
+            "style": "spin",
+            "call": "edited"
+          },
+          {
+            "type": "value",
+            "attr": "gamma",
+            "label": "Gamma",
+            "kind": "float",
+            "decimals": 2,
+            "minimum": 0.1,
+            "maximum": 3.0,
+            "step": 0.1,
+            "description": "Shapes the opacity ramp. Below 1 lifts the faint wings into view.",
+            "style": "spin",
+            "call": "edited"
+          },
+          {
+            "type": "choice",
+            "attr": "colormap",
+            "label": "Colormap",
+            "options": [
+              "magma",
+              "inferno",
+              "viridis",
+              "gray"
+            ],
+            "description": "Colormap of the rendered volume.",
+            "call": "edited"
+          },
+          {
+            "type": "toggle",
+            "attr": "show_polarization",
+            "label": "Polarization vectors",
+            "description": "Draw the pupil polarization state as strokes on a ring above the focus. Vectorial model only, since the scalar models ignore polarization.",
+            "call": "edited"
+          }
+        ]
+      }
+    ]
+  },
+  "result": {
+    "sections": [
+      {
+        "type": "info",
+        "source": "summary_lines",
+        "description": "The size of the volume, the lateral and axial FWHM measured on it, and the scalar 0.51 lambda/NA prediction."
+      }
+    ]
+  },
+  "slice": {
+    "sections": [
+      {
+        "type": "choice",
+        "attr": "slice_plane",
+        "label": "Slice plane",
+        "options": [
+          "XY",
+          "XZ",
+          "YZ"
+        ],
+        "description": "The central section of the volume to show: XY lateral, XZ or YZ axial."
+      }
+    ]
+  }
+}

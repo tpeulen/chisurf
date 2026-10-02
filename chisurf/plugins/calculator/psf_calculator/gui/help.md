@@ -65,7 +65,7 @@ number in brackets is lateral ÷ scalar.
 
 ## Exporting
 
-**Export** on the toolbar writes the computed volume in either of two formats:
+The **Export .npy** and **Export .tif** buttons write the computed volume in either of two formats:
 
 | Format | What it carries | Use it for |
 | --- | --- | --- |

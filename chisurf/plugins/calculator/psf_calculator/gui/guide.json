@@ -3,9 +3,7 @@
     {
       "title": "What this tool answers",
       "text": "We will work one question through: <b>how wrong is the textbook resolution formula for my objective?</b><br/><br/>Everyone quotes 0.51 λ/NA. At the high NA people actually use, it is optimistic — and by how much depends on the polarization, which the formula does not mention at all. Six steps and you will have the number for your own optics.",
-      "target": {
-        "attr": "na"
-      }
+      "target": {}
     },
     {
       "title": "Step 1 — set your objective's NA",
@@ -65,7 +63,7 @@
     },
     {
       "title": "Take it with you — export the volume",
-      "text": "<b>Export</b> on the toolbar writes the volume you are looking at.<br/><br/><b>NumPy (.npy)</b> keeps full float precision and nothing else — the right choice for feeding a deconvolution or a simulation.<br/><b>ImageJ TIFF (.tif)</b> is a 32-bit stack carrying the voxel size, so it opens in ImageJ or Fiji already scaled in micrometres instead of counting pixels.<br/><br/>Export what you meant to export: the file records whatever is currently computed, so switch <b>Quality</b> to <b>Full</b> first.",
+      "text": "The <b>Export .npy</b> and <b>Export .tif</b> buttons write the volume you are looking at.<br/><br/><b>Export .npy</b> (NumPy) keeps full float precision and nothing else — the right choice for feeding a deconvolution or a simulation.<br/><b>Export .tif</b> (ImageJ TIFF) is a 32-bit stack carrying the voxel size, so it opens in ImageJ or Fiji already scaled in micrometres instead of counting pixels.<br/><br/>Export what you meant to export: the file records whatever is currently computed, so switch <b>Quality</b> to <b>Full</b> first.",
       "target": {
         "action": "Export"
       }
