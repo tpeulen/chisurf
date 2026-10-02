@@ -70,8 +70,11 @@ def clipped_texts(painter, ignore=()):
         x0, y0, x1, y1 = clip
         if x1 <= x0 or y1 <= y0:
             continue
-        if x < x0 - 0.5 or x >= x1 or y + h <= y0 or y >= y1:
-            continue  # scrolled out of view, not cut
+        if y + h <= y0 or y >= y1 or x < x0 - 0.5:
+            continue  # scrolled out of view vertically, not cut
+        if x >= x1:
+            out.append(f"starts beyond the right edge: {s!r} at x={x:.0f}, clip ends at {x1:.0f}")
+            continue
         if x + need > x1 + 0.5 and w > need - 0.5:
             out.append(f"cut at the right edge: {s!r} needs {need:.0f}px, {x1 - x:.0f}px visible")
     return out
