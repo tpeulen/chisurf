@@ -16,7 +16,7 @@ from typing import Any, Callable
 
 from emtk import im, implot
 from emtk.app import ImApp
-from emtk.im_core import Col, get_current_context
+from emtk.im_core import Col, ItemFlags, get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
@@ -35,6 +35,8 @@ ACCENT_RED = (214, 39, 40, 255)
 
 class BurstBvaGui:
     """The immediate-mode GUI logic and rendering for BVA."""
+
+    INVALID_RANGES = "Invalid microtime range; use increasing start:end pairs."
 
     def __init__(
         self,
@@ -62,6 +64,8 @@ class BurstBvaGui:
 
         self.region_rect: list[float] = [0.2, 0.05, 0.8, 0.35]
         self.selected_settings_tab = "BVA Settings"
+        self._folder_text: str | None = None
+        self._microtime_text: dict[str, str] = {}
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
         help_resource = Path(__file__).parent / "help.md"
@@ -74,8 +78,12 @@ class BurstBvaGui:
             size=(700.0, 520.0),
         )
         self.tour = EmTkGuidedTour(
-            steps=guide_resource, get_target_rect=lambda k: self.item_rects.get(k), owner=self.model
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self.model,
+            wait_for_controls=True,
         )
+        self.on_used = self.tour.notify_used  # the Folder and Run steps wait for their control
         self.model.add_observer(self._on_model_event)
 
     def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
@@ -190,6 +198,7 @@ class BurstBvaGui:
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
         if im.button("🚀 Run"):
             self.track("toolAction_run")
+            self.track("run")
             if not self.model.is_running and callable(self.on_run):
                 self.on_run()
         im.set_item_tooltip(
@@ -206,6 +215,7 @@ class BurstBvaGui:
             im.push_style_color(Col.BUTTON_HOVERED, (220, 140, 40, 255))
         if im.button("🔄 Restart"):
             self.track("toolAction_restart")
+            self.track("restart")
             if not self.model.is_running and callable(self.on_restart):
                 self.on_restart()
         im.set_item_tooltip("Reset the analysis state and recompute from scratch.")
@@ -221,6 +231,7 @@ class BurstBvaGui:
             im.push_style_color(Col.BUTTON_ACTIVE, (180, 20, 20, 255))
         if im.button("⏹ Stop"):
             self.track("toolAction_stop")
+            self.track("stop")
             if self.model.is_running and callable(self.on_stop):
                 self.on_stop()
         im.set_item_tooltip("Stop the running BVA computation.")
@@ -253,14 +264,16 @@ class BurstBvaGui:
 
         # These actions previously lived only in the hidden Qt toolbar.
         im.spacing()
-        for label, action, tip in (
+        for name, label, action, tip in (
             (
+                "clear",
                 "🗑 Clear",
                 self.on_clear,
                 "Clear the plotted BVA results and invalidate the cached analysis.",
             ),
-            ("💾 Save plot", self.on_save, "Save the displayed BVA plot as a PNG image."),
+            ("save_plot", "💾 Save plot", self.on_save, "Save the displayed BVA plot as a PNG image."),
             (
+                "save_defaults",
                 "⚙ Save defaults",
                 self.on_save_settings,
                 "Save the current analysis and display settings as defaults.",
@@ -269,22 +282,40 @@ class BurstBvaGui:
             if im.button(label) and callable(action):
                 action()
             im.set_item_tooltip(tip)
+            self.remember(name)
             im.same_line()
         im.new_line()
 
     def _draw_folder_input(self, width: float) -> None:
         """Folder path input."""
         im.text("Burst folder:")
-        folder_str = str(self.model.analysis_folder or "")
-        changed, text = im.input_text("##folder_path", folder_str, hint="Burst analysis folder …")
+        current = str(self.model.analysis_folder or "")
+        # What is typed is kept as typed: the model holds a ``Path``, which drops a trailing "/" and so ate every
+        # separator the moment it was typed. The model's value wins as soon as it differs from what was typed
+        # (a dialog, a drop, a restored default).
+        typed = self._folder_text
+        if typed is None or (str(Path(typed)) if typed.strip() else "") != current:
+            typed = self._folder_text = current
+        changed, text = im.input_text("##folder_path", typed, hint="Burst analysis folder …")
         im.set_item_tooltip(
             "Path to the burst analysis folder; type a path or use Folder to browse."
         )
+        self.remember("folder_path")
         if changed:
+            self._folder_text = text
             self.model.set_folder(text)
 
     def _draw_bva_parameters(self) -> None:
         """Draw BVA parameter controls."""
+        # A drag reports every step (``LIVE_EDIT_ON_INPUT``): without the flag emtk reports a drag only on release,
+        # with the value the model already had, so dragging a field changed nothing.
+        im.push_item_flag(ItemFlags.LIVE_EDIT_ON_INPUT, True)
+        try:
+            self._draw_bva_parameter_fields()
+        finally:
+            im.pop_item_flag()
+
+    def _draw_bva_parameter_fields(self) -> None:
         im.spacing()
         im.text_colored((200, 210, 230, 255), "Analysis Parameters")
 
@@ -300,6 +331,7 @@ class BurstBvaGui:
         im.set_item_tooltip(
             "Minimum window length in seconds used to slice bursts into photon subsets."
         )
+        self.remember("window_length")
         if changed:
             self.model.window_length = max(0.0001, float(wl))
             self.model.notify("param")
@@ -315,6 +347,7 @@ class BurstBvaGui:
         im.set_item_tooltip(
             "Number of photons per slice when splitting bursts for the variance analysis."
         )
+        self.remember("photons_per_slice")
         if changed:
             self.model.photons_per_slice = max(1, int(round(pps)))
             self.model.notify("param")
@@ -329,6 +362,7 @@ class BurstBvaGui:
         im.set_next_item_width(120)
         changed, bx = im.drag_float("##bins_x", float(self.model.bins_x), 1.0, 10.0, 500.0, "%.0f")
         im.set_item_tooltip("Number of histogram bins along the mean proximity-ratio axis.")
+        self.remember("bins_x")
         if changed:
             self.model.bins_x = max(10, int(round(bx)))
             self.model.notify("bins")
@@ -339,6 +373,7 @@ class BurstBvaGui:
         im.set_next_item_width(120)
         changed, by = im.drag_float("##bins_y", float(self.model.bins_y), 1.0, 10.0, 500.0, "%.0f")
         im.set_item_tooltip("Number of histogram bins along the standard-deviation axis.")
+        self.remember("bins_y")
         if changed:
             self.model.bins_y = max(10, int(round(by)))
             self.model.notify("bins")
@@ -348,11 +383,24 @@ class BurstBvaGui:
             self.model.show_static_line = not self.model.show_static_line
             self.model.notify("display")
         im.set_item_tooltip("Overlay the shot-noise limited static line on the BVA plot.")
+        self.remember("show_static_line")
 
         if im.checkbox("Auto update", self.model.auto_update)[0]:
             self.model.auto_update = not self.model.auto_update
             self.model.notify("display")
         im.set_item_tooltip("Recompute the BVA automatically whenever a parameter changes.")
+        self.remember("auto_update")
+
+    @staticmethod
+    def _parse_ranges(text: str) -> list[tuple[int, int]] | None:
+        """``"10:20, 30:40"`` as ``[(10, 20), (30, 40)]``; ``None`` unless every pair is increasing start:end."""
+        try:
+            parsed = [tuple(int(v.strip()) for v in part.split(":")) for part in text.split(",")]
+        except ValueError:
+            return None
+        if not parsed or any(len(p) != 2 or p[0] < 0 or p[1] <= p[0] for p in parsed):
+            return None
+        return parsed
 
     def _draw_channel_definitions(self) -> None:
         """Draw detector channel controls."""
@@ -364,6 +412,7 @@ class BurstBvaGui:
         im.set_item_tooltip(
             "Comma-separated TTTR routing channels assigned to the donor (e.g. 0,8)."
         )
+        self.remember("donor_channels")
         if changed:
             self.model.donor_channels_text = donor
             self.model.notify("channel")
@@ -373,6 +422,7 @@ class BurstBvaGui:
         im.set_item_tooltip(
             "Comma-separated TTTR routing channels assigned to the acceptor (e.g. 1,9)."
         )
+        self.remember("acceptor_channels")
         if changed:
             self.model.acceptor_channels_text = acc
             self.model.notify("channel")
@@ -383,30 +433,31 @@ class BurstBvaGui:
         ):
             im.text(label)
             ranges = getattr(self.model, f"{name}_micro_time_ranges")
-            value = ", ".join(f"{lo}:{hi}" for lo, hi in ranges)
-            changed, text = im.input_text(f"##{name}_microtime", value, hint="0:32768")
+            # What is typed is kept as typed until the model differs from it: re-formatting the model's ranges
+            # every frame reverted each half-typed (invalid) state, so no range could be typed at all.
+            typed = self._microtime_text.get(name)
+            if typed is None or self._parse_ranges(typed) not in (ranges, None):
+                typed = self._microtime_text[name] = ", ".join(f"{lo}:{hi}" for lo, hi in ranges)
+            changed, text = im.input_text(f"##{name}_microtime", typed, hint="0:32768")
             im.set_item_tooltip(
                 "Microtime gates in channel bins, written as start:end pairs separated by commas."
             )
+            self.remember(f"{name}_microtime")
             if changed:
-                try:
-                    parsed = [
-                        tuple(int(v.strip()) for v in part.split(":")) for part in text.split(",")
-                    ]
-                    if not parsed or any(
-                        len(pair) != 2 or pair[0] < 0 or pair[1] <= pair[0] for pair in parsed
-                    ):
-                        raise ValueError("Use increasing start:end pairs")
+                self._microtime_text[name] = text
+                parsed = self._parse_ranges(text)
+                if parsed is None:
+                    self.model.status_text = self.INVALID_RANGES
+                else:
+                    if self.model.status_text == self.INVALID_RANGES:
+                        self.model.status_text = "Ready"       # the message was about the half-typed value
                     setattr(self.model, f"{name}_micro_time_ranges", parsed)
                     self.model.notify("channel")
-                except ValueError:
-                    self.model.status_text = (
-                        "Invalid microtime range; use increasing start:end pairs."
-                    )
 
         im.text("File type:")
         changed, ft = im.input_text("##file_type", self.model.file_type, hint="SPC-130")
         im.set_item_tooltip("TTTR file type of the source measurements (e.g. SPC-130).")
+        self.remember("file_type")
         if changed:
             self.model.set_file_type(ft)
 
