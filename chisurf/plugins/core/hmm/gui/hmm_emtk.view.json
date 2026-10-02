@@ -1,0 +1,195 @@
+{
+ "_comment": "emtk forms and tables of the HMM tool over HmmViewModel; the Qt tool reads hmm.view.json.",
+ "panels": {
+  "model": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Model",
+     "description": "The state count, the emission covariance and the duration of one bin.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "n_states",
+       "label": "States",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 1,
+       "maximum": 32,
+       "step": 1,
+       "description": "Number of hidden states. Use the state scan rather than guessing: the likelihood always improves with more states, the information criteria do not."
+      },
+      {
+       "type": "choice",
+       "attr": "covariance_type",
+       "label": "Covariance",
+       "options": [
+        "full",
+        "diag",
+        "spherical",
+        "tied"
+       ],
+       "description": "Shape of the emission covariance: full = a matrix per state; diag = one variance per channel; spherical = one variance per state; tied = one matrix shared by all states. Fewer parameters are more stable on short traces."
+      },
+      {
+       "type": "value",
+       "attr": "time_step",
+       "label": "Bin width (s)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000.0,
+       "step": 0.001,
+       "description": "Duration of one time bin. Dwell times and transition rates are reported in these units; leave at 1 to report them in bins.",
+       "decimals": 6
+      }
+     ]
+    }
+   ]
+  },
+  "fitting": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Fitting",
+     "description": "Baum-Welch settings.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "n_iter",
+       "label": "Max EM maps",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 1,
+       "maximum": 100000,
+       "step": 10,
+       "description": "Upper bound on Baum-Welch maps. With acceleration, one SQUAREM cycle spends three."
+      },
+      {
+       "type": "value",
+       "attr": "tol",
+       "label": "Tolerance",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000.0,
+       "step": 0.001,
+       "description": "Stop once the log-likelihood gain per iteration falls below this.",
+       "decimals": 6
+      },
+      {
+       "type": "choice",
+       "attr": "decode",
+       "label": "Decoder",
+       "options": [
+        "viterbi",
+        "map"
+       ],
+       "description": "viterbi = the single most probable state path (what dwell times need); map = the most probable state of each bin taken independently."
+      },
+      {
+       "type": "value",
+       "attr": "random_state",
+       "label": "Seed",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 0,
+       "maximum": 1000000,
+       "step": 1,
+       "description": "Seed of the k-means initialisation; a fixed seed makes the fit reproducible."
+      },
+      {
+       "type": "toggle",
+       "attr": "accelerate",
+       "label": "Accelerate (SQUAREM)",
+       "description": "Extrapolate the EM fixed-point iteration (Varadhan and Roland scheme S3): the same optimum in far fewer maps when the states overlap."
+      }
+     ]
+    }
+   ]
+  },
+  "scan": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "State scan",
+     "description": "The range of state counts the scan scores by AIC and BIC.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "min_states",
+       "label": "From",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 1,
+       "maximum": 32,
+       "step": 1,
+       "description": "Smallest state count to score."
+      },
+      {
+       "type": "value",
+       "attr": "max_states",
+       "label": "To",
+       "kind": "int",
+       "style": "spin",
+       "minimum": 1,
+       "maximum": 32,
+       "step": 1,
+       "description": "Largest state count to score."
+      }
+     ]
+    }
+   ]
+  },
+  "files": {
+   "sections": [
+    {
+     "type": "custom",
+     "key": "data_table",
+     "options": {
+      "source": "file_rows",
+      "delete_call": "remove_file",
+      "selected_call": "select_file",
+      "height": 110,
+      "row_key": "path",
+      "columns": [
+       {
+        "key": "file",
+        "title": "Trace file",
+        "tooltip": "Binned trace: rows are time bins, columns are detection channels. Select a row and press Delete to drop it."
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "states": {
+   "sections": [
+    {
+     "type": "custom",
+     "key": "data_table",
+     "options": {
+      "source": "state_rows",
+      "columns_source": "state_columns",
+      "height": 120,
+      "fit_columns": true
+     }
+    }
+   ]
+  },
+  "transitions": {
+   "sections": [
+    {
+     "type": "custom",
+     "key": "data_table",
+     "options": {
+      "source": "transition_rows",
+      "columns_source": "transition_columns",
+      "height": 120,
+      "fit_columns": true
+     }
+    }
+   ]
+  }
+ }
+}

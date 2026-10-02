@@ -268,6 +268,127 @@ class HmmViewModel:
             raise RuntimeError("nothing to save: run a fit first")
         pathlib.Path(path).write_text(json.dumps(self._fit.to_dict(), indent=2))
 
+    # -- rows for the native tables (the Qt view reads the HTML tables below) ---
+
+    busy = False
+
+    @property
+    def status(self) -> str:
+        """The one-line result / progress message."""
+        return self._status
+
+    def enabled(self, name: str) -> bool:
+        """Whether the control *name* is usable now: nothing is edited while a fit runs."""
+        if self.busy:
+            return False
+        if name in ("request_run", "request_scan", "run", "run_scan"):
+            return bool(self._traces or self.files)
+        if name == "save_result":
+            return self._fit is not None
+        if name == "remove_file":
+            return bool(self.files)
+        return True
+
+    def file_rows(self) -> list[dict]:
+        """One record per selected trace file."""
+        return [{"file": pathlib.Path(p).name, "path": p} for p in self.files]
+
+    def select_file(self, record=None) -> None:
+        """Remember the selected file row (the Delete key and Remove act on it)."""
+        self._selected = (record or {}).get("path")
+
+    def trace_rows(self) -> list[dict]:
+        """One record per loaded trace: where it came from and its size."""
+        return [
+            {"trace": label, "bins": int(t.shape[0]), "channels": int(t.shape[1])}
+            for label, t in zip(self._labels, self._traces)
+        ]
+
+    def add_files(self, paths) -> None:
+        """Add trace files to the selection (duplicates are ignored) and forget loaded data and results."""
+        merged = list(self.files)
+        for path in map(str, paths):
+            if path not in merged:
+                merged.append(path)
+        self.sel_files = merged
+
+    def remove_file(self, record=None) -> None:
+        """Remove the file of *record* (or the last one) from the selection."""
+        path = (record or {}).get("path") or getattr(self, "_selected", None) or (self.files[-1] if self.files else None)
+        if path in self.files:
+            self.sel_files = [p for p in self.files if p != path]
+            self._selected = None
+
+    def clear_files(self) -> None:
+        """Empty the selection."""
+        self.sel_files = []
+
+    def load_demo(self) -> None:
+        """Replace the traces by a generated three-state trace (known means and dwell times), labelled as a demo."""
+        rng = np.random.default_rng(11)
+        means = np.array([[20.0, 5.0], [60.0, 15.0], [110.0, 40.0]])
+        stay = 1.0 - 1.0 / np.array([60.0, 40.0, 80.0])
+        state, path = 0, np.empty(1500, dtype=int)
+        for i in range(len(path)):
+            path[i] = state
+            if rng.random() > stay[state]:
+                state = int(rng.choice([k for k in range(3) if k != state]))
+        self.files = []
+        self.set_traces([rng.poisson(means[path]).astype(float)], ["Demo: generated 3-state trace"])
+        self._status = "Demo trace loaded (generated, three states). Fit it with 3 states."
+
+    def state_rows(self) -> list[dict]:
+        """Per-state table rows of the last fit."""
+        if self._fit is None:
+            return []
+        return [
+            {
+                "state": s.index,
+                "mean": ", ".join(f"{v:.3g}" for v in s.mean),
+                "std": ", ".join(f"{v:.3g}" for v in s.std),
+                "occupancy": float(s.occupancy),
+                "visits": int(s.n_dwells),
+                "dwell": float(s.mean_dwell),
+            }
+            for s in self._fit.summaries
+        ]
+
+    def state_columns(self) -> list[dict]:
+        unit = "s" if self.settings.time_step != 1.0 else "bins"
+        return [
+            {"key": "state", "title": "State", "tooltip": "State index (its colour is the one used in the plots)."},
+            {"key": "mean", "title": "Mean", "tooltip": "Emission mean of each channel (counts per bin)."},
+            {"key": "std", "title": "Std", "tooltip": "Emission standard deviation of each channel."},
+            {"key": "occupancy", "title": "Occ.", "format": "%.3f", "tooltip": "Fraction of bins decoded into this state."},
+            {"key": "visits", "title": "Visits", "tooltip": "Number of dwells (uninterrupted runs) in this state."},
+            {"key": "dwell", "title": f"Dwell ({unit})", "format": "%.4g", "tooltip": "Mean dwell time of the state."},
+        ]
+
+    def transition_rows(self) -> list[dict]:
+        """Transition matrix rows: probability per bin and, with a time step, the rate off the diagonal."""
+        if self._fit is None:
+            return []
+        transmat = np.asarray(self._fit.transmat)
+        rates = np.asarray(self._fit.transition_rates)
+        show_rates = self.settings.time_step != 1.0
+        rows = []
+        for i, row in enumerate(transmat):
+            record = {"from": i}
+            for j, probability in enumerate(row):
+                text = f"{probability:.4f}"
+                if show_rates and i != j:
+                    text += f"  ({rates[i, j]:.3g}/s)"
+                record[f"to_{j}"] = text
+            rows.append(record)
+        return rows
+
+    def transition_columns(self) -> list[dict]:
+        n = 0 if self._fit is None else len(self._fit.transmat)
+        return [{"key": "from", "title": "From", "width": 50, "tooltip": "State left."}] + [
+            {"key": f"to_{j}", "title": f"To {j}", "tooltip": f"Probability per bin of moving to state {j} (rate in 1/s when a bin width is set)."}
+            for j in range(n)
+        ]
+
     # -- view sources --------------------------------------------------------
 
     def info_html(self) -> str:

@@ -8,19 +8,22 @@
     },
     {
       "title": "Load the traces, and say what a bin is worth",
-      "text": "Drop one or many traces here. The <b>time step</b> is what turns transition probabilities into rates, so a wrong value gives you a kinetic scheme in the wrong units — and the fit will not object.",
+      "text": "Add one or many traces (the Add files... button, or drop them on the window). The <b>time step</b> is what turns transition probabilities into rates, so a wrong value gives you a kinetic scheme in the wrong units — and the fit will not object.",
       "target": {
-        "key": "path_list"
+        "name": "add_files"
       },
       "await": {
-        "hint": "Add one or more traces."
+        "hint": "Press Add files... (or Demo trace to try the tool on a generated three-state trace)."
       }
     },
     {
       "title": "The likelihood cannot choose the state count for you",
       "text": "Adding a state <b>always</b> improves the likelihood, so its elbow is not evidence. Use <b>Scan states</b> and take the <i>minimum</i> of BIC — it charges more per parameter and usually returns the model a kinetic interpretation can actually carry.<br/><br/>The diagnostic worth knowing: <b>if BIC keeps falling all the way to the end of the range</b>, the trace probably has structure the model does not describe — bleaching, drift, or a continuum of states rather than discrete ones. That is a signal to look at the trace, not to raise the maximum.",
       "target": {
-        "attr": "max_states"
+        "name": "request_scan"
+      },
+      "await": {
+        "hint": "Press Scan states and look for the minimum of BIC."
       }
     },
     {
@@ -34,7 +37,10 @@
       "title": "Three things that refute a fit",
       "text": "<b>Overlapping emission densities</b> in the intensity histogram mean intensity alone does not separate the states. The fit is then leaning entirely on the transition structure, and the assignment is correspondingly less certain than the picture suggests.<br/><br/><b>Dwell-time histograms should be single exponentials</b> — straight on a logarithmic axis. Curvature says the state hides substructure: what is drawn as one state is really two of similar brightness.<br/><br/><b>A state with almost no occupancy</b>, or a mean dwell of one bin, is noise being fitted rather than a state. Refit with fewer.<br/><br/>Each of these is visible in the plots and invisible in the likelihood, which is why they are worth looking at every time. The <b>?</b> button has the rest.",
       "target": {
-        "title": "Intensity histogram"
+        "name": "request_run"
+      },
+      "await": {
+        "hint": "Press Fit, then check the histogram, the dwell times and the state scan tabs."
       }
     }
   ]

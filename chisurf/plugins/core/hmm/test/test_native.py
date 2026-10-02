@@ -13,10 +13,9 @@ def test_native_hmm_model_renders_trace_and_fit_controls():
     app = HmmApp(model)
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 980, 760)
-    assert "Hidden Markov model" in painter.strings
-    assert "Trace" in painter.strings and "Histogram" in painter.strings
+    # the window titles of the docked layout (the one-column page of the first stream is gone)
+    assert "Model" in painter.strings and "Trace" in painter.strings and "Fitted states" in painter.strings
     assert "Fit" in painter.strings and "Scan states" in painter.strings
-    assert "Fitted states" in painter.strings and "Transitions" in painter.strings
 
 
 def test_native_hmm_settings_roundtrip():

@@ -60,3 +60,9 @@ The same analysis is reachable without the GUI:
 all of which use `chisurf.core.math.hmm` underneath. For photon-by-photon
 kinetics (no binning) use **H2MM**; for an empirical-Bayes treatment of many
 short FRET traces use **ebFRET**.
+
+## Further reading
+
+* [Hidden Markov models](docs/concepts/hidden_markov_models.md): the model, Baum-Welch, Viterbi and the information criteria.
+* [Binned traces and ebFRET](docs/guides/20_ebfret_binned_hmm.md): the guide for binned time traces.
+* [Photon-by-photon H2MM](docs/guides/19_h2mm_hidden_markov.md): for confocal photons, where binning would throw timing information away.
