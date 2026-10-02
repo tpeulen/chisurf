@@ -1,0 +1,165 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.535862",
+    "0.628",
+    "1.000000",
+    "1.0017",
+    "1.043571",
+    "1.591209087",
+    "1/n",
+    "20.00",
+    "400.000000",
+    "5.0000",
+    "70.000",
+    "applyat25°c(noscaling)",
+    "applydref",
+    "applywithtemp/ηscaling",
+    "atto488(cooh)",
+    "conc(nm)",
+    "constraint(chooseone)",
+    "d(µm²/s)",
+    "diffusion/volume",
+    "fixd",
+    "fixrₕ",
+    "fixveff",
+    "guide",
+    "help",
+    "molecularshape",
+    "n",
+    "occupancy",
+    "referencedye(d@25°c,water)",
+    "rₕ(nm)",
+    "s(wz/wxy)",
+    "settingsjson",
+    "t(°c)",
+    "usewaterη(t)",
+    "veff(fl)",
+    "η(mpa·s)",
+    "τ(µs)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Walk through the relations, the constraint and the calibration."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What each quantity means, the formulas and their assumptions."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Fix D",
+      "id": "Fix D##constraint0",
+      "tooltip": "Fix D, rₕ or Veff: that field is the input, the other two are computed and read-only."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Fix rₕ",
+      "id": "Fix rₕ##constraint1",
+      "tooltip": "Fix D, rₕ or Veff: that field is the input, the other two are computed and read-only."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Fix Veff",
+      "id": "Fix Veff##constraint2",
+      "tooltip": "Fix D, rₕ or Veff: that field is the input, the other two are computed and read-only."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_us",
+      "id": "##tau_us",
+      "tooltip": "Diffusion correlation time τ_D."
+    },
+    {
+      "kind": "input_text",
+      "label": "D_um2_s",
+      "id": "##D_um2_s",
+      "tooltip": "Translational diffusion coefficient (read-only unless 'Fix D')."
+    },
+    {
+      "kind": "input_text",
+      "label": "rh_nm",
+      "id": "##rh_nm",
+      "tooltip": "Hydrodynamic radius (read-only unless 'Fix rₕ')."
+    },
+    {
+      "kind": "input_text",
+      "label": "S",
+      "id": "##S",
+      "tooltip": "Confocal aspect ratio (axial / lateral beam waist)."
+    },
+    {
+      "kind": "input_text",
+      "label": "veff_fL",
+      "id": "##veff_fL",
+      "tooltip": "Effective confocal volume (read-only unless 'Fix Veff')."
+    },
+    {
+      "kind": "input_text",
+      "label": "temp_C",
+      "id": "##temp_C",
+      "tooltip": "Temperature."
+    },
+    {
+      "kind": "input_text",
+      "label": "eta_mPa_s",
+      "id": "##eta_mPa_s",
+      "tooltip": "Solvent viscosity; computed from the water model when 'Use water η(T)' is enabled."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Use water η(T)",
+      "id": "Use water η(T)##use_water_eta",
+      "tooltip": "Use the temperature-dependent viscosity of water (Kapusta 2010 app note)."
+    },
+    {
+      "kind": "input_text",
+      "label": "invN",
+      "id": "##invN",
+      "tooltip": "Inverse occupancy G(0) = 1/N; exceeds 1 for sub-single-molecule occupancy."
+    },
+    {
+      "kind": "input_text",
+      "label": "num_mols",
+      "id": "##num_mols",
+      "tooltip": "Average number of molecules in Veff."
+    },
+    {
+      "kind": "input_text",
+      "label": "conc_nM",
+      "id": "##conc_nM",
+      "tooltip": "Concentration; N = 0.602214 × c_nM × Veff_fL."
+    },
+    {
+      "kind": "button",
+      "label": "Apply Dref",
+      "id": "Apply Dref##apply_dye",
+      "tooltip": "Set D from the selected reference (scaled as chosen below) and switch to Fix D."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Apply with Temp/η scaling",
+      "id": "Apply with Temp/η scaling##scale_dref0",
+      "tooltip": "Scale the reference D from 25 °C water to the current temperature and viscosity (Stokes-Einstein), or use it as tabulated."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Apply at 25 °C (no scaling)",
+      "id": "Apply at 25 °C (no scaling)##scale_dref1",
+      "tooltip": "Scale the reference D from 25 °C water to the current temperature and viscosity (Stokes-Einstein), or use it as tabulated."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

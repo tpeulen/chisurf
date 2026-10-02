@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- 2026-10-02: fcs_calculator (audit-all row 50) upgraded: a Qt-free `ConfocalModel` and `fcs_calculator_emtk.view.json` replace the stream's slider page. Values and editable fields equal the Qt widget's over an 18-step edit sequence; there is a tolerant settings import, folds as in Qt, and Guide / Help. Export / Import JSON had shared one ImGui id, so Import never fired; fixed. 18 passed, breakage 13/14 twice; the miss is an equivalent mutant. Report: `okf/plugins/emtk-ports/fcs_calculator/REPORT.md`.
+
 - 2026-10-02: irf_estimator (audit-all row 49) upgraded: the emtk app's form is a view spec (`irf_estimator_emtk.view.json`) with the Qt tool's control states, captions, data label, time-axis line and result formats, and the Qt window layout. The plot cuts the scaled IRF below one count and uses the Qt pens: the log axis had run to 1e-54 and the forward model was green on the green range region. Values equal the Qt widget's on a measured donor decay; 29 passed, breakage 14/14 twice; guide `irf_estimation.md` gains the window workflow. Report: `okf/plugins/emtk-ports/irf_estimator/REPORT.md`.
 
 - **burst_fusion real-input pass** (EMTK-1B follow-up): 35 click tests (+2 strict xfails for emtk gaps) operate every control
