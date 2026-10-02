@@ -28,17 +28,14 @@ class BurstFcsController:
         ]
         self.enabled_pairs = {"donor_ACF"}
         self.pairs_text = json.dumps(self._pair_presets, indent=2)
-        from emtk.widgets.text_editor import TextEditor
-
-        self.pairs_editor = TextEditor(self.pairs_text)
-        self.filter = ""
+        self.unchecked: set[str] = set()
+        self.progress = 0.0
+        self.selected_file = None
         self.status = "Choose burst files and channel pairs, then Run FCS."
         self.running = False
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="burst-fcs")
         self._future = None
         self._cancel = Event()
-        self.dialog = None
-        self.action = "files"
         from chisurf.emtk.dataset_picker import DatasetPicker
 
         self.datasets = DatasetPicker(
@@ -49,9 +46,91 @@ class BurstFcsController:
         for path in map(str, paths):
             if path not in self.files:
                 self.files.append(path)
+                self.unchecked.discard(path)
+
+    def checked_files(self):
+        """The listed inputs that are ticked (the Qt list's ``checked_paths``)."""
+        return [p for p in self.files if p not in self.unchecked]
+
+    def check_all(self):
+        self.unchecked.clear()
+
+    def check_none(self):
+        self.unchecked = set(self.files)
+
+    def remove_files(self, paths):
+        for path in list(paths):
+            if path in self.files:
+                self.files.remove(path)
+            self.unchecked.discard(path)
+
+    def clear(self):
+        """Forget the inputs and every curve (the Qt Clear button)."""
+        self.files, self._curves, self._model._selected = [], [], None
+        self.unchecked = set()
+        self.status = "Inputs and results cleared."
+
+    def pairs_from_setup(self, setup_name, detectors):
+        """Channel pairs of a detector setup: its saved FCS pairs, else one auto-correlation per detector (as the Qt tool does)."""
+        from chisurf.core.fluorescence.fcs.channel_setups import load_fcs_channel_setups
+
+        detectors = detectors or {}
+        saved = []
+        try:
+            block = (load_fcs_channel_setups().get("setups", {}) or {}).get(setup_name or "", {})
+            saved = block.get("pairs", []) if isinstance(block, dict) else []
+        except Exception:  # a missing store is the same as no saved pairs
+            saved = []
+        pairs = []
+        for pair in saved:
+            a, b = str(pair.get("channel_a", "")), str(pair.get("channel_b", ""))
+            da, db = detectors.get(a, {}), detectors.get(b, {}) or detectors.get(a, {})
+            chs_a, chs_b = list(da.get("chs", []) or []), list(db.get("chs", []) or da.get("chs", []) or [])
+            if not chs_a or not chs_b:
+                continue
+            name = str(pair.get("name", "")) or (f"{a}x{b}" if a != b else f"{a}_ACF")
+            pairs.append({"pair_name": name, "chs_a": chs_a, "chs_b": chs_b, "micro_a": list(da.get("micro_time_ranges", []) or []),
+                          "micro_b": list(db.get("micro_time_ranges", []) or [])})
+        if not pairs:
+            pairs = [{"pair_name": f"{n}_ACF", "chs_a": list(d.get("chs", [])), "chs_b": list(d.get("chs", [])),
+                      "micro_a": list(d.get("micro_time_ranges", []) or []), "micro_b": list(d.get("micro_time_ranges", []) or [])}
+                     for n, d in detectors.items() if d.get("chs")]
+        return pairs
+
+    def adopt_setup(self, setup_name, detectors):
+        """Use the pairs of a detector setup (replaces the list)."""
+        pairs = self.pairs_from_setup(setup_name, detectors)
+        if not pairs:
+            self.status = "The detector setup has no detector with routing channels."
+            return False
+        return self.apply_pairs(json.dumps(pairs))
+
+    def set_pair_enabled(self, name, enabled):
+        (self.enabled_pairs.add if enabled else self.enabled_pairs.discard)(name)
+
+    def curve_label(self, curve):
+        return f"{curve.get('file', '')} - b{curve.get('burst_index', 0)} - {curve.get('pair_name', '')}"
 
     def on_paths_dropped(self, paths):
-        self.add_files(paths)
+        """Burst files are added; a dropped JSON file is read as settings (it has ``n_bins``) or as channel pairs."""
+        added = []
+        for path in map(str, paths):
+            if path.lower().endswith(".json"):
+                try:
+                    data = json.loads(Path(path).read_text())
+                    if isinstance(data, dict) and ("n_bins" in data or "fit_mode" in data):
+                        self.load_settings(path)
+                    else:
+                        self.apply_pairs(json.dumps(data))
+                except Exception as exc:  # noqa: BLE001 - shown on the status line
+                    self.status = f"Error: {path}: {exc}"
+            else:
+                added.append(path)
+        self.add_files(added)
+
+    def save_pairs(self, path):
+        Path(path).write_text(json.dumps(self._pair_presets, indent=2))
+        self.status = f"Channel pairs saved: {path}"
 
     def apply_pairs(self, text):
         try:
@@ -97,7 +176,6 @@ class BurstFcsController:
             self._pair_presets = result
             self.enabled_pairs = {p["pair_name"] for p in result}
             self.pairs_text = json.dumps(result, indent=2)
-            self.pairs_editor.set_text(self.pairs_text)
             self.status = "Channel pairs applied."
             return True
         except (ValueError, TypeError, KeyError) as exc:
@@ -106,7 +184,7 @@ class BurstFcsController:
 
     def resolve_files(self):
         results = []
-        for entry in self.files:
+        for entry in self.checked_files():
             path = Path(entry)
             candidates = []
             if path.is_dir():
@@ -139,19 +217,22 @@ class BurstFcsController:
 
     def _compute(self, files, pairs, settings):
         curves = []
-        for raw, ranges in files:
+        for done, (raw, ranges) in enumerate(files):
             self.check_cancel()
+            self.progress = done / max(len(files), 1)
             curves.extend(
                 core.correlate_burst_file(
                     raw, ranges, pairs, settings, cancel_check=self.check_cancel
                 )
             )
         self.check_cancel()
+        self.progress = 1.0
         return curves
 
     def _on_run(self):
         if self.running:
             return
+        self.progress = 0.0
         pairs = [
             core.PairConfig.from_dict(p)
             for p in self._pair_presets
@@ -237,163 +318,6 @@ class BurstFcsController:
     def export_curves(self, path):
         Path(path).write_text(json.dumps(self._curves, indent=2))
         self.status = f"Correlation curves exported: {path}"
-
-    def browse(self, action="files"):
-        from emtk.file_dialog import FileDialog
-
-        self.action = action
-        self.dialog = FileDialog(
-            "Burst FCS file chooser",
-            mode="folder"
-            if action == "folder"
-            else ("save" if action in ("save", "export", "save_pairs") else "open"),
-            multiselect=action == "files",
-            filters=[("BUR/BST", ["*.bur", "*.bst"])]
-            if action == "files"
-            else [("JSON", ["*.json"])],
-            filename="burst_fcs.json" if action in ("save", "export", "save_pairs") else None,
-        )
-
-    def draw_controls(self):
-        from emtk import im
-
-        im.begin_disabled(self.running)
-        for label, action, tip in (
-            ("Open BUR/BST files", "files", "Choose burst tables or burst-ID ranges."),
-            ("Add analysis folder", "folder", "Find burst files in an analysis folder."),
-            ("Load settings", "load", "Load correlator and fitting parameters from JSON."),
-            ("Save settings", "save", "Save current correlator and fitting parameters."),
-            (
-                "Load detector setup / pairs",
-                "pairs",
-                "Load a detector setup or explicit channel-pair JSON.",
-            ),
-            (
-                "Save channel pairs",
-                "save_pairs",
-                "Export all channel pairs with their microtime gates.",
-            ),
-            (
-                "Export curves",
-                "export",
-                "Save calculated data, fits and diffusion distributions as JSON.",
-            ),
-        ):
-            if im.button(label):
-                self.browse(action)
-            im.set_item_tooltip(tip)
-        if im.button("MMFDB datasets"):
-            self.datasets.open()
-        im.set_item_tooltip("Resolve a burst analysis dataset from MMFDB.")
-        if im.button("Clear files and results"):
-            self.files, self._curves, self._model._selected = [], [], None
-        im.set_item_tooltip("Remove inputs and previous correlation curves.")
-        for path in list(self.files):
-            im.text_wrapped(path)
-            if im.button(f"Remove##{path}"):
-                self.files.remove(path)
-            im.set_item_tooltip(f"Remove input {Path(path).name}.")
-        im.text("Channel pair JSON:")
-        changed = im.text_editor(
-            "##pairs", self.pairs_editor, size=(im.get_content_region_avail()[0], 140)
-        )
-        im.set_item_tooltip(
-            "List named chs_a/chs_b channel pairs with optional micro_a/micro_b gates."
-        )
-        if changed:
-            self.pairs_text = self.pairs_editor.text
-        if im.button("Apply channel pairs"):
-            self.apply_pairs(self.pairs_text)
-        im.set_item_tooltip("Validate and use the edited channel pairs.")
-        for pair in self._pair_presets:
-            name = pair["pair_name"]
-            changed, enabled = im.checkbox(name, name in self.enabled_pairs)
-            im.set_item_tooltip(f"Include {name} when correlating each burst.")
-            if changed:
-                if enabled:
-                    self.enabled_pairs.add(name)
-                else:
-                    self.enabled_pairs.discard(name)
-        for attr, label, tip in (
-            (
-                "maxent_log10_reg",
-                "MaxEnt log10 regularization",
-                "Log10 of the regularization strength.",
-            ),
-            (
-                "maxent_td_min",
-                "Min diffusion time (ms)",
-                "Lower diffusion-time grid limit; zero chooses automatically.",
-            ),
-            (
-                "maxent_td_max",
-                "Max diffusion time (ms)",
-                "Upper diffusion-time grid limit; zero chooses automatically.",
-            ),
-            (
-                "tmin_fit",
-                "Fit lag min (ms)",
-                "Exclude shorter lag times from fitting; zero uses all.",
-            ),
-            (
-                "tmax_fit",
-                "Fit lag max (ms)",
-                "Exclude longer lag times from fitting; zero uses all.",
-            ),
-        ):
-            changed, value = im.input_float(label, getattr(self._model, attr))
-            im.set_item_tooltip(tip)
-            if changed:
-                setattr(
-                    self._model,
-                    attr,
-                    max(-12, min(12, value)) if attr == "maxent_log10_reg" else max(0, value),
-                )
-        im.end_disabled()
-        if im.button("Stop FCS"):
-            self.stop()
-        im.set_item_tooltip("Cancel between burst correlations, preserving previous results.")
-        im.text_wrapped(self.status)
-        im.text("Filter curves:")
-        changed, self.filter = im.input_text("##curve_filter", self.filter)
-        im.set_item_tooltip("Filter calculated curves by measurement, burst index or channel pair.")
-        for i, curve in enumerate(self._curves):
-            label = f"{curve.get('file', '')} · b{curve.get('burst_index', 0)} · {curve.get('pair_name', '')}"
-            if self.filter.lower() not in label.lower():
-                continue
-            if im.selectable(f"{label}##curve{i}", self._model._selected is curve):
-                self._model._selected = curve
-            im.set_item_tooltip(
-                "Show this burst correlation and its fitted diffusion distribution."
-            )
-
-    def draw_dialogs(self, frame):
-        from emtk import im
-
-        if self.dialog is not None:
-            if im.begin("FCS input / output chooser"):
-                result = self.dialog.draw()
-                if result:
-                    try:
-                        if self.action in ("files", "folder"):
-                            self.add_files(result)
-                        elif self.action == "load":
-                            self.load_settings(result[0])
-                        elif self.action == "save":
-                            self.save_settings(result[0])
-                        elif self.action == "pairs":
-                            self.apply_pairs(Path(result[0]).read_text())
-                        elif self.action == "save_pairs":
-                            Path(result[0]).write_text(json.dumps(self._pair_presets, indent=2))
-                        else:
-                            self.export_curves(result[0])
-                    except Exception as exc:
-                        self.status = f"Error: {exc}"
-                    self.dialog = None
-                elif result is False:
-                    self.dialog = None
-            im.end()
-        self.datasets.render(frame)
 
     def close(self):
         self.stop()

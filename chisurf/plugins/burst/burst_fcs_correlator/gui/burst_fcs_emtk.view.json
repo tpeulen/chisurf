@@ -1,0 +1,358 @@
+{
+ "toolbar": {
+  "sections": [
+   {
+    "type": "button_row",
+    "description": "Run the correlation, example data, tour and help.",
+    "buttons": [
+     {
+      "action": "run",
+      "label": "Run FCS",
+      "description": "Correlate every ticked burst file with every ticked channel pair and fit each curve."
+     },
+     {
+      "action": "stop",
+      "label": "Stop",
+      "description": "Cancel between burst files; the previous results are kept."
+     },
+     {
+      "action": "example",
+      "label": "Example",
+      "description": "Generate a small deterministic demonstration data set (photon stream and burst table) and add it."
+     },
+     {
+      "action": "guide",
+      "label": "Guide",
+      "description": "A step-by-step walk through the tool on the demonstration data."
+     },
+     {
+      "action": "help",
+      "label": "Help",
+      "description": "Explain burst-wise FCS, the settings and the fits."
+     }
+    ]
+   }
+  ]
+ },
+ "files": {
+  "sections": [
+   {
+    "type": "button_row",
+    "description": "Add and remove inputs.",
+    "buttons": [
+     {
+      "action": "add_files",
+      "label": "Files...",
+      "description": "Choose BUR or BST burst tables."
+     },
+     {
+      "action": "add_folder",
+      "label": "Folder...",
+      "description": "Choose an analysis folder; its burst tables are found inside."
+     },
+     {
+      "action": "mmfdb",
+      "label": "Database...",
+      "description": "Resolve a burst analysis dataset from MMFDB."
+     },
+     {
+      "action": "check_all",
+      "label": "All",
+      "description": "Tick every input."
+     },
+     {
+      "action": "check_none",
+      "label": "None",
+      "description": "Untick every input."
+     },
+     {
+      "action": "remove_files",
+      "label": "Remove",
+      "description": "Remove the selected input."
+     },
+     {
+      "action": "clear",
+      "label": "Clear",
+      "description": "Remove every input and every curve."
+     }
+    ]
+   },
+   {
+    "type": "table",
+    "name": "files",
+    "source": "file_rows",
+    "columns_source": "file_columns",
+    "editable": true,
+    "edited_call": "edit_file",
+    "editable_call": "file_editable",
+    "height": 120,
+    "fit_columns": true,
+    "selected_call": "select_file",
+    "description": "Burst folders or BUR/BST files. Drop files or folders on the window to add them; click Use to include or exclude one."
+   }
+  ]
+ },
+ "correlator": {
+  "sections": [
+   {
+    "type": "panel",
+    "title": "Correlator",
+    "description": "The multi-tau correlator and the photon window of each burst.",
+    "sections": [
+     {
+      "type": "value",
+      "attr": "n_bins",
+      "label": "FCS bins (B)",
+      "kind": "int",
+      "minimum": 1,
+      "maximum": 65535,
+      "style": "spin",
+      "step": 1,
+      "call": "edited",
+      "description": "Number of linear correlation bins per cascade."
+     },
+     {
+      "type": "value",
+      "attr": "n_casc",
+      "label": "Cascades",
+      "kind": "int",
+      "minimum": 1,
+      "maximum": 64,
+      "style": "spin",
+      "step": 1,
+      "call": "edited",
+      "description": "Number of multi-tau cascades."
+     },
+     {
+      "type": "toggle",
+      "attr": "make_fine",
+      "label": "Fine grid",
+      "call": "edited",
+      "description": "Use the fine (micro-time resolved) correlation grid."
+     },
+     {
+      "type": "value",
+      "attr": "padding_ms",
+      "label": "Padding +- (ms)",
+      "kind": "float",
+      "decimals": 1,
+      "minimum": 0.0,
+      "maximum": 1000000.0,
+      "style": "spin",
+      "step": 0.5,
+      "call": "edited",
+      "description": "Photon time added before and after each burst before correlation."
+     }
+    ]
+   }
+  ]
+ },
+ "fitting": {
+  "sections": [
+   {
+    "type": "panel",
+    "title": "Fitting",
+    "description": "The per-curve fit and its window.",
+    "sections": [
+     {
+      "type": "choice",
+      "attr": "fit_mode",
+      "label": "Mode",
+      "style": "radio",
+      "options_source": "fit_modes",
+      "call": "edited",
+      "description": "Per-curve fit: none, single-component diffusion, or a MaxEnt distribution of diffusion times."
+     },
+     {
+      "type": "value",
+      "attr": "maxent_log10_reg",
+      "label": "MaxEnt reg (log10)",
+      "kind": "float",
+      "decimals": 2,
+      "minimum": -12.0,
+      "maximum": 12.0,
+      "style": "spin",
+      "step": 0.5,
+      "call": "edited",
+      "description": "MaxEnt regularisation strength as log10(reg). Used in MaxEnt mode."
+     },
+     {
+      "type": "value",
+      "attr": "maxent_td_min",
+      "label": "tau_D min (ms)",
+      "kind": "float",
+      "decimals": 6,
+      "minimum": 0.0,
+      "maximum": 1000000.0,
+      "call": "edited",
+      "description": "Lower diffusion-time bound of the MaxEnt grid (0 = automatic). Used in MaxEnt mode."
+     },
+     {
+      "type": "value",
+      "attr": "maxent_td_max",
+      "label": "tau_D max (ms)",
+      "kind": "float",
+      "decimals": 3,
+      "minimum": 0.0,
+      "maximum": 1000000000.0,
+      "call": "edited",
+      "description": "Upper diffusion-time bound of the MaxEnt grid (0 = automatic). Used in MaxEnt mode."
+     },
+     {
+      "type": "value",
+      "attr": "tmin_fit",
+      "label": "t_min (ms)",
+      "kind": "float",
+      "decimals": 6,
+      "minimum": 0.0,
+      "maximum": 1000000000.0,
+      "call": "edited",
+      "description": "Lower correlation-time bound of the fit window (0 = from the start). The left line on the correlation plot drags it."
+     },
+     {
+      "type": "value",
+      "attr": "tmax_fit",
+      "label": "t_max (ms)",
+      "kind": "float",
+      "decimals": 3,
+      "minimum": 0.0,
+      "maximum": 1000000000.0,
+      "call": "edited",
+      "description": "Upper correlation-time bound of the fit window (0 = to the end). The right line on the correlation plot drags it."
+     }
+    ]
+   }
+  ]
+ },
+ "settings_files": {
+  "sections": [
+   {
+    "type": "button_row",
+    "description": "Settings files.",
+    "buttons": [
+     {
+      "action": "load_settings",
+      "label": "Load settings...",
+      "description": "Load the correlator and fitting settings from JSON."
+     },
+     {
+      "action": "save_settings",
+      "label": "Save settings...",
+      "description": "Save the correlator and fitting settings as JSON."
+     }
+    ]
+   }
+  ]
+ },
+ "pairs": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "pairs",
+    "source": "pair_rows",
+    "columns_source": "pair_columns",
+    "editable": true,
+    "edited_call": "edit_pair",
+    "editable_call": "pair_editable",
+    "height": 110,
+    "fit_columns": false,
+    "selected_call": "select_pair",
+    "description": "FCS channel pairs: a pair of routing-channel lists, optionally gated in micro time. Equal sides make an auto-correlation."
+   },
+   {
+    "type": "button_row",
+    "description": "Edit the channel pairs.",
+    "buttons": [
+     {
+      "action": "add_pair",
+      "label": "Add pair",
+      "description": "Add a channel pair to edit."
+     },
+     {
+      "action": "remove_pair",
+      "label": "Remove pair",
+      "description": "Remove the selected channel pair."
+     },
+     {
+      "action": "load_pairs",
+      "label": "Load pairs...",
+      "description": "Load channel pairs, or a detector setup, from JSON."
+     },
+     {
+      "action": "save_pairs",
+      "label": "Save pairs...",
+      "description": "Save the channel pairs with their micro-time gates as JSON."
+     },
+     {
+      "action": "show_pairs",
+      "label": "Show JSON",
+      "description": "Show the channel pairs as JSON."
+     }
+    ]
+   }
+  ]
+ },
+ "curves": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "curves",
+    "source": "curve_rows",
+    "columns_source": "curve_columns",
+    "editable": false,
+    "height": 240,
+    "fit_columns": true,
+    "selected_call": "select_curve",
+    "filter": true,
+    "expand": true,
+    "description": "The correlation curves of every burst and pair. Filter by file or pair name; select one to show it in the plots.",
+    "reserve": 34
+   },
+   {
+    "type": "button_row",
+    "description": "Export.",
+    "buttons": [
+     {
+      "action": "export_curves",
+      "label": "Export curves...",
+      "description": "Save the calculated data, fits and diffusion distributions as JSON."
+     }
+    ]
+   }
+  ]
+ },
+ "status": {
+  "sections": [
+   {
+    "type": "info",
+    "source": "status_line",
+    "description": "What the tool did last."
+   }
+  ]
+ },
+ "progress": {
+  "sections": [
+   {
+    "type": "progress",
+    "attr": "progress_fraction",
+    "text_source": "progress_text",
+    "description": "How many burst files are done."
+   }
+  ]
+ },
+ "setup_button": {
+  "sections": [
+   {
+    "type": "button_row",
+    "description": "Use the detector setup for the channel pairs.",
+    "buttons": [
+     {
+      "action": "use_setup",
+      "label": "Use setup for pairs",
+      "description": "Replace the channel pairs by those of the detector setup chosen below (its saved FCS pairs, or one auto-correlation per detector)."
+     }
+    ]
+   }
+  ]
+ }
+}

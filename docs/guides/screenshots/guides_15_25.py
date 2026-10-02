@@ -221,42 +221,28 @@ _BURST_FOLDER_GLOB = (
 
 
 def _grab_16_burst_fcs():
-    """Burst-wise FCS on the BH SPC-132 sample burst folder (guide 16).
+    """Burst-wise FCS on its demonstration data (guide 16): the emtk app, populated and drawn headlessly."""
+    import time
 
-    A two-detector setup with GG/RR/GR pairs is stored first (isolated MMFDB),
-    selected, and *Run* pressed — the tool's own path end to end.
-    """
-    import glob
+    from emtk.testing import PixelPainter, RecordingPainter, png_encode
 
-    from chisurf.plugins.burst.burst_fcs_correlator.gui.tool import BurstFcsTool
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.app import create_app
 
-    _ensure_bh_setup()
-    folder = sorted(glob.glob(_BURST_FOLDER_GLOB))[0]
-    tool = BurstFcsTool()
-    tool.setup_selector.refresh()
-    combo = tool.setup_selector.combo
-    combo.setCurrentIndex(combo.findText(_BH_SETUP))
-    _settle()
-    print("pairs:", [tool.list_pairs.item(i).text() for i in range(tool.list_pairs.count())])
-    tool.file_list.add_paths([folder])
-    tool._on_run()
-    print("curves", len(tool._curves))
-    # Show the longest burst of the first file: a single short burst's
-    # correlation is mostly shot noise.
-    files = tool._resolve_files()
-    ranges = files[0]["ranges"]
-    longest = int(np.argmax([b - a for a, b in ranges]))
-    print("longest burst", longest, "photons", ranges[longest][1] - ranges[longest][0])
-    tool.line_filter.setText(f"b{longest} ")
-    tool._refresh_browser_list()
-    tool.list_browser.setCurrentRow(0)
-    tool.resize(1280, 800)
-    _settle()
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(tool, "16")
-    _raise_tab(tool, "Correlation")
-    _grab(tool, "16_burst_fcs.png")
-    return tool
+    app = create_app()
+    app.load_example()
+    app.controller._on_run()
+    while app.controller.running or app.controller._future is not None:
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
+        time.sleep(0.05)
+    for _ in range(3):
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
+    painter = PixelPainter(1200, 800)
+    for _ in range(2):
+        painter = PixelPainter(1200, 800)
+        app.draw(painter, 0, 0, 1200, 800)
+    (FIG / "16_burst_fcs.png").write_bytes(png_encode(painter.width, painter.height, painter.px))
+    print("wrote 16_burst_fcs.png")
+    app.close()
 
 
 # ---------------------------------------------------------------- guide 17

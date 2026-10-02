@@ -65,34 +65,43 @@ from the burst or full photon streams.
 
 **Spectroscopy ▸ Fluorescence Correlation Spectroscopy ▸ Burst-wise FCS** (also
 the *Burst FCS* tool of **Spectroscopy ▸ Burst Analysis**) correlates each burst
-separately, using only the photons of that burst ± **Padding**. Left, top to
-bottom:
+separately, using only the photons of that burst ± **Padding**. The window has
+**Run FCS**, **Stop**, **Example**, **Guide** and **Help** on top, three tabs on
+the left and the plots on the right:
 
-- the **detector setup**; its stored FCS pairs fill **FCS channel pairs**
-  (tick the pairs to compute — GG, RR and the GR cross term for FRET-FCS);
-- **Correlator**: **FCS bins (B)** (linear bins per cascade, 3), **cascades**
-  (20), **Fine grid** (micro-time-resolved lags), **Padding ±[ms]** (100);
-- **Fitting**: **Mode** *None* / *Simple* (one diffusion component) /
-  *MaxEnt* (a diffusion-time distribution, regularised by **MaxEnt reg
-  (log10)** over **τ_D min/max**, 0 = automatic), and the fit window
-  **t_min / t_max** (0 = the full lag range);
-- **Burst folders or BUR/BST files**: a burst-analysis folder (its `bi4_bur/`
-  or `BID/` files point back at the TTTR measurement).
+- **Inputs** — the **Burst folders or BUR/BST files** table (**Files...**,
+  **Folder...**, **Database...**, **All**, **None**, **Remove**, **Clear**; files
+  and folders can be dropped on the window) and the **FCS channel pairs** table
+  (tick the pairs to compute — GG, RR and the GR cross term for FRET-FCS; double-click
+  a cell to edit the channels or the micro-time gates; **Add pair**, **Remove
+  pair**, **Load pairs...**, **Save pairs...**, **Show JSON**);
+- **Settings** — **Correlator**: **FCS bins (B)** (linear bins per cascade, 3),
+  **Cascades** (20), **Fine grid** (micro-time-resolved lags), **Padding ±
+  (ms)** (100); **Fitting**: **Mode** *None* / *Simple* (one diffusion component)
+  / *MaxEnt* (a diffusion-time distribution, regularised by **MaxEnt reg
+  (log10)** over **tau_D min/max**, 0 = automatic) and the fit window **t_min /
+  t_max** (0 = the full lag range; the two vertical lines on the correlation plot
+  drag it); **Load settings...** / **Save settings...**;
+- **Detector setup** — the shared detector editor; **Use setup for pairs** turns
+  the setup (its stored FCS pairs, else one auto-correlation per detector) into
+  channel pairs.
 
-**▶ Run** correlates every checked file × pair × burst. The right side lists the
-curves (`file · b<burst> · pair`, filterable by text) and plots the selected one
-with its fit; *Diffusion-time distribution* holds $P(\tau_D)$ in MaxEnt mode.
-**≡ Settings** saves/loads the settings as JSON and shows the resolved pairs.
+**Run FCS** correlates every ticked file × pair × burst, with a progress bar.
+The right side shows the correlation of the selected curve with its fit, the
+**Curves** list (`burst · pair · tau_D`, filterable by text) and the **Distribution
+P(tau_D)** in MaxEnt mode. **Export curves...** saves the curves as JSON.
+**Example** writes a small seeded demonstration data set (eight bursts on two
+detectors) and adds it, so the **Guide** can be walked without data.
 
 ```{figure} figures/16_burst_fcs.png
 :name: fig-16-burst-fcs
 :width: 100%
 
-Burst-wise FCS on the 10 BH SPC-132 smFRET files of the burst-selection test
-folder, pairs GG (0/8), RR (1/9) and GR: 8940 curves. Shown is the GG
-auto-correlation of the longest burst of `m000.spc` (598 photons) with the
-*Simple* diffusion fit; a single burst's curve is shot-noise limited at short
-lags, which is why the kinetic terms are fitted globally over many bursts.
+The demonstration data set (**Example**): eight seeded bursts on two detectors,
+channel pairs ACF_0, ACF_1 and cross_01, 24 curves, *Simple* fit. Shown is the
+ACF_0 curve of burst 0; a single burst's curve is shot-noise limited at short
+lags, which is why the kinetic terms are fitted globally over many bursts. The
+photons are generated, not measured.
 ```
 
 ## Result
@@ -107,13 +116,6 @@ diffusion decay — the FRET-FCS signature of conformational exchange.
 
 FRET-FCS auto and cross correlations.
 ```
-
-## Known defects
-
-- After **▶ Run** the *Computing burst-wise FCS…* progress bar stays in the
-  status bar (visible in the figure): `_on_run` in
-  `chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py` sets the final value
-  but never closes the `ChiSurfProgress`.
 
 ## See also
 

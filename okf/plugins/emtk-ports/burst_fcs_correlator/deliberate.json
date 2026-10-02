@@ -1,0 +1,16 @@
+{
+ "cascades": "drawn on the Settings tab (not the default Inputs tab): FCS bins (B), Cascades, Fine grid, Padding +- (ms), Mode, MaxEnt reg (log10), tau_D min/max, t_min/t_max; covered by the click tests and the Settings screenshots",
+ "correlator": "drawn on the Settings tab (not the default Inputs tab): FCS bins (B), Cascades, Fine grid, Padding +- (ms), Mode, MaxEnt reg (log10), tau_D min/max, t_min/t_max; covered by the click tests and the Settings screenshots",
+ "fcsbins(b)": "drawn on the Settings tab (not the default Inputs tab): FCS bins (B), Cascades, Fine grid, Padding +- (ms), Mode, MaxEnt reg (log10), tau_D min/max, t_min/t_max; covered by the click tests and the Settings screenshots",
+ "finegrid": "drawn on the Settings tab (not the default Inputs tab): FCS bins (B), Cascades, Fine grid, Padding +- (ms), Mode, MaxEnt reg (log10), tau_D min/max, t_min/t_max; covered by the click tests and the Settings screenshots",
+ "fitting": "drawn on the Settings tab (not the default Inputs tab): FCS bins (B), Cascades, Fine grid, Padding +- (ms), Mode, MaxEnt reg (log10), tau_D min/max, t_min/t_max; covered by the click tests and the Settings screenshots",
+ "maxent": "the MaxEnt option of the Mode radio",
+ "maxentreg(log10)": "drawn on the Settings tab (not the default Inputs tab): FCS bins (B), Cascades, Fine grid, Padding +- (ms), Mode, MaxEnt reg (log10), tau_D min/max, t_min/t_max; covered by the click tests and the Settings screenshots",
+ "mode": "drawn on the Settings tab (not the default Inputs tab): FCS bins (B), Cascades, Fine grid, Padding +- (ms), Mode, MaxEnt reg (log10), tau_D min/max, t_min/t_max; covered by the click tests and the Settings screenshots",
+ "padding±[ms]": "label 'Padding +- (ms)'",
+ "simple": "the Simple option of the Mode radio",
+ "tmax[ms]": "label 't_max (ms)'",
+ "tmin[ms]": "label 't_min (ms)'",
+ "τdmax[ms]": "label 'tau_D max (ms)' (the greek letter is spelled out)",
+ "τdmin[ms]": "label 'tau_D min (ms)'"
+}

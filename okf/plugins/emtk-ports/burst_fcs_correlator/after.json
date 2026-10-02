@@ -1,0 +1,186 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0,8",
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "10",
+    "100",
+    "1e-06",
+    "addpair",
+    "all",
+    "burst",
+    "burst-wisefcs",
+    "burstfile",
+    "burstfoldersorbur/bstfiles",
+    "cha",
+    "chb",
+    "chooseburstfilesandchannelpairs,thenrunfcs.",
+    "clear",
+    "correlationg(t)",
+    "correlationtimet_c(ms)",
+    "curves",
+    "database",
+    "detectorsetup",
+    "diffusiontimetau_d(ms)",
+    "distributionp(tau_d)",
+    "donor_acf",
+    "example",
+    "exportcurves",
+    "fcschannelpairs",
+    "files",
+    "filter",
+    "folder",
+    "g",
+    "guide",
+    "help",
+    "inputs",
+    "loadpairs",
+    "maxentmodeonly",
+    "microa",
+    "microb",
+    "none",
+    "p",
+    "pair",
+    "remove",
+    "removepair",
+    "runfcs",
+    "runfcs,thenselectacurve",
+    "savepairs",
+    "settings",
+    "showjson",
+    "stop",
+    "tau_d(ms)",
+    "use"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Run FCS",
+      "id": "Run FCS##run",
+      "tooltip": "Correlate every ticked burst file with every ticked channel pair and fit each curve."
+    },
+    {
+      "kind": "button",
+      "label": "Stop",
+      "id": "Stop##stop",
+      "tooltip": "Cancel between burst files; the previous results are kept."
+    },
+    {
+      "kind": "button",
+      "label": "Example",
+      "id": "Example##example",
+      "tooltip": "Generate a small deterministic demonstration data set (photon stream and burst table) and add it."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##guide",
+      "tooltip": "A step-by-step walk through the tool on the demonstration data."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help##help",
+      "tooltip": "Explain burst-wise FCS, the settings and the fits."
+    },
+    {
+      "kind": "button",
+      "label": "Files...",
+      "id": "Files...##add_files",
+      "tooltip": "Choose BUR or BST burst tables."
+    },
+    {
+      "kind": "button",
+      "label": "Folder...",
+      "id": "Folder...##add_folder",
+      "tooltip": "Choose an analysis folder; its burst tables are found inside."
+    },
+    {
+      "kind": "button",
+      "label": "Database...",
+      "id": "Database...##mmfdb",
+      "tooltip": "Resolve a burst analysis dataset from MMFDB."
+    },
+    {
+      "kind": "button",
+      "label": "All",
+      "id": "All##check_all",
+      "tooltip": "Tick every input."
+    },
+    {
+      "kind": "button",
+      "label": "None",
+      "id": "None##check_none",
+      "tooltip": "Untick every input."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove##remove_files",
+      "tooltip": "Remove the selected input."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##clear",
+      "tooltip": "Remove every input and every curve."
+    },
+    {
+      "kind": "button",
+      "label": "Add pair",
+      "id": "Add pair##add_pair",
+      "tooltip": "Add a channel pair to edit."
+    },
+    {
+      "kind": "button",
+      "label": "Remove pair",
+      "id": "Remove pair##remove_pair",
+      "tooltip": "Remove the selected channel pair."
+    },
+    {
+      "kind": "button",
+      "label": "Load pairs...",
+      "id": "Load pairs...##load_pairs",
+      "tooltip": "Load channel pairs, or a detector setup, from JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Save pairs...",
+      "id": "Save pairs...##save_pairs",
+      "tooltip": "Save the channel pairs with their micro-time gates as JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Show JSON",
+      "id": "Show JSON##show_pairs",
+      "tooltip": "Show the channel pairs as JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Export curves...",
+      "id": "Export curves...##export_curves",
+      "tooltip": "Save the calculated data, fits and diffusion distributions as JSON."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

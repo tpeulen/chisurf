@@ -1,22 +1,49 @@
-[
-  {
-    "title": "Welcome to Burst-wise FCS",
-    "text": "This tool correlates photons within isolated single-molecule bursts to extract diffusion coefficients and photophysical kinetics without bulk bias.",
-    "target": {"name": "run"}
-  },
-  {
-    "title": "Correlator Settings",
-    "text": "Configure linear bins per cascade, cascade tier depth, and optional burst padding in milliseconds.",
-    "target": {"name": "run"}
-  },
-  {
-    "title": "Run Correlation",
-    "text": "Press <b>Run FCS</b> to compute autocorrelation and cross-correlation curves across configured detector pairs.",
-    "target": {"name": "run"}
-  },
-  {
-    "title": "Inspect Curves & Gating",
-    "text": "Review the multi-tau correlation curves G(τ) and adjust interactive time-gate boundaries directly on the plot.",
-    "target": {"name": "run"}
-  }
-]
+{
+  "steps": [
+    {
+      "title": "Burst-wise FCS on a demonstration data set",
+      "text": "This tool correlates the photons inside each single-molecule burst separately, so the curves are not diluted by the empty time between bursts.<br/><br/>The tour works on a small data set the tool writes itself: eight bursts on two detectors, drawn from a seeded generator (nothing here is a measurement). Press <b>Example</b> to add it.",
+      "target": {"action": "example"},
+      "await": true,
+      "tab": "Inputs"
+    },
+    {
+      "title": "The input and the channel pairs",
+      "text": "The table of <b>burst files</b> now lists the burst table of the demonstration data, ticked. Below it are the <b>channel pairs</b>: one auto-correlation per detector (ACF_0, ACF_1) and their cross-correlation (cross_01). A pair is two lists of routing channels, optionally gated in micro time; double-click a cell to edit it.",
+      "target": {"key": "pairs"},
+      "tab": "Inputs"
+    },
+    {
+      "title": "Run the correlation",
+      "text": "Press <b>Run FCS</b>. Every ticked burst is correlated for every ticked pair (8 bursts x 3 pairs = 24 curves) with the multi-tau settings of the <b>Settings</b> tab.",
+      "target": {"action": "run"},
+      "await": true,
+      "tab": "Inputs"
+    },
+    {
+      "title": "Look at one burst",
+      "text": "The <b>Curves</b> list shows every curve with its fitted diffusion time. <b>Click a row</b> to show that burst: the white line is the correlation, the red line its single-component diffusion fit. The filter box above the list narrows it by file or pair name.",
+      "target": {"key": "curves"},
+      "await": true
+    },
+    {
+      "title": "Choose the fit",
+      "text": "On the <b>Settings</b> tab the <b>Mode</b> chooses the fit: <b>None</b> shows the raw curves, <b>Simple</b> fits one diffusing species with a triplet, <b>MaxEnt</b> inverts the curve into a distribution of diffusion times. Click <b>MaxEnt</b>, then press <b>Run FCS</b> again to see the distribution in the lower plot.",
+      "target": {"attr": "fit_mode"},
+      "await": true,
+      "tab": "Settings"
+    },
+    {
+      "title": "Set the fit window",
+      "text": "The two blue vertical lines on the correlation plot are the window the fit uses (<b>t_min</b> and <b>t_max</b> on the Settings tab). Short lags of a single burst are shot noise: drag the left line to the right to leave them out, then run again.",
+      "target": {"key": "correlation_plot"},
+      "await": true
+    },
+    {
+      "title": "Your own data",
+      "text": "Add your burst tables with <b>Files...</b> (BUR or BST), <b>Folder...</b> (an analysis folder) or <b>Database...</b>, or drop them on the window. On the <b>Detector setup</b> tab the shared detector editor defines the channels; <b>Use setup for pairs</b> turns a setup into channel pairs. <b>Export curves...</b> saves the curves and fits as JSON.",
+      "target": {"action": "add_files"},
+      "tab": "Inputs"
+    }
+  ]
+}

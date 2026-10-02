@@ -30,5 +30,10 @@ Unlike continuous FCS which computes autocorrelations across an entire photon st
 
 ## Actions
 
-- **▶ Run FCS**: Executes multi-channel multi-tau correlation across all selected bursts and channel pairs.
-- **Region Gating**: Drag the interactive bounding box on the correlation curve to constrain the fitting window.
+- **Run FCS** / **Stop**: correlates every ticked burst file with every ticked channel pair; Stop cancels between files and keeps the previous results.
+- **Example**: writes a small seeded demonstration photon stream and burst table and adds them, so the guide can be walked without data.
+- **Files... / Folder... / Database...**: add BUR/BST burst tables, an analysis folder or an MMFDB dataset; files and folders can also be dropped on the window. **All**, **None**, **Remove** and **Clear** manage the list.
+- **Channel pairs**: a table of pairs (routing channels A and B, micro-time gates); equal sides give an auto-correlation. **Pairs of the setup** (Detector setup tab) builds them from a detector setup.
+- **Curves**: every burst and pair with its diffusion time; filter by file or pair name and select a row to plot it. **Export curves...** writes JSON.
+- **Fit window**: drag the two vertical lines on the correlation plot (or type **t_min** and **t_max**) to constrain the fit; the wheel zooms a plot.
+- **Settings files**: **Load settings...** and **Save settings...** read and write the correlator and fit settings as JSON.

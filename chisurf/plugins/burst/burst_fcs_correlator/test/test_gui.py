@@ -1,50 +1,32 @@
-"""GUI tests: declarative AutoForm settings + dockable plots."""
+"""The Qt tool is the emtk app hosted in a dock tool; the settings model and the plot sources stay Qt-free."""
 
 import numpy as np
 
 
-def test_tool_builds_with_declarative_settings_and_dock_plots(qapp, qtbot):
-    from chisurf.gui.autoform.sections.builtin import PlotWidget, ValueWidget
-    from chisurf.gui.widgets.dock_area import DockArea
+def test_tool_hosts_the_one_native_app(qapp, qtbot):
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.app import BurstFcsApp
     from chisurf.plugins.burst.burst_fcs_correlator.gui.tool import BurstFcsTool
 
-    w = BurstFcsTool()
+    w = BurstFcsTool(embedded=True)
     qtbot.addWidget(w)
+    assert isinstance(w.app, BurstFcsApp) and w.controller is w.app.controller
+    assert w._model is w.controller._model and w._curves is w.controller._curves
+    assert w.centralWidget() is w.host
 
-    # settings rendered declaratively via AutoForm
-    attrs = {v._section.attr for v in w._settings_form.findChildren(ValueWidget)}
-    assert {"n_bins", "n_casc", "padding_ms"} <= attrs
 
-    # plots live in a declarative dock_area with two plot panels
-    assert len(w._plots_form.findChildren(DockArea)) == 1
-    assert len(w._plots_form.findChildren(PlotWidget)) == 2
+def test_selecting_a_curve_drives_the_plot_sources():
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.view_model import _BurstFcsModel
 
-    # selecting a curve drives the plot sources
+    m = _BurstFcsModel()
     tau = np.logspace(-3, 2, 40)
     g = 0.5 / (1.0 + tau) + 1.0
-    w._curves = [
-        {
-            "file": "f.ptu",
-            "burst_index": 0,
-            "pair_name": "GG",
-            "tau_raw": tau.tolist(),
-            "g_raw": g.tolist(),
-            "tau": tau.tolist(),
-            "g": g.tolist(),
-            "g_fit": (g * 0.99).tolist(),
-            "td_grid": [],
-            "p": [],
-        }
-    ]
-    w._refresh_browser_list()
-    assert w.list_browser.count() == 1
-    w.list_browser.setCurrentRow(0)
-    assert w._model._selected is not None
-    assert len(w._model.corr_plot_series()) == 2  # data + fit
+    m._selected = {"tau_raw": tau.tolist(), "g_raw": g.tolist(), "tau": tau.tolist(), "g": g.tolist(), "g_fit": (g * 0.99).tolist(), "td_grid": [], "p": []}
+    assert len(m.corr_plot_series()) == 2  # data + fit
+    assert m.dist_plot_series() == []
 
 
-def test_settings_model_to_core_settings(qapp):
-    from chisurf.plugins.burst.burst_fcs_correlator.gui.tool import _BurstFcsModel
+def test_settings_model_to_core_settings():
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.view_model import _BurstFcsModel
 
     m = _BurstFcsModel()
     m.maxent_log10_reg = -1.0
@@ -52,3 +34,16 @@ def test_settings_model_to_core_settings(qapp):
     s = m.to_settings()
     assert s.fit_mode == "maxent"
     assert abs(s.maxent_reg - 0.1) < 1e-9  # 10**-1
+
+
+def test_the_workflow_shell_hands_a_burst_folder_over_through_file_list(qapp, qtbot, tmp_path):
+    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.tool import BurstFcsTool
+
+    w = BurstFcsTool(embedded=True)
+    qtbot.addWidget(w)
+    tool = type("Shell", (), {"workflow_context": type("Ctx", (), {"burst_folder": tmp_path})()})()
+    BurstAnalysisTool._apply_context_to_burst_fcs(tool, w)
+    assert w.controller.checked_files() == [str(tmp_path)]
+    BurstAnalysisTool._apply_context_to_burst_fcs(tool, w)  # a selection already there is kept
+    assert w.controller.files == [str(tmp_path)]
