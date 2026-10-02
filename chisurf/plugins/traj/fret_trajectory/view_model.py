@@ -90,6 +90,10 @@ class FretTrajectoryViewModel:
         lines = "<br>".join(html.escape(line) for line in self._log)
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
+    def log_text(self) -> list[str]:
+        """Return the raw log lines (bound by the native app; no HTML)."""
+        return list(self._log)
+
     # ── proxied engine parameters ───────────────────────────────────────
     @property
     def trajectory_file(self) -> str:
@@ -182,7 +186,14 @@ class FretTrajectoryViewModel:
         self.filenames = filenames
         self.trajectory_file = filenames[0]
         self.append_log(f"Loaded {len(filenames)} trajectory file(s)")
-        self._load_topology(self.trajectory_file)
+        try:
+            self._load_topology(self.trajectory_file)
+        except ValueError as exc:
+            # A DCD cannot be read before its topology is known. Either order of
+            # picking the two files must work, so say what is missing and let
+            # set_topology load the atoms -- raising here lost the trajectory.
+            self.pdb = None
+            self.append_log(f"{exc} -- choose the topology to pick the atoms")
         self._notify("loaded")
 
     def set_trajectory(self, filename: str) -> None:

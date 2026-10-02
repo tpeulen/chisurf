@@ -5932,9 +5932,10 @@ Open:
    frame" exclusive~~ — fixed 2026-10-02 in the traj_convert upgrade (one frame
    selection for every mode, inclusive, folder PDBs joined in name order). ~~Join interleaves chunks A,B,A… and truncates to the
    shorter trajectory~~ — fixed 2026-10-02 in the traj_join upgrade (whole
-   trajectories appended, whole-trajectory reversal, a mismatch raises). FRET tab
+   trajectories appended, whole-trajectory reversal, a mismatch raises). ~~FRET tab
    has no topology row, so a DCD cannot be opened;
-   its dipole selectors overlap. 6/9 energy potentials fail on a plain
+   its dipole selectors overlap~~ — fixed 2026-10-02 in the traj_fret upgrade (a
+   topology row on both hosts, DCD filter, cascading pickers in the emtk app). 6/9 energy potentials fail on a plain
    `Structure` (no `l_res`/`dist_ca`), Ramachandran returns 0, H-Bond is the
    default. `trajectory_data` docstrings say nm but data are Å, and
    `plugins/modelling/fret/core/trajectory.py:158` multiplies by 10

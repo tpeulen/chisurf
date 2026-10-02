@@ -1,0 +1,48 @@
+{
+  "_comment": "Guided tour for Trajectory to FRET. The file rows, the atom pickers and the Process button live inside custom sections, so they are targeted by name; R0, tau0, t_step and dipoles are spec attrs. Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "Distances, κ² and rates, frame by frame",
+      "text": "For every frame: the donor–acceptor distance, the orientation factor κ² and the FRET rate k = 3/2 κ² (R0/R)⁶ / τ0. Choose the files and the dye atoms, set the dye parameters, process.",
+      "target": {}
+    },
+    {
+      "title": "The trajectory",
+      "text": "The DCD to analyse. Press <b>…</b> or drop a <code>.dcd</code>.",
+      "target": {"name": "trajectory"},
+      "await": {"hint": "Press <b>…</b> and pick a trajectory."}
+    },
+    {
+      "title": "The topology",
+      "text": "Names the atoms — and fills the pickers below. Either file may come first.",
+      "target": {"name": "topology"},
+      "await": {"hint": "Press <b>…</b> and pick the PDB that names the atoms."}
+    },
+    {
+      "title": "The donor dipole",
+      "text": "Two atoms define the transition dipole: chain, residue, atom each. Atoms are not dyes — for labelled positions, accessible volumes model the dye clouds.",
+      "target": {"name": "donor"}
+    },
+    {
+      "title": "The acceptor dipole",
+      "text": "Two more atoms, the same way.",
+      "target": {"name": "acceptor"}
+    },
+    {
+      "title": "Orientation",
+      "text": "On: κ² from the two dipoles, per frame, and the distance between the dipole centres. Off: only the first atom of each dye, κ² = 2/3.",
+      "target": {"attr": "dipoles"}
+    },
+    {
+      "title": "Process",
+      "text": "Pick the output CSV. The table holds no efficiency and no average on purpose: which one applies depends on the timescales.",
+      "target": {"name": "process"},
+      "await": {"hint": "Press <b>▶ Process trajectory</b>."}
+    },
+    {
+      "title": "What happened",
+      "text": "The log lists the files and how many frames each gave — or why it stopped.<br/><br/>The <b>?</b> button has the details.",
+      "target": {"name": "log"}
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 Three bespoke Qt widgets are registered here and drive the Qt-free
 :class:`~.view_model.FretTrajectoryViewModel`:
 
-* ``fret_traj_io`` — the trajectory picker (``…`` browse + drag-drop, H5 filter).
+* ``fret_traj_io`` — the trajectory and topology pickers (``…`` browse + drag-drop, DCD filter).
 * ``fret_atom_pairs`` — the donor / acceptor atom selection hosting the four
   :class:`~chisurf.gui.widgets.pdb.PDBSelector` widgets (``d1``/``d2`` donor
   pair, ``a1``/``a2`` acceptor pair; the second of each is created with
@@ -70,46 +70,78 @@ def fret_traj_io(model, target=None, **options):
 
 
 class _TrajectoryIoSection(QtWidgets.QWidget):
-    """Trajectory row (browse + drag-drop, H5 filter) driving the view-model."""
+    """Trajectory and topology rows (browse + drag-drop) driving the view-model.
+
+    The topology row was missing: a DCD stores coordinates only, so without it a
+    trajectory could not be opened from the window at all (and the browse filter
+    offered only the retired ``.h5``).
+    """
 
     def __init__(self, model, parent=None):
         super().__init__(parent)
         self._model = model
 
-        row = QtWidgets.QHBoxLayout(self)
-        row.setContentsMargins(2, 2, 2, 2)
-        row.setSpacing(2)
-        row.addWidget(QtWidgets.QLabel("Trajectory"))
-        self._edit = QtWidgets.QLineEdit()
-        self._edit.setReadOnly(True)
-        self._edit.setPlaceholderText("Drop an H5 trajectory here or browse…")
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        self._edit = self._row(layout, "Trajectory", "Drop a DCD trajectory here or browse…",
+                               "Open DCD trajectories.", self._browse)
         self._edit.setText(self._model.trajectory_file)
-        row.addWidget(self._edit, 1)
-        browse = QtWidgets.QToolButton()
-        browse.setText("…")
-        browse.setToolTip("Open an H5 trajectory file.")
-        browse.clicked.connect(self._browse)
-        row.addWidget(browse)
+        self._top_edit = self._row(layout, "Topology", "PDB naming the atoms — required for DCD",
+                                   "Open the PDB that names the atoms; a DCD stores coordinates only.",
+                                   self._browse_topology)
+        self._top_edit.setText(self._model.topology_filename)
 
         _enable_file_drop(self._edit, self._load)
+        _enable_file_drop(self._top_edit, self._load_topology)
         self._model.add_observer(self._on_model_event)
 
+    @staticmethod
+    def _row(layout, label, placeholder, tooltip, on_browse):
+        row = QtWidgets.QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(2)
+        row.addWidget(QtWidgets.QLabel(label))
+        edit = QtWidgets.QLineEdit()
+        edit.setReadOnly(True)
+        edit.setPlaceholderText(placeholder)
+        row.addWidget(edit, 1)
+        browse = QtWidgets.QToolButton()
+        browse.setText("…")
+        browse.setToolTip(tooltip)
+        browse.clicked.connect(on_browse)
+        row.addWidget(browse)
+        layout.addLayout(row)
+        return edit
+
     def _on_model_event(self, event: str) -> None:
-        if event == "loaded" and self._edit.text() != self._model.trajectory_file:
-            self._edit.setText(self._model.trajectory_file)
+        if event == "loaded":
+            if self._edit.text() != self._model.trajectory_file:
+                self._edit.setText(self._model.trajectory_file)
+            if self._top_edit.text() != self._model.topology_filename:
+                self._top_edit.setText(self._model.topology_filename)
 
     def _browse(self) -> None:
         import chisurf.gui.widgets
 
-        filenames = chisurf.gui.widgets.open_files(
-            "Open Trajectory-File", "H5-Trajectory-Files (*.h5)"
-        )
+        filenames = chisurf.gui.widgets.open_files("Open Trajectory-File", "DCD trajectories (*.dcd)")
         if filenames:
             self._model.set_trajectory_files(filenames)
+
+    def _browse_topology(self) -> None:
+        import chisurf.gui.widgets
+
+        filename = chisurf.gui.widgets.get_filename("Open topology", "Structures (*.pdb *.cif *.ent)")
+        if filename:
+            self._load_topology(filename)
 
     def _load(self, path: str) -> None:
         if path and pathlib.Path(path).is_file():
             self._model.set_trajectory_files([path])
+
+    def _load_topology(self, path: str) -> None:
+        if path and pathlib.Path(path).is_file():
+            self._model.set_topology(path)
 
 
 # ---------------------------------------------------------------------------

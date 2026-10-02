@@ -14,7 +14,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.traj.fret_trajectory.gui:Structure2Transfer"
+    "gui": "chisurf.plugins.traj.fret_trajectory.gui:Structure2Transfer",
+    "emtk": "chisurf.plugins.traj.fret_trajectory.app:make_app"
   },
   "menu_hidden": true
 }

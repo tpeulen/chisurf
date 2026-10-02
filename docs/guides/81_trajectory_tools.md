@@ -207,7 +207,7 @@ as the acceptor dipole, R0 = 52 Å, τ0 = 4 ns. Each dipole is two atom
 pickers (chain, residue, atom).
 ```
 
-* **Trajectory**, **Stride**.
+* **Trajectory**, **Topology** (the PDB naming the atoms; either may be chosen first), **Stride**.
 * **Dipole atoms**: two atoms for the **Donor** and two for the **Acceptor**.
   The distance is taken between the dipole centres.
 * **R0 [Ang]**: the Förster radius for κ² = 2/3.
@@ -226,10 +226,8 @@ applies depends on the timescales (see
 {ref}`concept-structure-trajectories`, where this same table gives
 ⟨E⟩ = 0.840 for static averaging against 0.993 for dynamic averaging).
 
-The panel has **no topology field**, so a DCD cannot be opened from it yet
-(see [Known defects](#known-defects)). Use the Python route below. Atoms are
-not dyes: for labelled positions, model the dye clouds with an accessible
-volume ({doc}`23_accessible_volume`).
+Atoms are not dyes: for labelled positions, model the dye clouds with an
+accessible volume ({doc}`23_accessible_volume`).
 
 ## Where results go next
 
@@ -319,9 +317,6 @@ Measured on the example data. File references are to the current tree.
 * **A multi-model PDB reads back as its first model.**
   `trajectory_data.load` takes a structure file as a single frame, so a
   multi-frame `.pdb` written by Convert opens in ChiSurf with one frame.
-* **The FRET panel has no topology row.** Picking a DCD there raises
-  `'…dcd' stores coordinates only; pass top=`. The view model has
-  `set_topology`, but the `fret_traj_io` section does not expose it.
 * **Six of the nine potentials fail on a trajectory.** H-Bond,
   Miyazawa-Jernigan and ASA-Calpha fail with `Structure object has no
   attribute 'l_res'`. Iso-UNRES and Go-Potential fail with `no attribute

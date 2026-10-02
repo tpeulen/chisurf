@@ -1,17 +1,15 @@
 # FRET Analysis from Molecular Dynamics Trajectories
 
-This plugin calculates FRET efficiency values from molecular dynamics (MD) trajectories by analyzing the distances between specified residues over time.
+This plugin writes, for every frame of a molecular dynamics trajectory, the donor–acceptor distance, the
+orientation factor κ² and the FRET rate constant, from two atoms per dye.
 
 ## Features
 
-- Load and analyze MD trajectories in various formats
-- Select donor and acceptor positions for FRET calculations
-- Calculate inter-residue distances and corresponding FRET efficiencies
-- Apply accessible volume (AV) models to account for dye flexibility
-- Generate FRET efficiency histograms and time traces
-- Export results for further analysis
-- Visualize trajectory structures with donor-acceptor pairs
-- Compare calculated FRET values with experimental data
+- DCD trajectories with the PDB topology that names their atoms (either picked first)
+- Donor and acceptor dipoles of two atoms each, picked by chain, residue and atom
+- κ² per frame from the dipoles, or the isotropic 2/3 with one atom per dye
+- A CSV per trajectory: `Frame`, `time[ns]`, `RDA[Ang]`, `kappa`, `kappa2`, `FRETrate[1/ns]`
+- No efficiency and no averaging in the table: which average applies depends on the timescales
 
 ## Overview
 
@@ -23,34 +21,18 @@ Ideal for comparing experimental FRET data with structural models from molecular
 
 ## Requirements
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - matplotlib
-  - mdtraj (for trajectory handling)
-  - pytraj (for trajectory analysis)
-  - scipy (for data processing)
+- ChiSurf's trajectory readers (`chisurf.core.structure.trajectory_data`) and κ² code; no Qt for the emtk window
+  (`app.py`), Qt only for the legacy AutoForm widget (`gui.py`).
 
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Structure > FRET from Trajectory
-2. Load a molecular dynamics trajectory:
-   - Select trajectory file (DCD)
-   - Load corresponding topology file (PDB, PSF, etc.)
-3. Define FRET pairs:
-   - Select donor residue/atom
-   - Select acceptor residue/atom
-   - Configure Förster radius (R₀)
-4. Configure calculation parameters:
-   - Choose between simple distance or accessible volume model
-   - Set dye parameters if using AV model
-   - Define time window and stride for analysis
-5. Run the calculation
-6. Visualize and analyze results:
-   - FRET efficiency time traces
-   - Efficiency histograms
-   - Distance distributions
-7. Export data for further analysis or comparison with experiments
+1. Open *Structure > Trajectory > FRET* (or the *FRET* panel of Traj Tools).
+2. Choose the trajectory and its topology (**…**, or drop a `.dcd` and a `.pdb`).
+3. Pick the two donor and the two acceptor atoms (chain, residue, atom).
+4. Set R0, τ0, the time between frames and whether κ² is computed from the dipoles.
+5. Press **▶ Process trajectory** and pick the output CSV; the log lists the frames written.
+
+**📖 Guide** walks through these steps; **❓ Help** has the details.
 
 ## Applications
 

@@ -8,7 +8,6 @@ icon = "🎞️"
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
-from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -18,6 +17,17 @@ else:
 
 __all__ = ["Structure2Transfer"]
 
+
+def __getattr__(attribute):
+    # Lazy export: the Qt widget (and its qtpy import) must not load before the
+    # native EMTK factory declared in the manifest.
+    if attribute == "Structure2Transfer":
+        from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
+
+        return Structure2Transfer
+    raise AttributeError(attribute)
+
+
 if __name__ == "plugin":
-    window = Structure2Transfer()
+    window = __getattr__("Structure2Transfer")()
     window.show()
