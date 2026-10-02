@@ -1,0 +1,20 @@
+{
+  "steps": [
+    {
+      "title": "Open source",
+      "text": "Open or drop a TTTR scanner file, or select an MMFDB dataset."
+    },
+    {
+      "title": "Detector windows",
+      "text": "Use shared Setup or enter detector channels and a micro-time gate. Set the minimum photon count."
+    },
+    {
+      "title": "Run and inspect",
+      "text": "Run computes all windows. Inspect mean-time maps and frame movies in nanoseconds."
+    },
+    {
+      "title": "Persist",
+      "text": "Create imaging HDF5 or Save container records the actual maps. ndX explores the table; Next advances the imaging pipeline."
+    }
+  ]
+}

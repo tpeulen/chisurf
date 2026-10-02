@@ -41,6 +41,8 @@ def compute_mean_micro_time(
     """
     tttr = get_tttr(filename)
     clsm = build_clsm(tttr, channels=tuple(channels))
+    from chisurf.core.fluorescence.imaging import clsm_intensity_counts
+
     res_ns = float(microtime_resolution)
     if res_ns < 0.0:
         micro_res = float(getattr(tttr.header, "micro_time_resolution", 0.0) or 0.0)
@@ -48,8 +50,8 @@ def compute_mean_micro_time(
     mt = np.asarray(clsm.get_mean_micro_time(tttr, res_ns, int(n_ph_min), True), dtype=float)
     if mt.ndim == 3:
         mt = mt[0]
-    mt = np.nan_to_num(mt)
-    intensity = np.asarray(clsm.get_intensity(), dtype=float)
+    mt = np.maximum(np.nan_to_num(mt), 0.0)
+    intensity = clsm_intensity_counts(clsm)
     intensity = intensity.sum(axis=0) if intensity.ndim == 3 else intensity
     maps = {"mean_micro_time": mt, "intensity": intensity}
     return {"maps": maps, "shape": mt.shape}

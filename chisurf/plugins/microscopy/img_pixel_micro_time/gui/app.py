@@ -1,0 +1,496 @@
+"""Native mean arrival-time maps and per-frame movie workstation."""
+
+from __future__ import annotations
+
+import copy
+import time
+from pathlib import Path
+
+from emtk import im
+from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
+from emtk.docking import DockManager, Region, Split
+from emtk.file_dialog import FileDialog
+
+from chisurf.emtk.dataset_picker import DatasetPicker
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.image_canvas import ImageCanvas
+from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
+
+from .native_model import NativeMicroTimeModel
+
+
+class MicroTimeApp(ImApp):
+    def __init__(self, model=None, coordinator=None, ndx_callback=None, **binding):
+        self.model = model or NativeMicroTimeModel()
+        self._cancelled = False
+        self._job_method = ""
+        self.window_name = "window"
+        self.channel_text = "0"
+        self.gate_start = 0
+        self.gate_stop = 4096
+        if any(
+            binding.get(key) for key in ("mmfdb_db", "mmfdb_source_artifact_id", "mmfdb_principal")
+        ):
+            if not all(
+                binding.get(key)
+                for key in ("mmfdb_db", "mmfdb_source_artifact_id", "mmfdb_principal")
+            ):
+                raise ValueError(
+                    "MMFDB imaging binding requires db, source artifact and principal."
+                )
+            self.model.bind_mmfdb(
+                binding["mmfdb_db"],
+                source_artifact_id=binding.get("mmfdb_source_artifact_id", ""),
+                sample_id=binding.get("mmfdb_sample_id", ""),
+                principal=binding.get("mmfdb_principal"),
+            )
+        self.job = SnapshotJob(self.model)
+        self.coordinator = coordinator
+        self.ndx_callback = ndx_callback
+        self.ndx = None
+        self.view_ndx = False
+        self._painter = None
+        self._ndx_box = (0, 40, 1000, 700)
+        self.dialog = None
+        self.file_window = None
+        self.action = ""
+        self.error = ""
+        self._pending = {}
+        self.playing = False
+        self.fps = 5.0
+        self._last_frame = 0.0
+        self.canvases = {
+            name: ImageCanvas(
+                "microtime_" + name,
+                image_label="Photon intensity" if name == "intensity" else "Mean micro-time",
+                image_unit="photons" if name == "intensity" else "ns",
+            )
+            for name in ("intensity", "mean", "frames")
+        }
+        self.picker = DatasetPicker(
+            formats=["ptu", "pto", "ht3", "pt3", "spc"], on_paths=self.open_paths
+        )
+        self.help = EmTkHelpWindow(
+            title="Mean micro-time — Help",
+            resource=Path(__file__).with_name("help.md"),
+            owner=self,
+        )
+        self.tour = EmTkGuidedTour(Path(__file__).with_name("guide.json"), owner=self)
+        self.docks = DockManager(Split("h", 0.25, Region("controls"), Region("maps")))
+        self.docks.add_window(
+            "controls", "Mean micro-time analysis", self.controls, dock="controls", closable=False
+        )
+        for name, title in [
+            ("intensity", "Photon intensity"),
+            ("mean", "Mean micro-time (ns)"),
+            ("frames", "Mean micro-time movie (ns)"),
+        ]:
+            self.docks.add_window(
+                name, title, lambda box, n=name: self.image_view(n), dock="maps", closable=False
+            )
+        super().__init__(self.render, continuous=False)
+
+    def start(self, method, *args):
+        if self.job.busy:
+            return False
+        self.error = ""
+        self._cancelled = False
+        self._job_method = method
+        return self.job.start(method, *args)
+
+    def open_paths(self, paths):
+        if self.job.busy:
+            return
+        if paths:
+            self.model.load_file(str(paths[0]))
+            self.start("compute_job")
+
+    def on_files_dropped(self, paths):
+        if self.job.busy or not paths:
+            return False
+        self.open_paths(paths)
+        return True
+
+    def choose(self, action):
+        self.action = action
+        self.dialog = FileDialog(
+            "Open photon image" if action == "open" else "Create imaging HDF5",
+            mode="open" if action == "open" else "save",
+            filters="TTTR (*.ptu *.pto *.ht3 *.pt3 *.spc);;All files (*)"
+            if action == "open"
+            else "Imaging HDF5 (*.h5 *.hdf5)",
+            filename=""
+            if action == "open"
+            else Path(self.model._default_hdf5_path() or "microtime.imaging.h5").name,
+        )
+        self.file_window = DialogWindow(self.dialog.title, size=(700, 540), key="microtime_file")
+        self.file_window.show()
+
+    def controls(self, box):
+        for label, tip, action in [
+            (
+                "Help",
+                "Explain mean arrival times, photon thresholds, nanosecond units and output artifacts.",
+                self.help.show,
+            ),
+            (
+                "Guide",
+                "Walk through source, detector windows, Run and imaging output.",
+                self.tour.start,
+            ),
+            (
+                "Open TTTR",
+                "Load a photon imaging file; scanner markers are read from its header.",
+                lambda: self.choose("open"),
+            ),
+            (
+                "MMFDB dataset",
+                "Resolve a registered source image to local photon data.",
+                self.picker.open,
+            ),
+            (
+                "Run",
+                "Compute every configured detector window in the background; reuse unchanged results.",
+                lambda: self.start("compute_job"),
+            ),
+            (
+                "Create imaging HDF5",
+                "Write every mean-time map in nanoseconds with source photon back-reference.",
+                lambda: self.choose("hdf5"),
+            ),
+            (
+                "Save container",
+                "Persist mean-micro-time maps beside the source photon stream.",
+                lambda: self.start("save_container"),
+            ),
+            ("ndX", "Explore the same live per-pixel table using native ndX.", self.open_ndx),
+            (
+                "Next ▶",
+                "Remember source/output and advance the native imaging pipeline.",
+                self.next_step,
+            ),
+        ]:
+            disabled = self.job.busy and label not in ("Help", "Guide")
+            im.begin_disabled(disabled)
+            if im.button(label):
+                action()
+            im.set_item_tooltip(tip)
+            im.end_disabled()
+        if self.job.busy and self._job_method == "compute_job":
+            if im.button("Cancel"):
+                self.cancel()
+            im.set_item_tooltip("Discard the current calculation when its worker completes; existing maps remain available.")
+        im.begin_disabled(self.job.busy)
+        im.text_unformatted("Minimum photons per pixel")
+        _, self.model.n_ph_min = bounded_int("##Minimum photons", self.model.n_ph_min, minimum=1, maximum=10000000)
+        im.set_item_tooltip("Pixels below this photon count are set to zero; press Run to apply the threshold.")
+        _, self.window_name = im.input_text("Window name", self.window_name)
+        im.set_item_tooltip("Name a detector window to add or replace; all windows are computed together.")
+        _, self.channel_text = im.input_text("Channels", self.channel_text)
+        im.set_item_tooltip("Comma-separated detector routing channels, for example 0,1.")
+        _, self.gate_start = bounded_int("Micro-time start", self.gate_start, minimum=0, maximum=65535)
+        im.set_item_tooltip("Inclusive lower micro-time channel for the selected window.")
+        _, self.gate_stop = bounded_int("Micro-time stop", self.gate_stop, minimum=1, maximum=65536)
+        im.set_item_tooltip("Exclusive upper micro-time channel; the stop must exceed the start.")
+        if im.button("Apply window"):
+            self.configure_window(self.window_name, self.channel_text, self.gate_start, self.gate_stop)
+        im.set_item_tooltip("Add or replace this detector window, preserving other configured windows.")
+        if im.button("Remove window"):
+            self.model.detectors.pop(self.window_name.strip(), None)
+        im.set_item_tooltip("Remove the named window; with no windows the tool uses detector channel zero.")
+        im.end_disabled()
+        im.text_wrapped(self.model.filename or "Choose a photon image.")
+        im.text_wrapped(self.job.progress if self.job.busy else self.model.results_text)
+        if self.job.error or self.error:
+            im.text_wrapped(self.job.error or self.error)
+        if self.model.pipeline_hdf5:
+            im.text_wrapped("Output: " + self.model.pipeline_hdf5)
+        im.text_unformatted("Detector windows")
+        for name, detector in self.model._windows().items():
+            im.text_wrapped(
+                name
+                + " · channels "
+                + str(detector.get("chs", []))
+                + " · microtimes "
+                + str(detector.get("micro_time_ranges", []))
+            )
+
+    def image_view(self, name):
+        windows = list(self.model._by_window)
+        if windows:
+            index = (
+                windows.index(self.model.display_window)
+                if self.model.display_window in windows
+                else 0
+            )
+            im.text_unformatted("Detector window")
+            changed, index = im.combo("##Window " + name, index, windows)
+            im.set_item_tooltip(
+                "Choose the detector window shared by intensity, mean-time and movie displays; computation retains all windows."
+            )
+            if changed:
+                self.model.display_window = windows[index]
+                self.model.refresh_display()
+        canvas = self.canvases[name]
+        if name == "frames":
+            _, self.playing = im.checkbox("Play movie", self.playing)
+            im.set_item_tooltip(
+                "Cycle through the mean arrival-time maps for each scanner frame."
+            )
+            im.text_unformatted("Frames per second")
+            _, self.fps = bounded_float("##Frames per second", self.fps, minimum=0.1, maximum=60)
+            im.set_item_tooltip(
+                "Playback speed; the photon data and computed summed maps remain unchanged."
+            )
+            stack = self.model._disp("mt_frames")
+            if (
+                stack is not None
+                and self.playing
+                and time.monotonic() - self._last_frame >= 1 / self.fps
+            ):
+                canvas.z = (canvas.z + 1) % len(stack)
+                self._last_frame = time.monotonic()
+            if stack is not None:
+                im.text_unformatted("Frame")
+                _, canvas.z = bounded_int("##Frame", canvas.z, minimum=0, maximum=len(stack) - 1)
+                im.set_item_tooltip(
+                    "Choose a scanner time frame; this is a temporal movie, not an axial slice."
+                )
+                array = stack[canvas.z]
+            else:
+                array = None
+        else:
+            array = (
+                self.model.intensity_map() if name == "intensity" else self.model.mean_micro_time_map()
+            )
+        canvas.draw(array, pick_enabled=False)
+
+    def configure_window(self, name, channels, start, stop):
+        try:
+            routing = [int(value.strip()) for value in channels.split(",") if value.strip()]
+            if not name.strip() or not routing or min(routing) < 0 or int(stop) <= int(start):
+                raise ValueError("Enter a window name, nonnegative channels and an increasing micro-time gate.")
+            self.model.detectors[name.strip()] = {"chs": routing, "micro_time_ranges": [(int(start), int(stop))]}
+            self.error = ""
+            return True
+        except ValueError as exc:
+            self.error = str(exc)
+            return False
+
+    def cancel(self):
+        if not self.job.busy or self._job_method != "compute_job":
+            return False
+        self._cancelled = True
+        self.job.progress = "Cancelling…"
+        return True
+
+    def next_step(self):
+        if self.coordinator is None:
+            self.error = "Open this tool inside the native Imaging Tools pipeline to use Next."
+            return
+        self.coordinator.set_pipeline(
+            source=self.model.filename or None, hdf5=self.model.pipeline_hdf5 or None
+        )
+        self.coordinator.advance_from("pixel_micro_time")
+
+    def open_ndx(self):
+        table = self.model.to_table()
+        if table is None:
+            self.error = "Run the mean-micro-time calculation before opening ndX."
+            return
+        try:
+            if self.ndx_callback:
+                self.ndx_callback(table)
+                return
+            if self.ndx is None:
+                from chisurf.plugins.ndxplorer.gui.app import make_app
+
+                self.ndx = make_app()
+            from chisurf.plugins.microscopy.imaging_common.base import build_ndx_data_source
+
+            self.ndx.model.set_source(build_ndx_data_source(table))
+            self.view_ndx = True
+        except Exception as exc:
+            self.error = "Native ndX failed: " + str(exc)
+
+    def apply_setup_settings(self, payload):
+        if self.job.busy:
+            self._pending["setup"] = copy.deepcopy(payload)
+        else:
+            self.model.apply_setup_settings(payload)
+
+    def apply_pipeline_context(self, payload):
+        if self.job.busy:
+            self._pending["pipeline"] = dict(payload)
+        else:
+            previous = self.model.filename
+            self.model.apply_pipeline_context(payload)
+            if self.model.filename != previous and self.model.filename:
+                self.start("compute_job")
+
+    def apply_calibration(self, payload):
+        if self.job.busy:
+            self._pending["calibration"] = copy.deepcopy(payload)
+        else:
+            self.model.apply_calibration(payload)
+
+    def export_settings(self):
+        return {
+            "filename": self.model.filename,
+            "pipeline_hdf5": self.model.pipeline_hdf5,
+            "detectors": copy.deepcopy(self.model.detectors),
+            "display_window": self.model.display_window,
+            "fps": self.fps,
+            "n_ph_min": self.model.n_ph_min,
+            "canvases": {
+                name: {
+                    key: getattr(canvas, key)
+                    for key in ("z", "colormap", "gamma", "auto_levels", "low", "high")
+                }
+                for name, canvas in self.canvases.items()
+            },
+        }
+
+    def restore_settings(self, data):
+        if self.job.busy:
+            return
+        self.model.load_file(data.get("filename", ""))
+        self.model.pipeline_hdf5 = data.get("pipeline_hdf5", "")
+        self.model.detectors = copy.deepcopy(data.get("detectors", {}))
+        self.model.display_window = data.get("display_window", "")
+        self.model.n_ph_min = max(1, int(data.get("n_ph_min", 2)))
+        self.fps = max(0.1, min(60, float(data.get("fps", 5))))
+        for name, values in data.get("canvases", {}).items():
+            if name in self.canvases:
+                for key, value in values.items():
+                    if key in ("z", "colormap", "gamma", "auto_levels", "low", "high"):
+                        setattr(self.canvases[name], key, value)
+        if self.model.filename:
+            self.start("compute_job")
+
+    def animating(self):
+        return (
+            super().animating()
+            or self.job.busy
+            or (self.playing and self.docks.is_shown("frames") and not self.view_ndx)
+            or self.picker.is_open
+            or (self.view_ndx and self.ndx.animating())
+        )
+
+    def draw(self, painter, x, y, w, h):
+        self._painter = painter
+        super().draw(painter, x, y, w, h)
+        self._painter = None
+
+    def render_pending_context(self):
+        if self.job.busy:
+            return
+        pending = dict(self._pending)
+        self._pending.clear()
+        previous = self.model.filename
+        for key, payload in pending.items():
+            {
+                "setup": self.model.apply_setup_settings,
+                "pipeline": self.model.apply_pipeline_context,
+                "calibration": self.model.apply_calibration,
+            }[key](payload)
+        if self.model.filename != previous and self.model.filename:
+            self.start("compute_job")
+
+    def render(self):
+        if self._cancelled:
+            while not self.job.messages.empty():
+                message = self.job.messages.get()
+                if message[0] == "done":
+                    self.job.busy = False
+                    self.job.progress = ""
+                    self._cancelled = False
+                    self.error = "Calculation cancelled; previous maps retained."
+            changed = False
+        else:
+            changed = self.job.poll()
+        if changed and not self.job.busy:
+            if callable(self.model.pipeline_sink) and self.model.pipeline_hdf5:
+                self.model.pipeline_sink(
+                    source=self.model.filename or None, hdf5=self.model.pipeline_hdf5
+                )
+            if self.ndx is not None and self.model.to_table() is not None:
+                was_visible = self.view_ndx
+                self.open_ndx()
+                self.view_ndx = was_visible
+        if not self.job.busy:
+            self.render_pending_context()
+        vp = im.get_main_viewport()
+        if self.view_ndx and self.ndx:
+            im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
+            im.set_next_window_size((vp.size[0], 40), im.Cond.ALWAYS)
+            if im.begin("Micro-time navigation", flags=im.WindowFlags.NO_TITLE_BAR):
+                if im.button("Back to micro-time maps"):
+                    self.view_ndx = False
+                im.set_item_tooltip(
+                    "Return to the micro-time maps; native ndX retains its selection state."
+                )
+            im.end()
+            self._ndx_box = (0, 40, vp.size[0], max(1, vp.size[1] - 40))
+            self.draw_child(self._painter, self.ndx, *self._ndx_box, local_coordinates=True)
+        else:
+            self.docks.draw((0, 0, *vp.size))
+        if self.dialog:
+            window = self.file_window
+            pressed = window.begin((0, 0, *vp.size))
+            result = self.dialog.draw()
+            if result:
+                if self.action == "open":
+                    self.open_paths(result)
+                else:
+                    self.start("save_hdf5", str(result[0]))
+                self.dialog = None
+            elif result is False or pressed == "close":
+                self.dialog = None
+            window.end()
+        self.picker.render((0, 0, *vp.size))
+        self.help.draw((0, 0, *vp.size))
+        self.tour.draw(*vp.size)
+
+    def pointer_press(self, x, y, button, modifiers=0, clicks=1):
+        super().pointer_press(x, y, button, modifiers, clicks)
+        if self.view_ndx and self.ndx and y >= 40:
+            self.ndx.pointer_press(x, y - 40, button, modifiers, clicks)
+
+    def pointer_release(self, x, y, button, modifiers=0):
+        super().pointer_release(x, y, button, modifiers)
+        if self.view_ndx and self.ndx:
+            self.ndx.pointer_release(x, y - 40, button, modifiers)
+
+    def pointer_move(self, x, y, buttons=0, modifiers=0):
+        super().pointer_move(x, y, buttons, modifiers)
+        if self.view_ndx and self.ndx:
+            self.ndx.pointer_move(x, y - 40, buttons, modifiers)
+
+    def wheel(self, x, y, steps, modifiers=0):
+        # Wheel routing: the old scroll(x, y, dx, dy) override rejected the
+        # host's scroll(rows) call outright (TypeError on the first tick).
+        super().wheel(x, y, steps, modifiers)
+        if self.view_ndx and self.ndx and y >= 40:
+            self.ndx.wheel(x, y - 40, steps, modifiers)
+
+    def key(self, key, text="", modifiers=0):
+        if self.view_ndx and self.ndx:
+            return self.ndx.key(key, text, modifiers)
+        return super().key(key, text, modifiers)
+
+    def close(self):
+        # Active compute owns a detached snapshot; closing does not wait for
+        # its process or publish results into a closed UI. Persist visible maps.
+        self.model.flush_to_hdf5()
+        if self.ndx and callable(getattr(self.ndx, "close", None)):
+            self.ndx.close()
+
+
+def make_app(**kwargs):
+    from chisurf.emtk.i18n import install
+
+    install()
+    return MicroTimeApp(**kwargs)

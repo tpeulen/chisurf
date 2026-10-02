@@ -9,7 +9,7 @@
   "categories": [
     "Imaging"
   ],
-  "icon": "⏱️",
+  "icon": "\u23f1\ufe0f",
   "state_namespace": "img_pixel_micro_time",
   "statefulness": {
     "enabled": true,
@@ -20,7 +20,8 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.microscopy.img_pixel_micro_time.gui.tool:ImgPixelMicroTimeTool",
-    "cli": "img-pixel-micro-time=chisurf.plugins.microscopy.img_pixel_micro_time.cli:cli"
+    "cli": "img-pixel-micro-time=chisurf.plugins.microscopy.img_pixel_micro_time.cli:cli",
+    "emtk": "chisurf.plugins.microscopy.img_pixel_micro_time.gui.app:make_app"
   },
   "operation_types": [
     "pixel_lifetime_fitting"
