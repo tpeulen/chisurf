@@ -15,6 +15,8 @@ as the backend does.
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import logging
 import os
 import pathlib
@@ -85,6 +87,8 @@ class PixelMleViewModel(MleObserverMixin):
         self.results: list = []
         #: Stems of the analysed files, aligned with :attr:`results`.
         self.result_names: list[str] = []
+        self.result_paths: list[str] = []
+        self.result_parameters: list[dict] = []
         #: Name of the result whose map is shown (in-plot channel combo).
         self.current_result_name: str = ""
         #: Path of a stored region confining the fit ("" = the whole frame).
@@ -92,6 +96,17 @@ class PixelMleViewModel(MleObserverMixin):
         #: The loaded region itself (:class:`chisurf.core.roi.ROI` or ``None``).
         self.roi = None
         self._observers: list[Callable[[str], None]] = []
+        self.cancel_event = None
+
+    def __copy__(self):
+        """Detach additional mutable model state when a native job snapshots it."""
+        result = type(self).__new__(type(self))
+        result.__dict__ = self.__dict__.copy()
+        for key in ("irf_files", "result_names", "result_paths", "result_parameters"):
+            setattr(result, key, list(getattr(self, key)))
+        result._model_params = copy.deepcopy(self._model_params)
+        result.roi = copy.deepcopy(self.roi)
+        return result
 
     def view_spec(self):
         """Resolve AutoForm's view spec, injecting the model-aware fit editor.
@@ -468,6 +483,12 @@ class PixelMleViewModel(MleObserverMixin):
             return False, "Empty micro-time fit window."
         if not self.settings.detector_chs_p or not self.settings.detector_chs_s:
             return False, "Both parallel and perpendicular channels are required."
+        if int(self.settings.micro_time_binning) < 1 or int(self.settings.min_photons) < 1:
+            return False, "Binning and minimum photons must be positive."
+        if float(self.settings.g_factor) <= 0:
+            return False, "G factor must be positive."
+        if set(self.settings.detector_chs_p) & set(self.settings.detector_chs_s):
+            return False, "Parallel and perpendicular channels must be distinct."
         return True, ""
 
     def run(self) -> None:
@@ -508,7 +529,12 @@ class PixelMleViewModel(MleObserverMixin):
 
         self.results = []
         self.result_names = []
+        self.result_paths = []
+        self.result_parameters = []
+        failures = []
         for i, path in enumerate(self.files):
+            if self.cancel_event is not None and self.cancel_event.is_set():
+                break
             stem = pathlib.Path(path).stem
             self.status_text = f"Fitting {stem} ({i + 1}/{len(self.files)})…"
             self.notify("progress")
@@ -542,14 +568,32 @@ class PixelMleViewModel(MleObserverMixin):
             except Exception as exc:  # noqa: BLE001 - surfaced in the status line
                 logger.debug("pixel MLE failed for %s", path, exc_info=True)
                 self.status_text = f"{stem}: {exc}"
+                failures.append(self.status_text)
                 continue
+            if self.cancel_event is not None and self.cancel_event.is_set():
+                break
             self.results.append(result)
             self.result_names.append(stem)
+            self.result_paths.append(path)
+            self.result_parameters.append(
+                {
+                    **dataclasses.asdict(s),
+                    "fit_model": self._fit_model,
+                    "initial_values": list(x0),
+                    "fixed_flags": list(fixed),
+                    "irf_files": list(self.irf_files),
+                    "roi_path": self.roi_path,
+                }
+            )
             self._write_csv(path, result.dataframe)
 
         if self.result_names and self.current_result_name not in self.result_names:
             self.current_result_name = self.result_names[0]
-        self.status_text = ""
+        self.status_text = (
+            "Cancelled; completed files are retained."
+            if self.cancel_event is not None and self.cancel_event.is_set()
+            else "\n".join(failures)
+        )
         self.notify("done")
 
     @staticmethod

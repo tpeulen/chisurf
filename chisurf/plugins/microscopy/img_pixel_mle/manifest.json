@@ -10,7 +10,7 @@
     "Imaging",
     "Lifetime"
   ],
-  "icon": "🔬",
+  "icon": "\ud83d\udd2c",
   "state_namespace": "img_pixel_mle",
   "statefulness": {
     "enabled": true,
@@ -22,7 +22,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.microscopy.img_pixel_mle.gui.tool:ImgPixelMleTool",
     "cli": "img-pixel-mle=chisurf.plugins.microscopy.img_pixel_mle.cli:cli",
-    "services": "chisurf.plugins.microscopy.img_pixel_mle.backend.services:register_services"
+    "services": "chisurf.plugins.microscopy.img_pixel_mle.backend.services:register_services",
+    "emtk": "chisurf.plugins.microscopy.img_pixel_mle.gui.app:make_app"
   },
   "rpc_methods": [
     {

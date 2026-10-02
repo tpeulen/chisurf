@@ -1,0 +1,13 @@
+{
+ "factory":"chisurf.plugins.microscopy.img_pixel_mle.gui.app:make_app",
+ "qt_reference":"qt.png",
+ "qt_map_reference":"qt-map.png",
+ "native_capture":"native.png",
+ "data":"tttr-data/imaging/pq/Microtime200_HH400/beads.ptu",
+ "irf":"Synthetic Gaussian IRF, same array in both frontends",
+ "scientific_comparison":"Native asynchronous controller tau map/full table equals direct core under identical header period, convolution, model, initial/fixed settings; HDF5 readback preserves values.",
+ "factory_qt_blocked":true,
+ "factory_sizes":[[1200,800],[800,600]],
+ "full_parity_verified":false,
+ "remaining_gaps":["Cancellation occurs at file boundaries; ongoing C++ kernel cannot be interrupted.","Detailed specialized tooltips, help and model-choice strings retain English fallback where ChiSurf catalogs have no translation.","MMFDB input picker is present; no Pixel MLE output-registration flow existed in the Qt host and the native port has not added one.","Native ndX window, photon-container write and pipeline Next require manual integration coverage beyond tested callbacks/controller state.","Native visual capture is PIL rendering, not a desktop GPU screenshot."]
+}
