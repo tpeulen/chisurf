@@ -66,7 +66,7 @@ class FusionViewModel:
         self.folder_written: Callable[[str], None] | None = None
 
         self._analysis = None
-        self._status = "Select a burst-analysis folder and press Analyze."
+        self._status = "Select a burst-analysis folder and press Estimate (or Run)."
         self._written: str = ""
         #: The burst tables actually written, read back so the "after" curves stop
         #: being a preview: the emitted bursts contain the photons *between* the
@@ -182,7 +182,7 @@ class FusionViewModel:
         if self._analysis is not None:
             self._analysis = None
             self._emitted = None
-            self._status = "Settings changed — press Analyze."
+            self._status = "Settings changed — press Estimate (or Run)."
             self.notify("invalidated")
 
     # ── the demo ───────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ class FusionViewModel:
         self._analysis = None
         self._emitted = None
         self._written = ""
-        self._status = "Press Analyze to estimate the same-molecule probability."
+        self._status = "Press Estimate to compute the same-molecule probability."
         self.notify("folder")
 
     def update(self) -> None:

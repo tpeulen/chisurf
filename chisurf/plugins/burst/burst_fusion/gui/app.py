@@ -130,9 +130,20 @@ class BurstFusionGui(TourTarget):
     def _draw_controls(self, box):
         if getattr(self, "controller", None):
             self.controller.draw_controls()
-        im.begin_disabled(bool(getattr(self, "controller", None) and self.controller.running))
+        running = bool(getattr(self, "controller", None) and self.controller.running)
+        target = self.model
+        if running:
+            # ``begin_disabled`` greys the spec's fields but they still take typing; an edit during a run was then
+            # overwritten when the worker's snapshot came back (the run's own settings). The fields draw against a
+            # throw-away copy while a run is in flight, so an edit is refused instead of silently lost.
+            import copy
+
+            target = copy.copy(self.model)
+            target.settings = copy.deepcopy(self.model.settings)
+            target._observers = []
+        im.begin_disabled(running)
         draw_sections(
-            self.fusion_panel.get("sections", []), self.model, self.form_state, n_col=1, titles=True
+            self.fusion_panel.get("sections", []), target, self.form_state, n_col=1, titles=True
         )
         im.end_disabled()
         if "summary_rows" in self.form_state.rects:  # the guide names the table by its title
@@ -434,6 +445,16 @@ class BurstFusionApp(ImApp):
 
     def on_paths_dropped(self, paths):
         self.controller.on_paths_dropped(paths)
+
+    def files_dropped(self, paths) -> bool:
+        """A host's file drop (Qt, the desktop window, a page): the same as ``on_paths_dropped``.
+
+        Without this name only the Qt host reached the controller: the desktop and web hosts deliver
+        ``files_dropped`` / ``on_files_dropped`` and found nothing to call.
+        """
+        paths = list(paths)
+        self.controller.on_paths_dropped(paths)
+        return bool(paths)
 
 
 def create_app(**kwargs):

@@ -71,9 +71,9 @@ its `fu4` companion is the number of photons the bridged gaps brought in.
 
 ## Preview versus written
 
-*Analyze* is cheap and repeatable: it reads the burst tables only, so the fused
-side of the histograms is the fragments' own photons, summed. *Write fused
-folder* reopens the photon streams and re-derives every column over the real
+*Estimate* is cheap and repeatable: it reads the burst tables only, so the fused
+side of the histograms is the fragments' own photons, summed. *Run (Fuse)*
+(which writes the fused folder) reopens the photon streams and re-derives every column over the real
 span; the plots then switch to the written bursts (the legend says which is on
 screen). The two differ by exactly the background the gaps brought in.
 
