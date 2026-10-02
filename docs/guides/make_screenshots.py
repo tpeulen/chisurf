@@ -877,30 +877,15 @@ def _grab_burst_fusion_tool():
 def _grab_ndx_gaussian_panel():
     """ndX's Gaussian-fit panel, with two populations actually fitted.
 
-    Drives the real window: two simulated populations, one component seeded on
-    each, one centre held, then the EM. The screenshot therefore shows fitted
-    numbers in the parameter table (and the greyed-out held value), not a mockup
-    of one.
+    Drives the real app (ndX is the emtk app): two simulated populations, one
+    component seeded on each, the second one's centre held, then the EM. The
+    screenshot therefore shows fitted numbers in the parameter table (and the
+    held value), not a mockup of one.
     """
     import sys
 
-    import pandas as pd
-    from qtpy.QtCore import QEventLoop, Qt, QTimer
-
-    root = pathlib.Path(__file__).resolve().parents[2]
-    ndx = str(root / "modules" / "ndxplorer")
-    if ndx not in sys.path:
-        sys.path.insert(0, ndx)
-    from ndxplorer.core.data_source import DataSource
-    from ndxplorer.core.plot_main import NDXplorer
-
-    app = QApplication.instance()
-
-    def settle(ms=80):
-        loop = QEventLoop()
-        QTimer.singleShot(ms, loop.quit)
-        loop.exec_()
-        app.processEvents()
+    sys.path.insert(0, str(pathlib.Path(__file__).parent / "screenshots"))
+    import ndx_emtk
 
     blobs = [(0.25, 0.35, 0.04, 0.05), (0.70, 0.70, 0.06, 0.03)]
     rng = np.random.default_rng(0)
@@ -910,43 +895,27 @@ def _grab_ndx_gaussian_panel():
             for cx, cy, sx, sy in blobs
         ]
     )
-    frame = pd.DataFrame(
-        {"E": points[:, 0], "S": points[:, 1], "z": rng.normal(0, 1, len(points))}
-    )
-    columns = list(frame.columns)
+    table = pathlib.Path(tempfile.mkdtemp(prefix="ndx-gauss-")) / "two_populations.csv"
+    np.savetxt(table, np.column_stack([points, rng.normal(0, 1, len(points))]),
+               delimiter=",", header="E,S,z", comments="")
 
-    win = NDXplorer(data_source=DataSource(columns, frame))
-    win.resize(1200, 800)
-    win.show()
-    app.processEvents()
-    control = win.plot_control
-    control.update(update_comboboxes=True, update_plots=False)
-    control.comboBoxSelX.setCurrentIndex(columns.index("E"))
-    control.comboBoxSelY.setCurrentIndex(columns.index("S"))
-    control.comboBoxSelZ.setCurrentIndex(columns.index("z"))
-    win.update_plots()
-    for _ in range(10):
-        settle(100)
-        if win._histogram.get("2d") is not None:
-            break
-
-    panel = win.gaussian_fit
-    for cx, cy, sx, sy in blobs:
-        panel._append_gaussian_row((cx + 0.04, cy - 0.04), np.diag([sx ** 2, sy ** 2]))
-    # The second population's centre is held, to show what a held parameter
-    # looks like (greyed, not editable) beside the fitted ones.
-    panel.group.parameters_of(1)["x"].fixed = True
-    panel._redraw_gaussian_overlays_from_table()
-    settle(100)
-    panel.on_fit_2d_gaussian()
-    settle(150)
-
-    dock = win.dockWidget_Fit
-    dock.setFloating(True)
-    dock.resize(430, 420)
-    settle(120)
-    _grab(dock, "ndxplorer_gaussian_panel.png")
-    win.close()
+    driver = ndx_emtk.replay(size=(1200, 540))
+    ndx_emtk.open_table(driver, table)
+    ndx_emtk.axes(driver, "E", "S", "z")
+    driver.step({"op": "trigger", "action": "actionFit_Gaussians", "checked": True})
+    panel = ndx_emtk.feature(driver, "analysis").gaussians
+    for index, (cx, cy, sx, sy) in enumerate(blobs):
+        # The second population's centre is held, to show what a held
+        # parameter looks like beside the fitted ones.
+        held = index == 1
+        panel.add((cx + 0.04, cy - 0.04), np.diag([sx ** 2, sy ** 2]),
+                  fixed={"x": held, "y": False})
+    driver.settle()
+    panel.fit()
+    driver.settle(3)
+    driver.step({"op": "capture", "name": "fit_panel", "target": "widget:win.dockWidget_Fit"})
+    ndx_emtk.save(driver.shots["fit_panel"], FIG, "ndxplorer_gaussian_panel.png")
+    driver.app.close()
 
 
 def _grab_kappa2_tool():

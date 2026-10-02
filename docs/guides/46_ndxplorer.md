@@ -29,14 +29,23 @@ calibration and the fit stay in sync.
 
 ## Launching
 
-ndX runs standalone or connected to a ChiSurf RPC server (the latter
-enables the analysis {ref}`bridges <concept-md-bridges>`; phasor analysis needs
-no ChiSurf, see [Phasor plots](#phasor-plots-are-overlays)):
+ndX is an emtk application: one window, drawn the same way on the desktop, in
+ChiSurf and in a browser tab. It runs standalone or connected to a ChiSurf RPC
+server (the latter enables the analysis {ref}`bridges <concept-md-bridges>`;
+phasor analysis needs no ChiSurf, see [Phasor plots](#phasor-plots-are-overlays)):
 
 ```bash
-python -m ndxplorer                              # standalone
+python -m ndxplorer                              # standalone (also: ndxplorer)
+python -m ndxplorer --folder "burstwise_All 0.1500#30"   # open a burst-analysis folder
+python -m ndxplorer --file data.bur --size 1400x900      # a file, in a larger window
 python -m ndxplorer --chisurf-rpc localhost:5555 # linked to a ChiSurf server
+python -m ndxplorer.app.web                      # the same app in a browser tab
 ```
+
+`--host native|tk` picks the window (native wgpu + glfw by default, Tk when
+those are missing). The headless subcommands `python -m ndxplorer filter` and
+`python -m ndxplorer image` gate a burst folder or render a parameter map
+without opening a window.
 
 Load an MFD table (a burst `.csv`/HDF5, or a ChiSurf posterior export). Each row
 is one burst; each numeric column is a selectable axis.
@@ -488,10 +497,10 @@ and the dock does not have them; a row names the Gaussian it belongs to
 :name: fig-ndxplorer-gaussian-panel
 :width: 100%
 
-The Gaussian-fit panel after fitting two simulated populations — ChiSurf's
-parameter table, stacked one parameter per row so the panel stays narrow. The
-second component's centre was held (ticked *Fixed*, greyed out, and returned
-unchanged at 0.74) while everything else was optimised onto the data.
+The Gaussian-fit panel after fitting two simulated populations — the parameter
+table, stacked one parameter per row so the panel stays narrow. The second
+component's x centre was held (ticked *Fixed*, returned unchanged at 0.74)
+while everything else was optimised onto the data.
 ```
 
 (ndx-population-wise)=
@@ -507,7 +516,6 @@ columns `P(FRET n)`). The row becomes an expandable `name [n]` with its
 *(global)* value — what a burst in no population gets — and one element per
 population, each with its own value, fixed flag, bounds and link.
 **Populations…** changes the populations, **Make scalar** drops the elements.
-The emtk window and the Qt window's tables have the same menu.
 
 What a vector *does* depends on where it is:
 
@@ -665,8 +673,7 @@ session was saved.
   (FRET › Save calibration), its constants are kept and the session's are not.
 
 The window layout (docks, marginal sizes) is yours, not the measurement's, and
-stays in `~/.ndxplorer/ndxplorer_layout.json`. The legacy Qt window (no longer
-opened by ChiSurf) ignores a stored session. The session is one JSON object, `ndx_session`, of the mmfdb artifact
+stays in `~/.ndxplorer/ndxplorer_layout.json`. The session is one JSON object, `ndx_session`, of the mmfdb artifact
 kind `analysis_view_state`, with its schema version, the ndX version and the
 identity of the table it was made on.
 

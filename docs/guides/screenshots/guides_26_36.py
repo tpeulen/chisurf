@@ -191,24 +191,7 @@ def _grab_burst_analysis_pipeline():
 
 def _grab_ndx_2d_gaussians():
     """Guide 26: ndX 2-D Gaussian fit on a simulated four-population E-S table."""
-    import sys
-
-    from qtpy.QtCore import QEventLoop, QTimer
-
-    root = pathlib.Path(__file__).resolve().parents[2]
-    ndx = str(root / "modules" / "ndxplorer")
-    if ndx not in sys.path:
-        sys.path.insert(0, ndx)
-    from ndxplorer.core.data_source import DataSource
-    from ndxplorer.core.plot_main import NDXplorer
-
-    app = QApplication.instance()
-
-    def settle(ms=80):
-        loop = QEventLoop()
-        QTimer.singleShot(ms, loop.quit)
-        loop.exec_()
-        app.processEvents()
+    import ndx_emtk
 
     rng = np.random.default_rng(3)
     pops = [(0.25, 0.5, 900), (0.75, 0.5, 700), (0.03, 0.95, 500), (0.95, 0.08, 300)]
@@ -220,29 +203,19 @@ def _grab_ndx_2d_gaussians():
         e_all.append(n_da / np.maximum(n_dex, 1))
         s_all.append(n_dex / photons)
     e_all, s_all = np.concatenate(e_all), np.concatenate(s_all)
-    win = NDXplorer(data_source=DataSource.from_columns(
-        {"E": e_all, "S": s_all, "n": rng.normal(0, 1, e_all.size)}))
-    win.resize(1400, 900)
-    win.show()
-    app.processEvents()
-    control = win.plot_control
-    control.update(update_comboboxes=True, update_plots=False)
-    control.comboBoxSelX.setCurrentIndex(0)
-    control.comboBoxSelY.setCurrentIndex(1)
-    control.comboBoxSelZ.setCurrentIndex(2)
-    win.update_plots()
-    for _ in range(10):
-        settle(100)
-        if win._histogram.get("2d") is not None:
-            break
-    win.actionFit_Gaussians.setChecked(True)  # View > Fit Gaussians
-    settle(200)
-    panel = win.gaussian_fit
+    table = pathlib.Path(tempfile.mkdtemp(prefix="ndx26-")) / "four_populations.csv"
+    np.savetxt(table, np.column_stack([e_all, s_all, rng.normal(0, 1, e_all.size)]),
+               delimiter=",", header="E,S,n", comments="")
+
+    driver = ndx_emtk.replay(size=(1400, 900))
+    ndx_emtk.open_table(driver, table)
+    ndx_emtk.axes(driver, "E", "S", "n")
+    driver.step({"op": "trigger", "action": "actionFit_Gaussians", "checked": True})
+    panel = ndx_emtk.feature(driver, "analysis").gaussians
     for e, s, _n in pops:
-        panel._append_gaussian_row((e + 0.05, s - 0.05), np.diag([0.08 ** 2, 0.06 ** 2]))
-    panel._redraw_gaussian_overlays_from_table()
-    settle(100)
-    panel.on_fit_2d_gaussian()
-    settle(300)
-    _grab(win, "26_ndx_2d_gaussians.png")
-    win.close()
+        panel.add((e + 0.05, s - 0.05), np.diag([0.08 ** 2, 0.06 ** 2]))
+    driver.settle()
+    panel.fit()
+    driver.settle(3)
+    ndx_emtk.save(driver.draw(), FIG, "26_ndx_2d_gaussians.png")
+    driver.app.close()

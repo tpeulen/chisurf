@@ -1,10 +1,10 @@
 """Screenshot grabs for guides 47 (ndX bridges) and 52 (send bursts to analysis).
 
 make_screenshots.py style: the functions use the module constants ``FIG`` and
-``_grab`` and the ``_SPC_FILE`` path. Both drive the real ndX window that
-ChiSurf's ``Main → Tools → ndX`` opens (``make_ndxplorer``, with the in-process
-ChiSurf RPC client injected), on a burst folder built from the real
-``BH_SPC132.spc`` measurement.
+``_grab`` and the ``_SPC_FILE`` path. Both drive ndX -- the emtk app, given the
+in-process ChiSurf RPC client as ChiSurf's ``Main → Tools → ndX`` gives it
+(``ndx_emtk``) -- on a burst folder built from the real ``BH_SPC132.spc``
+measurement.
 
 Run standalone::
 
@@ -84,131 +84,87 @@ def _write_bur_folder(root: pathlib.Path) -> pathlib.Path:
 def _ndx_with_gate(root: pathlib.Path):
     """Open ndX as ChiSurf does, load the burst folder, gate the FRET population.
 
-    Returns ``(window, settle)``. Axes: proximity ratio against the mean green
-    micro time (an E-tau view); the gate keeps proximity ratio 0.35-1.0.
+    ndX is the emtk app, given ChiSurf's in-process RPC client as ChiSurf's
+    ``Main → Tools → ndX`` gives it. Returns the capture driver
+    (:mod:`ndx_emtk`). Axes: proximity ratio against the mean green micro time
+    (an E-tau view); the gate keeps proximity ratio 0.35-1.0.
     """
-    from qtpy.QtCore import QEventLoop, QTimer
-
-    ndx = str(pathlib.Path("modules/ndxplorer").resolve())
-    if ndx not in sys.path:
-        sys.path.insert(0, ndx)
-    from chisurf.plugins.ndxplorer.rpc_bridge import make_ndxplorer
-    from ndxplorer.core.data_source import RectangularDataSelection
-
-    import chisurf.core.settings  # noqa: F401
-    app = QApplication.instance() or QApplication([])
-
-    def settle(ms=100):
-        loop = QEventLoop()
-        QTimer.singleShot(ms, loop.quit)
-        loop.exec_()
-        app.processEvents()
+    import ndx_emtk
 
     folder = _write_bur_folder(root)
-    win = make_ndxplorer()
-    win.resize(1400, 860)
-    win.show()
-    settle(300)
-    win.open_files(file_handles=[str(folder)], file_type="burst_dir")
-    for _ in range(50):
-        settle(100)
-        ds = win.data_source
-        if ds is not None and not ds.empty and "Proximity Ratio" in ds.parameter_names:
-            break
-    names = win.data_source.parameter_names
-    control = win.plot_control
-    control.update(update_comboboxes=True, update_plots=False)
-    control.comboBoxSelX.setCurrentIndex(names.index("Proximity Ratio"))
-    control.comboBoxSelY.setCurrentIndex(names.index("tau green (ns)"))
-    control.comboBoxSelZ.setCurrentIndex(names.index("Number of Photons"))
-    control.spinBoxBin2DX.setValue(25)
-    control.spinBoxBin2DY.setValue(25)
-    control.spinBoxBin1DX.setValue(40)
-    control.spinBoxBin1DY.setValue(40)
-    win.update_plots()
-    settle(200)
-    control.xmin, control.xmax = 0.0, 1.0
-    control.ymin, control.ymax = 0.0, 5.0
-    win.update_plots()
-    settle(300)
+    driver = ndx_emtk.replay(size=(1400, 860), chisurf=True)
+    ndx_emtk.open_table(driver, folder)
+    ndx_emtk.axes(driver, "Proximity Ratio", "tau green (ns)", "Number of Photons")
+    panel = driver.app.panel
+    panel.x_bins_2d = panel.y_bins_2d = 25
+    panel.x_bins_1d = panel.y_bins_1d = 40
+    panel.x_min, panel.x_max = 0.0, 1.0
+    panel.y_min, panel.y_max = 0.0, 5.0
+    driver.settle()
+    from ndxplorer.core.data_source import RectangularDataSelection
+
+    model = driver.app.model
     gate = RectangularDataSelection(
-        parameter_idx=names.index("Proximity Ratio"), lower=0.35, upper=1.0
+        parameter_idx=model.index_of("Proximity Ratio"), lower=0.35, upper=1.0
     )
     gate.name = "FRET"
-    control.add_selection_object(gate)
-    win.update_plots()
-    settle(400)
-    return win, settle
+    model.gates.add_selection(gate)
+    model.invalidate()
+    driver.settle(3)
+    return driver
 
 
-def _compose_menu(win, settle, target_name):
-    """Grab *win* with the canvas context menu and its send submenu drawn over it.
+def _open_send_menu(driver):
+    """Right-click the map and open its "Send selection to" submenu."""
+    from emtk.widgets.menus import Menu
 
-    A ``QMenu`` popup is its own top-level window, so a window grab never shows
-    it; build the menu the canvas builds, grab each level, and paint both onto
-    the window grab at the cursor position.
-    """
-    from qtpy import QtCore, QtGui, QtWidgets
-
-    from ndxplorer.analysis.send_menu import add_send_menu
-
-    canvas = win.g_2dplot.canvas()
-    menu = QtWidgets.QMenu(canvas)
-    for label in ("Copy 2D Histogram (CSV)", "Copy 1D Histograms (CSV)", "Send to Napari"):
-        menu.addAction(label)
-    menu.addSeparator()
-    menu.addAction("Fit gate to the population here")
-    menu.addSeparator()
-    sub = add_send_menu(menu, win)
-    pos = canvas.mapTo(win, QtCore.QPoint(int(canvas.width() * 0.08), int(canvas.height() * 0.12)))
-    menu.popup(win.mapToGlobal(pos))
-    settle(150)
-    sub.popup(menu.mapToGlobal(menu.actionGeometry(sub.menuAction()).topRight()))
-    settle(150)
-    settle(100)
-    pda = [a for a in sub.actions() if a.objectName() == "actionSendTo_pda"]
-    hover = {menu: menu.actionGeometry(sub.menuAction()),
-             sub: sub.actionGeometry(pda[0]) if pda else QtCore.QRect()}
-    base = win.grab()
-    painter = QtGui.QPainter(base)
-    sub_pos = pos + menu.actionGeometry(sub.menuAction()).topRight()
-    for widget, at in ((menu, pos), (sub, sub_pos)):
-        # Offscreen popups grab with a transparent background: paint the menu
-        # panel and a frame first, then the items over it.
-        rect = QtCore.QRect(at, widget.size())
-        painter.fillRect(rect, QtGui.QColor(246, 246, 246))
-        if not hover[widget].isNull():  # the row the pointer is on
-            painter.fillRect(hover[widget].translated(at), QtGui.QColor(190, 215, 245))
-        painter.setPen(QtGui.QColor(120, 120, 120))
-        painter.drawRect(rect.adjusted(0, 0, -1, -1))
-        painter.drawPixmap(at, widget.grab())
-    painter.end()
-    base.save(str(FIG / target_name))
-    print("wrote", target_name)
-    sub.hide()
-    menu.hide()
+    selection = next(f for f in driver.app.features if f.name == "selection")
+    x, y, w, h = driver.app.plots.rects["map"]
+    selection.open_canvas_menu(x + 0.08 * w, y + 0.12 * h)
+    driver.draw()
+    popup, _choose = driver.app.popup
+    row = next(rect for entry, rect in popup._rows
+               if isinstance(entry, Menu) and entry.label.startswith("Send selection to"))
+    rx, ry, rw, rh = row
+    driver.click_at(rx + rw / 2.0, ry + rh / 2.0)
+    driver.draw()
+    sub = next(entry for entry, _rect in popup._rows
+               if isinstance(entry, Menu) and entry.label.startswith("Send selection to"))
+    pda = next((rect for entry, rect in sub._rows if getattr(entry, "label", "") == "PDA"),
+               None)
+    if pda is not None:  # the row the pointer is on
+        px, py, pw, ph = pda
+        driver.app.pointer_move(px + pw / 2.0, py + ph / 2.0)
+    return driver.draw()
 
 
 def _grab_52_send_menu():
     """Guide 52: the gated FRET population and the "Send selection to" submenu."""
+    import ndx_emtk
+
     root = pathlib.Path(tempfile.mkdtemp(prefix="ndx52-"))
-    win, settle = _ndx_with_gate(root)
-    _compose_menu(win, settle, "52_send_selection_menu.png")
-    win.close()
+    driver = _ndx_with_gate(root)
+    ndx_emtk.save(_open_send_menu(driver), FIG, "52_send_selection_menu.png")
+    driver.app.close()
 
 
 def _grab_47_pda_bridge():
     """Guide 47: the FRET gate sent to PDA; the status line reports the handoff."""
-    from ndxplorer.analysis.send_menu import send_selection
+    import ndx_emtk
+    from ndxplorer.analysis.burst_bridge import BurstAnalysisBridge, outcome_message
 
     root = pathlib.Path(tempfile.mkdtemp(prefix="ndx47-"))
-    win, settle = _ndx_with_gate(root)
-    reply = send_selection(win, "pda", channels=[[0, 8], [1, 9]], reading_routine="SPC-130")
-    settle(200)
+    driver = _ndx_with_gate(root)
+    model = driver.app.model
+    bridge = BurstAnalysisBridge(driver.app.chisurf_rpc, model.source)
+    reply = bridge.send("pda", model.gates.selections(),
+                        channels=[[0, 8], [1, 9]], reading_routine="SPC-130")
+    driver.app.show_status(outcome_message(reply, "pda"))
+    driver.settle()
     curve = reply["result"]["curves"][0]
-    print("pda:", reply["n_bursts"], "bursts,", curve.get("shape"), win.statusBar().currentMessage())
-    _grab(win, "47_ndx_bridge_pda.png")
-    win.close()
+    print("pda:", reply["n_bursts"], "bursts,", curve.get("shape"))
+    ndx_emtk.save(driver.draw(), FIG, "47_ndx_bridge_pda.png")
+    driver.app.close()
 
 
 if __name__ == "__main__":

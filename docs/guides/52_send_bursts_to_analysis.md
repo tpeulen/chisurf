@@ -218,4 +218,4 @@ MMFDB), `provenance` is `None`.
 ## See also
 
 - Tool: **ndX** (`chisurf/plugins/ndxplorer/`); the menu is
-  `ndxplorer/analysis/send_menu.py`, the bridge `ndxplorer/analysis/burst_bridge.py`.
+  `ndxplorer/app/features/selection.py`, the bridge `ndxplorer/analysis/burst_bridge.py`.

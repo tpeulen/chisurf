@@ -141,8 +141,8 @@ reference the correction factors need.
 
 - **The menu discards the result.** **Send selection to** computes the analysis
   and reports only the counts in the status line; the returned histogram,
-  decay or curves are not shown, opened as a fit, or kept (the QAction ignores
-  the return value of `send_selection`, `ndxplorer/analysis/send_menu.py`).
+  decay or curves are not shown, opened as a fit, or kept (the menu's `send`
+  reports only the outcome message, `ndxplorer/app/features/selection.py`).
   Only the provenance record (when the table came from MMFDB) survives. Use the
   scripted bridge above to get the data.
 - **FCS from the menu yields no curves.** The advertised default pair
