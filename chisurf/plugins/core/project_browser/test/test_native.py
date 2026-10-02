@@ -158,10 +158,12 @@ app_module.ProjectBrowserModel=lambda:model
 app=app_module.make_app();app.loaded=True;app.expanded.add('p1')
 app.draw(RecordingPainter(),0,0,1200,800)
 from emtk.events import RIGHT_BUTTON
-x,y,w,h=app.row_rects['v1']
+painter=RecordingPainter();app.draw(painter,0,0,1200,800);app.draw(painter,0,0,1200,800)
+x,y,w,h=next(t[:4] for t in painter.texts if t[5].startswith('v1 Native'))
+app.pointer_move(x+w*.3,y+h*.5);app.draw(RecordingPainter(),0,0,1200,800)
 app.pointer_press(x+w*.3,y+h*.5,RIGHT_BUTTON)
 painter=RecordingPainter();app.draw(painter,0,0,1200,800)
-assert 'Inspect version' in painter.strings, str((app.row_rects,app.io.mouse_pos,painter.strings))
+assert 'Inspect version' in painter.strings, str((app.io.mouse_pos,painter.strings))
 app.pointer_release(x+w*.3,y+h*.5,RIGHT_BUTTON)
 app.draw(RecordingPainter(),0,0,1200,800)
 app.begin_save();app.draw(RecordingPainter(),0,0,1200,800)

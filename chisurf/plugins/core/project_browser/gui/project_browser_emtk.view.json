@@ -1,0 +1,352 @@
+{
+  "_comment": "Project Browser for the emtk window, drawn by emtk.view_form over ProjectPanel (gui/panel.py): the toolbar, the search row, the project/version tree as a data_table with disclosure triangles, and the details tabs. The dialogs and the context menu are drawn by gui/app.py.",
+  "toolbar": {
+    "sections": [
+      {
+        "type": "button_row",
+        "description": "Restore, save, export, import or delete a project version, reload the list, inspect a stored version, open the guide or the help.",
+        "buttons": [
+          {
+            "action": "open",
+            "label": "Open / Restore",
+            "description": "Restore the selected version, or the newest version of the selected project, replacing the current session. Greyed until a row is selected. Double-clicking a row does the same."
+          },
+          {
+            "action": "save",
+            "label": "Save Current Project",
+            "description": "Save all current datasets, fits and instrument state as a new database version of the current project, or as a new project."
+          },
+          {
+            "action": "export",
+            "label": "Export .cs.pto",
+            "description": "Export the selected exact version as a portable project archive. Greyed until a version row is selected."
+          },
+          {
+            "action": "import_project",
+            "label": "Import Project",
+            "description": "Preview a project archive, check its IDs and import it after confirmation."
+          },
+          {
+            "action": "delete",
+            "label": "Delete Version",
+            "description": "Soft-delete the selected version after confirmation; database manage permission is required. Greyed until a version row is selected."
+          },
+          {
+            "action": "refresh",
+            "label": "Refresh",
+            "description": "Reload the projects from the database."
+          },
+          {
+            "action": "inspect",
+            "label": "Inspect Stored Version",
+            "description": "Load the stored artifacts, fitted parameter values, branches and version graph of the selected version into the detail tabs below. Greyed until a row is selected."
+          },
+          {
+            "action": "guide",
+            "label": "Guide",
+            "description": "Walk through finding, inspecting, restoring and saving projects."
+          },
+          {
+            "action": "help",
+            "label": "Help",
+            "description": "Explain project versions, restoration, permissions and archives."
+          }
+        ]
+      }
+    ]
+  },
+  "search": {
+    "sections": [
+      {
+        "type": "panel",
+        "n_col": 5,
+        "sections": [
+          {
+            "type": "value",
+            "attr": "search",
+            "kind": "str",
+            "label": "Search",
+            "placeholder": "Name, ID, owner or notes",
+            "call": "search_changed",
+            "weight": 1,
+            "description": "Search stored project names, identifiers, owners and version notes. The list reloads when you press Enter or click away."
+          },
+          {
+            "type": "button_row",
+            "weight": 0,
+            "description": "Empty the search field and show every project again.",
+            "buttons": [
+              {
+                "action": "clear_search",
+                "label": "Clear",
+                "description": "Empty the search field and show every project again."
+              }
+            ]
+          },
+          {
+            "type": "toggle",
+            "attr": "show_public",
+            "label": "Show public",
+            "call": "public_changed",
+            "weight": 0,
+            "description": "Include projects made readable to other authenticated users."
+          },
+          {
+            "type": "toggle",
+            "attr": "show_id",
+            "label": "Show ID",
+            "call": "columns_changed",
+            "weight": 0,
+            "description": "Show or hide the ID column (the project or version identifier). Undecided, it shows when the list is wide enough."
+          },
+          {
+            "type": "toggle",
+            "attr": "show_status",
+            "label": "Show status",
+            "call": "columns_changed",
+            "weight": 0,
+            "description": "Show or hide the Status column (the state of a version's last operation). Undecided, it shows when the list is wide enough."
+          }
+        ]
+      }
+    ]
+  },
+  "browser": {
+    "sections": [
+      {
+        "type": "custom",
+        "key": "data_table",
+        "description": "The stored projects and, under the triangle of each, their versions. Select a row to restore, inspect, export or delete it; double-click restores; click a header to sort. The ID and Status columns show when the list is wide enough for all nine columns; tick or untick Show ID and Show status to decide yourself.",
+        "options": {
+          "source": "tree_rows",
+          "editable": false,
+          "expand": true,
+          "reserve": 0,
+          "row_key": "row_id",
+          "tree_key": "parent_id",
+          "expanded_attr": "expanded",
+          "selected_call": "select_row",
+          "activated_call": "activate_row",
+          "context_call": "context_row",
+          "sort": {
+            "key": "project_name",
+            "descending": true
+          },
+          "fit_columns": false,
+          "column_picker": false,
+          "tooltip_key": "tooltip",
+          "columns_source": "browser_columns"
+        }
+      }
+    ]
+  },
+  "details": {
+    "summary": {
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "The fields of the selected project or version.",
+          "options": {
+            "source": "summary_rows",
+            "editable": false,
+            "expand": true,
+            "fit_columns": false,
+            "columns": [
+              {
+                "key": "field",
+                "title": "Field",
+                "description": "The name of the stored field.",
+                "width": 150
+              },
+              {
+                "key": "value",
+                "title": "Value",
+                "description": "Its value."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "artifacts": {
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "The artifacts stored with the selected version. Press Inspect Stored Version to load them.",
+          "options": {
+            "source": "artifact_rows",
+            "editable": false,
+            "expand": true,
+            "fit_columns": true
+          }
+        }
+      ]
+    },
+    "parameters": {
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "The fitted parameter values stored with the selected version. Press Inspect Stored Version to load them.",
+          "options": {
+            "source": "parameter_rows",
+            "editable": false,
+            "expand": true,
+            "fit_columns": true
+          }
+        }
+      ]
+    },
+    "branches": {
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "The branches of the selected project. Press Inspect Stored Version to load them.",
+          "options": {
+            "source": "branch_rows",
+            "editable": false,
+            "expand": true,
+            "fit_columns": true
+          }
+        }
+      ]
+    },
+    "graph": {
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "The version graph of the selected project: each stored field of its nodes and edges.",
+          "options": {
+            "source": "graph_rows",
+            "editable": false,
+            "expand": true,
+            "fit_columns": false,
+            "columns": [
+              {
+                "key": "path",
+                "title": "Path",
+                "description": "Where in the version graph the value sits.",
+                "width": 260
+              },
+              {
+                "key": "value",
+                "title": "Value",
+                "description": "The stored value."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "save": {
+    "sections": [
+      {
+        "type": "value",
+        "attr": "name",
+        "kind": "str",
+        "label": "Project name",
+        "placeholder": "Enter project name",
+        "description": "Name a new project; a new version of an existing project keeps its project name."
+      },
+      {
+        "type": "choice",
+        "attr": "visibility_name",
+        "label": "Visibility",
+        "options": [
+          "Private",
+          "Public"
+        ],
+        "description": "Private is visible to its owner; public is readable by any authenticated user."
+      },
+      {
+        "type": "custom",
+        "key": "code_editor",
+        "target": "notes",
+        "description": "Optional notes recorded with the new version.",
+        "options": {
+          "height": 110,
+          "language": "none"
+        }
+      },
+      {
+        "type": "button_row",
+        "description": "Save the project, or close this dialog without saving.",
+        "buttons": [
+          {
+            "action": "confirm_save",
+            "label": "Save version",
+            "description": "Serialize the current session and save one new database version."
+          },
+          {
+            "action": "cancel_dialog",
+            "label": "Cancel",
+            "description": "Close this dialog without changing the database."
+          }
+        ]
+      }
+    ]
+  },
+  "_columns": [
+    {
+      "key": "project_name",
+      "title": "Project / Version",
+      "description": "The project with its version count, or a version with its number and name.",
+      "width": 215
+    },
+    {
+      "key": "id",
+      "title": "ID",
+      "description": "The project or version identifier. Shown when the list is wide enough; the Show ID / Show status boxes above the list decide otherwise.",
+      "width": 170,
+      "visible": false
+    },
+    {
+      "key": "owner_user_id",
+      "title": "Owner",
+      "description": "The user who owns the project or version.",
+      "width": 100
+    },
+    {
+      "key": "status",
+      "title": "Status",
+      "description": "The state of a version's last operation. Shown when the list is wide enough; the Show ID / Show status boxes above the list decide otherwise.",
+      "width": 90,
+      "visible": false
+    },
+    {
+      "key": "visibility",
+      "title": "Visibility",
+      "description": "Private (owner only) or public (readable by authenticated users).",
+      "width": 85
+    },
+    {
+      "key": "dataset_count",
+      "title": "Datasets",
+      "description": "How many datasets the version holds.",
+      "width": 70
+    },
+    {
+      "key": "fit_count",
+      "title": "Fits",
+      "description": "How many fits the version holds.",
+      "width": 40
+    },
+    {
+      "key": "created_at",
+      "title": "Created",
+      "description": "When it was created (UTC).",
+      "width": 152
+    },
+    {
+      "key": "notes",
+      "title": "Notes",
+      "description": "The notes recorded with the version.",
+      "width": 120
+    }
+  ]
+}

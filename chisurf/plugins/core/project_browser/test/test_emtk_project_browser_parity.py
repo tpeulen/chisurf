@@ -22,6 +22,17 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 
 
+@pytest.fixture(autouse=True)
+def project_threads_finish():
+    """A background project call still running when a test ends would read the next test's database: wait for them."""
+    yield
+    import threading
+
+    for thread in threading.enumerate():
+        if thread.name.startswith("project-browser"):
+            thread.join(timeout=15)
+
+
 @pytest.fixture
 def db(tmp_path, monkeypatch):
     """A scratch project database with 'decay study' (two versions) and 'fcs titration' (public)."""
@@ -249,23 +260,15 @@ def test_the_guide_points_at_real_controls_and_waits(db):
 
 # 4. draws, empty and populated, at both sizes; settings round trip
 @pytest.mark.parametrize("size", [(1200, 800), (800, 600)])
-def test_draws_empty_and_populated(db, size, monkeypatch):
-    from emtk import im
-
+def test_draws_empty_and_populated(db, size):
     app = _app()
     try:
         _settle(app)
         app.expanded = {_project(app, "decay study")["project_id"]}
-        strings = " ".join(_draw(app, size).strings)
-        assert "decay study (2 versions)" in strings and "refit with IRF" in strings
-        columns = []
-        original = im.table_setup_column
-        monkeypatch.setattr(im, "table_setup_column",
-                            lambda label, flags=0, width=0.0: (columns.append((im.calc_text_size(label)[0], flags, width)),
-                                                               original(label, flags, width))[1])
-        _draw(app, size, n=1)
-        assert columns and all(flags & im.TableColumnFlags.WIDTH_FIXED and width > text
-                               for text, flags, width in columns)   # nothing overlaps; the table scrolls
+        strings = _draw(app, size).strings
+        # the cells are drawn whole (emtk shortens a cell that does not fit with a trailing dot)
+        for text in ("decay study (2 versions)", "v2 decay study", "fcs titration (1 versions)"):
+            assert any(s.startswith(text) and not s.endswith(".") for s in strings), (text, size)
     finally:
         app.close()
 

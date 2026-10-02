@@ -10,24 +10,18 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.view_form import FormState, draw_form
 from emtk.widgets.menus import MenuItem, Popup
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 
 from .controller import ProjectJobs
 from .model import ProjectBrowserModel
+from .panel import ProjectPanel
 
-FIELDS = [
-    ("Project / Version", "project_name", 0.23),
-    ("ID", "id", 0.18),
-    ("Owner", "owner_user_id", 0.10),
-    ("Status", "status", 0.08),
-    ("Visibility", "visibility", 0.07),
-    ("Datasets", "dataset_count", 0.06),
-    ("Fits", "fit_count", 0.05),
-    ("Created", "created_at", 0.12),
-    ("Notes", "notes", 0.11),
-]
+SPEC = json.loads(Path(__file__).with_name("project_browser_emtk.view.json").read_text(encoding="utf-8"))
+DETAIL_TABS = (("Summary", "summary"), ("Artifacts", "artifacts"), ("Parameters", "parameters"),
+               ("Branches", "branches"), ("Version graph", "graph"))
 
 
 class ProjectBrowserApp(ImApp):
@@ -38,11 +32,10 @@ class ProjectBrowserApp(ImApp):
         self.loaded = False
         self.expanded = set()
         self.selected_ids = set()
-        self.row_rects = {}
         self.dialog = self.file_window = None
         self.file_action = ""
         self.modal = ""
-        self.modal_window = DialogWindow("Project action", size=(700, 520))
+        self.modal_window = DialogWindow("Project action", size=(520, 320), fit_height=True)
         self.pending = None
         self.context_menu = None
         self.context_actions = {}
@@ -58,16 +51,18 @@ class ProjectBrowserApp(ImApp):
         self.tour = EmTkGuidedTour(steps=Path(__file__).with_name("guide.json"),
                                    get_target_rect=lambda k: self.item_rects.get(k), owner=self,
                                    wait_for_controls=True)
-        self.docks = DockManager(Split("v", 0.75, Region("browser"), Region("details")))
-        self.docks.add_window(
-            "browser", "Projects and versions", self.browser, dock="browser", closable=False
-        )
-        self.docks.add_window(
-            "details", "Selected project details", self.details, dock="details", closable=False
-        )
+        #: None until the user decides: the ID and Status columns are shown when the table is wide enough for all nine.
+        self.show_id = self.show_status = None
+        self.panel = ProjectPanel(self)
+        self.forms = {n: FormState(on_used=self.tour.notify_used) for n in ("toolbar", "search", "browser", "details", "dialog")}
+        self.docks = DockManager(Split("v", 0.58, Region("browser"), Region("details")), name="project_browser")
+        self.docks.add_window("browser", "Projects and Versions", self.browser, dock="browser", closable=False)
+        self.docks.add_window("details", "Selected Project Details", self.details, dock="details", closable=False)
+        self.native_layouts = {"main": self.docks}
         super().__init__(self.render, continuous=False)
 
     def error(self, action):
+        self.notice = ""  # a new action ends the last one's message
         try:
             return action()
         except Exception as exc:
@@ -142,6 +137,7 @@ class ProjectBrowserApp(ImApp):
     def import_preview(self, path):
         def accepted(preview):
             self.pending = {"path": str(path), "preview": preview}
+            self.model.status = "Archive checked: confirm to import it."
             self.modal = "import"
             self.modal_window.title = "Confirm Project Import"
 
@@ -186,338 +182,181 @@ class ProjectBrowserApp(ImApp):
 
         self.jobs.start("Loading version details", lambda: self.model.details(version), accepted)
 
-    #: The guide's key for each action button.
-    ACTION_KEYS = {"Open / Restore": "open", "Save Current Project": "save", "Export .cs.pto": "export",
-                   "Import Project": "import", "Delete Version": "delete", "Refresh": "refresh",
-                   "Inspect stored version": "inspect", "Guide": "guide", "Help": "help"}
 
-    def action(self, label, tip, callback):
-        key = self.ACTION_KEYS.get(label)
-        if im.button(label):
-            if key:
-                self.tour.notify_used(key)
-            self.error(callback)
-        im.set_item_tooltip(tip)
-        if key:
-            self.item_rects[key] = im.get_item_rect()
+    # -- selection and the context menu ------------------------------------------------------------------ #
+    def column_shown(self, name):
+        """Whether the ID / Status column is shown: the user's choice, or while undecided whether the table has room for every column."""
+        value = getattr(self, name)
+        if value is not None:
+            return bool(value)
+        rect = self.item_rects.get("tree_rows")
+        return bool(rect and rect[2] >= 1020.0)
+
+    def select(self, row_id):
+        """A row of the tree was selected (a project means its newest version, a version means itself)."""
+        self.model.selected_id = row_id
+        self.selected_ids = {row_id} if row_id else set()
+        self.model.artifacts = []
+        self.model.parameters = []
+        self.model.branches = []
+        self.model.graph = {}
+        self.tour.notify_used("versions")
+
+    def open_context_menu(self, record, position):
+        """The Qt-less tree's right-click menu: restore, inspect, export, delete (a project row offers the first two)."""
+        project = not record.get("parent_id")
+        entries = [
+            ("Open / Restore", "Restore this selection.", self.panel.open),
+            ("Inspect version", "List stored artifacts, parameters and version ancestry.", self.panel.inspect),
+            ("Export .cs.pto", "Export the selected exact version.", self.panel.export),
+            ("Delete Version", "Request confirmation before soft deletion.", self.panel.delete),
+        ]
+        self.context_actions = {label: action for label, _, action in entries}
+        self.context_menu = Popup([
+            MenuItem(label, tooltip=tip, enabled=not project or label in ("Open / Restore", "Inspect version"))
+            for label, tip, _ in entries
+        ])
+        self.context_menu.open_at(*(position or im.get_io().mouse_pos))
+
+    # -- windows ----------------------------------------------------------------------------------------- #
+    def _form(self, name, spec, titles=False):
+        state = self.forms[name]
+        state.rects.clear()
+        draw_form(spec, self.panel, state, titles=titles)
+        self.item_rects.update(state.rects)
 
     def browser(self, box):
-        actions = [
-            (
-                "Open / Restore",
-                "Restore a selected version, or the newest version of the selected project.",
-                self.open_selected,
-            ),
-            (
-                "Save Current Project",
-                "Save all current datasets, fits and instrument state as a new database version.",
-                self.begin_save,
-            ),
-            (
-                "Export .cs.pto",
-                "Export the selected exact version as a portable project archive.",
-                lambda: self.choose_file("export"),
-            ),
-            (
-                "Import Project",
-                "Preview an archive, check IDs and import after confirmation.",
-                lambda: self.choose_file("import"),
-            ),
-            (
-                "Delete Version",
-                "Soft-delete the selected version; database manage permission is required.",
-                self.begin_delete,
-            ),
-            ("Refresh", "Reload projects from the database.", self.refresh),
-            ("Guide", "Walk through finding, inspecting, restoring and saving projects.", self.tour.start),
-            (
-                "Help",
-                "Explain project versions, restoration, permissions and archives.",
-                self.help_window.show,
-            ),
-        ]
-        for index, (label, tip, callback) in enumerate(actions):
-            if index:
-                im.same_line()
-            self.action(label, tip, callback)
-        changed, self.model.search = im.input_text(
-            "Search projects", self.model.search, "Name, ID, owner or notes"
-        )
-        im.set_item_tooltip("Search stored project names, identifiers, owners and version notes.")
-        self.item_rects["search"] = im.get_item_rect()
-        toggled, self.model.show_public = im.checkbox("Show public", self.model.show_public)
-        im.set_item_tooltip("Include projects made readable to other authenticated users.")
-        if changed or toggled:
-            self.error(self.refresh)
-        im.text_wrapped(self.model.status)
+        self._form("toolbar", SPEC["toolbar"])
+        self._form("search", SPEC["search"])
+        status = self.model.status
+        if status.startswith("Error"):
+            im.text_colored(status, (1.0, 0.45, 0.4, 1.0))
+        else:
+            im.text_wrapped(status)
         if self.notice:
             im.text_wrapped(self.notice)
-        flags = (
-            im.TableFlags.BORDERS
-            | im.TableFlags.ROW_BG
-            | im.TableFlags.RESIZABLE
-            | im.TableFlags.REORDERABLE
-            | im.TableFlags.HIDEABLE
-            | im.TableFlags.SORTABLE
-            | im.TableFlags.SCROLL_X
-        )
-        tx, ty = im.get_cursor_screen_pos()
-        tw, th = im.get_content_region_avail()
-        self.item_rects["versions"] = (tx, ty, tw, max(40.0, min(th, 240.0)))
-        if im.begin_table("project_versions", len(FIELDS), flags):
-            # Fixed widths that fit header and contents (capped), scrolled sideways when the
-            # pane is narrow: stretched to 800 px the columns overlapped their own text.
-            for title, width in zip((f[0] for f in FIELDS), self._column_widths()):
-                im.table_setup_column(title, im.TableColumnFlags.WIDTH_FIXED, width)
-            im.table_next_row()
-            for title, _, _ in FIELDS:
-                im.table_next_column()
-                im.table_header(title)
-                im.set_item_tooltip(
-                    "Sort by " + title.lower() + "; drag the header edge to resize this column."
-                )
-            specs = im.table_get_sort_specs()
-            column, reverse = (
-                (specs.specs[0].column_index, not specs.specs[0].ascending)
-                if specs and specs.specs
-                else (7, True)
-            )
-            key = FIELDS[column][1]
-
-            def value(row):
-                if key == "id":
-                    return row.get("version_id", row.get("project_id", ""))
-                if key in ("dataset_count", "fit_count"):
-                    return int(row.get(key) or 0)
-                return str(row.get(key) or "").casefold()
-
-            for project in sorted(self.model.projects, key=value, reverse=reverse):
-                self.row(project, project=True)
-                if project.get("project_id") in self.expanded:
-                    for version in sorted(project.get("versions", []), key=value, reverse=reverse):
-                        self.row(
-                            {
-                                **version,
-                                "visibility": version.get(
-                                    "visibility", project.get("visibility", "private")
-                                ),
-                            }
-                        )
-            im.end_table()
-        if not self.model.projects:
-            im.text_wrapped(
-                "No matching projects. Refresh, save the current session or import a project archive."
-            )
-
-    def _cell_text(self, row, key, project):
-        if key == "project_name":
-            return (f"{row.get('project_name', '(unnamed)')} ({row.get('version_count', 0)} versions)" if project
-                    else f"  v{row.get('version_number', '?')} {row.get('project_name', '')}")
-        if key == "id":
-            return row.get("project_id" if project else "version_id", "")
-        value = row.get(key, "")
-        return str(value)[:19].replace("T", " ") if key == "created_at" else str(value)
-
-    def _column_widths(self):
-        """Per column: the widest of header and cells, plus padding (the expander on the first)."""
-        rows = [(p, True) for p in self.model.projects]
-        rows += [(v, False) for p in self.model.projects if p.get("project_id") in self.expanded
-                 for v in p.get("versions", [])]
-        widths = []
-        for index, (title, key, _) in enumerate(FIELDS):
-            texts = [title] + [self._cell_text(r, key, project) for r, project in rows]
-            widest = max(im.calc_text_size(t)[0] for t in texts)
-            widths.append(min(widest + (40.0 if index == 0 else 14.0), 320.0))
-        return widths
-
-    def row(self, row, project=False):
-        identifier = row.get("project_id" if project else "version_id", "")
-        im.push_id(identifier)
-        im.table_next_row()
-        for index, (_, key, _) in enumerate(FIELDS):
-            im.table_next_column()
-            if index == 0:
-                if project:
-                    if im.small_button(("−" if identifier in self.expanded else "+") + "##expand"):
-                        self.expanded.symmetric_difference_update({identifier})
-                    im.set_item_tooltip("Expand or collapse this project's stored versions.")
-                    im.same_line()
-                label = (
-                    f"{row.get('project_name', '(unnamed)')} ({row.get('version_count', 0)} versions)"
-                    if project
-                    else f"  v{row.get('version_number', '?')} {row.get('project_name', '')}"
-                )
-                clicked = im.selectable(
-                    label + "##select",
-                    self.model.selected_id == identifier or identifier in self.selected_ids,
-                )
-                self.row_rects[identifier] = im.get_item_rect()
-                if clicked or (im.is_item_hovered() and im.is_mouse_clicked(1)):
-                    if im.get_io().key_ctrl and clicked:
-                        self.selected_ids.symmetric_difference_update({identifier})
-                        self.model.selected_id = (
-                            identifier
-                            if identifier in self.selected_ids
-                            else next(iter(self.selected_ids), "")
-                        )
-                    elif not (im.is_mouse_clicked(1) and identifier in self.selected_ids):
-                        self.selected_ids = {identifier}
-                        self.model.selected_id = identifier
-                    else:
-                        self.model.selected_id = identifier
-                    self.tour.notify_used("versions")
-                    self.model.artifacts = []
-                    self.model.parameters = []
-                    self.model.branches = []
-                    self.model.graph = {}
-                im.set_item_tooltip(
-                    f"{'Project' if project else 'Version'}: {identifier}\nOwner: {row.get('owner_user_id', '')}\n{row.get('notes', '')}"
-                )
-                if im.is_item_hovered() and im.is_mouse_double_clicked(0):
-                    self.error(self.open_selected)
-                if im.is_item_hovered() and im.is_mouse_clicked(1):
-                    entries = [
-                        ("Open / Restore", "Restore this selection.", self.open_selected),
-                        (
-                            "Inspect version",
-                            "List stored artifacts, parameters and version ancestry.",
-                            self.inspect,
-                        ),
-                        (
-                            "Export .cs.pto",
-                            "Export the selected exact version.",
-                            lambda: self.choose_file("export"),
-                        ),
-                        (
-                            "Delete Version",
-                            "Request confirmation before soft deletion.",
-                            self.begin_delete,
-                        ),
-                    ]
-                    self.context_actions = {label: action for label, _, action in entries}
-                    self.context_menu = Popup(
-                        [
-                            MenuItem(
-                                label,
-                                tooltip=tip,
-                                enabled=not project
-                                or label in ("Open / Restore", "Inspect version"),
-                            )
-                            for label, tip, _ in entries
-                        ]
-                    )
-                    self.context_menu.open_at(*im.get_io().mouse_pos)
-            else:
-                value = identifier if key == "id" else row.get(key, "")
-                if key == "created_at":
-                    value = str(value)[:19].replace("T", " ")
-                im.text(str(value))
-                im.set_item_tooltip(f"{FIELDS[index][0]}: {value}")
-        im.pop_id()
+        self._form("browser", SPEC["browser"])
+        if "tree_rows" in self.item_rects:
+            self.item_rects["versions"] = self.item_rects["tree_rows"]
+        if not self.model.projects and not self.jobs.future:
+            im.text_wrapped("No matching projects. Refresh, save the current session or import a project archive.")
 
     def details(self, box):
-        selected = self.model.selected
-        if selected is None:
-            im.text_wrapped(
-                "Select a project to restore its latest version, or expand it to select an exact version."
-            )
+        if self.model.selected is None:
+            im.text_wrapped("Select a project to restore its latest version, or expand it to select an exact version.")
             return
-        self.action(
-            "Inspect stored version",
-            "Load artifacts, fitted parameter values, branches and parent relationships.",
-            self.inspect,
-        )
         if im.begin_tab_bar("project_details"):
-            for title in ("Summary", "Artifacts", "Parameters", "Branches", "Version graph"):
-                if im.begin_tab_item(title):
+            for title, key in DETAIL_TABS:
+                opened = im.begin_tab_item(title)
+                im.set_item_tooltip("Show " + title.lower() + " for the selected stored project version.")
+                if opened:
                     self.details_tab = title
-                    if title == "Summary":
-                        im.text_wrapped(json.dumps(selected, indent=2, default=str))
+                    if key != "summary" and not getattr(self.model, {"artifacts": "artifacts", "parameters": "parameters",
+                                                                      "branches": "branches", "graph": "graph"}[key]):
+                        im.text_disabled("Press Inspect Stored Version to load this information.")
                     else:
-                        data = {
-                            "Artifacts": self.model.artifacts,
-                            "Parameters": self.model.parameters,
-                            "Branches": self.model.branches,
-                            "Version graph": self.model.graph,
-                        }[title]
-                        im.text_wrapped(
-                            json.dumps(data, indent=2, default=str)
-                            if data
-                            else "Inspect the stored version to load this information."
-                        )
+                        self._form("details", SPEC["details"][key])
                     im.end_tab_item()
-                im.set_item_tooltip(
-                    "Show " + title.lower() + " for the selected stored project version."
-                )
             im.end_tab_bar()
+
+    # -- dialogs -------------------------------------------------------------------------------------------- #
+    def collision_rows(self):
+        preview = (self.pending or {}).get("preview", {}) if isinstance(self.pending, dict) else {}
+        rows = []
+        for category, ids in (preview.get("collisions") or {}).items():
+            if ids:
+                rows += [{"category": category, "id": str(i)} for i in ids[:20]]
+                if len(ids) > 20:
+                    rows.append({"category": category, "id": f"... and {len(ids) - 20} more"})
+        return rows
 
     def draw_modal(self, box):
         close = self.modal_window.begin(box)
+        done = False
         if self.modal == "save":
-            im.begin_disabled(not self.allow_name_edit)
-            _, self.name = im.input_text("Project name", self.name)
-            im.set_item_tooltip(
-                "Name a new project; existing project versions retain their project name."
-            )
-            im.end_disabled()
-            _, self.visibility = im.combo("Visibility", self.visibility, ["Private", "Public"])
-            im.set_item_tooltip(
-                "Private is visible to its owner; public is readable to authenticated users."
-            )
-            _, self.notes = im.input_text_multiline("Version notes", self.notes, size=(-1.0, 180.0))
-            im.set_item_tooltip("Record optional notes for this saved version.")
-            self.action(
-                "Save version",
-                "Serialize the current session and save one new database version.",
-                self.save,
-            )
+            signature = (self.name, self.notes, self.visibility)
+            if signature != getattr(self, "_save_signature", signature) and self.model.status.startswith("Error"):
+                self.model.status = ""  # the user is fixing what the message complained about
+            self._save_signature = signature
+            self.forms["dialog"].rects.clear()
+            draw_form(SPEC["save"], self.panel, self.forms["dialog"], titles=False)
+            self.item_rects.update(self.forms["dialog"].rects)
         elif self.modal == "delete":
             im.text_wrapped(
-                f"Delete version {self.pending.get('version_number', '?')} of '{self.pending.get('project_name', '')}'?\nID: {self.pending['version_id']}\nThis soft-deletes the version and requires manage permission."
+                f"Delete version {self.pending.get('version_number', '?')} of '{self.pending.get('project_name', '')}'?\n"
+                f"ID: {self.pending['version_id']}\nThis soft-deletes the version and requires manage permission."
             )
-            self.action(
-                "Delete this version",
-                "Confirm soft deletion of this exact selected version.",
-                self.confirm_delete,
-            )
+            im.spacing()
+            if im.button("Delete This Version"):
+                self.tour.notify_used("confirm_delete")
+                self.error(self.confirm_delete)
+                done = True
+            im.set_item_tooltip("Confirm soft deletion of this exact selected version.")
+            self.item_rects["confirm_delete"] = im.get_item_rect()
+            im.same_line()
+            done = self._cancel_button() or done
         elif self.modal == "import":
             preview = self.pending["preview"]
-            im.text_wrapped("Archive origin: " + json.dumps(preview.get("origin", {})))
-            im.text_wrapped("Contents: " + json.dumps(preview.get("entity_counts", {})))
-            collisions = {
-                key: values for key, values in preview.get("collisions", {}).items() if values
-            }
+            origin = preview.get("origin", {})
+            counts = preview.get("entity_counts", {})
             im.text_wrapped(
-                "Conflicting IDs will be remapped." if collisions else "No ID collisions detected."
+                f"Original project: {origin.get('project_id', '?')} v{origin.get('version_number', '?')}.\n"
+                f"Contains: {counts.get('operations', 0)} operations, {counts.get('artifacts', 0)} artifacts, "
+                f"{counts.get('objects', 0)} objects."
+            )
+            collisions = any(preview.get("collisions", {}).values())
+            im.text_wrapped(
+                "The following IDs from the archive already exist in the database. On confirmation, conflicting IDs will be remapped."
+                if collisions else "No ID collisions detected. Proceed with import?"
             )
             if collisions:
-                im.text_wrapped(json.dumps(collisions, indent=2))
-            self.action(
-                "Remap & Import" if collisions else "Import archive",
-                "Import this checked archive, remapping conflicting IDs when required.",
-                self.confirm_import,
-            )
-        im.same_line()
-        if im.button("Cancel") or close:
-            self.modal = ""
-        im.set_item_tooltip("Close this confirmation without changing the database.")
+                self.forms["dialog"].rects.clear()
+                draw_form({"sections": [{"type": "custom", "key": "data_table", "description": "The identifiers of the archive that already exist in the database, by kind.",
+                                         "options": {"source": "collision_rows", "editable": False, "height": 120, "fit_columns": True,
+                                                     "columns": [{"key": "category", "title": "Kind", "description": "The kind of record."},
+                                                                 {"key": "id", "title": "ID", "description": "The identifier that is already in use."}]}}]},
+                          self, self.forms["dialog"], titles=False)
+            im.spacing()
+            if im.button("Remap & Import" if collisions else "Import Archive"):
+                self.tour.notify_used("confirm_import")
+                self.confirm_import()
+                done = True
+            im.set_item_tooltip("Import this checked archive, remapping conflicting IDs when required.")
+            self.item_rects["confirm_import"] = im.get_item_rect()
+            im.same_line()
+            done = self._cancel_button() or done
         if self.model.status.startswith("Error:"):
-            im.text_wrapped(self.model.status)
+            im.text_colored(self.model.status, (1.0, 0.45, 0.4, 1.0))
         self.modal_window.end()
+        if close or done:
+            self.modal = ""
+
+    def _cancel_button(self):
+        pressed = im.button("Cancel")
+        im.set_item_tooltip("Close this confirmation without changing the database.")
+        self.item_rects["cancel_dialog"] = im.get_item_rect()
+        return pressed
+
+    def _release_stale_keyboard_focus(self):
+        """A click ends the keyboard navigation focus (emtk keeps it on the last field, which then also takes the text a
+        later field is typed into; the clicked field takes the focus again in the same frame)."""
+        if self.io.mouse_clicked[0]:
+            context = im.get_current_context()
+            context.nav_id = None
+            context.storage["__nav_id__"] = None
 
     def render(self):
-        self.row_rects.clear()
+        self._release_stale_keyboard_focus()
         self.jobs.poll()
         if self.autoload and not self.loaded:
             self.loaded = True
             self.error(self.refresh)
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
-        im.begin_disabled(
-            self.jobs.future is not None or bool(self.modal) or self.dialog is not None
-        )
+        busy = self.jobs.future is not None
         self.docks.draw(box)
-        im.end_disabled()
+        if busy:
+            pass
         if self.context_menu is not None:
             overlays.popup(
                 "project_context",
@@ -541,9 +380,7 @@ class ProjectBrowserApp(ImApp):
                         lambda: self.jobs.start(
                             "Exporting project",
                             lambda: self.model.export(version, path),
-                            lambda target: setattr(
-                                self.model, "status", "Exported to " + str(target)
-                            ),
+                            lambda target: setattr(self.model, "status", "Exported to " + str(target)),
                         )
                     )
                 else:
@@ -560,9 +397,20 @@ class ProjectBrowserApp(ImApp):
     def restore_settings(self, settings):
         self.model.restore_preferences(settings)
         self.expanded = set(settings.get("expanded", []))
+        self.show_id = settings.get("show_id") if isinstance(settings.get("show_id"), bool) else None
+        self.show_status = settings.get("show_status") if isinstance(settings.get("show_status"), bool) else None
 
     def export_settings(self):
-        return {**self.model.export_preferences(), "expanded": sorted(self.expanded)}
+        return {**self.model.export_preferences(), "expanded": sorted(self.expanded),
+                "show_id": self.show_id, "show_status": self.show_status}
+
+    def files_dropped(self, paths):
+        """A project archive dropped on the window starts the import preview (the Import Project button's flow)."""
+        archive = next((str(p) for p in paths if str(p).endswith((".cs.pto", ".csp"))), "")
+        if not archive or self.jobs.future is not None or self.modal:
+            return False
+        self.error(lambda: self.import_preview(archive))
+        return True
 
 
 def make_app():
