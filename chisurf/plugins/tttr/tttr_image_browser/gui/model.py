@@ -25,7 +25,7 @@ from chisurf.plugins.microscopy.imaging_emtk.model_base import EmtkModelMixin
 from .client import TTTRImageBrowserClient
 from .view_model import RATING_FILTERS, ImageBrowserViewModel
 
-#: Colormaps the Qt image dock offers (``chisurf.gui.autoform.sections.builtin.IMAGE_COLORMAPS``), in its order.
+#: Colormaps the Qt image dock offers (its ``IMAGE_COLORMAPS`` list), in its order.
 COLORMAPS = ("viridis", "magma", "inferno", "plasma", "cividis", "turbo", "gray")
 
 #: Longest side, in pixels, of the mosaic the preview reconstructs (the Qt view model asks for the same).
