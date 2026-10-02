@@ -1,0 +1,274 @@
+{
+ "_comment": "FCS saturation calculator for the emtk window: the controls of view.json (the AutoForm spec the Qt tool rendered) drawn by emtk.view_form over SaturationPanel (gui/panel.py). The state diagram and the plots are drawn by gui/app.py.",
+ "toolbar": {
+  "sections": [
+   {
+    "type": "button_row",
+    "description": "Compute and the scheme files.",
+    "buttons": [
+     {
+      "action": "compute",
+      "label": "Compute",
+      "description": "Recompute the FCS curves, the one-component and two-component fits, the radial profiles and the power sweeps from the current kinetics and optics. The plots also follow every edit."
+     },
+     {
+      "action": "load_scheme",
+      "label": "Load scheme",
+      "description": "Load a photophysical scheme (states, labels, transition rates and brightness) from a JSON file."
+     },
+     {
+      "action": "save_scheme",
+      "label": "Save scheme",
+      "description": "Export the state labels, every non-zero transition rate and the brightness as a JSON scheme file."
+     }
+    ]
+   },
+   {
+    "type": "button_row",
+    "description": "Session files, the guided tour and the help.",
+    "buttons": [
+     {
+      "action": "load_session",
+      "label": "Load session",
+      "description": "Restore the optics, kinetics and display settings saved by Save session."
+     },
+     {
+      "action": "save_session",
+      "label": "Save session",
+      "description": "Save the optics, kinetics and display settings to the per-user settings file, which is read again when the tool starts."
+     },
+     {
+      "action": "guide",
+      "label": "Guide",
+      "description": "A step-by-step walk through a worked example: Rhodamine 6G at 488 nm."
+     },
+     {
+      "action": "help",
+      "label": "Help",
+      "description": "Explain saturation, the scheme matrices and how to read the curves."
+     }
+    ]
+   }
+  ]
+ },
+ "photophysics": {
+  "sections": [
+   {
+    "type": "panel",
+    "title": "Photophysics",
+    "description": "The scheme, the excitation and the measurement settings.",
+    "sections": [
+     {
+      "type": "choice",
+      "attr": "scheme_preset",
+      "label": "Scheme",
+      "options_source": "scheme_names",
+      "call": "edited",
+      "description": "Load a photophysical scheme. Presets are starting points, not constraints: every rate, cross-section and brightness stays editable."
+     },
+     {
+      "type": "value",
+      "attr": "power_mW",
+      "label": "Laser power",
+      "kind": "float",
+      "style": "spin",
+      "minimum": 0.0,
+      "maximum": 100.0,
+      "decimals": 4,
+      "step": 0.05,
+      "suffix": " mW",
+      "call": "edited",
+      "description": "Total laser power measured at the objective (mW). It sets the photon flux and with it the peak excitation rate k_exc(0,0) = 2 sigma Phi / (pi w_r^2). At 0 the saturated curve is exactly the unsaturated Gaussian. Type a value or use the arrows."
+     },
+     {
+      "type": "value",
+      "attr": "power_log",
+      "label": "Power (log)",
+      "kind": "float",
+      "style": "slider",
+      "field": false,
+      "minimum": -3.0,
+      "maximum": 2.0,
+      "decimals": 2,
+      "description": "The same power on a logarithmic scale from 0.001 to 100 mW (the exponent is shown), because the interesting range spans decades."
+     },
+     {
+      "type": "value",
+      "attr": "wavelength_nm",
+      "label": "Excitation λ",
+      "kind": "float",
+      "style": "spin",
+      "minimum": 200.0,
+      "maximum": 1200.0,
+      "decimals": 1,
+      "step": 1.0,
+      "suffix": " nm",
+      "call": "edited",
+      "description": "Excitation wavelength. It sets the photon energy, so the same power delivers more photons at longer wavelengths, and the extinction read from a chosen dye."
+     },
+     {
+      "type": "choice",
+      "attr": "dye",
+      "label": "Dye (MMFDB)",
+      "options_source": "dye_options",
+      "filter": true,
+      "call": "edited",
+      "description": "Read the extinction coefficient at the excitation wavelength from the dye's stored absorption spectrum in MMFDB. Leave empty to type the extinction in the Optics table."
+     },
+     {
+      "type": "choice",
+      "attr": "rate_unit",
+      "label": "Rate units",
+      "options": [
+       "1/s",
+       "1/ms",
+       "1/us",
+       "1/ns"
+      ],
+      "call": "edited",
+      "description": "Time base of the dark transition rates. Changing it rescales the entered values, it does not reinterpret them."
+     },
+     {
+      "type": "toggle",
+      "attr": "include_bunching",
+      "label": "Bunching dynamics",
+      "call": "edited",
+      "description": "Include the photokinetic bunching factor in the saturated curve: the relaxation of the scheme on the diffusion timescale."
+     },
+     {
+      "type": "value",
+      "attr": "n_states",
+      "label": "Number of states",
+      "kind": "int",
+      "style": "spin",
+      "minimum": 2,
+      "maximum": 6,
+      "step": 1,
+      "call": "edited",
+      "description": "Number of states of the scheme. Two is the minimum (ground and excited); add one for each dark, isomeric or bleached state."
+     }
+    ]
+   }
+  ]
+ },
+ "k_dark": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "k_dark",
+    "source": "dark_rows",
+    "columns_source": "matrix_columns",
+    "editable": true,
+    "edited_call": "edit_dark",
+    "editable_call": "dark_editable",
+    "height": 110,
+    "description": "Power-independent dark transition rates K_dark: the row is the state a transition starts from, the column the state it ends in, in the rate units above. The ground-state row is the excitation (use K_exc) and the diagonal is not a rate. Double click a cell to type a value; zero removes the transition.",
+    "fit_columns": true
+   }
+  ]
+ },
+ "k_exc": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "k_exc",
+    "source": "exc_rows",
+    "columns_source": "matrix_columns",
+    "editable": true,
+    "edited_call": "edit_exc",
+    "editable_call": "exc_editable",
+    "height": 110,
+    "description": "Excitation cross-sections K_exc relative to the peak excitation rate: row is the state a transition starts from, column the state it ends in. Double click a cell to type a value between 0 and 1.",
+    "fit_columns": true
+   }
+  ]
+ },
+ "brightness": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "brightness",
+    "source": "brightness_rows",
+    "columns_source": "parameter_columns",
+    "editable": true,
+    "edited_call": "edit_parameter",
+    "editable_call": "parameter_editable",
+    "height": 110,
+    "description": "Relative brightness Q of every state: the fluorescence a molecule emits while in it. Dark states have zero.",
+    "fit_columns": false
+   }
+  ]
+ },
+ "optics": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "optics",
+    "source": "optics_rows",
+    "columns_source": "parameter_columns",
+    "editable": true,
+    "edited_call": "edit_parameter",
+    "editable_call": "parameter_editable",
+    "tooltip_key": "description",
+    "height": 250,
+    "description": "Optics and measurement: power P, wavelength, extinction epsilon, beam waists w_r and w_z, diffusion coefficient D, number of molecules N, offset b and background bg. The relaxation times tau_R of the scheme are results and cannot be edited.",
+    "fit_columns": false
+   }
+  ]
+ },
+ "fcs_toggles": {
+  "sections": [
+   {
+    "type": "toggle_row",
+    "items": [
+     {
+      "type": "toggle",
+      "attr": "normalize_fcs",
+      "label": "Normalize G(τ) to 1.0",
+      "call": "edited",
+      "description": "Scale both curves to G(0) = 1 to compare their shapes: the saturated curve is not only smaller but broader."
+     },
+     {
+      "type": "toggle",
+      "attr": "show_gaussian_fit",
+      "label": "1-component fit",
+      "call": "edited",
+      "description": "Overlay the best single-component 3D Gaussian fit of the saturated curve, what a standard FCS analysis would report."
+     }
+    ]
+   }
+  ]
+ },
+ "profile_toggles": {
+  "sections": [
+   {
+    "type": "panel",
+    "title": "",
+    "description": "Which curves the radial profile plot shows.",
+    "sections": [
+     {
+      "type": "toggle",
+      "attr": "show_power_profile",
+      "label": "Excitation k(r)",
+      "call": "edited",
+      "description": "Show the excitation rate profile across the focus, relative to its peak."
+     },
+     {
+      "type": "toggle",
+      "attr": "show_state_profiles",
+      "label": "State populations",
+      "call": "edited",
+      "description": "Show the fraction of molecules in every state as a function of the radial position."
+     },
+     {
+      "type": "toggle",
+      "attr": "show_fluorescence_profile",
+      "label": "Emission Σ Q·P",
+      "call": "edited",
+      "description": "Show the emission profile, the sum of the state brightnesses times their populations."
+     }
+    ]
+   }
+  ]
+ }
+}

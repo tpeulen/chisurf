@@ -63,7 +63,7 @@ calculator warns when a scheme does this.
 | --- | --- |
 | **Excitation λ** | Laser wavelength (nm). Sets the photon energy — the same power delivers 33 % more photons at 650 nm than at 488 nm. |
 | **Dye (MMFDB)** | Type-to-search over ~700 entries, matching any part of the name. Reads ε **at the excitation wavelength** off the stored absorption spectrum. |
-| **Laser Power** | Total average power at the objective back aperture (mW). The slider is **logarithmic** — drag it to watch the curve respond; results are cached, so revisiting a power is instant. |
+| **Laser Power** | Total average power at the objective back aperture (mW). Type a value, use the arrows, or drag the **logarithmic** *Power (log)* slider below it to watch the curve respond; results are cached, so revisiting a power is instant. |
 | **w_r, w_z** | 1/e² beam waists (nm) — calibration, from a dye standard at low power. |
 | **D** | Diffusion coefficient (µm²/s). |
 
@@ -93,14 +93,18 @@ is not an approximation — with no excitation there is no populated scheme.
   saturation.
 * **Volume(P)** / **τ_D(P)** — both quantities swept over power with your
   current power marked. Choose an operating power where these are still flat.
-* **State diagram** — drag nodes and rate badges, double-click a badge to edit;
-  📂 / 💾 load and save schemes as JSON.
-* **Info** — the summary above, in a dock of its own. It starts hidden; restore
-  it from the dock's right-click menu when you want it beside the curve.
+* **State diagram** — the scheme as circles and arrows (dark transitions
+  orange, excitation pink) with the rate on each arrow. Edit the rates by
+  double-clicking a cell of the *K_dark* / *K_exc* tables on the left;
+  **Load scheme** / **Save scheme** read and write schemes as JSON (a dropped
+  `.json` file is loaded too). The *Optics and measurement* table under the
+  diagram holds P, λ, ε, the beam waists, D, N, the offset and the background.
+* **Info** — the summary above: the peak focal rate, G(0), V_eff/V₀, the
+  relaxation times of the scheme and the apparent diffusion time.
 
-Every panel is a dock: drag one out, tab it with another, close it and restore
-it from the tab bar's menu. The three profile plots open as tabs in one column
-so each gets full width.
+The prediction tabs sit to the right of the controls; the bar between them
+drags. A plot zooms with the mouse wheel and pans by dragging; a double click
+frames all of it again.
 
 ---
 
@@ -116,8 +120,10 @@ so each gets full width.
    your diffusion term if you do not model it.
 4. **Fitting?** The same physics is the `FCS (kinetics)` model. Use *Full* mode
    when the amplitude matters — *Fast* mode omits the volume expansion.
-5. **Session persistence.** Settings, scheme and layout are saved to
-   `~/.chisurf/plugins/fcs_saturation_calc/settings.json` on close.
+5. **Session persistence.** **Save session** (and closing the window) writes
+   the settings and the scheme to
+   `~/.chisurf/plugins/fcs_saturation_calc/settings.json`; **Load session**
+   restores them, and the tool reads them again when it starts.
 
 ---
 
