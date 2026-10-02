@@ -1,0 +1,73 @@
+{
+  "_comment": "Guided tour of the emtk TTTR image browser. Targets are the spec's attr / action names and the windows the app registers; steps that need the user to act wait (await) and never press anything.",
+  "steps": [
+    {
+      "title": "One mosaic per file",
+      "text": "The browser lists the photon files of a folder and draws, for the selected file, one tile per detector of the detector setup: the intensity image of that detector's routing channels and micro-time windows, summed over the frames.",
+      "target": {}
+    },
+    {
+      "title": "Open a folder",
+      "text": "Press <b>Open folder</b> and choose a folder with photon files (PTU, HT3, PT3, SPC ...). You can also drop a folder on the window. Tick <b>Include subfolders</b> first to list the files below it too.",
+      "target": {
+        "name": "choose_folder"
+      },
+      "await": {
+        "hint": "Press <b>Open folder</b> and choose a folder."
+      }
+    },
+    {
+      "title": "Pick a file",
+      "text": "Click a row of the list to draw its mosaic. The filter box narrows the rows by any text, the header sorts, and <b>Rating filter</b> keeps the files that earned stars.",
+      "target": {
+        "name": "rows"
+      },
+      "await": {
+        "hint": "Click a file in the list."
+      }
+    },
+    {
+      "title": "Look at the image",
+      "text": "Scroll the mouse wheel over the mosaic to zoom, drag to pan. <b>Colormap</b>, <b>Gamma</b> and the levels only change how it is drawn, never the pixel values.",
+      "target": {
+        "name": "image"
+      }
+    },
+    {
+      "title": "Levels",
+      "text": "The histogram shows how the pixel values are spread. Drag one of its two lines to set the lowest and the highest displayed level; <b>Auto levels</b> switches off. Tick it again to use the mosaic's own range.",
+      "target": {
+        "name": "levels"
+      }
+    },
+    {
+      "title": "Rate and annotate",
+      "text": "Give the file 0 to 3 stars and write a note. Both are saved at once beside the data (.image_browser_meta.json) and the rating filter uses them.",
+      "target": {
+        "attr": "current_rating"
+      },
+      "await": {
+        "hint": "Click a star count under the list."
+      }
+    },
+    {
+      "title": "Select several files",
+      "text": "Tick <b>Multiple selection</b> to add rows to the selection with a click, or press <b>Select all</b>. <b>Copy raw files</b> and <b>TIFF</b> act on the selection.",
+      "target": {
+        "attr": "multi_select"
+      }
+    },
+    {
+      "title": "Export",
+      "text": "<b>Copy raw files</b> copies the selected sources, <b>TIFF</b> writes the intensity stack of every detector window, <b>DOCX</b> writes a Word report of the listed files with their ratings and notes.",
+      "target": {
+        "name": "export_tiff"
+      }
+    },
+    {
+      "title": "Detector setup",
+      "text": "The tiles follow the detector setup. Open the <b>Detector setup</b> tab to change the routing channels, PIE windows or reading routine, then press <b>Use setup and continue</b>: the file list and the mosaics follow.",
+      "target": {}
+    }
+  ]
+}

@@ -1,0 +1,293 @@
+{
+  "_comment": "TTTR Image Browser, emtk version. Three windows of gui/app.py: 'toolbar' (the Qt toolbar: Open, Clear, Caches, Export, TIFF, DOCX, Next, Subfolders, Help), 'files' (the Qt left column: rating filter, file list with filter box, rating, info, annotation) and 'display' (the controls of the Qt image dock: colormap, levels). The image, its level histogram and the annotation box are drawn by gui/app.py (a plot and a text editor cannot be a spec). Every attr / call / action is a method or attribute of gui/model.py.",
+  "title": "TTTR Image Browser",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Toolbar",
+      "window": "toolbar",
+      "wrap_indent": false,
+      "description": "Open a folder, clear it, export the selected files or a report, hand the image on, get help.",
+      "sections": [
+        {
+          "type": "panel",
+          "n_col": 2,
+          "description": "The actions of the Qt toolbar and its Subfolders check box.",
+          "sections": [
+            {
+              "type": "button_row",
+              "weight": 0,
+              "description": "The actions of the Qt toolbar.",
+              "buttons": [
+                {
+                  "action": "choose_folder",
+                  "label": "Open folder",
+                  "description": "Choose a folder with TTTR photon files; its files are listed on the left. You can also drop a folder on the window."
+                },
+                {
+                  "action": "clear",
+                  "label": "Clear",
+                  "description": "Clear the file list and the preview. No file, rating or annotation is changed or deleted."
+                },
+                {
+                  "action": "clear_caches",
+                  "label": "Clear caches",
+                  "description": "Delete the cached mosaics of the opened folder (the .tttr_image_cache folders, in memory and on disk). They are rebuilt when a file is selected."
+                },
+                {
+                  "action": "copy_files",
+                  "label": "Copy raw files",
+                  "description": "Copy the selected raw photon files into a folder you choose, keeping their paths relative to the opened folder. Select files first."
+                },
+                {
+                  "action": "export_tiff",
+                  "label": "TIFF",
+                  "description": "Write the intensity stack of every detector window of the selected files as a TIFF into a folder you choose. Select files first."
+                },
+                {
+                  "action": "export_docx",
+                  "label": "DOCX",
+                  "description": "Write a Word report of every listed file (name, rating, annotation and the mosaic) to the file you choose; it starts in the opened folder."
+                },
+                {
+                  "action": "next_step",
+                  "label": "Next → Intensity",
+                  "description": "Send the current image to the imaging pipeline and open its Intensity step. Only available when this browser runs inside Imaging Tools."
+                },
+                {
+                  "action": "show_help",
+                  "label": "Help",
+                  "description": "Explain the detector setup, the file list, the mosaic and the exports."
+                },
+                {
+                  "action": "start_guide",
+                  "label": "Guide",
+                  "description": "Walk through the browser step by step; each step waits for you to use the control it points at."
+                }
+              ]
+            },
+            {
+              "type": "toggle",
+              "attr": "recursive",
+              "label": "Include subfolders",
+              "call": "set_recursive",
+              "weight": 0,
+              "description": "Also list the files of the sub-folders of the opened folder. Switching it lists the folder again."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Files",
+      "window": "files",
+      "description": "The file list with its filters, rating and annotation.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "folder_text",
+          "label": "Folder",
+          "kind": "str",
+          "read_only": true,
+          "elide": "start",
+          "description": "The opened folder. Use Open folder, or drop a folder on the window."
+        },
+        {
+          "type": "choice",
+          "attr": "rating_filter",
+          "label": "Rating filter",
+          "options_source": "rating_filter_options",
+          "call": "set_rating_filter",
+          "width": 150,
+          "description": "Show all files, the files with at least 1, 2 or 3 stars, or only the unrated files."
+        },
+        {
+          "type": "panel",
+          "n_col": 2,
+          "description": "Select several files for the exports.",
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "multi_select",
+              "label": "Multiple selection",
+              "call": "set_multi_select",
+              "description": "A click on a row adds it to the selection or removes it (the Qt list used Ctrl and Shift). Copy raw files and TIFF act on the selection."
+            },
+            {
+              "type": "button_row",
+              "description": "Select all rows the filters show.",
+              "buttons": [
+                {
+                  "action": "select_all_files",
+                  "label": "Select all",
+                  "description": "Select every row the filters show, so that Copy raw files and TIFF act on all of them."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "Files",
+          "description": "One row per photon file: relative name, size and rating. Click a row to show its mosaic; the filter box above narrows the rows by any text in them; click a header to sort.",
+          "options": {
+            "source": "rows",
+            "row_key": "path",
+            "selected_call": "select_row",
+            "filter": true,
+            "expand": true,
+            "reserve": 135,
+            "min_column_width": 40,
+            "columns": [
+              {
+                "key": "name",
+                "title": "File",
+                "width": 150,
+                "description": "File name relative to the opened folder. Click the header to sort."
+              },
+              {
+                "key": "size_mb",
+                "title": "MB",
+                "width": 78,
+                "format": "%.1f",
+                "description": "File size in megabytes."
+              },
+              {
+                "key": "rating",
+                "title": "Rating",
+                "width": 60,
+                "description": "Stars given to the file (0 to 3). Set them with the Rating buttons under the list."
+              }
+            ]
+          }
+        },
+        {
+          "type": "choice",
+          "attr": "current_rating",
+          "label": "Rating",
+          "style": "radio",
+          "options": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "labels": [
+            "0",
+            "1",
+            "2",
+            "3"
+          ],
+          "description": "Stars for the file shown (0 clears the rating). Saved at once beside the data in .image_browser_meta.json; the filter above uses it."
+        },
+        {
+          "type": "info",
+          "source": "info_text",
+          "description": "How many files are listed in the opened folder and how many are selected."
+        },
+        {
+          "type": "custom",
+          "key": "annotation",
+          "title": "Annotation",
+          "description": "A note for the file shown. It is saved at once beside the data in .image_browser_meta.json."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Display",
+      "window": "display",
+      "wrap_indent": false,
+      "description": "How the mosaic is drawn; the pixel values and every export are unchanged.",
+      "sections": [
+        {
+          "type": "panel",
+          "n_col": 3,
+          "description": "Colour scale of the mosaic.",
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "colormap",
+              "label": "Colormap",
+              "options_source": "colormap_options",
+              "width": 110,
+              "description": "Colour scale of the mosaic (the Qt image dock offered the same seven)."
+            },
+            {
+              "type": "value",
+              "attr": "gamma",
+              "label": "Gamma",
+              "kind": "float",
+              "style": "spin",
+              "minimum": 0.1,
+              "maximum": 5.0,
+              "decimals": 2,
+              "step": 0.1,
+              "width": 90,
+              "description": "Lift dim structures with a gamma above one. Display only: the pixel values and the exports are unchanged."
+            },
+            {
+              "type": "toggle",
+              "attr": "auto_levels",
+              "label": "Auto levels",
+              "description": "Map the lowest and the highest pixel value of the mosaic to the ends of the colour scale. Switch it off to set the levels, or drag the two lines in the histogram."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "n_col": 4,
+          "description": "Display levels (0 to 255, the 8-bit mosaic), tile labels and the view.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "level_low",
+              "label": "Min",
+              "kind": "float",
+              "style": "spin",
+              "minimum": 0.0,
+              "maximum": 254.0,
+              "decimals": 0,
+              "step": 1.0,
+              "width": 90,
+              "description": "Lower display level (0 to 254). Needs Auto levels off."
+            },
+            {
+              "type": "value",
+              "attr": "level_high",
+              "label": "Max",
+              "kind": "float",
+              "style": "spin",
+              "minimum": 1.0,
+              "maximum": 255.0,
+              "decimals": 0,
+              "step": 1.0,
+              "width": 90,
+              "description": "Upper display level (1 to 255). Needs Auto levels off."
+            },
+            {
+              "type": "toggle",
+              "attr": "show_labels",
+              "label": "Tile labels",
+              "description": "Write each tile's detector, micro-time range and routing channels on the mosaic."
+            },
+            {
+              "type": "button_row",
+              "description": "Restore the full-mosaic view.",
+              "buttons": [
+                {
+                  "action": "reset_view",
+                  "label": "Reset view",
+                  "description": "Show the whole mosaic again after zooming (mouse wheel) or panning (drag)."
+                }
+              ],
+              "weight": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
