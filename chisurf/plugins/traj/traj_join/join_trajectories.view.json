@@ -1,5 +1,5 @@
 {
-  "_comment": "Declarative AutoForm layout for the Join-Trajectories tool. A single panel with the two trajectory pickers + save-joined button (custom section, H5 browse/drag-drop), the join-mode radio pair, the per-trajectory time-reversal toggles and the read chunk size, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former join_traj.ui.",
+  "_comment": "Declarative AutoForm layout for the Join-Trajectories tool. A single panel with the two trajectory pickers + save-joined button (custom section, H5 browse/drag-drop), the join-mode radio pair, the per-trajectory time-reversal toggles and the write block size, above a live log rendered by the built-in `info` section bound to the view-model's `log_html`. Replaces the former join_traj.ui.",
   "sections": [
     {
       "type": "panel",
@@ -23,13 +23,13 @@
           "type": "toggle",
           "attr": "reverse_traj_1",
           "label": "Reverse trajectory 1",
-          "description": "Reverse each read chunk of trajectory 1 in time before joining."
+          "description": "Reverse trajectory 1 in time (last frame first) before joining."
         },
         {
           "type": "toggle",
           "attr": "reverse_traj_2",
           "label": "Reverse trajectory 2",
-          "description": "Reverse each read chunk of trajectory 2 in time before joining."
+          "description": "Reverse trajectory 2 in time (last frame first) before joining."
         },
         {
           "type": "value",
@@ -38,7 +38,7 @@
           "kind": "int",
           "minimum": 1,
           "maximum": 9999999,
-          "description": "Trajectories are read piecewise to save memory; the chunk size sets the number of frames per read."
+          "description": "Frames written per block. The inputs are read whole; the block bounds the copy the join makes."
         },
         {
           "type": "info",

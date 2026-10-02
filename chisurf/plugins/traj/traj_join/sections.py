@@ -1,6 +1,6 @@
 """Custom AutoForm section for the Join-Trajectories tool.
 
-The two trajectory pickers (``…`` browse + drag-drop, H5 filter) and the
+The two trajectory pickers (``…`` browse + drag-drop, DCD filter) and the
 ``💾 Save joined…`` action button are a bespoke Qt widget registered here; the
 join mode, per-trajectory reverse flags, chunk size and log are plain built-in
 sections in ``join_trajectories.view.json``. The widget owns only Qt concerns
@@ -80,7 +80,7 @@ class _IoSection(QtWidgets.QWidget):
         self._save_btn = QtWidgets.QToolButton()
         self._save_btn.setText(f"{Glyphs.SAVE} Save joined…")
         self._save_btn.setToolTip(
-            "Join the two trajectories and write the result as a new H5 trajectory."
+            "Join the two trajectories and write the result as a new DCD trajectory."
         )
         self._save_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self._save_btn.clicked.connect(self._save_joined)
@@ -101,7 +101,7 @@ class _IoSection(QtWidgets.QWidget):
         row.addWidget(edit, 1)
         browse = QtWidgets.QToolButton()
         browse.setText("…")
-        browse.setToolTip("Open an H5 trajectory file.")
+        browse.setToolTip("Open a DCD trajectory.")
         browse.clicked.connect(on_browse)
         row.addWidget(browse)
         layout.addLayout(row)

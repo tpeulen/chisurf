@@ -1,0 +1,53 @@
+{
+  "_comment": "Guided tour for the Join-Trajectories tool. The file rows and the save button live inside the traj_join_io custom section, so they are targeted by name; join_mode, the reverse toggles and chunk_size are spec attrs. Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "Two trajectories, one file",
+      "text": "Append one trajectory after the other in time, or stack them side by side as one system. Choose both files and the topology, pick the mode, save.",
+      "target": {}
+    },
+    {
+      "title": "The first trajectory",
+      "text": "Its frames come first in time mode, its atoms first in atoms mode. Press <b>…</b> or drop a <code>.dcd</code>.",
+      "target": {"name": "trajectory_1"},
+      "await": {"hint": "Press <b>…</b> and pick the first trajectory."}
+    },
+    {
+      "title": "The second trajectory",
+      "text": "Appended after the first, or placed beside it.",
+      "target": {"name": "trajectory_2"},
+      "await": {"hint": "Press <b>…</b> and pick the second trajectory."}
+    },
+    {
+      "title": "The topology",
+      "text": "Names the atoms of both DCDs; a DCD stores coordinates only.",
+      "target": {"name": "topology"}
+    },
+    {
+      "title": "Time or atoms",
+      "text": "<b>By time</b> needs the same atoms in both; <b>by atoms</b> needs the same number of frames. A mismatch stops the join with a message rather than cutting the longer one short.",
+      "target": {"attr": "join_mode"}
+    },
+    {
+      "title": "Reverse",
+      "text": "Run a trajectory backwards, last frame first — joined with itself in time, a trajectory then goes there and back.",
+      "target": {"attr": "reverse_traj_2"}
+    },
+    {
+      "title": "Block size",
+      "text": "Frames written at a time. It bounds the copy the join makes; the result does not depend on it.",
+      "target": {"attr": "chunk_size"}
+    },
+    {
+      "title": "Save",
+      "text": "Pick the output DCD; the log says how many frames and atoms were written.",
+      "target": {"name": "save"},
+      "await": {"hint": "Press <b>💾 Save joined…</b>."}
+    },
+    {
+      "title": "What happened",
+      "text": "The log lists the mode, both inputs and what was written — or why the join stopped.<br/><br/>The <b>?</b> button has the details.",
+      "target": {"name": "log"}
+    }
+  ]
+}

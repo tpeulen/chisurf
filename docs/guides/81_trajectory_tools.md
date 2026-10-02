@@ -106,14 +106,12 @@ Concatenates two trajectories.
   (same number of frames). In atoms mode the output has twice the atoms
   (2586 for the example), so a topology for the combined system must be
   supplied separately when the file is read back.
-* **Reverse trajectory 1/2**: reverses each chunk in time.
-* **Chunk size**: frames read at a time.
+* **Reverse trajectory 1/2**: runs that trajectory backwards (last frame first).
+* **Chunk size**: frames written per block; the result does not depend on it.
 
-Keep **Chunk size** at least as large as the longer trajectory. Joining in time
-alternates chunks rather than appending whole trajectories. With chunk 100, the
-output is A₀…₉₉, B₀…₉₉, A₁₀₀…₁₉₉, … (see [Known defects](#known-defects)).
-The same applies to *Reverse*, which only reverses whole trajectories when one
-chunk holds them.
+A mismatch (different atoms in time mode, different frame counts in atoms
+mode) stops the join with a message rather than truncating the longer
+trajectory. The log reports the frames and atoms written.
 
 ## Remove Clashed
 
@@ -331,10 +329,6 @@ Measured on the example data. File references are to the current tree.
   run ends with "Wrote 1 frames of 1 atoms".
 * **Last frame is exclusive**, so First frame > 0 with Last frame −1 drops the
   final frame (`slice(first, -1, stride)`).
-* **Join interleaves chunks.** In time mode, trajectory 1 and 2 are read
-  chunk by chunk and written as A-chunk, B-chunk, A-chunk, …. With chunk 100
-  on two 894-frame files, frame 100 of the output is frame 0 of trajectory 2.
-  The two iterators are also `zip`ped, so the longer trajectory is truncated.
 * **The FRET panel has no topology row.** Picking a DCD there raises
   `'…dcd' stores coordinates only; pass top=`. The view model has
   `set_topology`, but the `fret_traj_io` section does not expose it.

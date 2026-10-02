@@ -14,7 +14,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.traj.traj_join.widget:JoinTrajectoriesWidget"
+    "gui": "chisurf.plugins.traj.traj_join.widget:JoinTrajectoriesWidget",
+    "emtk": "chisurf.plugins.traj.traj_join.app:make_app"
   },
   "menu_hidden": true
 }

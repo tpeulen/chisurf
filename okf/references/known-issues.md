@@ -5929,8 +5929,10 @@ Open:
    dialog's "don't show" is never saved. No macOS HYDROPRO binary exists.
 7. **Trajectory tools:** Convert split mode ignores stride and crashes with a
    frame range (`chunk=None`); folder mode loads the folder itself; "Last
-   frame" exclusive. Join interleaves chunks A,B,A… and truncates to the
-   shorter trajectory. FRET tab has no topology row, so a DCD cannot be opened;
+   frame" exclusive. ~~Join interleaves chunks A,B,A… and truncates to the
+   shorter trajectory~~ — fixed 2026-10-02 in the traj_join upgrade (whole
+   trajectories appended, whole-trajectory reversal, a mismatch raises). FRET tab
+   has no topology row, so a DCD cannot be opened;
    its dipole selectors overlap. 6/9 energy potentials fail on a plain
    `Structure` (no `l_res`/`dist_ca`), Ramachandran returns 0, H-Bond is the
    default. `trajectory_data` docstrings say nm but data are Å, and

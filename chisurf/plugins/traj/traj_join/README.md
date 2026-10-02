@@ -4,10 +4,10 @@ This plugin provides functionality to combine two molecular dynamics trajectory 
 
 ## Features
 
-- Support for joining two H5 trajectory files
-- Two join modes: 'time' (concatenate frames) and 'atoms' (stack atoms)
-- Options to reverse the order of either trajectory
-- Chunk size setting for memory management
+- Joins two DCD trajectories (with the PDB topology that names their atoms)
+- Two join modes: 'time' (all frames of 1, then all of 2) and 'atoms' (frame i of both side by side)
+- Reverse either trajectory as a whole (last frame first)
+- A mismatch (atoms in time mode, frame counts in atoms mode) stops the join instead of truncating
 
 ## Overview
 
@@ -25,28 +25,18 @@ simulation conditions within a unified framework.
 
 ## Requirements
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - mdtraj (for trajectory handling)
-  - tables (for HDF5 file handling)
-  - chisurf core modules
+- ChiSurf's trajectory readers and DCD writer (`chisurf.core.structure.trajectory_data`,
+  `chisurf.core.fio.trajectory`); no Qt for the emtk window (`app.py`), Qt only for the legacy
+  AutoForm widget (`widget.py`).
 
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Structure > Join Trajectories
-2. Load trajectory files:
-   - Click the "..." button next to "Trajectory 1" to select the first input trajectory file
-   - Click the "..." button next to "Trajectory 2" to select the second input trajectory file
-   - Both files must be in H5 format
-3. Configure joining options:
-   - Select the join mode: "time" (concatenate frames) or "atoms" (stack atoms)
-   - Check the box next to a trajectory to reverse its order (optional)
-   - Set the chunk size for memory management
-4. Perform the joining:
-   - Click "join" to begin the process
-   - Select a save location for the joined trajectory
-   - The joined trajectory will be saved in H5 format
+1. Open *Structure > Trajectory > Join* (or the *Join* panel of Traj Tools).
+2. Choose *Trajectory 1*, *Trajectory 2* (**…**, or drop `.dcd` files: each fills an empty row) and the topology.
+3. Pick the join mode, tick *Reverse* for a trajectory to run backwards, set the block size.
+4. Press **💾 Save joined…** and pick the output `.dcd`; the log says how many frames and atoms were written.
+
+**📖 Guide** walks through these steps; **❓ Help** has the details.
 
 ## Applications
 

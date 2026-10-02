@@ -16,18 +16,21 @@ multiple segments or for combining related simulations into a single dataset.
 # Plugin brand icon (unified emoji set)
 icon = "🔗"
 
-import sys
-
-from chisurf.plugins.traj.traj_join.widget import JoinTrajectoriesWidget
-
 # Define the plugin name - this will appear in the Plugins menu
 name = "Structure:Trajectory:Join"
+
+
+def __getattr__(attribute):
+    if attribute == "JoinTrajectoriesWidget":
+        from chisurf.plugins.traj.traj_join.widget import JoinTrajectoriesWidget
+        return JoinTrajectoriesWidget
+    raise AttributeError(attribute)
 
 
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed
 if __name__ == "plugin":
     # Create an instance of the JoinTrajectoriesWidget class
-    window = JoinTrajectoriesWidget()
+    window = __getattr__("JoinTrajectoriesWidget")()
     # Show the window
     window.show()

@@ -81,7 +81,8 @@ class SaveAction:
     ``run(model, path)`` does the work; ``missing(model)`` names what has to be
     chosen first (``None`` when the action can run); ``suggest(model)`` is the
     file name the save dialog starts with; ``failure`` heads the message a
-    failed run leaves in the window (the Qt tool's error-box title).
+    failed run leaves in the window (the Qt tool's error-box title) and
+    ``cancelled`` is what a closed save dialog logs.
     """
 
     key: str
@@ -95,6 +96,7 @@ class SaveAction:
     )
     suggest: Callable[[Any], str] = lambda model: ""
     failure: str = "Save failed"
+    cancelled: str = "Save cancelled"
 
 
 def trajectory_field(**overrides) -> PathField:
@@ -229,11 +231,11 @@ class TrajToolApp(TourTarget, ImApp):
         if missing:
             self.status = missing
             return
-        source = self.model.trajectory_filename
+        source = getattr(self.model, self.paths[0].attr) or ""     # the first row is the source
         self._open_dialog(FileDialog(self.action.dialog_title, mode="save", filters=self.action.filters,
                                      directory=os.path.dirname(source) or None,
                                      filename=self.action.suggest(self.model)),
-                          self.save, on_cancel=lambda: self.model.append_log("Save cancelled"))
+                          self.save, on_cancel=lambda: self.model.append_log(self.action.cancelled))
 
     def save(self, target: str) -> None:
         """Run the action on *target* on the worker; the result lands in the log and status."""
