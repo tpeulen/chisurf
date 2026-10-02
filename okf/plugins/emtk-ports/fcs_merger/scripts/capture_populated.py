@@ -52,7 +52,7 @@ else:
         a.load_folder(FOLDER)
         a.job.future.result(timeout=60)
         a.job.poll()
-        a.use[2] = False
+        a.use = [i != 2 for i in range(len(a.use))]
         a.selected = 1
         for _ in range(4):
             a.draw(RecordingPainter(), 0, 0, *size)

@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- 2026-10-02: fcs_merger (audit-all row 51) upgraded. The Qt page's own `.cor` reader had lost a factor 2000 in the channel count rates: every `.cor` folder showed 0.00 kHz and merged 0.00075 instead of 1.503 kHz on BH_SPC132.spc chunks. It now uses the core reader and writer, with guardrail `test_qt_cor_rates.py`. The emtk app is a Qt-free `MergerModel` and `fcs_merger_emtk.view.json` with the curves as a `data_table`. Rows, merge and saved file (byte-identical) equal the Qt page's on six real FCS repeats; 25 passed, breakage 14/14 twice; guide 75 gains the standalone window. Report: `okf/plugins/emtk-ports/fcs_merger/REPORT.md`.
+
 - **img_frc emtk app at parity** (imaging family, port-incomplete row 84): the stream's page (message "No image loaded." after a
   successful run, an invisible resolution marker, no halves or ring table) becomes the Qt tool's settings, the resolution
   summary, the curve with its crossing, both halves and a sortable ring table; choosing a file reads its channels and does not

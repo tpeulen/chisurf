@@ -1,0 +1,106 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.0001",
+    "0.001",
+    "0.01",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1e-05",
+    "1e-06",
+    "addtochisurf",
+    "clear",
+    "cra",
+    "crb",
+    "curvesandtarget",
+    "dropafolderofcorrelationcurves",
+    "droporopenafolderofcorrelationcurves.",
+    "duration",
+    "fcs",
+    "fcsmerged",
+    "file",
+    "folder",
+    "g(τ)",
+    "guide",
+    "help",
+    "lagtime(s)",
+    "openfolder",
+    "save",
+    "saveas",
+    "target",
+    "use"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📂 Open folder…",
+      "id": "📂 Open folder…##request_open",
+      "tooltip": "Choose a folder of .cor (or legacy .json.gz) correlation curves; dropping the folder on the window does the same."
+    },
+    {
+      "kind": "button",
+      "label": "🧹 Clear",
+      "id": "🧹 Clear##request_clear",
+      "tooltip": "Remove every curve and the merge (the files stay on disk)."
+    },
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide##request_guide",
+      "tooltip": "Walk through screening the repeats and saving the merge."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help##request_help",
+      "tooltip": "Why repeats are screened before averaging, and what the merge assumes."
+    },
+    {
+      "kind": "input_text",
+      "label": "folder",
+      "id": "##folder",
+      "tooltip": "The folder whose curves are listed; type a path and press Enter, or drop a folder."
+    },
+    {
+      "kind": "input_text",
+      "label": "output",
+      "id": "##output",
+      "tooltip": "The merged curve's file (Kristine .cor: lag, G, duration and count rate, standard error); the folder's name beside the folder by default."
+    },
+    {
+      "kind": "button",
+      "label": "💾 Save",
+      "id": "💾 Save##request_save",
+      "tooltip": "Write the merge of the ticked curves to the target file."
+    },
+    {
+      "kind": "button",
+      "label": "Save as…",
+      "id": "Save as…##request_save_as",
+      "tooltip": "Choose another target file and write the merge there."
+    },
+    {
+      "kind": "button",
+      "label": "🚀 Add to ChiSurf",
+      "id": "🚀 Add to ChiSurf##request_add",
+      "tooltip": "Save the merge and add it to ChiSurf as an FCS dataset (Seidel Kristine)."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

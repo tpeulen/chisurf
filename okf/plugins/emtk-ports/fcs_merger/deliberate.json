@@ -1,0 +1,12 @@
+{
+  "?": "the Qt toolbar help button: the same help as ❓ Help",
+  "back": "the QWizard frame around the single page (Back / Next / Commit / Finish / Cancel and its title 'Correlation merging'): one page has nothing to step through; the window title says what it is",
+  "cancel": "the QWizard frame around the single page (Back / Next / Commit / Finish / Cancel and its title 'Correlation merging'): one page has nothing to step through; the window title says what it is",
+  "commit": "the QWizard frame around the single page (Back / Next / Commit / Finish / Cancel and its title 'Correlation merging'): one page has nothing to step through; the window title says what it is",
+  "finish": "the QWizard frame around the single page (Back / Next / Commit / Finish / Cancel and its title 'Correlation merging'): one page has nothing to step through; the window title says what it is",
+  "next>": "the QWizard frame around the single page (Back / Next / Commit / Finish / Cancel and its title 'Correlation merging'): one page has nothing to step through; the window title says what it is",
+  "correlationmerging": "the QWizard frame around the single page (Back / Next / Commit / Finish / Cancel and its title 'Correlation merging'): one page has nothing to step through; the window title says what it is",
+  "cra(khz)": "renamed: the unit moved into the column tooltip so the five columns fit a narrow dock (CR A, CR B, Duration; kHz and s in the tooltips)",
+  "crb(khz)": "renamed: the unit moved into the column tooltip so the five columns fit a narrow dock (CR A, CR B, Duration; kHz and s in the tooltips)",
+  "duration(s)": "renamed: the unit moved into the column tooltip so the five columns fit a narrow dock (CR A, CR B, Duration; kHz and s in the tooltips)"
+}
