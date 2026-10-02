@@ -1,0 +1,51 @@
+{
+  "controls": [
+    "?",
+    "clearoutput",
+    "configfile",
+    "decayfile",
+    "edit",
+    "findoptimalnumberoflifetimes",
+    "fit",
+    "guide",
+    "irffile",
+    "load",
+    "maxlifetimestotry",
+    "numberoflifetimes",
+    "outputdirectory",
+    "probabilitythreshold",
+    "select",
+    "stopprocess",
+    "verboseoutput"
+  ],
+  "labels": [
+    "Config File:",
+    "Decay File:",
+    "IRF File:",
+    "Max Lifetimes to Try:",
+    "Number of Lifetimes:",
+    "Output Directory:",
+    "Probability Threshold:"
+  ],
+  "buttons": [
+    "?",
+    "Clear Output",
+    "Edit...",
+    "Find Optimal Number of Lifetimes",
+    "Fit",
+    "Guide",
+    "Load...",
+    "Select...",
+    "Stop Process",
+    "Verbose Output"
+  ],
+  "line_edits": 7,
+  "combos": 0,
+  "spin_boxes": 3,
+  "tables": 0,
+  "entrypoint": "HEAD:chisurf.plugins.fluorescence_decay.lltf.lltf_gui:LLTFGUIWizard (+HEAD no overlays)",
+  "size": [
+    1200,
+    800
+  ]
+}

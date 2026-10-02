@@ -1,0 +1,354 @@
+"""Native LLTF analysis, editable YAML settings, streaming logs and plots."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+from emtk import im, implot
+from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
+from emtk.docking import DockManager, Region, Split
+from emtk.file_dialog import FileDialog
+
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
+
+from .model import LLTFModel
+
+
+class LLTFApp(ImApp):
+    def __init__(self, model=None):
+        self.model = model or LLTFModel()
+        self.tab = "Information"
+        self.pending_tab = "Information"
+        self.config_open = False
+        self.config_window = DialogWindow("LLTF configuration", size=(820, 620))
+        self.dialog = None
+        self.file_window = None
+        self.file_action = ""
+        self.item_rects = {}
+        self.arrays = None
+        resources = Path(__file__).parent.parent
+        self.help_window = EmTkHelpWindow(
+            title="Lazy Lifetime Analysis — Help", resource=resources / "help.md", owner=self
+        )
+        self.tour = EmTkGuidedTour(
+            steps=resources / "guide.json",
+            get_target_rect=lambda key: self.item_rects.get(key),
+            owner=self,
+            wait_for_controls=True,
+            on_step_change=self.reveal_step,
+        )
+        self.docks = DockManager(
+            Split("h", 0.34, Region("inputs"), Split("v", 0.35, Region("details"), Region("plots")))
+        )
+        self.docks.add_window(
+            "inputs", "LLTF inputs and options", self.controls, dock="inputs", closable=False
+        )
+        self.docks.add_window(
+            "details",
+            "Information, output and results",
+            self.details,
+            dock="details",
+            closable=False,
+        )
+        self.docks.add_window(
+            "plots", "Fit and residuals", self.plots, dock="plots", closable=False
+        )
+        super().__init__(self.render, continuous=False)
+
+    def reveal_step(self, index, step):
+        key = EmTkGuidedTour._target_key(step.get("target"))
+        if key == "Results":
+            self.pending_tab = "Results"
+
+    def error(self, action):
+        try:
+            return action()
+        except Exception as exc:
+            self.model.status = f"Error: {exc}"
+            return None
+
+    def choose(self, action):
+        self.file_action = action
+        mode = (
+            "folder"
+            if action == "output_dir"
+            else "save"
+            if action in ("save_config", "save_results")
+            else "open"
+        )
+        title = {
+            "decay_file": "Load decay",
+            "irf_file": "Load IRF",
+            "config_file": "Load configuration",
+            "output_dir": "Output directory",
+            "save_config": "Save configuration",
+            "save_results": "Export fit results",
+        }[action]
+        filename = (
+            "lltf-config.yml"
+            if action == "save_config"
+            else "lltf-results.json"
+            if action == "save_results"
+            else ""
+        )
+        filters = (
+            "YAML (*.yml *.yaml);;All files (*)"
+            if "config" in action
+            else "JSON (*.json)"
+            if action == "save_results"
+            else "TCSPC data (*.dat *.txt *.csv);;All files (*)"
+        )
+        import chisurf
+
+        directory = str(getattr(chisurf, "working_path", "") or "") or None
+        self.dialog = FileDialog(
+            title, mode=mode, filename=filename, filters=filters, directory=directory
+        )
+        self.file_window = DialogWindow(title, size=(760, 540))
+
+    def start(self):
+        self.model.start()
+        self.pending_tab = "Analysis Output"
+        self.arrays = None
+        self.tour.notify_used("Fit")
+
+    def controls(self, box):
+        m = self.model
+        im.begin_disabled(m.running)
+        for attr, label, tip in [
+            ("decay_file", "Decay file", "Measured two-column time/counts decay file."),
+            ("irf_file", "IRF file", "Measured two-column instrument response."),
+            (
+                "config_file",
+                "Configuration file",
+                "Optional LLTF YAML configuration; the editable buffer is used by the next run.",
+            ),
+            (
+                "output_dir",
+                "Output directory",
+                "Directory for fit JSON, parameter tables and other CLI exports.",
+            ),
+        ]:
+            changed, value = im.input_text(label, getattr(m, attr))
+            im.set_item_tooltip(tip)
+            self.item_rects[attr] = im.get_item_rect()
+            if changed:
+                setattr(m, attr, value)
+                if attr == "config_file":
+                    m.config_dirty = False
+            if im.button("Browse##" + attr):
+                self.choose(attr)
+            im.set_item_tooltip("Choose " + label.lower() + " from disk.")
+            if attr == "decay_file":
+                self.item_rects["Load..."] = im.get_item_rect()
+        if im.button("Edit configuration"):
+            if m.config_file and Path(m.config_file).is_file() and not m.config_dirty:
+                self.error(lambda: m.load_config(m.config_file))
+            self.config_open = True
+        im.set_item_tooltip(
+            "Edit every LLTF setting in a native YAML editor, including background, shift, fit range and pile-up."
+        )
+        self.item_rects["Edit..."] = im.get_item_rect()
+        _, m.find_optimal = im.checkbox("Find optimal lifetime count", m.find_optimal)
+        im.set_item_tooltip("Search component counts using the F-test probability threshold.")
+        self.item_rects["Find Optimal"] = im.get_item_rect()
+        im.begin_disabled(m.find_optimal)
+        _, m.n_lifetimes = bounded_int("Number of lifetimes", m.n_lifetimes, minimum=1, maximum=6)
+        im.set_item_tooltip("Fixed exponential component count when automatic selection is off.")
+        self.item_rects["n_lifetimes"] = im.get_item_rect()
+        im.end_disabled()
+        im.begin_disabled(not m.find_optimal)
+        _, m.max_lifetimes = bounded_int("Maximum lifetimes", m.max_lifetimes, minimum=2, maximum=6)
+        im.set_item_tooltip("Largest component count to consider in automatic selection.")
+        _, m.prob_threshold = bounded_float(
+            "Probability threshold", m.prob_threshold, minimum=0.0, maximum=1.0, step=0.01
+        )
+        im.set_item_tooltip(
+            "F-test confidence required to justify adding another lifetime component."
+        )
+        im.end_disabled()
+        _, m.verbose = im.checkbox("Verbose output", m.verbose)
+        im.set_item_tooltip("Display detailed subprocess fitting and diagnostic messages.")
+        im.begin_disabled(not (Path(m.decay_file).is_file() and Path(m.irf_file).is_file()))
+        if im.button("Fit"):
+            self.error(self.start)
+        im.set_item_tooltip(
+            "Run the original LLTF CLI in a background process with the selected options."
+        )
+        self.item_rects["Fit"] = im.get_item_rect()
+        im.end_disabled()
+        im.end_disabled()
+        if im.button("Stop analysis"):
+            self.model.stop()
+        im.set_item_tooltip("Terminate the owned LLTF process and retain its captured output.")
+        if im.button("Help"):
+            self.help_window.show()
+        im.set_item_tooltip(
+            "Explain model selection, backgrounds, shifts and interpretation of fit residuals."
+        )
+        im.same_line()
+        if im.button("Guide"):
+            self.tour.start()
+        im.set_item_tooltip("Walk through loading inputs and running a real lifetime analysis.")
+        im.text_wrapped(m.status)
+
+    def details(self, box):
+        m = self.model
+        if im.begin_tab_bar("lltf_tabs"):
+            for tab in ("Information", "Analysis Output", "Results"):
+                flags = im.TabItemFlags.SET_SELECTED if self.pending_tab == tab else 0
+                active = im.begin_tab_item(tab, flags=flags)
+                self.item_rects[tab] = im.get_item_rect()
+                if active:
+                    self.tab = tab
+                    if tab == "Information":
+                        im.text_wrapped(
+                            "Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model."
+                        )
+                    elif tab == "Analysis Output":
+                        if im.button("Clear output"):
+                            m.clear_output()
+                        im.set_item_tooltip(
+                            "Clear displayed logs without interrupting the analysis."
+                        )
+                        im.text_unformatted("\n".join(m.output))
+                    else:
+                        if m.result is None:
+                            im.text_wrapped("Run an analysis to obtain fit results.")
+                        else:
+                            for index, row in enumerate(m.result.get("lifetimes", [])):
+                                im.text(
+                                    f"Component {index + 1}: amplitude {row['amplitude']:.6g}; lifetime {row['lifetime']:.6g} ns"
+                                )
+                            for key in ("chi_square", "reduced_chi_square", "n_lifetimes"):
+                                if key in m.result:
+                                    im.text(f"{key.replace('_', ' ')}: {m.result[key]}")
+                            if im.button("Export result JSON"):
+                                self.choose("save_results")
+                            im.set_item_tooltip(
+                                "Copy the complete fit result and model arrays to a JSON file."
+                            )
+                    im.end_tab_item()
+                    im.set_item_tooltip(
+                        {
+                            "Information": "Show workflow guidance.",
+                            "Analysis Output": "Inspect live stdout and stderr from the fitting process.",
+                            "Results": "Inspect fitted lifetimes, fit statistics and exports.",
+                        }[tab]
+                    )
+            im.end_tab_bar()
+            self.pending_tab = None
+
+    def plots(self, box):
+        if self.arrays is None:
+            im.text_wrapped("Fit plots appear after a successful analysis.")
+            return
+        a = self.arrays
+        if im.begin_tab_bar("lltf_plot_tabs"):
+            for title in ("Decay and fit", "Weighted residuals"):
+                if im.begin_tab_item(title):
+                    if implot.begin_plot(title, size=(-1.0, -1.0)):
+                        implot.setup_axes(
+                            "Time (ns)",
+                            "Counts" if title == "Decay and fit" else "Weighted residual",
+                        )
+                        if title == "Decay and fit":
+                            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+                            for name, x, y in [
+                                ("Data", a["time"], a["decay"]),
+                                ("Fit", a["model_time"], a["fit"]),
+                                ("IRF (scaled)", a["irf_time"], a["irf"]),
+                            ]:
+                                implot.plot_line(name, x, np.where(np.asarray(y) > 0, y, np.nan))
+                        else:
+                            implot.plot_line("Weighted residuals", a["model_time"], a["residuals"])
+                        for index, value in enumerate(a["range"]):
+                            implot.drag_line_x(
+                                index,
+                                value,
+                                flags=implot.DRAG_TOOL_FLAGS_NO_INPUTS
+                                | implot.DRAG_TOOL_FLAGS_NO_FIT,
+                            )
+                        implot.end_plot()
+                    im.end_tab_item()
+                    im.set_item_tooltip("Show " + title.lower() + " and the analysis range.")
+            im.end_tab_bar()
+
+    def restore_settings(self, settings):
+        self.model.restore_preferences(settings)
+
+    def export_settings(self):
+        return self.model.export_preferences()
+
+    def close(self):
+        self.model.close()
+
+    def animating(self):
+        return self.model.process is not None or super().animating()
+
+    def render(self):
+        self.item_rects.clear()
+        if self.model.poll() and self.model.result is not None:
+            self.arrays = self.error(self.model.plot_arrays)
+            self.pending_tab = "Results"
+        vp = im.get_main_viewport()
+        box = (*vp.pos, *vp.size)
+        im.begin_disabled(self.dialog is not None or self.config_open)
+        self.docks.draw(box)
+        im.end_disabled()
+        if self.config_open:
+            pressed = self.config_window.begin(box)
+            changed, text = im.input_text_multiline(
+                "YAML##lltf", self.model.config_text, size=(-1.0, 420.0)
+            )
+            im.set_item_tooltip(
+                "Edit the complete LLTF YAML configuration; the next run uses this buffer."
+            )
+            if changed:
+                self.model.config_text = text
+                self.model.config_dirty = True
+            if im.button("Save configuration"):
+                self.choose("save_config")
+            im.set_item_tooltip("Save the edited YAML configuration to a chosen file.")
+            im.same_line()
+            if im.button("Close editor") or pressed == "close":
+                self.config_open = False
+            im.set_item_tooltip("Close the editor; unsaved edits remain available to the next run.")
+            self.config_window.end()
+        if self.dialog is not None:
+            pressed = self.file_window.begin(box)
+            result = self.dialog.draw()
+            if result:
+                action = self.file_action
+                self.dialog = None
+                if action == "config_file":
+                    self.error(lambda: self.model.load_config(result[0]))
+                elif action == "save_config":
+                    self.error(lambda: self.model.save_config(result[0]))
+                elif action == "save_results":
+                    self.error(
+                        lambda: Path(result[0]).write_text(json.dumps(self.model.result, indent=2))
+                    )
+                else:
+                    setattr(self.model, action, str(result[0]))
+                    if action in ("decay_file", "irf_file", "output_dir"):
+                        import chisurf
+
+                        chisurf.working_path = (
+                            Path(result[0]) if action == "output_dir" else Path(result[0]).parent
+                        )
+                    if action == "decay_file":
+                        self.tour.notify_used("Load...")
+            elif result is False or pressed == "close":
+                self.dialog = None
+            self.file_window.end()
+        self.help_window.draw(box)
+        self.tour.draw(*vp.size)
+
+
+def make_app():
+    return LLTFApp()
