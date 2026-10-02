@@ -1,0 +1,111 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "1",
+    "1.000",
+    "2.60",
+    "52.0",
+    "[045048]ready",
+    "choosethetrajectoryanditstopologytopicktheatoms.",
+    "dipole(κ2)",
+    "dipoleatoms",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "log",
+    "parameters",
+    "pdbnamingtheatoms—requiredfordcd",
+    "process",
+    "processtrajectory",
+    "r0[ang]",
+    "reference",
+    "stride",
+    "t-step[ns]",
+    "topology",
+    "trajectory",
+    "trajectorytofret",
+    "τ0[ns]"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What the tool does, what it writes, and the known limits."
+    },
+    {
+      "kind": "input_text",
+      "label": "trajectory",
+      "id": "##trajectory",
+      "tooltip": "The trajectory to analyse. Drop a .dcd here or press … to pick one."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##trajectory.browse",
+      "tooltip": "Open a DCD trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "topology",
+      "id": "##topology",
+      "tooltip": "The structure that names the atoms of the DCD; the atom pickers list its atoms."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##topology.browse",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them."
+    },
+    {
+      "kind": "input_text",
+      "label": "stride",
+      "id": "##stride",
+      "tooltip": "Read every Nth frame of the source trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "forster_radius",
+      "id": "##forster_radius",
+      "tooltip": "Foerster radius of the donor-acceptor dye pair, in Angstrom."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau0",
+      "id": "##tau0",
+      "tooltip": "Fluorescence lifetime of the donor in the absence of FRET, in nanoseconds."
+    },
+    {
+      "kind": "input_text",
+      "label": "t_step",
+      "id": "##t_step",
+      "tooltip": "Time between successive trajectory frames, in nanoseconds."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Dipole (κ2)",
+      "id": "Dipole (κ2)##dipoles",
+      "tooltip": "If enabled, uses two atoms per fluorophore and computes the orientation factor kappa2 per frame; otherwise only the first atom of each dye defines the distance and the fixed isotropic kappa2 = 2/3 is used."
+    },
+    {
+      "kind": "button",
+      "label": "▶ Process trajectory",
+      "id": "▶ Process trajectory",
+      "tooltip": "Compute the FRET observables and save them to a CSV file."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

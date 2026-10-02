@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **traj_fret emtk app at parity; a topology row on both hosts** (EMTK-1, upgrade row 45): the Qt tool could not open a DCD
+  (only `.h5` offered, no topology row); both hosts now take the trajectory and topology in either order, and the emtk app
+  picks dye atoms by chain → residue → atom. Trap found: an attribute named `_index` shadows `ImApp._index(button)` and kills
+  every pointer press; and Qt fixtures that skip on any subprocess failure hide a broken Qt tool.
+  [report](plugins/emtk-ports/traj_fret/REPORT.md).
+
 - **lltf emtk app at parity; the LLTF CLI honours `-n` and shows no figures** (EMTK-1, upgrade row 44): `-n` was ignored
   under a config with `find_optimal: true` (the shipped example: 2 asked, 3 fitted), and the search's figures called
   `plt.show()`, blocking a fit started from the Qt wizard (or hanging it headless). Spec-drawn inputs/options and results

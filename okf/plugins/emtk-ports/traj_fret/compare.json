@@ -1,0 +1,32 @@
+{
+  "plugin": "traj_fret",
+  "explained": {
+    "atom": "the Qt PDBSelector caption \"Atom\": the emtk pickers carry the same Chain / Residue / Atom captions above their combos once a topology is loaded (after_populated_*); the parity inventory runs the app empty, where no picker is drawn",
+    "chain": "the Qt PDBSelector caption \"Chain\": the emtk pickers carry the same Chain / Residue / Atom captions above their combos once a topology is loaded (after_populated_*); the parity inventory runs the app empty, where no picker is drawn",
+    "residue": "the Qt PDBSelector caption \"Residue\": the emtk pickers carry the same Chain / Residue / Atom captions above their combos once a topology is loaded (after_populated_*); the parity inventory runs the app empty, where no picker is drawn"
+  },
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "1",
+    "1.000",
+    "2.60",
+    "52.0",
+    "[045048]ready",
+    "choosethetrajectoryanditstopologytopicktheatoms.",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "log",
+    "pdbnamingtheatoms—requiredfordcd",
+    "topology",
+    "trajectorytofret"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 14,
+  "after_controls": 24
+}

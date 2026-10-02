@@ -58,3 +58,28 @@ elif which == "emtk":
         emtk_screenshot(a, out / f"{prefix}_{size[0]}x{size[1]}.png", size)
         print("EMTK", result.shape, result[:2].round(3).tolist())
         getattr(a, "close", lambda: None)()
+elif which == "emtk-states":
+    # the output dialog, the guide's donor step, the help page
+    from emtk.testing import RecordingPainter
+    from test.gui.emtk_port_parity import emtk_screenshot
+    from chisurf.plugins.traj.fret_trajectory.app import FretTrajectoryApp
+
+    a = FretTrajectoryApp()
+    m = a.model
+    m.set_trajectory(TRAJ); m.set_topology(TOP); settings(m)
+    m.donor, m.acceptor = DONOR, ACCEPTOR
+    a.begin_save()
+    a.draw(RecordingPainter(), 0, 0, 1200, 800)
+    emtk_screenshot(a, out / f"{prefix}_dialog_1200x800.png", (1200, 800))
+    a.dialog = None
+    step = next(i for i, s in enumerate(a.tour.steps) if s.get("target", {}).get("name") == "donor")
+    a.tour.start(step)
+    for _ in range(2):
+        a.draw(RecordingPainter(), 0, 0, 800, 600)
+    emtk_screenshot(a, out / f"{prefix}_guide_800x600.png", (800, 600))
+    a.tour.stop()
+    a.show_help()
+    for _ in range(2):
+        a.draw(RecordingPainter(), 0, 0, 1200, 800)
+    emtk_screenshot(a, out / f"{prefix}_help_1200x800.png", (1200, 800))
+    a.close()

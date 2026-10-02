@@ -1,0 +1,5 @@
+{
+  "chain": "the Qt PDBSelector caption \"Chain\": the emtk pickers carry the same Chain / Residue / Atom captions above their combos once a topology is loaded (after_populated_*); the parity inventory runs the app empty, where no picker is drawn",
+  "residue": "the Qt PDBSelector caption \"Residue\": the emtk pickers carry the same Chain / Residue / Atom captions above their combos once a topology is loaded (after_populated_*); the parity inventory runs the app empty, where no picker is drawn",
+  "atom": "the Qt PDBSelector caption \"Atom\": the emtk pickers carry the same Chain / Residue / Atom captions above their combos once a topology is loaded (after_populated_*); the parity inventory runs the app empty, where no picker is drawn"
+}
