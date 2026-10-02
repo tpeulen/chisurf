@@ -7,19 +7,22 @@
     "/users/tpeulen/dev/chisurf/chisurf/core/structure/potential/database/hb.npy",
     "1",
     "1.000",
-    "3.000",
-    "8.000",
-    "[204155]ready",
+    "3.00",
+    "8.00",
+    "[061902]ready",
     "add",
     "ch",
     "cn",
     "cutoffca",
     "cutoffh",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
     "h-bond",
+    "help",
     "log",
     "oh",
     "on",
-    "output",
+    "pdbnamingtheatoms—requiredfordcd",
     "potential",
     "potentialenergy",
     "process",
@@ -30,70 +33,58 @@
   ],
   "interactive": [
     {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What the tool does, what it writes, and the known limits."
+    },
+    {
       "kind": "input_text",
-      "label": "Trajectory",
-      "id": "##Trajectory",
-      "tooltip": "DCD trajectory scored frame by frame; drop or type a path."
+      "label": "trajectory",
+      "id": "##trajectory",
+      "tooltip": "The trajectory the tool reads. Drop a .dcd here or press … to pick one."
     },
     {
       "kind": "button",
       "label": "…",
-      "id": "…##browse_trajectory",
-      "tooltip": "Choose the trajectory file."
+      "id": "…##trajectory.browse",
+      "tooltip": "Open a DCD trajectory."
     },
     {
       "kind": "input_text",
-      "label": "Topology",
-      "id": "##Topology",
-      "tooltip": "PDB naming the atoms. DCD stores coordinates only, so this is required for them."
+      "label": "topology",
+      "id": "##topology",
+      "tooltip": "The structure that names the atoms; a DCD stores coordinates only."
     },
     {
       "kind": "button",
       "label": "…",
-      "id": "…##browse_topology",
-      "tooltip": "Choose the topology file."
+      "id": "…##topology.browse",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them."
     },
     {
-      "kind": "combo",
-      "label": "potential_type",
-      "id": "##potential_type",
-      "tooltip": "Type of potential to configure and add"
+      "kind": "button",
+      "label": "Add",
+      "id": "Add##add",
+      "tooltip": "Add the configured potential to the list of used potentials."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "cutoff_ca",
       "id": "##cutoff_ca",
       "tooltip": "C-alpha distance cutoff in Å below which residues pair."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "cutoff_hbond",
       "id": "##cutoff_hbond",
       "tooltip": "Heavy-atom distance cutoff in Å for a hydrogen bond."
-    },
-    {
-      "kind": "checkbox",
-      "label": "oh",
-      "id": "##oh",
-      "tooltip": "Include O···H pair interactions."
-    },
-    {
-      "kind": "checkbox",
-      "label": "on",
-      "id": "##on",
-      "tooltip": "Include O···N pair interactions."
-    },
-    {
-      "kind": "checkbox",
-      "label": "cn",
-      "id": "##cn",
-      "tooltip": "Include C···N pair interactions."
-    },
-    {
-      "kind": "checkbox",
-      "label": "ch",
-      "id": "##ch",
-      "tooltip": "Include C···H pair interactions."
     },
     {
       "kind": "input_text",
@@ -104,44 +95,50 @@
     {
       "kind": "button",
       "label": "…",
-      "id": "…##browse_potential",
+      "id": "…##potential.browse",
       "tooltip": "Choose the potential file."
     },
     {
-      "kind": "input_float",
-      "label": "weight",
-      "id": "##weight",
-      "tooltip": "Scaling factor applied to the next potential added"
+      "kind": "checkbox",
+      "label": "OH",
+      "id": "OH##oh",
+      "tooltip": "Include O···H pair interactions."
     },
     {
-      "kind": "button",
-      "label": "Add",
-      "id": "Add##add_potential",
-      "tooltip": "Add the configured potential to the list of used potentials"
+      "kind": "checkbox",
+      "label": "ON",
+      "id": "ON##on",
+      "tooltip": "Include O···N pair interactions."
     },
     {
-      "kind": "input_int",
-      "label": "stride",
-      "id": "##stride",
-      "tooltip": "Only every Nth frame is scored; also seeds the emitted frame numbers"
+      "kind": "checkbox",
+      "label": "CN",
+      "id": "CN##cn",
+      "tooltip": "Include C···N pair interactions."
+    },
+    {
+      "kind": "checkbox",
+      "label": "CH",
+      "id": "CH##ch",
+      "tooltip": "Include C···H pair interactions."
     },
     {
       "kind": "input_text",
-      "label": "energy_target",
-      "id": "##energy_target",
-      "tooltip": "CSV file receiving one energy row per scored frame"
+      "label": "potential_weight",
+      "id": "##potential_weight",
+      "tooltip": "Scaling factor applied to the next potential added."
     },
     {
-      "kind": "button",
-      "label": "…",
-      "id": "…##browse_output",
-      "tooltip": "Choose where the energies are written."
+      "kind": "input_text",
+      "label": "stride",
+      "id": "##stride",
+      "tooltip": "Only every Nth frame is scored; also seeds the emitted frame numbers."
     },
     {
       "kind": "button",
       "label": "Process",
-      "id": "Process##process",
-      "tooltip": "Score every frame of the trajectory and write the energies to a CSV"
+      "id": "Process",
+      "tooltip": "Score every frame of the trajectory and write the energies to a CSV."
     }
   ],
   "controls_without_tooltip": [],

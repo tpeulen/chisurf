@@ -74,3 +74,10 @@ are outside the help allow-list check here). Docs: none.
 ## 11. Self-check
 
 - [x] D1 · [x] D2 · [x] D3 · [x] D4 · [x] D5 · [x] D6 · [ ] D7 none in Qt · [x] D8 · [x] D9 · [x] D10
+
+## Addendum (session TRAJCLICK, 2026-10-02): the emtk app was rebuilt
+
+Operating this app with real input (`okf/plugins/emtk-ports/traj_energy/REPORT.md`) found that the hand-drawn window this report accepted had drag-only number fields, a hand-drawn
+table, editable path rows, no drop hook, and no Help or Guide. `chisurf/plugins/traj/potential_energy/app.py` is now drawn from the Qt spec by the shared trajectory-tool app
+(commit `6bb3d7be9`); the evidence here (`after*`, `compare.json`) was regenerated against it (`compare` exit 0). Where this report describes the old window (its table, `Output` field,
+`-` buttons, locale-aware headings) the traj_energy report is the current one.

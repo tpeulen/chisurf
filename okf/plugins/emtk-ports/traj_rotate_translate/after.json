@@ -6,7 +6,7 @@
   "controls": [
     "0",
     "1",
-    "[015529]ready",
+    "[061719]ready",
     "dropadcdtrajectoryhereorbrowse",
     "guide",
     "help",
@@ -58,73 +58,73 @@
       "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "r00",
       "id": "##r00",
       "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "r01",
       "id": "##r01",
       "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "r02",
       "id": "##r02",
       "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "r10",
       "id": "##r10",
       "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "r11",
       "id": "##r11",
       "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "r12",
       "id": "##r12",
       "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "r20",
       "id": "##r20",
       "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "r21",
       "id": "##r21",
       "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "r22",
       "id": "##r22",
       "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "t0",
       "id": "##t0",
       "tooltip": "Added to every coordinate after the rotation, in Ångström."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "t1",
       "id": "##t1",
       "tooltip": "Added to every coordinate after the rotation, in Ångström."
     },
     {
-      "kind": "input_float",
+      "kind": "input_text",
       "label": "t2",
       "id": "##t2",
       "tooltip": "Added to every coordinate after the rotation, in Ångström."

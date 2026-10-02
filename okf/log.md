@@ -2,6 +2,16 @@
 
 ## 2026-10-01
 
+- **Trajectory tools real-input pass** (TRAJCLICK follow-up of EMTK-1C, rows 36-45): eight click suites (a shared `Ui` helper in
+  `traj_save_topology/test/real_input.py`) operate every control of traj_energy, traj_save_topology, traj_align, traj_rotate_translate,
+  traj_remove_clashes, traj_join, traj_convert and traj_fret with pointer, keys and host drops (143 passed, 23 strict xfails for emtk gaps). They found
+  that no number field had the Qt spin arrows, that the native hosts' drop verb was missing, that the rotation matrix and translation could not be
+  typed (emtk's `input_float` is a drag field), and that the potential-energy app accepted as "same as the calculator" was a hand-drawn window
+  (drag-only fields, hand-drawn table, no help or guide): it is rebuilt on the shared app from the Qt spec. emtk gaps with reproductions
+  (`okf/plugins/emtk-ports/scripts/emtk_gaps_repro.py`): the wheel does not reach docked fields, Enter on an emptied field, the tour card
+  does not block the widgets under it (its buttons are dead on some steps), a text field keeps the keyboard after a click elsewhere.
+  [traj_energy](plugins/emtk-ports/traj_energy/REPORT.md), [traj_convert](plugins/emtk-ports/traj_convert/REPORT.md).
+
 - **burst_irf_bg real-input pass** (EMTK-1B follow-up): 42 click tests (+2 strict xfails for emtk / shared-editor gaps) operate every
   control with pointer, keys, drag, wheel and host drops; they found that four of the five parameters could not be set (drag fields that
   applied nothing, no typed entry) and that the guided tour could not be finished by clicking under the dock windows; the parameters are

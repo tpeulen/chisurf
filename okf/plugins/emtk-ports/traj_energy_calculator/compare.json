@@ -11,14 +11,17 @@
     "/users/tpeulen/dev/chisurf/chisurf/core/structure/potential/database/hb.npy",
     "1",
     "1.000",
-    "3.000",
-    "8.000",
-    "[204155]ready",
+    "3.00",
+    "8.00",
+    "[061902]ready",
     "cutoffca",
     "cutoffh",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
     "h-bond",
+    "help",
     "log",
-    "output"
+    "pdbnamingtheatoms—requiredfordcd"
   ],
   "untooltipped": [],
   "qt_free": {
@@ -26,5 +29,5 @@
     "output": "QT-FREE OK\n"
   },
   "before_controls": 15,
-  "after_controls": 23
+  "after_controls": 26
 }
