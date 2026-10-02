@@ -81,7 +81,7 @@ class PackageManagerModel(DialogMixin):
 
     def enabled(self, name: str) -> bool:
         """Whether the control *name* is usable now."""
-        if name in ("dialog_ok", "dialog_cancel"):
+        if name in ("dialog_ok", "dialog_cancel", "dialog_input"):
             return True
         if self.dialog or self.busy:
             return False
@@ -182,7 +182,7 @@ class PackageManagerModel(DialogMixin):
         self.sel_channel = record or None
 
     # -- search & install ---------------------------------------------------------------------------------------------------- #
-    def search_packages(self) -> None:
+    def search_packages(self, *_: Any) -> None:
         """Search: look for the query in the configured channels."""
         if self.search_query.strip():
             self._run("do_search")

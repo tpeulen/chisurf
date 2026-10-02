@@ -21,11 +21,11 @@ Update checker/installer and conda package manager. Surfaced as panels inside th
 | Menu path | Setup → **Updates & Packages** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | gui, emtk |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+The native window is declared in `gui/updater.view.json` (version, status, startup switches, version list, Check for Updates, Update Now, Package Manager) and the package manager in `gui/packages.view.json` (installed packages, search and install, environments, channels, operation log). Every control carries a tooltip; the workflow is in [guide 90](../../guides/90_updater.md). The startup switches are stored as `plugins.updater.check_on_startup` and `plugins.updater.ignore_updates_on_startup` in the user's settings file.
 
 ## Source
 

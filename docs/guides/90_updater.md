@@ -45,6 +45,47 @@ stay as you are. It is greyed until a check has found a version.
 once to the `plugins.updater` section of your settings file. **Development** is on and fixed:
 there is no stable release yet, so the changelog is read from the development branch.
 
+## 5. Package Manager
+
+**Package Manager** opens a window with four pages and an operation log. Every call reaches the same solver
+(micromamba, mamba or conda) the updater uses; nothing runs before you press a button, and the destructive ones ask first.
+
+```{figure} figures/updater_pm_installed.png
+:name: fig-updater-pm-installed
+:width: 100%
+
+**Installed Packages**: the packages of the current environment (here a fake list). **Filter** keeps the names that contain the
+text; click a header to sort. **Update Selected** needs a selected row, **Update All** and **Remove Selected** ask first.
+```
+
+1. **Installed Packages** - filter, sort, select a row, **Update Selected**, **Update All**, **Remove Selected**, **Refresh List**.
+2. **Search & Install** - type a package name and press Enter (or **Search**); results are listed newest version first.
+   Select a row and **Install Selected** (it asks first).
+
+```{figure} figures/updater_pm_search_results.png
+:name: fig-updater-pm-search
+:width: 100%
+
+**Search & Install** after a search for `numpy`: one row per version and channel, a row selected.
+```
+
+3. **Environments** - **Create New**, **Clone Selected** (they ask for a name), **Remove Selected** (asks first),
+   **Export to File** (a save dialog; writes the selected or the current environment as YAML) and **Import from File**
+   (pick a file, then an optional name).
+
+```{figure} figures/updater_pm_envs.png
+:name: fig-updater-pm-envs
+:width: 100%
+
+**Environments** with the name entry of **Create New** open.
+```
+
+4. **Channels** - **Add Channel** (a name or URL) and **Remove Selected**.
+
+The **Operation Log** under the pages lists every step with its time; a failed operation also opens an error message with
+the solver's reason. **Refresh All** reloads the three lists. One row can be selected at a time (the Qt dialog allowed several);
+install or remove packages one after the other.
+
 ## Headless / Python
 
 ```python
@@ -52,5 +93,4 @@ from chisurf.plugins.core.updater import check_for_updates
 available, latest, error = check_for_updates()
 ```
 
-Package management (installed packages, search, environments, channels) is the **Package
-Manager** button; its native window follows with the next step of the port.
+Package management is the **Package Manager** window above.

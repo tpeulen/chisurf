@@ -140,6 +140,59 @@ def tooltip(app, drv):
         time.sleep(0.15); drv.draw(1)
 for size in SIZES:
     app, drv = fresh(size); drv.draw(3); tooltip(app, drv); shot(app, "tooltip", (size,), inv=False); app.close()
+
+# ---------------------------------------------------------------- card U2: the package manager
+from chisurf.plugins.core.updater.gui.package_app import PackageApp
+from chisurf.plugins.core.updater.test.test_emtk_packages_clicks import PkgDriver
+
+
+def pkg(name, setup, sizes=SIZES):
+    for size in sizes:
+        app = PackageApp(); drv = PkgDriver(app, size); drv.draw(3); drv.settle()
+        setup(app, drv)
+        shot(app, name, (size,))
+        app.close()
+
+
+def tab(name):
+    return lambda app, drv: drv.open_tab(name)
+
+
+pkg("pm_installed", lambda app, drv: None)
+pkg("pm_installed_selected", lambda app, drv: drv.row("scipy"))
+def filtered(app, drv): drv.type_into("installed_filter", "NUM")
+pkg("pm_installed_filtered", filtered)
+def remove_q(app, drv): drv.row("scipy"); drv.click("ask_remove_selected"); drv.draw(3)
+pkg("pm_remove_question", remove_q)
+def removed(app, drv): remove_q(app, drv); drv.press_text("Yes"); drv.settle()
+pkg("pm_after_remove", removed)
+def search(app, drv): drv.open_tab("search"); drv.type_into("search_query", "numpy"); drv.settle(); drv.row("2.0.1")
+pkg("pm_search_results", search)
+pkg("pm_envs", tab("envs"))
+def create(app, drv):
+    drv.open_tab("envs"); drv.click("ask_create_env"); drv.draw(3)
+    x, y, w, h = drv.dialog_rect("dialog_input"); drv.click_at(x + 10, y + h / 2); drv.type_text("scratch"); drv.draw(2)
+pkg("pm_create_env_dialog", create)
+def export_dialog(app, drv): drv.open_tab("envs"); drv.row("/fake/mambaforge/envs/analysis"); drv.click("request_export"); drv.draw(3)
+pkg("pm_export_dialog", export_dialog)
+pkg("pm_channels", tab("channels"))
+def failed(app, drv):
+    fakes.solver_fails = True; drv.row("numpy"); drv.click("ask_remove_selected"); drv.press_text("Yes"); drv.settle()
+pkg("pm_failure", failed)
+fakes.solver_fails = False
+def pm_help(app, drv): drv.click("help"); drv.draw(3)
+pkg("pm_help", pm_help)
+def pm_guide(app, drv): drv.click("guide"); drv.draw(3)
+pkg("pm_guide_step_1", pm_guide)
+# inside the updater window
+def in_updater(app, drv):
+    drv.click("open_package_manager"); drv.draw(5)
+    end = time.monotonic() + 10
+    while (app.packages.job.busy or app.packages.model.busy) and time.monotonic() < end:
+        time.sleep(0.01); drv.draw(1)
+    drv.draw(3)
+each_size("pm_in_updater_window", in_updater)
+
 # every spec control in the union (the control tool also reads the default app)
 app, drv = fresh((1200, 800)); drv.draw(3); inventory(app); app.close()
 report = ("fakes: process attempts", len(fakes.process_attempts), "| solver mutating", len(fakes.mutating_solver_commands),

@@ -24,6 +24,7 @@ from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
+from chisurf.plugins.emtk_layout import layout_spec
 
 from .package_model import TABS, PackageManagerModel
 
@@ -40,7 +41,7 @@ class PackagePanel:
         self.job = SnapshotJob(self.model)
         self.model.runner = self.start_job
         spec = json.loads((HERE / "packages.view.json").read_text(encoding="utf-8"))
-        self.panels = {p["name"]: p for p in spec["sections"]}
+        self.panels = {p["name"]: layout_spec(p) if p["name"] in _NAMES else p for p in spec["sections"]}
         self.form = FormState()
         self.form.custom["env_line"] = self._draw_env
         self.form.custom["operation_log"] = self._draw_log
@@ -52,6 +53,7 @@ class PackagePanel:
         self.pending_tab: int | None = None
         self._reported_error = ""
         self._logged = 0
+        self._stick = 0
         self.loaded = False
         #: Called with the name of a form action (the app's tour listens).
         self.on_used = None
@@ -132,6 +134,9 @@ class PackagePanel:
             im.text_wrapped(line)
         if len(model.log) != self._logged:
             self._logged = len(model.log)
+            self._stick = 3                      # the scroll range is the last frame's: follow for a few frames
+        if self._stick > 0:
+            self._stick -= 1
             im.set_scroll_here_y(1.0)
         im.end_child()
         rect = (float(x), float(y), float(avail_w), LOG_HEIGHT)
@@ -230,8 +235,9 @@ class PackageApp(ImApp):
             im.set_item_tooltip("Walk through finding and installing a package.")
             self.item_rects["guide"] = im.get_item_rect()
             im.separator()
-            self.panel.draw(box)
+            self.panel.draw_content()
         im.end()
+        self.panel.draw_overlays(box)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 
