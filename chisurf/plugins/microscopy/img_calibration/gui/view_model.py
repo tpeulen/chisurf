@@ -8,6 +8,7 @@ to the imaging coordinator and transferred to Phasor + pixel-wise MLE.
 
 from __future__ import annotations
 
+import copy
 import logging
 import pathlib
 from collections.abc import Callable
@@ -334,11 +335,30 @@ class CalibrationViewModel:
         return f"<i>{detail}</i>"
 
     # ── action ──
-    def apply(self) -> None:
-        """Publish the current calibration to the following steps."""
+    def check(self) -> str:
+        """Why the calibration cannot be published ("" when it can): an empty range or a negative background."""
+        for name, row in self.calibration.items():
+            for start, stop in (("conv_start", "conv_stop"), ("irf_start", "irf_stop"), ("bg_start", "bg_stop")):
+                if row.get(stop, 0) and row.get(start, 0) >= row[stop]:
+                    return f"{name}: range start must be smaller than stop"
+            if row.get("bg_vv", 0) < 0 or row.get("bg_vh", 0) < 0:
+                return f"{name}: background must be nonnegative"
+        return ""
+
+    def apply(self) -> bool:
+        """Publish the current calibration to the following steps; ``False`` when it was refused."""
+        problem = self.check()
+        if problem:
+            # Published as it was, an empty window or a negative background reached
+            # Phasor and the pixel-wise MLE unchecked.
+            self.status_text = f"Not applied: {problem}"
+            self.notify("apply")
+            return False
         if callable(self.publish):
             try:
-                self.publish(dict(self.calibration))
+                # A deep copy: with dict() the per-detector rows stayed shared, so an
+                # edit after Apply changed the calibration Phasor and the MLE had received.
+                self.publish(copy.deepcopy(self.calibration))
                 n = sum(
                     1
                     for v in self.calibration.values()
@@ -347,4 +367,7 @@ class CalibrationViewModel:
                 self.status_text = f"Applied calibration ({n} detector(s) set)."
             except Exception as exc:
                 self.status_text = f"Apply failed: {exc}"
+                self.notify("apply")
+                return False
         self.notify("apply")
+        return True

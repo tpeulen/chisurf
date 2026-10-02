@@ -1,0 +1,47 @@
+{
+  "_comment": "Guided tour for the IRF & BG calibration step. Targets: spec attrs (display_detector, sel_conv_start, sel_irf_start, sel_bg_vv), the spec's custom section keys (path_list, decay_conv) and the app's own buttons by name (open_source, apply). Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "Calibrate once, per detector",
+      "text": "Phasor and the pixel-wise MLE need, for each detector, the instrument response and the background. Set them here once; <b>Apply</b> hands them on. Skipping the step uses the raw data.",
+      "target": {}
+    },
+    {
+      "title": "The source decay",
+      "text": "The photon file whose decay you calibrate against — in the imaging pipeline it comes from the earlier steps.",
+      "target": {"name": "open_source"},
+      "await": {"hint": "Press <b>📂 Open TTTR…</b> and pick the measurement."}
+    },
+    {
+      "title": "Which detector",
+      "text": "Every setting below belongs to the detector chosen here; switching detector shows its own.",
+      "target": {"attr": "display_detector"}
+    },
+    {
+      "title": "Its IRF",
+      "text": "A scatter or reflection measurement for this detector. Several files are summed. No file: the raw data are used.",
+      "target": {"key": "path_list"}
+    },
+    {
+      "title": "The windows",
+      "text": "<b>Conv</b> is the fit window (blue), <b>IRF</b> the part of the IRF that is used (green). Type them here or drag the lines on the plot.",
+      "target": {"attr": "sel_conv_start"}
+    },
+    {
+      "title": "The background",
+      "text": "Drag the grey region over a stretch before the pulse: its mean counts become the VV and VH backgrounds. Or type them; 0 means an automatic baseline.",
+      "target": {"attr": "sel_bg_vv"}
+    },
+    {
+      "title": "Check on the decay",
+      "text": "The IRF should sit on the rising edge of the decay; the shift fields move it, wrapping around, by whole or fractional channels.",
+      "target": {"key": "decay_conv"}
+    },
+    {
+      "title": "Hand it on",
+      "text": "Apply refuses an empty window or a negative background, and otherwise passes every detector's calibration to Phasor and the MLE.",
+      "target": {"name": "apply"},
+      "await": {"hint": "Press <b>Apply →</b>."}
+    }
+  ]
+}
