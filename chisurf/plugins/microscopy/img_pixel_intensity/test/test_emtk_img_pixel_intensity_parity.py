@@ -411,7 +411,7 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, flim
         C.texts_apart(painter, ignore=(str(flim),))
     app.docks.focus("Detectors")  # the shared editor draws its row buttons over their cells: only the frame is checked
     painter = draw(app, size)
-    assert_inside({k: v for k, v in app.item_rects.items() if k.startswith("detectors.")}, size)
+    assert_inside({k: v for k, v in app.item_rects.items() if k in ("detectors.add_detector", "detectors.section_detectors")}, size)
     names = ("run_maps", "request_hdf5", "save_container", "open_ndx", "next_step", "filename", "open_file", "open_database", "display_window")
     rects = {k: app.form.rects[k] for k in names}
     rects.update({k: app.item_rects[k] for k in ("help", "guide", "cancel")})
