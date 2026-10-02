@@ -92,7 +92,8 @@ class SaveAction:
     ``cancelled`` is what a closed save dialog logs. Without a
     ``dialog_title`` the action runs at once (the target comes from the
     tool's own fields) and ``run`` gets ``None``; ``done`` is said in the
-    window after a run that did not fail (the Qt tool's confirmation box).
+    window after a run that did not fail (the Qt tool's confirmation box):
+    a string, or a function of what ``run`` returned (a frame count).
     """
 
     key: str
@@ -107,7 +108,7 @@ class SaveAction:
     suggest: Callable[[Any], str] = lambda model: ""
     failure: str = "Save failed"
     cancelled: str = "Save cancelled"
-    done: str = ""
+    done: Any = ""
 
 
 def trajectory_field(**overrides) -> PathField:
@@ -193,6 +194,7 @@ class TrajToolApp(TourTarget, ImApp):
             dict(s, collapsible=True) if s.get("type") == "panel" else s for s in spec["sections"]
         ]                                                   # several panels fold, as the Qt AutoForm panels do
         self.spec = {"sections": [self._host_section(s) for s in top]}
+        _spin_numbers(self.spec["sections"])
         self.form = FormState()
         self.form.custom[io_key] = self._draw_io
         self.form.custom[LOG_KEY] = self._draw_log
@@ -283,11 +285,12 @@ class TrajToolApp(TourTarget, ImApp):
             return
         future, self.future = self.future, None
         try:
-            future.result()
+            result = future.result()
         except Exception as exc:  # the view model has logged it; the window says so too
             self.status = f"{self.action.failure}: {exc}"
         else:
-            self.notice = self.action.done
+            done = self.action.done
+            self.notice = done(result) if callable(done) else done
 
     def _open_dialog(self, dialog: FileDialog, on_pick: Callable[[str], Any],
                      on_cancel: Callable[[], Any] | None = None) -> None:
@@ -295,8 +298,16 @@ class TrajToolApp(TourTarget, ImApp):
         self.dialog_window.title = dialog.title
         self.dialog_window.show()
 
-    def on_paths_dropped(self, paths: Sequence[str]) -> None:
-        """A drop fills the row whose filter matches each file (an empty row first)."""
+    def on_files_dropped(self, paths: Sequence[str]) -> bool:
+        """The host's drop verb (the Qt and the glfw host both call it): see :meth:`on_paths_dropped`.
+
+        Always True: a drop nothing took still has an answer (the status line) the host must repaint.
+        """
+        self.on_paths_dropped(paths)
+        return True
+
+    def on_paths_dropped(self, paths: Sequence[str]) -> bool:
+        """A drop fills the row whose filter matches each file (an empty row first); True when one was taken."""
         taken = False
         for path in paths:
             if os.path.isdir(path):
@@ -311,6 +322,7 @@ class TrajToolApp(TourTarget, ImApp):
         if not taken:
             names = " or ".join(p.label.lower() for p in self.paths)
             self.status = f"No {names} file among the dropped paths."
+        return taken
 
     # ── drawing ───────────────────────────────────────────────────────────
 
@@ -384,11 +396,15 @@ class TrajToolApp(TourTarget, ImApp):
         self.remember(self.action.key)
         if self.running:
             im.same_line()
-            im.text_disabled("Working…")
+            im.text_disabled("Working…" + self.progress_text())
         if self.status:
             im.text_colored(ERROR, self.status)
         elif self.notice:
             im.text_wrapped(self.notice)
+
+    def progress_text(self) -> str:
+        """What follows "Working…" while the action runs (a tool that counts its frames says how many)."""
+        return ""
 
     def draw_extra_io(self, width: float) -> None:
         """Controls a tool's io section has between the file rows and the action (none here)."""
@@ -429,6 +445,21 @@ class TrajToolApp(TourTarget, ImApp):
 
     def close(self) -> None:
         self._executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _spin_numbers(sections) -> None:
+    """Give every number field the arrows and wheel the Qt spin boxes had.
+
+    The Qt AutoForm draws ``int`` / ``float`` values as spin boxes whose arrows step by the spec's
+    ``step`` (Qt's default: 1). emtk's plain field takes typing only, so the spec is drawn with the
+    ``spin`` style and the same step.
+    """
+    for section in sections:
+        if section.get("type") == "value" and section.get("kind") in ("int", "float") \
+                and not section.get("read_only"):
+            section["style"] = "spin"
+            section.setdefault("step", 1)
+        _spin_numbers(section.get("sections", []))
 
 
 def _fields(sections):

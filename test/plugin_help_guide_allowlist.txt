@@ -37,8 +37,6 @@ chisurf/plugins/modelling/fps_json_editor/gui
 chisurf/plugins/modelling/fret/gui
 chisurf/plugins/modelling/structure_tools/gui
 chisurf/plugins/ndxplorer
-chisurf/plugins/traj/potential_energy
-chisurf/plugins/traj/potential_energy
 chisurf/plugins/tttr/audifier/gui
 chisurf/plugins/tttr/microtime_histogram
 chisurf/plugins/tttr/ptu_alex_creator/gui

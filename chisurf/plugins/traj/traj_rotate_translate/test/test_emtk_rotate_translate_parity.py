@@ -182,12 +182,13 @@ def test_the_editors_write_the_matrix_and_translation(monkeypatch):
 
     app = RotateTranslateApp()
     try:
-        answers = {"##r01": -1.0, "##r10": 1.0, "##r00": 0.0, "##r11": 0.0, "##t0": 10.0}
-        original = im.input_float
-        monkeypatch.setattr(im, "input_float", lambda label, v, *a, **k: (True, answers[label]) if label in answers
+        # the cells are typed fields (the Qt editors are line edits): Enter in them hands the text over
+        answers = {"##r01": "-1", "##r10": "1", "##r00": "0", "##r11": "0", "##t0": "10"}
+        original = im.input_text
+        monkeypatch.setattr(im, "input_text", lambda label, v, *a, **k: (True, answers[label]) if label in answers
                             else original(label, v, *a, **k))
         _draw(app, n=1)
-        monkeypatch.setattr(im, "input_float", original)
+        monkeypatch.setattr(im, "input_text", original)
         assert np.asarray(app.model.rotation_matrix).tolist() == R
         assert np.asarray(app.model.translation_vector).tolist() == T
         assert {"rotation_matrix", "translation"} <= set(app.item_rects)
@@ -246,11 +247,11 @@ def test_the_guide_points_at_real_controls_and_waits(monkeypatch):
         index = next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == "rotation_matrix")
         app.tour.start(index)
         assert app.tour.awaiting and steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)
-        original = im.input_float
-        monkeypatch.setattr(im, "input_float", lambda label, v, *a, **k: (True, 0.5) if label == "##r22"
+        original = im.input_text
+        monkeypatch.setattr(im, "input_text", lambda label, v, *a, **k: (True, "0.5") if label == "##r22"
                             else original(label, v, *a, **k))
         _draw(app, size, n=1)
-        monkeypatch.setattr(im, "input_float", original)
+        monkeypatch.setattr(im, "input_text", original)
         assert not app.tour.awaiting
 
         def press(key):

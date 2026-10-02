@@ -1,344 +1,268 @@
-"""Native EMTK Potential-Energy calculator.
+"""emtk app for the Potential-Energy calculator: every frame of a trajectory scored by weighted potentials.
 
-A direct port of the Qt ``PotentialEnergyWidget`` (AutoForm +
-``potential_energy_setup`` / ``potential_energy_run`` sections) onto the
-immediate-mode EMTK API. All state and compute stay in the Qt-free
-:class:`~.view_model.PotentialEnergyViewModel`; the potential types come from the
-Qt-free :mod:`~.potential_specs` registry (mirroring the Qt ``potentialDict``
-editors), so this module never imports Qt.
+Drawn from ``calculate_potential.view.json`` (the spec the Qt widget uses) by the shared trajectory-tool app: the
+trajectory and topology rows, the potential editor (a type combo, the parameters of that type, the weight and
+**Add**), the stride, the table of added potentials (a double click on a row removes it), **Process** and the log.
+The editor is declared as a spec of its own from the Qt-free :mod:`~.potential_specs` registry, which mirrors the
+parameters the Qt ``potentialDict`` editors expose, so this module never imports Qt.
+
+Differences from the Qt widget, on purpose: the parameters of a potential type are kept while another type is
+chosen (the Qt editor was rebuilt on every change) and the table also removes the selected row on Delete.
 """
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+import os
+import pathlib
+from typing import Any
 
 from emtk import im
-from emtk.app import ImApp
-from emtk.dialog_window import DialogWindow
-from emtk.file_dialog import FileDialog
+from emtk.view_form import FormState, draw_form
+
+from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
 
 from .potential_specs import get_spec, make_potential, potential_names
-from .strings import install_translations, tr
+from .strings import install_translations
 from .view_model import PotentialEnergyViewModel
 
 install_translations()
 
-_TABLE_FLAGS = 1  # borders, matching the sibling native tables
-
-#: X offset of the aligned input column; every labelled row's editor starts here.
-_LABEL_COL = 110.0
-
-
-def _label_col() -> float:
-    """The aligned input-column x, clamped for narrow hosts."""
-    width, _ = im.get_main_viewport().size
-    return min(_LABEL_COL, max(70.0, width * 0.3))
+HERE = pathlib.Path(__file__).parent
+FILE_FILTERS = [("NumPy", ["*.npy"]), ("All files", ["*"])]
+ENERGY_FILTERS = [("CSV-name file", ["*.txt"]), ("All files", ["*"])]
 
 
-def _row_input_width(fixed: float | None = None) -> float:
-    """Width for a row editor: *fixed*, or fill the row up to 200 px."""
-    avail = im.get_content_region_avail()[0]
-    if fixed is None:
-        return max(90.0, min(200.0, avail - 8))
-    return max(60.0, min(fixed, avail - 8))
+class EditorModel:
+    """The values the potential editor edits: the type, and one attribute per parameter of that type.
+
+    The form reads and writes plain attributes (``draw_form``), so the parameters of the selected type are exposed as
+    attributes and kept per type; ``add`` builds the potential with them and gives the model the weight.
+    """
+
+    def __init__(self, app: PotentialEnergyApp) -> None:
+        object.__setattr__(self, "_app", app)
+
+    # -- the type ----------------------------------------------------------------------------------------- #
+    @property
+    def potential_type(self) -> str:
+        names = potential_names()
+        index = self._app.selected_potential_index
+        return names[index] if 0 <= index < len(names) else names[0]
+
+    @potential_type.setter
+    def potential_type(self, name: str) -> None:
+        names = potential_names()
+        if name in names:
+            self._app.selected_potential_index = names.index(name)
+            self._app.model.selected_potential_index = names.index(name)
+
+    # -- the parameters of the selected type ------------------------------------------------------------ #
+    def _param(self, attr: str):
+        spec = get_spec(self.potential_type)
+        return next((p for p in (spec.params if spec else ()) if p.attr == attr), None)
+
+    def __getattr__(self, attr: str) -> Any:
+        param = self._param(attr)
+        if param is None:
+            raise AttributeError(attr)
+        return self._app._editor_values.setdefault(self.potential_type, {}).get(attr, param.default)
+
+    def __setattr__(self, attr: str, value: Any) -> None:
+        if attr == "potential_type":
+            type(self).potential_type.fset(self, value)
+            return
+        param = self._param(attr)
+        if param is None:
+            raise AttributeError(attr)
+        self._app._editor_values.setdefault(self.potential_type, {})[attr] = value
+
+    # -- the button --------------------------------------------------------------------------------------- #
+    def add(self) -> None:
+        """Add the potential with the editor's parameters and the model's weight (Qt: the **Add** button)."""
+        app = self._app
+        name = self.potential_type
+        app.tour.notify_used("add")
+        try:
+            potential = make_potential(name, dict(app._editor_values.get(name, {})))
+            app.model.add_potential(potential, float(app.model.potential_weight), name=name)
+        except Exception as exc:  # noqa: BLE001 - shown in the window, as the Qt tool's dialog would
+            app.status = f"{type(exc).__name__}: {exc}"
+            return
+        app.status = ""
+        app._editor_values.pop(name, None)       # the added editor belongs to the universe: a fresh one, as in Qt
 
 
-class PotentialEnergyApp(ImApp):
+def editor_spec(name: str) -> dict:
+    """The spec of the parameters of potential type *name*: spin fields, toggles in one row, file rows."""
+    spec = get_spec(name)
+    sections: list[dict] = []
+    toggles: list[dict] = []
+    for param in (spec.params if spec else ()):
+        tip = param.tip or param.label
+        if param.kind in ("float", "int"):
+            section = {"type": "value", "attr": param.attr, "label": param.label, "kind": param.kind,
+                       "style": "spin", "description": tip}
+            if param.minimum is not None:
+                section["minimum"] = param.minimum
+            if param.maximum is not None:
+                section["maximum"] = param.maximum
+            if param.step:
+                section["step"] = param.step
+            if param.kind == "float":
+                section["decimals"] = 3 if (param.step or 1.0) < 0.1 else 2
+            sections.append(section)
+        elif param.kind == "bool":
+            toggles.append({"type": "toggle", "attr": param.attr, "label": param.label, "description": tip})
+        else:
+            sections.append({"type": "custom", "key": f"file:{param.attr}", "label": param.label,
+                             "description": tip})
+    if toggles:
+        sections.append({"type": "panel", "title": "", "n_col": len(toggles), "sections": toggles})
+    return {"sections": sections}
+
+
+class PotentialEnergyApp(TrajToolApp):
     """Calculate potential-energy components across the frames of a trajectory."""
 
-    def __init__(self, model: PotentialEnergyViewModel | None = None):
-        self.model = model or PotentialEnergyViewModel()
-        self.target = ""
-        self.message = ""
+    def __init__(self, model: PotentialEnergyViewModel | None = None) -> None:
         self.selected_potential_index = 0
-        #: Per potential type: editor values typed by the user, kept across combo changes.
+        #: Per potential type: the parameter values typed by the user.
         self._editor_values: dict[str, dict] = {}
-        #: The open file chooser (the Qt tool's "…" buttons and Process save dialog).
-        self.dialog: FileDialog | None = None
-        self._dialog_callback = None
-        self._dialog_window = DialogWindow("File", size=(640.0, 460.0), key="potential-energy-file")
-        #: Process runs on a worker, as the Qt tool's run section with its progress bar.
-        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="potential-energy")
-        self._future = None
         self.frames_done = 0
-        super().__init__(self.render)
+        self.editor = EditorModel(self)
+        self.editor_form = FormState()
+        process = SaveAction(
+            key="process",
+            label="Process",
+            tooltip="Score every frame of the trajectory and write the energies to a CSV.",
+            dialog_title="Save energies",
+            filters=ENERGY_FILTERS,
+            run=self._process,
+            missing=self._missing,
+            failure="Processing failed",
+            cancelled="Process cancelled",
+            done=lambda count: f"Processed {count} frame(s).",
+        )
+        super().__init__(
+            model or PotentialEnergyViewModel(), HERE, "calculate_potential.view.json", "potential_energy_setup",
+            "Potential energy",
+            [trajectory_field(attr="trajectory_file"),
+             topology_field()],
+            process, action_key="potential_energy_run",
+        )
+        self.editor_form.on_used = self.tour.notify_used
+        for section in self.spec["sections"]:
+            if section.get("type") == "table":      # a double click removes a row (Qt); so does Delete
+                section.setdefault("delete_call", "remove_potential_activated")
+        self._weight_spec = {"sections": [{
+            "type": "value", "attr": "potential_weight", "label": "Weight", "kind": "float", "style": "spin",
+            "minimum": -1e6, "maximum": 1e6, "step": 1.0, "decimals": 3,
+            "description": "Scaling factor applied to the next potential added.",
+        }]}
+        self._choice_spec = {"sections": [{
+            "type": "choice", "attr": "potential_type", "label": "Potential", "options": potential_names(),
+            "description": "Type of potential to configure and add.",
+        }, {
+            "type": "button_row", "buttons": [{
+                "action": "add", "label": "Add",
+                "description": "Add the configured potential to the list of used potentials.",
+            }],
+        }]}
+        self._specs: dict[str, dict] = {}
+        self._file_rows: dict[str, dict] = {}
 
-    # ── render ──────────────────────────────────────────────────────────
-    def render(self):
-        # Fill the hosting viewport instead of a fixed box, so the layout
-        # reflows at any host size (normal and narrow captures alike).
-        width, height = im.get_main_viewport().size
-        im.begin(tr("Potential energy calculator"), (0, 0, width, height))
-        im.heading(tr("Potential energy"), level=2)
+    # -- the action ---------------------------------------------------------------------------------------- #
+    def _missing(self, model) -> str | None:
+        if not model.trajectory_file:
+            return "Open a trajectory first."
+        if not model.universe.potentials:
+            return "Add at least one potential."
+        return None
 
-        self._render_files()
-        im.separator()
-        self._render_potential_setup()
-        im.separator()
-        self._render_potential_table()
-        im.separator()
-        self._render_stride()
-        self._render_process()
-
-        if self.message:
-            im.text_wrapped(self.message)
-        im.separator()
-        im.heading(tr("Log"), level=2)
-        for line in self.model.log_text():
-            im.text(line)
-        im.end()
-        self._poll_run()
-        self._render_dialog(width, height)
-
-    # ── files ───────────────────────────────────────────────────────────
-    def browse(self, title, mode, filters, callback, filename=""):
-        """Open the in-app file chooser; *callback(path)* runs when a file is chosen."""
-        self.dialog = FileDialog(title, mode=mode, filename=filename, filters=filters)
-        self._dialog_callback = callback
-        self._dialog_window.title = title
-        self._dialog_window.show()
-
-    def _render_dialog(self, width, height):
-        if self.dialog is None:
-            return
-        pressed = self._dialog_window.begin((0.0, 0.0, width, height))
-        result = self.dialog.draw()
-        self._dialog_window.end()
-        if result:
-            callback, self.dialog, self._dialog_callback = self._dialog_callback, None, None
-            callback(str(result[0]))
-        elif result is False or pressed == "close":
-            self.dialog, self._dialog_callback = None, None
-
-    def _browse_button(self, key, tip, title, mode, filters, callback):
-        im.same_line()
-        if im.button("…##browse_" + key):
-            self.browse(title, mode, filters, callback)
-        im.set_item_tooltip(tr(tip))
-
-    def _render_files(self):
-        for label, getter, setter, tip, filters in (
-            ("Trajectory", lambda: self.model.trajectory_file, self.model.set_trajectory,
-             "DCD trajectory scored frame by frame; drop or type a path.", "Trajectories (*.dcd)"),
-            ("Topology", lambda: self.model.topology_filename, self.model.set_topology,
-             "PDB naming the atoms. DCD stores coordinates only, so this is required for them.",
-             "Structures (*.pdb *.cif *.ent)"),
-        ):
-            im.text(tr(label))
-            im.same_line(_label_col())
-            im.set_next_item_width(-36)
-            changed, value = im.input_text("##" + label, str(getter()))
-            im.set_item_tooltip(tr(tip))
-            if changed and value != getter():
-                setter(value)
-            self._browse_button(label.lower(), f"Choose the {label.lower()} file.", f"Open {label.lower()}",
-                                "open", filters, setter)
-
-    def _render_potential_setup(self):
-        names = potential_names()
-        index = self.selected_potential_index if 0 <= self.selected_potential_index < len(names) else 0
-        im.text(tr("Potential"))
-        im.same_line()
-        im.same_line(_label_col())
-        im.set_next_item_width(-1)
-        changed, index = im.combo("##potential_type", index, names)
-        im.set_item_tooltip(tr("Type of potential to configure and add"))
-        if changed:
-            self.selected_potential_index = index
-        name = names[index]
-
-        spec = get_spec(name)
-        values = self._editor_values.setdefault(name, {})
-        params = list(spec.params) if spec else []
-        row_open = False
-        for param in params:
-            current = values.get(param.attr, param.default)
-            # Consecutive toggles share one row, like the Qt editors do.
-            if param.kind == "bool":
-                if not row_open:
-                    # The previous editor row may still have room; force the
-                    # toggle group onto its own line.
-                    im.new_line()
-                else:
-                    im.same_line()
-                row_open = True
-            else:
-                if row_open:
-                    im.new_line()
-                    row_open = False
-                im.text(tr(param.label))
-                im.same_line(_label_col())
-            if param.kind == "float":
-                im.set_next_item_width(_row_input_width())
-                changed, value = im.input_float(
-                    "##" + param.attr, float(current),
-                    step=float(param.step or 0.0),
-                    step_fast=float(param.step or 0.0) * 10.0 or 1.0,
-                )
-            elif param.kind == "int":
-                im.set_next_item_width(_row_input_width())
-                changed, value = im.input_int("##" + param.attr, int(current), step=int(param.step or 1))
-            elif param.kind == "bool":
-                changed, value = im.checkbox("##" + param.attr, bool(current))
-                im.same_line()
-                im.text(tr(param.label))
-            else:  # "file"
-                im.set_next_item_width(-36)
-                changed, value = im.input_text("##" + param.attr, str(current))
-            im.set_item_tooltip(tr(param.tip) if param.tip else tr(param.label))
-            if changed:
-                values[param.attr] = value
-            if param.kind == "file":
-                self._browse_button(param.attr, f"Choose the {param.label.lower()} file.",
-                                    f"Open {param.label}", "open", "NumPy (*.npy);;All files (*)",
-                                    lambda path, values=values, attr=param.attr: values.__setitem__(attr, path))
-        if row_open:
-            im.new_line()
-
-        im.text(tr("Weight"))
-        im.same_line()
-        im.same_line(_label_col())
-        im.set_next_item_width(_row_input_width(160))
-        changed, weight = im.input_float("##weight", float(self.model.potential_weight), step=0.1, step_fast=1.0)
-        im.set_item_tooltip(tr("Scaling factor applied to the next potential added"))
-        if changed:
-            self.model.potential_weight = float(weight)
-
-        if im.button(f"{tr('Add')}##add_potential"):
-            try:
-                potential = make_potential(name, values)
-                self.model.add_potential(potential, float(self.model.potential_weight), name=name)
-                self.message = ""
-            except Exception as exc:  # noqa: BLE001 - surface construction errors inline
-                self.message = f"{type(exc).__name__}: {exc}"
-        im.set_item_tooltip(tr("Add the configured potential to the list of used potentials"))
-
-    def _render_potential_table(self):
-        rows = self.model.added_potentials()
-        if not rows:
-            return
-        if im.begin_table("added_potentials", 3, _TABLE_FLAGS, (0, 140)):
-            im.table_setup_column(tr("Potential"), im.TableColumnFlags.WIDTH_STRETCH)
-            im.table_setup_column(tr("Weight"), im.TableColumnFlags.WIDTH_FIXED, 120.0)
-            im.table_setup_column("", im.TableColumnFlags.WIDTH_FIXED, 30.0)
-            im.table_headers_row()
-            for row in rows:
-                im.table_next_row()
-                im.table_set_column_index(0)
-                im.text(row["name"])
-                im.table_set_column_index(1)
-                im.text(f"{row['weight']:g}")
-                im.table_set_column_index(2)
-                if im.small_button(f"-##remove_potential_{row['idx']}"):
-                    self.model.remove_potential(row["idx"])
-                im.set_item_tooltip(tr("Remove this potential from the list"))
-            im.end_table()
-
-    def _render_stride(self):
-        im.text(tr("Stride"))
-        im.same_line()
-        im.same_line(_label_col())
-        im.set_next_item_width(_row_input_width(120))
-        changed, stride = im.input_int("##stride", int(self.model.stride), step=1)
-        im.set_item_tooltip(tr("Only every Nth frame is scored; also seeds the emitted frame numbers"))
-        if changed and stride >= 1:
-            self.model.stride = int(stride)
-
-    def _render_process(self):
-        im.text(tr("Output"))
-        im.same_line()
-        im.same_line(_label_col())
-        im.set_next_item_width(-36)
-        changed, target = im.input_text("##energy_target", self.target)
-        im.set_item_tooltip(tr("CSV file receiving one energy row per scored frame"))
-        if changed:
-            self.target = target
-        self._browse_button("output", "Choose where the energies are written.", "Save energies", "save",
-                            "Text (*.txt *.csv);;All files (*)", lambda path: setattr(self, "target", path))
-        running = self._future is not None
-        im.begin_disabled(running)
-        if im.button(f"{tr('Process')}##process"):
-            if not self.target and self.model.trajectory_file and self.model.universe.potentials:
-                # As the Qt tool: Process asks where to write when no file is set yet.
-                self.browse("Save energies", "save", "Text (*.txt *.csv);;All files (*)",
-                            lambda path: (setattr(self, "target", path), self.start_run()))
-            else:
-                self.start_run()
-        im.end_disabled()
-        im.set_item_tooltip(tr("Score every frame of the trajectory and write the energies to a CSV"))
-        if running:
-            im.same_line()
-            im.text(tr("Processing… {} frame(s)").format(self.frames_done))
-
-    # ── actions ─────────────────────────────────────────────────────────
-    def start_run(self) -> bool:
-        """Start Process on the worker; the result arrives in :meth:`_poll_run`."""
-        if self._future is not None:
-            return False
+    def _process(self, model, path: str | None) -> int:
         self.frames_done = 0
-        self.message = ""
-        self._future = self._executor.submit(self._run)
-        return True
-
-    def _poll_run(self) -> None:
-        if self._future is not None and self._future.done():
-            future, self._future = self._future, None
-            self.message = future.result()
+        return model.process(path, progress_cb=self._on_progress)
 
     def _on_progress(self, frames_done: int) -> None:
         self.frames_done = int(frames_done)
         self.request_frame()
 
-    def animating(self) -> bool:
-        return self._future is not None or super().animating()
+    def progress_text(self) -> str:
+        return f" {self.frames_done} frame(s)" if self.frames_done else ""
 
-    def close(self) -> None:
-        self._executor.shutdown(wait=False, cancel_futures=True)
+    # -- the potential editor: the type, its parameters, the weight, Add ------------------------------- #
+    def draw_extra_io(self, width: float) -> None:
+        self.editor_form.rects.clear()
+        name = self.editor.potential_type
+        spec = self._specs.get(name)
+        if spec is None:
+            spec = self._specs[name] = editor_spec(name)
+            self.editor_form.custom = {f"file:{p.attr}": self._draw_file_param(p)
+                                       for p in (get_spec(name).params if get_spec(name) else ())
+                                       if p.kind == "file"}
+        draw_form(self._choice_spec, self.editor, self.editor_form)
+        if spec["sections"]:
+            draw_form(spec, self.editor, self.editor_form)
+        draw_form(self._weight_spec, self.model, self.editor_form)
+        self.item_rects.update(self.editor_form.rects)
+        for key in ("potential_type", "add"):
+            if key in self.editor_form.rects:
+                self.item_rects[key] = self.editor_form.rects[key]
 
-    def _run(self) -> str:
-        if not self.model.trajectory_file:
-            return tr("Open a trajectory first.")
-        if not self.model.universe.potentials:
-            return tr("Add at least one potential.")
-        if not self.target:
-            return tr("Choose an output CSV file.")
-        try:
-            count = self.model.process(self.target, progress_cb=self._on_progress)
-        except Exception as exc:  # noqa: BLE001 - surface processing errors inline
-            return f"{tr('Processing failed')}: {type(exc).__name__}: {exc}"
-        return tr("Processed {} frame(s).").format(count)
+    def _draw_file_param(self, param):
+        """A potential file row: the path (typed or chosen) and its ``…``."""
+        def draw(section, model, state, width) -> None:
+            values = self._editor_values.setdefault(self.editor.potential_type, {})
+            label_w = im.calc_text_size(param.label)[0] + 8.0
+            button_w = im.get_frame_height() + 6.0
+            im.text(param.label)
+            im.same_line(max(label_w, 110.0))
+            im.set_next_item_width(max(80.0, width - max(label_w, 110.0) - button_w - 8.0))
+            changed, text = im.input_text(f"##{param.attr}", str(values.get(param.attr, param.default)),
+                                          elide_start=True)
+            im.set_item_tooltip(param.tip or param.label)
+            self.remember(param.attr)
+            if changed:
+                values[param.attr] = text
+            im.same_line()
+            if im.button(f"…##{param.attr}.browse", (button_w, 0)):
+                current = str(values.get(param.attr, param.default) or "")
+                from emtk.file_dialog import FileDialog
 
-    # ── persistence ─────────────────────────────────────────────────────
+                self._open_dialog(FileDialog(f"Open {param.label}", mode="open", filters=FILE_FILTERS,
+                                             directory=os.path.dirname(current) or None),
+                                  lambda path, attr=param.attr: self._editor_values.setdefault(
+                                      self.editor.potential_type, {}).__setitem__(attr, path))
+            im.set_item_tooltip(f"Choose the {param.label.lower()} file.")
+            self.remember(f"{param.attr}_browse")
+        return draw
+
+    # -- persistence ------------------------------------------------------------------------------------- #
     def export_settings(self) -> dict:
-        return {
-            "trajectory_file": self.model.trajectory_file,
-            "topology_filename": self.model.topology_filename,
-            "stride": int(self.model.stride),
+        settings = super().export_settings()
+        settings.update({
             "potential_weight": float(self.model.potential_weight),
             "selected_potential_index": int(self.selected_potential_index),
-            "editor_values": {
-                name: dict(values) for name, values in self._editor_values.items()
-            },
-            "target": self.target,
-        }
+            "editor_values": {name: dict(values) for name, values in self._editor_values.items()},
+        })
+        return settings
 
     def restore_settings(self, settings: dict) -> None:
-        if "trajectory_file" in settings:
-            self.model.set_trajectory(str(settings["trajectory_file"]))
-        if "topology_filename" in settings:
-            self.model.set_topology(str(settings["topology_filename"]))
-        if "stride" in settings:
-            self.model.stride = int(settings["stride"])
+        super().restore_settings(settings)
         if "potential_weight" in settings:
             self.model.potential_weight = float(settings["potential_weight"])
         if "selected_potential_index" in settings:
             self.selected_potential_index = int(settings["selected_potential_index"])
-        editor_values = settings.get("editor_values") or {}
-        for name, values in editor_values.items():
+        for name, values in (settings.get("editor_values") or {}).items():
             self._editor_values[name] = dict(values)
-        if "target" in settings:
-            self.target = str(settings["target"])
 
 
-def make_app() -> PotentialEnergyApp:
+def make_app(**kwargs) -> PotentialEnergyApp:
+    """Construct the standalone Potential-Energy app."""
+    from chisurf.emtk.i18n import install
+
+    install()
     return PotentialEnergyApp()
+
+
+__all__ = ["EditorModel", "PotentialEnergyApp", "editor_spec", "make_app"]

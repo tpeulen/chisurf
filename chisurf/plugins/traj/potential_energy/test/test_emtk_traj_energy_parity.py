@@ -76,10 +76,10 @@ def qt(trajectory):
 
 def _wait(app, timeout=60.0):
     end = time.monotonic() + timeout
-    while app._future is not None and time.monotonic() < end:
-        app.draw(RecordingPainter(), 0, 0, 1200, 800)
+    while app.running and time.monotonic() < end:
+        app.draw(RecordingPainter(), 0, 0, 800, 700)
         time.sleep(0.01)
-    assert app._future is None
+    assert not app.running
 
 
 # 1. the Process button writes the Qt tool's energies (on a worker)
@@ -91,12 +91,14 @@ def test_process_writes_the_qt_tools_energies(qt, trajectory):
         app.model.set_topology(pdb)
         for name, weight in POTENTIALS:
             app.model.add_potential(make_potential(name, {}), weight, name=name)
-        app.target = str(tmp / "emtk.txt")
-        assert app.start_run()
-        assert not app.start_run()                      # one run at a time
+        target = str(tmp / "emtk.txt")
+        app.save(target)
+        assert app.running
+        app.save(str(tmp / "second.txt"))               # one run at a time
         _wait(app)
-        assert "4" in app.message and app.frames_done >= 1
-        assert open(app.target).read() == qt["energies"]
+        assert app.notice == "Processed 4 frame(s)." and app.frames_done >= 1
+        assert open(target).read() == qt["energies"]
+        assert not (tmp / "second.txt").exists()
     finally:
         app.close()
 
@@ -110,24 +112,21 @@ def test_potential_files_match_the_qt_editors(qt):
         assert Path(param.default) == Path(path), name
 
 
-# 3. browse buttons and the save dialog Process opens when no file is set
+# 3. the browse buttons and the save dialog Process opens
 def test_browse_and_process_ask_for_files(trajectory):
     dcd, pdb, tmp = trajectory
     app = make_app()
     try:
-        app.browse("Open trajectory", "open", "Trajectories (*.dcd)", app.model.set_trajectory)
-        assert app.dialog is not None and app.dialog.mode == "open"
-        callback = app._dialog_callback
+        trajectory_row = next(p for p in app.paths if p.key == "trajectory")
+        app.browse(trajectory_row)
+        assert app.dialog is not None and app.dialog.mode == "open" and app.dialog.title == "Open trajectory"
         app.dialog = None
-        callback(dcd)
-        assert app.model.trajectory_file == dcd
+        app.model.set_trajectory(dcd)
         app.model.set_topology(pdb)
         app.model.add_potential(make_potential("Radius of Gyration", {}), 1.0, name="Radius of Gyration")
-        painter = RecordingPainter()
-        for _ in range(2):
-            painter = RecordingPainter()
-            app.draw(painter, 0, 0, 1200, 800)
-        assert painter.strings.count("…") >= 4           # trajectory, topology, H-Bond potential file, output
+        app.begin_save()
+        assert app.dialog.mode == "save" and app.dialog.title == "Save energies"
+        assert app.dialog.filters[0] == ("CSV-name file", ["*.txt"])         # the Qt dialog's filter
     finally:
         app.close()
 

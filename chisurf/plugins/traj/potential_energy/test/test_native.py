@@ -10,26 +10,28 @@ from ..app import PotentialEnergyApp, make_app
 from ..potential_specs import make_potential, potential_names
 
 
-def test_native_state_roundtrip():
+def test_native_state_roundtrip(tmp_path):
+    # Paths come back only while the files exist (a moved file is not restored), so they are real files here.
+    run, structure = tmp_path / "run.dcd", tmp_path / "structure.pdb"
+    run.write_text("x")
+    structure.write_text("x")
     app = PotentialEnergyApp()
-    app.model.set_trajectory("run.dcd")
-    app.model.set_topology("structure.pdb")
+    app.model.set_trajectory(str(run))
+    app.model.set_topology(str(structure))
     app.model.stride = 3
     app.model.potential_weight = 2.5
     app.selected_potential_index = 2
     app._editor_values.setdefault("H-Bond", {})["cutoff_ca"] = 9.0
-    app.target = "energies.txt"
     state = app.export_settings()
 
     other = PotentialEnergyApp()
     other.restore_settings(state)
-    assert other.model.trajectory_file == "run.dcd"
-    assert other.model.topology_filename == "structure.pdb"
+    assert other.model.trajectory_file == str(run)
+    assert other.model.topology_filename == str(structure)
     assert other.model.stride == 3
     assert other.model.potential_weight == 2.5
     assert other.selected_potential_index == 2
     assert other._editor_values["H-Bond"]["cutoff_ca"] == 9.0
-    assert other.target == "energies.txt"
 
 
 def test_native_potential_registry_is_qt_free_and_complete():
@@ -72,18 +74,21 @@ class _StubPotential:
 
 
 def test_native_process_guards():
+    """The action's preconditions, in the Qt tool's words (its information boxes), in the order it checks them."""
     app = PotentialEnergyApp()
-    assert app._run() == "Open a trajectory first."
+    assert app.action.missing(app.model) == "Open a trajectory first."
     app.model.set_trajectory("missing.dcd")
-    assert app._run() == "Add at least one potential."
+    assert app.action.missing(app.model) == "Add at least one potential."
     app.model.add_potential(_StubPotential(), 1.0, name="Radius of Gyration")
-    assert app._run() == "Choose an output CSV file."
+    assert app.action.missing(app.model) is None
 
 
 @pytest.mark.filterwarnings("ignore")
 def test_native_process_writes_energies(tmp_path):
     """Genuine workflow: synthetic DCD scored through the app's model writes CSV rows."""
     pytest.importorskip("chisurf.core.structure.trajectory_data")
+    import time
+
     from .test_view_model import _peptide_trajectory
 
     pdb = _peptide_trajectory(str(tmp_path / "pep.dcd"))
@@ -91,12 +96,15 @@ def test_native_process_writes_energies(tmp_path):
     app.model.set_trajectory(str(tmp_path / "pep.dcd"))
     app.model.set_topology(pdb)
     # The IMP-backed core potentials are unavailable in every environment; the
-    # stub exercises the identical add → process → CSV path.
+    # stub exercises the identical add -> process -> CSV path.
     app.model.add_potential(_StubPotential(), 1.0, name="Radius of Gyration")
     target = str(tmp_path / "energies.txt")
-    app.target = target
-    message = app._run()
-    assert "4" in message  # 4 frames processed
+    app.save(target)
+    end = time.monotonic() + 60
+    while app.running and time.monotonic() < end:
+        app.draw(RecordingPainter(), 0, 0, 800, 700)
+        time.sleep(0.01)
+    assert app.notice == "Processed 4 frame(s)."  # 4 frames processed
 
     header, *rows = open(target).read().strip().splitlines()
     assert header.split("\t")[:2] == ["FrameNbr", "Radius-Gyration"]
@@ -112,14 +120,12 @@ def test_native_renders_and_labels():
     # The window title is painted by the host chrome, not the app body; the
     # heading and every control label must be in the drawn strings.
     for expected in (
-        "Potential energy",
         "Trajectory",
         "Topology",
         "Potential",
         "Weight",
         "Add",
         "Stride",
-        "Output",
         "Process",
         "Log",
     ):
@@ -128,7 +134,7 @@ def test_native_renders_and_labels():
 
 def test_native_control_tooltips_in_all_locales(monkeypatch):
     """Every interactive control carries a tooltip, in every supported locale."""
-    from emtk import im
+    from emtk import im, im_widgets
     from emtk.i18n import get_locale, set_locale
 
     previous = get_locale()
@@ -141,15 +147,16 @@ def test_native_control_tooltips_in_all_locales(monkeypatch):
         return original(text, *args, **kwargs)
 
     monkeypatch.setattr(im, "set_item_tooltip", capture)
+    monkeypatch.setattr(im_widgets, "set_item_tooltip", capture)      # the spec-drawn fields tooltip through here
     try:
         for locale in ("en", "de", "fr", "es", "pt", "ru"):
             set_locale(locale)
             painter = RecordingPainter()
             tips.clear()
             app.draw(painter, 0, 0, 760, 620)
-            # Two file rows + combo + H-Bond parameter editor + weight + add +
-            # stride + output + process.
-            assert len(tips) >= 10, (locale, tips)
+            # Guide + Help + two file rows (field and ...) + combo + add + H-Bond parameter editor + weight +
+            # stride + process.
+            assert len(tips) >= 9, (locale, tips)
             assert all(tip.strip() for tip in tips), locale
             if locale == "en":
                 assert any("C-alpha distance cutoff" in tip for tip in tips), tips

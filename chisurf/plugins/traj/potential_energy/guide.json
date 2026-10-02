@@ -1,0 +1,81 @@
+{
+  "_comment": "Guided tour for the Potential-Energy calculator. The file rows, the potential editor and the action live inside custom sections or are built from the potential registry, so they are targeted by name; the stride is a spec attr. Read by chisurf.emtk.help_guide.",
+  "steps": [
+    {
+      "title": "Score every frame",
+      "text": "Each frame of a DCD trajectory is scored by the potentials you add, each with its weight, and the energies are written to a text file. Four steps: trajectory and topology, the potentials, the stride, process.",
+      "target": {}
+    },
+    {
+      "title": "The trajectory",
+      "text": "The DCD to score. Press <b>…</b> beside the row, or drop a <code>.dcd</code> on the window.",
+      "target": {
+        "name": "trajectory"
+      },
+      "await": {
+        "hint": "Press <b>…</b> and pick a trajectory."
+      }
+    },
+    {
+      "title": "The topology",
+      "text": "A DCD stores coordinates only; the atom names every potential scores by come from the PDB it was written for.",
+      "target": {
+        "name": "topology"
+      },
+      "await": {
+        "hint": "Press <b>…</b> and pick the PDB that names the atoms."
+      }
+    },
+    {
+      "title": "Choose a potential",
+      "text": "The list holds the potential types. The fields below it are that type's parameters, with the limits and steps the Qt editors had.",
+      "target": {
+        "name": "potential_type"
+      },
+      "await": {
+        "hint": "Open the list and choose a potential type."
+      }
+    },
+    {
+      "title": "Weight and Add",
+      "text": "The <b>Weight</b> scales the next potential you add. <b>Add</b> puts the potential, with the parameters shown, into the table below; add as many as you like.",
+      "target": {
+        "name": "add"
+      },
+      "await": {
+        "hint": "Press <b>Add</b>."
+      }
+    },
+    {
+      "title": "The added potentials",
+      "text": "One row per potential. <b>Double-click</b> a row (or select it and press Delete) to remove it again.",
+      "target": {
+        "name": "added_potentials"
+      }
+    },
+    {
+      "title": "Stride",
+      "text": "Only every Nth frame is scored; the written frame numbers count the frames of the source trajectory.",
+      "target": {
+        "attr": "stride"
+      }
+    },
+    {
+      "title": "Process",
+      "text": "Asks for the output file, then scores the frames on a worker. The button shows how many frames are done.",
+      "target": {
+        "name": "process"
+      },
+      "await": {
+        "hint": "Press <b>Process</b>."
+      }
+    },
+    {
+      "title": "What happened",
+      "text": "Every step lands in the log: the files, each potential added or removed, the frames processed. A failure is shown under the Process button too.",
+      "target": {
+        "name": "log"
+      }
+    }
+  ]
+}

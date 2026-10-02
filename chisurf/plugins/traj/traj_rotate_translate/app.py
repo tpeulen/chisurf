@@ -49,9 +49,34 @@ class RotateTranslateApp(TrajToolApp):
     """The Rotate/Translate-Trajectory window."""
 
     def __init__(self, model: RotateTranslateViewModel | None = None) -> None:
+        self._typed: dict[str, str] = {}                  # what a cell shows while it is being typed
         super().__init__(model or RotateTranslateViewModel(), HERE, "rotate_translate.view.json",
                          "traj_rotate_translate_io", "Rotate / translate trajectory",
                          [trajectory_field(), topology_field()], SAVE)
+
+    def _cell(self, name: str, value: float, width: float, tooltip: str) -> float | None:
+        """One typed number cell; the new value on Enter or when the click goes elsewhere, else ``None``.
+
+        The Qt editors are line edits: a number is typed, not dragged (emtk's ``input_float`` is a drag
+        field). A text that is no number leaves the value.
+        """
+        shown = self._typed.get(name, f"{value:.6g}")
+        im.set_next_item_width(width)
+        entered, text = im.input_text(f"##{name}", shown, "",
+                                      im.InputTextFlags.ENTER_RETURNS_TRUE | im.InputTextFlags.AUTO_SELECT_ALL)
+        im.set_item_tooltip(tooltip)
+        if text != shown:
+            self._typed[name] = text
+        clicked_away = im.get_io().mouse_clicked[0] and not im.is_item_hovered()
+        if name in self._typed and (entered or clicked_away):
+            typed = self._typed.pop(name)
+            try:
+                number = float(typed)
+            except ValueError:
+                return None
+            if np.isfinite(number) and number != value:
+                return number
+        return None
 
     def draw_extra_io(self, width: float) -> None:
         spacing = im.get_style().item_spacing[0]
@@ -63,10 +88,8 @@ class RotateTranslateApp(TrajToolApp):
             for j in range(3):
                 if j:
                     im.same_line()
-                im.set_next_item_width(cell)
-                changed, value = im.input_float(f"##r{i}{j}", float(matrix[i, j]), fmt="%.6g")
-                im.set_item_tooltip(MATRIX_TIP)
-                if changed:
+                value = self._cell(f"r{i}{j}", float(matrix[i, j]), cell, MATRIX_TIP)
+                if value is not None:
                     matrix[i, j] = value
                     self.model.rotation_matrix = matrix
                     self.tour.notify_used("rotation_matrix")
@@ -77,10 +100,8 @@ class RotateTranslateApp(TrajToolApp):
         for k in range(3):
             if k:
                 im.same_line()
-            im.set_next_item_width(cell)
-            changed, value = im.input_float(f"##t{k}", float(vector[k]), fmt="%.6g")
-            im.set_item_tooltip(TRANSLATION_TIP)
-            if changed:
+            value = self._cell(f"t{k}", float(vector[k]), cell, TRANSLATION_TIP)
+            if value is not None:
                 vector[k] = value
                 self.model.translation_vector = vector
                 self.tour.notify_used("translation")
