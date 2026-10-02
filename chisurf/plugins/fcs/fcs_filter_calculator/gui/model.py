@@ -186,7 +186,7 @@ class FilterModel(ScientificOperations):
             self.add_component(source)
         self._total_vector = next(iter(self._total_vectors_by_detector.values())).copy()
         self.total_label = "Convolved example (70/30 + scatter + afterpulse)"
-        self._fit_bounds = (0, 256)
+        self._fit_bounds = self.default_fit_range(self._total_vector)
 
     def set_total_paths(self, paths):
         self._total_paths = [Path(p) for p in paths]
@@ -195,7 +195,16 @@ class FilterModel(ScientificOperations):
         self._decay_cache.clear()
         self._routing_cache.clear()
         self.total_label = "; ".join(str(p) for p in paths)
-        self._fit_bounds = (0, len(self._total_decay(self.detectors.selected)))
+        self._fit_bounds = self.default_fit_range(self._total_decay(self.detectors.selected))
+
+    @staticmethod
+    def default_fit_range(decay):
+        """The Qt tool's first fit range: just past the prompt (peak plus 1 % of the bins, at least 2) to 1 % short of the end."""
+        d = np.asarray(decay, dtype=float).ravel()
+        if d.size < 8:
+            return (0, int(d.size))
+        start = min(int(np.argmax(d)) + max(2, d.size // 100), d.size - 4)
+        return (start, d.size - max(1, d.size // 100))
 
     def set_setup(self, setup):
         self._detector_settings = deepcopy(setup)

@@ -10,25 +10,40 @@ import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
+from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
+from emtk.view_form import FormState, draw_form
 
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .model import FilterModel
+from .panel import ComponentPanel, FilterPanel, component_spec
+
+HERE = Path(__file__).parent
+SPEC = json.loads((HERE / "filter_emtk.view.json").read_text(encoding="utf-8"))
+#: The guide's and the tests' names for the tables (a form records a table under its source).
+#: The names the shared guide.json gives the toolbar actions.
+TOUR_NAMES = {"load_mixed": "Mixed", "autofit": "Auto-fit", "unmix": "Unmix", "save_project": "Project"}
+ALIASES = {"component_rows": "components", "detector_rows": "detectors", "instrument_rows": "instrument", "range_rows": "ranges", "parameter_rows": "fit_parameters"}
 
 
 #: Lowest count drawn on the logarithmic decay axis: an IRF tail of 1e-298 would otherwise stretch the view over 300 decades.
 FLOOR = 0.5
+COMPONENT_COLOURS = ((56, 189, 248, 255), (251, 113, 133, 255), (74, 222, 128, 255), (250, 204, 21, 255), (192, 132, 252, 255), (251, 146, 60, 255))
+#: Width the controls dock gets at least in a narrow window (its five tabs and the tables need it).
+MIN_CONTROLS = 420.0
 
 
-class FilterApp(ImApp):
+class FilterApp(TourTarget, ImApp):
     def __init__(self, workflow_context=None, parameter_linker=None):
         self.model = FilterModel()
         self.workflow_context = workflow_context
         self.parameter_linker = parameter_linker
         self.registry_owner = f"fcs_filter_calc_emtk_{id(self)}"
         self.job = BackgroundJob()
+        self.job_replaces = False
         self.pending_restoration_compute = False
         self.dialog = None
         self.dialog_callback = None
@@ -36,12 +51,20 @@ class FilterApp(ImApp):
         self.link_parameter = None
         self.editor_index = None
         self.selected_component = -1
-        self.setup_store = None
-        self.setup_json = json.dumps(self.model._detector_settings, indent=2)
+        self.selected_detector_row = None
+        self.selected_parameter = None
+        self.component_panel = None
+        self.component_spec = None
+        self.file_window = DialogWindow("Choose input or output", size=(560.0, 420.0), key="filter_files")
+        self.component_window = DialogWindow("Component definition", size=(520.0, 560.0), key="component_definition")
         self.item_rects = {}
+        self.forms = {}
+        self.panel = FilterPanel(self)
+        self.setup = ChannelDefinitionWidget(settings=self.model._detector_settings, on_changed=self._setup_changed)
+        self._setup_pending = None
         base = Path(__file__).parents[1] / "gui_parts"
-        self.help = EmTkHelpWindow(title="Filtered FCS help", resource=base / "help.md")
-        self.tour = EmTkGuidedTour(steps=base / "guide.json", get_target_rect=self.item_rects.get)
+        self.help = EmTkHelpWindow(title="Filtered FCS help", resource=base / "help.md", owner=self, on_start_guide=lambda: self.tour.start())
+        self.tour = EmTkGuidedTour(steps=base / "guide.json", get_target_rect=self.item_rects.get, owner=self, wait_for_controls=True)
         self.docks = DockManager(
             Split(
                 "h",
@@ -70,6 +93,16 @@ class FilterApp(ImApp):
         self.last_settings = self.settings_fingerprint()
         self.submit(lambda model: model.compute())
 
+    def _used(self, name):
+        """A named control was used: tell the guide, which knows the Qt toolbar's names too."""
+        self.tour.notify_used(name)
+        if name in TOUR_NAMES:
+            self.tour.notify_used(TOUR_NAMES[name])
+
+    def _setup_changed(self, settings):
+        """The embedded detector editor edited the definition: adopt it once the pointer is up (called from inside a draw)."""
+        self._setup_pending = settings
+
     def settings_fingerprint(self):
         model = self.model
         return json.dumps(
@@ -88,17 +121,31 @@ class FilterApp(ImApp):
             sort_keys=True,
         )
 
-    def submit(self, operation):
+    #: What a plain recompute hands back to the live model (the inputs stay the live ones, edited while it ran).
+    RESULT_FIELDS = ("_result", "_result_anisotropy", "_result_multi_detector", "_result_multi_anisotropy", "_unmix_result",
+                     "_irf_by_detector", "_synthetic_scatter_fits", "message")
+
+    @property
+    def editing_blocked(self):
+        """Whether the inputs may not be edited now: only while a job that replaces the model (load, auto-fit, unmix) runs."""
+        return self.job.running and self.job_replaces
+
+    def submit(self, operation, replace=True):
         if self.job.running:
             return False
         snapshot = self.model.snapshot()
+        self.job_replaces = replace
 
         def work():
             operation(snapshot)
             return snapshot
 
         def publish(model):
-            self.model = model
+            if replace:
+                self.model = model
+            else:
+                for name in self.RESULT_FIELDS:
+                    setattr(self.model, name, getattr(model, name))
             self.last_settings = self.settings_fingerprint()
             if model._auto_fit_result:
                 from chisurf.core.registry.parameter_groups import register_parameter_group
@@ -118,10 +165,13 @@ class FilterApp(ImApp):
         mode="open",
         multiple=False,
         filters="Decay (*.pto *.txt *.dat *.csv *.spc *.ptu *.ht3 *.tttr *.bst);;All files (*)",
+        filename="",
     ):
         if self.job.running:
             return
-        self.dialog = FileDialog(title, mode=mode, multiselect=multiple, filters=filters)
+        self.dialog = FileDialog(title, mode=mode, multiselect=multiple, filters=filters, filename=filename)
+        self.file_window.title = title
+        self.file_window.show()
         self.dialog_callback = callback
 
     def button(self, label, tip, callback):
@@ -201,212 +251,9 @@ class FilterApp(ImApp):
                 crosstalk=self.model._calibration_seed(),
                 forster_radius=52.0,
             )
-        self.editor = json.dumps(source, indent=2)
+        self.editor = source
         self.editor_index = None
-
-    def draw_component_form(self):
-        try:
-            source = json.loads(self.editor)
-        except ValueError:
-            return
-        if not isinstance(source, dict):
-            return
-        changed, name = im.input_text("Component name", source.get("name", "Component"))
-        im.set_item_tooltip("Name shown in the filter legends and component list.")
-        dirty = changed
-        source["name"] = name
-        for key, label, default, tip in (
-            ("bin_width", "Bin width ns", 0.05, "Time represented by each TAC bin in nanoseconds."),
-            ("start_bin", "Start bin", 0, "Shift the synthetic decay by this many TAC bins."),
-            (
-                "period_ns",
-                "Laser period ns",
-                0.0,
-                "Periodic convolution period; zero disables periodic wrapping.",
-            ),
-        ):
-            changed, value = self.number(
-                label, source.get(key, default), tip, integer=key == "start_bin"
-            )
-            source[key] = value
-            dirty |= changed
-        if source.get("model") == "lifetime":
-            changed, source["lifetime"] = self.number(
-                "Lifetime ns",
-                source.get("lifetime", 2.0),
-                "Exponential fluorescence lifetime in nanoseconds.",
-            )
-            dirty |= changed
-        if source.get("model") == "lifetime_spectrum":
-            amplitudes = source.get("amplitudes", [1.0])
-            lifetimes = source.get("lifetimes", [2.0])
-            for i in range(min(len(amplitudes), len(lifetimes))):
-                changed, amplitudes[i] = self.number(
-                    f"Amplitude {i + 1}",
-                    amplitudes[i],
-                    "Pre-exponential amplitude of this lifetime component.",
-                )
-                dirty |= changed
-                changed, lifetimes[i] = self.number(
-                    f"Lifetime {i + 1} ns",
-                    lifetimes[i],
-                    "Lifetime of this spectrum component in nanoseconds.",
-                )
-                dirty |= changed
-            if im.button("Add spectrum row"):
-                amplitudes.append(1.0)
-                lifetimes.append(2.0)
-                dirty = True
-            im.set_item_tooltip("Add another amplitude/lifetime pair to the spectrum.")
-            source.update(amplitudes=amplitudes, lifetimes=lifetimes)
-        if source.get("model") in {"gaussian_lifetime", "gaussian_distance"}:
-            fields = (
-                (
-                    ("mean_lifetime", "Mean lifetime ns", 2.0),
-                    ("sigma_lifetime", "Lifetime width ns", 0.4),
-                )
-                if source["model"] == "gaussian_lifetime"
-                else (
-                    ("donor_lifetime", "Donor lifetime ns", 4.0),
-                    ("forster_radius", "Förster radius Å", 52.0),
-                    ("mean_distance", "Mean distance Å", 50.0),
-                    ("sigma_distance", "Distance width Å", 5.0),
-                )
-            )
-            for key, label, default in fields:
-                changed, source[key] = self.number(
-                    label,
-                    source.get(key, default),
-                    "Mean or standard deviation of the sampled species distribution.",
-                )
-                dirty |= changed
-            changed, source["n_samples"] = self.number(
-                "Distribution samples",
-                source.get("n_samples", 81),
-                "Number of quadrature samples resolving the lifetime/distance distribution.",
-                True,
-            )
-            dirty |= changed
-        if source.get("model") == "fret_species":
-            states = ["da", "d_only", "a_only"]
-            changed, index = im.combo(
-                "State",
-                states.index(source.get("state", "da")),
-                ["Donor + acceptor", "Donor only", "Acceptor only"],
-            )
-            im.set_item_tooltip("Choose the fluorophore labeling state of this species.")
-            source["state"] = states[index]
-            dirty |= changed
-            modes = ["efficiency", "distance"]
-            mode = source.get("fret_mode", "efficiency")
-            changed, index = im.combo(
-                "FRET model", modes.index(mode) if mode in modes else 0, modes
-            )
-            im.set_item_tooltip(
-                "Specify transfer efficiency, a distance, or a distance distribution."
-            )
-            source["fret_mode"] = modes[index]
-            dirty |= changed
-            for key, label, default in (
-                ("transfer_efficiency", "Transfer efficiency", 0.5),
-                ("distance", "Distance Å", 50.0),
-                ("forster_radius", "Förster radius Å", 52.0),
-                ("kappa2", "κ²", 2.0 / 3.0),
-                ("x_donly", "Donor-only fraction", 0.0),
-            ):
-                changed, source[key] = self.number(
-                    label,
-                    source.get(key, default),
-                    "Species FRET parameter used in coupled detector decay generation.",
-                )
-                dirty |= changed
-            for spectrum_key, label in (
-                ("donor_spectrum", "Donor"),
-                ("acceptor_spectrum", "Acceptor"),
-            ):
-                spectrum = list(source.get(spectrum_key, [1.0, 4.0 if label == "Donor" else 2.0]))
-                for i in range(0, len(spectrum) - 1, 2):
-                    changed, spectrum[i] = self.number(
-                        f"{label} amplitude {i // 2 + 1}",
-                        spectrum[i],
-                        "Pre-exponential fluorescence amplitude.",
-                    )
-                    dirty |= changed
-                    changed, spectrum[i + 1] = self.number(
-                        f"{label} lifetime {i // 2 + 1} ns",
-                        spectrum[i + 1],
-                        "Fluorescence lifetime before energy transfer.",
-                    )
-                    dirty |= changed
-                source[spectrum_key] = spectrum
-            if source["fret_mode"] == "distance":
-                rows = source.get(
-                    "distance_rows",
-                    [{"mean": source.get("distance", 50.0), "sigma": 0.0, "amplitude": 1.0}],
-                )
-                for i, row in enumerate(rows):
-                    for key, label in (
-                        ("mean", "Distance mean Å"),
-                        ("sigma", "Distance width Å"),
-                        ("amplitude", "Distance amplitude"),
-                    ):
-                        changed, row[key] = self.number(
-                            f"{label} {i + 1}",
-                            row.get(key, 0),
-                            "Species population weight and Gaussian distance distribution parameters.",
-                        )
-                        dirty |= changed
-                if im.button("Add distance population"):
-                    rows.append({"mean": 50.0, "sigma": 5.0, "amplitude": 1.0})
-                    dirty = True
-                im.set_item_tooltip("Add a weighted distance-distribution population.")
-                source["distance_rows"] = rows
-                options = ["gaussian", "gaussian_3d"]
-                changed, index = im.combo(
-                    "Distance distribution",
-                    options.index(source.get("distance_distribution", "gaussian")),
-                    options,
-                )
-                im.set_item_tooltip(
-                    "Use a scalar Gaussian or the physical radial distribution of two 3-D Gaussian dye positions."
-                )
-                source["distance_distribution"] = options[index]
-                dirty |= changed
-            crosstalk = source.get("crosstalk", {})
-            for key, default in (("alpha", 0.0), ("beta", 1.0), ("gamma", 1.0), ("delta", 0.0)):
-                changed, crosstalk[key] = self.number(
-                    key,
-                    crosstalk.get(key, default),
-                    "Species leakage, excitation or detection correction factor.",
-                )
-                dirty |= changed
-            source["crosstalk"] = crosstalk
-        changed, source["shot_noise"] = self.checkbox(
-            "Simulate shot noise",
-            source.get("shot_noise", False),
-            "Sample the synthetic pattern using photon-count Poisson statistics.",
-        )
-        dirty |= changed
-        if source["shot_noise"]:
-            changed, source["photon_count"] = self.number(
-                "Pattern photons",
-                source.get("photon_count", 100000),
-                "Number of photons in the simulated reference pattern.",
-                True,
-            )
-            dirty |= changed
-            changed, source["noise_seed"] = self.number(
-                "Random seed",
-                source.get("noise_seed", 0),
-                "Seed for reproducible pattern shot-noise generation.",
-                True,
-            )
-            dirty |= changed
-        if dirty:
-            # Per-detector pattern caches describe the previous definition.
-            # Rebuild them on Apply rather than silently retaining stale shapes.
-            source.pop("patterns_by_detector", None)
-            self.editor = json.dumps(source, indent=2)
+        self.refresh_component_spec()
 
     def read_fit(self, fit):
         from chisurf.core.fluorescence.decay import (
@@ -449,14 +296,15 @@ class FilterApp(ImApp):
                 source["patterns_by_detector"].update(
                     {key: np.asarray(value).tolist() for key, value in zip(routing, ordered)}
                 )
-            self.editor = json.dumps(source, indent=2)
+            self.editor = source
             self.editor_index = None
+            self.refresh_component_spec()
         except Exception as exc:
             self.model.message = str(exc)
 
     def commit_component(self):
         try:
-            source = json.loads(self.editor)
+            source = self.editor
             if not isinstance(source, (dict, list)):
                 raise ValueError(
                     "Component must be a synthetic definition or a list of reference files."
@@ -492,356 +340,82 @@ class FilterApp(ImApp):
         except Exception as exc:
             self.model.message = str(exc)
 
-    def draw_sources(self, box):
-        model = self.model
-        im.begin_disabled(self.job.running)
-        self.button(
-            "Mixed…",
-            "Open a measured mixed decay histogram or TTTR/BST files.",
-            lambda: self.choose("Mixed decay", self.load_total, multiple=True),
-        )
-        self.button(
-            "From correlator",
-            "Adopt the sibling Correlator files and microtime binning.",
-            self.from_correlator,
-        )
-        im.text_wrapped(model.total_label)
-        changed, model.polarized = self.checkbox(
-            "Polarized / MFD",
-            model.polarized,
-            "Resolve parallel and perpendicular routing channels separately for every detector.",
-        )
-        _, model.stacked = self.checkbox(
-            "Global stacked detectors",
-            model.stacked,
-            "Use inter-detector relative species brightness in one global filter solve.",
-        )
-        _, model.options_model.fit_background = self.checkbox(
-            "Afterpulse / constant",
-            model.options_model.fit_background,
-            "Add and reject a constant dark-count/afterpulse nuisance filter.",
-        )
-        _, model.options_model.scatter_irf = self.checkbox(
-            "Scatter / IRF",
-            model.options_model.scatter_irf,
-            "Add and reject the measured or synthetic detector IRF nuisance filter.",
-        )
-        _, start = self.number("Fit start", model._fit_bounds[0], "First included TAC bin.", True)
-        _, stop = self.number(
-            "Fit stop", model._fit_bounds[1], "Exclusive upper TAC bin of the filter fit.", True
-        )
-        model._fit_bounds = (max(0, start), max(1, stop))
-        for i, c in enumerate(model.components):
-            _, c.enabled = self.checkbox(
-                f"##component{i}", c.enabled, "Include this component in filter calculation."
-            )
-            im.same_line()
-            if im.selectable(f"{c.name}##species{i}", i == self.selected_component):
-                self.selected_component = i
-            im.set_item_tooltip(
-                "Right-click to edit, remove or duplicate the component definition."
-            )
-            if im.begin_popup_context_item(f"component-menu{i}"):
-                if im.menu_item("Edit component"):
-                    self.editor = json.dumps(c.source, indent=2)
-                    self.editor_index = i
-                im.set_item_tooltip(
-                    "Edit the complete lifetime, lifetime-spectrum, FRET or measured-reference definition."
-                )
-                if im.menu_item("Duplicate component"):
-                    model.add_component(c.source)
-                im.set_item_tooltip("Copy the selected component, preserving every model field.")
-                if im.menu_item("Remove component"):
-                    model.components.pop(i)
-                im.set_item_tooltip("Remove this basis component without deleting files.")
-                im.end_popup()
-        for kind, label in [
-            ("lifetime", "Add lifetime"),
-            ("lifetime_spectrum", "Add spectrum"),
-            ("fret_species", "Add FRET species"),
-            ("gaussian_lifetime", "Add lifetime distribution"),
-            ("gaussian_distance", "Add distance distribution"),
-        ]:
-            self.button(
-                label,
-                "Create a synthetic component; its complete definition is editable.",
-                lambda kind=kind: self.new_component(kind),
-            )
-        import chisurf
+    def status_text(self):
+        return self.model.message or ""
 
-        fits = list(getattr(chisurf, "fits", []) or [])
-        if fits:
-            for fit in fits:
-                self.button(
-                    f"Read fit: {getattr(fit, 'name', 'Open fit')}",
-                    "Adopt the open fit's lifetime spectrum and detector-convolved patterns.",
-                    lambda fit=fit: self.read_fit(fit),
-                )
-        self.button(
-            "Add measured pattern…",
-            "Load one or more reference decay files as a component.",
-            lambda: self.choose(
-                "Species reference", lambda paths: self.add_measured(paths), multiple=True
-            ),
-        )
-        self.button(
-            "Compute filters",
-            "Solve the selected component filters over the fit range.",
-            lambda: self.submit(lambda model: model.compute()),
-        )
-        self.button(
-            "Unmix",
-            "Fit non-negative component intensities and compute filters.",
-            lambda: self.submit(lambda model: model.unmix()),
-        )
-        self.button(
-            "Save project…",
-            "Save inputs, definitions, detector IRFs, options and computed filters.",
-            lambda: self.choose(
-                "Save project",
-                lambda paths: self.submit(lambda model: model.save_project(paths[0])),
-                mode="save",
-                filters="Project (*.json)",
-            ),
-        )
-        self.button(
-            "Load project…",
-            "Restore existing Qt or native Filter Calculator projects.",
-            lambda: self.choose(
-                "Load project",
-                lambda paths: self.submit(lambda model: model.load_project(paths[0])),
-                filters="Project (*.json)",
-            ),
-        )
-        self.button(
-            "Export results…",
-            "Export single, multi-detector or MFD filters and reconstruction metadata.",
-            lambda: self.choose(
-                "Export filters",
-                lambda paths: self.submit(lambda model: model.export_results(paths[0])),
-                mode="save",
-                filters="Filters (*.json)",
-            ),
-        )
-        self.button(
-            "Example",
-            "Restore the detector-convolved synthetic 70/30 example.",
-            lambda: self.submit(lambda model: (model.populate_example(), model.compute())),
-        )
-        im.end_disabled()
-        self.button(
-            "Help", "Read the lifetime filter workflow and scientific assumptions.", self.help.show
-        )
-        self.button("Guide", "Walk through the built-in example.", self.tour.start)
-        if self.job.running:
-            self.button(
-                "Stop",
-                "Discard pending computation results; file exports already writing may finish.",
-                self.job.stop,
-            )
-        im.text_wrapped(model.message)
+    def edit_selected_component(self):
+        i = self.selected_component
+        if 0 <= i < len(self.model.components):
+            self.editor = json.loads(json.dumps(self.model.components[i].source)) if isinstance(self.model.components[i].source, dict) else None
+            self.editor_index = i
+            self.refresh_component_spec()
+
+    def refresh_component_spec(self):
+        if isinstance(self.editor, dict):
+            self.component_panel = ComponentPanel(self.editor, self)
+            self.component_spec = component_spec(self.editor)
 
     def add_measured(self, paths):
         self.model.add_component([str(p) for p in paths])
         self.submit(lambda model: model.compute())
 
-    def refresh_saved_setups(self):
-        if self.job.running:
-            return
-        from chisurf.core.setup_channel_definition import ChannelDefinition
-
-        def work():
-            store = ChannelDefinition()
-            store.refresh_setups()
-            return store
-
-        def publish(store):
-            self.setup_store = store
-            self.model.message = f"Loaded {len(store.setups)} saved detector setups."
-
-        self.job.start(work, publish, lambda exc: setattr(self.model, "message", str(exc)))
-
-    def select_saved_setup(self, name):
-        self.setup_store.select_setup(name)
-        self.model.set_setup(self.setup_store.get_settings())
-        self.setup_json = json.dumps(self.model._detector_settings, indent=2)
-        self.submit(lambda model: model.compute())
-
-    def draw_setup(self, box):
-        model = self.model
-        im.begin_disabled(self.job.running)
-        self.button(
-            "Refresh saved setups",
-            "Read saved Detector Definition setups from the authoritative MMFDB or JSON store.",
-            self.refresh_saved_setups,
-        )
-        if self.setup_store is not None and self.setup_store.setups:
-            names = sorted(self.setup_store.setups)
-            current = self.setup_store.current_name
-            changed, index = im.combo(
-                "Saved detector setup", names.index(current) if current in names else -1, names
-            )
-            im.set_item_tooltip(
-                "Use a saved detector definition, routing channels and calibration."
-            )
-            if changed:
-                self.select_saved_setup(names[index])
-        for detector in model.detectors.names:
-            changed, value = self.checkbox(
-                detector,
-                detector in model.detectors.selected,
-                "Include this detector in total decay and filter calculations.",
-            )
-            if changed:
-                if value:
-                    model.detectors.selected.append(detector)
-                elif detector in model.detectors.selected:
-                    model.detectors.selected.remove(detector)
-            for role in ("par", "perp") if model.polarized else ("",):
-                im.push_id(f"{detector}|{role}")
-                im.text(f"{detector} {role}")
-                _, path = im.input_text("IRF path", model.detectors.irf_path(detector, role))
-                im.set_item_tooltip(
-                    "Measured instrument response; empty uses Width/Skew/Shift to build a synthetic IRF."
-                )
-                model.detectors.values["irf"][f"{detector}|{role}"] = path
-                self.button(
-                    "Browse IRF…",
-                    "Choose a measured IRF decay histogram.",
-                    lambda d=detector, r=role: self.choose(
-                        "IRF", lambda paths: self.set_irf(d, r, paths[0])
-                    ),
-                )
-                _, width = self.number(
-                    "Width ns",
-                    model.detectors.width(detector, role),
-                    "Synthetic IRF full width at half maximum in nanoseconds.",
-                )
-                _, skew = self.number(
-                    "Skew",
-                    model.detectors.skew(detector, role),
-                    "Synthetic generalized-normal IRF shape.",
-                )
-                _, shift = self.number(
-                    "Shift ns",
-                    model.detectors.shift(detector, role),
-                    "Sub-bin time alignment, applied to both measured and synthetic IRFs.",
-                )
-                model.detectors.set_width(detector, max(0, width), role)
-                model.detectors.set_skew(detector, skew, role)
-                model.detectors.set_shift(detector, shift, role)
-                im.pop_id()
-        _, self.setup_json = im.input_text_multiline(
-            "Detector setup JSON", self.setup_json, (-1, 180)
-        )
-        im.set_item_tooltip(
-            "Detector routing channels and calibration setup, compatible with the authoritative Detector Definition tool."
-        )
-        self.button(
-            "Apply detector setup",
-            "Validate and adopt routing, detector names and calibration.",
-            self.apply_setup,
-        )
-        self.button(
-            "Load detector setup…",
-            "Open a detector setup JSON file.",
-            lambda: self.choose("Detector setup", self.load_setup, filters="Setup (*.json)"),
-        )
-        im.end_disabled()
-
     def set_irf(self, detector, role, path):
         self.model.detectors.values["irf"][f"{detector}|{role}"] = str(path)
 
-    def apply_setup(self):
+    def form(self, name, spec=None, panel=None):
+        state = self.forms.setdefault(name, FormState(on_used=self._used))
+        state.rects.clear()
+        draw_form((spec or SPEC[name]), panel or self.panel, state, titles=False)
+        self.item_rects.update(state.rects)
+        for source, alias in ALIASES.items():
+            if source in state.rects:
+                self.item_rects[alias] = state.rects[source]
+        for action, tour_name in TOUR_NAMES.items():
+            if action in state.rects:
+                self.item_rects[tour_name] = state.rects[action]
+
+    def draw_sources(self, box):
+        self.form("toolbar")
+        if self.job.running:
+            im.text_disabled("Computing ...")
+        elif self.model.message:
+            im.text_wrapped(self.model.message)
+        else:
+            im.text_disabled(" ")
+        self.form("inputs")
+        im.text_unformatted("Detectors")
+        self.form("detectors")
+        self.form("mixed")
+        im.text_unformatted("Components")
+        self.form("components")
+        self.form("component_buttons")
+        import chisurf
+
+        for fit in list(getattr(chisurf, "fits", []) or []):
+            self.button(f"Read fit: {getattr(fit, 'name', 'Open fit')}", "Adopt the open fit's lifetime spectrum and detector-convolved patterns.", lambda fit=fit: self.read_fit(fit))
+        self.remember("sources", tuple(box))
+        self.item_rects["Decay sources"] = tuple(box)
+
+    def refresh_saved_setups(self):
+        self.setup.model.refresh_setups()
+
+    def draw_setup(self, box):
+        self.setup.draw()
+
+    def apply_setup(self, settings=None):
+        """The embedded editor changed the working definition: adopt its detectors and recompute."""
+        settings = settings if settings is not None else self.setup.model.get_settings()
+        if not settings.get("detectors"):
+            return
         try:
-            self.model.set_setup(json.loads(self.setup_json))
+            self.model.set_setup(settings)
             self.submit(lambda model: model.compute())
         except Exception as exc:
             self.model.message = str(exc)
 
-    def load_setup(self, paths):
-        self.setup_json = Path(paths[0]).read_text()
-        self.apply_setup()
-
     def draw_autofit(self, box):
-        model = self.model
-        im.begin_disabled(self.job.running)
-        settings = model._auto_fit_settings
-        changed, index = im.combo(
-            "Type", 1 if settings["kind"] == "fret" else 0, ["Lifetime species", "FRET states"]
-        )
-        im.set_item_tooltip(
-            "Fit lifetime components, or FRET distances against the Förster radius."
-        )
-        if changed:
-            settings["kind"] = "fret" if index else "lifetime"
-        _, n = self.number(
-            "Components / states",
-            settings["n_components"],
-            "Number of lifetime components or FRET states, 1–12.",
-            True,
-        )
-        _, lo = self.number(
-            "Lifetime min ns", settings["tau_min"], "Lower fitted lifetime bound in nanoseconds."
-        )
-        _, hi = self.number(
-            "Lifetime max ns",
-            settings["tau_max"],
-            "Upper lifetime bound; donor lifetime for FRET fitting.",
-        )
-        settings.update(
-            n_components=max(1, min(12, n)), tau_min=max(0.01, lo), tau_max=max(0.02, hi)
-        )
-        self.button(
-            "Fit components",
-            "Fit the mixed decay, jointly fitting the synthetic IRF when no measured IRF is loaded.",
-            lambda: self.submit(lambda model: model._auto_fit_components()),
-        )
-        result = model._auto_fit_result
-        if result:
-            im.text_wrapped(f"Reduced χ²: {result.get('chi2_reduced', '?')}")
-            fit = result.get("fit")
-            parameters = getattr(getattr(fit, "model", None), "parameters_all", {})
-            if isinstance(parameters, dict):
-                parameters = list(parameters.values())
-            for parameter in parameters or []:
-                if getattr(parameter, "name", "") in {
-                    "dt",
-                    "start",
-                    "stop",
-                    "irf_start",
-                    "irf_stop",
-                }:
-                    continue
-                name = getattr(parameter, "name", "parameter")
-                value = getattr(parameter, "value", None)
-                if isinstance(value, (int, float)):
-                    changed, value = self.number(
-                        name,
-                        value,
-                        "Edit this fitted model parameter; use linking to share a fit parameter.",
-                    )
-                    if changed:
-                        parameter.value = value
-                    changed, fixed = self.checkbox(
-                        f"Fixed##{id(parameter)}",
-                        bool(getattr(parameter, "fixed", False)),
-                        "Hold this parameter fixed during fitting.",
-                    )
-                    if changed:
-                        parameter.fixed = fixed
-                    self.button(
-                        f"Link {name}##{id(parameter)}",
-                        "Choose a parameter from open fits or registered plugin models to follow.",
-                        lambda p=parameter: self.choose_parameter_link(p),
-                    )
-                    if getattr(parameter, "link", None) is not None:
-                        self.button(
-                            f"Unlink {name}##{id(parameter)}",
-                            "Detach this follower while retaining its current scalar value.",
-                            lambda p=parameter: setattr(p, "link", None),
-                        )
-        im.end_disabled()
+        self.form("autofit")
+        self.form("fit_parameters")
 
     def choose_parameter_link(self, parameter):
         if self.parameter_linker is not None:
@@ -888,43 +462,18 @@ class FilterApp(ImApp):
         im.end()
 
     def draw_instrument(self, box):
-        im.begin_disabled(self.job.running)
-        view = json.loads(
-            (Path(__file__).parents[1] / "gui_parts/instrument_options.view.json").read_text()
-        )
-        for row in view["sections"][0]["options"]["rows"]:
-            _, value = self.number(
-                row["label"], getattr(self.model.instrument_model, row["attr"]), row["description"]
-            )
-            setattr(self.model.instrument_model, row["attr"], value)
-        _, self.model.instrument_model.periodic = self.checkbox(
-            "Periodic convolution",
-            self.model.instrument_model.periodic,
-            "Wrap the previous laser pulse decay tail into the current microtime window.",
-        )
-        im.end_disabled()
+        self.form("instrument")
 
     def draw_info(self, box):
-        im.begin_disabled(self.job.running)
-        im.text_wrapped(
-            f"{len(self.model.components)} components; detectors: {', '.join(self.model.detectors.selected)}; bin width {self.model._pattern_bin_width_ns():.6g} ns"
-        )
-        for detector in self.model.detectors.selected:
-            im.push_id(detector)
-            lo, hi = self.model._detector_fit_ranges.get(detector, self.model._fit_bounds)
-            changed_start, lo = self.number(
-                f"{detector} start", lo, "Per-detector first fitted TAC bin.", True
-            )
-            changed_stop, hi = self.number(
-                f"{detector} stop", hi, "Per-detector exclusive last fitted TAC bin.", True
-            )
-            if changed_start or changed_stop:
-                self.model._detector_fit_ranges[detector] = (max(0, lo), max(lo + 1, hi))
-            im.pop_id()
-        for entry in self.model.results():
-            im.text_wrapped(f"{entry['detector']}: {entry['result'].metadata}")
+        im.text_unformatted("Per-detector fit range (TAC bins)")
+        self.form("ranges")
+        im.text_unformatted("Information")
+        im.text_wrapped(self.panel.info_text())
 
-        im.end_disabled()
+    @staticmethod
+    def component_color(index):
+        """One colour per component, in order (a hash of the name gave two components the same one)."""
+        return COMPONENT_COLOURS[index % len(COMPONENT_COLOURS)]
 
     @staticmethod
     def stable_color(label):
@@ -963,7 +512,7 @@ class FilterApp(ImApp):
                             spec=implot.PlotSpec(
                                 line_color=(150, 150, 150, 255)
                                 if rejected
-                                else self.stable_color(label),
+                                else self.component_color(i),
                                 dash=(5, 4) if rejected else None,
                             ),
                         )
@@ -1011,7 +560,7 @@ class FilterApp(ImApp):
             lo, hi = self.model._fit_bounds
             left = implot.drag_line_x(101, float(lo))
             right = implot.drag_line_x(102, float(hi))
-            if not self.job.running and (left.modified or right.modified):
+            if not self.editing_blocked and (left.modified or right.modified):
                 self.model._fit_bounds = (max(0, int(left.value)), max(1, int(right.value)))
             implot.end_plot()
         im.set_item_tooltip(
@@ -1034,52 +583,53 @@ class FilterApp(ImApp):
 
     def render(self):
         self.job.poll()
+        self.setup.poll()
+        if self._setup_pending is not None and not self.job.running:
+            settings, self._setup_pending = self._setup_pending, None
+            self.apply_setup(settings)
         if self.pending_restoration_compute and not self.job.running:
             self.pending_restoration_compute = False
             self.submit(lambda model: model.compute())
         vp = im.get_main_viewport()
         frame = (0.0, 0.0, *vp.size)
+        if not getattr(self, "_ratio_set", False):
+            self._ratio_set = True  # a narrow window gives the controls room for their tabs; the bar still drags
+            self.docks.layout.ratio = max(0.34, min(0.52, MIN_CONTROLS / max(float(vp.size[0]), 1.0)))
         self.docks.draw(frame)
         if self.help.open:
             self.help.draw(frame)
         if self.tour.active:
             self.tour.draw(*vp.size)
         if self.dialog:
-            if im.begin("Choose input or output"):
-                result = self.dialog.draw()
-                if result:
-                    callback = self.dialog_callback
-                    self.dialog = None
-                    callback(result)
-                elif result is False:
-                    self.dialog = None
-            im.end()
-        if self.editor is not None:
-            im.begin_disabled(self.job.running)
-            if im.begin("Component definition"):
-                self.draw_component_form()
-                _, self.editor = im.input_text_multiline("Definition JSON", self.editor, (-1, 300))
-                im.set_item_tooltip(
-                    "All lifetime/spectrum/FRET source fields are editable; preserve per-detector patterns unless regenerating them."
-                )
-                self.button(
-                    "Apply component",
-                    "Validate and compute the edited species model.",
-                    self.commit_component,
-                )
-                self.button(
-                    "Cancel component",
-                    "Discard the current definition edit.",
-                    lambda: setattr(self, "editor", None),
-                )
-            im.end()
-            im.end_disabled()
+            closed = self.file_window.begin(frame) == "close"
+            result = self.dialog.draw()
+            self.file_window.end()
+            if closed or result is False:
+                self.dialog = None
+            elif result:
+                callback, self.dialog = self.dialog_callback, None
+                callback(result)
+        elif self.file_window.open:
+            self.file_window.hide()
+        self.setup.draw_dialogs(frame)
+        if self.editor is not None and self.component_spec is not None:
+            self.component_window.show()
+            closed = self.component_window.begin(frame) == "close"
+            self.form("component_form", self.component_spec, self.component_panel)
+            self.component_window.end()
+            if closed:
+                self.editor = None
+        elif self.component_window.open:
+            self.component_window.hide()
         if self.link_parameter is not None:
             self.draw_parameter_links()
         fingerprint = self.settings_fingerprint()
         if fingerprint != self.last_settings and not self.job.running:
             self.last_settings = fingerprint
-            self.submit(lambda model: model.compute())
+            self.submit(lambda model: model.compute(), replace=False)
+
+    def files_dropped(self, paths):
+        self.on_paths_dropped(paths)
 
     def on_paths_dropped(self, paths):
         if paths:
@@ -1099,6 +649,7 @@ class FilterApp(ImApp):
         self.setup_json = json.dumps(self.model._detector_settings, indent=2)
 
     def close(self):
+        self.setup.close()
         self.job.close()
         from chisurf.core.registry.parameter_groups import unregister_parameter_group
 

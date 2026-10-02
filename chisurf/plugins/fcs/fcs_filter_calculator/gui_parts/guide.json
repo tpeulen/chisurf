@@ -20,7 +20,7 @@
         "action": "Auto-fit"
       },
       "await": {
-        "hint": "Press <b>🎯 Auto-fit</b> to decompose the example decay."
+        "hint": "Press <b>Auto-fit</b> to decompose the example decay."
       }
     },
     {
@@ -37,7 +37,7 @@
         "action": "Unmix"
       },
       "await": {
-        "hint": "Press <b>🧩 Unmix</b>."
+        "hint": "Press <b>Unmix</b>."
       }
     },
     {

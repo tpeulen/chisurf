@@ -35,7 +35,10 @@ class SatDriver(Driver):
     def control(self, table):
         """The painted table control of a spec table (``dark_rows``, ``exc_rows``, ``brightness_rows``, ``optics_rows``)."""
         self.draw(1)
-        return self.app.forms[TABLE_FORMS[table]].tables[table].control
+        for state in self.app.forms.values():  # any window of the app that draws a table of this source
+            if table in state.tables:
+                return state.tables[table].control
+        raise AssertionError(f"no table {table!r} is drawn: {[list(s.tables) for s in self.app.forms.values()]}")
 
     def cell(self, table, row, column):
         """The rectangle of a table cell: *row* is the row's position, *column* the column's key."""

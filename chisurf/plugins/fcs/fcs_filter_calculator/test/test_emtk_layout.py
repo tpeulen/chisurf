@@ -43,7 +43,7 @@ def test_the_reconstruction_plot_frames_the_decay_not_the_irf_tail(monkeypatch):
     for _ in range(3):
         app.draw(RecordingPainter(), 0, 0, 1200, 800)
     recon = [r for r in seen if r.x_max == 256.0 and r.y_max > 100]
-    assert recon and recon[-1].y_min >= 0.4 and recon[-1].y_max == pytest.approx(3011.0, rel=0.05)
+    assert recon and recon[-1].y_min >= 0.4 and recon[-1].y_max == pytest.approx(3011.0 * 1.2, rel=0.05)
 
 
 def test_the_port_is_qt_free():

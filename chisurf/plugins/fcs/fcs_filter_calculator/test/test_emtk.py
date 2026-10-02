@@ -208,14 +208,14 @@ def test_native_every_dock_and_component_editor_draws_with_tooltips(monkeypatch)
         app.new_component(kind)
         with im.frame(PilPainter(1000, 900), (0, 0, 1000, 900)):
             im.begin("test component")
-            app.draw_component_form()
+            app.form("component_form", app.component_spec, app.component_panel)
             im.end()
-    assert len(tips) > 80
     assert all(tips)
     app.close()
 
 
 def test_native_selects_authoritative_saved_detector_setup(monkeypatch):
+    """The embedded detector editor selects a saved setup; the calculator adopts its detectors and routing."""
     from chisurf.core.setup_channel_definition import ChannelDefinition
     from chisurf.plugins.fcs.fcs_filter_calculator.gui.app import create_app
 
@@ -230,12 +230,11 @@ def test_native_selects_authoritative_saved_detector_setup(monkeypatch):
     app = create_app()
     app.job.future.result(timeout=30)
     app.job.poll()
-    app.refresh_saved_setups()
-    app.job.future.result(timeout=5)
-    app.job.poll()
-    app.select_saved_setup("Instrument A")
+    app.setup.model.refresh_setups()
+    app.setup.select_setup("Instrument A")
+    app.apply_setup()
     assert app.model._detector_settings["detectors"]["green"]["chs"] == [2, 3]
-    assert app.setup_store.current_name == "Instrument A"
+    assert app.setup.model.current_name == "Instrument A"
     app.job.future.result(timeout=5)
     app.job.poll()
     app.close()

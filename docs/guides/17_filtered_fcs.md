@@ -56,45 +56,42 @@ loop for validation.
 
 **Spectroscopy ▸ Fluorescence Correlation Spectroscopy ▸ FCS Filter Calculator**
 opens with a built-in example (two lifetimes,
-scatter and afterpulsing) so the panel is never empty; **📂 Mixed…** replaces
-it with a measured decay (`.pto`, TTTR, or a text histogram). The docks:
+scatter and afterpulsing) so the panel is never empty; **Mixed...** replaces
+it with a measured decay (`.pto`, TTTR, or a text histogram). The window has a **Sources** tab, a **Detector setup** tab (the shared detector editor), **Auto-fit**, **Instrument** and **Info** tabs on the left and the three plots on the right:
 
-- **Decay sources** — *Inputs* (**Pol** for parallel/perpendicular filters,
+- **Sources** — the toolbar (**Mixed...**, **Auto-fit**, **Unmix**, **Compute filters**, **Save project...**, **Load project...**, **Export results...**, **Example**, **Guide**, **Help**), *Inputs* (**Pol** for parallel/perpendicular filters,
   **IRF**, **AP** afterpulse/constant nuisance), the **Detectors** of the
   selected setup with a per-detector IRF *Width*, *Skew*, *Shift* and IRF file
-  (`…`), **Global (stacked) multi-detector filters**, the **Mixed decay** with
-  **Fit range** (TAC bins; also a draggable band on the plots), and the
-  **Components** list (right-click to add/edit/remove, double-click to edit);
+  (**Browse IRF...**), **Global (stacked) detectors**, the **Mixed decay** with
+  **Fit start / Fit stop** (TAC bins; the two lines on the reconstruction plot drag them), and the
+  **Components** table (**Use** ticks one, double-click the name to rename it; select a row and press **Edit**, **Duplicate** or **Remove**; the **Add ...** buttons open a form of the component's model);
 - **Lifetime filters**, **Weighted residuals**, **Reconstruction / decay** —
   the filters per component and detector, the residuals of the non-negative
   unmixing, and data vs. reconstruction;
 - **Info** (per-detector fit ranges, a text summary), **Instrument** (below),
   **Auto-fit** (**Type** lifetime or FRET species, **Components / states**,
-  **Lifetime min/max**, *Fit + generate filters*, and the fitted model's
-  parameters), **Setup** (the detector setup).
+  **Lifetime min/max**, **Fit + filters**, and the fitted model's
+  parameters as a table with **Fixed**, **Link...** and **Unlink**), **Detector setup** (the shared detector editor).
 
-**🎯 Auto-fit** decomposes the mixed decay into *N* components and adds them as
-species; **🧩 Unmix** fits their non-negative amplitudes and computes the
-filters. **💾 Project** saves/loads the whole state and exports the results.
+**Auto-fit** decomposes the mixed decay into *N* components and adds them as
+species; **Unmix** fits their non-negative amplitudes and computes the
+filters. **Save project...** / **Load project...** save and restore the whole state and **Export results...** writes the filters.
 
 ```{figure} figures/17_filter_calculator.png
 :name: fig-17-filter-calculator
 :width: 100%
 
-The BH SPC-132 smFRET measurement as mixed decay, detectors green (0/8) and
-red (1/9) from the setup, after **Auto-fit** with 2 components and **Unmix**.
-The short component sits on the 0.2 ns lower bound (scatter-like, 51 %), the
-long one at 2.58 ns (49 %); χ²ᵣ = 1.58. The nuisance components (afterpulse,
-scatter/IRF) are listed but *rejected* — they are fitted, not given a filter.
+The built-in example (two lifetimes with scatter and afterpulse) after **Auto-fit** with 2
+components and **Unmix**: 1.16 ns (66 %) and 3.38 ns (34 %), χ²ᵣ = 1.04. The nuisance
+components (afterpulse, scatter/IRF) are listed but *rejected* — they are fitted, not given a filter.
 ```
 
 ```{figure} figures/17_filter_calculator_autofit.png
 :name: fig-17-filter-calculator-autofit
 :width: 100%
 
-The **Auto-fit** dock after the fit: settings, the status line, and the fitted
-model's parameters (amplitudes $x$, lifetimes $\tau$, scatter `sc`, background
-`bg`, IRF shift `ts`, width and skew) with errors and bounds.
+The **Auto-fit** tab after the fit: settings, the reduced χ², and the fitted model's
+parameters (amplitudes, lifetimes, scatter, background, IRF shift, width and skew) as an editable table.
 ```
 
 A component pinned on a bound, as here, is the fit saying the model is not
@@ -152,7 +149,7 @@ plugin's own inversions, pass `basis=api.exp_curves(...).binned_log` and its
 
 When a species is a coupled smFRET decay rather than a plain lifetime spectrum,
 its green/red/yellow patterns depend on the correction factors, so the filter
-calculator carries an **Instrument** dock holding $\alpha$ (donor leakage),
+calculator carries an **Instrument** tab holding $\alpha$ (donor leakage),
 $\beta$ (excitation-flux ratio of the acceptor to the donor laser), $\gamma$
 (detection / quantum yield), $\delta$ (direct acceptor excitation), the
 polarization calibration $G$, $l_1$, $l_2$, the Förster radius $R_0$ and the

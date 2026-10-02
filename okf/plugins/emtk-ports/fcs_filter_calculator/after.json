@@ -1,0 +1,271 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-1",
+    "-10",
+    "-15",
+    "-2",
+    "-5",
+    "0",
+    "0.03",
+    "0.16",
+    "1",
+    "10",
+    "100",
+    "1000",
+    "150",
+    "2",
+    "200",
+    "250",
+    "254",
+    "5",
+    "50",
+    "adddistancedistribution",
+    "addfretspecies",
+    "addlifetime",
+    "addlifetimedistribution",
+    "addmeasuredpattern",
+    "addspectrum",
+    "ap",
+    "auto-fit",
+    "browseirf",
+    "component",
+    "components",
+    "computefilters",
+    "convolvedexample(70/30+scatter+afterpulse)",
+    "counts",
+    "definition",
+    "detector",
+    "detectors",
+    "detectorsetup",
+    "duplicate",
+    "edit",
+    "example",
+    "exportresults",
+    "fastexample",
+    "filterscomputedsuccessfully.",
+    "filtervalue",
+    "fitstart",
+    "fitstop",
+    "fromcorrelator",
+    "global(stacked)detectors",
+    "green",
+    "greenafterpulse/constant[rejected]",
+    "greenfastexample",
+    "greenirf",
+    "greenmeasured",
+    "greenreconstruction",
+    "greenscatter/irf(green,detector-irf)[rejected]",
+    "greenslowexample",
+    "guide",
+    "help",
+    "info",
+    "instrument",
+    "irf",
+    "lifetimefilters",
+    "load",
+    "loadproject",
+    "mixed",
+    "pol",
+    "reconstruction",
+    "remove",
+    "saveproject",
+    "shift",
+    "skew",
+    "slowexample",
+    "sources",
+    "stop",
+    "synthetic,tau=1.2ns",
+    "synthetic,tau=4ns",
+    "tacbin",
+    "unmix",
+    "use",
+    "weightedresiduals",
+    "weightedresidualsσ",
+    "width"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Mixed...",
+      "id": "Mixed...##load_mixed",
+      "tooltip": "Open a measured mixed decay histogram or TTTR/BST files."
+    },
+    {
+      "kind": "button",
+      "label": "Auto-fit",
+      "id": "Auto-fit##autofit",
+      "tooltip": "Fit the mixed decay with lifetime species or FRET states and generate the filters from the fit."
+    },
+    {
+      "kind": "button",
+      "label": "Unmix",
+      "id": "Unmix##unmix",
+      "tooltip": "Fit non-negative component intensities to the mixed decay and compute the filters."
+    },
+    {
+      "kind": "button",
+      "label": "Compute filters",
+      "id": "Compute filters##compute",
+      "tooltip": "Solve the selected component filters over the fit range."
+    },
+    {
+      "kind": "button",
+      "label": "Stop",
+      "id": "Stop##stop",
+      "tooltip": "Discard the pending computation result."
+    },
+    {
+      "kind": "button",
+      "label": "Save project...",
+      "id": "Save project...##save_project",
+      "tooltip": "Save inputs, definitions, detector IRFs, options and computed filters."
+    },
+    {
+      "kind": "button",
+      "label": "Load project...",
+      "id": "Load project...##load_project",
+      "tooltip": "Restore a Qt or native Filter Calculator project."
+    },
+    {
+      "kind": "button",
+      "label": "Export results...",
+      "id": "Export results...##export_results",
+      "tooltip": "Export the filters, reconstruction and metadata as JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Example",
+      "id": "Example##example",
+      "tooltip": "Restore the detector-convolved synthetic 70/30 example."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##guide",
+      "tooltip": "A step-by-step walk through the built-in example."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help##help",
+      "tooltip": "Read the lifetime filter workflow and the scientific assumptions."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Pol",
+      "id": "Pol##polarized",
+      "tooltip": "Stack parallel and perpendicular detector-routing channels for anisotropy-aware filter computation."
+    },
+    {
+      "kind": "checkbox",
+      "label": "AP",
+      "id": "AP##fit_background",
+      "tooltip": "Add and reject a constant afterpulse and dark-count nuisance filter."
+    },
+    {
+      "kind": "checkbox",
+      "label": "IRF",
+      "id": "IRF##scatter_irf",
+      "tooltip": "Add and reject the detector's measured or synthetic IRF as a scattered-light nuisance filter."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Global (stacked) detectors",
+      "id": "Global (stacked) detectors##stacked",
+      "tooltip": "Global (stacked) multi-detector filters: use the inter-detector relative species brightness in one global filter solve."
+    },
+    {
+      "kind": "button",
+      "label": "Browse IRF...",
+      "id": "Browse IRF...##browse_irf",
+      "tooltip": "Choose a measured IRF decay histogram for the selected detector row."
+    },
+    {
+      "kind": "button",
+      "label": "Load...",
+      "id": "Load...##load_decay",
+      "tooltip": "Open a measured mixed decay histogram or TTTR/BST files."
+    },
+    {
+      "kind": "button",
+      "label": "From correlator",
+      "id": "From correlator##from_correlator",
+      "tooltip": "Adopt the sibling Correlator's files and micro-time binning."
+    },
+    {
+      "kind": "input_text",
+      "label": "fit_start",
+      "id": "##fit_start",
+      "tooltip": "First TAC bin included in the filter fit."
+    },
+    {
+      "kind": "input_text",
+      "label": "fit_stop",
+      "id": "##fit_stop",
+      "tooltip": "Exclusive upper TAC bin of the filter fit."
+    },
+    {
+      "kind": "button",
+      "label": "Edit",
+      "id": "Edit##edit_component",
+      "tooltip": "Edit the selected component's complete definition."
+    },
+    {
+      "kind": "button",
+      "label": "Duplicate",
+      "id": "Duplicate##duplicate_component",
+      "tooltip": "Copy the selected component with every model field."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove##remove_component",
+      "tooltip": "Remove the selected component (no files are deleted)."
+    },
+    {
+      "kind": "button",
+      "label": "Add lifetime",
+      "id": "Add lifetime##add_lifetime",
+      "tooltip": "Add a synthetic single-exponential component."
+    },
+    {
+      "kind": "button",
+      "label": "Add spectrum",
+      "id": "Add spectrum##add_spectrum",
+      "tooltip": "Add a synthetic lifetime spectrum."
+    },
+    {
+      "kind": "button",
+      "label": "Add FRET species",
+      "id": "Add FRET species##add_fret",
+      "tooltip": "Add a donor-acceptor species coupled across detectors."
+    },
+    {
+      "kind": "button",
+      "label": "Add lifetime distribution",
+      "id": "Add lifetime distribution##add_lifetime_distribution",
+      "tooltip": "Add a Gaussian lifetime distribution."
+    },
+    {
+      "kind": "button",
+      "label": "Add distance distribution",
+      "id": "Add distance distribution##add_distance_distribution",
+      "tooltip": "Add a Gaussian distance distribution."
+    },
+    {
+      "kind": "button",
+      "label": "Add measured pattern...",
+      "id": "Add measured pattern...##add_measured",
+      "tooltip": "Load one or more reference decay files as a component."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

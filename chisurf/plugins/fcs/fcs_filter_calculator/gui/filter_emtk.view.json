@@ -1,0 +1,434 @@
+{
+ "toolbar": {
+  "sections": [
+   {
+    "type": "button_row",
+    "description": "The main actions.",
+    "buttons": [
+     {
+      "action": "load_mixed",
+      "label": "Mixed...",
+      "description": "Open a measured mixed decay histogram or TTTR/BST files."
+     },
+     {
+      "action": "autofit",
+      "label": "Auto-fit",
+      "description": "Fit the mixed decay with lifetime species or FRET states and generate the filters from the fit."
+     },
+     {
+      "action": "unmix",
+      "label": "Unmix",
+      "description": "Fit non-negative component intensities to the mixed decay and compute the filters."
+     },
+     {
+      "action": "compute",
+      "label": "Compute filters",
+      "description": "Solve the selected component filters over the fit range."
+     },
+     {
+      "action": "stop",
+      "label": "Stop",
+      "description": "Discard the pending computation result."
+     }
+    ]
+   },
+   {
+    "type": "button_row",
+    "description": "Projects, export and help.",
+    "buttons": [
+     {
+      "action": "save_project",
+      "label": "Save project...",
+      "description": "Save inputs, definitions, detector IRFs, options and computed filters."
+     },
+     {
+      "action": "load_project",
+      "label": "Load project...",
+      "description": "Restore a Qt or native Filter Calculator project."
+     },
+     {
+      "action": "export_results",
+      "label": "Export results...",
+      "description": "Export the filters, reconstruction and metadata as JSON."
+     },
+     {
+      "action": "example",
+      "label": "Example",
+      "description": "Restore the detector-convolved synthetic 70/30 example."
+     },
+     {
+      "action": "guide",
+      "label": "Guide",
+      "description": "A step-by-step walk through the built-in example."
+     },
+     {
+      "action": "help",
+      "label": "Help",
+      "description": "Read the lifetime filter workflow and the scientific assumptions."
+     }
+    ]
+   }
+  ]
+ },
+ "inputs": {
+  "sections": [
+   {
+    "type": "panel",
+    "title": "Inputs",
+    "description": "What is included in the filter calculation.",
+    "sections": [
+     {
+      "type": "toggle",
+      "attr": "polarized",
+      "label": "Pol",
+      "call": "edited",
+      "description": "Stack parallel and perpendicular detector-routing channels for anisotropy-aware filter computation."
+     },
+     {
+      "type": "toggle",
+      "attr": "fit_background",
+      "label": "AP",
+      "call": "edited",
+      "description": "Add and reject a constant afterpulse and dark-count nuisance filter."
+     },
+     {
+      "type": "toggle",
+      "attr": "scatter_irf",
+      "label": "IRF",
+      "call": "edited",
+      "description": "Add and reject the detector's measured or synthetic IRF as a scattered-light nuisance filter."
+     },
+     {
+      "type": "toggle",
+      "attr": "stacked",
+      "label": "Global (stacked) detectors",
+      "call": "edited",
+      "description": "Global (stacked) multi-detector filters: use the inter-detector relative species brightness in one global filter solve."
+     }
+    ]
+   }
+  ]
+ },
+ "mixed": {
+  "sections": [
+   {
+    "type": "panel",
+    "title": "Mixed decay",
+    "description": "The measured decay the filters are computed for.",
+    "sections": [
+     {
+      "type": "info",
+      "source": "mixed_label",
+      "description": "The loaded mixed decay: file names or the built-in example."
+     },
+     {
+      "type": "button_row",
+      "description": "Load the mixed decay.",
+      "buttons": [
+       {
+        "action": "load_decay",
+        "label": "Load...",
+        "description": "Open a measured mixed decay histogram or TTTR/BST files."
+       },
+       {
+        "action": "from_correlator",
+        "label": "From correlator",
+        "description": "Adopt the sibling Correlator's files and micro-time binning."
+       }
+      ]
+     },
+     {
+      "type": "panel",
+      "title": "",
+      "n_col": 1,
+      "description": "The fitted TAC range.",
+      "sections": [
+       {
+        "type": "value",
+        "attr": "fit_start",
+        "label": "Fit start",
+        "kind": "int",
+        "minimum": 0,
+        "maximum": 1000000,
+        "style": "spin",
+        "step": 1,
+        "call": "edited",
+        "description": "First TAC bin included in the filter fit."
+       },
+       {
+        "type": "value",
+        "attr": "fit_stop",
+        "label": "Fit stop",
+        "kind": "int",
+        "minimum": 1,
+        "maximum": 1000000,
+        "style": "spin",
+        "step": 1,
+        "call": "edited",
+        "description": "Exclusive upper TAC bin of the filter fit."
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "components": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "components",
+    "source": "component_rows",
+    "columns_source": "component_columns",
+    "editable": true,
+    "edited_call": "edit_component_row",
+    "editable_call": "component_editable",
+    "height": 130,
+    "fit_columns": true,
+    "selected_call": "select_component",
+    "description": "The basis components of the mixture. Click Use to include one, double click its name to rename it, select a row to edit, duplicate or remove it."
+   }
+  ]
+ },
+ "component_buttons": {
+  "sections": [
+   {
+    "type": "button_row",
+    "description": "Edit the selected component.",
+    "buttons": [
+     {
+      "action": "edit_component",
+      "label": "Edit",
+      "description": "Edit the selected component's complete definition."
+     },
+     {
+      "action": "duplicate_component",
+      "label": "Duplicate",
+      "description": "Copy the selected component with every model field."
+     },
+     {
+      "action": "remove_component",
+      "label": "Remove",
+      "description": "Remove the selected component (no files are deleted)."
+     }
+    ]
+   },
+   {
+    "type": "button_row",
+    "description": "Add a component.",
+    "buttons": [
+     {
+      "action": "add_lifetime",
+      "label": "Add lifetime",
+      "description": "Add a synthetic single-exponential component."
+     },
+     {
+      "action": "add_spectrum",
+      "label": "Add spectrum",
+      "description": "Add a synthetic lifetime spectrum."
+     },
+     {
+      "action": "add_fret",
+      "label": "Add FRET species",
+      "description": "Add a donor-acceptor species coupled across detectors."
+     },
+     {
+      "action": "add_lifetime_distribution",
+      "label": "Add lifetime distribution",
+      "description": "Add a Gaussian lifetime distribution."
+     },
+     {
+      "action": "add_distance_distribution",
+      "label": "Add distance distribution",
+      "description": "Add a Gaussian distance distribution."
+     },
+     {
+      "action": "add_measured",
+      "label": "Add measured pattern...",
+      "description": "Load one or more reference decay files as a component."
+     }
+    ]
+   }
+  ]
+ },
+ "detectors": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "detectors",
+    "source": "detector_rows",
+    "columns_source": "detector_columns",
+    "editable": true,
+    "edited_call": "edit_detector_row",
+    "editable_call": "detector_editable",
+    "height": 120,
+    "fit_columns": true,
+    "selected_call": "select_detector_row",
+    "description": "Detectors of the active setup with their IRF: width, skew and shift of the synthetic IRF, or a measured IRF file."
+   },
+   {
+    "type": "button_row",
+    "description": "IRF file of the selected detector.",
+    "buttons": [
+     {
+      "action": "browse_irf",
+      "label": "Browse IRF...",
+      "description": "Choose a measured IRF decay histogram for the selected detector row."
+     }
+    ]
+   }
+  ]
+ },
+ "instrument": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "instrument",
+    "source": "instrument_rows",
+    "columns_source": "instrument_columns",
+    "editable": true,
+    "edited_call": "edit_instrument",
+    "editable_call": "instrument_editable",
+    "height": 230,
+    "fit_columns": true,
+    "tooltip_key": "description",
+    "description": "Instrument and calibration parameters, pre-populated from the selected setup and used by the auto-fit and the FRET-species decays."
+   },
+   {
+    "type": "toggle",
+    "attr": "periodic",
+    "label": "Periodic convolution",
+    "call": "edited",
+    "description": "Model the finite laser repetition period: the previous pulse's decay tail wraps into the window."
+   }
+  ]
+ },
+ "ranges": {
+  "sections": [
+   {
+    "type": "table",
+    "name": "ranges",
+    "source": "range_rows",
+    "columns_source": "range_columns",
+    "editable": true,
+    "edited_call": "edit_range",
+    "editable_call": "range_editable",
+    "height": 90,
+    "fit_columns": true,
+    "description": "Per-detector fitted TAC range (bins)."
+   }
+  ]
+ },
+ "autofit": {
+  "sections": [
+   {
+    "type": "panel",
+    "title": "Auto-fit",
+    "description": "Fit the mixed decay with lifetime species or FRET states.",
+    "sections": [
+     {
+      "type": "choice",
+      "attr": "autofit_kind",
+      "label": "Type",
+      "options_source": "autofit_kinds",
+      "call": "edited",
+      "description": "Fit lifetime components, or FRET distances against the Forster radius."
+     },
+     {
+      "type": "value",
+      "attr": "autofit_components",
+      "label": "Components / states",
+      "kind": "int",
+      "minimum": 1,
+      "maximum": 12,
+      "style": "spin",
+      "step": 1,
+      "call": "edited",
+      "description": "Number of lifetime components or FRET states, 1 to 12."
+     },
+     {
+      "type": "value",
+      "attr": "autofit_tau_min",
+      "label": "Lifetime min (ns)",
+      "kind": "float",
+      "minimum": 0.01,
+      "maximum": 1000.0,
+      "decimals": 3,
+      "style": "spin",
+      "step": 0.1,
+      "call": "edited",
+      "description": "Lower fitted lifetime bound in nanoseconds."
+     },
+     {
+      "type": "value",
+      "attr": "autofit_tau_max",
+      "label": "Lifetime max (ns)",
+      "kind": "float",
+      "minimum": 0.02,
+      "maximum": 1000.0,
+      "decimals": 3,
+      "style": "spin",
+      "step": 0.5,
+      "call": "edited",
+      "description": "Upper lifetime bound; the donor lifetime for FRET fitting."
+     },
+     {
+      "type": "info",
+      "source": "range_line",
+      "description": "The TAC range the fit uses."
+     },
+     {
+      "type": "button_row",
+      "description": "Run the fit.",
+      "buttons": [
+       {
+        "action": "autofit",
+        "label": "Fit + filters",
+        "description": "Fit the mixed decay, jointly fitting the synthetic IRF when no measured IRF is loaded, then compute the filters."
+       }
+      ],
+      "wrap_indent": false
+     }
+    ]
+   }
+  ]
+ },
+ "fit_parameters": {
+  "sections": [
+   {
+    "type": "info",
+    "source": "chi2_line",
+    "description": "Quality of the last auto-fit."
+   },
+   {
+    "type": "table",
+    "name": "fit_parameters",
+    "source": "parameter_rows",
+    "columns_source": "parameter_columns",
+    "editable": true,
+    "edited_call": "edit_parameter",
+    "editable_call": "parameter_editable",
+    "height": 130,
+    "fit_columns": true,
+    "selected_call": "select_parameter",
+    "description": "Fitted model parameters; edit a value, tick Fixed, or link a parameter to a live parameter of another fit."
+   },
+   {
+    "type": "button_row",
+    "description": "Parameter links.",
+    "buttons": [
+     {
+      "action": "link_parameter",
+      "label": "Link...",
+      "description": "Choose a parameter from open fits or registered plugin models to follow."
+     },
+     {
+      "action": "unlink_parameter",
+      "label": "Unlink",
+      "description": "Detach this follower while keeping its current value."
+     }
+    ]
+   }
+  ]
+ }
+}

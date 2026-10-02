@@ -1,14 +1,33 @@
-# emtk port report -- `fcs_filter_calculator` (upgrade, audit-all row 71) -- PARTIAL
+# emtk port report -- `fcs_filter_calculator` (upgrade, audit-all row 71)
 
-Status: baseline committed and one defect fixed; the full parity cycle (checklist of the 3650-line Qt window, real-input tests of every control, spec/data_table rebuild, new one-page detector editor embed, docs) was NOT done in this pass. Commits: `22f0dbc49` Qt baseline + stream state (`pre-upgrade/`), plus the commit "fcs_filter_calculator: reconstruction plot framing, evidence".
+Commits: `22f0dbc49` Qt baseline + stream state (`pre-upgrade/`); `28db73b27` reconstruction plot fix; `314fa4922` numeric isolation + guardrail; rebuild/evidence commit "fcs_filter_calculator: emtk app rebuilt on spec forms, tables and the shared detector editor".
 
-## Found
-* Reconstruction plot was unusable: log Y axis with limits requested once (ignored later) and an IRF tail of 1e-298 stretching the view over 300 decades, so the decay was a thin line at x=0. Fixed in `gui/app.py` (limits applied when the decay's size changes, counts floored at 0.5, Qt colours white/red/cyan); test `test_emtk_layout.py`. Before/after: `before_emtk_populated_*.png` -> `after_populated_*.png`.
-* NUMERIC DISCREPANCY -- ISOLATED, no algorithm bug. Recording the arguments of `compute_filters` in both: total decay, both species patterns and the afterpulse nuisance pattern are identical (max diff 0.0); only the scatter/IRF nuisance pattern differs (sum 0.185 vs 0.038). Cause: the detector table. The Qt example leaves the table empty and uses detector "default" with the defaults width 0.2 ns, skew 0, shift 0; the native example fills "green" with the IRF its patterns were generated with (width 0.16 ns, shift 0.03 ns). With the Qt defaults set on "green" the filters and the reconstruction are bit-identical (diff 0.0). Both call `api.compute_filters` (the reference, PAM Calc_fFCS_Filters). The native example is the self-consistent one (its scatter IRF matches the generating IRF); the Qt example's scatter pattern uses a slightly wrong IRF, a Qt example quirk left untouched (legacy). Guardrail: `test_native_filters_are_bit_identical_to_the_qt_widgets_for_the_same_inputs`.
-* Qt vs emtk surface: emtk hand-draws number inputs (`input_float(step=0)`), JSON-text component editor, no data_table for detectors/ranges/instrument, Unmix/Auto-fit tabs without the Qt table of instrument factors, 800x600 not checked.
-## Tests
-`pytest chisurf/plugins/fcs/fcs_filter_calculator/test/test_emtk.py test_emtk_layout.py`: 13 passed.
-## Reuse / Docs
-Not done: embed `chisurf/emtk/channel_definition.py` (one-page editor 2773e29d6) for the Detector setup tab; guide/doc update pending.
-## Next
-Rebuild detectors/instrument/range as spec forms + data_table, embed the shared detector editor, reconcile the detector naming with the Qt numbers, then the real-input tests per control.
+## 1. Numeric discrepancy: isolated, not an algorithm bug
+Native and Qt both call `api.compute_filters` (PAM Calc_fFCS_Filters). Recording its arguments in both for the built-in example: total decay, both species patterns and the afterpulse nuisance pattern identical (max diff 0.0); only the scatter/IRF nuisance differs because the Qt example leaves its detector table empty (detector "default": width 0.2 ns, skew 0, shift 0) while the native example fills "green" with the IRF its patterns were generated with (width 0.16 ns, shift 0.03 ns). With the Qt defaults set on "green" the filters and reconstruction are bit-identical. The native example is the self-consistent one; the Qt example's scatter IRF is slightly off (legacy, left). Second input difference found and fixed: the Qt tool starts with fit range 10-254 (peak + 1 % of the bins to 1 % short of the end), the native model used 0-256; `FilterModel.default_fit_range` now applies the Qt rule. Guardrail: `test_native_filters_are_bit_identical_to_the_qt_widgets_for_the_same_inputs`, `test_the_example_starts_with_the_qt_widgets_fit_range_and_components`.
+
+## 2. What the Qt tool offered -> emtk
+Toolbar Mixed.../Auto-fit/Unmix/Project/Guide/? -> button rows (Mixed..., Auto-fit, Unmix, Compute filters, Stop, Save/Load project..., Export results..., Example, Guide, Help). Inputs Pol/AP/IRF/Global stacked -> spec toggles. Detectors table (Detector/Width/Skew/Shift/IRF + Use) -> `table` + Browse IRF.... Mixed decay Load.../From correlator, Fit range -> typed Fit start/stop (spin, wheel, clamped) and the two drag lines on the reconstruction plot. Components list (right-click menu) -> `table` (Use, rename, definition) + Edit/Duplicate/Remove and the five Add buttons + Add measured pattern... + Read fit buttons; the JSON text box is replaced by a form built from the component's model (lifetime, spectrum rows, Gaussian lifetime/distance, FRET species with spectra, distance populations, crosstalk, shot noise). Info (per-detector ranges + text) -> table + the Qt information text. Instrument table + Periodic convolution -> `table` + toggle. Auto-fit (Type, Components, Lifetime min/max, Fit + filters, parameters with Fixed/Link) -> form + table + Link.../Unlink. Setup tab -> the shared one-page detector editor (`chisurf/emtk/channel_definition.py`, embedded, adopting its definition into the model). Three plots with Qt colours (white decay / red reconstruction / cyan IRF; one colour per component).
+
+## 3. Layout
+Before/after: `before_populated.png` (Qt), `before_emtk_populated_*.png` -> `after_*`, `after_<tab>_{1200,800}.png`. Fixed: reconstruction plot (limits ignored, 300-decade axis), controls docked as one ungrouped column of buttons and `input_float(step=0)` fields -> grouped forms and tables; at 800 px the controls dock gets 52 % so the five tabs show; the shared editor's header cells clip in a 420 px column (xfail, reported below). Both filters had the same colour (hash of the name): now by index.
+
+## 4. Bugs found by the tests
+* Edits were dropped while a recompute ran (the job replaced the whole model by a snapshot): a plain recompute now hands back only the results; inputs stay the live ones (`submit(replace=False)`), dragging the fit-range line no longer stalls.
+* Fit-range line dragging and typed values were not clamped (start >= stop).
+* File drops were not delivered (`files_dropped` missing).
+* Save/Export dialogs had no default name (Save did nothing).
+* Duplicate button action names share one id in a form (second button dead): unique actions.
+
+## 5. Tests
+`pytest chisurf/plugins/fcs/fcs_filter_calculator/test/{test_emtk,test_emtk_layout,test_emtk_filter_clicks,test_emtk_filter_parity,test_core}.py`: see the pasted run in the commit message of the evidence commit / below; 2 strict xfails (shared editor layout at both sizes). `compare` exit 0 (82 controls, 0 without tooltip, Qt-free). Deliberate breakage twice, both caught: fit-stop clamp removed -> `test_the_fit_range_is_typed_clamped...`; last-detector guard removed -> `test_the_last_detector_cannot_be_unticked`. Restored.
+* Real-input coverage (`test_emtk_filter_clicks.py`): every toolbar button, the dialogs (open/save, cancel), toggles, fit range (typed, arrows, wheel, line drag), mixed decay (dialog, drop of a file and of a project, From correlator with and without a context), components (use, rename, add x5, edit, duplicate, remove, measured pattern, form fields, cancel and close x), detectors (width/skew/shift/IRF typed, last-detector guard, Browse IRF, polarized rows), instrument, ranges, auto-fit fields/type/run/parameters/link, the embedded editor (Add detector reaches the calculator), tabs, plot pan and wheel, the tour walked to the end (Auto-fit and Unmix awaited), help, small window.
+* Qt legacy tests: `test/test_widgets.py` shows failures on this machine under temporary settings (for instance the scatter nuisance label expects ", measured)"); Qt files are untouched by this work, not investigated.
+
+## 6. Reuse
+Embedded: `chisurf/emtk/channel_definition.ChannelDefinitionWidget` (Setup tab, `on_changed` adopted once the worker is idle), `data_table` specs, `view_form`, help/tour, `DialogWindow`, `imaging_emtk.testing.Driver` via the saturation tests' `SatDriver` and the PSF checker. Local duplicates replaced: hand-drawn number fields and the JSON component editor; the hand-made detector setup JSON box and "Refresh saved setups" (the shared editor does both). Flagged: `gui/model.py` + `gui/scientific.py` copy Qt window logic (bit-identical results are guarded); shared editor repro below.
+
+## 7. Docs
+`docs/guides/17_filtered_fcs.md` (tab/button names, figures `17_filter_calculator.png` and `17_filter_calculator_autofit.png` regenerated from the app on the built-in example), `gui_parts/guide.json` (emoji removed from hints; the emtk guide awaits Auto-fit and Unmix through aliases of the action names).
+
+## 8. Shared gap (not edited)
+Repro: embed `ChannelDefinitionWidget` in a 420 px column (the Detector setup tab at 800x600): `Read` and the `Micro Time Ranges` header are clipped; at 1200x800 the `G` header and button cells overlap (test xfails in `test_emtk_filter_parity.py`).
