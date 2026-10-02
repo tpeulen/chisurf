@@ -1,0 +1,127 @@
+"""Native routes, actual child rendering, isolation and hub persistence."""
+
+import json
+from pathlib import Path
+
+import pytest
+from emtk.testing import RecordingPainter
+
+from chisurf.plugins.tttr.filetools.gui.app import SPEC, FileToolsApp, native_factory
+
+
+@pytest.mark.parametrize("panel", SPEC["panels"], ids=lambda p: p["role"])
+def test_every_route_is_visible_and_native_child_renders(panel):
+    app = FileToolsApp()
+    try:
+        child = app.select(panel["role"])
+        if native_factory(panel) is None:
+            assert child is None
+            assert "pending" in app.errors[panel["role"]].lower()
+        else:
+            assert child is not None, app.errors
+            assert app.select(panel["role"]) is child
+        for width, height in ((1200, 800), (800, 600)):
+            painter = RecordingPainter()
+            app.draw(painter, 0, 0, width, height)
+            assert any(panel["name"] in text for text in painter.strings)
+    finally:
+        app.close()
+
+
+def test_pending_route_retries_and_unknown_route_fails():
+    app = FileToolsApp(resolver=lambda panel: None)
+    try:
+        for panel in SPEC["panels"]:
+            assert app.select(panel["role"]) is None
+            assert panel["role"] in app.errors
+        with pytest.raises(ValueError):
+            app.select("not-a-tool")
+    finally:
+        app.close()
+
+
+def test_settings_roundtrip_preserves_child_and_selection():
+    app = FileToolsApp()
+    restored = FileToolsApp()
+    try:
+        header = app.select("tttr_header_edit")
+        app.filter = "header"
+        state = json.loads(json.dumps(app.export_settings()))
+        assert state["children"]["tttr_header_edit"] == header.export_settings()
+        restored.restore_settings(state)
+        assert restored.selected == "tttr_header_edit"
+        assert restored.filter == "header"
+        assert restored.child.export_settings() == header.export_settings()
+    finally:
+        app.close()
+        restored.close()
+
+
+def test_panels_retained_and_manifest_declares_native():
+    manifest = json.loads(Path(__file__).parents[1].joinpath("manifest.json").read_text())
+    assert manifest["entrypoints"]["emtk"].endswith(":make_app")
+    assert len(SPEC["panels"]) == 6
+    assert all(p.get("description") and p.get("entrypoint") for p in SPEC["panels"])
+
+
+def test_split_and_time_window_options_roundtrip():
+    app = FileToolsApp()
+    restored = FileToolsApp()
+    try:
+        split = app.select("split_convert")
+        split.tool._model.photons_per_file_k = 123
+        split.tool._model.reset_macro_times = False
+        time = app.select("tttr_time_windows")
+        time.tool.time_window_ms = 37.5
+        time.tool.output_dir_text = "/private/tmp/filetools-output"
+        restored.restore_settings(json.loads(json.dumps(app.export_settings())))
+        assert restored.child.tool.time_window_ms == 37.5
+        assert restored.child.tool.output_dir_text == "/private/tmp/filetools-output"
+        assert restored.select("split_convert").tool._model.photons_per_file_k == 123
+        assert restored.child.tool._model.reset_macro_times is False
+    finally:
+        app.close()
+        restored.close()
+
+
+@pytest.mark.parametrize("locale", ["en", "de", "fr", "es", "pt", "ru"])
+def test_hub_labels_and_tooltips_in_all_six_languages(locale):
+    from chisurf.core.support.i18n import tr
+    from chisurf.emtk.i18n import set_locale
+    from chisurf.plugins.tttr.filetools.gui.app import make_app
+
+    app = make_app(resolver=lambda panel: None)
+    set_locale(locale)
+    try:
+        for panel in SPEC["panels"]:
+            if locale != "en" and panel["name"] != "⇄ .pto":
+                assert tr(panel["name"]) != panel["name"]
+            if locale != "en":
+                assert tr(panel["description"]) != panel["description"]
+        painter = RecordingPainter()
+        app.draw(painter, 0, 0, 800, 600)
+        assert painter.strings
+    finally:
+        app.close()
+        set_locale("en")
+
+
+def test_drop_dispatches_to_selected_child_and_pointer_is_local(monkeypatch):
+    app = FileToolsApp()
+    try:
+        child = app.select("tttr_to_pto")
+        received = []
+        monkeypatch.setattr(child, "on_paths_dropped", lambda paths: received.append(paths))
+        assert app.files_dropped(["/private/tmp/input.ptu"])
+        assert received == [["/private/tmp/input.ptu"]]
+        presses = []
+        monkeypatch.setattr(child, "pointer_press", lambda *args: presses.append(args))
+        app.child_box = (250.0, 90.0, 950.0, 710.0)
+        app.pointer_press(300.0, 120.0, 1)
+        assert presses == [(50.0, 30.0, 1, 0, 1)]
+        app.pointer_press(30.0, 120.0, 1)
+        assert len(presses) == 1
+        app.help.show()
+        assert not app.files_dropped(["/private/tmp/blocked.ptu"])
+    finally:
+        app.close()

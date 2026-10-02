@@ -1,0 +1,4 @@
+ M chisurf/plugins/tttr/filetools/manifest.json
+?? chisurf/plugins/tttr/filetools/gui/app.py
+?? chisurf/plugins/tttr/filetools/gui/translations.json
+?? chisurf/plugins/tttr/filetools/test/test_native.py

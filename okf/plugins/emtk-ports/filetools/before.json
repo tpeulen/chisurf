@@ -1,0 +1,54 @@
+{
+  "controls": [
+    ".pto",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "?",
+    "back",
+    "bid→analysis",
+    "cancel",
+    "guide",
+    "next",
+    "ptoinspector",
+    "ready",
+    "selectbid→analysistoload.",
+    "selectptoinspectortoload.",
+    "selecttttrheadertoload.",
+    "selecttttrsplit/converttoload.",
+    "selecttttr→timewindowstoload.",
+    "select⇄.ptotoload.",
+    "tttrheader",
+    "tttrsplit/convert",
+    "tttr→timewindows"
+  ],
+  "labels": [
+    "Ready",
+    "Select BID → Analysis to load.",
+    "Select PTO Inspector to load.",
+    "Select TTTR Split / Convert to load.",
+    "Select TTTR header to load.",
+    "Select TTTR → Time Windows to load.",
+    "Select ⇄ .pto to load."
+  ],
+  "buttons": [
+    "?",
+    "Cancel",
+    "Guide",
+    "Next ▶",
+    "⏩",
+    "◀ Back"
+  ],
+  "line_edits": 0,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 1,
+  "entrypoint": "HEAD:chisurf.plugins.tttr.filetools.gui.tool:FileToolsTool (+HEAD no overlays)",
+  "size": [
+    1200,
+    800
+  ]
+}
