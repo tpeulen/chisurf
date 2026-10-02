@@ -2,7 +2,7 @@
 
 ## 2026-10-02
 
-- 2026-10-02 microtime_shifter: layout, real-input (35 click tests, 16 layout cases) and docs upgrade; spin fields, one label column, Save panel no longer clipped at 800 px, sample dialog as a spec form; new guide 88 and concept microtime-shift. Evidence okf/plugins/emtk-ports/microtime_shifter/REPORT_UPGRADE2.md.
+- **tr_anisotropy: emtk app upgraded to verified parity with the Qt wizard** (2026-10-02, T-20261002-UPG6): Qt check marks and ungated Back/Next, stored default corrections, spec forms + data_table spectra, populated IRF plot with draggable background box, drops, 71 real-input/parity tests (94 in the folder), guide 10 section and figures; report `okf/plugins/emtk-ports/tr_anisotropy/REPORT.md`. A pre-existing view-model test had overwritten `~/.chisurf/anisotropy_corrections.json` (restored to shipped defaults; test now hermetic).
 - **ndX's Qt GUI deleted; the emtk app is the only ndX GUI** (2026-10-02, T-20261002-NDXQT, tpeulen "go ahead"):
   ndxplorer lost its Qt window and everything that served only it -- 69 modules (75 shipped files: ui 23, plotting 19,
   utils 9, widgets 8, analysis 6, top level 4, io 3, plugins 2, core 1) and 40 Qt-only test files; `python -m ndxplorer`

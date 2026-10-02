@@ -78,6 +78,59 @@ d_noFRET = decay([1.0, 3.5])               # single 3.5 ns donor
 d_FRET   = decay([0.6, 3.5, 0.4, 0.7])     # + a 0.7 ns FRET-quenched fraction
 ```
 
+## The Anisotropy Wizard (time-resolved anisotropy)
+
+*Spectroscopy → Fluorescence decay → Anisotropy-Wizard* builds the linked VV/VH global fit from four
+measured curves. It fits VV and VH themselves, linked, never the ratio $r(t)$ (forming the ratio first
+destroys the Poisson weights). The window has the six steps listed on the left, each with a check mark
+once it is complete; **Back** and **Next** (bottom right) walk them, **Guide** starts the guided tour and
+**Help** opens the background text.
+
+1. **Data.** Type or paste the four paths (IRF VV, IRF VH, Data VV, Data VH), use **Browse**, or drop the
+   files on the window (a dropped file fills the next empty path; a dropped `.spk.json` loads spectra).
+   *Two stacked VV/VH files* switches to one IRF file and one data file that hold both channels. The
+   reader settings (*Bin width*, *Repetition rate*, *Header rows*, *Use file header*, *First column is
+   time*) say how the text decays are read; a field that does not apply to the chosen file layout is
+   greyed.
+
+   ```{figure} figures/tr_anisotropy_data.png
+   :name: fig-tr-anisotropy-data
+   :width: 90%
+
+   Data step with four synthetic polarised curves (tau 4 ns, rho 1.5 ns, r0 0.35).
+   ```
+
+2. **Normalize IRF.** **Load / reload data** reads the files. Place the green box on a signal-free stretch
+   of the IRFs (drag its edges in the plot, or type *Background from* / *Background to*): the mean of
+   that region is subtracted from both IRFs and the two are scaled to the same intensity. The mouse wheel
+   zooms the plot. **Export corrected IRFs** writes the two corrected curves to a file.
+
+   ```{figure} figures/tr_anisotropy_normalize.png
+   :name: fig-tr-anisotropy-normalize
+   :width: 90%
+
+   Raw (faint) and corrected (solid) VV and VH IRFs with the background region.
+   ```
+
+3. **Corrections.** *g-factor* scales the anisotropy as a whole; *l1* and *l2* correct the polarisation
+   mixing of a high-aperture objective (zero on a low-NA setup).
+4. **Components.** The lifetime spectrum (amplitude, lifetime) and the rotation spectrum (amplitude,
+   correlation time) are shared by the VV and VH fits. Double-click a cell to edit it, select a row and
+   press Delete or **Remove selected** to drop it, set *Amplitude* and the time and press **Add component**
+   to append one. **Save spectra** writes both tables to a `.spk.json` file, **Load spectra** reads one.
+
+   ```{figure} figures/tr_anisotropy_components.png
+   :name: fig-tr-anisotropy-components
+   :width: 90%
+
+   The two spectra tables of the Components step.
+   ```
+
+5. **Finish.** **Create fits** adds the VV fit, the VH fit and the global fit to the session with the
+   amplitudes, lifetimes, rotation components and the three corrections linked; check that r0 is at or
+   below 0.4 first. It asks for **Load / reload data** again when the files or reader settings changed
+   after loading.
+
 ## Result
 
 **Left:** IRF-convolved lifetime decays — the FRET decay (fast 0.7 ns component)

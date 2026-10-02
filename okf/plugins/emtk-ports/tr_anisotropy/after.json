@@ -1,0 +1,367 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "#",
+    "/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/tmpg6dorcff/data/irf_vh.txt",
+    "/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/tmpg6dorcff/data/irf_vv.txt",
+    "0",
+    "0.1",
+    "0.1200",
+    "0.15",
+    "0.28",
+    "0.3",
+    "0.4400",
+    "0.500",
+    "0.7",
+    "1",
+    "1.000",
+    "1.0000",
+    "1.1600",
+    "1.8",
+    "10",
+    "10.000",
+    "100",
+    "1000",
+    "150",
+    "2",
+    "200",
+    "204",
+    "250",
+    "4.1",
+    "50",
+    "76",
+    "[]data",
+    "[x]components",
+    "[x]corrections",
+    "[x]data",
+    "[x]finish",
+    "[x]normalizeirf",
+    "[x]welcome",
+    "addcomponent",
+    "allrequiredfilesarereadycontinuetonormalizeirf.",
+    "amplitude",
+    "anisotropyworkflow",
+    "back",
+    "backgroundfrom",
+    "backgroundregion",
+    "backgroundto",
+    "binwidth(ns)",
+    "browse",
+    "buildalinkedvv/vhglobalanisotropyfit.",
+    "channel",
+    "channelislinkedtovvforthephotoncount,rotationcomponents,lifetimesand",
+    "clickcreatefitstoaddthemtochisurf.",
+    "components",
+    "components—definethelifetimeandrotationspectra.",
+    "corrections",
+    "corrections—settheg-factorandl1/l2channel-mixingfactors.",
+    "correlationtime(ns)",
+    "createfits",
+    "createtheanisotropyfit",
+    "createthelinkedvv/vhglobalanisotropyfit.",
+    "data",
+    "datavh",
+    "datavv",
+    "datavv/vh",
+    "data—pointtothevv/vhirfandsampledecays.",
+    "decays.",
+    "definethelifetimeandrotationspectra.",
+    "exportcorrectedirfs",
+    "files",
+    "finish",
+    "finish—createthevv,vhandglobalfitswithallparameterslinked.",
+    "firstcolumnistime(ns)",
+    "folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/tmpg6dorcff/data/data_vh.txt",
+    "folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/tmpg6dorcff/data/data_vv.txt",
+    "found",
+    "g-factor",
+    "gscaleseveryanisotropya10%erroringisabout10%inr(t).l1andl2compensatethepolarizationmixingofahigh-aperture",
+    "guide",
+    "headerrows",
+    "help",
+    "instrumentalg-factorandchannel-mixingcorrections.",
+    "instrumentcorrections",
+    "instrumentcorrections,sotheanisotropyisfitconsistentlyacrossboth",
+    "intensity-matched.",
+    "irfcounts",
+    "irfnormalization",
+    "irfvh",
+    "irfvv",
+    "irfvv/vh",
+    "irf—pickabackgroundregion;theirfsarebackground-subtractedand",
+    "l1",
+    "l2",
+    "lifetime(ns)",
+    "lifetimespectrum",
+    "load/reloaddata",
+    "loadedvv/vhirfsanddecays;selectadarkirfbackgroundregion.",
+    "loadspectra",
+    "next",
+    "normalizeirf",
+    "objective(zeroonalow-nasetup).",
+    "pickabackgroundregion;irfsaresubtractedandintensity-matched.",
+    "polarisations.",
+    "readersettings",
+    "removeselected",
+    "repetitionrate(mhz)",
+    "rotationspectrum",
+    "savespectra",
+    "selectthepolarisation-resolvedirfanddecayfiles.",
+    "selectthepolarization-resolvedinputs.",
+    "thiswizardbuildsalinkedvv/vhglobalanisotropyfitfrompolarisation-resolved",
+    "time-resolvedanisotropy",
+    "twolifetimefits(vv,vh)arecreatedandwrappedinaglobalfit.thevh",
+    "twostackedvv/vhfiles",
+    "usefileheader",
+    "vh(corrected)",
+    "vh(raw)",
+    "vv(corrected)",
+    "vv(raw)",
+    "welcome",
+    "workflowstep"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain polarized decays, background correction and parameter linking."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Follow a guided tour through the real wizard controls."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Welcome",
+      "id": "[x] Welcome##anisotropy0",
+      "tooltip": "Build a linked VV/VH global anisotropy fit."
+    },
+    {
+      "kind": "selectable",
+      "label": "[ ] Data",
+      "id": "[ ] Data##anisotropy1",
+      "tooltip": "Select the polarisation-resolved IRF and decay files."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Normalize IRF",
+      "id": "[x] Normalize IRF##anisotropy2",
+      "tooltip": "Pick a background region; IRFs are subtracted and intensity-matched."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Corrections",
+      "id": "[x] Corrections##anisotropy3",
+      "tooltip": "Instrumental g-factor and channel-mixing corrections."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Components",
+      "id": "[x] Components##anisotropy4",
+      "tooltip": "Define the lifetime and rotation spectra."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Finish",
+      "id": "[x] Finish##anisotropy5",
+      "tooltip": "Create the linked VV/VH global anisotropy fit."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Return to the previous workflow step."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Continue to the next workflow step."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Data",
+      "id": "[x] Data##anisotropy1",
+      "tooltip": "Select the polarisation-resolved IRF and decay files."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_vv_path",
+      "id": "##irf_vv_path",
+      "tooltip": "Path to the IRF VV/VH curve: type or paste it, press Enter, or use Browse."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##browse_irf_vv_path",
+      "tooltip": "Choose the IRF VV/VH file from disk."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_vh_path",
+      "id": "##irf_vh_path",
+      "tooltip": "Path to the IRF VH curve: type or paste it, press Enter, or use Browse."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##browse_irf_vh_path",
+      "tooltip": "Choose the IRF VH file from disk."
+    },
+    {
+      "kind": "input_text",
+      "label": "data_vv_path",
+      "id": "##data_vv_path",
+      "tooltip": "Path to the Data VV/VH curve: type or paste it, press Enter, or use Browse."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##browse_data_vv_path",
+      "tooltip": "Choose the Data VV/VH file from disk."
+    },
+    {
+      "kind": "input_text",
+      "label": "data_vh_path",
+      "id": "##data_vh_path",
+      "tooltip": "Path to the Data VH curve: type or paste it, press Enter, or use Browse."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##browse_data_vh_path",
+      "tooltip": "Choose the Data VH file from disk."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Two stacked VV/VH files",
+      "id": "Two stacked VV/VH files##stacked_files",
+      "tooltip": "Each IRF/data file holds both polarization channels (one IRF file, one data file); otherwise choose four separate files."
+    },
+    {
+      "kind": "checkbox",
+      "label": "First column is time (ns)",
+      "id": "First column is time (ns)##first_column_is_time",
+      "tooltip": "Keep a measured time axis unchanged; otherwise the first column is treated as channel indices. Not used with stacked files."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Use file header",
+      "id": "Use file header##use_header",
+      "tooltip": "Read available channel/calibration information from the file header."
+    },
+    {
+      "kind": "input_text",
+      "label": "bin_width",
+      "id": "##bin_width",
+      "tooltip": "Time per histogram channel for channel-index or stacked files; a time-axis column is preserved."
+    },
+    {
+      "kind": "input_text",
+      "label": "rep_rate",
+      "id": "##rep_rate",
+      "tooltip": "Excitation repetition rate used to initialize the lifetime fits."
+    },
+    {
+      "kind": "input_text",
+      "label": "skiprows",
+      "id": "##skiprows",
+      "tooltip": "Number of header rows to skip while reading text decays."
+    },
+    {
+      "kind": "button",
+      "label": "Load / reload data",
+      "id": "Load / reload data",
+      "tooltip": "Read all selected IRF and decay files, then initialize a background region."
+    },
+    {
+      "kind": "button",
+      "label": "Export corrected IRFs",
+      "id": "Export corrected IRFs",
+      "tooltip": "Save the two background-subtracted, intensity-matched IRFs with their time-bin width."
+    },
+    {
+      "kind": "input_text",
+      "label": "region_lb",
+      "id": "##region_lb",
+      "tooltip": "First background channel, inclusive; choose a signal-free region."
+    },
+    {
+      "kind": "input_text",
+      "label": "region_ub",
+      "id": "##region_ub",
+      "tooltip": "Last background channel boundary, exclusive."
+    },
+    {
+      "kind": "input_text",
+      "label": "g_factor",
+      "id": "##g_factor",
+      "tooltip": "Detection-efficiency ratio between the VV and VH channels; it scales the anisotropy as a whole."
+    },
+    {
+      "kind": "input_text",
+      "label": "l1",
+      "id": "##l1",
+      "tooltip": "Channel-mixing correction l1 of the parallel channel (high-aperture objectives)."
+    },
+    {
+      "kind": "input_text",
+      "label": "l2",
+      "id": "##l2",
+      "tooltip": "Channel-mixing correction l2 of the perpendicular channel."
+    },
+    {
+      "kind": "button",
+      "label": "Save spectra",
+      "id": "Save spectra",
+      "tooltip": "Save the lifetime and rotation components as amplitude/value pairs in JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Load spectra",
+      "id": "Load spectra",
+      "tooltip": "Replace both component lists from a saved spectrum file."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_amplitude",
+      "id": "##new_amplitude",
+      "tooltip": "Amplitude of the component to add."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_value",
+      "id": "##new_value",
+      "tooltip": "Rotational correlation time of the component to add, in nanoseconds."
+    },
+    {
+      "kind": "button",
+      "label": "Add component",
+      "id": "Add component##add",
+      "tooltip": "Append the entered amplitude and correlation time."
+    },
+    {
+      "kind": "button",
+      "label": "Remove selected",
+      "id": "Remove selected##delete",
+      "tooltip": "Remove the selected row (the last one when none is selected)."
+    },
+    {
+      "kind": "button",
+      "label": "Create fits",
+      "id": "Create fits",
+      "tooltip": "Create the VV, VH and global fits with configured spectra, corrected IRFs and linked parameters."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  }
+}
