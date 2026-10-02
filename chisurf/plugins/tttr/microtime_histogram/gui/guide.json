@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Configure inputs",
+    "text": "Choose a detector setup, photon files and optional BID/BUR index selections."
+  },
+  {
+    "title": "Compute and inspect",
+    "text": "Compute in the background; inspect VV/VH, combined intensity and FWHM."
+  },
+  {
+    "title": "Save or transfer",
+    "text": "Write a flattened VV/VH decay or transfer it with its TCSPC parameters."
+  }
+]

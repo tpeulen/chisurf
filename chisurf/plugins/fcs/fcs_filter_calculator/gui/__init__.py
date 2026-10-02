@@ -1,12 +1,6 @@
-"""Optional Qt compatibility export; native applications import without Qt."""
+"""GUI layer for the FCS filter calculator plugin."""
 
-__all__ = ['FcsFilterCalculatorWidget', 'FilterCalcClient']
+from ..gui_parts.main_window import FcsFilterCalculatorWidget
+from .client import FilterCalcClient
 
-def __getattr__(name):
-    if name == "FcsFilterCalculatorWidget":
-        from ..gui_parts.main_window import FcsFilterCalculatorWidget
-        return FcsFilterCalculatorWidget
-    if name == "FilterCalcClient":
-        from ..gui.client import FilterCalcClient
-        return FilterCalcClient
-    raise AttributeError(name)
+__all__ = ["FcsFilterCalculatorWidget", "FilterCalcClient"]

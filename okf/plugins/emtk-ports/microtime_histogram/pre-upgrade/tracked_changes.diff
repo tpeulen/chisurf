@@ -1,0 +1,31 @@
+diff --git a/chisurf/plugins/tttr/microtime_histogram/manifest.json b/chisurf/plugins/tttr/microtime_histogram/manifest.json
+index 4eb8d2689..272e297bd 100644
+--- a/chisurf/plugins/tttr/microtime_histogram/manifest.json
++++ b/chisurf/plugins/tttr/microtime_histogram/manifest.json
+@@ -3,8 +3,14 @@
+   "version": "1.0.0",
+   "display_name": "Spectroscopy:Fluorescence decay:Histogram-Microtime",
+   "description": "Create and inspect TTTR microtime histograms.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Spectroscopy", "Fluorescence decay", "TTTR"],
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Spectroscopy",
++    "Fluorescence decay",
++    "TTTR"
++  ],
+   "state_namespace": "microtime_histogram",
+   "statefulness": {
+     "enabled": true,
+@@ -15,7 +21,8 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.tttr.microtime_histogram.wizard:MicrotimeHistogram",
+-    "cli": "microtime-histogram=chisurf.plugins.tttr.microtime_histogram.__main__:main"
++    "cli": "microtime-histogram=chisurf.plugins.tttr.microtime_histogram.__main__:main",
++    "emtk": "chisurf.plugins.tttr.microtime_histogram.gui.app:create_app"
+   },
+   "menu_hidden": true
+ }

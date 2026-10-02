@@ -53,14 +53,7 @@ from .api import (
     unmix_decay,
 )
 from .gui.client import FilterCalcClient  # noqa: F401
-
-
-def __getattr__(name):
-    if name == "FcsFilterCalculatorWidget":
-        from .gui_parts.main_window import FcsFilterCalculatorWidget
-        return FcsFilterCalculatorWidget
-    raise AttributeError(name)
-
+from .gui_parts.main_window import FcsFilterCalculatorWidget  # noqa: F401
 
 __all__ = [
     "compute_filters",
