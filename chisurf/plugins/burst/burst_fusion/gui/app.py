@@ -27,6 +27,10 @@ from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections, find_section
 from emtk.widgets.view_spec import load_view_spec
 
+from chisurf.plugins.emtk_layout import (
+    LabelColumn, button_row, cap_widths, group_by_width, icon_label, labelled,
+)
+
 from .view_model import FusionViewModel
 
 __all__ = ["BurstFusionApp", "BurstFusionGui", "WINDOW_BG"]
@@ -89,7 +93,9 @@ class BurstFusionGui(TourTarget):
         for section in self.fusion_panel.get("sections", []):
             if section.get("type") == "table":
                 section["expand"] = False
-                section["height"] = 180
+                section["height"] = 210       # the nine summary rows, none cut off
+        cap_widths(self.fusion_panel.get("sections", []))
+        self.labels = LabelColumn()
 
         # Register custom sections
         self.form_state.custom["fusion_actions"] = self._draw_fusion_actions
@@ -128,9 +134,10 @@ class BurstFusionGui(TourTarget):
 
 
     def _draw_controls(self, box):
-        if getattr(self, "controller", None):
-            self.controller.draw_controls()
-        running = bool(getattr(self, "controller", None) and self.controller.running)
+        controller = getattr(self, "controller", None)
+        if controller:
+            controller.draw_controls(remember=self.remember)
+        running = bool(controller and controller.running)
         target = self.model
         if running:
             # ``begin_disabled`` greys the spec's fields but they still take typing; an edit during a run was then
@@ -141,10 +148,18 @@ class BurstFusionGui(TourTarget):
             target = copy.copy(self.model)
             target.settings = copy.deepcopy(self.model.settings)
             target._observers = []
+        if not self.labels.ready:
+            fields = [s for s in labelled(self.fusion_panel.get("sections", []))]
+            self.labels.measure([f["label"] for f in fields])
+            self.labels.pad(self.fusion_panel.get("sections", []))
+        sections = self.fusion_panel.get("sections", [])
+        at = next((i for i, s in enumerate(sections) if s.get("key") == "fusion_actions"), len(sections))
         im.begin_disabled(running)
-        draw_sections(
-            self.fusion_panel.get("sections", []), target, self.form_state, n_col=1, titles=True
-        )
+        draw_sections(group_by_width(sections[:at]), target, self.form_state, n_col=1, titles=True)
+        im.end_disabled()
+        self._draw_fusion_actions(None, self.model, self.form_state, 0.0)     # Stop stays live while a run is in flight
+        im.begin_disabled(running)
+        draw_sections(sections[at + 1:], target, self.form_state, n_col=1, titles=True)
         im.end_disabled()
         if "summary_rows" in self.form_state.rects:  # the guide names the table by its title
             self.item_rects["Summary"] = self.form_state.rects["summary_rows"]
@@ -192,74 +207,63 @@ class BurstFusionGui(TourTarget):
             self.on_used(name)
 
     def _draw_fusion_actions(
-        self, section: dict, model: Any, state: FormState, width: float
+        self, section: dict | None, model: Any, state: FormState, width: float
     ) -> None:
-        """Custom handler for fusion_actions in the form."""
-        from emtk.im_core import Col
-
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("🚀 Run (Fuse)"):
-            self.track("toolAction_run")
-            self.track("fusion_actions")
-            try:
-                if getattr(self, "controller", None):
-                    self.controller.run()
-                else:
-                    self.model.fuse()
-            except Exception:
-                pass
-        im.set_item_tooltip(
-            "Fuse burst fragments that likely belong to the same molecule using the P(same) threshold."
-        )
-        self.remember("toolAction_run")
-        self.remember("fusion_actions")
-        im.pop_style_color(3)
-
-        im.same_line()
-        if im.button("🔄 Estimate"):
-            self.track("toolAction_refresh")
-            self.track("fusion_actions")
-            try:
-                if getattr(self, "controller", None):
-                    self.controller.estimate()
-                else:
-                    self.model.analyze()
-            except Exception:
-                pass
-        im.set_item_tooltip(
-            "Estimate the P(same) curve and thresholds from the loaded bursts without fusing."
-        )
-        self.remember("toolAction_refresh")
-
-        im.same_line()
-        if self.on_demo is not None:
-            if im.button("🧪 Demo"):
-                self.track("load_demo")
+        """The actions in two wrapped rows: run (Run, Estimate, Demo, Stop), then files and help."""
+        controller = getattr(self, "controller", None)
+        running = bool(controller and controller.running)
+        im.spacing()
+        pressed = button_row([
+            {"label": icon_label("🚀", "Run (Fuse)"), "key": "toolAction_run", "enabled": not running,
+             "keys": ("fusion_actions",), "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
+             "tip": "Fuse burst fragments that likely belong to the same molecule using the P(same) threshold."},
+            {"label": icon_label("🔄", "Estimate"), "key": "toolAction_refresh", "enabled": not running,
+             "tip": "Estimate the P(same) curve and thresholds from the loaded bursts without fusing."},
+            *([{"label": icon_label("🧪", "Demo"), "key": "load_demo", "enabled": not running, "keys": ("Load demo",),
+                "tip": "Load a demo dataset to try the fusion analysis."}] if self.on_demo is not None else []),
+            {"label": "Stop fusion", "key": "Stop", "enabled": running,
+             "tip": "Cancel the estimate before writing; an output write already started finishes consistently."
+             if running else "Nothing is running; a fusion in progress can be stopped here."},
+        ], remember=self.remember)
+        if pressed in ("toolAction_run", "toolAction_refresh", "load_demo"):
+            self.track(pressed)
+            if pressed != "load_demo":
+                self.track("fusion_actions")
+            else:
                 self.track("Load demo")
-                try:
+            try:
+                if pressed == "toolAction_run":
+                    controller.run() if controller else self.model.fuse()
+                elif pressed == "toolAction_refresh":
+                    controller.estimate() if controller else self.model.analyze()
+                else:
                     self.on_demo()
-                except Exception:
-                    pass
-            im.set_item_tooltip("Load a demo dataset to try the fusion analysis.")
-            self.remember("load_demo")
-            self.remember("Load demo")
-            im.same_line()
-
-        im.new_line()
-        if im.button("📖 Guide"):
+            except Exception:
+                pass
+        elif pressed == "Stop" and controller is not None:
+            controller.stop()
+        im.begin_disabled(running)
+        files = button_row([
+            {"label": "Load settings", "key": "load", "tip": "Load a saved fusion parameter JSON file."},
+            {"label": "Save settings", "key": "save", "tip": "Save current fusion parameters as JSON."},
+            {"label": "Export fusion report", "key": "export",
+             "tip": "Export before/after statistics and the output folder path."},
+        ], remember=self.remember)
+        im.end_disabled()
+        if files and controller is not None:
+            controller.browse(files)
+        pressed = button_row([
+            {"label": icon_label("📖", "Guide"), "key": "guide", "tip": "Start a step-by-step guided tour of this tool."},
+            {"label": icon_label("❓", "Help"), "key": "help", "tip": "Open the help window with reference documentation."},
+        ], remember=self.remember)
+        if pressed == "guide":
             self.track("guide")
             self.start_guide()
-        self.remember("guide")
-        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
-
-        im.same_line()
-        if im.button("❓ Help"):
+        elif pressed == "help":
             self.track("help")
             self.show_help()
-        self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        if controller is not None:
+            controller.draw_status()
 
     def draw(self, w: float, h: float) -> None:
         self.docks.draw((0.0, 0.0, float(w), float(h)))

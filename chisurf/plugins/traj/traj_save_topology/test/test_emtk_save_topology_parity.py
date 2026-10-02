@@ -255,7 +255,7 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = SaveTopologyApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Trajectory", "Topology", "💾 Save topology…", "Log", "📖 Guide", "❓ Help"} <= set(strings)
+        assert {"Trajectory", "Topology", "💾  Save topology…", "Log", "📖  Guide", "❓  Help"} <= {s.strip() for s in strings}
         app.model.set_trajectory(TRAJ)
         app.model.set_topology(TOP)
         app.save(str(tmp_path / "frame0.pdb"))

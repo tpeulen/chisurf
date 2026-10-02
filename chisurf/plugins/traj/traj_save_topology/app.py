@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, icon_label, topology_field, trajectory_field
 
 from .view_model import SaveTopologyViewModel
 
@@ -22,7 +22,7 @@ def _suggest(model) -> str:
 
 SAVE = SaveAction(
     key="save",
-    label="💾 Save topology…",
+    label=icon_label("💾", "Save topology…"),
     tooltip="Write the first frame of the trajectory as a PDB file.",
     dialog_title="Save PDB-file",
     filters=[("PDB-files", ["*.pdb"])],

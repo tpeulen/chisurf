@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import STRUCTURE_FILTERS, SaveAction, TrajToolApp, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import STRUCTURE_FILTERS, SaveAction, icon_label, TrajToolApp, topology_field, trajectory_field
 
 from .view_model import MDConverterViewModel
 
@@ -28,7 +28,7 @@ def _missing(model) -> str | None:
 
 CONVERT = SaveAction(
     key="convert",
-    label="▶ Convert",
+    label=icon_label("▶", "Convert"),
     tooltip="Convert the trajectory with the current settings.",
     dialog_title=None,
     filters=[],

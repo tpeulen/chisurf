@@ -207,41 +207,24 @@ class FusionController:
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-fusion-file")
         self._dialog_window.show()
 
-    def draw_controls(self):
+    def draw_controls(self, remember=None):
+        """The source row (open a folder, an MMFDB dataset), the TTTR file type and the detector definitions."""
         from emtk import im
 
+        from chisurf.plugins.emtk_layout import TEXT_WIDTH, button_row
+
         im.begin_disabled(self.running)
-        for label, callback, tip in (
-            (
-                "Open burst folder",
-                self.browse,
-                "Select the burst-analysis folder containing bi4_bur.",
-            ),
-            (
-                "MMFDB datasets",
-                self.datasets.open,
-                "Resolve an existing burst analysis from the database.",
-            ),
-            (
-                "Load settings",
-                lambda: self.browse("load"),
-                "Load a saved fusion parameter JSON file.",
-            ),
-            (
-                "Save settings",
-                lambda: self.browse("save"),
-                "Save current fusion parameters as JSON.",
-            ),
-            (
-                "Export fusion report",
-                lambda: self.browse("export"),
-                "Export before/after statistics and the output folder path.",
-            ),
-        ):
-            if im.button(label):
-                callback()
-            im.set_item_tooltip(tip)
-        im.text("TTTR file type:")
+        pressed = button_row([
+            {"label": "Open burst folder", "tip": "Select the burst-analysis folder containing bi4_bur."},
+            {"label": "MMFDB datasets", "tip": "Resolve an existing burst analysis from the database."},
+        ], remember=remember)
+        if pressed == "Open burst folder":
+            self.browse()
+        elif pressed == "MMFDB datasets":
+            self.datasets.open()
+        im.text("TTTR file type")
+        im.same_line()
+        im.set_next_item_width(TEXT_WIDTH / 2)
         changed, file_type = im.input_text("##fusion_type", self.model.settings.file_type)
         im.set_item_tooltip(
             "Use auto for header detection or specify SPC-130, PTU, HT3 or HDF; a source manifest takes precedence."
@@ -270,11 +253,11 @@ class FusionController:
                 "Validate and apply detector definitions used to regenerate fused burst tables."
             )
         im.end_disabled()
-        if im.button("Stop fusion"):
-            self.stop()
-        im.set_item_tooltip(
-            "Cancel the estimate before writing; an output write already started finishes consistently."
-        )
+
+    def draw_status(self):
+        """The last status line of the controller (an invalid definition, a refused run)."""
+        from emtk import im
+
         if self.status:
             im.text_wrapped(self.status)
 

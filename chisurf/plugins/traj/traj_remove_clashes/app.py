@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, icon_label, topology_field, trajectory_field
 
 from .view_model import RemoveClashesViewModel
 
@@ -18,7 +18,7 @@ HERE = pathlib.Path(__file__).parent
 
 SAVE = SaveAction(
     key="save",
-    label="💾 Save clash-free…",
+    label=icon_label("💾", "Save clash-free…"),
     tooltip="Drop every frame that contains an atom-atom clash and write a new DCD trajectory.",
     dialog_title="Save clash-free trajectory",
     filters=[("DCD trajectory", ["*.dcd"])],

@@ -129,7 +129,7 @@ def test_native_renders_and_labels():
         "Process",
         "Log",
     ):
-        assert expected in painter.strings, expected
+        assert expected in [t.strip() for t in painter.strings], expected
 
 
 def test_native_control_tooltips_in_all_locales(monkeypatch):
@@ -173,7 +173,7 @@ def test_native_renders_narrow():
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 420, 560)
     for expected in ("Potential", "Stride", "Process", "Log"):
-        assert expected in painter.strings, expected
+        assert expected in [t.strip() for t in painter.strings], expected
 
 
 def test_native_localized_labels():
@@ -199,6 +199,6 @@ def test_native_localized_labels():
             app = PotentialEnergyApp()
             painter = RecordingPainter()
             app.draw(painter, 0, 0, 760, 620)
-            assert expected[locale][1] in painter.strings, locale
+            assert expected[locale][1] in [t.strip() for t in painter.strings], locale
         finally:
             i18n.set_locale("en")

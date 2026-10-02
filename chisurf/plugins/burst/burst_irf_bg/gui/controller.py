@@ -13,6 +13,51 @@ class IrfBackgroundController(BackgroundController):
         super().__init__(model)
         self.mle_receiver = mle_receiver
 
+    def draw_inputs(self, remember=None, track=None):
+        """The data row (open, add, MMFDB, clear, channel editor) and the loaded files, in one wrapped row."""
+        from emtk import im
+
+        from chisurf.plugins.emtk_layout import button_row
+
+        im.text("Measurements & detectors")
+        im.begin_disabled(self.running)
+        pressed = button_row([
+            {"label": "Open TTTR files", "key": "files", "tip": "Choose one or more photon measurement files."},
+            {"label": "Add TTTR folder", "tip": "Add supported photon measurements from a folder."},
+            {"label": "MMFDB datasets", "tip": "Browse database measurements and resolve their local paths."},
+            {"label": "Clear files", "tip": "Remove loaded files and analysis results."},
+            {"label": "Channel definition", "key": "bg_channels",
+             "tip": "Open the complete detector setup, timing, calibration, PIE, TAC and optical editor."},
+        ], remember=remember)
+        if pressed == "files":
+            if track is not None:
+                track("files")
+            self.browse()
+        elif pressed == "Add TTTR folder":
+            self.browse("folder")
+        elif pressed == "MMFDB datasets":
+            self.datasets.open()
+        elif pressed == "Clear files":
+            self.clear()
+        elif pressed == "bg_channels":
+            callback = getattr(self, "on_show_channels", None)
+            if callable(callback):
+                callback()
+        for path in list(self.model.files):
+            im.text_wrapped(str(path))
+            if im.button(f"Remove##{path}"):
+                self.remove_file(path)
+            im.set_item_tooltip(f"Remove {Path(path).name} from the analysis.")
+        im.end_disabled()
+        im.separator()
+
+    def draw_status(self):
+        """The controller's message (a refused run, a stop); the extraction result is the window's own line."""
+        from emtk import im
+
+        if self.status:
+            im.text_wrapped(self.status)
+
     def _snapshot(self):
         snapshot = copy.copy(self.model)
         snapshot.files = list(self.model.files)

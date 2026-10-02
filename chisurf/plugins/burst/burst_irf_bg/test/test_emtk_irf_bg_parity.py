@@ -241,7 +241,7 @@ def test_a_dropped_folder_adds_its_measurement_not_its_container(measurement):
 def test_draws_empty_and_populated(measurement, size):
     app = create_app()
     try:
-        assert "Min photons/burst" in _draw(app, size).strings
+        assert "Min photons/burst" in [t.strip() for t in _draw(app, size).strings]
         _computed(app, measurement)
         strings = _draw(app, size).strings
         assert "IRF (non-burst scatter)" in strings

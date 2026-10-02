@@ -17,6 +17,7 @@ from emtk.view_form import FormState, draw_sections, find_section
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, group_by_width, icon_label, labelled
 
 WINDOW_BG = (30, 32, 38, 255)
 
@@ -67,6 +68,8 @@ class BurstGsGui:
         self.tables = [find_section(dock, "Rates"), find_section(dock, "States")]
         for section, height in zip(self.tables, (150, 110)):   # compact: the report text stays under them
             section["height"] = height
+        cap_widths(list(self._fields.values()))      # a seed or a state count is a few digits, not the panel wide
+        self.labels = LabelColumn()                  # one caption column for every group of fields
         self.tour = EmTkGuidedTour(
             steps=guide_resource,
             get_target_rect=lambda k: self.item_rects.get(k) or self.form_state.rects.get(k),
@@ -101,7 +104,11 @@ class BurstGsGui:
         return found
 
     def _group(self, *attrs: str) -> list[dict]:
-        return [self._fields[a] for a in attrs]
+        """The fields *attrs* for ``draw_sections``: runs of one kind of field are a grid of their own."""
+        if not self.labels.ready:
+            self.labels.measure([f["label"] for f in labelled(list(self._fields.values()))])
+            self.labels.pad(list(self._fields.values()))
+        return group_by_width([self._fields[a] for a in attrs], toggles_join=False)
 
     def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
         r = rect if rect is not None else im.get_item_rect()
@@ -148,63 +155,53 @@ class BurstGsGui:
 
     def _render_controls_window(self, box=None) -> None:
 
-        if getattr(self, "controller", None) is not None:
-            self.controller.draw_inputs(remember=self.remember, track=self.track)
+        controller = getattr(self, "controller", None)
+        if controller is not None:
+            controller.draw_inputs(remember=self.remember, track=self.track)
+            im.spacing()
 
-        # Action Buttons
+        # One wrapped row of actions: Fit, Stop (live only while a fit runs), Export, Guide, Help.
         can_run_msg = self.model.can_run()
-        if can_run_msg:
-            im.begin_disabled()
-            im.button("▶ Fit Kinetics")
-            im.set_item_tooltip(
-                "Fit the photon-by-photon kinetic model (Gopich–Szabo). Load .bur files and set the channels below first."
-            )
-            self.remember("Fit")
-            im.end_disabled()
-            # On its own wrapped line: a hint long enough to matter does not
-            # fit beside the button and was clipped mid-word at the edge.
-            im.text_wrapped(can_run_msg)
-        else:
-            if im.button("▶ Fit Kinetics"):
-                self.track("Fit")
-                if self.on_fit:
-                    self.on_fit()
-                else:
-                    self.model.compute()
-            im.set_item_tooltip(
-                "Fit the photon-by-photon kinetic model (Gopich–Szabo) to the loaded bursts and report rates and states."
-            )
-            self.remember("Fit")
-
-        im.new_line()
-        if self.model.analysis is not None:
-            if im.button("💾 Export CSV"):
-                if self.on_export:
-                    self.on_export()
-            im.set_item_tooltip("Export fitted transition rates, states and provenance as CSV.")
-        else:
-            im.begin_disabled()
-            im.button("💾 Export CSV")
-            im.set_item_tooltip("Run a fit first; the results are then exported as CSV.")
-            im.end_disabled()
-
-        im.same_line()
-        if im.button("📖 Guide"):
+        running = bool(controller and controller.running)
+        pressed = button_row([
+            {"label": "▶ Fit Kinetics", "key": "Fit", "enabled": not can_run_msg and not running,
+             "tip": ("Fit the photon-by-photon kinetic model (Gopich–Szabo) to the loaded bursts and report rates and "
+                     "states." if not can_run_msg else
+                     "Fit the photon-by-photon kinetic model (Gopich–Szabo). Load .bur files and set the channels "
+                     "below first.")},
+            {"label": "Stop fit", "key": "Stop", "enabled": running,
+             "tip": "Cancel the optimizer at its next progress checkpoint." if running
+             else "Nothing is running; a fit in progress can be stopped here."},
+            {"label": icon_label("💾", "Export CSV"), "key": "Export", "enabled": self.model.analysis is not None,
+             "tip": "Export fitted transition rates, states and provenance as CSV." if self.model.analysis is not None
+             else "Run a fit first; the results are then exported as CSV."},
+            {"label": icon_label("📖", "Guide"), "key": "guide",
+             "tip": "Start a step-by-step guided tour of this tool."},
+            {"label": icon_label("❓", "Help"), "key": "help", "tip": "Open the help window with reference documentation."},
+        ], remember=self.remember)
+        if pressed == "Fit":
+            self.track("Fit")
+            if self.on_fit:
+                self.on_fit()
+            else:
+                self.model.compute()
+        elif pressed == "Stop" and controller is not None:
+            controller.stop()
+        elif pressed == "Export" and self.on_export:
+            self.on_export()
+        elif pressed == "guide":
             self.track("guide")
             self.start_guide()
-        self.remember("guide")
-        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
-
-        im.same_line()
-        if im.button("❓ Help"):
+        elif pressed == "help":
             self.track("help")
             self.show_help()
-        self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        if can_run_msg:
+            im.text_wrapped(can_run_msg)    # on its own wrapped line: a hint long enough to matter did not fit beside
+        if controller is not None:
+            controller.draw_progress()
 
         im.separator()
 
-        running = bool(getattr(self, "controller", None) and self.controller.running)
         target = self.model
         if running:
             # ``begin_disabled`` greys the spec's fields but they still take typing; they draw against a throw-away copy
@@ -250,7 +247,13 @@ class BurstGsGui:
             im.separator()
 
         im.text_colored("Fit Summary & Console:", (0.8, 0.8, 0.8, 1.0))
+        # The report scrolls in the room the tables leave: a long one was cut off at the window's bottom edge.
+        avail_w, avail_h = im.get_content_region_avail()
+        x, y = im.get_cursor_screen_pos()
+        im.begin_child("##gs_report", (float(avail_w), max(60.0, float(avail_h))))
         im.text_wrapped(self.model.results_text)
+        im.end_child()
+        self.remember("report", (float(x), float(y), float(avail_w), max(60.0, float(avail_h))))
 
     def rate_bars(self) -> tuple[list[str], np.ndarray, np.ndarray | None]:
         """Fitted rate per transition, its label "k(i→j)", and the simulated rate where known.

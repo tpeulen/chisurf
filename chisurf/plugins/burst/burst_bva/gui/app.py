@@ -20,6 +20,8 @@ from emtk.im_core import Col, ItemFlags, get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
+from chisurf.plugins.emtk_layout import button_row, icon_label
+
 from .view_model import BvaViewModel
 
 __all__ = ["BurstBvaApp", "BurstBvaGui", "WINDOW_BG"]
@@ -184,107 +186,67 @@ class BurstBvaGui:
         if self.tour.active:
             self.tour.draw(width, height)
 
-    @staticmethod
-    def _same_line_if_fits(label: str) -> None:
-        """Continue the button row, or start a new one when *label* would not fit."""
-        im.same_line()
-        if im.get_content_region_avail()[0] < im.calc_text_size(label)[0] + 16.0:
-            im.new_line()
-
     def _draw_action_buttons(self) -> None:
-        """Draw Run, Restart, Stop, and Browse actions."""
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("🚀 Run"):
+        """The actions in three wrapped rows: the run controls, the saves, then guide and help."""
+        running = bool(self.model.is_running)
+        attention = bool(getattr(self.model, "restart_attention", False))  # the Qt tool's flag_attention
+        pressed = button_row([
+            {"label": icon_label("🚀", "Run"), "key": "run", "keys": ("toolAction_run",), "enabled": not running,
+             "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
+             "tip": "Compute the per-burst standard deviation of the proximity ratio (BVA) for the loaded bursts."},
+            {"label": icon_label("🔄", "Restart"), "key": "restart", "keys": ("toolAction_restart",),
+             "enabled": not running,
+             "colours": ((200, 120, 20, 255), (220, 140, 40, 255), (180, 100, 10, 255)) if attention else None,
+             "tip": "Reset the analysis state and recompute from scratch."},
+            {"label": icon_label("⏹", "Stop"), "key": "stop", "keys": ("toolAction_stop",), "enabled": running,
+             "colours": (ACCENT_RED, (234, 59, 60, 255), (180, 20, 20, 255)) if running else None,
+             "tip": "Stop the running BVA computation." if running
+             else "Nothing is running; a BVA computation in progress can be stopped here."},
+            {"label": icon_label("📁", "Folder"), "key": "folder",
+             "tip": "Browse for the folder containing the burst analysis files."},
+        ], remember=self.remember)
+        if pressed == "run":
             self.track("toolAction_run")
             self.track("run")
-            if not self.model.is_running and callable(self.on_run):
+            if callable(self.on_run):
                 self.on_run()
-        im.set_item_tooltip(
-            "Compute the per-burst standard deviation of the proximity ratio (BVA) for the loaded bursts."
-        )
-        self.remember("run")
-        self.remember("toolAction_run")
-        im.pop_style_color(3)
-
-        self._same_line_if_fits("🔄 Restart")
-        attention = bool(getattr(self.model, "restart_attention", False))
-        if attention:  # the Qt tool's flag_attention: a skipped run points at Restart
-            im.push_style_color(Col.BUTTON, (200, 120, 20, 255))
-            im.push_style_color(Col.BUTTON_HOVERED, (220, 140, 40, 255))
-        if im.button("🔄 Restart"):
+        elif pressed == "restart":
             self.track("toolAction_restart")
             self.track("restart")
-            if not self.model.is_running and callable(self.on_restart):
+            if callable(self.on_restart):
                 self.on_restart()
-        im.set_item_tooltip("Reset the analysis state and recompute from scratch.")
-        self.remember("restart")
-        self.remember("toolAction_restart")
-        if attention:
-            im.pop_style_color(2)
-
-        self._same_line_if_fits("⏹ Stop")
-        if self.model.is_running:
-            im.push_style_color(Col.BUTTON, ACCENT_RED)
-            im.push_style_color(Col.BUTTON_HOVERED, (234, 59, 60, 255))
-            im.push_style_color(Col.BUTTON_ACTIVE, (180, 20, 20, 255))
-        if im.button("⏹ Stop"):
+        elif pressed == "stop":
             self.track("toolAction_stop")
             self.track("stop")
-            if self.model.is_running and callable(self.on_stop):
+            if callable(self.on_stop):
                 self.on_stop()
-        im.set_item_tooltip("Stop the running BVA computation.")
-        self.remember("stop")
-        self.remember("toolAction_stop")
-        if self.model.is_running:
-            im.pop_style_color(3)
-
-        self._same_line_if_fits("📁 Folder")
-        if im.button("📁 Folder"):
+        elif pressed == "folder":
             self.track("folder")
             if callable(self.on_browse):
                 self.on_browse()
-        im.set_item_tooltip("Browse for the folder containing the burst analysis files.")
-        self.remember("folder")
-
-        self._same_line_if_fits("📖 Guide")
-        if im.button("📖 Guide"):
-            self.track("guide")
-            self.start_guide()
-        self.remember("guide")
-        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
-
-        self._same_line_if_fits("❓ Help")
-        if im.button("❓ Help"):
-            self.track("help")
-            self.show_help()
-        self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
 
         # These actions previously lived only in the hidden Qt toolbar.
-        im.spacing()
-        for name, label, action, tip in (
-            (
-                "clear",
-                "🗑 Clear",
-                self.on_clear,
-                "Clear the plotted BVA results and invalidate the cached analysis.",
-            ),
-            ("save_plot", "💾 Save plot", self.on_save, "Save the displayed BVA plot as a PNG image."),
-            (
-                "save_defaults",
-                "⚙ Save defaults",
-                self.on_save_settings,
-                "Save the current analysis and display settings as defaults.",
-            ),
-        ):
-            if im.button(label) and callable(action):
-                action()
-            im.set_item_tooltip(tip)
-            self.remember(name)
-            im.same_line()
-        im.new_line()
+        pressed = button_row([
+            {"label": icon_label("🗑", "Clear"), "key": "clear",
+             "tip": "Clear the plotted BVA results and invalidate the cached analysis."},
+            {"label": icon_label("💾", "Save plot"), "key": "save_plot",
+             "tip": "Save the displayed BVA plot as a PNG image."},
+            {"label": icon_label("⚙", "Save defaults"), "key": "save_defaults",
+             "tip": "Save the current analysis and display settings as defaults."},
+        ], remember=self.remember)
+        actions = {"clear": self.on_clear, "save_plot": self.on_save, "save_defaults": self.on_save_settings}
+        if pressed in actions and callable(actions[pressed]):
+            actions[pressed]()
+        pressed = button_row([
+            {"label": icon_label("📖", "Guide"), "key": "guide", "tip": "Start a step-by-step guided tour of this tool."},
+            {"label": icon_label("❓", "Help"), "key": "help", "tip": "Open the help window with reference documentation."},
+        ], remember=self.remember)
+        if pressed == "guide":
+            self.track("guide")
+            self.start_guide()
+        elif pressed == "help":
+            self.track("help")
+            self.show_help()
 
     def _draw_folder_input(self, width: float) -> None:
         """Folder path input."""

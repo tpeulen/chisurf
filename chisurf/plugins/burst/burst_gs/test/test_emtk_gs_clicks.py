@@ -455,14 +455,14 @@ def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(
 
 
 def test_export_is_greyed_before_a_fit_then_writes_the_csv_the_qt_tool_wrote(app, tmp_path):
-    click(app, text_rect(draw(app), "💾 Export CSV"))
+    click(app, text_rect(draw(app), "💾  Export CSV"))
     assert app.controller.dialog is None                                                    # greyed: nothing opens
     simulate(app)
     type_into(app, "sim_n_bursts", "20")
     type_into(app, "sim_photons_per_burst", "40")
     type_into(app, "max_iterations", "100")
     fit(app)
-    press_text(app, "💾 Export CSV")
+    press_text(app, "💾  Export CSV")
     strings = draw(app).strings
     assert "Export photon-by-photon kinetics" in strings and "kinetics.gs.csv" in strings
     click(app, text_rect(draw(app), "kinetics.gs.csv"), fx=0.3)
@@ -484,7 +484,7 @@ def test_the_export_dialog_cancel_writes_nothing(app, tmp_path):
     type_into(app, "sim_photons_per_burst", "40")
     type_into(app, "max_iterations", "100")
     fit(app)
-    press_text(app, "💾 Export CSV")
+    press_text(app, "💾  Export CSV")
     click(app, text_rect(draw(app), "Cancel"))
     assert "Cancel" not in draw(app).strings and not list(tmp_path.glob("*.csv"))
 

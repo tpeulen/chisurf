@@ -15,7 +15,7 @@ import pathlib
 import numpy as np
 from emtk import im
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import SaveAction, icon_label, TrajToolApp, topology_field, trajectory_field
 
 from .view_model import FretTrajectoryViewModel
 
@@ -23,7 +23,7 @@ HERE = pathlib.Path(__file__).parent
 
 PROCESS = SaveAction(
     key="process",
-    label="▶ Process trajectory",
+    label=icon_label("▶", "Process trajectory"),
     tooltip="Compute the FRET observables and save them to a CSV file.",
     dialog_title="Output-file",
     filters=[("CSV", ["*.csv"]), ("All files", ["*"])],

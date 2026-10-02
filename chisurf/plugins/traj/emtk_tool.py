@@ -33,9 +33,14 @@ from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import (
+    NUMBER_WIDTH, LabelColumn, cap_widths, group_by_width, icon_label, labelled, layout_spec,
+)
 
 ERROR = (1.0, 0.45, 0.45, 1.0)
 LOG_KEY = "log"
+#: The log shows this many lines before it scrolls; the window below it stays empty rather than all log.
+LOG_LINES = 9
 
 TRAJECTORY_FILTERS = [("Trajectories", ["*.dcd"])]
 STRUCTURE_FILTERS = [("Structures", ["*.pdb", "*.cif", "*.ent"])]
@@ -195,12 +200,17 @@ class TrajToolApp(TourTarget, ImApp):
         ]                                                   # several panels fold, as the Qt AutoForm panels do
         self.spec = {"sections": [self._host_section(s) for s in top]}
         _spin_numbers(self.spec["sections"])
+        self.spec = layout_spec(self.spec)
+        self.labels = LabelColumn()                 # the one label column every row of the window shares
+        if not action_key:                          # the action closes the inputs, above the log
+            action_key = f"{io_key}_action"
+            if not _insert_before_log(self.spec["sections"], {"type": "custom", "key": action_key}):
+                self.spec["sections"].append({"type": "custom", "key": action_key})
         self.form = FormState()
         self.form.custom[io_key] = self._draw_io
         self.form.custom[LOG_KEY] = self._draw_log
         self.action_key = action_key
-        if action_key:
-            self.form.custom[action_key] = lambda *args: self._draw_action()
+        self.form.custom[action_key] = lambda *args: self._draw_action()
         self.docks = DockManager(Region("main"))
         self.docks.add_window("main", title, self._draw_main, dock="main", closable=False)
         self.native_layouts = {"main": self.docks}
@@ -351,24 +361,50 @@ class TrajToolApp(TourTarget, ImApp):
                 cancel()
 
     def _draw_main(self, box) -> None:
-        if im.button("📖 Guide"):
+        if im.button(icon_label("📖", "Guide")):
             self.start_guide()
         im.set_item_tooltip("A step-by-step walk through the tool, pointing at each control.")
         self.remember("guide")
         im.same_line()
-        if im.button("❓ Help"):
+        if im.button(icon_label("❓", "Help")):
             self.show_help()
         im.set_item_tooltip("What the tool does, what it writes, and the known limits.")
         self.remember("help")
         im.separator()
         self.form.rects.clear()
+        self.label_column()
         im.begin_disabled(self.running)
         draw_form(self.spec, self.model, self.form)
         im.end_disabled()
         self.item_rects.update(self.form.rects)
 
+    def label_column(self) -> float:
+        """Where the fields start: the label column every row shares (file rows, fields, editors).
+
+        The first call measures the widest caption of the window and pads every field caption of the spec to it
+        (:class:`~chisurf.plugins.emtk_layout.LabelColumn`).
+        """
+        if not self.labels.ready:
+            captions = [p.label for p in self.paths]
+            captions += [s["label"] for s in labelled(self.spec["sections"])] + self.extra_captions()
+            self.labels.measure(captions)
+            self.labels.pad(self.spec["sections"])
+        return self.labels.x
+
+    def layout_spec(self, spec: dict) -> dict:
+        """A spec a tool draws itself, laid out as the window's own: capped widths, one grid per kind of field."""
+        return layout_spec(spec)
+
+    def extra_captions(self) -> list[str]:
+        """Captions a tool draws itself (not in its spec) in the shared label column."""
+        return []
+
+    def pad_labels(self, sections) -> None:
+        """Pad the field captions of *sections* to the window's label column (see :meth:`label_column`)."""
+        self.labels.pad(sections)
+
     def _draw_io(self, section, model, state, width) -> None:
-        label_w = max(im.calc_text_size(p.label)[0] for p in self.paths) + 8.0
+        label_w = self.label_column()
         button_w = im.get_frame_height() + 6.0
         for path_field in self.paths:
             im.text(path_field.label)
@@ -385,10 +421,9 @@ class TrajToolApp(TourTarget, ImApp):
             im.set_item_tooltip(path_field.browse_tooltip)
             self.remember(f"{path_field.key}_browse")
         self.draw_extra_io(width)
-        if not self.action_key:
-            self._draw_action()                       # else the action section draws it, and the status, once
 
     def _draw_action(self) -> None:
+        im.spacing()
         if im.button(self.action.label):
             self.tour.notify_used(self.action.key)
             self.begin_save()
@@ -412,7 +447,9 @@ class TrajToolApp(TourTarget, ImApp):
     def _draw_log(self, section, model, state, width) -> None:
         im.text("Log")
         x, y = im.get_cursor_screen_pos()
-        box = (float(x), float(y), float(width), max(80.0, float(im.get_content_region_avail()[1])))
+        room = float(im.get_content_region_avail()[1])
+        height = min(max(80.0, room), LOG_LINES * im.get_text_line_height_with_spacing() + 8.0)
+        box = (float(x), float(y), float(width), height)
         im.begin_child("##log", box[2:])
         lines = self.model.log_text()
         for line in lines:
@@ -447,6 +484,17 @@ class TrajToolApp(TourTarget, ImApp):
         self._executor.shutdown(wait=False, cancel_futures=True)
 
 
+def _insert_before_log(sections: list, node: dict) -> bool:
+    """Put *node* in front of the log section wherever it nests; False when the spec has no log."""
+    for i, section in enumerate(sections):
+        if section.get("type") == "custom" and section.get("key") == LOG_KEY:
+            sections.insert(i, node)
+            return True
+        if isinstance(section.get("sections"), list) and _insert_before_log(section["sections"], node):
+            return True
+    return False
+
+
 def _spin_numbers(sections) -> None:
     """Give every number field the arrows and wheel the Qt spin boxes had.
 
@@ -469,4 +517,5 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-__all__ = ["PathField", "SaveAction", "TrajToolApp", "topology_field", "trajectory_field"]
+__all__ = ["PathField", "SaveAction", "TrajToolApp", "icon_label", "topology_field",
+           "trajectory_field"]

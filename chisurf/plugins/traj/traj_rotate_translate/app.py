@@ -13,12 +13,14 @@ import pathlib
 import numpy as np
 from emtk import im
 
+from chisurf.plugins.emtk_layout import NUMBER_WIDTH, icon_label
 from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
 
 from .view_model import RotateTranslateViewModel
 
 HERE = pathlib.Path(__file__).parent
 WARNING = (1.0, 0.75, 0.3, 1.0)
+CELL_WIDTH = NUMBER_WIDTH     # one matrix / translation cell lines up with the stride field below it
 
 MATRIX_TIP = ("The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; "
               "the user must ensure it is a valid rotation matrix.")
@@ -26,7 +28,7 @@ TRANSLATION_TIP = "Added to every coordinate after the rotation, in Ångström."
 
 SAVE = SaveAction(
     key="save",
-    label="💾 Save rotated/translated…",
+    label=icon_label("💾", "Save rotated/translated…"),
     tooltip="Rotate + translate every frame and write a new DCD trajectory.",
     dialog_title="Save trajectory",
     filters=[("DCD trajectory", ["*.dcd"])],
@@ -78,13 +80,21 @@ class RotateTranslateApp(TrajToolApp):
                 return number
         return None
 
+    def extra_captions(self) -> list[str]:
+        return ["Rotation matrix", "Translation [Ang.]"]
+
     def draw_extra_io(self, width: float) -> None:
+        """The matrix and the translation as label/field rows: the caption in the label column, the cells beside it."""
         spacing = im.get_style().item_spacing[0]
-        cell = (width - 2 * spacing) / 3.0
-        im.text("Rotation matrix")
-        top = im.get_cursor_screen_pos()
+        label_w = self.label_column()
+        cell = min(CELL_WIDTH, (width - label_w - 2 * spacing) / 3.0)
         matrix = np.array(self.model.rotation_matrix, dtype=np.float32)
+        top = None
         for i in range(3):
+            im.text("Rotation matrix" if i == 0 else "")
+            im.same_line(label_w)
+            if top is None:
+                top = im.get_cursor_screen_pos()
             for j in range(3):
                 if j:
                     im.same_line()
@@ -93,8 +103,10 @@ class RotateTranslateApp(TrajToolApp):
                     matrix[i, j] = value
                     self.model.rotation_matrix = matrix
                     self.tour.notify_used("rotation_matrix")
-        self.remember("rotation_matrix", (top[0], top[1], width, im.get_cursor_screen_pos()[1] - top[1]))
+        self.remember("rotation_matrix", (top[0], top[1], 3 * cell + 2 * spacing,
+                                          im.get_cursor_screen_pos()[1] - top[1]))
         im.text("Translation [Ang.]")
+        im.same_line(label_w)
         top = im.get_cursor_screen_pos()
         vector = np.array(self.model.translation_vector, dtype=np.float32)
         for k in range(3):
@@ -105,7 +117,7 @@ class RotateTranslateApp(TrajToolApp):
                 vector[k] = value
                 self.model.translation_vector = vector
                 self.tour.notify_used("translation")
-        self.remember("translation", (top[0], top[1], width, im.get_cursor_screen_pos()[1] - top[1]))
+        self.remember("translation", (top[0], top[1], 3 * cell + 2 * spacing, im.get_frame_height()))
         problem = rotation_problem(self.model.rotation_matrix)
         if problem:
             im.text_colored(WARNING, problem)

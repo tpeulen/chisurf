@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, icon_label, topology_field, trajectory_field
 
 from .view_model import JoinTrajectoriesViewModel
 
@@ -18,7 +18,7 @@ HERE = pathlib.Path(__file__).parent
 
 SAVE = SaveAction(
     key="save",
-    label="💾 Save joined…",
+    label=icon_label("💾", "Save joined…"),
     tooltip="Join the two trajectories and write the result as a new DCD trajectory.",
     dialog_title="Save trajectory",
     filters=[("DCD trajectory", ["*.dcd"])],

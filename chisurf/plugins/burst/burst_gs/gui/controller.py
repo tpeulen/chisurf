@@ -148,37 +148,42 @@ class BurstGsController:
         self._dialog_window.show()
 
     def draw_inputs(self, remember=None, track=None):
-        """File inputs, Stop, progress and status; *remember*/*track* serve the guide."""
+        """The data row (open, add, MMFDB, clear) and the files; *remember*/*track* serve the guide."""
         from emtk import im
 
+        from chisurf.plugins.emtk_layout import button_row
+
         im.begin_disabled(self.running)
-        if im.button("Open BUR files"):
+        pressed = button_row([
+            {"label": "Open BUR files", "key": "bur_files",
+             "tip": "Choose burst tables containing photon ranges to fit."},    # the guide's "files" step
+            {"label": "Add burst folder", "tip": "Find BUR tables recursively in an analysis folder."},
+            {"label": "MMFDB datasets", "tip": "Select a burst analysis dataset from MMFDB."},
+            {"label": "Clear burst files", "tip": "Remove the input tables and previous fitted result."},
+        ], remember=remember)
+        if pressed == "bur_files":
             if track is not None:
                 track("bur_files")
             self.browse()
-        im.set_item_tooltip("Choose burst tables containing photon ranges to fit.")
-        if remember is not None:
-            remember("bur_files")  # the guide's "files" step
-        if im.button("Add burst folder"):
+        elif pressed == "Add burst folder":
             self.browse("folder")
-        im.set_item_tooltip("Find BUR tables recursively in an analysis folder.")
-        if im.button("MMFDB datasets"):
+        elif pressed == "MMFDB datasets":
             self.datasets.open()
-        im.set_item_tooltip("Select a burst analysis dataset from MMFDB.")
-        if im.button("Clear burst files"):
+        elif pressed == "Clear burst files":
             self.model.bur_files = []
             self.model._bursts = self.model._analysis = None
             self.model.notify("files")
-        im.set_item_tooltip("Remove the input tables and previous fitted result.")
         for path in list(self.model.bur_files):
             im.text_wrapped(path)
             if im.button(f"Remove##{path}"):
                 self.model.bur_files.remove(path)
             im.set_item_tooltip(f"Remove {Path(path).name} from the fit input.")
         im.end_disabled()
-        if im.button("Stop fit"):
-            self.stop()
-        im.set_item_tooltip("Cancel the optimizer at its next progress checkpoint.")
+
+    def draw_progress(self):
+        """The progress of a running fit and the last status line."""
+        from emtk import im
+
         if self.running:
             im.progress_bar(self.progress_fraction, overlay=self.progress_text)
             im.set_item_tooltip("Progress of the running fit; Stop fit cancels it.")

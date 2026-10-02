@@ -296,7 +296,7 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = JoinTrajectoriesApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Trajectory 1", "Trajectory 2", "Topology", "💾 Save joined…", "Chunk size", "Log"} <= set(strings)
+        assert {"Trajectory 1", "Trajectory 2", "Topology", "💾  Save joined…", "Chunk size", "Log"} <= {s.strip() for s in strings}
         app = _loaded()
         app.save(str(tmp_path / "joined.dcd"))
         _settle(app)

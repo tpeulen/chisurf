@@ -28,6 +28,8 @@ from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_sections
 from emtk.widgets.view_spec import load_view_spec
 
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, icon_label, labelled
+
 from .view_model import IrfBackgroundViewModel
 
 __all__ = ["BurstIrfBackgroundApp", "BurstIrfBackgroundGui", "WINDOW_BG"]
@@ -93,6 +95,8 @@ class BurstIrfBackgroundGui:
         self.form_state = FormState()
         spec = load_view_spec(str(Path(__file__).parent / "irf_bg.view.json"))
         self._fields = self._leaf_sections(spec["sections"][0])
+        cap_widths(list(self._fields.values()))   # a photon count is a few digits, not the panel wide
+        self.labels = LabelColumn()
         table = load_view_spec(str(Path(__file__).parent / "irf_bg_results_emtk.view.json"))
         self.results_section = table["sections"][0]
         self.tour = EmTkGuidedTour(
@@ -207,6 +211,9 @@ class BurstIrfBackgroundGui:
             target._observers = []
         im.begin_disabled(running)
         im.text_colored(ACCENT_BLUE, "Burst Search & Baseline")
+        if not self.labels.ready:
+            self.labels.measure([f["label"] for f in labelled(list(self._fields.values()))])
+            self.labels.pad(list(self._fields.values()))
         draw_sections(
             [self._fields[a] for a in ("min_photons", "photon_window", "time_window_ms", "baseline_quantile",
                                        "micro_time_binning")],
@@ -221,13 +228,24 @@ class BurstIrfBackgroundGui:
 
         im.end_disabled()
 
-        # Actions
-        from emtk.im_core import Col
-
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("🌙 Compute", (avail_w, 28.0)):
+        # Actions: one wrapped row (Compute, Stop live only while it runs, hand-off, export, guide, help)
+        controller = getattr(self, "controller", None)
+        pressed = button_row([
+            {"label": icon_label("🌙", "Compute"), "key": "toolAction_run", "keys": ("irf_bg_run",),
+             "enabled": not running, "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
+             "tip": "Extract the instrument response (IRF) and the per-detector background rates from the loaded files."},
+            {"label": "Stop computation", "key": "Stop", "enabled": running,
+             "tip": "Cancel at the next file boundary and retain the previous results." if running
+             else "Nothing is running; a computation in progress can be stopped here."},
+            {"label": icon_label("🎯", "Send to MLE"), "key": "send_to_mle",
+             "tip": "Send the extracted IRF and background patterns to the burst-MLE lifetime fit."},
+            *([{"label": "Export MLE patterns", "key": "patterns",
+                "tip": "Save per-detector IRF and background patterns in a NumPy archive for scripted MLE fitting."}]
+              if controller is not None else []),
+            {"label": icon_label("📖", "Guide"), "key": "guide", "tip": "Start a step-by-step guided tour of this tool."},
+            {"label": icon_label("❓", "Help"), "key": "help", "tip": "Open the help window with reference documentation."},
+        ], remember=self.remember)
+        if pressed == "toolAction_run":
             self.track("toolAction_run")
             self.track("irf_bg_run")
             if callable(self.on_compute):
@@ -237,44 +255,22 @@ class BurstIrfBackgroundGui:
                     self.model.compute()
                 except Exception as exc:
                     self.status_text = f"Error: {exc}"
-        self.remember("toolAction_run")
-        self.remember("irf_bg_run")
-        im.set_item_tooltip(
-            "Extract the instrument response (IRF) and the per-detector background rates from the loaded files."
-        )
-        im.pop_style_color(3)
-
-        im.spacing()
-        if im.button("🎯 Send to MLE", (avail_w, 26.0)):
+        elif pressed == "Stop" and controller is not None:
+            controller.stop()
+        elif pressed == "send_to_mle":
             self.track("send_to_mle")
             if callable(self.on_send_to_mle):
                 self.on_send_to_mle()
-        self.remember("send_to_mle")
-        im.set_item_tooltip(
-            "Send the extracted IRF and background patterns to the burst-MLE lifetime fit."
-        )
-
-        if getattr(self, "controller", None) is not None:
-            if im.button("Export MLE patterns"):
-                self.controller.browse("patterns")
-            im.set_item_tooltip(
-                "Save per-detector IRF and background patterns in a NumPy archive for scripted MLE fitting."
-            )
-
-        btn_half_w = max(50.0, (avail_w - 6.0) * 0.5)
-        im.spacing()
-        if im.button("📖 Guide", (btn_half_w, 24.0)):
+        elif pressed == "patterns":
+            controller.browse("patterns")
+        elif pressed == "guide":
             self.track("guide")
             self.start_guide()
-        self.remember("guide")
-        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
-
-        im.same_line()
-        if im.button("❓ Help", (btn_half_w, 24.0)):
+        elif pressed == "help":
             self.track("help")
             self.show_help()
-        self.remember("help")
-        im.set_item_tooltip("Open the help window with reference documentation.")
+        if controller is not None:
+            controller.draw_status()
 
         im.spacing()
         im.text_colored(ACCENT_GRAY, f"Files loaded: {len(self.model.files)}")

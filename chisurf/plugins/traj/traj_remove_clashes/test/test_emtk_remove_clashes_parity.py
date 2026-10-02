@@ -259,7 +259,7 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = RemoveClashesApp()
     try:
         strings = _draw(app, size).strings
-        assert {"💾 Save clash-free…", "Atom selection", "Stride", "Min distance", "Log"} <= set(strings)
+        assert {"💾  Save clash-free…", "Atom selection", "Stride", "Min distance", "Log"} <= {s.strip() for s in strings}
         app = _loaded()
         app.save(str(tmp_path / "clash_free.dcd"))
         _settle(app)

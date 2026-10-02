@@ -40882,3 +40882,4 @@ side of the line.
   Regression tests in `chisurf/plugins/chimol/test/test_emtk_host.py`, each
   verified to fail against the pre-fix adapter; resume point in
   [chimol-emtk](plugins/chimol-emtk.md) "Where to pick this up".
+- 2026-10-02: emtk ports layout polish (traj family, burst_gs/fusion/irf_bg/bva): shared `chisurf/plugins/emtk_layout.py` (capped field widths, one label column, wrapped button rows, pictogram gap), Stop only live while running, burst_gs report scrolls, log capped; per-plugin layout tests; before/after PNGs and defects in `okf/plugins/emtk-ports/layout-polish.md`.

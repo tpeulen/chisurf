@@ -281,7 +281,7 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = RotateTranslateApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Rotation matrix", "Translation [Ang.]", "💾 Save rotated/translated…", "Stride", "Log"} <= set(strings)
+        assert {"Rotation matrix", "Translation [Ang.]", "💾  Save rotated/translated…", "Stride", "Log"} <= {s.strip() for s in strings}
         app = _loaded()
         app.save(str(tmp_path / "moved.dcd"))
         _settle(app)

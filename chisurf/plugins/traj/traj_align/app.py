@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, icon_label, topology_field, trajectory_field
 
 from .view_model import AlignTrajectoryViewModel
 
@@ -18,7 +18,7 @@ HERE = pathlib.Path(__file__).parent
 
 SAVE = SaveAction(
     key="save",
-    label="💾 Save aligned…",
+    label=icon_label("💾", "Save aligned…"),
     tooltip="Superpose every frame onto the first frame and write a new DCD.",
     dialog_title="Save aligned trajectory",
     filters=[("DCD trajectory", ["*.dcd"])],

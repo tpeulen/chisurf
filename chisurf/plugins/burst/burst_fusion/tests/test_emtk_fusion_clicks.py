@@ -390,7 +390,7 @@ def test_the_estimate_panel_opens_and_its_fields_and_toggles_are_operated(app):
     click(app, text_rect(draw(app), "P(same molecule) estimate"))
     draw(app)
     strings = draw(app).strings
-    assert {"Lag from", "Lag to", "Lag bins", "Min pairs/bin", "Pool files", "Record grouping"} <= set(strings)
+    assert {"Lag from", "Lag to", "Lag bins", "Min pairs/bin", "Pool files", "Record grouping"} <= {t.strip() for t in strings}
     s = app.model.settings
     for field, attr, typed, expected in (
         ("tau_min_ms", "tau_min_s", "0.5", 0.5e-3), ("tau_max_ms", "tau_max_s", "500", 0.5),

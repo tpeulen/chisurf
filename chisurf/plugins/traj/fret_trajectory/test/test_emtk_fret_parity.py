@@ -300,12 +300,12 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = FretTrajectoryApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Trajectory", "Topology", "Reference", "Dipole atoms", "▶ Process trajectory", "Log"} <= set(strings)
+        assert {"Trajectory", "Topology", "Reference", "Dipole atoms", "▶ Process trajectory", "Log"} <= {s.strip() for s in strings}
         app = _loaded()
         app.save(str(tmp_path / "fret.csv"))
         _settle(app)
         strings = _draw(app, size).strings
-        assert {"Donor", "Acceptor", "CA", "HA", "332"} <= set(strings)
+        assert {"Donor", "Acceptor", "CA", "HA", "332"} <= {s.strip() for s in strings}
         assert [strings.count(c) for c in ("Chain", "Residue", "Atom")] == [2, 2, 2]  # both columns captioned
         assert any(line.endswith("(116 frames)") for line in strings)            # the log is drawn
         for attr in ("donor", "acceptor"):

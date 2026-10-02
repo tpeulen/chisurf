@@ -272,7 +272,7 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = AlignTrajectoryApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Trajectory", "Topology", "💾 Save aligned…", "Atom selection", "Stride", "Log"} <= set(strings)
+        assert {"Trajectory", "Topology", "💾  Save aligned…", "Atom selection", "Stride", "Log"} <= {s.strip() for s in strings}
         app = _loaded()
         app.save(str(tmp_path / "aligned.dcd"))
         _settle(app)

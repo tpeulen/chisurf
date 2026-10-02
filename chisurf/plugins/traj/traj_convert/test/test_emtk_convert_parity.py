@@ -314,7 +314,7 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = MDConverterApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Topology", "Trajectory", "Target folder", "▶ Convert", "Log", "Input", "Output"} <= set(strings)
+        assert {"Topology", "Trajectory", "Target folder", "▶ Convert", "Log", "Input", "Output"} <= {s.strip() for s in strings}
         app = _run(_loaded(tmp_path))
         strings = _draw(app, size).strings
         assert "Conversion done!" in strings

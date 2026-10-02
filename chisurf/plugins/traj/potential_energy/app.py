@@ -163,11 +163,14 @@ class PotentialEnergyApp(TrajToolApp):
             "type": "choice", "attr": "potential_type", "label": "Potential", "options": potential_names(),
             "description": "Type of potential to configure and add.",
         }, {
-            "type": "button_row", "buttons": [{
+            "type": "button_row", "weight": 0, "buttons": [{
                 "action": "add", "label": "Add",
                 "description": "Add the configured potential to the list of used potentials.",
             }],
         }]}
+        self.layout_spec(self._weight_spec)
+        self.layout_spec(self._choice_spec)
+        self._editors_padded = False
         self._specs: dict[str, dict] = {}
         self._file_rows: dict[str, dict] = {}
 
@@ -191,12 +194,23 @@ class PotentialEnergyApp(TrajToolApp):
         return f" {self.frames_done} frame(s)" if self.frames_done else ""
 
     # -- the potential editor: the type, its parameters, the weight, Add ------------------------------- #
+    def extra_captions(self) -> list[str]:
+        captions = ["Potential", "Weight"]
+        for name in potential_names():
+            captions += [p.label for p in (get_spec(name).params if get_spec(name) else ())]
+        return captions
+
     def draw_extra_io(self, width: float) -> None:
         self.editor_form.rects.clear()
+        if not self._editors_padded:
+            self._editors_padded = True
+            self.pad_labels(self._choice_spec["sections"])
+            self.pad_labels(self._weight_spec["sections"])
         name = self.editor.potential_type
         spec = self._specs.get(name)
         if spec is None:
-            spec = self._specs[name] = editor_spec(name)
+            spec = self._specs[name] = self.layout_spec(editor_spec(name))
+            self.pad_labels(spec["sections"])
             self.editor_form.custom = {f"file:{p.attr}": self._draw_file_param(p)
                                        for p in (get_spec(name).params if get_spec(name) else ())
                                        if p.kind == "file"}
@@ -213,11 +227,11 @@ class PotentialEnergyApp(TrajToolApp):
         """A potential file row: the path (typed or chosen) and its ``…``."""
         def draw(section, model, state, width) -> None:
             values = self._editor_values.setdefault(self.editor.potential_type, {})
-            label_w = im.calc_text_size(param.label)[0] + 8.0
+            label_w = self.label_column()
             button_w = im.get_frame_height() + 6.0
             im.text(param.label)
-            im.same_line(max(label_w, 110.0))
-            im.set_next_item_width(max(80.0, width - max(label_w, 110.0) - button_w - 8.0))
+            im.same_line(label_w)
+            im.set_next_item_width(max(80.0, width - label_w - button_w - 8.0))
             changed, text = im.input_text(f"##{param.attr}", str(values.get(param.attr, param.default)),
                                           elide_start=True)
             im.set_item_tooltip(param.tip or param.label)
