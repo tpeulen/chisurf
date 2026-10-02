@@ -19,7 +19,6 @@ if _manifest is not None:
 else:
     name = "Spectroscopy:Fluorescence decay:IRF Extraction"
 
-from .gui.tool import IRFEstimatorTool
 
 __all__ = ["IRFEstimatorTool"]
 
@@ -27,6 +26,15 @@ __all__ = ["IRFEstimatorTool"]
 # When the plugin is loaded as a module with __name__ == "plugin",
 # the ChiSurf plugin host directly executes this file in a custom
 # namespace.  In that case we instantiate and show the GUI.
+def __getattr__(name):
+    if name == "IRFEstimatorTool":
+        from .gui.tool import IRFEstimatorTool
+
+        return IRFEstimatorTool
+    raise AttributeError(name)
+
+
 if __name__ == "plugin":
+    from .gui.tool import IRFEstimatorTool
     gui = IRFEstimatorTool()
     gui.show()

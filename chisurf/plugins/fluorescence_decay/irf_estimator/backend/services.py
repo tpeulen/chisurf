@@ -83,14 +83,10 @@ def load_decay_handler(path: str) -> dict[str, Any]:
     try:
         from chisurf.core.fio import read_vv_vh
 
-        data, metadata = read_vv_vh(path, return_metadata=True)
-        data = np.asarray(data, dtype=np.float32)
-        # First half is VV, second half is VH in legacy format
-        if len(data) % 2 == 0:
-            vv = data[: len(data) // 2]
-        else:
-            vv = data
-        dt = float(metadata.get("dt", 1.0))
+        channels, metadata = read_vv_vh(path, split=True, return_metadata=True)
+        vv = channels.get("VV", next(iter(channels.values()))) if isinstance(channels, dict) else channels[0]
+        vv = np.asarray(vv, dtype=np.float32)
+        dt = float(metadata.get("dt", metadata.get("dt_ns", 1.0)))
         return service_success(
             {
                 "intensity": vv.tolist(),
@@ -144,11 +140,9 @@ def save_irf_handler(path: str, irf_data: list[float], dt: float = 1.0) -> dict[
         if not path.lower().endswith(".dat"):
             path += ".dat"
         irf_array = np.asarray(irf_data, dtype=float).flatten()
-        write_vv_vh(
-            path,
-            data=np.column_stack((np.arange(len(irf_array)) * dt, irf_array)),
-            metadata={"dt": dt},
-        )
+        if not len(irf_array) or not np.isfinite(irf_array).all() or dt <= 0:
+            raise ValueError("IRF samples must be nonempty and finite, and dt must be positive")
+        write_vv_vh(path, vv=irf_array, vh=irf_array, metadata={"dt": dt})
         if not os.path.exists(path) or os.path.getsize(path) == 0:
             raise RuntimeError("Failed to save IRF file")
         return service_success({"path": path})

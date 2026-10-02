@@ -497,18 +497,13 @@ class IRFEstimatorTool(ChisurfDockTool):
         self.data_info_label.setText(str(file_path))
 
         try:
-            from chisurf.core.fio import read_vv_vh
+            from ..backend.services import load_decay_handler
 
-            data, metadata = read_vv_vh(file_path, return_metadata=True)
-            data = np.asarray(data, dtype=np.float32)
-
-            if len(data) % 2 == 0:
-                half = len(data) // 2
-                vv = data[:half]
-            else:
-                vv = data
-
-            dt = float(metadata.get("dt", 1.0))
+            response = load_decay_handler(file_path)
+            if not response["ok"]:
+                raise ValueError(response["error"])
+            vv = np.asarray(response["result"]["intensity"], dtype=np.float32)
+            dt = float(response["result"]["dt"])
             time_axis = np.arange(len(vv), dtype=np.float32) * dt
             decay_data = np.column_stack((time_axis, vv))
             self._process_decay_data(decay_data, dt)
@@ -674,7 +669,7 @@ class IRFEstimatorTool(ChisurfDockTool):
             )
 
             result = _estimate_irf(
-                intensity=self.decay_data,
+                intensity=self.decay_data_original,
                 dt=self.dt,
                 settings=settings,
                 channel_axis=self.channel_axis,
@@ -712,7 +707,7 @@ class IRFEstimatorTool(ChisurfDockTool):
                 range_bounds=self.range_bounds,
             )
             result = _estimate_irf(
-                intensity=self.decay_data,
+                intensity=self.decay_data_original,
                 dt=self.dt,
                 settings=settings,
                 channel_axis=self.channel_axis,

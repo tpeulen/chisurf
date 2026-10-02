@@ -74,6 +74,26 @@ reconvolved with the fitted exponential, so where it lies on the measured decay
 fitted offset comes back at 10 counts against a true 8.
 ```
 
+### In the window
+
+1. **📂 Load Decay** reads a VV/VH `.dat` file (the VV channel is used; dropping
+   the file on the window does the same). **📊 Load from Dataset** lists the
+   decay curves already open in ChiSurf. Loading sets **Manual Background** to
+   the median of the last 10 % of channels.
+2. Check **Time/Channel (ns)**. It comes from the file; a file without a time
+   axis gives 1 ns per channel. The native window lets you correct it, which
+   rescales the lifetime and rate without re-estimating.
+3. **🔮 Estimate IRF** runs the tail fit and the Richardson–Lucy deconvolution
+   in the background. **📍 Use Range Selection** limits the estimate to the
+   green region (drag it in the plot, or type the first and last channel).
+   **🔄 Auto-Update IRF** re-estimates with 50 iterations after a change, once
+   an IRF exists.
+4. **💾 Save IRF** writes identical VV and VH channels. **🚀 Transfer to
+   ChiSurf** registers the IRF as a TCSPC VV/VH dataset (g = 1, 10 MHz).
+
+The scaled IRF is drawn only where it is at least one count, so the log axis
+stays on the data. **📖 Guide** walks through the same steps.
+
 ## Usage
 
 ### Basic Usage

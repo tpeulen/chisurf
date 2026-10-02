@@ -1,0 +1,206 @@
+{
+  "_comment": "Blind IRF estimation, drawn by emtk.view_form over the app's form adapter (gui/app.py _Form: the IRFViewModel's fields, the app's actions). The Qt tool's toolbar (Load Decay, Load from Dataset, Save IRF, Transfer to ChiSurf, data label, Guide, ?), its parameter group, the Estimate button and its status bar, in that order. The custom sections datasets and status are drawn by callbacks registered in app.py (FormState.custom); the plot and the results are their own dock windows.",
+  "sections": [
+    {
+      "type": "panel",
+      "description": "Load a decay, save or transfer the estimated IRF, and open the help or the guided tour.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "File actions of the IRF estimator.",
+          "buttons": [
+            {
+              "action": "request_load",
+              "label": "📂 Load Decay",
+              "description": "Load a measured decay from a VV/VH file (.dat): the VV channel is used, the time per channel comes from the file."
+            },
+            {
+              "action": "request_dataset",
+              "label": "📊 Load from Dataset",
+              "description": "Choose a decay curve already open in ChiSurf; grouped datasets list each channel."
+            },
+            {
+              "action": "request_save",
+              "label": "💾 Save IRF",
+              "description": "Save the estimated IRF as a VV/VH file with identical VV and VH channels."
+            },
+            {
+              "action": "request_transfer",
+              "label": "🚀 Transfer to ChiSurf",
+              "description": "Register the estimated IRF as a TCSPC VV/VH dataset (g = 1, 10 MHz) in ChiSurf."
+            }
+          ]
+        },
+        {
+          "type": "button_row",
+          "description": "Help and guided tour.",
+          "buttons": [
+            {
+              "action": "request_guide",
+              "label": "📖 Guide",
+              "description": "Walk through loading a decay, subtracting the background and estimating the IRF."
+            },
+            {
+              "action": "request_help",
+              "label": "❓ Help",
+              "description": "What blind IRF estimation does, its assumptions and its failure modes."
+            }
+          ]
+        },
+        {
+          "type": "info",
+          "source": "source_text",
+          "description": "The loaded file or dataset, or why loading failed."
+        },
+        {
+          "type": "custom",
+          "key": "datasets",
+          "description": "The decay curves open in ChiSurf, shown after Load from Dataset."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "IRF Estimation Parameters",
+      "description": "Smoothing, deconvolution and background settings of the estimate.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "dt",
+          "label": "Time/Channel (ns)",
+          "kind": "float",
+          "decimals": 4,
+          "minimum": 0.001,
+          "maximum": 10.0,
+          "step": 0.01,
+          "description": "Time per channel in nanoseconds, set from the data. Correct it when the file carries none: the time axis, lifetime and rate are rescaled, the IRF per channel is unchanged."
+        },
+        {
+          "type": "value",
+          "attr": "window_length",
+          "label": "SG Window Length",
+          "kind": "int",
+          "minimum": 5,
+          "maximum": 500,
+          "step": 2,
+          "description": "Savitzky-Golay filter window length (channels) used to find the decay maximum; the estimator makes it odd."
+        },
+        {
+          "type": "value",
+          "attr": "polyorder",
+          "label": "SG Poly Order",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 10,
+          "step": 1,
+          "description": "Polynomial order of the Savitzky-Golay filter."
+        },
+        {
+          "type": "value",
+          "attr": "rl_iterations",
+          "label": "RL Iterations",
+          "kind": "int",
+          "minimum": 5,
+          "maximum": 2000,
+          "step": 10,
+          "description": "Richardson-Lucy deconvolution iterations. More iterations sharpen the IRF and amplify noise: where you stop is the regularisation. Auto-update uses 50."
+        },
+        {
+          "type": "value",
+          "attr": "regularization",
+          "label": "Regularization",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 51,
+          "step": 2,
+          "description": "Median filter size for regularization (1 = no regularization)."
+        },
+        {
+          "type": "value",
+          "attr": "manual_background",
+          "label": "Manual Background",
+          "kind": "float",
+          "decimals": 2,
+          "minimum": 0.0,
+          "maximum": 100000.0,
+          "step": 1.0,
+          "description": "Background counts per channel subtracted before the estimate (0 = auto-estimate). Loading a file sets it to the median of the last 10 % of channels."
+        },
+        {
+          "type": "panel",
+          "description": "Range selection and automatic re-estimation.",
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "use_range_selection",
+              "label": "📍 Use Range Selection",
+              "description": "Use only a channel range for the estimate: drag the green region in the plot or type its first and last channel."
+            },
+            {
+              "type": "toggle",
+              "attr": "auto_update_enabled",
+              "label": "🔄 Auto-Update IRF",
+              "description": "Re-estimate the IRF (50 RL iterations) when a parameter, the background or the range changes, once an IRF exists."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "description": "The estimation range in channels.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "first_channel",
+              "label": "First channel",
+              "kind": "int",
+              "minimum": 0,
+              "maximum": 100000,
+              "step": 1,
+              "hidden_when": {
+                "attr": "use_range_selection",
+                "equals": "false"
+              },
+              "description": "First channel of the estimation range (inclusive)."
+            },
+            {
+              "type": "value",
+              "attr": "last_channel",
+              "label": "Last channel",
+              "kind": "int",
+              "minimum": 0,
+              "maximum": 100000,
+              "step": 1,
+              "hidden_when": {
+                "attr": "use_range_selection",
+                "equals": "false"
+              },
+              "description": "Last channel of the estimation range (inclusive)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "description": "Run the estimate and follow what it does.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Run the estimate.",
+          "buttons": [
+            {
+              "action": "request_estimate",
+              "label": "🔮 Estimate IRF",
+              "description": "Fit the decay tail with a truncated exponential, then deconvolve it with Richardson-Lucy to obtain the IRF."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "status",
+          "description": "What the tool is doing or has done, an error in red, and the loaded time axis."
+        }
+      ]
+    }
+  ]
+}

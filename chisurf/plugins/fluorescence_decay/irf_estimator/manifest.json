@@ -3,16 +3,33 @@
   "version": "2.0.0",
   "display_name": "Spectroscopy:Fluorescence decay:IRF Estimation",
   "description": "Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Fluorescence decay"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Fluorescence decay"
+  ],
   "state_namespace": "irf_estimator",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "last_file": {"type": ["string", "null"]},
-      "settings": {"type": "object"},
-      "last_result": {"type": ["object", "null"]}
+      "last_file": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "settings": {
+        "type": "object"
+      },
+      "last_result": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
     }
   },
   "statefulness": {
@@ -25,7 +42,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.fluorescence_decay.irf_estimator.gui.tool:IRFEstimatorTool",
     "cli": "irf-estimator=chisurf.plugins.fluorescence_decay.irf_estimator.cli:cli",
-    "services": "chisurf.plugins.fluorescence_decay.irf_estimator.backend.services:register_services"
+    "services": "chisurf.plugins.fluorescence_decay.irf_estimator.backend.services:register_services",
+    "emtk": "chisurf.plugins.fluorescence_decay.irf_estimator.gui.app:make_app"
   },
   "rpc_methods": [
     {
@@ -91,6 +109,6 @@
       "topic": "irf_estimator.jobs.*",
       "description": "Job lifecycle events"
     }
- ],
- "menu_hidden": true
+  ],
+  "menu_hidden": true
 }
