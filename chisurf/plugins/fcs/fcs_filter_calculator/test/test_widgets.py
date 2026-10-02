@@ -2,6 +2,30 @@ import numpy as np
 import pytest
 from qtpy import QtCore, QtWidgets
 
+#: The detector setup the widget tests were written against: green, red and yellow detectors, the "last used" one.
+SEEDED_SETUPS = {
+    "setups": {"Test setup": {"detectors": {"green": {"chs": [0, 8]}, "red": {"chs": [1, 9]}, "yellow": {"chs": [2, 10]}}}},
+    "last_used": "Test setup",
+}
+
+
+@pytest.fixture(autouse=True)
+def seeded_detector_setups(tmp_path, monkeypatch):
+    """Run on temporary settings with a known saved detector setup.
+
+    These tests used to pass only on a machine whose user had saved a setup with a green detector (the widget then
+    lists it; on clean settings it falls back to a detector named "default" and ``_irf[("green", "")]`` is never read).
+    The setups are served from here instead of the account's settings or MMFDB.
+    """
+    for name, folder in (("CHISURF_SETTINGS_DIR", "settings"), ("MMFDB_SETTINGS_DIR", "mmfdb")):
+        monkeypatch.setenv(name, str(tmp_path / folder))
+    monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "mmfdb.sqlite"))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui_parts import data_loading
+
+    monkeypatch.setattr(data_loading, "load_detector_setups", lambda *a, **k: SEEDED_SETUPS)
+    monkeypatch.setattr(data_loading, "HAS_DETECTOR_WIZARD", True)
+
 
 def test_fcs_filter_calculator_widget(qapp, qtbot):
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
@@ -1245,3 +1269,12 @@ def test_derived_fret_efficiencies_still_available_without_a_fret_fit():
     derived = [float(np.clip(1.0 - t / 4.0, 0.0, 0.999)) for t in taus]
     assert derived == pytest.approx([0.5, 0.0])
     assert hasattr(FcsFilterCalculatorWidget, "_add_fret_autofit_species")
+
+
+def test_the_seeded_detector_setup_gives_the_widget_green_and_red_detectors(qapp, qtbot):
+    """Guardrail: the tests above depend on these detectors being listed, whatever the account's settings hold."""
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    assert widget.detector_selection.get_selected() == ["green", "red", "yellow"]
