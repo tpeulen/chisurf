@@ -1,8 +1,7 @@
 # emtk port report - `img_tracking` (port-incomplete upgrade, audit-all row 83, imaging family 1 of 4)
 
 Agent: claude (Sonnet), 2026-10-02, per `UPGRADE_BRIEF.md`; board entry `T-20261002-IMGFAM`. Type **B** (the Qt tool is an AutoForm `ImgTrackingTool`; its `gui/view_model.py` is already Qt-free and is reused, `gui/model.py` adds the
-emtk side). The earlier stream's app was a 70-line page (a path field, a Simulate checkbox, a Track button, two float fields, a report, two plots): `before_emtk_populated_1200x800.png` shows what it drew. Verdict: **accept**; one
-parity difference found in the Qt tool (section 5), no numerical difference.
+emtk side). The earlier stream's app was a 70-line page (a path field, a Simulate checkbox, a Track button, two float fields, a report, two plots): `before_emtk_populated_1200x800.png` shows what it drew. Verdict: **accept**; no numerical difference from the Qt tool. A quirk of the Qt tool found on the way (section 5 note): its True D box shows 4 decimals and so rounds its declared minimum 1e-06 to 0.0000 (it accepts a simulation with no motion); the emtk field now keeps typed numbers to the shown decimals, as the Qt box does, and agrees (tested against the live Qt box).
 
 Commits: `d04659d8b` Qt baseline and the stream's emtk state, `d3f267ea5` emtk app at parity (code, tests, the shared `imaging_emtk` helper), then the evidence commit (this report, screenshots, docs, log).
 
@@ -92,7 +91,6 @@ its output is kept as `after_empty.json`, `after_1200x800.png`, `after_800x600.p
 | `?` | Qt toolbar glyph | the `Help` button |
 | `cividis`, `plasma`, `turbo` | colormap entries of the pyqtgraph dock; `chisurf/emtk/image_canvas.py` (shared, not mine) offers magma, inferno, viridis, gray | blocked: needs the list extended there (section 10) |
 | `blur`, `divide`, `subtract`, `operation`, `mean`, `off`, `timerange`, `roi`, `menu`, `frame`, `t`, `x`, `y` | internals of pyqtgraph's ImageView, present in the Qt inventory but with no visible control in `before_tab_Movie.png` | gamma and display levels on the image canvas; axis titles `x [px]`, `y [px]` |
-| `sim_diffusion` minimum | the Qt box shows 4 decimals and rounds its declared minimum 1e-06 to 0.0000, so it accepted a simulation with no motion | the emtk field enforces the spec's 1e-06 (tested against the live Qt box) |
 | status messages | Qt cleared them after 6-12 s | the status line holds the last message until the next action |
 | Track while a run is in flight | the Qt action stayed live and started a second run | the action and the form are greyed while the worker runs (the worker's result replaces the model's state, so an edit made during the run would be lost) |
 | table cells | Qt held strings (a click on "Points" sorted text: 10 before 2) | numbers; a header click sorts by value |

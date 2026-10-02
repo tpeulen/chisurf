@@ -1,0 +1,395 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-0.2",
+    "-100",
+    "-50",
+    "0",
+    "0.0000",
+    "0.00020833",
+    "0.000625",
+    "0.0010417",
+    "0.0014583",
+    "0.001875",
+    "0.002",
+    "0.0022917",
+    "0.0027083",
+    "0.003125",
+    "0.0035417",
+    "0.0039583",
+    "0.004375",
+    "0.0047917",
+    "0.0052083",
+    "0.005625",
+    "0.006",
+    "0.0060417",
+    "0.0064583",
+    "0.006875",
+    "0.0072917",
+    "0.0077083",
+    "0.008125",
+    "0.0085417",
+    "0.0089583",
+    "0.009375",
+    "0.0097917",
+    "0.01",
+    "0.014",
+    "0.018",
+    "0.0462",
+    "0.1429",
+    "0.1431",
+    "0.1733",
+    "0.2",
+    "0.4",
+    "0.5404",
+    "0.5585",
+    "0.5679",
+    "0.6",
+    "0.7485",
+    "0.7614",
+    "0.8",
+    "0.8733",
+    "0.9357",
+    "0.9508",
+    "0.9708",
+    "0.9801",
+    "0.9877",
+    "0.9896",
+    "0.9912",
+    "0.9963",
+    "0.9969",
+    "0.9972",
+    "0.9981",
+    "0.9982",
+    "0.9983",
+    "0.9984",
+    "1",
+    "1.0",
+    "1.0000",
+    "100",
+    "102.1",
+    "106.7",
+    "107.3nm",
+    "111.6",
+    "116",
+    "117.1",
+    "120",
+    "123.1",
+    "124",
+    "129.7",
+    "136",
+    "137.1",
+    "140",
+    "144",
+    "145.5",
+    "150",
+    "154.8",
+    "16",
+    "1600",
+    "165.5",
+    "177.8",
+    "192",
+    "20",
+    "200",
+    "208.7",
+    "228.6",
+    "24",
+    "25.00",
+    "252.6",
+    "282.4",
+    "2σ",
+    "3",
+    "320",
+    "36",
+    "369.2",
+    "40",
+    "40frames,imagesource,48rings.",
+    "436.4",
+    "48",
+    "4800",
+    "50",
+    "52rl_t0f9xjk3g5c00000gn/t/tmpiy85funa/a.tif",
+    "533.3",
+    "56",
+    "60",
+    "64",
+    "68",
+    "685.7",
+    "8",
+    "80",
+    "88",
+    "92",
+    "96",
+    "960",
+    "allplanesareframes",
+    "auto",
+    "automaticlevels",
+    "browse",
+    "ch0",
+    "channel",
+    "colormap",
+    "correlation",
+    "criterion",
+    "criterionfixed_1/7,crossingat0.00931941/nm(period107.3nm).",
+    "database",
+    "displaygamma",
+    "estimator",
+    "even/oddframes",
+    "exportcsv",
+    "first/secondhalf",
+    "fixed1/7",
+    "frc",
+    "frequency",
+    "gray",
+    "guide",
+    "half1",
+    "half2",
+    "halves",
+    "help",
+    "image",
+    "inferno",
+    "intensity",
+    "leadingaxisischannels",
+    "magma",
+    "measure",
+    "nextchannel",
+    "period",
+    "pickafile,droponehere,orloadfromth",
+    "pixelsize[nm]",
+    "resetview",
+    "resolution",
+    "resolution107.3nm(fixed_1/7).",
+    "ringpx",
+    "rings",
+    "ringwidth[cyc/px]",
+    "secondchannel",
+    "secondfile",
+    "settings",
+    "smoothing[rings]",
+    "spatialfrequency(1/nmor1/px)",
+    "splitintohalvesby",
+    "threshold",
+    "threshold(fixed_1/7)",
+    "tiffaxisorder",
+    "twochannels",
+    "twofiles",
+    "viridis",
+    "x[px]",
+    "y[px]",
+    "½-bit"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what frc resolution measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Measure",
+      "id": "Measure##measure",
+      "tooltip": "Correlate the two halves and read the resolution off the crossing. Runs in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write the curve, its threshold and the ring counts to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "The acquisition to measure: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image. A single-frame image cannot be split into halves by frame — use a channel split or a second file."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_file",
+      "tooltip": "Browse for an image stack or photon-stream file on disk."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_database",
+      "tooltip": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+    },
+    {
+      "kind": "input_text",
+      "label": "second_filename",
+      "id": "##second_filename",
+      "tooltip": "Only for a two-file split: a second acquisition of the same field of view. It must be independent of the first — the same file twice returns a correlation of 1 at every frequency and no resolution at all."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_second_file",
+      "tooltip": "Browse for the second acquisition of a two-file split."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_second_database",
+      "tooltip": "Load the second acquisition from the database."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size_nm",
+      "id": "##pixel_size_nm",
+      "tooltip": "Physical pixel size, which converts the answer from pixels into nanometres. Zero leaves it in pixels — still a resolution, just not one to quote in a figure. It scales the result linearly, so an uncertain pixel size is an uncertain resolution."
+    },
+    {
+      "kind": "input_text",
+      "label": "bin_width",
+      "id": "##bin_width",
+      "tooltip": "Width of the Fourier rings. Zero means one Fourier pixel of the longer axis, the finest binning the sampling supports. Wider rings average more pixels and give a smoother curve at the cost of frequency resolution."
+    },
+    {
+      "kind": "input_text",
+      "label": "smooth",
+      "id": "##smooth",
+      "tooltip": "Rings averaged before the threshold crossing is read. The raw curve is noisy ring to ring, and an unsmoothed crossing can land early on a single dip. One disables it."
+    },
+    {
+      "kind": "combo",
+      "label": "Colormap",
+      "id": "##Colormap",
+      "tooltip": "Color scale of the image; pixel values and fits remain unchanged."
+    },
+    {
+      "kind": "slider_float",
+      "label": "Display gamma",
+      "id": "##Display gamma",
+      "tooltip": "Lift dim structures with gamma above one; display changes do not affect detection or fitting."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Automatic levels",
+      "id": "Automatic levels",
+      "tooltip": "Map the minimum and maximum finite image values to the color range."
+    },
+    {
+      "kind": "button",
+      "label": "Reset view",
+      "id": "Reset view",
+      "tooltip": "Restore the full-image view after zooming or panning."
+    },
+    {
+      "kind": "combo",
+      "label": "Colormap",
+      "id": "##Colormap",
+      "tooltip": "Color scale of the image; pixel values and fits remain unchanged."
+    },
+    {
+      "kind": "slider_float",
+      "label": "Display gamma",
+      "id": "##Display gamma",
+      "tooltip": "Lift dim structures with gamma above one; display changes do not affect detection or fitting."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Automatic levels",
+      "id": "Automatic levels",
+      "tooltip": "Map the minimum and maximum finite image values to the color range."
+    },
+    {
+      "kind": "button",
+      "label": "Reset view",
+      "id": "Reset view",
+      "tooltip": "Restore the full-image view after zooming or panning."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what frc resolution measures, which settings decide the answer and what to check."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the tool step by step; each step waits for you to use the control it points at."
+    },
+    {
+      "kind": "button",
+      "label": "Measure",
+      "id": "Measure##measure",
+      "tooltip": "Correlate the two halves and read the resolution off the crossing. Runs in the background."
+    },
+    {
+      "kind": "button",
+      "label": "Export CSV",
+      "id": "Export CSV##request_export",
+      "tooltip": "Write the curve, its threshold and the ring counts to a CSV file."
+    },
+    {
+      "kind": "input_text",
+      "label": "filename",
+      "id": "##filename",
+      "tooltip": "The acquisition to measure: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image. A single-frame image cannot be split into halves by frame — use a channel split or a second file."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_file",
+      "tooltip": "Browse for an image stack or photon-stream file on disk."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_database",
+      "tooltip": "Load a dataset registered in the database; the database resolves it to a local file wherever its object store keeps the data."
+    },
+    {
+      "kind": "input_text",
+      "label": "second_filename",
+      "id": "##second_filename",
+      "tooltip": "Only for a two-file split: a second acquisition of the same field of view. It must be independent of the first — the same file twice returns a correlation of 1 at every frequency and no resolution at all."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##open_second_file",
+      "tooltip": "Browse for the second acquisition of a two-file split."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##open_second_database",
+      "tooltip": "Load the second acquisition from the database."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size_nm",
+      "id": "##pixel_size_nm",
+      "tooltip": "Physical pixel size, which converts the answer from pixels into nanometres. Zero leaves it in pixels — still a resolution, just not one to quote in a figure. It scales the result linearly, so an uncertain pixel size is an uncertain resolution."
+    },
+    {
+      "kind": "input_text",
+      "label": "bin_width",
+      "id": "##bin_width",
+      "tooltip": "Width of the Fourier rings. Zero means one Fourier pixel of the longer axis, the finest binning the sampling supports. Wider rings average more pixels and give a smoother curve at the cost of frequency resolution."
+    },
+    {
+      "kind": "input_text",
+      "label": "smooth",
+      "id": "##smooth",
+      "tooltip": "Rings averaged before the threshold crossing is read. The raw curve is noisy ring to ring, and an unsmoothed crossing can land early on a single dip. One disables it."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

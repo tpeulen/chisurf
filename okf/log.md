@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **img_frc emtk app at parity** (imaging family, port-incomplete row 84): the stream's page (message "No image loaded." after a
+  successful run, an invisible resolution marker, no halves or ring table) becomes the Qt tool's settings, the resolution
+  summary, the curve with its crossing, both halves and a sortable ring table; choosing a file reads its channels and does not
+  measure; a failed run shows its reason (the Qt bar said only "Measurement failed"). Numbers equal the Qt window's, the live Qt
+  tool's and numpy sums of the even and odd frames through the core's ring correlation. [report](plugins/emtk-ports/img_frc/REPORT.md).
+
 - **Trajectory tools real-input pass** (TRAJCLICK follow-up of EMTK-1C, rows 36-45): eight click suites (a shared `Ui` helper in
   `traj_save_topology/test/real_input.py`) operate every control of traj_energy, traj_save_topology, traj_align, traj_rotate_translate,
   traj_remove_clashes, traj_join, traj_convert and traj_fret with pointer, keys and host drops (143 passed, 23 strict xfails for emtk gaps). They found

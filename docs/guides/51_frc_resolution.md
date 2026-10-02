@@ -33,7 +33,7 @@ It accepts
 
 The FRC workspace on a confocal photon stream. Left: the settings. Right: the
 headline resolution, the FRC curve against the 1/7 threshold with the crossing
-marked, and — behind the *Diagnostics* tabs — the two independent halves the
+marked, and — in the **Halves** and **Rings** tabs — the two independent halves the
 curve came from and the ring-by-ring numbers.
 ```
 
@@ -54,7 +54,7 @@ curve came from and the ring-by-ring numbers.
 4. **Pixel size** — in nm, which turns the answer from pixels into nanometres.
    It scales the result linearly.
 5. **Criterion** — *Fixed 1/7* unless you have a reason; see below.
-6. Press **▶ Measure**.
+6. Press **Measure**. Choosing a file only reads its channels; the measurement starts when you press the button.
 
 Under *Estimator* sit three things you will rarely touch: the **ring width**
 (zero means one Fourier pixel, the finest the sampling supports), the
@@ -91,7 +91,7 @@ The **curve** is the thing to look at before believing the number:
 The **Halves** tab is the fastest check that the split did what you meant: both
 images should show the same structure, each noisier than the summed image.
 **Rings** lists the curve numerically, including how many Fourier pixels each
-ring holds — the quantity the ½-bit and 2σ thresholds depend on. **💾 Export
+ring holds — the quantity the ½-bit and 2σ thresholds depend on. **Export
 CSV** writes all of it for a methods section.
 
 ## Headless
