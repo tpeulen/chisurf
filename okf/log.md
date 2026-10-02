@@ -2,6 +2,14 @@
 
 ## 2026-10-01
 
+- **lightpath_simulator emtk app upgraded to verified parity, layout as an acceptance criterion** (EMTKUP4): the stream's app drew three floating windows
+  over the graph and the results; it is now one docked layout (graph and results left, components and Easy Mode tabbed right) with the toolbar, palette,
+  Backend / Connections / MMFDB panels and the result tables as view-spec forms and `data_table`s. Found by real-input tests: the right-click menus never
+  opened, Rename raised (an `im.begin` argument emtk does not take), dropped files were never delivered (`files_dropped`), Delete on the links list
+  raised, and Reset to Default built a different graph than the Qt tool's default path. Numbers (signals, three crosstalk matrices, every table cell) equal
+  the Qt tool's over a generated spectra catalogue. A cross-test leak of the Qt host test (an MMFDB runtime token) that broke the project browser's
+  Qt tests is fixed. Evidence (screenshots, inventories, capture scripts) in `plugins/emtk-ports/lightpath_simulator/`; the write of REPORT.md was refused by the environment, its text is in the hand-off.
+
 - **img_flow emtk app at parity; the demo workflow kept** (imaging family, port-incomplete row 86): Load demo, Map flow and the
   guided tour that presses neither for the user; the settings (incl. the scanner clock the stream's page never exposed), the
   summary, one arrow per tile over the time-averaged image, the profile with the demo's simulated truth and a sortable tile table.

@@ -1,0 +1,610 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.0000e+00",
+    "0.0577",
+    "0.2",
+    "0.2285",
+    "0.2319",
+    "0.4",
+    "0.6",
+    "0.667",
+    "0.8",
+    "1",
+    "1.000",
+    "1.2738e-06",
+    "1.274e-06",
+    "1.330",
+    "1.4432e+05",
+    "1.443e+05",
+    "1.5036e-09",
+    "1.504e-09",
+    "1.5201e+01",
+    "1.6391e+04",
+    "1.639e+04",
+    "1.7478e-12",
+    "1.748e-12",
+    "15.2",
+    "2.2854e-01",
+    "2.3186e-01",
+    "3.3463e+04",
+    "3.346e+04",
+    "3.61",
+    "3.6103e+00",
+    "300",
+    "4881.0,6401.0",
+    "488nm",
+    "488nm|atto488",
+    "488nm|atto647n",
+    "5.7701e-02",
+    "5.9512e+01",
+    "500",
+    "561lpdichroic",
+    "59.51",
+    "6.5792e-09",
+    "6.579e-09",
+    "640nm",
+    "640nm|atto488",
+    "640nm|atto647n",
+    "7.1717e+04",
+    "7.172e+04",
+    "7.3102e+01",
+    "7.5381e-12",
+    "7.538e-12",
+    "700",
+    "73.1",
+    "7opticalspectraavailable.",
+    "8.0456e-07",
+    "8.046e-07",
+    "8.8258e-12",
+    "8.826e-12",
+    "900",
+    "addemissionsplitter",
+    "addfluorophore",
+    "addopticaldetector",
+    "addtograph",
+    "apd(flatqe)",
+    "arrange",
+    "atto488",
+    "atto647n",
+    "autoupdate",
+    "backend",
+    "bandpass",
+    "bp500/50filter",
+    "bp650/60filter",
+    "built-intemplate",
+    "calculateemissionintensity",
+    "choosetemplate",
+    "combiner",
+    "component",
+    "connections",
+    "connectports",
+    "deleteselected",
+    "detected",
+    "detectedcrosstalk",
+    "detectedintensity",
+    "detector",
+    "detectorname",
+    "dye",
+    "dyedata[dye_data]",
+    "easymode",
+    "emission",
+    "emissioncrosstalk",
+    "emissionprobability",
+    "excitation",
+    "excitationcrosstalk",
+    "excitationdichroic",
+    "export",
+    "extinctioncoefficient",
+    "filter",
+    "filter0",
+    "fit",
+    "fluorophore1",
+    "fluorophore2",
+    "from",
+    "försterradius",
+    "försterradius0",
+    "försterradius[forste]",
+    "graphview",
+    "greenchannel",
+    "guide",
+    "help",
+    "in[spectral]",
+    "inport",
+    "kappa2",
+    "kappa2[number]",
+    "laserlineswavelengthpower",
+    "lasersource",
+    "light[spectral]",
+    "lightpathsimulation",
+    "lightsource",
+    "lightsource0",
+    "lightsource[light_]",
+    "lines",
+    "loadcatalogue",
+    "loadfrommmfdb",
+    "loadgraph",
+    "loadopticalpreset",
+    "manual",
+    "mmfdb",
+    "mode",
+    "n",
+    "n[number]",
+    "name",
+    "newopticaldetectorname",
+    "none",
+    "openadvancedgrapheditor",
+    "opticalcomponents",
+    "opticalpath",
+    "orientationfactorκ²",
+    "out[spectral]",
+    "outport",
+    "quantumefficiency",
+    "quantumyield",
+    "r04dyepairs;seeresults",
+    "redchannel",
+    "reflection[spectral]",
+    "refractiveindex",
+    "refreshopticalcatalogue",
+    "removefluorophore",
+    "removelink",
+    "removeopticaldetector",
+    "resettodefault",
+    "row",
+    "sample/fluorophore",
+    "sample/fluorophore0",
+    "sample/fluorophore1",
+    "savegraph",
+    "saveopticalpreset",
+    "savepreset",
+    "savetommfdb",
+    "showminimap",
+    "signals",
+    "simulateopticalsetup",
+    "simulationproduced6detector/dyesignals.",
+    "spectradatabase",
+    "spectrum",
+    "splitter(dichroic/pol)",
+    "splitter(dichroic/pol)0",
+    "to",
+    "transmission[spectral]",
+    "useconfiguredrpcserver"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Save Graph",
+      "id": "Save Graph##save_graph",
+      "tooltip": "Save the current graph (nodes, connections, component choices and layout) to a JSON file."
+    },
+    {
+      "kind": "button",
+      "label": "Load Graph",
+      "id": "Load Graph##load_graph",
+      "tooltip": "Load a graph, or an Easy Mode preset, from a JSON file. You can also drop the file on the window."
+    },
+    {
+      "kind": "button",
+      "label": "Save Preset",
+      "id": "Save Preset##save_preset",
+      "tooltip": "Save the current graph under a name as an optical path preset for Easy Mode."
+    },
+    {
+      "kind": "button",
+      "label": "Save to MMFDB",
+      "id": "Save to MMFDB##save_mmfdb",
+      "tooltip": "Persist the current graph and its simulation in MMFDB under a name you give."
+    },
+    {
+      "kind": "button",
+      "label": "Load from MMFDB",
+      "id": "Load from MMFDB##load_mmfdb",
+      "tooltip": "Choose a previously saved simulation from MMFDB and load its graph."
+    },
+    {
+      "kind": "button",
+      "label": "Export",
+      "id": "Export##export_instrument",
+      "tooltip": "Export the simulated instrument setting as a JSON file. Greyed until a simulation has been calculated."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help##help",
+      "tooltip": "The help page: components, simulation, results and files."
+    },
+    {
+      "kind": "combo",
+      "label": "mode",
+      "id": "mode",
+      "tooltip": "Choose manual laser lines or a measured source spectrum."
+    },
+    {
+      "kind": "input_text",
+      "label": "lines",
+      "id": "lines",
+      "tooltip": "Excitation wavelengths and relative powers, for example 488:1.0, 640:1.0."
+    },
+    {
+      "kind": "checkbox",
+      "label": "spectrum",
+      "id": "spectrum",
+      "tooltip": "Show or hide this node’s input, output and characteristic spectra."
+    },
+    {
+      "kind": "combo",
+      "label": "component",
+      "id": "component",
+      "tooltip": "Choose the measured optical component spectrum assigned to this node."
+    },
+    {
+      "kind": "checkbox",
+      "label": "spectrum",
+      "id": "spectrum",
+      "tooltip": "Show or hide this node’s input, output and characteristic spectra."
+    },
+    {
+      "kind": "combo",
+      "label": "component",
+      "id": "component",
+      "tooltip": "Choose the measured optical component spectrum assigned to this node."
+    },
+    {
+      "kind": "checkbox",
+      "label": "spectrum",
+      "id": "spectrum",
+      "tooltip": "Show or hide this node’s input, output and characteristic spectra."
+    },
+    {
+      "kind": "combo",
+      "label": "component",
+      "id": "component",
+      "tooltip": "Choose the measured optical component spectrum assigned to this node."
+    },
+    {
+      "kind": "checkbox",
+      "label": "spectrum",
+      "id": "spectrum",
+      "tooltip": "Show or hide this node’s input, output and characteristic spectra."
+    },
+    {
+      "kind": "input_text",
+      "label": "name",
+      "id": "name",
+      "tooltip": "Name of this optical detector; it labels the calculated signal and crosstalk columns."
+    },
+    {
+      "kind": "combo",
+      "label": "component",
+      "id": "component",
+      "tooltip": "Choose the measured optical component spectrum assigned to this node."
+    },
+    {
+      "kind": "checkbox",
+      "label": "spectrum",
+      "id": "spectrum",
+      "tooltip": "Show or hide this node’s input, output and characteristic spectra."
+    },
+    {
+      "kind": "combo",
+      "label": "component",
+      "id": "component",
+      "tooltip": "Choose the measured optical component spectrum assigned to this node."
+    },
+    {
+      "kind": "checkbox",
+      "label": "spectrum",
+      "id": "spectrum",
+      "tooltip": "Show or hide this node’s input, output and characteristic spectra."
+    },
+    {
+      "kind": "input_text",
+      "label": "name",
+      "id": "name",
+      "tooltip": "Name of this optical detector; it labels the calculated signal and crosstalk columns."
+    },
+    {
+      "kind": "combo",
+      "label": "component",
+      "id": "component",
+      "tooltip": "Choose the measured optical component spectrum assigned to this node."
+    },
+    {
+      "kind": "checkbox",
+      "label": "spectrum",
+      "id": "spectrum",
+      "tooltip": "Show or hide this node’s input, output and characteristic spectra."
+    },
+    {
+      "kind": "slider_float",
+      "label": "kappa2",
+      "id": "kappa2",
+      "tooltip": "Orientation factor used in the Förster-radius calculation."
+    },
+    {
+      "kind": "slider_float",
+      "label": "n",
+      "id": "n",
+      "tooltip": "Refractive index used in the spectral overlap calculation."
+    },
+    {
+      "kind": "button",
+      "label": "Calculate Emission Intensity",
+      "id": "Calculate Emission Intensity##calculate",
+      "tooltip": "Propagate the spectra through the graph and fill the detector signals, the excitation, emission and detected crosstalk matrices and the Förster radii."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Signals",
+      "id": "Signals",
+      "tooltip": "Inspect the calculated signals values for this optical path."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Excitation",
+      "id": "Excitation",
+      "tooltip": "Inspect the calculated excitation values for this optical path."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Emission",
+      "id": "Emission",
+      "tooltip": "Inspect the calculated emission values for this optical path."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Detected",
+      "id": "Detected",
+      "tooltip": "Inspect the calculated detected values for this optical path."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Förster radius",
+      "id": "Förster radius",
+      "tooltip": "Inspect the calculated förster radius values for this optical path."
+    },
+    {
+      "kind": "button",
+      "label": "Add to Graph",
+      "id": "Add to Graph##add_selected",
+      "tooltip": "Add the component selected in the list above to the middle of the graph. Double-clicking a row does the same."
+    },
+    {
+      "kind": "button",
+      "label": "Reset to Default",
+      "id": "Reset to Default##reset",
+      "tooltip": "Restore the standard path: two lasers, a sample, a dichroic splitter, two filters and two detectors. Replaces the graph."
+    },
+    {
+      "kind": "button",
+      "label": "Arrange",
+      "id": "Arrange##arrange",
+      "tooltip": "Lay out the nodes by optical signal flow and frame the complete graph."
+    },
+    {
+      "kind": "button",
+      "label": "Fit",
+      "id": "Fit##fit",
+      "tooltip": "Frame the entire beam path without changing the saved node positions."
+    },
+    {
+      "kind": "button",
+      "label": "Delete Selected",
+      "id": "Delete Selected##delete_selection",
+      "tooltip": "Delete the selected nodes and connections. Greyed while nothing is selected."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show minimap",
+      "id": "Show minimap##show_minimap",
+      "tooltip": "Show a small overview of the graph for navigating a large optical network."
+    },
+    {
+      "kind": "button",
+      "label": "Open advanced graph editor",
+      "id": "Open advanced graph editor",
+      "tooltip": "Edit arbitrary components and optical connections; apply the full graph back to this setup."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh optical catalogue",
+      "id": "Refresh optical catalogue",
+      "tooltip": "Load available dye, transmission and detector spectra from MMFDB."
+    },
+    {
+      "kind": "button",
+      "label": "Load optical preset",
+      "id": "Load optical preset",
+      "tooltip": "Load an easy-mode configuration or a light-path graph."
+    },
+    {
+      "kind": "button",
+      "label": "Save optical preset",
+      "id": "Save optical preset",
+      "tooltip": "Save the complete optical configuration including cached simulation results."
+    },
+    {
+      "kind": "combo",
+      "label": "optical_template",
+      "id": "##optical_template",
+      "tooltip": "Load a packaged instrument light-path template."
+    },
+    {
+      "kind": "input_text",
+      "label": "optical_lasers",
+      "id": "##optical_lasers",
+      "tooltip": "Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0."
+    },
+    {
+      "kind": "slider_float",
+      "label": "optical_kappa2",
+      "id": "##optical_kappa2",
+      "tooltip": "Parameter used in the Förster-radius calculation for the selected fluorophores."
+    },
+    {
+      "kind": "slider_float",
+      "label": "optical_n",
+      "id": "##optical_n",
+      "tooltip": "Parameter used in the Förster-radius calculation for the selected fluorophores."
+    },
+    {
+      "kind": "combo",
+      "label": "Excitation dichroic",
+      "id": "##Excitation dichroic",
+      "tooltip": "Select the measured spectrum used for excitation dichroic."
+    },
+    {
+      "kind": "combo",
+      "label": "Add fluorophore",
+      "id": "##Add fluorophore",
+      "tooltip": "Select the measured spectrum used for add fluorophore."
+    },
+    {
+      "kind": "input_float",
+      "label": "Quantum yield",
+      "id": "Quantum yield",
+      "tooltip": "Optical quantum yield of fluorophore 1."
+    },
+    {
+      "kind": "input_float",
+      "label": "Extinction coefficient",
+      "id": "Extinction coefficient",
+      "tooltip": "Optical extinction coefficient of fluorophore 1."
+    },
+    {
+      "kind": "button",
+      "label": "Remove fluorophore",
+      "id": "Remove fluorophore",
+      "tooltip": "Remove this dye from the optical sample."
+    },
+    {
+      "kind": "input_float",
+      "label": "Quantum yield",
+      "id": "Quantum yield",
+      "tooltip": "Optical quantum yield of fluorophore 2."
+    },
+    {
+      "kind": "input_float",
+      "label": "Extinction coefficient",
+      "id": "Extinction coefficient",
+      "tooltip": "Optical extinction coefficient of fluorophore 2."
+    },
+    {
+      "kind": "button",
+      "label": "Remove fluorophore",
+      "id": "Remove fluorophore",
+      "tooltip": "Remove this dye from the optical sample."
+    },
+    {
+      "kind": "button",
+      "label": "Add emission splitter",
+      "id": "Add emission splitter",
+      "tooltip": "Add a measured dichroic or polarizer in the detection path."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_optical_detector",
+      "id": "##new_optical_detector",
+      "tooltip": "Name of the optical detector channel to add."
+    },
+    {
+      "kind": "button",
+      "label": "Add optical detector",
+      "id": "Add optical detector",
+      "tooltip": "Add a detector channel with its bandpass and quantum-efficiency spectrum."
+    },
+    {
+      "kind": "combo",
+      "label": "Bandpass",
+      "id": "##Bandpass",
+      "tooltip": "Select the measured spectrum used for bandpass."
+    },
+    {
+      "kind": "combo",
+      "label": "Quantum efficiency",
+      "id": "##Quantum efficiency",
+      "tooltip": "Select the measured spectrum used for quantum efficiency."
+    },
+    {
+      "kind": "button",
+      "label": "Remove optical detector",
+      "id": "Remove optical detector",
+      "tooltip": "Remove this detector from the simulated light path."
+    },
+    {
+      "kind": "button",
+      "label": "Simulate optical setup",
+      "id": "Simulate optical setup",
+      "tooltip": "Calculate Förster radii and excitation/emission/detection crosstalk using the original optical backend."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Use configured RPC server",
+      "id": "Use configured RPC server##remote",
+      "tooltip": "Use the existing ChiSurf/MMFDB connection and session token instead of the local scientific backend."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Auto update",
+      "id": "Auto update##auto_update",
+      "tooltip": "Queue one fresh simulation after every edit of the graph or the Easy Mode setup."
+    },
+    {
+      "kind": "input_text",
+      "label": "db_path",
+      "id": "##db_path",
+      "tooltip": "Path of the MMFDB spectra database; empty uses the configured database."
+    },
+    {
+      "kind": "button",
+      "label": "Load Catalogue",
+      "id": "Load Catalogue##load_catalogue",
+      "tooltip": "Load the dye, transmission and detector spectra from the selected backend."
+    },
+    {
+      "kind": "input_text",
+      "label": "source_port",
+      "id": "##source_port",
+      "tooltip": "Zero-based output-port index on the source node."
+    },
+    {
+      "kind": "input_text",
+      "label": "target_port",
+      "id": "##target_port",
+      "tooltip": "Zero-based input-port index on the target node."
+    },
+    {
+      "kind": "button",
+      "label": "Connect Ports",
+      "id": "Connect Ports##connect_ports",
+      "tooltip": "Create an optical connection from the chosen output port to the chosen input port; one source may feed each input."
+    },
+    {
+      "kind": "button",
+      "label": "Remove Link",
+      "id": "Remove Link##remove_link",
+      "tooltip": "Remove the link selected in the list below. Greyed while none is selected. The Delete key does the same."
+    },
+    {
+      "kind": "input_text",
+      "label": "operation_name",
+      "id": "##operation_name",
+      "tooltip": "Name stored with the simulation and its MMFDB artifacts when you press Save to MMFDB."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
