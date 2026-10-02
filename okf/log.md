@@ -2,6 +2,14 @@
 
 ## 2026-10-01
 
+- **project_browser re-verified with real input; layout fixed** (EMTKUP4): the committed port drew the project tree by hand (an `im.table`), placed the search label to
+  the right of its field, left Open / Export / Delete / Inspect enabled with nothing selected and drew its dialogs as bare windows. Now a `data_table` tree (disclosure
+  triangles, sort, double-click restore, right-click menu), spec forms for the toolbar, search and details, greyed actions, in-app Save / Delete / Import dialogs with a
+  collision table, a Clear button for the search (the Qt field's clear button), ID and Status columns that show when all nine columns fit (1200 px) and give way at 800 px so no cell
+  is cut, and a dropped archive that starts the import preview. 71 passed + 1 strict xfail (emtk gap: the tour card is dead over a table). Found: emtk keeps keyboard focus on
+  a field after a click on a non-field widget, so the notes typed into the Save dialog also went into the project name (worked around in the app, repro in
+  `plugins/emtk-ports/scripts/emtk_gaps_repro.py` section 4). Evidence in `plugins/emtk-ports/project_browser/`.
+
 - **phasor_calculator re-verified with real input; layout fixed** (EMTKUP4): the committed port drew emoji glyphs against its labels and window titles, stretched every
   number field, put the toggles at different indents, drew the reference table by hand and could not be saved or restored. Now one emtk spec (`phasor_emtk.view.json`:
   spin arrows, the g/s pairs two to a row, toggles aligned), a `data_table`, `export_settings` / `restore_settings`, and 45 tests (every Qt label, every control with pointer,

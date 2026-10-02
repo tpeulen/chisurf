@@ -4,97 +4,252 @@
     800
   ],
   "controls": [
+    "0",
+    "1",
+    "2",
+    "2026-10-02102136",
+    "2026-10-02t102136.270584+0000",
+    "2026-10-02t102136.345137+0000",
+    "artifacts",
+    "br_8f1b34e4ef84",
+    "branch_uuid",
+    "branches",
+    "cancel",
+    "clear",
+    "confirmdelete",
     "created",
+    "created_at",
+    "dataset_count",
     "datasets",
+    "decaystudy",
+    "decaystudy(2versions)",
+    "deletethisversion",
     "deleteversion",
+    "deleteversion2of'decaystudy'?",
+    "enterprojectname",
     "export.cs.pto",
+    "fcstitration(1versions)",
+    "field",
+    "firstfit",
+    "fit_count",
     "fits",
+    "guest",
     "guide",
+    "head_version_id",
     "help",
     "id",
+    "idver_c930d00151d6",
     "importproject",
-    "loadingprojects",
+    "inspectstoredversion",
+    "loadedversionartifacts,fitparametersandbranches.",
+    "name",
     "name,id,ownerornotes",
-    "nomatchingprojects.refresh,savethecurrentsessionorimportaprojectarchive.",
+    "nodes[0].branch_uuid",
+    "nodes[0].created_at",
+    "nodes[0].dataset_count",
+    "nodes[0].fit_count",
+    "nodes[0].notes",
+    "nodes[0].project_name",
+    "nodes[0].version_id",
+    "nodes[0].version_number",
+    "nodes[1].branch_uuid",
+    "nodes[1].project_name",
+    "nodes[1].version_id",
+    "nodes[1].version_number",
     "notes",
     "open/restore",
     "owner",
-    "project/version",
+    "owner_user_id",
+    "parameters",
+    "parent_version_id",
+    "path",
+    "pressinspectstoredversiontoloadthisinformation.",
+    "private",
+    "proj_6c60142a2cd9",
+    "proj_8471bd574f0c",
+    "project/version▾",
+    "project_id",
+    "project_name",
+    "project_proj_6c60142a2cd9",
+    "projectname",
     "projectsandversions",
+    "public",
+    "refitwithirf",
     "refresh",
     "savecurrentproject",
-    "searchprojects",
-    "selectaprojecttorestoreitslatestversion,orexpandittoselectanexactversion.",
+    "saveproject",
+    "saveversion",
+    "search",
     "selectedprojectdetails",
+    "showid",
     "showpublic",
+    "showstatus",
     "status",
+    "succeeded",
+    "summary",
+    "thissoft-deletestheversionandrequiresmanagepermission.",
+    "updated_at",
+    "v1decaystudy",
+    "v2decaystudy",
+    "value",
+    "ver_9b33dad418e5",
+    "ver_c930d00151d6",
+    "version_count",
+    "version_id",
+    "version_number",
+    "versiongraph",
+    "versionver_c930d00151d6projectproj_6c60142a2cd9ownerguestcreated2026-10-02t102136.345137+0000datasets0fits0refitwithirf",
     "visibility"
   ],
   "interactive": [
     {
       "kind": "button",
       "label": "Open / Restore",
-      "id": "Open / Restore",
-      "tooltip": "Restore a selected version, or the newest version of the selected project."
+      "id": "Open / Restore##open",
+      "tooltip": "Restore the selected version, or the newest version of the selected project, replacing the current session. Greyed until a row is selected. Double-clicking a row does the same."
     },
     {
       "kind": "button",
       "label": "Save Current Project",
-      "id": "Save Current Project",
-      "tooltip": "Save all current datasets, fits and instrument state as a new database version."
+      "id": "Save Current Project##save",
+      "tooltip": "Save all current datasets, fits and instrument state as a new database version of the current project, or as a new project."
     },
     {
       "kind": "button",
       "label": "Export .cs.pto",
-      "id": "Export .cs.pto",
-      "tooltip": "Export the selected exact version as a portable project archive."
+      "id": "Export .cs.pto##export",
+      "tooltip": "Export the selected exact version as a portable project archive. Greyed until a version row is selected."
     },
     {
       "kind": "button",
       "label": "Import Project",
-      "id": "Import Project",
-      "tooltip": "Preview an archive, check IDs and import after confirmation."
+      "id": "Import Project##import_project",
+      "tooltip": "Preview a project archive, check its IDs and import it after confirmation."
     },
     {
       "kind": "button",
       "label": "Delete Version",
-      "id": "Delete Version",
-      "tooltip": "Soft-delete the selected version; database manage permission is required."
+      "id": "Delete Version##delete",
+      "tooltip": "Soft-delete the selected version after confirmation; database manage permission is required. Greyed until a version row is selected."
     },
     {
       "kind": "button",
       "label": "Refresh",
-      "id": "Refresh",
-      "tooltip": "Reload projects from the database."
+      "id": "Refresh##refresh",
+      "tooltip": "Reload the projects from the database."
+    },
+    {
+      "kind": "button",
+      "label": "Inspect Stored Version",
+      "id": "Inspect Stored Version##inspect",
+      "tooltip": "Load the stored artifacts, fitted parameter values, branches and version graph of the selected version into the detail tabs below. Greyed until a row is selected."
     },
     {
       "kind": "button",
       "label": "Guide",
-      "id": "Guide",
+      "id": "Guide##guide",
       "tooltip": "Walk through finding, inspecting, restoring and saving projects."
     },
     {
       "kind": "button",
       "label": "Help",
-      "id": "Help",
+      "id": "Help##help",
       "tooltip": "Explain project versions, restoration, permissions and archives."
     },
     {
       "kind": "input_text",
-      "label": "Search projects",
-      "id": "Search projects",
-      "tooltip": "Search stored project names, identifiers, owners and version notes."
+      "label": "search",
+      "id": "##search",
+      "tooltip": "Search stored project names, identifiers, owners and version notes. The list reloads when you press Enter or click away."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##clear_search",
+      "tooltip": "Empty the search field and show every project again."
     },
     {
       "kind": "checkbox",
       "label": "Show public",
-      "id": "Show public",
+      "id": "Show public##show_public",
       "tooltip": "Include projects made readable to other authenticated users."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show ID",
+      "id": "Show ID##show_id",
+      "tooltip": "Show or hide the ID column (the project or version identifier). Undecided, it shows when the list is wide enough."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show status",
+      "id": "Show status##show_status",
+      "tooltip": "Show or hide the Status column (the state of a version's last operation). Undecided, it shows when the list is wide enough."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Summary",
+      "id": "Summary",
+      "tooltip": "Show summary for the selected stored project version."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Artifacts",
+      "id": "Artifacts",
+      "tooltip": "Show artifacts for the selected stored project version."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Parameters",
+      "id": "Parameters",
+      "tooltip": "Show parameters for the selected stored project version."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Branches",
+      "id": "Branches",
+      "tooltip": "Show branches for the selected stored project version."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Version graph",
+      "id": "Version graph",
+      "tooltip": "Show version graph for the selected stored project version."
+    },
+    {
+      "kind": "button",
+      "label": "×",
+      "id": "×##Project action.header.×",
+      "tooltip": "Close this window (Escape)."
+    },
+    {
+      "kind": "input_text",
+      "label": "name",
+      "id": "##name",
+      "tooltip": "Name a new project; a new version of an existing project keeps its project name."
+    },
+    {
+      "kind": "button",
+      "label": "Save version",
+      "id": "Save version##confirm_save",
+      "tooltip": "Serialize the current session and save one new database version."
+    },
+    {
+      "kind": "button",
+      "label": "Cancel",
+      "id": "Cancel##cancel_dialog",
+      "tooltip": "Close this dialog without changing the database."
+    },
+    {
+      "kind": "button",
+      "label": "Delete This Version",
+      "id": "Delete This Version",
+      "tooltip": "Confirm soft deletion of this exact selected version."
     }
   ],
   "controls_without_tooltip": [],
   "qt_free": {
     "ok": true,
-    "output": "QT-FREE OK\n"
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
   }
 }
