@@ -101,3 +101,24 @@ def tiff_pair(path, seed: int = SEED):
     stack = np.stack([rng.poisson(a), rng.poisson(b)]).astype(np.float32)
     imwrite(path, stack)
     return str(path)
+
+
+def real_settings_state() -> dict:
+    """``{path: (size, mtime)}`` of the real ``~/.chisurf`` (taken at import, before a test sets HOME): a hermetic test leaves it as it was."""
+    import os
+
+    root = _REAL_HOME / ".chisurf"
+    state = {}
+    if root.exists():
+        for dirpath, _dirs, files in os.walk(root):
+            for name in files:
+                f = pathlib.Path(dirpath) / name
+                try:
+                    st = f.stat()
+                    state[str(f)] = (st.st_size, st.st_mtime_ns)
+                except OSError:
+                    pass
+    return state
+
+
+_REAL_HOME = pathlib.Path.home()

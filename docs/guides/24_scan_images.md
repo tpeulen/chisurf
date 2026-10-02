@@ -125,6 +125,23 @@ Per-pixel lifetime precision is photon-limited ($\sigma_\tau \approx
 \tau/\sqrt{N}$), which is why FLIM images need far more photons per pixel than
 intensity images and why dim pixels are masked rather than fitted.
 
+## The Intensity tool
+
+**Intensity** (`img_pixel_intensity`) is the first per-pixel step: it counts the photons of every pixel for each detector window and writes the imaging HDF5 the
+other per-pixel tools enrich.
+
+1. Type a path into **TTTR file** and press Enter, press **Browse** or **Database**, or drop a PTU/HT3 file on the window (a drop is also run).
+2. Optionally open the **Detectors** tab: it is the Setup tool's detector editor; without a window the channel-0 window is computed.
+3. Press **Run**. **Cancel** stops a running calculation.
+4. Read the **Intensity**, **Count rate (kHz)** and **Frames (movie)** tabs; **Detector window** chooses the window shown. Wheel zooms, drag pans.
+5. **Create imaging HDF5** writes the table, **Save container** writes it beside the photon file, **ndX** explores it, **Next** hands the file on inside the Imaging Tools pipeline.
+
+```{figure} figures/24_intensity_tool.png
+:width: 90%
+
+The Intensity tool on a simulated 32 x 32 scan (12 frames, brighter disc on a gradient): settings on the left, the summed photon counts on the right.
+```
+
 ## See also
 
 - `tttrlib.CLSMImage`; plugins in `chisurf/plugins/microscopy/`.

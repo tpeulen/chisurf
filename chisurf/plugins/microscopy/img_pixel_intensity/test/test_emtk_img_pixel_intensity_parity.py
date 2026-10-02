@@ -35,6 +35,9 @@ TOOL = C.Tool(make_app=make_app, tabs=("Intensity", "Count rate (kHz)", "Frames 
               maps={"Intensity": "intensity_map", "Count rate (kHz)": "count_rate_map", "Frames (movie)": "frame_stack"})
 
 
+_REAL_BEFORE = data.real_settings_state()
+
+
 @pytest.fixture(autouse=True)
 def hermetic(tmp_path, monkeypatch):
     hermetic_env(tmp_path, monkeypatch)
@@ -432,3 +435,8 @@ def test_the_image_gets_the_space_and_the_settings_stay_beside_it(app, drv, flim
     for name in ("run_maps", "request_hdf5", "save_container", "open_ndx", "next_step"):
         x, y, w, h = app.form.rects[name]
         assert x >= 0 and x + w <= ix and y + h <= size[1], name
+
+
+def test_zz_the_real_user_settings_were_never_touched():
+    """Runs last in the module: nothing under the real ~/.chisurf was written, created or removed by these tests."""
+    assert data.real_settings_state() == _REAL_BEFORE
