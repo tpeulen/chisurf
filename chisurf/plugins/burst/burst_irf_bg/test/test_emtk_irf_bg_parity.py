@@ -208,7 +208,8 @@ def test_every_guide_target_is_drawn_and_extract_waits(measurement):
         keys = {app.irf_gui.tour._target_key(s.get("target")) for s in app.irf_gui.tour.steps} - {""}
         app.controller.run()
         _frames_until(app, lambda: not app.controller.running and app.model.has_results(), size=size)
-        assert keys and keys <= set(app.item_rects), keys - set(app.item_rects)
+        drawn = set(app.item_rects) | set(app.irf_gui.form_state.rects)         # buttons, and the spec's fields
+        assert keys and keys <= drawn, keys - drawn
         _draw(app, size, n=1, painter=PixelPainter)              # the rect from the painter we press with
         step = next(i for i, st in enumerate(app.irf_gui.tour.steps) if st.get("await"))
         app.irf_gui.tour.start(step)
@@ -237,22 +238,16 @@ def test_a_dropped_folder_adds_its_measurement_not_its_container(measurement):
 
 # 4. draws, empty and populated, at both sizes
 @pytest.mark.parametrize("size", [(1200, 800), (800, 600)])
-def test_draws_empty_and_populated(measurement, size, monkeypatch):
-    from emtk import im
-
+def test_draws_empty_and_populated(measurement, size):
     app = create_app()
     try:
-        assert "Min photons / burst:" in _draw(app, size).strings
+        assert "Min photons/burst" in _draw(app, size).strings
         _computed(app, measurement)
-        columns = []
-        original = im.table_setup_column
-        monkeypatch.setattr(im, "table_setup_column",
-                            lambda label, flags=0, width=0.0: (columns.append((im.calc_text_size(label)[0], flags, width)),
-                                                               original(label, flags, width))[1])
         strings = _draw(app, size).strings
-        assert "IRF (non-burst scatter)" in strings and "Background (kHz)" in strings
-        assert columns and all(flags & im.TableColumnFlags.WIDTH_FIXED and width > text
-                               for text, flags, width in columns)       # headers fit, nothing overlaps
+        assert "IRF (non-burst scatter)" in strings
+        assert {"Detector", "Background (kHz)", "Prompt (ns)", "Non-burst", "Burst"} <= set(strings)   # the data_table's headers
+        rows = app.model.results_rows()
+        assert rows and all(f"{r['background_khz']:.3f}" in strings and r["detector"] in strings for r in rows)
     finally:
         app.close()
 

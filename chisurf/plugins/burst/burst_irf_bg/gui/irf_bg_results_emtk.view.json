@@ -1,0 +1,21 @@
+{
+  "_comment": "The emtk results table of the Burst IRF & Background tool: one row per detector (see IrfBackgroundViewModel.results_rows). A data_table section, drawn by emtk.view_form.",
+  "sections": [
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "IRF and background per detector",
+      "source": "results_rows",
+      "expand": true,
+      "fit_columns": true,
+      "description": "The extraction result: the background rate, the prompt position and the photon counts it rests on, per detector.",
+      "columns": [
+        {"key": "detector", "title": "Detector", "description": "The detector the row belongs to."},
+        {"key": "background_khz", "title": "Background (kHz)", "format": "%.3f", "description": "Background rate from the non-burst photons, averaged over the files."},
+        {"key": "prompt_ns", "title": "Prompt (ns)", "format": "%.3f", "description": "Micro-time of the IRF's rising edge, from the pooled non-burst photons."},
+        {"key": "n_bg", "title": "Non-burst", "shade": false, "description": "Non-burst photons the IRF and the background were taken from."},
+        {"key": "n_burst", "title": "Burst", "shade": false, "description": "Photons in bursts, excluded from the estimate."}
+      ]
+    }
+  ]
+}

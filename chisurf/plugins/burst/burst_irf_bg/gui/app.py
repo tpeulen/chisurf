@@ -25,6 +25,8 @@ import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.im_core import get_current_context
+from emtk.view_form import FormState, draw_sections
+from emtk.widgets.view_spec import load_view_spec
 
 from .view_model import IrfBackgroundViewModel
 
@@ -85,13 +87,22 @@ class BurstIrfBackgroundGui:
             on_start_guide=self.start_guide,
             size=(700.0, 520.0),
         )
+        # The parameters are the AutoForm spec's own fields (typed, clamped to the ranges it declares) and the results table is a
+        # data_table section: hand-drawn drag widgets had no typed entry and applied no drag at all (emtk reports a non-live drag
+        # only on release, with the old value), and the table was drawn cell by cell.
+        self.form_state = FormState()
+        spec = load_view_spec(str(Path(__file__).parent / "irf_bg.view.json"))
+        self._fields = self._leaf_sections(spec["sections"][0])
+        table = load_view_spec(str(Path(__file__).parent / "irf_bg_results_emtk.view.json"))
+        self.results_section = table["sections"][0]
         self.tour = EmTkGuidedTour(
             steps=guide_resource,
-            get_target_rect=lambda k: self.item_rects.get(k),
+            get_target_rect=lambda k: self.item_rects.get(k) or self.form_state.rects.get(k),
             owner=self.model,
             wait_for_controls=True,
         )
         self.on_used = self.tour.notify_used  # the Extract step waits for Compute
+        self.form_state.on_used = self.tour.notify_used
 
         self.model.add_observer(self._on_model_event)
 
@@ -111,6 +122,27 @@ class BurstIrfBackgroundGui:
         self.docks.add_window(
             "channels", "Channel definition", self._draw_channels, dock="controls"
         )
+
+    @staticmethod
+    def _leaf_sections(section: dict) -> dict[str, dict]:
+        """Every field of the spec by its attribute name."""
+        found: dict[str, dict] = {}
+        for child in section.get("sections", []) or []:
+            if child.get("attr"):
+                found[child["attr"]] = child
+            found.update(BurstIrfBackgroundGui._leaf_sections(child))
+        return found
+
+    def _sync_binning(self) -> None:
+        """The micro-time binning is also the channel editor's ``tttr_reading`` value: keep the two equal."""
+        controller = getattr(self, "controller", None)
+        if controller is None:
+            return
+        reading = controller.channel_definition.model.data["tttr_reading"]
+        binning = int(self.model.micro_time_binning)
+        if int(reading.get("micro_time_binning", 1)) != binning:
+            reading["micro_time_binning"] = binning
+            controller.channel_definition.model.changed()
 
     def _draw_channels(self, box):
         controller = getattr(self, "controller", None)
@@ -146,7 +178,17 @@ class BurstIrfBackgroundGui:
             self.help_window.draw((0.0, 0.0, float(w), float(h)))
 
         if self.tour.active:
-            self.tour.draw(float(w), float(h))
+            if self.tour.awaiting:
+                self.tour.draw(float(w), float(h))   # the highlighted control must stay clickable: no overlay window over the docks
+            else:
+                # In a window of its own, over the docks: drawn into the root window the card's buttons sat under the dock
+                # windows (a button is hovered only when no other window is under the pointer), so Close Tour, Prev and
+                # most Next presses never arrived.
+                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
+                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
+                im.begin("##irf_bg_tour_overlay", (0.0, 0.0, float(w), float(h)), flags)
+                self.tour.draw(float(w), float(h))
+                im.end()
 
     def _draw_parameters(self) -> None:
         avail_w = im.get_content_region_avail()[0]
@@ -154,65 +196,24 @@ class BurstIrfBackgroundGui:
             self.controller.draw_inputs(remember=self.remember, track=self.track)
             if "bg_channels" in self.item_rects:  # the guide's name for the channel editor button
                 self.item_rects["irf_bg_channels"] = self.item_rects["bg_channels"]
-        im.begin_disabled(bool(getattr(self, "controller", None) and self.controller.running))
+        running = bool(getattr(self, "controller", None) and self.controller.running)
+        target = self.model
+        if running:
+            # ``begin_disabled`` greys the spec's fields but they still take typing; they draw against a throw-away copy
+            # while a computation runs, so an edit is refused instead of being typed into a run that has its own snapshot.
+            import copy
+
+            target = copy.copy(self.model)
+            target._observers = []
+        im.begin_disabled(running)
         im.text_colored(ACCENT_BLUE, "Burst Search & Baseline")
-
-        # Min photons / burst
-        im.text("Min photons / burst:")
-        im.set_next_item_width(avail_w)
-        ch_ph, new_ph = im.drag_int("##min_photons", int(self.model.min_photons), 5, 2, 100000)
-        im.set_item_tooltip(
-            "Minimum photons per burst used when selecting bursts for the IRF/background estimate."
+        draw_sections(
+            [self._fields[a] for a in ("min_photons", "photon_window", "time_window_ms", "baseline_quantile",
+                                       "micro_time_binning")],
+            target, self.form_state,
         )
-        self.remember("min_photons")
-        if ch_ph and new_ph >= 2:
-            self.model.min_photons = int(new_ph)
-
-        # Photon window
-        im.text("Photon window:")
-        im.set_next_item_width(avail_w)
-        ch_pw, new_pw = im.drag_int("##photon_window", int(self.model.photon_window), 1, 2, 10000)
-        im.set_item_tooltip(
-            "Number of consecutive photons required inside the time window to call a burst."
-        )
-        if ch_pw and new_pw >= 2:
-            self.model.photon_window = int(new_pw)
-
-        # Time window (ms)
-        im.text("Time window (ms):")
-        im.set_next_item_width(avail_w)
-        ch_tw, new_tw = im.drag_float(
-            "##time_window", float(self.model.time_window_ms), 0.1, 0.001, 1000.0, "%.3f"
-        )
-        im.set_item_tooltip("Sliding time window in milliseconds used by the burst search.")
-        if ch_tw and new_tw > 0:
-            self.model.time_window_ms = float(new_tw)
-
-        # Baseline quantile
-        im.text("Dark-count floor (quantile):")
-        im.set_next_item_width(avail_w)
-        ch_q, new_q = im.slider_float(
-            "##quantile", float(self.model.baseline_quantile), 0.0, 0.9, "%.2f"
-        )
-        im.set_item_tooltip(
-            "Quantile of the non-burst micro-time counts used as the background (dark-count) floor."
-        )
-        if ch_q:
-            self.model.baseline_quantile = float(new_q)
-
-        # Micro-time binning
-        im.text("Micro-time binning:")
-        im.set_next_item_width(avail_w)
-        ch_bin, new_bin = im.drag_int("##binning", int(self.model.micro_time_binning), 1, 1, 64)
-        im.set_item_tooltip("Micro-time binning factor applied before building the IRF histogram.")
-        if ch_bin and new_bin >= 1:
-            self.model.micro_time_binning = int(new_bin)
-            controller = getattr(self, "controller", None)
-            if controller is not None:
-                controller.channel_definition.model.data["tttr_reading"]["micro_time_binning"] = (
-                    int(new_bin)
-                )
-                controller.channel_definition.model.changed()
+        if not running:
+            self._sync_binning()
 
         im.spacing()
         im.separator()
@@ -335,37 +336,7 @@ class BurstIrfBackgroundGui:
         avail_w, avail_h = im.get_content_region_avail()
         rx, ry = im.get_cursor_screen_pos()
         self.remember("irf_bg_results", (rx, ry, avail_w, avail_h))
-        # Columns as wide as their headers: stretched to a narrow pane they overlapped.
-        rows = self.model.results_rows()
-
-        if im.begin_table(
-            "irf_results_tbl",
-            5,
-            im.TableFlags.ROW_BG | im.TableFlags.BORDERS | im.TableFlags.SCROLL_Y,
-            size=(avail_w, avail_h - 10.0),
-        ):
-            im.table_setup_scroll_freeze(0, 1)
-            im.table_setup_column("Detector", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Detector")[0] + 14.0)
-            im.table_setup_column("Background (kHz)", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Background (kHz)")[0] + 14.0)
-            im.table_setup_column("Prompt (ns)", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Prompt (ns)")[0] + 14.0)
-            im.table_setup_column("Non-burst", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Non-burst")[0] + 14.0)
-            im.table_setup_column("Burst", im.TableColumnFlags.WIDTH_FIXED, im.calc_text_size("Burst")[0] + 14.0)
-            im.table_headers_row()
-
-            for r in rows:
-                im.table_next_row()
-                im.table_next_column()
-                im.text(str(r.get("detector", "")))
-                im.table_next_column()
-                im.text(f"{r.get('background_khz', 0.0):.3f}")
-                im.table_next_column()
-                im.text(f"{r.get('prompt_ns', 0.0):.3f}")
-                im.table_next_column()
-                im.text(f"{r.get('n_bg', 0):d}")
-                im.table_next_column()
-                im.text(f"{r.get('n_burst', 0):d}")
-
-            im.end_table()
+        draw_sections([self.results_section], self.model, self.form_state)
 
 
 class BurstIrfBackgroundApp(ImApp):
@@ -429,6 +400,16 @@ class BurstIrfBackgroundApp(ImApp):
     def on_paths_dropped(self, paths):
         if self.controller is not None:
             self.controller.on_paths_dropped(paths)
+
+    def files_dropped(self, paths) -> bool:
+        """A host's file drop (Qt, the desktop window, a page): the same as ``on_paths_dropped``.
+
+        Without this name only the Qt host reached the controller: the desktop and web hosts deliver ``files_dropped`` /
+        ``on_files_dropped`` and found nothing to call.
+        """
+        paths = list(paths)
+        self.on_paths_dropped(paths)
+        return bool(paths) and self.controller is not None
 
 
 def create_app(**kwargs):
