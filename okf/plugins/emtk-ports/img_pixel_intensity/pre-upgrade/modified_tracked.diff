@@ -1,0 +1,42 @@
+diff --git a/chisurf/plugins/microscopy/img_pixel_intensity/core.py b/chisurf/plugins/microscopy/img_pixel_intensity/core.py
+index 3dcf200c9..a20154351 100644
+--- a/chisurf/plugins/microscopy/img_pixel_intensity/core.py
++++ b/chisurf/plugins/microscopy/img_pixel_intensity/core.py
+@@ -22,9 +22,11 @@ def compute_intensity(filename: str, channels=(0,)) -> dict[str, Any]:
+     dict
+         ``{"maps": {"intensity": (ny, nx)}, "shape": (ny, nx)}``.
+     """
+-    import tttrlib
++    from chisurf.core.fio.staging import open_tttr
++    from chisurf.core.fluorescence.imaging import clsm_intensity_counts
+ 
+-    tttr = tttrlib.TTTR(filename)
++    tttr = open_tttr(filename)
+     clsm = build_clsm(tttr, channels=tuple(channels))
+-    maps = intensity_maps(clsm.get_intensity())
++    stack = clsm_intensity_counts(clsm)
++    maps = intensity_maps(stack)
+     return {"maps": maps, "shape": maps["intensity"].shape}
+diff --git a/chisurf/plugins/microscopy/img_pixel_intensity/manifest.json b/chisurf/plugins/microscopy/img_pixel_intensity/manifest.json
+index 94c7fae8f..0b31ee287 100644
+--- a/chisurf/plugins/microscopy/img_pixel_intensity/manifest.json
++++ b/chisurf/plugins/microscopy/img_pixel_intensity/manifest.json
+@@ -9,7 +9,7 @@
+   "categories": [
+     "Imaging"
+   ],
+-  "icon": "🔆",
++  "icon": "\ud83d\udd06",
+   "state_namespace": "img_pixel_intensity",
+   "statefulness": {
+     "enabled": true,
+@@ -20,7 +20,8 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.microscopy.img_pixel_intensity.gui.tool:ImgPixelIntensityTool",
+-    "cli": "img-pixel-intensity=chisurf.plugins.microscopy.img_pixel_intensity.cli:cli"
++    "cli": "img-pixel-intensity=chisurf.plugins.microscopy.img_pixel_intensity.cli:cli",
++    "emtk": "chisurf.plugins.microscopy.img_pixel_intensity.gui.app:make_app"
+   },
+   "operation_types": [
+     "image_analysis"

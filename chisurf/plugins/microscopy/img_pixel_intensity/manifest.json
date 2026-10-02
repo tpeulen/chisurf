@@ -9,7 +9,7 @@
   "categories": [
     "Imaging"
   ],
-  "icon": "🔆",
+  "icon": "\ud83d\udd06",
   "state_namespace": "img_pixel_intensity",
   "statefulness": {
     "enabled": true,
@@ -20,7 +20,8 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.microscopy.img_pixel_intensity.gui.tool:ImgPixelIntensityTool",
-    "cli": "img-pixel-intensity=chisurf.plugins.microscopy.img_pixel_intensity.cli:cli"
+    "cli": "img-pixel-intensity=chisurf.plugins.microscopy.img_pixel_intensity.cli:cli",
+    "emtk": "chisurf.plugins.microscopy.img_pixel_intensity.gui.app:make_app"
   },
   "operation_types": [
     "image_analysis"

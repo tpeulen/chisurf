@@ -22,9 +22,11 @@ def compute_intensity(filename: str, channels=(0,)) -> dict[str, Any]:
     dict
         ``{"maps": {"intensity": (ny, nx)}, "shape": (ny, nx)}``.
     """
-    import tttrlib
+    from chisurf.core.fio.staging import open_tttr
+    from chisurf.core.fluorescence.imaging import clsm_intensity_counts
 
-    tttr = tttrlib.TTTR(filename)
+    tttr = open_tttr(filename)
     clsm = build_clsm(tttr, channels=tuple(channels))
-    maps = intensity_maps(clsm.get_intensity())
+    stack = clsm_intensity_counts(clsm)
+    maps = intensity_maps(stack)
     return {"maps": maps, "shape": maps["intensity"].shape}
