@@ -192,7 +192,7 @@ class MergerApp(ImApp):
             self.tour.notify_used("lineEdit")
 
         return self.job.start(lambda: read_folder(folder), publish,
-                              lambda exc: self._fail(f"Could not read {folder}: {exc}"))
+                              lambda exc: self._fail(f"Could not read {Path(folder).name}: {exc}"))
 
     def save(self, filename=None, add=False):
         """Write the merge on the worker; with *add*, then add it to ChiSurf as an FCS dataset."""
@@ -278,7 +278,9 @@ class MergerApp(ImApp):
     # -- drawing -----------------------------------------------------------------------
     def draw_status(self, section, model, state, width):
         if self.model.error:
-            im.text_colored(ERROR, self.model.error)
+            im.push_style_color(im.Col.TEXT, ERROR)              # wrapped: a path does not fit a dock
+            im.text_wrapped(self.model.error)
+            im.pop_style_color()
         else:
             im.text_wrapped(self.model.status)
         m = self.model
