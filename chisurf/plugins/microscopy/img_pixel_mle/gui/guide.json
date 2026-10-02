@@ -1,1 +1,71 @@
-{"title":"Pixel-wise MLE", "steps":[{"title":"Photon sources", "text":"Add confocal imaging TTTR files and an IRF measurement."},{"title":"Calibration", "text":"Set detector channels, fit window, G factor and mixing corrections; shared setup/calibration can provide them."},{"title":"Estimator", "text":"Select fit23, fit24 or fit25 and initial values/fixed flags. Optionally load a saved region."},{"title":"Run and inspect", "text":"Run in the background, inspect τ and ρ maps, and export the complete per-pixel table."}]}
+{
+  "_comment": "Guided tour of the pixel-wise MLE tool in the emtk window. Steps point at real controls and wait for the user to use them.",
+  "steps": [
+    {
+      "title": "What this tool computes",
+      "text": "For every pixel of a confocal image it fits a fluorescence decay by <b>Poisson maximum likelihood</b> against the instrument response and shows the fitted <b>lifetime</b> (tau) as a map. It is slow and exact where the phasor is fast and model-free. You press the buttons; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Add the photon files",
+      "text": "The confocal TTTR files to analyse (PTU/HT3/...). <b>Add files</b> opens a chooser that takes several; <b>Database</b> picks a registered dataset; files can be dropped on the window.",
+      "target": {
+        "name": "files",
+        "action": "CLSM imaging files"
+      },
+      "await": {
+        "hint": "Add at least one photon file."
+      }
+    },
+    {
+      "title": "Add the IRF",
+      "text": "The instrument response function measurement; the first file is used. Without it the decay cannot be deconvolved.",
+      "target": {
+        "name": "irf",
+        "action": "IRF file"
+      },
+      "await": {
+        "hint": "Choose the IRF file."
+      }
+    },
+    {
+      "title": "Channels and fit window",
+      "text": "Name the routing channels that form the <b>parallel</b> and the <b>perpendicular</b> detection (they must be different), and the micro-time window <b>Fit start</b> to <b>Fit stop</b> (after binning) the likelihood is evaluated on.",
+      "target": {
+        "attr": "channels_parallel_text"
+      }
+    },
+    {
+      "title": "Minimum photons",
+      "text": "Pixels with fewer photons in the fit window are not fitted: a decay of a handful of photons has no lifetime.",
+      "target": {
+        "attr": "min_photons"
+      }
+    },
+    {
+      "title": "The fit model",
+      "text": "fit23 fits one lifetime plus anisotropy, fit24 a bi-exponential, fit25 picks the best of four fixed lifetimes. Each model keeps its own initial values and fixed flags.",
+      "target": {
+        "attr": "fit_model"
+      }
+    },
+    {
+      "title": "Fit",
+      "text": "Run fits every selected file pixel by pixel in the background and writes <b>&lt;stem&gt;_pixel_mle.csv</b> next to each file.",
+      "target": {
+        "name": "run",
+        "action": "Run"
+      },
+      "await": {
+        "hint": "Press <b>Run</b> and wait until the status line is empty."
+      }
+    },
+    {
+      "title": "The lifetime map",
+      "text": "The fitted lifetime of every pixel; pixels that were not fitted draw as the colormap floor. <b>Result</b> switches between the analysed files and the frame slider scrubs a stack.",
+      "target": {
+        "title": "Lifetime map"
+      }
+    }
+  ]
+}

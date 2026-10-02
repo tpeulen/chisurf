@@ -1,0 +1,580 @@
+{
+  "_comment": "Pixel-wise MLE, drawn by emtk. The Qt tool's AutoForm spec is pixel_mle.view.json.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Settings",
+      "dock": "settings",
+      "n_col": 1,
+      "description": "The photon files and the IRF, the channels and fit window, the fit model and its parameters, the IRF preparation, the background, the performance settings and Run.",
+      "sections": [
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "Run",
+              "action": "request_run",
+              "description": "Fit every selected file pixel-by-pixel; writes <stem>_pixel_mle.csv next to each."
+            }
+          ],
+          "description": "Fit every selected file pixel by pixel in the background."
+        },
+        {
+          "type": "info",
+          "source": "summary_text",
+          "description": "What was fitted: files, pixels fitted and the median lifetime per file; errors of a run."
+        },
+        {
+          "type": "custom",
+          "key": "path_list",
+          "title": "CLSM imaging files",
+          "description": "Confocal (CLSM) TTTR image file(s) to analyse. Drag-drop to add.",
+          "options": {
+            "target": "sel_files",
+            "add": "add_files",
+            "database": "database",
+            "single": false,
+            "add_tip": "Choose photon files to add."
+          }
+        },
+        {
+          "type": "custom",
+          "key": "path_list",
+          "title": "IRF file",
+          "description": "IRF TTTR measurement (the first file is used).",
+          "options": {
+            "target": "sel_irf_files",
+            "add": "add_irf",
+            "database": "database_second",
+            "single": true,
+            "add_tip": "Choose the IRF measurement (the first file is used)."
+          }
+        },
+        {
+          "type": "value",
+          "attr": "channels_parallel_text",
+          "kind": "str",
+          "label": "Parallel channels (∥)",
+          "description": "Space-separated routing channels forming the parallel (VV) detection."
+        },
+        {
+          "type": "value",
+          "attr": "channels_perpendicular_text",
+          "kind": "str",
+          "label": "Perpendicular channels (⊥)",
+          "description": "Space-separated routing channels forming the perpendicular (VH) detection."
+        },
+        {
+          "type": "value",
+          "attr": "micro_time_start",
+          "kind": "int",
+          "label": "Fit start",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Fit-window start on the binned micro-time axis.",
+          "style": "spin"
+        },
+        {
+          "type": "value",
+          "attr": "micro_time_stop",
+          "kind": "int",
+          "label": "Fit stop",
+          "minimum": 1,
+          "maximum": 1000000,
+          "description": "Fit-window stop on the binned micro-time axis.",
+          "style": "spin"
+        },
+        {
+          "type": "value",
+          "attr": "micro_time_binning",
+          "kind": "int",
+          "label": "Micro-time binning",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Integer down-binning of the micro-time axis before fitting.",
+          "style": "spin"
+        },
+        {
+          "type": "value",
+          "attr": "min_photons",
+          "kind": "int",
+          "label": "Min photons",
+          "minimum": 1,
+          "maximum": 10000000,
+          "description": "Pixels with fewer photons in the fit window are not fitted.",
+          "style": "spin"
+        },
+        {
+          "type": "value",
+          "attr": "roi_path",
+          "label": "Region",
+          "kind": "str",
+          "call": "commit_roi",
+          "elide": "start",
+          "placeholder": "none: the whole frame",
+          "description": "Optional region confining the fit to part of the frame — regions saved in CLSM Draw (.json), a Cellpose segmentation (_seg.npy), a label image or a binary mask. Leave empty to fit the whole frame."
+        },
+        {
+          "type": "button_row",
+          "description": "Pick the region file.",
+          "buttons": [
+            {
+              "action": "open_roi",
+              "label": "Browse region",
+              "description": "Browse for a region file: regions saved in CLSM Draw (.json), a Cellpose segmentation (_seg.npy), a label image or a binary mask."
+            }
+          ]
+        },
+        {
+          "type": "choice",
+          "attr": "fit_model",
+          "call": "set_fit_model",
+          "label": "Fit model",
+          "options": [
+            "fit23",
+            "fit24",
+            "fit25"
+          ],
+          "labels": [
+            "Single lifetime + anisotropy (fit23)",
+            "Bi-exponential (fit24)",
+            "Lifetime selection (fit25)"
+          ],
+          "description": "Per-pixel fit2x estimator. fit23 = one lifetime + anisotropy; fit24 = bi-exponential; fit25 = pick the best of four fixed lifetimes. The tau map is x[0] for every model."
+        },
+        {
+          "type": "panel",
+          "title": "Fit parameters (fit23)",
+          "n_col": 2,
+          "hidden_when": {
+            "attr": "fit_model",
+            "not_equals": "fit23"
+          },
+          "description": "Initial values and fixed flags of the fit23 parameters.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "p0_value",
+              "kind": "float",
+              "label": "τ (ns)",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "style": "spin",
+              "description": "Initial value of tau."
+            },
+            {
+              "type": "toggle",
+              "attr": "p0_fix",
+              "label": "fix",
+              "description": "Hold tau fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p1_value",
+              "kind": "float",
+              "label": "γ",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "style": "spin",
+              "description": "Initial value of gamma."
+            },
+            {
+              "type": "toggle",
+              "attr": "p1_fix",
+              "label": "fix",
+              "description": "Hold gamma fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p2_value",
+              "kind": "float",
+              "label": "r0",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 0.4,
+              "style": "spin",
+              "description": "Initial value of r0."
+            },
+            {
+              "type": "toggle",
+              "attr": "p2_fix",
+              "label": "fix",
+              "description": "Hold r0 fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p3_value",
+              "kind": "float",
+              "label": "ρ (ns)",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 1000.0,
+              "style": "spin",
+              "description": "Initial value of rho."
+            },
+            {
+              "type": "toggle",
+              "attr": "p3_fix",
+              "label": "fix",
+              "description": "Hold rho fixed during the fit."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Fit parameters (fit24)",
+          "n_col": 2,
+          "hidden_when": {
+            "attr": "fit_model",
+            "not_equals": "fit24"
+          },
+          "description": "Initial values and fixed flags of the fit24 parameters.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "p0_value",
+              "kind": "float",
+              "label": "τ1 (ns)",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "style": "spin",
+              "description": "Initial value of tau1."
+            },
+            {
+              "type": "toggle",
+              "attr": "p0_fix",
+              "label": "fix",
+              "description": "Hold tau1 fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p1_value",
+              "kind": "float",
+              "label": "γ",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "style": "spin",
+              "description": "Initial value of gamma."
+            },
+            {
+              "type": "toggle",
+              "attr": "p1_fix",
+              "label": "fix",
+              "description": "Hold gamma fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p2_value",
+              "kind": "float",
+              "label": "τ2 (ns)",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "style": "spin",
+              "description": "Initial value of tau2."
+            },
+            {
+              "type": "toggle",
+              "attr": "p2_fix",
+              "label": "fix",
+              "description": "Hold tau2 fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p3_value",
+              "kind": "float",
+              "label": "A2",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "style": "spin",
+              "description": "Initial value of A2."
+            },
+            {
+              "type": "toggle",
+              "attr": "p3_fix",
+              "label": "fix",
+              "description": "Hold A2 fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p4_value",
+              "kind": "float",
+              "label": "offset",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "style": "spin",
+              "description": "Initial value of offset."
+            },
+            {
+              "type": "toggle",
+              "attr": "p4_fix",
+              "label": "fix",
+              "description": "Hold offset fixed during the fit."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Fit parameters (fit25)",
+          "n_col": 2,
+          "hidden_when": {
+            "attr": "fit_model",
+            "not_equals": "fit25"
+          },
+          "description": "Initial values and fixed flags of the fit25 parameters.",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "p0_value",
+              "kind": "float",
+              "label": "τ1 (ns)",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "style": "spin",
+              "description": "Initial value of tau1."
+            },
+            {
+              "type": "toggle",
+              "attr": "p0_fix",
+              "label": "fix",
+              "description": "Hold tau1 fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p1_value",
+              "kind": "float",
+              "label": "τ2 (ns)",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "style": "spin",
+              "description": "Initial value of tau2."
+            },
+            {
+              "type": "toggle",
+              "attr": "p1_fix",
+              "label": "fix",
+              "description": "Hold tau2 fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p2_value",
+              "kind": "float",
+              "label": "τ3 (ns)",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "style": "spin",
+              "description": "Initial value of tau3."
+            },
+            {
+              "type": "toggle",
+              "attr": "p2_fix",
+              "label": "fix",
+              "description": "Hold tau3 fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p3_value",
+              "kind": "float",
+              "label": "τ4 (ns)",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 100.0,
+              "style": "spin",
+              "description": "Initial value of tau4."
+            },
+            {
+              "type": "toggle",
+              "attr": "p3_fix",
+              "label": "fix",
+              "description": "Hold tau4 fixed during the fit."
+            },
+            {
+              "type": "value",
+              "attr": "p4_value",
+              "kind": "float",
+              "label": "γ",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "style": "spin",
+              "description": "Initial value of gamma."
+            },
+            {
+              "type": "toggle",
+              "attr": "p4_fix",
+              "label": "fix",
+              "description": "Hold gamma fixed during the fit."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "IRF preparation",
+          "n_col": 2,
+          "collapsed": true,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "irf_threshold",
+              "kind": "float",
+              "label": "Threshold",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "description": "Fraction of the IRF maximum below which bins are zeroed.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "shift_sp",
+              "kind": "float",
+              "label": "Shift ∥",
+              "decimals": 3,
+              "minimum": -1000.0,
+              "maximum": 1000.0,
+              "description": "Parallel-channel sub-bin IRF shift.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "shift_ss",
+              "kind": "float",
+              "label": "Shift ⊥",
+              "decimals": 3,
+              "minimum": -1000.0,
+              "maximum": 1000.0,
+              "description": "Perpendicular-channel sub-bin IRF shift.",
+              "style": "spin"
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "panel",
+          "title": "Fit flags",
+          "n_col": 2,
+          "collapsed": true,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "twoi_star",
+              "label": "2I* (P+2S)",
+              "description": "Optimise P+2S instead of P and S separately."
+            },
+            {
+              "type": "toggle",
+              "attr": "bifl_scatter",
+              "label": "BIFL scatter",
+              "description": "Reduce Istar by the background contribution."
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "panel",
+          "title": "Background",
+          "n_col": 2,
+          "collapsed": true,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "use_bg",
+              "label": "Subtract",
+              "description": "Subtract a flat background from the fit window."
+            },
+            {
+              "type": "value",
+              "attr": "bg_p",
+              "kind": "float",
+              "label": "bg ∥",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "description": "Parallel background counts spread over the fit window.",
+              "style": "spin"
+            },
+            {
+              "type": "value",
+              "attr": "bg_s",
+              "kind": "float",
+              "label": "bg ⊥",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "description": "Perpendicular background counts spread over the fit window.",
+              "style": "spin"
+            }
+          ],
+          "collapsible": true
+        },
+        {
+          "type": "panel",
+          "title": "Performance",
+          "n_col": 2,
+          "collapsed": true,
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "engine",
+              "label": "Engine",
+              "options": [
+                "auto",
+                "fast",
+                "loop"
+              ],
+              "description": "Histogram extraction: fast = vectorised C++, loop = exact bincount, auto = fast with bincount fallback on saturation."
+            },
+            {
+              "type": "value",
+              "attr": "n_workers",
+              "kind": "int",
+              "label": "Threads",
+              "minimum": 0,
+              "maximum": 256,
+              "description": "Fit worker threads. 0 = auto (cpu − 1); 1 = serial.",
+              "style": "spin"
+            }
+          ],
+          "collapsible": true
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Lifetime map",
+      "dock": "views",
+      "description": "The fitted lifetime (tau, ns) of every pixel of the selected file; the frame slider scrubs the frames of a stack.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "current_result_name",
+          "label": "Result",
+          "options_source": "result_file_names",
+          "call": "select_result",
+          "description": "The analysed file whose lifetime map is shown."
+        },
+        {
+          "type": "custom",
+          "key": "image_panel",
+          "title": "Lifetime map",
+          "description": "Fitted single-pixel lifetime map of the selected file; unfitted pixels draw as the colormap floor.",
+          "options": {
+            "name": "Lifetime map",
+            "source": "tau_map_image",
+            "colormap_attr": "colormap",
+            "empty": "No lifetime map yet. Add a photon file and an IRF, set the channels and press Run."
+          }
+        }
+      ]
+    }
+  ]
+}
