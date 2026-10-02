@@ -1,0 +1,24 @@
+{
+  "plugin": "traj_remove_clashes",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "1",
+    "2.85",
+    "[020720]ready",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "log",
+    "namecaandresseq1to256",
+    "pdbnamingtheatoms—requiredfordcd"
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 7,
+  "after_controls": 16
+}

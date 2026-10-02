@@ -1,0 +1,91 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "1",
+    "2.85",
+    "[020720]ready",
+    "atomselection",
+    "dropadcdtrajectoryhereorbrowse",
+    "guide",
+    "help",
+    "log",
+    "mindistance",
+    "namecaandresseq1to256",
+    "pdbnamingtheatoms—requiredfordcd",
+    "removeclashedframes",
+    "saveclash-free",
+    "stride",
+    "topology",
+    "trajectory"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What the tool does, what it writes, and the known limits."
+    },
+    {
+      "kind": "input_text",
+      "label": "trajectory",
+      "id": "##trajectory",
+      "tooltip": "The trajectory the tool reads. Drop a .dcd here or press … to pick one."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##trajectory.browse",
+      "tooltip": "Open a DCD trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "topology",
+      "id": "##topology",
+      "tooltip": "The structure that names the atoms; a DCD stores coordinates only."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##topology.browse",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them."
+    },
+    {
+      "kind": "button",
+      "label": "💾 Save clash-free…",
+      "id": "💾 Save clash-free…",
+      "tooltip": "Drop every frame that contains an atom-atom clash and write a new DCD trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "atom_selection",
+      "id": "##atom_selection",
+      "tooltip": "mdtraj atom-selection expression. The listed atoms' pairwise distances are tested; a frame is dropped when any pair is closer than the minimum distance."
+    },
+    {
+      "kind": "input_text",
+      "label": "stride",
+      "id": "##stride",
+      "tooltip": "Read every Nth frame of the source trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_distance",
+      "id": "##min_distance",
+      "tooltip": "Minimum allowed atom-atom distance in Ångström. Frames with any selected atom pair closer than this are removed."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

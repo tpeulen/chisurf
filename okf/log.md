@@ -2,6 +2,10 @@
 
 ## 2026-10-01
 
+- **traj_remove_clashes emtk app at parity** (EMTK-1, upgrade row 40) on the shared trajectory-tool app; two defects fixed for
+  both hosts: the Qt save dialog asked for `.h5` while the tool writes DCD, and the log now says *Kept N of M frames* (guide 81
+  updated). [report](plugins/emtk-ports/traj_remove_clashes/REPORT.md).
+
 - **traj_rotate_translate emtk app at parity** (EMTK-1, upgrade row 39) on the shared trajectory-tool app: the 3×3 matrix and
   translation as numeric grids, Save rotated/translated… through a dialog, the transform on a worker; new warning when R is not
   a rotation (guide 81 updated); help and guide new. [report](plugins/emtk-ports/traj_rotate_translate/REPORT.md).
