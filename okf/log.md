@@ -2,6 +2,11 @@
 
 ## 2026-10-01
 
+- **lltf emtk app at parity; the LLTF CLI honours `-n` and shows no figures** (EMTK-1, upgrade row 44): `-n` was ignored
+  under a config with `find_optimal: true` (the shipped example: 2 asked, 3 fitted), and the search's figures called
+  `plt.show()`, blocking a fit started from the Qt wizard (or hanging it headless). Spec-drawn inputs/options and results
+  table in the emtk app. Known issue: unseeded random starting values. [report](plugins/emtk-ports/lltf/REPORT.md).
+
 - **traj_convert emtk app at parity, and one frame selection for every mode** (EMTK-1, upgrade row 43): the last frame of a
   range was exclusive (10–50 at stride 10 wrote 4 frames on both hosts), split ignored the stride and crashed on a range,
   folder mode read the folder path; now one inclusive selection, folder PDBs joined, a missing target refused. The shared

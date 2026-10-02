@@ -1,0 +1,167 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0.68",
+    "1",
+    "4",
+    "analysisoutput",
+    "andweightedresidualsbeforeinterpretingthemodel.",
+    "configfile",
+    "decayfile",
+    "edit",
+    "findoptimal",
+    "fit",
+    "fitandresiduals",
+    "fitplotsappearafterasuccessfulanalysis.",
+    "fittingoptions",
+    "guide",
+    "help",
+    "information",
+    "information,outputandresults",
+    "inputfiles",
+    "irffile",
+    "lltfinputsandoptions",
+    "load",
+    "loaddecayandirffiles,configurethefit,thenrunanalysis.",
+    "loadthemeasureddecayandirf,edityamlsettingsifneeded,chooseafixedorautomatically",
+    "maxlifetimestotry",
+    "numberoflifetimes",
+    "outputdirectory",
+    "probabilitythreshold",
+    "results",
+    "select",
+    "selectedlifetimecount,thenfit.analysisrunsseparately;inspectitsoutput,fittedlifetimes",
+    "stop",
+    "verboseoutput"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "📖 Guide",
+      "id": "📖 Guide",
+      "tooltip": "Walk through loading the inputs and running a real lifetime analysis."
+    },
+    {
+      "kind": "button",
+      "label": "❓ Help",
+      "id": "❓ Help",
+      "tooltip": "What the fit decides by rule, what it reports, and what to check before believing it."
+    },
+    {
+      "kind": "input_text",
+      "label": "decay_file",
+      "id": "##decay_file",
+      "tooltip": "Measured two-column decay: time (ns) and counts."
+    },
+    {
+      "kind": "button",
+      "label": "Load...",
+      "id": "Load...##decay_file.browse",
+      "tooltip": "Choose the decay file."
+    },
+    {
+      "kind": "input_text",
+      "label": "irf_file",
+      "id": "##irf_file",
+      "tooltip": "Measured two-column instrument response: time (ns) and counts."
+    },
+    {
+      "kind": "button",
+      "label": "Load...",
+      "id": "Load...##irf_file.browse",
+      "tooltip": "Choose the irf file."
+    },
+    {
+      "kind": "input_text",
+      "label": "config_file",
+      "id": "##config_file",
+      "tooltip": "The LLTF YAML configuration: fit range, background, IRF shift, starting values, pile-up. Edit… opens it; the next run uses the edited text."
+    },
+    {
+      "kind": "button",
+      "label": "Edit...",
+      "id": "Edit...##config_file.browse",
+      "tooltip": "Open the configuration in the YAML editor (load another, edit, save)."
+    },
+    {
+      "kind": "input_text",
+      "label": "output_dir",
+      "id": "##output_dir",
+      "tooltip": "Where <decay>_fit.json and <decay>_fit.png are written (the decay's folder when empty)."
+    },
+    {
+      "kind": "button",
+      "label": "Select...",
+      "id": "Select...##output_dir.browse",
+      "tooltip": "Choose the output directory."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_lifetimes",
+      "id": "##n_lifetimes",
+      "tooltip": "Exponential components of the fit. Used when Find Optimal is off; it then also switches the configuration file's own find_optimal off."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Find Optimal",
+      "id": "Find Optimal##find_optimal",
+      "tooltip": "Find the optimal number of lifetimes: fit 1 … Max Lifetimes components and pick a count by the probability test. Read the χ²ᵣ sequence (Analysis Output, or optimal_fitting in the JSON) rather than taking the count as a verdict."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_lifetimes",
+      "id": "##max_lifetimes",
+      "tooltip": "Largest component count the search fits."
+    },
+    {
+      "kind": "input_text",
+      "label": "prob_threshold",
+      "id": "##prob_threshold",
+      "tooltip": "Probability a further component must reach to be kept. At the default 0.68 it needs about a 14 % drop in reduced χ², whatever the photon count."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Verbose Output",
+      "id": "Verbose Output##verbose",
+      "tooltip": "Print the fitter's progress and diagnostics in Analysis Output."
+    },
+    {
+      "kind": "button",
+      "label": "▶ Fit",
+      "id": "▶ Fit",
+      "tooltip": "Run the LLTF command line in a background process with these inputs and options; needs a decay and an IRF."
+    },
+    {
+      "kind": "button",
+      "label": "⏹ Stop",
+      "id": "⏹ Stop",
+      "tooltip": "Terminate the running fit; its captured output stays in Analysis Output."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Information",
+      "id": "Information",
+      "tooltip": "Show workflow guidance."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Analysis Output",
+      "id": "Analysis Output",
+      "tooltip": "Inspect live stdout and stderr from the fitting process."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Results",
+      "id": "Results",
+      "tooltip": "Inspect fitted lifetimes, fit statistics and exports."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

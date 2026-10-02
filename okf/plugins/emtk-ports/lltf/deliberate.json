@@ -1,0 +1,6 @@
+{
+  "?": "the Qt help toolbar's '?' is the '❓ Help' button at the top of the inputs dock",
+  "clearoutput": "the Qt Analysis Output tab's 'Clear Output' is 'Clear output' in the emtk Analysis Output tab; the inventory sees only the open tab (Information)",
+  "findoptimalnumberoflifetimes": "renamed 'Find Optimal' (the long label was cut in the 800 px dock; the guide already calls it that) with the full meaning in its tooltip",
+  "stopprocess": "the Qt 'Stop Process' is '⏹ Stop' beside '▶ Fit'"
+}

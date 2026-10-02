@@ -39,7 +39,7 @@ if which == "qt":
         qapp.processEvents()
     w.grab().save(str(out / f"{prefix}.png"))
     print("QT", [(round(r["lifetime"], 4), round(r["amplitude"], 4)) for r in (w.last_fit_result or {}).get("lifetimes", [])])
-else:
+elif which == "emtk":
     from emtk.testing import RecordingPainter
     from test.gui.emtk_port_parity import emtk_screenshot, manifest_of
     module, attr = manifest_of("lltf")["entrypoints"]["emtk"].split(":")
@@ -57,4 +57,31 @@ else:
             a.draw(RecordingPainter(), 0, 0, *size)
         emtk_screenshot(a, out / f"{prefix}_{size[0]}x{size[1]}.png", size)
     print("EMTK", [(round(r["lifetime"], 4), round(r["amplitude"], 4)) for r in (m.result or {}).get("lifetimes", [])])
+    a.close()
+
+if which == "emtk-states":
+    # the configuration editor, the guide's Fit step, the help page
+    from emtk.testing import RecordingPainter
+    from test.gui.emtk_port_parity import emtk_screenshot
+    from chisurf.plugins.fluorescence_decay.lltf.gui.app import LLTFApp
+
+    a = LLTFApp()
+    m = a.model
+    m.decay_file, m.irf_file, m.output_dir = DECAY, IRF, str(work)
+    m.config_file = CONFIG
+    a.edit_config()
+    for _ in range(2):
+        a.draw(RecordingPainter(), 0, 0, 1200, 800)
+    emtk_screenshot(a, out / f"{prefix}_config_1200x800.png", (1200, 800))
+    a.config_open = False
+    step = next(i for i, s in enumerate(a.tour.steps) if s.get("target", {}).get("action") == "Fit")
+    a.tour.start(step)
+    for _ in range(2):
+        a.draw(RecordingPainter(), 0, 0, 800, 600)
+    emtk_screenshot(a, out / f"{prefix}_guide_800x600.png", (800, 600))
+    a.tour.stop()
+    a.help_window.show()
+    for _ in range(2):
+        a.draw(RecordingPainter(), 0, 0, 1200, 800)
+    emtk_screenshot(a, out / f"{prefix}_help_1200x800.png", (1200, 800))
     a.close()
