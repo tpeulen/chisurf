@@ -21,7 +21,7 @@ Gaussian hidden Markov model for binned time traces: fits states and transitions
 | Menu path | Analysis → Kinetics → **Hidden Markov model** |
 | Categories | Analysis, Kinetics |
 | Version | 0.1.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `hmm` |
 
 ## Parameters
@@ -54,6 +54,17 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | From | `min_states` | int |  | 1 … 32 | Smallest state count to score. |
 | To | `max_states` | int |  | 1 … 32 | Largest state count to score. |
 
+## Native window (emtk)
+
+The default window is drawn with emtk (`gui/app.py`, forms `gui/hmm_emtk.view.json`).
+
+| Area | Controls |
+| --- | --- |
+| Actions | **Fit**, **Scan states**, **Demo trace**, **Save fit...**, **Help**, **Guide** |
+| Traces | file table, **Add files...** (or drops), **Remove**, **Clear**; `set_traces` for traces handed over in memory |
+| Model | *States*, *Covariance*, *Bin width (s)*; sections **Fitting** (*Max EM maps*, *Tolerance*, *Decoder*, *Seed*, *Accelerate*) and **State scan range** (*From*, *To*) |
+| Results | trace with decoded state path, fitted-states table, transition table (probabilities and rates), tabs for the intensity histogram, dwell times and the AIC/BIC scan |
+
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
@@ -63,6 +74,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Guide** — [States and rates from a binned trace](/guides/92_hmm_binned_traces.md)
 - **Theory** — [Hidden Markov models of binned traces](/concepts/hidden_markov_models.md)
 - **Workflow** — [Hidden Markov models of binned traces](/guides/54_hidden_markov_models.md)
 

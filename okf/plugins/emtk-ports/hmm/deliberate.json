@@ -1,0 +1,5 @@
+{
+  "?": "the Qt '?' help button is the Help button",
+  "files": "Qt '+ Files' button of the Traces list: native 'Add files...' (and file drops)",
+  "database": "Qt 'Database' button (traces from the MMFDB object store through the path-list dialog): not ported, the native list takes files; the Qt-side database loader needs a running MMFDB service. Open item in the report"
+}

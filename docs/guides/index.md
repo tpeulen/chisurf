@@ -33,7 +33,6 @@ already have a burst list or a decay, jump straight to the analysis you need.
 74_intensity_traces_and_file_tools
 73_tttr_decay_and_correlation
 88_microtime_shifter
-89_microtime_histogram
 37_tttr_microtime_lut
 34_exporting_burst_data
 35_combining_repeats
@@ -130,6 +129,7 @@ irf_estimation
 88_structure_tools
 90_updater
 91_vv_vh_g_factor
+92_hmm_binned_traces
 45_scan_precision
 55_pair_correlation
 ```
@@ -259,9 +259,9 @@ irf_estimation
 | [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Imaging → Tools; Imaging Tools hub), `tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
 | [Structure Tools: FPS JSON editor, docking and QuEst](88_structure_tools.md) | `structure_tools` (Structure → Structure Tools), the structure-modelling hub |
+| [States and rates from a binned trace](92_hmm_binned_traces.md) | `hmm` (Analysis → Kinetics), `csc hmm`, `HmmViewModel`, `hmm.fit` RPC |
 | [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
-| [Histogramming micro times per detector and polarization](89_microtime_histogram.md) | `microtime_histogram` (Spectroscopy -> Fluorescence decay), `HistogramModel` |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
 
 ## Regenerating the figures
