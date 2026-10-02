@@ -103,10 +103,15 @@ hand, in this order:
 :name: fig-lltf-results
 :width: 100%
 
-Panel 3 after **Fit** on the plugin's example donor decay (`example/5-44_D0.dat`
-with `IRF_D0.dat`), two lifetimes, default settings: 1.350 ns (0.130) and
-4.005 ns (0.870), $\chi^2_r = 1.56$ over 4.57–44.1 ns. The dashed lines are the
-automatic fit range; the residuals keep a spike on the rising edge.
+The Lazy Lifetime Analysis window after **Fit** on the plugin's example donor
+decay (`example/5-44_D0.dat` with `IRF_D0.dat` and the example's own
+`config.yml`), two lifetimes: 3.900 ns (0.899) and 0.784 ns (0.101),
+$\chi^2_r = 1.40$ over 4.66–23.33 ns. Left: the inputs (path under its caption,
+**Load…** / **Edit…** / **Select…** beside it) and the fitting options with
+**▶ Fit** and **⏹ Stop**; top right: the **Results** tab (**Export result
+JSON**, the component table, the summary lines); bottom right: the decay with
+the fit, the scaled IRF and the fit range (white lines). The starting values of
+the fit are random, so a second run differs in the third digit.
 ```
 
 *Input Files*
@@ -129,15 +134,18 @@ automatic fit range; the residuals keep a spike on the rising edge.
 - **Verbose Output** — print every step into *Analysis Output*.
 
 **Fit** (and *Analysis → Fit…*) runs `lltf fit` in a child Python process, so
-the window stays responsive; **Stop Process** on the *Analysis Output* tab
-terminates it.
+the window stays responsive; **⏹ Stop** beside **▶ Fit** terminates it
+(its captured output stays in the *Analysis Output* tab, **Clear output** empties it).
 
 ```{figure} figures/lltf_settings.png
 :name: fig-lltf-settings
 :width: 70%
 
-**Edit…** — the configuration file in the settings editor. The file is the
-plugin's `lifetime_settings.yml`, copied once into the system temp folder.
+**Edit…** — the configuration file in the YAML editor of the window (type to
+change it, **Save configuration** writes it to a file you name, **Close editor**
+keeps the edits for the next run). The file is the plugin's
+`lifetime_settings.yml`, copied once into the system temp folder; a YAML file
+dropped on the window loads as the configuration.
 ```
 
 | Key | Default | Meaning |

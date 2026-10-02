@@ -12,13 +12,13 @@
       "type": "panel",
       "title": "Fitting Options",
       "sections": [
-        {"type": "value", "attr": "n_lifetimes", "label": "Number of Lifetimes", "kind": "int", "minimum": 1, "maximum": 6, "step": 1,
+        {"type": "value", "attr": "n_lifetimes", "label": "Number of Lifetimes", "kind": "int", "style": "spin", "minimum": 1, "maximum": 6, "step": 1,
          "description": "Exponential components of the fit. Used when Find Optimal is off; it then also switches the configuration file's own find_optimal off."},
         {"type": "toggle", "attr": "find_optimal", "label": "Find Optimal",
          "description": "Find the optimal number of lifetimes: fit 1 … Max Lifetimes components and pick a count by the probability test. Read the χ²ᵣ sequence (Analysis Output, or optimal_fitting in the JSON) rather than taking the count as a verdict."},
-        {"type": "value", "attr": "max_lifetimes", "label": "Max Lifetimes to Try", "kind": "int", "minimum": 2, "maximum": 6, "step": 1,
+        {"type": "value", "attr": "max_lifetimes", "label": "Max Lifetimes to Try", "kind": "int", "style": "spin", "minimum": 2, "maximum": 6, "step": 1,
          "description": "Largest component count the search fits."},
-        {"type": "value", "attr": "prob_threshold", "label": "Probability Threshold", "kind": "float", "minimum": 0.0, "maximum": 1.0, "step": 0.01, "decimals": 2,
+        {"type": "value", "attr": "prob_threshold", "label": "Probability Threshold", "kind": "float", "style": "spin", "minimum": 0.0, "maximum": 1.0, "step": 0.01, "decimals": 2,
          "description": "Probability a further component must reach to be kept. At the default 0.68 it needs about a 14 % drop in reduced χ², whatever the photon count."},
         {"type": "toggle", "attr": "verbose", "label": "Verbose Output",
          "description": "Print the fitter's progress and diagnostics in Analysis Output."}
@@ -28,7 +28,7 @@
       "type": "panel",
       "title": "Results",
       "sections": [
-        {"type": "table", "source": "lifetime_rows", "height": 120,
+        {"type": "table", "source": "lifetime_rows", "height": 96,
          "columns": [
            {"key": "component", "label": "Component", "description": "Component number."},
            {"key": "amplitude", "label": "Amplitude", "format": "%.3f", "description": "Species fraction; the fractions sum to 1 (not intensity fractions)."},

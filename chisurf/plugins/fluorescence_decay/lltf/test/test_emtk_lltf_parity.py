@@ -332,7 +332,7 @@ def test_draws_empty_and_populated(fitted, size, monkeypatch):
     empty = LLTFApp()
     try:
         strings = _draw(empty, size).strings
-        assert {"Input Files", "Fitting Options", "Decay File", "▶ Fit", "📖 Guide"} <= set(strings)
+        assert {"Input Files", "Fitting Options", "Decay File", "▶  Fit", "📖  Guide"} <= set(strings)
     finally:
         empty.close()
     app, _ = fitted

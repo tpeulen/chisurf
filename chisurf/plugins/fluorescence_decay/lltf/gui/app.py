@@ -79,7 +79,7 @@ class LLTFApp(TourTarget, ImApp):
         )
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(
-            Split("h", 0.40, Region("inputs"), Split("v", 0.35, Region("details"), Region("plots")))
+            Split("h", 0.40, Region("inputs"), Split("v", 0.46, Region("details"), Region("plots")))
         )
         self.docks.add_window(
             "inputs", "LLTF inputs and options", self.controls, dock="inputs", closable=False
@@ -157,12 +157,12 @@ class LLTFApp(TourTarget, ImApp):
 
     def controls(self, box):
         m = self.model
-        if im.button("📖 Guide"):
+        if im.button("📖  Guide"):
             self.tour.start()
         im.set_item_tooltip("Walk through loading the inputs and running a real lifetime analysis.")
         self.remember("Guide")
         im.same_line()
-        if im.button("❓ Help"):
+        if im.button("❓  Help"):
             self.help_window.show()
         im.set_item_tooltip("What the fit decides by rule, what it reports, and what to check before believing it.")
         self.remember("help")
@@ -175,7 +175,7 @@ class LLTFApp(TourTarget, ImApp):
         self.item_rects["Find Optimal"] = self.form.rects.get("find_optimal")      # the Qt tour's name for it
         ready = Path(m.decay_file).is_file() and Path(m.irf_file).is_file()
         im.begin_disabled(m.running or not ready)
-        if im.button("▶ Fit"):
+        if im.button("▶  Fit"):
             self.error(self.start)
         im.set_item_tooltip("Run the LLTF command line in a background process with these inputs and options; "
                             "needs a decay and an IRF.")
@@ -183,7 +183,7 @@ class LLTFApp(TourTarget, ImApp):
         im.end_disabled()
         im.same_line()
         im.begin_disabled(not m.running)
-        if im.button("⏹ Stop"):
+        if im.button("⏹  Stop"):
             self.model.stop()
         im.set_item_tooltip("Terminate the running fit; its captured output stays in Analysis Output.")
         self.remember("stop")
@@ -194,15 +194,17 @@ class LLTFApp(TourTarget, ImApp):
             im.text_wrapped(m.status)
 
     def draw_files(self, section, model, state, width):
-        """The four file rows of the Qt wizard: a path and its Load… / Edit… / Select… button."""
+        """The four file rows of the Qt wizard, each as its caption and, under it, the path and its Load... / Edit... / Select... button.
+
+        The path takes the dock's width less the button, so a long path stays readable in a narrow dock instead of
+        being cut to a few characters beside a caption.
+        """
         m = self.model
-        label_w = max(im.calc_text_size(row[1])[0] for row in FILE_ROWS) + 8.0
         button_w = max(im.calc_text_size(row[4])[0] for row in FILE_ROWS) + 2 * im.get_style().frame_padding[0]
+        spacing = im.get_style().item_spacing[0]
         for attr, label, tip, action, button, key in FILE_ROWS:
             im.text(label)
-            im.same_line(label_w)
-            spacing = im.get_style().item_spacing[0]
-            im.set_next_item_width(max(60.0, width - label_w - button_w - 2 * spacing - 8.0))
+            im.set_next_item_width(max(60.0, width - button_w - spacing - 4.0))
             flags = 0 if attr == "config_file" else im.InputTextFlags.READ_ONLY
             changed, value = im.input_text(f"##{attr}", getattr(m, attr) or "", flags=flags, elide_start=True)
             im.set_item_tooltip(tip)
@@ -266,12 +268,13 @@ class LLTFApp(TourTarget, ImApp):
                         if m.result is None:
                             im.text_wrapped(m.results_summary())
                         else:
-                            draw_form(self.results_spec, m, self.results_form)    # the spec's Results panel
-                            if im.button("💾 Export result JSON"):
+                            if im.button("💾  Export result JSON"):
                                 self.choose("save_results")
                             im.set_item_tooltip(
                                 "Copy the complete fit result and model arrays to a JSON file."
                             )
+                            self.remember("export_json")
+                            draw_form(self.results_spec, m, self.results_form)    # the spec's Results panel
                     im.end_tab_item()
             im.end_tab_bar()
             self.pending_tab = None
