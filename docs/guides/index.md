@@ -128,6 +128,7 @@ irf_estimation
 87_channel_definition
 88_structure_tools
 90_updater
+91_vv_vh_g_factor
 45_scan_precision
 55_pair_correlation
 ```
@@ -257,6 +258,7 @@ irf_estimation
 | [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Imaging → Tools; Imaging Tools hub), `tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
 | [Structure Tools: FPS JSON editor, docking and QuEst](88_structure_tools.md) | `structure_tools` (Structure → Structure Tools), the structure-modelling hub |
+| [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
 

@@ -1,0 +1,346 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-0.1",
+    "-0.2",
+    "0",
+    "0.0",
+    "0.000",
+    "0.0000",
+    "0.0500",
+    "0.093316",
+    "0.1",
+    "0.151364",
+    "0.155055",
+    "0.2",
+    "0.3",
+    "0.380",
+    "0.4",
+    "0.5",
+    "0.6",
+    "1",
+    "1.0000",
+    "1.2145",
+    "1.21871",
+    "10",
+    "100",
+    "100.0",
+    "1000",
+    "10000",
+    "16.000",
+    "2.7451",
+    "2.78431",
+    "200",
+    "25.0",
+    "300",
+    "358-460",
+    "358.0",
+    "400",
+    "460.0",
+    "500",
+    "76.0",
+    "8.84237",
+    "addfiles",
+    "anisotropyr(t)",
+    "archivereferencecalibration",
+    "backgroundcorrection",
+    "backgroundstart(bin)",
+    "backgroundstop(bin)",
+    "backgroundvh",
+    "backgroundvv",
+    "batch1.dat",
+    "batchanisotropy",
+    "channels",
+    "clearbatch",
+    "corrected",
+    "counts",
+    "dt(ns/bin)",
+    "error",
+    "expectedsteadyanisotropy",
+    "exportcalibrationjson",
+    "fast",
+    "fastcorrected",
+    "fastraw",
+    "fastreference",
+    "fastvhcorrected",
+    "fastvhraw",
+    "fastvvcorrected",
+    "fastvvraw",
+    "file",
+    "flipvv/vh",
+    "g",
+    "g-factor",
+    "g-factorandmixing",
+    "g=1",
+    "gcorrected",
+    "gcorrectedsd",
+    "graw",
+    "gsd",
+    "guide",
+    "gused",
+    "help",
+    "l1=l2",
+    "lifetimeestimate(ns)",
+    "lifetimeused(ns)",
+    "linkedl1",
+    "linkedl2",
+    "loadavv/vhdecay(button,ordropafileonthewindow).",
+    "loadthefast-rotatingreferencedyevv/vhdecay.",
+    "logcounts",
+    "manualg",
+    "manuall1=l2",
+    "manuallifetime",
+    "manuallinkedl1/l2overrideisactive.",
+    "manualtargetrs",
+    "mixingestimate",
+    "none",
+    "noreferencedecayloaded",
+    "noslowreferenceloaded",
+    "quantity",
+    "r(inf)",
+    "r0",
+    "raw",
+    "region",
+    "rho(ns)",
+    "runbatch",
+    "savetable",
+    "slow",
+    "slow-referencemixing",
+    "slowcorrected",
+    "slowprotein",
+    "slowraw",
+    "slowreference",
+    "slowvhcorrected",
+    "slowvhraw",
+    "slowvvcorrected",
+    "slowvvraw",
+    "stop",
+    "tacbin",
+    "tailmatching",
+    "tailstart(bin)",
+    "tailstop(bin)",
+    "targetrs",
+    "tau(ns)",
+    "theanisotropyr(t)oftheloadeddecaysappearshere.",
+    "unavailable",
+    "value",
+    "vhshift(bins)",
+    "vv/vhdecays",
+    "xwq_hq52rl_t0f9xjk3g5c00000gn/t/tmpn0ateiug/fast.dat",
+    "xwq_hq52rl_t0f9xjk3g5c00000gn/t/tmpn0ateiug/slow.dat"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Fast reference...",
+      "id": "Fast reference...",
+      "tooltip": "Load the fast-rotating reference dye VV/VH decay used for the tail-matching G calibration."
+    },
+    {
+      "kind": "button",
+      "label": "Slow protein...",
+      "id": "Slow protein...",
+      "tooltip": "Load the slow-rotating protein VV/VH decay for the linked polarization-mixing estimate."
+    },
+    {
+      "kind": "button",
+      "label": "Export calibration JSON...",
+      "id": "Export calibration JSON...",
+      "tooltip": "Export values, uncertainty, mixing diagnostics and scientific settings."
+    },
+    {
+      "kind": "button",
+      "label": "Archive reference calibration",
+      "id": "Archive reference calibration",
+      "tooltip": "Register the raw reference decay, corrected traces, anisotropy and calibration provenance through the MMFDB RPC."
+    },
+    {
+      "kind": "button",
+      "label": "Stop",
+      "id": "Stop",
+      "tooltip": "Discard the pending result; an archival already running may finish."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Read the calibration conventions and the limits of the linked mixing estimate."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the fast and slow references, the tail region and the export."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Flip VV/VH",
+      "id": "Flip VV/VH##flip",
+      "tooltip": "The file has VV and VH swapped: exchange the parallel and perpendicular channels consistently across the calculation and the plots."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Background correction",
+      "id": "Background correction##background",
+      "tooltip": "Subtract separate channel means of the background region before matching the tails."
+    },
+    {
+      "kind": "input_text",
+      "label": "tail_start",
+      "id": "##tail_start",
+      "tooltip": "First TAC bin of the tail region used to match the reference dye channels."
+    },
+    {
+      "kind": "input_text",
+      "label": "tail_stop",
+      "id": "##tail_stop",
+      "tooltip": "Last TAC bin of the tail region."
+    },
+    {
+      "kind": "input_text",
+      "label": "background_start",
+      "id": "##background_start",
+      "tooltip": "First TAC bin of the signal-free region used for each channel's background (needs Background correction)."
+    },
+    {
+      "kind": "input_text",
+      "label": "background_stop",
+      "id": "##background_stop",
+      "tooltip": "Last TAC bin of the background region (needs Background correction)."
+    },
+    {
+      "kind": "input_text",
+      "label": "shift",
+      "id": "##shift",
+      "tooltip": "Shift the VH time axis by this many TAC bins, fractional bins included (the Qt tool's 'Shift Perpendicular Decay')."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual G",
+      "id": "Manual G##manual_g",
+      "tooltip": "Use the G-factor typed below instead of the calculated one (the Qt tool does this when its G field is edited)."
+    },
+    {
+      "kind": "input_text",
+      "label": "g_override",
+      "id": "##g_override",
+      "tooltip": "Positive detector sensitivity ratio used for the corrected anisotropy."
+    },
+    {
+      "kind": "input_text",
+      "label": "fp_dt_ns",
+      "id": "##fp_dt_ns",
+      "tooltip": "Nanoseconds per slow-reference bin."
+    },
+    {
+      "kind": "input_text",
+      "label": "fp_rho_ns",
+      "id": "##fp_rho_ns",
+      "tooltip": "Rotational correlation time used in the Perrin relation."
+    },
+    {
+      "kind": "input_text",
+      "label": "fp_r0",
+      "id": "##fp_r0",
+      "tooltip": "Limiting (fundamental) anisotropy of the reference fluorophore."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual lifetime",
+      "id": "Manual lifetime##manual_tau",
+      "tooltip": "Override the intensity first-moment lifetime of the slow reference."
+    },
+    {
+      "kind": "input_text",
+      "label": "tau_override",
+      "id": "##tau_override",
+      "tooltip": "Lifetime used in place of the estimate."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual target rS",
+      "id": "Manual target rS##manual_rs",
+      "tooltip": "Override the Perrin steady-state anisotropy target."
+    },
+    {
+      "kind": "input_text",
+      "label": "rs_override",
+      "id": "##rs_override",
+      "tooltip": "Steady-state anisotropy the slow reference should have."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Manual l1 = l2",
+      "id": "Manual l1 = l2##manual_l",
+      "tooltip": "Override the single linked polarization-mixing parameter."
+    },
+    {
+      "kind": "input_text",
+      "label": "l_override",
+      "id": "##l_override",
+      "tooltip": "Linked mixing parameter applied to l1 and l2."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Fast reference",
+      "id": "Fast reference",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Slow reference",
+      "id": "Slow reference",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Raw",
+      "id": "Raw",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Corrected",
+      "id": "Corrected",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Log counts",
+      "id": "Log counts",
+      "tooltip": "Show or hide this trace group, or change the intensity scale."
+    },
+    {
+      "kind": "button",
+      "label": "Add files...",
+      "id": "Add files...",
+      "tooltip": "Queue VV/VH decays to evaluate r(inf) with the frozen current G, mixing, background and shift."
+    },
+    {
+      "kind": "button",
+      "label": "Run batch",
+      "id": "Run batch",
+      "tooltip": "Compute the corrected steady anisotropy of every queued file with the current calibration."
+    },
+    {
+      "kind": "button",
+      "label": "Save table...",
+      "id": "Save table...",
+      "tooltip": "Write per-file r(inf), region, backgrounds, G and errors as a tab-separated file."
+    },
+    {
+      "kind": "button",
+      "label": "Clear batch",
+      "id": "Clear batch",
+      "tooltip": "Remove every queued input and computed row."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

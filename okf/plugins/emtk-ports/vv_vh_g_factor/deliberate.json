@@ -1,0 +1,21 @@
+{
+  "batch": "Qt 'Batch...' opens a modal dialog; native has the Batch anisotropy tab beside the controls (Add files..., Run batch, Save table..., Clear batch, results table)",
+  "bgparallel": "Qt 'BG Parallel:' read-only field: native results table row 'Background VV'",
+  "bgperpendicular": "Qt 'BG Perpendicular:' read-only field: native results table row 'Background VH'",
+  "correctedg-factor": "Qt 'Corrected G-Factor:' field: native results table row 'G corrected'",
+  "correctedstddev": "Qt 'Corrected StdDev:' field: native results table row 'G corrected SD'",
+  "stddev": "Qt 'StdDev:' field: native results table row 'G SD'",
+  "dt[ns/ch]": "Qt spin box caption: native field 'dt (ns/bin)'",
+  "rho[ns]": "Qt spin box caption: native field 'rho (ns)'",
+  "tau[ns]": "Qt editable tau box (typing overrides): native 'Manual lifetime' toggle + 'tau (ns)' field, estimate in the Mixing estimate table",
+  "l1/l2": "Qt editable l1/l2 box (typing overrides): native 'Manual l1 = l2' toggle + field, estimate in the Mixing estimate table",
+  "flipvvvh(dataswappedinvv/vh)": "Qt caption: native toggle 'Flip VV/VH' (tooltip carries the explanation)",
+  "loadfpvv/vhfile": "Qt 'Load FP VV/VH File': native 'Slow protein...'",
+  "loadvv/vhfile": "Qt 'Load VV/VH File': native 'Fast reference...'",
+  "shiftperpendiculardecay(channels)": "Qt caption: native 'VH shift (bins)'",
+  "showcorrected": "Qt 'Show corrected': native checkbox 'Corrected' in the decay window",
+  "showfastdye": "Qt 'Show fast dye': native checkbox 'Fast reference'",
+  "showraw": "Qt 'Show raw': native checkbox 'Raw'",
+  "showslowdye": "Qt 'Show slow dye': native checkbox 'Slow reference'",
+  "warningloadfpvv/vhdatatoestimatel1/l2.": "Qt idle warning text: native shows 'Warning: load FP VV/VH data to estimate l1/l2.' (case/punctuation)"
+}
