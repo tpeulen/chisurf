@@ -2,6 +2,7 @@
 
 ## 2026-10-02
 
+- **updater: emtk port card U1 (Updater tab)** (2026-10-02, T-20261002-UPDQ): Qt-free `UpdaterModel`, spec form, changelog blocks, in-app confirm and progress window, update-command tests on fakes (no update/install/network), 85 tests; fixed Qt package-manager defects (duplicated completion handler, QThread aborts); report `okf/plugins/emtk-ports/updater/REPORT.md`.
 - **tr_anisotropy: emtk app upgraded to verified parity with the Qt wizard** (2026-10-02, T-20261002-UPG6): Qt check marks and ungated Back/Next, stored default corrections, spec forms + data_table spectra, populated IRF plot with draggable background box, drops, 71 real-input/parity tests (94 in the folder), guide 10 section and figures; report `okf/plugins/emtk-ports/tr_anisotropy/REPORT.md`. A pre-existing view-model test had overwritten `~/.chisurf/anisotropy_corrections.json` (restored to shipped defaults; test now hermetic).
 - **ndX's Qt GUI deleted; the emtk app is the only ndX GUI** (2026-10-02, T-20261002-NDXQT, tpeulen "go ahead"):
   ndxplorer lost its Qt window and everything that served only it -- 69 modules (75 shipped files: ui 23, plotting 19,

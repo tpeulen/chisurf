@@ -6224,3 +6224,12 @@ instead. *Not fixed here:* reading every `MODEL` block into the frame axis belon
 compare the commands the two hosts build and check one fit with tolerances for this reason. *Not fixed here:* a
 `random_seed` setting (default fixed, so a run is repeatable) belongs in the fitter and its settings file, with a
 reproducibility test; guide 76 lists it under Known defects.
+
+## Updater: the changelog of the newest version ignores the installed version (found 2026-10-02)
+
+**Measured** in the updater port: the changelog area is captioned "Changes since your installed version", but
+`UpdaterWidget._update_changelog_for_selected` (kept as `UpdaterModel.update_changelog_for_selected`) uses the *previous listed
+version* as the start for every entry except the oldest, so the newest version shows "26.09.20 -> 26.10.02" and not "installed ->
+26.10.02". The start-up check shows the installed-to-newest text, the manual check the other (recorded in
+`okf/plugins/emtk-ports/updater/qt_values.json`, `initial` vs `checked`). Both hosts share the behaviour for parity. *Not fixed
+here:* decide the intended range (installed -> selected, or previous -> selected with a different caption) and change the model.
