@@ -114,7 +114,8 @@ Things to check:
 
 ## Export
 
-**💾 Export** on the toolbar writes the volume currently computed:
+The **Export .npy** and **Export .tif** buttons on the toolbar write the volume currently computed
+(greyed until a volume exists; the file dialog proposes a name that records the optics):
 
 | Format | Contents | For |
 | --- | --- | --- |

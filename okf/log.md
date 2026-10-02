@@ -2,6 +2,12 @@
 
 ## 2026-10-01
 
+- **psf_calculator emtk app at parity with what the Qt tool offers** (EMTKUP4): the Qt tool cannot be built here (no 3-D volume renderer in the emtk chiplot
+  backend), so the baseline drives it with a recording stand-in for the renderer; volume, summary and what the renderer is handed equal the Qt tool's, the rendered image
+  is not comparable. The stream's app (hand-drawn drag sliders, Compute button, continuous redraw, a stretched slice, 12 legend entries over the 3-D plot) is now the Qt
+  spec as an emtk spec with typed fields and spin arrows, an auto-computing worker with the Qt 250 ms debounce, polarization and angle greyed when they mean nothing,
+  Export .npy / .tif, and a fixed-height status line (the fields jumped by a line when a computation started). 64+ tests. Evidence in `plugins/emtk-ports/psf_calculator/`.
+
 - **project_browser re-verified with real input; layout fixed** (EMTKUP4): the committed port drew the project tree by hand (an `im.table`), placed the search label to
   the right of its field, left Open / Export / Delete / Inspect enabled with nothing selected and drew its dialogs as bare windows. Now a `data_table` tree (disclosure
   triangles, sort, double-click restore, right-click menu), spec forms for the toolbar, search and details, greyed actions, in-app Save / Delete / Import dialogs with a

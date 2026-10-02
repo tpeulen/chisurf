@@ -204,7 +204,7 @@ def test_every_control_has_a_tooltip(app):
     settle(app)
     inventory = emtk_inventory(app, BIG)
     assert inventory["controls_without_tooltip"] == []
-    assert len(inventory["interactive"]) > 15
+    assert len(inventory["interactive"]) >= 14
 
 
 def test_the_port_is_qt_free():

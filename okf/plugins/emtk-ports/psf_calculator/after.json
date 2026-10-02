@@ -1,0 +1,246 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-100",
+    "-20",
+    "-200",
+    "-300",
+    "-40",
+    "-60",
+    "-80",
+    "/private/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/psf_2yi1cr2q",
+    "0",
+    "0.020",
+    "0.60",
+    "1.40",
+    "1.518",
+    "100",
+    "100.0",
+    "20",
+    "200",
+    "24",
+    "3-dpsf",
+    "30.0",
+    "300",
+    "40",
+    "520",
+    "60",
+    "7",
+    "80",
+    "[..]",
+    "[home]",
+    "[s]",
+    "airy(scalar,2-d)",
+    "angle(°)",
+    "axialfwhm512nm",
+    "axialfwhm600nm",
+    "azimuthal",
+    "cancel",
+    "centralpsfslice",
+    "circular",
+    "colormap",
+    "computingthevolume",
+    "display",
+    "export.npy",
+    "export.tif",
+    "exportpsfas.npy",
+    "filter",
+    "gamma",
+    "gaussian",
+    "gray",
+    "guide",
+    "help",
+    "inferno",
+    "lateralfwhm193nm",
+    "lateralfwhm211nm",
+    "lateralsize(px)",
+    "leftcircular",
+    "linearatangle",
+    "linearx",
+    "lineary",
+    "magma",
+    "model",
+    "n(immersion)",
+    "na",
+    "numpyarray",
+    "objective",
+    "opticalmodel",
+    "orthogonalslice",
+    "parameters",
+    "pixel(nm)",
+    "planes",
+    "polarization",
+    "polarizationvectors",
+    "preview(fast)",
+    "psf_airy_na1.4_n1.518_520nm_linear.npy",
+    "psfvolume",
+    "quality",
+    "radial",
+    "sampling",
+    "save",
+    "scalar0.51λ/na=189nm(1.02xlateral)",
+    "scalar0.51λ/na=189nm(1.12xlateral)",
+    "sliceplane",
+    "threshold",
+    "unpolarized",
+    "vectorial(richards-wolf)",
+    "viridis",
+    "volume7x24x24(30nmpx,100nmz)",
+    "x[nm]",
+    "xy",
+    "xz",
+    "y[nm]",
+    "yz",
+    "z[nm]",
+    "zstep(nm)",
+    "λ(nm)"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Export .npy",
+      "id": "Export .npy##export_npy",
+      "tooltip": "Save the computed volume as a NumPy array at full float precision, without metadata. Greyed until a volume exists."
+    },
+    {
+      "kind": "button",
+      "label": "Export .tif",
+      "id": "Export .tif##export_tif",
+      "tooltip": "Save the computed volume as a 32-bit ImageJ TIFF stack that carries the voxel size, so ImageJ scales it correctly. Greyed until a volume exists."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help##help",
+      "tooltip": "Explain the optical models, the polarization and how to read the volume."
+    },
+    {
+      "kind": "input_text",
+      "label": "na",
+      "id": "##na",
+      "tooltip": "Numerical aperture. Above about 1.0 the scalar models stop being trustworthy and the vectorial one should be used."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_immersion",
+      "id": "##n_immersion",
+      "tooltip": "Refractive index of the immersion medium: 1.518 oil, 1.33 water, 1.0 air. The NA cannot exceed it."
+    },
+    {
+      "kind": "input_text",
+      "label": "wavelength_nm",
+      "id": "##wavelength_nm",
+      "tooltip": "Emission or excitation wavelength in nanometres."
+    },
+    {
+      "kind": "input_text",
+      "label": "angle_deg",
+      "id": "##angle_deg",
+      "tooltip": "Orientation of the linear state, measured from the x axis. Used only when Polarization is 'Linear at angle'."
+    },
+    {
+      "kind": "input_text",
+      "label": "nxy",
+      "id": "##nxy",
+      "tooltip": "Pixels per lateral side of the volume."
+    },
+    {
+      "kind": "input_text",
+      "label": "nz",
+      "id": "##nz",
+      "tooltip": "Number of axial planes, centred on focus."
+    },
+    {
+      "kind": "input_text",
+      "label": "pixel_size_nm",
+      "id": "##pixel_size_nm",
+      "tooltip": "Lateral sampling in nanometres."
+    },
+    {
+      "kind": "input_text",
+      "label": "z_step_nm",
+      "id": "##z_step_nm",
+      "tooltip": "Axial spacing between planes."
+    },
+    {
+      "kind": "input_text",
+      "label": "threshold",
+      "id": "##threshold",
+      "tooltip": "Hide voxels below this fraction of the peak. A diffraction-limited focus is mostly empty space and renders as fog without it."
+    },
+    {
+      "kind": "input_text",
+      "label": "gamma",
+      "id": "##gamma",
+      "tooltip": "Shapes the opacity ramp. Below 1 lifts the faint wings into view."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Polarization vectors",
+      "id": "Polarization vectors##show_polarization",
+      "tooltip": "Draw the pupil polarization state as strokes on a ring above the focus. Vectorial model only, since the scalar models ignore polarization."
+    },
+    {
+      "kind": "button",
+      "label": "×",
+      "id": "×##Export PSF as .npy.header.×",
+      "tooltip": "Close this window (Escape)."
+    },
+    {
+      "kind": "selectable",
+      "label": "[..]",
+      "id": "[..]##folder:..",
+      "tooltip": "Open this folder.\n/private/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/psf_2yi1cr2q/.."
+    },
+    {
+      "kind": "selectable",
+      "label": "[home]",
+      "id": "[home]##folder:home",
+      "tooltip": "Open this folder.\n/private/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/psf_2yi1cr2q/home"
+    },
+    {
+      "kind": "selectable",
+      "label": "[s]",
+      "id": "[s]##folder:s",
+      "tooltip": "Open this folder.\n/private/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/psf_2yi1cr2q/s"
+    },
+    {
+      "kind": "input_text",
+      "label": "file-dialog-name",
+      "id": "##file-dialog-name",
+      "tooltip": "Enter the output file name; the selected format supplies its extension."
+    },
+    {
+      "kind": "combo",
+      "label": "file-dialog-filter",
+      "id": "##file-dialog-filter",
+      "tooltip": "Choose which file formats to list or save."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Save to the chosen output file."
+    },
+    {
+      "kind": "button",
+      "label": "Cancel",
+      "id": "Cancel",
+      "tooltip": "Close the file chooser without selecting a path."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  }
+}

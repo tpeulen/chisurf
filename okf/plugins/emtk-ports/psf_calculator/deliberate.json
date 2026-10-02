@@ -1,0 +1,14 @@
+{
+  "1": "an entry of the Qt inventory's table pseudo-items (the Qt combo models list their rows by index), not a control: every choice of the Qt tool is listed in the emtk combos (the inventory opens them)",
+  "2": "an entry of the Qt inventory's table pseudo-items (the Qt combo models list their rows by index), not a control: every choice of the Qt tool is listed in the emtk combos (the inventory opens them)",
+  "3": "an entry of the Qt inventory's table pseudo-items (the Qt combo models list their rows by index), not a control: every choice of the Qt tool is listed in the emtk combos (the inventory opens them)",
+  "4": "an entry of the Qt inventory's table pseudo-items (the Qt combo models list their rows by index), not a control: every choice of the Qt tool is listed in the emtk combos (the inventory opens them)",
+  "5": "an entry of the Qt inventory's table pseudo-items (the Qt combo models list their rows by index), not a control: every choice of the Qt tool is listed in the emtk combos (the inventory opens them)",
+  "6": "an entry of the Qt inventory's table pseudo-items (the Qt combo models list their rows by index), not a control: every choice of the Qt tool is listed in the emtk combos (the inventory opens them)",
+  "8": "an entry of the Qt inventory's table pseudo-items (the Qt combo models list their rows by index), not a control: every choice of the Qt tool is listed in the emtk combos (the inventory opens them)",
+  "3-dvolumeview(notrenderedherethe'emtk'chiplotbackendhasnovolumerenderer)": "the text of the stand-in the baseline capture used for the 3-D renderer (the Qt tool cannot be constructed without a renderer); the emtk window draws the volume with implot3d, titled '3-D PSF'",
+  "?": "the Qt '?' help button -> the Help button",
+  "export": "the Qt 'Export' menu button -> the two buttons Export .npy and Export .tif (the menu's two entries)",
+  "γ": "the Qt label for the display gamma; emtk's shared label translation draws it as 'Gamma'",
+  "full": "the Qt 'Full' quality radio -> the Quality combo's entry 'Full' (the inline radios were cut at 800 px); the combo shows its entry while open"
+}
