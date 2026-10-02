@@ -1,0 +1,48 @@
+{
+  "controls": [
+    "1",
+    "apply→",
+    "backgroundvh(⊥)",
+    "backgroundvv(∥)",
+    "clear",
+    "convstart",
+    "convstop",
+    "database",
+    "detector",
+    "files",
+    "irffiles(thisdetector)",
+    "irfstart",
+    "irfstop",
+    "remove",
+    "shiftvh(⊥,ch)",
+    "shiftvv(∥,ch)"
+  ],
+  "labels": [
+    "Background VH (⊥)",
+    "Background VV (∥)",
+    "Conv start",
+    "Conv stop",
+    "Detector",
+    "IRF files (this detector)",
+    "IRF start",
+    "IRF stop",
+    "Shift VH (⊥, ch)",
+    "Shift VV (∥, ch)"
+  ],
+  "buttons": [
+    "Apply →",
+    "➕ Files",
+    "➖ Remove",
+    "🗄️ Database",
+    "🗑️ Clear"
+  ],
+  "line_edits": 8,
+  "combos": 1,
+  "spin_boxes": 8,
+  "tables": 2,
+  "entrypoint": "HEAD:chisurf.plugins.microscopy.img_calibration.gui.tool:ImgCalibrationTool (+HEAD view_model)",
+  "size": [
+    1200,
+    800
+  ]
+}

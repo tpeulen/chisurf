@@ -1,0 +1,332 @@
+"""Native detector calibration with asynchronous photon histograms."""
+
+from __future__ import annotations
+
+import copy
+import queue
+import threading
+from pathlib import Path
+
+import numpy as np
+from emtk import im, implot
+from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
+from emtk.docking import DockManager, Region, Split
+from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
+
+from chisurf.emtk.help_guide import EmTkHelpWindow
+from chisurf.plugins.calculator.inputs import bounded_float, bounded_int
+
+from .view_model import CalibrationViewModel
+
+_FIELDS = (
+    ("sel_conv_start", "Fit start", True),
+    ("sel_conv_stop", "Fit stop", True),
+    ("sel_irf_start", "IRF start", True),
+    ("sel_irf_stop", "IRF stop", True),
+    ("sel_bg_vv", "Background VV", False),
+    ("sel_bg_vh", "Background VH", False),
+    ("sel_shift_vv", "Shift VV", False),
+    ("sel_shift_vh", "Shift VH", False),
+)
+
+
+def label(text):
+    return tr(text, context="ImgCalibration")
+
+
+class CalibrationApp(ImApp):
+    """Edit independently cached detector calibrations and publish deep snapshots."""
+
+    def __init__(self, model=None, coordinator=None, **kwargs):
+        self.model = model or CalibrationViewModel()
+        self.coordinator = coordinator
+        if coordinator is not None:
+            self.model.publish = coordinator.set_calibration
+        self.busy = False
+        self.error = ""
+        self._messages = queue.SimpleQueue()
+        self._failed_signature = None
+        self.dialog = None
+        self.dialog_window = None
+        self.dialog_action = ""
+        self.file_selection = -1
+        self.help = EmTkHelpWindow(
+            title="IRF & BG — Help", resource=Path(__file__).with_name("help.md"), owner=self
+        )
+        self.docks = DockManager(Split("h", 0.32, Region("controls"), Region("plot")))
+        self.docks.add_window(
+            "controls", label("Calibration"), self.controls, dock="controls", closable=False
+        )
+        self.docks.add_window("plot", label("Decay & IRF"), self.plot, dock="plot", closable=False)
+        super().__init__(self.render, continuous=False)
+
+    def choose(self, action):
+        self.dialog_action = action
+        self.dialog = FileDialog(
+            label("Open TTTR" if action == "source" else "Add IRF"),
+            mode="open",
+            filters="Photon data (*.pto *.ptu *.ht3 *.spc *.pt3);;All files (*)",
+        )
+        self.dialog_window = DialogWindow(
+            self.dialog.title, size=(700, 540), key="calibration_file"
+        )
+        self.dialog_window.show()
+
+    def add_irfs(self, paths):
+        if not self.model.display_detector:
+            self.error = label("Choose a detector first")
+            return False
+        current = self.model.sel_irf_files
+        for path in paths:
+            path = str(path)
+            if path not in current:
+                current.append(path)
+        self.model.sel_irf_files = current
+        return True
+
+    def on_files_dropped(self, paths):
+        return self.add_irfs(paths) if paths else False
+
+    def apply_setup_settings(self, payload):
+        self.model.apply_setup_settings(copy.deepcopy(payload))
+        self.model._hist_cache.clear()
+
+    def apply_pipeline_context(self, payload):
+        self.model.apply_pipeline_context(payload)
+
+    def request_histograms(self):
+        signature = (self.model._hist_key(), repr(self.model.detectors))
+        if self.busy or not self.model.needs_histograms() or signature == self._failed_signature:
+            return
+        snapshot = copy.copy(self.model)
+        snapshot.detectors = copy.deepcopy(self.model.detectors)
+        snapshot.calibration = copy.deepcopy(self.model.calibration)
+        snapshot._hist_cache = {}
+        snapshot._observers = []
+        key = snapshot._hist_key()
+        self.busy = True
+        self.error = ""
+
+        def worker():
+            try:
+                result = snapshot.ensure_histograms()
+                self._messages.put((key, signature, result, ""))
+            except Exception as exc:
+                self._messages.put((key, signature, None, str(exc)))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def poll(self):
+        while not self._messages.empty():
+            key, signature, hist, error = self._messages.get()
+            self.busy = False
+            # A setup/channel change can leave the same filename/detector key.
+            # Cache only if the worker's complete detector definition still matches.
+            if signature == (self.model._hist_key(), repr(self.model.detectors)):
+                if hist is not None:
+                    self.model._hist_cache[key] = hist
+                self.error = error
+                self._failed_signature = signature if error else None
+        self.request_histograms()
+
+    def retry(self):
+        if not self.busy:
+            self._failed_signature = None
+            self.model._hist_cache.clear()
+            self.request_histograms()
+
+    def apply(self):
+        for name, row in self.model.calibration.items():
+            for start, stop in (
+                ("conv_start", "conv_stop"),
+                ("irf_start", "irf_stop"),
+                ("bg_start", "bg_stop"),
+            ):
+                if row.get(stop, 0) and row.get(start, 0) >= row[stop]:
+                    self.error = name + ": " + label("Range start must be smaller than stop")
+                    return False
+            if row.get("bg_vv", 0) < 0 or row.get("bg_vh", 0) < 0:
+                self.error = label("Background must be nonnegative")
+                return False
+        if callable(self.model.publish):
+            try:
+                self.model.publish(copy.deepcopy(self.model.calibration))
+            except Exception as exc:
+                self.error = str(exc)
+                return False
+        self.error = ""
+        self.model.status_text = label("Calibration applied")
+        return True
+
+    def button(self, text, action, tip=None):
+        if im.button(label(text)):
+            action()
+        im.set_item_tooltip(label(tip or text))
+
+    def controls(self, box):
+        self.button("Help", self.help.show, "Calibration help")
+        im.same_line()
+        self.button("Open TTTR", lambda: self.choose("source"), "Open source photon data")
+        im.same_line()
+        self.button("Refresh", self.retry, "Reload histograms after correcting source files")
+        im.text_wrapped(self.model.filename or label("Choose source photon data"))
+        names = self.model.window_names()
+        im.text_unformatted(label("Detector"))
+        if names:
+            index = (
+                names.index(self.model.display_detector)
+                if self.model.display_detector in names
+                else 0
+            )
+            changed, index = im.combo("##Detector", index, names)
+            im.set_item_tooltip(label("Settings are independent for each detector"))
+            if changed:
+                self.model.display_detector = names[index]
+        else:
+            im.text_wrapped(label("Configure detector windows in Imaging Tools"))
+        im.separator()
+        im.text_unformatted(label("IRF files"))
+        self.button(
+            "Add IRF", lambda: self.choose("irf"), "Add photon files; dropped files are summed"
+        )
+        im.same_line()
+        self.button("Remove", self.remove_irf, "Remove selected IRF file")
+        im.same_line()
+        self.button(
+            "Clear",
+            lambda: setattr(self.model, "sel_irf_files", []),
+            "Clear IRF files for this detector",
+        )
+        for index, path in enumerate(self.model.sel_irf_files):
+            clicked = im.selectable(
+                Path(path).name + "##irf" + str(index), index == self.file_selection
+            )
+            im.set_item_tooltip(path)
+            if clicked:
+                self.file_selection = index
+        im.separator()
+        im.begin_disabled(not names)
+        for attr, title, integer in _FIELDS:
+            im.text_unformatted(label(title))
+            value = getattr(self.model, attr)
+            minimum = -100000 if "shift" in attr else 0
+            im.set_next_item_width(max(60, box[2] - (48 if integer else 12)))
+            fn = bounded_int if integer else bounded_float
+            changed, value = fn("##" + attr, value, minimum=minimum, maximum=1000000)
+            im.set_item_tooltip(
+                label("Edit microtime channel boundary")
+                if integer
+                else label("Background counts or circular shift in channels")
+            )
+            if changed:
+                setattr(self.model, attr, value)
+        im.end_disabled()
+        self.button("Apply", self.apply, "Transfer calibration to Phasor and MLE")
+        if self.coordinator is not None:
+            im.same_line()
+            self.button("Next", self.next_step, "Apply and advance imaging pipeline")
+        im.text_wrapped(
+            label("Binning histograms…") if self.busy else self.error or self.model.status_text
+        )
+
+    def remove_irf(self):
+        files = self.model.sel_irf_files
+        if 0 <= self.file_selection < len(files):
+            files.pop(self.file_selection)
+            self.model.sel_irf_files = files
+            self.file_selection = -1
+
+    def next_step(self):
+        if self.apply():
+            self.coordinator.advance_from("calibration")
+
+    def plot(self, box):
+        data = self.model.decay_data()
+        if data is None:
+            im.text_wrapped(label("Load photon data and configure a detector to view decay"))
+            return
+        if implot.begin_plot(label("Decay & IRF"), (-1, -1)):
+            implot.setup_axes(label("Microtime channel"), label("Photon counts / normalized IRF"))
+            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+            implot.setup_legend()
+            x = np.arange(data["n"], dtype=float)
+            implot.plot_line(label("Decay"), x, np.maximum(data["data"], 0.1))
+            for name in ("irf_vv", "irf_vh"):
+                if data[name] is not None:
+                    scaled = (
+                        data[name]
+                        * max(float(np.max(data["data"])), 1)
+                        / max(float(np.max(data[name])), 1e-12)
+                    )
+                    implot.plot_line(name.upper(), x, np.maximum(scaled, 0.1))
+            tags = {}
+            for index, (name, setter, color) in enumerate(
+                (
+                    ("conv", self.model.set_conv_range, (51, 153, 255, 255)),
+                    ("irf_range", self.model.set_irf_range, (77, 204, 102, 255)),
+                    ("bg_range", self.model.set_bg_range, (153, 153, 153, 255)),
+                )
+            ):
+                start, stop = data[name]
+                tag_names, tag_color = tags.setdefault(stop, ([], color))
+                tag_names.append(("Fit", "IRF", "BG")[index])
+                a = implot.drag_line_x(index * 2, start, color, 2)
+                b = implot.drag_line_x(index * 2 + 1, stop, color, 2)
+                if a.modified or b.modified:
+                    setter(max(0, min(data["n"], a.value)), max(0, min(data["n"], b.value)))
+                if a.hovered or b.hovered:
+                    im.set_tooltip(label("Drag fit, IRF and background boundaries"))
+            for value, (names, color) in tags.items():
+                implot.tag_x(value, color, " / ".join(names))
+            implot.end_plot()
+            im.set_item_tooltip(label("Drag fit, IRF and background boundaries"))
+
+    def export_settings(self):
+        return {
+            "filename": self.model.filename,
+            "detectors": copy.deepcopy(self.model.detectors),
+            "calibration": copy.deepcopy(self.model.calibration),
+            "display_detector": self.model.display_detector,
+        }
+
+    def restore_settings(self, data):
+        self.model.filename = str(data.get("filename", ""))
+        self.model.detectors = copy.deepcopy(data.get("detectors", {}))
+        self.model.calibration = copy.deepcopy(data.get("calibration", {}))
+        self.model.display_detector = data.get("display_detector", "")
+        if self.model.display_detector not in self.model.detectors:
+            self.model.display_detector = next(iter(self.model.detectors), "")
+        self.model._hist_cache.clear()
+
+    def animating(self):
+        return super().animating() or self.busy
+
+    def render(self):
+        self.poll()
+        vp = im.get_main_viewport()
+        self.docks.draw((0, 0, *vp.size))
+        if self.dialog:
+            pressed = self.dialog_window.begin((0, 0, *vp.size))
+            result = self.dialog.draw()
+            if result:
+                if self.dialog_action == "source":
+                    self.model.apply_pipeline_context({"source": str(result[0])})
+                else:
+                    self.add_irfs(result)
+                self.dialog = None
+            elif result is False or pressed == "close":
+                self.dialog = None
+            self.dialog_window.end()
+        self.help.draw((0, 0, *vp.size))
+
+
+def make_app(**kwargs):
+    from chisurf.emtk.i18n import install
+
+    from .locales import install_translations
+
+    install()
+    install_translations()
+    return CalibrationApp(**kwargs)

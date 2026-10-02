@@ -1,0 +1,6 @@
+ M chisurf/plugins/microscopy/img_calibration/manifest.json
+?? chisurf/plugins/microscopy/img_calibration/gui/app.py
+?? chisurf/plugins/microscopy/img_calibration/gui/help.md
+?? chisurf/plugins/microscopy/img_calibration/gui/locales.py
+?? chisurf/plugins/microscopy/img_calibration/gui/translations.json
+?? chisurf/plugins/microscopy/img_calibration/test/
