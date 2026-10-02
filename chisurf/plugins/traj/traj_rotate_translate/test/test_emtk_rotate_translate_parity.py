@@ -28,7 +28,10 @@ R = [[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]      # 90 degrees about
 T = [10.0, 0.0, 0.0]
 STRIDE = 4
 
-from chisurf.plugins.traj.traj_rotate_translate.app import RotateTranslateApp, rotation_problem  # noqa: E402
+from chisurf.plugins.traj.traj_rotate_translate.app import (  # noqa: E402
+    RotateTranslateApp,
+    rotation_problem,
+)
 
 
 def _draw(app, size=(1200, 800), n=2, painter=RecordingPainter):
