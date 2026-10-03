@@ -1,0 +1,338 @@
+{
+  "_comment": "Batch Analysis, native emtk window. One panel per wizard step, drawn by emtk.view_form over BatchModel (gui/model.py); 'navigation' is the Back / Next / Finish bar. Same steps, titles and fields as the Qt wizard (../batch.view.json).",
+  "title": "Batch Analysis",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Navigation",
+      "name": "navigation",
+      "description": "Walk the steps in order: Back, Next, and Finish on the last step.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Back goes to the previous step, Next to the following one and Finish (last step only) closes the wizard.",
+          "buttons": [
+            {
+              "action": "go_back",
+              "label": "Back",
+              "description": "Go to the previous step. Not available on the first step."
+            },
+            {
+              "action": "go_next",
+              "label": "Next",
+              "description": "Go to the following step. Every step can be visited in any order.",
+              "hidden_when": {
+                "attr": "is_last",
+                "equals": "True"
+              }
+            },
+            {
+              "action": "finish",
+              "label": "Finish",
+              "description": "Close the wizard. The results stay in the CSV, DOCX and ZIP files that were written.",
+              "hidden_when": {
+                "attr": "is_last",
+                "equals": "False"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Welcome",
+      "name": "welcome",
+      "description": "What a batch analysis does and what to prepare before it.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "markdown",
+          "description": "The introduction to the batch analysis.",
+          "options": {
+            "source": "welcome_md"
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Loaded data",
+      "name": "datasets",
+      "description": "Datasets already loaded in ChiSurf that join the batch. Optional.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "Loaded datasets",
+          "description": "Every dataset loaded in ChiSurf. Tick the ones to fit with the template; they run before the files.",
+          "options": {
+            "source": "dataset_rows",
+            "row_key": "index",
+            "tooltip_key": "tip",
+            "editable": true,
+            "edited_call": "set_dataset_use",
+            "expand": true,
+            "reserve": 78,
+            "min_column_width": 50,
+            "columns": [
+              {
+                "key": "use",
+                "title": "Use",
+                "width": 56,
+                "editable": true,
+                "tooltip": "Tick to include the dataset in the batch."
+              },
+              {
+                "key": "label",
+                "title": "Dataset",
+                "width": 400,
+                "editable": false,
+                "tooltip": "Number and name of the loaded dataset; hover a row for its file."
+              }
+            ]
+          }
+        },
+        {
+          "type": "custom",
+          "key": "notice",
+          "description": "How many datasets are ticked, or why the list is empty.",
+          "options": {
+            "source": "datasets_hint"
+          }
+        },
+        {
+          "type": "custom",
+          "key": "actions",
+          "description": "Re-scan the datasets loaded in ChiSurf.",
+          "options": {
+            "buttons": [
+              {
+                "action": "refresh_datasets",
+                "label": "Refresh",
+                "description": "Re-scan the datasets currently loaded in ChiSurf; ticks of datasets that are still there are kept."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Files & fit",
+      "name": "files",
+      "description": "Files to load and fit, and the template fit whose parameters seed every run.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "Files to process",
+          "description": "Files that are loaded one by one and fitted after the loaded datasets. Drop files or folders on the window to add them.",
+          "options": {
+            "source": "file_rows",
+            "row_key": "path",
+            "tooltip_key": "path",
+            "selected_call": "select_file",
+            "delete_call": "remove_file",
+            "expand": true,
+            "reserve": 150,
+            "min_column_width": 60,
+            "columns": [
+              {
+                "key": "name",
+                "title": "File",
+                "width": 220,
+                "tooltip": "File name; hover a row for its full path."
+              },
+              {
+                "key": "folder",
+                "title": "Folder",
+                "width": 380,
+                "tooltip": "Folder the file lives in."
+              }
+            ]
+          }
+        },
+        {
+          "type": "custom",
+          "key": "actions",
+          "description": "Add files, a folder or a database dataset; remove the selected file or clear the list.",
+          "options": {
+            "buttons": [
+              {
+                "action": "add_files",
+                "label": "Files",
+                "description": "Add files."
+              },
+              {
+                "action": "add_folder",
+                "label": "Folder",
+                "description": "Add a folder (every file below it, scanned recursively)."
+              },
+              {
+                "action": "add_database",
+                "label": "Database",
+                "description": "Select a dataset from the MMFDB database (including S3-backed object stores)."
+              },
+              {
+                "action": "remove_selected",
+                "label": "Remove",
+                "description": "Remove the selected file from the list (the file itself is not deleted)."
+              },
+              {
+                "action": "clear_files",
+                "label": "Clear",
+                "description": "Clear the list."
+              }
+            ]
+          }
+        },
+        {
+          "type": "choice",
+          "label": "Template fit",
+          "attr": "selected_fit_name",
+          "width": 420,
+          "options_source": "fit_names",
+          "description": "The pre-optimised fit whose parameters seed every run."
+        },
+        {
+          "type": "custom",
+          "key": "actions",
+          "description": "List the fits of ChiSurf again.",
+          "options": {
+            "buttons": [
+              {
+                "action": "refresh_fits",
+                "label": "Refresh fits",
+                "description": "List the fits that exist in ChiSurf now (the list is read when this step opens)."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Run",
+      "name": "run",
+      "description": "Choose where to save the results, then run the batch.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "markdown",
+          "description": "What the batch will run: datasets, files and the template fit.",
+          "options": {
+            "source": "selection_md"
+          }
+        },
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Results CSV",
+          "attr": "save_path",
+          "elide": "start",
+          "placeholder": "results.csv",
+          "description": "Destination CSV. A DOCX report and a ZIP of per-run exports are written alongside."
+        },
+        {
+          "type": "custom",
+          "key": "actions",
+          "description": "Choose the CSV file, and run the batch.",
+          "options": {
+            "buttons": [
+              {
+                "action": "browse_results",
+                "label": "Browse...",
+                "description": "Choose where to save the results CSV."
+              },
+              {
+                "action": "run",
+                "label": "Run batch",
+                "description": "Run the template fit over every selected dataset/file."
+              }
+            ]
+          }
+        },
+        {
+          "type": "progress",
+          "attr": "progress_fraction",
+          "text_source": "progress_text",
+          "description": "How many items of the batch are fitted."
+        },
+        {
+          "type": "custom",
+          "key": "run_message",
+          "description": "The outcome of the last run: written files, or what went wrong.",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Results",
+      "name": "results",
+      "description": "Per-parameter results of the last run.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "run_message",
+          "description": "The outcome of the last run: written files, or what went wrong.",
+          "options": {}
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "Results of the last run",
+          "description": "One row per item and parameter, as written to the CSV.",
+          "options": {
+            "source": "result_rows",
+            "expand": true,
+            "reserve": 8,
+            "filter": true,
+            "status": true,
+            "min_column_width": 50,
+            "columns": [
+              {
+                "key": "Run",
+                "title": "Run",
+                "width": 50,
+                "tooltip": "Position of the item in the queue (loaded datasets first, then files).",
+                "shade": false
+              },
+              {
+                "key": "Filename",
+                "title": "Filename",
+                "width": 220,
+                "tooltip": "Dataset name or file path of the item."
+              },
+              {
+                "key": "Parameter",
+                "title": "Parameter",
+                "width": 130,
+                "tooltip": "Name of the model parameter."
+              },
+              {
+                "key": "Fixed",
+                "title": "Fixed",
+                "width": 56,
+                "tooltip": "Yes when the parameter was held fixed in the template."
+              },
+              {
+                "key": "Value",
+                "title": "Value",
+                "width": 100,
+                "tooltip": "Parameter value after the fit."
+              },
+              {
+                "key": "Chi2r",
+                "title": "Chi2r",
+                "width": 80,
+                "tooltip": "Reduced chi-square of the fit; a jump marks a sample the template does not describe."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

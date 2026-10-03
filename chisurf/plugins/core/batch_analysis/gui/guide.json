@@ -1,39 +1,57 @@
 {
-  "_comment": "Guided tour for the Batch-Analysis wizard. Steps point at real wizard rows and controls and wait for the user. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for the Batch Analysis wizard. 'target.name' is a control the emtk app draws (a step in the list, a table, a field's attr, a button's action); 'page' is the step the app opens when the tour reaches the card. A step with 'await' waits for the user to operate its target.",
   "steps": [
     {
       "title": "One fit, many datasets",
-      "text": "Every item in the batch starts from the same template parameters, so the numbers that come out are comparable. That only works if the template is good: optimise one representative fit by hand <b>before</b> this. Six steps.",
-      "target": {}
+      "text": "Every item in the batch starts from the same template parameters, so the numbers that come out are comparable. That only works if the template is good: optimise one representative fit by hand <b>before</b> this. Five steps, listed on the left.",
+      "page": "welcome",
+      "target": {"name": "nav_list"}
     },
     {
       "title": "Pick datasets already loaded",
-      "text": "Anything loaded in ChiSurf can join the batch. Hover a row to see the curve.",
-      "target": {"panel": "Loaded data"},
-      "await": {"hint": "Open <b>Loaded data</b> and tick the datasets to process."}
+      "text": "Anything loaded in ChiSurf can join the batch. Open <b>Loaded data</b> in the step list.",
+      "page": "welcome",
+      "target": {"name": "step_datasets"},
+      "await": {"hint": "Click <b>Loaded data</b> in the step list."}
+    },
+    {
+      "title": "Tick the ones to fit",
+      "text": "Each ticked dataset is fitted with the template. Hover a row to see its file. Optional: a batch of files alone is fine.",
+      "page": "datasets",
+      "target": {"name": "dataset_header"}
     },
     {
       "title": "Or add files",
-      "text": "Files are loaded one by one and fitted after the loaded datasets. A folder adds everything in it.",
-      "target": {"attr": "files"}
+      "text": "Files are loaded one by one and fitted after the loaded datasets. <b>Files</b>, <b>Folder</b> (everything below it) and <b>Database</b> add them; you can also drop files on the window.",
+      "page": "files",
+      "target": {"name": "add_files"}
     },
     {
       "title": "Choose the template",
-      "text": "The fit whose parameter values — and fixed flags — seed every run.",
-      "target": {"attr": "selected_fit_name"},
+      "text": "The fit whose parameter values and fixed flags seed every run.",
+      "page": "files",
+      "target": {"name": "selected_fit_name"},
       "await": {"hint": "Choose the <b>Template fit</b>."}
     },
     {
       "title": "Where the results go",
       "text": "A CSV here; a DOCX report and a ZIP of per-run curve exports are written beside it.",
-      "target": {"attr": "save_path"}
+      "page": "run",
+      "target": {"name": "save_path"}
     },
     {
       "title": "Run it",
-      "text": "Each item is restored to the template, fitted, exported and captured. When it finishes, scan the <b>Chi2r</b> column in <b>Results</b> first — a jump marks a sample the template does not describe.",
-      "target": {"action": "Run batch"},
-      "await": {"hint": "Press <b>▶️ Run batch</b>."},
+      "text": "Each item is restored to the template, fitted and exported. When it finishes, scan the <b>Chi2r</b> column in <b>Results</b> first: a jump marks a sample the template does not describe.",
+      "page": "run",
+      "target": {"name": "run"},
+      "await": {"hint": "Press <b>Run batch</b>."},
       "links": [{"text": "Guide", "doc": "docs/guides/78_model_comparison_and_batch.md"}]
+    },
+    {
+      "title": "Read the results",
+      "text": "One row per item and parameter, as in the CSV. Sort by a column, or type in the filter box to narrow the rows.",
+      "page": "results",
+      "target": {"name": "result_header"}
     }
   ]
 }
