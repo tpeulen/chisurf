@@ -1,0 +1,190 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-10",
+    "0",
+    "0.00251256",
+    "0.01",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1.0000",
+    "1.5",
+    "10",
+    "12.5",
+    "130",
+    "2",
+    "2.5",
+    "3",
+    "3.5",
+    "4",
+    "50",
+    "6",
+    "actions",
+    "add",
+    "addedcomponentc0fretfd(gaussian)",
+    "addfretline",
+    "addsubcomponent",
+    "b0",
+    "bounds",
+    "c0",
+    "c0fretfd(gaussian)",
+    "components",
+    "distances",
+    "donor",
+    "donorreference",
+    "e_fret",
+    "fixed",
+    "fretfd(gaussian)",
+    "fretline",
+    "fretlines",
+    "guide",
+    "help",
+    "inf",
+    "inputcurves",
+    "k0",
+    "livemodeleditor",
+    "lower",
+    "model",
+    "modelsettings",
+    "name",
+    "nolivedonorreferences",
+    "pushtondx",
+    "rda0",
+    "remove",
+    "removesubcomponent",
+    "rotations",
+    "s0",
+    "savecsv",
+    "sweep",
+    "td0",
+    "upper",
+    "value",
+    "weight",
+    "x0",
+    "xd0",
+    "τ_f(ns)",
+    "τ_x(ns)",
+    "τ_x(τ_f)",
+    "τ_x=τ_f"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Add",
+      "id": "Add##add_component",
+      "tooltip": "Append a component with the model of the selected one; it can then be edited independently."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove##remove_component",
+      "tooltip": "Remove the selected component. One component always stays."
+    },
+    {
+      "kind": "input_text",
+      "label": "weight",
+      "id": "##weight",
+      "tooltip": "Mixing weight of the selected component (normalised across the components)."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Input curves",
+      "id": "Input curves",
+      "tooltip": "Load or unload measured IRF, background and correction curves for this model."
+    },
+    {
+      "kind": "combo",
+      "label": "Donor reference",
+      "id": "Donor reference",
+      "tooltip": "Open a donor-only fit or register a lifetime working model to populate the reference list."
+    },
+    {
+      "kind": "button",
+      "label": "Add subcomponent",
+      "id": "Add subcomponent",
+      "tooltip": "Add an independent donor component."
+    },
+    {
+      "kind": "button",
+      "label": "Remove subcomponent",
+      "id": "Remove subcomponent",
+      "tooltip": "Remove the last donor component; one stays."
+    },
+    {
+      "kind": "button",
+      "label": "Add subcomponent",
+      "id": "Add subcomponent",
+      "tooltip": "Add an independent distances component."
+    },
+    {
+      "kind": "button",
+      "label": "Remove subcomponent",
+      "id": "Remove subcomponent",
+      "tooltip": "Remove the last distances component; one stays."
+    },
+    {
+      "kind": "button",
+      "label": "Add subcomponent",
+      "id": "Add subcomponent",
+      "tooltip": "Add an independent rotations component."
+    },
+    {
+      "kind": "button",
+      "label": "Remove subcomponent",
+      "id": "Remove subcomponent",
+      "tooltip": "Remove the last rotations component; one stays."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Model settings",
+      "id": "Model settings",
+      "tooltip": "Scalar settings that define the model's topology and numerical evaluation."
+    },
+    {
+      "kind": "button",
+      "label": "Add FRET line",
+      "id": "Add FRET line##add_line",
+      "tooltip": "Compute the current mixture and sweep and add it as a new line. Press repeatedly to overlay several lines."
+    },
+    {
+      "kind": "button",
+      "label": "Save CSV",
+      "id": "Save CSV##save_csv",
+      "tooltip": "Save all computed lines to one CSV file (line, sweep, parameter, τ_F, τ_X, E per point)."
+    },
+    {
+      "kind": "button",
+      "label": "Push to ndX",
+      "id": "Push to ndX##push",
+      "tooltip": "Overlay all computed lines on ndX. ndX takes tabulated lines from other tools only when the host gives this window a connection; without one a notice says so."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain static, dynamic, WLC and mixture FRET lines."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through a static line and a two-state dynamic line."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  }
+}

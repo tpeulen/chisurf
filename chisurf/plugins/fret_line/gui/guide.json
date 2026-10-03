@@ -1,37 +1,38 @@
 {
+  "_comment": "Guided tour of the FRET line generator. Steps point at real controls (a spec field's attr, a button's action, a table); the ones that need the user's hands wait for them.",
   "steps": [
     {
       "title": "What a FRET line tells you",
-      "text": "A static species sits on its <b>static line</b> in the E–τ_F plot. A molecule exchanging between two states within the burst bows towards longer lifetimes, onto a <b>dynamic line</b>. We will draw one of each.<br/><br/>The tool starts with one <i>FD (Gaussian)</i> component, which is what the static line needs.",
-      "target": {"tab": "Components"}
+      "text": "A static species sits on its <b>static line</b> in the E-τ_F plot. A molecule exchanging between two states within the burst bows towards longer lifetimes, onto a <b>dynamic line</b>. We draw one of each.<br/><br/>The tool starts with one <i>FD (Gaussian)</i> component, which is what the static line needs.",
+      "target": {"name": "component_rows"}
     },
     {
-      "title": "Step 1 — choose what varies",
-      "text": "Open <b>Sweep</b>. Set <i>Vary</i> to <b>C0 … · RDA0</b>, the mean distance, with Min 20 and Max 120 Å. Set <i>τ_D0</i> to your donor-only lifetime (4 ns if you have none).<br/><br/>The Gaussian width w in the Editor is the linker width, which bends the line away from the diagonal. 6 Å is typical.",
-      "target": {"tab": "Sweep"}
+      "title": "Step 1: choose what varies",
+      "text": "In the <b>Sweep</b> tab, <b>Vary</b> is set to the mean distance <b>C0 ... RDA0</b>. Set <b>Min</b> to 20 and <b>Max</b> to 120 Å, and <b>τ_D0</b> to your donor-only lifetime (4 ns if you have none).<br/><br/>The Gaussian width <i>s0</i> in the editor is the linker width, which bends the line away from the diagonal. 6 Å is typical.",
+      "target": {"attr": "minimum"},
+      "await": {"hint": "Type 20 into <b>Min</b> and press Enter."}
     },
     {
-      "title": "Step 2 — compute the static line",
-      "text": "Press <b>+ Add FRET line</b>. The orange curve is the static line. At τ_F = 2 ns it sits near E = 0.56, while the diagonal 1 − τ_F/τ_D0 gives 0.50.",
-      "target": {"action": "Add FRET line"},
-      "await": true
+      "title": "Step 2: compute the static line",
+      "text": "Press <b>Add FRET line</b>. The orange curve is the static line. At τ_F = 2 ns it sits near E = 0.56, while the diagonal 1 - τ_F/τ_D0 gives 0.50.",
+      "target": {"name": "add_line"},
+      "await": {"hint": "Press <b>Add FRET line</b>."}
     },
     {
-      "title": "Step 3 — a second state",
-      "text": "On <b>Components</b>, press <b>+ Add</b> for a second FD (Gaussian). In the Editor, set component C0's R_DA to one state (e.g. 40 Å) and C1's to the other (70 Å).",
-      "target": {"action": "+ Add"},
-      "await": true
+      "title": "Step 3: a second state",
+      "text": "On the <b>Components</b> tab press <b>Add</b> for a second FD (Gaussian). In the editor, set component C0's RDA0 to one state (for example 40 Å) and C1's to the other (70 Å): select a row to edit that component.",
+      "target": {"name": "add_component"},
+      "await": {"hint": "Press <b>Add</b>."}
     },
     {
-      "title": "Step 4 — sweep the fraction",
-      "text": "Back on <b>Sweep</b>, set <i>Vary</i> to <b>fraction · C0</b>, Min 0 and Max 1, then press <b>+ Add FRET line</b> again. The new curve joins the static line at both states and bows out between them. A population in that gap exchanges within the burst.",
-      "target": {"action": "Add FRET line"},
-      "await": true
+      "title": "Step 4: sweep the fraction",
+      "text": "Back on <b>Sweep</b>, set <b>Vary</b> to <b>fraction · C0</b>, Min 0 and Max 1, then press <b>Add FRET line</b> again. The new curve joins the static line at both states and bows out between them: a population in that gap exchanges within the burst.",
+      "target": {"attr": "sweep_label"}
     },
     {
       "title": "Use the lines",
-      "text": "<b>Save CSV</b> writes every line (τ_F, τ_X, E per point). <b>Push to ndX</b> overlays them on visible ndX overlay panels, over your burst histogram.",
-      "target": {"action": "Push to ndX"}
+      "text": "<b>Save CSV</b> writes every line (τ_F, τ_X, E per point). The <b>FRET lines</b> tab lists them: untick <b>Show</b> to hide one, <b>Remove</b> to delete it. <b>Push to ndX</b> overlays them on ndX when the host connects one.",
+      "target": {"name": "save_csv"}
     }
   ]
 }

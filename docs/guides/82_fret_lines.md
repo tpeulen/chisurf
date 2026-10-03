@@ -26,7 +26,7 @@ populations is covered in {doc}`28_selecting_fret_populations`.
 
 ## Open the tool
 
-**Main → Tools → Calculators**, then the **📈 FRET line** entry. It needs no
+**Main → Tools → Calculators**, then the **FRET line** entry. It needs no
 data. The window can also run on its own:
 `python -m chisurf.plugins.fret_line`.
 
@@ -36,16 +36,19 @@ data. The window can also run on its own:
 
 A static line (orange: one Gaussian distance distribution, σ = 6 Å, mean
 swept 20–120 Å) and a dynamic line (blue: two Gaussian components at 40 and
-70 Å, the fraction of the 40 Å state swept 0 → 1). The Editor shows
-component C1 (R_DA = 70 Å, E = 0.164). R0 = 52 Å and τ_D0 = 4 ns throughout.
+70 Å, the fraction of the 40 Å state swept 0 → 1). The live model editor shows
+component C1 (R_DA = 70 Å) as a table of its parameters. R0 = 52 Å and τ_D0 = 4 ns
+throughout.
 ```
 
 The window is a dock area. Top left are the **Components**, **Sweep** and
-**FRET lines** tabs. Top right is the **Editor** of the selected component.
-The bottom holds two plots: **FRET line** ($E$ against $\langle\tau\rangle_F$)
+**FRET lines** tabs. Top right is the **Live model editor** of the selected component.
+The middle holds two plots: **FRET line** ($E$ against $\langle\tau\rangle_F$)
 and **τ_X(τ_F)** (species- against fluorescence-averaged lifetime, with the
-dashed diagonal $\tau_X = \tau_F$). The action bar at the bottom stays visible
-whatever the dock layout.
+grey diagonal $\tau_X = \tau_F$); the wheel zooms and a drag pans them. The
+**Actions** bar at the bottom (**Add FRET line**, **Save CSV**, **Push to ndX**,
+**Help**, **Guide**) stays visible whatever tab is open. **Guide** walks through a static
+and a dynamic line.
 
 ## Set it up
 
@@ -55,13 +58,19 @@ whatever the dock layout.
    *FRET: FD (Worm-like chain)*, *FRET: FD (Discrete)* (sharp distances) or
    *Lifetime* (plain exponentials, no FRET). Changing it replaces the selected
    component.
-2. **+ Add** / **− Remove**: add a component, or remove the selected one (at
-   least one stays).
-3. **Weight**: the component's initial mixing weight. Weights are normalised
+2. The table lists the components (**C0**, **C1**, ... with model and weight); select
+   a row to edit that component in the editor. **Add** appends a component of the
+   selected one's model, **Remove** removes the selected one (at least one stays,
+   and **Remove** is greyed then).
+3. **Weight**: the selected component's mixing weight. Weights are normalised
    over the components.
 
-**Editor** — the model editor from the fitting window, for the selected
-component. The groups that matter:
+**Live model editor** — the selected component's model. **Input curves** loads a
+measured IRF or background, **Add subcomponent** / **Remove subcomponent** change the number
+of donor lifetimes or distances, **Model settings** holds the scalar settings, and
+the **Model parameters** table lists every parameter the model uses with its
+value, fixed state, bounds and limits: double-click a *Value*, *Lower* or *Upper*
+cell to type a number, click a *Fixed* or *Bounds* box to flip it. The groups that matter:
 
 * **Donor**: the donor-only lifetimes. Add several for a multi-exponential
   donor.
@@ -79,9 +88,9 @@ convolved.
 **Sweep** — what varies along the line.
 
 4. **Vary**: a parameter of any component (labelled `C<i> [model] · name`), or
-   `fraction · C<i>` for a mixture of two or more components. The box is
-   searchable. **all params** also lists the instrument, anisotropy and
-   donor-only parameters, which never make a useful line.
+   `fraction · C<i>` for a mixture of two or more components. **Filter** keeps the
+   targets whose label contains the text (press Enter). **All parameters** also lists
+   the instrument, anisotropy and donor-only parameters, which never make a useful line.
 5. **Min**, **Max**, **log** (logarithmic spacing, both limits > 0) and
    **Points**.
 6. **τ_D0 (ns)**: the reference for $E = 1 - \langle\tau\rangle_x/\tau_{D(0)}$.
@@ -90,8 +99,9 @@ convolved.
    only from *Lifetime* components has no donor to take it from, so it needs
    an explicit τ_D0 or it comes out as NaN.
 
-**+ Add FRET line** computes the current mixture and sweep and adds it as a
-new line with its own colour. Earlier lines are kept. Editing the mixture
+**Add FRET line** computes the current mixture and sweep and adds it as a
+new line with its own colour. Earlier lines are kept, and the sweep puts the
+parameters you edited back where they were. Editing the mixture
 afterwards does not change lines that are already computed, so a family of
 lines is built by editing and pressing again.
 
@@ -128,16 +138,16 @@ distance from the dashed diagonal is how much the fluorescence-averaged
 lifetime from a burst fit overstates the species-averaged lifetime that
 determines $E$.
 
-The **FRET lines** tab lists every computed line in its plot colour. Untick a
-line to hide it, and use **Show all** / **Hide all**. **− Remove** deletes the
-selected line and **Clear all** deletes every line. Hover over a line for the
+The **FRET lines** tab lists every computed line with its colour. Untick **Show** to
+hide a line, and use **Show all** / **Hide all**. **Remove** deletes the
+selected line and **Clear all** deletes every line. Hover over a row for the
 components it was computed from.
 
 ```{figure} figures/fret_line_tool_lines.png
 :name: fig-fret-line-tool-lines
 :width: 100%
 
-The FRET lines tab with the two lines above, each in its plot colour.
+The FRET lines tab with the two lines above (the *Colour* column names each line's plot colour).
 ```
 
 ## Where the lines go next
@@ -145,9 +155,9 @@ The FRET lines tab with the two lines above, each in its plot colour.
 * **Save CSV** writes all lines into one file with header
   `line,sweep,log,components,parameter,tau_F_ns,tau_X_ns,E_FRET`, one row per
   point. This is the format to overlay in any plotting program.
-* **Push to ndX** adds every line as a curve to each *visible* ndX overlay
-  panel, as $E(\tau_F)$. Open the burst data and an overlay panel in ndX
-  first ({doc}`46_ndxplorer`).
+* **Push to ndX** hands the lines to the host's ndX connection. ndX cannot take
+  tabulated lines from this tool yet; without a connection the button says so
+  in a notice, and **Save CSV** keeps them in a file ({doc}`46_ndxplorer`).
 * To draw a line on the E–τ histogram of **Accurate FRET**, the tool builds
   its own static and dynamic lines from the same formulas
   ({doc}`41_accurate_fret`).
@@ -246,9 +256,6 @@ closed form (see below). The curve $E(\tau_F)$ is the same either way.
 * **σ = 0 in *FD (Gaussian)* returns NaN** at some distances (50, 80 and
   100 Å tested), and 0.2919 instead of 0.2976 at 60 Å. Use *FD (Discrete)* for
   the no-linker line.
-* **No ? or Guide button yet.** `help.md` and `guide.json` ship beside
-  `gui/tool.py`, but `FRETLineTool` is a plain `QWidget` that does not call
-  `attach_help_and_guide`, so neither button is drawn.
 
 ## See also
 

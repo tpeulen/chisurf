@@ -9,31 +9,20 @@ between them. Along every line E = 1 − τ_X/τ_D0, and the model sets how
 
 ## Controls
 
-* **Components**: the models whose lifetime spectra are mixed. *FD (Gaussian)*
-  for distance distributions (w = linker width σ), *FD (Discrete)* for sharp
-  distances, *FD (Worm-like chain)* for a chain, *Lifetime* for plain
-  exponentials. **Weight** is the initial mixing weight.
-* **Editor**: the model editor of the selected component. Only the donor, FRET
-  parameters and distances matter. The IRF and background groups have no
-  effect, because no decay is convolved.
-* **Sweep**: **Vary** a parameter (`C<i> [model] · name`) or a mixing fraction
-  (`fraction · C<i>`) from **Min** to **Max** over **Points** (optionally
-  **log**). **τ_D0** is the reference lifetime. 0 takes it from the first FRET
-  component's donor. A line made only of *Lifetime* components needs it set
-  explicitly.
-* **+ Add FRET line** computes the current sweep as a new, coloured line.
-  Earlier lines stay.
-* **FRET lines** tab: show, hide, remove or clear lines.
-* **Save CSV** writes all lines. **Push to ndX** overlays them on the visible
-  ndX overlay panels.
+The Components, Sweep and FRET lines tabs are on the left, the live model editor of the selected component on the right, the two plots below, the actions at the bottom.
+
+- Components: the table lists the models whose lifetime spectra are mixed (C0, C1, ...). Select a row to edit that component. Add appends a component of the selected one's model, Remove deletes the selected one (one stays). Model replaces the selected component: FD (Gaussian) for distance distributions (the width s0 is the linker width), FD (Discrete) for sharp distances, FD (Worm-like chain) for a chain, Lifetime for plain exponentials. Weight is the mixing weight.
+- Live model editor: the Model parameters table lists every parameter the model uses (double-click a Value, Lower or Upper cell to type a number; click a Fixed or Bounds box). Only the donor, FRET parameters and distances matter: the IRF and background have no effect, because no decay is convolved.
+- Sweep: Vary a parameter (C<i> [model] name) or a mixing fraction (fraction of C<i>) from Min to Max over Points (optionally log). Filter keeps the targets that contain the text; All parameters lists the nuisance parameters too. tau_D0 is the reference lifetime; 0 takes it from the first FRET component's donor. A line made only of Lifetime components needs it set explicitly.
+- Add FRET line computes the current sweep as a new, coloured line. Earlier lines stay, and the sweep puts the parameters you edited back where they were.
+- FRET lines tab: tick Show to show a line on the plots; Show all, Hide all, Remove (the selected line) and Clear all.
+- Save CSV writes all lines. Push to ndX hands them to the host's ndX connection (without one a notice says ndX cannot receive them yet).
 
 ## Recipes
 
-| Line | Components | Vary |
-|---|---|---|
-| static | one FD (Gaussian), w = 6 Å | RDA0, 20–120 Å |
-| no-linker diagonal | one FD (Discrete) | RDA0 |
-| dynamic | two FD (Gaussian) at the two state distances | fraction · C0, 0–1 |
+- static: one FD (Gaussian), w = 6 Å; vary RDA0, 20-120 Å.
+- no-linker diagonal: one FD (Discrete); vary RDA0.
+- dynamic: two FD (Gaussian) at the two state distances; vary fraction of C0, 0-1.
 
 With τ_D0 = 4 ns and R0 = 52 Å, the static line passes E = 0.559 at
 τ_F = 2.0 ns, where the diagonal gives 0.500. The 40 ↔ 70 Å dynamic line reaches

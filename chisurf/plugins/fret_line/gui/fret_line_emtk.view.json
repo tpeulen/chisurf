@@ -1,0 +1,247 @@
+{
+  "_comment": "FRET line generator, native emtk window. Drawn by emtk.view_form over FretLineModel (gui/model.py): 'components', 'sweep' and 'lines' are the three tabs of the left window (the Qt tool's Components / Sweep / FRET lines pages), 'actions' the bar under everything (Add FRET line, Save CSV, Push to ndX), 'dialog' the in-app notice the Qt tool showed as message boxes. The model editor and the plots are drawn by gui/app.py (a spec cannot draw them).",
+  "title": "FRET lines",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Components",
+      "name": "components",
+      "description": "The models that are mixed. Each is an independent live model; the editor on the right edits the selected one.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per mixture component: its name, its model and its mixing weight. Select a row to edit that component in the editor.",
+          "options": {
+            "source": "component_rows",
+            "row_key": "index",
+            "selected_call": "select_component",
+            "editable": false,
+            "height": 130,
+            "columns": [
+              {"key": "name", "title": "Name", "width": 60, "tooltip": "C0, C1, ...: the number the sweep targets refer to."},
+              {"key": "model", "title": "Model", "width": 190, "tooltip": "The model family of the component."},
+              {"key": "weight", "title": "Weight", "width": 70, "tooltip": "The initial mixing weight; the sweep normalises all weights."}
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "description": "Add a component to the mixture or remove the selected one.",
+          "buttons": [
+            {"action": "add_component", "label": "Add", "description": "Append a component with the model of the selected one; it can then be edited independently."},
+            {"action": "remove_component", "label": "Remove", "description": "Remove the selected component. One component always stays."}
+          ]
+        },
+        {
+          "type": "choice",
+          "label": "Model",
+          "attr": "model_label",
+          "options_source": "model_labels",
+          "description": "The model of the selected component. Choosing another replaces the component (its weight is kept, its parameters reset to the new model's defaults)."
+        },
+        {
+          "type": "value",
+          "kind": "float",
+          "label": "Weight",
+          "attr": "weight",
+          "minimum": 0.0,
+          "maximum": 1000000.0,
+          "decimals": 4,
+          "step": 0.1,
+          "style": "spin",
+          "description": "Mixing weight of the selected component (normalised across the components)."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Sweep",
+      "name": "sweep",
+      "description": "What to vary, over which range, and the reference lifetime of the efficiency.",
+      "sections": [
+        {
+          "type": "value",
+          "kind": "str",
+          "label": "Filter",
+          "attr": "sweep_filter",
+          "description": "Keep only the targets whose label contains this text (case-insensitive)."
+        },
+        {
+          "type": "choice",
+          "label": "Vary",
+          "attr": "sweep_label",
+          "options_source": "sweep_labels",
+          "description": "The parameter or mixing fraction to vary: C<i> [model] name, or fraction of a component."
+        },
+        {
+          "type": "toggle",
+          "label": "All parameters",
+          "attr": "show_all_parameters",
+          "description": "Also list the timing, IRF, background and anisotropy parameters and the donor-only fraction, which do not move a FRET line."
+        },
+        {
+          "type": "value",
+          "kind": "float",
+          "label": "Min",
+          "attr": "minimum",
+          "minimum": -1000000000.0,
+          "maximum": 1000000000.0,
+          "decimals": 4,
+          "step": 1.0,
+          "style": "spin",
+          "description": "First value of the swept quantity."
+        },
+        {
+          "type": "value",
+          "kind": "float",
+          "label": "Max",
+          "attr": "maximum",
+          "minimum": -1000000000.0,
+          "maximum": 1000000000.0,
+          "decimals": 4,
+          "step": 1.0,
+          "style": "spin",
+          "description": "Last value of the swept quantity."
+        },
+        {
+          "type": "toggle",
+          "label": "log",
+          "attr": "log_scale",
+          "description": "Logarithmic spacing (both ends must be positive)."
+        },
+        {
+          "type": "value",
+          "kind": "int",
+          "label": "Points",
+          "attr": "n_points",
+          "minimum": 2,
+          "maximum": 10000,
+          "step": 1,
+          "style": "spin",
+          "description": "Number of evaluated sweep points."
+        },
+        {
+          "type": "value",
+          "kind": "float",
+          "label": "τ_D0 (ns)",
+          "attr": "tau_d0",
+          "minimum": 0.0,
+          "maximum": 1000.0,
+          "decimals": 3,
+          "step": 0.1,
+          "style": "spin",
+          "description": "Donor-only lifetime for E = 1 - τ_X/τ_D0. 0 takes it from the first FRET component."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "FRET lines",
+      "name": "lines",
+      "description": "Every computed line. Each press of Add FRET line appends a snapshot; they are overlaid on the plots.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per computed line. Tick Show to show or hide a line on the plots; select a row to remove it.",
+          "options": {
+            "source": "line_rows",
+            "row_key": "name",
+            "selected_call": "select_line",
+            "edited_call": "line_edited",
+            "editable": false,
+            "height": 150,
+            "columns": [
+              {"key": "visible", "title": "Show", "width": 50, "tooltip": "Tick to show the line on the plots, untick to hide it.", "editable": true},
+              {"key": "name", "title": "Line", "width": 70, "tooltip": "Line 1, Line 2, ... in the order they were added."},
+              {"key": "sweep_label", "title": "Varied", "width": 210, "tooltip": "What this line varied."},
+              {"key": "colour_text", "title": "Colour", "width": 70, "tooltip": "The colour of the line on the plots."}
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "description": "Show, hide, remove or clear the computed lines.",
+          "buttons": [
+            {"action": "show_all", "label": "Show all", "description": "Make every line visible."},
+            {"action": "hide_all", "label": "Hide all", "description": "Hide every line (they stay in the list)."},
+            {"action": "remove_line", "label": "Remove", "description": "Remove the selected line (the last one when none is selected)."},
+            {"action": "clear_lines", "label": "Clear all", "description": "Remove all computed lines."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Model parameters",
+      "name": "editor",
+      "description": "The parameters of the selected component's model.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "Every parameter the selected model uses. Double-click a Value, Lower or Upper cell to type a number (Enter commits, Escape cancels); click a Fixed or Bounds box to flip it.",
+          "options": {
+            "source": "parameter_rows",
+            "row_key": "id",
+            "edited_call": "parameter_edited",
+            "editable": true,
+            "expand": true,
+            "reserve": 4,
+            "fit_columns": true,
+            "min_column_width": 56,
+            "columns": [
+              {"key": "name", "title": "Name", "width": 90, "editable": false, "tooltip": "The parameter's name in the model."},
+              {"key": "value", "title": "Value", "width": 90, "tooltip": "The parameter's value; the sweep restores it after every line."},
+              {"key": "fixed", "title": "Fixed", "width": 50, "tooltip": "Hold the parameter constant in a fit (it does not change a FRET line)."},
+              {"key": "bounds_on", "title": "Bounds", "width": 56, "tooltip": "Apply the lower and upper limit."},
+              {"key": "lower", "title": "Lower", "width": 80, "tooltip": "Lower limit (-inf: none)."},
+              {"key": "upper", "title": "Upper", "width": 80, "tooltip": "Upper limit (inf: none)."},
+              {"key": "id", "title": "Id", "width": 110, "editable": false, "visible": false, "tooltip": "The canonical parameter id used by the sweep targets and the headless API."}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Actions",
+      "name": "actions",
+      "description": "Compute a line and send the collection away.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Compute the current sweep, save all lines, or push them to ndX.",
+          "buttons": [
+            {"action": "add_line", "label": "Add FRET line", "description": "Compute the current mixture and sweep and add it as a new line. Press repeatedly to overlay several lines."},
+            {"action": "save_csv", "label": "Save CSV", "description": "Save all computed lines to one CSV file (line, sweep, parameter, τ_F, τ_X, E per point)."},
+            {"action": "push", "label": "Push to ndX", "description": "Overlay all computed lines on ndX. ndX takes tabulated lines from other tools only when the host gives this window a connection; without one a notice says so."}
+          ]
+        },
+        {
+          "type": "info",
+          "source": "message",
+          "description": "What the last action did."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Notice",
+      "name": "dialog",
+      "description": "Reports a computed or saved result or a problem.",
+      "sections": [
+        {"type": "info", "source": "dialog_text", "description": "What happened."},
+        {
+          "type": "button_row",
+          "description": "Close the notice.",
+          "buttons": [{"action": "dialog_ok", "label": "OK", "description": "Close this notice."}]
+        }
+      ]
+    }
+  ]
+}
