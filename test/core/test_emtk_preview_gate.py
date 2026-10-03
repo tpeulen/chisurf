@@ -24,10 +24,22 @@ def _manifest(plugin_id: str, emtk: str | None = "pkg.app:make", gui: str | None
     return SimpleNamespace(id=plugin_id, entrypoints=SimpleNamespace(emtk=emtk, gui=gui))
 
 
-def test_the_list_is_read_and_ids_are_strings():
+@pytest.fixture
+def one_preview(tmp_path, monkeypatch):
+    """The shipped list is empty (every plugin is accepted): the gate is exercised with a synthetic preview id."""
+    path = tmp_path / "preview.json"
+    path.write_text('{"preview": ["demo_preview_plugin"]}')
+    emtk_readiness._read.cache_clear()
+    monkeypatch.setattr(emtk_readiness, "PREVIEW_FILE", path)
+    yield "demo_preview_plugin"
+    emtk_readiness._read.cache_clear()
+
+
+
+def test_the_list_is_read_and_ids_are_strings(one_preview):
     ids = emtk_readiness.preview_ids()
     assert ids and all(isinstance(i, str) for i in ids)
-    assert emtk_readiness.is_preview("setup")
+    assert emtk_readiness.is_preview(one_preview)
     assert not emtk_readiness.is_preview("fcs_channel_preset")
     assert not emtk_readiness.is_preview("model_manager")      # accepted: swapped
 
@@ -52,9 +64,9 @@ def _selector():
     return select
 
 
-def test_a_preview_plugin_opens_qt_in_auto_and_emtk_when_asked():
+def test_a_preview_plugin_opens_qt_in_auto_and_emtk_when_asked(one_preview):
     select = _selector()
-    manifest = _manifest("setup")
+    manifest = _manifest(one_preview)
     assert select(manifest, "auto") == ("qt", "pkg.tool:Tool")
     assert select(manifest, "emtk") == ("emtk", "pkg.app:make")
     assert select(manifest, "qt") == ("qt", "pkg.tool:Tool")
@@ -73,11 +85,12 @@ def test_an_accepted_plugin_opens_emtk_in_auto():
     assert select(_manifest("boarding"), "auto") == ("emtk", "pkg.app:make")
     assert select(_manifest("switch_user"), "auto") == ("emtk", "pkg.app:make")
     assert select(_manifest("setup_channel_definition"), "auto") == ("emtk", "pkg.app:make")
+    assert select(_manifest("setup"), "auto") == ("emtk", "pkg.app:make")
 
 
-def test_a_preview_plugin_without_a_qt_tool_still_opens_emtk():
+def test_a_preview_plugin_without_a_qt_tool_still_opens_emtk(one_preview):
     select = _selector()
-    assert select(_manifest("setup", gui=None), "auto") == ("emtk", "pkg.app:make")
+    assert select(_manifest(one_preview, gui=None), "auto") == ("emtk", "pkg.app:make")
 
 
 # -- guards ---------------------------------------------------------------------------------

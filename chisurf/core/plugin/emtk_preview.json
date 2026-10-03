@@ -1,6 +1,4 @@
 {
   "_comment": "Plugins whose emtk entrypoint is declared but NOT yet accepted: auto mode keeps the Qt tool (mode 'emtk' still opens the preview). Remove an id only with an accepted report in okf/plugins/emtk-ports/<id>/ (guard: test/core/test_emtk_preview_gate.py). Audit: okf/plugins/emtk-ports/settings-audit.md.",
-  "preview": [
-    "setup"
-  ]
+  "preview": []
 }
