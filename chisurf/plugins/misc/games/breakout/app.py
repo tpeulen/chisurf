@@ -92,7 +92,8 @@ class BreakoutApp(ImApp):
             return "right"
         if key in {KEY_ENTER, KEY_RETURN}:
             return "confirm"
-        return {"a": "left", "d": "right", " ": "confirm", "p": "menu", "r": "cancel", "m": "shoulder_r"}.get(letter)
+        # Arrows only for movement, per the owner's direction-key rule (no WASD).
+        return {" ": "confirm", "p": "menu", "r": "cancel", "m": "shoulder_r"}.get(letter)
 
     def key(self, key, text="", modifiers=0):
         if modifiers or self.closed:

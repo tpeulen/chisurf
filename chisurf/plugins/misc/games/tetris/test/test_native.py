@@ -51,9 +51,8 @@ def test_physical_keys_repeat_and_release_independently():
     for _ in range(3):
         app.advance(.1)
     assert app.game.x == x-2
-    app.key(ord("A"), "a")
+    assert not app.key(ord("A"), "a"), "WASD must not steer (owner rule: arrows only)"
     app.key_release(KEY_LEFT)
-    assert app.keys.is_held("left")
     app.focus_lost()
     before = app.game.x
     app.advance(.1)
@@ -69,7 +68,7 @@ def test_rotation_square_and_wall_collision():
     app.key_release(KEY_UP)
     app.game.shape, app.game.coords = 0, list(SHAPES[0])
     app.game.y = 5
-    app.key(ord("W"), "w")
+    app.key(KEY_UP)  # arrows only rotate (owner rule; WASD removed)
     assert app.game.coords == [(-y,x) for x,y in SHAPES[0]]
     app.game.x = 1
     app.key(KEY_LEFT)

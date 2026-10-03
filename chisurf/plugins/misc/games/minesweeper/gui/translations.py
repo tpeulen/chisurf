@@ -29,12 +29,12 @@ STRINGS = {
     "No flags remaining.": ("Keine Markierungen übrig.", "Aucun drapeau restant.", "No quedan banderas.", "Não restam bandeiras.", "Флагов больше нет."),
     "Flag placed.": ("Markierung gesetzt.", "Drapeau placé.", "Bandera colocada.", "Bandeira colocada.", "Флаг установлен."),
     "Flag removed.": ("Markierung entfernt.", "Drapeau retiré.", "Bandera retirada.", "Bandeira removida.", "Флаг убран."),
-    "Left click: scan. Right click: flag. Arrows/WASD: move. Enter/Space: scan. F: flag.": (
-        "Linksklick: scannen. Rechtsklick: markieren. Pfeile/WASD: bewegen. Enter/Leertaste: scannen. F: markieren.",
-        "Clic gauche : scanner. Clic droit : drapeau. Flèches/WASD : déplacer. Entrée/Espace : scanner. F : drapeau.",
-        "Clic izquierdo: explorar. Clic derecho: marcar. Flechas/WASD: mover. Intro/Espacio: explorar. F: marcar.",
-        "Clique esquerdo: explorar. Clique direito: marcar. Setas/WASD: mover. Enter/Espaço: explorar. F: marcar.",
-        "Левый щелчок: открыть. Правый щелчок: флаг. Стрелки/WASD: движение. Enter/Пробел: открыть. F: флаг."),
+    "Left click: scan. Right click: flag. Arrow keys: move. Enter/Space: scan. F: flag.": (
+        "Linksklick: scannen. Rechtsklick: markieren. Pfeiltasten: bewegen. Enter/Leertaste: scannen. F: markieren.",
+        "Clic gauche : scanner. Clic droit : drapeau. Flèches : déplacer. Entrée/Espace : scanner. F : drapeau.",
+        "Clic izquierdo: explorar. Clic derecho: marcar. Flechas: mover. Intro/Espacio: explorar. F: marcar.",
+        "Clique esquerdo: explorar. Clique direito: marcar. Setas: mover. Enter/Espaço: explorar. F: marcar.",
+        "Левый щелчок: открыть. Правый щелчок: флаг. Стрелки: движение. Enter/Пробел: открыть. F: флаг."),
     "Scan the selected cell (Enter/Space). Flag it with F or right click.": (
         "Ausgewähltes Feld scannen (Enter/Leertaste). F oder Rechtsklick zum Markieren.",
         "Scanner la case sélectionnée (Entrée/Espace). Marquer avec F ou un clic droit.",

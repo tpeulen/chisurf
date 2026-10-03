@@ -120,10 +120,10 @@ class MinesweeperApp(ImApp):
     def key(self, key, text="", modifiers=0):
         if modifiers:
             return False
+        # Arrows only, per the owner's direction-key rule (no WASD).
         direction = {KEY_UP: (-1, 0), KEY_DOWN: (1, 0), KEY_LEFT: (0, -1), KEY_RIGHT: (0, 1)}
         letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
-        direction.update({ord("W"): (-1, 0), ord("S"): (1, 0), ord("A"): (0, -1), ord("D"): (0, 1)})
-        step = direction.get(key) or {"w": (-1, 0), "s": (1, 0), "a": (0, -1), "d": (0, 1)}.get(letter)
+        step = direction.get(key)
         if step is not None:
             # One step on the press; while held, the repeat timer steps (auto-
             # repeated presses from the host are ignored, as chigame ignores them).
@@ -144,9 +144,9 @@ class MinesweeperApp(ImApp):
         return True
 
     def key_release(self, key, text="", modifiers=0):
+        # Arrows only, per the owner's direction-key rule (no WASD).
         direction = {KEY_UP: (-1, 0), KEY_DOWN: (1, 0), KEY_LEFT: (0, -1), KEY_RIGHT: (0, 1)}
-        letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
-        step = direction.get(key) or {"w": (-1, 0), "s": (1, 0), "a": (0, -1), "d": (0, 1)}.get(letter)
+        step = direction.get(key)
         return self.held.pop(step, None) is not None if step is not None else False
 
     def advance(self, dt):
@@ -246,7 +246,7 @@ class MinesweeperApp(ImApp):
             if im.is_item_hovered() and im.is_mouse_clicked(1):
                 self.cursor_row, self.cursor_col = row, col
                 self.flag()
-            im.set_item_tooltip(tr("Left click: scan. Right click: flag. Arrows/WASD: move. Enter/Space: scan. F: flag."))
+            im.set_item_tooltip(tr("Left click: scan. Right click: flag. Arrow keys: move. Enter/Space: scan. F: flag."))
         center = (ox + (self.cursor_col + .5) * pitch, oy + (self.cursor_row + .5) * pitch)
         draw.add_circle(center, pitch * .47, (55, 208, 196, 255), thickness=max(2, pitch * .13))
         dim = (112, 122, 140, 255)

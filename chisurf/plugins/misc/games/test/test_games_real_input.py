@@ -146,17 +146,21 @@ def test_breakout_paddle_follows_held_keys_and_stops_on_release(qapp):
     assert app.game.paddle_x < after - 10
 
 
-def test_breakout_letter_keys_a_d_steer_and_a_key_up_keeps_the_other_held(qapp):
+def test_breakout_letter_keys_are_not_directions_and_releases_are_independent(qapp):
+    """WASD no longer steers (owner rule: direction keys only); a key-up on one
+    of two held directions must not drop the other."""
     host = _host(qapp, "breakout")
     app = host.control
     x0 = app.game.paddle_x
     press(qapp, host, K.Key_D, "d")
     pump(qapp, 0.3)
-    assert app.game.paddle_x > x0
-    press(qapp, host, K.Key_Right)          # both held
-    release(qapp, host, K.Key_Right)        # Right up, D still down
-    assert "right" in app.keys.held.values()
-    release(qapp, host, K.Key_D, "d")
+    assert app.game.paddle_x == x0, "D must not steer the paddle (arrows only)"
+    assert not app.keys.held
+    press(qapp, host, K.Key_Left)           # both held
+    press(qapp, host, K.Key_Right)
+    release(qapp, host, K.Key_Right)        # Right up, Left still down
+    assert "left" in app.keys.held.values()
+    release(qapp, host, K.Key_Left)
     assert not app.keys.held
 
 
@@ -193,7 +197,7 @@ def test_breakout_focus_loss_releases_every_held_key(qapp):
     host = _host(qapp, "breakout")
     app = host.control
     press(qapp, host, K.Key_Right)
-    press(qapp, host, K.Key_A, "a")
+    press(qapp, host, K.Key_Left)
     assert app.keys.held
     qapp.sendEvent(host, QtGui.QFocusEvent(QtCore.QEvent.FocusOut))
     assert not app.keys.held

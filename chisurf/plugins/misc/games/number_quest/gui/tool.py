@@ -59,8 +59,6 @@ REPEAT_RATE = 0.045
 BINDINGS = {
     "ArrowLeft": Action.LEFT,
     "ArrowRight": Action.RIGHT,
-    "a": Action.LEFT,
-    "d": Action.RIGHT,
     "Enter": Action.CONFIRM,
     " ": Action.CONFIRM,
     "r": Action.CANCEL,

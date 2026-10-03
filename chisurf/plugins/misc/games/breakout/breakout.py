@@ -8,8 +8,6 @@ from .model import *
 BINDINGS = {
     "ArrowLeft": Action.LEFT,
     "ArrowRight": Action.RIGHT,
-    "a": Action.LEFT,
-    "d": Action.RIGHT,
     " ": Action.CONFIRM,
     "Enter": Action.CONFIRM,
     "p": Action.MENU,

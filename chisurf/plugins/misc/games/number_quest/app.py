@@ -89,7 +89,7 @@ class NumberQuestApp(ImApp):
             return "right"
         if key in {KEY_ENTER, KEY_RETURN}:
             return "confirm"
-        return {"a": "left", "d": "right", "q": "coarse_left", "e": "coarse_right", "r": "restart", " ": "confirm"}.get(letter)
+        return {"q": "coarse_left", "e": "coarse_right", "r": "restart", " ": "confirm"}.get(letter)
 
     def key(self, key, text="", modifiers=0):
         if modifiers or self.closed:

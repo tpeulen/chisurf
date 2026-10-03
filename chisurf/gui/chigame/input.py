@@ -29,17 +29,15 @@ class Action(enum.Enum):
     SHOULDER_R = "shoulder_r"
 
 
-#: Default keyboard bindings. One action may have several keys; arrows and WASD
-#: both drive movement so a second player can share a keyboard.
+#: Default keyboard bindings. One action may have several keys. Movement is
+#: arrow keys only (owner rule: direction keys, no WASD); a game that needs a
+#: second player on one keyboard passes its own bindings with the extra keys
+#: (see pong's ``P2_BINDINGS``).
 DEFAULT_BINDINGS: dict[str, Action] = {
     "ArrowUp": Action.UP,
     "ArrowDown": Action.DOWN,
     "ArrowLeft": Action.LEFT,
     "ArrowRight": Action.RIGHT,
-    "w": Action.UP,
-    "s": Action.DOWN,
-    "a": Action.LEFT,
-    "d": Action.RIGHT,
     "Enter": Action.CONFIRM,
     "\r": Action.CONFIRM,
     "\n": Action.CONFIRM,

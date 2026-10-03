@@ -74,9 +74,9 @@ class TetrisApp(ImApp):
     @staticmethod
     def binding(key, text):
         letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
+        # Arrows only, per the owner's direction-key rule (no WASD).
         return {KEY_LEFT: "left", KEY_RIGHT: "right", KEY_DOWN: "down", KEY_UP: "confirm"}.get(key) or {
-            "a": "left", "d": "right", "s": "down", "w": "confirm", " ": "shoulder_r",
-            "p": "menu", "r": "cancel",
+            "p": "menu", "r": "cancel", " ": "shoulder_r",
         }.get(letter)
 
     def key(self, key, text="", modifiers=0):

@@ -6,7 +6,7 @@ Standalone native EMTK:
 python -m emtk.native --app chisurf.plugins.misc.games.minesweeper.gui.app:make_app
 ```
 
-Arrows/WASD move the cursor. Enter/Space reveals, F toggles a flag, R restarts,
+Arrow keys move the cursor. Enter/Space reveals, F toggles a flag, R restarts,
 and Q/E cycle the three board presets. Left click reveals a cell; right click
 toggles its flag. Click the preset label to cycle the board, the first help
 line to scan, or the second to restart. Controls include translated tooltips.
