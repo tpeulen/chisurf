@@ -1,0 +1,81 @@
+{
+  "_comment": "HydroPro, native emtk window. The parameter panels are read from hydropro.view.json (the Qt AutoForm spec: one source for labels, limits, steps and descriptions) and only given spin arrows and a fold; this file holds what the Qt tool built by hand around them: the file and run buttons, the results table, the output pane. Drawn by emtk.view_form over gui/model.py.",
+  "input_buttons": {
+    "type": "button_row",
+    "description": "Choose the structures and the HYDRO program.",
+    "buttons": [
+      {"action": "select_files", "label": "Select files…",
+       "description": "Pick one or more structure files (PDB or bead coordinates) with the file chooser; they replace the list in 'Structures'."},
+      {"action": "select_exe", "label": "Executable…",
+       "description": "Pick the HYDROPRO or HYDRO++ program with the file chooser."},
+      {"action": "download_page", "label": "Download page",
+       "description": "Open the HYDRO++ / HYDROPRO download page in your web browser. The program is a separate download and is not part of ChiSurf."}
+    ]
+  },
+  "results": [
+    {
+      "type": "button_row",
+      "description": "Run the program over the listed structures; save or clear the results.",
+      "buttons": [
+        {"action": "run", "label": "Run",
+         "description": "Run HYDROPRO / HYDRO++ once per listed structure. The parameters are checked first; the output pane shows the program's console while it runs."},
+        {"action": "save_csv", "label": "Save CSV",
+         "description": "Write the results (file and diffusion coefficient in cm²/s) to a CSV file. Available once a run has finished."},
+        {"action": "clear", "label": "Clear",
+         "description": "Empty the structure list, the status and the results."}
+      ]
+    },
+    {
+      "type": "value", "attr": "status", "label": "Status", "kind": "str", "read_only": true,
+      "description": "Outcome of the last run."
+    },
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "",
+      "description": "One row per listed structure with its translational diffusion coefficient in cm²/s once a run has finished (N/A when the program's report holds none). Click a header to sort.",
+      "options": {
+        "source": "result_rows",
+        "row_key": "key",
+        "editable": false,
+        "status": true,
+        "tooltip_key": "tip",
+        "expand": true,
+        "reserve": 8,
+        "min_column_width": 90,
+        "fit_columns": true,
+        "columns": [
+          {"key": "file", "title": "File", "width": 300, "tooltip": "The structure file as listed in 'Structures'."},
+          {"key": "d", "title": "Diffusion coefficient (cm²/s)", "width": 190, "align": "right",
+           "tooltip": "Translational diffusion coefficient D_t parsed from the program's report; empty before a run, N/A when the report has none."}
+        ]
+      }
+    }
+  ],
+  "output": [
+    {
+      "type": "progress", "attr": "progress_fraction", "text_source": "progress_text",
+      "description": "How many of the structures of the run are done."
+    },
+    {
+      "type": "info", "source": "output_text",
+      "description": "What the run is doing: Ready, Starting, Cancelling, Finished or Failed."
+    },
+    {
+      "type": "custom", "key": "output_log", "title": "",
+      "description": "The program's console output and the job messages of the run; select with the mouse and copy with Ctrl+C."
+    },
+    {
+      "type": "button_row",
+      "description": "Manage the output log or stop the run.",
+      "buttons": [
+        {"action": "clear_log", "label": "Clear log",
+         "description": "Empty the output log (the results table is not touched)."},
+        {"action": "save_log", "label": "Save Log…",
+         "description": "Write the output log to a text file."},
+        {"action": "cancel", "label": "Cancel",
+         "description": "Stop after the structure that is being computed has finished; the structures not yet started are skipped."}
+      ]
+    }
+  ]
+}

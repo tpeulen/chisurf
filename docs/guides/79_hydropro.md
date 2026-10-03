@@ -2,7 +2,7 @@
 type: Guide
 title: 'HydroPro: diffusion coefficients from a structure'
 description: Predicting the translational diffusion coefficient (and, from the report, the rotational relaxation times) of a rigid protein from its PDB file with the external HYDROPRO program, using T4 lysozyme as the example, and what the ChiSurf front-end does and does not do.
-tags: [guides, structure, hydrodynamics, fcs, anisotropy]
+tags: [guides, diffusion, structure, file-formats]
 ---
 
 # HydroPro: diffusion coefficients from a structure

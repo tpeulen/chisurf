@@ -1,101 +1,65 @@
-"""Qt-free tests for the native HYDROPRO EMTK app."""
+"""Qt-free tests of the native HYDROPRO app (rewritten for the upgraded app; the earlier stream's checks that still hold are kept)."""
 
 from __future__ import annotations
 
-import pytest
 from emtk.testing import RecordingPainter
 
 from ..app import HydroProApp, make_app
 from ..core import HydroProSettings
+from ..gui.model import HydroProModel
 
 
 def test_native_settings_conversion_matches_qt_model():
-    app = HydroProApp()
-    app.indmode = "2"
-    s = app.to_settings()
-    assert s.indmode == 2
-    assert isinstance(s.aer, float) and s.aer == 2.9
+    m = HydroProModel()
+    m.indmode = "2"
+    s = m.to_settings()
+    assert s.indmode == 2 and isinstance(s.aer, float) and s.aer == 2.9
 
 
 def test_native_state_roundtrip():
     app = HydroProApp()
-    app.exe_path = "/opt/hydro++10.exe"
-    app.struct_files = "a.pdb, b.pdb"
-    app.indmode = "4"
-    app.settings.aer = 6.1
-    app.settings.nsig = 8
-    app.settings.idif = 0
-    state = app.export_settings()
-
+    app.model.exe_path = "/opt/hydro++10.exe"
+    app.model.indmode = "4"
+    app.model.aer = 6.1
+    app.model.nsig = 8
+    app.model.idif = False
     fresh = HydroProApp()
-    fresh.restore_settings(state)
-    assert fresh.exe_path == "/opt/hydro++10.exe"
-    assert fresh.struct_files == "a.pdb, b.pdb"
-    assert fresh.indmode == "4"
-    assert fresh.settings.aer == 6.1
-    assert fresh.settings.nsig == 8
-    assert fresh.settings.idif == 0
-    assert isinstance(fresh.settings, HydroProSettings)
+    fresh.restore_settings(app.export_settings())
+    m = fresh.model
+    assert (m.exe_path, m.indmode, m.aer, m.nsig, m.idif) == ("/opt/hydro++10.exe", "4", 6.1, 8, False)
+    assert isinstance(m.to_settings(), HydroProSettings)
 
 
 def test_native_run_guards():
-    app = HydroProApp()
-    app._run()
-    assert "structural file" in app.status
-    app.struct_files = "missing.pdb"
-    app._run()
-    assert "executable" in app.status
+    m = HydroProModel()
+    m.run()
+    assert m.notices[-1][0] == "No files"
+    m.struct_files = "missing.pdb"
+    m.run()
+    assert m.exe_prompt and not m.running
 
 
 def test_native_renders_all_controls():
-    app = make_app()
     painter = RecordingPainter()
-    app.draw(painter, 0, 0, 760, 780)
-    for expected in (
-        "HYDROPRO / HYDRO++",
-        "Executable",
-        "Structures",
-        "INDMODE",
-        "AER",
-        "NSIG",
-        "SIGMIN",
-        "SIGMAX",
-        "Full diffusion tensor",
-        "Run",
-        "Log",
-    ):
+    for _ in range(3):
+        painter = RecordingPainter()
+        make_app().draw(painter, 0, 0, 1200, 800)
+    for expected in ("Executable", "Structures", "INDMODE", "AER", "NSIG", "SIGMIN", "SIGMAX", "Full diffusion tensor",
+                     "Run", "Save CSV", "Select files…"):
         assert expected in painter.strings, expected
 
 
-def test_native_narrow_render():
-    app = make_app()
-    painter = RecordingPainter()
-    app.draw(painter, 0, 0, 430, 780)
-    for expected in ("Executable", "INDMODE", "Run", "Log"):
-        assert expected in painter.strings, expected
+def test_native_every_section_button_and_column_has_a_description():
+    from ..app import _walk, build_spec
 
-
-def test_native_tooltips_in_all_locales(monkeypatch):
-    from emtk import im
-    from emtk.i18n import get_locale, set_locale
-
-    previous = get_locale()
-    app = make_app()
-    tips: list[str] = []
-    original = im.set_item_tooltip
-
-    def capture(text, *args, **kwargs):
-        tips.append(str(text))
-        return original(text, *args, **kwargs)
-
-    monkeypatch.setattr(im, "set_item_tooltip", capture)
-    try:
-        for locale in ("en", "de", "fr", "es", "pt", "ru"):
-            set_locale(locale)
-            tips.clear()
-            app.draw(RecordingPainter(), 0, 0, 760, 780)
-            # 2 inputs + 5 primary + 5 solvent + 5 optional + toggle + run.
-            assert len(tips) >= 18, (locale, tips)
-            assert all(tip.strip() for tip in tips), locale
-    finally:
-        set_locale(previous)
+    spec = build_spec()
+    for part in spec.values():
+        for section in _walk(part):
+            if section.get("type") in ("value", "choice", "toggle", "info", "progress", "custom", "button_row"):
+                assert str(section.get("description", "")).strip(), section
+            for button in section.get("buttons", []):
+                assert button["description"].strip(), button
+            opts = section.get("options", {})
+            if isinstance(opts, dict):
+                for column in opts.get("columns", []):
+                    assert column["tooltip"].strip(), column

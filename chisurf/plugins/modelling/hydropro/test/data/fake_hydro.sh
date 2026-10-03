@@ -5,7 +5,7 @@
 # (written under the name the input announced on line 2), prints a banner, and never computes anything.
 #   stem containing "fails"   -> exits 3 with a message on stderr
 #   stem containing "silent"  -> prints nothing and writes no report (parser answers "not found")
-#   stem containing "slow"    -> sleeps 5 s first (cancel tests)
+#   stem containing "slow"    -> sleeps 2 s first (cancel tests)
 here=$(cd "$(dirname "$0")" && pwd)
 recorded="${HYDRO_RECORDED_DIR:-$here/recorded}"
 read input
@@ -14,7 +14,7 @@ struct=$(sed -n '3p' "$input" | awk '{print $1}')
 stem=$(basename "$struct"); stem="${stem%.*}"
 echo "HYDRO fake: read $input ($generic) for $stem"
 case "$stem" in
-  *slow*) sleep 5 ;;
+  *slow*) sleep 2 ;;
 esac
 case "$stem" in
   *fails*) echo "fake HYDRO: cannot open structure" >&2; exit 3 ;;

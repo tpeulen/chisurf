@@ -49,9 +49,9 @@ else:
     module, attr = manifest_of("hydropro")["entrypoints"]["emtk"].split(":")
     for size in [(1200, 800), (800, 600)]:
         a = getattr(importlib.import_module(module), attr)()
-        a.model.exe_path, a.model.struct_files, a.model.indmode = STUB, PDB, "1"
+        
         start = getattr(a, "start_run", None) or getattr(a, "_run", None) or getattr(a.model, "run", None)
-        start()
+        
         end = time.monotonic() + 60
         while getattr(a.model, "running", False) and time.monotonic() < end:
             a.draw(RecordingPainter(), 0, 0, *size); time.sleep(0.02)
