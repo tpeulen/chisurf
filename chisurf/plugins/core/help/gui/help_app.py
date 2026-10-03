@@ -1934,6 +1934,8 @@ class HelpGui:
 class HelpApp(ImApp):
     """Standalone pure EMTK Application for the ChiSurf Help Browser."""
 
+    window_size = (800, 600)
+
     def __init__(self) -> None:
         self.model = HelpModel()
         self.help_gui = HelpGui(model=self.model)
@@ -1972,7 +1974,7 @@ def main() -> None:
     """Run Help Browser directly via pure EMTK without Qt."""
     from emtk.native import main as emtk_main
 
-    emtk_main(["--app", "chisurf.plugins.core.help.gui.help_app:make_help_app", "--size", "1200x800"])
+    emtk_main(["--app", "chisurf.plugins.core.help.gui.help_app:make_help_app"])
 
 
 if __name__ == "__main__":

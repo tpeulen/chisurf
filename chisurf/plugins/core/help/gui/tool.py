@@ -2014,10 +2014,11 @@ class HelpEmtkTool(ChisurfDockTool):
 
     def __init__(self, parent: Any = None, *, path: str | pathlib.Path | None = None, **kwargs: Any) -> None:
         super().__init__(parent, **kwargs)
-        self.setWindowTitle(f"{Glyphs.BOOK} ChiSurf Help")
-        self.resize(1200, 800)
 
-        from chisurf.plugins.core.help.gui.help_app import HelpApp, WINDOW_BG
+        from chisurf.plugins.core.help.gui.help_app import WINDOW_BG, HelpApp
+
+        self.setWindowTitle(f"{Glyphs.BOOK} ChiSurf Help")
+        self.resize(*HelpApp.window_size)
 
         self.app = HelpApp()
         self.model = self.app.model

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import importlib
 
+import chisurf.plugins.core.help.gui.help_app as help_app_module
 from chisurf.plugins.core.help.gui.help_app import (
     HelpApp,
     HelpGui,
@@ -125,11 +127,31 @@ def test_help_app_standalone():
     assert isinstance(app.help_gui, HelpGui)
 
 
+def test_help_app_declares_compact_native_window_size():
+    app = make_help_app()
+    try:
+        assert app.window_size == (800, 600)
+    finally:
+        app.close()
+
+
+def test_help_main_defers_default_size_to_native_launcher(monkeypatch):
+    native = importlib.import_module("emtk.native")
+
+    calls = []
+    monkeypatch.setattr(native, "main", calls.append)
+
+    help_app_module.main()
+
+    assert calls == [["--app", "chisurf.plugins.core.help.gui.help_app:make_help_app"]]
+
+
 def test_help_emtk_tool_dock_integration(qapp, qtbot):
     tool = HelpEmtkTool()
     qtbot.addWidget(tool)
 
     assert "Help" in tool.windowTitle()
+    assert (tool.width(), tool.height()) == HelpApp.window_size
     assert hasattr(tool, "model")
     assert hasattr(tool, "app")
     assert hasattr(tool, "host")
