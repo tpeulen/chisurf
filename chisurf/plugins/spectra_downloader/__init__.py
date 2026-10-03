@@ -46,9 +46,8 @@ def get_db() -> FluorophoreDatabase:
 
 
 if __name__ == "plugin":
-    from .gui.tool import SpectraTool
+    from emtk.native import NativeHost
+    from .gui.app import create_app
 
-    db = get_db()
-    db.connect()
-    window = SpectraTool(db)
-    window.show()
+    window = NativeHost(create_app(), title="Spectra", size=(1180, 760))
+    window.run()

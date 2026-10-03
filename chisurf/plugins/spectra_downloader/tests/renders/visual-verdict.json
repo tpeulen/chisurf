@@ -1,0 +1,13 @@
+{
+  "score": 90,
+  "verdict": "pass",
+  "category_match": true,
+  "differences": [
+    "The native component pane is deliberately wider than the genuine Qt Browse reference so all five ID/name/category/source/status fields remain readable without horizontal scrolling.",
+    "Native multiselection uses a separate checkbox column alongside the ID column instead of Qt row highlighting.",
+    "Native detail/properties and spectrum retain the same selected Alexa Fluor 488 record and curve; the native layout is more compact and uses metadata/properties tabs rather than the reference's full read-only form.",
+    "At 640 pixels, list and details stack with scrolling; native-narrow-browse-scrolled.png shows the complete curve."
+  ],
+  "suggestions": [],
+  "reasoning": "This verdict compares matched Browse states with the same five populated components, unfiltered rows and selected Alexa Fluor 488 emission data. Corrected explicit column widths and separate selection/ID cells remove overlap and preserve every fixture value at normal and narrow widths; the light navigation, data/properties hierarchy and spectral behavior remain clear."
+}

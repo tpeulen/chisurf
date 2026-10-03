@@ -10,10 +10,11 @@
     "Spectroscopy",
     "Spectra"
   ],
-  "icon": "🌈",
+  "icon": "\ud83c\udf08",
   "entrypoints": {
     "gui": "chisurf.plugins.spectra_downloader.gui.tool:SpectraTool",
-    "cli": "spectra-download=chisurf.plugins.spectra_downloader.cli:cli"
+    "cli": "spectra-download=chisurf.plugins.spectra_downloader.cli:cli",
+    "emtk": "chisurf.plugins.spectra_downloader.gui.app:create_app"
   },
   "requires": {
     "mmfdb_admin": "*"
