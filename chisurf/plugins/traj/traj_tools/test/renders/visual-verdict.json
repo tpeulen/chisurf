@@ -1,0 +1,33 @@
+{
+  "plugin": "traj_tools",
+  "date": "2026-09-28",
+  "score": 92,
+  "verdict": "pass",
+  "threshold": 90,
+  "threshold_pass": true,
+  "per_screenshot": [
+    {
+      "image": "native-normal.png",
+      "size": [900, 640],
+      "score": 95,
+      "verdict": "pass"
+    },
+    {
+      "image": "native-narrow.png",
+      "size": [520, 640],
+      "score": 92,
+      "verdict": "pass"
+    }
+  ],
+  "reference_images": ["qt/core__traj_tools.png"],
+  "generated_screenshots": ["native-normal.png", "native-narrow.png"],
+  "differences": [
+    "Native dark sidebar+workspace layout translates the Qt light docked-tab hub; all eight tools are reachable from the nav list instead of tabs.",
+    "The captured child session (Convert) shows plain-text log lines since the sibling apps' raw-HTML log rendering was fixed centrally."
+  ],
+  "suggestions": [
+    "Keep child sessions state-preserving when touching the hub; the switch-back-same-instance behaviour is asserted in test_native.py."
+  ],
+  "reasoning": "Both captures show all eight tool entries selectable in the sidebar, the selected tool's wrapped description, and the populated Convert workspace without clipping or overlap at 900 px and 520 px.",
+  "visual_gate": "documents:visual-judge"
+}

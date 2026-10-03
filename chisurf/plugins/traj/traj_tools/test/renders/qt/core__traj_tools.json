@@ -1,0 +1,3085 @@
+{
+  "entrypoint": "chisurf.plugins.traj.traj_tools.gui.tool:TrajectoryToolsTool",
+  "source_revision": "HEAD",
+  "status": "captured",
+  "image": "traj__traj_tools.png",
+  "width": 1000,
+  "height": 700,
+  "checkout_supplements": [
+    "docs",
+    "okf"
+  ],
+  "historical_asset_aliases": [
+    "chisurf/plugins/test",
+    "chisurf/plugins/tests",
+    "chisurf/plugins/backend",
+    "chisurf/plugins/cli",
+    "chisurf/plugins/gui",
+    "chisurf/plugins/api",
+    "chisurf/plugins/games",
+    "chisurf/plugins/ptu_alex_creator",
+    "chisurf/plugins/tttr_header_edit",
+    "chisurf/plugins/audifier",
+    "chisurf/plugins/tttr_time_windows",
+    "chisurf/plugins/tttr_splitter",
+    "chisurf/plugins/filetools",
+    "chisurf/plugins/tttr_microtime_shifter",
+    "chisurf/plugins/tttr_histogram",
+    "chisurf/plugins/microtime_histogram",
+    "chisurf/plugins/tttr_count_rate_analysis",
+    "chisurf/plugins/trace_browser",
+    "chisurf/plugins/tttr_lut_tools",
+    "chisurf/plugins/tttr_image_browser",
+    "chisurf/plugins/tttr_correlate",
+    "chisurf/plugins/intensity_trace",
+    "chisurf/plugins/tttr_toolbox",
+    "chisurf/plugins/plugin_check",
+    "chisurf/plugins/menu_switch",
+    "chisurf/plugins/screenshot",
+    "chisurf/plugins/project_browser",
+    "chisurf/plugins/style_manager",
+    "chisurf/plugins/plot_settings",
+    "chisurf/plugins/plugin_manager",
+    "chisurf/plugins/setup",
+    "chisurf/plugins/user_editor",
+    "chisurf/plugins/updater",
+    "chisurf/plugins/about",
+    "chisurf/plugins/switch_user",
+    "chisurf/plugins/tttr_to_pto",
+    "chisurf/plugins/lightpath_simulator",
+    "chisurf/plugins/setup_channel_definition",
+    "chisurf/plugins/database_connector",
+    "chisurf/plugins/f_test",
+    "chisurf/plugins/code_editor",
+    "chisurf/plugins/batch_analysis",
+    "chisurf/plugins/hmm",
+    "chisurf/plugins/wizards",
+    "chisurf/plugins/mmfdb_admin",
+    "chisurf/plugins/boarding",
+    "chisurf/plugins/model_manager",
+    "chisurf/plugins/globalview",
+    "chisurf/plugins/pto_inspector",
+    "chisurf/plugins/acq",
+    "chisurf/plugins/help",
+    "chisurf/plugins/fcs_saturation_calc",
+    "chisurf/plugins/psf_calculator",
+    "chisurf/plugins/fret_calculator",
+    "chisurf/plugins/rics_precision",
+    "chisurf/plugins/phasor_calculator",
+    "chisurf/plugins/hub",
+    "chisurf/plugins/kappa2_dist",
+    "chisurf/plugins/structure_tools",
+    "chisurf/plugins/hydropro",
+    "chisurf/plugins/fret",
+    "chisurf/plugins/fps_json_editor",
+    "chisurf/plugins/proteinmc",
+    "chisurf/plugins/fcs_filter_calculator",
+    "chisurf/plugins/flc_2d",
+    "chisurf/plugins/fcs_correlator",
+    "chisurf/plugins/fcs_merger",
+    "chisurf/plugins/fcs_calculator",
+    "chisurf/plugins/fcs_toolbox",
+    "chisurf/plugins/fcs_channel_preset",
+    "chisurf/plugins/fcs_convert",
+    "chisurf/plugins/fcs_lfcs_sim",
+    "chisurf/plugins/rpc",
+    "chisurf/plugins/{{cookiecutter.plugin_name}}",
+    "chisurf/plugins/burst_gs",
+    "chisurf/plugins/alex_suite",
+    "chisurf/plugins/burst_2cde",
+    "chisurf/plugins/burst_fusion",
+    "chisurf/plugins/burst_ebfret",
+    "chisurf/plugins/burst_mle_analysis",
+    "chisurf/plugins/burst_h2mm",
+    "chisurf/plugins/burst_background",
+    "chisurf/plugins/burst_irf_bg",
+    "chisurf/plugins/bid_to_analysis",
+    "chisurf/plugins/mfd_prepare",
+    "chisurf/plugins/burst_selection",
+    "chisurf/plugins/burst_browser",
+    "chisurf/plugins/burst_analysis",
+    "chisurf/plugins/burst_bva",
+    "chisurf/plugins/accurate_fret",
+    "chisurf/plugins/burst_fcs_correlator",
+    "chisurf/plugins/fret_trajectory",
+    "chisurf/plugins/traj_energy",
+    "chisurf/plugins/traj_remove_clashes",
+    "chisurf/plugins/potential_energy",
+    "chisurf/plugins/traj_tools",
+    "chisurf/plugins/traj_convert",
+    "chisurf/plugins/traj_save_topology",
+    "chisurf/plugins/traj_align",
+    "chisurf/plugins/traj_rotate_translate",
+    "chisurf/plugins/traj_join",
+    "chisurf/plugins/lifetime_analysis",
+    "chisurf/plugins/lltf",
+    "chisurf/plugins/maxent_decay",
+    "chisurf/plugins/synthetic_decay",
+    "chisurf/plugins/irf_estimator",
+    "chisurf/plugins/tr_anisotropy",
+    "chisurf/plugins/img_pixel_mle",
+    "chisurf/plugins/img_calibration",
+    "chisurf/plugins/imaging_common",
+    "chisurf/plugins/img_coloc",
+    "chisurf/plugins/mle_common",
+    "chisurf/plugins/img_pixel_intensity",
+    "chisurf/plugins/img_frc",
+    "chisurf/plugins/imaging_tools",
+    "chisurf/plugins/region_mle",
+    "chisurf/plugins/img_drift",
+    "chisurf/plugins/clsm",
+    "chisurf/plugins/img_pixel_nb",
+    "chisurf/plugins/img_flow",
+    "chisurf/plugins/psf_determination",
+    "chisurf/plugins/img_pixel_micro_time",
+    "chisurf/plugins/spot_finder",
+    "chisurf/plugins/img_pixel_phasor",
+    "chisurf/plugins/clsm_generator",
+    "chisurf/plugins/img_tracking"
+  ],
+  "plot_backend": "pyqtgraph",
+  "widget_class": "TrajectoryToolsTool",
+  "tab_pages": [],
+  "controls": [
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "DockArea",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "DockDropOverlay",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "DockTabWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QStackedWidget",
+      "name": "qt_tabwidget_stackedwidget",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "SaveTopology",
+      "name": "trajectory_tool_save_topol",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "AutoForm",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_IoSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open an H5 trajectory file.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them.",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Write the first frame of the trajectory as a PDB file.",
+      "visible": false
+    },
+    {
+      "class": "InfoWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "RotateTranslateTrajectoryWidget",
+      "name": "trajectory_tool_rot_translate",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "AutoForm",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_IoSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open an H5 trajectory file.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them.",
+      "visible": false
+    },
+    {
+      "class": "QGroupBox",
+      "name": "",
+      "tooltip": "The 3x3 rotation matrix. The coordinates of every frame are multiplied by this matrix; the user must ensure it is a valid rotation matrix.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QGroupBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Rotate + translate every frame and write a new H5 trajectory.",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": false
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "InfoWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "RemoveClashedFrames",
+      "name": "trajectory_tool_remove_clashed",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "AutoForm",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_IoSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open an H5 trajectory file.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them.",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Drop every frame that contains an atom-atom clash and write a new H5 trajectory.",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "mdtraj atom-selection expression. The listed atoms' pairwise distances\nare tested; a frame is dropped when any pair is closer than the minimum\ndistance.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "mdtraj atom-selection expression. The listed atoms' pairwise distances\nare tested; a frame is dropped when any pair is closer than the minimum\ndistance.",
+      "visible": false
+    },
+    {
+      "class": "_FocusOutPlainTextEdit",
+      "name": "",
+      "tooltip": "mdtraj atom-selection expression. The listed atoms' pairwise distances\nare tested; a frame is dropped when any pair is closer than the minimum\ndistance.",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": false
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Minimum allowed atom-atom distance in \u00c5ngstr\u00f6m. Frames with any selected\natom pair closer than this are removed.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Minimum allowed atom-atom distance in \u00c5ngstr\u00f6m. Frames with any selected\natom pair closer than this are removed.",
+      "visible": false
+    },
+    {
+      "class": "QDoubleSpinBox",
+      "name": "",
+      "tooltip": "Minimum allowed atom-atom distance in \u00c5ngstr\u00f6m. Frames with any selected\natom pair closer than this are removed.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "InfoWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "JoinTrajectoriesWidget",
+      "name": "trajectory_tool_join",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "AutoForm",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_IoSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open an H5 trajectory file.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open an H5 trajectory file.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them.",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Join the two trajectories and write the result as a new H5 trajectory.",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "By time joins the trajectories along the frame axis (same topology,\nframes appended). By atoms stacks the trajectories along the atom axis\n(same number of frames, topologies merged).",
+      "visible": false
+    },
+    {
+      "class": "ChoiceWidget",
+      "name": "",
+      "tooltip": "By time joins the trajectories along the frame axis (same topology,\nframes appended). By atoms stacks the trajectories along the atom axis\n(same number of frames, topologies merged).",
+      "visible": false
+    },
+    {
+      "class": "QRadioButton",
+      "name": "",
+      "tooltip": "By time joins the trajectories along the frame axis (same topology,\nframes appended). By atoms stacks the trajectories along the atom axis\n(same number of frames, topologies merged).",
+      "visible": false
+    },
+    {
+      "class": "QRadioButton",
+      "name": "",
+      "tooltip": "By time joins the trajectories along the frame axis (same topology,\nframes appended). By atoms stacks the trajectories along the atom axis\n(same number of frames, topologies merged).",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Reverse each read chunk of trajectory 1 in time before joining.",
+      "visible": false
+    },
+    {
+      "class": "ToggleWidget",
+      "name": "",
+      "tooltip": "Reverse each read chunk of trajectory 1 in time before joining.",
+      "visible": false
+    },
+    {
+      "class": "QCheckBox",
+      "name": "",
+      "tooltip": "Reverse each read chunk of trajectory 1 in time before joining.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Reverse each read chunk of trajectory 2 in time before joining.",
+      "visible": false
+    },
+    {
+      "class": "ToggleWidget",
+      "name": "",
+      "tooltip": "Reverse each read chunk of trajectory 2 in time before joining.",
+      "visible": false
+    },
+    {
+      "class": "QCheckBox",
+      "name": "",
+      "tooltip": "Reverse each read chunk of trajectory 2 in time before joining.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Trajectories are read piecewise to save memory; the chunk size sets the\nnumber of frames per read.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Trajectories are read piecewise to save memory; the chunk size sets the\nnumber of frames per read.",
+      "visible": false
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "Trajectories are read piecewise to save memory; the chunk size sets the\nnumber of frames per read.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "InfoWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "Structure2Transfer",
+      "name": "trajectory_tool_fret",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "AutoForm",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_TrajectoryIoSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open an H5 trajectory file.",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": false
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_AtomPairSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QGroupBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "PDBSelector",
+      "name": "Form",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label_3",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label_2",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox_2",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox_3",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "PDBSelector",
+      "name": "Form",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label_3",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label_2",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox_2",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox_3",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QGroupBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "PDBSelector",
+      "name": "Form",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label_3",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label_2",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox_2",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox_3",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "PDBSelector",
+      "name": "Form",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label_3",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "label_2",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox_2",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "comboBox_3",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Foerster radius of the donor-acceptor dye pair, in Angstrom.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Foerster radius of the donor-acceptor dye pair, in Angstrom.",
+      "visible": false
+    },
+    {
+      "class": "QDoubleSpinBox",
+      "name": "",
+      "tooltip": "Foerster radius of the donor-acceptor dye pair, in Angstrom.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Fluorescence lifetime of the donor in the absence of FRET, in\nnanoseconds.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Fluorescence lifetime of the donor in the absence of FRET, in\nnanoseconds.",
+      "visible": false
+    },
+    {
+      "class": "QDoubleSpinBox",
+      "name": "",
+      "tooltip": "Fluorescence lifetime of the donor in the absence of FRET, in\nnanoseconds.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Time between successive trajectory frames, in nanoseconds.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Time between successive trajectory frames, in nanoseconds.",
+      "visible": false
+    },
+    {
+      "class": "QDoubleSpinBox",
+      "name": "",
+      "tooltip": "Time between successive trajectory frames, in nanoseconds.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "If enabled, uses two atoms per fluorophore and computes the orientation\nfactor kappa2 per frame; otherwise only the first atom of each dye\ndefines the distance and the fixed isotropic kappa2 = 2/3 is used.",
+      "visible": false
+    },
+    {
+      "class": "ToggleWidget",
+      "name": "",
+      "tooltip": "If enabled, uses two atoms per fluorophore and computes the orientation\nfactor kappa2 per frame; otherwise only the first atom of each dye\ndefines the distance and the fixed isotropic kappa2 = 2/3 is used.",
+      "visible": false
+    },
+    {
+      "class": "QCheckBox",
+      "name": "",
+      "tooltip": "If enabled, uses two atoms per fluorophore and computes the orientation\nfactor kappa2 per frame; otherwise only the first atom of each dye\ndefines the distance and the fixed isotropic kappa2 = 2/3 is used.",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_RunSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Compute the FRET observables and save them to a CSV file.",
+      "visible": false
+    },
+    {
+      "class": "InlineProgressWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QProgressBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Cancel the running operation.",
+      "visible": false
+    },
+    {
+      "class": "InfoWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "PotentialEnergyWidget",
+      "name": "trajectory_tool_energy_calc",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "AutoForm",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Only every Nth frame is scored; also seeds the emitted frame numbers.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Only every Nth frame is scored; also seeds the emitted frame numbers.",
+      "visible": false
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "Only every Nth frame is scored; also seeds the emitted frame numbers.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "TableWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QHeaderView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_RunSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Score every frame of the trajectory and write the energies to a CSV.",
+      "visible": false
+    },
+    {
+      "class": "InlineProgressWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QProgressBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Cancel the running operation.",
+      "visible": false
+    },
+    {
+      "class": "InfoWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "MDConverter",
+      "name": "trajectory_tool_convert",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "AutoForm",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "_IoSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "Topology (PDB) \u2014 required for trajectory formats without topology.",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Topology (PDB) \u2014 required for trajectory formats without topology.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "Input trajectory file, or a folder of PDBs when 'Input is a folder of PDBs' is on.",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Input trajectory file, or a folder of PDBs when 'Input is a folder of PDBs' is on.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "Output directory the converted file(s) are written to.",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Output directory the converted file(s) are written to.",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "When on, every *.pdb file in the chosen folder is processed instead of a\nsingle trajectory file.",
+      "visible": false
+    },
+    {
+      "class": "ToggleWidget",
+      "name": "",
+      "tooltip": "When on, every *.pdb file in the chosen folder is processed instead of a\nsingle trajectory file.",
+      "visible": false
+    },
+    {
+      "class": "QCheckBox",
+      "name": "",
+      "tooltip": "When on, every *.pdb file in the chosen folder is processed instead of a\nsingle trajectory file.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "First frame of the processed range.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "First frame of the processed range.",
+      "visible": false
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "First frame of the processed range.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Last frame of the processed range (-1 = all frames).",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Last frame of the processed range (-1 = all frames).",
+      "visible": false
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "Last frame of the processed range (-1 = all frames).",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Write only every Nth frame to the output.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Write only every Nth frame to the output.",
+      "visible": false
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "Write only every Nth frame to the output.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Output base name; the extension below is appended.",
+      "visible": false
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Output base name; the extension below is appended.",
+      "visible": false
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "Output base name; the extension below is appended.",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Output file extension / format.",
+      "visible": false
+    },
+    {
+      "class": "ChoiceWidget",
+      "name": "",
+      "tooltip": "Output file extension / format.",
+      "visible": false
+    },
+    {
+      "class": "QComboBox",
+      "name": "",
+      "tooltip": "Output file extension / format.",
+      "visible": false
+    },
+    {
+      "class": "QFrame",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QListView",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Write each frame to its own {filename}_%08d{ending} file instead of one\ncombined file.",
+      "visible": false
+    },
+    {
+      "class": "ToggleWidget",
+      "name": "",
+      "tooltip": "Write each frame to its own {filename}_%08d{ending} file instead of one\ncombined file.",
+      "visible": false
+    },
+    {
+      "class": "QCheckBox",
+      "name": "",
+      "tooltip": "Write each frame to its own {filename}_%08d{ending} file instead of one\ncombined file.",
+      "visible": false
+    },
+    {
+      "class": "_RunSection",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Convert the trajectory with the current settings.",
+      "visible": false
+    },
+    {
+      "class": "InfoWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "AlignTrajectoryWidget",
+      "name": "trajectory_tool_align",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "AutoForm",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "CollapsibleBox",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QPushButton",
+      "name": "CollapsibleBoxHeader",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "_IoSection",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open a DCD trajectory.",
+      "visible": true
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QLineEdit",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them.",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Superpose every frame onto the first frame and write a new DCD.",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Comma-separated atom ids used as the reference set for the\nsuperposition. Leave empty to align on all atoms.",
+      "visible": true
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Comma-separated atom ids used as the reference set for the\nsuperposition. Leave empty to align on all atoms.",
+      "visible": true
+    },
+    {
+      "class": "_FocusOutPlainTextEdit",
+      "name": "",
+      "tooltip": "Comma-separated atom ids used as the reference set for the\nsuperposition. Leave empty to align on all atoms.",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QLabel",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": true
+    },
+    {
+      "class": "ValueWidget",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": true
+    },
+    {
+      "class": "QSpinBox",
+      "name": "",
+      "tooltip": "Read every Nth frame of the source trajectory.",
+      "visible": true
+    },
+    {
+      "class": "QLineEdit",
+      "name": "qt_spinbox_lineedit",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "InfoWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_viewport",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_hcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "qt_scrollarea_vcontainer",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QScrollBar",
+      "name": "",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "DockTabBar",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "Close Tab",
+      "visible": true
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "Close Tab",
+      "visible": true
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "Close Tab",
+      "visible": true
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "Close Tab",
+      "visible": true
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "Close Tab",
+      "visible": true
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "Close Tab",
+      "visible": true
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "Close Tab",
+      "visible": true
+    },
+    {
+      "class": "QAbstractButton",
+      "name": "",
+      "tooltip": "Close Tab",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "ScrollLeftButton",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolButton",
+      "name": "ScrollRightButton",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QToolBar",
+      "name": "chisurf_help_toolbar",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "qt_toolbar_ext_button",
+      "tooltip": "",
+      "visible": false
+    },
+    {
+      "class": "QWidget",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Walk me through this tool, one control at a time",
+      "visible": true
+    },
+    {
+      "class": "HelpButton",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QToolButton",
+      "name": "",
+      "tooltip": "Show help",
+      "visible": true
+    },
+    {
+      "class": "QStatusBar",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    },
+    {
+      "class": "QSizeGrip",
+      "name": "",
+      "tooltip": "",
+      "visible": true
+    }
+  ]
+}

@@ -8,7 +8,6 @@ icon = "🧰"
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
-from chisurf.plugins.traj.traj_tools.gui.tool import TrajectoryToolsTool
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -20,6 +19,17 @@ else:
 
 __all__ = ["TrajectoryToolsTool"]
 
+
+def __getattr__(attribute):
+    # Lazy export: the Qt widget (and its qtpy import) must not load before the
+    # native EMTK factory declared in the manifest.
+    if attribute == "TrajectoryToolsTool":
+        from chisurf.plugins.traj.traj_tools.gui.tool import TrajectoryToolsTool
+
+        return TrajectoryToolsTool
+    raise AttributeError(attribute)
+
+
 if __name__ == "plugin":
-    window = TrajectoryToolsTool()
+    window = __getattr__("TrajectoryToolsTool")()
     window.show()

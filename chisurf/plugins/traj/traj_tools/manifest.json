@@ -34,7 +34,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.traj.traj_tools.gui.tool:TrajectoryToolsTool"
+    "gui": "chisurf.plugins.traj.traj_tools.gui.tool:TrajectoryToolsTool",
+    "emtk": "chisurf.plugins.traj.traj_tools.app:make_app"
   },
   "requires": {
     "traj_align": "*",
