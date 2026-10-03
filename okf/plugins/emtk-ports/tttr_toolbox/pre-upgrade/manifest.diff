@@ -1,0 +1,14 @@
+diff --git a/chisurf/plugins/tttr/tttr_toolbox/manifest.json b/chisurf/plugins/tttr/tttr_toolbox/manifest.json
+index 25fb56ee4..2788d793c 100644
+--- a/chisurf/plugins/tttr/tttr_toolbox/manifest.json
++++ b/chisurf/plugins/tttr/tttr_toolbox/manifest.json
+@@ -19,7 +19,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.tttr.tttr_toolbox.gui.tool:TttrToolboxTool"
++    "gui": "chisurf.plugins.tttr.tttr_toolbox.gui.tool:TttrToolboxTool",
++    "emtk": "chisurf.plugins.tttr.tttr_toolbox.gui.app:make_app"
+   },
+   "optional_requires": {
+     "microtime_shifter": "*",
