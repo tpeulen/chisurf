@@ -22,6 +22,7 @@
   "experimental": true,
   "experimental_message": "A plain port of the ebFRET GUI. The VBEM/empirical-Bayes loop is pure NumPy and slower than ebFRET's compiled forward-backward; runs on large datasets take minutes per state count.",
   "entrypoints": {
+    "emtk": "chisurf.plugins.burst.burst_ebfret.gui.app:make_app",
     "cli": "ebfret=chisurf.plugins.burst.burst_ebfret.cli.main:cli",
     "services": "chisurf.plugins.burst.burst_ebfret.backend.services:register_services",
     "gui": "chisurf.plugins.burst.burst_ebfret.gui.tool:EbfretTool"

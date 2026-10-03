@@ -84,7 +84,10 @@ def _rgb255(colour: Sequence[float] | None) -> tuple | None:
     return tuple(int(round(float(c) * 255)) for c in list(colour)[:3]) + (255,)
 
 
-class EbfretGui:
+from chisurf.emtk.help_guide import TourTarget
+
+
+class EbfretGui(TourTarget):
     """The window's state and its panel bodies.
 
     Parameters
@@ -200,12 +203,6 @@ class EbfretGui:
         self.used.append(name)
         if self.on_used is not None:
             self.on_used(name)
-
-    def remember(self, name: str, rect: tuple | None = None) -> None:
-        """Store the last item's rectangle (or *rect*) under *name*."""
-        rect = rect if rect is not None else im.get_item_rect()
-        if rect is not None:
-            self.item_rects[name] = tuple(rect)
 
     def show(self, dialog: dlg.Dialog) -> None:
         """Open a modal dialog on top."""
@@ -828,3 +825,12 @@ def _panel_frame(painter: Any, x: float, y: float, w: float, h: float, title: st
     tw = painter.text_width(title) + 8.0
     painter.fill_rect(x + 8.0, y, tw, 12.0, WINDOW_BG)
     painter.text(x + 12.0, y - 1.0, tw, 14.0, 0, title, PANEL_TITLE)
+
+def make_app(**kwargs) -> App:
+    from chisurf.emtk.i18n import install
+    from ..api.client import EbfretClient
+
+    install()
+    client = EbfretClient()
+    gui = EbfretGui(client)
+    return App(gui, on_exit=client.close)
