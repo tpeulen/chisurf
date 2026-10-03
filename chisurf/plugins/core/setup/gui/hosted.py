@@ -11,3 +11,14 @@ def make_updates():
 
     install()
     return UpdaterApp(UpdaterModel(suppress_initial_notification=True))
+
+
+def make_lut_tools(settings_dir=None):
+    """TTTR LUT Tools with its preferences file in the hub's settings folder (never a path resolved behind its back)."""
+    from pathlib import Path
+
+    from chisurf.plugins.tttr.tttr_lut_tools.gui.app import create_app
+
+    if settings_dir is None:
+        return create_app()
+    return create_app(preferences_path=Path(settings_dir) / "tttr_lut_tools_native.json")

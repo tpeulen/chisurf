@@ -132,6 +132,7 @@ PANELS = [
         "tttr/tttr_lut_tools",
         "detector_setups.json",
         "TAC linearization lookup-table settings.",
+        entry="chisurf.plugins.core.setup.gui.hosted:make_lut_tools",
     ),
     Panel(
         "check",

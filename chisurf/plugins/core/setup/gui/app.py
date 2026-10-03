@@ -420,7 +420,10 @@ class UnifiedSettingsApp(ImApp):
             factory = resolve_factory(panel)
             if factory is None:
                 raise RuntimeError("no native app is declared for " + panel.label)
-            child = factory()
+            import inspect
+
+            takes_dir = "settings_dir" in inspect.signature(factory).parameters
+            child = factory(settings_dir=self.settings_dir) if takes_dir else factory()
             route = "native"
         state = self.pending_state.pop(panel.key, None)
         if state and callable(getattr(child, "restore_settings", None)):

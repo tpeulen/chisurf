@@ -35,3 +35,18 @@ def real_settings_untouched():
     before = real_settings_state()
     yield
     assert real_settings_state() == before, "a test touched the real ~/.chisurf"
+
+
+@pytest.fixture(autouse=True)
+def hermetic_settings(tmp_path, monkeypatch):
+    """Every test (and every subprocess it starts) resolves settings, MMFDB and HOME inside a temporary folder.
+
+    ``get_path('settings')`` reads ``CHISURF_SETTINGS_DIR`` at each call, so a test that forgot to redirect it would
+    let a hosted panel (LUT Tools writes its preferences) reach the real ``~/.chisurf``.
+    """
+    folder = tmp_path / "_default_settings"
+    folder.mkdir()
+    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(folder))
+    monkeypatch.setenv("MMFDB_SETTINGS_DIR", str(folder))
+    monkeypatch.setenv("MMFDB_DATABASE_PATH", str(folder / "mmfdb.db"))
+    monkeypatch.setenv("HOME", str(tmp_path / "_home"))

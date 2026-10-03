@@ -613,3 +613,35 @@ def test_the_hosted_updater_checks_quietly_like_the_qt_hub(world):
     assert child.model.suppress_initial_notification and not child.model.dialog
     assert not any(t[5] == "Update Available" for t in drv.draw(1).texts)
     app.close()
+
+
+# ----------------------------------------------------------------------------------------------- the real folder stays untouched
+@pytest.mark.parametrize("key", [p.key for p in PANELS])
+def test_drawing_and_using_each_hosted_panel_never_touches_the_real_chisurf_folder(world, key):
+    """Select the panel, draw it, click and wheel inside it, close the hub: nothing outside the temporary folders changes."""
+    import os
+
+    from chisurf.plugins.core.setup.gui.app import make_app
+    from chisurf.plugins.core.setup.test.conftest import real_settings_state
+
+    before = real_settings_state()
+    app = make_app(settings_dir=world)
+    drv = Driver(app)
+    drv.draw(2)
+    drv.click(dest(drv, key))
+    bx, by, bw, bh = app.child_box
+    drv.click((bx + bw * 0.5, by + bh * 0.5, 4, 4))
+    drv.wheel(bx + bw * 0.5, by + bh * 0.5, -2)
+    app.export_settings()
+    app.close()                       # panels persist their preferences on close
+    assert real_settings_state() == before, key
+    assert os.environ["CHISURF_SETTINGS_DIR"] == str(world)
+
+
+def test_the_lut_tools_preferences_live_in_the_hubs_settings_folder(world):
+    from chisurf.plugins.core.setup.gui.app import make_app
+
+    app = make_app(settings_dir=world)
+    app.select("lut")
+    assert app.child.preferences_path == world / "tttr_lut_tools_native.json"
+    app.close()
