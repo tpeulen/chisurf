@@ -21,7 +21,7 @@ Convert ALEX macro-time modulation into micro-time (single, batch or merged), fo
 | Menu path | Tools → Converter → **ALEX Creator** |
 | Categories | Tools, Converter, TTTR |
 | Version | 2.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, gui, emtk, services |
 
 ## Parameters
 
@@ -59,10 +59,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+- **Workflow** — [Turning ALEX alternation into micro-time (ALEX Creator)](/guides/100_alex_creator.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+- **Theory** — [µs-ALEX](/concepts/us_alex.md)
 
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/ptu_alex_creator/`
 - Manifest: {src}`chisurf/plugins/tttr/ptu_alex_creator/manifest.json`
-- UI spec: {src}`chisurf/plugins/tttr/ptu_alex_creator/gui/alex.view.json`
+- UI spec: {src}`chisurf/plugins/tttr/ptu_alex_creator/gui/alex.view.json` (Qt), {src}`chisurf/plugins/tttr/ptu_alex_creator/gui/alex_emtk.view.json` (emtk)
