@@ -32,6 +32,7 @@ class SpectraState:
         self.selected = set()
         self.detail = None
         self.log = ""
+        self.mmfdb_log = ""
         self.process = None
         self.messages = queue.SimpleQueue()
         self.module = sorted(SCRAPERS, key=lambda s: s.label)[0].module
@@ -159,6 +160,20 @@ class SpectraState:
             if self.detail and self.detail["probe"].get("probe_id") == probe_id:
                 self.detail = None
 
+    def show(self, probe_id):
+        """Load *probe_id* into the detail (the clicked row), without changing which rows are picked for a push."""
+        was = probe_id in self.selected
+        self.select(probe_id)
+        if not was:
+            self.selected.discard(probe_id)
+
+    def pick(self, probe_id, enabled=True):
+        """Pick (or un-pick) a component for ``Push selected``; the detail keeps showing the last clicked row."""
+        if enabled:
+            self.selected.add(probe_id)
+        else:
+            self.selected.discard(probe_id)
+
     def push(self, selected=False):
         from ..download.merge import push_staging_to_mmfdb
 
@@ -261,6 +276,20 @@ class SpectraState:
 
         return str(resolve_database_path())
 
+    def echo(self, message):
+        self.mmfdb_log += message + "\n"
+
+    def session_text(self):
+        """The Add-to-MMFDB header line, worded as the Qt panel did: ``(admin, text)``."""
+        ok, note = self.authorized()
+        user = self.endpoint.user or active_user_id()
+        if ok:
+            return True, f"Session user {user} is an administrator ({note}) - no login needed."
+        return False, (
+            f"Session user {user} may not add to the MMFDB ({note}). "
+            "Set credentials under Advanced or use an admin account."
+        )
+
     def add_all(self):
         m = self.endpoint
         user = m.user or active_user_id()
@@ -289,6 +318,29 @@ class SpectraState:
                 replace=bool(m.replace),
                 mark_verified=bool(m.mark_verified),
             )
+
+    def add_all_logged(self):
+        """:meth:`add_all` worded into :attr:`mmfdb_log` as the Qt panel's log was; ``None`` when it did not add."""
+        m = self.endpoint
+        user = m.user or active_user_id()
+        where = f"server {m.host}:{m.cmd_port}" if m.mode == "server" else f"local MMFDB {m.db_path or self.resolved()}"
+        self.echo(f"Adding to {where} as '{user}' (replace={m.replace}) ...")
+        try:
+            result = self.add_all()
+        except PermissionError as exc:
+            self.echo(f"{exc} Cannot add.")
+            return None
+        except Exception as exc:  # noqa: BLE001 - reported in the log like the Qt panel
+            self.echo(f"Add failed: {exc}")
+            return None
+        if isinstance(result, dict) and "probes" in result and "spectra" in result:
+            self.echo(
+                f"Done: probes={result['probes']} spectra={result['spectra']} props={result.get('optical_properties')} "
+                f"consolidated={result.get('consolidated')}" + (f" purged={result['purged']}" if result.get("purged") else "")
+            )
+        else:
+            self.echo(f"Done: {result}")
+        return result
 
     def close(self):
         if self.process is not None:

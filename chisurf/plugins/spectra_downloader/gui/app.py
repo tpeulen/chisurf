@@ -1,34 +1,72 @@
-"""Standalone EMTK staging overview, browser, scrapers and MMFDB import."""
+"""The Spectra tool: staging overview, component browser, scraper runner and MMFDB import, drawn by emtk.
+
+Four panels as in the Qt tool (Overview, Browse, Download, Add to MMFDB) behind a navigation list. Every form is a
+spec drawn by ``emtk.view_form`` with this app (or a small model) as the model: the Overview fields and the endpoint
+form are the Qt tool's own ``overview.view.json`` / ``endpoint_auth.view.json``, the component detail is the
+mmfdb-admin ``fluorophore.view.json``, and the rest is ``spectra_emtk.view.json``. Tables are ``data_table`` sections.
+The scrapers run as the Qt tool ran them (a subprocess streamed into the log), an import into the MMFDB is asked for
+and logged; nothing here touches the network except what the user starts.
+"""
 
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 from emtk import i18n, im, implot
 from emtk.app import ImApp
-from emtk.docking import DockManager, Region, Split
-from emtk.im_core import Col, Style
+from emtk.view_form import FormState, draw_form
 
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layout_spec
 
 from .native import SpectraState
 from .translations import LOCALES, TOOLTIPS, install, tr
 
+HERE = Path(__file__).parent
 PANELS = ("Overview", "Browse", "Download", "Add to MMFDB")
-SUMMARY = (
-    ("Staging DB", "db_path"),
-    ("Total components", "total"),
-    ("With spectra", "with_spectra"),
-    ("Fluorophores", "fluorophores"),
-    ("Filters", "filters"),
-    ("Dichroics", "dichroics"),
-    ("Detectors", "detectors"),
-    ("Light sources", "light_sources"),
-)
+_TEXT_KEYS = ("title", "label", "description", "tooltip", "hint", "placeholder")
+SPECTRUM_COLOURS = {"emission": (200, 0, 0, 255), "absorption": (0, 100, 200, 255), "transmission": (0, 150, 0, 255)}
+ERROR_COLOUR = (235, 100, 90, 255)
+HEADER = 0.0
 
 
-class SpectraApp(ImApp):
+def _optical_view():
+    """The mmfdb-admin component detail spec (found by path: importing its package would import Qt)."""
+    return Path(__file__).resolve().parents[2] / "core" / "mmfdb_admin" / "gui" / "optical_components" / "fluorophore.view.json"
+
+
+def translated(node):
+    """A copy of a spec with the texts a user reads put through ``tr``."""
+    if isinstance(node, dict):
+        out = {}
+        for key, value in node.items():
+            if key in _TEXT_KEYS and isinstance(value, str):
+                out[key] = tr(value) if value else value
+            elif key == "labels" and isinstance(value, list):
+                out[key] = [tr(v) for v in value]
+            else:
+                out[key] = translated(value)
+        return out
+    if isinstance(node, list):
+        return [translated(item) for item in node]
+    return node
+
+
+class Fields:
+    """A read-only attribute bag for a form (the Overview counts, the component detail)."""
+
+    def __init__(self, **values):
+        self.__dict__.update(values)
+
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return ""
+
+
+class SpectraApp(TourTarget, ImApp):
     def __init__(self, db=None):
         self.owns_db = db is None
         if db is None:
@@ -39,369 +77,503 @@ class SpectraApp(ImApp):
         install()
         self.model = SpectraState(db)
         self.panel = "Overview"
-        self.pending_push = None
-        self.message = ""
-        self.session = self.model.authorized()
+        self.status = "Ready"
+        self.message, self.message_is_error = "", False
+        self.dialog = None
+        self.session = None
         self.item_rects = {}
         self.navigation_search = ""
+        self.detail_tab = "Properties"
+        self.current = None
+        self.forms = {key: FormState(on_used=self.used) for key in ("overview", "browse", "detail", "download", "mmfdb", "mmfdb_top")}
+        for key in ("properties", "metadata"):
+            self.forms[key] = FormState(on_used=self.used)
+        self.forms["endpoint"] = FormState(on_used=self.used)
+        self.sources_json = json.loads((HERE / "spectra_emtk.view.json").read_text(encoding="utf-8"))
+        self.specs, self.spec_locale = {}, None
+        self.help = EmTkHelpWindow(title="Spectra", resource=HERE / "help.md", on_start_guide=self.start_guide)
         self.tour = EmTkGuidedTour(
-            steps=Path(__file__).with_name("guide.json"),
-            get_target_rect=lambda key: self.item_rects.get(key),
+            steps=HERE / "guide.json",
+            get_target_rect=self._target_rect,
             owner=self,
+            wait_for_controls=True,
         )
-        self.help = EmTkHelpWindow(title="Spectra", resource=Path(__file__).with_name("help.md"))
-        self.docks = DockManager(Split("h", 0.20, Region("navigation"), Region("content")))
-        self.docks.add_window(
-            "navigation", tr("Spectra"), self.draw_navigation, dock="navigation", closable=False
-        )
-        self.docks.add_window(
-            "content", tr("Overview"), self.draw_content, dock="content", closable=False
-        )
-        style = Style(frame_padding=(6, 5), item_spacing=(8, 6), frame_border_size=1)
-        im.style_colors_light(style)
-        style.colors.update(
-            {
-                Col.TEXT: (0, 0, 0, 255),
-                Col.WINDOW_BG: (239, 239, 239, 255),
-                Col.TITLE_BG: (239, 239, 239, 255),
-                Col.TITLE_BG_ACTIVE: (239, 239, 239, 255),
-                Col.FRAME_BG: (255, 255, 255, 255),
-                Col.BORDER: (170, 170, 170, 255),
-                Col.BUTTON: (246, 246, 246, 255),
-                Col.HEADER: (47, 145, 197, 255),
-                Col.HEADER_HOVERED: (190, 220, 240, 255),
-                Col.TAB: (232, 232, 232, 255),
-                Col.TAB_SELECTED: (255, 255, 255, 255),
-            }
-        )
-        super().__init__(gui=self.render, continuous=True, style=style)
+        self.labels = None
+        self.overview = Fields()
+        self.refresh_overview()
+        self.refresh_session()
+        super().__init__(gui=self.render, continuous=False)
 
-    def tip(self, label):
-        # Every interactive control uses its translated purpose as a tooltip.
-        im.set_item_tooltip(tr(TOOLTIPS.get(label, label)))
-        self.item_rects[label] = im.get_item_rect()
+    # -- the specs ------------------------------------------------------------------------------------------------- #
+    def build_specs(self):
+        """Load, translate and lay out every panel's spec once per locale; one caption column per window."""
+        src = self.sources_json
+        overview_fields = json.loads((HERE / "overview.view.json").read_text(encoding="utf-8"))["sections"]
+        endpoint = json.loads((HERE / "endpoint_auth.view.json").read_text(encoding="utf-8"))
+        for section in endpoint["sections"]:
+            self._spin_ports(section)
+        detail = json.loads(_optical_view().read_text(encoding="utf-8"))
+        specs = {
+            "overview": {"sections": [{"type": "panel", "title": "Staging database overview", "n_col": 2,
+                                       "sections": overview_fields}] + src["overview"]["sections"]},
+            "browse": src["browse"],
+            "detail": {"sections": [{"type": "panel", "title": "", "n_col": 2, "sections": detail["sections"]}]},
+            "properties": src["properties"],
+            "metadata": src["metadata"],
+            "download": src["download"],
+            "mmfdb_top": src["mmfdb_top"],
+            "mmfdb": src["mmfdb"],
+            "endpoint": {"sections": endpoint["sections"]},
+        }
+        out = {}
+        for key, spec in specs.items():
+            out[key] = layout_spec(translated(deepcopy(spec)))
+        labels = LabelColumn()
+        labels.measure([f["label"] for key in ("endpoint", "download", "browse") for f in labelled(out[key]["sections"])])
+        for key in ("endpoint", "download", "browse"):
+            labels.pad(out[key]["sections"])
+        return out
 
-    def button(self, label, action):
-        if im.button(tr(label)):
-            self.act(action)
-        self.tip(label)
+    @staticmethod
+    def _spin_ports(section):
+        if section.get("type") == "value" and section.get("kind") == "int" and not section.get("read_only"):
+            section["style"] = "spin"
+        for child in section.get("sections", []):
+            SpectraApp._spin_ports(child)
 
-    def act(self, action):
-        try:
-            result = action()
-            if result is not None:
-                self.message = json.dumps(result, default=str, ensure_ascii=False)
-        except Exception as exc:
-            self.message = str(exc)
+    # -- form models --------------------------------------------------------------------------------------------------- #
+    def used(self, name):
+        self.tour.notify_used(name)
 
-    def draw_navigation(self, box):
-        _, self.navigation_search = im.input_text(
-            "##navigation_search", self.navigation_search, hint=tr("Filter")
-        )
-        self.tip("Filter")
-        im.spacing()
-        for panel in PANELS:
-            if self.navigation_search.lower() not in tr(panel).lower():
-                continue
-            if im.selectable(tr(panel), self.panel == panel):
-                self.panel = panel
-                self.tour.notify_used(panel)
-            self.tip(panel)
-        im.separator()
-        im.text(tr("Language"))
-        locale = i18n.get_locale()
-        changed, index = im.combo(
-            "##locale", LOCALES.index(locale) if locale in LOCALES else 0, list(LOCALES)
-        )
-        self.tip("Language")
-        if changed:
-            i18n.set_locale(LOCALES[index])
-        self.button("Guide", self.tour.start)
-        self.button("Help", self.help.show)
+    @property
+    def search(self):
+        return self.model.search
 
-    def draw_content(self, box):
-        if self.panel == "Overview":
-            self.draw_overview()
-        elif self.panel == "Browse":
-            self.draw_browser(box)
-        elif self.panel == "Download":
-            self.draw_download()
-        else:
-            self.draw_endpoint()
-        if self.message:
-            im.separator()
-            im.text_wrapped(self.message)
+    @search.setter
+    def search(self, value):
+        self.model.search = str(value)
 
-    def draw_overview(self):
-        im.heading(tr("Staging database overview"), level=4)
-        summary = self.model.overview()
-        available = im.get_content_region_avail()[0]
-        columns = 4 if available >= 690 else 2
-        if im.begin_table("summary", columns, size=(available, 0)):
-            for index in range(columns):
-                im.table_setup_column(
-                    "##column" + str(index), init_width_or_weight=0.32 if index % 2 == 0 else 0.68
-                )
-            for index, (label, key) in enumerate(SUMMARY):
-                if index % (columns // 2) == 0:
-                    im.table_next_row()
-                im.table_next_column()
-                im.text(tr(label))
-                im.table_next_column()
-                im.set_next_item_width(im.get_content_region_avail()[0])
-                im.input_text(
-                    "##summary_" + key,
-                    str(summary[key]),
-                    flags=im.InputTextFlags.READ_ONLY,
-                    elide_start=key == "db_path",
-                )
-                self.tip(label)
-            im.end_table()
-        self.button("Refresh", self.model.refresh)
-        im.spacing()
-        im.text(tr("By category / source (JSON)"))
-        origin = im.get_cursor_screen_pos()
-        size = im.get_content_region_avail()
-        draw = im.get_window_draw_list()
-        draw.add_rect_filled(
-            origin, (origin[0] + size[0], origin[1] + size[1]), (255, 255, 255, 255)
-        )
-        draw.add_rect(origin, (origin[0] + size[0], origin[1] + size[1]), (170, 170, 170, 255))
-        im.begin_child("overview_json", size)
-        im.push_font({"family": "monospace", "size": 12})
-        im.text_wrapped(json.dumps({k: summary[k] for k in ("by_category", "by_source")}, indent=2))
-        im.pop_font()
-        im.end_child()
+    def source_options(self):
+        return ["All"] + self.model.sources
 
-    def choice(self, label, value, values):
-        options = [""] + values
-        changed, index = im.combo(
-            tr(label), options.index(value) if value in options else 0, [tr("All")] + values
-        )
-        self.tip(label)
-        return options[index]
+    def category_options(self):
+        return ["All"] + self.model.categories
 
-    def draw_browser(self, box):
-        m = self.model
-        wide = im.get_content_region_avail()[0] >= 680
-        if wide:
-            im.columns(3)
-        _, m.search = im.input_text(tr("Filter"), m.search)
-        self.tip("Filter")
-        if wide:
-            im.next_column()
-        m.source = self.choice("Source", m.source, m.sources)
-        if wide:
-            im.next_column()
-        m.category = self.choice("Category", m.category, m.categories)
-        if wide:
-            im.columns(1)
-        self.button("Refresh", m.refresh)
-        rows = m.filtered()
-        im.same_line()
-        im.text(f"{len(rows)} / {len(m.rows)}")
-        origin = im.get_cursor_screen_pos()
-        width, height = im.get_content_region_avail()
-        if wide:
-            left = max(530.0, width * 0.65)
-            im.begin_child("components_panel", (origin[0], origin[1], left, height))
-            self.draw_components(rows)
-            im.end_child()
-            im.begin_child(
-                "detail_panel", (origin[0] + left + 8, origin[1], width - left - 8, height)
-            )
-            self.draw_detail()
-            im.end_child()
-        else:
-            self.draw_components(rows)
-            self.draw_detail()
+    @property
+    def source_filter(self):
+        return self.model.source or "All"
 
-    def draw_components(self, rows):
-        m = self.model
-        available = im.get_content_region_avail()[0]
-        narrow = available < 470
-        im.push_font({"family": "sans-serif", "size": 9 if narrow else 10})
-        widths = (28, 24, 110, 88, 66, 76) if narrow else (30, 24, 114, 90, 70, 80)
-        if im.begin_table(
-            "components_readable",
-            6,
-            flags=im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.RESIZABLE,
-            size=(available, 0),
-        ):
-            for label, width in zip((" ", "ID", "Name", "Category", "Source", "Status"), widths):
-                im.table_setup_column(
-                    tr(label), flags=im.TableColumnFlags.WIDTH_FIXED, init_width_or_weight=width
-                )
-            im.table_headers_row()
-            for row in rows:
-                im.table_next_row()
-                im.table_set_column_index(0)
-                pid = row["probe_id"]
-                changed, enabled = im.checkbox(f"##probe{pid}", pid in m.selected)
-                self.tip("Select components to inspect their metadata and spectra.")
-                self.item_rects[f"probe:{pid}"] = im.get_item_rect()
-                if changed:
-                    m.select(pid, enabled)
-                for j, key in enumerate(
-                    ("probe_id", "chromophore_name", "category", "source", "verification_status"), 1
-                ):
-                    im.table_set_column_index(j)
-                    value = str(row.get(key) or "")
-                    shown = value
-                    room = im.get_content_region_avail()[0]
-                    while shown and im.calc_text_size(shown)[0] > room:
-                        shown = shown[:-1]
-                    if shown != value:
-                        shown = shown[:-1] + "…"
-                    im.text(shown)
-                    im.set_item_tooltip(value)
-            im.end_table()
-        im.pop_font()
-        self.button("Push selected", lambda: setattr(self, "pending_push", True))
-        self.button("Push all", lambda: setattr(self, "pending_push", False))
+    @source_filter.setter
+    def source_filter(self, value):
+        self.model.source = "" if value == "All" else value
 
-    def draw_detail(self):
-        m = self.model
-        if not m.detail:
-            im.text_wrapped(tr("Select components to inspect their metadata and spectra."))
-            return
-        im.separator()
-        probe = m.detail["probe"]
-        im.heading(str(probe.get("chromophore_name") or ""), level=4)
-        for label, key in (
-            ("Category", "category"),
-            ("Source", "source"),
-            ("Status", "verification_status"),
-        ):
-            im.text_wrapped(f"{tr(label)}: {probe.get(key) or ''}")
-        if im.begin_tab_bar("details"):
-            if im.begin_tab_item(tr("Properties")):
-                self.tip("Properties")
-                for prop in m.detail["optical_properties"]:
-                    im.text_wrapped(f"{prop['property_name']}: {prop['property_value']}")
-                im.end_tab_item()
-            if im.begin_tab_item(tr("Metadata (JSON)")):
-                self.tip("Metadata (JSON)")
-                meta = {
-                    "probe": m.detail["probe"],
-                    "optical_properties": {
-                        p["property_name"]: p["property_value"]
-                        for p in m.detail["optical_properties"]
-                    },
-                    "spectra": [
-                        {"type": s["spectrum_type"], "points": len(s["wavelengths"])}
-                        for s in m.detail["spectra"]
-                    ],
-                }
-                im.text_wrapped(json.dumps(meta, indent=2, default=str))
-                im.end_tab_item()
-            im.end_tab_bar()
-        if implot.begin_plot("##spectra", (-1, 220)):
-            implot.setup_axes(tr("Wavelength (nm)"), tr("Intensity"))
-            for s in m.detail["spectra"]:
-                colors = {
-                    "emission": (200, 0, 0, 255),
-                    "absorption": (0, 100, 200, 255),
-                    "transmission": (0, 150, 0, 255),
-                }
-                implot.plot_line(
-                    s["spectrum_type"],
-                    s["wavelengths"],
-                    s["intensity"],
-                    spec=implot.PlotSpec(
-                        line_color=colors.get(s["spectrum_type"], (0, 100, 200, 255)), line_weight=2
-                    ),
-                )
-            implot.end_plot()
+    @property
+    def category_filter(self):
+        return self.model.category or "All"
 
-    def draw_download(self):
+    @category_filter.setter
+    def category_filter(self, value):
+        self.model.category = "" if value == "All" else value
+
+    def scraper_labels(self):
         from ..download._base import SCRAPERS
 
-        specs = sorted(SCRAPERS, key=lambda s: s.label)
-        index = next((i for i, s in enumerate(specs) if s.module == self.model.module), 0)
-        _, index = im.combo(tr("Available sources"), index, [s.label for s in specs])
-        self.tip("Available sources")
-        self.model.module = specs[index].module
-        im.begin_disabled(self.model.process is not None)
-        self.button("Run selected script", self.model.run_script)
-        im.end_disabled()
-        im.text_wrapped(
-            f"{tr('Already scraped')} ({self.model.source_slug()}): {json.dumps(self.model.source_counts())}"
+        return [s.label for s in sorted(SCRAPERS, key=lambda s: s.label)]
+
+    @property
+    def scraper_label(self):
+        from ..download._base import get_scraper
+
+        spec = get_scraper(self.model.module)
+        return spec.label if spec else ""
+
+    @scraper_label.setter
+    def scraper_label(self, value):
+        from ..download._base import SCRAPERS
+
+        spec = next((s for s in SCRAPERS if s.label == value), None)
+        if spec is not None:
+            self.model.module = spec.module
+
+    @property
+    def log(self):
+        return self.model.log
+
+    @property
+    def mmfdb_log(self):
+        return self.model.mmfdb_log
+
+    @property
+    def metadata_json(self):
+        d = self.model.detail
+        if not d or self.current is None:
+            return ""
+        return json.dumps(
+            {
+                "probe": d["probe"],
+                "optical_properties": {p["property_name"]: p["property_value"] for p in d["optical_properties"]},
+                "spectra": [{"type": s["spectrum_type"], "points": len(s["wavelengths"])} for s in d["spectra"]],
+            },
+            indent=2,
+            default=str,
         )
-        self.button("Browse this source", self.browse_source)
-        im.separator()
-        im.text_wrapped(self.model.log)
+
+    def enabled(self, name):
+        m = self.model
+        if name == "run_script":
+            return m.process is None
+        if name in ("push_selected",):
+            return True
+        if name == "add_all":
+            return not self.busy
+        return True
+
+    @property
+    def busy(self):
+        return False
+
+    def bounds(self, name):
+        return (1, 65535) if name in ("cmd_port", "pub_port") else (None, None)
+
+    # -- data for the tables -------------------------------------------------------------------------------------------- #
+    def category_rows(self):
+        return [{"name": k or "(none)", "count": v} for k, v in sorted(self.overview_data["by_category"].items())]
+
+    def source_rows(self):
+        return [{"name": k or "(none)", "count": v} for k, v in self.overview_data["by_source"].items()]
+
+    def component_rows(self):
+        m = self.model
+        return [
+            {
+                "pick": r["probe_id"] in m.selected,
+                "probe_id": r["probe_id"],
+                "name": str(r.get("chromophore_name") or ""),
+                "category": str(r.get("category") or ""),
+                "source": str(r.get("source") or ""),
+                "status": str(r.get("verification_status") or ""),
+            }
+            for r in m.filtered()
+        ]
+
+    def property_rows(self):
+        d = self.model.detail
+        return [{"property": p["property_name"], "value": str(p["property_value"])} for p in (d["optical_properties"] if d else [])]
+
+    def select_row(self, record):
+        if isinstance(record, dict) and record.get("probe_id") is not None:
+            self.current = int(record["probe_id"])
+            self.model.show(self.current)
+        self.used("select_row")
+
+    def pick_row(self, record, key, value):
+        if key == "pick" and isinstance(record, dict):
+            self.model.pick(int(record["probe_id"]), bool(value))
+            self.used("pick_row")
+
+    # -- actions ---------------------------------------------------------------------------------------------------------- #
+    def notice(self, text, error=False):
+        self.message, self.message_is_error = text, error
+
+    def refresh_overview(self):
+        self.model.refresh()
+        self.overview_data = self.model.overview()
+        self.overview = Fields(**{k: str(v) for k, v in self.overview_data.items() if not isinstance(v, dict)})
+
+    def refresh_browse(self):
+        self.model.refresh()
+        self.notice(tr("Ready"))
+
+    def refresh_session(self):
+        self.session = self.model.session_text()
+
+    def check_session(self):
+        self.refresh_session()
+
+    def run_script(self):
+        try:
+            if self.model.run_script():
+                self.notice("")
+        except Exception as exc:  # noqa: BLE001
+            self.notice(str(exc), True)
 
     def browse_source(self):
         self.model.refresh()
         self.model.source = self.model.source_slug()
         self.panel = "Browse"
 
-    def draw_endpoint(self):
-        m = self.model.endpoint
-        _, index = im.combo(
-            tr("Endpoint"), int(m.mode == "server"), [tr("Local file"), tr("Server (ZMQ)")]
-        )
-        self.tip("Endpoint")
-        m.mode = ("local", "server")[index]
-        _, m.db_path = im.input_text(tr("Local MMFDB"), m.db_path)
-        self.tip("Local MMFDB")
-        _, m.replace = im.checkbox(tr("Replace existing reference set"), m.replace)
-        self.tip("Replace existing reference set")
-        _, m.mark_verified = im.checkbox(tr("Mark imported as approved"), m.mark_verified)
-        self.tip("Mark imported as approved")
-        opened = im.collapsing_header(tr("Advanced — connection & authentication"))
-        self.tip("Advanced — connection & authentication")
-        if opened:
-            for attr, label in (("host", "Host"), ("user", "User"), ("password", "Password")):
-                _, value = im.input_text(
-                    tr(label),
-                    getattr(m, attr),
-                    flags=im.InputTextFlags.PASSWORD if attr == "password" else 0,
-                )
-                setattr(m, attr, value)
-                self.tip(label)
-            for attr, label in (("cmd_port", "Command port"), ("pub_port", "Publish port")):
-                _, value = im.input_int(tr(label), getattr(m, attr))
-                setattr(m, attr, max(1, min(65535, value)))
-                self.tip(label)
-        self.button("Check session", self.check_session)
-        if self.session is not None:
-            ok, note = self.session
-            im.text_wrapped(f"{m.user}: {tr('Administrator' if ok else 'Not authorized')} ({note})")
-        self.button("Add all to MMFDB", self.model.add_all)
+    def push_selected(self):
+        if not self.model.selected:
+            self.ask("Push selected", tr("No components selected."), [("OK", None)])
+            return
+        self.ask("Push to MMFDB", tr("Push {} selected component(s) from this staging database into the connected MMFDB?").format(len(self.model.selected)),
+                 [("Yes", lambda: self.do_push(True)), ("No", None)])
 
-    def check_session(self):
-        self.session = self.model.authorized()
+    def push_all(self):
+        self.ask("Push to MMFDB", tr("Push all {} component(s) from this staging database into the connected MMFDB?").format(len(self.model.rows)),
+                 [("Yes", lambda: self.do_push(False)), ("No", None)])
+
+    def do_push(self, selected):
+        try:
+            summary = self.model.push(selected=selected)
+        except Exception as exc:  # noqa: BLE001
+            self.ask("Push failed", str(exc), [("OK", None)])
+            return
+        summary = summary if isinstance(summary, dict) else {}
+        self.ask("Push complete", tr("Pushed {} component(s) into the MMFDB.").format(summary.get("merged", 0))
+                 + "\n" + tr("Consolidated: {}").format(summary.get("consolidated")), [("OK", None)])
+
+    def add_all(self):
+        self.model.add_all_logged()
+
+    def ask(self, title, text, buttons):
+        self.dialog = {"title": title, "text": text, "buttons": buttons}
+
+    def answer(self, callback):
+        self.dialog = None
+        if callback is not None:
+            callback()
+
+    # -- the window ---------------------------------------------------------------------------------------------------------- #
+    def _target_rect(self, key):
+        if key in self.item_rects:
+            return self.item_rects[key]
+        panel = next((p for p in PANELS if key and key.casefold() in p.casefold()), None)
+        return self.item_rects.get("nav." + panel) if panel else None
+
+    def start_guide(self):
+        self.tour.start()
+
+    def show_help(self):
+        self.help.show()
+
+    def step(self, delta):
+        index = PANELS.index(self.panel) + delta
+        if 0 <= index < len(PANELS):
+            self.select_panel(PANELS[index])
+
+    def select_panel(self, panel):
+        self.panel = panel
+        self.status = "Ready"
+        self.tour.notify_used(panel)
+
+    def draw_navigation(self, width):
+        _, self.navigation_search = im.input_text("##navigation_search", self.navigation_search, hint=tr("Filter"))
+        im.set_item_tooltip(tr(TOOLTIPS.get("Filter", "Filter")))
+        self.item_rects["search"] = im.get_item_rect()
+        im.spacing()
+        for panel in PANELS:
+            if self.navigation_search.lower() not in tr(panel).lower():
+                continue
+            if im.selectable(tr(panel) + "##nav." + panel, self.panel == panel, size=(width - 8, 24)):
+                self.select_panel(panel)
+            im.set_item_tooltip(tr(TOOLTIPS.get(panel, panel)))
+            self.item_rects["nav." + panel] = im.get_item_rect()
+        im.separator()
+        im.text(tr("Language"))
+        locale = i18n.get_locale()
+        changed, index = im.combo("##locale", LOCALES.index(locale) if locale in LOCALES else 0, list(LOCALES))
+        im.set_item_tooltip(tr(TOOLTIPS.get("Language", "Language")))
+        self.item_rects["language"] = im.get_item_rect()
+        if changed:
+            i18n.set_locale(LOCALES[index])
+        pressed = button_row(
+            [
+                {"label": tr("Guide"), "key": "guide", "tip": tr(TOOLTIPS.get("Guide", "Guide"))},
+                {"label": tr("Help"), "key": "help", "tip": tr(TOOLTIPS.get("Help", "Help"))},
+            ],
+            width - 8,
+            remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),
+        )
+        if pressed == "guide":
+            self.start_guide()
+        elif pressed == "help":
+            self.show_help()
+
+    def draw_form(self, key, model=None):
+        state = self.forms[key]
+        state.rects.clear()
+        state.custom.update({"count": self.draw_count, "scraped": self.draw_scraped, "session": self.draw_session})
+        draw_form(self.specs[key], model if model is not None else self, state, titles=True)
+        self.item_rects.update(state.rects)
+
+    def draw_count(self, section, model, state, width):
+        im.text_disabled(f"{len(self.model.filtered())} / {len(self.model.rows)}")
+
+    def draw_scraped(self, section, model, state, width):
+        counts = json.dumps(self.model.source_counts()) if self.model.source_counts() else tr("none yet")
+        im.text_wrapped(f"{tr('Already scraped')} ({self.model.source_slug()}): {counts}")
+
+    def draw_session(self, section, model, state, width):
+        ok, text = self.session or (True, "")
+        if not ok:
+            im.push_style_color(im.Col.TEXT, ERROR_COLOUR)
+        im.text_wrapped(tr(text) if text in TOOLTIPS else text)
+        if not ok:
+            im.pop_style_color(1)
+
+    def draw_overview(self):
+        self.draw_form("overview", self.overview_model())
+
+    def overview_model(self):
+        outer = self
+
+        class Model:
+            def __getattr__(self, name):
+                if name in ("refresh_overview", "category_rows", "source_rows"):
+                    return getattr(outer, name)
+                return getattr(outer.overview, name)
+
+            def enabled(self, name):
+                return True
+
+        return Model()
+
+    def draw_browse(self, width, height):
+        wide = width >= 900
+        x, y = im.get_cursor_screen_pos()
+        left = min(max(520.0, width * 0.52), width - 360.0) if wide else width
+        im.begin_child((x, y, left, height if wide else max(260.0, height * 0.5)), child_id="spectra-list")
+        self.draw_form("browse")
+        im.end_child()
+        if wide:
+            im.begin_child((x + left + 8.0, y, width - left - 8.0, height), child_id="spectra-detail")
+        self.draw_detail()
+        if wide:
+            im.end_child()
+
+    def draw_detail(self):
+        m = self.model
+        if not m.detail:
+            im.text_wrapped(tr("Select components to inspect their metadata and spectra."))
+            return
+        probe = m.detail["probe"]
+        data = dict(probe)
+        for p in m.detail["optical_properties"]:
+            data.setdefault(p["property_name"], p["property_value"])
+        fields = Fields(**{k: ("" if v is None else str(v)) for k, v in data.items()})
+        self.draw_form("detail", fields)
+        if im.begin_tab_bar("details"):
+            for tab, key in (("Properties", "properties"), ("Metadata (JSON)", "metadata")):
+                opened = im.begin_tab_item(tr(tab))
+                im.set_item_tooltip(tr(TOOLTIPS.get(tab, tab)))
+                self.item_rects["tab." + key] = im.get_item_rect()
+                if opened:
+                    x, y = im.get_cursor_screen_pos()
+                    w = im.get_content_region_avail()[0]
+                    im.begin_child((x, y, w, 160.0), child_id="spectra-tab-" + key)
+                    self.draw_form(key)
+                    im.end_child()
+                    im.dummy(w, 160.0)
+                    im.end_tab_item()
+            im.end_tab_bar()
+        origin, room = im.get_cursor_screen_pos(), im.get_content_region_avail()
+        self.item_rects["plot"] = (origin[0], origin[1], room[0], max(room[1], 180.0))
+        if implot.begin_plot("##spectra", (-1, max(room[1], 180.0))):
+            implot.setup_axes(tr("Wavelength (nm)"), tr("Intensity"))
+            for s in m.detail["spectra"]:
+                implot.plot_line(
+                    s["spectrum_type"], s["wavelengths"], s["intensity"],
+                    spec=implot.PlotSpec(line_color=SPECTRUM_COLOURS.get(s["spectrum_type"], (0, 100, 200, 255)), line_weight=2),
+                )
+            implot.end_plot()
+
+    def draw_content(self, width, height):
+        self.model.poll()
+        if self.panel == "Overview":
+            self.draw_overview()
+        elif self.panel == "Browse":
+            self.draw_browse(width, height)
+        elif self.panel == "Download":
+            self.draw_form("download")
+        else:
+            im.heading(tr("Add staging components to the MMFDB"), level=4)
+            self.draw_form("mmfdb_top")
+            self.draw_form("endpoint", self.model.endpoint)
+            self.draw_form("mmfdb")
+        if self.message:
+            im.separator()
+            if self.message_is_error:
+                im.push_style_color(im.Col.TEXT, ERROR_COLOUR)
+            im.text_wrapped(self.message)
+            if self.message_is_error:
+                im.pop_style_color(1)
 
     def render(self):
+        if self.specs == {} or self.spec_locale != i18n.get_locale():
+            self.specs, self.spec_locale = self.build_specs(), i18n.get_locale()
         self.model.poll()
+        if self.model.process is not None or self.tour.active:
+            from emtk.im_core import get_current_context
+
+            ctx = get_current_context()
+            ctx.request_frame_at(ctx.io.now + 0.1)
         vp = im.get_main_viewport()
-        frame = (0.0, 0.0, *vp.size)
-        im.push_font({"family": "sans-serif", "size": 12})
-        self.docks.layout.ratio = min(200.0, max(145.0, vp.size[0] * 0.20)) / max(1.0, vp.size[0])
-        self.docks.windows["navigation"].title = tr("Spectra")
-        self.docks.windows["content"].title = tr(self.panel)
-        self.docks.draw(frame)
-        if self.tour.active:
-            self.tour.draw(*vp.size)
-        if self.help.open:
-            self.help.draw(frame)
-        if self.pending_push is not None:
-            if im.begin(tr("Confirm import"), box=(40, 100, min(500, vp.size[0] - 80), 180)):
-                im.text_wrapped(tr("Import these staging components into the connected MMFDB?"))
-
-                def push():
-                    selected = self.pending_push
-                    self.pending_push = None
-                    return self.model.push(selected=selected)
-
-                self.button("Confirm import", push)
-                im.same_line()
-                self.button("Cancel", lambda: setattr(self, "pending_push", None))
+        width, height = float(vp.size[0]), float(vp.size[1])
+        left, bar = min(200.0, max(150.0, width * 0.20)), 30.0
+        im.set_next_window_pos((0.0, 0.0), im.Cond.ALWAYS)
+        im.set_next_window_size((left, height), im.Cond.ALWAYS)
+        if im.begin(tr("Spectra")):
+            self.draw_navigation(left)
+        im.end()
+        im.set_next_window_pos((left + 4.0, 0.0), im.Cond.ALWAYS)
+        im.set_next_window_size((width - left - 4.0, height - bar), im.Cond.ALWAYS)
+        if im.begin(tr(self.panel) + "##content"):
+            avail = im.get_content_region_avail()
+            self.draw_content(avail[0], avail[1])
+        im.end()
+        im.set_next_window_pos((left + 4.0, height - bar), im.Cond.ALWAYS)
+        im.set_next_window_size((width - left - 4.0, bar), im.Cond.ALWAYS)
+        if im.begin("##spectra-status", flags=im.WindowFlags.NO_TITLE_BAR):
+            index = PANELS.index(self.panel)
+            im.text_unformatted(tr(self.status))
+            im.same_line(max(120.0, width - left - 200.0))
+            im.begin_disabled(index <= 0)
+            if im.button(tr("Back")):
+                self.step(-1)
+            self.item_rects["back"] = im.get_item_rect()
+            im.set_item_tooltip(tr("Go to the previous panel."))
+            im.end_disabled()
+            im.same_line()
+            im.begin_disabled(index >= len(PANELS) - 1)
+            if im.button(tr("Next")):
+                self.step(1)
+            self.item_rects["next"] = im.get_item_rect()
+            im.set_item_tooltip(tr("Go to the next panel."))
+            im.end_disabled()
+        im.end()
+        if self.dialog:
+            d = self.dialog
+            w = min(460.0, width - 60.0)
+            im.set_next_window_pos(((width - w) / 2, max(40.0, height / 3.0)), im.Cond.ALWAYS)
+            im.set_next_window_size((w, 150.0), im.Cond.ALWAYS)
+            if im.begin(tr(d["title"]) + "##spectra-dialog"):
+                im.text_wrapped(d["text"])
+                im.spacing()
+                for i, (label, callback) in enumerate(d["buttons"]):
+                    if i:
+                        im.same_line()
+                    if im.button(tr(label)):
+                        self.answer(callback)
+                    im.set_item_tooltip(tr(label))
+                    self.item_rects["dialog." + label] = im.get_item_rect()
             im.end()
-        im.pop_font()
+        if self.tour.active:
+            if self.tour.awaiting:
+                self.tour.draw(width, height)  # the highlighted control must stay clickable
+            else:
+                # A window of its own over the others, so the card's buttons are hovered (a button answers only when no
+                # other window is under the pointer).
+                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
+                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
+                im.begin("##spectra_tour", (0.0, 0.0, width, height), flags)
+                self.tour.draw(width, height)
+                im.end()
+        if self.help.open:
+            self.help.draw((0.0, 0.0, width, height))
+        self.io.mouse_wheel = self.io.mouse_wheel_h = 0.0
 
+    # -- state ---------------------------------------------------------------------------------------------------------------- #
     def export_state(self):
         # Credentials deliberately remain session-only.
         return {
@@ -413,6 +585,8 @@ class SpectraApp(ImApp):
             "selected": sorted(self.model.selected),
             "endpoint": {k: v for k, v in vars(self.model.endpoint).items() if k != "password"},
         }
+
+    export_settings = export_state
 
     def restore_state(self, state):
         if state.get("panel") in PANELS:
@@ -429,7 +603,9 @@ class SpectraApp(ImApp):
         valid = {r["probe_id"] for r in self.model.rows}
         for pid in state.get("selected", []):
             if pid in valid:
-                self.model.select(pid)
+                self.model.pick(pid)
+
+    restore_settings = restore_state
 
     def close(self):
         self.model.close()

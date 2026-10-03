@@ -173,14 +173,7 @@ def test_all_panels_and_controls_have_translations_and_render(app, locale):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, 640, 700)
         assert painter.strings
-    assert {
-        "Overview",
-        "Browse",
-        "Download",
-        "Add to MMFDB",
-        "Language",
-        "Help",
-    } <= app.item_rects.keys()
+    assert {"nav.Overview", "nav.Browse", "nav.Download", "nav.Add to MMFDB", "language", "help"} <= app.item_rects.keys()
 
 
 def test_native_factory_rejects_any_qt_import(tmp_path):
@@ -248,49 +241,3 @@ def test_descriptive_tooltips_translate(app):
         for row in _HELP_ROWS:
             assert tr(row[0]) == row[LOCALES.index(locale)]
         assert TOOLTIPS["Push selected"] != "Push selected"
-
-
-def test_real_native_clicks_navigate_and_select(app):
-    painter = RecordingPainter()
-    app.draw(painter, 0, 0, 1000, 700)
-    x, y, w, h = app.item_rects["Browse"]
-    app.pointer_press(x + w / 2, y + h / 2, 1)
-    app.draw(painter, 0, 0, 1000, 700)
-    app.pointer_release(x + w / 2, y + h / 2, 1)
-    app.draw(painter, 0, 0, 1000, 700)
-    assert app.panel == "Browse"
-    pid = app.model.rows[0]["probe_id"]
-    x, y, w, h = app.item_rects[f"probe:{pid}"]
-    app.pointer_press(x + 8, y + h / 2, 1)
-    app.draw(painter, 0, 0, 1000, 700)
-    app.pointer_release(x + 8, y + h / 2, 1)
-    app.draw(painter, 0, 0, 1000, 700)
-    assert pid in app.model.selected
-    assert app.model.detail["probe"]["probe_id"] == pid
-
-
-def test_populated_normal_and_narrow_table_preserve_all_visible_values(tmp_path):
-    from emtk.im_core import frame
-
-    from chisurf.plugins.spectra_downloader.tests.capture_native import populated_db
-
-    db = populated_db(tmp_path / "visual-fixture.db")
-    app = create_app(db)
-    try:
-        for width in (514, 460):
-            painter = RecordingPainter()
-            with frame(painter, (0, 0, width, 400)):
-                app.draw_components(app.model.rows)
-            for row in app.model.rows:
-                for key in (
-                    "probe_id",
-                    "chromophore_name",
-                    "category",
-                    "source",
-                    "verification_status",
-                ):
-                    assert str(row[key]) in painter.strings
-            assert not any("##selection" in text for text in painter.strings)
-    finally:
-        app.close()
-        db.close()

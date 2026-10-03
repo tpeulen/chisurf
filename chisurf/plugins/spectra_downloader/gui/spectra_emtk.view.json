@@ -1,0 +1,307 @@
+{
+  "_comment": "emtk layouts of the Spectra tool's own panels (Browse toolbar and table, Download, the Add-to-MMFDB buttons and log, the Overview buttons and tables). The Overview fields, the endpoint form and the component detail reuse the Qt specs (overview.view.json, endpoint_auth.view.json, the mmfdb-admin fluorophore.view.json).",
+  "overview": {
+    "sections": [
+      {
+        "type": "button_row",
+        "buttons": [
+          {
+            "label": "Refresh",
+            "action": "refresh_overview",
+            "description": "Re-read the counts from the staging database."
+          }
+        ]
+      },
+      {
+        "type": "custom",
+        "key": "data_table",
+        "title": "",
+        "description": "Components per category.",
+        "options": {
+          "source": "category_rows",
+          "editable": false,
+          "height": 150,
+          "columns": [
+            {
+              "key": "name",
+              "title": "Category",
+              "width": 160,
+              "tooltip": "A component category of the staging database."
+            },
+            {
+              "key": "count",
+              "title": "Components",
+              "width": 90,
+              "tooltip": "How many components are in it."
+            }
+          ]
+        }
+      },
+      {
+        "type": "custom",
+        "key": "data_table",
+        "title": "",
+        "description": "Components per source.",
+        "options": {
+          "source": "source_rows",
+          "editable": false,
+          "height": 150,
+          "columns": [
+            {
+              "key": "name",
+              "title": "Source",
+              "width": 160,
+              "tooltip": "Where the components were scraped from."
+            },
+            {
+              "key": "count",
+              "title": "Components",
+              "width": 90,
+              "tooltip": "How many components came from it."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "browse": {
+    "sections": [
+      {
+        "type": "value",
+        "attr": "search",
+        "kind": "str",
+        "label": "Filter",
+        "description": "Keep the components whose name contains this text."
+      },
+      {
+        "type": "choice",
+        "attr": "source_filter",
+        "label": "Source",
+        "options_source": "source_options",
+        "description": "Keep the components from one source (All shows every source)."
+      },
+      {
+        "type": "choice",
+        "attr": "category_filter",
+        "label": "Category",
+        "options_source": "category_options",
+        "description": "Keep one category of component (All shows every category)."
+      },
+      {
+        "type": "button_row",
+        "buttons": [
+          {
+            "label": "Refresh",
+            "action": "refresh_browse",
+            "description": "Reload the component list from the staging database."
+          }
+        ]
+      },
+      {
+        "type": "custom",
+        "key": "count",
+        "description": "Shown components / all components."
+      },
+      {
+        "type": "custom",
+        "key": "data_table",
+        "title": "",
+        "description": "The staging components. Tick the box of the ones to push, click a row to inspect it; the wheel scrolls.",
+        "options": {
+          "source": "component_rows",
+          "row_key": "probe_id",
+          "selected_call": "select_row",
+          "edited_call": "pick_row",
+          "editable": false,
+          "expand": true,
+          "reserve": 40,
+          "fit_columns": false,
+          "min_column_width": 40,
+          "tooltip_key": "name",
+          "columns": [
+            {
+              "key": "pick",
+              "title": "Push",
+              "width": 48,
+              "editable": true,
+              "tooltip": "Tick to include the component in Push selected."
+            },
+            {
+              "key": "probe_id",
+              "title": "ID",
+              "width": 40,
+              "tooltip": "Probe id in the staging database."
+            },
+            {
+              "key": "name",
+              "title": "Name",
+              "width": 140,
+              "tooltip": "The component's name."
+            },
+            {
+              "key": "category",
+              "title": "Category",
+              "width": 90,
+              "tooltip": "Fluorophore, filter, dichroic, detector or light source."
+            },
+            {
+              "key": "source",
+              "title": "Source",
+              "width": 80,
+              "tooltip": "Where it was scraped from."
+            },
+            {
+              "key": "status",
+              "title": "Status",
+              "width": 80,
+              "tooltip": "Verification status."
+            }
+          ]
+        }
+      },
+      {
+        "type": "button_row",
+        "buttons": [
+          {
+            "label": "Push selected",
+            "action": "push_selected",
+            "description": "Push the ticked components into the connected MMFDB (asks first)."
+          },
+          {
+            "label": "Push all",
+            "action": "push_all",
+            "description": "Push every component of this staging database into the connected MMFDB (asks first)."
+          }
+        ]
+      }
+    ]
+  },
+  "properties": {
+    "sections": [
+      {
+        "type": "custom",
+        "key": "data_table",
+        "title": "",
+        "description": "The component's optical properties.",
+        "options": {
+          "source": "property_rows",
+          "editable": false,
+          "columns": [
+            {
+              "key": "property",
+              "title": "Property",
+              "width": 120,
+              "tooltip": "Property name."
+            },
+            {
+              "key": "value",
+              "title": "Value",
+              "width": 180,
+              "tooltip": "Property value."
+            }
+          ],
+          "expand": true,
+          "reserve": 0
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "sections": [
+      {
+        "type": "custom",
+        "key": "code_editor",
+        "target": "metadata_json",
+        "options": {
+          "read_only": true,
+          "language": "json",
+          "height": 150
+        },
+        "description": "The probe row, its properties and a spectrum summary as JSON."
+      }
+    ]
+  },
+  "download": {
+    "sections": [
+      {
+        "type": "choice",
+        "attr": "scraper_label",
+        "label": "Available sources",
+        "options_source": "scraper_labels",
+        "description": "The scraper to run into the staging database."
+      },
+      {
+        "type": "button_row",
+        "buttons": [
+          {
+            "label": "Run selected script",
+            "action": "run_script",
+            "description": "Run the selected scraper into the staging database (one at a time)."
+          },
+          {
+            "label": "Browse this source",
+            "action": "browse_source",
+            "description": "Open Browse filtered to this source."
+          }
+        ]
+      },
+      {
+        "type": "custom",
+        "key": "scraped",
+        "description": "What this source already put into the staging database."
+      },
+      {
+        "type": "custom",
+        "key": "code_editor",
+        "target": "log",
+        "options": {
+          "read_only": true,
+          "language": "none",
+          "expand": true,
+          "height": 200
+        },
+        "description": "The scraper's output."
+      }
+    ]
+  },
+  "mmfdb": {
+    "sections": [
+      {
+        "type": "button_row",
+        "buttons": [
+          {
+            "label": "Check session",
+            "action": "check_session",
+            "description": "Re-check whether the current session may add to the MMFDB."
+          },
+          {
+            "label": "Add all to MMFDB",
+            "action": "add_all",
+            "description": "Add every staging component to the chosen MMFDB (the result is logged below)."
+          }
+        ]
+      },
+      {
+        "type": "custom",
+        "key": "code_editor",
+        "target": "mmfdb_log",
+        "options": {
+          "read_only": true,
+          "language": "none",
+          "expand": true,
+          "height": 200
+        },
+        "description": "What the import did."
+      }
+    ]
+  },
+  "mmfdb_top": {
+    "sections": [
+      {
+        "type": "custom",
+        "key": "session",
+        "description": "Whether the current session may add to the MMFDB."
+      }
+    ]
+  }
+}
