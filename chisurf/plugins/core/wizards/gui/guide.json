@@ -1,0 +1,9 @@
+{
+  "_comment": "Guided tour of the Wizards hub. Targets are controls the hub draws: the list ('wizards_list'), the description header ('description'), Help and Guide.",
+  "steps": [
+    {"title": "The wizards", "text": "The list on the left holds the guided workflows ChiSurf bundles: the time-resolved anisotropy assistant and the batch analysis. Hover an entry for what it does.", "target": {"name": "wizards_list"}},
+    {"title": "Pick one", "text": "Click an entry. The wizard is built the first time you open it and keeps its state while you look at another one.", "target": {"name": "wizards_list"}, "await": {"hint": "Click a wizard in the list."}},
+    {"title": "The embedded wizard", "text": "It is drawn on the right under its description. Every wizard has its own Help and Guide buttons: use them for how that wizard is operated.", "target": {"name": "description"}},
+    {"title": "Help", "text": "<b>Help</b> explains the hub; <b>Guide</b> starts this tour again.", "target": {"name": "help"}}
+  ]
+}

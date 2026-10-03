@@ -60,7 +60,7 @@ def default_wizards() -> list[WizardEntry]:
             description="Apply one template fit to many datasets or files.",
             widget="chisurf.plugins.core.batch_analysis.gui.tool:BatchAnalysisWidget",
             icon="📋",
-            emtk=None,
+            emtk="chisurf.plugins.core.batch_analysis.gui.app:make_app",
         ),
     ]
 

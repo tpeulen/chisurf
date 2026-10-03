@@ -21,4 +21,4 @@ def test_native_wizard_hub_renders_tooltips():
     app = WizardHubApp()
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 980, 640)
-    assert "Available wizards" in painter.strings
+    assert "Anisotropy" in painter.strings and "Batch analysis" in painter.strings  # the list header is the window title now
