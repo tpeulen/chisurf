@@ -1,0 +1,97 @@
+diff --git a/chisurf/plugins/burst/burst_mle_analysis/gui/app.py b/chisurf/plugins/burst/burst_mle_analysis/gui/app.py
+index a04efc02e..1bddafd98 100644
+--- a/chisurf/plugins/burst/burst_mle_analysis/gui/app.py
++++ b/chisurf/plugins/burst/burst_mle_analysis/gui/app.py
+@@ -25,7 +25,7 @@ from emtk.app import ImApp
+ from emtk.docking import DockManager, DockWindow, Rect, Region, Split
+ from emtk.im_core import Col
+ 
+-from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
++from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+ 
+ if TYPE_CHECKING:
+     from ..wizard import MLELifetimeAnalysisWizard
+@@ -130,12 +130,6 @@ class BurstMleGui:
+         """Show the in-EMTK help window."""
+         self.help_window.show()
+ 
+-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+-        """Store the item's screen rectangle for tour targeting."""
+-        r = rect if rect is not None else im.get_item_rect()
+-        if r is not None:
+-            self.item_rects[name] = tuple(r)
+-
+     def track(self, name: str) -> None:
+         """Record usage of a named control."""
+         if callable(self.on_used):
+@@ -161,6 +155,9 @@ class BurstMleGui:
+             self.track("toolAction_run")
+             if hasattr(self.wizard, "process_bursts"):
+                 self.wizard.process_bursts()
++        im.set_item_tooltip(
++            "Fit the lifetime model to the micro-time decays of all bursts by maximum likelihood."
++        )
+         self.remember("run")
+         im.pop_style_color(3)
+ 
+@@ -169,15 +166,18 @@ class BurstMleGui:
+             self.track("toolAction_restart")
+             if hasattr(self.wizard, "process_bursts"):
+                 self.wizard.process_bursts()
++        im.set_item_tooltip("Re-run the fit with the current starting values and fit window.")
+         self.remember("restart")
+ 
+         im.same_line()
+         if im.button("📖 Guide"):
+             self.start_guide()
++        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+ 
+         im.same_line()
+         if im.button("❓ Help"):
+             self.show_help()
++        im.set_item_tooltip("Open the help window with reference documentation.")
+ 
+         im.separator()
+ 
+@@ -195,6 +195,7 @@ class BurstMleGui:
+             im.same_line(115.0)
+             im.set_next_item_width(120)
+             ch_t1, new_t1 = im.input_float("##tau1", self.tau1, step=0.1)
++            im.set_item_tooltip("Starting value of the first lifetime component in ns.")
+             if ch_t1 and new_t1 > 0:
+                 self.tau1 = new_t1
+ 
+@@ -203,6 +204,7 @@ class BurstMleGui:
+             im.same_line(115.0)
+             im.set_next_item_width(120)
+             ch_t2, new_t2 = im.input_float("##tau2", self.tau2, step=0.1)
++            im.set_item_tooltip("Starting value of the second lifetime component in ns.")
+             if ch_t2 and new_t2 > 0:
+                 self.tau2 = new_t2
+ 
+@@ -211,6 +213,9 @@ class BurstMleGui:
+             im.same_line(115.0)
+             im.set_next_item_width(120)
+             ch_f1, new_f1 = im.slider_float("##fraction1", self.fraction1, 0.0, 1.0)
++            im.set_item_tooltip(
++                "Starting amplitude fraction of the first lifetime component (0–1)."
++            )
+             if ch_f1:
+                 self.fraction1 = new_f1
+ 
+@@ -223,6 +228,7 @@ class BurstMleGui:
+             im.same_line(115.0)
+             im.set_next_item_width(120)
+             ch_from, new_from = im.input_float("##from_ch", self.fit_from_ch, step=50.0)
++            im.set_item_tooltip("First micro-time channel included in the fit window.")
+             if ch_from and new_from >= 0:
+                 self.fit_from_ch = new_from
+ 
+@@ -231,6 +237,7 @@ class BurstMleGui:
+             im.same_line(115.0)
+             im.set_next_item_width(120)
+             ch_to, new_to = im.input_float("##to_ch", self.fit_to_ch, step=50.0)
++            im.set_item_tooltip("Last micro-time channel included in the fit window.")
+             if ch_to and new_to > self.fit_from_ch:
+                 self.fit_to_ch = new_to
+ 

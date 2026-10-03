@@ -1,0 +1,206 @@
+diff --git a/chisurf/plugins/burst/burst_h2mm/README.md b/chisurf/plugins/burst/burst_h2mm/README.md
+index ce81366b7..b37e4bb61 100644
+--- a/chisurf/plugins/burst/burst_h2mm/README.md
++++ b/chisurf/plugins/burst/burst_h2mm/README.md
+@@ -94,6 +94,7 @@ chisurf h2mm compute /path/to/burst_folder \
+ 
+ ```python
+ from chisurf.plugins.burst.burst_h2mm.gui.client import H2mmClient
++
+ client = H2mmClient()
+ result = client.compute(analysis_folder="…", settings={"max_states": 4})
+ ```
+diff --git a/chisurf/plugins/burst/burst_h2mm/gui/app.py b/chisurf/plugins/burst/burst_h2mm/gui/app.py
+index 461e29795..f996a10a2 100644
+--- a/chisurf/plugins/burst/burst_h2mm/gui/app.py
++++ b/chisurf/plugins/burst/burst_h2mm/gui/app.py
+@@ -72,7 +72,11 @@ class H2mmGui:
+ 
+         from pathlib import Path
+ 
+-        from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
++        from chisurf.gui.widgets.tools.emtk_help_guide import (
++            EmTkGuidedTour,
++            EmTkHelpWindow,
++            TourTarget,
++        )
+ 
+         help_resource = Path(__file__).parent / "help.md"
+         guide_resource = Path(__file__).parent / "guide.json"
+@@ -95,7 +99,10 @@ class H2mmGui:
+         layout = Split(
+             "h",
+             0.35,
+-            Split("v", 0.62, Region("left_controls"), Region("left_rates")),
++            # The controls column is the tall one: settings, model selection and
++            # the optimisation engine stack above the rate matrix, and a share
++            # that is too small clips the last section at the window border.
++            Split("v", 0.72, Region("left_controls"), Region("left_rates")),
+             Split("v", 0.50, Region("top_right"), Region("bottom_right")),
+         )
+         self._dock_manager = DockManager(layout)
+@@ -162,12 +169,6 @@ class H2mmGui:
+             if idx >= 0:
+                 cb_eng.setCurrentIndex(idx)
+ 
+-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+-        """Store the item's screen rectangle for tour targeting."""
+-        r = rect if rect is not None else im.get_item_rect()
+-        if r is not None:
+-            self.item_rects[name] = tuple(r)
+-
+     def track(self, name: str) -> None:
+         """Record usage of a named control."""
+         if callable(self.on_used):
+@@ -192,6 +193,13 @@ class H2mmGui:
+         if self.tour.active:
+             self.tour.draw(width, height)
+ 
++    def _next_row_if_clipped(self, width_needed: float = 100.0) -> None:
++        """Same-line the next control, or start a new row when it would clip."""
++        if im.get_line_avail() < width_needed:
++            im.new_line()
++        else:
++            im.same_line()
++
+     def _draw_controls_dock(self, box: tuple[float, float, float, float]) -> None:
+         # Action Buttons
+         is_running = getattr(self.tool, "_fit_task", None) is not None
+@@ -204,6 +212,9 @@ class H2mmGui:
+             self._sync_to_tool()
+             if hasattr(self.tool, "btn_run"):
+                 self.tool.btn_run.click()
++        im.set_item_tooltip(
++            "Fit the photon-by-photon HMM to the bursts to find states and transition rates."
++        )
+         self.remember("run")
+         im.pop_style_color(3)
+ 
+@@ -213,41 +224,48 @@ class H2mmGui:
+             self._sync_to_tool()
+             if hasattr(self.tool, "btn_restart"):
+                 self.tool.btn_restart.click()
++        im.set_item_tooltip("Reset the fit state and re-run the optimization from scratch.")
+         self.remember("restart")
+ 
+-        im.same_line()
++        self._next_row_if_clipped()
+         if is_running:
+             im.push_style_color(Col.BUTTON, ACCENT_RED)
+             if im.button("⏹ Stop"):
+                 if hasattr(self.tool, "stop"):
+                     self.tool.stop()
++            im.set_item_tooltip("Stop the running H2MM optimization.")
+             im.pop_style_color(1)
+         else:
+             im.begin_disabled()
+             im.button("⏹ Stop")
++            im.set_item_tooltip("Stop the running H2MM optimization (nothing is running).")
+             im.end_disabled()
+ 
+-        im.same_line()
++        self._next_row_if_clipped()
+         if im.button("± Bootstrap"):
+             if hasattr(self.tool, "btn_uncert"):
+                 self.tool.btn_uncert.click()
++        im.set_item_tooltip("Estimate parameter uncertainties by bootstrapping the fit.")
+ 
+-        im.same_line()
++        self._next_row_if_clipped()
+         if im.button("📈 LL Scan"):
+             if hasattr(self.tool, "btn_llscan"):
+                 self.tool.btn_llscan.click()
++        im.set_item_tooltip("Scan the log-likelihood over state numbers to help choose the model.")
+ 
+-        im.same_line()
++        self._next_row_if_clipped()
+         if im.button("📖 Guide"):
+             self.track("guide")
+             self.start_guide()
+         self.remember("guide")
++        im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+ 
+-        im.same_line()
++        self._next_row_if_clipped()
+         if im.button("❓ Help"):
+             self.track("help")
+             self.show_help()
+         self.remember("help")
++        im.set_item_tooltip("Open the help window with reference documentation.")
+ 
+         im.separator()
+ 
+@@ -255,12 +273,14 @@ class H2mmGui:
+         if im.collapsing_header("Model Selection", im.TreeNodeFlags.DEFAULT_OPEN):
+             im.set_next_item_width(120)
+             ch_min, new_min = im.slider_int("Min States", self.min_states, 1, 8)
++            im.set_item_tooltip("Minimum number of states tried during model selection.")
+             if ch_min:
+                 self.min_states = new_min
+                 self._sync_to_tool()
+ 
+             im.set_next_item_width(120)
+             ch_max, new_max = im.slider_int("Max States", self.max_states, 1, 8)
++            im.set_item_tooltip("Maximum number of states tried during model selection.")
+             if ch_max:
+                 self.max_states = max(self.min_states, new_max)
+                 self._sync_to_tool()
+@@ -272,7 +292,11 @@ class H2mmGui:
+                     if im.selectable(opt, opt == self.criterion):
+                         self.criterion = opt
+                         self._sync_to_tool()
++                        im.set_item_tooltip("Select this information criterion.")
+                 im.end_combo()
++            im.set_item_tooltip(
++                "Information criterion used to pick the best state number (BIC or ICL)."
++            )
+ 
+         im.separator()
+ 
+@@ -290,20 +314,31 @@ class H2mmGui:
+                     if im.selectable(label, key == self.engine):
+                         self.engine = key
+                         self._sync_to_tool()
++                        im.set_item_tooltip("Run the optimizer with this engine.")
+                 im.end_combo()
++            im.set_item_tooltip(
++                "Optimizer used: fast float32 EM, exact float64 EM, or a neural surrogate."
++            )
+ 
+-            im.set_next_item_width(120)
++            # A narrow field plus a short label: the dock window is ~200 px of
++            # content, and "field + long label" clipped the label mid-word.
++            im.set_next_item_width(90)
+             ch_res, new_res = im.input_int("Restarts", self.restarts, step=1)
++            im.set_item_tooltip(
++                "Number of random restarts; the fit with the best log-likelihood wins."
++            )
+             if ch_res and new_res > 0:
+                 self.restarts = new_res
+ 
+-            im.set_next_item_width(120)
+-            ch_it, new_it = im.input_int("Max Iterations", self.max_iter, step=100)
++            im.set_next_item_width(90)
++            ch_it, new_it = im.input_int("Max iters", self.max_iter, step=100)
++            im.set_item_tooltip("Maximum number of EM iterations per fit.")
+             if ch_it and new_it > 0:
+                 self.max_iter = new_it
+ 
+-            im.set_next_item_width(120)
+-            ch_ph, new_ph = im.input_int("Min Photons/Dwell", self.min_photons, step=1)
++            im.set_next_item_width(90)
++            ch_ph, new_ph = im.input_int("Min photons", self.min_photons, step=1)
++            im.set_item_tooltip("Bursts shorter than this many photons are excluded from the fit.")
+             if ch_ph and new_ph > 0:
+                 self.min_photons = new_ph
+ 
+@@ -320,6 +355,9 @@ class H2mmGui:
+                 if im.button("🔬 Open Dwells in ndX"):
+                     if hasattr(self.tool, "open_dwells_in_ndx"):
+                         self.tool.open_dwells_in_ndx()
++                im.set_item_tooltip(
++                    "Send the fitted dwell-time segments to ndXplorer for inspection."
++                )
+             else:
+                 im.text_colored("No H2MM fit run yet.", (0.6, 0.6, 0.6, 1.0))
+ 

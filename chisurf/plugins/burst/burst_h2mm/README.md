@@ -94,6 +94,7 @@ chisurf h2mm compute /path/to/burst_folder \
 
 ```python
 from chisurf.plugins.burst.burst_h2mm.gui.client import H2mmClient
+
 client = H2mmClient()
 result = client.compute(analysis_folder="…", settings={"max_states": 4})
 ```
