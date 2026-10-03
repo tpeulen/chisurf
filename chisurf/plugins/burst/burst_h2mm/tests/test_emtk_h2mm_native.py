@@ -204,6 +204,7 @@ def test_stop_ends_a_running_fit_with_the_stopped_message(app, sample):
     drv = Driver(app)
     configure(drv, sample, min_states="1", max_states="8")
     app.model.restarts = 20
+    drv.type_into_name("restarts", "20")
     drv.click_name("toolAction_run")
     drv.draw(2)
     assert app.job.busy
@@ -463,6 +464,9 @@ def test_export_dwells_and_save_plot_write_files(fitted, tmp_path):
     window.dialog.directory = str(tmp_path)
     window.dialog.filename = "plots.png"
     drv.click_text("Save")
+    drv.draw(1)
+    if not (tmp_path / "plots.png").exists():
+        pytest.fail(f"File missing. Status: {window.model.status_text}")
     assert (tmp_path / "plots.png").stat().st_size > 1000
 
 

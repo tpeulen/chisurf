@@ -256,7 +256,6 @@ class H2mmViewModel:
         problem = self.can_run()
         if problem:
             raise ValueError(problem)
-        self._cancel.clear()
         settings = self.build_settings()
         fingerprint = self.analysis_fingerprint(settings)
         if not force and self.result is not None and fingerprint == self.fingerprint:
@@ -298,7 +297,6 @@ class H2mmViewModel:
 
         if self.bundle is None:
             raise ValueError("Run a fit before estimating uncertainty.")
-        self._cancel.clear()
         ana, data, settings = self.bundle.analysis, self.bundle.data, self.bundle.settings
 
         def progress(done, total):
@@ -323,7 +321,6 @@ class H2mmViewModel:
 
         if self.bundle is None:
             raise ValueError("Run a fit before the likelihood scan.")
-        self._cancel.clear()
         ana, data = self.bundle.analysis, self.bundle.data
 
         def progress(done, total):

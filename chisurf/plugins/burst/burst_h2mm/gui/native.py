@@ -110,6 +110,7 @@ class H2mmNativeApp(TourTarget, ImApp):
     # -- actions -------------------------------------------------------------------------------------------- #
     def _start(self, method: str, message: str) -> None:
         self.model.status_text = message
+        self.model._cancel.clear()
         self.job.start(method)
 
     def run(self) -> None:
