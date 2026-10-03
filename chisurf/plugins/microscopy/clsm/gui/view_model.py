@@ -66,6 +66,9 @@ class ClsmViewModel:
             event_type_marker=int(preset.get("event_type_marker", 1)),
             pixel_per_line=int(preset.get("pixel_per_line", 0) or 0),
             channels_text="0",
+            use_pixel_markers=False,
+            marker_pixel=8,
+            n_lines=0,
         )
         self.brush = _Group(size=7, width=3.0, mode="select", live_update=True)
         self.colormap = "magma"
@@ -82,6 +85,7 @@ class ClsmViewModel:
         self.tttr_data: Any = None
         self.clsm_images: dict[str, Any] = {}
         self.representations: dict[str, np.ndarray] = {}
+        self.representation_sources: dict[str, str] = {}
         self.current_clsm_name: str = ""
         self.current_representation_name: str = ""
         self.current_image: np.ndarray | None = None
@@ -147,6 +151,9 @@ class ClsmViewModel:
             event_type_marker=int(s.event_type_marker),
             pixel_per_line=int(s.pixel_per_line),
             channels=_parse_int_list(s.channels_text),
+            use_pixel_markers=bool(s.use_pixel_markers),
+            marker_pixel=int(s.marker_pixel),
+            n_lines=int(s.n_lines),
         )
 
     # ── data operations (delegate to core) ─────────────────────────────
@@ -191,6 +198,29 @@ class ClsmViewModel:
             ):
                 if detected.get(key) is not None:
                     setattr(self.setup, key, int(detected[key]))
+        sidecar = pathlib.Path(filename).with_suffix(".json")
+        if sidecar.is_file():
+            import json
+
+            try:
+                metadata = json.loads(sidecar.read_text())
+                layout = metadata.get("scan_layout", {})
+                if layout.get("kind") == "chisurf-simulated-raster":
+                    self.setup.frame_marker_text = "4"
+                    self.setup.line_start_marker, self.setup.line_stop_marker = 1, 2
+                    self.setup.event_type_marker = 1
+                    self.setup.pixel_per_line = int(layout["n_pixel_per_line"])
+                    self.setup.n_lines = self.setup.pixel_per_line
+                    self.setup.use_pixel_markers = True
+                    self.setup.marker_pixel = 8
+            except (OSError, ValueError, AttributeError):
+                pass
+        self.clsm_images = {}
+        self.representations = {}
+        self.representation_sources = {}
+        self.current_clsm_name = self.current_representation_name = ""
+        self.current_image = self.selection_mask = self.current_decay = None
+        self.curves = []
         self.notify("setup")
 
     def add_clsm(self) -> str:
@@ -209,6 +239,9 @@ class ClsmViewModel:
     def remove_clsm(self, name: str) -> None:
         """Remove a CLSM image by name."""
         self.clsm_images.pop(name, None)
+        for rep, source in list(self.representation_sources.items()):
+            if source == name:
+                self.remove_representation(rep)
         if self.current_clsm_name == name:
             self.current_clsm_name = next(iter(self.clsm_images), "")
         self.notify("clsm")
@@ -224,12 +257,14 @@ class ClsmViewModel:
         )
         name = f"{self.current_clsm_name}_{image_type}"
         self.representations[name] = data
+        self.representation_sources[name] = self.current_clsm_name
         self.select_representation(name)
         return name
 
     def remove_representation(self, name: str) -> None:
         """Remove an image representation by name; select another if available."""
         self.representations.pop(name, None)
+        self.representation_sources.pop(name, None)
         if self.current_representation_name == name:
             remaining = next(iter(self.representations), "")
             if remaining:
@@ -251,6 +286,9 @@ class ClsmViewModel:
         if image is None:
             return
         self.current_representation_name = name
+        if name in self.representation_sources:
+            self.current_clsm_name = self.representation_sources[name]
+        self.current_decay = None
         current = imaging.reduce_frames(image, self.decay.frame_mode, int(self.decay.frame_idx))
         self.current_image = current
         self.selection_mask = np.zeros_like(current)
@@ -277,6 +315,7 @@ class ClsmViewModel:
         """Reset the pixel selection mask to empty."""
         if self.current_image is not None:
             self.selection_mask = np.zeros_like(self.current_image)
+        self.current_decay = None
         self.notify("selection")
 
     def recompute_decay(self) -> dict[str, Any] | None:
@@ -317,7 +356,7 @@ class ClsmViewModel:
         try:
             import chisurf as cs
             from chisurf.core.data import DataCurve
-            from chisurf.macros import core_data
+            from chisurf.emtk.datasets import register_dataset
 
             try:
                 experiment = cs.experiment["TCSPC"]
@@ -331,7 +370,7 @@ class ClsmViewModel:
                 load_filename_on_init=False,
             )
             curve.name = name
-            core_data.add_dataset(dataset=curve)
+            register_dataset(curve)
             return True
         except Exception:
             return False

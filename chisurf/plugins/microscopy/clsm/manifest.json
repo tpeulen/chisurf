@@ -20,6 +20,7 @@
     }
   },
   "entrypoints": {
+    "emtk": "chisurf.plugins.microscopy.clsm.gui.app:make_app",
     "gui": "chisurf.plugins.microscopy.clsm.gui.tool:CLSMPixelSelect",
     "cli": "clsm=chisurf.plugins.microscopy.clsm.cli:cli",
     "services": "chisurf.plugins.microscopy.clsm.backend.services:register_services"

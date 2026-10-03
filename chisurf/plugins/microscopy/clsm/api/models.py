@@ -21,6 +21,9 @@ class ClsmSetup:
     event_type_marker: int = 1
     pixel_per_line: int = 0
     channels: list[int] = field(default_factory=lambda: [0])
+    use_pixel_markers: bool = False
+    marker_pixel: int = 8
+    n_lines: int = 0
 
     @classmethod
     def from_preset(cls, preset: dict, channels: list[int] | None = None) -> ClsmSetup:
@@ -34,6 +37,9 @@ class ClsmSetup:
             event_type_marker=int(preset.get("event_type_marker", 1)),
             pixel_per_line=int(preset.get("pixel_per_line", 0) or 0),
             channels=list(channels if channels is not None else [0]),
+            use_pixel_markers=bool(preset.get("use_pixel_markers", False)),
+            marker_pixel=int(preset.get("marker_pixel", 8)),
+            n_lines=int(preset.get("n_lines", 0)),
         )
 
 

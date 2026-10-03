@@ -71,15 +71,28 @@ def build_clsm_image(tttr: Any, setup: Any) -> Any:
     """
     import tttrlib
 
-    clsm_image = tttrlib.CLSMImage(
-        tttr,
-        list(setup.frame_marker),
-        int(setup.line_start_marker),
-        int(setup.line_stop_marker),
-        int(setup.event_type_marker),
-        int(setup.pixel_per_line),
-        str(setup.routine),
-    )
+    if getattr(setup, "use_pixel_markers", False):
+        clsm_image = tttrlib.CLSMImage(
+            tttr_data=tttr,
+            marker_frame_start=list(setup.frame_marker),
+            marker_line_start=int(setup.line_start_marker),
+            marker_line_stop=int(setup.line_stop_marker),
+            marker_event_type=int(setup.event_type_marker),
+            n_pixel_per_line=int(setup.pixel_per_line),
+            use_pixel_markers=True,
+            marker_pixel=int(getattr(setup, "marker_pixel", 8)),
+            settings={"n_lines": int(getattr(setup, "n_lines", 0) or setup.pixel_per_line)},
+        )
+    else:
+        clsm_image = tttrlib.CLSMImage(
+            tttr,
+            list(setup.frame_marker),
+            int(setup.line_start_marker),
+            int(setup.line_stop_marker),
+            int(setup.event_type_marker),
+            int(setup.pixel_per_line),
+            str(setup.routine),
+        )
     clsm_image.fill(tttr_data=tttr, channels=list(setup.channels))
     return clsm_image
 
@@ -156,12 +169,12 @@ def representation(
         3-D ``float64`` image stack.
     """
     if image_type == "Intensity":
-        return clsm_image.intensity.astype(np.float64)
+        return np.asarray(clsm_image.get_intensity_u32() if hasattr(clsm_image, "get_intensity_u32") else clsm_image.intensity, dtype=np.float64)
     mmt = mean_micro_time(clsm_image, tttr, n_ph_min)
     if image_type == "Mean micro time":
         return mmt
     # default: intensity-weighted mean micro time
-    return mmt * clsm_image.intensity.astype(np.float64)
+    return mmt * np.asarray(clsm_image.get_intensity_u32() if hasattr(clsm_image, "get_intensity_u32") else clsm_image.intensity, dtype=np.float64)
 
 
 def reduce_frames(
@@ -290,7 +303,7 @@ def decay_of_selection(
     if trim_trailing_zeros:
         y_pos = np.where(y > 0)[0]
         if len(y_pos) > 0:
-            i_y_max = y_pos[-1]
+            i_y_max = y_pos[-1] + 1
             y = y[:i_y_max]
             t = t[:i_y_max]
     return t, y, counting_noise(y)
