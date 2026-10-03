@@ -22,7 +22,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.burst.burst_h2mm.gui.tool:H2mmTool",
     "cli": "h2mm=chisurf.plugins.burst.burst_h2mm.cli.main:cli",
-    "services": "chisurf.plugins.burst.burst_h2mm.backend.services:register_services"
+    "services": "chisurf.plugins.burst.burst_h2mm.backend.services:register_services",
+    "emtk": "chisurf.plugins.burst.burst_h2mm.gui.native:create_app"
   },
   "rpc_methods": [
     {

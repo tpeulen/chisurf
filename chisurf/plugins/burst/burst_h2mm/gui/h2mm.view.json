@@ -1,0 +1,280 @@
+{
+  "_comment": "Settings of the emtk H2MM app: AutoForm over H2mmViewModel. Same controls as the Qt tool's Settings tab (model selection, optimisation, decoder) plus the detector streams of its Channels tab as routing-channel lists.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Data",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "data_folder",
+          "label": "Burst folder",
+          "kind": "directory",
+          "description": "Folder with the burst (.bur) tables of a finished burst analysis; the photons they name are read from beside them."
+        },
+        {
+          "type": "value",
+          "attr": "donor_channels",
+          "label": "Donor channels",
+          "kind": "str",
+          "description": "Routing channels of the donor stream, comma separated (the first stream: apparent FRET E = A/(A+D))."
+        },
+        {
+          "type": "value",
+          "attr": "acceptor_channels",
+          "label": "Acceptor channels",
+          "kind": "str",
+          "description": "Routing channels of the acceptor stream, comma separated."
+        },
+        {
+          "type": "value",
+          "attr": "aex_channels",
+          "label": "Acceptor-excitation channels",
+          "kind": "str",
+          "description": "Optional third stream (usALEX / PIE): routing channels of acceptor photons under acceptor excitation. Gives every state a stoichiometry."
+        },
+        {
+          "type": "value",
+          "attr": "file_type",
+          "label": "Container",
+          "kind": "str",
+          "description": "tttrlib container name of the raw files (for example SPC-130), or auto."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Model selection",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "min_states",
+          "label": "Min states",
+          "kind": "int",
+          "description": "Smallest number of states tried.",
+          "minimum": 1,
+          "maximum": 8
+        },
+        {
+          "type": "value",
+          "attr": "max_states",
+          "label": "Max states",
+          "kind": "int",
+          "description": "Largest number of states tried.",
+          "minimum": 1,
+          "maximum": 8
+        },
+        {
+          "type": "choice",
+          "attr": "criterion",
+          "label": "Criterion",
+          "options": [
+            "bic",
+            "icl"
+          ],
+          "description": "Information criterion that picks the state count: BIC, or ICL which also penalises overlapping states."
+        },
+        {
+          "type": "value",
+          "attr": "patience",
+          "label": "Scan patience",
+          "kind": "int",
+          "description": "Stop the state-count scan once the criterion has risen this many times (about 1.6 times faster); -1 fits every state count.",
+          "minimum": -1,
+          "maximum": 8
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Optimisation",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "engine",
+          "label": "Engine",
+          "options": [
+            "em-float32",
+            "em",
+            "neural"
+          ],
+          "description": "Compute engine: fast float32 EM (default), exact float64 EM, or the neural surrogate (fastest, approximate).",
+          "labels": [
+            "Fast EM (float32)",
+            "Exact EM (float64)",
+            "Neural surrogate"
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "restarts",
+          "label": "Restarts",
+          "kind": "int",
+          "description": "Random initialisations per state count; the best log-likelihood wins.",
+          "minimum": 1,
+          "maximum": 20
+        },
+        {
+          "type": "value",
+          "attr": "seed",
+          "label": "Seed",
+          "kind": "int",
+          "description": "Seed of the restarts: the same seed refits to the same answer.",
+          "minimum": 0,
+          "maximum": 2147483646
+        },
+        {
+          "type": "value",
+          "attr": "max_iter",
+          "label": "Max iterations",
+          "kind": "int",
+          "description": "Maximum EM iterations per fit.",
+          "minimum": 10,
+          "maximum": 5000
+        },
+        {
+          "type": "value",
+          "attr": "min_photons",
+          "label": "Min photons/burst",
+          "kind": "int",
+          "description": "Bursts with fewer stream photons are left out.",
+          "minimum": 2,
+          "maximum": 1000
+        },
+        {
+          "type": "value",
+          "attr": "time_scale",
+          "label": "Macro-time scale",
+          "kind": "int",
+          "description": "Integer down-scaling of macro times (coarser base unit); raise it when the fit is slow.",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        {
+          "type": "value",
+          "attr": "divisors",
+          "label": "Nanotime divisors",
+          "kind": "int",
+          "description": "Split each stream into this many micro-time bins so states of equal E but different lifetime separate; 1 is off.",
+          "minimum": 1,
+          "maximum": 8
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Output",
+      "collapsed": true,
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "photon_hdf5",
+          "label": "Photon table HDF5",
+          "description": "Write h2mm_photons.h5: compact and fast to reload."
+        },
+        {
+          "type": "toggle",
+          "attr": "photon_csv",
+          "label": "Photon table CSV",
+          "description": "Write h2mm_photons.csv: what every other tool can open."
+        },
+        {
+          "type": "choice",
+          "attr": "decoder",
+          "label": "Decoder",
+          "options": [
+            "viterbi",
+            "jitter",
+            "ffbs"
+          ],
+          "description": "How one state is assigned per photon: Viterbi (most likely path), jitter (draw per photon) or ffbs (draw whole paths).",
+          "labels": [
+            "Viterbi",
+            "Jitter",
+            "FFBS"
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "decoder_seed",
+          "label": "Decoder seed",
+          "kind": "int",
+          "description": "Seed of the sampling decoders.",
+          "minimum": 0,
+          "maximum": 2147483646
+        },
+        {
+          "type": "toggle",
+          "attr": "write_state_tttr",
+          "label": "Write state photons",
+          "description": "Write the decoded assignment back beside each source measurement."
+        },
+        {
+          "type": "toggle",
+          "attr": "state_tttr_ptu",
+          "label": "State photons as PTU",
+          "description": "A PTU whose routing channels encode (stream, state)."
+        },
+        {
+          "type": "toggle",
+          "attr": "state_tttr_sidecar",
+          "label": "State photons sidecar",
+          "description": "A msgpack sidecar; the source file is left untouched."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "source": "rate_rows",
+      "title": "Rates",
+      "columns": [
+        {
+          "key": "transition",
+          "label": "Transition",
+          "width": 110,
+          "description": "From state to state."
+        },
+        {
+          "key": "rate",
+          "label": "k [1/s]",
+          "width": 120,
+          "description": "Fitted transition rate (one-step probability divided by the base time)."
+        },
+        {
+          "key": "time",
+          "label": "1/k [ms]",
+          "width": 120,
+          "description": "Mean waiting time for that transition."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "source": "state_rows",
+      "title": "States",
+      "columns": [
+        {
+          "key": "state",
+          "label": "State",
+          "width": 60,
+          "description": "State index."
+        },
+        {
+          "key": "efficiency",
+          "label": "E",
+          "width": 80,
+          "description": "Apparent FRET efficiency E = A/(A+D) of the state (no leakage, direct excitation or gamma correction)."
+        },
+        {
+          "key": "population",
+          "label": "Occupancy",
+          "width": 100,
+          "description": "Photon fraction of the state from the per-photon posterior (the unbiased estimate; falls back to the decoded path)."
+        }
+      ]
+    }
+  ]
+}

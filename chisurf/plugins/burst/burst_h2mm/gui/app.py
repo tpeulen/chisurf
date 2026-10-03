@@ -26,6 +26,7 @@ from emtk.im_core import Col
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
 from . import result_view
+from .plots import REGION_FILL, ResultPlots
 
 if TYPE_CHECKING:
     from .tool import H2mmTool
@@ -39,7 +40,6 @@ ACCENT_GREEN = (46, 160, 67, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)
-REGION_FILL = (46, 117, 182, 60)
 REGION_BORDER = (90, 160, 240, 255)
 
 
@@ -65,11 +65,7 @@ class H2mmGui(TourTarget):
         self.max_iter: int = 500
         self.min_photons: int = 5
 
-        # Interactive region gating
-        self.gate_x_min: float = 0.2
-        self.gate_x_max: float = 0.8
-        self.gate_y_min: float = 0.2
-        self.gate_y_max: float = 0.8
+        self.plots = ResultPlots()
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
 
@@ -232,7 +228,7 @@ class H2mmGui(TourTarget):
         im.set_item_tooltip(
             "Fit the photon-by-photon HMM to the bursts to find states and transition rates."
         )
-        self.remember("run")
+        self.remember("toolAction_run")
         im.pop_style_color(3)
 
         im.same_line()
@@ -242,7 +238,7 @@ class H2mmGui(TourTarget):
             if hasattr(self.tool, "btn_restart"):
                 self.tool.btn_restart.click()
         im.set_item_tooltip("Reset the fit state and re-run the optimization from scratch.")
-        self.remember("restart")
+        self.remember("toolAction_restart")
 
         self._next_row_if_clipped()
         if is_running:
@@ -412,70 +408,10 @@ class H2mmGui(TourTarget):
             im.end_table()
 
     def _draw_tdp_dock(self, box: tuple[float, float, float, float]) -> None:
-        points = result_view.transition_points(self._analysis())
-        if points is None:
-            im.text_wrapped(
-                "No transition density yet: it shows the FRET efficiency before and after every decoded "
-                "transition once an H2MM fit has finished."
-            )
-        elif implot.begin_plot("Transition density (E before vs E after)", (-1, -1)):
-            implot.setup_axes("E before", "E after")
-            implot.setup_axes_limits(0.0, 1.0, 0.0, 1.0)
-
-            # Gate: drag the box (or drop a BURST_REGION onto the plot); the count below is computed from the points.
-            res_rect = implot.drag_rect(
-                401,
-                self.gate_x_min,
-                self.gate_y_min,
-                self.gate_x_max,
-                self.gate_y_max,
-                REGION_FILL,
-            )
-            if res_rect.modified:
-                self.gate_x_min, self.gate_x_max = res_rect.x_min, res_rect.x_max
-                self.gate_y_min, self.gate_y_max = res_rect.y_min, res_rect.y_max
-            implot.plot_scatter("Transitions", points[0], points[1], size=3.5)
-            implot.end_plot()
-        if points is not None:
-            inside, total = result_view.transitions_in_gate(
-                points, (self.gate_x_min, self.gate_x_max), (self.gate_y_min, self.gate_y_max)
-            )
-            im.text(f"{inside} of {total} transitions inside the gate")
-            im.set_item_tooltip("Transitions whose E before and E after both lie inside the dragged box.")
-
-        # Region Drop Target
-        if im.begin_drag_drop_target():
-            payload = im.accept_drag_drop_payload("BURST_REGION")
-            if payload:
-                try:
-                    data = json.loads(payload.decode("utf-8"))
-                    self._last_dropped_region = data
-                    x_rng = data.get("x_range", [self.gate_x_min, self.gate_x_max])
-                    if len(x_rng) == 2:
-                        self.gate_x_min, self.gate_x_max = float(x_rng[0]), float(x_rng[1])
-                    y_rng = data.get("y_range", [self.gate_y_min, self.gate_y_max])
-                    if len(y_rng) == 2:
-                        self.gate_y_min, self.gate_y_max = float(y_rng[0]), float(y_rng[1])
-                except Exception:
-                    pass
-            im.end_drag_drop_target()
+        self.plots.draw_tdp(self._analysis())
 
     def _draw_dwells_dock(self, box: tuple[float, float, float, float]) -> None:
-        ana = self._analysis()
-        histograms, censored = result_view.dwell_histograms(ana)
-        if ana is None:
-            im.text_wrapped("No dwell times yet: they are drawn here once an H2MM fit has finished.")
-            return
-        if not histograms:
-            im.text_wrapped("No state has a dwell that ended inside a burst, so there is no dwell-time distribution.")
-            return
-        if implot.begin_plot("Dwell times (burst-edge dwells excluded)", (-1, -1)):
-            implot.setup_axes("Dwell time (ms)", "Counts")
-            for h in histograms:
-                implot.plot_line(f"S{h.state}", h.centers_ms, h.counts)
-            implot.end_plot()
-        if censored:
-            im.text_wrapped(", ".join(f"S{s}" for s in censored) + ": no dwell ended within a burst")
+        self.plots.draw_dwells(self._analysis())
 
 
 class H2mmApp(ImApp):
