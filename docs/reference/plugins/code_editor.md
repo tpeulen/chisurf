@@ -21,7 +21,7 @@ Shared multi-document code/text editor with project navigation, symbols, diagnos
 | Menu path | Tools → Miscellaneous → **Code Editor** |
 | Categories | Tools, Miscellaneous |
 | Version | 2.1.0 |
-| Surfaces | gui, services |
+| Surfaces | gui, emtk, services |
 | State namespace | `code_editor` |
 
 ## Parameters
@@ -39,7 +39,27 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `editor.document.ruff_check` | no | Run Ruff on an open editor document. |
 | `editor.document.ruff_fix` | no | Run Ruff fixes on an open editor document. |
 
+## Editing and keyboard shortcuts (native editor)
+
+The native editor is operated like a desktop editor. "Ctrl" is Command on a Mac.
+
+| Keys | Does |
+| --- | --- |
+| typing, Enter, Backspace, Delete | edit at the caret; brackets and quotes are closed |
+| arrows, Home, End, Page Up/Down, Ctrl+Home/End | move the caret; with Shift they select |
+| Ctrl+A, double click, drag | select all, select a word, select a range |
+| Ctrl+C, Ctrl+X, Ctrl+V | copy, cut, paste through the system clipboard |
+| Ctrl+Z, Ctrl+Shift+Z | undo, redo |
+| Tab, Shift+Tab, Ctrl+/ | indent, deindent, toggle comments on the selected lines |
+| Alt+Up/Down | move the line |
+| mouse wheel | scroll the document three lines per notch |
+| Ctrl+F (Edit → Find…) | find bar: text, **Next**, **All** (a caret on every match), **Match case**, **Whole word**, replacement, **Replace**, **Replace all**; Enter finds the next match, Escape closes the bar |
+| Ctrl+S, Ctrl+Shift+S, Ctrl+O, Ctrl+N, Ctrl+W | save, save as, open, new document, close (asks about unsaved changes) |
+
+Every row is checked with real key and pointer events in `chisurf/plugins/core/code_editor/test/test_emtk_editor_input.py`.
+
 ## Theory and workflow
+
 
 - **Workflow** — [Driving ChiSurf from its console](/guides/59_console.md), [Notebooks that run inside ChiSurf](/guides/64_notebooks.md)
 
