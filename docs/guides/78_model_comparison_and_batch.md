@@ -218,6 +218,37 @@ c, nu, k = fits[2]
 print(chi2_max(c, k, nu, 0.95))                     # 6.324
 ```
 
+## Native sampler progress callbacks
+
+For a BFF-backed fit, headless sampling can report progress without repeatedly
+exporting the growing parameter chain:
+
+```python
+from chisurf.core.fitting.sampler_bff import sample_via_graph
+
+# fit is an existing BFF-backed Fit; all proposals/objectives stay native.
+def progress(done, total):
+    print(f"{done}/{total}")
+
+result = sample_via_graph(
+    fit, fit.model, "metropolis", steps=600, seed=31,
+    callback=progress,
+)
+```
+
+An inspectable two-argument callback receives counters only; the final return
+still contains the complete result. To update a plot at segment boundaries,
+use `def progress(done, total, result=None): ...`. It receives the same partial
+result dictionary as before, including `parameter_values`; this costs more than
+counter-only progress. Opaque native two-argument callables retain their legacy
+fallback. Exceptions raised inside a Python callback are propagated, not
+silently treated as an argument mismatch or retried.
+
+Native runs release the GIL so background progress and MCTS cancellation can
+run. This does not make shared fit/graph mutation safe: keep one worker as the
+owner of a running sampler/search. These changes do not alter the posterior,
+recording policy, simulation budget or convergence requirements.
+
 ## Using it well
 
 **Compare fits over the same window and weights.** $\nu$ comes from the fit

@@ -18,6 +18,14 @@ the nested-optimiser deletions. What remains on the PRD: phases 4–6
 all-three-repos cleanliness pass) and the queued owner decisions it lists.
 Work it through the board tickets it names.
 
+For native sampling, profile full-result construction and segment scheduling:
+the final source-aligned 600-row benchmark remains about 10% slower with full
+results, despite the large isolated flat-export gain. Preserve displayed arrays,
+work counts, callback semantics and native cancellation; do not repeat the
+rejected MCTS path-vector/snapshot optimizations. Reproduce the four paired
+runs and verify original facade/native hashes before crediting another win;
+[verified campaign and remaining platform lanes](../../../imp.bff/okf/validation/compute-core-performance.md).
+
 # The rule
 
 > **Keep it all in bff and tttrlib. Only the things that get displayed move
@@ -88,6 +96,34 @@ broke. The equivalent here is a test rather than a script —
 provenance is checkable at runtime.
 
 # Where it is enforced today
+
+## Performance follow-up: native sampling result boundaries (2026-10-03)
+
+The public ChiSurf/BFF sampling path keeps the compute/display boundary
+explicit. Inspectable two-argument callbacks receive counters without a
+partial-chain export; result-aware callbacks retain their complete schema.
+Opaque native callbacks retain the legacy argument-binding fallback, while
+Python callback-body errors propagate without a duplicate invocation. Values
+cross in one contiguous buffer only when a displayed result is requested.
+
+Four interleaved ARM64 original/candidate pairs, fresh fits and pinned native,
+generated-shim and ChiSurf source identities measured **112.64 -> 61.32 ms
+(1.84x)** for progress-only sampling, with identical complete result hashes,
+**601 evaluations / 600 rows** and callback counts. Full-result callbacks were
+**109.78 -> 120.63 ms**, about 10% slower in this run; the earlier unmatched
+351.36 -> 322.91 ms claim is superseded. Isolated contiguous chain export was
+79–115x faster than nested conversion, not an end-to-end fit speedup. A final
+frozen-candidate rerun under heavy load retained the progress benefit (2.01x)
+and exact results, but did not resolve the smaller Gaussian sampler gain;
+full-result callbacks remained about 5% slower. Both datasets are preserved.
+Real native MCMC and MCTS release the GIL, protect Python director callbacks, and
+pass heartbeat/cancellation/error contracts after normal regeneration.
+
+Parent regression: BFF 571 passed / 65 skipped; ChiSurf 58 passed with one
+independently dirty project-format architecture guard failing (preserved HEAD
+passes that guard). This campaign did not change project lifecycle or any GUI.
+The exact acceptance scope and durable raw data are in
+[`imp.bff compute-core performance`](../../../imp.bff/okf/validation/compute-core-performance.md).
 
 `test/architecture/test_bff_is_the_backend.py` pins the *provenance* of each
 place a second implementation would be easy to grow back. None of it pins an

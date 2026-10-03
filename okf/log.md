@@ -2,6 +2,8 @@
 
 ## 2026-10-03
 
+- **Native sampler progress/export boundary verified**: progress-only callbacks avoid partial arrays; result/opaque callback compatibility and real MCTS cancellation retained. Parent: 58 passed; one independently dirty project-format guard remains. Paired progress 1.84x; full-result case about 10% slower, not a claimed win. [Scope and resume point](architecture/compute-display-line.md#performance-follow-up-native-sampling-result-boundaries-2026-10-03).
+
 - **ndX recovered overlay-axis handling and native MMFDB lineage**: validated projection-bound line batches; authenticated selection-mask write-back preserves the input artifact, including saves finishing after a table change. Full ndX: 1213 passed, 2 skipped (97 warnings); affected ChiSurf host/FRET/ALEX: 121 passed; independent reviews passed. Measured-data GUI inspected; [concept and resume point](plugins/ndxplorer-emtk-port.md#session-recovery-overlay-axes-and-native-mmfdb-lineage-2026-10-03).
 
 ## 2026-10-01

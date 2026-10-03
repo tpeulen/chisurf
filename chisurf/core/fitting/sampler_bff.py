@@ -45,6 +45,7 @@ Two semantic notes, both deliberate:
 
 from __future__ import annotations
 
+import inspect
 import typing
 
 import numpy as np
@@ -112,6 +113,19 @@ def _substeps(substeps) -> int:
         )
     except (KeyError, TypeError):
         return 100
+
+
+def _callback_accepts_result(callback) -> bool | None:
+    """Return whether a callback accepts a result, or None for opaque signatures."""
+    try:
+        signature = inspect.signature(callback)
+    except (TypeError, ValueError):
+        return None
+    try:
+        signature.bind(0, 0, result=None)
+    except TypeError:
+        return False
+    return True
 
 
 def sample_via_graph(
@@ -256,6 +270,7 @@ def sample_via_graph(
     seg_states = _substeps(substeps)
     n_target = steps // thin
     done_steps = 0
+    wants_result = callback is not None and _callback_accepts_result(callback)
     try:
         while done_steps < steps:
             seg = min(seg_states * thin, steps - done_steps)
@@ -263,9 +278,19 @@ def sample_via_graph(
             done_steps += seg
             if callback is not None:
                 recorded = int(s.iteration)
-                try:
+                if wants_result:
                     callback(recorded, n_target, result=_result(s, model, algorithm))
-                except TypeError:
+                elif wants_result is None:
+                    partial_result = _result(s, model, algorithm)
+                    try:
+                        callback(recorded, n_target, result=partial_result)
+                    except TypeError as error:
+                        # Binding failures have only this frame; a Python
+                        # callback body adds a frame and must not be retried.
+                        if error.__traceback__.tb_next is not None:
+                            raise
+                        callback(recorded, n_target)
+                else:
                     callback(recorded, n_target)
             if check_cancel is not None and check_cancel():
                 break
@@ -316,9 +341,14 @@ def _result(sampler, model, algorithm: str) -> dict:
     Usable mid-run (for intermediate saving) as well as at the end: every
     read is of the recorded chain so far.
     """
-    chain = np.asarray(sampler.chain, dtype=float)
-    if chain.ndim != 2:
-        chain = chain.reshape(-1, int(sampler.get_number_of_parameters()))
+    n_parameters = int(sampler.get_number_of_parameters())
+    get_chain_flat = getattr(sampler, "get_chain_flat", None)
+    if callable(get_chain_flat):
+        chain = np.asarray(get_chain_flat(), dtype=float).reshape(-1, n_parameters)
+    else:
+        chain = np.asarray(sampler.chain, dtype=float)
+        if chain.ndim != 2:
+            chain = chain.reshape(-1, n_parameters)
     n_walkers = max(1, len(sampler.walkers))
     n_rec = chain.shape[0] // n_walkers if n_walkers else 0
     ndim = chain.shape[1] if chain.size else len(model.parameter_names)
