@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-03
+
+- 2026-10-03 plugin_check (LEFTOVERS): emtk app rebuilt on a view spec (the Qt tool's list, cells, details, options and limits; data_table with sort/filter/column picker, selectable error pane, Help/Guide), shared dependency helpers moved into the Qt-free model, sweep children run on a temporary HOME; 63 tests + 2 strict xfails (emtk gaps: tour card buttons over a table, Ctrl+A in the table filter), guide 96, reference page. Evidence okf/plugins/emtk-ports/plugin_check/REPORT.md.
+
 ## 2026-10-02
 
 - 2026-10-02 games (LEFTOVERS): Breakout diagnosed (the audit's 'draw never finishes' is software-painter cost: 641 rounded brick-halo fills plus full-viewport blends, not a loop; halo now 3 square layers), enabled in the hub registry, stream's Breakout files committed; 20 real-input Qt-host tests (press/release, held keys, focus_lost, pointer drags and clicks) for Breakout, Pong, Tetris, Minesweeper, Number Quest and hub routing; guide 95_games; report section 8.

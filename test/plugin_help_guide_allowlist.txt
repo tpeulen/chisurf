@@ -14,7 +14,6 @@ chisurf/plugins/core/code_editor
 chisurf/plugins/core/help/gui
 chisurf/plugins/core/lightpath_simulator/gui
 chisurf/plugins/core/mmfdb_admin/gui
-chisurf/plugins/core/plugin_check/gui
 chisurf/plugins/core/setup/gui
 chisurf/plugins/core/wizards/gui
 chisurf/plugins/fcs/fcs_channel_preset/gui

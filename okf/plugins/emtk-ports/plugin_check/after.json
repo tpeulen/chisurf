@@ -1,0 +1,135 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "(+13optiona.",
+    "(+1optional)",
+    "(+2optional)",
+    "(+9optional)",
+    "-displaychisurflogo",
+    "-displaydevelopercontactdetails",
+    "-showversioninformation",
+    "0.5s",
+    "0/0",
+    "1.0.0",
+    "134rows×5columns",
+    "andcontactinformation.",
+    "built-in",
+    "chisurf,includingversion,developer,",
+    "chisurf.plugins.core.about",
+    "chisurf.plugins.core.about.gui.appmake_app",
+    "chisurfaboutplugin",
+    "clearblacklist",
+    "delaybetweenplugins",
+    "dependson",
+    "description",
+    "emtk",
+    "entrypoints",
+    "error",
+    "features",
+    "filter",
+    "guide",
+    "help",
+    "helpaboutchisurf",
+    "helpboardingwizard",
+    "imagingclsm-draw",
+    "maintoolsacquisition",
+    "maintoolsbatch-analysis",
+    "maintoolscalculators",
+    "module",
+    "pending",
+    "plugin",
+    "plugindetails",
+    "pluginstartupchecks",
+    "ready134plugin(s)found",
+    "refresh",
+    "script__init__.py",
+    "skipblacklisted",
+    "source",
+    "spectroscopyburstanalysis",
+    "spectroscopyfluorescencecorrelationspectroscopyburst-wisefcs",
+    "spectroscopyfretaccuratefret",
+    "spectroscopysingle-moleculeburstbackgroundestimation",
+    "spectroscopysingle-moleculeburstbrowser",
+    "spectroscopysingle-moleculeburstfusion",
+    "spectroscopysingle-moleculeburstmle",
+    "spectroscopysingle-moleculeburstselection",
+    "spectroscopysingle-moleculebva",
+    "spectroscopysingle-moleculeebfret",
+    "spectroscopysingle-moleculeh2mm",
+    "spectroscopysingle-moleculephoton-by-photonkinetics",
+    "status",
+    "stop",
+    "structurestructurechimol",
+    "testallplugins",
+    "testsafeplugins",
+    "thispluginprovidesinformationabout",
+    "toolsaisettings",
+    "toolsconverterbid→analysis",
+    "toolsmiscellaneousgamesbreakout",
+    "version"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the table, the sweep and what a check proves."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through a safe sweep and the details of a plugin."
+    },
+    {
+      "kind": "button",
+      "label": "Test all plugins",
+      "id": "Test all plugins##test_all",
+      "tooltip": "Construct and draw the native window of every discovered plugin, one at a time, each in a separate process on throw-away settings."
+    },
+    {
+      "kind": "button",
+      "label": "Test safe plugins",
+      "id": "Test safe plugins##test_safe",
+      "tooltip": "Check only the first ten plugins of the list, with a short startup timeout (5 s)."
+    },
+    {
+      "kind": "button",
+      "label": "Stop",
+      "id": "Stop##stop",
+      "tooltip": "Stop the sweep and terminate the plugin that is being checked right now."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh##refresh",
+      "tooltip": "Rescan the plugin folders and clear the displayed results."
+    },
+    {
+      "kind": "button",
+      "label": "Clear blacklist",
+      "id": "Clear blacklist##clear_blacklist",
+      "tooltip": "Take every plugin off the blacklist (a plugin that failed five checks in a row is skipped) so it is tested again."
+    },
+    {
+      "kind": "input_text",
+      "label": "delay",
+      "id": "##delay",
+      "tooltip": "Pause between two plugin checks so the machine is not overloaded; Stop stays responsive during the pause."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Skip blacklisted",
+      "id": "Skip blacklisted##skip_blacklisted",
+      "tooltip": "Do not check plugins that failed five times in a row; they show as skipped."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

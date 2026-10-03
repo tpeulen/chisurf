@@ -1,0 +1,47 @@
+{
+  "_comment": "Guided tour of Plugin Check. Every step points at a real control; the two that need the user's hands wait for them (picking a row, starting a safe sweep). 'name' is the emtk control: the table, a button's action or a field's attr.",
+  "steps": [
+    {
+      "title": "What a check proves",
+      "text": "Plugin Check builds the native window of each plugin in a separate process and draws it once. A <b>pass</b> means the window opens without an error; it does <i>not</i> mean the science is right. Nothing here touches your own settings: every check runs on throw-away ones.",
+      "target": {}
+    },
+    {
+      "title": "One row per plugin",
+      "text": "The table lists every plugin ChiSurf discovered, built-in and your own. Click a header to sort, type in the <b>filter</b> box to narrow it, and right-click the header to choose columns. <b>pending</b> rows (not yet checked) are dimmed until a sweep has reached them.",
+      "target": {"name": "check_rows"}
+    },
+    {
+      "title": "Pick a plugin",
+      "text": "Select any row. The window on the right fills in with its module, source, dependencies and description, and, once it has been checked, the whole error.",
+      "target": {"name": "row_selected"},
+      "await": {"hint": "Click any row in the table."}
+    },
+    {
+      "title": "The details",
+      "text": "<b>Requires</b> must load before the plugin; <b>Optional</b> ones are reached later. <b>Problems</b> appears when the dependency resolver finds a requirement that is missing or out of range.",
+      "target": {"name": "plugin_details"}
+    },
+    {
+      "title": "How a sweep behaves",
+      "text": "<b>Delay between plugins</b> pauses between two checks. <b>Skip blacklisted</b> leaves out plugins that failed five times in a row, so a broken one does not slow every sweep.",
+      "target": {"attr": "skip_blacklisted"}
+    },
+    {
+      "title": "Run a safe sweep",
+      "text": "<b>Test safe plugins</b> checks only the first ten plugins with a short timeout, a quick way to see how a sweep looks. <b>Test all plugins</b> checks everything and takes minutes.",
+      "target": {"name": "test_safe"},
+      "await": {"hint": "Press <b>Test safe plugins</b>."}
+    },
+    {
+      "title": "Watch it run",
+      "text": "The bar and the status line count the plugins; the <b>Status</b> column fills in as each result arrives. <b>Stop</b> ends the sweep and terminates the plugin being checked.",
+      "target": {"name": "stop"}
+    },
+    {
+      "title": "Start over",
+      "text": "<b>Refresh</b> rescans the plugin folders and clears the results; <b>Clear blacklist</b> lets blacklisted plugins be checked again.",
+      "target": {"name": "refresh"}
+    }
+  ]
+}

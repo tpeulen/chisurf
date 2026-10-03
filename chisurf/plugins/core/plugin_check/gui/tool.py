@@ -243,18 +243,10 @@ class PluginCheckTool(QtWidgets.QWidget):
 
     @staticmethod
     def _dependency_summary(requires: dict, optional: dict) -> str:
-        """One cell describing what a plugin depends on.
+        """One cell describing what a plugin depends on (shared with the native window)."""
+        from chisurf.plugins.core.plugin_check.gui.model import dependency_summary
 
-        Hard dependencies are named because they are few and they decide load
-        order; optional ones are counted because a hub can have a dozen and the
-        names would not fit.
-        """
-        parts = []
-        if requires:
-            parts.append(", ".join(sorted(requires)))
-        if optional:
-            parts.append(f"(+{len(optional)} optional)")
-        return " ".join(parts)
+        return dependency_summary(requires, optional)
 
     def _dependency_problems(self, plugins: list[dict[str, Any]]) -> list[str]:
         """Resolve the discovered plugins and keep the problems for the details pane."""
@@ -426,13 +418,7 @@ class PluginCheckTool(QtWidgets.QWidget):
     def _dependency_details(self, plugin_info: dict) -> list[str]:
         """Detail rows describing this plugin's declared dependencies."""
 
-        def _render(mapping: dict) -> str:
-            # "*" means "any version, it just has to be there" -- printing it
-            # beside every name is noise that hides the real bounds.
-            return ", ".join(
-                name if str(bound).strip() in ("", "*") else f"{name} {bound}"
-                for name, bound in sorted(mapping.items())
-            )
+        from chisurf.plugins.core.plugin_check.gui.model import render_bounds as _render
 
         rows = []
         requires = plugin_info.get("requires") or {}

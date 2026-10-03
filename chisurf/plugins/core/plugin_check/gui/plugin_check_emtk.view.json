@@ -1,0 +1,137 @@
+{
+  "_comment": "Plugin Check, native emtk window. Drawn by emtk.view_form over PluginCheckModel (gui/model.py): 'checks' is the left window (sweep actions, the two sweep options, progress, the status line, the plugin table), 'details' the right one (the selected plugin's facts and its error text, both drawn by gui/app.py: a spec cannot draw them).",
+  "title": "Plugin Check",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Plugin startup checks",
+      "name": "checks",
+      "description": "Every discovered plugin with the result of its startup check. A check builds the plugin's native window in a separate process and draws it once; it says the window opens, not that the science works.",
+      "sections": [
+        {
+          "type": "button_row",
+          "description": "Start or stop a startup sweep over the plugins.",
+          "buttons": [
+            {
+              "action": "test_all",
+              "label": "Test all plugins",
+              "description": "Construct and draw the native window of every discovered plugin, one at a time, each in a separate process on throw-away settings."
+            },
+            {
+              "action": "test_safe",
+              "label": "Test safe plugins",
+              "description": "Check only the first ten plugins of the list, with a short startup timeout (5 s)."
+            },
+            {
+              "action": "stop",
+              "label": "Stop",
+              "description": "Stop the sweep and terminate the plugin that is being checked right now."
+            }
+          ]
+        },
+        {
+          "type": "button_row",
+          "description": "Rescan the plugin folders, or allow the blacklisted plugins to be checked again.",
+          "buttons": [
+            {
+              "action": "refresh",
+              "label": "Refresh",
+              "description": "Rescan the plugin folders and clear the displayed results."
+            },
+            {
+              "action": "clear_blacklist",
+              "label": "Clear blacklist",
+              "description": "Take every plugin off the blacklist (a plugin that failed five checks in a row is skipped) so it is tested again."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "",
+          "n_col": 1,
+          "description": "How a sweep behaves.",
+          "sections": [
+            {
+              "type": "value",
+              "kind": "float",
+              "label": "Delay between plugins",
+              "attr": "delay",
+              "minimum": 0.0,
+              "maximum": 5.0,
+              "step": 0.1,
+              "decimals": 1,
+              "suffix": " s",
+              "style": "spin",
+              "description": "Pause between two plugin checks so the machine is not overloaded; Stop stays responsive during the pause."
+            },
+            {
+              "type": "toggle",
+              "label": "Skip blacklisted",
+              "attr": "skip_blacklisted",
+              "description": "Do not check plugins that failed five times in a row; they show as skipped."
+            }
+          ]
+        },
+        {
+          "type": "progress",
+          "attr": "progress_fraction",
+          "text_source": "progress_text",
+          "description": "How many of the plugins in this sweep are checked."
+        },
+        {
+          "type": "info",
+          "source": "status_text",
+          "description": "What the sweep is doing, or how many plugins were found and whether the dependency resolver has complaints."
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per plugin. Click a header to sort, click it again to reverse; type in the filter box to keep the rows containing the text in any column; select a row to read its details on the right.",
+          "options": {
+            "source": "check_rows",
+            "row_key": "key",
+            "selected_call": "select_row",
+            "editable": false,
+            "filter": true,
+            "status": true,
+            "column_picker": true,
+            "tooltip_key": "tip",
+            "muted_key": "muted",
+            "expand": true,
+            "reserve": 8,
+            "min_column_width": 74,
+            "fit_columns": true,
+            "columns": [
+              {"key": "plugin", "title": "Plugin", "width": 330, "tooltip": "The plugin's menu path."},
+              {"key": "status", "title": "Status", "width": 66, "tooltip": "pass: the native window opened and drew; fail: it raised, logged an error or timed out; skipped: blacklisted; Qt only: the plugin has no native window yet; pending: no sweep has reached it."},
+              {"key": "source", "title": "Source", "width": 62, "tooltip": "built-in, or user for a plugin in your own plugin directory."},
+              {"key": "depends", "title": "Depends on", "width": 120, "tooltip": "Plugins that must load first; optional dependencies are counted."},
+              {"key": "error", "title": "Error", "width": 150, "tooltip": "The first line of the startup error; the whole text is in the details."}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Plugin details",
+      "name": "details",
+      "description": "What the selected plugin is and what its startup check reported.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "plugin_details",
+          "title": "",
+          "description": "Name, module, source, version, check status, dependencies and description of the selected plugin."
+        },
+        {
+          "type": "custom",
+          "key": "error_text",
+          "title": "",
+          "description": "The whole startup error and traceback of the selected plugin; select and copy it with the mouse and Ctrl+C."
+        }
+      ]
+    }
+  ]
+}

@@ -132,6 +132,7 @@ irf_estimation
 91_vv_vh_g_factor
 92_hmm_binned_traces
 93_psf_determination
+96_plugin_check
 45_scan_precision
 55_pair_correlation
 ```
@@ -265,6 +266,7 @@ irf_estimation
 | [The PSF measured on beads](93_psf_determination.md) | `psf_determination` (Imaging), `psf-determination` CLI, `PsfViewModel`, `psf_determination.fit.run` RPC |
 | [States and rates from a binned trace](92_hmm_binned_traces.md) | `hmm` (Analysis → Kinetics), `csc hmm`, `HmmViewModel`, `hmm.fit` RPC |
 | [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
+| [Checking that every plugin starts](96_plugin_check.md) | `plugin_check` (Tools → Miscellaneous → Plugin-Check), `python -m chisurf.emtk.validation`, `PluginCheckModel` |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
 

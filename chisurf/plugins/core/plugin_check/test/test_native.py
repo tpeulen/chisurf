@@ -35,7 +35,7 @@ def test_checker_lists_metadata_and_renders_native_docks():
     app.draw(painter, 0, 0, 1200, 800)
     assert "Test all plugins" in painter.strings
     assert "Demo metadata" in painter.strings
-    assert "base: >=1" in painter.strings
+    assert "base >=1" in painter.strings
     app.close()
 
 
