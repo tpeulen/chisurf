@@ -1,0 +1,21 @@
+{
+ "1": "Qt list numbers (1. 2. 3.) of the welcome text and the dataset check list: Markdown list markers / the 'N. name' dataset labels in the table",
+ "2": "see 1",
+ "3": "see 1",
+ "4": "see 1",
+ "5": "see 1",
+ "?": "Qt toolbar help button: native Help button (opens the help window)",
+ "clear": "Qt button '🗑 Clear': native button Clear (no emoji)",
+ "database": "Qt button '🗄 Database': native button Database",
+ "files": "Qt button '➕ Files': native button Files",
+ "filestoprocess": "Qt header 'Files to process': native table title of the same text",
+ "finish": "Qt Finish: native Finish button, shown on the last step only (spec button, hidden_when)",
+ "folder": "Qt button '📁 Folder': native button Folder",
+ "next›": "Qt 'Next ›': native Next button",
+ "refresh": "Qt '🔄 Refresh': native Refresh button of the Loaded data step",
+ "remove": "Qt '➖ Remove': native Remove button",
+ "resultscsv": "Qt field caption 'Results CSV': native field with the same caption",
+ "runbatch": "Qt '▶️ Run batch': native button Run batch",
+ "templatefit": "Qt caption 'Template fit': native choice with the same caption",
+ "‹back": "Qt '‹ Back': native Back button"
+}

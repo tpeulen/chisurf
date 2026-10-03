@@ -1,0 +1,87 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "1.loadsomedatainchisurfandcreateafitforonerepresentativedataset.",
+    "2.manuallyoptimisethattemplatefit—itsparametervaluesseedeveryrun.",
+    "3.pickalready-loadeddatasetsand/ordropfilesbelow,choosethetemplatefit,thenrun.",
+    "applyonetemplatefittomanydatasetsorfiles.",
+    "applyonetemplatefittomanydatasetsorfilesinonepass.eachitemstartsfromthetemplate'sparameters,sotheresultsaredirectlycomparable.",
+    "back",
+    "batchanalysis",
+    "beforeyoustart",
+    "filesfit",
+    "guide",
+    "help",
+    "loadeddata",
+    "next",
+    "results",
+    "resultsarewrittentoacsv(plusanoptionaldocxreportandazipoftheper-runexports).",
+    "run",
+    "steps",
+    "welcome"
+  ],
+  "interactive": [
+    {
+      "kind": "selectable",
+      "label": "✓ Welcome",
+      "id": "✓ Welcome##step0",
+      "tooltip": "Apply one template fit to many datasets or files."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Loaded data",
+      "id": "✓ Loaded data##step1",
+      "tooltip": "Optionally pick datasets already loaded in ChiSurf."
+    },
+    {
+      "kind": "selectable",
+      "label": "  Files & fit",
+      "id": "  Files & fit##step2",
+      "tooltip": "Drop files to process and choose the template fit."
+    },
+    {
+      "kind": "selectable",
+      "label": "  Run",
+      "id": "  Run##step3",
+      "tooltip": "Choose where to save results, then run the batch."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Results",
+      "id": "✓ Results##step4",
+      "tooltip": "Per-parameter results of the last run."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back##go_back",
+      "tooltip": "Go to the previous step. Not available on the first step."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next##go_next",
+      "tooltip": "Go to the following step. Every step can be visited in any order."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the steps of the batch analysis."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through a batch step by step."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

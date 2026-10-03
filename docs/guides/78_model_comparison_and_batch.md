@@ -28,87 +28,17 @@ to 512, fit window channels 55–480) and its donor–acceptor partner
 
 ### Open the tool
 
-**Main → Tools → Calculators**, entry **📉 F-test / χ²-max**. The manifest name
-`Main:Tools:F-Test` is hidden from the menu. The window title is
-*F-Calculator*. **?** (top right of the form) opens the formulas.
+**Main → Tools → Wizards**, entry **Batch analysis** (the hub embeds this wizard).
+The manifest name `Main:Tools:Batch-Analysis` is hidden from the menu. Before
+opening it, load a representative dataset, create the fit you intend to use, and
+**optimise it by hand**: its parameter values — and which parameters are fixed —
+seed every run.
 
-```{figure} figures/f_test_tool.png
-:name: fig-f-test-tool
-:width: 90%
-
-The F-test loaded from two real fits of the donor-only decay with
-**📊 From fit**: one exponential ($\chi^2_r = 11.12$, $\nu = 422$) against two
-($\chi^2_r = 6.16$, $\nu = 420$), confidence 1.00000. The $\chi^2$-max panel
-holds the two-exponential fit: at 95 % for 5 parameters, $\chi^2_\text{max} =
-6.324$.
-```
-
-### Load the numbers
-
-**📊 From fit ▾** lists every open fit, each with three targets:
-
-* **→ F-test model 1 (χ²₁, n₁)** — the simpler fit: its $\chi^2_r$ and
-  $\nu = $ points − free parameters.
-* **→ F-test model 2 (χ²₂, n₂)** — the more complex fit.
-* **→ χ²-max (χ²min, params, ν)** — one fit, for the upper-limit panel.
-
-Loading model 1 recomputes the $\chi^2_2$ threshold; loading model 2 recomputes
-the confidence. Typed values work the same way.
-
-### F-test — compare two nested models
-
-* **χ²(1)**, **n₁** — reduced $\chi^2$ and degrees of freedom of the simpler
-  model.
-* **χ²(2)**, **n₂** — the same for the more complex model.
-* **confidence** — $F_\text{cdf}(\chi^2_{r,1}/\chi^2_{r,2};\ n_1, n_2)$.
-  Editing **χ²(2)**, **n₁** or **n₂** recomputes it. Editing **confidence** (or
-  **χ²(1)**) does the inverse: it solves for the **χ²(2)** the complex model must
-  reach, $\chi^2_{r,1}/F_\text{ppf}(\text{conf};\ n_1, n_2)$, and writes it into
-  **χ²(2)**, overwriting what you loaded.
-
-Equal reduced $\chi^2$ gives 0.5 — no preference. The ratio is simpler over
-complex, so it exceeds one exactly when the extra parameters help.
-
-### χ²-max — upper limit from one fit
-
-* **χ² min**, **params**, **ν (dof)**, **confidence** — a fit's minimum, its
-  free-parameter count $p$, $\nu$, and a level.
-* **χ² max** — $\chi^2_\text{min}(1 + p/\nu\,F(p, \nu; \text{conf}))$: every
-  parameter set with $\chi^2_r$ below this is inside the joint confidence region.
-  For the interval of *one* parameter set **params** to 1; the loaded value is
-  the fit's full free-parameter count, which describes the joint region of all
-  of them.
-
-### Reading it: the case where the tests disagree
-
-| comparison | $\chi^2_r$ | tool confidence | $\chi^2_{r,2}$ needed at 95 % | extra-SS $F$ ($p$) | $\Delta$AIC |
-|---|---|---|---|---|---|
-| 1 → 2 exp. | 11.12 → 6.16 | 1.0000 | 9.471 | 171 ($5\times10^{-55}$) | −2101 |
-| 2 → 3 exp. | 6.16 → 6.02 | 0.5911 | 5.244 | 5.8 (0.003) | −66 |
-
-The second lifetime is justified by every measure. The third is not justified by
-the tool (0.59) but is by the extra-sum-of-squares test and by AIC. The tool's
-variance-ratio form treats the two $\chi^2$ as independent; two fits of the same
-data are not, so it is conservative and needs the ratio to exceed one by about
-$3.3/\sqrt{\nu}$ (17 % here) regardless of how many parameters were added.
-But neither verdict should be trusted on this decay: $\chi^2_r = 6$ means the
-residuals are systematic misfit rather than noise, and the three-exponential fit
-put $\tau_1$ on its lower bound (0.1 ns, amplitude 0.05) — a boundary
-parameter the F reference distribution does not describe. Read the table as
-"the third component is not resolved", and fix the model (IRF, scatter,
-background) before asking again.
-
-## Batch-Analysis
-
-### Open the tool
-
-**Main → Tools → Wizards**, entry **📋 Batch analysis**. The manifest name
-`Main:Tools:Batch-Analysis` is hidden from the menu. Before opening it, load a
-representative dataset, create the fit you intend to use, and **optimise it by
-hand**: its parameter values — and which parameters are fixed — seed every run.
-
-The wizard has five steps in a left rail; **Next ›** / **‹ Back** move along it
-and steps can be visited in any order.
+The wizard has five steps in a list on the left; a check mark means the step needs
+nothing more from you. Click a step, or use **Back** / **Next**; steps can be
+visited in any order, and **Finish** (last step) closes the window. **Help**
+explains the steps and **Guide** walks through a batch, waiting for you to
+operate each control it points at.
 
 ### 1. Welcome
 
@@ -124,17 +54,26 @@ The donor-only and donor–acceptor decays, already loaded in ChiSurf, ticked fo
 the batch.
 ```
 
-A check-list of the datasets loaded in ChiSurf (the reserved *Global Dataset* is
-left out). Hover a row for the file name and a preview of the curve;
-**🔄 Refresh** re-reads the list after loading more.
+A table of the datasets loaded in ChiSurf (the reserved *Global Dataset* is left
+out). Click the check box in the **Use** column to include a dataset; hover a row
+for its file name. **Refresh** re-reads the list after loading more and keeps the
+ticks of datasets that are still there.
 
 ### 3. Files & fit
 
-* **Files to process** — **➕ Files**, **📁 Folder**, **🗄 Database**, drag and
-  drop; **➖ Remove**, **🗑 Clear**. Each file is loaded with the reader guessed
+```{figure} figures/batch_analysis_files.png
+:name: fig-batch-analysis-files
+:width: 100%
+
+Two files queued and the template fit chosen.
+```
+
+* **Files to process** — **Files**, **Folder** (every file below it), **Database**,
+  or drop files and folders on the window; select a row and press **Remove** (or
+  Delete), **Clear** empties the list. Each file is loaded with the reader guessed
   from its name, else the reader currently selected in ChiSurf, then fitted.
 * **Template fit** — the fit whose parameters seed every run, listed by fit
-  name (e.g. *Lifetime (magic angle only) - Decay_577D*).
+  name. The list is read when the step opens; **Refresh fits** reads it again.
 
 Loaded datasets run first, then files, in list order.
 
@@ -144,29 +83,38 @@ Loaded datasets run first, then files, in list order.
 :name: fig-batch-analysis-run
 :width: 100%
 
-Ready to run: two loaded datasets, no files, the two-exponential template fit
-on the donor-only decay, and the results path.
+After the run: the written files under the progress bar.
 ```
 
-* **Results CSV** — the output path; **…** browses. Left empty, **Run batch**
-  asks for it.
-* **▶️ Run batch** — for each item: restore the template's parameter values and
+* **Results CSV** — the output path; **Browse...** opens a save dialog. Left empty,
+  **Run batch** asks for it first.
+* **Run batch** — for each item: restore the template's parameter values and
   fixed flags, assign the dataset (or load the file), run the fit, save its
-  curves, grab a screenshot of the fit window, and record every parameter. A
-  progress dialog counts the items; a message box lists the written files.
+  curves and record every parameter. The bar counts the items (`i/total: name`)
+  and a line under it lists the written files, or says why nothing ran (no data,
+  no fit) or what failed.
 
 ### 5. Results
 
+```{figure} figures/batch_analysis_results.png
+:name: fig-batch-analysis-results
+:width: 100%
+
+One row per item and parameter, as in the CSV.
+```
+
 One row per (item, parameter): **Run**, **Filename**, **Parameter**, **Fixed**,
-**Value**, **Chi2r**.
+**Value**, **Chi2r**. Click a header to sort, type in the filter box to narrow the
+rows, scroll with the wheel.
 
 ### Where results go
 
 Next to the chosen `results.csv`:
 
 * `results.csv` — the table above, all items;
-* `results.docx` — a report with each item's screenshot and the consolidated
-  table (needs `python-docx`; without it the CSV and ZIP are still written);
+* `results.docx` — a report with the consolidated table and, when the host can
+  capture the fit window (the Qt window can), each item's screenshot (needs
+  `python-docx`; without it the CSV and ZIP are still written and the window says so);
 * `results_fit_results.zip` — each run's `fit.save(..., "csv", save_curves=True)`
   export, named `001_<item>`, `002_<item>`, …
 
@@ -288,9 +236,9 @@ FCS curves; nothing stops you from ticking both (see *Known defects*).
   data it is conservative; on the example it gives 0.59 where the
   extra-sum-of-squares test gives $p = 0.003$. There is no readout of the
   extra-sum-of-squares $F$ or its $p$-value.
-* **Guide missing on both windows.** Neither `FTestTool` nor the batch wizard
-  calls the shared help/guide seam, so their shipped `guide.json` tours are not
-  reachable from the window yet.
+* **Guide missing on the F-Test window.** `FTestTool` does not call the shared
+  help/guide seam, so its tour is not reachable from the window yet (the batch
+  wizard's is: **Guide**).
 * **Batch: parameter restore can fail silently.** The shipped fitting client
   writes parameters only over RPC and returns `{"ok": False}` when the server is
   not reachable; `restore_parameters` ignores the result, so each item would
@@ -301,15 +249,9 @@ FCS curves; nothing stops you from ticking both (see *Known defects*).
 * **Batch: mixed experiment types are not rejected.**
   `runner.datasets_have_mixed_types` exists and says mixing is "rejected
   upstream", but nothing calls it.
-* **Batch Results step is hard to read.** Values are printed at full float
-  precision, so cells wrap, and the table sits in a short scroll box above empty
-  space. Read the CSV instead.
 * **Batch rows include placeholder parameters** — the unused third component
   slot (`a2`, `t2`, fixed) and derived averages appear in the table alongside
   the fitted values; filter on **Fixed = No** for the free ones.
-* **The wizard rail hides the selected step's label** — the selected row is
-  painted in the highlighted-text colour on an almost-white highlight, so only
-  its icon is visible.
 
 ## See also
 
