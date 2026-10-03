@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
 
@@ -11,16 +12,48 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.calculator.native_form import fields
+from chisurf.plugins.emtk_layout import button_row, layout_spec
 
 from .view_model import ClsmGeneratorViewModel
 
 FORMATS = (".pto", ".npz", ".ptu", ".spc", ".ht3")
+
+
+class _Rows(list):
+    revision = 0
+
+
+LIFETIME_SPEC = {"sections": [{"type": "custom", "key": "data_table",
+    "description": "One lifetime map (in ns) per detector, in detector order. Select a row for Remove selected; Delete removes it.",
+    "options": {"source": "lifetime_rows", "height": 96, "row_key": "detector", "selected_call": "select_lifetime",
+                "delete_call": "delete_lifetime", "status": True, "columns": [
+        {"key": "detector", "title": "Detector", "width": 70, "description": "The detector the map belongs to (0, 1, ...)."},
+        {"key": "file", "title": "Lifetime map", "description": "File name of the lifetime map; the full path is in the tooltip."},
+        {"key": "folder", "title": "Folder", "description": "The folder of the file."}]}}]}
+
+
+@contextlib.contextmanager
+def _pointer_masked(active):
+    """A table under the guided-tour card must not take the press meant for the card's buttons (an emtk gap: a
+    ``data_table`` takes a press whatever is drawn over it); while the tour is shown the table sees no pointer input."""
+    if not active:
+        yield
+        return
+    io = im.get_current_context().io
+    saved = (list(io.mouse_clicked), list(io.mouse_down), list(io.mouse_released), list(io.mouse_double_clicked), io.mouse_pos)
+    io.mouse_clicked, io.mouse_down, io.mouse_released = [False] * 5, [False] * 5, [False] * 5
+    io.mouse_double_clicked = [False] * 5
+    io.mouse_pos = (-1e6, -1e6)
+    try:
+        yield
+    finally:
+        io.mouse_clicked, io.mouse_down, io.mouse_released, io.mouse_double_clicked, io.mouse_pos = saved
 
 
 class GenerationJob(SnapshotJob):
@@ -72,6 +105,16 @@ class ClsmGeneratorApp(ImApp):
         )
         spec = json.loads(Path(__file__).with_name("generator.view.json").read_text())
         self.parameters = spec["sections"][0]["sections"][0]["sections"][3]["sections"]
+        panel = json.loads(json.dumps(spec["sections"][0]["sections"][0]["sections"][3]))
+        panel["collapsible"] = True
+        for sec in panel["sections"]:
+            if sec.get("type") == "value" and sec.get("kind") in ("int", "float"):
+                sec["style"] = "spin"
+                if sec.get("kind") == "float" and not sec.get("step"):
+                    decimals = int(sec.get("decimals", 2))
+                    sec["step"] = 10.0 ** -(decimals if decimals <= 2 else decimals - 1)
+        self.simulation_spec = layout_spec({"sections": [panel]})
+        self.forms = {k: FormState(on_used=lambda n: self.tour.notify_used(n)) for k in ("lifetimes", "simulation")}
         self.help_window = EmTkHelpWindow(
             title="CLSM Generator — Help", resource=Path(__file__).with_name("help.md"), owner=self
         )
@@ -182,107 +225,101 @@ class ClsmGeneratorApp(ImApp):
             return False
         return self.job.start("save", str(path))
 
+    # table sources for the specs
+    @property
+    def lifetime_rows(self):
+        rows = _Rows([{"detector": i, "file": Path(p).name, "folder": str(Path(p).parent)}
+                      for i, p in enumerate(self.model.lifetime_paths)])
+        rows.revision = hash(tuple(self.model.lifetime_paths))
+        return rows
+
+    def select_lifetime(self, record):
+        if isinstance(record, dict):
+            self.selected_lifetime = record["detector"]
+
+    def delete_lifetime(self, record):
+        if isinstance(record, dict) and not self.job.busy:
+            self.selected_lifetime = record["detector"]
+            self.remove_lifetime()
+
+    def enabled(self, name):
+        return not (self.job.busy or self.dialog is not None or self.picker.is_open)
+
     def controls(self, box):
-        self.button(
-            "Help",
-            "Explain detector maps, simulation units, cancellation and export formats.",
-            self.help_window.show,
-        )
-        im.same_line()
-        self.button(
-            "Guide",
-            "Walk through loading maps, generating and saving a photon image.",
-            self.tour.start,
-        )
-        im.begin_disabled(self.job.busy or self.dialog is not None or self.picker.is_open)
-        self.button(
-            "Intensity image",
-            "Load the relative pixel brightness from TIFF, NPY or NPZ.",
-            lambda: self.choose("intensity"),
-        )
+        pressed = button_row([
+            {"label": "Help", "key": "Help", "tip": "Explain detector maps, simulation units, cancellation and export formats."},
+            {"label": "Guide", "key": "Guide", "tip": "Walk through loading maps, generating and saving a photon image."},
+        ], remember=self.remember)
+        if pressed == "Help":
+            self.help_window.show()
+        elif pressed == "Guide":
+            self.tour.start()
+        busy = self.job.busy or self.dialog is not None or self.picker.is_open
+        im.begin_disabled(busy)
+        pressed = button_row([
+            {"label": "Intensity image", "key": "Intensity image", "tip": "Load the relative pixel brightness from TIFF, NPY or NPZ."},
+            {"label": "Add lifetime maps", "key": "Add lifetime maps", "tip": "Add one fluorescence lifetime map in ns per detector, in detector order."},
+            {"label": "Database lifetime maps", "key": "Database lifetime maps", "tip": "Select registered lifetime map datasets from MMFDB in detector order."},
+            {"label": "Remove selected", "key": "Remove selected", "enabled": bool(self.model.lifetime_paths), "tip": "Remove the selected detector's lifetime map without deleting its file."},
+            {"label": "Clear maps", "key": "Clear maps", "enabled": bool(self.model.lifetime_paths), "tip": "Remove all detector lifetime maps without deleting files."},
+        ], remember=self.remember)
+        if pressed == "Intensity image":
+            self.choose("intensity")
+        elif pressed == "Add lifetime maps":
+            self.choose("lifetime")
+        elif pressed == "Database lifetime maps":
+            self.picker.open()
+        elif pressed == "Remove selected":
+            self.remove_lifetime()
+        elif pressed == "Clear maps":
+            self.model.sel_lifetime_files = []
+        if pressed:
+            self.tour.notify_used(pressed)
         im.text_wrapped(self.model.intensity_path or "No intensity image loaded.")
-        im.set_item_tooltip(
-            self.model.intensity_path or "Load the image that sets pixel brightness."
-        )
-        self.button(
-            "Add lifetime maps",
-            "Add one fluorescence lifetime map in ns per detector, in detector order.",
-            lambda: self.choose("lifetime"),
-        )
-        self.button(
-            "Database lifetime maps",
-            "Select registered lifetime map datasets from MMFDB in detector order.",
-            self.picker.open,
-        )
-        for index, path in enumerate(self.model.lifetime_paths):
-            if im.selectable(
-                f"Detector {index}: {Path(path).name}", self.selected_lifetime == index
-            ):
-                self.selected_lifetime = index
-            im.set_item_tooltip(path + " — lifetime in ns; detector " + str(index))
-        im.begin_disabled(not self.model.lifetime_paths)
-        self.button(
-            "Remove selected",
-            "Remove the selected detector's lifetime map without deleting its file.",
-            self.remove_lifetime,
-        )
-        im.same_line()
-        self.button(
-            "Clear maps",
-            "Remove all detector lifetime maps without deleting files.",
-            lambda: setattr(self.model, "sel_lifetime_files", []),
-        )
+        im.set_item_tooltip(self.model.intensity_path or "Load the image that sets pixel brightness.")
+        self.remember("intensity_path")
+        self.forms["lifetimes"].rects.clear()
+        draw_form(LIFETIME_SPEC, self, self.forms["lifetimes"])
+        self.item_rects.update(self.forms["lifetimes"].rects)
+        self.forms["simulation"].rects.clear()
+        draw_form(self.simulation_spec, self.model, self.forms["simulation"])
+        self.item_rects.update(self.forms["simulation"].rects)
         im.end_disabled()
-        if im.collapsing_header("Simulation"):
-            fields(
-                self.model,
-                self.parameters,
-                item_rects=self.item_rects,
-                on_used=self.tour.notify_used,
-            )
-        im.set_item_tooltip(
-            "Expand the acquisition and lifetime/intensity quantization parameters."
-        )
-        self.button(
-            "Generate",
-            "Simulate the photon image on a background worker using the loaded maps.",
-            self.generate,
-        )
-        im.same_line()
-        im.begin_disabled(not self.model.has_result())
-        self.button(
-            "Save photon stream",
-            "Save the generated photon stream and its reconstructed intensity TIFF.",
-            lambda: self.choose("save"),
-        )
-        im.end_disabled()
-        _, index = im.combo("Output format", FORMATS.index(self.output_format), list(FORMATS))
+        im.begin_disabled(busy)
+        pressed = button_row([
+            {"label": "Generate", "key": "Generate", "tip": "Simulate the photon image on a background worker using the loaded maps."},
+            {"label": "Save photon stream", "key": "Save photon stream", "enabled": self.model.has_result(), "tip": "Save the generated photon stream and its reconstructed intensity TIFF."},
+            {"label": "Save settings", "key": "Save settings", "tip": "Save paths, acquisition settings, detector order and map display preferences as JSON."},
+            {"label": "Load settings", "key": "Load settings", "tip": "Restore saved map inputs, detector order, acquisition and display preferences."},
+        ], remember=self.remember)
+        if pressed == "Generate":
+            self.generate()
+        elif pressed == "Save photon stream":
+            self.choose("save")
+        elif pressed == "Save settings":
+            self.choose("save_settings")
+        elif pressed == "Load settings":
+            self.choose("load_settings")
+        if pressed:
+            self.tour.notify_used(pressed)
+        im.text("Output format")
+        im.same_line(120)
+        im.set_next_item_width(120)
+        _, index = im.combo("##output_format", FORMATS.index(self.output_format), list(FORMATS))
         self.output_format = FORMATS[index]
-        im.set_item_tooltip(
-            "PTO preserves the measurement and embedded intensity; NPZ exports photon arrays. Other formats use tttrlib writers."
-        )
-        self.button(
-            "Save settings",
-            "Save paths, acquisition settings, detector order and map display preferences as JSON.",
-            lambda: self.choose("save_settings"),
-        )
-        im.same_line()
-        self.button(
-            "Load settings",
-            "Restore saved map inputs, detector order, acquisition and display preferences.",
-            lambda: self.choose("load_settings"),
-        )
+        self.remember("output_format")
+        im.set_item_tooltip("PTO preserves the measurement and embedded intensity; NPZ exports photon arrays. Other formats use tttrlib writers.")
         im.end_disabled()
         if self.job.busy:
             im.text_wrapped(self.job.progress)
             if self.job.method == "generate" and not self.job.canceled:
-                self.button(
-                    "Cancel generation",
-                    "Discard the running simulation's result; the C++ calculation finishes safely in the background.",
-                    self.job.cancel,
-                )
+                if im.button("Cancel generation"):
+                    self.job.cancel()
+                im.set_item_tooltip("Discard the running simulation's result; the C++ calculation finishes safely in the background.")
+                self.remember("Cancel generation")
         else:
             im.text_wrapped(self.model.status_text)
+        self.remember("status")
         if self.error or self.job.error:
             im.text_wrapped(self.error or self.job.error)
 
@@ -303,7 +340,11 @@ class ClsmGeneratorApp(ImApp):
         index = next(
             (i for i, entry in enumerate(entries) if entry["id"] == self.model.current_view), 0
         )
-        edited, index = im.combo("Map", index, [entry["label"] for entry in entries])
+        im.text("Map")
+        im.same_line(80)
+        im.set_next_item_width(-1)
+        edited, index = im.combo("##map", index, [entry["label"] for entry in entries])
+        self.remember("map")
         im.set_item_tooltip(
             "Browse input brightness, each detector lifetime and reconstructed photon counts."
         )
@@ -318,7 +359,8 @@ class ClsmGeneratorApp(ImApp):
         self.canvas.image_unit = (
             "ns" if is_lifetime else "photons" if self.model.current_view == "recon" else "relative"
         )
-        self.canvas.draw(image, pick_enabled=False, analysis_editable=False)
+        with _pointer_masked(self.tour.active):
+            self.canvas.draw(image, pick_enabled=False, analysis_editable=False)
         self.item_rects["Maps"] = self.canvas.rect
 
     def state_dict(self):

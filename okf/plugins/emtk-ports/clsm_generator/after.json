@@ -1,0 +1,109 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    ".pto",
+    "0rows×3columns",
+    "addlifetimemaps",
+    "clearmaps",
+    "databaselifetimemaps",
+    "detector",
+    "folder",
+    "generate",
+    "guide",
+    "help",
+    "inputsandsimulation",
+    "intensityimage",
+    "lifetimemap",
+    "loadanintensityimageandonelifetimemapperdetector,thengenerate.",
+    "loadsettings",
+    "maps",
+    "nointensityimageloaded.",
+    "outputformat",
+    "removeselected",
+    "savephotonstream",
+    "savesettings",
+    "simulation"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain detector maps, simulation units, cancellation and export formats."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through loading maps, generating and saving a photon image."
+    },
+    {
+      "kind": "button",
+      "label": "Intensity image",
+      "id": "Intensity image",
+      "tooltip": "Load the relative pixel brightness from TIFF, NPY or NPZ."
+    },
+    {
+      "kind": "button",
+      "label": "Add lifetime maps",
+      "id": "Add lifetime maps",
+      "tooltip": "Add one fluorescence lifetime map in ns per detector, in detector order."
+    },
+    {
+      "kind": "button",
+      "label": "Database lifetime maps",
+      "id": "Database lifetime maps",
+      "tooltip": "Select registered lifetime map datasets from MMFDB in detector order."
+    },
+    {
+      "kind": "button",
+      "label": "Remove selected",
+      "id": "Remove selected",
+      "tooltip": "Remove the selected detector's lifetime map without deleting its file."
+    },
+    {
+      "kind": "button",
+      "label": "Clear maps",
+      "id": "Clear maps",
+      "tooltip": "Remove all detector lifetime maps without deleting files."
+    },
+    {
+      "kind": "button",
+      "label": "Generate",
+      "id": "Generate",
+      "tooltip": "Simulate the photon image on a background worker using the loaded maps."
+    },
+    {
+      "kind": "button",
+      "label": "Save photon stream",
+      "id": "Save photon stream",
+      "tooltip": "Save the generated photon stream and its reconstructed intensity TIFF."
+    },
+    {
+      "kind": "button",
+      "label": "Save settings",
+      "id": "Save settings",
+      "tooltip": "Save paths, acquisition settings, detector order and map display preferences as JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Load settings",
+      "id": "Load settings",
+      "tooltip": "Restore saved map inputs, detector order, acquisition and display preferences."
+    },
+    {
+      "kind": "combo",
+      "label": "output_format",
+      "id": "##output_format",
+      "tooltip": "PTO preserves the measurement and embedded intensity; NPZ exports photon arrays. Other formats use tttrlib writers."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
