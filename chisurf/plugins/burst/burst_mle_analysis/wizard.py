@@ -3,6 +3,7 @@ import typing
 
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
+from chisurf.plugins.burst.burst_mle_analysis import engine
 from chisurf.plugins.burst.burst_mle_analysis.fit_display import TailFitResult, decay_curves
 from chisurf.plugins.burst.burst_mle_analysis.interpolate import interpolate_shift
 from chisurf.plugins.burst.burst_mle_analysis.utils import (
@@ -1012,81 +1013,23 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
     @property
     def irf(self) -> np.ndarray:
-        det = self.current_detector
-        arr = self.irf_np.get(det)
-        if arr is None:
-            # fallback default IRF
-            length = max(2, (self.micro_time_range[1] // self.micro_time_binning) * 2)
-            arr = np.zeros(length, dtype=np.float64)
-            arr[0] = 1.0
-            arr[length // 2] = 1.0
-
-        # split into sp / ss halves
-        half = len(arr) // 2
-        sp = arr[:half].astype(np.float64)
-        ss = arr[half:].astype(np.float64)
-
-        # 1) Global integer shift of VH (second half)
-        # shift is stored as float in settings; np.roll requires int steps
-        if float(self.shift) != 0.0:
-            ss = np.roll(ss, int(round(self.shift)))
-
-        # 2) Individual sub-bin IRF shifts
-        sp = interpolate_shift(sp, self.shift_sp)
-        ss = interpolate_shift(ss, self.shift_ss)
-
-        # 3) IRF range/windowing (zero outside of [start, stop])
-        try:
-            start = int(self.irf_start)
-            stop = int(self.irf_stop)
-
-            if start >= 0:
-                sp[: max(0, start)] = 0
-                ss[: max(0, start)] = 0
-            if stop >= 0 and stop + 1 < sp.size:
-                sp[stop + 1 :] = 0
-            if stop >= 0 and stop + 1 < ss.size:
-                ss[stop + 1 :] = 0
-        except Exception:
-            # be permissive if widgets not yet constructed
-            pass
-
-        # 4) IRF thresholding (background correction)
-        try:
-            th_vv = float(self.irf_threshold_vv)
-            th_vh = float(self.irf_threshold_vh)
-            if th_vv > 0 and sp.size and sp.max() > 0:
-                sp[sp < th_vv * sp.max()] = 0
-            if th_vh > 0 and ss.size and ss.max() > 0:
-                ss[ss < th_vh * ss.max()] = 0
-        except Exception:
-            pass
-
-        # reassemble after per-channel processing
-        irf = np.hstack([sp, ss])
-        return irf
+        return engine.process_irf(
+            self.irf_np.get(self.current_detector),
+            micro_time_range=self.micro_time_range,
+            binning=self.micro_time_binning,
+            shift=self.shift,
+            shift_sp=self.shift_sp,
+            shift_ss=self.shift_ss,
+            irf_start=self.irf_start,
+            irf_stop=self.irf_stop,
+            threshold_vv=self.irf_threshold_vv,
+            threshold_vh=self.irf_threshold_vh,
+        )
 
     @property
     def bg(self) -> np.ndarray:
-        """
-        Return the background array for the currently selected detector.
-        Apply VH integer shift (doubleSpinBox_shift) BEFORE any other operation.
-        If none was loaded, return a zeros default matching the IRF length.
-        """
-        det = self.current_detector
-        arr = self.bg_np.get(det)
-        if arr is None:
-            # match IRF length
-            return np.zeros_like(self.irf)
-        # ensure float64 copy
-        arr = np.asarray(arr, dtype=np.float64)
-        half = len(arr) // 2
-        vv = arr[:half].copy()
-        vh = arr[half:].copy()
-        # IMPORTANT: apply integer shift to VH before anything else
-        if self.shift != 0:
-            vh = np.roll(vh, self.shift)
-        return np.hstack([vv, vh])
+        """The background of the current detector with the VH half rolled by the global shift (zeros if none)."""
+        return engine.process_background(self.bg_np.get(self.current_detector), self.shift, self.irf)
 
     @property
     def BIFL_scatter(self) -> bool:
@@ -1314,38 +1257,8 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return total_ms / 1000.0
 
     def _header_time_ns(self):
-        """(dt_ns, period_ns) from the current file's TTTR header, or ``None``.
-
-        The MLE fit needs the micro-time channel width and the excitation period
-        in the *same* unit as the lifetime it reports (nanoseconds). The
-        channel-definition page cannot supply that: its micro-time field is
-        picoseconds (it feeds the g-factor calculator as ``..._ps``) while its
-        macro-time field is nanoseconds, and neither is populated from the file
-        header — so ``Fit23`` was handed ``dt`` and ``period`` that were both
-        defaulted (50) and in mismatched units, which left the reported lifetime
-        in arbitrary units (a decay that visibly falls in ~1 ns was labelled
-        "5 ns"). The header is the single source of truth: the channel width is
-        ``micro_time_resolution`` and one excitation period is the full TAC range
-        ``number_of_micro_time_channels * micro_time_resolution`` (both in
-        seconds), scaled to nanoseconds and to the current binning.
-        """
-        tttr = self._current_tttr()
-        if tttr is None:
-            return None
-        try:
-            h = tttr.header
-            micro_s = float(h.micro_time_resolution)
-            n_chan = float(h.number_of_micro_time_channels)
-        except Exception:
-            return None
-        if not (micro_s > 0.0 and n_chan > 0.0):
-            return None
-        binning = max(1, int(self.micro_time_binning))
-        dt_ns = micro_s * 1e9 * binning
-        # The period is the full TAC range and is independent of binning
-        # (n_binned * dt_binned == n_chan * micro_s).
-        period_ns = n_chan * micro_s * 1e9
-        return dt_ns, period_ns
+        """(dt_ns, period_ns) from the current file's TTTR header, or ``None`` (``engine.header_time_ns``)."""
+        return engine.header_time_ns(self._current_tttr(), self.micro_time_binning)
 
     @property
     def dt_effective(self):
@@ -3989,44 +3902,11 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return self.tttrs.get(Path(str(first_file)).stem)
 
     def _irf_fwhm_channels(self):
-        """FWHM of the scatter IRF prompt in RAW micro-time channels, or ``None``.
-
-        Measured from the current detector's non-burst photons (the scatter
-        prompt whose width *is* the instrument response). This sets how finely
-        the micro-time axis can be *meaningfully* binned: binning far below the
-        IRF width only spreads the same counts over more empty bins without
-        adding time resolution (see :meth:`_auto_select_binning`).
-        """
-        tttr = self._current_tttr()
-        det = self.current_detector
-        info = getattr(self.channel_definer, "detectors", {}).get(det, {})
-        chs = info.get("chs", [])
-        if tttr is None or not chs:
-            return None
-        idx = np.asarray(self.get_burst_indices_for_current_file(), dtype=int)
-        if idx.size == 0:
-            return None
-        try:
-            n_full = int(tttr.header.number_of_micro_time_channels)
-        except Exception:
-            return None
-        if n_full <= 0:
-            return None
-        non_burst = np.ones(len(tttr), dtype=bool)
-        non_burst[idx] = False
-        sel = non_burst & np.isin(np.asarray(tttr.routing_channels), np.asarray(chs, dtype=int))
-        micro = np.asarray(tttr.micro_times)[sel]
-        micro = micro[(micro >= 0) & (micro < n_full)]
-        if micro.size == 0:
-            return None
-        hist = np.bincount(micro, minlength=n_full)[:n_full].astype(float)
-        pk = hist.max()
-        if pk <= 0:
-            return None
-        above = np.where(hist >= 0.5 * pk)[0]
-        if above.size == 0:
-            return None
-        return int(above[-1] - above[0] + 1)
+        """FWHM of the scatter IRF prompt in RAW micro-time channels, or ``None`` (``engine.irf_fwhm_channels``)."""
+        info = getattr(self.channel_definer, "detectors", {}).get(self.current_detector, {})
+        return engine.irf_fwhm_channels(
+            self._current_tttr(), info.get("chs", []), np.asarray(self.get_burst_indices_for_current_file(), dtype=int)
+        )
 
     def _auto_select_binning(
         self, target_counts_per_bin: float = 10.0, irf_oversample: float = 8.0
@@ -4080,33 +3960,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return choices[-1]
 
     def _auto_select_fit_range(self, lo_frac: float = 0.02):
-        """Set ``micro_time_range`` to the filled region of the current decay.
-
-        Empty pre-prompt bins and the noise tail carry no lifetime information;
-        for a maximum-likelihood fit they are just near-zero bins that add noise
-        and, at a too-fine binning, destabilise it. The window is set from one
-        bin before the rising edge to one bin past the last populated bin (in the
-        current binning's units), spanning both Jordi halves symmetrically.
-        """
-        decay = self.decay_of_current_file
-        if decay is None:
-            return
-        d = np.asarray(decay, dtype=float)
-        nb = d.size // 2
-        if nb < 4:
-            return
-        tot = d[:nb] + d[nb : 2 * nb]
-        pk = float(tot.max()) if tot.size else 0.0
-        if pk <= 0.0:
-            return
-        filled = np.where(tot > lo_frac * pk)[0]
-        if filled.size == 0:
-            return
-        onset = int(max(0, int(filled[0]) - 1))
-        last = int(min(nb, int(filled[-1]) + 2))
-        if last - onset < 4:
-            return
-        self.micro_time_range = (onset, last)
+        """Set ``micro_time_range`` to the filled region of the current decay (``engine.select_fit_range``)."""
+        window = engine.select_fit_range(self.decay_of_current_file, lo_frac)
+        if window is not None:
+            self.micro_time_range = window
 
     def auto_optimize(self):
         """One-click "make it work": auto binning + fit window, then refit.
@@ -4674,6 +4531,12 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 if (k % 20) == 0:
                     QtWidgets.QApplication.processEvents()
 
+            # The detector on screen keeps its window, start values and shifts in the widgets until the user
+            # switches away; read straight from the cache the batch fitted it with the state of its last switch
+            # (for a freshly seeded detector: the 0..4096 window), not with what the live panel shows.
+            if self.current_detector:
+                self.channel_settings[self.current_detector] = self._capture_current_ui_state()
+
             # Per-detector constants
             irf_cache, bg_cache = self._build_irf_bg_cache()
             settings_cache = {
@@ -5078,92 +4941,20 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         apply_vh_shift: bool = True,
     ) -> list[np.ndarray]:
         vv_vhs = list()
-        # Determine per-channel ranges: fall back to provided micro_time_range for both
-        sb_def, eb_def = micro_time_range
-        # Try to get detector-specific ranges from the channel_definer
-        vv_sb = sb_def
-        vv_eb = eb_def
-        vh_sb = sb_def
-        vh_eb = eb_def
-
         info = getattr(self.channel_definer, "detectors", {}).get(self.current_detector, {})
-        ranges = info.get("micro_time_ranges", None)
-        if ranges and len(ranges) >= 2:
-            raw_vv = ranges[0]
-            raw_vh = ranges[1]
-            binning = max(1, int(micro_time_binning))
-            vv_sb = int(raw_vv[0] // binning)
-            vv_eb = int(raw_vv[1] // binning)
-            vh_sb = int(raw_vh[0] // binning)
-            vh_eb = int(raw_vh[1] // binning)
-
         for idx, tttr in enumerate(tttr_list):
-            # Use filter_tttr helper to select relevant events
-            if len(detector_chs) >= 2:
-                tp = self.filter_tttr(tttr, micro_time_range, detector_chs[::2])
-                ts = self.filter_tttr(tttr, micro_time_range, detector_chs[1::2])
-            else:
-                tp = ts = self.filter_tttr(tttr, micro_time_range, detector_chs)
-
-            # Build full microtime histograms (default uses full range)
-            cp = tp.get_microtime_histogram(micro_time_binning)[0].astype(np.float64, copy=False)
-            cs_hist = ts.get_microtime_histogram(micro_time_binning)[0].astype(
-                np.float64, copy=False
+            # one row of the engine's VV | VH histogram (windowing, VH shift, thresholds, normalisation)
+            j = engine.vv_vh_histogram(
+                tttr,
+                detector_chs,
+                micro_time_range,
+                micro_time_binning,
+                detector_ranges=info.get("micro_time_ranges", None),
+                shift=self.shift,
+                threshold=threshold,
+                normalize_counts=normalize_counts,
+                apply_vh_shift=apply_vh_shift,
             )
-
-            # Apply integer VH shift BEFORE any other operation
-            if apply_vh_shift and self.shift != 0:
-                cs_hist = np.roll(cs_hist, self.shift)
-
-            # Now zero out-of-window bins per channel (after shift), only when shifting/windowing is desired
-            if apply_vh_shift:
-                if vv_sb > 0:
-                    cp[:vv_sb] = 0
-                if vv_eb < cp.size:
-                    cp[vv_eb:] = 0
-                if vh_sb > 0:
-                    cs_hist[:vh_sb] = 0
-                if vh_eb < cs_hist.size:
-                    cs_hist[vh_eb:] = 0
-
-                # Apply thresholds
-                th_vv = th_vh = -1.0
-                if isinstance(threshold, (tuple, list)) and len(threshold) >= 2:
-                    th_vv = float(threshold[0]) if threshold[0] is not None else -1.0
-                    th_vh = float(threshold[1]) if threshold[1] is not None else -1.0
-                if th_vv > 0:
-                    if cp.size and cp.max() > 0:
-                        cp[cp < th_vv * cp.max()] = 0
-                if th_vh > 0:
-                    if cs_hist.size and cs_hist.max() > 0:
-                        cs_hist[cs_hist < th_vh * cs_hist.max()] = 0
-
-            # Optional normalization
-            if normalize_counts == 1:
-                # Normalize by average count rate
-                ct = (cp.sum() + cs_hist.sum()) / 2.0
-                if ct > 0:
-                    cp /= ct
-                    cs_hist /= ct
-            elif normalize_counts == 2:
-                # Normalize individually
-                cp_sum = cp.sum()
-                cs_sum = cs_hist.sum()
-                if cp_sum > 0:
-                    cp = cp / cp_sum
-                if cs_sum > 0:
-                    cs_hist = cs_hist / cs_sum
-            elif normalize_counts == 3:
-                # Normalize by acquisition time
-                acquisition_time = (
-                    tttr.macro_times[-1] - tttr.macro_times[0]
-                ) * tttr.header.macro_time_resolution
-                if acquisition_time > 0:
-                    cs_hist /= acquisition_time
-                    cp /= acquisition_time
-
-            # now build the VV_VH vector
-            j = np.hstack([cp, cs_hist])
             vv_vhs.append(j)
 
             # Optional save
@@ -5189,45 +4980,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return tttr[np.where(mask)[0]]
 
     def get_burst_indices_for_current_file(self) -> list[int]:
-        if not self.current_filename or self.df_bursts is None:
-            return []
-
-        # lazy-compute stems if missing
-        if "stem" not in column_names(self.df_bursts):
-            import re
-
-            first_file_vals = np.asarray(self.df_bursts["First File"], dtype=object)
-            stems = [re.split(r"[\\/]", str(v))[-1].rsplit(".", 1)[0] for v in first_file_vals]
-            self.df_bursts["stem"] = stems
-
-        # select only the bursts for this file
-        curr_stem = Path(self.current_filename).stem
-        stem_col = np.asarray(self.df_bursts["stem"], dtype=object)
-        mask = stem_col == curr_stem
-        if not mask.any():
-            return []
-
-        # pull start/stop as int arrays
-        starts = numeric_column(self.df_bursts, "First Photon")[mask].astype(np.int32)
-        stops = numeric_column(self.df_bursts, "Last Photon")[mask].astype(np.int32)
-
-        # build a single “difference” event array with bincount
-        # - at each start index we +1, at each (stop+1) we -1
-        idxs = np.concatenate([starts, stops + 1])
-        weights = np.concatenate(
-            [
-                np.ones_like(starts, dtype=np.int32),
-                -np.ones_like(stops + 1, dtype=np.int32),
-            ]
-        )
-        max_len = idxs.max() + 1
-        events = np.bincount(idxs, weights, minlength=max_len)
-
-        # cumulative sum >0 gives a boolean mask of covered photons
-        coverage = np.cumsum(events)[:-1] > 0
-
-        # return all covered indices
-        return np.nonzero(coverage)[0].tolist()
+        return engine.burst_photon_indices(self.df_bursts, self.current_filename)
 
     def read_burst_analysis(
         self,
