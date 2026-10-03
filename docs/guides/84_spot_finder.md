@@ -1,8 +1,8 @@
 ---
 type: Guide
-title: 'Finding spots and objects in an image'
+title: Finding spots and objects in an image
 description: Detecting molecules, puncta, beads or cells in a confocal or camera image with the Spot Finder — watershed, threshold, Laplacian- or difference-of-Gaussian — and writing the regions, with their pixels, into the measurement's container for Region MLE to fit.
-tags: [guides, imaging, segmentation, regions]
+tags: [guides, imaging, fitting]
 ---
 
 # Finding spots and objects in an image
@@ -29,9 +29,12 @@ the menu bar.
 :name: fig-spot-finder-hub
 :width: 100%
 
-The Spot Finder in the Image Tools hub, before anything is loaded. Three
-tabs: **Detection** (settings), **Regions** (what was found) and **Run**
-(one row per input file).
+The Spot Finder with its built-in known-field demo detected (Load demo, then
+Detect): the left window holds the files, workflow, detector settings and the
+action buttons; **Regions** shows what was found (the image with the region
+outlines, a region list and the analysis-region editing); the lower window has
+the **Run** table (one row per input file) and the **Region measurements**
+table.
 ```
 
 ## 2. Settings

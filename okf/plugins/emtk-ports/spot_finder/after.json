@@ -1,0 +1,222 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-1",
+    "-1.000",
+    "0rows×2columns",
+    "0rows×5columns",
+    "1.00",
+    "6",
+    "addfiles",
+    "addimagingfile(s),pickaworkflow—single_molecule",
+    "addpicks",
+    "analysisregions",
+    "clearfiles",
+    "clearpicks",
+    "detect",
+    "detectionandanalysisregions",
+    "detectionname",
+    "detector",
+    "detectorchannels",
+    "export",
+    "file",
+    "filterregions",
+    "filters",
+    "folder",
+    "frame",
+    "guide",
+    "help",
+    "imagingfiles",
+    "input",
+    "isthestandardone—andpressdetect.whatisfound",
+    "iswrittenintoeachmeasurement'sowncontainer,and",
+    "loadanimageorrunpreviewtoinspectpixels.",
+    "loaddemo",
+    "loadsettings",
+    "method",
+    "mmfdbdatasets",
+    "noregionselected.",
+    "peakfootprint",
+    "pickbyclicking",
+    "preview",
+    "reason",
+    "regionmeasurements",
+    "regionnameorfile",
+    "regions",
+    "removefile",
+    "run",
+    "runandregionmeasurements",
+    "savesettings",
+    "single_molecule",
+    "smoothingσ",
+    "spots",
+    "spotwidth(log/dog)",
+    "status",
+    "theregionmlepanelbelowfitsit.",
+    "threshold",
+    "watershed",
+    "workflow",
+    "writeresults",
+    "writtento"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain detection recipes, ROI restriction, picking and measurement-container outputs."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Work through the known-field demo with actual actions and image picking."
+    },
+    {
+      "kind": "button",
+      "label": "Add files",
+      "id": "Add files",
+      "tooltip": "Select photon or camera imaging files for preview and batch detection."
+    },
+    {
+      "kind": "button",
+      "label": "MMFDB datasets",
+      "id": "MMFDB datasets",
+      "tooltip": "Select registered photon/camera datasets from the MMFDB catalog."
+    },
+    {
+      "kind": "button",
+      "label": "Remove file",
+      "id": "Remove file",
+      "tooltip": "Remove the selected input from this detection batch."
+    },
+    {
+      "kind": "button",
+      "label": "Clear files",
+      "id": "Clear files",
+      "tooltip": "Remove every input file from the batch without deleting the files."
+    },
+    {
+      "kind": "input_text",
+      "label": "name",
+      "id": "##name",
+      "tooltip": "Stem the regions are stored under, so two detections of the same field can be compared instead of one replacing the other."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Analysis regions",
+      "id": "Analysis regions",
+      "tooltip": "Restrict detection to named regions; empty or disabled regions use the entire frame."
+    },
+    {
+      "kind": "input_text",
+      "label": "threshold",
+      "id": "##threshold",
+      "tooltip": "Intensity level; below 0 computes an Otsu level. For log/dog this is the minimum scale-normalised response instead, which does not follow the image units — read it off a run."
+    },
+    {
+      "kind": "input_text",
+      "label": "sigma",
+      "id": "##sigma",
+      "tooltip": "Gaussian smoothing before thresholding. Smoothing is what stops a single noisy pixel becoming an object."
+    },
+    {
+      "kind": "input_text",
+      "label": "peak_footprint_size",
+      "id": "##peak_footprint_size",
+      "tooltip": "Square footprint side for the watershed's local-maxima seeds. Larger merges nearby seeds, which is how over-splitting is cured."
+    },
+    {
+      "kind": "input_text",
+      "label": "channel_field",
+      "id": "##channel_field",
+      "tooltip": "Photon-routing channels to sum, comma separated; blank selects every available detector channel."
+    },
+    {
+      "kind": "input_text",
+      "label": "frame",
+      "id": "##frame",
+      "tooltip": "Photon/image frame to analyze; -1 sums all available frames."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Write results",
+      "id": "Write results##write_results",
+      "tooltip": "Detect stores each label image and region table in its own measurement container; Preview always writes nothing."
+    },
+    {
+      "kind": "button",
+      "label": "Load demo",
+      "id": "Load demo",
+      "tooltip": "Simulate/cache the known four-object photon field for validating a detection."
+    },
+    {
+      "kind": "button",
+      "label": "Preview",
+      "id": "Preview",
+      "tooltip": "Detect in the first input only and write nothing."
+    },
+    {
+      "kind": "button",
+      "label": "Detect",
+      "id": "Detect",
+      "tooltip": "Detect in every input; retain a run-table row even for empty or failed files."
+    },
+    {
+      "kind": "button",
+      "label": "Add picks",
+      "id": "Add picks",
+      "tooltip": "Add fitted picked ellipses to the current detection and remeasure the regions."
+    },
+    {
+      "kind": "button",
+      "label": "Clear picks",
+      "id": "Clear picks",
+      "tooltip": "Forget every manually picked Gaussian proposal."
+    },
+    {
+      "kind": "button",
+      "label": "Export",
+      "id": "Export",
+      "tooltip": "Export all files' measured region rows as CSV or TSV."
+    },
+    {
+      "kind": "button",
+      "label": "Save settings",
+      "id": "Save settings",
+      "tooltip": "Save files, workflow deviations, routing, ROI composition and display state to JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Load settings",
+      "id": "Load settings",
+      "tooltip": "Restore the complete analysis configuration from JSON."
+    },
+    {
+      "kind": "input_text",
+      "label": "filter_regions",
+      "id": "##filter_regions",
+      "tooltip": "Filter detected-region names; measurements and image picking remain available."
+    },
+    {
+      "kind": "button",
+      "label": "Run",
+      "id": "Run",
+      "tooltip": "Review all input outcomes."
+    },
+    {
+      "kind": "button",
+      "label": "Region measurements",
+      "id": "Region measurements",
+      "tooltip": "Measured centroid, area, intensity and second moments of each region."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

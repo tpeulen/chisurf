@@ -2,6 +2,7 @@
 
 ## 2026-10-03
 
+- 2026-10-03 spot_finder: emtk app at parity (wrapped button rows, spec forms with spin fields, data_table tables, one status line), 17 real-input tests, guide 84 figure. Report okf/plugins/emtk-ports/spot_finder/REPORT.md.
 - 2026-10-03 plugin_check (LEFTOVERS): emtk app rebuilt on a view spec (the Qt tool's list, cells, details, options and limits; data_table with sort/filter/column picker, selectable error pane, Help/Guide), shared dependency helpers moved into the Qt-free model, sweep children run on a temporary HOME; 63 tests + 2 strict xfails (emtk gaps: tour card buttons over a table, Ctrl+A in the table filter), guide 96, reference page. Evidence okf/plugins/emtk-ports/plugin_check/REPORT.md.
 
 ## 2026-10-02
