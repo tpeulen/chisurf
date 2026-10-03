@@ -137,6 +137,12 @@ class NdxWindow(ChisurfDockTool):
         if getattr(app, "request_frame", None) is None:
             # what a push from another tool calls to show its lines
             app.request_frame = self.host.update
+        # Embedded (the ALEX Suite's E-S step flattens this window with
+        # embed_mainwindow), the window itself never closes: the host's
+        # top-level window closing, or the host being destroyed, closes the app.
+        self._watched_top = None
+        self.host.installEventFilter(self)
+        self.host.destroyed.connect(lambda *_a, _app=app: _close_app(_app))
 
     # -- data ---------------------------------------------------------------
     def open_path(self, path) -> bool:
@@ -287,13 +293,49 @@ class NdxWindow(ChisurfDockTool):
     # -- closing ------------------------------------------------------------
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt)
         """Close the app (it keeps its session) and empty the Global View slot."""
-        try:
-            self.app.close()
-        except Exception:
-            logger.warning("ndX did not close cleanly", exc_info=True)
-        _withdraw_constants(self.app)
+        _close_app(self.app)
         self.save_window_geometry()
         super().closeEvent(event)
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802 (Qt)
+        """Follow the host into another window; close the app when that one closes.
+
+        The host is shown in the top-level window it lives in: this one, or
+        the window it was embedded into. A close of that other window is
+        checked once Qt has handled it (a window may refuse to close).
+        """
+        from qtpy import QtCore
+
+        kind = event.type()
+        if obj is self.host and kind == QtCore.QEvent.Show:
+            top = self.host.window()
+            if top is not self and top is not self._watched_top:
+                if self._watched_top is not None:
+                    self._watched_top.removeEventFilter(self)
+                self._watched_top = top
+                top.installEventFilter(self)
+        elif obj is self._watched_top and kind == QtCore.QEvent.Close:
+            top = obj
+            QtCore.QTimer.singleShot(0, lambda: self._embedded_closed(top))
+        return super().eventFilter(obj, event)
+
+    def _embedded_closed(self, top) -> None:
+        """The window the host was embedded in has handled a close: did it close?"""
+        try:
+            closed = not top.isVisible()
+        except RuntimeError:  # its C++ object is gone: closed
+            closed = True
+        if closed:
+            _close_app(self.app)
+
+
+def _close_app(app) -> None:
+    """Close *app* (it keeps its session) and empty its Global View slot; once."""
+    try:
+        app.close()
+    except Exception:
+        logger.warning("ndX did not close cleanly", exc_info=True)
+    _withdraw_constants(app)
 
 
 def build_ndxplorer_window(

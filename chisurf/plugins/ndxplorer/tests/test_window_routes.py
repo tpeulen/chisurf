@@ -309,3 +309,61 @@ def test_saved_burst_ids_are_recorded_against_the_mmfdb_product(
                                            source_node_id=run["processing_id"],
                                            relationship_type="produced")
         assert len(produced) == 1
+
+
+# -- embedded (the ALEX Suite's E-S step) ----------------------------------------
+
+
+def _embedded_in_a_shell():
+    """An ndX window flattened into another window, as the ALEX Suite does."""
+    from chisurf.gui.widgets.navigation import embed_mainwindow
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+
+    window = build_ndxplorer_window(session_autosave=False, layout_store=None)
+    container = embed_mainwindow(window)
+    shell = QtWidgets.QMainWindow()
+    shell.setCentralWidget(container)
+    return window, container, shell
+
+
+def test_closing_the_window_ndx_is_embedded_in_closes_the_app(qapp):
+    """The embedded window never gets a close event; its shell's close reaches the app."""
+    from chisurf.plugins.ndxplorer.window import published_group
+
+    window, _container, shell = _embedded_in_a_shell()
+    shell.show()
+    qapp.processEvents()
+    assert published_group() is not None and not getattr(window.app, "_closed", False)
+    shell.close()
+    for _ in range(3):
+        qapp.processEvents()
+    assert window.app._closed
+    assert published_group() is None
+
+
+def test_a_refused_close_keeps_the_embedded_app(qapp):
+    """A shell that refuses to close keeps ndX open."""
+    window, _container, shell = _embedded_in_a_shell()
+    shell.closeEvent = lambda event: event.ignore()
+    shell.show()
+    qapp.processEvents()
+    shell.close()
+    for _ in range(3):
+        qapp.processEvents()
+    assert not getattr(window.app, "_closed", False)
+    del shell.closeEvent
+    shell.close()
+    for _ in range(3):
+        qapp.processEvents()
+    assert window.app._closed
+
+
+def test_destroying_the_embedded_host_closes_the_app(qapp):
+    """A shell deleted without a close (a panel torn down) closes the app too."""
+    window, _container, shell = _embedded_in_a_shell()
+    shell.deleteLater()
+    from qtpy import QtCore
+
+    qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+    qapp.processEvents()
+    assert window.app._closed
