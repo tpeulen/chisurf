@@ -41,7 +41,14 @@ def push_to_ndx(lines) -> int:
 
     from ..core.algorithms import computed_lines_as_overlays
 
-    return push_overlay_lines(computed_lines_as_overlays(lines), source="ChiSurf FRET lines")
+    taken = push_overlay_lines(computed_lines_as_overlays(lines), source="ChiSurf FRET lines")
+    if not taken:
+        from ndxplorer.app.frame import live_apps
+
+        if live_apps():
+            raise ValueError("The open ndX window(s) rejected the lines. Check their columns "
+                             "and axis hints; details are in the log.")
+    return taken
 
 
 def hex_rgba(colour: str) -> tuple[int, int, int, int]:
@@ -330,7 +337,11 @@ class FretLineModel:
         """
         if not self.lines:
             return
-        taken = None if self.push_callback is None else self.push_callback(self.lines)
+        try:
+            taken = None if self.push_callback is None else self.push_callback(self.lines)
+        except Exception as exc:
+            self.notice("Push to ndX", f"Could not send the lines: {exc}")
+            return
         if self.push_callback is None or taken == 0:
             self.notice("Push to ndX", NO_NDX_WINDOW)
         else:

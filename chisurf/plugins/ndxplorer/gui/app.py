@@ -77,13 +77,24 @@ def _add_mmfdb_integration(app):
         def open_from_mmfdb(self):
             self.picker = DatasetPicker(
                 client=session_client(), kinds=BURST_KINDS, formats=BURST_FORMATS,
-                scope="all", on_paths=self.open_paths,
+                scope="all", on_paths=self.open_paths, on_selected=self.open_selection,
             )
             self.picker.open()
 
         def open_paths(self, paths):
-            if paths and self.app.open_path(str(paths[0])):
-                self.app.show_status(f"Opened burst selection: {Path(paths[0]).name}")
+            if not paths or not self.app.open_path(str(paths[0])):
+                raise ValueError(self.app.model.error or "The selected burst table could not be opened")
+            self.app.show_status(f"Opened burst selection: {Path(paths[0]).name}")
+
+        def open_selection(self, selection):
+            from chisurf.plugins.ndxplorer.selection_provenance import record_artifact_selection
+
+            client, artifact_id = self.picker.client, selection.artifact_id
+            self.app.burst_ids_recorder = lambda record: record_artifact_selection(client, artifact_id, record)
+
+        def on_data_changed(self):
+            # A replacement/merge must not inherit another artifact's provenance.
+            self.app.burst_ids_recorder = None
 
         def draw_windows(self):
             if self.picker is None or not self.picker.is_open:

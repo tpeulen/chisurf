@@ -62,7 +62,13 @@ ALEX Suite's E–S step. Hosted, the window gets what only ChiSurf has:
 - **Send selection to ▸** (right-click on the map) — the gated bursts go to
   ChiSurf's PDA, FCS, TCSPC-decay or PCH analysis (the {ref}`bridges <concept-md-bridges>`).
 - **File › Import › From MMFDB…** — pick a burst selection registered in MMFDB
-  (you must be logged in to ChiSurf's MMFDB) and open it here.
+  (you must be logged in to ChiSurf's MMFDB) and open it here. **File › Save ›
+  Burst IDs…** then records the saved selection mask and gate settings in that same
+  authenticated database, linked to the selected input artifact. The source
+  artifact is not modified. Opening or merging another table detaches that
+  identity; select it again through MMFDB before expecting write-back. If login
+  expires or recording fails, the burst-ID files remain saved and the status
+  reports the failure.
 - The **constants** appear in the **Global View** as the group *ndX*, where a
   fit parameter can be linked to one; closing the window withdraws them.
 - The **FRET** menu (calibration, save, load) and the **calibration restore**
@@ -146,6 +152,41 @@ your calibration; free one deliberately and it joins the fit as a
    optimised, fixed ones held — including constants and linked parameters, whose
    values belong elsewhere. The fit reports a reduced $\chi^2_r$ and redraws the
    overlay.
+
+### Lines pushed from another tool
+
+In the {doc}`FRET-line tool <82_fret_lines>`, **Push to ndX** sends the computed
+lines to the open ndX windows. ndX switches to fluorescence-weighted lifetime
+on x and efficiency on y before adding the lines. Quantity hints `tau_f` and
+`e_fret` resolve to columns such as `Tau (green)` and `FRET efficiency` when
+there is exactly one match. The species-weighted lifetime `tau_x` is not a
+substitute. If the table has missing or ambiguous columns, the push is rejected
+rather than drawn on unrelated axes; the tool reports that rejection.
+
+The resolved x/y column names stay with each line in the session. Changing to
+another projection hides it; returning to its own projection shows it again.
+**Save CSV** in the Overlays tab exports only lines drawn on the current axes.
+A bad batch (conflicting projections or invalid coordinate lengths) changes
+neither the axes nor existing overlays.
+
+From Python, use explicit column names when aliases would be ambiguous:
+
+```python
+app.add_overlay_lines([{
+    "name": "Reference line",
+    "x": [0.0, 4.0], "y": [1.0, 0.0],
+    "axes": {"x": "Tau (green)", "y": "FRET efficiency"},
+}], source="My analysis")
+```
+
+```{figure} figures/ndxplorer_overlay_axes.png
+:width: 100%
+
+Measured MFD bursts in the ChiSurf ndX host after pushing a FRET line from a
+reversed E/lifetime view: x is now `Tau (green)`, y is `FRET efficiency`, and
+the orange line is bound to that projection. The Overlays tab lists it as a
+tabulated curve, without fit parameters.
+```
 
 (phasor-plots-are-overlays)=
 ### Phasor plots are overlays

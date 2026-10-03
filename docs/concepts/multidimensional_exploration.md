@@ -321,6 +321,30 @@ carries, how the selection becomes photons, and how the fit is launched over
 ChiSurf's RPC link — are in the {doc}`workflow guide </guides/46_ndxplorer>`; the
 individual analyses have their own concept pages.
 
+## Model lines belong to a named projection
+
+A tabulated model line carries the identities of its two observables, not just
+arrays of numbers. The FRET-line tool sends efficiency against the
+fluorescence-weighted donor lifetime; a species-weighted lifetime or
+stoichiometry is a different projection. ndX resolves the declared quantities
+to unambiguous columns and preserves those column names with the line in the
+session. The line is drawn and exported only on that ordered pair of axes;
+changing the view hides it rather than relabelling its coordinates. Missing or
+ambiguous columns require an explicit choice rather than a guessed match.
+The {doc}`workflow guide </guides/46_ndxplorer>` shows how to push these lines.
+
+## A saved gate needs its input identity
+
+A selection mask has meaning relative to one source table and its row order.
+For a burst table opened through ChiSurf's MMFDB picker, saving burst IDs also
+records a selection-mask artifact and an analysis operation linked to the
+original input artifact, using the picker's authenticated database session.
+The operation retains the gate and selected-row count without rewriting the
+source artifact. Replacing or merging the table invalidates that single-input
+identity; a path alone is not enough to infer database lineage. A save already
+in progress retains its original source and recorder when another table is opened.
+A write-back failure is reported separately from the successfully saved burst-ID files.
+
 ## See also
 
 - Tools in ChiSurf: **ndX** (`chisurf/plugins/ndxplorer/`) is the multidimensional histogram browser these selections are made in.

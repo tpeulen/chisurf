@@ -96,3 +96,26 @@ def test_push_draws_the_lines_in_an_open_window_and_none_after_it_closes(qapp):
         tool.push()
         assert tool.dialog_text.startswith("No ndX window is open")
     tool.close()
+
+
+def test_an_open_window_with_incompatible_axes_reports_rejection_not_absence(qapp):
+    from ndxplorer.core.data_source import DataSource
+
+    from chisurf.plugins.fret_line.gui.model import push_to_ndx
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+
+    tool = _two_lines()
+    window = build_ndxplorer_window(
+        data_source=DataSource.from_columns({"x": [1., 2.], "y": [3., 4.]}),
+        session_autosave=False, layout_store=None,
+    )
+    try:
+        tool.push_callback = push_to_ndx
+
+        tool.push()
+
+        assert "rejected the lines" in tool.dialog_text, tool.dialog_text
+        assert "No ndX window is open" not in tool.dialog_text
+    finally:
+        window.close()
+        tool.close()

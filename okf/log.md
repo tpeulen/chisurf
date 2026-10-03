@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-03
+
+- **ndX recovered overlay-axis handling and native MMFDB lineage**: validated projection-bound line batches; authenticated selection-mask write-back preserves the input artifact, including saves finishing after a table change. Full ndX: 1213 passed, 2 skipped (97 warnings); affected ChiSurf host/FRET/ALEX: 121 passed; independent reviews passed. Measured-data GUI inspected; [concept and resume point](plugins/ndxplorer-emtk-port.md#session-recovery-overlay-axes-and-native-mmfdb-lineage-2026-10-03).
+
 ## 2026-10-01
 
 - 2026-10-03: **alex_suite emtk port accepted** ([report](plugins/emtk-ports/alex_suite/REPORT.md)). Three-tab emtk app (alternation, titration, legacy export) over Qt-free view models; 15 screenshots read, 6 real-click tests (tabs, channel fields, checkboxes, Write→run_export on a real table, Help, titration cell typing), 64 tests green, swapped off the preview gate. Fixes during acceptance: capture script's invented `write_burst_table` replaced by an inline delimited writer; pixi emtk bumped to main@4315623 (float-RGBA QColor crash painting the app header).

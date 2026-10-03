@@ -14,6 +14,22 @@
 # A screenshot's recipe must name the tool, the data it was driven with and the
 # state it was in, so it can be retaken without guessing.
 
+guides/figures/ndxplorer_overlay_axes.png:
+  caption: Measured MFD bursts with a pushed FRET line on its declared lifetime/efficiency projection.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_ndx_overlay_axes
+  pages:
+  - docs/guides/46_ndxplorer.md
+  recipe: >-
+    From the repository root, run QT_QPA_PLATFORM=offscreen
+    PYTHONPATH=modules/ndxplorer:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
+    python -c 'from qtpy.QtWidgets import QApplication; import docs.guides.make_screenshots as s;
+    qapp=QApplication([]); s._grab_ndx_overlay_axes()'. Uses a temporary copy of
+    modules/ndxplorer/test/mfd/burstwise_All 0.1500#30, with session autosave disabled.
+    Starts on FRET efficiency/Tau (green), pushes a Gaussian-distance FRET line
+    (20-120 Angstrom, donor-only lifetime 4 ns), asserts Tau (green)/FRET efficiency,
+    focuses Overlays, and grabs the actual ChiSurf ndX host at 900x600.
+
 guides/figures/ask_the_documentation.png:
   caption: The Ask panel beside the page it cited, with the links in the answer's own prose.
   kind: screenshot

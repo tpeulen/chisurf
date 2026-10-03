@@ -17,7 +17,7 @@ screenshot names the recipe that produced it. Provenance is kept in
 [`figures.yaml`](../references/figures.yaml); an image used without an
 entry there is marked **unrecorded** below, and that is the worklist.
 
-*236 figures, 6 unrecorded.*
+*237 figures, 6 unrecorded.*
 
 | # | Image | Caption | Origin | Page |
 | --- | --- | --- | --- | --- |
@@ -112,148 +112,149 @@ entry there is marked **unrecorded** below, and that is the worklist.
 | 89 | `guides/figures/precision_workspace.png` | The RICS-precision calculator. Left: what you are measuring and how you intend to scan it. Right: predicted relative error against pixel dwell time, on log axes… | docs/guides/make_screenshots.py::_grab_precision_tool | [docs/guides/45_scan_precision.md](/guides/45_scan_precision.md) |
 | 90 | `guides/figures/ndxplorer_gaussian_panel.png` | The Gaussian-fit panel after fitting two simulated populations — ChiSurf's parameter table, stacked one parameter per row so the panel stays narrow. The second… | docs/guides/make_screenshots.py::_grab_ndx_gaussian_panel | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
 | 91 | `guides/figures/ndxplorer_marginal_fit.png` | Left: every burst lies on the fitted static FRET line $E = 1 - \tau/\tau_0$ ($\tau_0 = 4.00$ ns recovered). Right: the E marginal fitted with two Gaussians via… | docs/guides/make_figures.py::fig_ndxplorer | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 92 | `guides/figures/regions.png` | Left: a frame with eight molecules and a drawn analysis region; only the four inside it are searched for. Middle: each segmented molecule is its own region, wit… | docs/guides/make_figures.py::fig_regions | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 93 | `guides/figures/regions_list.png` | The region list, here in the CLSM tool. One row per region: its name, what kind of shape it is, how big and how bright it is, and two tick boxes. The left tick… | docs/guides/make_screenshots.py::_grab_region_editor | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 94 | `guides/figures/regions_overlay.png` | The same three regions on the image. Drawn shapes get grab handles and write their new geometry straight back into the list; the selected one is drawn thicker,… | docs/guides/make_screenshots.py::_grab_region_editor | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 95 | `guides/figures/burst_gs_transition_time.png` | The expected result: flat at zero while the crossing is too fast to leave a trace, falling steeply once it is long enough to be visible. The flat region is the… | docs/guides/make_screenshots.py::_grab_burst_gs_tool | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
-| 96 | `guides/figures/burst_gs_workspace.png` | Fitted on simulated photons from a molecule with known kinetics — 3000 and 1000 s⁻¹ between states at E = 0.25 and 0.75. The fit returns 2879 and 1027 s⁻¹ at E… | docs/guides/make_screenshots.py::_grab_burst_gs_tool | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
-| 97 | `guides/figures/tracking_trajectories.png` | The Trajectories view, drawn in image coordinates so it overlays the Movie view. Eight compact random walks, none jumping across the field — that is what correc… | docs/guides/make_screenshots.py::_grab_tracking_tool | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
-| 98 | `guides/figures/tracking_workspace.png` | Tracked on a simulated movie with known kinetics: 8 particles at D = 0.5 px²/frame. The tool recovers 8 tracks of the full 60 frames and D = 0.504 ± 0.1 — and s… | docs/guides/make_screenshots.py::_grab_tracking_tool | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
-| 99 | `guides/figures/frc_workspace.png` | The FRC workspace on a confocal photon stream. Left: the settings. Right: the headline resolution, the FRC curve against the 1/7 threshold with the crossing mar… | docs/guides/make_screenshots.py::_grab_frc_tool | [docs/guides/51_frc_resolution.md](/guides/51_frc_resolution.md) |
-| 100 | `guides/figures/hmm_workspace.png` | Fitted on a simulated two-state trace with 1 ms bins — states at 18 and 55 counts per bin, true rates 15 and 30 s⁻¹. The fit returns 18.0 and 55.0 counts with 1… | docs/guides/make_screenshots.py::_grab_hmm_tool | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
-| 101 | `guides/figures/flow_tool.png` | The flow-map tool on its own demo. Left: the settings, in workflow order. Right: the headline numbers, the arrows over the time-averaged image, and the profile… | **unrecorded** | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 102 | `guides/figures/pcf_barrier.png` | A simulated line with an impermeable wall at pixel 32, drifting at 0.25 px per line on the left and 0.125 on the right. The pair correlation reads 23.9 ms and 4… | docs/guides/make_figures.py::fig_pcf_barrier | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 103 | `guides/figures/pcf_flow_arrows.png` | Four counter-rotating cells: the simulated field, the field recovered one tile at a time, and every tile's two velocity components against the truth. Direction… | docs/guides/make_figures.py::fig_pcf_flow_arrows | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 104 | `guides/figures/console.png` | The console answering exactly that, on a session with two fits open. `cs.fits` is the live list — the objects the GUI is showing, not a copy — so `fit.chi2r` re… | docs/guides/make_screenshots.py::_grab_console | [docs/guides/59_console.md](/guides/59_console.md) |
-| 105 | `guides/figures/globalview_network.png` | Three fits sharing one donor lifetime. Each **blue** disc is a fit (*Donor-only*, *FRET-low*, *FRET-high*) surrounded by its parameters; the two **cyan arrows**… | docs/guides/make_screenshots.py::_grab_global_view | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
-| 106 | `guides/figures/kappa2_tool.png` | The calculator with a deliberately restricted pair ($r_{D\infty} = 0.15$, $r_{A\infty} = 0.20$). Mean $\kappa^2$ is still 0.66 — but **SD R_app/R_DA** is 0.15,… | docs/guides/make_screenshots.py::_grab_kappa2_tool | [docs/guides/61_kappa2_distribution.md](/guides/61_kappa2_distribution.md) |
-| 107 | `guides/figures/maxent_distribution.png` | MEM on a decay built from a **known** bimodal lifetime distribution — Gaussian lobes at $\tau = 1.1$ ns and $\tau = 3.6$ ns, not two discrete exponentials. **Le… | docs/guides/make_screenshots.py::_grab_maxent_decay | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
-| 108 | `guides/figures/pto_inspector.png` | One container, every panel at once. **Provenance** (top right) draws the two recorded steps: the instrument file (brown) → the burst table (blue) → the decay co… | docs/guides/make_screenshots.py::_grab_pto_inspector | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
-| 109 | `guides/figures/ask_the_documentation.png` | The Ask panel beside the page it cited. The links in the answer's own prose go to the page — and to the heading on it — and the list underneath is what the assi… | docs/guides/make_screenshots.py::_grab_ask_the_documentation | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
-| 110 | `guides/figures/lumis_battle.png` | A body-and-label encounter. The **Cyan Crow** names its band and the panel gives the number — 503 nm — so the naming convention teaches itself; **T3** is the la… | docs/guides/make_screenshots.py::_grab_lumis_quest | [docs/guides/71_lumis_quest.md](/guides/71_lumis_quest.md) |
-| 111 | `guides/figures/lumis_town.png` | A settlement. Each building is a documentation page and the compound is a `toctree`; the plaque names the section you are standing in rather than a file path. T… | docs/guides/make_screenshots.py::_grab_lumis_quest | [docs/guides/71_lumis_quest.md](/guides/71_lumis_quest.md) |
-| 112 | `guides/figures/accurate_fret_es.png` | What the four factors buy you, on an E–S histogram. Donor-only sits near $S = 1$ and acceptor-only near $S = 0$ — their "efficiency" is meaningless, which is ex… | docs/guides/make_screenshots.py::_grab_accurate_fret_tool | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 113 | `guides/figures/h2mm_dashboard.png` | What the plugin produces from those outputs. The panels are the state-resolved answer a burst-averaged histogram cannot give: the recovered per-state FRET effic… | docs/guides/make_figures.py::fig_h2mm_dashboard | [docs/guides/h2mm.md](/guides/h2mm.md) |
-| 114 | `guides/figures/irf_estimator.png` | The **IRF Estimator** plugin on a simulated decay whose answer is known — a single exponential at $\tau = 4.0$ ns reconvolved with a Gaussian instrument respons… | docs/guides/make_screenshots.py::_grab_irf_estimator | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 115 | `manual/_images/image_rId83.png` | — | docs/_old_manual/manual.docx | [docs/manual/adding_the_membranediffusion_models.rst](/manual/adding_the_membranediffusion_models.rst) |
-| 116 | `manual/_images/image_rId84.png` | — | docs/_old_manual/manual.docx | [docs/manual/adding_the_membranediffusion_models.rst](/manual/adding_the_membranediffusion_models.rst) |
-| 117 | `manual/_images/image_rId18.png` | — | docs/_old_manual/manual.docx | [docs/manual/analysis_dock.rst](/manual/analysis_dock.rst) |
-| 118 | `manual/_images/image_rId33.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
-| 119 | `manual/_images/image_rId34.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
-| 120 | `manual/_images/image_rId35.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
-| 121 | `manual/_images/image_rId36.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
-| 122 | `manual/_images/image_rId37.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
-| 123 | `manual/_images/image_rId92.png` | — | docs/_old_manual/manual.docx | [docs/manual/calculation_of_codiffusing_molecules.rst](/manual/calculation_of_codiffusing_molecules.rst) |
-| 124 | `manual/_images/image_rId75.png` | — | docs/_old_manual/manual.docx | [docs/manual/calculations.rst](/manual/calculations.rst) |
-| 125 | `manual/_images/image_rId76.png` | — | docs/_old_manual/manual.docx | [docs/manual/calculations.rst](/manual/calculations.rst) |
-| 126 | `manual/_images/image_rId82.png` | — | docs/_old_manual/manual.docx | [docs/manual/calculations_2.rst](/manual/calculations_2.rst) |
-| 127 | `manual/_images/image_rId45.png` | — | docs/_old_manual/manual.docx | [docs/manual/changing_visualizations.rst](/manual/changing_visualizations.rst) |
-| 128 | `manual/_images/image_rId46.png` | — | docs/_old_manual/manual.docx | [docs/manual/changing_visualizations.rst](/manual/changing_visualizations.rst) |
-| 129 | `manual/_images/image_rId77.png` | — | docs/_old_manual/manual.docx | [docs/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.rst](/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.rst) |
-| 130 | `manual/_images/image_rId42.png` | — | docs/_old_manual/manual.docx | [docs/manual/correlation_merging.rst](/manual/correlation_merging.rst) |
-| 131 | `manual/_images/image_rId41.png` | — | docs/_old_manual/manual.docx | [docs/manual/correlator.rst](/manual/correlator.rst) |
-| 132 | `manual/_images/image_rId17.png` | — | docs/_old_manual/manual.docx | [docs/manual/creating_fits.rst](/manual/creating_fits.rst) |
-| 133 | `manual/_images/image_rId87.png` | — | docs/_old_manual/manual.docx | [docs/manual/crosstalkinduced_correlations.rst](/manual/crosstalkinduced_correlations.rst) |
-| 134 | `manual/_images/image_rId89.png` | — | docs/_old_manual/manual.docx | [docs/manual/crosstalkinduced_correlations.rst](/manual/crosstalkinduced_correlations.rst) |
-| 135 | `manual/_images/image_rId13.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_import.rst](/manual/data_import.rst) |
-| 136 | `manual/_images/image_rId14.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_import.rst](/manual/data_import.rst) |
-| 137 | `manual/_images/image_rId15.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_import.rst](/manual/data_import.rst) |
-| 138 | `manual/_images/image_rId16.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_import.rst](/manual/data_import.rst) |
-| 139 | `manual/_images/image_rId108.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
-| 140 | `manual/_images/image_rId109.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
-| 141 | `manual/_images/image_rId110.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
-| 142 | `manual/_images/image_rId111.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
-| 143 | `manual/_images/image_rId112.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
-| 144 | `manual/_images/image_rId113.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
-| 145 | `manual/_images/image_rId114.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
-| 146 | `manual/_images/image_rId115.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
-| 147 | `manual/_images/image_rId104.png` | — | docs/_old_manual/manual.docx | [docs/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.rst](/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.rst) |
-| 148 | `manual/_images/image_rId79.png` | — | docs/_old_manual/manual.docx | [docs/manual/determination_of_molecular_brightness.rst](/manual/determination_of_molecular_brightness.rst) |
-| 149 | `manual/_images/image_rId80.png` | — | docs/_old_manual/manual.docx | [docs/manual/determination_of_molecular_brightness.rst](/manual/determination_of_molecular_brightness.rst) |
-| 150 | `manual/_images/image_rId30.png` | — | docs/_old_manual/manual.docx | [docs/manual/equation_parsing.rst](/manual/equation_parsing.rst) |
-| 151 | `manual/_images/image_rId72.png` | — | docs/_old_manual/manual.docx | [docs/manual/estimation_of_the_fluorophore_concentration.rst](/manual/estimation_of_the_fluorophore_concentration.rst) |
-| 152 | `manual/_images/image_rId73.png` | — | docs/_old_manual/manual.docx | [docs/manual/estimation_of_the_fluorophore_concentration.rst](/manual/estimation_of_the_fluorophore_concentration.rst) |
-| 153 | `manual/_images/image_rId32.png` | — | docs/_old_manual/manual.docx | [docs/manual/fcalculator.rst](/manual/fcalculator.rst) |
-| 154 | `manual/_images/image_rId20.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_interface.rst](/manual/fit_interface.rst) |
-| 155 | `manual/_images/image_rId53.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 156 | `manual/_images/image_rId54.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 157 | `manual/_images/image_rId55.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 158 | `manual/_images/image_rId56.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 159 | `manual/_images/image_rId57.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 160 | `manual/_images/image_rId58.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 161 | `manual/_images/image_rId59.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 162 | `manual/_images/image_rId60.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 163 | `manual/_images/image_rId61.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 164 | `manual/_images/image_rId63.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 165 | `manual/_images/image_rId64.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 166 | `manual/_images/image_rId65.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 167 | `manual/_images/image_rId66.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 168 | `manual/_images/image_rId67.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 169 | `manual/_images/image_rId68.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 170 | `manual/_images/image_rId69.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 171 | `manual/_images/image_rId70.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 172 | `manual/_images/image_rId71.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
-| 173 | `manual/_images/image_rId91.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_auto_and_crosscorrelation_curves.rst](/manual/fit_of_auto_and_crosscorrelation_curves.rst) |
-| 174 | `manual/_images/image_rId85.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_autocorrelation_curves.rst](/manual/fit_of_autocorrelation_curves.rst) |
-| 175 | `manual/_images/image_rId86.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_autocorrelation_curves.rst](/manual/fit_of_autocorrelation_curves.rst) |
-| 176 | `manual/_images/image_rId74.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_fcs_curve.rst](/manual/fit_of_fcs_curve.rst) |
-| 177 | `manual/_images/image_rId25.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_plots.rst](/manual/fit_plots.rst) |
-| 178 | `manual/_images/image_rId94.png` | — | docs/_old_manual/manual.docx | [docs/manual/global_fit_of_auto_and_crosscorrelation_curves.rst](/manual/global_fit_of_auto_and_crosscorrelation_curves.rst) |
-| 179 | `manual/_images/image_rId81.png` | — | docs/_old_manual/manual.docx | [docs/manual/global_fit_of_fcs_curves.rst](/manual/global_fit_of_fcs_curves.rst) |
-| 180 | `manual/_images/image_rId95.png` | — | docs/_old_manual/manual.docx | [docs/manual/influence_of_fret_efficiency.rst](/manual/influence_of_fret_efficiency.rst) |
-| 181 | `manual/_images/image_rId96.png` | — | docs/_old_manual/manual.docx | [docs/manual/influence_of_triplet_blinking.rst](/manual/influence_of_triplet_blinking.rst) |
-| 182 | `manual/_images/image_rId51.png` | — | docs/_old_manual/manual.docx | [docs/manual/linking_parameters.rst](/manual/linking_parameters.rst) |
-| 183 | `manual/_images/image_rId40.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading__plotting_data.rst](/manual/loading__plotting_data.rst) |
-| 184 | `manual/_images/image_rId134.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_and_setting_up_the_egfp_data_set.rst](/manual/loading_and_setting_up_the_egfp_data_set.rst) |
-| 185 | `manual/_images/image_rId118.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 186 | `manual/_images/image_rId119.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 187 | `manual/_images/image_rId120.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 188 | `manual/_images/image_rId121.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 189 | `manual/_images/image_rId122.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 190 | `manual/_images/image_rId123.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 191 | `manual/_images/image_rId124.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 192 | `manual/_images/image_rId125.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 193 | `manual/_images/image_rId126.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 194 | `manual/_images/image_rId127.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 195 | `manual/_images/image_rId128.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 196 | `manual/_images/image_rId129.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
-| 197 | `manual/_images/image_rId21.png` | — | docs/_old_manual/manual.docx | [docs/manual/model_scoring_range.rst](/manual/model_scoring_range.rst) |
-| 198 | `manual/_images/image_rId24.png` | — | docs/_old_manual/manual.docx | [docs/manual/multiple_document_interface.rst](/manual/multiple_document_interface.rst) |
-| 199 | `manual/_images/image_rId27.png` | — | docs/_old_manual/manual.docx | [docs/manual/nuisances.rst](/manual/nuisances.rst) |
+| 92 | `guides/figures/ndxplorer_overlay_axes.png` | Measured MFD bursts in the ChiSurf ndX host after pushing a FRET line from a reversed E/lifetime view: x is now `Tau (green)`, y is `FRET efficiency`, and the o… | docs/guides/make_screenshots.py::_grab_ndx_overlay_axes | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 93 | `guides/figures/regions.png` | Left: a frame with eight molecules and a drawn analysis region; only the four inside it are searched for. Middle: each segmented molecule is its own region, wit… | docs/guides/make_figures.py::fig_regions | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 94 | `guides/figures/regions_list.png` | The region list, here in the CLSM tool. One row per region: its name, what kind of shape it is, how big and how bright it is, and two tick boxes. The left tick… | docs/guides/make_screenshots.py::_grab_region_editor | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 95 | `guides/figures/regions_overlay.png` | The same three regions on the image. Drawn shapes get grab handles and write their new geometry straight back into the list; the selected one is drawn thicker,… | docs/guides/make_screenshots.py::_grab_region_editor | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 96 | `guides/figures/burst_gs_transition_time.png` | The expected result: flat at zero while the crossing is too fast to leave a trace, falling steeply once it is long enough to be visible. The flat region is the… | docs/guides/make_screenshots.py::_grab_burst_gs_tool | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
+| 97 | `guides/figures/burst_gs_workspace.png` | Fitted on simulated photons from a molecule with known kinetics — 3000 and 1000 s⁻¹ between states at E = 0.25 and 0.75. The fit returns 2879 and 1027 s⁻¹ at E… | docs/guides/make_screenshots.py::_grab_burst_gs_tool | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
+| 98 | `guides/figures/tracking_trajectories.png` | The Trajectories view, drawn in image coordinates so it overlays the Movie view. Eight compact random walks, none jumping across the field — that is what correc… | docs/guides/make_screenshots.py::_grab_tracking_tool | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
+| 99 | `guides/figures/tracking_workspace.png` | Tracked on a simulated movie with known kinetics: 8 particles at D = 0.5 px²/frame. The tool recovers 8 tracks of the full 60 frames and D = 0.504 ± 0.1 — and s… | docs/guides/make_screenshots.py::_grab_tracking_tool | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
+| 100 | `guides/figures/frc_workspace.png` | The FRC workspace on a confocal photon stream. Left: the settings. Right: the headline resolution, the FRC curve against the 1/7 threshold with the crossing mar… | docs/guides/make_screenshots.py::_grab_frc_tool | [docs/guides/51_frc_resolution.md](/guides/51_frc_resolution.md) |
+| 101 | `guides/figures/hmm_workspace.png` | Fitted on a simulated two-state trace with 1 ms bins — states at 18 and 55 counts per bin, true rates 15 and 30 s⁻¹. The fit returns 18.0 and 55.0 counts with 1… | docs/guides/make_screenshots.py::_grab_hmm_tool | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
+| 102 | `guides/figures/flow_tool.png` | The flow-map tool on its own demo. Left: the settings, in workflow order. Right: the headline numbers, the arrows over the time-averaged image, and the profile… | **unrecorded** | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 103 | `guides/figures/pcf_barrier.png` | A simulated line with an impermeable wall at pixel 32, drifting at 0.25 px per line on the left and 0.125 on the right. The pair correlation reads 23.9 ms and 4… | docs/guides/make_figures.py::fig_pcf_barrier | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 104 | `guides/figures/pcf_flow_arrows.png` | Four counter-rotating cells: the simulated field, the field recovered one tile at a time, and every tile's two velocity components against the truth. Direction… | docs/guides/make_figures.py::fig_pcf_flow_arrows | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 105 | `guides/figures/console.png` | The console answering exactly that, on a session with two fits open. `cs.fits` is the live list — the objects the GUI is showing, not a copy — so `fit.chi2r` re… | docs/guides/make_screenshots.py::_grab_console | [docs/guides/59_console.md](/guides/59_console.md) |
+| 106 | `guides/figures/globalview_network.png` | Three fits sharing one donor lifetime. Each **blue** disc is a fit (*Donor-only*, *FRET-low*, *FRET-high*) surrounded by its parameters; the two **cyan arrows**… | docs/guides/make_screenshots.py::_grab_global_view | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
+| 107 | `guides/figures/kappa2_tool.png` | The calculator with a deliberately restricted pair ($r_{D\infty} = 0.15$, $r_{A\infty} = 0.20$). Mean $\kappa^2$ is still 0.66 — but **SD R_app/R_DA** is 0.15,… | docs/guides/make_screenshots.py::_grab_kappa2_tool | [docs/guides/61_kappa2_distribution.md](/guides/61_kappa2_distribution.md) |
+| 108 | `guides/figures/maxent_distribution.png` | MEM on a decay built from a **known** bimodal lifetime distribution — Gaussian lobes at $\tau = 1.1$ ns and $\tau = 3.6$ ns, not two discrete exponentials. **Le… | docs/guides/make_screenshots.py::_grab_maxent_decay | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
+| 109 | `guides/figures/pto_inspector.png` | One container, every panel at once. **Provenance** (top right) draws the two recorded steps: the instrument file (brown) → the burst table (blue) → the decay co… | docs/guides/make_screenshots.py::_grab_pto_inspector | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
+| 110 | `guides/figures/ask_the_documentation.png` | The Ask panel beside the page it cited. The links in the answer's own prose go to the page — and to the heading on it — and the list underneath is what the assi… | docs/guides/make_screenshots.py::_grab_ask_the_documentation | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
+| 111 | `guides/figures/lumis_battle.png` | A body-and-label encounter. The **Cyan Crow** names its band and the panel gives the number — 503 nm — so the naming convention teaches itself; **T3** is the la… | docs/guides/make_screenshots.py::_grab_lumis_quest | [docs/guides/71_lumis_quest.md](/guides/71_lumis_quest.md) |
+| 112 | `guides/figures/lumis_town.png` | A settlement. Each building is a documentation page and the compound is a `toctree`; the plaque names the section you are standing in rather than a file path. T… | docs/guides/make_screenshots.py::_grab_lumis_quest | [docs/guides/71_lumis_quest.md](/guides/71_lumis_quest.md) |
+| 113 | `guides/figures/accurate_fret_es.png` | What the four factors buy you, on an E–S histogram. Donor-only sits near $S = 1$ and acceptor-only near $S = 0$ — their "efficiency" is meaningless, which is ex… | docs/guides/make_screenshots.py::_grab_accurate_fret_tool | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 114 | `guides/figures/h2mm_dashboard.png` | What the plugin produces from those outputs. The panels are the state-resolved answer a burst-averaged histogram cannot give: the recovered per-state FRET effic… | docs/guides/make_figures.py::fig_h2mm_dashboard | [docs/guides/h2mm.md](/guides/h2mm.md) |
+| 115 | `guides/figures/irf_estimator.png` | The **IRF Estimator** plugin on a simulated decay whose answer is known — a single exponential at $\tau = 4.0$ ns reconvolved with a Gaussian instrument respons… | docs/guides/make_screenshots.py::_grab_irf_estimator | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 116 | `manual/_images/image_rId83.png` | — | docs/_old_manual/manual.docx | [docs/manual/adding_the_membranediffusion_models.rst](/manual/adding_the_membranediffusion_models.rst) |
+| 117 | `manual/_images/image_rId84.png` | — | docs/_old_manual/manual.docx | [docs/manual/adding_the_membranediffusion_models.rst](/manual/adding_the_membranediffusion_models.rst) |
+| 118 | `manual/_images/image_rId18.png` | — | docs/_old_manual/manual.docx | [docs/manual/analysis_dock.rst](/manual/analysis_dock.rst) |
+| 119 | `manual/_images/image_rId33.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
+| 120 | `manual/_images/image_rId34.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
+| 121 | `manual/_images/image_rId35.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
+| 122 | `manual/_images/image_rId36.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
+| 123 | `manual/_images/image_rId37.png` | — | docs/_old_manual/manual.docx | [docs/manual/anisotropy_wizard.rst](/manual/anisotropy_wizard.rst) |
+| 124 | `manual/_images/image_rId92.png` | — | docs/_old_manual/manual.docx | [docs/manual/calculation_of_codiffusing_molecules.rst](/manual/calculation_of_codiffusing_molecules.rst) |
+| 125 | `manual/_images/image_rId75.png` | — | docs/_old_manual/manual.docx | [docs/manual/calculations.rst](/manual/calculations.rst) |
+| 126 | `manual/_images/image_rId76.png` | — | docs/_old_manual/manual.docx | [docs/manual/calculations.rst](/manual/calculations.rst) |
+| 127 | `manual/_images/image_rId82.png` | — | docs/_old_manual/manual.docx | [docs/manual/calculations_2.rst](/manual/calculations_2.rst) |
+| 128 | `manual/_images/image_rId45.png` | — | docs/_old_manual/manual.docx | [docs/manual/changing_visualizations.rst](/manual/changing_visualizations.rst) |
+| 129 | `manual/_images/image_rId46.png` | — | docs/_old_manual/manual.docx | [docs/manual/changing_visualizations.rst](/manual/changing_visualizations.rst) |
+| 130 | `manual/_images/image_rId77.png` | — | docs/_old_manual/manual.docx | [docs/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.rst](/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.rst) |
+| 131 | `manual/_images/image_rId42.png` | — | docs/_old_manual/manual.docx | [docs/manual/correlation_merging.rst](/manual/correlation_merging.rst) |
+| 132 | `manual/_images/image_rId41.png` | — | docs/_old_manual/manual.docx | [docs/manual/correlator.rst](/manual/correlator.rst) |
+| 133 | `manual/_images/image_rId17.png` | — | docs/_old_manual/manual.docx | [docs/manual/creating_fits.rst](/manual/creating_fits.rst) |
+| 134 | `manual/_images/image_rId87.png` | — | docs/_old_manual/manual.docx | [docs/manual/crosstalkinduced_correlations.rst](/manual/crosstalkinduced_correlations.rst) |
+| 135 | `manual/_images/image_rId89.png` | — | docs/_old_manual/manual.docx | [docs/manual/crosstalkinduced_correlations.rst](/manual/crosstalkinduced_correlations.rst) |
+| 136 | `manual/_images/image_rId13.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_import.rst](/manual/data_import.rst) |
+| 137 | `manual/_images/image_rId14.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_import.rst](/manual/data_import.rst) |
+| 138 | `manual/_images/image_rId15.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_import.rst](/manual/data_import.rst) |
+| 139 | `manual/_images/image_rId16.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_import.rst](/manual/data_import.rst) |
+| 140 | `manual/_images/image_rId108.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
+| 141 | `manual/_images/image_rId109.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
+| 142 | `manual/_images/image_rId110.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
+| 143 | `manual/_images/image_rId111.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
+| 144 | `manual/_images/image_rId112.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
+| 145 | `manual/_images/image_rId113.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
+| 146 | `manual/_images/image_rId114.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
+| 147 | `manual/_images/image_rId115.png` | — | docs/_old_manual/manual.docx | [docs/manual/data_input_and_file_format.rst](/manual/data_input_and_file_format.rst) |
+| 148 | `manual/_images/image_rId104.png` | — | docs/_old_manual/manual.docx | [docs/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.rst](/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.rst) |
+| 149 | `manual/_images/image_rId79.png` | — | docs/_old_manual/manual.docx | [docs/manual/determination_of_molecular_brightness.rst](/manual/determination_of_molecular_brightness.rst) |
+| 150 | `manual/_images/image_rId80.png` | — | docs/_old_manual/manual.docx | [docs/manual/determination_of_molecular_brightness.rst](/manual/determination_of_molecular_brightness.rst) |
+| 151 | `manual/_images/image_rId30.png` | — | docs/_old_manual/manual.docx | [docs/manual/equation_parsing.rst](/manual/equation_parsing.rst) |
+| 152 | `manual/_images/image_rId72.png` | — | docs/_old_manual/manual.docx | [docs/manual/estimation_of_the_fluorophore_concentration.rst](/manual/estimation_of_the_fluorophore_concentration.rst) |
+| 153 | `manual/_images/image_rId73.png` | — | docs/_old_manual/manual.docx | [docs/manual/estimation_of_the_fluorophore_concentration.rst](/manual/estimation_of_the_fluorophore_concentration.rst) |
+| 154 | `manual/_images/image_rId32.png` | — | docs/_old_manual/manual.docx | [docs/manual/fcalculator.rst](/manual/fcalculator.rst) |
+| 155 | `manual/_images/image_rId20.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_interface.rst](/manual/fit_interface.rst) |
+| 156 | `manual/_images/image_rId53.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 157 | `manual/_images/image_rId54.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 158 | `manual/_images/image_rId55.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 159 | `manual/_images/image_rId56.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 160 | `manual/_images/image_rId57.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 161 | `manual/_images/image_rId58.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 162 | `manual/_images/image_rId59.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 163 | `manual/_images/image_rId60.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 164 | `manual/_images/image_rId61.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 165 | `manual/_images/image_rId63.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 166 | `manual/_images/image_rId64.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 167 | `manual/_images/image_rId65.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 168 | `manual/_images/image_rId66.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 169 | `manual/_images/image_rId67.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 170 | `manual/_images/image_rId68.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 171 | `manual/_images/image_rId69.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 172 | `manual/_images/image_rId70.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 173 | `manual/_images/image_rId71.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_a_fcs_curve.rst](/manual/fit_of_a_fcs_curve.rst) |
+| 174 | `manual/_images/image_rId91.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_auto_and_crosscorrelation_curves.rst](/manual/fit_of_auto_and_crosscorrelation_curves.rst) |
+| 175 | `manual/_images/image_rId85.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_autocorrelation_curves.rst](/manual/fit_of_autocorrelation_curves.rst) |
+| 176 | `manual/_images/image_rId86.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_autocorrelation_curves.rst](/manual/fit_of_autocorrelation_curves.rst) |
+| 177 | `manual/_images/image_rId74.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_of_fcs_curve.rst](/manual/fit_of_fcs_curve.rst) |
+| 178 | `manual/_images/image_rId25.png` | — | docs/_old_manual/manual.docx | [docs/manual/fit_plots.rst](/manual/fit_plots.rst) |
+| 179 | `manual/_images/image_rId94.png` | — | docs/_old_manual/manual.docx | [docs/manual/global_fit_of_auto_and_crosscorrelation_curves.rst](/manual/global_fit_of_auto_and_crosscorrelation_curves.rst) |
+| 180 | `manual/_images/image_rId81.png` | — | docs/_old_manual/manual.docx | [docs/manual/global_fit_of_fcs_curves.rst](/manual/global_fit_of_fcs_curves.rst) |
+| 181 | `manual/_images/image_rId95.png` | — | docs/_old_manual/manual.docx | [docs/manual/influence_of_fret_efficiency.rst](/manual/influence_of_fret_efficiency.rst) |
+| 182 | `manual/_images/image_rId96.png` | — | docs/_old_manual/manual.docx | [docs/manual/influence_of_triplet_blinking.rst](/manual/influence_of_triplet_blinking.rst) |
+| 183 | `manual/_images/image_rId51.png` | — | docs/_old_manual/manual.docx | [docs/manual/linking_parameters.rst](/manual/linking_parameters.rst) |
+| 184 | `manual/_images/image_rId40.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading__plotting_data.rst](/manual/loading__plotting_data.rst) |
+| 185 | `manual/_images/image_rId134.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_and_setting_up_the_egfp_data_set.rst](/manual/loading_and_setting_up_the_egfp_data_set.rst) |
+| 186 | `manual/_images/image_rId118.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 187 | `manual/_images/image_rId119.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 188 | `manual/_images/image_rId120.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 189 | `manual/_images/image_rId121.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 190 | `manual/_images/image_rId122.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 191 | `manual/_images/image_rId123.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 192 | `manual/_images/image_rId124.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 193 | `manual/_images/image_rId125.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 194 | `manual/_images/image_rId126.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 195 | `manual/_images/image_rId127.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 196 | `manual/_images/image_rId128.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 197 | `manual/_images/image_rId129.png` | — | docs/_old_manual/manual.docx | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst) |
+| 198 | `manual/_images/image_rId21.png` | — | docs/_old_manual/manual.docx | [docs/manual/model_scoring_range.rst](/manual/model_scoring_range.rst) |
+| 199 | `manual/_images/image_rId24.png` | — | docs/_old_manual/manual.docx | [docs/manual/multiple_document_interface.rst](/manual/multiple_document_interface.rst) |
 | 200 | `manual/_images/image_rId27.png` | — | docs/_old_manual/manual.docx | [docs/manual/nuisances.rst](/manual/nuisances.rst) |
-| 201 | `manual/_images/image_rId28.png` | — | docs/_old_manual/manual.docx | [docs/manual/nuisances.rst](/manual/nuisances.rst) |
-| 202 | `manual/_images/image_rId29.png` | — | docs/_old_manual/manual.docx | [docs/manual/nuisances.rst](/manual/nuisances.rst) |
-| 203 | `manual/_images/image_rId10.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview.rst](/manual/overview.rst) |
-| 204 | `manual/_images/image_rId11.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview.rst](/manual/overview.rst) |
-| 205 | `manual/_images/image_rId12.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview.rst](/manual/overview.rst) |
-| 206 | `manual/_images/image_rId38.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview_2.rst](/manual/overview_2.rst) |
-| 207 | `manual/_images/image_rId43.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview_3.rst](/manual/overview_3.rst) |
-| 208 | `manual/_images/image_rId44.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview_3.rst](/manual/overview_3.rst) |
-| 209 | `manual/_images/image_rId22.png` | — | docs/_old_manual/manual.docx | [docs/manual/parameter_optimization.rst](/manual/parameter_optimization.rst) |
-| 210 | `manual/_images/image_rId23.png` | — | docs/_old_manual/manual.docx | [docs/manual/parameter_sampling.rst](/manual/parameter_sampling.rst) |
-| 211 | `manual/_images/image_rId26.png` | — | docs/_old_manual/manual.docx | [docs/manual/parameter_scan.rst](/manual/parameter_scan.rst) |
-| 212 | `manual/_images/image_rId19.png` | — | docs/_old_manual/manual.docx | [docs/manual/parameters.rst](/manual/parameters.rst) |
-| 213 | `manual/_images/image_rId31.png` | — | docs/_old_manual/manual.docx | [docs/manual/reference_curves.rst](/manual/reference_curves.rst) |
-| 214 | `manual/_images/image_rId142.png` | — | docs/_old_manual/manual.docx | [docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst](/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst) |
-| 215 | `manual/_images/image_rId143.png` | — | docs/_old_manual/manual.docx | [docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst](/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst) |
-| 216 | `manual/_images/image_rId141.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving__exporting_the_results.rst](/manual/saving__exporting_the_results.rst) |
-| 217 | `manual/_images/image_rId47.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving_and_loading_networks.rst](/manual/saving_and_loading_networks.rst) |
-| 218 | `manual/_images/image_rId48.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving_and_loading_networks.rst](/manual/saving_and_loading_networks.rst) |
-| 219 | `manual/_images/image_rId49.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving_and_loading_networks.rst](/manual/saving_and_loading_networks.rst) |
-| 220 | `manual/_images/image_rId50.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving_and_loading_networks.rst](/manual/saving_and_loading_networks.rst) |
-| 221 | `manual/_images/image_rId135.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
-| 222 | `manual/_images/image_rId136.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
-| 223 | `manual/_images/image_rId137.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
-| 224 | `manual/_images/image_rId138.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
-| 225 | `manual/_images/image_rId139.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
-| 226 | `manual/_images/image_rId140.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
-| 227 | `manual/_images/image_rId101.png` | — | docs/_old_manual/manual.docx | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst](/manual/speciesfiltered_fcs_to_recover_dynamics.rst) |
-| 228 | `manual/_images/image_rId103.png` | — | docs/_old_manual/manual.docx | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst](/manual/speciesfiltered_fcs_to_recover_dynamics.rst) |
-| 229 | `manual/_images/image_rId97.png` | — | docs/_old_manual/manual.docx | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst](/manual/speciesfiltered_fcs_to_recover_dynamics.rst) |
-| 230 | `manual/_images/image_rId99.png` | — | docs/_old_manual/manual.docx | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst](/manual/speciesfiltered_fcs_to_recover_dynamics.rst) |
-| 231 | `manual/_images/image_rId130.png` | — | docs/_old_manual/manual.docx | [docs/manual/step_1_approximating_gfactor_with_small_fluorophore.rst](/manual/step_1_approximating_gfactor_with_small_fluorophore.rst) |
-| 232 | `manual/_images/image_rId131.png` | — | docs/_old_manual/manual.docx | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst) |
-| 233 | `manual/_images/image_rId132.png` | — | docs/_old_manual/manual.docx | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst) |
-| 234 | `manual/_images/image_rId133.png` | — | docs/_old_manual/manual.docx | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst) |
-| 235 | `manual/_images/image_rId116.png` | — | docs/_old_manual/manual.docx | [docs/manual/two_single_files.rst](/manual/two_single_files.rst) |
-| 236 | `manual/_images/image_rId117.png` | — | docs/_old_manual/manual.docx | [docs/manual/vv_vh_format.rst](/manual/vv_vh_format.rst) |
+| 201 | `manual/_images/image_rId27.png` | — | docs/_old_manual/manual.docx | [docs/manual/nuisances.rst](/manual/nuisances.rst) |
+| 202 | `manual/_images/image_rId28.png` | — | docs/_old_manual/manual.docx | [docs/manual/nuisances.rst](/manual/nuisances.rst) |
+| 203 | `manual/_images/image_rId29.png` | — | docs/_old_manual/manual.docx | [docs/manual/nuisances.rst](/manual/nuisances.rst) |
+| 204 | `manual/_images/image_rId10.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview.rst](/manual/overview.rst) |
+| 205 | `manual/_images/image_rId11.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview.rst](/manual/overview.rst) |
+| 206 | `manual/_images/image_rId12.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview.rst](/manual/overview.rst) |
+| 207 | `manual/_images/image_rId38.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview_2.rst](/manual/overview_2.rst) |
+| 208 | `manual/_images/image_rId43.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview_3.rst](/manual/overview_3.rst) |
+| 209 | `manual/_images/image_rId44.png` | — | docs/_old_manual/manual.docx | [docs/manual/overview_3.rst](/manual/overview_3.rst) |
+| 210 | `manual/_images/image_rId22.png` | — | docs/_old_manual/manual.docx | [docs/manual/parameter_optimization.rst](/manual/parameter_optimization.rst) |
+| 211 | `manual/_images/image_rId23.png` | — | docs/_old_manual/manual.docx | [docs/manual/parameter_sampling.rst](/manual/parameter_sampling.rst) |
+| 212 | `manual/_images/image_rId26.png` | — | docs/_old_manual/manual.docx | [docs/manual/parameter_scan.rst](/manual/parameter_scan.rst) |
+| 213 | `manual/_images/image_rId19.png` | — | docs/_old_manual/manual.docx | [docs/manual/parameters.rst](/manual/parameters.rst) |
+| 214 | `manual/_images/image_rId31.png` | — | docs/_old_manual/manual.docx | [docs/manual/reference_curves.rst](/manual/reference_curves.rst) |
+| 215 | `manual/_images/image_rId142.png` | — | docs/_old_manual/manual.docx | [docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst](/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst) |
+| 216 | `manual/_images/image_rId143.png` | — | docs/_old_manual/manual.docx | [docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst](/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst) |
+| 217 | `manual/_images/image_rId141.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving__exporting_the_results.rst](/manual/saving__exporting_the_results.rst) |
+| 218 | `manual/_images/image_rId47.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving_and_loading_networks.rst](/manual/saving_and_loading_networks.rst) |
+| 219 | `manual/_images/image_rId48.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving_and_loading_networks.rst](/manual/saving_and_loading_networks.rst) |
+| 220 | `manual/_images/image_rId49.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving_and_loading_networks.rst](/manual/saving_and_loading_networks.rst) |
+| 221 | `manual/_images/image_rId50.png` | — | docs/_old_manual/manual.docx | [docs/manual/saving_and_loading_networks.rst](/manual/saving_and_loading_networks.rst) |
+| 222 | `manual/_images/image_rId135.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
+| 223 | `manual/_images/image_rId136.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
+| 224 | `manual/_images/image_rId137.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
+| 225 | `manual/_images/image_rId138.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
+| 226 | `manual/_images/image_rId139.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
+| 227 | `manual/_images/image_rId140.png` | — | docs/_old_manual/manual.docx | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst](/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst) |
+| 228 | `manual/_images/image_rId101.png` | — | docs/_old_manual/manual.docx | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst](/manual/speciesfiltered_fcs_to_recover_dynamics.rst) |
+| 229 | `manual/_images/image_rId103.png` | — | docs/_old_manual/manual.docx | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst](/manual/speciesfiltered_fcs_to_recover_dynamics.rst) |
+| 230 | `manual/_images/image_rId97.png` | — | docs/_old_manual/manual.docx | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst](/manual/speciesfiltered_fcs_to_recover_dynamics.rst) |
+| 231 | `manual/_images/image_rId99.png` | — | docs/_old_manual/manual.docx | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst](/manual/speciesfiltered_fcs_to_recover_dynamics.rst) |
+| 232 | `manual/_images/image_rId130.png` | — | docs/_old_manual/manual.docx | [docs/manual/step_1_approximating_gfactor_with_small_fluorophore.rst](/manual/step_1_approximating_gfactor_with_small_fluorophore.rst) |
+| 233 | `manual/_images/image_rId131.png` | — | docs/_old_manual/manual.docx | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst) |
+| 234 | `manual/_images/image_rId132.png` | — | docs/_old_manual/manual.docx | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst) |
+| 235 | `manual/_images/image_rId133.png` | — | docs/_old_manual/manual.docx | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst) |
+| 236 | `manual/_images/image_rId116.png` | — | docs/_old_manual/manual.docx | [docs/manual/two_single_files.rst](/manual/two_single_files.rst) |
+| 237 | `manual/_images/image_rId117.png` | — | docs/_old_manual/manual.docx | [docs/manual/vv_vh_format.rst](/manual/vv_vh_format.rst) |

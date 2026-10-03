@@ -51,10 +51,47 @@ Open:
 1. `plot_backend` and `TOOLBAR_TARGET` (Qt GUI deleted, items 1-2) still wait
    for another session's uncommitted `performance_config.py` /
    `accurate_fret.py`.
-2. ChiSurf's mmfdb gitlink is not bumped to a58feaa (the write-back needs
-   it).
-3. A FRET line is pushed as E vs tau_F only; the LineSet's `axes` hint is not
-   used to pick ndX's axes.
+2. There is no MMFDB gitlink to bump: `modules/mmfdb` is a symlink to the
+   local MMFDB checkout. Keep the authenticated service changes available
+   there; do not invent a submodule update.
+
+### Session recovery: overlay axes and native MMFDB lineage (2026-10-03)
+
+The ignored-axis and native-picker provenance gaps are fixed. `Frame.add_overlay_lines`
+materializes and validates every line before changing the projection. Exact column
+names take precedence over unambiguous aliases; `tau_f` and `tau_x` are distinct.
+Conflicting projections, absent/ambiguous columns, and invalid coordinate lengths
+reject the entire batch without altering axes or overlays. The resolved x/y names
+are stored in the data-curve session spec. Drawing and CSV export share `is_drawn`,
+so switching projection cannot show or export a line under another observable's label.
+NumPy coordinate arrays and one-shot iterators are materialized once before mutation.
+Literal case-sensitive column names win; ambiguous case-folded names are refused.
+The FRET-line tool distinguishes a rejected push from having no open ndX window.
+
+ChiSurf's native picker keeps its authenticated client and canonical `artifact_id`
+through `on_selected`. `selection_provenance.record_artifact_selection` creates a
+selection-mask artifact and analysis operation, links the existing input without
+rewriting it, then marks success and reads the operation back. A failed input link
+marks the operation failed; expired authentication leaves the saved BIDs intact and
+reports the recording failure. Replacing/merging the table clears the recorder.
+An in-flight save captures its recorder with the original source: switching to a
+new table before completion cannot attribute the old mask to the new artifact.
+Legacy `processed_data_id` and canonical `artifact_id` are not interchangeable.
+
+Verification: the final full ndX suite passes 1213 tests (2 skipped, 97 numerical
+runtime warnings); overlay/phasor/general-overlay/IO suites pass 64 tests. The
+complete affected ChiSurf host/FRET parity/ALEX run passes 121 tests, including
+four native provenance cases. Independent read-only reviews pass, including the
+follow-up alias and in-flight-recorder fixes; the final verdict has no suggestions.
+The ndX guide's code checks pass 14 cases. Global documentation inventory guards
+still fail on the same 132 unregistered images and stale registers in a scratch
+pre-edit replay; only the new screenshot and Python-example rows were added here.
+Measured MFD before/after screenshots were inspected; the 900x600 host is on
+`Tau (green)` / `FRET efficiency`, with its orange tabulated line, readable controls,
+and no lost controls. Reproduce the published figure with
+`docs/guides/make_screenshots.py::_grab_ndx_overlay_axes`; it copies measured data and
+disables autosave. User workflow: `docs/guides/46_ndxplorer.md`. Recovery plan and
+remaining excluded shared-tree work: `okf/plans/ndx-session-recovery.md`.
 
 ### Default axes follow the table (2026-10-02)
 

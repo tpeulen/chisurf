@@ -1,3 +1,27 @@
+## ndX recovery: intermittent mixed-Qt test-process crash (2026-10-03)
+
+During recovery, an early combined ndX-host/FRET/ALEX pytest process exited 139.
+The cause was not isolated; do not attribute it to the overlay-axis or native
+provenance fixes. Subsequent replays using a scratch copy of the pre-fix ndX
+sources and the fixed sources both exited 0. The final affected-suite run
+(`chisurf/plugins/ndxplorer/tests`, FRET-line parity, ALEX Suite tests) passed
+121 tests in one process. Isolated suites also pass. If it returns, capture
+faulthandler output and bisect test order before modifying application code;
+the earlier QApplication/deferred-delete issue below is a hypothesis, not a
+confirmed diagnosis for this occurrence. No reproducible crash remains in this
+verification scope, so no speculative Qt lifecycle patch was applied.
+
+## ndX recovery: shared documentation inventory baseline (2026-10-03)
+
+The global documentation-register guards report **9 passed, 2 failed**: 132
+unregistered image origins and stale figure/table/code indexes. A scratch replay
+with the pre-edit ndX guide, concept, provenance, and original register snapshot
+reports the same 132 origins and the same three stale indexes. Do not attribute
+these shared documentation-migration failures to the recovered ndX functionality.
+The new measured-data screenshot and Python example have scoped inventory entries;
+all 14 ndX guide code checks pass. Regenerate the global indexes and assign real
+origins in the documentation lane rather than sweeping its concurrent edits here.
+
 ## emtk gaps found while upgrading the swap-candidates (2026-10-01, SWAP4B)
 
 - **The guided tour's Next and Prev buttons never fire, in every emtk port.** `chisurf/emtk/help_guide.py` draws

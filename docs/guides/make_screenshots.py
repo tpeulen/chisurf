@@ -46,6 +46,39 @@ def _grab(widget, name):
     print("wrote", name)
 
 
+def _grab_ndx_overlay_axes():
+    """Measured MFD bursts: pushing a FRET line selects its lifetime/E projection."""
+    from chisurf.plugins.fret_line.gui.model import FretLineModel, push_to_ndx
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+
+    source = pathlib.Path("modules/ndxplorer/test/mfd/burstwise_All 0.1500#30")
+    with tempfile.TemporaryDirectory(prefix="ndx-overlay-", dir=os.environ.get("TMPDIR")) as folder:
+        copied = pathlib.Path(folder) / source.name
+        shutil.copytree(source, copied)
+        window = build_ndxplorer_window(str(copied), session_autosave=False, layout_store=None)
+        tool = FretLineModel()
+        try:
+            app = window.app
+            assert app.model.has_data, app.model.error
+            app.model.set_parameter("x", "FRET efficiency")
+            app.model.set_parameter("y", "Tau (green)")
+            tool.minimum, tool.maximum, tool.tau_d0 = 20.0, 120.0, 4.0
+            tool.add_line()
+            tool.push_callback = push_to_ndx
+            tool.push()
+            assert not tool.dialog_text, tool.dialog_text
+            assert (app.model.x.name, app.model.y.name) == ("Tau (green)", "FRET efficiency")
+            app.docks.focus("Overlays")
+            window.resize(900, 600)
+            for _ in range(4):
+                QApplication.instance().processEvents()
+                window.host.update()
+            _grab(window, "ndxplorer_overlay_axes.png")
+        finally:
+            window.close()
+            tool.close()
+
+
 def _grab_fcs_model_editor():
     """Grab the composable FCS model editor (AutoForm) for the FCS guide."""
     import numpy as np
@@ -2374,6 +2407,7 @@ def main():
         _grab_chimol_biofilm,
         _grab_region_editor,
         _grab_ndx_gaussian_panel,
+        _grab_ndx_overlay_axes,
         _grab_ask_the_documentation,
         _grab_maxent_decay,
         _grab_global_view,
