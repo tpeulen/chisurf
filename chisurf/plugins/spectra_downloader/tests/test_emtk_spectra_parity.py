@@ -422,7 +422,7 @@ def test_check_session_and_the_local_import_logs_what_it_did(ui, tmp_path):
     live.connect()
     live.close()
     goto(ui, "Add to MMFDB")
-    assert ui.drawn("Session user user is an administrator (bootstrap (no admin yet)) - no login needed.") or any(
+    assert ui.drawn("Session user user is an administrator (bootstrap (no admin yet)) — no login needed.") or any(
         "administrator" in s for s in ui.draw(2).strings)
     ui.type_into_name("db_path", str(target))
     ui.click_name("replace")

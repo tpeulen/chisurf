@@ -1,0 +1,608 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/spectraparity_n4cgwyfd/m.sqlite",
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/spectraparity_n4cgwyfd/staging.db",
+    "0",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "2",
+    "3",
+    "3/3",
+    "3doptix(metadataonly)",
+    "400",
+    "450",
+    "500",
+    "519",
+    "550",
+    "600",
+    "650",
+    "700",
+    "absmax",
+    "addalltommfdb",
+    "addstagingcomponentstothemmfdb",
+    "addtommfdb",
+    "advanced—connectionauthentication",
+    "alexafluor488",
+    "all",
+    "alreadyscraped(3doptix)noneyet",
+    "atto",
+    "attoorganicdye",
+    "availablesources",
+    "back",
+    "browse",
+    "browsethissource",
+    "category",
+    "checksession",
+    "chroma",
+    "component_kind",
+    "components",
+    "description",
+    "detectors",
+    "dichroics",
+    "download",
+    "d₂₅",
+    "egfp",
+    "em_max",
+    "emission",
+    "emmax",
+    "en",
+    "endpoint",
+    "et525/50m",
+    "extinction",
+    "filter",
+    "filters",
+    "fluorophores",
+    "fpbase",
+    "guide",
+    "help",
+    "id",
+    "intensity",
+    "language",
+    "lifetime",
+    "lightsources",
+    "localfile",
+    "localmmfdb",
+    "markimportedasapproved",
+    "metadata(json)",
+    "name",
+    "next",
+    "organic_dye",
+    "origin",
+    "overview",
+    "probeid",
+    "properties",
+    "property",
+    "protein",
+    "push",
+    "pushall",
+    "pushselected",
+    "quality",
+    "qy",
+    "ready",
+    "referencefixture",
+    "refresh",
+    "replaceexistingreferenceset",
+    "runselectedscript",
+    "server(zmq)",
+    "sessionuseruserisanadministrator(bootstrap(noadminyet))—nologinneeded.",
+    "source",
+    "sourceref",
+    "stagingdatabaseoverview",
+    "stagingdb",
+    "status",
+    "totalcomponents",
+    "type",
+    "unknown",
+    "unverified",
+    "value",
+    "verifiedat",
+    "verifiedby",
+    "wavelength(nm)",
+    "withspectra"
+  ],
+  "interactive": [
+    {
+      "kind": "input_text",
+      "label": "navigation_search",
+      "id": "##navigation_search",
+      "tooltip": "Match a component name, ignoring case."
+    },
+    {
+      "kind": "selectable",
+      "label": "Overview",
+      "id": "Overview##nav.Overview",
+      "tooltip": "Inspect staging counts before importing."
+    },
+    {
+      "kind": "selectable",
+      "label": "Browse",
+      "id": "Browse##nav.Browse",
+      "tooltip": "Filter components and inspect spectra."
+    },
+    {
+      "kind": "selectable",
+      "label": "Download",
+      "id": "Download##nav.Download",
+      "tooltip": "Run a source scraper into this staging database."
+    },
+    {
+      "kind": "selectable",
+      "label": "Add to MMFDB",
+      "id": "Add to MMFDB##nav.Add to MMFDB",
+      "tooltip": "Configure the import endpoint and administrator session."
+    },
+    {
+      "kind": "combo",
+      "label": "locale",
+      "id": "##locale",
+      "tooltip": "Change interface language without changing scientific data."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Guide"
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Help"
+    },
+    {
+      "kind": "input_text",
+      "label": "db_path",
+      "id": "##db_path",
+      "tooltip": "Path to the staging spectra database being summarised."
+    },
+    {
+      "kind": "input_text",
+      "label": "total",
+      "id": "##total",
+      "tooltip": "Number of components in the staging database."
+    },
+    {
+      "kind": "input_text",
+      "label": "with_spectra",
+      "id": "##with_spectra",
+      "tooltip": "Components that carry at least one spectrum."
+    },
+    {
+      "kind": "input_text",
+      "label": "fluorophores",
+      "id": "##fluorophores",
+      "tooltip": "Proteins + organic dyes + other fluorophores."
+    },
+    {
+      "kind": "input_text",
+      "label": "filters",
+      "id": "##filters",
+      "tooltip": "Optical filters."
+    },
+    {
+      "kind": "input_text",
+      "label": "dichroics",
+      "id": "##dichroics",
+      "tooltip": "Dichroic beamsplitters / mirrors."
+    },
+    {
+      "kind": "input_text",
+      "label": "detectors",
+      "id": "##detectors",
+      "tooltip": "Cameras / SPADs / PMTs (quantum-efficiency curves)."
+    },
+    {
+      "kind": "input_text",
+      "label": "light_sources",
+      "id": "##light_sources",
+      "tooltip": "Lamps / LEDs / lasers."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh##refresh_overview",
+      "tooltip": "Re-read the counts from the staging database."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Go to the previous panel."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Go to the next panel."
+    },
+    {
+      "kind": "input_text",
+      "label": "navigation_search",
+      "id": "##navigation_search",
+      "tooltip": "Match a component name, ignoring case."
+    },
+    {
+      "kind": "selectable",
+      "label": "Overview",
+      "id": "Overview##nav.Overview",
+      "tooltip": "Inspect staging counts before importing."
+    },
+    {
+      "kind": "selectable",
+      "label": "Browse",
+      "id": "Browse##nav.Browse",
+      "tooltip": "Filter components and inspect spectra."
+    },
+    {
+      "kind": "selectable",
+      "label": "Download",
+      "id": "Download##nav.Download",
+      "tooltip": "Run a source scraper into this staging database."
+    },
+    {
+      "kind": "selectable",
+      "label": "Add to MMFDB",
+      "id": "Add to MMFDB##nav.Add to MMFDB",
+      "tooltip": "Configure the import endpoint and administrator session."
+    },
+    {
+      "kind": "combo",
+      "label": "locale",
+      "id": "##locale",
+      "tooltip": "Change interface language without changing scientific data."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Guide"
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Help"
+    },
+    {
+      "kind": "input_text",
+      "label": "search",
+      "id": "##search",
+      "tooltip": "Keep the components whose name contains this text."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh##refresh_browse",
+      "tooltip": "Reload the component list from the staging database."
+    },
+    {
+      "kind": "button",
+      "label": "Push selected",
+      "id": "Push selected##push_selected",
+      "tooltip": "Push the ticked components into the connected MMFDB (asks first)."
+    },
+    {
+      "kind": "button",
+      "label": "Push all",
+      "id": "Push all##push_all",
+      "tooltip": "Push every component of this staging database into the connected MMFDB (asks first)."
+    },
+    {
+      "kind": "input_text",
+      "label": "probe_id",
+      "id": "##probe_id",
+      "tooltip": "MMFDB probe identifier."
+    },
+    {
+      "kind": "input_text",
+      "label": "chromophore_name",
+      "id": "##chromophore_name",
+      "tooltip": "Chromophore / fluorophore name."
+    },
+    {
+      "kind": "input_text",
+      "label": "category",
+      "id": "##category",
+      "tooltip": "Probe category (organic_dye, protein, nucleic_acid, ...)."
+    },
+    {
+      "kind": "input_text",
+      "label": "type_name",
+      "id": "##type_name",
+      "tooltip": "Probe type."
+    },
+    {
+      "kind": "input_text",
+      "label": "abs_max",
+      "id": "##abs_max",
+      "tooltip": "Absorption maximum (nm)."
+    },
+    {
+      "kind": "input_text",
+      "label": "em_max",
+      "id": "##em_max",
+      "tooltip": "Emission maximum (nm)."
+    },
+    {
+      "kind": "input_text",
+      "label": "qy",
+      "id": "##qy",
+      "tooltip": "Fluorescence quantum yield."
+    },
+    {
+      "kind": "input_text",
+      "label": "ext_coeff",
+      "id": "##ext_coeff",
+      "tooltip": "Molar extinction coefficient (M^-1 cm^-1)."
+    },
+    {
+      "kind": "input_text",
+      "label": "lifetime",
+      "id": "##lifetime",
+      "tooltip": "Fluorescence lifetime (ns)."
+    },
+    {
+      "kind": "input_text",
+      "label": "d25",
+      "id": "##d25",
+      "tooltip": "Translational diffusion coefficient in water at 25 °C (µm²/s); used by the FCS diffusion/volume calculator."
+    },
+    {
+      "kind": "input_text",
+      "label": "verification_status",
+      "id": "##verification_status",
+      "tooltip": "Verification status: unverified / needs_review / approved / rejected."
+    },
+    {
+      "kind": "input_text",
+      "label": "quality",
+      "id": "##quality",
+      "tooltip": "Quality grade: unknown / low / medium / high."
+    },
+    {
+      "kind": "input_text",
+      "label": "source",
+      "id": "##source",
+      "tooltip": "Provenance source (fpbase, atto, spectra_db, user, ...)."
+    },
+    {
+      "kind": "input_text",
+      "label": "source_ref",
+      "id": "##source_ref",
+      "tooltip": "Source reference / URL / accession."
+    },
+    {
+      "kind": "input_text",
+      "label": "verified_by",
+      "id": "##verified_by",
+      "tooltip": "User who approved/rejected this probe."
+    },
+    {
+      "kind": "input_text",
+      "label": "verified_at",
+      "id": "##verified_at",
+      "tooltip": "Timestamp of the verification decision."
+    },
+    {
+      "kind": "input_text",
+      "label": "description",
+      "id": "##description",
+      "tooltip": "Free-text probe description."
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Properties",
+      "id": "Properties",
+      "tooltip": "Properties"
+    },
+    {
+      "kind": "begin_tab_item",
+      "label": "Metadata (JSON)",
+      "id": "Metadata (JSON)",
+      "tooltip": "Metadata (JSON)"
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Go to the previous panel."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Go to the next panel."
+    },
+    {
+      "kind": "input_text",
+      "label": "navigation_search",
+      "id": "##navigation_search",
+      "tooltip": "Match a component name, ignoring case."
+    },
+    {
+      "kind": "selectable",
+      "label": "Overview",
+      "id": "Overview##nav.Overview",
+      "tooltip": "Inspect staging counts before importing."
+    },
+    {
+      "kind": "selectable",
+      "label": "Browse",
+      "id": "Browse##nav.Browse",
+      "tooltip": "Filter components and inspect spectra."
+    },
+    {
+      "kind": "selectable",
+      "label": "Download",
+      "id": "Download##nav.Download",
+      "tooltip": "Run a source scraper into this staging database."
+    },
+    {
+      "kind": "selectable",
+      "label": "Add to MMFDB",
+      "id": "Add to MMFDB##nav.Add to MMFDB",
+      "tooltip": "Configure the import endpoint and administrator session."
+    },
+    {
+      "kind": "combo",
+      "label": "locale",
+      "id": "##locale",
+      "tooltip": "Change interface language without changing scientific data."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Guide"
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Help"
+    },
+    {
+      "kind": "button",
+      "label": "Run selected script",
+      "id": "Run selected script##run_script",
+      "tooltip": "Run the selected scraper into the staging database (one at a time)."
+    },
+    {
+      "kind": "button",
+      "label": "Browse this source",
+      "id": "Browse this source##browse_source",
+      "tooltip": "Open Browse filtered to this source."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Go to the previous panel."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Go to the next panel."
+    },
+    {
+      "kind": "input_text",
+      "label": "navigation_search",
+      "id": "##navigation_search",
+      "tooltip": "Match a component name, ignoring case."
+    },
+    {
+      "kind": "selectable",
+      "label": "Overview",
+      "id": "Overview##nav.Overview",
+      "tooltip": "Inspect staging counts before importing."
+    },
+    {
+      "kind": "selectable",
+      "label": "Browse",
+      "id": "Browse##nav.Browse",
+      "tooltip": "Filter components and inspect spectra."
+    },
+    {
+      "kind": "selectable",
+      "label": "Download",
+      "id": "Download##nav.Download",
+      "tooltip": "Run a source scraper into this staging database."
+    },
+    {
+      "kind": "selectable",
+      "label": "Add to MMFDB",
+      "id": "Add to MMFDB##nav.Add to MMFDB",
+      "tooltip": "Configure the import endpoint and administrator session."
+    },
+    {
+      "kind": "combo",
+      "label": "locale",
+      "id": "##locale",
+      "tooltip": "Change interface language without changing scientific data."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Guide"
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Help"
+    },
+    {
+      "kind": "radio_button",
+      "label": "Local file",
+      "id": "Local file##mode0",
+      "tooltip": "Where to add the staging components: a local MMFDB file, or a running MMFDB server."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Server (ZMQ)",
+      "id": "Server (ZMQ)##mode1",
+      "tooltip": "Where to add the staging components: a local MMFDB file, or a running MMFDB server."
+    },
+    {
+      "kind": "input_text",
+      "label": "db_path",
+      "id": "##db_path",
+      "tooltip": "Target MMFDB SQLite path (local mode). Blank = the resolved live MMFDB."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Replace existing reference set",
+      "id": "Replace existing reference set##replace",
+      "tooltip": "Purge the existing reference probes before importing (a backup is made for local files)."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Mark imported as approved",
+      "id": "Mark imported as approved##mark_verified",
+      "tooltip": "Stamp imported components as approved instead of unverified."
+    },
+    {
+      "kind": "button",
+      "label": "Check session",
+      "id": "Check session##check_session",
+      "tooltip": "Re-check whether the current session may add to the MMFDB."
+    },
+    {
+      "kind": "button",
+      "label": "Add all to MMFDB",
+      "id": "Add all to MMFDB##add_all",
+      "tooltip": "Add every staging component to the chosen MMFDB (the result is logged below)."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Go to the previous panel."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Go to the next panel."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

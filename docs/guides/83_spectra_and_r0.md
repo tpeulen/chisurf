@@ -46,32 +46,27 @@ is now `gui.tool:SpectraTool`. An older checkout can open it with
 `python -c "from chisurf.plugins.spectra_downloader.gui.tool import main; main()"`.
 ```
 
-The window has four panels in its left list.
+The window has four panels in its left list (select one, or step with **Back** / **Next** at the bottom; **Guide** walks you through them, **Help** opens the reference).
 
 ```{figure} figures/spectra_overview.png
 :name: fig-spectra-overview
 :width: 100%
 
-**Overview** on the staging database of this machine: 2141 components, 1808
-of them with at least one spectrum; 977 fluorophores, 898 filters, 190
-dichroics, 69 detectors.
+**Overview** on the staging database of this machine: 2141 components, 1808 of them with at least one spectrum; 977 fluorophores, 898 filters, 190 dichroics, 69 detectors, followed by the category and source tables.
 ```
 
 | panel | what it does |
 |---|---|
-| **Overview** | counts by category and source. **Refresh** re-reads the database |
-| **Browse** | filter by name, **Source** and **Category**; the selected component's fields, its **Properties** and raw **Metadata (JSON)**, and its spectra; **Push selected** / **Push all** send components to the MMFDB |
-| **Download** | pick a source under **Available Sources**, **Run Selected Script**, and follow the scraper's log. **Browse this source** jumps to what that source already delivered |
-| **Add to MMFDB** | **Endpoint** (local file or ZMQ server), the local MMFDB path or host/ports and user/password, **Replace existing reference set**, **Mark imported as approved**, then push |
+| **Overview** | the counts as fields, and one table of components per category and one per source. **Refresh** re-reads the database |
+| **Browse** | **Filter** by name, **Source** and **Category**; click a row to see the component's fields, its **Properties** and raw **Metadata (JSON)**, and its spectra; tick the **Push** box of components and press **Push selected** (or **Push all**): both ask first and report what was pushed |
+| **Download** | pick a source under **Available sources**, **Run selected script** (one run at a time), and follow the scraper's log. **Browse this source** jumps to what that source already delivered |
+| **Add to MMFDB** | **Endpoint** (local file or ZMQ server), the local MMFDB path, **Replace existing reference set**, **Mark imported as approved**, the fold **Advanced — connection & authentication** (host, ports typed or stepped, user, password), **Check session**, then **Add all to MMFDB**; what the import did is logged below |
 
 ```{figure} figures/spectra_browse.png
 :name: fig-spectra-browse
 :width: 100%
 
-**Browse**, filtered to ATTO 647N. The component merged records from ATTO-TEC
-and Chroma (Source `atto,chroma`); it carries QY 0.65 and ε 1.50×10⁵ M⁻¹ cm⁻¹
-from ATTO-TEC, and absorption, excitation and emission spectra, all
-peak-normalised.
+**Browse**, filtered to ATTO 647N: one component of the 2141 in this staging database (Source `chroma`, Status `unverified`). The detail form, the **Properties** table and the excitation and emission spectra (peak-normalised) are those of the selected row; the tick box in the **Push** column marks a component for **Push selected**.
 ```
 
 ## 2. Where the spectra come from, and the terms they come under

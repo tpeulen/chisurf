@@ -261,14 +261,14 @@ class SpectraState:
         user = m.user or active_user_id()
         if m.mode == "server":
             try:
-                return client_is_admin(self.server_client(), user), f"{m.host}:{m.cmd_port}"
+                return client_is_admin(self.server_client(), user), f"server {m.host}:{m.cmd_port}"
             except Exception as exc:
-                return False, str(exc)
+                return False, f"not authenticated ({exc})"
         target = m.db_path or self.resolved()
         admin, any_admin = (
             local_admin_status(target, user) if Path(target).exists() else (True, False)
         )
-        return admin, Path(target).name if any_admin else "bootstrap"
+        return admin, f"local {Path(target).name}" if any_admin else "bootstrap (no admin yet)"
 
     @staticmethod
     def resolved():
@@ -284,7 +284,7 @@ class SpectraState:
         ok, note = self.authorized()
         user = self.endpoint.user or active_user_id()
         if ok:
-            return True, f"Session user {user} is an administrator ({note}) - no login needed."
+            return True, f"Session user {user} is an administrator ({note}) — no login needed."
         return False, (
             f"Session user {user} may not add to the MMFDB ({note}). "
             "Set credentials under Advanced or use an admin account."

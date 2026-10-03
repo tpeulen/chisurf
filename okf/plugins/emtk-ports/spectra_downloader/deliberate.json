@@ -1,0 +1,14 @@
+{
+ "4": "A number of the Qt fixture (a count in the Qt table/summary); the counts are compared with the Qt panel in test_overview_counts_equal_the_qt_panel",
+ "bycategory/source(json)": "The Qt JSON text box is two tables (Category / Source with their counts) on the Overview (test_overview_refresh_rereads_the_database)",
+ "cancel": "Qt status-bar Cancel stops a running sub-tool task; the emtk tool has no such task (a scraper runs to its end, Run is greyed meanwhile: test_run_is_greyed_while_a_scraper_runs)",
+ "commandport": "Inside the collapsed 'Advanced' fold, drawn when it is opened (test_the_advanced_fields_are_typed_ports_are_spin_fields_and_the_password_is_masked)",
+ "publishport": "Inside the collapsed 'Advanced' fold (same test)",
+ "host": "Inside the collapsed 'Advanced' fold (same test)",
+ "user": "Inside the collapsed 'Advanced' fold (same test)",
+ "password": "Inside the collapsed 'Advanced' fold (same test)",
+ "selectaddtommfdbtoload.": "Qt placeholder of a not yet built panel; the emtk panels are drawn on selection",
+ "selectbrowsetoload.": "same",
+ "selectdownloadtoload.": "same",
+ "selectoverviewtoload.": "same"
+}

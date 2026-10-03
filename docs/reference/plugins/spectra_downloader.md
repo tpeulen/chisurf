@@ -21,7 +21,7 @@ Download, browse and push optical-component spectra (fluorophores, filters, dich
 | Menu path | Spectroscopy → **Spectra Downloader** |
 | Categories | Spectroscopy, Spectra |
 | Version | 0.2.0 |
-| Surfaces | cli, gui |
+| Surfaces | cli, gui, emtk |
 
 ## Parameters
 
