@@ -1,0 +1,88 @@
+diff --git a/chisurf/plugins/tttr/ptu_alex_creator/README.md b/chisurf/plugins/tttr/ptu_alex_creator/README.md
+index 1d44dc72e..a837a48e0 100644
+--- a/chisurf/plugins/tttr/ptu_alex_creator/README.md
++++ b/chisurf/plugins/tttr/ptu_alex_creator/README.md
+@@ -67,3 +67,16 @@ This plugin is part of the ChiSurf package and is distributed under the same lic
+ ## Author
+ 
+ This plugin was created as part of the ChiSurf project.
++
++## Native EMTK
++
++The manifest exposes `gui.app:make_app`. The native tool uses the same
++Qt-free core/API as Qt for phase preview, single-file conversion, batch
++conversion and merge. It adds native file/database pickers, asynchronous work,
++queue context removal, help/guide, six-language labels/tooltips and saved
++settings/dock layout. Remembered files are loaded explicitly.
++
++`test/test_native.py` compares real photon arrays and header JSON against the
++shared core/API. `test/native-parity.json` records screenshots and outstanding
++verification limits. The current Qt plugin is an ALEX converter, not a
++synthetic photon generation wizard or detector preset editor.
+diff --git a/chisurf/plugins/tttr/ptu_alex_creator/manifest.json b/chisurf/plugins/tttr/ptu_alex_creator/manifest.json
+index 98c8cabba..681dcc3e5 100644
+--- a/chisurf/plugins/tttr/ptu_alex_creator/manifest.json
++++ b/chisurf/plugins/tttr/ptu_alex_creator/manifest.json
+@@ -3,20 +3,53 @@
+   "version": "2.0.0",
+   "display_name": "Tools:Converter:ALEX Creator",
+   "description": "Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files.",
+-  "authors": ["Thomas-Otavio Peulen"],
+-  "categories": ["Tools", "Converter", "TTTR"],
+-  "icon": "🚦",
++  "authors": [
++    "Thomas-Otavio Peulen"
++  ],
++  "categories": [
++    "Tools",
++    "Converter",
++    "TTTR"
++  ],
++  "icon": "\ud83d\udea6",
+   "menu_hidden": true,
+-  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
++  "statefulness": {
++    "enabled": true,
++    "window": {
++      "enabled": true,
++      "settings_key": null
++    }
++  },
+   "entrypoints": {
+     "gui": "chisurf.plugins.tttr.ptu_alex_creator.gui.tool:AlexPTUCreator",
+     "cli": "alex=chisurf.plugins.tttr.ptu_alex_creator.cli.main:cli",
+-    "services": "chisurf.plugins.tttr.ptu_alex_creator.backend.services:register_services"
++    "services": "chisurf.plugins.tttr.ptu_alex_creator.backend.services:register_services",
++    "emtk": "chisurf.plugins.tttr.ptu_alex_creator.gui.app:make_app"
+   },
+   "rpc_methods": [
+-    {"name": "alex.convert", "summary": "Convert one ALEX file per input to micro-time.", "long_running": true, "cancelable": false},
+-    {"name": "alex.merge", "summary": "Merge several ALEX files into a single micro-time file.", "long_running": true, "cancelable": false},
+-    {"name": "alex.histogram", "summary": "Return the ALEX micro-time histogram of a file.", "long_running": false, "cancelable": false},
+-    {"name": "alex.contract.describe", "summary": "Describe the ALEX Creator workflow contract.", "long_running": false, "cancelable": false}
++    {
++      "name": "alex.convert",
++      "summary": "Convert one ALEX file per input to micro-time.",
++      "long_running": true,
++      "cancelable": false
++    },
++    {
++      "name": "alex.merge",
++      "summary": "Merge several ALEX files into a single micro-time file.",
++      "long_running": true,
++      "cancelable": false
++    },
++    {
++      "name": "alex.histogram",
++      "summary": "Return the ALEX micro-time histogram of a file.",
++      "long_running": false,
++      "cancelable": false
++    },
++    {
++      "name": "alex.contract.describe",
++      "summary": "Describe the ALEX Creator workflow contract.",
++      "long_running": false,
++      "cancelable": false
++    }
+   ]
+ }

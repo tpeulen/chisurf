@@ -1,0 +1,52 @@
+{
+ "_comment": "Guided tour for the ALEX Creator. Targets are the names the app registers for its controls; a step with an await waits until the user operates that control (the tour never presses it).",
+ "steps": [
+  {
+   "title": "Load a photon file",
+   "text": "ALEX alternates two lasers within the macro-time, so the phase of every photon says which laser excited it. Press <b>Open…</b> and choose a TTTR file (a .sm, .ptu, .ht3 ...), or drop one on the window. Its folded ALEX phase appears as a histogram.",
+   "target": {
+    "name": "input"
+   },
+   "await": {
+    "hint": "Press <b>Open…</b> and choose a file."
+   }
+  },
+  {
+   "title": "Set the period and the shift",
+   "text": "<b>Period</b> is the alternation period in macro-time units (not seconds) and <b>Shift</b> moves the phase. Drag either value sideways: the histogram on the right folds again at once. Set them so that the two excitation windows are separated cleanly and no photons sit on the border between them.",
+   "target": {
+    "name": "timing"
+   },
+   "await": {
+    "hint": "Drag the <b>Shift</b> value sideways (or <b>Period</b>) and watch the histogram."
+   }
+  },
+  {
+   "title": "Write the converted file",
+   "text": "<b>Save as…</b> writes a new photon file whose micro-time is the folded ALEX phase, in the output container chosen under <b>Output format</b>. The input file is never overwritten. The button stays grey until a file is loaded.",
+   "target": {
+    "name": "save"
+   },
+   "await": {
+    "hint": "Press <b>Save as…</b> (Cancel in the dialog to skip writing)."
+   }
+  },
+  {
+   "title": "Queue files for a batch",
+   "text": "For many files, <b>Add files…</b> (or <b>Folder…</b>, or the session database) fills the queue. The period, shift and formats above apply to every file in it.",
+   "target": {
+    "name": "batch"
+   },
+   "await": {
+    "hint": "Press <b>Add files…</b> (Cancel in the dialog to skip)."
+   }
+  },
+  {
+   "title": "Convert each, or merge",
+   "text": "Choose <b>Convert each</b> (needs an output folder) or <b>Merge into one</b> (successive streams are joined with continuing macro-time before folding), then press <b>Run batch</b>. Check the written file names in the message above the histogram.",
+   "target": {
+    "name": "run_batch"
+   }
+  }
+ ]
+}
