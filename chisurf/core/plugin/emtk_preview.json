@@ -3,9 +3,7 @@
   "preview": [
     "burst_h2mm",
     "burst_mle_analysis",
-    "hydropro",
-    "ptu_alex_creator",
-    "spectra_downloader",
-    "tttr_toolbox"
+    "code_editor",
+    "hydropro"
   ]
 }
