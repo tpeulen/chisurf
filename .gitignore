@@ -139,3 +139,5 @@ chisurf/plugins/chimol/chimol/web/pyodide/
 # Unlike test/renders/chrome_baseline/, these are NOT a baseline -- no test
 # reads them, they exist to be looked at -- so they are output, not source.
 chisurf/plugins/chimol/test/renders/widget_gallery/
+
+okf/plugins/emtk-ports/alex_suite/.tmp_data/
