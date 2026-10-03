@@ -78,21 +78,39 @@ def get_chain(top: md.Topology, chain_spec: str):
     raise ValueError(f"Chain '{chain_spec}' not found in topology")
 
 
-def find_residue(chain, resseq: int):
-    for res in chain.residues:
+def _chain_residues(top, chain):
+    """The residues of *chain*: the chain's own list on a topology that has one, else the topology's, filtered."""
+    own = getattr(chain, "residues", None)
+    if own is not None:
+        return list(own)
+    return [r for r in top.residues if getattr(getattr(r, "chain", None), "index", None) == chain.index]
+
+
+def _residue_atoms(top, residue):
+    """The atoms of *residue*: its own list on a topology that has one, else the topology's, filtered."""
+    own = getattr(residue, "atoms", None)
+    if own is not None:
+        return list(own)
+    return [atom for atom in top.atoms if atom.residue.index == residue.index]
+
+
+def find_residue(chain, resseq: int, top=None):
+    residues = _chain_residues(top, chain) if top is not None else chain.residues
+    for res in residues:
         if getattr(res, "resSeq", None) == resseq:
             return res
     return None
 
 
 def pick_atom_index(
-    residue, atom_name: str, fallback_atom_name: str | None = None
+    residue, atom_name: str, fallback_atom_name: str | None = None, top=None
 ) -> tuple[int, str] | None:
-    for at in residue.atoms:
+    atoms = _residue_atoms(top, residue) if top is not None else residue.atoms
+    for at in atoms:
         if at.name == atom_name:
             return at.index, atom_name
     if fallback_atom_name:
-        for at in residue.atoms:
+        for at in atoms:
             if at.name == fallback_atom_name:
                 return at.index, fallback_atom_name
     return None
@@ -110,10 +128,10 @@ def build_sites(
 
     sites: list[ResidueSite] = []
     for resseq in residue_numbers:
-        res = find_residue(chain, int(resseq))
+        res = find_residue(chain, int(resseq), traj.topology)
         if res is None:
             continue
-        picked = pick_atom_index(res, atom_name, fallback_atom_name)
+        picked = pick_atom_index(res, atom_name, fallback_atom_name, traj.topology)
         if picked is None:
             continue
         atom_index, used_atom = picked
@@ -325,12 +343,12 @@ def positions_from_fps_json(traj: md.Trajectory, fps: dict) -> list[LabelPositio
             chain_id = _chain_id_of(chain)
             if chain_identifier and chain_id != chain_identifier:
                 continue
-            for res in chain.residues:
+            for res in _chain_residues(traj.topology, chain):
                 if getattr(res, "resSeq", None) != resseq:
                     continue
                 if resname_cfg and str(res.name) != resname_cfg:
                     continue
-                picked = pick_atom_index(res, atom_name, fallback_atom_name="CA")
+                picked = pick_atom_index(res, atom_name, fallback_atom_name="CA", top=traj.topology)
                 if picked is None:
                     continue
                 atom_index, used_atom_name = picked
