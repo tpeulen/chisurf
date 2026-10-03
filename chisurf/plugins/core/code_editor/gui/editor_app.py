@@ -1040,6 +1040,14 @@ class CodeEditorGui:
         self._pending_close: EditorDocument | None = None
         self._tab_context: EditorDocument | None = None
         self._tab_context_pos = (0.0, 0.0)
+        self.find_open = False
+        self.find_text = ""
+        self.replace_text = ""
+        self.find_case = False
+        self.find_whole = False
+        self.find_status = ""
+        self._find_focus = False
+        self.pending_actions: list[Callable[[], None]] = []
 
         # Dock layout:
         # files (left) | (editor top / output bottom) (center) | agent (right)
@@ -1108,6 +1116,118 @@ class CodeEditorGui:
             if im.begin("Agent permission##editor_permission"):
                 self.chat_gui._draw_permission_banner()
             im.end()
+
+    # -- find / replace -------------------------------------------------------------------------------------------------- #
+    def open_find(self) -> None:
+        """Show the find bar (Ctrl+F); the selected text, if any, becomes the search text."""
+        doc = self.model.active_doc
+        if doc is not None and doc.notebook is None and doc.editor.cursors.any_has_selection:
+            selected = doc.editor.selected_text()
+            if "\n" not in selected:
+                self.find_text = selected
+        self.find_open = True
+        self._find_focus = True
+
+    def close_find(self) -> None:
+        self.find_open = False
+        self.find_status = ""
+
+    def _find_editor(self):
+        doc = self.model.active_doc
+        return doc.editor if doc is not None and doc.notebook is None else None
+
+    def find_next(self) -> bool:
+        editor = self._find_editor()
+        if editor is None or not self.find_text:
+            return False
+        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        found = editor.find_next()
+        self.find_status = "" if found else "Not found"
+        return found
+
+    def find_all(self) -> int:
+        editor = self._find_editor()
+        if editor is None or not self.find_text:
+            return 0
+        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        count = editor.find_all()
+        self.find_status = f"{count} matches" if count else "Not found"
+        return count
+
+    def replace_one(self) -> bool:
+        """Replace the selected match and move to the next one."""
+        editor = self._find_editor()
+        if editor is None or not self.find_text:
+            return False
+        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        selected = editor.selected_text() if editor.cursors.any_has_selection else ""
+        same = selected == self.find_text if self.find_case else selected.lower() == self.find_text.lower()
+        if not same and not self.find_next():
+            return False
+        editor.replace_current(self.replace_text)
+        self.find_next()
+        return True
+
+    def replace_all(self) -> int:
+        editor = self._find_editor()
+        if editor is None or not self.find_text:
+            return 0
+        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        count = editor.replace_all(self.replace_text)
+        self.find_status = f"{count} replaced" if count else "Not found"
+        return count
+
+    def _draw_find_bar(self) -> None:
+        if not self.find_open or self._find_editor() is None:
+            return
+        flags = im.InputTextFlags.ENTER_RETURNS_TRUE
+        im.text("Find")
+        im.same_line()
+        im.set_next_item_width(170.0)
+        if self._find_focus:
+            from emtk.im_core import get_current_context
+
+            get_current_context().state(("focus",)).pop("id", None)  # the editor lets go of the keyboard
+            im.set_keyboard_focus_here()
+            self._find_focus = False
+        entered, self.find_text = im.input_text("##find_text", self.find_text, "text to find", flags)
+        im.set_item_tooltip("Text to find in the active document; Enter selects the next match")
+        if entered:
+            self.find_next()
+        im.same_line()
+        if im.button("Next"):
+            self.find_next()
+        im.set_item_tooltip("Select the next match (wraps around at the end)")
+        im.same_line()
+        if im.button("All"):
+            self.find_all()
+        im.set_item_tooltip("Put a caret on every match; typing then edits all of them")
+        im.same_line()
+        _, self.find_case = im.checkbox("Match case##find_case", self.find_case)
+        im.set_item_tooltip("Match upper and lower case exactly")
+        im.same_line()
+        _, self.find_whole = im.checkbox("Whole word##find_whole", self.find_whole)
+        im.set_item_tooltip("Match only whole words")
+        im.text("Replace")
+        im.same_line()
+        im.set_next_item_width(170.0)
+        _, self.replace_text = im.input_text("##replace_text", self.replace_text, "replacement")
+        im.set_item_tooltip("Text that replaces a match")
+        im.same_line()
+        if im.button("Replace"):
+            self.replace_one()
+        im.set_item_tooltip("Replace the selected match and select the next one")
+        im.same_line()
+        if im.button("Replace all"):
+            self.replace_all()
+        im.set_item_tooltip("Replace every match in the document")
+        im.same_line()
+        if im.button("Close find"):
+            self.close_find()
+        im.set_item_tooltip("Hide the find bar (Escape)")
+        if self.find_status:
+            im.text_disabled(self.find_status)
+        im.separator()
 
     def _request_open(self) -> None:
         self._dialog_document = None
@@ -1369,8 +1489,19 @@ class CodeEditorGui:
             im.set_item_tooltip('Copy relative path')
             im.end_popup()
 
+    @staticmethod
+    def _same_line_or_wrap(box: tuple[float, float, float, float], needed: float) -> None:
+        """Continue the toolbar row when the next control (*needed* px wide) still fits in the window, else start a new row."""
+        x, y, w, h = im.get_item_rect()
+        if x + w + 8.0 + needed <= box[0] + box[2] - 4.0:
+            im.same_line()
+
     def _draw_editor_tabs(self, box: tuple[float, float, float, float]) -> None:
         """Render editor tab bar, toolbar, active TextEditor widget, and status bar."""
+        # Shortcuts queued by the host's key events run here, inside the editor window, as the buttons do.
+        actions, self.pending_actions = self.pending_actions, []
+        for action in actions:
+            action()
         # Clicking this dock makes its selected document the public active buffer.
         io = im.get_io()
         mx, my = io.mouse_pos
@@ -1395,6 +1526,10 @@ class CodeEditorGui:
                 if im.menu_item("Settings…"):
                     self.settings_open = True
                     self.docks.focus("editor_settings")
+                im.end_menu()
+            if im.begin_menu("Edit"):
+                if im.menu_item("Find…"):
+                    self.open_find()
                 im.end_menu()
             if im.begin_menu("Run"):
                 if self.model.is_running_script or notebook_running:
@@ -1444,24 +1579,24 @@ class CodeEditorGui:
         if im.button("➕ New"):
             self.model.new_document()
         im.set_item_tooltip("New — create an empty document")
-        im.same_line()
+        self._same_line_or_wrap(box, im.calc_text_size("📂 Open")[0] + 14.0)
         if im.button("📂 Open"):
             self._request_open()
         im.set_item_tooltip("Open… — choose files to open in the editor")
-        im.same_line()
+        self._same_line_or_wrap(box, im.calc_text_size("💾 Save")[0] + 14.0)
         if im.button("💾 Save"):
             self._request_save(self.model.active_doc)
         im.set_item_tooltip("Save — save the active document to disk")
-        im.same_line()
+        self._same_line_or_wrap(box, im.calc_text_size("📝 Save As")[0] + 14.0)
         if im.button("📝 Save As"):
             self._request_save(self.model.active_doc, save_as=True)
         im.set_item_tooltip("Save As… — save the active document under a chosen name")
         if self.model.documents:
-            im.same_line()
+            self._same_line_or_wrap(box, im.calc_text_size("✖ Close")[0] + 14.0)
             if im.button("✖ Close"):
                 self._request_close(self.model.active_doc)
             im.set_item_tooltip("Close — close the active document; ask before discarding changes")
-        im.same_line()
+        self._same_line_or_wrap(box, 70.0)
         if self.model.is_running_script or notebook_running:
             im.push_style_color(Col.BUTTON, (160, 60, 60, 255))
             if im.button("■ Stop"):
@@ -1474,26 +1609,26 @@ class CodeEditorGui:
                 self.model.run_active_script()
             im.set_item_tooltip("Run Script — run the active Python document and display its output")
             im.pop_style_color()
-        im.same_line()
+        self._same_line_or_wrap(box, 150.0)
         im.set_next_item_width(150.0)
         changed, endpoint = im.combo("##run_endpoint", 1 if self.model.run_endpoint == "console" else 0,
             ["Separate process", "In ChiSurf console"])
         im.set_item_tooltip("Process: isolated, stoppable execution. Console: main-thread macros with access to ChiSurf state; long macros block interaction.")
         if changed:
             self.model.run_endpoint = "console" if endpoint == 1 else "process"
-        im.same_line()
+        self._same_line_or_wrap(box, im.calc_text_size("🧹 Check")[0] + 14.0)
         if im.button("🧹 Check"):
             self.model.start_ruff()
         im.set_item_tooltip("Ruff Check — check the unsaved Python buffer using the optional Ruff executable")
-        im.same_line()
+        self._same_line_or_wrap(box, im.calc_text_size("🛠 Fix")[0] + 14.0)
         if im.button("🛠 Fix"):
             self.model.start_ruff(fix=True)
         im.set_item_tooltip("Ruff Fix — apply Ruff's safe fixes to the unsaved buffer; save explicitly afterwards")
-        im.same_line()
+        self._same_line_or_wrap(box, im.calc_text_size("📓 Notebook")[0] + 14.0)
         if im.button("📓 Notebook"):
             self.model.new_document("Untitled.ipynb")
         im.set_item_tooltip("New notebook — create an empty notebook with editable cells and a persistent ChiSurf shell")
-        im.same_line()
+        self._same_line_or_wrap(box, im.calc_text_size("⚙ Settings")[0] + 14.0)
         if im.button("⚙ Settings"):
             self.settings_open = True
             self.docks.focus("editor_settings")
@@ -1530,6 +1665,8 @@ class CodeEditorGui:
             im.dummy(0.0, 40.0)
             im.text_disabled("No open documents. Click 'New' or pick a file on the left.")
             return
+
+        self._draw_find_bar()
 
         # Tab bar
         if im.begin_tab_bar("editor_tabs"):
@@ -1586,7 +1723,14 @@ class CodeEditorGui:
                 pass
             path_label = active.path if active.path else "Untitled"
             state = "Modified" if active.is_modified else ("Saved" if active.path else "Unsaved")
-            im.text_disabled(f"{path_label}  ·  Ln {cur_line}, Col {cur_col}  |  UTF-8  |  {state}")
+            tail = f"  ·  Ln {cur_line}, Col {cur_col}  |  UTF-8  |  {state}"
+            room = max(40.0, box[2] - 16.0 - im.calc_text_size(tail)[0])
+            shown = str(path_label)
+            while len(shown) > 4 and im.calc_text_size(shown)[0] > room:
+                shown = shown[1:]
+            if shown != str(path_label):
+                shown = "…" + shown[1:]
+            im.text_disabled(f"{shown}{tail}")
 
     def _draw_output_console(self, box: tuple[float, float, float, float]) -> None:
         """Render the execution logs and output terminal."""
@@ -1796,6 +1940,37 @@ class CodeEditorApp(ImApp):
         self.model.request_frame = self.request_frame
         self.editor_gui.save_preferences = self.save_preferences
 
+    def key(self, key, text="", modifiers=0):
+        """Editor shortcuts (Ctrl, or Command on a Mac): S save, Shift+S save as, O open, N new, W close, F find; Escape closes find.
+
+        The actions are queued and run in the next frame, inside the editor window, exactly where the buttons run them.
+        """
+        from emtk.events import CONTROL_MODIFIER, SHIFT_MODIFIER
+        from emtk.keys import KEY_ESCAPE, letter_of
+
+        gui = self.editor_gui
+        doc = self.model.active_doc
+        action = None
+        if modifiers & CONTROL_MODIFIER:
+            letter = letter_of(key, text)
+            if letter == "s" and doc is not None:
+                action = lambda: gui._request_save(doc, save_as=bool(modifiers & SHIFT_MODIFIER))  # noqa: E731
+            elif letter == "o":
+                action = gui._request_open
+            elif letter == "n":
+                action = self.model.new_document
+            elif letter == "w" and doc is not None:
+                action = lambda: gui._request_close(doc)  # noqa: E731
+            elif letter == "f" and doc is not None and doc.notebook is None:
+                action = gui.open_find
+        elif key == KEY_ESCAPE and gui.find_open:
+            action = gui.close_find
+        if action is not None:
+            gui.pending_actions.append(action)
+            self.wants_frame = True
+            return True
+        return super().key(key, text, modifiers)
+
     def save_preferences(self) -> bool:
         from chisurf.emtk.state import save_settings
         return save_settings(getattr(self, "_native_state_id", "code_editor"), self.export_settings())
@@ -1837,6 +2012,9 @@ class CodeEditorApp(ImApp):
         finally:
             im.pop_font_scale()
         self.model._sync_document_store()
+        # One wheel notch scrolls once: an unconsumed notch would repeat on every later frame (emtk keeps it until a
+        # widget takes it, and the editor and the text areas do not clear it).
+        self.io.mouse_wheel = self.io.mouse_wheel_h = 0.0
 
 
 def make_editor_app(project_root: str | None = None) -> CodeEditorApp:
