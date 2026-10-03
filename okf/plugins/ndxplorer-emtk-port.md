@@ -22,6 +22,40 @@ registers through `create(app) -> Feature` (hooks are documented in
 
 ## Where to pick this up
 
+### Lines from other tools, provenance, embedding (2026-10-03)
+
+State:
+- **Data lines.** Overlay kind `data` (`core/overlay_curves.py`: `data_spec`;
+  in `KINDS`, `TRACED_KINDS`, `SPEC_KINDS`): tabulated x/y, no parameters, Fit
+  greyed, no parameter table, kept in the session. App API:
+  `NdxApp.add_overlay_lines(LineSet, source)` (a name already there is
+  updated in place), `remove_overlay_line(title)`; `frame.live_apps()` lists
+  the apps not closed. ChiSurf: `window.push_overlay_lines`; the FRET-line
+  tool's `computed_lines_as_overlays` (E vs tau_F, named "FRET line - <line>
+  - <sweep>", the line's colour) and `model.push_to_ndx`. Figure:
+  `docs/guides/figures/82_fret_lines_in_ndx.png` (guide 82).
+- **Burst-ID provenance**, **embedded close**: "Hosted in ChiSurf" items 1, 4.
+- **Ranking table**: `fit_columns`, window 760 px, name-column tooltips; a
+  name still too long shows whole as its cell's tooltip.
+- **Vector constants in the curve fit** are fitted per population.
+- Commits: ndxplorer ca9a2f7, 3f8c1db, 5796cdf, a53837a, cb65f87, 316946a;
+  chisurf a24e02cd7, 92ca50320, b8987b6b1, 67e417dcf; mmfdb a58feaa.
+- Tests: ndX `tests/test_app/test_overlay_lines.py`, `test_io.py`
+  (recorder), `test_playback_export.py`,
+  `tests/test_curve_fit_data_parameters.py`; ChiSurf
+  `plugins/ndxplorer/tests/test_push_fret_lines.py` (`NDX_PUSH_SHOT=<png>`
+  saves the window), `test_window_routes.py` (MMFDB write-back on a temp
+  database, embedded close); mmfdb `tests/test_ndxplorer_services_auth.py`.
+
+Open:
+1. `plot_backend` and `TOOLBAR_TARGET` (Qt GUI deleted, items 1-2) still wait
+   for another session's uncommitted `performance_config.py` /
+   `accurate_fret.py`.
+2. ChiSurf's mmfdb gitlink is not bumped to a58feaa (the write-back needs
+   it).
+3. A FRET line is pushed as E vs tau_F only; the LineSet's `axes` hint is not
+   used to pick ndX's axes.
+
 ### Default axes follow the table (2026-10-02)
 
 State: `ndxplorer/app/default_view.py` (`choose_axes`) decides what a table
@@ -99,30 +133,32 @@ as Qt needs a ChiSurf checkout from before 2633b5853 as well.
 
 Open front:
 
+0. **Done 2026-10-03**: guide 47's figure regrabbed; FRET lines pushed into
+   ndX; MMFDB burst-ID write-back; the embedded ALEX window closes its app;
+   full names in the ranking table; vector constants fitted per population.
+   See the struck items below and "Lines from other tools, provenance,
+   embedding (2026-10-03)".
 1. **`performance_config.plot_backend`** (default `"pyqtgraph"`) is a setting
    only the Qt window read; the Settings > Performance panel still shows it
    ("kept in the settings for it"). Drop the field and the note
    (`utils/performance_config.py`, `app/features/settings.py`) -- left alone
-   here because another session had `performance_config.py` uncommitted.
+   here because another session had `performance_config.py` uncommitted
+   (still so on 2026-10-03).
 2. **Accurate FRET capture target** `TOOLBAR_TARGET` in
    `app/features/accurate_fret.py` still spells the Qt toolbar
    (`win.findChild(QtWidgets.QToolBar, ...)`): it is the scenario's capture
    key, not an import; rename it with the scenario when that file is free
-   (it had another session's uncommitted edits).
-3. **Push FRET lines to ndX**: ChiSurf's FRET-line tool pushed lines into the
-   Qt overlay panel. The app's Overlays tab takes equations only, so the Qt
-   tool's *Push to ndX* now says it cannot, and the emtk FRET-line app waits
-   for a host overlay connection. Needs an app API for tabulated curves
-   (x/y arrays) on the Overlays tab.
-4. **`rpc.lines`** (`PhasorLines` / `FretLines`) has no GUI user left (the Qt
-   `phasor_integration` was its only one); only `tests/test_rpc.py` calls it.
-   Keep for a future overlay connection or delete with item 3 decided.
-5. **Guide 47's figure** `47_ndx_bridge_pda.png` is still the Qt grab: the
-   ported `_grab_47_pda_bridge` (emtk) fails in this env because the
-   IMP.bff build on the path is stale (`_IMP_bff has no attribute
-   IMP_BFF_HAS_IMP_ISD` inside `pda.from_bursts`). Re-run
-   `docs/guides/screenshots/run.py guides_47_52 _grab_47_pda_bridge` once
-   IMP.bff is rebuilt, and read the PNG.
+   (it had another session's uncommitted edits; still so on 2026-10-03).
+3. ~~**Push FRET lines to ndX**~~ -- done 2026-10-03: a *data* overlay kind
+   (`overlay_curves.data_spec`, x/y arrays, no parameters),
+   `NdxApp.add_overlay_lines` / `remove_overlay_line`, `frame.live_apps()`;
+   ChiSurf's `window.push_overlay_lines` reaches every open app (both
+   routes); the FRET-line tool (Qt and emtk) pushes E vs tau_F through it.
+4. ~~**`rpc.lines`**~~ -- kept: `LinesService.push(app, provider)` draws a
+   provider's LineSet in an app (`tests/test_app/test_overlay_lines.py`).
+5. ~~**Guide 47's figure**~~ -- regrabbed 2026-10-03 (chisurf a24e02cd7).
+   Trap: run it with `CHISURF_SETTINGS_DIR` set to a scratch folder, and
+   IMP.bff must import (`IMP_BFF_HAS_IMP_ISD`).
 
 ### Phasor IRF / background correction (2026-10-01)
 
@@ -303,11 +339,12 @@ window on a **copy** of the cal1 `.pto`, `session_autosave=False`,
 
 Open front:
 
-1. **MMFDB provenance on Save burst IDs** is lost: the MMFDB admin opened the
-   Qt window with `processed_data_id`/`experiment_id`, and saving burst IDs
-   called `ndxplorer.record_analysis` over RPC. The emtk io feature has no
-   hook for it; the admin now just opens the path. Needs an app hook (like
-   `mmfdb_opener`) called after `_write_burst_ids`, set by the host.
+1. ~~**MMFDB provenance on Save burst IDs**~~ -- done 2026-10-03:
+   `app.burst_ids_recorder`, set by `NdxWindow.record_burst_ids_in_mmfdb`
+   (the admin's *Open in ndX*). It needed an mmfdb fix: the `ndxplorer.*`
+   services had no auth boundary and failed on a logged-in client's `auth`
+   (mmfdb a58feaa). The menu's emtk entry (`gui/app.py`) has no product to
+   record against, so it records nothing.
 2. **The MMFDB picker is the legacy Qt `MmfdbDatasetPickerDialog`**, opened by
    the host window (not a new Qt surface). An uncommitted native port in
    another session has `chisurf.emtk.dataset_picker.DatasetPicker`; switch
@@ -317,9 +354,9 @@ Open front:
    (and `chisurf/plugins/ndxplorer/gui/app.py`, which decorates the app a
    second way). Left untouched (not this session's); it must be reconciled with
    `build_ndxplorer_window` so there is one construction.
-4. **Embedded ALEX step**: `embed_mainwindow` flattens `NdxWindow` into the
-   workflow, so its `closeEvent` never runs -- no `app.close()` (session save
-   on close) and no Global View withdraw for that window.
+4. ~~**Embedded ALEX step**~~ -- done 2026-10-03: `NdxWindow` watches the
+   top-level window its host is shown in (the close is checked after Qt
+   handled it) and the host's destruction; both reach `_close_app`.
 5. **Imaging live sync** hands a new table each run (`show_source`), which
    clears the gates; the Qt window did the same through `data_source`.
 6. ~~Deleting ndX's own Qt GUI~~ done 2026-10-02 (see "Qt GUI deleted").
@@ -676,8 +713,9 @@ into `test_curve_input_widget_renders_and_dispatches`.
 Next:
 1. ~~What a vector *means* outside the constants~~ — done 2026-09-24 (curves,
    curve fit, Gaussians, Gaussian Save/Load: see "Vector parameters mean
-   something"); left: a vector constant freed in the curve fit moves only its
-   global value.
+   something"); ~~left: a vector constant freed in the curve fit moves only its
+   global value~~ -- done 2026-10-03: `DataParameters.free()` fits each freed
+   element (`tests/test_curve_fit_data_parameters.py`).
 2. ~~The Qt tables cannot make a vector~~ — done 2026-09-24 (*Make vector… /
    Populations… / Make scalar* through `population_vector`).
 3. ~~`write_vector` repeats `apply_vector_entries`~~ — done 2026-09-24.
