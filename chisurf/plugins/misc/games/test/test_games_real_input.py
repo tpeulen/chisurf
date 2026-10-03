@@ -21,6 +21,15 @@ GAMES = pathlib.Path(__file__).resolve().parents[1]
 K = QtCore.Qt
 
 
+@pytest.fixture(autouse=True)
+def _hermetic_settings(tmp_path, monkeypatch):
+    """The games never touch the real ~/.chisurf: HOME and the chisurf/MMFDB folders are temporary."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "cs"))
+    monkeypatch.setenv("MMFDB_SETTINGS_DIR", str(tmp_path / "mm"))
+    monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "mm.db"))
+
+
 @pytest.fixture(scope="module")
 def qapp():
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -267,6 +276,9 @@ def test_pong_pointer_drag_moves_the_player_paddle(qapp):
 
 
 def test_tetris_left_right_move_one_cell_per_press_and_up_rotates(qapp):
+    import random
+
+    random.seed(7)               # the first piece is random: pin it, or the O piece (no visible rotation) flakes this
     host = _host(qapp, "tetris")
     app = host.control
     game = app.game
