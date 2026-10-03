@@ -9,7 +9,7 @@
   "categories": [
     "Spectroscopy"
   ],
-  "icon": "🔬",
+  "icon": "\ud83d\udd2c",
   "statefulness": {
     "enabled": true,
     "window": {
@@ -18,7 +18,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.microscopy.imaging_tools.gui.tool:ImagingToolsTool"
+    "gui": "chisurf.plugins.microscopy.imaging_tools.gui.tool:ImagingToolsTool",
+    "emtk": "chisurf.plugins.microscopy.imaging_tools.gui.app:make_app"
   },
   "optional_requires": {
     "clsm": "*",

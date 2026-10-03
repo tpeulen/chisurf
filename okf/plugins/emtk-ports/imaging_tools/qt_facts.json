@@ -1,0 +1,58 @@
+{
+ "rows": [
+  "🧭 Setup",
+  "📂 Browser",
+  "🎯 Drift",
+  "◎ Resolution",
+  "🌊 Flow",
+  "🐜 Tracking",
+  "🔆 1. Intensity",
+  "✨ 2. Number & Brightness",
+  "⏱️ 3. Mean Micro-Time",
+  "🎛️ 4. IRF & BG",
+  "◐ 5. Phasor-FLIM",
+  "🗺️ 6. Pixel-wise MLE",
+  "────────",
+  "✏️ CLSM Draw",
+  "🎯 Spot Finder",
+  "💠 Region MLE",
+  "🔭 PSF Determination"
+ ],
+ "order": [
+  "browser",
+  "drift",
+  "frc",
+  "tracking",
+  "pixel_intensity",
+  "pixel_nb",
+  "pixel_micro_time",
+  "calibration",
+  "pixel_phasor",
+  "pixel_mle"
+ ],
+ "analysis": [
+  "pixel_intensity",
+  "pixel_nb",
+  "pixel_micro_time",
+  "pixel_phasor"
+ ],
+ "descriptions": {
+  "setup": "Define detector channels and PIE time windows once for all imaging tools.",
+  "browser": "Browse TTTR image files and explore intensity maps.",
+  "drift": "Optional pre-processing: measure and remove inter-frame sample drift. Belongs before the numbered steps — every per-pixel map below is built from frames that must already be aligned. Photon streams are corrected photon by photon, so the steps below still see real photons.",
+  "frc": "How fine a detail this acquisition actually resolves, by Fourier ring correlation between two independent halves of it. Sits after Drift because drift blurs the image and so lowers the measured resolution — measure it on frames that are already aligned.",
+  "flow": "Map the velocity field: one arrow per tile, over the image. Sits beside Tracking because both measure motion rather than building a per-pixel map -- and after Drift for the same reason Tracking is, since a drifting stage is indistinguishable from a sample flowing the other way. Tracking follows individual particles; this reads a velocity from the correlations of everything at once, so it works where the labels are too dense to resolve as spots.",
+  "tracking": "Follow individual particles through the frames and fit their diffusion coefficient. Sits after Drift because a drifting sample looks exactly like directed motion, and outside the numbered steps because it measures motion rather than building a per-pixel map.",
+  "pixel_intensity": "Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference).",
+  "pixel_nb": "Per-pixel Number (N) and Brightness (B); adds fields to the imaging HDF5.",
+  "pixel_micro_time": "Per-pixel mean micro-time (arrival time, ns) per detector window; adds fields to the imaging HDF5.",
+  "calibration": "Optional: per-detector IRF file + background (kHz); transferred to Phasor and MLE. Skippable.",
+  "pixel_phasor": "Per-pixel phasor (g, s) maps and phasor plot; adds fields to the imaging HDF5.",
+  "pixel_mle": "Pixel-wise MLE lifetime analysis; adds fields to the imaging HDF5.",
+  "separator": "",
+  "clsm_draw": "Interactive CLSM pixel selection, ROI drawing and decay extraction; opens imaging HDF5 (via source back-reference).",
+  "spot_finder": "Find the regions — molecules, beads, objects — and write them, with their pixels, into each measurement's container.",
+  "molecule_mle": "Lifetime MLE per region, on the regions the Spot Finder found.",
+  "psf": "3D Gaussian PSF fitting and bead detection."
+ }
+}
