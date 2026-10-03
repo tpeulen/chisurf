@@ -279,6 +279,8 @@ class AlexSuiteTool(BurstAnalysisTool):
     TITLE = "ALEX Suite"
     NAVIGATION_WIDTH = 280
     NAVIGATION_MIN_WIDTH = 260
+    # ALEX's pipeline starts at its own setup step, whose role is "channels".
+    INITIAL_ROLE = "channels"
 
     def __init__(self, parent=None):
         """Create the ALEX Suite window."""
