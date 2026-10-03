@@ -2042,27 +2042,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             p.grid(x=True, y=True)
 
             info = self.channel_definer.detectors[det]
-            chs = info["chs"]
-            pchs = chs[::2]
-            schs = chs[1::2] if len(chs) > 1 else chs
-
-            sb, eb = self.micro_time_range
-            tp = self.filter_tttr(burst, self.micro_time_range, pchs)
-            ts = self.filter_tttr(burst, self.micro_time_range, schs)
-            cp = tp.get_microtime_histogram(self.micro_time_binning)[0].astype(
-                np.float64, copy=False
-            )
-            cs_hist = ts.get_microtime_histogram(self.micro_time_binning)[0].astype(
-                np.float64, copy=False
-            )
-            # zero outside window for visualization
-            if sb > 0:
-                cp[:sb] = 0
-                cs_hist[:sb] = 0
-            if eb < cp.size:
-                cp[eb:] = 0
-                cs_hist[eb:] = 0
-            data = np.hstack([cp, cs_hist])
+            data = engine.burst_histogram(burst, info["chs"], self.micro_time_range, self.micro_time_binning)
 
             # plot it
             p.scatter(np.arange(data.size), data, size=4)

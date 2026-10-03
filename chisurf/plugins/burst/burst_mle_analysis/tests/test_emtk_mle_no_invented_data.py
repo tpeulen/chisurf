@@ -314,7 +314,7 @@ def test_the_app_source_cannot_make_data_up():
 
 def test_help_and_guide_exist_and_every_target_is_a_drawn_control(fresh_wizard):
     assert (GUI / "help.md").read_text(encoding="utf-8").startswith("# ")
-    steps = json.loads((GUI / "guide.json").read_text(encoding="utf-8"))["steps"]
+    steps = json.loads((GUI / "guide_wizard.json").read_text(encoding="utf-8"))["steps"]
     app = BurstMleApp(fresh_wizard)
     draw(app)
     for step in steps:

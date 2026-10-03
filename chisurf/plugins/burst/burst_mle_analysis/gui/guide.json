@@ -1,45 +1,62 @@
 {
-  "_comment": "Guided tour of the emtk burst-MLE app. Targets are the keys the app records with remember(): input_status, start_and_window, toolAction_run, decay, distribution. The Fit step waits for the real press.",
+  "_comment": "Guided tour of the emtk burst-MLE app. Targets are keys the app records: add_files, detector, auto, window_start, decay, toolAction_run, distribution. The Auto and Fit steps wait for the real press.",
   "steps": [
     {
       "title": "One lifetime per burst",
-      "text": "A burst holds a few hundred photons, so its decay is sparse. This tool fits <b>one lifetime per burst and detector</b> by Poisson maximum likelihood, with the IRF and background held fixed.<br/><br/>Every window shows what the wizard computed; with no fit they say so and draw nothing. Five steps.",
+      "text": "A burst holds a few hundred photons, so its decay is sparse. This tool fits <b>one lifetime per burst and detector</b> by Poisson maximum likelihood, with the IRF and background held fixed.<br/><br/>Every window shows what the engine computed; with no fit they say so and draw nothing.",
       "target": {}
     },
     {
-      "title": "Inputs first",
-      "text": "Burst files, an IRF and a background are needed before anything can be fitted. They are loaded in the wizard (or sent from the IRF/background step); this panel shows whether the current detector has them.",
+      "title": "Burst files",
+      "text": "Add the burst (.bur) tables of a finished burst analysis: <b>Add files</b>, <b>Add folder</b>, or drop them on the window. The analysis folder they belong to is read whole.",
       "target": {
-        "name": "input_status"
+        "name": "add_files"
       }
     },
     {
-      "title": "Start value and fit window",
-      "text": "<b>Tau start</b> is where the optimiser starts; the <b>window</b> is the range of micro-time bins that enter the likelihood. Leave out the empty bins before the prompt and the noisy tail. A change here is written to the wizard, which refits the current decay.",
+      "title": "Detectors",
+      "text": "The detectors (routing channels per colour) come from the <b>Detector setup</b> tab, the same editor the other tools use. Pick the one to fit here.",
       "target": {
-        "name": "start_and_window"
+        "name": "detector"
       }
     },
     {
-      "title": "Fit the bursts",
-      "text": "Fits every burst of the selected files and detectors. The decay window then shows the current file's data, model, IRF and background, and the distribution window the lifetimes of all bursts.",
+      "title": "IRF and background",
+      "text": "The fit needs an IRF and a background. <b>Auto IRF/background</b> picks the binning and the fit window, estimates a Gaussian IRF and the background from the photons outside the bursts, and fits. A measured IRF and background give better lifetimes.",
       "target": {
-        "name": "toolAction_run"
+        "name": "auto"
       },
       "await": {
-        "hint": "Press <b>Fit Bursts</b>."
+        "hint": "Press <b>Auto IRF/background</b>."
+      }
+    },
+    {
+      "title": "The fit window",
+      "text": "The <b>window</b> is the range of micro-time bins that enter the likelihood. Leave out the empty bins before the prompt and the noisy tail. A change refits the current decay.",
+      "target": {
+        "name": "window_start"
       }
     },
     {
       "title": "Read the fit",
-      "text": "The model should follow the data across the whole window, and the residuals (in the wizard) should scatter around zero. A fit whose scatter fraction ran to its bound is marked as diverged: fix gamma or use a measured IRF.<br/><br/>The <b>?</b> button has the rest.",
+      "text": "The model should follow the data across the whole window. The <b>Fit parameters</b> table gives start, fixed flag and result of tau, gamma, r0 and rho; tau is the lifetime in ns.",
       "target": {
         "name": "decay"
       }
     },
     {
+      "title": "Fit the bursts",
+      "text": "Fits every burst of every file and detector in worker processes. The histogram then shows the lifetimes of all bursts and the table their medians.",
+      "target": {
+        "name": "toolAction_run"
+      },
+      "await": {
+        "hint": "Press <b>Fit bursts</b>."
+      }
+    },
+    {
       "title": "The lifetime distribution",
-      "text": "The histogram of the fitted per-burst lifetimes. Drag the box to count the bursts inside a lifetime gate. A single burst's lifetime is noisy: read the distribution, not one value.",
+      "text": "Histogram of the fitted per-burst lifetimes. Drag the box to count the bursts in a lifetime gate. A single burst's lifetime is noisy: read the distribution, not one value. <b>Save results</b> writes the per-burst tables beside the burst folders.",
       "target": {
         "name": "distribution"
       }

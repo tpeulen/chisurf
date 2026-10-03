@@ -431,6 +431,22 @@ class NumpyEncoder(__import__("json").JSONEncoder):
         return super().default(obj)
 
 
+def burst_histogram(burst: Any, chs: list[int], micro_time_range: tuple[int, int], binning: int) -> np.ndarray:
+    """VV | VH micro-time histogram of one burst, zeroed outside the window (what the inspected-burst plot shows)."""
+    pchs = chs[::2]
+    schs = chs[1::2] if len(chs) > 1 else chs
+    sb, eb = micro_time_range
+    cp = burst[np.where(np.isin(burst.routing_channels, pchs))[0]].get_microtime_histogram(binning)[0].astype(np.float64, copy=False)
+    cs_hist = burst[np.where(np.isin(burst.routing_channels, schs))[0]].get_microtime_histogram(binning)[0].astype(np.float64, copy=False)
+    if sb > 0:
+        cp[:sb] = 0
+        cs_hist[:sb] = 0
+    if eb < cp.size:
+        cp[eb:] = 0
+        cs_hist[eb:] = 0
+    return np.hstack([cp, cs_hist])
+
+
 #: The binnings the detector page offers (the Qt combo's items).
 BINNING_CHOICES = [1, 2, 4, 8, 16, 32, 64, 128, 256]
 
@@ -963,3 +979,24 @@ class MleSession:
             self.det_settings[det] = MleSettings(**{k: v for k, v in values.items() if k in known})
         if payload.get("micro_time_binning"):
             self.set_binning(int(payload["micro_time_binning"]))
+
+
+    # -- inspected burst --------------------------------------------------------------------------------------- #
+    def inspect_burst(self, idx: int) -> dict[str, np.ndarray]:
+        """Per detector, the VV | VH histogram of burst *idx* of the table (``Last Photon`` is inclusive)."""
+        if self.df_bursts is None or not len(self.tttrs):
+            return {}
+        n = int(row_count(self.df_bursts))
+        if not 0 <= idx < n:
+            return {}
+        key = Path(str(np.asarray(self.df_bursts["First File"], dtype=object)[idx])).stem
+        tttr = self.tttrs.get(key)
+        if tttr is None:
+            return {}
+        first = int(numeric_column(self.df_bursts, "First Photon")[idx])
+        last = int(numeric_column(self.df_bursts, "Last Photon")[idx])
+        burst = tttr[first : last + 1]
+        return {
+            det: burst_histogram(burst, info.get("chs", []), self.micro_time_range, self.settings.micro_time_binning)
+            for det, info in self.detectors.items()
+        }

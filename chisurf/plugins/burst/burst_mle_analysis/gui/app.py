@@ -107,7 +107,7 @@ class BurstMleGui(TourTarget):
         )
 
         help_resource = Path(__file__).parent / "help.md"
-        guide_resource = Path(__file__).parent / "guide.json"
+        guide_resource = Path(__file__).parent / "guide_wizard.json"
         self.help_window = EmTkHelpWindow(
             title="Burst Lifetime MLE - Help & Reference",
             resource=help_resource,

@@ -21,7 +21,7 @@
   "entrypoints": {
     "gui": "chisurf.plugins.burst.burst_mle_analysis.wizard:MLELifetimeAnalysisWizard",
     "services": "chisurf.plugins.burst.burst_mle_analysis.backend.services:register_services",
-    "emtk": "chisurf.plugins.burst.burst_mle_analysis.gui.app:create_app"
+    "emtk": "chisurf.plugins.burst.burst_mle_analysis.gui.native:create_app"
   },
   "operation_types": [
     "burst_lifetime_fitting",

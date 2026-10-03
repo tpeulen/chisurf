@@ -1,0 +1,278 @@
+{
+  "_comment": "Burst-MLE lifetime analysis, emtk app: AutoForm over MleViewModel (the Qt-free engine's session). Files and the fit-parameter table are data_table sections; every field has a description.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Burst files",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "The burst (.bur) tables of the analysis, in the order they are fitted. Click a row to select it, Delete removes it. Dropping .bur files or a folder adds them.",
+          "options": {
+            "source": "file_rows",
+            "row_key": "path",
+            "selected_call": "select_file",
+            "delete_call": "remove_file_row",
+            "editable": false,
+            "height": 4,
+            "fit_columns": false,
+            "min_column_width": 70,
+            "tooltip_key": "path",
+            "columns": [
+              {
+                "key": "file",
+                "title": "File",
+                "width": 120,
+                "tooltip": "The burst table's file name; hover a row for the full path."
+              },
+              {
+                "key": "folder",
+                "title": "Folder",
+                "width": 220,
+                "tooltip": "The folder the table is in."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Detector and window",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "current_detector",
+          "label": "Detector",
+          "options_source": "detector_names",
+          "description": "The detector (colour) whose decay is shown and fitted. Define detectors in the Detector setup tab."
+        },
+        {
+          "type": "value",
+          "attr": "current_file",
+          "label": "Current file",
+          "kind": "int",
+          "description": "Index of the burst file whose decay is shown (0 is the first).",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        {
+          "type": "choice",
+          "attr": "binning",
+          "label": "Binning",
+          "options_source": "binning_options",
+          "description": "Micro-time binning factor: raw channels per bin. Too fine leaves bins empty, finer than the IRF resolves nothing. Auto picks one."
+        },
+        {
+          "type": "value",
+          "attr": "micro_time_start",
+          "label": "Window start [bin]",
+          "kind": "int",
+          "description": "First micro-time bin of the fit window (after binning). Leave out the empty bins before the prompt.",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        {
+          "type": "value",
+          "attr": "micro_time_stop",
+          "label": "Window stop [bin]",
+          "kind": "int",
+          "description": "Micro-time bin after the last bin of the fit window. Leave out the noisy tail.",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        {
+          "type": "value",
+          "attr": "min_photons",
+          "label": "Min photons",
+          "kind": "int",
+          "description": "A burst with fewer photons in the fit window is not fitted (its lifetime is left empty).",
+          "minimum": 2,
+          "maximum": 100000
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "IRF",
+      "collapsed": true,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "shift",
+          "label": "VH shift [bin]",
+          "kind": "int",
+          "description": "Integer shift of the perpendicular decay, IRF and background relative to the parallel one.",
+          "minimum": -9999,
+          "maximum": 9999
+        },
+        {
+          "type": "value",
+          "attr": "shift_sp",
+          "label": "VV sub-bin shift",
+          "kind": "float",
+          "description": "Fractional shift of the parallel IRF (interpolated).",
+          "decimals": 3,
+          "minimum": -100.0,
+          "maximum": 100.0
+        },
+        {
+          "type": "value",
+          "attr": "shift_ss",
+          "label": "VH sub-bin shift",
+          "kind": "float",
+          "description": "Fractional shift of the perpendicular IRF (interpolated).",
+          "decimals": 3,
+          "minimum": -100.0,
+          "maximum": 100.0
+        },
+        {
+          "type": "value",
+          "attr": "irf_start",
+          "label": "IRF start",
+          "kind": "int",
+          "description": "First IRF bin kept; earlier bins are zeroed. -1 keeps all.",
+          "minimum": -1,
+          "maximum": 999999
+        },
+        {
+          "type": "value",
+          "attr": "irf_stop",
+          "label": "IRF stop",
+          "kind": "int",
+          "description": "Last IRF bin kept; later bins are zeroed. -1 keeps all.",
+          "minimum": -1,
+          "maximum": 999999
+        },
+        {
+          "type": "value",
+          "attr": "irf_threshold_vv",
+          "label": "VV threshold",
+          "kind": "float",
+          "description": "IRF bins below this fraction of the parallel IRF maximum are zeroed (removes the noise floor).",
+          "decimals": 3,
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        {
+          "type": "value",
+          "attr": "irf_threshold_vh",
+          "label": "VH threshold",
+          "kind": "float",
+          "description": "IRF bins below this fraction of the perpendicular IRF maximum are zeroed.",
+          "decimals": 3,
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        {
+          "type": "toggle",
+          "attr": "p2s_twoIstar",
+          "label": "2I*: P+2S",
+          "description": "Use the P+2S form of the 2I* statistic."
+        },
+        {
+          "type": "toggle",
+          "attr": "BIFL_scatter",
+          "label": "BIFL scatter",
+          "description": "Treat the scattered light as burst-integrated fluorescence lifetime scatter (soft)."
+        }
+      ]
+    },
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "Fit parameters",
+      "description": "Start value, fixed flag and fitted value of tau, gamma, r0 and rho. Double-click a start value to type; the check box fixes the parameter at its start value. A change refits the current decay.",
+      "options": {
+        "source": "parameter_records",
+        "row_key": "name",
+        "editable": true,
+        "edited_call": "edit_parameter",
+        "height": 112,
+        "fit_columns": false,
+        "min_column_width": 60,
+        "columns": [
+          {
+            "key": "name",
+            "title": "Parameter",
+            "width": 90,
+            "editable": false,
+            "tooltip": "tau: lifetime (ns); gamma: scatter fraction; r0: fundamental anisotropy; rho: rotational correlation time (ns)."
+          },
+          {
+            "key": "start",
+            "title": "Start",
+            "width": 80,
+            "editable": true,
+            "tooltip": "Starting value of the optimiser (the value itself when the parameter is fixed)."
+          },
+          {
+            "key": "fixed",
+            "title": "Fixed",
+            "width": 60,
+            "editable": true,
+            "tooltip": "Hold the parameter at its start value."
+          },
+          {
+            "key": "result",
+            "title": "Result",
+            "width": 90,
+            "editable": false,
+            "tooltip": "Fitted value of the current decay."
+          }
+        ]
+      }
+    },
+    {
+      "type": "panel",
+      "title": "Burst",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "nav_burst",
+          "label": "Burst",
+          "kind": "int",
+          "description": "Index of the burst shown in the inspected-burst plot (all bursts of all loaded files).",
+          "minimum": 0,
+          "maximum": 100000000
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "source": "lifetime_rows",
+      "title": "Burst lifetimes",
+      "columns": [
+        {
+          "key": "series",
+          "label": "Series",
+          "width": 90,
+          "description": "Detection colour (or state and colour in the segment-level analysis)."
+        },
+        {
+          "key": "n",
+          "label": "Bursts",
+          "width": 70,
+          "description": "Bursts with a fitted lifetime."
+        },
+        {
+          "key": "median",
+          "label": "Median tau [ns]",
+          "width": 110,
+          "description": "Median fitted lifetime of the series."
+        },
+        {
+          "key": "mean",
+          "label": "Mean tau [ns]",
+          "width": 110,
+          "description": "Mean fitted lifetime of the series."
+        }
+      ]
+    }
+  ]
+}

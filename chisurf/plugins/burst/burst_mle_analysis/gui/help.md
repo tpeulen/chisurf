@@ -11,10 +11,10 @@ Press **Guide** for the walk-through.
 Everything in the windows is read from the wizard that did the work. With no fit they say so; nothing is drawn as a
 placeholder.
 
-* **Burst MLE controls**: **Fit Bursts** fits every burst of the selected files; **Refit** fits the decay of the
-  current file again. *Tau start* and the *fit window* are the wizard's own settings: a change here is a change there,
-  and the decay is refitted. The *Fit parameters* table lists the model's parameters with the start value, whether they
-  are held fixed, and the fitted value.
+* **Burst MLE** tab: **Add files** / **Add folder** (or drop .bur files), **Auto IRF/background**, **Refit**, **Fit bursts**,
+  **Stop**, **Save results** and **Save/Load settings**; below them the burst-file table, the detector and fit window,
+  the IRF settings and the editable *Fit parameters* table (start value, fixed flag, fitted value). A change refits the
+  current decay. **Detector setup** is the shared detector editor.
 * **Decay and IRF fit**: the micro-time decay of the current file (data), the fitted model, the IRF and the
   background, VV window followed by VH window, on a log axis. IRF and background are scaled to the area of the data for
   display only; their fit weight is the scatter parameter.
