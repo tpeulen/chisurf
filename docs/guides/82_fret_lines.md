@@ -155,12 +155,22 @@ The FRET lines tab with the two lines above (the *Colour* column names each line
 * **Save CSV** writes all lines into one file with header
   `line,sweep,log,components,parameter,tau_F_ns,tau_X_ns,E_FRET`, one row per
   point. This is the format to overlay in any plotting program.
-* **Push to ndX** hands the lines to the host's ndX connection. ndX cannot take
-  tabulated lines from this tool yet; without a connection the button says so
-  in a notice, and **Save CSV** keeps them in a file ({doc}`46_ndxplorer`).
+* **Push to ndX** draws the lines (E vs τ_F) in every open ndX window, as
+  *data* curves of its Overlays tab: named "FRET line — Line 1 · <sweep>", in
+  the line's colour, removable there and kept in ndX's session; pushing again
+  updates them. With no ndX window open a notice says so ({doc}`46_ndxplorer`).
+  Put τ_F on x and E on y in ndX to see them over the bursts
+  ({numref}`fig-fret-lines-in-ndx`).
 * To draw a line on the E–τ histogram of **Accurate FRET**, the tool builds
   its own static and dynamic lines from the same formulas
   ({doc}`41_accurate_fret`).
+
+```{figure} figures/82_fret_lines_in_ndx.png
+:name: fig-fret-lines-in-ndx
+:width: 100%
+
+Two lines pushed into ndX (donor lifetimes 4 ns and 3 ns) over bursts scattered about the first: each is a data curve of the Overlays tab, with its colour and a Delete button; Fit is greyed (a data line has no parameters).
+```
 
 ## Headless
 

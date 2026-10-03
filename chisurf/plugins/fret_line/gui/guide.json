@@ -31,7 +31,7 @@
     },
     {
       "title": "Use the lines",
-      "text": "<b>Save CSV</b> writes every line (τ_F, τ_X, E per point). The <b>FRET lines</b> tab lists them: untick <b>Show</b> to hide one, <b>Remove</b> to delete it. <b>Push to ndX</b> overlays them on ndX when the host connects one.",
+      "text": "<b>Save CSV</b> writes every line (τ_F, τ_X, E per point). The <b>FRET lines</b> tab lists them: untick <b>Show</b> to hide one, <b>Remove</b> to delete it. <b>Push to ndX</b> overlays them on every open ndX window.",
       "target": {"name": "save_csv"}
     }
   ]

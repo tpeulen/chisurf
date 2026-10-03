@@ -16,7 +16,7 @@ The Components, Sweep and FRET lines tabs are on the left, the live model editor
 - Sweep: Vary a parameter (C<i> [model] name) or a mixing fraction (fraction of C<i>) from Min to Max over Points (optionally log). Filter keeps the targets that contain the text; All parameters lists the nuisance parameters too. tau_D0 is the reference lifetime; 0 takes it from the first FRET component's donor. A line made only of Lifetime components needs it set explicitly.
 - Add FRET line computes the current sweep as a new, coloured line. Earlier lines stay, and the sweep puts the parameters you edited back where they were.
 - FRET lines tab: tick Show to show a line on the plots; Show all, Hide all, Remove (the selected line) and Clear all.
-- Save CSV writes all lines. Push to ndX hands them to the host's ndX connection (without one a notice says ndX cannot receive them yet).
+- Save CSV writes all lines. Push to ndX draws them (E vs τ_F) in every open ndX window, as data curves of its Overlays tab: named "FRET line — <line> · <sweep>", in the line's colour, removable there and kept in ndX's session. Pushing again updates them.
 
 ## Recipes
 

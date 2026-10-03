@@ -312,8 +312,11 @@ class FRETLineApp(ImApp):
 
 
 def make_app(**kwargs) -> FRETLineApp:
-    """Build the app (the manifest's ``entrypoints.emtk``); ``push_callback`` is the host's ndX connection."""
+    """Build the app (the manifest's ``entrypoints.emtk``); ``push_callback`` is the host's ndX
+    connection, by default every open ndX window (:func:`~.model.push_to_ndx`)."""
     from chisurf.emtk.i18n import install
 
+    from .model import push_to_ndx
+
     install()
-    return FRETLineApp(push_callback=kwargs.get("push_callback"))
+    return FRETLineApp(push_callback=kwargs.get("push_callback", push_to_ndx))

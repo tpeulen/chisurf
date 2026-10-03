@@ -13,7 +13,7 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.fret_line.gui.app import FRETLineApp
-from chisurf.plugins.fret_line.gui.model import PUSH_UNAVAILABLE, FretLineModel
+from chisurf.plugins.fret_line.gui.model import NO_NDX_WINDOW, FretLineModel
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
 from .test_emtk_fret_line_parity import BIG, SMALL, hermetic  # noqa: F401  (hermetic is autouse)
@@ -438,12 +438,12 @@ def test_save_csv_opens_the_chooser_cancel_closes_it_and_a_typed_name_writes_the
     assert not drv.app.message_window.open
 
 
-def test_push_to_ndx_without_a_host_shows_the_qt_notice_and_ok_closes_it(drv):
+def test_push_to_ndx_without_a_host_shows_the_notice_and_ok_closes_it(drv):
     add_line(drv)
     drv.click("push")
     assert drv.app.message_window.open
     shown = " ".join(drv.draw(2).strings)
-    assert "ndX cannot receive FRET lines from this tool yet." in shown
+    assert "No ndX window is open to take the lines." in shown
     drv.click(drv.text_rect("OK"))
     drv.draw(2)
     assert not drv.app.message_window.open

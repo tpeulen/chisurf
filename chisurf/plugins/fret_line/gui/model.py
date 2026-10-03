@@ -28,7 +28,20 @@ from ..core.algorithms import (
 
 #: Colour cycle of the computed lines (the Qt tool's).
 PALETTE = ("#e05c00", "#1f77b4", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#17becf", "#bcbd22", "#7f7f7f")
-PUSH_UNAVAILABLE = "ndX cannot receive FRET lines from this tool yet.\nSave CSV keeps them in a file."
+NO_NDX_WINDOW = "No ndX window is open to take the lines.\nOpen ndX, then push again; Save CSV keeps them in a file."
+
+
+def push_to_ndx(lines) -> int:
+    """Draw *lines* (the computed lines) in every open ndX window; how many took them.
+
+    The host connection ChiSurf gives this tool: ndX draws them as data curves
+    of its Overlays tab (E vs τ_F), named "FRET line — <name> · <sweep>".
+    """
+    from chisurf.plugins.ndxplorer.window import push_overlay_lines
+
+    from ..core.algorithms import computed_lines_as_overlays
+
+    return push_overlay_lines(computed_lines_as_overlays(lines), source="ChiSurf FRET lines")
 
 
 def hex_rgba(colour: str) -> tuple[int, int, int, int]:
@@ -310,13 +323,17 @@ class FretLineModel:
         self.notice("Saved", f"Saved {len(self.lines)} line(s) to:\n{path}")
 
     def push(self) -> None:
-        """Hand the lines to the host's ndX connection, or say that there is none (the Qt tool's notice)."""
+        """Hand the lines to the host's ndX connection, or say that no ndX window takes them.
+
+        The connection returns how many windows took the lines (``0``: none is
+        open); ``None`` counts as taken.
+        """
         if not self.lines:
             return
-        if self.push_callback is None:
-            self.notice("Push to ndX", PUSH_UNAVAILABLE)
+        taken = None if self.push_callback is None else self.push_callback(self.lines)
+        if self.push_callback is None or taken == 0:
+            self.notice("Push to ndX", NO_NDX_WINDOW)
         else:
-            self.push_callback(self.lines)
             self.message = f"Sent {len(self.lines)} line(s) to ndX"
 
     def notice(self, title: str, text: str) -> None:

@@ -732,14 +732,15 @@ class FRETLineTool(QtWidgets.QWidget):
             dialogs.error(self, "Save error", str(exc))
 
     def _on_push(self) -> None:
-        # ndX is the emtk app now; its Overlays tab draws equation curves and
-        # has no way yet to take tabulated lines from another tool. The Qt
-        # overlay panel this used to find was deleted with ndX's Qt window.
+        # Every open ndX window draws the lines as data curves of its Overlays tab.
         if not self._lines:
             return
+        from .model import NO_NDX_WINDOW, push_to_ndx
+
+        taken = push_to_ndx(self._lines)
+        if not taken:
+            dialogs.information(self, "Push to ndX", NO_NDX_WINDOW)
+            return
         dialogs.information(
-            self,
-            "Push to ndX",
-            "ndX cannot receive FRET lines from this tool yet.\n"
-            "Save CSV keeps them in a file.",
+            self, "Pushed", f"Added {len(self._lines)} line(s) to {taken} ndX window(s)."
         )

@@ -17,7 +17,7 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.core.project_browser.test.driving import clipped_texts, draw_clip, layout_problems
 from chisurf.plugins.fret_line.gui.app import FRETLineApp, make_app
-from chisurf.plugins.fret_line.gui.model import PALETTE, PUSH_UNAVAILABLE, FretLineModel
+from chisurf.plugins.fret_line.gui.model import PALETTE, NO_NDX_WINDOW, FretLineModel
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -297,11 +297,14 @@ def test_a_name_without_csv_gets_the_extension_and_an_unwritable_path_is_reporte
         model.write_csv(tmp_path / "missing" / "x.csv")
 
 
-def test_push_without_a_host_connection_gives_the_qt_notice_and_with_one_calls_it(model, qt):
+def test_push_without_a_host_connection_gives_the_notice_and_with_one_calls_it(model, qt):
     three_lines(model)
     model.push()
-    assert (model.dialog_title, model.dialog_text) == ("Push to ndX", PUSH_UNAVAILABLE)
-    assert PUSH_UNAVAILABLE in qt._tool_module.__dict__.get("PUSH", PUSH_UNAVAILABLE) or True
+    assert (model.dialog_title, model.dialog_text) == ("Push to ndX", NO_NDX_WINDOW)
+    model.dialog_ok()
+    model.push_callback = lambda _lines: 0  # a connection, but no ndX window open
+    model.push()
+    assert model.dialog_text == NO_NDX_WINDOW
     sent = []
     wired = FretLineModel(push_callback=sent.append)
     wired.minimum, wired.maximum = 20.0, 120.0

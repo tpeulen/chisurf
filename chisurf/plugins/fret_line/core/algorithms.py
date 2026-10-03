@@ -324,6 +324,39 @@ def fret_line_overlays(
     return {"ok": True, "result": {"overlays": [overlay], "line": line}}
 
 
+def computed_lines_as_overlays(lines, line: str = "static") -> list[dict]:
+    """The tool's computed lines as a LineSet ndX draws (``NdxApp.add_overlay_lines``).
+
+    Parameters
+    ----------
+    lines : sequence of dict
+        The FRET-line tool's computed lines (``name``, ``sweep_label``,
+        ``color``, ``result`` with ``tau_f`` / ``tau_x`` / ``e_fret``).
+    line : str
+        The projection (see :func:`fret_line_overlays`); E vs τ_f by default,
+        what the tool pushed to ndX's overlay panel before.
+
+    Returns
+    -------
+    list of dict
+        ``{"name", "kind", "x", "y", "style", "axes"}`` per line, named
+        ``"FRET line — <name> · <sweep>"``.
+    """
+    x_key, y_key, axes_label = _FRET_LINE_AXES[line]
+    out = []
+    for ln in lines or ():
+        result = ln["result"]
+        out.append({
+            "name": f"FRET line — {ln['name']} · {ln.get('sweep_label', '')}".rstrip(" ·"),
+            "kind": "curve",
+            "x": [float(v) for v in result[x_key]],
+            "y": [float(v) for v in result[y_key]],
+            "style": {"color": ln.get("color", "#50c0ff"), "width": 2},
+            "axes": {"x": x_key, "y": y_key, "label": axes_label},
+        })
+    return out
+
+
 def list_fret_line_projections() -> list[str]:
     """Return the available FRET-line overlay projections for :func:`fret_line_overlays`."""
     return list(_FRET_LINE_AXES.keys())

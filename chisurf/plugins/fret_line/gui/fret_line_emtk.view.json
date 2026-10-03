@@ -219,7 +219,7 @@
           "buttons": [
             {"action": "add_line", "label": "Add FRET line", "description": "Compute the current mixture and sweep and add it as a new line. Press repeatedly to overlay several lines."},
             {"action": "save_csv", "label": "Save CSV", "description": "Save all computed lines to one CSV file (line, sweep, parameter, τ_F, τ_X, E per point)."},
-            {"action": "push", "label": "Push to ndX", "description": "Overlay all computed lines on ndX. ndX takes tabulated lines from other tools only when the host gives this window a connection; without one a notice says so."}
+            {"action": "push", "label": "Push to ndX", "description": "Overlay all computed lines (E vs τ_F) on every open ndX window, as data curves of its Overlays tab; with no ndX window open a notice says so."}
           ]
         },
         {
