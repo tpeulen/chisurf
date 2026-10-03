@@ -1,0 +1,81 @@
+{
+  "actual_1200": [
+    1200,
+    800
+  ],
+  "rows": [
+    [
+      0,
+      "🚀 Getting Started"
+    ],
+    [
+      1,
+      "📄 ChiSurf Settings"
+    ],
+    [
+      2,
+      "📷 Acquisition"
+    ],
+    [
+      3,
+      "🎨 Styles"
+    ],
+    [
+      4,
+      "📊 Plots"
+    ],
+    [
+      5,
+      "⚙️ Models"
+    ],
+    [
+      6,
+      "👥 User Editor"
+    ],
+    [
+      7,
+      "🤖 AI Settings"
+    ],
+    [
+      8,
+      "🔌 Plugins"
+    ],
+    [
+      9,
+      "⬆️ Updates"
+    ],
+    [
+      10,
+      "📦 Packages"
+    ],
+    [
+      11,
+      "🔢 Channel Definition"
+    ],
+    [
+      12,
+      "📡 FCS Definitions"
+    ],
+    [
+      13,
+      "🧮 TTTR LUT Tools"
+    ],
+    [
+      14,
+      "🧪 Plugin Check"
+    ]
+  ],
+  "actual_800": [
+    850,
+    600
+  ],
+  "next_enabled": true,
+  "prev_enabled": false,
+  "status": "Ready",
+  "search_plug": [
+    "🔌 Plugins",
+    "🧪 Plugin Check"
+  ],
+  "after_two_next": 2,
+  "after_back": 1
+}

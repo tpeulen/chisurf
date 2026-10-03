@@ -1,0 +1,99 @@
+diff --git a/chisurf/plugins/core/setup/__init__.py b/chisurf/plugins/core/setup/__init__.py
+index 2352471ce..80d967bec 100644
+--- a/chisurf/plugins/core/setup/__init__.py
++++ b/chisurf/plugins/core/setup/__init__.py
+@@ -1,46 +1,37 @@
+-from __future__ import annotations
++"""Unified settings package with lazy legacy Qt compatibility."""
+ 
+-from pathlib import Path
++name = "Setup:Settings"
++description = "Unified Settings Dialog for ChiSurf"
++icon = "⚙️"
+ 
+-import chisurf as cs
+-from chisurf.core.plugin import load_manifest
+-from chisurf.core.plugin.registry import apply_manifest_statefulness
+-from chisurf.plugins.core.setup.gui.tool import UnifiedSettingsTool
+ 
+-_manifest = load_manifest(Path(__file__).with_name("manifest.json"))
+-if _manifest is not None:
+-    name = _manifest.display_name
+-else:
+-    name = "Setup:Settings"
++def __getattr__(key):
++    if key == "UnifiedSettingsTool":
++        from .gui.tool import UnifiedSettingsTool
+ 
+-description = "Unified Settings Dialog for ChiSurf"
+-icon = "⚙️"
++        return UnifiedSettingsTool
++    raise AttributeError(key)
+ 
+ 
+ def load():
+-    """Return the unified settings window."""
++    from .gui.tool import UnifiedSettingsTool
++
+     return UnifiedSettingsTool()
+ 
+ 
+-__all__ = [
+-    "UnifiedSettingsTool",
+-    "load",
+-    "name",
+-    "description",
+-    "icon",
+-]
++__all__ = ["UnifiedSettingsTool", "load", "name", "description", "icon"]
+ 
+ if __name__ == "plugin":
+-    try:
+-        parent = getattr(cs, "cs", None)
+-        window = UnifiedSettingsTool(parent=parent)
+-        if _manifest is not None:
+-            apply_manifest_statefulness(window, _manifest)
+-        window.show()
+-        window.raise_()
+-        window.activateWindow()
+-    except Exception as exc:
+-        print(f"Failed to open Settings: {exc}")
+-        import traceback
+-
+-        traceback.print_exc()
++    from pathlib import Path
++
++    import chisurf as cs
++    from chisurf.core.plugin import load_manifest
++    from chisurf.core.plugin.registry import apply_manifest_statefulness
++
++    window = load()
++    manifest = load_manifest(Path(__file__).with_name("manifest.json"))
++    if manifest is not None:
++        apply_manifest_statefulness(window, manifest)
++    window.show()
++    window.raise_()
++    window.activateWindow()
+diff --git a/chisurf/plugins/core/setup/manifest.json b/chisurf/plugins/core/setup/manifest.json
+index 083763ad4..bcf988f19 100644
+--- a/chisurf/plugins/core/setup/manifest.json
++++ b/chisurf/plugins/core/setup/manifest.json
+@@ -9,7 +9,7 @@
+   "categories": [
+     "Setup"
+   ],
+-  "icon": "⚙️",
++  "icon": "\u2699\ufe0f",
+   "statefulness": {
+     "enabled": true,
+     "window": {
+@@ -18,7 +18,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.core.setup.gui.tool:UnifiedSettingsTool"
++    "gui": "chisurf.plugins.core.setup.gui.tool:UnifiedSettingsTool",
++    "emtk": "chisurf.plugins.core.setup.gui.app:make_app"
+   },
+   "optional_requires": {
+     "acq": "*",
