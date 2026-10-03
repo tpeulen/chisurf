@@ -1,0 +1,70 @@
+{
+  "name": "MFD Prepare",
+  "sections": [
+    {
+      "type": "info",
+      "source": "status_line",
+      "description": "What the tool did last."
+    },
+    {
+      "type": "panel",
+      "title": "Detectors",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "table",
+          "name": "detectors",
+          "source": "detector_rows",
+          "columns_source": "detector_columns",
+          "editable": false,
+          "height": 110,
+          "description": "One row per detector: its channel definition, the bursts without photons and the count agreement against the burst table."
+        }
+      ],
+      "hidden_when": {
+        "attr": "has_result",
+        "equals": false
+      }
+    },
+    {
+      "type": "panel",
+      "title": "Photon sources",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "table",
+          "name": "sources",
+          "source": "source_rows",
+          "columns_source": "source_columns",
+          "editable": false,
+          "height": 80,
+          "description": "The photon files the bursts point into and where each was found."
+        }
+      ],
+      "hidden_when": {
+        "attr": "has_result",
+        "equals": false
+      }
+    },
+    {
+      "type": "panel",
+      "title": "Folder summary",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "table",
+          "name": "summary",
+          "source": "summary_rows",
+          "columns_source": "summary_columns",
+          "editable": false,
+          "height": 165,
+          "description": "The facts of the whole folder: bursts, photon-index convention, where the mean micro time comes from."
+        }
+      ],
+      "hidden_when": {
+        "attr": "has_result",
+        "equals": false
+      }
+    }
+  ]
+}

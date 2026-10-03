@@ -7,11 +7,12 @@ a detector, this report says why.
 
 ## How to use it
 
-1. **Browse…** to the analysis folder (the one holding `bi4_bur/` and
-   `Info/`), its `bi4_bur` directory, or one `.bur` file.
-2. Press **Prepare**. Without a connected RPC service it runs in this window,
-   so the window waits the few seconds the photons take to read.
-3. Read the report.
+1. **Browse...** to the analysis folder (the one holding `bi4_bur/` and
+   `Info/`), its `bi4_bur` directory, or one `.bur` file; or drop it on the window.
+2. Press **Prepare** (greyed until a folder is chosen). The photons are read in
+   the background, a few seconds.
+3. Read the **Detectors**, **Photon sources** and **Folder summary** tables and
+   the report.
 
 ## What the report says
 

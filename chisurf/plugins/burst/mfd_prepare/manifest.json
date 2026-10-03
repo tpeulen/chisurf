@@ -12,6 +12,7 @@
   "statefulness": {"enabled": false},
   "entrypoints": {
     "gui": "chisurf.plugins.burst.mfd_prepare.gui.tool:MfdPrepareTool",
+    "emtk": "chisurf.plugins.burst.mfd_prepare.gui.app:make_app",
     "cli": "mfd-prepare=chisurf.plugins.burst.mfd_prepare.cli.main:cli",
     "services": "chisurf.plugins.burst.mfd_prepare.backend.services:register_services"
   },

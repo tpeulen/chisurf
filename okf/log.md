@@ -40882,3 +40882,4 @@ side of the line.
   * Verified `burst_h2mm` and `burst_mle_analysis` ports; removed from preview gate.
   * Verified `batch_analysis`, `wizards`, `traj_tools`, `plugin_check`, `fret_line`, `imaging_tools`, `filetools`, `img_calibration` accepted ports.
   * Resumed `hydropro` port: captured `after_populated` and `after_empty` screenshots, fixed test list issue, wrote REPORT.md, and accepted it (removed from preview gate).
+  * Verified `mfd_prepare` port and committed its changes.

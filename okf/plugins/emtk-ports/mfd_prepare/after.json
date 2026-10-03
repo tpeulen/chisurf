@@ -1,0 +1,46 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "browse",
+    "guide",
+    "help",
+    "nofolderselected",
+    "prepare",
+    "report",
+    "selectaburstfolderandpresspreparetoseethemfdpreparationreport."
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Browse...",
+      "id": "Browse...",
+      "tooltip": "Choose the burst-analysis folder (the one holding bi4_bur and Info) in a folder chooser, or drop it on the window."
+    },
+    {
+      "kind": "button",
+      "label": "Prepare",
+      "id": "Prepare",
+      "tooltip": "Read the folder the way the MFD fit does: resolve the photon files, detect the photon-index convention and recompute each detector's counts. Nothing is moved or rewritten. Choose a folder first."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through the tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain what the report says."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

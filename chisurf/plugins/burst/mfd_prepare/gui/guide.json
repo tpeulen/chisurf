@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for MFD Prepare: point at Browse, then Prepare, then read the report. Steps wait for the user to press the buttons.",
+  "_comment": "Guided tour for MFD Prepare: point at Browse, then Prepare, then read the tables. The Browse and Prepare steps wait for the user to press the buttons.",
   "steps": [
     {
       "title": "A check, not a copy",
@@ -8,19 +8,30 @@
     },
     {
       "title": "Choose the folder",
-      "text": "<b>Browse…</b> to the analysis folder burst search wrote — the one holding <code>bi4_bur</code> and <code>Info</code> — or to <code>bi4_bur</code> itself.",
-      "target": {"action": "Browse…"},
-      "await": {"hint": "Press <b>Browse…</b> and pick a burst folder."}
+      "text": "<b>Browse...</b> to the analysis folder burst search wrote (the one holding <code>bi4_bur</code> and <code>Info</code>), or to <code>bi4_bur</code> itself. Dropping the folder on the window does the same.",
+      "target": {
+        "action": "browse"
+      },
+      "await": {
+        "hint": "Press <b>Browse...</b> and pick a burst folder."
+      }
     },
     {
       "title": "Prepare it",
-      "text": "<b>Prepare</b> resolves the photon files, detects the photon-index convention, and recomputes every detector's counts from the photons. Reading the photons takes a few seconds.",
-      "target": {"action": "Prepare"},
-      "await": {"hint": "Press <b>Prepare</b>."}
+      "text": "<b>Prepare</b> resolves the photon files, detects the photon-index convention, and recomputes every detector's counts from the photons. Reading the photons takes a few seconds; the window stays responsive. The button is greyed until a folder is chosen.",
+      "target": {
+        "action": "prepare"
+      },
+      "await": {
+        "hint": "Press <b>Prepare</b>."
+      }
     },
     {
       "title": "Read the count agreement last",
-      "text": "Each detector's <b>count agreement</b> is the fraction of bursts whose count, recomputed from the photons, equals the <code>.bur</code> column. <b>ok</b> needs 0.98.<br/><br/>An <b>UNVERIFIED</b> detector would put photons under the wrong colour; the MFD fit refuses it. Record the detectors in the analysis manifest, or pass them explicitly, and prepare again."
+      "text": "The <b>Detectors</b> table gives each detector's <b>count agreement</b>: the fraction of bursts whose count, recomputed from the photons, equals the <code>.bur</code> column. <b>ok</b> needs 0.98.<br/><br/>An <b>UNVERIFIED</b> detector would put photons under the wrong colour; the MFD fit refuses it. Record the detectors in the analysis manifest, or pass them explicitly, and prepare again. The <b>Photon sources</b> and <b>Folder summary</b> tables and the report below say the rest.",
+      "target": {
+        "name": "detector_rows"
+      }
     }
   ]
 }

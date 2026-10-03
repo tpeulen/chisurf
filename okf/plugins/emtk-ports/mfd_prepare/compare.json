@@ -1,0 +1,22 @@
+{
+  "plugin": "mfd_prepare",
+  "explained": {},
+  "stale_explanations": [],
+  "lost": [],
+  "gained": [
+    "browse",
+    "guide",
+    "help",
+    "nofolderselected",
+    "prepare",
+    "report",
+    "selectaburstfolderandpresspreparetoseethemfdpreparationreport."
+  ],
+  "untooltipped": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  },
+  "before_controls": 0,
+  "after_controls": 7
+}

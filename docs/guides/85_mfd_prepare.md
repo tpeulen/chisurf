@@ -1,8 +1,8 @@
 ---
 type: Guide
-title: 'Checking a burst folder before an MFD fit'
+title: Checking a burst folder before an MFD fit
 description: What MFD Prepare checks in a burst-analysis folder — photon sources, the photon-index convention, each detector's channel definition against the burst table's counts, and where the mean micro time comes from — and how to run it from Python, the CLI or its window.
-tags: [guides, bursts, mfd, fret, tcspc]
+tags: [guides, bursts, fitting, photons, python, cli, headless]
 ---
 
 # Checking a burst folder before an MFD fit
@@ -35,17 +35,29 @@ is reached from:
   w = MfdPrepareTool(); w.show()
   ```
 
-The window is **Browse…** (pick the analysis folder), **Prepare**, and a text
-box with the report. Without an RPC client it runs in the GUI thread, so the
-window is unresponsive for the few seconds the photons take to read.
+The window is an EMTK app (no Qt widgets of its own; the Qt window is only its host). Top to bottom:
+
+| control | what it does |
+|---|---|
+| folder line | the burst-analysis folder that **Prepare** will read, or "No folder selected" |
+| **Browse...** | opens the drawn folder chooser (starts in the folder already chosen); **Choose** takes the highlighted folder, or the folder being browsed when none is highlighted; **Cancel** changes nothing. Dropping the folder (or one `.bur` file) on the window does the same |
+| **Prepare** | greyed until a folder is chosen; reads the photons in the background (the window stays responsive, and Browse and Prepare are greyed while it runs) |
+| **Guide**, **Help** | the step-by-step tour (it waits for you to press Browse... and Prepare) and the help window |
+| status line | what was done last: the bursts and the verdict, or the error |
+| **Detectors** | one row per detector: channels, micro-time window, bursts without photons, count agreement and the verdict `ok` / `UNVERIFIED` |
+| **Photon sources** | each photon file the bursts point into, where it was found and how many photons it holds |
+| **Folder summary** | bursts, photon-index convention, where the mean micro time comes from, duration, photons in the bursts |
+| **Report** | the report text, scrollable with the mouse wheel (section 2 explains each line) |
+
+The three tables appear after **Prepare**; they are the same facts as the report, one row per detector or file. Without an RPC
+client the preparation runs in this process, otherwise through `mfd_prepare.prepare`.
 
 ```{figure} figures/mfd_prepare_report.png
 :name: fig-mfd-prepare-report
 :width: 100%
 
-MFD Prepare on the shipped `bh_spc132_sm_dna` burst folder: 2980 bursts,
-three detectors, exclusive photon indices, ten `.spc` sources resolved through
-the `.mti` sidecars, and every detector's count agreement 1.0000.
+MFD Prepare on the measured `bh_spc132_sm_dna` burst folder shipped with the burst-selection tests: 152 bursts, three
+detectors, inclusive photon indices, `m000.spc` resolved beside the folder, every detector's count agreement 1.0000.
 ```
 
 ## 2. What it checks
@@ -160,7 +172,7 @@ consumes; `prep.summary` holds the diagnostics.
   of bounds` in `prepare_burst_folder` (`mfd/prepare.py`, count-agreement
   loop) instead of saying which detector has no definition. Pass one entry per
   detector.
-* **Not reachable from the GUI** (see §1).
+* **Not reachable from a menu** (see §1): the window is opened from the console, or as an EMTK app (`entrypoints.emtk`).
 
 ## See also
 
