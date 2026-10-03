@@ -1,15 +1,22 @@
 # Traj Tools
 
 Small tools for preparing a structure trajectory (MD, normal modes, docking)
-for FRET work. Each tab reads a trajectory, writes a new file and logs what it
+for FRET work. Each tool reads a trajectory, writes a new file and logs what it
 did.
 
+**The window.** The list on the left holds the eight tools; click one (or use
+the up and down arrow keys) to open it on the right. A tool is built the first
+time and keeps its settings while you use another. The line under the tool shows
+the active tool, and what happened to a file you dropped on the window: the open
+tool takes a file that fits one of its fields, otherwise the line says so. Each
+tool has its own **Guide** and **Help**; they explain its fields.
+
 **Files.** Trajectories are **DCD** files, in Å. A DCD stores only coordinates,
-so each tab also needs a **topology**: a PDB or mmCIF with the same atoms in
+so each tool also needs a **topology**: a PDB or mmCIF with the same atoms in
 the same order. Example data:
 `chisurf/plugins/modelling/fret/examples/olga_t4l/` (T4 lysozyme, 894 frames).
 
-## The tabs
+## The tools
 
 * **Align**: superposes every frame on frame 0 (Kabsch SVD). *Atom selection*
   takes comma-separated **atom indices** of the fitting set, not an
@@ -23,7 +30,7 @@ the same order. Example data:
 * **FRET**: per frame, the dipole-centre distance R_DA, κ, κ² and
   k_FRET = 1.5 κ² (R0/R)⁶/τ0, using two atoms per dye. It computes no
   efficiency and no average, because which average applies depends on the
-  timescales. This tab has no topology row yet, so use the Python route for a
+  timescales. This tool has no topology row yet, so use the Python route for a
   DCD.
 * **Join**: appends two trajectories in time, or stacks them as one system
   (atoms). Keep *Chunk size* at least as large as the longer trajectory,
@@ -38,7 +45,7 @@ the same order. Example data:
 
 ## Headless
 
-Each tab has a Qt-free view model in `chisurf/plugins/traj/<tool>/view_model.py`.
+Each tool has a Qt-free view model in `chisurf/plugins/traj/<tool>/view_model.py`.
 
 ```python
 from chisurf.core.structure import trajectory_data as md
