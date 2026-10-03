@@ -81,3 +81,19 @@ guide rebuilt. Docs: none changed.
 ## 9. Self-check
 
 - [x] D1 · [x] D2 · [x] D3 · [x] D4 · [x] D5 · [x] D6 · [x] D7 · [x] D8 · [x] D9 · [x] D10
+
+## 10. Upgrade 2 (2026-10-03, T-20261002-LEFTOVERS): real-input coverage, layout, docs, glyphs
+
+Commit: see the board status line. The earlier pass (sections 0-9) closed the hub at parity but drove it only with a few presses; this pass adds the owner's real-input and layout rules.
+
+**Changes to the app.** The Guide and Help buttons and the list captions no longer carry emoji (`caption()` is the name; the Qt list's pictograms are not drawn): the earlier deliberate difference note about the stray variation selectors is now moot. The tour text and `deliberate.json` are unchanged.
+
+**Reuse.** Hosts the accepted native children from their manifests (no copy); `imaging_emtk.testing.Driver`, the layout checker of `project_browser`, `chisurf/emtk/help_guide.py`. Not forked. The hub keeps its own list/strip/forwarding code (it predates `CalculatorHubApp`; its child-state handling for the splitter and time-window tools has no equivalent there, and those two children have no `export_settings`); folding it onto the shared base is a follow-up (hub family: imaging_tools, lifetime_analysis, calculators already use it).
+
+**Tests.** `pytest chisurf/plugins/tttr/filetools -q`: **50 passed** (34 earlier + 16 new in `test_emtk_filetools_clicks.py`). Control -> test (real pointer/keys/wheel/drop via `Driver`, recording children): list entry click selects, builds and shows the description `test_every_tool_is_listed_and_a_click_on_its_entry...`; filter `test_the_search_field_keeps_the_tools_matching...`; pointer into the child in its coordinates and not from the list `test_the_embedded_tool_gets_pointer_events...`; wheel `test_the_wheel_over_the_tool...`; keys after a press inside, host drop `test_keys_go_to_the_open_tool...`; broken tool / Retry / pending `test_a_tool_that_cannot_open...`, `test_a_tool_without_a_native_declaration...`; Help window and its buttons `test_help_button...`; tour walk with the await and card placement `test_the_tour_is_walked...`, `test_every_guide_target...`; layout of the hub at 1200x800 and 800x600 and every description above the tool `test_the_hub_draws_without_clipped...`, `test_every_description_fits_above_the_tool...`; no emoji `test_the_buttons_and_captions_carry_no_emoji`; small window `test_the_whole_flow_works_in_the_small_window_too`. Guard: a module fixture fails on any change in the real `~/.chisurf` except `logs/`; tests run on temporary settings and HOME. Breakage twice (child pointer coordinates shifted by 3 px; the host-drop route disabled): one failure each, restored.
+
+**Evidence.** `after: 40 controls, 0 without tooltip, qt-free=yes`; `compare` exit 0. Real children: `click_1..9_*.png`, `after_populated_{1200x800,800x600}.png` (read at full size).
+
+**Docs.** `docs/guides/74_intensity_traces_and_file_tools.md` figures regenerated from the emtk hub (`file_tools.png`: Time Windows with an Olympus HT3 queued and its trace previewed; `file_tools_split.png`: Split / Convert with the SPC loaded) and their captions corrected; no reference-page change.
+
+**For the child owners (not touched).** At 800x600 `bid_to_analysis` overlaps text (the *Detectors / Polarization resolved* row and the table header *Output / remote* over *Status*); the splitter child's window titles carry colour pictograms the canvas font draws as boxes.

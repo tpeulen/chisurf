@@ -48,8 +48,8 @@ def native_factory(panel):
 
 
 def caption(panel) -> str:
-    """The panel's icon and name; the icons' emoji variation selectors have no glyph in the canvas font."""
-    return (panel["icon"] + " " + tr(panel["name"])).replace("\ufe0f", "")
+    """The panel's name (the Qt list's pictograms are emoji: the native list has none)."""
+    return tr(panel["name"])
 
 
 class FileToolsApp(TourTarget, ImApp):
@@ -144,7 +144,7 @@ class FileToolsApp(TourTarget, ImApp):
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(tr("File tools"), flags=flags):
-            if im.button("📖 " + tr("Guide")):
+            if im.button(tr("Guide")):
                 self.tour.start()
             im.set_item_tooltip(
                 tr(
@@ -153,7 +153,7 @@ class FileToolsApp(TourTarget, ImApp):
             )
             self.remember("guide")
             im.same_line()
-            if im.button("❓ " + tr("Help")):
+            if im.button(tr("Help")):
                 self.help.show()
             im.set_item_tooltip(tr("Read the file-tools help and the workflows of all six tools."))
             self.remember("help")

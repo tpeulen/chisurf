@@ -48,14 +48,14 @@
   "interactive": [
     {
       "kind": "button",
-      "label": "📖 Guide",
-      "id": "📖 Guide",
+      "label": "Guide",
+      "id": "Guide",
       "tooltip": "Walk through choosing a converter, inspecting a container and correcting metadata."
     },
     {
       "kind": "button",
-      "label": "❓ Help",
-      "id": "❓ Help",
+      "label": "Help",
+      "id": "Help",
       "tooltip": "Read the file-tools help and the workflows of all six tools."
     },
     {
@@ -66,38 +66,38 @@
     },
     {
       "kind": "selectable",
-      "label": "✂ TTTR Split / Convert",
-      "id": "✂ TTTR Split / Convert",
+      "label": "TTTR Split / Convert",
+      "id": "TTTR Split / Convert",
       "tooltip": "Split large TTTR files into segments and convert between container formats."
     },
     {
       "kind": "selectable",
-      "label": "📦 ⇄ .pto",
-      "id": "📦 ⇄ .pto",
+      "label": "⇄ .pto",
+      "id": "⇄ .pto",
       "tooltip": "Pack a vendor photon file into a .pto container, or unpack the vendor file back out of one. Either direction keeps the dropped file and verifies the result byte-for-byte before anything is deleted."
     },
     {
       "kind": "selectable",
-      "label": "🔎 PTO Inspector",
-      "id": "🔎 PTO Inspector",
+      "label": "PTO Inspector",
+      "id": "PTO Inspector",
       "tooltip": "Read a .pto back: every object in it, the payload as a table or a curve, the settings that are the recipe, and the provenance drawn as a graph. Opens the tool that performs a step."
     },
     {
       "kind": "selectable",
-      "label": "🏷 TTTR header",
-      "id": "🏷 TTTR header",
+      "label": "TTTR header",
+      "id": "TTTR header",
       "tooltip": "View and edit the header tags of any TTTR file tttrlib can read — correcting metadata a vendor wrote, and adding tags of your own."
     },
     {
       "kind": "selectable",
-      "label": "⏱ TTTR → Time Windows",
-      "id": "⏱ TTTR → Time Windows",
+      "label": "TTTR → Time Windows",
+      "id": "TTTR → Time Windows",
       "tooltip": "Split TTTR files into fixed-duration time-window BID (.bst) files."
     },
     {
       "kind": "selectable",
-      "label": "📁 BID → Analysis",
-      "id": "📁 BID → Analysis",
+      "label": "BID → Analysis",
+      "id": "BID → Analysis",
       "tooltip": "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data."
     },
     {

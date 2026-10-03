@@ -182,7 +182,7 @@ def test_draws(size):
     app = FileToolsApp()
     try:
         strings = _draw(app, size).strings
-        assert {"📖 Guide", "❓ Help"} <= set(strings) and caption(PANELS[0]) in strings
+        assert {"Guide", "Help"} <= set(strings) and caption(PANELS[0]) in strings
         x, y, w, h = app.child_box
         assert x + w <= size[0] + 0.5 and y + h <= size[1] + 0.5
     finally:

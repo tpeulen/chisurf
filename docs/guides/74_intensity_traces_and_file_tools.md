@@ -135,9 +135,9 @@ an error panel and the rest still work. **Guide** walks through the hub.
 :name: fig-file-tools
 :width: 100%
 
-File tools on **TTTR → Time Windows**, after *Process* on the same smFRET file
-with 1000 ms windows: the preview shows the intensity trace with a boundary at
-every window edge; each window becomes one row of the `.bst` file.
+File tools on **TTTR → Time Windows** with an Olympus HT3 scan queued: the preview
+shows its intensity trace; **Process** cuts the file into windows of the chosen
+**Time window (ms)** and each window becomes one row of the `.bst` file.
 ```
 
 ### The panels
@@ -149,7 +149,7 @@ container.
 :name: fig-file-tools-split
 :width: 100%
 
-TTTR Split / Convert with an SPC file loaded, to be written as PTU.
+TTTR Split / Convert with an SPC file loaded (183,657 photons), to be written as PTU.
 ```
 
 * *Input / Output*: **Input file**, **Output folder** (default: the input's
