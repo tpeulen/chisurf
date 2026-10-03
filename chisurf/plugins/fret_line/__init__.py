@@ -21,11 +21,16 @@ if _manifest is not None:
 else:
     name = "FRET:FRET Line Generator"
 
-from .gui.tool import FRETLineTool  # noqa: E402
+def __getattr__(attribute):
+    if attribute == "FRETLineTool":
+        from .gui.tool import FRETLineTool
+        return FRETLineTool
+    raise AttributeError(attribute)
 
 __all__ = ["FRETLineTool"]
 
 if __name__ == "plugin":
+    from .gui.tool import FRETLineTool
     window = FRETLineTool()
     if _manifest is not None:
         apply_manifest_statefulness(window, _manifest)

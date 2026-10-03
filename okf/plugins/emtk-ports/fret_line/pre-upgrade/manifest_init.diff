@@ -1,0 +1,47 @@
+diff --git a/chisurf/plugins/fret_line/__init__.py b/chisurf/plugins/fret_line/__init__.py
+index d82e96397..e617730fb 100644
+--- a/chisurf/plugins/fret_line/__init__.py
++++ b/chisurf/plugins/fret_line/__init__.py
+@@ -21,11 +21,16 @@ if _manifest is not None:
+ else:
+     name = "FRET:FRET Line Generator"
+ 
+-from .gui.tool import FRETLineTool  # noqa: E402
++def __getattr__(attribute):
++    if attribute == "FRETLineTool":
++        from .gui.tool import FRETLineTool
++        return FRETLineTool
++    raise AttributeError(attribute)
+ 
+ __all__ = ["FRETLineTool"]
+ 
+ if __name__ == "plugin":
++    from .gui.tool import FRETLineTool
+     window = FRETLineTool()
+     if _manifest is not None:
+         apply_manifest_statefulness(window, _manifest)
+diff --git a/chisurf/plugins/fret_line/gui/__init__.py b/chisurf/plugins/fret_line/gui/__init__.py
+index 37c06d47f..0bb93b5ab 100644
+--- a/chisurf/plugins/fret_line/gui/__init__.py
++++ b/chisurf/plugins/fret_line/gui/__init__.py
+@@ -1 +1,7 @@
+-from .tool import FRETLineTool  # noqa: F401
++"""FRET-line GUI entrypoints resolved lazily for native runtimes."""
++
++def __getattr__(attribute):
++    if attribute == 'FRETLineTool':
++        from .tool import FRETLineTool
++        return FRETLineTool
++    raise AttributeError(attribute)
+diff --git a/chisurf/plugins/fret_line/manifest.json b/chisurf/plugins/fret_line/manifest.json
+index 225480a08..2af7caf6a 100644
+--- a/chisurf/plugins/fret_line/manifest.json
++++ b/chisurf/plugins/fret_line/manifest.json
+@@ -22,6 +22,7 @@
+     }
+   },
+   "entrypoints": {
++    "emtk": "chisurf.plugins.fret_line.gui.app:make_app",
+     "gui": "chisurf.plugins.fret_line.gui.tool:FRETLineTool",
+     "cli": "chisurf.plugins.fret_line.__main__:main",
+     "services": "chisurf.plugins.fret_line.backend.services:register_services"

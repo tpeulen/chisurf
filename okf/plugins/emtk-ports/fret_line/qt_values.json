@@ -1,0 +1,73 @@
+{
+ "targets": [
+  "C0 [FRET: FD (Gaussian)] \u00b7 xD0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 tD0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 RDA0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 s0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 k0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 x0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 R0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 tau0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 kappa2"
+ ],
+ "static": {
+  "tau_f": [
+   0.11535238190113135,
+   3.390535919429068,
+   3.971729248114449
+  ],
+  "tau_x": [
+   0.022408824054555694,
+   3.3660853591777635,
+   3.9717099340149535
+  ],
+  "e_fret": [
+   0.9943977939863611,
+   0.15847866020555912,
+   0.007072516496261616
+  ],
+  "n": 100,
+  "sweep": "C0 [FRET: FD (Gaussian)] \u00b7 RDA0"
+ },
+ "targets_two": [
+  "C0 [FRET: FD (Gaussian)] \u00b7 xD0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 tD0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 RDA0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 s0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 k0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 x0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 R0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 tau0",
+  "C0 [FRET: FD (Gaussian)] \u00b7 kappa2",
+  "C1 [FRET: FD (Gaussian)] \u00b7 xD0",
+  "C1 [FRET: FD (Gaussian)] \u00b7 tD0",
+  "C1 [FRET: FD (Gaussian)] \u00b7 RDA0",
+  "C1 [FRET: FD (Gaussian)] \u00b7 s0",
+  "C1 [FRET: FD (Gaussian)] \u00b7 k0",
+  "C1 [FRET: FD (Gaussian)] \u00b7 x0",
+  "C1 [FRET: FD (Gaussian)] \u00b7 R0",
+  "C1 [FRET: FD (Gaussian)] \u00b7 tau0",
+  "C1 [FRET: FD (Gaussian)] \u00b7 kappa2",
+  "fraction \u00b7 C0 [FRET: FD (Gaussian)]",
+  "fraction \u00b7 C1 [FRET: FD (Gaussian)]"
+ ],
+ "fraction": {
+  "tau_f": [
+   1.9261276938930185,
+   3.3721636026988855,
+   3.971729248114449
+  ],
+  "tau_x": [
+   1.6803862140048393,
+   2.8376204160301493,
+   3.9717099340149535
+  ],
+  "e_fret": [
+   0.5799034464987902,
+   0.2905948959924627,
+   0.007072516496261616
+  ],
+  "n": 100,
+  "sweep": "fraction \u00b7 C0 [FRET: FD (Gaussian)]"
+ }
+}

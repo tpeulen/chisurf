@@ -22,6 +22,7 @@
     }
   },
   "entrypoints": {
+    "emtk": "chisurf.plugins.fret_line.gui.app:make_app",
     "gui": "chisurf.plugins.fret_line.gui.tool:FRETLineTool",
     "cli": "chisurf.plugins.fret_line.__main__:main",
     "services": "chisurf.plugins.fret_line.backend.services:register_services"
