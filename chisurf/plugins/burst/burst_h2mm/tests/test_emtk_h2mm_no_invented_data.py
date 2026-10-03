@@ -132,15 +132,16 @@ def test_after_a_fit_the_plots_hold_exactly_the_analysis(monkeypatch, ana, size)
     spy = PlotSpy(monkeypatch)
     painter = draw(H2mmApp(stub_tool(ana)), size, spy=spy)
 
-    # TDP: one scatter, the finite (E before, E after) of the decoded transitions, in decoding order.
-    scatters = [c for c in spy.calls if c[0] == "plot_scatter"]
-    assert len(scatters) == 1
+    # TDP: one heatmap, the 41x41 histogram of the finite (E before, E after) of the decoded transitions.
+    heat = [c for c in spy.calls if c[0] == "plot_heatmap"]
+    assert len(heat) == 1 and heat[0][1] == "Transitions"
     before = np.array([t.e_from for t in ana.transitions])
     after = np.array([t.e_to for t in ana.transitions])
     good = np.isfinite(before) & np.isfinite(after)
     assert good.sum() > 0
-    np.testing.assert_array_equal(scatters[0][2][0], before[good])
-    np.testing.assert_array_equal(scatters[0][2][1], after[good])
+    expected, _, _ = np.histogram2d(before[good], after[good], bins=(41, 41), range=[[0, 1], [0, 1]])
+    np.testing.assert_array_equal(heat[0][2][0], np.ascontiguousarray(expected.T[::-1]))
+    assert heat[0][2][0].sum() == good.sum(), "every transition is counted once"
 
     # Dwell window: one line per state with complete dwells, the 30-bin histogram of its dwells in ms.
     lines = [c for c in spy.calls if c[0] == "plot_line"]
@@ -153,7 +154,7 @@ def test_after_a_fit_the_plots_hold_exactly_the_analysis(monkeypatch, ana, size)
         np.testing.assert_allclose(call[2][0], (edges[:-1] + edges[1:]) / 2)
 
     # Nothing else is plotted: no reference line, no invented series.
-    assert len(spy.calls) == len(scatters) + len(lines)
+    assert len(spy.calls) == len(heat) + len(lines)
 
     # The rate table's cells are the analysis' matrix.
     shown = texts(painter)
@@ -273,7 +274,7 @@ class TestAgainstTheRealTool:
         hold(tool, ana)
         app = H2mmApp(tool)
         painter = draw(app, spy=spy)
-        assert any(c[0] == "plot_scatter" for c in spy.calls)
+        assert any(c[0] == "plot_heatmap" for c in spy.calls)
         assert f"{np.asarray(ana.trans_rates)[0, 1]:.1f}" in texts(painter)
 
 
@@ -307,8 +308,7 @@ def test_a_fit_run_through_the_tool_is_what_the_app_draws(qapp, tmp_path, monkey
         painter = draw(app, spy=spy)
         ana = produced["ana"]
         assert f"{np.asarray(ana.trans_rates)[0, 1]:.1f}" in texts(painter)
-        points = result_view.transition_points(ana)
-        np.testing.assert_array_equal(spy.named("Transitions")[2][0], points[0])
+        np.testing.assert_array_equal(spy.named("Transitions")[2][0], np.ascontiguousarray(result_view.tdp_histogram(ana).T[::-1]))
     finally:
         tool.close()
 

@@ -213,3 +213,70 @@ def state_decay_curves(ana: Any, bundle: Any):
 def scan_deviance(scan: Any) -> np.ndarray:
     """``2 (logL_max - logL)`` of a likelihood profile, the curve the scan window draws."""
     return 2.0 * (np.max(scan.loglik) - scan.loglik)
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# TDP heatmap, kinetic-scheme arrows and bootstrap bands (the Qt tool's _plot_tdp, _overlay_trans_arrows, _overlay_e_ci_bands)
+# --------------------------------------------------------------------------------------------------------------------
+TDP_BINS = 41
+
+
+def tdp_histogram(ana: Any, bins: int = TDP_BINS) -> np.ndarray | None:
+    """2-D histogram of the finite (E before, E after) transitions over [0, 1]^2, ``hist[x_bin, y_bin]``; ``None`` without any."""
+    points = transition_points(ana)
+    if points is None:
+        return None
+    hist, _, _ = np.histogram2d(points[0], points[1], bins=(bins, bins), range=[[0, 1], [0, 1]])
+    return hist
+
+
+def uncertainty_ranks(fret: np.ndarray) -> np.ndarray:
+    """E-ascending rank of each native state (the index into the bootstrap's arrays)."""
+    finite = np.where(np.isfinite(fret), fret, np.inf)
+    return np.argsort(np.argsort(finite))
+
+
+def e_ci_bands(ana: Any, uncertainty: Any) -> list[tuple[int, float, float]]:
+    """``(state, E low, E high)`` of the bootstrap interval of every state that has a finite one."""
+    if ana is None or uncertainty is None:
+        return []
+    fret = np.asarray(ana.fret, dtype=np.float64)
+    ranks = uncertainty_ranks(fret)
+    out = []
+    for i in range(fret.shape[0]):
+        r = int(ranks[i])
+        lo, hi = float(uncertainty.fret_lo[r]), float(uncertainty.fret_hi[r])
+        if np.isfinite(lo) and np.isfinite(hi):
+            out.append((i, lo, hi))
+    return out
+
+
+def transition_arrows(ana: Any, y_node: float) -> list[tuple[int, int, float, float, float, float, float]]:
+    """Arrows of the kinetic scheme along the E axis: ``(from, to, x0, y0, x1, y1, line width)``.
+
+    One arrow per transition with a positive finite rate, from state node ``i`` to node ``j`` (nodes at the states' E
+    on the baseline *y_node*), offset sideways so the two directions do not overlap, width scaled by the rate.
+    """
+    if ana is None:
+        return []
+    rates = np.asarray(getattr(ana, "trans_rates", np.empty((0, 0))), dtype=np.float64)
+    xs = np.asarray(ana.fret, dtype=np.float64)
+    n = xs.shape[0]
+    if rates.shape != (n, n):
+        return []
+    pos = rates[np.isfinite(rates) & (rates > 0)]
+    if pos.size == 0:
+        return []
+    rmax = float(pos.max())
+    span = float(np.nanmax(np.abs(np.diff(xs)))) if n > 1 else 1.0
+    off = 0.03 * (span or 1.0)
+    out = []
+    for i in range(n):
+        for j in range(n):
+            if i == j or not (np.isfinite(rates[i, j]) and rates[i, j] > 0 and np.isfinite(xs[i]) and np.isfinite(xs[j])):
+                continue
+            dx = xs[j] - xs[i]
+            length = abs(float(dx)) or 1.0
+            oy = dx / length * off  # perpendicular of a horizontal arrow is vertical
+            out.append((i, j, float(xs[i]), float(y_node + oy), float(xs[j]), float(y_node + oy), 1.0 + 4.0 * float(rates[i, j] / rmax)))
+    return out

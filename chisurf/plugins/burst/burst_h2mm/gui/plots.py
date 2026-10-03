@@ -26,8 +26,8 @@ def rgba(colour: str, alpha: int = 255) -> tuple[int, int, int, int]:
     return int(colour[0:2], 16), int(colour[2:4], 16), int(colour[4:6], 16), alpha
 
 
-def state_colour(i: int) -> tuple[int, int, int, int]:
-    return rgba(STATE_COLORS[i % len(STATE_COLORS)])
+def state_colour(i: int, alpha: int = 255) -> tuple[int, int, int, int]:
+    return rgba(STATE_COLORS[i % len(STATE_COLORS)], alpha)
 
 
 class ResultPlots:
@@ -49,6 +49,10 @@ class ResultPlots:
             implot.setup_axes("E before", "E after")
             implot.setup_axes_limits(0.0, 1.0, 0.0, 1.0)
 
+            hist = result_view.tdp_histogram(ana)
+            # rows are E after, row zero at the top: flip so E after grows upward (the Qt image's orientation)
+            implot.plot_heatmap("Transitions", np.ascontiguousarray(hist.T[::-1]), hist.shape[1], hist.shape[0],
+                                0.0, 0.0, None, (0.0, 0.0), (1.0, 1.0))
             # Gate: drag the box (or drop a BURST_REGION onto the plot); the count below is computed from the points.
             res_rect = implot.drag_rect(
                 401,
@@ -61,7 +65,6 @@ class ResultPlots:
             if res_rect.modified:
                 self.gate_x_min, self.gate_x_max = res_rect.x_min, res_rect.x_max
                 self.gate_y_min, self.gate_y_max = res_rect.y_min, res_rect.y_max
-            implot.plot_scatter("Transitions", points[0], points[1], size=3.5)
             implot.end_plot()
         if points is not None:
             inside, total = result_view.transitions_in_gate(
@@ -122,14 +125,21 @@ class ResultPlots:
             return
         if implot.begin_plot("Dwell FRET states", (-1, -1)):
             implot.setup_axes("Apparent FRET E", "Dwells (photon-weighted)")
-            implot.setup_axes_limits(0.0, 1.0, 0.0, max([float(c.max()) for c in info.counts.values()] + [1.0]) * 1.1)
+            implot.setup_axes_limits(0.0, 1.0, 0.0, max([float(c.max()) for c in info.counts.values()] + [1.0]) * 1.2)
             for state, counts in info.counts.items():
                 implot.set_next_line_style(state_colour(state), 2.0)
                 implot.plot_line(f"S{state}", info.centers, counts)
+            ymax = max([float(c.max()) for c in info.counts.values()] + [1.0])
+            for state, lo, hi in result_view.e_ci_bands(ana, uncertainty):  # bootstrap interval of the state's E
+                implot.set_next_fill_style(state_colour(state, 60))
+                implot.plot_shaded(f"CI S{state}", np.array([lo, hi]), np.zeros(2), np.full(2, ymax * 1.1))
             for state, e in enumerate(info.model_e):
                 if e == e:  # model E of the state, dashed in the Qt tool
                     implot.set_next_line_style(state_colour(state), 1.0)
                     implot.plot_inf_lines(f"model E S{state}", [float(e)])
+            for i, j, x0, y0, x1, y1, width in result_view.transition_arrows(ana, ymax * 1.08):
+                implot.set_next_line_style(state_colour(i), width)
+                implot.plot_line(f"k S{i}->S{j}", np.array([x0, x1]), np.array([y0, y1]))
             implot.end_plot()
 
     def draw_model_selection(self, ana) -> None:

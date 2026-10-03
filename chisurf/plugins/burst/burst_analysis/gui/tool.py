@@ -484,10 +484,11 @@ def _burst_segment_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 
 def _burst_h2mm(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the H2MM panel."""
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+    from chisurf.plugins.burst.burst_h2mm.gui.panel import make_panel
 
-    widget = H2mmTool(parent=parent, embedded=True)
-    _hide_dock_tab_by_name(widget, "Channel Definitions")
+    # The emtk H2MM app (settings model, shared detector editor, SnapshotJob run) hosted in a Qt panel that answers the
+    # workflow's methods; the Qt ``H2mmTool`` is no longer what this step shows.
+    widget = make_panel(parent)
     _bind(parent, "h2mm", widget)
     return widget
 
@@ -815,6 +816,9 @@ class BurstAnalysisTool(ChisurfDockTool):
     TITLE = "Burst Analysis"
     NAVIGATION_WIDTH = 310
     NAVIGATION_MIN_WIDTH = 290
+    #: The panel shown first. A subclass whose pipeline starts elsewhere — the
+    #: ALEX Suite's first step has the role ``channels`` — overrides this.
+    INITIAL_ROLE = "setup"
 
     def __init__(self, parent=None):
         """Create the integrated burst workflow tool."""
@@ -867,8 +871,8 @@ class BurstAnalysisTool(ChisurfDockTool):
         # Seed detector setup context from last used or default
         self._init_setup_context()
 
-        # Load initial panel (Step 0: Setup Selection)
-        self.show_panel_by_role("setup")
+        # Load the initial panel (the shell's first step)
+        self.show_panel_by_role(self.INITIAL_ROLE)
 
     def _init_setup_context(self) -> None:
         """Seed workflow context with last used or first available detector setup."""

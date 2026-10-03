@@ -366,6 +366,20 @@ class H2mmViewModel:
         write_csv_table(pathlib.Path(path), table, delimiter=",")
         return int(row_count(table))
 
+    def apply_workflow_context(self, context: dict) -> None:
+        """Apply a burst-workflow context: the burst folder and the detector definition (the Qt tool's method)."""
+        folder = context.get("burst_folder") or context.get("analysis_folder")
+        if folder and pathlib.Path(str(folder)).is_dir():
+            self.data_folder = str(folder)
+        channel_settings = context.get("channel_settings") or {}
+        if channel_settings.get("detectors"):
+            self.set_setup(channel_settings)
+        else:
+            file_type = (channel_settings.get("tttr_reading") or {}).get("file_type")
+            if file_type:
+                self.setup.setdefault("tttr_reading", {})["file_type"] = file_type
+        self.notify("context")
+
     def stop(self) -> None:
         """Ask a running fit to stop at its next progress checkpoint."""
         self._cancel.set()

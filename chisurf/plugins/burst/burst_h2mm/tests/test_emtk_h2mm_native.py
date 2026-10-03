@@ -196,8 +196,7 @@ def test_a_real_fit_by_clicks_equals_the_backend_and_fills_tables_and_plots(monk
     assert rows == {"S0 -> S1": f"{rates[0, 1]:.1f}", "S1 -> S0": f"{rates[1, 0]:.1f}"}, "the table pairs a rate with its transition"
     for e in ana.fret:
         assert f"{float(e):.3f}" in shown
-    points = result_view.transition_points(ana)
-    np.testing.assert_array_equal(spy.named("Transitions")[2][0], points[0])
+    np.testing.assert_array_equal(spy.named("Transitions")[2][0], np.ascontiguousarray(result_view.tdp_histogram(ana).T[::-1]))
     assert "Selected 2 states" in " ".join(shown)
 
 
@@ -341,8 +340,14 @@ def test_plot_tabs_hold_the_analysis_numbers(monkeypatch, fitted):
 
     info = result_view.dwell_fret(ana)
     s = last("Dwell FRET")
-    lines = [c for c in s.calls if c[0] == "plot_line"]
+    lines = [c for c in s.calls if c[0] == "plot_line" and not c[1].startswith("k ")]
     assert [c[1] for c in lines] == [f"S{i}" for i in info.counts]
+    arrows = {c[1]: c for c in s.calls if c[0] == "plot_line" and c[1].startswith("k ")}
+    expected = result_view.transition_arrows(ana, max(float(c.max()) for c in info.counts.values()) * 1.08)
+    assert sorted(arrows) == sorted(f"k S{i}->S{j}" for i, j, *_ in expected), "one arrow per transition with a rate"
+    for i, j, x0, y0, x1, y1, _w in expected:
+        np.testing.assert_allclose(arrows[f"k S{i}->S{j}"][2][0], [x0, x1])
+        assert np.isclose(arrows[f"k S{i}->S{j}"][2][1][0], y0)
     for call, (state, counts) in zip(lines, info.counts.items()):
         np.testing.assert_array_equal(call[2][1], counts)
     sel = result_view.model_selection(ana)
@@ -469,3 +474,74 @@ def test_browse_folder_dialog_sets_the_folder(app, sample):
     app.dialog.directory = str(sample)
     drv.click_text("Choose")
     assert app.model.data_folder in (str(sample), "")
+
+
+def test_bootstrap_bands_follow_the_uncertainty_on_the_dwell_fret_plot(monkeypatch, fitted):
+    window, drv = fitted
+    if window.model.uncertainty is None:
+        drv.click_name("bootstrap")
+        wait(drv)
+    ana, unc = window.model.analysis, window.model.uncertainty
+    bands = result_view.e_ci_bands(ana, unc)
+    assert bands and all(lo <= hi for _s, lo, hi in bands)
+    spy = PlotSpy(monkeypatch)
+    drv.click_text("Dwell FRET")
+    for _ in range(2):
+        spy.clear()
+        drv.draw(1)
+    shaded = {c[1]: c for c in spy.calls if c[0] == "plot_shaded"}
+    assert sorted(shaded) == sorted(f"CI S{s}" for s, _lo, _hi in bands)
+    for state, lo, hi in bands:
+        np.testing.assert_allclose(shaded[f"CI S{state}"][2][0], [lo, hi])
+    window.model.uncertainty = None
+    spy.clear()
+    drv.draw(2)
+    assert not [c for c in spy.calls if c[0] == "plot_shaded"], "bands without a bootstrap"
+    window.model.uncertainty = unc
+
+
+def test_result_view_arrows_and_bands_are_empty_without_a_fit():
+    assert result_view.transition_arrows(None, 1.0) == [] and result_view.e_ci_bands(None, None) == []
+    assert result_view.tdp_histogram(None) is None
+
+
+# ------------------------------------------------------------------------------------------------------------------
+# Hand-off: the burst-analysis workflow's step 7 hosts the native app (apply_workflow_context, panel, task seam)
+# ------------------------------------------------------------------------------------------------------------------
+def test_apply_workflow_context_sets_the_folder_and_the_detectors(sample):
+    model = H2mmViewModel()
+    model.apply_workflow_context({"burst_folder": str(sample), "channel_settings": BH_SETUP})
+    assert model.data_folder == str(sample)
+    assert model.detector_names() == ["green", "red"] and model.file_type == "SPC-130"
+    assert (model.donor, model.acceptor) == ("green", "red")
+    assert model._stream("red").channels == [8, 9]
+    other = H2mmViewModel()
+    other.apply_workflow_context({"analysis_folder": "/no/such/folder", "channel_settings": {"tttr_reading": {"file_type": "PTU"}}})
+    assert other.data_folder == "" and other.file_type == "PTU", "a missing folder is ignored; a bare file type is taken"
+
+
+def test_the_workflow_panel_runs_a_fit_through_the_task_seam(qapp_ref, sample):
+    """The shell's Next waits for the step's registered task: the hidden run button the shell clicks starts one."""
+    from qtpy import QtWidgets
+
+    from chisurf.gui.task import running_tasks_under
+    from chisurf.plugins.burst.burst_h2mm.gui.panel import make_panel
+
+    panel = make_panel()
+    try:
+        panel.apply_workflow_context({"burst_folder": str(sample), "channel_settings": BH_SETUP})
+        panel.model.min_states = panel.model.max_states = 2
+        panel.model.restarts = 1
+        button = panel.findChild(QtWidgets.QToolButton, "toolAction_run")
+        assert button is not None and button.isEnabled()
+        button.click()
+        assert running_tasks_under(panel), "the shell cannot see the fit: Next would never advance"
+        end = time.monotonic() + 180
+        while running_tasks_under(panel) and time.monotonic() < end:
+            qapp_ref.processEvents()
+            time.sleep(0.05)
+        qapp_ref.processEvents()
+        assert panel.model.analysis is not None and panel.model.analysis.best.n_states == 2
+        assert "Selected 2 states" in panel.model.status_text
+    finally:
+        panel.close()

@@ -27,13 +27,16 @@ for _ in range(20):
 inventory = {"controls": []}
 # ``control_inventory`` looks for tab widgets; this tool is a dock area, so walk every widget for the visible texts.
 texts = set(inventory["controls"])
-for w in tool.findChildren(QtWidgets.QWidget):
-    if isinstance(w, QtWidgets.QLabel):
-        texts.add(w.text())
-    elif isinstance(w, QtWidgets.QAbstractButton):
-        texts.add(w.text() or w.toolTip().split(".")[0].split(" \u2014 ")[0])  # an icon button is named by its tooltip
-    elif isinstance(w, QtWidgets.QGroupBox):
-        texts.add(w.title())
+roots = [tool, tool._build_settings_tab(), tool._build_channels_tab()]
+for root in roots:
+    for w in root.findChildren(QtWidgets.QWidget):
+        if isinstance(w, QtWidgets.QLabel):
+            texts.add(w.text())
+        elif isinstance(w, QtWidgets.QAbstractButton):
+            tip = w.toolTip().split(".")[0].split(" \u2014 ")[0].split(" - ")[0]
+            texts.add(w.text() if w.text().isascii() and w.text() else tip)  # an icon button is named by its tooltip
+        elif isinstance(w, QtWidgets.QGroupBox):
+            texts.add(w.title())
 texts = {t for t in texts if t and t.strip()}
 inventory["controls"] = sorted(texts)
 inventory["entrypoint"] = "chisurf.plugins.burst.burst_h2mm.gui.tool:H2mmTool (dock area shown)"
