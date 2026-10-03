@@ -3,17 +3,34 @@
   "version": "2.1.0",
   "display_name": "Tools:Miscellaneous:Code Editor",
   "description": "Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Tools", "Miscellaneous"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "Miscellaneous"
+  ],
   "icon": "📝",
   "state_namespace": "code_editor",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "recent_files": {"type": "array", "items": {"type": "string"}},
-      "project_root": {"type": ["string", "null"]},
-      "settings": {"type": "object"}
+      "recent_files": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "project_root": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "settings": {
+        "type": "object"
+      }
     }
   },
   "statefulness": {
@@ -24,8 +41,9 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.code_editor.window:CodeEditorWindow",
-    "services": "chisurf.plugins.core.code_editor.backend.services:register_services"
+    "gui": "chisurf.plugins.core.code_editor.gui.tool:CodeEditorEmtkTool",
+    "services": "chisurf.plugins.core.code_editor.backend.services:register_services",
+    "emtk": "chisurf.plugins.core.code_editor.gui.editor_app:make_editor_app"
   },
   "rpc_methods": [
     {

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .acp_client import Signal
+
 
 @dataclass(frozen=True)
 class DocumentSnapshot:
@@ -41,6 +43,7 @@ class DocumentStore:
         self._lock = threading.RLock()
         self._documents: dict[str, DocumentSnapshot] = {}
         self.active_document_id: str | None = None
+        self.changed = Signal(object)
 
     @staticmethod
     def document_id_for_path(path: str | Path) -> str:
@@ -56,10 +59,13 @@ class DocumentStore:
         language: str,
         content: str,
         modified: bool = False,
+        expected_revision: int | None = None,
     ) -> DocumentSnapshot:
         """Insert or update a document snapshot."""
         with self._lock:
             current = self._documents.get(document_id)
+            if expected_revision is not None and current is not None:
+                self._check_revision(current, expected_revision)
             revision = 0 if current is None else current.revision
             if current is None or current.content != content or current.path != path:
                 revision += 1
@@ -73,12 +79,16 @@ class DocumentStore:
                 modified=modified,
             )
             self._documents[document_id] = snapshot
+            if snapshot != current:
+                self.changed.emit(snapshot)
             return snapshot
 
     def remove(self, document_id: str) -> None:
         """Remove a document from the store."""
         with self._lock:
-            self._documents.pop(document_id, None)
+            removed = self._documents.pop(document_id, None)
+            if removed is not None:
+                self.changed.emit(None)
 
     def get(
         self,
@@ -92,7 +102,13 @@ class DocumentStore:
                 return self._documents.get(document_id)
             if path is not None:
                 resolved_id = self.document_id_for_path(path)
-                return self._documents.get(resolved_id)
+                found = self._documents.get(resolved_id)
+                if found is not None:
+                    return found
+                resolved = str(Path(path).resolve())
+                for document in self._documents.values():
+                    if document.path and str(Path(document.path).resolve()) == resolved:
+                        return document
         return None
 
     def list_documents(self) -> list[dict[str, Any]]:
@@ -126,6 +142,8 @@ class DocumentStore:
                 modified=True,
             )
             self._documents[document_id] = snapshot
+            if snapshot != current:
+                self.changed.emit(snapshot)
             return snapshot
 
     def apply_edits(
@@ -149,6 +167,8 @@ class DocumentStore:
                 modified=True,
             )
             self._documents[document_id] = snapshot
+            if snapshot != current:
+                self.changed.emit(snapshot)
             return snapshot
 
     def _get_locked(self, document_id: str) -> DocumentSnapshot:
