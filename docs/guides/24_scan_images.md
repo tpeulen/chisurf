@@ -61,12 +61,24 @@ combinations — the format to prefer) or a `.tif` / `.npy` mask image for tools
 that read nothing else. **Load** reads all of those back, plus a Cellpose
 `_seg.npy` segmentation, which arrives as one region per detected object.
 
-The tool is **Imaging ▸ CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`). Its docks are
-tabs: **File**, **Acquisition** (setup preset — PTU, Leica SP5/SP8, MFIS
-Olympus — markers, pixels per line, channels; markers are read from the file
-header when present), **Brush & Decay** (brush size/width, select/erase, live
-update, *Image type* Intensity / Mean micro time, *Min #Ph*, micro-time
-*Coarsen*, frame mode), **Image**, **Regions** and **Decay**.
+The tool is **Imaging ▸ CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`). Its left
+window holds the controls: **Open TTTR / imaging**, **Build CLSM**,
+**Add representation**, **Compute decay**, the exports, the **Setup preset** (PTU,
+Leica SP5/SP8, MFIS Olympus), **Detector channels**, the CLSM image and representation
+choices, the folded **Acquisition** fields (markers read from the file header,
+pixels per line), **Brush & Decay** (brush size/width, select/deselect, live
+update, *Image type* Intensity / Mean micro time, *Min #Ph*, micro-time *Coarsen*,
+*Frames* mode), **Paint selection**, **Save painted region**, the analysis regions
+and **Save / Load settings**. The image and the decay plot are two windows beside it;
+**Guide** walks through a first scan and **Help** is the reference.
+
+```{figure} figures/24_clsm_draw_window.png
+:name: fig-24-clsm-draw-window
+:width: 100%
+
+CLSM-Draw on `test/data/clsm/Leica_SP5.ptu` (channel 0): the scan built, its
+intensity representation, a painted selection and the decay of those pixels.
+```
 
 ```{figure} figures/24_clsm_draw.png
 :name: fig-24-clsm-draw

@@ -1,0 +1,26 @@
+{
+  "_comment": "Guided tour for CLSM Pixel Select. Steps point at real controls; the ones with an await wait until the user presses the control.",
+  "steps": [
+    {"title": "What this tool does",
+     "text": "A confocal lifetime scan is a photon stream with markers for frames, lines and pixels. This tool rebuilds the images from it, lets you <b>paint</b> pixels on an image and shows the photon decay of exactly those pixels.<br/><br/>Seven steps; you press the buttons, the tour only points at them.",
+     "target": {}},
+    {"title": "Open the photons",
+     "text": "<b>Open TTTR / imaging</b> reads a PTU (or HT3) scan; the scanner markers are detected from its header and filled into <b>Acquisition</b>.",
+     "target": {"key": "Open TTTR / imaging"}, "await": {"hint": "Press <b>Open TTTR / imaging</b> and choose a file."}},
+    {"title": "Check the acquisition settings",
+     "text": "<b>Detector channels</b> chooses which routing channels are summed; the markers and pixels per line normally need no change for a scan from the supported scanners.",
+     "target": {"key": "channels_text"}},
+    {"title": "Build the image",
+     "text": "<b>Build CLSM</b> reconstructs a scanner image from the photons and the settings.",
+     "target": {"key": "Build CLSM"}, "await": {"hint": "Press <b>Build CLSM</b>."}},
+    {"title": "A representation to look at",
+     "text": "<b>Add representation</b> computes the intensity (or the mean micro-time) image you paint on; <b>Image type</b> in Brush &amp; Decay chooses which.",
+     "target": {"key": "Add representation"}, "await": {"hint": "Press <b>Add representation</b>."}},
+    {"title": "Paint a decay",
+     "text": "Drag with the left mouse button over the image to select pixels (the middle button pans). With <b>Live update</b> the decay of the painted pixels appears below as you paint.",
+     "target": {"key": "CLSM image"}},
+    {"title": "Keep what you found",
+     "text": "<b>Add decay -&gt; ChiSurf</b> publishes the decay as an experimental dataset for fitting; <b>Export decay CSV</b> and <b>Export image</b> write files. Press <b>Help</b> for the representations and the brush.",
+     "target": {"key": "Add decay → ChiSurf"}}
+  ]
+}

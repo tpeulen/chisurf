@@ -82,14 +82,16 @@
               "target": "setup",
               "attr": "tttr_type",
               "kind": "str",
-              "label": "TTTR type"
+              "label": "TTTR type",
+              "description": "The photon file container type, if the file does not name it."
             },
             {
               "type": "value",
               "target": "setup",
               "attr": "routine",
               "kind": "str",
-              "label": "Routine"
+              "label": "Routine",
+              "description": "The reading routine of the setup preset."
             },
             {
               "type": "value",
@@ -104,21 +106,24 @@
               "target": "setup",
               "attr": "line_start_marker",
               "kind": "int",
-              "label": "Line start"
+              "label": "Line start",
+              "description": "Routing marker of the start of a line."
             },
             {
               "type": "value",
               "target": "setup",
               "attr": "line_stop_marker",
               "kind": "int",
-              "label": "Line stop"
+              "label": "Line stop",
+              "description": "Routing marker of the end of a line."
             },
             {
               "type": "value",
               "target": "setup",
               "attr": "event_type_marker",
               "kind": "int",
-              "label": "Event marker"
+              "label": "Event marker",
+              "description": "Event type that carries the scanner markers."
             },
             {
               "type": "value",
@@ -142,7 +147,8 @@
               "kind": "int",
               "label": "Brush size",
               "minimum": 1,
-              "maximum": 99
+              "maximum": 99,
+              "description": "Edge length of the brush in pixels (1 to 99)."
             },
             {
               "type": "value",
@@ -152,7 +158,8 @@
               "label": "Brush width",
               "minimum": 0.1,
               "maximum": 50.0,
-              "decimals": 1
+              "decimals": 1,
+              "description": "Width (sigma) of the brush kernel in pixels; a smaller value gives a harder edge."
             },
             {
               "type": "choice",
@@ -163,6 +170,11 @@
               "options": [
                 "select",
                 "deselect"
+              ],
+              "description": "select paints pixels into the selection; deselect erases them.",
+              "descriptions": [
+                "Paint pixels into the selection with the left mouse button.",
+                "Erase pixels from the selection with the left mouse button."
               ]
             },
             {
@@ -181,7 +193,8 @@
                 "Intensity",
                 "Mean micro time",
                 "Intensity, Mean micro time"
-              ]
+              ],
+              "description": "Which representation Add representation computes: intensity, mean micro-time or both."
             },
             {
               "type": "value",
@@ -215,7 +228,8 @@
                 "sum",
                 "mean",
                 "frame"
-              ]
+              ],
+              "description": "How the frames of the scan are combined: sum, mean, or one frame."
             },
             {
               "type": "value",
@@ -223,7 +237,8 @@
               "attr": "frame_idx",
               "kind": "int",
               "label": "Frame",
-              "minimum": 0
+              "minimum": 0,
+              "description": "The frame used when Frames is set to frame."
             }
           ]
         },

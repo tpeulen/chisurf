@@ -1,0 +1,266 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.001",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "1e-06",
+    "3.0",
+    "7",
+    "8",
+    "acquisition",
+    "acquisition,imagesandselections",
+    "adddecay→chisurf",
+    "addrepresentation",
+    "analysisregions",
+    "brush",
+    "brushdecay",
+    "brushsize",
+    "brushwidth",
+    "buildclsm",
+    "clearselection",
+    "clsmimage",
+    "coarsen",
+    "computedecay",
+    "deselect",
+    "detectorchannels",
+    "exportdecaycsv",
+    "exportimage",
+    "fluorescencedecays",
+    "frame",
+    "frames",
+    "guide",
+    "help",
+    "imagetype",
+    "intensity",
+    "lines/frame",
+    "liveupdate",
+    "loadanimageorrunpreviewtoinspectpixels.",
+    "loadsettings",
+    "loadtttrdata,buildaclsmimageandadda",
+    "min#ph",
+    "mmfdbdataset",
+    "opentttr/imaging",
+    "paintselection",
+    "photoncounts",
+    "pixelmarker",
+    "ptu",
+    "regionname",
+    "representation.",
+    "savepaintedregion",
+    "savesettings",
+    "select",
+    "selectedpixeldecays",
+    "selection",
+    "setuppreset",
+    "sum",
+    "time[ns]",
+    "usepixelmarkers",
+    "vbrushdecay"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain marker reconstruction, intensity/lifetime representations and brush-selected decays."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through loading a CLSM scan, building an image and painting a decay."
+    },
+    {
+      "kind": "button",
+      "label": "Open TTTR / imaging",
+      "id": "Open TTTR / imaging",
+      "tooltip": "Load photon data or follow an imaging HDF5 source reference."
+    },
+    {
+      "kind": "button",
+      "label": "MMFDB dataset",
+      "id": "MMFDB dataset",
+      "tooltip": "Resolve registered photon data to a local input file."
+    },
+    {
+      "kind": "button",
+      "label": "Build CLSM",
+      "id": "Build CLSM",
+      "tooltip": "Reconstruct and fill a scanner image using the acquisition settings."
+    },
+    {
+      "kind": "button",
+      "label": "Add representation",
+      "id": "Add representation",
+      "tooltip": "Compute the selected intensity or micro-time representation."
+    },
+    {
+      "kind": "button",
+      "label": "Compute decay",
+      "id": "Compute decay",
+      "tooltip": "Compute the photon histogram of selected pixels."
+    },
+    {
+      "kind": "button",
+      "label": "Add decay → ChiSurf",
+      "id": "Add decay → ChiSurf",
+      "tooltip": "Publish the current decay as a real ChiSurf experimental dataset."
+    },
+    {
+      "kind": "button",
+      "label": "Export image",
+      "id": "Export image",
+      "tooltip": "Save the current physical image as a TIFF."
+    },
+    {
+      "kind": "button",
+      "label": "Export decay CSV",
+      "id": "Export decay CSV",
+      "tooltip": "Export time, counts and Poisson noise of the current decay."
+    },
+    {
+      "kind": "combo",
+      "label": "Setup preset",
+      "id": "##Setup preset",
+      "tooltip": "Restore scanner markers, file type and reading routine from a named acquisition preset."
+    },
+    {
+      "kind": "input_text",
+      "label": "channels_text",
+      "id": "##channels_text",
+      "tooltip": "Comma-separated photon routing channels."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Acquisition",
+      "id": "Acquisition",
+      "tooltip": "Expand or collapse Acquisition."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Brush & Decay",
+      "id": "Brush & Decay",
+      "tooltip": "Expand or collapse Brush & Decay."
+    },
+    {
+      "kind": "input_text",
+      "label": "size",
+      "id": "##size",
+      "tooltip": "Edge length of the brush in pixels (1 to 99)."
+    },
+    {
+      "kind": "input_text",
+      "label": "width",
+      "id": "##width",
+      "tooltip": "Width (sigma) of the brush kernel in pixels; a smaller value gives a harder edge."
+    },
+    {
+      "kind": "radio_button",
+      "label": "select",
+      "id": "select##mode0",
+      "tooltip": "Paint pixels into the selection with the left mouse button."
+    },
+    {
+      "kind": "radio_button",
+      "label": "deselect",
+      "id": "deselect##mode1",
+      "tooltip": "Erase pixels from the selection with the left mouse button."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Live update",
+      "id": "Live update##live_update",
+      "tooltip": "Recompute the decay while brushing."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_ph_min",
+      "id": "##n_ph_min",
+      "tooltip": "Minimum photons per pixel for the mean micro time."
+    },
+    {
+      "kind": "input_text",
+      "label": "frame_idx",
+      "id": "##frame_idx",
+      "tooltip": "The frame used when Frames is set to frame."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Use pixel markers",
+      "id": "Use pixel markers##use_pixel_markers",
+      "tooltip": "Use explicit per-pixel marker records instead of time-derived raster positions."
+    },
+    {
+      "kind": "input_text",
+      "label": "marker_pixel",
+      "id": "##marker_pixel",
+      "tooltip": "Routing marker code for the beginning of a pixel."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_lines",
+      "id": "##n_lines",
+      "tooltip": "Explicit scanner line count; zero uses pixels/line."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Paint selection",
+      "id": "Paint selection",
+      "tooltip": "Reserve left-mouse dragging for selecting/erasing pixels; use the middle button to pan."
+    },
+    {
+      "kind": "button",
+      "label": "Clear selection",
+      "id": "Clear selection",
+      "tooltip": "Clear painted pixels and the active decay."
+    },
+    {
+      "kind": "button",
+      "label": "Save painted region",
+      "id": "Save painted region",
+      "tooltip": "Capture painted pixels as a reusable named mask region."
+    },
+    {
+      "kind": "input_text",
+      "label": "roi_name",
+      "id": "##roi_name",
+      "tooltip": "Name for the saved painted mask."
+    },
+    {
+      "kind": "collapsing_header",
+      "label": "Analysis regions",
+      "id": "Analysis regions",
+      "tooltip": "Restrict detection to named regions; empty or disabled regions use the entire frame."
+    },
+    {
+      "kind": "button",
+      "label": "Save settings",
+      "id": "Save settings",
+      "tooltip": "Persist acquisition, brush and representation settings plus region geometry."
+    },
+    {
+      "kind": "button",
+      "label": "Load settings",
+      "id": "Load settings",
+      "tooltip": "Restore acquisition, brush and representation settings plus region geometry."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
