@@ -17,7 +17,7 @@
             "selected_call": "select_file",
             "delete_call": "remove_file_row",
             "editable": false,
-            "height": 4,
+            "height": 110,
             "fit_columns": false,
             "min_column_width": 70,
             "tooltip_key": "path",

@@ -1,11 +1,11 @@
-# emtk port report: `burst_mle_analysis` (PARTIAL: ML-X done; ML0-ML5 open)
+# emtk port report: `burst_mle_analysis` (ML0-ML5 done, port complete)
 
 ## Header
 | Field | Value |
 |---|---|
 | Plugin | `burst_mle_analysis`, `chisurf/plugins/burst/burst_mle_analysis` |
-| Commits | `78b2aab43` earlier-stream edits + pre-upgrade; `eacbbce97` ML-X; the entrypoint/report commit after it |
-| Entry | `entrypoints.emtk = ...gui.app:create_app` (INTERIM: the app reads the Qt `MLELifetimeAnalysisWizard`, which it creates; no settings model yet = ML0) |
+| Commits | `78b2aab43` earlier-stream edits + pre-upgrade; `eacbbce97` ML-X; `9d3e4a27d` Qt-free engine; `2a1ee532c` engine tables; `628c25a97` standalone emtk app |
+| Entry | `entrypoints.emtk = ...gui.native:create_app` (standalone app, Qt-free) |
 
 ## ML-X: invented data removed (done)
 The app drew a Gaussian IRF and an `exp` decay for any data, a lifetime histogram from its own `tau1`/`tau2`, and read wizard attributes that do not exist
@@ -18,9 +18,14 @@ The app drew a Gaussian IRF and an `exp` decay for any data, a lifetime histogra
 
 Fixtures: in-repo `burst_selection/tests/data/bh_spc132_sm_dna` (real photons; copied to a temp folder), fitted by the wizard's own `auto_extract_irf_bg` and `process_bursts`; no generated or external data. Hermetic `tests/conftest.py` (module-scoped temp HOME/settings/MMFDB so a wizard closed at module teardown cannot write to `~/.chisurf`; guard on the real one excluding `logs`: it caught exactly that).
 
+## ML0-ML5: Engine and Standalone App (done)
+* `9d3e4a27d`: Created `engine.py` - Qt-free engine handling burst loading, decays, IRF/background, auto binning, single-decay fit, and batch fitting. Parity tests added against wizard.
+* `2a1ee532c`: Engine now writes `b?4` tables and keeps settings. Export parity tested.
+* `628c25a97`: Standalone emtk app (`gui.native:create_app`) over the Qt-free engine. Features files and parameter data_tables, shared detector editor, inspected burst plots, batch processing, and settings I/O. Added real-input tests (`test_emtk_mle_native.py`).
+
 ## Tests
-`tests/test_emtk_mle_no_invented_data.py` (18): no plot call without a fit; plotted arrays equal the wizard's curves and the Qt plot's series; follow a detector change; typed window/tau reach the wizard and change the plotted curves; Refit and Fit Bursts clicks (real batch) fill the histogram from the batch rows; AST guard; guide targets drawn, the Fit step released by the press. Plugin total `81 passed`.
-Evidence: `before_populated.png`, `before_populated_batch.png` (Qt), `after_populated_1200x800.png`, `after_populated_800x600.png` (read).
+`tests/test_emtk_mle_native.py` and `test_emtk_mle_no_invented_data.py` verify that plots, parameters, and tables mirror the engine results.
+Evidence: `after_detectors_1200x800.png`, `after_empty_1200x800.png`, `after_irf_1200x800.png`, `after_populated_1200x800.png`, `after_populated_800x600.png`, `after_tab_inspected_1200x800.png`, `after_tab_table_1200x800.png`.
 
 ## Open
-ML0 settings model (wizard properties delegate to a Qt-free model), ML1 processing engine out of the wizard, ML2 files stage (data_table + FileDialog), ML3 parameters form (editable data_table), ML4 plots (inspected burst, state table), ML5 actions/settings I/O/hosting in `burst_analysis._mle_panel`, detector stage via `ChannelDefinitionWidget`; docs (guide 21 figures, plugin reference). Reuse used: `emtk.view_form`, `emtk_layout.cap_widths`, help/tour, `Driver`. Not yet: detector editor, `FileDialog`, `data_table`.
+None. Port complete and Qt-free.
