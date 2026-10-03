@@ -1,0 +1,126 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "[]data",
+    "[x]components",
+    "[x]corrections",
+    "[x]finish",
+    "[x]normalizeirf",
+    "[x]welcome",
+    "anisotropy",
+    "anisotropyworkflow",
+    "back",
+    "batchanalysis",
+    "buildalinkedvv/vhglobalanisotropyfit.",
+    "buildalinkedvv/vhglobaltime-resolvedanisotropyfit.",
+    "components—definethelifetimeandrotationspectra.",
+    "corrections—settheg-factorandl1/l2channel-mixingfactors.",
+    "data—pointtothevv/vhirfandsampledecays.",
+    "decays.",
+    "finish—createthevv,vhandglobalfitswithallparameterslinked.",
+    "guide",
+    "help",
+    "intensity-matched.",
+    "irf—pickabackgroundregion;theirfsarebackground-subtractedand",
+    "next",
+    "selectthepolarization-resolvedinputs.",
+    "thiswizardbuildsalinkedvv/vhglobalanisotropyfitfrompolarisation-resolved",
+    "time-resolvedanisotropy",
+    "welcome",
+    "workflowstep"
+  ],
+  "interactive": [
+    {
+      "kind": "selectable",
+      "label": "Anisotropy",
+      "id": "Anisotropy",
+      "tooltip": "Build a linked VV/VH global time-resolved anisotropy fit."
+    },
+    {
+      "kind": "selectable",
+      "label": "Batch analysis",
+      "id": "Batch analysis",
+      "tooltip": "Apply one template fit to many datasets or files."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A short walk through the hub."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "What the hub is and how the embedded wizards are used."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain polarized decays, background correction and parameter linking."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Follow a guided tour through the real wizard controls."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Welcome",
+      "id": "[x] Welcome##anisotropy0",
+      "tooltip": "Build a linked VV/VH global anisotropy fit."
+    },
+    {
+      "kind": "selectable",
+      "label": "[ ] Data",
+      "id": "[ ] Data##anisotropy1",
+      "tooltip": "Select the polarisation-resolved IRF and decay files."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Normalize IRF",
+      "id": "[x] Normalize IRF##anisotropy2",
+      "tooltip": "Pick a background region; IRFs are subtracted and intensity-matched."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Corrections",
+      "id": "[x] Corrections##anisotropy3",
+      "tooltip": "Instrumental g-factor and channel-mixing corrections."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Components",
+      "id": "[x] Components##anisotropy4",
+      "tooltip": "Define the lifetime and rotation spectra."
+    },
+    {
+      "kind": "selectable",
+      "label": "[x] Finish",
+      "id": "[x] Finish##anisotropy5",
+      "tooltip": "Create the linked VV/VH global anisotropy fit."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Return to the previous workflow step."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Continue to the next workflow step."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  }
+}

@@ -34,6 +34,14 @@ opening it, load a representative dataset, create the fit you intend to use, and
 **optimise it by hand**: its parameter values — and which parameters are fixed —
 seed every run.
 
+```{figure} figures/wizards_hub.png
+:name: fig-wizards-hub
+:width: 100%
+
+The Wizards hub: the list on the left, the selected wizard on the right (here the
+Anisotropy assistant; click **Batch analysis** for this one).
+```
+
 The wizard has five steps in a list on the left; a check mark means the step needs
 nothing more from you. Click a step, or use **Back** / **Next**; steps can be
 visited in any order, and **Finish** (last step) closes the window. **Help**
