@@ -1,0 +1,55 @@
+{
+ "steps": [
+  {
+   "title": "Find a destination",
+   "text": "Type part of a name into the <b>search box</b>, for example <i>plug</i>. The list keeps only the destinations whose name contains the text; Enter opens the first one.",
+   "target": {
+    "name": "search"
+   },
+   "await": {
+    "hint": "Type something into the search box."
+   }
+  },
+  {
+   "title": "Every destination",
+   "text": "This list holds the Getting Started assistant and every settings destination. Each one is the dedicated panel of its tool, kept alive while you look at another.",
+   "target": {
+    "name": "destinations"
+   }
+  },
+  {
+   "title": "Pick one",
+   "text": "Click a destination. Its panel fills the area on the right and brings its own Help and Guide buttons.",
+   "target": {
+    "name": "destinations"
+   },
+   "await": {
+    "hint": "Click any destination in the list."
+   }
+  },
+  {
+   "title": "Walk the list",
+   "text": "<b>Next</b> goes to the next destination, <b>Back</b> to the previous one, and the double arrow visits all remaining ones in order. The status line on the left says what is happening.",
+   "target": {
+    "name": "next"
+   },
+   "await": {
+    "hint": "Press Next."
+   }
+  },
+  {
+   "title": "The panel",
+   "text": "The hosted panel gets all the remaining space. Its own <b>Help</b> and <b>Guide</b> buttons explain that destination.",
+   "target": {
+    "name": "panel"
+   }
+  },
+  {
+   "title": "Help",
+   "text": "The <b>?</b> button explains the hub itself; <b>Guide</b> starts this walkthrough again.",
+   "target": {
+    "name": "help"
+   }
+  }
+ ]
+}

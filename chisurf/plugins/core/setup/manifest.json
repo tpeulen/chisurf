@@ -9,7 +9,7 @@
   "categories": [
     "Setup"
   ],
-  "icon": "⚙️",
+  "icon": "\u2699\ufe0f",
   "statefulness": {
     "enabled": true,
     "window": {
@@ -18,7 +18,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.setup.gui.tool:UnifiedSettingsTool"
+    "gui": "chisurf.plugins.core.setup.gui.tool:UnifiedSettingsTool",
+    "emtk": "chisurf.plugins.core.setup.gui.app:make_app"
   },
   "optional_requires": {
     "acq": "*",

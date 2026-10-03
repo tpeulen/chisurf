@@ -135,9 +135,9 @@ class PlotSettingsApp(ImApp):
             x_label = "t / ns" if model.label_axis else ""
             y_label = "counts" if model.label_axis else ""
             implot.setup_axes(x_label, y_label, grid_flag, grid_flag)
-            implot.setup_axis_limits(implot.AXIS_X1, 0.0, 10.0, implot.COND_ALWAYS)
+            implot.setup_axis_limits(implot.AXIS_X1, 0.0, 10.0, implot.COND_ONCE)
             # The sample curves span 2 .. 1200 counts: fixed limits keep the baseline above the frame.
-            implot.setup_axis_limits(implot.AXIS_Y1, 1.0, 2000.0, implot.COND_ALWAYS)
+            implot.setup_axis_limits(implot.AXIS_Y1, 1.0, 2000.0, implot.COND_ONCE)
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
             for series in model.preview_series():

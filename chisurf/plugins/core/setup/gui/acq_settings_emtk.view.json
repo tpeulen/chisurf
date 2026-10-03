@@ -1,0 +1,404 @@
+{
+ "_comment": "Acquisition settings destination of the Settings hub, as the Qt AcquisitionSettingsWidget (output folder, advanced, device type, simulator parameters). Drawn by emtk.view_form over AcquisitionSettingsModel (gui/acq_app.py). The simulator's per-species table, kinetics matrices, decay editor and channel switches are Qt-only sections (see deliberate.json).",
+ "title": "Acquisition",
+ "sections": [
+  {
+   "type": "panel",
+   "name": "settings",
+   "title": "Acquisition",
+   "description": "Acquisition settings.",
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Output",
+     "collapsible": true,
+     "collapsed": false,
+     "description": "Where new measurements are written.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "output_path",
+       "label": "Folder",
+       "kind": "str",
+       "description": "Standard folder for new measurements. Written to gui.acquisition.output_path on every change.",
+       "placeholder": "Standard folder for new measurements"
+      },
+      {
+       "type": "button_row",
+       "buttons": [
+        {
+         "label": "Browse...",
+         "action": "browse_output",
+         "description": "Pick the standard output folder from a folder chooser."
+        }
+       ],
+       "weight": 0
+      }
+     ]
+    },
+    {
+     "type": "panel",
+     "title": "Advanced Configuration",
+     "collapsible": true,
+     "collapsed": false,
+     "description": "Chunking and pacing of the photon stream.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "chunk_size",
+       "label": "Chunk Size",
+       "kind": "int",
+       "description": "Number of photons to read per chunk (each photon = 32 bits).",
+       "style": "spin",
+       "minimum": 1000,
+       "maximum": 65536,
+       "suffix": " photons"
+      },
+      {
+       "type": "toggle",
+       "attr": "real_time_sim",
+       "label": "Real-time Sim",
+       "description": "Pace simulation to roughly 1 s wall time = 1 s sim time. Only for the Simulation device.",
+       "hidden_when": {
+        "attr": "device_type",
+        "not_equals": "Simulation"
+       }
+      }
+     ]
+    },
+    {
+     "type": "panel",
+     "title": "Device Configuration",
+     "collapsible": true,
+     "collapsed": false,
+     "description": "Hardware selection and the device's own parameters.",
+     "sections": [
+      {
+       "type": "choice",
+       "attr": "device_type",
+       "label": "Active Device Type",
+       "options_source": "device_types",
+       "description": "Which acquisition hardware (or the simulator) the Acquisition tool uses."
+      },
+      {
+       "type": "info",
+       "text": "No specific configuration is edited here for this device type. Its card setup dialog (vendor settings) opens from the Acquisition tool.",
+       "description": "Vendor devices keep their own setup dialog.",
+       "hidden_when": {
+        "attr": "device_type",
+        "equals": "Simulation"
+       }
+      },
+      {
+       "type": "panel",
+       "title": "Acquisition",
+       "collapsible": true,
+       "collapsed": false,
+       "hidden_when": {
+        "attr": "device_type",
+        "not_equals": "Simulation"
+       },
+       "description": "Excitation and file splitting of the simulated stream.",
+       "sections": [
+        {
+         "type": "choice",
+         "attr": "sim_excitation_mode",
+         "label": "Mode",
+         "options": [
+          "CW",
+          "Pulsed"
+         ],
+         "description": "Excitation mode: CW (continuous) or Pulsed (pulsed laser; enables the micro-time / TCSPC axis)."
+        },
+        {
+         "type": "value",
+         "attr": "sim_N_ph_max",
+         "label": "Photons",
+         "kind": "int",
+         "description": "Total number of photons to simulate.",
+         "style": "spin",
+         "minimum": 1,
+         "maximum": 2000000000
+        },
+        {
+         "type": "value",
+         "attr": "sim_N_ph_per_file",
+         "label": "Photons/file",
+         "kind": "int",
+         "description": "Split the streamed SPC output into files of this many photons each.",
+         "style": "spin",
+         "minimum": 1,
+         "maximum": 2000000000
+        },
+        {
+         "type": "value",
+         "attr": "sim_spc_output_path",
+         "label": "Output folder",
+         "kind": "str",
+         "description": "Folder where SPC/photon-stream files are written."
+        },
+        {
+         "type": "value",
+         "attr": "sim_rmt1seed",
+         "label": "Diffusion seed",
+         "kind": "int",
+         "description": "Seed of the diffusion random number generator.",
+         "style": "spin",
+         "minimum": 0,
+         "maximum": 2000000000
+        },
+        {
+         "type": "value",
+         "attr": "sim_rmt2seed",
+         "label": "Emission seed",
+         "kind": "int",
+         "description": "Seed of the emission random number generator.",
+         "style": "spin",
+         "minimum": 0,
+         "maximum": 2000000000
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "title": "Sample & brightness",
+       "collapsible": true,
+       "collapsed": false,
+       "hidden_when": {
+        "attr": "device_type",
+        "not_equals": "Simulation"
+       },
+       "description": "Species, channels and brightness of the simulated sample.",
+       "sections": [
+        {
+         "type": "info",
+         "text": "",
+         "description": "Read-only summary of the stored sample definition.",
+         "source": "sample_summary"
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "title": "Geometry",
+       "collapsible": true,
+       "collapsed": true,
+       "hidden_when": {
+        "attr": "device_type",
+        "not_equals": "Simulation"
+       },
+       "description": "Simulation box, focus and time step.",
+       "sections": [
+        {
+         "type": "value",
+         "attr": "sim_box_xy",
+         "label": "Box XY",
+         "kind": "float",
+         "description": "Lateral box size (um).",
+         "style": "spin",
+         "minimum": 0.001,
+         "maximum": 1000000.0,
+         "decimals": 4,
+         "step": 0.1
+        },
+        {
+         "type": "value",
+         "attr": "sim_box_z",
+         "label": "Box Z",
+         "kind": "float",
+         "description": "Axial box size (um).",
+         "style": "spin",
+         "minimum": 0.001,
+         "maximum": 1000000.0,
+         "decimals": 4,
+         "step": 0.1
+        },
+        {
+         "type": "value",
+         "attr": "sim_focus_w0",
+         "label": "Focus w0",
+         "kind": "float",
+         "description": "Lateral focus waist (um).",
+         "style": "spin",
+         "minimum": 0.001,
+         "maximum": 1000000.0,
+         "decimals": 4,
+         "step": 0.05
+        },
+        {
+         "type": "value",
+         "attr": "sim_focus_z0",
+         "label": "Focus z0",
+         "kind": "float",
+         "description": "Axial focus extent (um).",
+         "style": "spin",
+         "minimum": 0.001,
+         "maximum": 1000000.0,
+         "decimals": 4,
+         "step": 0.05
+        },
+        {
+         "type": "value",
+         "attr": "sim_dt",
+         "label": "Step",
+         "kind": "float",
+         "description": "Simulation time step (ms).",
+         "style": "spin",
+         "minimum": 1e-06,
+         "maximum": 1000000.0,
+         "decimals": 6,
+         "step": 0.001
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "title": "Microtime",
+       "collapsible": true,
+       "collapsed": true,
+       "hidden_when": {
+        "attr": "device_type",
+        "not_equals": "Simulation"
+       },
+       "description": "TAC axis of the simulated detector.",
+       "sections": [
+        {
+         "type": "value",
+         "attr": "sim_N_tac_channels",
+         "label": "TAC channels",
+         "kind": "int",
+         "description": "Number of TAC (micro-time) channels.",
+         "style": "spin",
+         "minimum": 1,
+         "maximum": 1000000
+        },
+        {
+         "type": "value",
+         "attr": "sim_tac_dt",
+         "label": "TAC dt",
+         "kind": "float",
+         "description": "Width of one TAC channel (ns).",
+         "style": "spin",
+         "minimum": 1e-06,
+         "maximum": 1000000.0,
+         "decimals": 6,
+         "step": 0.0001
+        },
+        {
+         "type": "value",
+         "attr": "sim_laser_period",
+         "label": "Laser period",
+         "kind": "float",
+         "description": "Laser repetition period (ns).",
+         "style": "spin",
+         "minimum": 1e-06,
+         "maximum": 1000000.0,
+         "decimals": 6,
+         "step": 0.1
+        }
+       ]
+      },
+      {
+       "type": "panel",
+       "title": "Performance",
+       "collapsible": true,
+       "collapsed": true,
+       "hidden_when": {
+        "attr": "device_type",
+        "not_equals": "Simulation"
+       },
+       "description": "Optional throughput knobs of the native Sim* engine. Defaults reproduce the exact fixed-step engine.",
+       "sections": [
+        {
+         "type": "toggle",
+         "attr": "sim_per_molecule_skip",
+         "label": "Coasting",
+         "description": "Skip steps while a molecule is far from the focus."
+        },
+        {
+         "type": "toggle",
+         "attr": "sim_fast_grid_bbox",
+         "label": "Two-step field lookup",
+         "description": "Look up the field in two steps (bounding box first)."
+        },
+        {
+         "type": "toggle",
+         "attr": "sim_independent_molecules",
+         "label": "Independent molecules",
+         "description": "Treat molecules as independent."
+        },
+        {
+         "type": "toggle",
+         "attr": "sim_analytic_excitation",
+         "label": "Analytic Gaussian focus",
+         "description": "Use the analytic Gaussian excitation."
+        },
+        {
+         "type": "choice",
+         "attr": "sim_psf_type",
+         "label": "PSF / focus model",
+         "options": [
+          "gaussian3d",
+          "analytic_gaussian3d",
+          "gaussian_lorentzian",
+          "radial"
+         ],
+         "labels": [
+          "Gaussian 3D",
+          "Analytic Gaussian",
+          "Gaussian-Lorentzian",
+          "Numeric (radial)"
+         ],
+         "description": "Point-spread function / focus model."
+        },
+        {
+         "type": "value",
+         "attr": "sim_psf_zR",
+         "label": "Rayleigh range zR (um)",
+         "kind": "float",
+         "description": "Rayleigh range of the Gaussian-Lorentzian model.",
+         "style": "spin",
+         "minimum": 0.0,
+         "maximum": 1000000.0,
+         "decimals": 3,
+         "step": 0.1
+        },
+        {
+         "type": "value",
+         "attr": "sim_psf_file",
+         "label": "PSF file (radial)",
+         "kind": "str",
+         "description": "Measured radial PSF table (radial model only)."
+        },
+        {
+         "type": "value",
+         "attr": "sim_psf_r_step",
+         "label": "PSF r step (um)",
+         "kind": "float",
+         "description": "Radial step of the PSF table.",
+         "style": "spin",
+         "minimum": 0.0,
+         "maximum": 1000000.0,
+         "decimals": 4,
+         "step": 0.01
+        },
+        {
+         "type": "value",
+         "attr": "sim_psf_z_step",
+         "label": "PSF z step (um)",
+         "kind": "float",
+         "description": "Axial step of the PSF table.",
+         "style": "spin",
+         "minimum": 0.0,
+         "maximum": 1000000.0,
+         "decimals": 4,
+         "step": 0.01
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,92 @@
+{
+ "D": [
+  3.0
+ ],
+ "M": [
+  50.0
+ ],
+ "N_channels": 2,
+ "N_ph_max": 1000000,
+ "N_ph_per_file": 100000,
+ "N_species": 1,
+ "N_tac_channels": 4096,
+ "active_margin": 0.0,
+ "analytic_excitation": false,
+ "box_xy": 2.0,
+ "box_z": 4.0,
+ "ch_conversion": [
+  8,
+  0,
+  9,
+  1
+ ],
+ "coast_safety": 3.0,
+ "decay_lifetimes": [
+  [
+   [
+    1.0,
+    3.2
+   ]
+  ]
+ ],
+ "decay_pattern_files": [
+  ""
+ ],
+ "dt": 0.01,
+ "excitation_mode": "CW",
+ "fast_grid_bbox": false,
+ "focus_param": [
+  0.3,
+  2.0
+ ],
+ "focus_threshold": 0.001,
+ "focus_type": 0,
+ "green_enabled": true,
+ "independent_molecules": false,
+ "irf_fwhm_ns": 0.0,
+ "k_nrad": [
+  0.0
+ ],
+ "k_rad": [
+  0.0
+ ],
+ "laser_period": 13.596,
+ "max_windows": 0,
+ "min_coast_windows": 8,
+ "per_molecule_skip": false,
+ "psf_file": "",
+ "psf_r_step": 0.05,
+ "psf_type": "gaussian3d",
+ "psf_zR": 1.0,
+ "psf_z_step": 0.05,
+ "pulsed_exc": 0,
+ "q": [
+  50.0,
+  50.0
+ ],
+ "q_bg": [
+  0.001,
+  0.001
+ ],
+ "red_enabled": false,
+ "rmt1seed": 12345,
+ "rmt2seed": 54321,
+ "spc_output_path": "",
+ "species_D": [
+  3.0
+ ],
+ "species_M": [
+  50.0
+ ],
+ "species_q": [
+  50.0,
+  50.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0
+ ],
+ "tac_dt": 0.004069,
+ "tw": 0.01,
+ "yellow_enabled": false
+}
