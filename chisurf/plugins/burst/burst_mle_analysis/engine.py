@@ -284,6 +284,153 @@ def select_binning(
     return ordered[-1]
 
 
+def burst_result_columns(color: str, model: str, param_names) -> list:
+    """Per-detector export columns for ``model`` (matches the worker rows).
+
+    ``fit23`` keeps its historical column order so the ``.b?4`` export is
+    unchanged; other fit2x models write ``Tau`` (the best lifetime) followed
+    by one column per registry free parameter, then the flags.
+    """
+    if model == "fit23":
+        return [
+            "Ng-p-all",
+            "Ng-s-all",
+            f"Number of Photons (fit window) ({color})",
+            f"2I*  ({color})",
+            f"Tau ({color})",
+            f"gamma ({color})",
+            f"r0 ({color})",
+            f"rho ({color})",
+            f"BIFL scatter? ({color})",
+            f"2I*: P+2S? ({color})",
+            f"r Scatter ({color})",
+            f"r Experimental ({color})",
+        ]
+    cols = [
+        "Ng-p-all",
+        "Ng-s-all",
+        f"Number of Photons (fit window) ({color})",
+        f"2I*  ({color})",
+        f"Tau ({color})",
+    ]
+    cols += [f"{nm} ({color})" for nm in param_names]
+    cols += [f"BIFL scatter? ({color})", f"2I*: P+2S? ({color})"]
+    return cols
+
+
+def state_result_columns(color: str, model: str, param_names, n_states: int) -> list:
+    """The all-photon columns, then one suffixed block per state.
+
+    A sub-population of a burst is a *column* of that burst's row: the burst
+    table has one row per burst, and every companion is merged onto it by
+    position. The suffixed names must not collide with the all-photon ones,
+    because the merge drops a duplicate name and its data with it.
+    """
+    cols = burst_result_columns(color, model, param_names)
+    for state in range(int(n_states)):
+        sfx = f" S{state}"
+        cols += [
+            f"Ng-p{sfx}",
+            f"Ng-s{sfx}",
+            f"Number of Photons (fit window){sfx} ({color})",
+            f"2I*{sfx} ({color})",
+            f"Tau{sfx} ({color})",
+        ]
+        if model == "fit23":
+            cols += [f"gamma{sfx} ({color})", f"r0{sfx} ({color})", f"rho{sfx} ({color})"]
+        else:
+            cols += [f"{nm}{sfx} ({color})" for nm in (param_names or ())]
+        cols += [f"BIFL scatter?{sfx} ({color})", f"2I*: P+2S?{sfx} ({color})"]
+        if model == "fit23":
+            cols += [f"r Scatter{sfx} ({color})", f"r Experimental{sfx} ({color})"]
+    return cols
+
+
+def coerce_float(value) -> float:
+    """*value* as a float, or ``nan`` for anything that is not one (a column a model did not emit)."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("nan")
+
+
+def write_b4_tables(results, files_by_stem, det_meta, channel_settings, *, on_new_folder=None, tick=None):
+    """Write the ``b?4`` burst-fit tables (zero-interleaved, one per measurement and detector).
+
+    Parameters
+    ----------
+    results : list of dict
+        Batch rows carrying ``First Stem`` and ``Detector``.
+    files_by_stem : mapping
+        File stem -> the ``.bur`` file; the tables go to ``<analysis>/b<letter>4/<stem>.b<letter>4``.
+    det_meta : mapping
+        Detector -> ``(colour, letter, columns)``.
+    channel_settings : mapping
+        Written once per folder as ``channel_settings.json`` (the instrument description).
+    on_new_folder : callable, optional
+        Called with each output folder the first time it is written to.
+    tick : callable, optional
+        ``tick(done) -> bool``; ``True`` cancels (the function then returns ``None``).
+
+    Returns
+    -------
+    tuple or None
+        ``(files written, {stem: {detector: table}}, folder names)``, or ``None`` when cancelled.
+    """
+    import json
+
+    from chisurf.core.datastore import store_from_arrays
+
+    groups: dict[tuple, list[dict]] = {}
+    for row in results:
+        groups.setdefault((row["First Stem"], row.get("Detector")), []).append(row)
+    written_dirs: set[str] = set()
+    wrote_settings_for: set = set()
+    written_files: list[Path] = []
+    by_stem: dict[str, dict[str, Any]] = {}
+    done = 0
+    for (stem, det), rows_g in groups.items():
+        meta = det_meta.get(det)
+        file_path = files_by_stem.get(stem)
+        if meta is None or file_path is None:
+            done += 1
+            if tick is not None and tick(done):
+                return None
+            continue
+        color, letter, cols = meta
+        out_dir = Path(file_path).parent.parent / f"b{letter}4"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        written_dirs.add(out_dir.name)
+        arr = np.array([[coerce_float(row.get(c)) for c in cols] for row in rows_g], dtype=float)
+        by_stem.setdefault(stem, {})[det] = store_from_arrays({c: arr[:, i] for i, c in enumerate(cols)})
+        out = np.zeros((arr.shape[0] * 2 + 1, arr.shape[1]), dtype=float)
+        out[1::2] = arr
+        out_file = out_dir / f"{stem}.b{letter}4"
+        written_files.append(out_file)
+        with open(out_file, "w", newline="") as f:
+            f.write("\t".join(cols) + "\t\n")  # the trailing tab and newline are part of the format
+            np.savetxt(f, out, delimiter="\t", fmt="%.6f")
+        if out_dir not in wrote_settings_for:
+            with open(out_dir / "channel_settings.json", "w") as sf:
+                json.dump(channel_settings, sf, indent=4, cls=NumpyEncoder)
+            wrote_settings_for.add(out_dir)
+            if on_new_folder is not None:
+                on_new_folder(out_dir)
+        done += 1
+        if tick is not None and tick(done):
+            return None
+    return written_files, by_stem, written_dirs
+
+
+class NumpyEncoder(__import__("json").JSONEncoder):
+    """JSON encoder that writes numpy arrays as lists."""
+
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
+
 #: The binnings the detector page offers (the Qt combo's items).
 BINNING_CHOICES = [1, 2, 4, 8, 16, 32, 64, 128, 256]
 
@@ -773,3 +920,46 @@ class MleSession:
                     pass
         self.burst_results = results
         return results
+
+
+    # -- export and settings ----------------------------------------------------------------------------------- #
+    def channel_settings(self) -> dict:
+        """The per-detector state written beside the tables as ``channel_settings.json``."""
+        return {det: dataclasses.asdict(self.settings_of(det)) for det in self.detectors}
+
+    def export_results(self, tick=None) -> list[Path]:
+        """Write the ``b?4`` tables of the last batch beside the burst folders (the wizard's export, without the dialogs)."""
+        files_by_stem = {p.stem: p for p in self.bur_files}
+        rows = []
+        for row in self.burst_results:
+            stem = Path(row["First File"]).stem
+            if stem in files_by_stem:
+                rows.append(dict(row, **{"First Stem": stem}))
+        if not rows:
+            raise ValueError("No burst-fit rows to save: run the batch first.")
+        det_meta = {}
+        names = ["tau", "gamma", "r0", "rho"]
+        for det in self.detectors:
+            color = det.lower()
+            det_meta[det] = (color, color[0], state_result_columns(color, self.settings_of(det).model, names, 0))
+        written = write_b4_tables(rows, files_by_stem, det_meta, self.channel_settings(), tick=tick)
+        return [] if written is None else written[0]
+
+    def settings_payload(self) -> dict:
+        """Everything a settings file holds: the detector definition and every detector's settings."""
+        return {
+            "file_type": self.file_type,
+            "detectors": self.detectors,
+            "micro_time_binning": int(self.template.micro_time_binning),
+            "detector_settings": self.channel_settings(),
+        }
+
+    def apply_settings_payload(self, payload: dict) -> None:
+        """Load a settings file written by :meth:`settings_payload`."""
+        if payload.get("detectors"):
+            self.set_detectors(payload["detectors"], payload.get("file_type"))
+        known = {f.name for f in dataclasses.fields(MleSettings)}
+        for det, values in (payload.get("detector_settings") or {}).items():
+            self.det_settings[det] = MleSettings(**{k: v for k, v in values.items() if k in known})
+        if payload.get("micro_time_binning"):
+            self.set_binning(int(payload["micro_time_binning"]))

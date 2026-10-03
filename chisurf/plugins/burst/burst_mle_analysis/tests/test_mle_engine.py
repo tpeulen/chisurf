@@ -125,12 +125,16 @@ def _tau_columns(rows):
     }
 
 
-def test_the_batch_rows_equal_the_wizards_process_bursts(qapp_module, sample_copy):
+def test_the_batch_rows_equal_the_wizards_process_bursts(qapp_module, sample_copy, tmp_path):
     """Same burst table, IRF/background, windows and start values: every burst's fitted lifetime is the wizard's."""
     wiz = build_wizard(sample_copy)
     session = engine.MleSession()
     session.set_detectors(CHANNEL_SETTINGS["detectors"], CHANNEL_SETTINGS["file_type"])
-    session.add_burst_files([sample_copy / BURST_TABLE])
+    import shutil
+
+    second = tmp_path / "second"
+    shutil.copytree(sample_copy, second)  # the session exports into its own copy: same data, other folder
+    session.add_burst_files([second / BURST_TABLE])
     try:
         for det in ("green", "red"):
             wiz.comboBox_window.setCurrentText(det)
@@ -148,7 +152,27 @@ def test_the_batch_rows_equal_the_wizards_process_bursts(qapp_module, sample_cop
         assert wiz.channel_settings["red"]["micro_time_start"] == wiz.micro_time_range[0] != 0
         assert len(session.burst_results) == len(wiz.burst_results) == 2 * engine.row_count(session.df_bursts)
         assert seen and seen[-1][0] == seen[-1][1] == engine.row_count(session.df_bursts)
+        # the exported b?4 tables: the same files with the same text
+        written = session.export_results()
+        assert written and all(p.suffix in (".bg4", ".br4") for p in written)
+        for path in written:
+            twin = sample_copy / path.relative_to(second)
+            assert twin.is_file(), twin
+            assert path.read_text() == twin.read_text(), path.name
         finite = mine["Tau (green)"][np.isfinite(mine["Tau (green)"])]
         assert finite.size > 100 and 0.1 < np.median(finite) < 10.0
     finally:
         wiz.close()
+
+
+def test_session_settings_round_trip():
+    s = engine.MleSession()
+    s.set_detectors(CHANNEL_SETTINGS["detectors"], "SPC-130")
+    s.current_detector = "red"
+    s.settings.tau, s.settings.fix_gamma, s.settings.micro_time_stop = 2.5, False, 99
+    s.set_binning(16)
+    other = engine.MleSession()
+    other.apply_settings_payload(s.settings_payload())
+    assert other.settings_of("red").tau == 2.5 and other.settings_of("red").fix_gamma is False
+    assert other.settings_of("red").micro_time_stop == 99 and other.template.micro_time_binning == 16
+    assert other.file_type == "SPC-130" and list(other.detectors) == ["green", "red"]

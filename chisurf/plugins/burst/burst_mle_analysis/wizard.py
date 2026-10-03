@@ -236,65 +236,13 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
     @staticmethod
     def _state_result_columns(color: str, model: str, param_names, n_states: int) -> list:
-        """The all-photon columns, then one suffixed block per state.
-
-        A sub-population of a burst is a *column* of that burst's row: the burst
-        table has one row per burst, and every companion is merged onto it by
-        position. The suffixed names must not collide with the all-photon ones,
-        because the merge drops a duplicate name and its data with it.
-        """
-        cols = MLELifetimeAnalysisWizard._burst_result_columns(color, model, param_names)
-        for state in range(int(n_states)):
-            sfx = f" S{state}"
-            cols += [
-                f"Ng-p{sfx}",
-                f"Ng-s{sfx}",
-                f"Number of Photons (fit window){sfx} ({color})",
-                f"2I*{sfx} ({color})",
-                f"Tau{sfx} ({color})",
-            ]
-            if model == "fit23":
-                cols += [f"gamma{sfx} ({color})", f"r0{sfx} ({color})", f"rho{sfx} ({color})"]
-            else:
-                cols += [f"{nm}{sfx} ({color})" for nm in (param_names or ())]
-            cols += [f"BIFL scatter?{sfx} ({color})", f"2I*: P+2S?{sfx} ({color})"]
-            if model == "fit23":
-                cols += [f"r Scatter{sfx} ({color})", f"r Experimental{sfx} ({color})"]
-        return cols
+        """The all-photon columns, then one suffixed block per state (``engine.state_result_columns``)."""
+        return engine.state_result_columns(color, model, param_names, n_states)
 
     @staticmethod
     def _burst_result_columns(color: str, model: str, param_names) -> list:
-        """Per-detector export columns for ``model`` (matches the worker rows).
-
-        ``fit23`` keeps its historical column order so the ``.b?4`` export is
-        unchanged; other fit2x models write ``Tau`` (the best lifetime) followed
-        by one column per registry free parameter, then the flags.
-        """
-        if model == "fit23":
-            return [
-                "Ng-p-all",
-                "Ng-s-all",
-                f"Number of Photons (fit window) ({color})",
-                f"2I*  ({color})",
-                f"Tau ({color})",
-                f"gamma ({color})",
-                f"r0 ({color})",
-                f"rho ({color})",
-                f"BIFL scatter? ({color})",
-                f"2I*: P+2S? ({color})",
-                f"r Scatter ({color})",
-                f"r Experimental ({color})",
-            ]
-        cols = [
-            "Ng-p-all",
-            "Ng-s-all",
-            f"Number of Photons (fit window) ({color})",
-            f"2I*  ({color})",
-            f"Tau ({color})",
-        ]
-        cols += [f"{nm} ({color})" for nm in param_names]
-        cols += [f"BIFL scatter? ({color})", f"2I*: P+2S? ({color})"]
-        return cols
+        """Per-detector export columns for ``model`` (``engine.burst_result_columns``)."""
+        return engine.burst_result_columns(color, model, param_names)
 
     @property
     def split_by_state(self) -> bool:
@@ -721,11 +669,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             cols = self._state_result_columns(color, model, param_names, self._exported_state_count)
             det_meta[det] = (color, letter, cols)
 
-        # Group once by (First Stem, Detector), preserving first-seen order.
-        groups: dict[tuple, list[dict]] = {}
-        for row in res:
-            groups.setdefault((row["First Stem"], row.get("Detector")), []).append(row)
-        total_tasks = len(groups)
+        total_tasks = len({(row["First Stem"], row.get("Detector")) for row in res})
 
         progress = _mle_progress(self, "Saving burst-fit results...", total_tasks)
         progress.setWindowTitle("Saving burst-fit results")
@@ -733,85 +677,28 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         progress.setAutoClose(True)
         progress.show()
 
-        current_task = 0
-        written_dirs = set()
-        wrote_settings_for = set()
-        written_files: list[Path] = []
-        # {stem: {detector: table}} — the same tables the ``b?4`` files hold,
-        # kept so the container can be written once per measurement rather than
-        # once per (measurement, detector) group.
-        by_stem: dict[str, dict[str, typing.Any]] = {}
-
-        def maybe_pump_ui(k: int) -> None:
-            # Throttle UI event processing
-            if (k % 25) == 0:
+        def tick(done: int) -> bool:
+            """Report progress; ``True`` when the user cancelled."""
+            progress.setValue(done)
+            if (done % 25) == 0:
                 QtWidgets.QApplication.processEvents()
+            return bool(progress.wasCanceled())
 
-        for (stem, det), rows_g in groups.items():
-            meta = det_meta.get(det)
-            if meta is None:
-                # Unknown detector label in results; skip gracefully
-                current_task += 1
-                progress.setValue(current_task)
-                maybe_pump_ui(current_task)
-                if progress.wasCanceled():
-                    progress.close()
-                    self._set_status("Save operation was canceled.")
-                    return
-                continue
-
-            color, letter, cols = meta
-            file_path = files_by_stem.get(stem)
-            if file_path is None:
-                # Group doesn't map to a selected file (filtered above, but guard anyway)
-                current_task += 1
-                progress.setValue(current_task)
-                maybe_pump_ui(current_task)
-                if progress.wasCanceled():
-                    progress.close()
-                    self._set_status("Save operation was canceled.")
-                    return
-                continue
-
-            out_dir = file_path.parent.parent / f"b{letter}4"
-            out_dir.mkdir(parents=True, exist_ok=True)
-            written_dirs.add(out_dir.name)
-
-            # Build zero-interleaved matrix efficiently (a column a model did
-            # not emit is simply absent from a row's mapping — missing → NaN).
-            arr = np.array(
-                [[_coerce_float(row.get(c)) for c in cols] for row in rows_g],
-                dtype=float,
-            )
-            by_stem.setdefault(stem, {})[det] = store_from_arrays(
-                {c: arr[:, i] for i, c in enumerate(cols)}
-            )
-            out = np.zeros((arr.shape[0] * 2 + 1, arr.shape[1]), dtype=float)
-            out[1::2] = arr  # fill odd rows with data
-
-            out_file = out_dir / f"{stem}.b{letter}4"
-            written_files.append(out_file)
-            with open(out_file, "w", newline="") as f:
-                f.write("\t".join(cols) + "\t\n")  # keep trailing tab + newline
-                np.savetxt(f, out, delimiter="\t", fmt="%.6f")
-
-            # Write channel settings once per folder (instrument description),
-            # and the IRF/background once per analysis folder (experiment
-            # description — sample-dependent, shared by every colour).
-            if out_dir not in wrote_settings_for:
-                settings_file = out_dir / "channel_settings.json"
-                with open(settings_file, "w") as sf:
-                    json.dump(self.channel_settings, sf, indent=4, cls=NumpyEncoder)
-                wrote_settings_for.add(out_dir)
-                self.write_experiment_settings(out_dir.parent)
-
-            current_task += 1
-            progress.setValue(current_task)
-            maybe_pump_ui(current_task)
-            if progress.wasCanceled():
-                progress.close()
-                self._set_status("Save operation was canceled.")
-                return
+        # The tables themselves (``b?4`` files, one per measurement and detector, the instrument description once
+        # per folder) are written by the Qt-free engine, which the emtk app uses as well.
+        written = engine.write_b4_tables(
+            res,
+            files_by_stem,
+            det_meta,
+            self.channel_settings,
+            on_new_folder=lambda out_dir: self.write_experiment_settings(out_dir.parent),
+            tick=tick,
+        )
+        if written is None:
+            progress.close()
+            self._set_status("Save operation was canceled.")
+            return
+        written_files, by_stem, written_dirs = written
 
         progress.close()
         written_files += self.write_containers(by_stem, files_by_stem)
