@@ -1,0 +1,260 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "?",
+    "acquisition",
+    "aisettings",
+    "aquickguidedsetupforanewchisurfinstallation.",
+    "back",
+    "channeldefinition",
+    "chisurfsettings",
+    "dependencies",
+    "detectorsetup",
+    "experiments",
+    "fcschannels",
+    "fcsdefinitions",
+    "finish",
+    "fix/initialize",
+    "gettingstarted",
+    "guide",
+    "help",
+    "models",
+    "next",
+    "next>",
+    "opensettingsfolder",
+    "packages",
+    "plots",
+    "plugincheck",
+    "plugins",
+    "ready",
+    "search",
+    "settings",
+    "steps",
+    "styles",
+    "thiswizardhelpsyougetchisurfreadyforyourdataandworkflows.itfocusesontheusersettingsfolder(~/.chisurf)andafewkeyconfigurationfiles.",
+    "tttrluttools",
+    "updates",
+    "usereditor",
+    "welcome",
+    "welcometochisurf",
+    "whatyoucandohere",
+    "youcanrunthiswizardanytimefromthepluginmanager.",
+    "•checkwhetheryoursettingsfilesexistandlooksane.",
+    "•configuretttrdetectorsetupsand(optionally)fcschannelpresets.",
+    "•createorrestoredefaultsifsomethingismissingorbroken."
+  ],
+  "interactive": [
+    {
+      "kind": "input_text",
+      "label": "Find settings",
+      "id": "##Find settings",
+      "tooltip": "Filter the destinations by name."
+    },
+    {
+      "kind": "selectable",
+      "label": "Getting Started",
+      "id": "Getting Started",
+      "tooltip": "Review settings, detectors and FCS definitions before loading data."
+    },
+    {
+      "kind": "selectable",
+      "label": "ChiSurf Settings",
+      "id": "ChiSurf Settings",
+      "tooltip": "Edit application settings and retain their YAML value types."
+    },
+    {
+      "kind": "selectable",
+      "label": "Acquisition",
+      "id": "Acquisition",
+      "tooltip": "Acquisition settings and simulator/device configuration."
+    },
+    {
+      "kind": "selectable",
+      "label": "Styles",
+      "id": "Styles",
+      "tooltip": "Colors and user style configuration."
+    },
+    {
+      "kind": "selectable",
+      "label": "Plots",
+      "id": "Plots",
+      "tooltip": "Plot appearance, colors and backend settings in gui.plot."
+    },
+    {
+      "kind": "selectable",
+      "label": "Models",
+      "id": "Models",
+      "tooltip": "Model registration and enablement preferences."
+    },
+    {
+      "kind": "selectable",
+      "label": "User Editor",
+      "id": "User Editor",
+      "tooltip": "MMFDB user configuration and active-user preferences."
+    },
+    {
+      "kind": "selectable",
+      "label": "AI Settings",
+      "id": "AI Settings",
+      "tooltip": "Configure AI providers, models and editor integration."
+    },
+    {
+      "kind": "selectable",
+      "label": "Plugins",
+      "id": "Plugins",
+      "tooltip": "Discover, enable, configure and inspect native plugins."
+    },
+    {
+      "kind": "selectable",
+      "label": "Updates",
+      "id": "Updates",
+      "tooltip": "Update preferences and updater configuration."
+    },
+    {
+      "kind": "selectable",
+      "label": "Packages",
+      "id": "Packages",
+      "tooltip": "Package-manager preferences and environment configuration."
+    },
+    {
+      "kind": "selectable",
+      "label": "Channel Definition",
+      "id": "Channel Definition",
+      "tooltip": "Detector channels, PIE windows, calibration, LUT and optical setup."
+    },
+    {
+      "kind": "selectable",
+      "label": "FCS Definitions",
+      "id": "FCS Definitions",
+      "tooltip": "FCS channel-pair definitions and correlation settings."
+    },
+    {
+      "kind": "selectable",
+      "label": "TTTR LUT Tools",
+      "id": "TTTR LUT Tools",
+      "tooltip": "TAC linearization lookup-table settings."
+    },
+    {
+      "kind": "selectable",
+      "label": "Plugin Check",
+      "id": "Plugin Check",
+      "tooltip": "Check plugin contracts, dependencies and native runtime."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##settings_guide",
+      "tooltip": "Walk through searching, choosing a destination and the Back / Next buttons."
+    },
+    {
+      "kind": "button",
+      "label": "?",
+      "id": "?##settings_help",
+      "tooltip": "Read how the Settings hub, its destinations and its stepper work."
+    },
+    {
+      "kind": "button",
+      "label": "< Back",
+      "id": "< Back##settings_back",
+      "tooltip": "Go to the previous destination."
+    },
+    {
+      "kind": "button",
+      "label": ">>",
+      "id": ">>##settings_ff",
+      "tooltip": "Fast-forward: visit every remaining destination in order. Press again to stop."
+    },
+    {
+      "kind": "button",
+      "label": "Next >",
+      "id": "Next >##settings_next",
+      "tooltip": "Go to the next destination."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Welcome",
+      "id": "✓ Welcome",
+      "tooltip": "A quick guided setup for a new ChiSurf installation."
+    },
+    {
+      "kind": "selectable",
+      "label": "  Settings",
+      "id": "  Settings",
+      "tooltip": "Review your user settings files; open the editor when needed."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Fix / Initialize",
+      "id": "✓ Fix / Initialize",
+      "tooltip": "Create missing settings files or restore packaged defaults."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Experiments",
+      "id": "✓ Experiments",
+      "tooltip": "Update experiment/model configuration so new models appear."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Dependencies",
+      "id": "✓ Dependencies",
+      "tooltip": "Check optional Python packages used by specific features."
+    },
+    {
+      "kind": "selectable",
+      "label": "  Detector setup",
+      "id": "  Detector setup",
+      "tooltip": "Configure PIE / channel windows for TTTR workflows."
+    },
+    {
+      "kind": "selectable",
+      "label": "  FCS channels",
+      "id": "  FCS channels",
+      "tooltip": "Define which channels/pairs to correlate for FCS workflows."
+    },
+    {
+      "kind": "selectable",
+      "label": "✓ Finish",
+      "id": "✓ Finish",
+      "tooltip": "You are ready to start working."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back##go_back",
+      "tooltip": "Go to the previous step. Not available on the first step."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next##go_next",
+      "tooltip": "Go to the following step. Every step can be skipped; nothing has to be completed first."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Explain the steps of the wizard."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the wizard step by step."
+    },
+    {
+      "kind": "button",
+      "label": "Open settings folder",
+      "id": "Open settings folder##open_settings_dir",
+      "tooltip": "Open the user settings folder (~/.chisurf) in your file manager."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

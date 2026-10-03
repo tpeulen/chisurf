@@ -129,6 +129,7 @@ irf_estimation
 88_structure_tools
 95_games
 90_updater
+97_settings_hub
 91_vv_vh_g_factor
 92_hmm_binned_traces
 93_psf_determination
@@ -267,6 +268,7 @@ irf_estimation
 | [States and rates from a binned trace](92_hmm_binned_traces.md) | `hmm` (Analysis → Kinetics), `csc hmm`, `HmmViewModel`, `hmm.fit` RPC |
 | [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
 | [Checking that every plugin starts](96_plugin_check.md) | `plugin_check` (Tools → Miscellaneous → Plugin-Check), `python -m chisurf.emtk.validation`, `PluginCheckModel` |
+| [The Settings window: one list, every settings panel](97_settings_hub.md) | `setup` (Setup → Settings), the hub that hosts every settings panel |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
 

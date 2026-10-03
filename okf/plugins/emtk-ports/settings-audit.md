@@ -57,3 +57,11 @@ with an accepted report in `okf/plugins/emtk-ports/<id>/` (guard test). The list
 `settings-audit/<id>.png` (Qt left, emtk right). Raw capture in `/tmp/sa` is not kept; re-derive with
 `CHISURF_SETTINGS_DIR=<tmp> MMFDB_SETTINGS_DIR=<tmp> MMFDB_DATABASE_PATH=<tmp>/m.db python -m test.gui.emtk_port_parity before <id> --out <dir>`
 (then `after`). Trap: `before switch_user` never returns (modal dialog); run it under a timeout.
+
+## Settings hub (`setup`) upgraded, 2026-10-03
+
+Step 8 of the work plan is done: the hub hosts the dedicated accepted panel of every destination and opens on Getting Started
+([report](setup/REPORT.md)). Where to pick this up: (1) Acquisition simulator sections that are Qt-only (per-species table,
+kinetics, decay editor, channel switches, vendor card dialogs); (2) the ChiSurf Settings per-setting Help column and its colour,
+folder and theme pickers; (3) `switch_user` / `menu_switch` (step 9); (4) the reviewer removes `setup` from
+`chisurf/core/plugin/emtk_preview.json` (the preview list is then empty).

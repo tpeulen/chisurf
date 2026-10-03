@@ -21,7 +21,11 @@ Unified Settings for ChiSurf
 | Menu path | Setup → **Settings** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | gui, emtk |
+
+## Destinations
+
+The window opens on **Getting Started** and lists, with a name search, Back / Next / fast-forward and its own Guide and Help: Getting Started, ChiSurf Settings, Acquisition, Styles, Plots, Models, User Editor, AI Settings, Plugins, Updates, Packages, Channel Definition, FCS Definitions, TTTR LUT Tools and Plugin Check. Each hosts the dedicated panel of its tool. See the [Settings window guide](../../guides/97_settings_hub.md).
 
 ## Parameters
 
