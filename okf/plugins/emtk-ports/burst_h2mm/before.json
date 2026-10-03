@@ -1,0 +1,28 @@
+{
+  "controls": [
+    "?",
+    "guide"
+  ],
+  "labels": [],
+  "buttons": [
+    "?",
+    "Guide",
+    "±",
+    "⏹️",
+    "▶️",
+    "💾",
+    "📁",
+    "📈",
+    "🔁",
+    "🔬"
+  ],
+  "line_edits": 1,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 0,
+  "entrypoint": "chisurf.plugins.burst.burst_h2mm.gui.tool:H2mmTool (dock area shown)",
+  "size": [
+    1200,
+    800
+  ]
+}

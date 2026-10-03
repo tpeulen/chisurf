@@ -52,13 +52,11 @@ from chisurf.gui.widgets.wizard import DetectorWizardPage
 
 from ..api.models import H2mmSettings, StreamSettings
 from ..backend.services import run_analysis, write_result_tables
+from .model import ALGORITHM_VERSION  # noqa: F401  (the version lives with the Qt-free model, shared with the emtk app)
 from ..core.engines import DECODER_LABELS, ENGINE_LABELS
 from ..core.engines import DECODERS as H2mmDecoders
 from ..core.engines import ENGINES as H2mmEngines
 
-#: Bump in the same change that alters what this tool computes, so results
-#: written by the previous version stop reading as current.
-ALGORITHM_VERSION = 1
 
 
 _STATE_COLORS = [

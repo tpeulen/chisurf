@@ -58,10 +58,10 @@ FRET plots after each state count.
 
 ## The results dashboard
 
-The `burst_h2mm` window shows seven result docks — *Dwell FRET states*,
-*Transition density*, *Model selection*, *Dwell times*, *Per-state decay*,
-*Transition rates* and *State path* — beside the *H2MM Settings* and *Channel
-Definitions* tabs. The four essential ones are:
+The `burst_h2mm` window shows its results as tabs — **Dwell FRET**,
+**Selection**, **Decays**, **LL scan**, **TDP**, **Dwell times** and **State
+path** — and the *Rates and states* tables, beside the *H2MM settings* and
+*Detector setup* tabs. The four essential ones are:
 
 - **Dwell E histogram** — the FRET efficiencies of the Viterbi dwells, peaking at
   the recovered state efficiencies (an E–S scatter when an Aex stream is present).
@@ -83,8 +83,8 @@ Definitions* tabs. The four essential ones are:
 
 The per-dwell table — one row per Viterbi dwell, with its state, photon count,
 duration, measured E/S, per-colour mean micro time and the `Is Edge` flag — is
-written to `h2mm_dwells.csv`, and the toolbar's **🔬** opens exactly that table
-in ndX. Gate on state and duration, drop the censored dwells with `Is Edge`, and
+written to `h2mm_dwells.csv`, and **Dwells in ndX** opens exactly that table
+in ndX (**Export dwells** writes it as CSV). Gate on state and duration, drop the censored dwells with `Is Edge`, and
 plot any pair of columns against each other; it is the same builder the CSV
 comes from, so what you explore is what a later reader gets.
 
@@ -92,12 +92,11 @@ comes from, so what you explore is what a later reader gets.
 :name: fig-30-h2mm-results
 :width: 100%
 
-The H2MM window after a 1–4-state scan of the 2980 DNA bursts, with the
-acceptor-excitation (*yellow*) stream set under **Channel Definitions**. BIC
-falls to four states (*Model selection*); the dwells spread along E at S ≈ 1
-(this sample's acceptor-excitation channel is nearly empty, so S carries little);
-*Transition rates* names the dominant exchange, S1 ⇄ S2 at ~5·10⁴ s⁻¹; *State
-path* shows one dynamic burst hopping between two states.
+The H2MM window after a 2–3-state scan of the BH SPC-132 sample's 2980 DNA
+bursts (donor detector 0/1, acceptor 8/9, no acceptor-excitation stream), with
+the *LL scan* and *Dwell times* tabs showing. *Rates and states* gives the fitted
+exchange, S0 ⇄ S1 at ~8·10³ s⁻¹ in both directions, and the per-state E of
+0.48 and 0.54; the dwell-time distributions leave out the burst-edge dwells.
 ```
 
 ```{figure} figures/h2mm_dashboard.png

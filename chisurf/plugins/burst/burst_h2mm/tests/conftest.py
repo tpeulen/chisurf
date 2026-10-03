@@ -4,7 +4,7 @@
   folder, so no test reads or writes the user's settings, keyring or database.
 * A module-scoped guard lists the real ``~/.chisurf`` (the home found in the password database, not ``$HOME``)
   before the first test of a module and after the last one: any file added, removed or changed fails the module.
-  ``~/.chisurf/logs`` is ignored (the logging set-up appends there by design).
+  ``~/.chisurf/logs`` and ``~/.chisurf/cache`` (bytecode) are ignored.
 """
 
 from __future__ import annotations
@@ -24,7 +24,8 @@ def _listing() -> dict[str, tuple[int, int]]:
         return found
     for path in REAL_CHISURF.rglob("*"):
         rel = path.relative_to(REAL_CHISURF)
-        if (rel.parts and rel.parts[0] == "logs") or "__pycache__" in rel.parts:
+        # logs: every ChiSurf process appends there; cache: the interpreter's bytecode cache is redirected there
+        if (rel.parts and rel.parts[0] in ("logs", "cache")) or "__pycache__" in rel.parts:
             continue
         try:
             if not path.is_file():  # a directory's mtime moves when a lock file comes and goes

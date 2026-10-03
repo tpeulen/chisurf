@@ -20,7 +20,7 @@
       "title": "Which detector is which — and the third stream",
       "text": "Donor and acceptor come from the detector setup here. With µsALEX or PIE data, define the <b>acceptor-excitation</b> stream as well: it gives every state a stoichiometry, which is what separates a real conformational state from acceptor photophysics on the E–S map.<br/><br/>Get the assignment backwards and the fit still converges, still reports states, and still looks plausible.",
       "target": {
-        "name": "donor_channels"
+        "name": "donor"
       }
     },
     {

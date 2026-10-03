@@ -1,0 +1,255 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "(none)",
+    "0",
+    "1",
+    "2",
+    "3",
+    "5",
+    "500",
+    "acceptordetector",
+    "aexdetector",
+    "bic",
+    "bootstrap",
+    "browsefolder",
+    "burstfolder",
+    "criterion",
+    "data",
+    "decays",
+    "decoder",
+    "decoderseed",
+    "detectorsetup",
+    "donordetector",
+    "dwellfret",
+    "dwellsinndx",
+    "dwelltimes",
+    "engine",
+    "exportdwells",
+    "fastem(float32)",
+    "green",
+    "guide",
+    "h2mmsettings",
+    "help",
+    "llscan",
+    "loadsettings",
+    "macro-timescale",
+    "maxiterations",
+    "maxstates",
+    "minphotons/burst",
+    "minstates",
+    "modelselection",
+    "nanotimedivisors",
+    "nodwellfretstatesyettheyaredrawnhereonceanh2mmfithasfinished.",
+    "noh2mmfityet.selectaburstfolder,definethedetectorsandpressrunh2mm.",
+    "notransitiondensityyetitshowsthefretefficiencybeforeandaftereverydecodedtransition",
+    "onceanh2mmfithasfinished.",
+    "optimisation",
+    "output",
+    "photontablecsv",
+    "photontablehdf5",
+    "ratesandstates",
+    "ready",
+    "red",
+    "restart",
+    "restarts",
+    "runh2mm",
+    "saveplot",
+    "savesettings",
+    "scanpatience",
+    "seed",
+    "selectafolderof.burfilesfirst.",
+    "selection",
+    "statepath",
+    "statephotonsasptu",
+    "statephotonssidecar",
+    "stop",
+    "tdp",
+    "viterbi",
+    "writestatephotons"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Browse folder",
+      "id": "Browse folder",
+      "tooltip": "Choose the folder with the burst (.bur) tables of a finished burst analysis."
+    },
+    {
+      "kind": "button",
+      "label": "Run H2MM",
+      "id": "Run H2MM",
+      "tooltip": "Fit the photon-by-photon HMM. Select a folder of .bur files first."
+    },
+    {
+      "kind": "button",
+      "label": "Restart",
+      "id": "Restart",
+      "tooltip": "Refit. Select a folder of .bur files first."
+    },
+    {
+      "kind": "button",
+      "label": "Stop",
+      "id": "Stop",
+      "tooltip": "Nothing is running; a fit in progress can be stopped here."
+    },
+    {
+      "kind": "button",
+      "label": "Bootstrap",
+      "id": "Bootstrap",
+      "tooltip": "Run a fit first; the bootstrap resamples its bursts."
+    },
+    {
+      "kind": "button",
+      "label": "LL scan",
+      "id": "LL scan",
+      "tooltip": "Run a fit first; the scan profiles its states."
+    },
+    {
+      "kind": "button",
+      "label": "Save plot",
+      "id": "Save plot",
+      "tooltip": "Run a fit first."
+    },
+    {
+      "kind": "button",
+      "label": "Dwells in ndX",
+      "id": "Dwells in ndX",
+      "tooltip": "Run a fit first."
+    },
+    {
+      "kind": "button",
+      "label": "Export dwells",
+      "id": "Export dwells",
+      "tooltip": "Run a fit first."
+    },
+    {
+      "kind": "button",
+      "label": "Save settings",
+      "id": "Save settings",
+      "tooltip": "Write the settings and the detector definition to a JSON file."
+    },
+    {
+      "kind": "button",
+      "label": "Load settings",
+      "id": "Load settings",
+      "tooltip": "Read settings and the detector definition from a JSON file."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Start a step-by-step guided tour of this tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Open the help window with reference documentation."
+    },
+    {
+      "kind": "input_text",
+      "label": "data_folder",
+      "id": "##data_folder",
+      "tooltip": "Folder with the burst (.bur) tables of a finished burst analysis; the photons they name are read from beside them."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_states",
+      "id": "##min_states",
+      "tooltip": "Smallest number of states tried."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_states",
+      "id": "##max_states",
+      "tooltip": "Largest number of states tried."
+    },
+    {
+      "kind": "input_text",
+      "label": "patience",
+      "id": "##patience",
+      "tooltip": "Stop the state-count scan once the criterion has risen this many times (about 1.6 times faster); -1 fits every state count."
+    },
+    {
+      "kind": "input_text",
+      "label": "restarts",
+      "id": "##restarts",
+      "tooltip": "Random initialisations per state count; the best log-likelihood wins."
+    },
+    {
+      "kind": "input_text",
+      "label": "seed",
+      "id": "##seed",
+      "tooltip": "Seed of the restarts: the same seed refits to the same answer."
+    },
+    {
+      "kind": "input_text",
+      "label": "max_iter",
+      "id": "##max_iter",
+      "tooltip": "Maximum EM iterations per fit."
+    },
+    {
+      "kind": "input_text",
+      "label": "min_photons",
+      "id": "##min_photons",
+      "tooltip": "Bursts with fewer stream photons are left out."
+    },
+    {
+      "kind": "input_text",
+      "label": "time_scale",
+      "id": "##time_scale",
+      "tooltip": "Integer down-scaling of macro times (coarser base unit); raise it when the fit is slow."
+    },
+    {
+      "kind": "input_text",
+      "label": "divisors",
+      "id": "##divisors",
+      "tooltip": "Split each stream into this many micro-time bins so states of equal E but different lifetime separate; 1 is off."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Photon table HDF5",
+      "id": "Photon table HDF5##photon_hdf5",
+      "tooltip": "Write h2mm_photons.h5: compact and fast to reload."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Photon table CSV",
+      "id": "Photon table CSV##photon_csv",
+      "tooltip": "Write h2mm_photons.csv: what every other tool can open."
+    },
+    {
+      "kind": "input_text",
+      "label": "decoder_seed",
+      "id": "##decoder_seed",
+      "tooltip": "Seed of the sampling decoders."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Write state photons",
+      "id": "Write state photons##write_state_tttr",
+      "tooltip": "Write the decoded assignment back beside each source measurement."
+    },
+    {
+      "kind": "checkbox",
+      "label": "State photons as PTU",
+      "id": "State photons as PTU##state_tttr_ptu",
+      "tooltip": "A PTU whose routing channels encode (stream, state)."
+    },
+    {
+      "kind": "checkbox",
+      "label": "State photons sidecar",
+      "id": "State photons sidecar##state_tttr_sidecar",
+      "tooltip": "A msgpack sidecar; the source file is left untouched."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

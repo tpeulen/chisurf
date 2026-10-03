@@ -1,4 +1,4 @@
-# emtk port report: `burst_h2mm` (PARTIAL: H-X, H0, H1, H3 core done; H2, H4, H5 open)
+# emtk port report: `burst_h2mm` (H-X, H0-H5 implemented; parity compare pending the IMP.bff environment, see Open)
 
 ## Header
 | Field | Value |
@@ -50,3 +50,16 @@ Used: `SnapshotJob`, `emtk.view_form` spec forms and `table` sections, `emtk_lay
 
 ## Docs
 OPEN: `docs/guides/19_h2mm_hidden_markov.md`, `30_h2mm_workflow_results.md` figures from the new app, plugin reference regeneration. `gui/help.md` unchanged (its text matches the controls).
+
+
+## Second pass: H2, H4, H5
+* H2: the donor / acceptor / Aex streams are choices over the detectors of the shared one-page detector editor (`chisurf/emtk/channel_definition.py`, a tab "Detector setup"); the model keeps the definition (`setup`) and builds the streams and the file type from it exactly as `H2mmTool._detector_streams` does (test: an edit in the editor reaches `model.streams()`).
+* H4: tabs Dwell FRET (per-state dwell-E histograms with the model E, E-S scatter with an Aex stream), Selection (BIC/ICL), Decays (per colour and state, check boxes), LL scan, TDP, Dwell times, State path (Burst field, Dynamic bursts only). All arrays come from `gui/result_view.py`; tests compare them with the analysis.
+* H5: Run keeps a fit of unchanged inputs (fingerprint, as the Qt tool), Restart refits, Stop, Bootstrap (20 resamples) and LL scan run on a snapshot through `SnapshotJob` with the backend's own `bootstrap_uncertainty` / `profile_likelihood`, Save plot (PNG of four plots through matplotlib Agg), Export dwells (CSV, `FileDialog`), Dwells in ndX (the Qt tool's call; says why when ndX cannot open), Save / Load settings (`FileDialog`, JSON incl. the detector definition), Browse folder (`FileDialog`). `ALGORITHM_VERSION` moved to `gui/model.py` (the Qt tool imports it).
+* Tests `tests/test_emtk_h2mm_native.py` now 23; the plugin folder: 147 passed. Hermetic conftest ignores `~/.chisurf/logs` and `cache` (bytecode).
+* Layout read at 1200x800 and 800x600 (`after_*.png`): the tab strips fit (a first layout with four tabs in a half-width dock overflowed and hid the last tab: fixed by stacking two tab regions); settings column widened; the shared detector editor's narrow-column clipping (see `fcs_filter_calculator` xfail) shows at 800 px: reported there.
+* Docs: `docs/guides/19_h2mm_hidden_markov.md` (The H2MM tool paragraph and figure `19_h2mm_tool.png` from the new app), `docs/guides/30_h2mm_workflow_results.md` (dashboard text, ndX/export, figure `30_h2mm_results.png`), `docs/reference/plugins/burst_h2mm.md` regenerated for the new spec.
+
+## Open
+* `emtk_port_parity before/compare`: `after` ran (66 controls, 0 without tooltip, Qt-free yes). The Qt side hides its dock area behind the emtk host, so `before` finds 2 controls; `scripts/capture_qt_inventory.py` shows the dock area and walks the widgets, but `IMP.bff` stopped importing in this environment while it ran (`_IMP_bff` lacks `SequenceClusterSearchOptions_stop_max_identity_get`: another stream's rebuild), so `before.json` / `deliberate.json` / `compare.json` are not committed.
+* TDP as a heatmap (Qt) is a scatter; transition arrows over the dwell-E plot, bootstrap bands on it, `apply_workflow_context` and the `burst_analysis` hand-off of the new app are not done.

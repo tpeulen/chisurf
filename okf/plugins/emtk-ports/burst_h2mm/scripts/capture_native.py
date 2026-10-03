@@ -34,19 +34,49 @@ def main() -> None:
     drv = Driver(app)
     drv.draw()
     parity.emtk_screenshot(app, out / "after_empty_1200x800.png", (1200, 800))
+    import copy
+
+    setup = {
+        "detectors": {
+            "green": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+            "red": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+        },
+        "windows": {},
+        "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 0.0, "micro_time_resolution": 0.0, "micro_time_binning": 1},
+    }
+    app.editor.model.data = copy.deepcopy(setup)
+    app.model.set_setup(setup)
     drv.type_into_name("data_folder", str(work / "burstwise_All 0.1000#15"))
-    drv.type_into_name("donor_channels", "0, 1")
-    drv.type_into_name("acceptor_channels", "8, 9")
     drv.type_into_name("min_states", "2")
-    drv.type_into_name("max_states", "2")
+    drv.type_into_name("patience", "-1")
+    drv.type_into_name("max_states", "3")
     drv.type_into_name("restarts", "1")
+
+    def wait():
+        while app.job.busy:
+            time.sleep(0.1)
+            drv.draw(1)
+        drv.draw(2)
+
     drv.click_name("toolAction_run")
-    while app.job.busy:
-        time.sleep(0.1)
-        drv.draw(1)
-    drv.draw(2)
+    wait()
+    drv.click_name("bootstrap")
+    wait()
+    drv.click_name("ll_scan")
+    wait()
     for size in ((1200, 800), (800, 600)):
+        drv.size = size
+        for tab, name in (("Dwell FRET", None), ("TDP", None)):
+            drv.click_text(tab)
         parity.emtk_screenshot(app, out / f"after_populated_{size[0]}x{size[1]}.png", size)
+    drv.size = (1200, 800)
+    for tab, name in (("Selection", "selection"), ("LL scan", "scan"), ("Dwell times", "dwells"), ("State path", "path"), ("Decays", "decays")):
+        drv.click_text(tab)
+        parity.emtk_screenshot(app, out / f"after_tab_{name}_1200x800.png", (1200, 800))
+    drv.click_text("Detector setup")
+    parity.emtk_screenshot(app, out / "after_detector_setup_1200x800.png", (1200, 800))
+    drv.size = (800, 600)
+    parity.emtk_screenshot(app, out / "after_detector_setup_800x600.png", (800, 600))
 
 
 if __name__ == "__main__":

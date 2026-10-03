@@ -61,33 +61,40 @@ uncertainties are supported.
 ### The H2MM tool
 
 **Spectroscopy ▸ Single-Molecule ▸ H2MM**, or step *7. Burst segmentation
-(H2MM)* of **Spectroscopy ▸ Burst Analysis**. The left dock has two tabs:
-**H2MM Settings** — *Model Selection* (**Min/Max states**, **Criterion**
-bic/icl, **Scan patience**) and *Optimisation* (**Engine**, **Restarts**,
-**Seed**, **Photon table** HDF5/CSV, **Max iterations**, **Min photons/burst**,
-**Macro-time scale**, **Nanotime divisors**, **Decoder** + its seed, **State
-photons → write** PTU/sidecar) — and **Channel Definitions** (donor, acceptor
-and optional acceptor-excitation detector, from the detector setup). The
-toolbar opens the burst folder, runs, restarts, stops, runs the bootstrap
-uncertainty and the likelihood scan, and saves. Each result plot is its own
-dock.
+(H2MM)* of **Spectroscopy ▸ Burst Analysis**. The left dock has two tabs.
+**H2MM settings** has the action buttons (**Browse folder**, **Run H2MM**,
+**Restart**, **Stop**, **Bootstrap**, **LL scan**, **Save plot**, **Dwells in
+ndX**, **Export dwells**, **Save settings**, **Load settings**, **Guide**,
+**Help**) above the settings form: *Data* (the **Burst folder**, and which
+detector is the **Donor**, the **Acceptor** and the optional **Aex** stream),
+*Model selection* (**Min/Max states**, **Criterion** bic/icl, **Scan
+patience**), *Optimisation* (**Engine**, **Restarts**, **Seed**, **Max
+iterations**, **Min photons / burst**, **Macro-time scale**, **Nanotime
+divisors**) and *Output* (**Photon table** HDF5/CSV, **Decoder** and its seed,
+**State photons** write/PTU/sidecar). **Detector setup** is the shared detector
+editor (reading routine, PIE windows, detectors with their routing channels and
+micro-time gates): the detectors defined there are what the Donor, Acceptor and
+Aex choices offer. On the right, *Rates and states* lists the fitted rates and
+the per-state E and occupancy, and the plots are tabs: **Dwell FRET**,
+**Selection** (BIC/ICL), **Decays**, **LL scan**, **TDP**, **Dwell times** and
+**State path** (the **Burst** field and **Dynamic bursts only** pick the burst).
+**Run** keeps a fit whose inputs and settings did not change; **Restart**
+refits it.
 
 ```{figure} figures/19_h2mm_tool.png
 :name: fig-19-h2mm-tool
 :width: 100%
 
-The H2MM tool after a 1–3 state scan of the BH SPC-132 sample folder (donor
-0/8, acceptor 1/9, the default *EM float32* engine, 2 restarts, seed 0). The
-status line reads `Selected 3 states (BIC) from 2980 bursts / 228338 photons
-(seed 0) — occupancy 0.391, 0.566, 0.042`, the same as the headless run above.
-Docks: dwell E histogram per state, transition density, model selection
-(BIC/ICL), dwell times, per-state decay, transition rates and the state path of
-one burst.
+The H2MM tool after a 2–3 state scan of the BH SPC-132 sample folder (donor
+detector 0/1, acceptor 8/9, the *Fast EM (float32)* engine, 1 restart, seed 0),
+followed by **Bootstrap** and **LL scan**. The status line and the rate and state
+tables are those of the fitted analysis; every plot draws arrays of that
+analysis only.
 ```
 
 In the burst workflow, **step 7 starts fitting as soon as you open it**. A state
 scan with restarts runs for minutes, so it runs off the GUI thread and **Stop**
-in the toolbar ends it — a stopped scan is discarded rather than reported as the
+ends it — a stopped scan is discarded rather than reported as the
 answer, and coming back to the step does not restart it. Opening the step again
 does not refit either; see [53 — Reusing results](53_reusing_results.md).
 

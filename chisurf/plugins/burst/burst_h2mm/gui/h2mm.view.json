@@ -14,32 +14,25 @@
           "description": "Folder with the burst (.bur) tables of a finished burst analysis; the photons they name are read from beside them."
         },
         {
-          "type": "value",
-          "attr": "donor_channels",
-          "label": "Donor channels",
-          "kind": "str",
-          "description": "Routing channels of the donor stream, comma separated (the first stream: apparent FRET E = A/(A+D))."
+          "type": "choice",
+          "attr": "donor",
+          "label": "Donor detector",
+          "options_source": "detector_names",
+          "description": "Detector of the donor photons (stream 0): apparent FRET E = A/(A+D). Define detectors in the Detector setup window."
         },
         {
-          "type": "value",
-          "attr": "acceptor_channels",
-          "label": "Acceptor channels",
-          "kind": "str",
-          "description": "Routing channels of the acceptor stream, comma separated."
+          "type": "choice",
+          "attr": "acceptor",
+          "label": "Acceptor detector",
+          "options_source": "detector_names",
+          "description": "Detector of the acceptor photons (stream 1). Swapping donor and acceptor still converges and looks plausible: check the assignment."
         },
         {
-          "type": "value",
-          "attr": "aex_channels",
-          "label": "Acceptor-excitation channels",
-          "kind": "str",
-          "description": "Optional third stream (usALEX / PIE): routing channels of acceptor photons under acceptor excitation. Gives every state a stoichiometry."
-        },
-        {
-          "type": "value",
-          "attr": "file_type",
-          "label": "Container",
-          "kind": "str",
-          "description": "tttrlib container name of the raw files (for example SPC-130), or auto."
+          "type": "choice",
+          "attr": "aex",
+          "label": "Aex detector",
+          "options_source": "aex_options",
+          "description": "Optional third stream (usALEX / PIE): acceptor photons under acceptor excitation. Gives every state a stoichiometry."
         }
       ]
     },
@@ -138,7 +131,7 @@
         {
           "type": "value",
           "attr": "min_photons",
-          "label": "Min photons/burst",
+          "label": "Min photons / burst",
           "kind": "int",
           "description": "Bursts with fewer stream photons are left out.",
           "minimum": 2,
@@ -273,6 +266,28 @@
           "label": "Occupancy",
           "width": 100,
           "description": "Photon fraction of the state from the per-photon posterior (the unbiased estimate; falls back to the decoded path)."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Burst",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "nav_burst",
+          "label": "Burst",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 10000000,
+          "description": "Index into the bursts listed for the state-path plot (all bursts, or only those with a decoded transition)."
+        },
+        {
+          "type": "toggle",
+          "attr": "dynamic_only",
+          "label": "Dynamic bursts only",
+          "description": "List only bursts with at least one decoded transition."
         }
       ]
     }

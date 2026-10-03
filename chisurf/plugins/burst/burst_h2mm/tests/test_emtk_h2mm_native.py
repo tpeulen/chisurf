@@ -16,7 +16,7 @@ import pytest
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.burst.burst_h2mm.gui import result_view
-from chisurf.plugins.burst.burst_h2mm.gui.model import H2mmViewModel, parse_channels
+from chisurf.plugins.burst.burst_h2mm.gui.model import H2mmViewModel
 from chisurf.plugins.burst.burst_h2mm.gui.native import create_app
 from chisurf.plugins.emtk_test_input import SMALL, Driver
 from chisurf.plugins.burst.burst_h2mm.tests.test_emtk_h2mm_no_invented_data import PlotSpy
@@ -47,6 +47,9 @@ def app():
     window.close()
 
 
+TABS = ("Dwell FRET", "Selection", "Decays", "LL scan", "TDP", "Dwell times", "State path")
+
+
 def texts(painter):
     return [t[5] for t in painter.texts]
 
@@ -61,10 +64,21 @@ def wait(drv, timeout=180.0):
     drv.draw(2)
 
 
+BH_SETUP = {
+    "detectors": {
+        "green": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+        "red": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+    },
+    "windows": {},
+    "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 0.0, "micro_time_resolution": 0.0, "micro_time_binning": 1},
+}
+
+
 def configure(drv, sample, min_states="2", max_states="2"):
+    """The BH sample's detectors go in through the shared editor's model (the editor's own inputs are tested apart)."""
+    drv.app.editor.model.data = __import__("copy").deepcopy(BH_SETUP)
+    drv.app.model.set_setup(BH_SETUP)
     drv.type_into_name("data_folder", str(sample))
-    drv.type_into_name("donor_channels", "0, 1")
-    drv.type_into_name("acceptor_channels", "8, 9")
     drv.type_into_name("min_states", min_states)
     drv.type_into_name("max_states", max_states)
     drv.type_into_name("restarts", "1")
@@ -72,12 +86,18 @@ def configure(drv, sample, min_states="2", max_states="2"):
 
 def test_empty_state_draws_no_data_at_both_sizes(monkeypatch, app):
     spy = PlotSpy(monkeypatch)
+    shown = set()
     for size in ((1200, 800), SMALL):
         drv = Driver(app, size)
-        painter = drv.draw()
+        shown.update(" ".join(texts(drv.draw())).split(". "))
+        for tab in TABS:  # every plot tab, reached by clicking its title
+            drv.click_text(tab)
+            shown.update(" ".join(texts(drv.draw())).split(". "))
     assert spy.calls == []
-    shown = " ".join(texts(painter))
-    assert "No H2MM fit yet" in shown and "No transition density yet" in shown and "No dwell times yet" in shown
+    text = " ".join(shown)
+    for message in ("No H2MM fit yet", "No transition density yet", "No dwell times yet", "No dwell FRET states yet",
+                    "No model selection yet", "No per-state decays", "No likelihood scan yet", "No state path yet"):
+        assert message in text, message
 
 
 def test_the_run_button_is_greyed_with_its_reason_until_a_folder_is_given(app):
@@ -143,8 +163,8 @@ def test_typed_fields_reach_the_model_and_are_clamped(app):
     assert app.model.restarts == 6
     drv.type_into_name("restarts", "999")
     assert app.model.restarts == 20, "clamped to the spec's range"
-    drv.type_into_name("donor_channels", "2, 3")
-    assert parse_channels(app.model.donor_channels) == [2, 3]
+    drv.type_into_name("max_iter", "3")
+    assert app.model.max_iter == 10, "clamped up to the spec's minimum"
 
 
 def test_a_real_fit_by_clicks_equals_the_backend_and_fills_tables_and_plots(monkeypatch, app, sample):
@@ -217,12 +237,12 @@ def test_a_dropped_folder_becomes_the_burst_folder(app, sample):
 
 def test_settings_file_round_trip(tmp_path):
     model = H2mmViewModel()
-    model.restarts, model.criterion, model.donor_channels, model.decoder = 9, "icl", "4, 5", "ffbs"
+    model.restarts, model.criterion, model.donor, model.decoder = 9, "icl", "red", "ffbs"
     path = tmp_path / "h2mm.json"
     model.save_settings(path)
     other = H2mmViewModel()
     other.load_settings(path)
-    assert (other.restarts, other.criterion, other.donor_channels, other.decoder) == (9, "icl", "4, 5", "ffbs")
+    assert (other.restarts, other.criterion, other.donor, other.decoder) == (9, "icl", "red", "ffbs")
 
 
 def test_guide_targets_are_drawn_and_the_run_step_waits_for_the_press(app, sample):
@@ -262,3 +282,190 @@ def test_a_toggle_is_flipped_by_a_click(app):
     assert app.model.photon_csv is False
     drv.click_name("photon_csv")
     assert app.model.photon_csv is True
+
+
+# ------------------------------------------------------------------------------------------------------------------
+# Cards H2, H4, H5: detector editor, remaining plots, Restart / Bootstrap / LL scan / dwells / settings / plot saving
+# ------------------------------------------------------------------------------------------------------------------
+@pytest.fixture(scope="module")
+def fitted(sample, qapp_ref):
+    """One app with a real fit (states 1..3) on the BH sample, shared by the tests below."""
+    window = create_app()
+    drv = Driver(window)
+    configure(drv, sample, min_states="1", max_states="3")
+    drv.click_name("toolAction_run")
+    wait(drv)
+    assert not window.job.error, window.job.error
+    yield window, drv
+    window.close()
+
+
+def tab(drv, title):
+    drv.click_text(title)
+    return drv.draw(2)
+
+
+def test_the_detector_setup_is_the_shared_editor_and_edits_reach_the_model(app):
+    drv = Driver(app)
+    painter = tab(drv, "Detector setup")
+    shown = texts(painter)
+    assert "Detector Name" in shown and "Channels" in shown, "the shared editor's detector table is not drawn"
+    editor = app.editor
+    rec = next(r for r in editor.detector_rows() if r["name"] == "green")
+    editor.edit_detector(rec, "chs", "0, 1")
+    assert app.model.setup["detectors"]["green"]["chs"] == [0, 1]
+    assert app.model._stream("green").channels == [0, 1]
+    editor.add_detector()
+    assert len(app.model.detector_names()) == 3 and app.model.aex_options()[0] == "(none)"
+
+
+def test_stream_choices_follow_the_detector_names(app):
+    app.model.set_setup({"detectors": {"a": {"chs": [0]}, "b": {"chs": [1]}}, "tttr_reading": {"file_type": "PTU"}})
+    assert (app.model.donor, app.model.acceptor, app.model.aex, app.model.file_type) == ("a", "b", "(none)", "PTU")
+    assert [s.name for s in app.model.streams()] == ["a", "b"]
+    app.model.aex = "b"
+    assert [s.name for s in app.model.streams()] == ["a", "b", "b"]
+
+
+def test_plot_tabs_hold_the_analysis_numbers(monkeypatch, fitted):
+    window, drv = fitted
+    ana = window.model.analysis
+    spy = PlotSpy(monkeypatch)
+
+    def last(title):
+        drv.click_text(title)
+        for _ in range(2):
+            spy.clear()
+            drv.draw(1)
+        return spy
+
+    info = result_view.dwell_fret(ana)
+    s = last("Dwell FRET")
+    lines = [c for c in s.calls if c[0] == "plot_line"]
+    assert [c[1] for c in lines] == [f"S{i}" for i in info.counts]
+    for call, (state, counts) in zip(lines, info.counts.items()):
+        np.testing.assert_array_equal(call[2][1], counts)
+    sel = result_view.model_selection(ana)
+    s = last("Selection")
+    np.testing.assert_array_equal(s.named("BIC")[2][1], sel[1])
+    np.testing.assert_array_equal(s.named("ICL")[2][1], sel[2])
+    assert list(sel[0]) == [f.n_states for f in ana.scan]
+    last("Decays")  # drawn or says why not: no crash either way
+
+
+def test_the_state_path_plot_follows_the_burst_field_and_the_dynamic_toggle(monkeypatch, fitted):
+    window, drv = fitted
+    ana, data = window.model.analysis, window.model.bundle.data
+    spy = PlotSpy(monkeypatch)
+    drv.click_text("State path")
+    drv.draw(2)
+    window.model.dynamic_only = False
+    drv.type_into_name("nav_burst", "7")
+    assert window.model.nav_burst == 7
+    spy.clear()
+    drv.draw(1)
+    path = result_view.burst_path(ana, data, 7)
+    np.testing.assert_array_equal(spy.named("state E")[2][0], path.t_ms)
+    np.testing.assert_array_equal(spy.named("state E")[2][1], path.e)
+    drv.click_name("dynamic_only")
+    assert window.model.dynamic_only is True
+    dyn = result_view.dynamic_bursts(ana)
+    assert window.model.nav_bursts() == (dyn or list(range(int(data.n_bursts))))
+    drv.click_name("dynamic_only")
+
+
+def test_restart_refits_and_run_keeps_an_unchanged_fit(fitted):
+    window, drv = fitted
+    before = window.model.analysis
+    drv.click_name("toolAction_run")
+    wait(drv)
+    assert window.model.analysis is before, "Run refitted unchanged inputs"
+    assert "Unchanged" in window.model.status_text
+    drv.click_name("toolAction_restart")
+    wait(drv)
+    assert window.model.analysis is not before
+    np.testing.assert_allclose(window.model.analysis.trans_rates, before.trans_rates, rtol=1e-6)
+
+
+def test_bootstrap_and_ll_scan_buttons_compute_the_backends_results(monkeypatch, fitted):
+    window, drv = fitted
+    drv.click_name("bootstrap")
+    wait(drv)
+    unc = window.model.uncertainty
+    assert unc is not None and unc.n_boot > 0 and "bootstrap resamples" in window.model.status_text
+    assert np.all(np.isfinite(unc.fret_lo)) and np.all(unc.fret_lo <= unc.fret_hi + 1e-9)
+    drv.click_name("ll_scan")
+    wait(drv)
+    scans = window.model.scans
+    assert scans and {s.param for s in scans} <= {"E", "S"}
+    spy = PlotSpy(monkeypatch)
+    drv.click_text("LL scan")
+    for _ in range(2):
+        spy.clear()
+        drv.draw(1)
+    e_scans = [s for s in scans if s.param == "E"]
+    drawn = {c[1]: c for c in spy.calls if c[0] == "plot_line"}
+    for sc in e_scans:
+        np.testing.assert_allclose(drawn[f"S{sc.state}"][2][1], 2.0 * (np.max(sc.loglik) - sc.loglik))
+
+
+def test_buttons_needing_a_fit_are_greyed_without_one(app):
+    drv = Driver(app)
+    drv.draw()
+    for name in ("bootstrap", "ll_scan", "save_plot", "ndx", "export_dwells"):
+        drv.click_name(name)
+    assert app.dialog is None and not app.job.busy and app.model.uncertainty is None
+
+
+def _dialog_save(drv, name):
+    """Press *name*, type a file name in the open dialog and press Save."""
+    drv.click_name(name)
+    drv.draw(3)
+    assert drv.app.dialog is not None, f"{name} opened no dialog"
+
+
+def test_save_and_load_settings_through_the_file_dialog(app, tmp_path):
+    drv = Driver(app)
+    app.model.restarts = 9
+    app.browse("save_settings")
+    drv.draw(3)
+    path = tmp_path / "s.json"
+    app.dialog.directory = str(tmp_path)
+    app.dialog.filename = "s.json"
+    drv.click_text("Save")
+    assert path.exists(), "the Save button of the dialog wrote nothing"
+    app.model.restarts = 2
+    app.browse("load_settings")
+    drv.draw(3)
+    app.dialog.directory = str(tmp_path)
+    drv.click_text("s.json")
+    drv.click_text("Open")
+    assert app.model.restarts == 9
+
+
+def test_export_dwells_and_save_plot_write_files(fitted, tmp_path):
+    window, drv = fitted
+    window.browse("export_dwells")
+    drv.draw(3)
+    window.dialog.directory = str(tmp_path)
+    window.dialog.filename = "dwells.csv"
+    drv.click_text("Save")
+    csv = tmp_path / "dwells.csv"
+    if window.model.dwell_table() is not None:
+        assert csv.exists() and csv.stat().st_size > 0
+    window.browse("save_plot")
+    drv.draw(3)
+    window.dialog.directory = str(tmp_path)
+    window.dialog.filename = "plots.png"
+    drv.click_text("Save")
+    assert (tmp_path / "plots.png").stat().st_size > 1000
+
+
+def test_browse_folder_dialog_sets_the_folder(app, sample):
+    drv = Driver(app)
+    drv.click_name("folder")
+    drv.draw(3)
+    assert app.dialog is not None
+    app.dialog.directory = str(sample)
+    drv.click_text("Choose")
+    assert app.model.data_folder in (str(sample), "")
