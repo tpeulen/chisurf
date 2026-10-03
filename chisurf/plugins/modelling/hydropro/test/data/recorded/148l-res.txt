@@ -1,0 +1,9 @@
+ ---------------------------------------------------------------------------
+ HYDROPRO stand-in report (recorded format fixture; NOT a computation)
+ ---------------------------------------------------------------------------
+ Structure: 148l
+ Temperature (C):                          20.0
+ Solvent viscosity (poise):                0.0100
+ Translational diffusion coefficient:   1.047E-06 cm/s
+ Translational diffusion coefficient:   9.999E-07 cm/s   (second occurrence, ignored)
+ Rotational relaxation times (ns): 11.20  9.80  9.10

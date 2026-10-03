@@ -8,23 +8,25 @@ user preferences whatever HOME says (the first baseline run did: see REPORT / bo
 """
 import importlib, os, pathlib, sys, tempfile, time
 
-HOME = tempfile.mkdtemp()
-os.environ["HOME"] = HOME
+TMP = pathlib.Path(tempfile.mkdtemp(prefix="hydropro_capture_"))
 sys.path.insert(0, str(pathlib.Path.cwd()))
-import test.gui.emtk_port_parity  # noqa: E402,F401
+import test.gui.emtk_port_parity  # noqa: E402,F401  (first: it must win the name "test" over the stdlib package)
+from chisurf.plugins.modelling.hydropro.test import hermetic  # noqa: E402
+
+os.environ.update(hermetic.env_for(TMP))      # HOME, CHISURF_SETTINGS_DIR, MMFDB_* all inside TMP
 
 out, which, prefix = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
-STUB = str(pathlib.Path(__file__).with_name("hydropro10_stub.sh").resolve())
+STUB = str(hermetic.install_fake_exe(TMP / "bin"))   # fake executable: replies with recorded output, computes nothing
 PDB = str(pathlib.Path("test/data/atomic_coordinates/pdb_files/148l.pdb").resolve())
 
 if which == "qt":
     from qtpy import QtWidgets
+    hermetic.isolate(TMP)   # QSettings -> INI in TMP, before any QSettings object exists (the real plist is never written)
     qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     from chisurf.plugins.modelling.hydropro.gui.tool import HydroProTool
     w = HydroProTool()
-    # Run would store the settings (and the stub path) in the user's real QSettings
-    # (macOS CFPreferences ignores HOME): never let a capture write them.
-    w._save_persisted = lambda: None
+    # _save_persisted runs for real, into the isolated INI file (the persistence round trip is part of the checks).
+    assert str(TMP) in w._qsettings.fileName(), w._qsettings.fileName()
     w._model.exe_path, w._model.struct_files, w._model.indmode = STUB, PDB, "1"
     w._form.rebuild(); w._refresh_table_files()
     w._on_run()
@@ -39,6 +41,7 @@ if which == "qt":
     if w._out_dlg is not None:
         w._out_dlg.grab().save(str(out / f"{prefix}_output.png"))
     print("QT", w._model.status, [w.table.item(0, c).text() for c in range(2)])
+    print("QSETTINGS", w._qsettings.fileName())
 else:
     from emtk.testing import RecordingPainter
     from test.gui.emtk_port_parity import emtk_screenshot, manifest_of

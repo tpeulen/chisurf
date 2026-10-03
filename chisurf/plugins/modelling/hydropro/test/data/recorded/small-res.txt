@@ -1,0 +1,2 @@
+ HYDROPRO stand-in report (recorded format fixture; NOT a computation)
+ Translational diffusion coefficient:  2.5E-07 cm/s
