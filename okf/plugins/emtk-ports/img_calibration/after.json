@@ -42,50 +42,50 @@
   "interactive": [
     {
       "kind": "button",
-      "label": "📖 Guide",
-      "id": "📖 Guide",
+      "label": "Guide",
+      "id": "Guide",
       "tooltip": "A walk through calibrating one detector."
     },
     {
       "kind": "button",
-      "label": "❓ Help",
-      "id": "❓ Help",
+      "label": "Help",
+      "id": "Help",
       "tooltip": "What the windows and backgrounds mean, and where they go."
     },
     {
       "kind": "button",
-      "label": "📂 Open TTTR…",
-      "id": "📂 Open TTTR…",
+      "label": "Open TTTR…",
+      "id": "Open TTTR…",
       "tooltip": "Open the source photon data whose decay is shown."
     },
     {
       "kind": "button",
-      "label": "🔄 Refresh",
-      "id": "🔄 Refresh",
+      "label": "Refresh",
+      "id": "Refresh",
       "tooltip": "Bin the histograms again after correcting the source files."
     },
     {
       "kind": "button",
-      "label": "➕ Files…",
-      "id": "➕ Files…",
+      "label": "Files…",
+      "id": "Files…",
       "tooltip": "Add IRF photon files for this detector; they are summed."
     },
     {
       "kind": "button",
-      "label": "🗄 Database…",
-      "id": "🗄 Database…",
+      "label": "Database…",
+      "id": "Database…",
       "tooltip": "Pick IRF files from the MMFDB object store."
     },
     {
       "kind": "button",
-      "label": "➖ Remove",
-      "id": "➖ Remove",
+      "label": "Remove",
+      "id": "Remove",
       "tooltip": "Remove the selected IRF file."
     },
     {
       "kind": "button",
-      "label": "🧹 Clear",
-      "id": "🧹 Clear",
+      "label": "Clear",
+      "id": "Clear",
       "tooltip": "Clear this detector's IRF files."
     },
     {

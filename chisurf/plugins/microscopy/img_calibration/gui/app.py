@@ -115,7 +115,12 @@ class CalibrationApp(TourTarget, ImApp):
         self.model.sel_irf_files = current
         return True
 
+    def files_dropped(self, paths):
+        """Files dropped on the window (the hook the hosts call) go to this detector's IRF list."""
+        self.add_irfs(paths) if paths else None
+
     def on_files_dropped(self, paths):
+        """The hub's spelling of the same hook: the answer says whether the files were taken."""
         return self.add_irfs(paths) if paths else False
 
     def apply_setup_settings(self, payload):
@@ -194,11 +199,11 @@ class CalibrationApp(TourTarget, ImApp):
     def controls(self, box):
         self.remember("controls", tuple(box))             # the dock's box: what must hold the toolbar
         toolbar = (
-            ("📖 Guide", self.start_guide, "A walk through calibrating one detector.", "guide"),
-            ("❓ Help", self.help.show, "What the windows and backgrounds mean, and where they go.", "help"),
-            ("📂 Open TTTR…", lambda: self.choose("source"), "Open the source photon data whose decay is shown.",
+            ("Guide", self.start_guide, "A walk through calibrating one detector.", "guide"),
+            ("Help", self.help.show, "What the windows and backgrounds mean, and where they go.", "help"),
+            ("Open TTTR…", lambda: self.choose("source"), "Open the source photon data whose decay is shown.",
              "open_source"),
-            ("🔄 Refresh", self.retry, "Bin the histograms again after correcting the source files.", "refresh"),
+            ("Refresh", self.retry, "Bin the histograms again after correcting the source files.", "refresh"),
         )
         self.button_row(toolbar)
         im.text_wrapped(self.model.filename or label("Choose source photon data"))
@@ -222,11 +227,11 @@ class CalibrationApp(TourTarget, ImApp):
         """The spec's IRF file list: this detector's files, summed into its IRF."""
         im.text(str(section.get("title") or "IRF files"))
         self.button_row((
-            ("➕ Files…", lambda: self.choose("irf"), "Add IRF photon files for this detector; they are summed.",
+            ("Files…", lambda: self.choose("irf"), "Add IRF photon files for this detector; they are summed.",
              "add_irf"),
-            ("🗄 Database…", self.dataset_picker.open, "Pick IRF files from the MMFDB object store.", "database_irf"),
-            ("➖ Remove", self.remove_irf, "Remove the selected IRF file.", "remove_irf"),
-            ("🧹 Clear", lambda: setattr(self.model, "sel_irf_files", []), "Clear this detector's IRF files.",
+            ("Database…", self.dataset_picker.open, "Pick IRF files from the MMFDB object store.", "database_irf"),
+            ("Remove", self.remove_irf, "Remove the selected IRF file.", "remove_irf"),
+            ("Clear", lambda: setattr(self.model, "sel_irf_files", []), "Clear this detector's IRF files.",
              "clear_irf"),
         ))
         top = im.get_cursor_screen_pos()

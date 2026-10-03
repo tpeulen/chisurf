@@ -269,7 +269,7 @@ def test_draws_empty_and_populated(spc, size, monkeypatch):
     empty = make_app()
     try:
         strings = _draw(empty, size).strings
-        assert "Configure detector windows in Imaging Tools" in " ".join(strings) and "📖 Guide" in strings
+        assert "Configure detector windows in Imaging Tools" in " ".join(strings) and "Guide" in strings
     finally:
         empty.close()
     app = _loaded(spc)

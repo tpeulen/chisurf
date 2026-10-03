@@ -136,6 +136,7 @@ irf_estimation
 93_psf_determination
 96_plugin_check
 98_imaging_tools
+99_img_calibration
 45_scan_precision
 55_pair_correlation
 ```
@@ -269,6 +270,7 @@ irf_estimation
 | [The PSF measured on beads](93_psf_determination.md) | `psf_determination` (Imaging), `psf-determination` CLI, `PsfViewModel`, `psf_determination.fit.run` RPC |
 | [States and rates from a binned trace](92_hmm_binned_traces.md) | `hmm` (Analysis → Kinetics), `csc hmm`, `HmmViewModel`, `hmm.fit` RPC |
 | [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |
+| [IRF and background calibration of an imaging detector](99_img_calibration.md) | `img_calibration` (Imaging → IRF & BG; step 4 of Imaging Tools) |
 | [The imaging workflow in one window](98_imaging_tools.md) | `imaging_tools` (Spectroscopy → Image Tools), the imaging hub |
 | [Checking that every plugin starts](96_plugin_check.md) | `plugin_check` (Tools → Miscellaneous → Plugin-Check), `python -m chisurf.emtk.validation`, `PluginCheckModel` |
 | [The Settings window: one list, every settings panel](97_settings_hub.md) | `setup` (Setup → Settings), the hub that hosts every settings panel |

@@ -10,7 +10,7 @@
       "title": "The source decay",
       "text": "The photon file whose decay you calibrate against — in the imaging pipeline it comes from the earlier steps.",
       "target": {"name": "open_source"},
-      "await": {"hint": "Press <b>📂 Open TTTR…</b> and pick the measurement."}
+      "await": {"hint": "Press <b>Open TTTR…</b> and pick the measurement."}
     },
     {
       "title": "Which detector",
