@@ -1,0 +1,2 @@
+ M chisurf/plugins/burst/mfd_prepare/gui/app.py
+ M docs/guides/85_mfd_prepare.md

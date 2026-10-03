@@ -15,7 +15,7 @@ import emtk.im as im
 from emtk.app import ImApp
 from emtk.im_core import Col
 
-from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 
 if TYPE_CHECKING:
     from .tool import MfdPrepareTool
@@ -63,11 +63,6 @@ class MfdPrepareGui:
     def show_help(self) -> None:
         self.help_window.show()
 
-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
-        r = rect if rect is not None else im.get_item_rect()
-        if r is not None:
-            self.item_rects[name] = tuple(r)
-
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         vp = im.get_main_viewport()
         width = float(w or vp.size[0] or 760.0)
@@ -91,6 +86,7 @@ class MfdPrepareGui:
             if im.button("Browse…"):
                 if callable(self.on_browse):
                     self.on_browse()
+            im.set_item_tooltip("Choose the burst folder to prepare for MFD analysis.")
             self.remember("browse")
 
             im.same_line()
@@ -100,6 +96,9 @@ class MfdPrepareGui:
             if im.button("Prepare"):
                 if callable(self.on_prepare):
                     self.on_prepare()
+            im.set_item_tooltip(
+                "Verify the channels and count agreement in the folder and write the MFD preparation report below."
+            )
             im.pop_style_color(3)
             self.remember("prepare")
 
@@ -107,6 +106,7 @@ class MfdPrepareGui:
             if im.button("❓ Help"):
                 self.show_help()
             self.remember("help")
+            im.set_item_tooltip("Open the help window with reference documentation.")
 
             im.separator()
             report = getattr(self.tool, "_report_text", "")
