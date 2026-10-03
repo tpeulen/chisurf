@@ -18,11 +18,14 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any, Callable
 
-import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
-from emtk.docking import DockManager, DockWindow, Rect, Region, Split
+from emtk.docking import DockManager, Region, Split
 from emtk.im_core import Col
+
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+
+from . import result_view
 
 if TYPE_CHECKING:
     from .tool import H2mmTool
@@ -40,7 +43,7 @@ REGION_FILL = (46, 117, 182, 60)
 REGION_BORDER = (90, 160, 240, 255)
 
 
-class H2mmGui:
+class H2mmGui(TourTarget):
     """EMTK GUI providing dockable windows and region dropping for H2MM analysis."""
 
     def __init__(
@@ -72,12 +75,6 @@ class H2mmGui:
 
         from pathlib import Path
 
-        from chisurf.gui.widgets.tools.emtk_help_guide import (
-            EmTkGuidedTour,
-            EmTkHelpWindow,
-            TourTarget,
-        )
-
         help_resource = Path(__file__).parent / "help.md"
         guide_resource = Path(__file__).parent / "guide.json"
         self.help_window = EmTkHelpWindow(
@@ -108,66 +105,85 @@ class H2mmGui:
         self._dock_manager = DockManager(layout)
         self._dock_manager.add_window(
             "controls",
-            "⚙️ H2MM Controls & Settings",
+            "H2MM controls and settings",
             self._draw_controls_dock,
             dock="left_controls",
             closable=False,
         )
         self._dock_manager.add_window(
             "rate_matrix",
-            "🔢 Transition Rate Matrix",
+            "Transition rate matrix",
             self._draw_rate_matrix_dock,
             dock="left_rates",
             closable=False,
         )
         self._dock_manager.add_window(
             "tdp",
-            "⚡ Transition Density Plot (TDP)",
+            "Transition density (TDP)",
             self._draw_tdp_dock,
             dock="top_right",
             closable=False,
         )
         self._dock_manager.add_window(
             "dwells",
-            "⏱️ Dwell Time Distributions",
+            "Dwell time distributions",
             self._draw_dwells_dock,
             dock="bottom_right",
             closable=False,
         )
 
+    #: Settings the controls show, as ``attr -> (tool widget, kind)``. The tool's own widgets are the single source of
+    #: truth: the controls read them every frame and write them on change, so a value typed here is the value
+    #: ``H2mmTool._gather_settings`` fits with (no second copy that can drift, and nothing the tool never sees).
+    _BOUND = {
+        "min_states": ("sb_min_states", "int"),
+        "max_states": ("sb_max_states", "int"),
+        "criterion": ("cb_criterion", "text"),
+        "engine": ("cb_engine", "data"),
+        "restarts": ("sb_restarts", "int"),
+        "max_iter": ("sb_max_iter", "int"),
+        "min_photons": ("sb_min_photons", "int"),
+    }
+
     def _sync_from_tool(self) -> None:
-        """Read settings from tool widgets if available."""
-        sb_min = getattr(self.tool, "sb_min_states", None)
-        if sb_min is not None:
-            self.min_states = int(sb_min.value())
-        sb_max = getattr(self.tool, "sb_max_states", None)
-        if sb_max is not None:
-            self.max_states = int(sb_max.value())
-        cb_crit = getattr(self.tool, "cb_criterion", None)
-        if cb_crit is not None:
-            self.criterion = str(cb_crit.currentText())
-        cb_eng = getattr(self.tool, "cb_engine", None)
-        if cb_eng is not None:
-            self.engine = str(cb_eng.currentData() or cb_eng.currentText())
+        """Read the settings from the tool's widgets (when it has them)."""
+        for attr, (widget_name, kind) in self._BOUND.items():
+            widget = getattr(self.tool, widget_name, None)
+            if widget is None:
+                continue
+            if kind == "int":
+                setattr(self, attr, int(widget.value()))
+            elif kind == "text":
+                setattr(self, attr, str(widget.currentText()))
+            else:
+                setattr(self, attr, str(widget.currentData() or widget.currentText()))
 
     def _sync_to_tool(self) -> None:
-        """Write parameters back to tool widgets."""
-        sb_min = getattr(self.tool, "sb_min_states", None)
-        if sb_min is not None:
-            sb_min.setValue(int(self.min_states))
-        sb_max = getattr(self.tool, "sb_max_states", None)
-        if sb_max is not None:
-            sb_max.setValue(int(self.max_states))
-        cb_crit = getattr(self.tool, "cb_criterion", None)
-        if cb_crit is not None:
-            idx = cb_crit.findText(self.criterion)
-            if idx >= 0:
-                cb_crit.setCurrentIndex(idx)
-        cb_eng = getattr(self.tool, "cb_engine", None)
-        if cb_eng is not None:
-            idx = cb_eng.findData(self.engine)
-            if idx >= 0:
-                cb_eng.setCurrentIndex(idx)
+        """Write the settings to the tool's widgets (when it has them)."""
+        for attr, (widget_name, kind) in self._BOUND.items():
+            widget = getattr(self.tool, widget_name, None)
+            if widget is None:
+                continue
+            value = getattr(self, attr)
+            if kind == "int":
+                widget.setValue(int(value))
+            elif kind == "text":
+                idx = widget.findText(value)
+                if idx >= 0:
+                    widget.setCurrentIndex(idx)
+            else:
+                idx = widget.findData(value)
+                if idx >= 0:
+                    widget.setCurrentIndex(idx)
+
+    def _analysis(self):
+        """The full in-memory analysis the tool holds (``tool._bundle.analysis``), or ``None`` before a fit.
+
+        ``tool._result`` is the serialisable ``H2mmResult`` summary (n_states, criterion, ...); the arrays the plots
+        need (rates, transitions, dwells) are on the bundle's ``H2mmAnalysis``, as in the Qt tool's ``_update_plots``.
+        """
+        bundle = getattr(self.tool, "_bundle", None)
+        return getattr(bundle, "analysis", None)
 
     def track(self, name: str) -> None:
         """Record usage of a named control."""
@@ -183,6 +199,7 @@ class H2mmGui:
         self.help_window.show()
 
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
+        self._sync_from_tool()
         width = float(w or 800.0)
         height = float(h or 600.0)
         self._dock_manager.draw((0.0, 0.0, max(width, 400.0), max(height, 300.0)))
@@ -207,7 +224,7 @@ class H2mmGui:
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("🚀 Run H2MM"):
+        if im.button("Run H2MM"):
             self.track("toolAction_run")
             self._sync_to_tool()
             if hasattr(self.tool, "btn_run"):
@@ -219,7 +236,7 @@ class H2mmGui:
         im.pop_style_color(3)
 
         im.same_line()
-        if im.button("🔄 Restart"):
+        if im.button("Restart"):
             self.track("toolAction_restart")
             self._sync_to_tool()
             if hasattr(self.tool, "btn_restart"):
@@ -230,38 +247,38 @@ class H2mmGui:
         self._next_row_if_clipped()
         if is_running:
             im.push_style_color(Col.BUTTON, ACCENT_RED)
-            if im.button("⏹ Stop"):
+            if im.button("Stop"):
                 if hasattr(self.tool, "stop"):
                     self.tool.stop()
             im.set_item_tooltip("Stop the running H2MM optimization.")
             im.pop_style_color(1)
         else:
             im.begin_disabled()
-            im.button("⏹ Stop")
+            im.button("Stop")
             im.set_item_tooltip("Stop the running H2MM optimization (nothing is running).")
             im.end_disabled()
 
         self._next_row_if_clipped()
-        if im.button("± Bootstrap"):
+        if im.button("Bootstrap"):
             if hasattr(self.tool, "btn_uncert"):
                 self.tool.btn_uncert.click()
         im.set_item_tooltip("Estimate parameter uncertainties by bootstrapping the fit.")
 
         self._next_row_if_clipped()
-        if im.button("📈 LL Scan"):
+        if im.button("LL Scan"):
             if hasattr(self.tool, "btn_llscan"):
                 self.tool.btn_llscan.click()
         im.set_item_tooltip("Scan the log-likelihood over state numbers to help choose the model.")
 
         self._next_row_if_clipped()
-        if im.button("📖 Guide"):
+        if im.button("Guide"):
             self.track("guide")
             self.start_guide()
         self.remember("guide")
         im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
 
         self._next_row_if_clipped()
-        if im.button("❓ Help"):
+        if im.button("Help"):
             self.track("help")
             self.show_help()
         self.remember("help")
@@ -348,85 +365,64 @@ class H2mmGui:
         if im.collapsing_header("Results & Export", im.TreeNodeFlags.DEFAULT_OPEN):
             folder = getattr(self.tool, "data_folder", None)
             im.text(f"Burst Folder: {folder.name if folder else 'None selected'}")
-            res = getattr(self.tool, "_result", None)
-            if res is not None:
-                n_states = getattr(res, "n_states", None) or getattr(res, "best_k", 2)
-                im.text_colored(f"Best Model: {n_states} states", (0.3, 0.85, 0.4, 1.0))
-                if im.button("🔬 Open Dwells in ndX"):
+            ana = self._analysis()
+            if ana is not None:
+                n_best = result_view.n_states(ana)
+                im.text_colored(
+                    f"Best model: {n_best} states ({ana.n_bursts} bursts, {ana.n_photons} photons)",
+                    (0.3, 0.85, 0.4, 1.0),
+                )
+                if im.button("Open Dwells in ndX"):
                     if hasattr(self.tool, "open_dwells_in_ndx"):
                         self.tool.open_dwells_in_ndx()
                 im.set_item_tooltip(
                     "Send the fitted dwell-time segments to ndXplorer for inspection."
                 )
             else:
-                im.text_colored("No H2MM fit run yet.", (0.6, 0.6, 0.6, 1.0))
+                im.text_wrapped("No H2MM fit yet. Select a burst folder and press Run H2MM.")
 
     def _draw_rate_matrix_dock(self, box: tuple[float, float, float, float]) -> None:
-        res = getattr(self.tool, "_result", None)
-        rates = getattr(res, "rates", None) if res is not None else None
-
-        if rates is not None:
-            rates_arr = np.asarray(rates)
-            n = rates_arr.shape[0] if rates_arr.ndim == 2 else 2
-            im.text_colored(f"Transition Rates (s⁻¹) — {n} States:", (0.3, 0.85, 0.4, 1.0))
-
-            tbl_h = max(60.0, box[3] - 30.0)
-            if im.begin_table(
-                "rate_mat_table",
-                n + 1,
-                im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.SCROLL_Y,
-                (0, tbl_h),
-            ):
-                im.table_setup_column("From \\ To", im.TableColumnFlags.WIDTH_FIXED, 75.0)
+        rates = result_view.rate_matrix(self._analysis())
+        if rates is None:
+            im.text_wrapped("No transition rates yet: they appear here once an H2MM fit has finished.")
+            return
+        n = rates.shape[0]
+        im.text_colored(f"Transition rates (1/s), {n} states:", (0.3, 0.85, 0.4, 1.0))
+        tbl_h = max(60.0, box[3] - 30.0)
+        if im.begin_table(
+            "rate_mat_table",
+            n + 1,
+            im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.SCROLL_Y,
+            (0, tbl_h),
+        ):
+            im.table_setup_column("From \\ To", im.TableColumnFlags.WIDTH_FIXED, 75.0)
+            for j in range(n):
+                im.table_setup_column(f"S{j}", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_headers_row()
+            for i in range(n):
+                im.table_next_row()
+                im.table_set_column_index(0)
+                im.text(f"State S{i}")
                 for j in range(n):
-                    im.table_setup_column(f"S{j}", im.TableColumnFlags.WIDTH_STRETCH)
-                im.table_headers_row()
-
-                for i in range(n):
-                    im.table_next_row()
-                    im.table_set_column_index(0)
-                    im.text(f"State S{i}")
-                    for j in range(n):
-                        im.table_set_column_index(j + 1)
-                        if i == j:
-                            im.text_colored("—", (0.5, 0.5, 0.5, 1.0))
-                        else:
-                            val = float(rates_arr[i, j]) if rates_arr.ndim == 2 else 0.0
-                            im.text(f"{val:.1f}")
-                im.end_table()
-        else:
-            # Demonstration / Expected matrix
-            demo_rates = np.array([[0.0, 420.0], [210.0, 0.0]])
-            im.text_colored("Transition Rates (s⁻¹) [Demo Matrix]:", (0.5, 0.7, 0.9, 1.0))
-            tbl_h = max(60.0, box[3] - 30.0)
-            if im.begin_table(
-                "demo_rate_table",
-                3,
-                im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.SCROLL_Y,
-                (0, tbl_h),
-            ):
-                im.table_setup_column("From \\ To", im.TableColumnFlags.WIDTH_FIXED, 75.0)
-                im.table_setup_column("S0", im.TableColumnFlags.WIDTH_STRETCH)
-                im.table_setup_column("S1", im.TableColumnFlags.WIDTH_STRETCH)
-                im.table_headers_row()
-                for i in range(2):
-                    im.table_next_row()
-                    im.table_set_column_index(0)
-                    im.text(f"State S{i}")
-                    for j in range(2):
-                        im.table_set_column_index(j + 1)
-                        if i == j:
-                            im.text_colored("—", (0.5, 0.5, 0.5, 1.0))
-                        else:
-                            im.text(f"{demo_rates[i, j]:.1f}")
-                im.end_table()
+                    im.table_set_column_index(j + 1)
+                    if i == j:
+                        im.text_colored("-", (0.5, 0.5, 0.5, 1.0))
+                    else:
+                        im.text(f"{float(rates[i, j]):.1f}")
+            im.end_table()
 
     def _draw_tdp_dock(self, box: tuple[float, float, float, float]) -> None:
-        if implot.begin_plot("Transition Density (E_initial vs E_final)", (-1, -1)):
-            implot.setup_axes("Initial FRET E", "Final FRET E")
+        points = result_view.transition_points(self._analysis())
+        if points is None:
+            im.text_wrapped(
+                "No transition density yet: it shows the FRET efficiency before and after every decoded "
+                "transition once an H2MM fit has finished."
+            )
+        elif implot.begin_plot("Transition density (E before vs E after)", (-1, -1)):
+            implot.setup_axes("E before", "E after")
             implot.setup_axes_limits(0.0, 1.0, 0.0, 1.0)
 
-            # Interactive Gating Box
+            # Gate: drag the box (or drop a BURST_REGION onto the plot); the count below is computed from the points.
             res_rect = implot.drag_rect(
                 401,
                 self.gate_x_min,
@@ -438,37 +434,14 @@ class H2mmGui:
             if res_rect.modified:
                 self.gate_x_min, self.gate_x_max = res_rect.x_min, res_rect.x_max
                 self.gate_y_min, self.gate_y_max = res_rect.y_min, res_rect.y_max
-
-            implot.tag_x(
-                self.gate_x_min, (0.3, 0.8, 0.4, 1.0), fmt=f"E_init_min: {self.gate_x_min:.2f}"
-            )
-            implot.tag_x(
-                self.gate_x_max, (0.3, 0.8, 0.4, 1.0), fmt=f"E_init_max: {self.gate_x_max:.2f}"
-            )
-
-            # Diagonal identity line
-            diag_x = np.linspace(0.0, 1.0, 20, dtype=np.float64)
-            implot.plot_line("Static (No Transition)", diag_x, diag_x)
-
-            # Scatter transition pairs
-            res = getattr(self.tool, "_result", None)
-            tdp_data = getattr(res, "transitions", None) if res is not None else None
-            if tdp_data is not None and len(tdp_data) > 0:
-                e_init = np.asarray(tdp_data.get("e_initial", []), dtype=np.float64)
-                e_fin = np.asarray(tdp_data.get("e_final", []), dtype=np.float64)
-                if len(e_init) > 0 and len(e_init) == len(e_fin):
-                    implot.plot_scatter("Transitions", e_init, e_fin, size=3.5)
-            else:
-                # Simulated transitions cluster
-                np.random.seed(123)
-                p1_x = np.random.normal(0.25, 0.05, 40)
-                p1_y = np.random.normal(0.75, 0.05, 40)
-                p2_x = np.random.normal(0.75, 0.05, 40)
-                p2_y = np.random.normal(0.25, 0.05, 40)
-                implot.plot_scatter("S0 → S1", p1_x, p1_y, size=3.0)
-                implot.plot_scatter("S1 → S0", p2_x, p2_y, size=3.0)
-
+            implot.plot_scatter("Transitions", points[0], points[1], size=3.5)
             implot.end_plot()
+        if points is not None:
+            inside, total = result_view.transitions_in_gate(
+                points, (self.gate_x_min, self.gate_x_max), (self.gate_y_min, self.gate_y_max)
+            )
+            im.text(f"{inside} of {total} transitions inside the gate")
+            im.set_item_tooltip("Transitions whose E before and E after both lie inside the dragged box.")
 
         # Region Drop Target
         if im.begin_drag_drop_target():
@@ -477,10 +450,10 @@ class H2mmGui:
                 try:
                     data = json.loads(payload.decode("utf-8"))
                     self._last_dropped_region = data
-                    x_rng = data.get("x_range", [0.2, 0.8])
+                    x_rng = data.get("x_range", [self.gate_x_min, self.gate_x_max])
                     if len(x_rng) == 2:
                         self.gate_x_min, self.gate_x_max = float(x_rng[0]), float(x_rng[1])
-                    y_rng = data.get("y_range", [0.2, 0.8])
+                    y_rng = data.get("y_range", [self.gate_y_min, self.gate_y_max])
                     if len(y_rng) == 2:
                         self.gate_y_min, self.gate_y_max = float(y_rng[0]), float(y_rng[1])
                 except Exception:
@@ -488,18 +461,21 @@ class H2mmGui:
             im.end_drag_drop_target()
 
     def _draw_dwells_dock(self, box: tuple[float, float, float, float]) -> None:
-        if implot.begin_plot("Dwell Time Decay", (-1, -1)):
-            implot.setup_axes("Dwell Time (ms)", "Count / Probability")
-            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-
-            # Exponential decay profiles for states
-            ts = np.linspace(0.1, 10.0, 50, dtype=np.float64)
-            y_s0 = np.exp(-ts / 1.5) * 500.0
-            y_s1 = np.exp(-ts / 3.0) * 350.0
-            implot.plot_line("State S0 (τ=1.5 ms)", ts, y_s0)
-            implot.plot_line("State S1 (τ=3.0 ms)", ts, y_s1)
-
+        ana = self._analysis()
+        histograms, censored = result_view.dwell_histograms(ana)
+        if ana is None:
+            im.text_wrapped("No dwell times yet: they are drawn here once an H2MM fit has finished.")
+            return
+        if not histograms:
+            im.text_wrapped("No state has a dwell that ended inside a burst, so there is no dwell-time distribution.")
+            return
+        if implot.begin_plot("Dwell times (burst-edge dwells excluded)", (-1, -1)):
+            implot.setup_axes("Dwell time (ms)", "Counts")
+            for h in histograms:
+                implot.plot_line(f"S{h.state}", h.centers_ms, h.counts)
             implot.end_plot()
+        if censored:
+            im.text_wrapped(", ".join(f"S{s}" for s in censored) + ": no dwell ended within a burst")
 
 
 class H2mmApp(ImApp):
@@ -517,6 +493,7 @@ class H2mmApp(ImApp):
             on_help=on_help,
         )
         self.tool = self.h2mm_gui.tool
+        self.item_rects = self.h2mm_gui.item_rects
         super().__init__(gui=self._render, continuous=False)
 
     def start_guide(self) -> None:

@@ -1,0 +1,40 @@
+{
+  "_comment": "Start value and fit window of the burst-MLE wizard, as an AutoForm spec over the wizard itself (its tau, micro_time_start and micro_time_stop properties). Typed, clamped, Enter commits; a change is written to the wizard, which refits the current decay.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Start value and fit window",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "tau",
+          "label": "Tau start [ns]",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": 0.01,
+          "maximum": 100.0,
+          "description": "Starting value of the lifetime in ns (the wizard's Tau start). A change refits the current decay."
+        },
+        {
+          "type": "value",
+          "attr": "micro_time_start",
+          "label": "Window start [bin]",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "First micro-time bin of the fit window (after binning). Leave out the empty bins before the prompt."
+        },
+        {
+          "type": "value",
+          "attr": "micro_time_stop",
+          "label": "Window stop [bin]",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Micro-time bin after the last bin of the fit window. Leave out the noisy tail."
+        }
+      ]
+    }
+  ]
+}

@@ -1,11 +1,12 @@
-"""End-to-end GUI test of the burst MLE-lifetime wizard on real smFRET data.
+"""End-to-end GUI test of the burst MLE-lifetime wizard on real smFRET data (in-repo BH SPC-132 sample).
 
 Drives the wizard the way the workflow does — set detectors, load a .bur, build
 the decay, provide IRF/background, run the fit — and asserts the results are
 sane. This catches the silent-failure bugs where the current detector loses its
 IRF (so update_fit bails) and the decay/plot end up empty.
 
-Skipped when the BH smFRET DNA test data is not present.
+The data is the in-repository ``burst_selection/tests/data/bh_spc132_sm_dna`` folder (real photons, no download).
+The wizard writes its result tables next to the burst files, so the tests work on a temporary copy.
 """
 
 from __future__ import annotations
@@ -15,14 +16,25 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-DATA = Path("/Users/tpeulen/dev/tttr-data/bh/bh_spc132_sm_dna")
-BUR = DATA / "sliding_window_All 0.1500#60_3" / "bi4_bur" / "m000.bur"
-HANDOFF = DATA / "burst_analysis_handoff" / "burst_analysis_handoff.json"
+REPO_DATA = Path(__file__).resolve().parents[2] / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+DATA = REPO_DATA  # read-only uses (headers); fits run on the temporary copy below
+BUR = REPO_DATA / "burstwise_All 0.1000#15" / "bi4_bur" / "m000.bur"
+HANDOFF = REPO_DATA / "burst_analysis_handoff" / "burst_analysis_handoff.json"
 
 pytestmark = pytest.mark.skipif(
     not (BUR.exists() and HANDOFF.exists()),
-    reason="BH smFRET DNA test data not available",
+    reason="in-repo BH smFRET DNA test data missing",
 )
+
+
+@pytest.fixture(scope="module")
+def data_copy(tmp_path_factory):
+    """A temporary copy of the sample folder: the wizard writes ``Info/`` and companions beside the bursts."""
+    import shutil
+
+    target = tmp_path_factory.mktemp("bh_spc132_sm_dna") / "data"
+    shutil.copytree(REPO_DATA, target, ignore=shutil.ignore_patterns(".DS_Store"))
+    return target
 
 
 # BH SPC-132 dual-colour polarization channel map for this dataset: routing
@@ -52,7 +64,7 @@ CHANNEL_SETTINGS = {
 
 
 @pytest.fixture
-def fitted_wizard(qapp):
+def fitted_wizard(qapp, data_copy):
     """A wizard with channels, a burst file, IRF/bg and one fit run for green.
 
     Drives the one-click ``Auto IRF/background`` path (``auto_extract_irf_bg``),
@@ -72,7 +84,7 @@ def fitted_wizard(qapp):
     w.channel_definer.load_data_into_tables(CHANNEL_SETTINGS)
     w.channel_definer.file_type_combo.setCurrentText("SPC-130")
     w._init_channels_from_wizard()
-    w.burst_files_list.add_file(str(BUR))
+    w.burst_files_list.add_file(str(data_copy / BUR.relative_to(REPO_DATA)))
     w.load_burst_data()
     w.update_burst_files()
     w.comboBox_window.setCurrentText("green")
@@ -212,21 +224,21 @@ def test_tail_fit_recovers_a_plausible_lifetime(fitted_wizard):
     QtWidgets.QApplication.processEvents()
 
     # the schema-driven editor shows the tail-start channel + a lifetime row
-    assert "tail_start" in w._dyn_params
-    assert any(k.startswith("tau") for k in w._dyn_params)
+    rows = w._dyn_params
+    assert rows.index_of("tail_start") >= 0
+    assert any(name.startswith("tau") for name in rows.names)
 
     # place the tail start inside the filled fit window and refit
     sb, eb = w.micro_time_range
-    w._dyn_params["tail_start"]["spin"].setValue(float(sb + max(1, (eb - sb) // 5)))
+    rows.values[rows.index_of("tail_start")] = float(sb + max(1, (eb - sb) // 5))
     w.update_fit()
     QtWidgets.QApplication.processEvents()
 
-    tau = w._dyn_params["tau1"]["result"].value()
+    tau = rows.results[rows.index_of("tau1")]
     assert 0.2 < tau < 8.0, f"tail-fit tau railed/implausible: {tau}"
 
     # the model curve was drawn (no blank Intensity panel)
-    items = w.combined_plot.listDataItems()
-    assert any((it.getData()[1] is not None and len(it.getData()[1]) > 0) for it in items)
+    assert w.fit_curves is not None and w.fit_curves.model.size > 0 and w.fit_curves.model.any()
 
 
 def test_burst_result_columns_are_model_specific():
@@ -432,25 +444,22 @@ def test_fit_dt_and_period_come_from_the_file_header():
 
 def test_intensity_plot_has_data(fitted_wizard):
     # The Intensity panel must show the decay (and model), not be empty.
-    items = fitted_wizard.combined_plot.listDataItems()
-    assert items, "Intensity plot is empty after a fit"
-    assert any(it.getData()[1] is not None and len(it.getData()[1]) > 0 for it in items)
+    series = fitted_wizard.combined_plot.series()
+    assert series, "Intensity plot is empty after a fit"
+    assert any(len(handle.get_data()[1]) > 0 for _name, handle in series)
 
 
 def test_decay_plot_has_a_labelled_legend(fitted_wizard):
     # The four overlaid curves (data, model, IRF, background) are only
-    # distinguishable by a legend; without it the colours are unlabelled. The
-    # legend must exist and carry exactly one row per named series, not a fresh
-    # stacked set per fit.
-    legend = getattr(fitted_wizard, "combined_legend", None)
-    assert legend is not None, "decay plot has no legend"
-    labels = {lbl.text for _sample, lbl in legend.items}
-    assert {"Data (VV|VH)", "Model (fit)", "IRF", "Background"} <= labels
+    # distinguishable by a legend; without it the colours are unlabelled. Each is
+    # drawn under its name, and a second replot must not stack a fresh set.
+    names = [name for name, _handle in fitted_wizard.combined_plot.series()]
+    assert {"Data (VV|VH)", "Model (fit)", "IRF", "Background"} <= set(names)
+    assert len(names) == len(set(names))
 
-    # A second replot must not duplicate the rows.
-    before = len(legend.items)
     fitted_wizard.refit()
-    assert len(legend.items) == before, "legend rows duplicated on replot"
+    again = [name for name, _handle in fitted_wizard.combined_plot.series()]
+    assert sorted(again) == sorted(names), "series duplicated on replot"
 
 
 def test_irf_is_not_corrupted_by_detector_switching(fitted_wizard):

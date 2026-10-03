@@ -1,13 +1,12 @@
 """EMTK immediate-mode UI for Burst Maximum Likelihood (MLE) Lifetime Analysis.
 
-Provides dockable, draggable windows with interactive region dropping:
-- Controls Window: Action buttons (Fit Bursts, Refit, Guide, Help),
-  Lifetime model selection, fit parameters, and state-split toggle.
-- Decay & IRF Fit Window: Micro-time decay histogram and IRF with log scale,
-  interactive fit-window drag-rect, and region dropping.
-- Lifetime Distribution Window: Histogram of fitted per-burst lifetimes with
-  interactive gating.
-- Results Table Window: Table of fitted lifetimes per burst and per state.
+Provides dockable, draggable windows. Every number and curve in them is read from the wizard that computed it
+(``fit_view``); with no fit the windows say so instead of drawing placeholders:
+- Controls Window: Action buttons (Fit Bursts, Refit, Guide, Help), the wizard's start value and fit window,
+  the fit-parameter table, and the input status.
+- Decay & IRF Fit Window: the fitted decay, model, IRF and background of the current burst file, log scale.
+- Lifetime Distribution Window: histogram of the fitted per-burst lifetimes with an interactive gate.
+- Results Table Window: pooled lifetimes per state (segment-level analysis).
 
 Runs toolkit-free under ControlHost in Qt or natively via WebGPU/emtk.
 """
@@ -19,13 +18,17 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
-import numpy as np
 from emtk import im, implot
 from emtk.app import ImApp
-from emtk.docking import DockManager, DockWindow, Rect, Region, Split
+from emtk.docking import DockManager, Region, Split
 from emtk.im_core import Col
+from emtk.view_form import FormState, draw_sections
+from emtk.widgets.view_spec import load_view_spec
 
-from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import cap_widths
+
+from . import fit_view
 
 if TYPE_CHECKING:
     from ..wizard import MLELifetimeAnalysisWizard
@@ -43,7 +46,7 @@ REGION_FILL = (46, 117, 182, 60)
 REGION_BORDER = (90, 160, 240, 255)
 
 
-class BurstMleGui:
+class BurstMleGui(TourTarget):
     """EMTK GUI providing dockable windows and region dropping for Burst MLE."""
 
     def __init__(
@@ -58,21 +61,17 @@ class BurstMleGui:
         self.on_guide = on_guide
         self.on_help = on_help
 
-        # Local parameter mirrors
-        self.tau1: float = 3.8
-        self.tau2: float = 1.2
-        self.fraction1: float = 0.8
-        self.fit_from_ch: float = 100.0
-        self.fit_to_ch: float = 3800.0
-
-        # Interactive gating
-        self.gate_tau_min: float = 1.0
-        self.gate_tau_max: float = 4.5
-        self.table_page: int = 0
-        self.page_size: int = 50
+        # Interactive gate on the lifetime histogram: unset until there are lifetimes, then the data range.
+        self.gate_tau_min: float | None = None
+        self.gate_tau_max: float | None = None
         self._last_dropped_region: dict[str, Any] | None = None
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.on_used: Callable[[str], None] | None = None
+        # Start value and fit window: the spec's fields (typed, clamped, Enter commits) over the wizard itself.
+        self.form_state = FormState()
+        spec = load_view_spec(str(Path(__file__).parent / "mle.view.json"))
+        self._fields = spec["sections"]
+        cap_widths(self._fields)
 
         # Build Dock Layout
         layout = Split(
@@ -84,24 +83,24 @@ class BurstMleGui:
         self._dock_manager = DockManager(layout)
         self._dock_manager.add_window(
             "controls",
-            "⚙️ Burst Segment MLE Controls" if self.split_by_state else "⚙️ Burst MLE Controls",
+            "Burst segment MLE controls" if self.split_by_state else "Burst MLE controls",
             self._draw_controls_dock,
             dock="left_controls",
             closable=False,
         )
         self._dock_manager.add_window(
             "results",
-            "📋 Fitted Lifetimes",
+            "Fitted lifetimes",
             self._draw_results_dock,
             dock="left_results",
             closable=False,
         )
         self._dock_manager.add_window(
-            "decay", "📉 Decay & IRF Fits", self._draw_decay_dock, dock="top_right", closable=False
+            "decay", "Decay and IRF fit", self._draw_decay_dock, dock="top_right", closable=False
         )
         self._dock_manager.add_window(
             "distribution",
-            "📊 Burst Lifetime Distribution",
+            "Burst lifetime distribution",
             self._draw_distribution_dock,
             dock="bottom_right",
             closable=False,
@@ -110,7 +109,7 @@ class BurstMleGui:
         help_resource = Path(__file__).parent / "help.md"
         guide_resource = Path(__file__).parent / "guide.json"
         self.help_window = EmTkHelpWindow(
-            title="Burst Lifetime MLE — Help & Reference",
+            title="Burst Lifetime MLE - Help & Reference",
             resource=help_resource,
             owner=self.wizard,
             on_start_guide=self.start_guide,
@@ -120,7 +119,10 @@ class BurstMleGui:
             steps=guide_resource,
             get_target_rect=lambda k: self.item_rects.get(k),
             owner=self.wizard,
+            wait_for_controls=True,
         )
+        self.on_used = self.tour.notify_used  # steps that ask for a press wait for it
+        self.form_state.on_used = self.tour.notify_used
 
     def start_guide(self) -> None:
         """Start the in-EMTK guided tour."""
@@ -151,197 +153,154 @@ class BurstMleGui:
         im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button("🎯 Fit Bursts"):
+        if im.button("Fit Bursts"):
             self.track("toolAction_run")
-            if hasattr(self.wizard, "process_bursts"):
-                self.wizard.process_bursts()
+            self.wizard.process_bursts()
         im.set_item_tooltip(
             "Fit the lifetime model to the micro-time decays of all bursts by maximum likelihood."
         )
-        self.remember("run")
+        self.remember("toolAction_run")
         im.pop_style_color(3)
 
         im.same_line()
-        if im.button("🔄 Refit"):
+        if im.button("Refit"):
             self.track("toolAction_restart")
-            if hasattr(self.wizard, "process_bursts"):
-                self.wizard.process_bursts()
-        im.set_item_tooltip("Re-run the fit with the current starting values and fit window.")
-        self.remember("restart")
+            self.wizard.refit()
+        im.set_item_tooltip("Fit the current burst file's decay again with the current start values and fit window.")
+        self.remember("toolAction_restart")
 
         im.same_line()
-        if im.button("📖 Guide"):
+        if im.button("Guide"):
             self.start_guide()
         im.set_item_tooltip("Start a step-by-step guided tour of this tool.")
+        self.remember("guide")
 
         im.same_line()
-        if im.button("❓ Help"):
+        if im.button("Help"):
             self.show_help()
         im.set_item_tooltip("Open the help window with reference documentation.")
+        self.remember("help")
 
         im.separator()
 
-        # Split By State Toggle
         if self.split_by_state:
             im.text_colored(
-                "Segment-Level Analysis: Split by H2MM State Active", (0.3, 0.85, 0.4, 1.0)
+                "Segment-level analysis: split by H2MM state is active", (0.3, 0.85, 0.4, 1.0)
             )
             im.separator()
 
-        # Model Parameters
-        if im.collapsing_header("Lifetime Model & Starting Values", im.TreeNodeFlags.DEFAULT_OPEN):
-            im.align_text_to_frame_padding()
-            im.text("Tau 1 (ns):")
-            im.same_line(115.0)
-            im.set_next_item_width(120)
-            ch_t1, new_t1 = im.input_float("##tau1", self.tau1, step=0.1)
-            im.set_item_tooltip("Starting value of the first lifetime component in ns.")
-            if ch_t1 and new_t1 > 0:
-                self.tau1 = new_t1
-
-            im.align_text_to_frame_padding()
-            im.text("Tau 2 (ns):")
-            im.same_line(115.0)
-            im.set_next_item_width(120)
-            ch_t2, new_t2 = im.input_float("##tau2", self.tau2, step=0.1)
-            im.set_item_tooltip("Starting value of the second lifetime component in ns.")
-            if ch_t2 and new_t2 > 0:
-                self.tau2 = new_t2
-
-            im.align_text_to_frame_padding()
-            im.text("Fraction 1:")
-            im.same_line(115.0)
-            im.set_next_item_width(120)
-            ch_f1, new_f1 = im.slider_float("##fraction1", self.fraction1, 0.0, 1.0)
-            im.set_item_tooltip(
-                "Starting amplitude fraction of the first lifetime component (0–1)."
-            )
-            if ch_f1:
-                self.fraction1 = new_f1
+        wiz = self.wizard
+        # Start value and fit window are the wizard's own settings (one source of truth): shown from it,
+        # written to it when changed (the wizard then refits).
+        draw_sections(self._fields, wiz, self.form_state)
+        for attr, key in (("tau", "tau_start"), ("micro_time_start", "window_start"), ("micro_time_stop", "window_stop")):
+            rect = self.form_state.rects.get(attr)
+            if rect is not None:
+                self.item_rects[key] = tuple(rect)
+        first = self.form_state.rects.get("tau")
+        if first is not None:
+            self.item_rects["start_and_window"] = tuple(first)
 
         im.separator()
 
-        # Fit Window Channels
-        if im.collapsing_header("Fit Window Boundaries", im.TreeNodeFlags.DEFAULT_OPEN):
-            im.align_text_to_frame_padding()
-            im.text("From channel:")
-            im.same_line(115.0)
-            im.set_next_item_width(120)
-            ch_from, new_from = im.input_float("##from_ch", self.fit_from_ch, step=50.0)
-            im.set_item_tooltip("First micro-time channel included in the fit window.")
-            if ch_from and new_from >= 0:
-                self.fit_from_ch = new_from
-
-            im.align_text_to_frame_padding()
-            im.text("To channel:")
-            im.same_line(115.0)
-            im.set_next_item_width(120)
-            ch_to, new_to = im.input_float("##to_ch", self.fit_to_ch, step=50.0)
-            im.set_item_tooltip("Last micro-time channel included in the fit window.")
-            if ch_to and new_to > self.fit_from_ch:
-                self.fit_to_ch = new_to
+        if im.collapsing_header("Fit parameters", im.TreeNodeFlags.DEFAULT_OPEN):
+            self.remember("fit_parameters")
+            rows = fit_view.parameter_rows(wiz)
+            if not rows:
+                im.text_wrapped("The wizard has no fit parameters yet.")
+            elif im.begin_table(
+                "fit_param_tbl", 4, im.TableFlags.BORDERS | im.TableFlags.ROW_BG, (0, 24.0 + 22.0 * len(rows))
+            ):
+                im.table_setup_column("Parameter", im.TableColumnFlags.WIDTH_STRETCH)
+                im.table_setup_column("Start", im.TableColumnFlags.WIDTH_FIXED, 70.0)
+                im.table_setup_column("Fixed", im.TableColumnFlags.WIDTH_FIXED, 50.0)
+                im.table_setup_column("Result", im.TableColumnFlags.WIDTH_FIXED, 70.0)
+                im.table_headers_row()
+                for row in rows:
+                    im.table_next_row()
+                    im.table_set_column_index(0)
+                    im.text(row.name)
+                    im.table_set_column_index(1)
+                    im.text(f"{row.initial:.4g}")
+                    im.table_set_column_index(2)
+                    im.text("yes" if row.fixed else "no")
+                    im.table_set_column_index(3)
+                    im.text(f"{row.result:.4g}" if wiz.fit_curves is not None else "-")
+                im.end_table()
 
         im.separator()
 
-        # Upstream Inputs Status
-        if im.collapsing_header("Input Data & IRF Status", im.TreeNodeFlags.DEFAULT_OPEN):
-            has_irf = bool(getattr(self.wizard, "irf_background_patterns", None))
-            if has_irf:
-                im.text_colored("✓ IRF & Background Patterns Loaded", (0.3, 0.85, 0.4, 1.0))
+        # Upstream inputs status, read from the wizard
+        if im.collapsing_header("Input data and IRF status", im.TreeNodeFlags.DEFAULT_OPEN):
+            self.remember("input_status")
+            if fit_view.irf_background_ready(wiz):
+                im.text_colored(
+                    f"IRF and background loaded for {wiz.current_detector}", (0.3, 0.85, 0.4, 1.0)
+                )
             else:
-                im.text_colored("• Using internal / default IRF pattern", (0.8, 0.8, 0.4, 1.0))
-
-            n_files = len(getattr(self.wizard, "burst_files", []))
-            im.text(f"Burst Files: {n_files}")
+                im.text_colored("No IRF and background for the current detector yet", (0.8, 0.8, 0.4, 1.0))
+            im.text(f"Burst files: {fit_view.burst_file_count(wiz)}")
 
     def _draw_decay_dock(self, box: tuple[float, float, float, float]) -> None:
-        if implot.begin_plot("Decay Histogram & Convolution", (-1, -1)):
-            implot.setup_axes("Microtime (channels)", "Photons")
+        self.remember("decay", box)
+        curves = fit_view.fit_curves(self.wizard)
+        if curves is None:
+            im.text_wrapped(
+                "No fit yet. Load burst files, an IRF and a background in the wizard, then press Fit Bursts "
+                "or Refit: the decay, the model, the IRF and the background of the current file appear here."
+            )
+        elif implot.begin_plot("Decay histogram and fit", (-1, -1)):
+            implot.setup_axes("Micro-time window (channels, VV then VH)", "Photons")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-
-            # Fit window drag rect
-            res_rect = implot.drag_rect(
-                501,
-                self.fit_from_ch,
-                0.1,
-                self.fit_to_ch,
-                1e5,
-                REGION_FILL,
-            )
-            if res_rect.modified:
-                self.fit_from_ch = max(0.0, res_rect.x_min)
-                self.fit_to_ch = max(self.fit_from_ch + 10.0, res_rect.x_max)
-
-            implot.tag_x(
-                self.fit_from_ch, (0.3, 0.8, 0.4, 1.0), fmt=f"Ch_min: {self.fit_from_ch:.0f}"
-            )
-            implot.tag_x(self.fit_to_ch, (0.3, 0.8, 0.4, 1.0), fmt=f"Ch_max: {self.fit_to_ch:.0f}")
-
-            # Simulated / preview decay curves
-            chs = np.linspace(0, 4095, 256, dtype=np.float64)
-            # IRF peak
-            irf = np.exp(-((chs - 800.0) ** 2) / (2.0 * 20.0**2)) * 1e4 + 1.0
-            # Exponential decay
-            decay = np.zeros_like(chs)
-            mask = chs >= 800.0
-            decay[mask] = np.exp(-(chs[mask] - 800.0) / 400.0) * 8e3 + 2.0
-            decay[~mask] = 2.0
-
-            implot.plot_line("Decay Data", chs, decay)
-            implot.plot_line("IRF Pattern", chs, irf)
-
+            implot.plot_scatter("Data (VV|VH)", curves.x, curves.data, size=2.5)
+            implot.plot_line("Model (fit)", curves.x, curves.model)
+            if curves.irf is not None:
+                implot.plot_line("IRF", curves.x, curves.irf)
+            implot.plot_line("Background", curves.x, curves.background)
             implot.end_plot()
 
-        # Region Drop Target
+        # Region Drop Target: a dropped region sets the fit window (bins)
         if im.begin_drag_drop_target():
             payload = im.accept_drag_drop_payload("BURST_REGION")
             if payload:
                 try:
                     data = json.loads(payload.decode("utf-8"))
                     self._last_dropped_region = data
-                    x_rng = data.get("x_range", [100.0, 3800.0])
-                    if len(x_rng) == 2:
-                        self.fit_from_ch = float(x_rng[0])
-                        self.fit_to_ch = float(x_rng[1])
+                    x_rng = data.get("x_range")
+                    if x_rng and len(x_rng) == 2 and int(x_rng[0]) < int(x_rng[1]):
+                        self.wizard.micro_time_range = [int(x_rng[0]), int(x_rng[1])]
                 except Exception:
                     pass
             im.end_drag_drop_target()
 
     def _draw_distribution_dock(self, box: tuple[float, float, float, float]) -> None:
-        if implot.begin_plot("Fitted Lifetime Histogram", (-1, -1)):
-            implot.setup_axes("Lifetime Tau (ns)", "Bursts")
-
-            # Interactive Gating Box
+        self.remember("distribution", box)
+        lifetimes = fit_view.burst_lifetimes(getattr(self.wizard, "burst_results", None))
+        histograms = fit_view.lifetime_histograms(lifetimes)
+        if not histograms:
+            im.text_wrapped(
+                "No burst lifetimes yet: press Fit Bursts. The histogram of the fitted lifetimes of all "
+                "bursts appears here."
+            )
+            return
+        everything = [v for values in lifetimes.values() for v in values]
+        if self.gate_tau_min is None or self.gate_tau_max is None:
+            self.gate_tau_min, self.gate_tau_max = float(min(everything)), float(max(everything))
+        peak = max(float(counts.max()) for _, _, counts, _ in histograms)
+        if implot.begin_plot("Fitted lifetime histogram", (-1, -1)):
+            implot.setup_axes("Lifetime tau (ns)", "Bursts")
+            for label, centres, counts, width in histograms:
+                implot.plot_bars(label, centres, counts, bar_size=width * 0.9)
             res_rect = implot.drag_rect(
-                502,
-                self.gate_tau_min,
-                0.0,
-                self.gate_tau_max,
-                100.0,
-                REGION_FILL,
+                502, self.gate_tau_min, 0.0, self.gate_tau_max, max(peak, 1.0), REGION_FILL
             )
             if res_rect.modified:
-                self.gate_tau_min = max(0.1, res_rect.x_min)
-                self.gate_tau_max = max(self.gate_tau_min + 0.1, res_rect.x_max)
-
-            implot.tag_x(
-                self.gate_tau_min, (0.3, 0.8, 0.4, 1.0), fmt=f"Tau_min: {self.gate_tau_min:.2f} ns"
-            )
-            implot.tag_x(
-                self.gate_tau_max, (0.3, 0.8, 0.4, 1.0), fmt=f"Tau_max: {self.gate_tau_max:.2f} ns"
-            )
-
-            # Lifetime distribution bars
-            tau_bins = np.linspace(0.5, 5.5, 30, dtype=np.float64)
-            tau_counts = np.exp(-((tau_bins - self.tau1) ** 2) / 0.5) * 60.0
-            if self.split_by_state:
-                tau_s1 = np.exp(-((tau_bins - self.tau2) ** 2) / 0.3) * 45.0
-                implot.plot_bars("State S0", tau_bins, tau_counts, bar_size=0.1)
-                implot.plot_bars("State S1", tau_bins, tau_s1, bar_size=0.1)
-            else:
-                implot.plot_bars("Burst Lifetimes", tau_bins, tau_counts, bar_size=0.12)
-
+                self.gate_tau_min = res_rect.x_min
+                self.gate_tau_max = max(self.gate_tau_min, res_rect.x_max)
             implot.end_plot()
+        inside = sum(1 for v in everything if self.gate_tau_min <= v <= self.gate_tau_max)
+        im.text(f"{inside} of {len(everything)} lifetimes inside the gate")
+        im.set_item_tooltip("Fitted lifetimes between the two edges of the dragged box.")
 
         # Region Drop Target
         if im.begin_drag_drop_target():
@@ -350,18 +309,17 @@ class BurstMleGui:
                 try:
                     data = json.loads(payload.decode("utf-8"))
                     self._last_dropped_region = data
-                    x_rng = data.get("x_range", [1.0, 4.5])
-                    if len(x_rng) == 2:
-                        self.gate_tau_min = float(x_rng[0])
-                        self.gate_tau_max = float(x_rng[1])
+                    x_rng = data.get("x_range")
+                    if x_rng and len(x_rng) == 2:
+                        self.gate_tau_min, self.gate_tau_max = float(x_rng[0]), float(x_rng[1])
                 except Exception:
                     pass
             im.end_drag_drop_target()
 
     def _draw_results_dock(self, box: tuple[float, float, float, float]) -> None:
-        state_lifetimes = getattr(self.wizard, "state_lifetimes", None)
+        state_lifetimes = fit_view.state_lifetime_rows(self.wizard)
         if state_lifetimes:
-            im.text_colored("Pooled State Lifetimes:", (0.3, 0.85, 0.4, 1.0))
+            im.text_colored("Pooled state lifetimes:", (0.3, 0.85, 0.4, 1.0))
             tbl_h = max(60.0, box[3] - 40.0)
             if im.begin_table(
                 "state_tau_tbl",
@@ -378,16 +336,20 @@ class BurstMleGui:
                 for row in state_lifetimes:
                     im.table_next_row()
                     im.table_set_column_index(0)
-                    im.text(f"S{row.get('State', 0)}")
+                    im.text(f"S{row['State']}")
                     im.table_set_column_index(1)
-                    im.text(str(row.get("Detector", "green")))
+                    im.text(str(row["Detector"]))
                     im.table_set_column_index(2)
-                    im.text(f"{row.get('Tau', 0.0):.3f}")
+                    im.text(f"{row['Tau']:.3f}")
                     im.table_set_column_index(3)
-                    im.text(f"{row.get('Photons', 0):,}")
+                    im.text(f"{int(row['Photons']):,}")
                 im.end_table()
+        elif self.split_by_state:
+            im.text_wrapped("No pooled state lifetimes yet: press Fit Bursts to fit every H2MM state.")
         else:
-            im.text_wrapped("Fit has not been run yet. Click 🎯 Fit Bursts above.")
+            im.text_wrapped(
+                "Pooled state lifetimes exist only for the segment-level analysis (split by H2MM state)."
+            )
 
 
 class BurstMleApp(ImApp):
@@ -407,6 +369,8 @@ class BurstMleApp(ImApp):
             on_help=on_help,
         )
         self.wizard = self.mle_gui.wizard
+        self.item_rects = self.mle_gui.item_rects
+        self.form = self.mle_gui.form_state
         super().__init__(gui=self._render, continuous=False)
 
     def start_guide(self) -> None:

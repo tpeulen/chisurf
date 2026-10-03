@@ -3,6 +3,7 @@ import typing
 
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
+from chisurf.plugins.burst.burst_mle_analysis.fit_display import TailFitResult, decay_curves
 from chisurf.plugins.burst.burst_mle_analysis.interpolate import interpolate_shift
 from chisurf.plugins.burst.burst_mle_analysis.utils import (
     FileListWidget,
@@ -659,6 +660,10 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
     #: Rows of the last pooled per-state fit (see ``write_state_lifetimes``).
     state_lifetimes: list = []
+    #: Rows of the last ``process_bursts`` run: one mapping per burst and detector (``Tau (green)``, ...).
+    burst_results: list = []
+    #: The curves ``plot_fit_result`` last drew (``fit_display.DecayCurves``), or ``None``.
+    fit_curves = None
 
     def _save_burst_results_fast(self, results: list[dict]) -> list[Path] | None:
         """
@@ -3465,6 +3470,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         was meant to stop.
         """
         # Use property setters to avoid direct widget access and keep side-effects consistent
+        # Read by attribute, as the guard test requires: the tail fit returns a ``TailFitResult``
+        # (it used to return a plain mapping, which this line raised on inside the Qt event loop,
+        # so the tail fit's numbers never reached the panel).
         x = np.asarray(res.x, dtype=float)
         two = float(res.twoIstar)
 
@@ -3691,7 +3699,14 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         bound.
         """
         try:
-            two_istar = float(fit_result.get("twoIstar", 0.0))
+            # ``Fit2xResult`` carries the quality as an attribute (it has no
+            # ``.get``); a mapping is still accepted. Reading it with ``.get``
+            # raised on every real result, the ``except`` made it 0.0, and so no
+            # fit was ever reported as diverged.
+            if hasattr(fit_result, "twoIstar"):
+                two_istar = float(fit_result.twoIstar)
+            else:
+                two_istar = float(fit_result.get("twoIstar", 0.0))
         except Exception:
             two_istar = 0.0
         if not np.isfinite(two_istar) or two_istar < 0.0:
@@ -3773,7 +3788,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         recovered = list(res.lifetimes) if getattr(res, "lifetimes", None) else lifetimes
         # x in schema order: tail_start then the recovered lifetimes.
         x = [float(tail_start)] + [float(v) for v in recovered]
-        return {"x": x, "twoIstar": float(getattr(res, "negative_log_likelihood", 0.0))}
+        return TailFitResult(x=x, twoIstar=float(getattr(res, "negative_log_likelihood", 0.0)))
 
     @property
     def fit_model(self) -> str:
@@ -4266,6 +4281,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # clear both panels
         self.combined_plot.clear()
         self.residual_plot.clear()
+        self.fit_curves = None
         # The legend survives clear(); ask for it again so the replotted curves
         # below add exactly one row each rather than stacking a fresh set every
         # fit — chiplot's legend() replaces the previous box.
@@ -4284,90 +4300,42 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         view = getattr(self, "_fit_view", None)
         if view is None:
             return
-        data_full = np.asarray(view.data, dtype=float)
-        model_full = np.asarray(view.model, dtype=float)
-        n = len(data_full) // 2
-        vv_sb, vv_eb, vh_sb, vh_eb = self._get_channel_ranges_bins()
-        # clamp
-        vv_sb = max(0, int(vv_sb))
-        vv_eb = min(n, int(vv_eb)) if vv_eb is not None else n
-        vh_sb = max(0, int(vh_sb))
-        vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
-        data_vv = data_full[0:n][vv_sb:vv_eb]
-        data_vh = data_full[n : 2 * n][vh_sb:vh_eb]
-        model_vv = model_full[0:n][vv_sb:vv_eb]
-        model_vh = model_full[n : 2 * n][vh_sb:vh_eb]
-        data_rng = np.hstack([data_vv, data_vh])
-        model_rng = np.hstack([model_vv, model_vh])
         # A diverged fit (gamma pinned at its bound) returns a model whose
         # amplitude has run away by orders of magnitude; plotted raw it blows the
-        # log view up to ~1e6 and hides the data. Clip the *displayed* model to a
-        # little above the data's own range so the panel stays readable — the fit
-        # parameters shown are untouched, and the status bar says it diverged.
-        diverged = self._fit_diverged(fit_result)
-        model_disp = np.nan_to_num(model_rng, nan=0.0, posinf=0.0, neginf=0.0)
-        if diverged is not None and data_rng.size:
-            cap = float(np.nanmax(data_rng)) * 10.0
-            if cap > 0:
-                model_disp = np.clip(model_disp, 0.0, cap)
-        channels = np.arange(data_rng.size)
+        # log view up to ~1e6 and hides the data. ``decay_curves`` clips the
+        # *displayed* model to a little above the data's own range so the panel
+        # stays readable — the fit parameters shown are untouched, and the status
+        # bar says it diverged. The same function feeds the emtk app, so both
+        # front ends draw the same numbers.
+        curves = decay_curves(
+            view.data,
+            view.model,
+            self.irf,
+            self.bg,
+            self._get_channel_ranges_bins(),
+            tail=self.fit_model == "tail",
+            diverged=self._fit_diverged(fit_result) is not None,
+        )
+        #: What this plot shows, kept for the emtk app (the one source of the displayed curves).
+        self.fit_curves = curves
+        data_rng = curves.data
+        channels = curves.x
         self.combined_plot.scatter(channels, data_rng, size=3, name="Data (VV|VH)")
-        self.combined_plot.line(channels, model_disp, pen="g", name="Model (fit)")
+        self.combined_plot.line(channels, curves.model, pen="g", name="Model (fit)")
+        # Both overlays keep their SHAPE (the scatter/background is not flat — it
+        # has the scattered-excitation shape) and are matched to the data's total
+        # for display only; the background's actual fit weight is the scatter
+        # parameter, not this curve. The tail fit does not deconvolve the IRF, so
+        # an IRF overlay would be misleading there.
+        if curves.irf is not None:
+            self.combined_plot.line(np.arange(curves.irf.size), curves.irf, pen="r", name="IRF")
+        self.combined_plot.line(
+            np.arange(curves.background.size), curves.background, pen="b", name="Background"
+        )
 
-        # Plot IRF & BG within per-channel windows
-        irf_full = self.irf.astype(np.float64, copy=True)
-        bg_full = self.bg.astype(np.float64, copy=True)
-
-        n = len(irf_full) // 2
-        vv_sb, vv_eb, vh_sb, vh_eb = self._get_channel_ranges_bins()
-        vv_sb = max(0, int(vv_sb))
-        vv_eb = min(n, int(vv_eb)) if vv_eb is not None else n
-        vh_sb = max(0, int(vh_sb))
-        vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
-
-        irf_rng = np.hstack([irf_full[0:n][vv_sb:vv_eb], irf_full[n : 2 * n][vh_sb:vh_eb]])
-        bg_rng = np.hstack([bg_full[0:n][vv_sb:vv_eb], bg_full[n : 2 * n][vh_sb:vh_eb]])
-
-        # Scale IRF and background to the data amplitude for display only. Both
-        # keep their SHAPE (the scatter/background is not flat — it has the
-        # scattered-excitation shape); we area-normalise each and match it to the
-        # data's total so it overlays legibly without swamping the decay. Peak
-        # (max) normalisation would be thrown off by a single hot bin. The
-        # background's actual fit weight is the scatter parameter, not this curve.
-        s_dat = float(np.sum(data_rng)) if data_rng.size else 0.0
-
-        def _overlay(arr):
-            s = float(np.sum(arr))
-            return arr / s * s_dat if (s > 0 and s_dat > 0) else arr
-
-        irf_rng = _overlay(irf_rng)
-        bg_rng = _overlay(bg_rng)
-
-        # The tail fit does not deconvolve the IRF, so an IRF overlay would be
-        # misleading (and may be a synthetic fallback of the wrong length).
-        if self.fit_model != "tail":
-            self.combined_plot.line(np.arange(irf_rng.size), irf_rng, pen="r", name="IRF")
-        self.combined_plot.line(np.arange(bg_rng.size), bg_rng, pen="b", name="Background")
-
-        # compute & plot weighted residuals
-        data = np.asarray(view.data, dtype=float)
-        model = np.asarray(view.model, dtype=float)
-
-        resid = np.zeros_like(data, dtype=float)
-        mask = data > 0
-        resid[mask] = (data[mask] - model[mask]) / np.sqrt(data[mask])
-
-        # draw residuals in the top panel only within per-channel ranges
+        # draw the weighted residuals in the top panel, within the per-channel ranges
         pen = chiplot.to_pen((200, 20, 20), width=1)
-        resid = np.asarray(resid)
-        n = len(resid) // 2
-        vv_sb, vv_eb, vh_sb, vh_eb = self._get_channel_ranges_bins()
-        vv_sb = max(0, int(vv_sb))
-        vv_eb = min(n, int(vv_eb)) if vv_eb is not None else n
-        vh_sb = max(0, int(vh_sb))
-        vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
-        resid_rng = np.hstack([resid[0:n][vv_sb:vv_eb], resid[n : 2 * n][vh_sb:vh_eb]])
-
+        resid_rng = curves.residuals
         self.residual_plot.line(
             np.arange(resid_rng.size), resid_rng, pen=pen, symbol="o", symbol_size=3
         )
@@ -5070,6 +5038,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         if summary_bits:
             self._set_status("MLE fitted τ: " + " · ".join(summary_bits))
 
+        # Kept for the front ends: the emtk app draws the lifetime histogram from these rows
+        # (one dict per burst and detector, as written to the container), never from anything else.
+        self.burst_results = results
         written = self._save_burst_results_fast(results)
         if written and sidecars:
             # Everything the step produced belongs in the stamp, or the gate

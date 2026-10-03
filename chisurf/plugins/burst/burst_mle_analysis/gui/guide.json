@@ -1,0 +1,48 @@
+{
+  "_comment": "Guided tour of the emtk burst-MLE app. Targets are the keys the app records with remember(): input_status, start_and_window, toolAction_run, decay, distribution. The Fit step waits for the real press.",
+  "steps": [
+    {
+      "title": "One lifetime per burst",
+      "text": "A burst holds a few hundred photons, so its decay is sparse. This tool fits <b>one lifetime per burst and detector</b> by Poisson maximum likelihood, with the IRF and background held fixed.<br/><br/>Every window shows what the wizard computed; with no fit they say so and draw nothing. Five steps.",
+      "target": {}
+    },
+    {
+      "title": "Inputs first",
+      "text": "Burst files, an IRF and a background are needed before anything can be fitted. They are loaded in the wizard (or sent from the IRF/background step); this panel shows whether the current detector has them.",
+      "target": {
+        "name": "input_status"
+      }
+    },
+    {
+      "title": "Start value and fit window",
+      "text": "<b>Tau start</b> is where the optimiser starts; the <b>window</b> is the range of micro-time bins that enter the likelihood. Leave out the empty bins before the prompt and the noisy tail. A change here is written to the wizard, which refits the current decay.",
+      "target": {
+        "name": "start_and_window"
+      }
+    },
+    {
+      "title": "Fit the bursts",
+      "text": "Fits every burst of the selected files and detectors. The decay window then shows the current file's data, model, IRF and background, and the distribution window the lifetimes of all bursts.",
+      "target": {
+        "name": "toolAction_run"
+      },
+      "await": {
+        "hint": "Press <b>Fit Bursts</b>."
+      }
+    },
+    {
+      "title": "Read the fit",
+      "text": "The model should follow the data across the whole window, and the residuals (in the wizard) should scatter around zero. A fit whose scatter fraction ran to its bound is marked as diverged: fix gamma or use a measured IRF.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "name": "decay"
+      }
+    },
+    {
+      "title": "The lifetime distribution",
+      "text": "The histogram of the fitted per-burst lifetimes. Drag the box to count the bursts inside a lifetime gate. A single burst's lifetime is noisy: read the distribution, not one value.",
+      "target": {
+        "name": "distribution"
+      }
+    }
+  ]
+}
