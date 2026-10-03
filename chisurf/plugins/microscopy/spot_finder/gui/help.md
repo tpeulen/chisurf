@@ -103,3 +103,6 @@ than trusted.
 - [Single-particle tracking — detection](docs/concepts/particle_tracking.md)
 - [Region properties](docs/concepts/region_properties.md)
 - [Regions and gating](docs/guides/48_regions.md)
+
+
+The demo's JSON sidecar records its scanner layout. Keep it next to the generated PTU: the vendor stream does not embed the simulated pixel/marker geometry. The normal Preview/Detect pipeline reads that versioned layout and reconstructs the four known objects.

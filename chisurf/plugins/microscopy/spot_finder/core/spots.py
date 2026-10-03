@@ -541,10 +541,37 @@ def load_intensity(
 
         tttr = tttrlib.TTTR(str(path))
         if channels is None:
-            channels = sorted({int(c) for c in np.asarray(tttr.routing_channels)})
-        clsm = tttrlib.CLSMImage(tttr, channels=list(channels), fill=True)
+            photon = np.asarray(tttr.event_types) == 0
+            channels = sorted({int(c) for c in np.asarray(tttr.routing_channels)[photon]})
+        # PTU does not carry the simulator's scanner-marker layout. Its own
+        # versioned sidecar identifies that producer and supplies the grid;
+        # arbitrary vendor sidecars do not imply these marker conventions.
+        import json
+
+        sidecar = Path(path).with_suffix(".json")
+        layout = {}
+        if sidecar.is_file():
+            try:
+                payload = json.loads(sidecar.read_text())
+                if isinstance(payload, dict):
+                    layout = payload.get("scan_layout", {})
+            except (OSError, ValueError):
+                pass
+        if isinstance(layout, dict) and layout.get("kind") == "chisurf-simulated-raster":
+            from chisurf.core.fluorescence.imaging.simulate import clsm_from_scan
+
+            pixels = int(layout.get("n_pixel_per_line", 0))
+            if pixels <= 0:
+                raise ValueError("The simulated scanner grid must be positive.")
+            clsm = clsm_from_scan(tttr, pixels, channels=channels)
+        else:
+            clsm = tttrlib.CLSMImage(tttr, channels=list(channels), fill=True)
         data = np.asarray(clsm.intensity, dtype=float)
 
+    if not data.size:
+        raise ValueError(
+            "No image could be reconstructed; check the scanner marker and pixel-layout metadata."
+        )
     while data.ndim > 3:
         data = data.sum(axis=0)
     if data.ndim == 3:

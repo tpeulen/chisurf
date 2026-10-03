@@ -64,7 +64,8 @@ _CONFIG: dict[str, Any] = {
     "seed": 7,
     "irf_seed": 11,
     "target_photons": 60000.0,
-    "version": 1,
+    "version": 3,
+    "scan_layout": {"kind": "chisurf-simulated-raster", "n_pixel_per_line": 48},
 }
 
 

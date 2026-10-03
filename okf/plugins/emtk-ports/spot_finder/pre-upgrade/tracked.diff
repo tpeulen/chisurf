@@ -1,0 +1,81 @@
+diff --git a/chisurf/plugins/microscopy/spot_finder/core/spots.py b/chisurf/plugins/microscopy/spot_finder/core/spots.py
+index 77ba06271..9b07b554f 100644
+--- a/chisurf/plugins/microscopy/spot_finder/core/spots.py
++++ b/chisurf/plugins/microscopy/spot_finder/core/spots.py
+@@ -541,10 +541,37 @@ def load_intensity(
+ 
+         tttr = tttrlib.TTTR(str(path))
+         if channels is None:
+-            channels = sorted({int(c) for c in np.asarray(tttr.routing_channels)})
+-        clsm = tttrlib.CLSMImage(tttr, channels=list(channels), fill=True)
++            photon = np.asarray(tttr.event_types) == 0
++            channels = sorted({int(c) for c in np.asarray(tttr.routing_channels)[photon]})
++        # PTU does not carry the simulator's scanner-marker layout. Its own
++        # versioned sidecar identifies that producer and supplies the grid;
++        # arbitrary vendor sidecars do not imply these marker conventions.
++        import json
++
++        sidecar = Path(path).with_suffix(".json")
++        layout = {}
++        if sidecar.is_file():
++            try:
++                payload = json.loads(sidecar.read_text())
++                if isinstance(payload, dict):
++                    layout = payload.get("scan_layout", {})
++            except (OSError, ValueError):
++                pass
++        if isinstance(layout, dict) and layout.get("kind") == "chisurf-simulated-raster":
++            from chisurf.core.fluorescence.imaging.simulate import clsm_from_scan
++
++            pixels = int(layout.get("n_pixel_per_line", 0))
++            if pixels <= 0:
++                raise ValueError("The simulated scanner grid must be positive.")
++            clsm = clsm_from_scan(tttr, pixels, channels=channels)
++        else:
++            clsm = tttrlib.CLSMImage(tttr, channels=list(channels), fill=True)
+         data = np.asarray(clsm.intensity, dtype=float)
+ 
++    if not data.size:
++        raise ValueError(
++            "No image could be reconstructed; check the scanner marker and pixel-layout metadata."
++        )
+     while data.ndim > 3:
+         data = data.sum(axis=0)
+     if data.ndim == 3:
+diff --git a/chisurf/plugins/microscopy/spot_finder/demo.py b/chisurf/plugins/microscopy/spot_finder/demo.py
+index 48c778798..65a5613b3 100644
+--- a/chisurf/plugins/microscopy/spot_finder/demo.py
++++ b/chisurf/plugins/microscopy/spot_finder/demo.py
+@@ -64,7 +64,8 @@ _CONFIG: dict[str, Any] = {
+     "seed": 7,
+     "irf_seed": 11,
+     "target_photons": 60000.0,
+-    "version": 1,
++    "version": 3,
++    "scan_layout": {"kind": "chisurf-simulated-raster", "n_pixel_per_line": 48},
+ }
+ 
+ 
+diff --git a/chisurf/plugins/microscopy/spot_finder/gui/help.md b/chisurf/plugins/microscopy/spot_finder/gui/help.md
+index 6a1f17e4f..622e71017 100644
+--- a/chisurf/plugins/microscopy/spot_finder/gui/help.md
++++ b/chisurf/plugins/microscopy/spot_finder/gui/help.md
+@@ -103,3 +103,6 @@ than trusted.
+ - [Single-particle tracking — detection](docs/concepts/particle_tracking.md)
+ - [Region properties](docs/concepts/region_properties.md)
+ - [Regions and gating](docs/guides/48_regions.md)
++
++
++The demo's JSON sidecar records its scanner layout. Keep it next to the generated PTU: the vendor stream does not embed the simulated pixel/marker geometry. The normal Preview/Detect pipeline reads that versioned layout and reconstructs the four known objects.
+diff --git a/chisurf/plugins/microscopy/spot_finder/manifest.json b/chisurf/plugins/microscopy/spot_finder/manifest.json
+index 43c209988..5ba8ca316 100644
+--- a/chisurf/plugins/microscopy/spot_finder/manifest.json
++++ b/chisurf/plugins/microscopy/spot_finder/manifest.json
+@@ -20,6 +20,7 @@
+     }
+   },
+   "entrypoints": {
++    "emtk": "chisurf.plugins.microscopy.spot_finder.gui.app:make_app",
+     "gui": "chisurf.plugins.microscopy.spot_finder.gui.tool:SpotFinderTool",
+     "cli": "spot-finder=chisurf.plugins.microscopy.spot_finder.cli:cli",
+     "services": "chisurf.plugins.microscopy.spot_finder.backend.services:register_services"
