@@ -384,3 +384,22 @@ class BurstMleApp(ImApp):
     def _render(self) -> None:
         w, h = im.get_main_viewport().size
         self.mle_gui.draw(float(w), float(h))
+
+
+def create_app(**kwargs) -> BurstMleApp:
+    """Factory named by ``entrypoints.emtk``.
+
+    Until the settings model of card ML0 exists the app reads the Qt ``MLELifetimeAnalysisWizard`` (the engine that
+    owns the fit), so a ``QApplication`` is created when none runs. The wizard is kept alive by the app.
+    """
+    from chisurf.emtk.i18n import install
+
+    install()
+    if "wizard" not in kwargs:
+        from qtpy import QtWidgets
+
+        QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+        from ..wizard import MLELifetimeAnalysisWizard
+
+        kwargs["wizard"] = MLELifetimeAnalysisWizard()
+    return BurstMleApp(**kwargs)

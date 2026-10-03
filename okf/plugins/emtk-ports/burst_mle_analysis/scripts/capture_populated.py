@@ -63,7 +63,13 @@ def main() -> None:
         w.grab().save(str(out / "before_populated_batch.png"))
         return
 
-    from test.gui.emtk_port_parity import emtk_screenshot
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location('emtk_port_parity', REPO / 'test/gui/emtk_port_parity.py')
+    parity = importlib.util.module_from_spec(spec)
+    sys.modules['emtk_port_parity'] = parity
+    spec.loader.exec_module(parity)
+    emtk_screenshot = parity.emtk_screenshot
 
     from chisurf.plugins.burst.burst_mle_analysis.gui.app import BurstMleApp
     from chisurf.plugins.emtk_test_input import Driver
