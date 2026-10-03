@@ -27,6 +27,7 @@ already have a burst list or a decay, jump straight to the analysis you need.
 65_live_acquisition
 12_handling_tttr_files
 100_alex_creator
+101_tttr_toolbox
 33_timestamps_and_bursts
 13_burst_identification
 15_background_rates
@@ -276,6 +277,7 @@ irf_estimation
 | [Checking that every plugin starts](96_plugin_check.md) | `plugin_check` (Tools → Miscellaneous → Plugin-Check), `python -m chisurf.emtk.validation`, `PluginCheckModel` |
 | [The Settings window: one list, every settings panel](97_settings_hub.md) | `setup` (Setup → Settings), the hub that hosts every settings panel |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
+| [One window for the TTTR file tools](101_tttr_toolbox.md) | `tttr_toolbox` (Tools → TTTR Tools) |
 | [Turning ALEX alternation into micro-time](100_alex_creator.md) | `ptu_alex_creator` (Tools → Converter), `csc alex`, `core.alex_histogram` |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
 | [CLSM Generator: a scan whose answer is known](98_clsm_generator.md) | `clsm_generator` (Imaging → CLSM Generator) |

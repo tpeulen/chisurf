@@ -1,0 +1,251 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "0",
+    "0.1",
+    "0.2",
+    "0.3",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.7",
+    "0.8",
+    "0.9",
+    "1",
+    "8000",
+    "addfiles",
+    "alexcreator",
+    "alexmicro-timehistogram",
+    "alexmodulation",
+    "audifier",
+    "auto",
+    "back",
+    "batch",
+    "browse",
+    "clear",
+    "convertalexmacro-timemodulationintomicro-timesoalexdatarunsthroughpiepipelines.",
+    "converteach",
+    "countrateanalysis",
+    "counts",
+    "database",
+    "file",
+    "folder",
+    "formats",
+    "guide",
+    "help",
+    "input",
+    "inputfile",
+    "load",
+    "loadafiletopreviewalexphase.",
+    "mergeintoone",
+    "micro-timebin",
+    "micro-timeshifter",
+    "mode",
+    "next",
+    "nofileloaded.",
+    "open",
+    "output",
+    "outputfolder",
+    "period",
+    "ptu",
+    "ready",
+    "remove",
+    "runbatch",
+    "saveas",
+    "search",
+    "shift",
+    "split/convert",
+    "toolhelp",
+    "tttrheadereditor"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Read the TTTR toolbox reference and photon-clock guidance."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through the original TTTR tools and their workflows."
+    },
+    {
+      "kind": "input_text",
+      "label": "Find TTTR tools",
+      "id": "##Find TTTR tools",
+      "tooltip": "Find tools by name, description or route."
+    },
+    {
+      "kind": "selectable",
+      "label": "ALEX Creator",
+      "id": "ALEX Creator##alex_creator",
+      "tooltip": "Convert ALEX macro-time modulation into micro-time so ALEX data runs through PIE pipelines."
+    },
+    {
+      "kind": "selectable",
+      "label": "Micro-time Shifter",
+      "id": "Micro-time Shifter##microtime_shifter",
+      "tooltip": "Apply global and per-channel micro-time shifts to TTTR files."
+    },
+    {
+      "kind": "selectable",
+      "label": "TTTR Header Editor",
+      "id": "TTTR Header Editor##tttr_header_editor",
+      "tooltip": "View, edit, add and remove header tags in TTTR files (PTU/HT3/SPC/HDF5); saves as PTU."
+    },
+    {
+      "kind": "selectable",
+      "label": "Split / Convert",
+      "id": "Split / Convert##split_convert",
+      "tooltip": "Split large TTTR files into segments and convert between container formats."
+    },
+    {
+      "kind": "selectable",
+      "label": "Count Rate Analysis",
+      "id": "Count Rate Analysis##count_rate",
+      "tooltip": "Count rates per detector channel across many TTTR files, with mean/std and a per-file plot."
+    },
+    {
+      "kind": "selectable",
+      "label": "Audifier",
+      "id": "Audifier##audifier",
+      "tooltip": "Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview."
+    },
+    {
+      "kind": "button",
+      "label": "Tool help",
+      "id": "Tool help",
+      "tooltip": "Read help for the selected TTTR tool."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Go to the previous tool in the list."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Go to the next tool in the list."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Walk through loading, timing and conversion."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Read ALEX conversion and batch workflow help."
+    },
+    {
+      "kind": "input_text",
+      "label": "input_file",
+      "id": "##input_file",
+      "tooltip": "Path of the TTTR file to convert. Press Enter (or click elsewhere) to load it; a file dropped on the window loads too."
+    },
+    {
+      "kind": "button",
+      "label": "Open…",
+      "id": "Open…##choose_input",
+      "tooltip": "Choose a TTTR file and preview its folded ALEX phase."
+    },
+    {
+      "kind": "button",
+      "label": "Load",
+      "id": "Load##load_input",
+      "tooltip": "Read the file named above."
+    },
+    {
+      "kind": "button",
+      "label": "Save as…",
+      "id": "Save as…##choose_save",
+      "tooltip": "Write the converted photon data to a new file; the input is never overwritten. Grey until a file is loaded."
+    },
+    {
+      "kind": "input_text",
+      "label": "alex_period",
+      "id": "##alex_period",
+      "tooltip": "ALEX alternation period (macro-time units) mapped onto micro-time."
+    },
+    {
+      "kind": "input_text",
+      "label": "period_shift",
+      "id": "##period_shift",
+      "tooltip": "Phase shift of the ALEX period before the macro-time to micro-time mapping."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Convert each",
+      "id": "Convert each##batch_mode0",
+      "tooltip": "Convert every file to its own ALEX output, or merge them all into one."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Merge into one",
+      "id": "Merge into one##batch_mode1",
+      "tooltip": "Convert every file to its own ALEX output, or merge them all into one."
+    },
+    {
+      "kind": "button",
+      "label": "Add files…",
+      "id": "Add files…##choose_files",
+      "tooltip": "Queue TTTR files; duplicate paths are ignored."
+    },
+    {
+      "kind": "button",
+      "label": "Folder…",
+      "id": "Folder…##choose_folder",
+      "tooltip": "Queue the supported TTTR files of a folder, scanned recursively."
+    },
+    {
+      "kind": "button",
+      "label": "Database",
+      "id": "Database##choose_database",
+      "tooltip": "Queue TTTR data from the session database."
+    },
+    {
+      "kind": "button",
+      "label": "Remove",
+      "id": "Remove##remove_selected",
+      "tooltip": "Remove the selected file from the queue; the file stays on disk. Grey until a row is selected."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##clear_queue",
+      "tooltip": "Empty the queue without deleting files."
+    },
+    {
+      "kind": "input_text",
+      "label": "batch_output_folder",
+      "id": "##batch_output_folder",
+      "tooltip": "Convert requires a folder; merge defaults to the folder of the first input."
+    },
+    {
+      "kind": "button",
+      "label": "Browse…",
+      "id": "Browse…##choose_output",
+      "tooltip": "Choose the output folder."
+    },
+    {
+      "kind": "button",
+      "label": "Run batch",
+      "id": "Run batch##run_batch",
+      "tooltip": "Convert each file or merge the queue using the current period, shift and formats."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n/Users/tpeulen/mambaforge/envs/arm64/lib/python3.12/site-packages/tttrlib/__init__.py:22483: SyntaxWarning: invalid escape sequence '\\s'\n  \"\"\"How spread out the samples in each bin were. \\see mean_variance\"\"\"\n"
+  }
+}

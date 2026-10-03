@@ -2,6 +2,7 @@
 
 ## 2026-10-03
 
+- 2026-10-03 tttr_toolbox emtk upgrade (commits 5564b843f baseline, app, evidence): navigation rects, Back/Next + status line (Qt stepper), tour no longer selects awaited rows for the user (the await was released at once), tour targets resolved to the list rows, header 62 px, no tofu pictograms; 28 tests passed; guide 101; report okf/plugins/emtk-ports/tttr_toolbox/REPORT.md.
 - 2026-10-03 wizards emtk upgrade to verified parity (commits wizards baseline, c1eaa778b, evidence): hub on the shared CalculatorHubApp base hosting the native Anisotropy and Batch analysis wizards, Help/Guide, real-input and Qt-parity tests (25 passed), hub figure in guide 78 and reference page; report okf/plugins/emtk-ports/wizards/REPORT.md.
 - 2026-10-03 batch_analysis emtk upgrade to verified parity (commits e0c0ea691, cf4cd4f47, evidence): five-step wizard (shared chisurf/plugins/emtk_wizard.py stepper), loaded-data/file/results data_tables, in-app choosers, threaded run, Qt-parity and real-input tests (71 passed), guide 78 and reference page with figures from real fits; report okf/plugins/emtk-ports/batch_analysis/REPORT.md.
 - 2026-10-03 ptu_alex_creator emtk upgrade to verified parity (commits 7ed707fa2, 83c038740, evidence): spec-form app with spin Period/Shift, batch queue data_table, own preview worker, real-input + Qt-parity tests (63 passed), translated guide texts, `?` help button for the Qt tool, guide 100 and plugin reference; report okf/plugins/emtk-ports/ptu_alex_creator/REPORT.md.

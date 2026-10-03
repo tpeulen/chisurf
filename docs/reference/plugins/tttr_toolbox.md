@@ -21,7 +21,7 @@ Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and S
 | Menu path | Tools → **TTTR Tools** |
 | Categories | Tools, TTTR |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | gui, emtk |
 
 ## Parameters
 
@@ -29,7 +29,7 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 
 ## Theory and workflow
 
-- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md), [Working with timestamps and bursts (the data model)](/guides/33_timestamps_and_bursts.md)
+- **Workflow** — [One window for the TTTR file tools](/guides/101_tttr_toolbox.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md), [Working with timestamps and bursts (the data model)](/guides/33_timestamps_and_bursts.md)
 
 ## Source
 
