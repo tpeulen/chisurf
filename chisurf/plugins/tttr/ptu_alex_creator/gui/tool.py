@@ -34,6 +34,16 @@ class AlexPTUCreator(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
+        # ``?`` opens help.md; the guided tour (guide.json) points at the emtk app's controls, so the Qt tool has no Guide.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        help_row = QtWidgets.QHBoxLayout()
+        help_row.setContentsMargins(0, 0, 0, 0)
+        help_row.addStretch(1)
+        layout.addLayout(help_row)
+        attach_help_and_guide(
+            self, help_row, guide_resource="no_qt_guide.json", title="ALEX Creator", model=self.model
+        )
         self.auto_form = AutoForm(self.model)
         layout.addWidget(self.auto_form)
 

@@ -1,0 +1,143 @@
+{
+  "_comment": "The emtk layout of the ALEX Creator: the same controls as alex.view.json (file, formats, period/shift, batch) drawn by emtk.view_form with the app as the model. Number fields are spin fields (typed value or arrows or wheel); the batch queue is a data_table.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Input file",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "input_file",
+          "kind": "file",
+          "label": "File",
+          "elide": "start",
+          "description": "Path of the TTTR file to convert. Press Enter (or click elsewhere) to load it; a file dropped on the window loads too."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {"label": "Open…", "action": "choose_input", "description": "Choose a TTTR file and preview its folded ALEX phase."},
+            {"label": "Load", "action": "load_input", "description": "Read the file named above."},
+            {"label": "Save as…", "action": "choose_save", "description": "Write the converted photon data to a new file; the input is never overwritten. Grey until a file is loaded."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Formats",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "input_format",
+          "label": "Input",
+          "options_source": "input_format_options",
+          "description": "Force the input container type, or Auto to detect it from the file."
+        },
+        {
+          "type": "choice",
+          "attr": "output_format",
+          "label": "Output",
+          "options_source": "output_format_options",
+          "description": "Container format written when saving (differs from input: transcode)."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "ALEX modulation",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "alex_period",
+          "label": "Period",
+          "kind": "int",
+          "style": "spin",
+          "minimum": 1,
+          "maximum": 1000000,
+          "step": 100,
+          "description": "ALEX alternation period (macro-time units) mapped onto micro-time."
+        },
+        {
+          "type": "value",
+          "attr": "period_shift",
+          "label": "Shift",
+          "kind": "int",
+          "style": "spin",
+          "minimum": -1000000,
+          "maximum": 1000000,
+          "step": 1,
+          "description": "Phase shift of the ALEX period before the macro-time to micro-time mapping."
+        },
+        {"type": "custom", "key": "events", "description": "Number of photon events of the loaded file."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Batch",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "batch_mode",
+          "label": "Mode",
+          "options": ["convert", "merge"],
+          "labels": ["Convert each", "Merge into one"],
+          "style": "radio",
+          "description": "Convert every file to its own ALEX output, or merge them all into one."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {"label": "Add files…", "action": "choose_files", "description": "Queue TTTR files; duplicate paths are ignored."},
+            {"label": "Folder…", "action": "choose_folder", "description": "Queue the supported TTTR files of a folder, scanned recursively."},
+            {"label": "Database", "action": "choose_database", "description": "Queue TTTR data from the session database."},
+            {"label": "Remove", "action": "remove_selected", "description": "Remove the selected file from the queue; the file stays on disk. Grey until a row is selected."},
+            {"label": "Clear", "action": "clear_queue", "description": "Empty the queue without deleting files."}
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "The queued files, in the order they are converted or merged. Click a row to select it, Delete removes it, the wheel scrolls.",
+          "options": {
+            "source": "queue_rows",
+            "row_key": "path",
+            "selected_call": "select_row",
+            "delete_call": "remove_row",
+            "editable": false,
+            "expand": true,
+            "reserve": 90,
+            "height": 6,
+            "fit_columns": false,
+            "min_column_width": 70,
+            "tooltip_key": "path",
+            "columns": [
+              {"key": "file", "title": "File", "width": 110, "tooltip": "The file name; hover a row for the full path."},
+              {"key": "folder", "title": "Folder", "width": 200, "tooltip": "The folder the file is in."}
+            ]
+          }
+        },
+        {
+          "type": "value",
+          "attr": "batch_output_folder",
+          "kind": "directory",
+          "label": "Output folder",
+          "elide": "start",
+          "description": "Convert requires a folder; merge defaults to the folder of the first input."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {"label": "Browse…", "action": "choose_output", "description": "Choose the output folder."},
+            {"label": "Run batch", "action": "run_batch", "description": "Convert each file or merge the queue using the current period, shift and formats."}
+          ]
+        }
+      ]
+    }
+  ]
+}

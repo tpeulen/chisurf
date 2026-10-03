@@ -47,10 +47,10 @@ def ui(tmp_path):
 
 def settle(ui, timeout=30.0):
     end = time.monotonic() + timeout
-    while ui.app.job.running and time.monotonic() < end:
+    while ui.app.running and time.monotonic() < end:
         time.sleep(0.01)
         ui.draw(1)
-    assert not ui.app.job.running
+    assert not ui.app.running
     return ui.draw(3)
 
 
@@ -82,26 +82,16 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, sou
         if tour.awaiting:
             key = tour._target_key(step["target"])
             seen.append(key)
-            if key == "input":
-                ui.click("input")
+            if key == "choose_input":
+                ui.click("choose_input")
                 assert ui.dialog_open
                 ui.app.dialog.enter(str(source.parent))
                 ui.dialog_pick(source.name)
                 settle(ui)
                 assert ui.app.model.has_data
             elif key == "timing":
-                x, y, w, h = ui.app.item_rects["timing"]
                 before = ui.app.model.period_shift
-                x0, y0 = x + w * 0.3, y + h * 0.5
-                ui.app.pointer_move(x0, y0)
-                ui.draw(1)
-                ui.app.press(x0, y0)
-                ui.draw(1)
-                for step in range(1, 9):  # a drag field: moving sideways changes it
-                    ui.app.drag(x0 + 6 * step, y0)
-                    ui.draw(1)
-                ui.app.release()
-                ui.draw(2)
+                ui.type_into("period_shift", "23")  # a spin field: type the value, Enter
                 assert ui.app.model.period_shift != before
             else:
                 ui.click(key)
@@ -111,4 +101,4 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, sou
             ui.draw(2)
         ui.press_text("Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►")
     assert not tour.active
-    assert seen == ["input", "timing", "save", "batch"]
+    assert seen == ["choose_input", "timing", "choose_save", "choose_files"]

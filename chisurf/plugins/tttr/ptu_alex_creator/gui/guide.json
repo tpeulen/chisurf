@@ -5,7 +5,7 @@
    "title": "Load a photon file",
    "text": "ALEX alternates two lasers within the macro-time, so the phase of every photon says which laser excited it. Press <b>Open…</b> and choose a TTTR file (a .sm, .ptu, .ht3 ...), or drop one on the window. Its folded ALEX phase appears as a histogram.",
    "target": {
-    "name": "input"
+    "name": "choose_input"
    },
    "await": {
     "hint": "Press <b>Open…</b> and choose a file."
@@ -13,19 +13,19 @@
   },
   {
    "title": "Set the period and the shift",
-   "text": "<b>Period</b> is the alternation period in macro-time units (not seconds) and <b>Shift</b> moves the phase. Drag either value sideways: the histogram on the right folds again at once. Set them so that the two excitation windows are separated cleanly and no photons sit on the border between them.",
+   "text": "<b>Period</b> is the alternation period in macro-time units (not seconds) and <b>Shift</b> moves the phase. Type a value and press Enter, or use the arrows or the mouse wheel over a field: the histogram on the right folds again at once. Set them so that the two excitation windows are separated cleanly and no photons sit on the border between them.",
    "target": {
     "name": "timing"
    },
    "await": {
-    "hint": "Drag the <b>Shift</b> value sideways (or <b>Period</b>) and watch the histogram."
+    "hint": "Change <b>Shift</b> (or <b>Period</b>) and watch the histogram."
    }
   },
   {
    "title": "Write the converted file",
-   "text": "<b>Save as…</b> writes a new photon file whose micro-time is the folded ALEX phase, in the output container chosen under <b>Output format</b>. The input file is never overwritten. The button stays grey until a file is loaded.",
+   "text": "<b>Save as…</b> writes a new photon file whose micro-time is the folded ALEX phase, in the output container chosen under <b>Output</b> (Formats). The input file is never overwritten. The button stays grey until a file is loaded.",
    "target": {
-    "name": "save"
+    "name": "choose_save"
    },
    "await": {
     "hint": "Press <b>Save as…</b> (Cancel in the dialog to skip writing)."
@@ -33,9 +33,9 @@
   },
   {
    "title": "Queue files for a batch",
-   "text": "For many files, <b>Add files…</b> (or <b>Folder…</b>, or the session database) fills the queue. The period, shift and formats above apply to every file in it.",
+   "text": "For many files, <b>Add files…</b> (or <b>Folder…</b>, or the session database) fills the queue below. The period, shift and formats above apply to every file in it; select a row and press <b>Remove</b> (or Delete) to drop one.",
    "target": {
-    "name": "batch"
+    "name": "choose_files"
    },
    "await": {
     "hint": "Press <b>Add files…</b> (Cancel in the dialog to skip)."
@@ -43,7 +43,7 @@
   },
   {
    "title": "Convert each, or merge",
-   "text": "Choose <b>Convert each</b> (needs an output folder) or <b>Merge into one</b> (successive streams are joined with continuing macro-time before folding), then press <b>Run batch</b>. Check the written file names in the message above the histogram.",
+   "text": "Choose <b>Convert each</b> (needs an output folder) or <b>Merge into one</b> (successive streams are joined with continuing macro-time before folding), then press <b>Run batch</b>. The written file names appear above the histogram.",
    "target": {
     "name": "run_batch"
    }

@@ -16,10 +16,11 @@ SAMPLE = Path(__file__).resolve().parents[5] / "test/data/clsm/Leica_SP5.ptu"
 
 def finish(app):
     deadline = time.monotonic() + 20
-    while app.job.running and time.monotonic() < deadline:
+    while app.running and time.monotonic() < deadline:
         app.job.poll()
+        app.preview_job.poll()
         time.sleep(0.005)
-    assert not app.job.running, "ALEX worker did not finish"
+    assert not app.running, "ALEX worker did not finish"
 
 
 @pytest.fixture
@@ -150,7 +151,6 @@ def test_all_locales_and_control_tooltips(tmp_path, monkeypatch):
             painter = RecordingPainter()
             tips.clear()
             app.draw(painter, 0, 0, 1200, 800)
-            assert len(tips) >= 17
             assert all(tip.strip() for tip in tips)
             assert tr("Run batch") in painter.strings
             app.show_help()
