@@ -1,0 +1,14 @@
+diff --git a/chisurf/plugins/microscopy/clsm_generator/manifest.json b/chisurf/plugins/microscopy/clsm_generator/manifest.json
+index 313a87806..b5d3d21f1 100644
+--- a/chisurf/plugins/microscopy/clsm_generator/manifest.json
++++ b/chisurf/plugins/microscopy/clsm_generator/manifest.json
+@@ -20,7 +20,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.microscopy.clsm_generator.gui.tool:ClsmGeneratorTool"
++    "gui": "chisurf.plugins.microscopy.clsm_generator.gui.tool:ClsmGeneratorTool",
++    "emtk": "chisurf.plugins.microscopy.clsm_generator.gui.app:make_app"
+   },
+   "operation_types": ["measurement_import"],
+   "menu_hidden": true
