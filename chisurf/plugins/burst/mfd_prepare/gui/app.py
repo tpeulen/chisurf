@@ -175,7 +175,7 @@ class MfdPrepareApp(TourTarget, ImApp):
         """The report text in a scrolling region that takes the room left (the mouse wheel scrolls it)."""
         im.text_unformatted("Report")
         avail = im.get_content_region_avail()
-        box_h = max(avail[1] - 4.0, 90.0)
+        box_h = max(avail[1] - 4.0, 60.0)
         x, y = im.get_cursor_screen_pos()
         im.begin_child("##mfd_report", (0.0, box_h))
         for line in (self.model.report or REPORT_HINT).splitlines():
