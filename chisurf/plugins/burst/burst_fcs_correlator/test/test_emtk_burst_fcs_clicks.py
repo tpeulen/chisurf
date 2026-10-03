@@ -18,6 +18,7 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.burst.burst_fcs_correlator import demo
+from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.burst.burst_fcs_correlator.core import algorithms as core
 from chisurf.plugins.burst.burst_fcs_correlator.gui.app import create_app
 
@@ -201,9 +202,10 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
             break
         drv.draw(3)
         step = tour.steps[tour.step_idx]
+        assert_tour_card_clear(tour, drv.size)
         if tour.awaiting:
             target = step["target"]
-            key = target.get("action") or target.get("key") or target.get("attr")
+            key = target.get("action") or target.get("name") or target.get("key") or target.get("attr")
             if key == "example":
                 drv.click("example")
             elif key == "run":

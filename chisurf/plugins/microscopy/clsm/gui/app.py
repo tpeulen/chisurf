@@ -134,6 +134,9 @@ class ClsmApp(ImApp):
 
     def selection_changed(self):
         self.selection_version += 1
+        mask = self.model.selection_mask
+        if mask is not None and mask.any():
+            self.tour.notify_used("CLSM image")  # the guide's "paint a decay" step waits for a painted pixel
         if self.model.live_update:
             self._decay_deadline = time.monotonic() + 0.12
 
@@ -400,7 +403,7 @@ class ClsmApp(ImApp):
 
     def image(self, box):
         self.canvas.colormap = self.model.colormap
-        with _pointer_masked(self.tour.active):
+        with _pointer_masked(self.tour.active and not self.tour.awaiting):  # the paint step needs the canvas
             self._draw_canvas()
         self.model.colormap = self.canvas.colormap
         self.item_rects["CLSM image"] = self.canvas.rect

@@ -1,7 +1,7 @@
 {"steps": [
-  {"title": "Load brightness", "text": "Choose a TIFF, NPY or NPZ intensity image. Pixel values determine relative brightness.", "target": {"key": "Intensity image"}, "await": {"hint": "Press Intensity image and choose your map."}},
-  {"title": "Assign detectors", "text": "Add one lifetime map in ns per detector. All maps must match the intensity shape; their list order assigns the detector routing.", "target": {"key": "Add lifetime maps"}, "await": {"hint": "Add at least one lifetime map."}},
-  {"title": "Simulate", "text": "Expand Simulation to inspect acquisition settings. Generate runs in a background worker and reports completion below the controls.", "target": {"key": "Generate"}, "await": {"hint": "Press Generate."}},
-  {"title": "Inspect the answer", "text": "Use Map to compare input brightness, each lifetime map and reconstructed photon counts. Zoom, pan and adjust the colormap without changing the data.", "target": {"key": "Maps"}},
-  {"title": "Export photons", "text": "Choose an output format and save. PTO embeds reconstructed intensity; NPZ saves photon arrays. The tool also writes an intensity TIFF.", "target": {"key": "Save photon stream"}, "await": {"hint": "Press Save photon stream."}}
+  {"title": "Load brightness", "text": "Choose a TIFF, NPY or NPZ intensity image. Pixel values determine relative brightness.", "target": {"name": "Intensity image"}, "await": {"hint": "Press Intensity image and choose your map."}},
+  {"title": "Assign detectors", "text": "Add one lifetime map in ns per detector. All maps must match the intensity shape; their list order assigns the detector routing.", "target": {"name": "Add lifetime maps"}, "await": {"hint": "Add at least one lifetime map."}},
+  {"title": "Simulate", "text": "Expand Simulation to inspect acquisition settings. Generate runs in a background worker and reports completion below the controls.", "target": {"name": "Generate"}, "await": {"hint": "Press Generate."}},
+  {"title": "Inspect the answer", "text": "Use Map to compare input brightness, each lifetime map and reconstructed photon counts. Zoom, pan and adjust the colormap without changing the data.", "target": {"name": "Maps"}},
+  {"title": "Export photons", "text": "Choose an output format and save. PTO embeds reconstructed intensity; NPZ saves photon arrays. The tool also writes an intensity TIFF.", "target": {"name": "Save photon stream"}, "await": {"hint": "Press Save photon stream."}}
 ]}

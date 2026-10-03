@@ -6,24 +6,14 @@
 #
 # This list only SHRINKS. Strike a line when the plugin ships both files;
 # adding a NEW line is a test failure, not a fix. Goal: empty.
-chisurf/plugins/burst/burst_fcs_correlator/gui
 chisurf/plugins/burst/burst_mle_analysis
 modules/chimol/chimol/hosts/qt
 chisurf/plugins/core/acq/gui
-chisurf/plugins/core/code_editor
+chisurf/plugins/core/code_editor/gui
 chisurf/plugins/core/help/gui
-chisurf/plugins/core/lightpath_simulator/gui
 chisurf/plugins/core/mmfdb_admin/gui
-chisurf/plugins/core/setup/gui
 chisurf/plugins/core/wizards/gui
 chisurf/plugins/fcs/fcs_channel_preset/gui
-chisurf/plugins/microscopy/clsm/gui
-chisurf/plugins/microscopy/clsm_generator/gui
-chisurf/plugins/microscopy/img_pixel_intensity/gui
-chisurf/plugins/microscopy/img_pixel_micro_time/gui
-chisurf/plugins/microscopy/img_pixel_mle/gui
-chisurf/plugins/microscopy/img_pixel_phasor/gui
-chisurf/plugins/microscopy/psf_determination/gui
 chisurf/plugins/misc/games/breakout
 chisurf/plugins/misc/games/gui
 chisurf/plugins/misc/games/minesweeper/gui
@@ -34,7 +24,4 @@ chisurf/plugins/modelling/fps_json_editor/gui
 chisurf/plugins/modelling/fret/gui
 chisurf/plugins/modelling/structure_tools/gui
 chisurf/plugins/ndxplorer
-chisurf/plugins/tttr/audifier/gui
 chisurf/plugins/tttr/microtime_histogram
-chisurf/plugins/tttr/ptu_alex_creator/gui
-chisurf/plugins/vv_vh_g_factor/gui

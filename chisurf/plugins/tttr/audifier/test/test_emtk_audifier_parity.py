@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.tttr.audifier.core import TTTRData
 from chisurf.plugins.tttr.audifier.gui.app import create_app
 from chisurf.plugins.tttr.audifier.gui.view_model import AudifierViewModel
@@ -296,6 +297,7 @@ def test_guide_and_help_buttons_and_the_tour_is_walked():
     seen = 0
     for _ in range(steps * 3):
         step = ui.app.guide.steps[ui.app.guide.step_idx]
+        assert_tour_card_clear(ui.app.guide, ui.size)  # every step's control is drawn and the card is not on it
         if ui.app.guide.awaiting:
             key = ui.app.guide._target_key(step["target"])
             assert key in ui.app.item_rects, key

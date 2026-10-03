@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.microscopy.clsm_generator.gui.app import make_app
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 
@@ -201,6 +202,7 @@ def test_help_guide_and_the_tour_is_walked(ui, maps):
         if ui.app.tour.awaiting:
             key = ui.app.tour._target_key(ui.app.tour.steps[ui.app.tour.step_idx]["target"])
             assert key in ui.app.item_rects, key
+            assert_tour_card_clear(ui.app.tour, ui.size)  # the card does not sit on the control the user must press
             ui.click(key)
             if ui.dialog_open and key == "Save photon stream":
                 ui.press_text("Cancel")

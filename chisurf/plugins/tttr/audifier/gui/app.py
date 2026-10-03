@@ -94,7 +94,8 @@ class AudifierApp(TourTarget, ImApp):
             title="Audifier help", resource=Path(__file__).with_name("help.md")
         )
         self.guide = EmTkGuidedTour(steps=Path(__file__).with_name("guide.json"), get_target_rect=lambda k: self.item_rects.get(k),
-                                    owner=self, wait_for_controls=True)
+                                    owner=self, wait_for_controls=True,
+                                    on_step_change=lambda _i, step: step.get("window") and self.docks.focus(step["window"]))
         self.docks = DockManager(
             Split(
                 "h", 0.37, Region("config"), Split("v", 0.62, Region("waterfall"), Region("mixer"))

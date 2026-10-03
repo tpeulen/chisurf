@@ -348,7 +348,7 @@ def test_help_is_substantive_and_links_live(plugin: GuiPlugin):
 #: has no Qt toolbar to attach to: it draws the window and the tour itself.
 _DRAWS_HELP = re.compile(
     r"\b(ensure_help_toolbar|add_toolbar_help|attach_help_and_guide"
-    r"|NavigationPanelTool|BurstAnalysisTool|AutoFormMleTool|TrajToolApp"
+    r"|NavigationPanelTool|BurstAnalysisTool|AutoFormMleTool|TrajToolApp|ImagingToolApp|PixelToolApp"
     r"|EmTkHelpWindow|EmTkGuidedTour)\b"
 )
 

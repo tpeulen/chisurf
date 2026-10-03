@@ -1,0 +1,12 @@
+{
+  "factory": "chisurf.plugins.tttr.ptu_alex_creator.gui.app:make_app",
+  "qt_reference": ["okf/plugins/emtk-references/ptu_alex_creator.png", "okf/plugins/emtk-references/ptu_alex_creator_histogram.png", "okf/plugins/emtk-references/ptu_alex_creator_batch.png"],
+  "native_screenshot": "okf/plugins/emtk-native/ptu_alex_creator.png",
+  "visual_verdict": ".omx/state/ptu-alex-creator/ralph-progress.json",
+  "scientific_evidence": "test_native.py verifies 5000 real Leica events: converted arrays and header JSON equal unchanged core/API for single, batch convert and merge",
+  "native_sizes": [[1200,800],[800,600]],
+  "locales": ["en","de","fr","es","pt","ru"],
+  "covered": ["single load/save", "live period/shift preview", "input/output containers", "batch convert/merge", "recursive queue and deduplication", "per-file removal", "input overwrite protection", "worker request snapshot", "settings/dock persistence", "help/guide", "nonempty control tooltips in all six locales", "Qt blocked startup/render"],
+  "verification_gaps": ["Live authenticated MMFDB server and OS chooser interaction not exercised", "Only PTU output was roundtrip compared; other output containers use unchanged core", "A populated PIL rendering is visual evidence; not a GPU interactive desktop test"],
+  "scope_note": "Current Qt entrypoint is the AutoForm ALEX converter. It has no channel/window preset editor or generation wizard; none is invented in the native port."
+}

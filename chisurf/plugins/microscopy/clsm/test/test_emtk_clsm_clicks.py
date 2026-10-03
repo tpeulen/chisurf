@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.microscopy.clsm.gui.app import ClsmApp
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 
@@ -239,6 +240,12 @@ def test_help_guide_and_the_tour_is_walked(empty):
         if ui.app.tour.awaiting:
             key = ui.app.tour._target_key(ui.app.tour.steps[ui.app.tour.step_idx]["target"])
             assert key in ui.app.item_rects, key
+            assert_tour_card_clear(ui.app.tour, ui.size)  # the card does not sit on the control the user must press
+            if key == "CLSM image":                  # the paint step: the canvas takes the user's own press
+                paint(ui)
+                assert not ui.app.tour.awaiting
+                ui.press_text("Next ►")
+                continue
             ui.click(key)
             if ui.dialog_open:                       # the tour's first await: really choose the file
                 ui.app.dialog.enter(str(SP5.parent))

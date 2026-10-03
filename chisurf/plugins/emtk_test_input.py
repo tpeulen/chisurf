@@ -144,4 +144,60 @@ class Driver:
         return emtk_screenshot(self.app, Path(path), self.size)
 
 
-__all__ = ["CTRL", "Driver", "SIZE", "SMALL"]
+def tour_card_box(tour: Any, size: tuple[int, int] = SIZE) -> tuple[float, float, float, float] | None:
+    """Where the guided-tour card of the current step is drawn: ``(x, y, w, h)``, mirroring ``EmTkGuidedTour.draw``.
+
+    The card's size follows its text and the placement comes from the tour module's own ``place_tour_card``; the
+    user's drag (``card_offset``) is added the way the tour adds it. ``None`` when no tour step is shown.
+    """
+    import sys
+
+    if not getattr(tour, "active", False):
+        return None
+    step = tour.steps[tour.step_idx]
+    width, height = float(size[0]), float(size[1])
+    place = sys.modules[type(tour).__module__].place_tour_card
+    target = step.get("target")
+    rect = tour.get_target_rect(tour._target_key(target)) if target and callable(tour.get_target_rect) else None
+    card_w = min(480.0, width - 40.0)
+    per_line = max(20.0, (card_w - 28.0) / 7.4)
+    body = str(step.get("text", "")).replace("<br/>", "\n")
+    import re
+
+    body = re.sub(r"<[^>]+>", "", body)
+    lines = sum(max(1, int(len(part) / per_line) + 1) for part in body.split("\n"))
+    hint = step.get("hint") or (step.get("await", {}).get("hint") if isinstance(step.get("await"), dict) else None)
+    lines += (int(len(str(hint)) / per_line) + 2) if hint else 0
+    card_h = max(120.0, min(260.0, 78.0 + 16.0 * lines))
+    x, y = place(rect, width, height, card_w, card_h)
+    return (x + tour.card_offset[0], y + tour.card_offset[1], card_w, card_h)
+
+
+def assert_tour_card_clear(tour: Any, size: tuple[int, int] = SIZE) -> None:
+    """The current step's target was drawn, lies inside the window, and the card does not cover it."""
+    if not getattr(tour, "active", False):
+        return
+    step = tour.steps[tour.step_idx]
+    target = step.get("target")
+    if not target:
+        return
+    key = tour._target_key(target)
+    if not key:
+        return
+    rect = tour.get_target_rect(key)
+    if rect is None:
+        # A tab-only target (``{"tab": ...}``) is allowed to resolve to nothing; a named control is not.
+        assert "tab" in target and not any(target.get(k) for k in ("name", "action", "key", "attr")), (
+            f"step {step.get('title')!r}: target {target} was not drawn"
+        )
+        return
+    tx, ty, tw, th = rect
+    assert tw > 0 and th > 0 and tx >= 0 and ty >= 0 and tx + tw <= size[0] + 1 and ty + th <= size[1] + 1, (
+        f"step {step.get('title')!r}: target {key!r} {rect} is not inside the {size} window"
+    )
+    cx, cy, cw, ch = tour_card_box(tour, size)
+    covered = not (cx + cw <= tx or cx >= tx + tw or cy + ch <= ty or cy >= ty + th)
+    assert not covered, f"step {step.get('title')!r}: the card {(cx, cy, cw, ch)} covers its target {key!r} {rect}"
+
+
+__all__ = ["CTRL", "Driver", "SIZE", "SMALL", "assert_tour_card_clear", "tour_card_box"]

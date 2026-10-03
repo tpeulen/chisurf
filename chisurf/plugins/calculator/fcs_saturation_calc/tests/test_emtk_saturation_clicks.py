@@ -17,6 +17,7 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.calculator.fcs_saturation_calc.gui.app import make_app
+from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.calculator.fcs_saturation_calc.gui.panel import TABS
 
 from .driving import BIG, SMALL, SatDriver, hermetic_env
@@ -609,7 +610,7 @@ def test_escape_closes_the_tour_even_while_a_step_waits(drv):
 def operate(drv, step):
     """What the user does at the highlighted control of *step*."""
     target = step.get("target") or {}
-    key = target.get("attr") or target.get("key") or target.get("tab")
+    key = target.get("attr") or target.get("name") or target.get("key") or target.get("tab")
     if key == "wavelength_nm":
         drv.type_into("wavelength_nm", "488")
     elif key == "optics":
@@ -640,6 +641,7 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
             break
         drv.draw(3)
         step = tour.steps[tour.step_idx]
+        assert_tour_card_clear(tour, drv.size)
         if tour.awaiting:
             waited.append(operate(drv, step))
             assert not tour.awaiting, f"{step['title']}: operating {step.get('target')} did not release the step"

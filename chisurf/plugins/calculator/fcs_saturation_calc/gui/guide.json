@@ -21,7 +21,7 @@
       "title": "Step 2 — ε at 488 nm, not ε at the peak",
       "text": "Rhodamine 6G absorbs maximally near 530 nm with ε ≈ 116 000 M⁻¹cm⁻¹, but we are exciting at 488 nm, where it is roughly <b>100 000 M⁻¹cm⁻¹</b>.<br/><br/>If your dye is in the repository, pick it in the <b>Dye (MMFDB)</b> list on the left and ε(488 nm) is read straight off its stored absorption spectrum. If it is not listed, leave the list empty and double-click the <b>Value</b> cell of the <b>ε</b> row in this <i>Optics and measurement</i> table, type <b>100000</b> and press Enter.<br/><br/>Using the catalogued <i>peak</i> ε instead is the most common way to get an excitation rate badly wrong — for a dye excited well off its maximum it can be a factor of hundreds.",
       "target": {
-        "key": "optics"
+        "name": "optics"
       },
       "await": true,
       "tab": "State diagram"
@@ -30,7 +30,7 @@
       "title": "Step 3 — the optics: w_r = 250, w_z = 1000, D = 400",
       "text": "In the <b>Optics and measurement</b> table below the state diagram, double-click a <b>Value</b> cell, type the number and press Enter. Set:<br/>• <b>w<sub>r</sub> = 250</b> nm and <b>w<sub>z</sub> = 1000</b> nm — your beam waists, calibrated from a dye standard at low power.<br/>• <b>D = 400</b> µm²/s — Rhodamine 6G in water at 25 °C.<br/><br/>With these, the unsaturated diffusion time is w<sub>r</sub>²/4D ≈ <b>39 µs</b>. Keep that number: everything below is measured against it.",
       "target": {
-        "key": "optics"
+        "name": "optics"
       },
       "await": true,
       "tab": "State diagram"
@@ -93,7 +93,7 @@
       "title": "Now make it your dye",
       "text": "Everything above was three arrays, and none of them assumes a triplet:<br/>• <b>K<sub>dark</sub></b> (row = from, column = to) — here k₂₁ = 250 /µs (a 4 ns lifetime), k₂₃ = 2.5 /µs (1 % ISC yield), k₃₁ = 0.5 /µs (a 2 µs triplet).<br/>• <b>K<sub>exc</sub></b> — σ₁₂ = 1.<br/>• <b>Q</b> — only S1 emits.<br/><br/>Raise <b>Number of states</b> to add a photo-isomer or a bleached state and double-click a rate cell in these tables to edit it; <b>Save scheme</b> writes the scheme as JSON so your dye's photophysics is reusable. Try the <b>Cyanine 5</b> preset to see what happens when the dark state relaxes on the <i>diffusion</i> timescale rather than well below it.",
       "target": {
-        "key": "k_dark_header"
+        "name": "k_dark_header"
       }
     }
   ]

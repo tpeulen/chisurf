@@ -6,21 +6,21 @@
      "target": {}},
     {"title": "Load a stream",
      "text": "Press <b>Load TTTR</b> and pick a photon file (or drop it on the window). A Becker &amp; Hickl <i>.spc</i> needs its subtype chosen in the <b>Detector setup</b> window first (File Type).",
-     "target": {"key": "load"}, "await": {"hint": "Press <b>Load TTTR</b>."}},
+     "target": {"name": "load"}, "await": {"hint": "Press <b>Load TTTR</b>."}},
     {"title": "Detectors and colours",
      "text": "<b>Detector colours</b> lists the detectors of the setup. <b>Show</b> includes one in the waterfall; double-click its colour to type another (#rrggbb).",
-     "target": {"key": "detector_rows"}},
+     "target": {"name": "detector_rows"}, "window": "mixer"},
     {"title": "Channel notes",
      "text": "Every routing channel plays its own chord. In <b>Channel notes</b> switch channels on and off, set pitch, gain and micro-time gate, and choose the chord of the selected row below the table.",
-     "target": {"key": "channel_rows"}},
+     "target": {"name": "channel_rows"}, "window": "notes"},
     {"title": "Compute the waterfall",
      "text": "Choose micro-time or lifetime in <b>Waterfall parameters</b>, then press <b>Update</b>. The picture appears with its axes; wheel and drag zoom it.",
-     "target": {"key": "update"}, "await": {"hint": "Press <b>Update</b>."}},
+     "target": {"name": "update"}, "await": {"hint": "Press <b>Update</b>."}, "window": "waterfall_parameters"},
     {"title": "Listen",
      "text": "<b>Play / Resume</b> renders the selected channels and range with the <b>Audio parameters</b>; <b>Pause</b>, <b>Stop</b> and <b>Revert</b> control it, and a line follows the playback in the waterfall.",
-     "target": {"key": "play"}, "await": {"hint": "Press <b>Play / Resume</b>."}},
+     "target": {"name": "play"}, "await": {"hint": "Press <b>Play / Resume</b>."}, "window": "audio"},
     {"title": "Export",
      "text": "<b>Save WAV</b> writes the same sound as a 16-bit mono WAV file. Press <b>Help</b> for the parameters.",
-     "target": {"key": "save_wav"}}
+     "target": {"name": "save_wav"}}
   ]
 }
