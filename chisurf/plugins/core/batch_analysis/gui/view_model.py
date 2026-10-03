@@ -19,9 +19,6 @@ import pathlib
 import tempfile
 from collections.abc import Callable
 
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
-
 from ..core import runner
 
 logger = logging.getLogger(__name__)
@@ -198,6 +195,8 @@ class BatchViewModel:
         final message box; the numeric work lives in :func:`...core.runner.run_batch`.
         """
         from qtpy import QtCore, QtWidgets
+        from chisurf.gui import dialogs
+        from chisurf.gui.progress import ChiSurfProgress
 
         items = self.build_items()
         fit_index = self.fit_index()

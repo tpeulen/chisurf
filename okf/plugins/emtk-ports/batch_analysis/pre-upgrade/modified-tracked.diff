@@ -1,0 +1,55 @@
+diff --git a/chisurf/plugins/core/batch_analysis/gui/__init__.py b/chisurf/plugins/core/batch_analysis/gui/__init__.py
+index 154b86940..db6ac2e83 100644
+--- a/chisurf/plugins/core/batch_analysis/gui/__init__.py
++++ b/chisurf/plugins/core/batch_analysis/gui/__init__.py
+@@ -1,6 +1,13 @@
+-"""GUI layer for the Batch-Analysis plugin (AutoForm host + view-model)."""
++"""Lazy GUI layer for the Batch-Analysis plugin."""
++from .view_model import BatchViewModel
+ 
+-from .tool import BatchAnalysisWidget, BatchProcessingWizard
+ from .view_model import BatchViewModel
+ 
+ __all__ = ["BatchAnalysisWidget", "BatchProcessingWizard", "BatchViewModel"]
++
++
++def __getattr__(name):
++    if name in {"BatchAnalysisWidget", "BatchProcessingWizard"}:
++        from .tool import BatchAnalysisWidget, BatchProcessingWizard
++        return {"BatchAnalysisWidget": BatchAnalysisWidget, "BatchProcessingWizard": BatchProcessingWizard}[name]
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/core/batch_analysis/gui/view_model.py b/chisurf/plugins/core/batch_analysis/gui/view_model.py
+index 233f762ee..a8cc99e6d 100644
+--- a/chisurf/plugins/core/batch_analysis/gui/view_model.py
++++ b/chisurf/plugins/core/batch_analysis/gui/view_model.py
+@@ -19,9 +19,6 @@ import pathlib
+ import tempfile
+ from collections.abc import Callable
+ 
+-from chisurf.gui import dialogs
+-from chisurf.gui.progress import ChiSurfProgress
+-
+ from ..core import runner
+ 
+ logger = logging.getLogger(__name__)
+@@ -198,6 +195,8 @@ class BatchViewModel:
+         final message box; the numeric work lives in :func:`...core.runner.run_batch`.
+         """
+         from qtpy import QtCore, QtWidgets
++        from chisurf.gui import dialogs
++        from chisurf.gui.progress import ChiSurfProgress
+ 
+         items = self.build_items()
+         fit_index = self.fit_index()
+diff --git a/chisurf/plugins/core/batch_analysis/manifest.json b/chisurf/plugins/core/batch_analysis/manifest.json
+index dd11cb1f2..19cd1e6cb 100644
+--- a/chisurf/plugins/core/batch_analysis/manifest.json
++++ b/chisurf/plugins/core/batch_analysis/manifest.json
+@@ -16,6 +16,7 @@
+   },
+   "entrypoints": {
+     "gui": "chisurf.plugins.core.batch_analysis.gui.tool:BatchProcessingWizard",
++    "emtk": "chisurf.plugins.core.batch_analysis.gui.app:make_app",
+     "cli": "batch-analysis=chisurf.plugins.core.batch_analysis.cli:cli"
+   },
+   "rpc_methods": [],

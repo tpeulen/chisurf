@@ -1,0 +1,61 @@
+{
+  "controls": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "?",
+    "applyonetemplatefittomanydatasetsorfiles.",
+    "clear",
+    "database",
+    "files",
+    "filesfit",
+    "filestoprocess",
+    "finish",
+    "folder",
+    "guide",
+    "loadeddata",
+    "next›",
+    "refresh",
+    "remove",
+    "results",
+    "resultscsv",
+    "run",
+    "runbatch",
+    "templatefit",
+    "welcome",
+    "‹back"
+  ],
+  "labels": [
+    "Apply one template fit to many datasets or files.",
+    "Files to process",
+    "Results CSV",
+    "Template fit",
+    "Welcome"
+  ],
+  "buttons": [
+    "?",
+    "Finish",
+    "Guide",
+    "Next ›",
+    "…",
+    "‹ Back",
+    "▶️ Run batch",
+    "➕ Files",
+    "➖ Remove",
+    "📁 Folder",
+    "🔄 Refresh",
+    "🗄️ Database",
+    "🗑️ Clear"
+  ],
+  "line_edits": 1,
+  "combos": 1,
+  "spin_boxes": 0,
+  "tables": 4,
+  "entrypoint": "chisurf.plugins.core.batch_analysis.gui.tool:BatchProcessingWizard",
+  "size": [
+    1200,
+    800
+  ]
+}
