@@ -1,0 +1,154 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "1",
+    "[134857]ready",
+    "activetoolalign",
+    "align",
+    "alignmoleculardynamicstrajectoriestoareferenceframeorstructure.",
+    "aligntrajectory",
+    "atomselection",
+    "availabletools",
+    "convert",
+    "dropadcdtrajectoryhereorbrowse",
+    "e.g.0,1,2,3(empty=allatoms)",
+    "energycalc",
+    "fret",
+    "guide",
+    "help",
+    "join",
+    "log",
+    "pdbnamingtheatoms—requiredfordcd",
+    "removeclashed",
+    "rottranslate",
+    "savealigned",
+    "savetopol",
+    "stride",
+    "topology",
+    "trajectory"
+  ],
+  "interactive": [
+    {
+      "kind": "selectable",
+      "label": "Align",
+      "id": "Align",
+      "tooltip": "Align molecular dynamics trajectories to a reference frame or structure."
+    },
+    {
+      "kind": "selectable",
+      "label": "Convert",
+      "id": "Convert",
+      "tooltip": "Convert molecular dynamics trajectory files between supported formats."
+    },
+    {
+      "kind": "selectable",
+      "label": "Energy Calc",
+      "id": "Energy Calc",
+      "tooltip": "Calculate potential energy components for structures and trajectories."
+    },
+    {
+      "kind": "selectable",
+      "label": "FRET",
+      "id": "FRET",
+      "tooltip": "Calculate FRET observables from molecular dynamics trajectories."
+    },
+    {
+      "kind": "selectable",
+      "label": "Join",
+      "id": "Join",
+      "tooltip": "Join or stack molecular dynamics trajectories."
+    },
+    {
+      "kind": "selectable",
+      "label": "Remove Clashed",
+      "id": "Remove Clashed",
+      "tooltip": "Remove frames containing steric clashes from trajectories."
+    },
+    {
+      "kind": "selectable",
+      "label": "Rot Translate",
+      "id": "Rot Translate",
+      "tooltip": "Apply rigid-body rotation and translation to trajectories."
+    },
+    {
+      "kind": "selectable",
+      "label": "Save Topol",
+      "id": "Save Topol",
+      "tooltip": "Save topology or first-frame structure files from trajectories."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A short walk through preparing a trajectory."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "What the tools do and how a dropped file is used."
+    },
+    {
+      "kind": "button",
+      "label": "📖  Guide",
+      "id": "📖  Guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "button",
+      "label": "❓  Help",
+      "id": "❓  Help",
+      "tooltip": "What the tool does, what it writes, and the known limits."
+    },
+    {
+      "kind": "input_text",
+      "label": "trajectory",
+      "id": "##trajectory",
+      "tooltip": "The trajectory the tool reads. Drop a .dcd here or press … to pick one."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##trajectory.browse",
+      "tooltip": "Open a DCD trajectory."
+    },
+    {
+      "kind": "input_text",
+      "label": "topology",
+      "id": "##topology",
+      "tooltip": "The structure that names the atoms; a DCD stores coordinates only."
+    },
+    {
+      "kind": "button",
+      "label": "…",
+      "id": "…##topology.browse",
+      "tooltip": "Open the PDB that names the atoms. DCD stores coordinates only, so this is required for them."
+    },
+    {
+      "kind": "input_text",
+      "label": "atom_selection",
+      "id": "##atom_selection",
+      "tooltip": "Comma-separated atom ids used as the reference set for the superposition. Leave empty to align on all atoms."
+    },
+    {
+      "kind": "input_text",
+      "label": "stride",
+      "id": "##stride",
+      "tooltip": "Read every Nth frame of the source trajectory."
+    },
+    {
+      "kind": "button",
+      "label": "💾  Save aligned…",
+      "id": "💾  Save aligned…",
+      "tooltip": "Superpose every frame onto the first frame and write a new DCD."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

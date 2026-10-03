@@ -3,7 +3,7 @@ import sys, pathlib
 from qtpy import QtWidgets
 from chisurf.plugins.traj.traj_tools.gui.tool import TrajectoryToolsTool
 out = pathlib.Path(sys.argv[1]).resolve(); out.mkdir(parents=True, exist_ok=True)
-base = pathlib.Path(__file__).resolve().parents[4] / "test/data/atomic_coordinates/trajectory/hgbp1"
+base = pathlib.Path(__file__).resolve().parents[5] / "test/data/atomic_coordinates/trajectory/hgbp1"
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 w = TrajectoryToolsTool(); w.resize(1200, 800); w.show(); app.processEvents()
 align = w._tools["Align"]

@@ -21,10 +21,23 @@ the averaging regime), see {ref}`concept-structure-trajectories`.
 ## Open the tools
 
 **Structure → Structure → Structure Tools**, then **🎞️ Trajectory Tools** in the
-left list. The workspace has one dock tab per tool: *Align*, *Convert*,
+left list. The workspace lists the eight tools on the left: *Align*, *Convert*,
 *Energy Calc*, *FRET*, *Join*, *Remove Clashed*, *Rot Translate*, *Save Topol*.
-A file dropped on the window goes to the tab in front if that tab has a single
-trajectory field. Each tool also runs as its own window from the command line
+Click one to open it on the right (or use the arrow keys); each tool keeps its
+settings while you use another, and the line under it shows the active tool.
+
+```{figure} figures/traj_tools_hub.png
+:name: fig-traj-tools-hub
+:width: 100%
+
+The workspace with Align open and the hgbp1 test trajectory dropped
+on the window.
+```
+
+A file dropped on the window goes to the open tool if it fits one of its fields;
+otherwise the line under the tool says so. **Help** describes the tools and
+**Guide** walks through align, clash removal and FRET geometry; each tool also has
+its own Guide. Each tool also runs as its own window from the command line
 (`csg_traj_align`, `csg_traj_convert`, `csg_traj_fret_analysis`, `csg_traj_join`,
 `csg_traj_energy_calculator`, `csg_traj_remove_clashed_frames`,
 `csg_traj_rotate_translate`, `csg_traj_save_topology`).
