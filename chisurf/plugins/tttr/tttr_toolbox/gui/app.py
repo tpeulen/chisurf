@@ -13,6 +13,8 @@ from emtk.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 
 RESOURCES = Path(__file__).parent
+#: Height of the window naming the selected tool.
+HEADER = 62.0
 
 
 def load_panels():
@@ -44,8 +46,10 @@ class TttrToolboxApp(ImApp):
         self.routes = {}
         self.errors = {}
         self.filter = ""
+        self.status = "Ready"
+        self.item_rects = {}
         self.resolver = resolver
-        self.child_box = (230.0, 95.0, 970.0, 655.0)
+        self.child_box = (230.0, HEADER, 970.0, 688.0)
         self._painter = None
         self._child_focus = False
         self._child_capture = False
@@ -54,7 +58,11 @@ class TttrToolboxApp(ImApp):
         )
         self.child_help = None
         self.tour = EmTkGuidedTour(
-            RESOURCES / "guide.json", owner=self, on_step_change=self._tour_step
+            RESOURCES / "guide.json",
+            owner=self,
+            on_step_change=self._tour_step,
+            get_target_rect=self._target_rect,
+            wait_for_controls=True,
         )
         super().__init__(self.render, continuous=False)
 
@@ -76,7 +84,7 @@ class TttrToolboxApp(ImApp):
                 layouts[role + "/" + name] = manager
         return layouts
 
-    def select(self, role, retry=False):
+    def select(self, role, retry=False, by_user=True):
         panel = next((p for p in self.tools if p["role"] == role), None)
         if panel is None:
             raise ValueError("Unknown TTTR panel: " + str(role))
@@ -95,18 +103,38 @@ class TttrToolboxApp(ImApp):
                     self.children[role] = factory()
             except Exception as exc:
                 self.errors[role] = str(exc)
-        self.tour.notify_used(panel["name"])
+        if by_user:
+            self.tour.notify_used(panel["name"])
+        if by_user and self.tour.active:  # a step names its panel by a part of the name ("Count Rate")
+            key = self.tour._target_key(self.tour.steps[self.tour.step_idx].get("target"))
+            if key and key.casefold() in panel["name"].casefold():
+                self.tour.notify_used(key)
         self.child_help = None
+        self.status = "Ready"
         self.wants_frame = True
         return self.child
+
+    def step(self, delta):
+        """Back / Next: the neighbouring tool in the list (the Qt stepper's navigation; no sub-tool has a run step)."""
+        roles = [p["role"] for p in self.tools]
+        index = roles.index(self.selected) + delta if self.selected in roles else 0
+        if 0 <= index < len(roles):
+            self.select(roles[index])
+
+    def _target_rect(self, key):
+        """Where the tour finds a step's target: a navigation row (named by part of its tool's name) or a control."""
+        if key in self.item_rects:
+            return self.item_rects[key]
+        panel = next((p for p in self.tools if key and key.casefold() in p["name"].casefold()), None)
+        return self.item_rects.get("nav." + panel["role"]) if panel else None
 
     def _tour_step(self, index, step):
         target = step.get("target", {}).get("panel", "")
         panel = next(
             (p for p in self.tools if target and target.casefold() in p["name"].casefold()), None
         )
-        if panel:
-            self.select(panel["role"])
+        if panel and not step.get("await"):  # an awaited step waits for the user to pick the row
+            self.select(panel["role"], by_user=False)
 
     def matching_panels(self):
         query = self.filter.casefold()
@@ -151,12 +179,15 @@ class TttrToolboxApp(ImApp):
             if im.button("Help"):
                 self.help.show()
             im.set_item_tooltip("Read the TTTR toolbox reference and photon-clock guidance.")
+            self.item_rects["help"] = im.get_item_rect()
             im.same_line()
             if im.button("Guide"):
                 self.tour.start()
             im.set_item_tooltip("Walk through the original TTTR tools and their workflows.")
+            self.item_rects["guide"] = im.get_item_rect()
             _, self.filter = im.input_text("##Find TTTR tools", self.filter, hint=tr("Search…"))
             im.set_item_tooltip("Find tools by name, description or route.")
+            self.item_rects["search"] = im.get_item_rect()
             matching = {p["role"] for p in self.matching_panels()}
             for panel in self.panels:
                 if panel.get("separator"):
@@ -166,17 +197,18 @@ class TttrToolboxApp(ImApp):
                 if panel["role"] not in matching:
                     continue
                 if im.selectable(
-                    panel["icon"] + " " + tr(panel["name"]) + "##" + panel["role"],
+                    tr(panel["name"]) + "##" + panel["role"],  # (the panels' pictograms are not in emtk's font)
                     self.selected == panel["role"],
-                    size=(left - 8, 40),
+                    size=(left - 8, 28),
                 ):
                     self.select(panel["role"])
                 im.set_item_tooltip(panel["description"])
+                self.item_rects["nav." + panel["role"]] = im.get_item_rect()
             if not matching:
                 im.text_wrapped(tr("No matching tools."))
         im.end()
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
-        im.set_next_window_size((width - left, 95), im.Cond.ALWAYS)
+        im.set_next_window_size((width - left, HEADER), im.Cond.ALWAYS)
         if im.begin(
             "TTTR destination", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
         ):
@@ -186,22 +218,46 @@ class TttrToolboxApp(ImApp):
                 if im.button("Tool help"):
                     self.show_child_help()
                 im.set_item_tooltip("Read help for the selected TTTR tool.")
+                self.item_rects["tool_help"] = im.get_item_rect()
                 im.text_wrapped(tr(self.panel["description"]))
                 im.set_item_tooltip(
                     self.routes.get(self.selected) or "Native route not yet available."
                 )
         im.end()
-        self.child_box = (left, 95.0, max(1.0, width - left), max(1.0, height - 95.0))
+        bar = 30.0
+        self.child_box = (left, HEADER, max(1.0, width - left), max(1.0, height - HEADER - bar))
+        im.set_next_window_pos((left, height - bar), im.Cond.ALWAYS)
+        im.set_next_window_size((width - left, bar), im.Cond.ALWAYS)
+        if im.begin("TTTR status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+            roles = [p["role"] for p in self.tools]
+            index = roles.index(self.selected) if self.selected in roles else 0
+            im.text_unformatted(tr(self.status))
+            im.same_line(max(120.0, width - left - 190.0))
+            im.begin_disabled(index <= 0)
+            if im.button(tr("Back")):
+                self.step(-1)
+            self.item_rects["back"] = im.get_item_rect()
+            im.set_item_tooltip(tr("Go to the previous tool in the list."))
+            im.end_disabled()
+            im.same_line()
+            im.begin_disabled(index >= len(roles) - 1)
+            if im.button(tr("Next")):
+                self.step(1)
+            self.item_rects["next"] = im.get_item_rect()
+            im.set_item_tooltip(tr("Go to the next tool in the list."))
+            im.end_disabled()
+        im.end()
         if self.child:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
         elif self.selected in self.errors:
-            im.set_next_window_pos((left, 95), im.Cond.ALWAYS)
-            im.set_next_window_size((width - left, height - 95), im.Cond.ALWAYS)
+            im.set_next_window_pos((left, HEADER), im.Cond.ALWAYS)
+            im.set_next_window_size((width - left, height - HEADER - bar), im.Cond.ALWAYS)
             if im.begin("TTTR tool unavailable", flags=im.WindowFlags.NO_RESIZE):
                 im.text_wrapped(tr("The selected tool could not be opened."))
                 im.text_wrapped(tr(self.errors[self.selected]))
                 if im.button("Retry"):
                     self.select(self.selected, retry=True)
+                self.item_rects["retry"] = im.get_item_rect()
                 im.set_item_tooltip(
                     "Resolve this tool's current manifest again and retry its native factory."
                 )

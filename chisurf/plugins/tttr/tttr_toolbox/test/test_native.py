@@ -122,14 +122,14 @@ def test_input_focus_capture_and_overlay():
     app = make_app(resolver=lambda panel: (fake_child, "test:child"))
     child = app.select(app.selected)
     app.pointer_press(250, 120, LEFT_BUTTON)
-    assert child.calls[-1] == ("press", (20, 25, LEFT_BUTTON, 0, 1))
+    assert child.calls[-1] == ("press", (20, 120 - 62, LEFT_BUTTON, 0, 1))
     app.key(65, "a")
     assert child.calls[-1][0] == "key"
     # A release outside the child still finishes its captured drag.
     app.pointer_release(10, 10, LEFT_BUTTON)
     assert child.calls[-1][0] == "release"
     app.wheel(250, 120, 2)
-    assert child.calls[-1] == ("wheel", (20, 25, 2, 0))
+    assert child.calls[-1] == ("wheel", (20, 120 - 62, 2, 0))
     count = len(child.calls)
     app.pointer_press(20, 120, LEFT_BUTTON)
     app.key(65, "a")
