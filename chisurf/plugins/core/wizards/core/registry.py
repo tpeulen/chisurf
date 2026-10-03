@@ -29,6 +29,8 @@ class WizardEntry:
         that constructs with no required arguments.
     icon : str
         Optional emoji/icon shown next to the label.
+    emtk : str or None
+        Optional native factory for the embedded wizard.
     """
 
     id: str
@@ -36,6 +38,7 @@ class WizardEntry:
     description: str
     widget: str
     icon: str = ""
+    emtk: str | None = None
 
 
 def default_wizards() -> list[WizardEntry]:
@@ -47,6 +50,9 @@ def default_wizards() -> list[WizardEntry]:
             description="Build a linked VV/VH global time-resolved anisotropy fit.",
             widget="chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.tool:AnisotropyAssistantWidget",
             icon="🔬",
+            # Native factory is available; the Qt widget path remains for the
+            # legacy host and reference capture.
+            emtk="chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app:make_app",
         ),
         WizardEntry(
             id="batch_analysis",
@@ -54,6 +60,7 @@ def default_wizards() -> list[WizardEntry]:
             description="Apply one template fit to many datasets or files.",
             widget="chisurf.plugins.core.batch_analysis.gui.tool:BatchAnalysisWidget",
             icon="📋",
+            emtk=None,
         ),
     ]
 

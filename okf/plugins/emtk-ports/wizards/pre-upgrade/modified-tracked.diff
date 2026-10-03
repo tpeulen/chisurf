@@ -1,0 +1,71 @@
+diff --git a/chisurf/plugins/core/wizards/core/registry.py b/chisurf/plugins/core/wizards/core/registry.py
+index 1dccb26a9..6c893e5fd 100644
+--- a/chisurf/plugins/core/wizards/core/registry.py
++++ b/chisurf/plugins/core/wizards/core/registry.py
+@@ -29,6 +29,8 @@ class WizardEntry:
+         that constructs with no required arguments.
+     icon : str
+         Optional emoji/icon shown next to the label.
++    emtk : str or None
++        Optional native factory for the embedded wizard.
+     """
+ 
+     id: str
+@@ -36,6 +38,7 @@ class WizardEntry:
+     description: str
+     widget: str
+     icon: str = ""
++    emtk: str | None = None
+ 
+ 
+ def default_wizards() -> list[WizardEntry]:
+@@ -47,6 +50,9 @@ def default_wizards() -> list[WizardEntry]:
+             description="Build a linked VV/VH global time-resolved anisotropy fit.",
+             widget="chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.tool:AnisotropyAssistantWidget",
+             icon="🔬",
++            # Native factory is available; the Qt widget path remains for the
++            # legacy host and reference capture.
++            emtk="chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.app:make_app",
+         ),
+         WizardEntry(
+             id="batch_analysis",
+@@ -54,6 +60,7 @@ def default_wizards() -> list[WizardEntry]:
+             description="Apply one template fit to many datasets or files.",
+             widget="chisurf.plugins.core.batch_analysis.gui.tool:BatchAnalysisWidget",
+             icon="📋",
++            emtk=None,
+         ),
+     ]
+ 
+diff --git a/chisurf/plugins/core/wizards/gui/__init__.py b/chisurf/plugins/core/wizards/gui/__init__.py
+index 70ba5e095..b352c6161 100644
+--- a/chisurf/plugins/core/wizards/gui/__init__.py
++++ b/chisurf/plugins/core/wizards/gui/__init__.py
+@@ -1,5 +1,10 @@
+-"""GUI layer for the Wizards hub."""
+-
+-from .tool import WizardHub
++"""Lazy GUI layer for the Wizards hub."""
+ 
+ __all__ = ["WizardHub"]
++
++
++def __getattr__(name):
++    if name == "WizardHub":
++        from .tool import WizardHub
++        return WizardHub
++    raise AttributeError(name)
+diff --git a/chisurf/plugins/core/wizards/manifest.json b/chisurf/plugins/core/wizards/manifest.json
+index cec42b788..faef6c40b 100644
+--- a/chisurf/plugins/core/wizards/manifest.json
++++ b/chisurf/plugins/core/wizards/manifest.json
+@@ -19,7 +19,8 @@
+     }
+   },
+   "entrypoints": {
+-    "gui": "chisurf.plugins.core.wizards.gui.tool:WizardHub"
++    "gui": "chisurf.plugins.core.wizards.gui.tool:WizardHub",
++    "emtk": "chisurf.plugins.core.wizards.gui.app:make_app"
+   },
+   "rpc_methods": [],
+   "dependencies": {},
