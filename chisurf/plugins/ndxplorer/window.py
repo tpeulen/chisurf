@@ -58,6 +58,16 @@ from chisurf.plugins.ndxplorer.global_view_slot import withdraw_constants as _wi
 WINDOW_SIZE = (1400, 900)
 
 
+def _ndx_version() -> str:
+    """ndX's version, for a recorded processing run."""
+    try:
+        from importlib.metadata import version
+
+        return version("ndxplorer")
+    except Exception:  # noqa: BLE001 - not installed as a distribution
+        return str(getattr(__import__("ndxplorer"), "__version__", "") or "unknown")
+
+
 def push_overlay_lines(lines, source: str = "ChiSurf") -> int:
     """Draw tabulated lines in every open ndX window (``NdxApp.add_overlay_lines``).
 
@@ -204,6 +214,57 @@ class NdxWindow(ChisurfDockTool):
         if path:
             self.open_path(path)
         return path
+
+    # -- provenance -----------------------------------------------------------
+    def record_burst_ids_in_mmfdb(self, processed_data_id: str, experiment_id: str | None = None,
+                                  client: Any = None) -> None:
+        """Record what Save > Burst IDs saves against the MMFDB product shown here.
+
+        What the MMFDB admin's *Open in ndX* sets: the window shows a processed
+        product, so a saved burst selection is an analysis of it. Each save
+        records an ``ndxplorer_selection`` processing run with the gate and a
+        ``selection_mask`` product, linked to *processed_data_id*
+        (``ndxplorer.record_analysis``), through the app's
+        ``burst_ids_recorder`` hook.
+
+        Parameters
+        ----------
+        processed_data_id : str
+            The product the table came from.
+        experiment_id : str, optional
+            Its experiment; the run is recorded under it.
+        client : object, optional
+            An MMFDB client with ``call(method, params)``; ChiSurf's shared
+            in-process client when omitted.
+        """
+        self._mmfdb_product = {"processed_data_id": str(processed_data_id),
+                               "experiment_id": experiment_id, "client": client}
+        self.app.burst_ids_recorder = self._record_burst_ids
+
+    def _record_burst_ids(self, record: dict) -> str:
+        """The app's ``burst_ids_recorder``: one ``ndxplorer.record_analysis`` call."""
+        product = self._mmfdb_product
+        client = product.get("client")
+        if client is None:
+            from chisurf.gui.widgets.mmfdb import picker
+
+            client = picker.inprocess_client()
+        if client is None:
+            raise RuntimeError("the in-process MMFDB client could not be started")
+        reply = client.call("ndxplorer.record_analysis", {
+            "experiment_id": product.get("experiment_id") or "exp_1",
+            "input_processed_data_ids": [product["processed_data_id"]],
+            "analysis_type": "selection",
+            "settings": {"gate": record["gate"], "folder": record["folder"],
+                         "files": record["files"], "n_rows": record["n_rows"],
+                         "n_selected": record["n_selected"]},
+            "products": [{"product_type": "selection_mask", "storage_mode": "embedded_json",
+                          "data": {"mask": record["mask"]}, "validation_status": "valid"}],
+            "software_version": _ndx_version(),
+        })
+        run = (reply or {}).get("processing_run") or {}
+        return (f"Recorded the selection ({record['n_selected']} of {record['n_rows']} bursts) "
+                f"in MMFDB as {run.get('processing_id', 'a processing run')}")
 
     def _say(self, title: str, text: str) -> None:
         """A message box in the app (and the log): the reason a thing did not happen."""

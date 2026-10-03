@@ -6570,6 +6570,14 @@ class MMFDBWidget(NavigationPanelTool):
             from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
             ndx = build_ndxplorer_window(path)
+            # Save > Burst IDs there records the selection against this product.
+            prod_id = self.processed_products_table.item(row, 0).text()
+            if prod_id:
+                processing_id = self.processed_products_table.item(row, 1).text()
+                experiment_id = _experiment_id_for_processing_id(
+                    self.client, processing_id
+                ) or getattr(self, "current_experiment_id", None)
+                ndx.record_burst_ids_in_mmfdb(prod_id, experiment_id, client=self.client)
             ndx.show()
             ndx.raise_()
             ndx.activateWindow()

@@ -244,3 +244,68 @@ def test_from_mmfdb_without_a_client_says_why(qapp, monkeypatch):
         assert "could not be started" in window.app.message[1]
     finally:
         window.close()
+
+
+# -- Save > Burst IDs records the selection in MMFDB ---------------------------
+
+
+def test_saved_burst_ids_are_recorded_against_the_mmfdb_product(
+    qapp, embedded_mmfdb, tmp_path
+):
+    """Opened on an MMFDB product (the admin's *Open in ndX*), Save > Burst IDs
+    records an ``ndxplorer_selection`` run with the gate and the selection mask,
+    linked to that product."""
+    from emtk.testing import RecordingPainter
+    from mmfdb.repository import MFDatabase
+    from mmfdb.store.database_resolver import resolve_database_path
+
+    from chisurf.gui.widgets.mmfdb import picker
+    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+
+    mfd = PLUGIN_DIR.parents[2] / "modules" / "ndxplorer" / "test" / "mfd" / "burstwise_All 0.1500#30"
+    if not mfd.exists():
+        pytest.skip("ndX's MFD fixture folder is missing")
+    _log_in_like_chisurf_startup()
+    client = picker.inprocess_client()
+    assert client is not None
+    db_path = str(resolve_database_path())
+    with MFDatabase(db_path) as db:
+        db.add_sample("sample_1")
+        db.add_experiment("exp_1", sample_id="sample_1", status="complete")
+        run_id = db.add_processing_run(experiment_id="exp_1", input_raw_data_ids=[],
+                                       settings={}, status="succeeded")
+        prod_id = db.add_processed_data_product(
+            processing_id=run_id, product_type="derived_product", storage_mode="folder",
+            folder_path=str(mfd), checksum="1" * 64, validation_status="valid")
+
+    window = build_ndxplorer_window(mfd, session_autosave=False, layout_store=None)
+    try:
+        app = window.app
+        assert app.model.has_data
+        window.record_burst_ids_in_mmfdb(prod_id, "exp_1", client=client)
+        out = tmp_path / "bids"
+        out.mkdir()
+        assert app.run_action("save_burst_ids")
+        app.io_service.answer(str(out))
+        io = window._feature("io")
+        if io.task is not None:
+            io.task.wait(120.0)
+            io.task = None
+        for _ in range(2):
+            app.draw(RecordingPainter(), 0.0, 0.0, 1400.0, 900.0)
+        assert list(out.glob("*.bst")), "the burst-ID files were not written"
+        assert app.status.startswith("Recorded the selection"), app.status
+    finally:
+        window.close()
+
+    with MFDatabase(db_path) as db:
+        edges = db.get_provenance_edges(source_node_type="processed_data",
+                                        source_node_id=prod_id, relationship_type="input_to")
+        assert len(edges) == 1
+        run = db.get_processing_run_full(edges[0]["target_node_id"])
+        assert run["processing_type"] == "ndxplorer_selection"
+        assert run["settings"]["folder"] == str(out)
+        produced = db.get_provenance_edges(source_node_type="processing_run",
+                                           source_node_id=run["processing_id"],
+                                           relationship_type="produced")
+        assert len(produced) == 1
