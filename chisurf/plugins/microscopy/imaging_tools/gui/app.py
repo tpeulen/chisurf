@@ -7,134 +7,143 @@ import importlib
 import json
 from pathlib import Path
 
+from types import SimpleNamespace
+
 from emtk import im
-from emtk.app import ImApp
 from emtk.i18n import tr
 
-from chisurf.emtk.help_guide import EmTkHelpWindow
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
 
 from .client import DetectorSetupClient
 
-# Keep every Qt route, including tools whose native migration is still pending.
+# Every Qt route stays in the list; a tool without a native app is marked and says so when opened.
 PANELS = (
     (
-        "setup",
-        "core/setup_channel_definition",
-        "Setup",
-        "Define shared detector channels and PIE windows.",
+        'setup',
+        'core/setup_channel_definition',
+        'Setup',
+        'Define detector channels and PIE time windows once for all imaging tools.',
     ),
     (
-        "browser",
-        "tttr/tttr_image_browser",
-        "Browser",
-        "Select photon images and hand the source to the imaging pipeline.",
-    ),
-    ("drift", "microscopy/img_drift", "Drift", "Align frames before calculating per-pixel maps."),
-    ("frc", "microscopy/img_frc", "Resolution", "Measure resolution by Fourier ring correlation."),
-    ("flow", "microscopy/img_flow", "Flow", "Map sample velocity by image correlation."),
-    (
-        "tracking",
-        "microscopy/img_tracking",
-        "Tracking",
-        "Follow particles and estimate their diffusion.",
+        'browser',
+        'tttr/tttr_image_browser',
+        'Browser',
+        'Browse TTTR image files and explore intensity maps.',
     ),
     (
-        "pixel_intensity",
-        "microscopy/img_pixel_intensity",
-        "1. Intensity",
-        "Create intensity maps and the shared imaging HDF5.",
+        'drift',
+        'microscopy/img_drift',
+        'Drift',
+        'Optional pre-processing: measure and remove inter-frame sample drift. Belongs before the numbered steps — every per-pixel map below is built from frames that must already be aligned. Photon streams are corrected photon by photon, so the steps below still see real photons.',
     ),
     (
-        "pixel_nb",
-        "microscopy/img_pixel_nb",
-        "2. Number & Brightness",
-        "Add molecular number and brightness to the shared image.",
+        'frc',
+        'microscopy/img_frc',
+        'Resolution',
+        'How fine a detail this acquisition actually resolves, by Fourier ring correlation between two independent halves of it. Sits after Drift because drift blurs the image and so lowers the measured resolution — measure it on frames that are already aligned.',
     ),
     (
-        "pixel_micro_time",
-        "microscopy/img_pixel_micro_time",
-        "3. Mean Micro-Time",
-        "Add mean photon arrival times per detector window.",
+        'flow',
+        'microscopy/img_flow',
+        'Flow',
+        'Map the velocity field: one arrow per tile, over the image. Sits beside Tracking because both measure motion rather than building a per-pixel map -- and after Drift for the same reason Tracking is, since a drifting stage is indistinguishable from a sample flowing the other way. Tracking follows individual particles; this reads a velocity from the correlations of everything at once, so it works where the labels are too dense to resolve as spots.',
     ),
     (
-        "calibration",
-        "microscopy/img_calibration",
-        "4. IRF & BG",
-        "Optional per-detector IRF and background calibration.",
+        'tracking',
+        'microscopy/img_tracking',
+        'Tracking',
+        'Follow individual particles through the frames and fit their diffusion coefficient. Sits after Drift because a drifting sample looks exactly like directed motion, and outside the numbered steps because it measures motion rather than building a per-pixel map.',
     ),
     (
-        "pixel_phasor",
-        "microscopy/img_pixel_phasor",
-        "5. Phasor-FLIM",
-        "Add calibrated lifetime phasor maps.",
+        'pixel_intensity',
+        'microscopy/img_pixel_intensity',
+        '1. Intensity',
+        'Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference).',
     ),
     (
-        "pixel_mle",
-        "microscopy/img_pixel_mle",
-        "6. Pixel-wise MLE",
-        "Fit lifetime by maximum likelihood per pixel.",
+        'pixel_nb',
+        'microscopy/img_pixel_nb',
+        '2. Number & Brightness',
+        'Per-pixel Number (N) and Brightness (B); adds fields to the imaging HDF5.',
     ),
     (
-        "clsm_draw",
-        "microscopy/clsm",
-        "CLSM Draw",
-        "Draw regions and extract decays from photon images.",
+        'pixel_micro_time',
+        'microscopy/img_pixel_micro_time',
+        '3. Mean Micro-Time',
+        'Per-pixel mean micro-time (arrival time, ns) per detector window; adds fields to the imaging HDF5.',
     ),
     (
-        "spot_finder",
-        "microscopy/spot_finder",
-        "Spot Finder",
-        "Find regions and persist their pixels in measurement containers.",
+        'calibration',
+        'microscopy/img_calibration',
+        '4. IRF & BG',
+        'Optional: per-detector IRF file + background (kHz); transferred to Phasor and MLE. Skippable.',
     ),
     (
-        "molecule_mle",
-        "microscopy/region_mle",
-        "Region MLE",
-        "Fit lifetimes in the regions found by Spot Finder.",
+        'pixel_phasor',
+        'microscopy/img_pixel_phasor',
+        '5. Phasor-FLIM',
+        'Per-pixel phasor (g, s) maps and phasor plot; adds fields to the imaging HDF5.',
     ),
     (
-        "psf",
-        "microscopy/psf_determination",
-        "PSF Determination",
-        "Detect beads and fit the three-dimensional point spread function.",
+        'pixel_mle',
+        'microscopy/img_pixel_mle',
+        '6. Pixel-wise MLE',
+        'Pixel-wise MLE lifetime analysis; adds fields to the imaging HDF5.',
+    ),
+    (
+        'clsm_draw',
+        'microscopy/clsm',
+        'CLSM Draw',
+        'Interactive CLSM pixel selection, ROI drawing and decay extraction; opens imaging HDF5 (via source back-reference).',
+    ),
+    (
+        'spot_finder',
+        'microscopy/spot_finder',
+        'Spot Finder',
+        "Find the regions — molecules, beads, objects — and write them, with their pixels, into each measurement's container.",
+    ),
+    (
+        'molecule_mle',
+        'microscopy/region_mle',
+        'Region MLE',
+        'Lifetime MLE per region, on the regions the Spot Finder found.',
+    ),
+    (
+        'psf',
+        'microscopy/psf_determination',
+        'PSF Determination',
+        '3D Gaussian PSF fitting and bead detection.',
     ),
 )
 ROOT = Path(__file__).resolve().parents[3]
-ICONS = {
-    "setup": "🧭",
-    "browser": "📂",
-    "drift": "🎯",
-    "frc": "◎",
-    "flow": "🌊",
-    "tracking": "🐜",
-    "pixel_intensity": "☀",
-    "pixel_nb": "✨",
-    "pixel_micro_time": "◷",
-    "calibration": "▦",
-    "pixel_phasor": "◐",
-    "pixel_mle": "🗺",
-    "clsm_draw": "✎",
-    "spot_finder": "🎯",
-    "molecule_mle": "💠",
-    "psf": "🔭",
-}
+HERE = Path(__file__).parent
+LIST_MAX_W = 300.0
+#: The role the list draws a separator above (the Qt list's rule before the tools outside the numbered pipeline).
+SEPARATOR_BEFORE = "clsm_draw"
 
 
 def label(text):
     return tr(text, context="ImagingToolsTool")
 
 
-class ImagingToolsApp(ImApp):
-    PIPELINE_ORDER = tuple(row[0] for row in PANELS[1:12])
+class ImagingToolsApp(CalculatorHubApp):
+    """The imaging workflow list on the left, the chosen tool (built on first use) on the right, one shared context."""
+
+    #: The steps Next / Previous walk, in pipeline order (the Qt tool's order).
+    PIPELINE_ORDER = ("browser", "drift", "frc", "tracking", "pixel_intensity", "pixel_nb", "pixel_micro_time",
+                      "calibration", "pixel_phasor", "pixel_mle")
     ANALYSIS_ROLES = ("pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor")
 
     def __init__(self, client=None, factories=None, mmfdb_db=None, mmfdb_session=None):
+        entries = [SimpleNamespace(id=r, label=name, icon="", description=tip, alias=r) for r, _p, name, tip in PANELS]
+        super().__init__(entries=entries)
+        self.continuous = False
         self.client = client or DetectorSetupClient()
         self.factories = factories
-        self.children = {}
         self.selected = "browser"
         self.search = ""
-        self.error = ""
+        self.status = "Ready"
         self.setup = copy.deepcopy(self.client.get_current())
         self._pipeline = {"source": "", "hdf5": ""}
         self._calibration = {}
@@ -142,13 +151,14 @@ class ImagingToolsApp(ImApp):
         self._mmfdb_db = mmfdb_db
         self._mmfdb_session = mmfdb_session
         self._mmfdb_source_artifact_id = ""
-        self._painter = None
-        self.child_box = (250.0, 100.0, 950.0, 650.0)
-        self.help = EmTkHelpWindow(
-            title="Imaging Tools — Help", resource=Path(__file__).with_name("help.md"), owner=self
-        )
-        super().__init__(self.render, continuous=False)
+        self._ff_queue = []
+        self.help = self.help_window = EmTkHelpWindow(
+            title="Imaging Tools - Help", resource=HERE / "help.md", owner=self, on_start_guide=self.start_guide,
+            size=(700.0, 480.0))
+        self.tour = EmTkGuidedTour(steps=HERE / "guide.json", owner=self, wait_for_controls=True,
+                                   get_target_rect=lambda key: self.item_rects.get(key))
 
+    # -- the tools ------------------------------------------------------------------------------- #
     def factory(self, role):
         if self.factories is not None:
             return self.factories.get(role)
@@ -158,15 +168,13 @@ class ImagingToolsApp(ImApp):
         manifest = ROOT / row[1] / "manifest.json"
         return json.loads(manifest.read_text()).get("entrypoints", {}).get("emtk")
 
-    @property
-    def child(self):
-        return self.children.get(self.selected)
-
     def goto_role(self, role):
+        """Select a tool, building its native app on first use with the shared context applied."""
         if role not in {row[0] for row in PANELS}:
             return False
         self.selected = role
         self.error = ""
+        self.tour.notify_used("entry:" + role)
         if role in self.children:
             return True
         factory = self.factory(role)
@@ -177,11 +185,8 @@ class ImagingToolsApp(ImApp):
             if isinstance(factory, str):
                 module, name = factory.split(":")
                 factory = getattr(importlib.import_module(module), name)
-            kwargs = (
-                {"settings": self.setup or None, "on_changed": self.set_setup}
-                if role == "setup"
-                else {"coordinator": self}
-            )
+            kwargs = ({"settings": self.setup or None, "on_changed": self.set_setup} if role == "setup"
+                      else {"coordinator": self})
             child = factory(**kwargs)
             child.set_frame_request_callback(self.request_frame)
             child._coordinator = self
@@ -201,10 +206,15 @@ class ImagingToolsApp(ImApp):
             else:
                 self._apply_context(child)
             self.autorun_role(role)
+            entry = next(e for e in self.entries if e.id == role)
+            self.status = f"{entry.label}: ready."
             return True
         except Exception as exc:
             self.error = str(exc)
+            self.status = self.error
             return False
+
+    select = goto_role  # the hub base's name for it
 
     def _apply_context(self, child):
         for method, payload in (
@@ -284,6 +294,51 @@ class ImagingToolsApp(ImApp):
     def previous_from(self, role):
         self._step(role, -1)
 
+    # -- the Back / Next / fast-forward stepper (the Qt shell's: the list order, up to the rule) ---------------------------- #
+    def list_roles(self):
+        """The list's tools in order (the entries the stepper walks)."""
+        return [e.id for e in self.entries]
+
+    def step_list(self, direction):
+        """Move one tool down (+1) or up (-1) the list; the numbered steps compute on arrival when a source is known."""
+        roles = self.list_roles()
+        at = roles.index(self.selected) if self.selected in roles else 0
+        target = at + direction
+        if 0 <= target < len(roles):
+            self.goto_role(roles[target])
+            return True
+        return False
+
+    def fast_forward_queue(self):
+        """The tools from the open one to the end of the numbered pipeline (the Qt queue stops at the separator)."""
+        roles = self.list_roles()
+        at = roles.index(self.selected) if self.selected in roles else 0
+        end = roles.index(SEPARATOR_BEFORE)
+        return roles[at:end]
+
+    def toggle_fast_forward(self):
+        """Start walking the rest of the pipeline one step at a time, each when the previous has finished; again to stop."""
+        if self._ff_queue:
+            self._ff_queue = []
+            self.status = "Fast-forward stopped: finishing this step"
+            return
+        queue = self.fast_forward_queue()
+        self._ff_queue = queue[1:] if len(queue) > 1 else []
+        self.status = f"Fast-forward: {len(self._ff_queue)} step(s) to go" if self._ff_queue else "Nothing to fast-forward"
+        self.request_frame()
+
+    def _child_busy(self):
+        child = self.child
+        job = getattr(child, "job", None)
+        model = getattr(child, "model", None)
+        return bool(getattr(job, "busy", False) or getattr(model, "busy", False))
+
+    def _fast_forward_tick(self):
+        if self._ff_queue and not self._child_busy():
+            self.goto_role(self._ff_queue.pop(0))
+            self.status = f"Fast-forward: {len(self._ff_queue)} step(s) to go" if self._ff_queue else "Fast-forward finished"
+            self.request_frame()
+
     def _step(self, role, direction):
         if role in self.PIPELINE_ORDER:
             index = self.PIPELINE_ORDER.index(role) + direction
@@ -311,14 +366,8 @@ class ImagingToolsApp(ImApp):
             export = getattr(child, "export_settings", None)
             if export:
                 states[role] = export()
-        return {
-            "selected": self.selected,
-            "search": self.search,
-            "setup": copy.deepcopy(self.setup),
-            "pipeline": dict(self._pipeline),
-            "calibration": copy.deepcopy(self._calibration),
-            "children": states,
-        }
+        return {"selected": self.selected, "search": self.search, "setup": copy.deepcopy(self.setup),
+                "pipeline": dict(self._pipeline), "calibration": copy.deepcopy(self._calibration), "children": states}
 
     def restore_settings(self, data):
         self._saved_children = copy.deepcopy(data.get("children", {}))
@@ -342,16 +391,7 @@ class ImagingToolsApp(ImApp):
                 close()
         self.help.close()
 
-    @property
-    def native_layouts(self):
-        layouts = {}
-        for role, child in self.children.items():
-            if hasattr(child, "docks"):
-                layouts[role] = child.docks
-            for name, manager in getattr(child, "native_layouts", {}).items():
-                layouts[role + "/" + name] = manager
-        return layouts
-
+    # -- frames -------------------------------------------------------------------------------------- #
     def draw(self, painter, x, y, w, h):
         self._painter = painter
         if self.child is None and not self.error:
@@ -361,137 +401,113 @@ class ImagingToolsApp(ImApp):
                 self.selected = selected
                 self.error = ""
             self.goto_role(self.selected)
-        super().draw(painter, x, y, w, h)
+        super(CalculatorHubApp, self).draw(painter, x, y, w, h)
         self._painter = None
 
+    def visible_entries(self):
+        needle = self.search.casefold()
+        return [e for e in self.entries if needle in (e.label + " " + e.description).casefold()]
+
     def render(self):
-        w, h = im.get_main_viewport().size
-        left = min(260.0, w * 0.28)
+        vp = im.get_main_viewport()
+        width, height = vp.size
+        left = min(LIST_MAX_W, max(215.0, width * 0.24))
+        self.item_rects.clear()
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
-        im.set_next_window_size((left, h), im.Cond.ALWAYS)
+        im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(label("Imaging Tools"), flags=im.WindowFlags.NO_RESIZE):
-            im.text_unformatted(label("Imaging workflow"))
-            im.separator()
             im.set_next_item_width(-1)
-            _, self.search = im.input_text(label("Search"), self.search)
+            _, self.search = im.input_text("##search_tools", self.search, hint=label("Search..."))
             im.set_item_tooltip(label("Filter imaging tools by name or description."))
-            for role, path, name, tip in PANELS:
-                if self.search.casefold() not in (name + " " + tip).casefold():
-                    continue
-                if role == "clsm_draw":
+            self.item_rects["search"] = im.get_item_rect()
+            first = last = None
+            shown = self.visible_entries()
+            for entry in shown:
+                if entry.id == SEPARATOR_BEFORE and first is not None:
                     im.separator()
-                available = bool(self.factory(role))
-                title = (
-                    ICONS[role]
-                    + " "
-                    + label(name)
-                    + (" · " + label("pending") if not available else "")
-                )
-                if im.selectable(title, self.selected == role, size=(0, 32)):
-                    self.goto_role(role)
-                im.set_item_tooltip(
-                    label(tip)
-                    + (
-                        " " + label("Native migration pending for this tool.")
-                        if not available
-                        else ""
-                    )
-                )
+                available = bool(self.factory(entry.id))
+                title = label(entry.label) + ("" if available else " - " + label("pending"))
+                if im.selectable(title, self.selected == entry.id):
+                    self.goto_role(entry.id)
+                im.set_item_tooltip(label(entry.description) + ("" if available else " " + label("Native migration pending for this tool.")))
+                rect = im.get_item_rect()
+                self.item_rects["entry:" + entry.id] = rect
+                first, last = first or rect, rect
+            if first is not None:
+                self.item_rects["navigation"] = (first[0], first[1], first[2], last[1] + last[3] - first[1])
+            if not shown:
+                im.text_wrapped(label("No tool matches the search."))
+            im.separator()
+            roles = self.list_roles()
+            at = roles.index(self.selected) if self.selected in roles else 0
+            im.begin_disabled(at <= 0)
+            if im.button(label("Back")):
+                self.step_list(-1)
+            im.end_disabled()
+            im.set_item_tooltip(label("Go to the previous tool in the list."))
+            self.item_rects["previous"] = im.get_item_rect()
+            im.same_line()
+            im.begin_disabled(at >= len(roles) - 1)
+            if im.button(label("Next")):
+                self.step_list(1)
+                self.tour.notify_used("next")
+            im.end_disabled()
+            im.set_item_tooltip(label("Go to the next tool in the list; the numbered steps compute on arrival when a source is known."))
+            self.item_rects["next"] = im.get_item_rect()
+            im.same_line()
+            numbered = roles[: roles.index(SEPARATOR_BEFORE)]
+            im.begin_disabled(not (self.selected in numbered and (len(self.fast_forward_queue()) > 1 or self._ff_queue)))
+            if im.button(label("Stop") if self._ff_queue else label("Run all")):
+                self.toggle_fast_forward()
+            im.end_disabled()
+            im.set_item_tooltip(label("Walk the rest of the numbered pipeline, each step when the previous has finished; press again to stop."))
+            self.item_rects["fast_forward"] = im.get_item_rect()
+            if im.button(label("Help")):
+                self.help.show()
+            im.set_item_tooltip(label("Read how detector setup, calibration and shared HDF5 are propagated."))
+            self.item_rects["help"] = im.get_item_rect()
+            im.same_line()
+            if im.button(label("Guide")):
+                self.tour.start()
+            im.set_item_tooltip(label("Walk through the imaging workflow."))
+            self.item_rects["guide"] = im.get_item_rect()
+            im.separator()
+            im.text_wrapped(self.status)
         im.end()
+        entry = next((e for e in self.entries if e.id == self.selected), None)
+        wrap = max(width - left - 16.0, 50.0)
+        source = label("Source") + ": " + (Path(self._pipeline["source"]).name or "-")
+        hdf5 = "HDF5: " + (Path(self._pipeline["hdf5"]).name or "-")
+        texts = [entry.label if entry else "", entry.description if entry else label("Select a tool on the left."), source + "    " + hdf5, self.error]
+        header_h = max(80.0, 12.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] + 4.0 for t in texts if t))
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
-        im.set_next_window_size((w - left, 72), im.Cond.ALWAYS)
-        if im.begin(
-            "Imaging workflow", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
-        ):
-            for text, tip, action in (
-                (
-                    "Previous",
-                    "Go to the previous imaging step.",
-                    lambda: self.previous_from(self.selected),
-                ),
-                (
-                    "Next",
-                    "Go to the next imaging step and reuse the current source.",
-                    lambda: self.advance_from(self.selected),
-                ),
-                (
-                    "Help",
-                    "Read how detector setup, calibration and shared HDF5 are propagated.",
-                    self.help.show,
-                ),
-            ):
-                if im.button(label(text)):
-                    action()
-                im.set_item_tooltip(label(tip))
-                im.same_line()
-            im.new_line()
-            im.text_unformatted(
-                label("Source") + ": " + (Path(self._pipeline["source"]).name or "—")
-            )
-            im.set_item_tooltip(
-                self._pipeline["source"] or label("Choose a photon image in Browser.")
-            )
-            im.text_unformatted("HDF5: " + (Path(self._pipeline["hdf5"]).name or "—"))
-            im.set_item_tooltip(
-                self._pipeline["hdf5"] or label("Intensity creates the shared imaging HDF5.")
-            )
+        im.set_next_window_size((width - left, header_h), im.Cond.ALWAYS)
+        if im.begin("Imaging tool description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+            if entry:
+                im.text_unformatted(label(entry.label))
+                im.text_wrapped(label(entry.description))
+            im.text_unformatted(source)
+            im.set_item_tooltip(self._pipeline["source"] or label("Choose a photon image in Browser."))
+            self.item_rects["source"] = im.get_item_rect()
+            im.same_line()
+            im.text_unformatted("    " + hdf5)
+            im.set_item_tooltip(self._pipeline["hdf5"] or label("Intensity creates the shared imaging HDF5."))
             if self.error:
                 im.text_wrapped(self.error)
+            self.item_rects["description"] = im.get_item_rect()
         im.end()
-        self.child_box = (left, 72.0, max(1.0, w - left), max(1.0, h - 72.0))
+        self.child_box = (left, header_h, max(1.0, width - left), max(1.0, height - header_h))
         if self.child:
             self.draw_child(self._painter, self.child, *self.child_box, local_coordinates=True)
-        self.help.draw((0, 0, w, h))
-
-    def _inside(self, x, y):
-        bx, by, bw, bh = self.child_box
-        return bx <= x < bx + bw and by <= y < by + bh
-
-    def pointer_press(self, x, y, button, modifiers=0, clicks=1):
-        super().pointer_press(x, y, button, modifiers, clicks)
-        if self.child and self._inside(x, y):
-            self.child.pointer_press(
-                x - self.child_box[0], y - self.child_box[1], button, modifiers, clicks
-            )
-
-    def pointer_release(self, x, y, button, modifiers=0):
-        super().pointer_release(x, y, button, modifiers)
-        if self.child:
-            self.child.pointer_release(
-                x - self.child_box[0], y - self.child_box[1], button, modifiers
-            )
-
-    def pointer_move(self, x, y, buttons=0, modifiers=0):
-        super().pointer_move(x, y, buttons, modifiers)
-        if self.child:
-            self.child.pointer_move(
-                x - self.child_box[0], y - self.child_box[1], buttons, modifiers
-            )
-
-    def wheel(self, x, y, steps, modifiers=0):
-        super().wheel(x, y, steps, modifiers)
-        if self.child and self._inside(x, y):
-            self.child.wheel(x - self.child_box[0], y - self.child_box[1], steps, modifiers)
-
-    def key(self, key, text="", modifiers=0):
-        return (
-            self.child.key(key, text, modifiers)
-            if self.child
-            else super().key(key, text, modifiers)
-        )
-
-    def animating(self):
-        return super().animating() or any(child.animating() for child in self.children.values())
-
-    def next_frame_in(self):
-        values = [super().next_frame_in()] + [
-            child.next_frame_in() for child in self.children.values()
-        ]
-        return min((v for v in values if v is not None), default=None)
+        self.help.draw((0, 0, width, height))
+        self.tour.draw(width, height)
+        self._fast_forward_tick()
 
     def on_files_dropped(self, paths):
         handler = getattr(self.child, "on_files_dropped", None)
         return bool(handler and handler(paths))
+
+    files_dropped = on_files_dropped
 
 
 def make_app(**kwargs):

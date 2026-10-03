@@ -1,0 +1,63 @@
+{
+  "_comment": "Guided tour of the Imaging Tools hub. Steps point at real controls of the hub (the search field, the list entries, Previous/Next, the source banner); the ones that need the user's hands wait for them. The embedded tool has its own Guide.",
+  "steps": [
+    {
+      "title": "One list, one shared context",
+      "text": "Imaging Tools lists the imaging workflow: detector setup, the image browser, motion and resolution tools, the numbered per-pixel steps, then CLSM Draw, Spot Finder, Region MLE and PSF Determination. Each is its own tool; this window keeps what they share: the detector setup, the photon source, the imaging HDF5 and the IRF and background calibration.",
+      "target": {
+        "name": "navigation"
+      }
+    },
+    {
+      "title": "Find a tool",
+      "text": "Type in the <b>search</b> field to keep the tools whose name or description contains the text. Hover over a tool for what it does.",
+      "target": {
+        "name": "search"
+      }
+    },
+    {
+      "title": "Define the detectors once",
+      "text": "<b>Setup</b> is where you define detector channels and PIE windows once; every imaging step receives that definition and reapplies it when you change it.",
+      "target": {
+        "name": "entry:setup"
+      },
+      "await": {
+        "hint": "Click <b>Setup</b> in the list."
+      }
+    },
+    {
+      "title": "Start with the Browser",
+      "text": "Pick <b>Browser</b> to choose a photon image. What you choose there becomes the <b>Source</b> of every later step.",
+      "target": {
+        "name": "entry:browser"
+      },
+      "await": {
+        "hint": "Click <b>Browser</b> in the list."
+      }
+    },
+    {
+      "title": "Walk the pipeline",
+      "text": "<b>Next</b> goes to the next imaging step and reuses the current source; the numbered per-pixel steps compute on arrival when a source is known. <b>Previous</b> goes back. Each tool keeps its settings, drawn regions and results while you move between them.",
+      "target": {
+        "name": "next"
+      },
+      "await": {
+        "hint": "Press <b>Next</b>."
+      }
+    },
+    {
+      "title": "What is shared",
+      "text": "The line under the tool's name shows the <b>Source</b> photon file and the <b>HDF5</b> the Intensity step created; Number and Brightness, Mean Micro-Time, Phasor and MLE enrich that same file.",
+      "target": {
+        "name": "source"
+      }
+    },
+    {
+      "title": "Help",
+      "text": "<b>Help</b> explains how the setup, the calibration and the shared HDF5 are propagated. The tool you open has its own <b>Help</b> and <b>Guide</b>.",
+      "target": {
+        "name": "help"
+      }
+    }
+  ]
+}

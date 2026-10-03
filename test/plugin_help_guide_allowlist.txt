@@ -19,7 +19,6 @@ chisurf/plugins/core/wizards/gui
 chisurf/plugins/fcs/fcs_channel_preset/gui
 chisurf/plugins/microscopy/clsm/gui
 chisurf/plugins/microscopy/clsm_generator/gui
-chisurf/plugins/microscopy/imaging_tools/gui
 chisurf/plugins/microscopy/img_pixel_intensity/gui
 chisurf/plugins/microscopy/img_pixel_micro_time/gui
 chisurf/plugins/microscopy/img_pixel_mle/gui
