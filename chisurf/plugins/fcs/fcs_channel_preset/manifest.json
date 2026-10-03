@@ -15,6 +15,7 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.fcs.fcs_channel_preset.gui.tool:FCSChannelWidget"
+    "gui": "chisurf.plugins.fcs.fcs_channel_preset.gui.tool:FCSChannelWidget",
+    "emtk": "chisurf.plugins.fcs.fcs_channel_preset.gui.app:create_app"
   }
 }

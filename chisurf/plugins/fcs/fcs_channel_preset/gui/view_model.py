@@ -18,8 +18,10 @@ class construction cost is paid only when the tool actually opens.
 
 from __future__ import annotations
 
+import copy
 import json
 import pathlib
+import tempfile
 import typing
 
 from chisurf.core.dataspec import load_view_spec
@@ -37,8 +39,10 @@ Observer = typing.Callable[[str], None]
 class FCSChannelViewModel:
     """State + logic behind the FCS channel-definition editor (Qt-free)."""
 
-    def __init__(self, db_path: str | None = None) -> None:
+    def __init__(self, db_path: str | None = None, *, detector_file=None, preset_file=None) -> None:
         self._db_path = db_path
+        self._detector_file = detector_file
+        self._preset_file = preset_file
         self._detector_setups: dict[str, typing.Any] = {}
         self._fcs_cfg: dict[str, typing.Any] = {}
         self._current_setup: str | None = None
@@ -67,7 +71,9 @@ class FCSChannelViewModel:
         from chisurf.core.fluorescence.fcs.channel_setups import load_fcs_channel_setups
 
         self._reload_detector_setups_data()
-        self._fcs_cfg = load_fcs_channel_setups(db_path=self._db_path, skip_migration=True)
+        self._fcs_cfg = load_fcs_channel_setups(
+            file_path=self._preset_file, db_path=self._db_path, skip_migration=True
+        )
         names = self.setup_names()
         last = self._fcs_cfg.get("last_used_setup") if isinstance(self._fcs_cfg, dict) else None
         if isinstance(last, str) and last in names:
@@ -76,9 +82,22 @@ class FCSChannelViewModel:
             self.current_setup = names[0]
 
     def _reload_detector_setups_data(self) -> None:
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
+        from chisurf.core.fio import setup_store
+        from chisurf.core.setup_channel_definition import ChannelDefinition
 
-        data = load_detector_setups(db_path=self._db_path, skip_migration=True)
+        db = setup_store.get_db(self._db_path) if self._detector_file is None else None
+        try:
+            if db is None and self._detector_file is None:
+                from chisurf.core.data_io.detector_setups import load_detector_setups
+
+                data = load_detector_setups()
+            else:
+                definition = ChannelDefinition(file_path=self._detector_file, db=db)
+                definition.refresh_setups()
+                data = {"setups": definition.setups}
+        finally:
+            if db is not None:
+                setup_store.close_owned_db(db)
         self._detector_setups = data.get("setups", {}) if isinstance(data, dict) else {}
 
     # ── detector-setup selection (bound: choice attr ``current_setup``) ──
@@ -202,6 +221,8 @@ class FCSChannelViewModel:
 
     @is_public.setter
     def is_public(self, value: bool) -> None:
+        if bool(value) != self._is_public and not self.can_edit_public:
+            raise PermissionError("Only the owner may change the public flag.")
         self._is_public = bool(value)
 
     @property
@@ -213,9 +234,16 @@ class FCSChannelViewModel:
     def reload_setups(self) -> None:
         """Re-read detector setups from disk, preserving the selection if valid."""
         self._reload_detector_setups_data()
+        from chisurf.core.fluorescence.fcs.channel_setups import load_fcs_channel_setups
+
+        self._fcs_cfg = load_fcs_channel_setups(
+            file_path=self._preset_file, db_path=self._db_path, skip_migration=True
+        )
         names = self.setup_names()
         if self._current_setup not in names:
             self.current_setup = names[0] if names else ""
+        else:
+            self._refresh_for_setup()
         self.notify("setups_reloaded")
 
     def save(self) -> bool:
@@ -225,20 +253,169 @@ class FCSChannelViewModel:
             return False
         from chisurf.core.fluorescence.fcs.channel_setups import (
             load_fcs_channel_setups,
-            save_fcs_channel_setups,
         )
 
-        cfg_all = load_fcs_channel_setups()
+        self.validate()
+        cfg_all = load_fcs_channel_setups(
+            file_path=self._preset_file, db_path=self._db_path, skip_migration=True
+        )
         setups = cfg_all.get("setups")
         if not isinstance(setups, dict):
             setups = {}
             cfg_all["setups"] = setups
         setups[self._current_setup] = self._collect_setup_data()
         cfg_all["last_used_setup"] = self._current_setup
-        ok = bool(save_fcs_channel_setups(cfg_all, is_public=self._is_public))
-        self._fcs_cfg = cfg_all
+        ok = self._persist(cfg_all)
+        if ok:
+            self._fcs_cfg = cfg_all
         self.notify("saved" if ok else "save_failed")
         return ok
+
+    def _persist(self, config, *, names=None):
+        from chisurf.core.fluorescence.fcs import channel_setups as fcs
+
+        if self._preset_file is not None:
+            return bool(fcs.save_fcs_channel_setups(config, file_path=self._preset_file))
+        from chisurf.core.fio import setup_store as store
+
+        setups = config.get("setups", {})
+        names = {self.current_setup} if names is None else names
+        return store.save_setups(
+            {
+                "setups": {name: setups[name] for name in names if name in setups},
+                "last_used": config.get("last_used_setup"),
+            },
+            fcs._fcs_config(),
+            is_public=self._is_public,
+            save_row_fn=fcs._save_setup_row,
+            get_db_fn=lambda: store.get_db(self._db_path),
+        )
+
+    def validate(self):
+        self._validate_records(self._pairs, self._channel_names)
+
+    @staticmethod
+    def _validate_records(pairs, channels=None):
+        names = set()
+        for pair in pairs:
+            if not isinstance(pair, dict):
+                raise ValueError("Every pair must be an object.")
+            a, b = str(pair.get("channel_a", "")).strip(), str(pair.get("channel_b", "")).strip()
+            name = str(pair.get("name", "")).strip() or (f"{a}×{b}" if a != b else f"{a}_ACF")
+            if not a or not b:
+                raise ValueError("Each pair needs two logical channels.")
+            if name in names:
+                raise ValueError(
+                    "Pair names must be unique; duplicate names overwrite database rows."
+                )
+            names.add(name)
+            if channels is not None and (a not in channels or b not in channels):
+                raise ValueError(f"Pair {name} refers to an unavailable logical channel.")
+            for key in ("n_bins", "n_casc"):
+                raw = pair.get(key)
+                if raw not in (None, ""):
+                    try:
+                        valid = (
+                            not isinstance(raw, bool) and int(raw) == float(raw) and int(raw) > 0
+                        )
+                    except (TypeError, ValueError, OverflowError):
+                        valid = False
+                    if not valid:
+                        raise ValueError(
+                            "Bins and cascades must be positive whole numbers, or blank for defaults."
+                        )
+            if pair.get("make_fine") is not None and not isinstance(pair["make_fine"], bool):
+                raise ValueError("Fine-grid override must be a boolean or null.")
+
+    def delete_preset(self):
+        if not self.current_setup:
+            raise ValueError("Select a detector setup first.")
+        config = copy.deepcopy(self._fcs_cfg)
+        config.setdefault("setups", {}).pop(self.current_setup, None)
+        config["last_used_setup"] = None
+        if self._preset_file is None:
+            from chisurf.core.fio import setup_store as store
+            from chisurf.core.fluorescence.fcs import channel_setups as fcs
+
+            if not self.can_edit_public:
+                raise PermissionError("Only the owner may delete this preset.")
+            db = store.get_db(self._db_path)
+            if db is None:
+                raise OSError("MMFDB unavailable; preset was not deleted.")
+            try:
+                db.delete_setup(
+                    store.setup_id_for_name(
+                        self.current_setup,
+                        store.resolve_active_user_id(),
+                        fcs._fcs_config().id_prefix,
+                    )
+                )
+                store.set_last_used(db, fcs._fcs_config(), "")
+            finally:
+                store.close_owned_db(db)
+        elif not self._persist(config):
+            raise OSError("Could not delete the FCS preset.")
+        self._fcs_cfg = config
+        self._refresh_for_setup()
+        self.notify("pairs_changed")
+
+    def export_presets(self, path):
+        config = copy.deepcopy(self._fcs_cfg)
+        if self.current_setup:
+            self.validate()
+            config.setdefault("setups", {})[self.current_setup] = self._collect_setup_data()
+            config["last_used_setup"] = self.current_setup
+        from chisurf.core.fluorescence.fcs.channel_setups import save_fcs_channel_setups
+
+        path = pathlib.Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # The canonical settings path selects MMFDB in the shared helper.
+        # Export must always produce an actual file, even when that path was
+        # chosen. Use its existing atomic JSON writer on a temporary sibling.
+        with tempfile.NamedTemporaryFile(
+            dir=path.parent, prefix=path.name, suffix=".json", delete=False
+        ) as stream:
+            temporary = pathlib.Path(stream.name)
+        try:
+            if not save_fcs_channel_setups(config, file_path=temporary):
+                raise OSError("Could not export channel presets.")
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    def import_presets(self, path):
+        payload = json.loads(pathlib.Path(path).read_text())
+        if not isinstance(payload, dict) or not isinstance(payload.get("setups"), dict):
+            raise ValueError("Import a channel preset library with a setups object.")
+        for name, config in payload["setups"].items():
+            if (
+                not isinstance(name, str)
+                or not name.strip()
+                or not isinstance(config, dict)
+                or not isinstance(config.get("pairs", []), list)
+            ):
+                raise ValueError("Each preset needs a setup name and a pair list.")
+            if any(not isinstance(pair, dict) for pair in config.get("pairs", [])):
+                raise ValueError("Every imported pair must be an object.")
+            channels = None
+            setup = self._detector_setups.get(name)
+            if setup is not None:
+                from chisurf.core.fluorescence.fcs.channel_setups import build_channels_from_setup
+
+                channels = build_channels_from_setup(
+                    setup.get("windows", {}), setup.get("detectors", {})
+                )
+            self._validate_records(config.get("pairs", []), channels)
+            config.pop("_owner", None)  # imports create the importing user's records
+        config = copy.deepcopy(self._fcs_cfg)
+        config.setdefault("setups", {}).update(copy.deepcopy(payload["setups"]))
+        last = payload.get("last_used_setup")
+        config["last_used_setup"] = last if last in self.setup_names() else self.current_setup
+        if not self._persist(config, names=set(payload["setups"])):
+            raise OSError("Could not import channel presets.")
+        self._fcs_cfg = config
+        self.current_setup = last if last in self.setup_names() else self.current_setup
+        self.notify("pairs_changed")
 
     def _collect_setup_data(self) -> dict[str, typing.Any]:
         pairs: list[dict[str, typing.Any]] = []

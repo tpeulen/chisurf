@@ -48,3 +48,16 @@ restart; ChiSurf falls back to the default appearance.
 ## Further reading
 
 - [Settings reference](docs/reference/settings.md)
+
+## Native EMTK window
+
+The native manager preserves QSS source and offers **Open** and **Save As** in
+addition to the original file list. Unsaved changes require a discard confirmation
+before opening another style. New names cannot replace an existing file.
+
+**Apply** saves and translates supported color declarations into EMTK palette
+roles for this window. Qt-specific selectors, images, gradients and geometry
+remain in the file and appear in the **Qt-only declarations** list. Their
+unsupported styling is not silently treated as applied. Application-wide native
+theme propagation is handled by the host; this standalone window previews the
+translated palette.
