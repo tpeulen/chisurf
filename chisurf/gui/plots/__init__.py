@@ -25,6 +25,7 @@ _EXPORTS = {
     "Residual2DPlot": "residual_image",
     "SamplingDiagnosticsPlot": "sampling_diagnostics",
     "FitTablePlot": "table_plot",
+    "FitTablePlotEmtk": "table_plot_emtk",
     "ResidualPlot": "wr_plot",
 }
 _MODULES = frozenset(_EXPORTS.values()) | {

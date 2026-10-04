@@ -39,10 +39,37 @@ def _plots():
     return _p
 
 
+def _fit_table_setting() -> str:
+    """Which Data-table page renders: the retained Qt one or the emtk port.
+
+    Resolution order: ``CHISURF_FIT_TABLE_BACKEND`` environment variable, the
+    ``gui.plot.fit_table`` setting, ``"qt"``. The emtk page becomes the
+    default only when its acceptance record says so, per the repo's
+    Qt-to-emtk acceptance rule.
+    """
+    import os
+
+    from_env = os.environ.get("CHISURF_FIT_TABLE_BACKEND")
+    if from_env:
+        return from_env
+    try:
+        import chisurf.core.settings as _settings
+
+        value = _settings.cs_settings.get("gui", {}).get("plot", {}).get("fit_table")
+        if value:
+            return value
+    except Exception:
+        pass
+    return "qt"
+
+
 register_plot("line", lambda: _plots().LinePlot)
 register_plot("residual", lambda: _plots().ResidualPlot)
 register_plot("fit_info", lambda: _plots().FitInfo)
-register_plot("fit_table", lambda: _plots().FitTablePlot)
+register_plot(
+    "fit_table",
+    lambda: _plots().FitTablePlotEmtk if _fit_table_setting() == "emtk" else _plots().FitTablePlot,
+)
 register_plot("parameter_scan", lambda: _plots().ParameterScanPlot)
 register_plot("distribution", lambda: _plots().DistributionPlot)
 register_plot("residual2d", lambda: _plots().Residual2DPlot)

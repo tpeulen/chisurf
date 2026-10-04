@@ -40916,3 +40916,41 @@ side of the line.
   (mfd_surface, table_plot, fit_plots_area, dock_area, fit_presentation_contract).
   Open follow-up: the "Data table" plot page is still `ChiTableWidget` (Qt) —
   a port of that 5.4k-line table framework to emtk's `DataTable` is its own ticket.
+- 2026-10-04 (hermes, resuming antigravity/9b57b5bf) — Info plot contents drawn by
+  emtk. The fit window's Info page still pasted a white read-only `QPlainTextEdit`
+  (the fit report) into the emtk plot surface — the last classic-Qt content visible
+  in a plot dock. New `chisurf/gui/plots/emtk_text_view.py` (`EmtkTextView`):
+  emtk's read-only `TextEditor` (no gutter numbers, no current-line highlight — a
+  report is not code) hosted by `emtk.qt_host.ControlHost`, wrapped in the
+  `QPlainTextEdit` call surface (`setPlainText`/`toPlainText`) its fillers and
+  readers already use; Qt fallback when emtk cannot be imported. `FitInfo.textedit`
+  and `FitInfo.cif_preview` are `EmtkTextView` now; the four Analysis/Metadata
+  form tabs are unchanged Qt. Evidence
+  `~/.hermes/cache/scratch/fitinfo-emtk/` (info + export PNGs, both dark and
+  readable); new `test/gui/test_emtk_fit_info_view.py` (5, incl. the emtk-type
+  assertions) green with the 97-test gui sweep
+  (mfd_surface, table_plot, fit_plots_area, dock_area, fit_presentation_contract).
+  Open follow-up: the "Data table" plot page is still `ChiTableWidget` (Qt) —
+  a port of that 5.4k-line table framework to emtk's `DataTable` is its own ticket.
+
+- 2026-10-04 (hermes, continued) — "Data table" plot page ported to emtk behind
+  an explicit selector. New `chisurf/gui/plots/table_plot_emtk.py`
+  (`FitTablePlotEmtk`): the whole page — toolbar (`SmallButton`), table
+  (emtk `DataTable` with real checkbox cells for the fit mask, typed cell edits
+  for x/data, filter box, sort), status line — drawn through
+  `emtk.qt_host.ControlHost`; subclasses the Qt page to reuse the widget-free
+  science (aligned arrays, `_set_arrays`/`_set_mask` routing through the
+  fitting client, the model-parameter frame). Selected by
+  `gui.plot.fit_table: emtk` or `CHISURF_FIT_TABLE_BACKEND=emtk`; the retained
+  Qt page stays the default per the acceptance rule (swap after formal
+  visual+click+parity acceptance). Evidence
+  `~/.hermes/cache/scratch/fittable-emtk/` (1200x800 + 800x600 PNGs, both read:
+  all columns, mask checkboxes with rows 5/6 unchecked, filter, status line,
+  no clipping). 8 new tests `test/gui/test_table_plot_emtk.py` (real-input:
+  double-click edit + Enter commits 99 into the curve + update_fit; mask
+  checkbox click pushes set_fit_mask; copy with headers; filter narrows;
+  registry default/select) green with test_table_plot and the fitinfo sweep.
+  Not my regression, attributed at HEAD in an isolated clone:
+  `test_plots_no_orphan_modules` already flags 17 plot modules at 6cf489e53
+  (the AST guard predates the string-keyed plot registry; table_plot_emtk
+  joins the same pre-existing list). ruff clean.
