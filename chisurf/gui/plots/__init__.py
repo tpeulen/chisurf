@@ -1,39 +1,53 @@
+"""Plot classes and submodules loaded only when their public names are used."""
+
+from importlib import import_module
+
 import chisurf.core.settings
 from chisurf.gui import chiplot as cp
 
 cp.configure(**chisurf.core.settings.cs_settings["gui"]["plot"]["pyqtgraph_config"])
 
-import chisurf.gui.plots.global_fit
-
-try:
-    import chisurf.gui.plots.global_tcspc
-except Exception:
-    pass
-from chisurf.gui.plots.conditional_scan import ConditionalScanPlot
-from chisurf.gui.plots.deer_pr import DeerPrCIPlot
-from chisurf.gui.plots.distribution import DistributionPlot
-from chisurf.gui.plots.fitinfo import *
-from chisurf.gui.plots.lcurve import LCurvePlot
-from chisurf.gui.plots.lineplot import *
-from chisurf.gui.plots.mfd_2d import Mfd2DPlot, MfdMarginalPlot
-from chisurf.gui.plots.mfd_map import MfdMapPlot
-from chisurf.gui.plots.parameter_scan import ParameterScanPlot
-from chisurf.gui.plots.plotbase import *
-from chisurf.gui.plots.posterior_graph import PosteriorGraphPlot
-from chisurf.gui.plots.residual_image import Residual2DPlot
-from chisurf.gui.plots.sampling_diagnostics import SamplingDiagnosticsPlot
-from chisurf.gui.plots.table_plot import FitTablePlot
-from chisurf.gui.plots.wr_plot import ResidualPlot
+_EXPORTS = {
+    "ConditionalScanPlot": "conditional_scan",
+    "DeerPrCIPlot": "deer_pr",
+    "DistributionPlot": "distribution",
+    "DropTable": "fitinfo",
+    "FitInfo": "fitinfo",
+    "LCurvePlot": "lcurve",
+    "LinePlot": "lineplot",
+    "LinePlotControl": "lineplot",
+    "Mfd2DPlot": "mfd_2d",
+    "MfdMarginalPlot": "mfd_2d",
+    "MfdMapPlot": "mfd_map",
+    "ParameterScanPlot": "parameter_scan",
+    "Plot": "plotbase",
+    "PosteriorGraphPlot": "posterior_graph",
+    "Residual2DPlot": "residual_image",
+    "SamplingDiagnosticsPlot": "sampling_diagnostics",
+    "FitTablePlot": "table_plot",
+    "ResidualPlot": "wr_plot",
+}
+_MODULES = frozenset(_EXPORTS.values()) | {
+    "global_fit",
+    "global_tcspc",
+    "molview",
+    "proteinMC",
+}
+__all__ = list(_EXPORTS)
 
 
 def __getattr__(name: str):
-    """Lazy-load heavy plotting modules on first access."""
-    if name == "molview":
-        from chisurf.gui.plots import molview
+    """Resolve and cache a public plot class or submodule on first access."""
+    if name in _EXPORTS:
+        value = getattr(import_module(f"{__name__}.{_EXPORTS[name]}"), name)
+    elif name in _MODULES:
+        value = import_module(f"{__name__}.{name}")
+    else:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    globals()[name] = value
+    return value
 
-        return molview
-    if name == "proteinMC":
-        from chisurf.gui.plots import proteinMC
 
-        return proteinMC
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+def __dir__():
+    """Include unresolved public names in introspection without importing them."""
+    return sorted(set(globals()) | set(__all__) | _MODULES)

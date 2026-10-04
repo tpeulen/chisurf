@@ -9,12 +9,71 @@ lets the model layer stay GUI-free while still driving a rich UI.
 
 from __future__ import annotations
 
+import importlib
+
 from chisurf import typing
 
 #: key -> plot class (resolved lazily so importing this module is cheap).
 _PLOT_REGISTRY: typing.Dict[str, typing.Callable[[], type]] = {}
 #: key -> custom-section factory ``(model, target, **options) -> QWidget``.
 _SECTION_REGISTRY: typing.Dict[str, typing.Callable[..., typing.Any]] = {}
+
+
+# Shipped registrations; test_fit_first_use checks these against the source ASTs.
+_SECTION_MODULES = {
+    "anisotropy_diagnostics": "anisotropy_diagnostics_section",
+    "background_run": "background_run_section",
+    "chimol": "chimol_section",
+    "code_editor": "code_editor_section",
+    "data_source": "data_source_section",
+    "data_table": "data_table_section",
+    "decay_conv": "decay_conv_section",
+    "decay_panel": "decay_panel_section",
+    "embed": "embed_section",
+    "equation_editor": "equation_editor_section",
+    "fit_mixer": "builtin",
+    "fitting_parameter": "registry",
+    "global_parameter_table": "global_parameter_table",
+    "help": "help_section",
+    "image": "builtin",
+    "image_browser": "image_browser_section",
+    "kappa2_controls": "builtin",
+    "lcurve": "builtin",
+    "level_histogram": "level_histogram_section",
+    "lifetime_amplitude_options": "builtin",
+    "memory_editor": "memory_editor_section",
+    "node_graph": "node_graph_section",
+    "path_list": "path_list_section",
+    "phasor": "phasor_section",
+    "progress": "progress_section",
+    "quiver": "quiver_section",
+    "rate_matrix": "rate_matrix_section",
+    "region_list": "region_list_section",
+    "scalar_table": "scalar_table_section",
+    "setup_selector": "setup_selector_section",
+    "state_scheme": "state_scheme_section",
+    "state_table": "state_table_section",
+    "store_table": "store_table_section",
+    "waterfall": "waterfall_section",
+}
+_PLOT_MODULES = {
+    "distribution": "builtin",
+    "fit_info": "builtin",
+    "fit_table": "builtin",
+    "lcurve": "builtin",
+    "line": "builtin",
+    "mfd_2d": "builtin",
+    "mfd_map": "builtin",
+    "mfd_marginals": "builtin",
+    "parameter_scan": "builtin",
+    "pr_ci": "builtin",
+    "proteinmc_network": "builtin",
+    "proteinmc_structure": "builtin",
+    "proteinmc_traces": "builtin",
+    "residual": "builtin",
+    "residual2d": "builtin",
+    "state_scheme": "state_scheme_section",
+}
 
 
 def register_plot(key: str, factory: typing.Callable[[], type]) -> None:
@@ -28,11 +87,17 @@ def register_plot(key: str, factory: typing.Callable[[], type]) -> None:
         Zero-argument callable returning the plot *class*. A factory (rather
         than the class directly) avoids importing the GUI plots eagerly.
     """
-    _PLOT_REGISTRY[key] = factory
+    if getattr(factory, "__module__", None) == f"{__package__}.{_PLOT_MODULES.get(key)}":
+        # A direct builtin import must not replace an earlier custom override.
+        _PLOT_REGISTRY.setdefault(key, factory)
+    else:
+        _PLOT_REGISTRY[key] = factory
 
 
 def get_plot_class(key: str) -> typing.Optional[type]:
     """Return the plot class registered under ``key`` (or ``None``)."""
+    if key not in _PLOT_REGISTRY and key in _PLOT_MODULES:
+        importlib.import_module(f"{__package__}.{_PLOT_MODULES[key]}")
     factory = _PLOT_REGISTRY.get(key)
     return factory() if factory is not None else None
 
@@ -45,7 +110,10 @@ def register_section(key: str):
     """
 
     def _decorator(factory: typing.Callable[..., typing.Any]):
-        _SECTION_REGISTRY[key] = factory
+        if getattr(factory, "__module__", None) == f"{__package__}.{_SECTION_MODULES.get(key)}":
+            _SECTION_REGISTRY.setdefault(key, factory)
+        else:
+            _SECTION_REGISTRY[key] = factory
         return factory
 
     return _decorator
@@ -53,6 +121,8 @@ def register_section(key: str):
 
 def get_section_factory(key: str) -> typing.Optional[typing.Callable[..., typing.Any]]:
     """Return the custom-section factory registered under ``key`` (or ``None``)."""
+    if key not in _SECTION_REGISTRY and key in _SECTION_MODULES:
+        importlib.import_module(f"{__package__}.{_SECTION_MODULES[key]}")
     return _SECTION_REGISTRY.get(key)
 
 

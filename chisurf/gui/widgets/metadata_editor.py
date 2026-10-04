@@ -47,16 +47,40 @@ COMMON_METADATA_KEYS = [
     "flrcif.data_type",
 ]
 
-try:
-    _PDBX_KEYS = get_pdbx_metadata_keys()
-except Exception:
-    _PDBX_KEYS = []
-ALL_METADATA_KEYS = COMMON_METADATA_KEYS + [k for k in _PDBX_KEYS if k not in COMMON_METADATA_KEYS]
+# Keep the historical star-import surface, including the demand-loaded catalog.
+ALL_METADATA_KEYS: list[str]  # The real list is supplied on demand by __getattr__.
+__all__ = [
+    "ALL_METADATA_KEYS", "COMMON_METADATA_KEYS", "MetadataEditor",
+    "MetadataKeyComboBox", "Qt", "QtCore", "QtGui", "QtWidgets",
+    "TooltipDelegate", "get_pdbx_metadata_descriptions", "get_pdbx_metadata_keys",
+    "key_description",
+]
 
-try:
-    _PDBX_DESCRIPTIONS = get_pdbx_metadata_descriptions()
-except Exception:
-    _PDBX_DESCRIPTIONS = {}
+
+def _all_metadata_keys() -> list[str]:
+    """Load the full catalog only when a key picker (or public export) needs it."""
+    keys = globals().get("ALL_METADATA_KEYS")
+    if keys is None:
+        try:
+            pdbx_keys = get_pdbx_metadata_keys()
+        except Exception:
+            pdbx_keys = []
+        keys = COMMON_METADATA_KEYS + [k for k in pdbx_keys if k not in COMMON_METADATA_KEYS]
+        globals()["ALL_METADATA_KEYS"] = keys
+    return keys
+
+
+def __getattr__(name: str):
+    if name == "ALL_METADATA_KEYS":
+        return _all_metadata_keys()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(set(globals()) | {"ALL_METADATA_KEYS"})
+
+
+_PDBX_DESCRIPTIONS: dict[str, str] | None = None
 
 _COMMON_DESCRIPTIONS: dict[str, str] = {
     "pH": "Solution pH",
@@ -84,10 +108,26 @@ _COMMON_DESCRIPTIONS: dict[str, str] = {
 
 
 def key_description(key: str) -> str:
+    global _PDBX_DESCRIPTIONS
     desc = _COMMON_DESCRIPTIONS.get(key)
     if desc:
         return desc
+    if _PDBX_DESCRIPTIONS is None:
+        try:
+            _PDBX_DESCRIPTIONS = get_pdbx_metadata_descriptions()
+        except Exception:
+            _PDBX_DESCRIPTIONS = {}
     return _PDBX_DESCRIPTIONS.get(key, "")
+
+
+class _MetadataKeyModel(QtCore.QStringListModel):
+    """Compact native key storage; compute only the requested tooltip role."""
+
+    def data(self, index, role=Qt.DisplayRole):
+        if role == Qt.UserRole + 1 and index.isValid():
+            key = super().data(index, Qt.DisplayRole)
+            return key_description(key)
+        return super().data(index, role)
 
 
 # ---------------------------------------------------------------------------
@@ -109,12 +149,28 @@ class TooltipDelegate(QtWidgets.QStyledItemDelegate):
 class MetadataKeyComboBox(QtWidgets.QComboBox):
     """Editable combobox with dropdown item tooltips."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        view = self.view()
+        if isinstance(view, QtWidgets.QListView):
+            # Every key uses the same font/row height. Otherwise styled popup
+            # layout queries all roles on thousands of offscreen rows.
+            view.setUniformItemSizes(True)
+
+    def _install_tooltip_delegate(self, view):
+        if getattr(self, "_tooltip_delegate_view", None) is not view:
+            self._tooltip_delegate_view = view
+            # Retain the Python subclass: the Qt view does not own its Python
+            # wrapper, so an unreferenced delegate loses its helpEvent override.
+            self._tooltip_delegate = TooltipDelegate(view)
+        view.setItemDelegate(self._tooltip_delegate)
+
     def showEvent(self, event):
         super().showEvent(event)
         view = self.view()
         if view is not None:
             view.setMouseTracking(True)
-            view.setItemDelegate(TooltipDelegate(view))
+            self._install_tooltip_delegate(view)
 
     #: Cached ``(item count, pixel width)`` of the widest entry, so thousands of
     #: keys are measured on the first popup only and not on every one after it.
@@ -141,6 +197,10 @@ class MetadataKeyComboBox(QtWidgets.QComboBox):
             frame = view.frameWidth() * 2 + view.verticalScrollBar().sizeHint().width()
             view.setMinimumWidth(min(width + frame + 12, 900))
         super().showPopup()
+        if view is not None:
+            # Qt may install its menu delegate on the first popup. Restore the
+            # description delegate after that setup, not only in showEvent.
+            self._install_tooltip_delegate(view)
 
     def event(self, event):
         if event.type() == QtCore.QEvent.ToolTip:
@@ -184,7 +244,7 @@ class MetadataEditor(QtWidgets.QWidget):
             raise ValueError("columns must be 2 or 3")
         self._columns = columns
         self._suppress_change = False
-        self._key_model_cache: QtGui.QStandardItemModel | None = None
+        self._key_model_cache: _MetadataKeyModel | None = None
         self._key_model_keys: list[str] = []
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -255,7 +315,7 @@ class MetadataEditor(QtWidgets.QWidget):
         extra: list[str] = []
         for item in data:
             k = item.get("key", "")
-            if k and k not in ALL_METADATA_KEYS and k not in extra:
+            if k and k not in _all_metadata_keys() and k not in extra:
                 extra.append(k)
         self._extra_keys: list[str] = extra
 
@@ -297,7 +357,7 @@ class MetadataEditor(QtWidgets.QWidget):
         item = self.table.item(row, 2)
         return item.text().strip() if item is not None else ""
 
-    def _key_model(self) -> QtGui.QStandardItemModel:
+    def _key_model(self) -> _MetadataKeyModel:
         """Return the key list model shared by every row's combobox.
 
         The list holds the whole mmCIF dictionary (thousands of keys), so it is
@@ -307,11 +367,7 @@ class MetadataEditor(QtWidgets.QWidget):
         extra = getattr(self, "_extra_keys", [])
         if self._key_model_cache is not None and self._key_model_keys == extra:
             return self._key_model_cache
-        model = QtGui.QStandardItemModel(self)
-        for key in ALL_METADATA_KEYS + list(extra):
-            item = QtGui.QStandardItem(key)
-            item.setData(key_description(key), Qt.UserRole + 1)
-            model.appendRow(item)
+        model = _MetadataKeyModel(_all_metadata_keys() + list(extra), self)
         self._key_model_cache = model
         self._key_model_keys = list(extra)
         return model
@@ -320,6 +376,11 @@ class MetadataEditor(QtWidgets.QWidget):
         """Create a populated MetadataKeyComboBox for a table row."""
         combo = MetadataKeyComboBox()
         combo.setEditable(True)
+        # The table column owns the inline width. Measuring the entire dictionary
+        # for each row's sizeHint defeats the compact model; the popup still
+        # measures/caches its full, unelided key width when explicitly opened.
+        combo.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        combo.setMinimumContentsLength(24)
         # NoInsert: the model is shared, so a key typed into one row must not
         # append itself to every other row's list.
         combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)

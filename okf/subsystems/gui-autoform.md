@@ -14,6 +14,24 @@ resources, and GUI startup helpers. It is launched via `python -m chisurf`
 (`pixi run chisurf`). Plotting goes through the [chiplot](/subsystems/chiplot.md)
 seam, not a plotting library directly.
 
+## TCSPC first-use responsiveness
+
+Fit windows demand-create their hidden Code editor; plot exports and optional
+section factories resolve lazily. Metadata tables share compact complete-catalog
+models, defer dictionary/description loading and avoid full-key layout scans.
+Qt solid strokes batch whole finite runs without resampling, retaining gaps,
+dashed fallback, clipping, painter state and the old effective line thickness.
+
+### Where to pick this up
+
+The scoped implementation and independent reviews are verified. The real-data
+isolated native window pipeline measured 1.89x cold and 2.07x warm; these are not
+end-to-end Add-button speedups. Finish successful-action Main pairing without
+bypassing scientific history; old Main timings hid a caught checkpoint failure.
+The latest guarded smoke passes on the current shared tree; the cause of that change was not established. Commands,
+raw measurements, limits and next acceptance gates are in
+[TCSPC first-fit validation](/validation/tcspc-first-fit.md).
+
 # AutoForm
 
 `chisurf/gui/autoform/` renders UI declaratively from JSON view schemes

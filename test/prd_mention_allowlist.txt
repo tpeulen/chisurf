@@ -54,7 +54,6 @@ chisurf/gui/autoform/sections/builtin.py
 chisurf/gui/autoform/sections/quiver_section.py
 chisurf/gui/chiplot/_passthrough.py
 chisurf/gui/devtools/source_jump.py
-chisurf/gui/widgets/fitting/fit_subwindow.py
 chisurf/gui/widgets/models/auto_model_widget.py
 chisurf/gui/widgets/sample_picker.py
 chisurf/gui/widgets/tools/__init__.py

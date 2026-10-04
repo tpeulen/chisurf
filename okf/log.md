@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-04
+
+- **TCSPC first-use GUI optimized**: lazy Code/plot/section loading, complete-catalog metadata layout and sample-preserving Qt strokes; scoped tests and independent reviews passed. Isolated native windows: 1.89x cold / 2.07x warm; successful-action Main pairing remains open. [Evidence and resume point](validation/tcspc-first-fit.md).
+
 ## 2026-10-03
 
 - **Native sampler progress/export boundary verified**: progress-only callbacks avoid partial arrays; result/opaque callback compatibility and real MCTS cancellation retained. Parent: 58 passed; one independently dirty project-format guard remains. Paired progress 1.84x; full-result case about 10% slower, not a claimed win. [Scope and resume point](architecture/compute-display-line.md#performance-follow-up-native-sampling-result-boundaries-2026-10-03).

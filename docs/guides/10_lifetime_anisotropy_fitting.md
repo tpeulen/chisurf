@@ -31,6 +31,18 @@ rotational-correlation-time model are in {ref}`concept-anisotropy`. This guide
 shows how to fit in ChiSurf.
 :::
 
+## First-use behavior
+
+Adding a fit initializes the fit plot and parameter controls without constructing
+the hidden Code editor or importing unrelated optional GUI sections. **Code** is
+created when first opened and reused on subsequent visits. Other plot tabs remain
+available; a first visit may still need to initialize that feature.
+
+The metadata editor keeps the complete key catalog, completion, arbitrary custom
+keys and description tooltips, but loads catalog data only when needed. Solid
+curves use batched Qt drawing while retaining all samples and nonfinite gaps;
+this does not change fitting calculations or perform scientific resampling.
+
 ## In ChiSurf
 
 TCSPC is the most mature part of ChiSurf: the **TCSPC experiment** offers lifetime,

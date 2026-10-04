@@ -111,59 +111,7 @@ class FitSubWindow(CustomMdiSubWindow):
 
         # Back face (Code Editor)
         self.back_widget = QtWidgets.QWidget()
-        self.back_layout = QtWidgets.QVBoxLayout()
-        self.back_layout.setContentsMargins(0, 0, 0, 0)
-        self.back_layout.setSpacing(0)
-        self.back_widget.setLayout(self.back_layout)
-
-        self.back_toolbar = QtWidgets.QHBoxLayout()
-        self.back_toolbar.setContentsMargins(5, 5, 5, 5)
-
-        self.nav_back_btn = QtWidgets.QToolButton()
-        self.nav_back_btn.setText("←")
-        self.nav_back_btn.setToolTip("Navigate back to previous cursor position")
-        self.nav_back_btn.clicked.connect(self._code_nav_back)
-
-        self.nav_forward_btn = QtWidgets.QToolButton()
-        self.nav_forward_btn.setText("→")
-        self.nav_forward_btn.setToolTip("Navigate forward to next cursor position")
-        self.nav_forward_btn.clicked.connect(self._code_nav_forward)
-
-        self.file_combo = QtWidgets.QComboBox()
-        self.file_combo.currentIndexChanged.connect(self.on_code_file_selected)
-
-        self.func_combo = QtWidgets.QComboBox()
-        self.func_combo.currentIndexChanged.connect(self.on_code_func_selected)
-
-        self.save_code_btn = QtWidgets.QToolButton()
-        self.save_code_btn.setText("Save/Apply")
-        self.save_code_btn.setToolTip("Save the current editor content to the model")
-        self.save_code_btn.clicked.connect(self.save_model_code)
-
-        self.back_toolbar.addWidget(self.nav_back_btn)
-        self.back_toolbar.addWidget(self.nav_forward_btn)
-        self.back_toolbar.addWidget(QtWidgets.QLabel("File:"))
-        self.back_toolbar.addWidget(self.file_combo, 1)
-        self.back_toolbar.addWidget(QtWidgets.QLabel("  Jump to:"))
-        self.back_toolbar.addWidget(self.func_combo, 1)
-        self.back_toolbar.addStretch()
-        self.back_toolbar.addWidget(self.save_code_btn)
-
-        self.back_layout.addLayout(self.back_toolbar)
-
-        from chisurf.plugins.core.code_editor import CodeEditor
-
-        self.code_editor = CodeEditor(self, language="python", can_load=False)
-        # Wire the fit window's own toolbar nav buttons to the current editor
-        self.code_editor._on_editor_created = self._on_code_editor_created
-        self.code_editor.symbolsChanged.connect(self._sync_code_symbol_combo)
-        self.back_layout.addWidget(self.code_editor)
-
-        self.agent_btn = QtWidgets.QToolButton()
-        self.agent_btn.setText(Glyphs.ROBOT)
-        self.agent_btn.setToolTip("Toggle AI agent panel")
-        self.agent_btn.clicked.connect(self.code_editor._toggle_agent_panel)
-        self.back_toolbar.insertWidget(0, self.agent_btn)
+        self.code_editor = None
         self.stack.addWidget(self.back_widget)
 
         rect = self.plot_tab_widget.geometry()
@@ -179,7 +127,7 @@ class FitSubWindow(CustomMdiSubWindow):
         self._plot_specs = model_plot_specs(fit.model)
         self._plot_containers = []
         self._plots_all = [None] * len(self._plot_specs)  # positional storage
-        self._created_plots = []  # actual created plots (shared)
+        self._created_plots: list[QtWidgets.QWidget] = []  # actual created plots (shared)
         # Create empty containers per tab
         for idx, (plot_class, kwargs) in enumerate(self._plot_specs):
             container = QtWidgets.QWidget()
@@ -330,7 +278,7 @@ class FitSubWindow(CustomMdiSubWindow):
                 if not isinstance(rec, dict):
                     continue
                 try:
-                    idx = int(rec.get("index"))
+                    idx = int(rec["index"])
                 except Exception:
                     continue
                 plot = self.ensure_plot_created(idx)
@@ -375,10 +323,14 @@ class FitSubWindow(CustomMdiSubWindow):
                 pass
 
         stack_index = state.get("stack_index")
+        if stack_index == 1:
+            self.show_code_view()
         if isinstance(stack_index, int):
             try:
                 if 0 <= stack_index < self.stack.count():
                     self.stack.setCurrentIndex(stack_index)
+                    self.flip_to_code_btn.setText("Plots" if stack_index else "Code")
+                    self.flip_to_code_btn.setChecked(bool(stack_index))
                     applied = True
             except Exception:
                 pass
@@ -603,7 +555,12 @@ class FitSubWindow(CustomMdiSubWindow):
                 pass
 
     def updateStatusBar(self, msg: str):
-        self.statusBar().showMessage(msg)
+        """Report code status through the host main window, or the logger."""
+        status_bar = getattr(cs.cs, "statusBar", None)
+        if callable(status_bar):
+            status_bar().showMessage(msg)
+        else:
+            cs.logging.info(msg)
 
     def closeEvent(self, event: QtCore.QEvent):
         self.save_fit_dock_layout_state()
@@ -633,6 +590,65 @@ class FitSubWindow(CustomMdiSubWindow):
         else:
             event.accept()
 
+    def ensure_code_created(self):
+        """Build the Code face once, when a code control is first requested."""
+        if self.code_editor is not None:
+            return self.code_editor
+        from chisurf.plugins.core.code_editor import CodeEditor
+
+        self.code_editor = CodeEditor(self, language="python", can_load=False)
+        self.back_layout = QtWidgets.QVBoxLayout()
+        self.back_layout.setContentsMargins(0, 0, 0, 0)
+        self.back_layout.setSpacing(0)
+        self.back_widget.setLayout(self.back_layout)
+
+        self.back_toolbar = QtWidgets.QHBoxLayout()
+        self.back_toolbar.setContentsMargins(5, 5, 5, 5)
+
+        self.nav_back_btn = QtWidgets.QToolButton()
+        self.nav_back_btn.setText("←")
+        self.nav_back_btn.setToolTip("Navigate back to previous cursor position")
+        self.nav_back_btn.clicked.connect(self._code_nav_back)
+
+        self.nav_forward_btn = QtWidgets.QToolButton()
+        self.nav_forward_btn.setText("→")
+        self.nav_forward_btn.setToolTip("Navigate forward to next cursor position")
+        self.nav_forward_btn.clicked.connect(self._code_nav_forward)
+
+        self.file_combo = QtWidgets.QComboBox()
+        self.file_combo.currentIndexChanged.connect(self.on_code_file_selected)
+
+        self.func_combo = QtWidgets.QComboBox()
+        self.func_combo.currentIndexChanged.connect(self.on_code_func_selected)
+
+        self.save_code_btn = QtWidgets.QToolButton()
+        self.save_code_btn.setText("Save/Apply")
+        self.save_code_btn.setToolTip("Save the current editor content to the model")
+        self.save_code_btn.clicked.connect(self.save_model_code)
+
+        self.back_toolbar.addWidget(self.nav_back_btn)
+        self.back_toolbar.addWidget(self.nav_forward_btn)
+        self.back_toolbar.addWidget(QtWidgets.QLabel("File:"))
+        self.back_toolbar.addWidget(self.file_combo, 1)
+        self.back_toolbar.addWidget(QtWidgets.QLabel("  Jump to:"))
+        self.back_toolbar.addWidget(self.func_combo, 1)
+        self.back_toolbar.addStretch()
+        self.back_toolbar.addWidget(self.save_code_btn)
+
+        self.back_layout.addLayout(self.back_toolbar)
+
+        # Wire the fit window's own toolbar nav buttons to the current editor
+        self.code_editor._on_editor_created = self._on_code_editor_created
+        self.code_editor.symbolsChanged.connect(self._sync_code_symbol_combo)
+        self.back_layout.addWidget(self.code_editor)
+
+        self.agent_btn = QtWidgets.QToolButton()
+        self.agent_btn.setText(Glyphs.ROBOT)
+        self.agent_btn.setToolTip("Toggle AI agent panel")
+        self.agent_btn.clicked.connect(self.code_editor._toggle_agent_panel)
+        self.back_toolbar.insertWidget(0, self.agent_btn)
+        return self.code_editor
+
     def toggle_code_view(self):
         if self.stack.currentIndex() == 0:
             self.flip_to_code_btn.setText("Plots")
@@ -646,7 +662,7 @@ class FitSubWindow(CustomMdiSubWindow):
     def _model_view_spec_path(self):
         """Return the model's user-editable ``view.json`` path, or ``None``.
 
-        Resolves the model's ``view_spec_file`` (PRD-38) next to the module that
+        Resolves the model's ``view_spec_file`` next to the module that
         defines the model class, so the code view can open it alongside the
         model source.
         """
@@ -659,14 +675,14 @@ class FitSubWindow(CustomMdiSubWindow):
             return None
 
     def show_code_view(self):
+        self.ensure_code_created()
         import inspect
 
         from chisurf.gui.devtools.source_jump import resolve_compute_model_class
 
         # Resolve the underlying *compute* model class so "Code" opens the pure
         # model source (e.g. core/models/tcspc/lifetime.py) and its co-located
-        # view.json — not the GUI widget wrapper that multiply-inherits it
-        # (PRD-38).
+        # view.json — not the GUI widget wrapper that multiply-inherits it.
         model_class = resolve_compute_model_class(self.fit.model) or self.fit.model.__class__
         try:
             source_file = inspect.getsourcefile(model_class)
@@ -681,7 +697,7 @@ class FitSubWindow(CustomMdiSubWindow):
             for p in py_files:
                 self.file_combo.addItem(p.name, str(p))
             # Also list the model's user-editable view.json editor specs so the
-            # computation and its UI layout are both reachable (PRD-38).
+            # computation and its UI layout are both reachable.
             for p in sorted(models_dir.glob("*.view.json")):
                 self.file_combo.addItem(p.name, str(p))
 
@@ -693,7 +709,7 @@ class FitSubWindow(CustomMdiSubWindow):
             # Open the model's own view.json as a background tab first (when it
             # has one), then load the model source so the code is the focused
             # tab. Clicking "Code" thus shows both the computation and its JSON
-            # editor layout (PRD-38).
+            # editor layout.
             view_json = self._model_view_spec_path()
             if view_json is not None:
                 try:
@@ -703,12 +719,14 @@ class FitSubWindow(CustomMdiSubWindow):
 
             self.load_code_file(source_file)
             self.stack.setCurrentIndex(1)
+            self.flip_to_code_btn.setText("Plots")
+            self.flip_to_code_btn.setChecked(True)
         except Exception as e:
             dialogs.warning(self, "Error", f"Failed to load model source: {e}")
 
     def _get_current_text_editor(self):
         """Return the currently active TextEditor inside the CodeEditor."""
-        return self.code_editor._get_current_editor()
+        return self.ensure_code_created()._get_current_editor()
 
     def _code_nav_back(self):
         editor = self._get_current_text_editor()
@@ -727,6 +745,7 @@ class FitSubWindow(CustomMdiSubWindow):
 
     def _sync_code_symbol_combo(self, symbols):
         """Populate the function combo from shared editor symbols."""
+        self.ensure_code_created()
         self.func_combo.blockSignals(True)
         self.func_combo.clear()
         self.func_combo.addItem("Select...", -1)
@@ -740,11 +759,12 @@ class FitSubWindow(CustomMdiSubWindow):
 
     def _open_external_definition(self, file_path, line_number):
         """Open an external file in the code editor and jump to the given line."""
-        self.code_editor.open_file(file_path, line=line_number)
+        self.ensure_code_created().open_file(file_path, line=line_number)
 
     def load_code_file(self, file_path, line_number: int = 0):
+        code_editor = self.ensure_code_created()
         self.original_source_file = file_path
-        self.code_editor.open_file(file_path)
+        code_editor.open_file(file_path)
         editor = self._get_current_text_editor()
         if editor is None:
             return
@@ -764,12 +784,14 @@ class FitSubWindow(CustomMdiSubWindow):
             editor.push_nav_history(file_path, 0)
 
     def on_code_file_selected(self, idx):
+        self.ensure_code_created()
         if idx < 0:
             return
         file_path = self.file_combo.itemData(idx)
         self.load_code_file(file_path)
 
     def on_code_func_selected(self, idx):
+        self.ensure_code_created()
         if idx < 0:
             return
         line_num = self.func_combo.itemData(idx)
@@ -816,7 +838,7 @@ class FitSubWindow(CustomMdiSubWindow):
 
             # Check if this is the model file. Resolve against the *compute*
             # model class so an edit to the pure model source (what "Code" now
-            # opens, PRD-38) is recognised even when the live instance is a
+            # opens) is recognised even when the live instance is a
             # legacy widget that multiply-inherits it.
             from chisurf.gui.devtools.source_jump import resolve_compute_model_class
 
