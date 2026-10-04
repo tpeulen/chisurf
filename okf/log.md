@@ -40900,3 +40900,19 @@ side of the line.
   * Verified `batch_analysis`, `wizards`, `traj_tools`, `plugin_check`, `fret_line`, `imaging_tools`, `filetools`, `img_calibration` accepted ports.
   * Resumed `hydropro` port: captured `after_populated` and `after_empty` screenshots, fixed test list issue, wrote REPORT.md, and accepted it (removed from preview gate).
   * Verified `mfd_prepare` port and committed its changes.
+- 2026-10-04 (hermes, resuming antigravity/9b57b5bf) — Info plot contents drawn by
+  emtk. The fit window's Info page still pasted a white read-only `QPlainTextEdit`
+  (the fit report) into the emtk plot surface — the last classic-Qt content visible
+  in a plot dock. New `chisurf/gui/plots/emtk_text_view.py` (`EmtkTextView`):
+  emtk's read-only `TextEditor` (no gutter numbers, no current-line highlight — a
+  report is not code) hosted by `emtk.qt_host.ControlHost`, wrapped in the
+  `QPlainTextEdit` call surface (`setPlainText`/`toPlainText`) its fillers and
+  readers already use; Qt fallback when emtk cannot be imported. `FitInfo.textedit`
+  and `FitInfo.cif_preview` are `EmtkTextView` now; the four Analysis/Metadata
+  form tabs are unchanged Qt. Evidence
+  `~/.hermes/cache/scratch/fitinfo-emtk/` (info + export PNGs, both dark and
+  readable); new `test/gui/test_emtk_fit_info_view.py` (5, incl. the emtk-type
+  assertions) green with the 97-test gui sweep
+  (mfd_surface, table_plot, fit_plots_area, dock_area, fit_presentation_contract).
+  Open follow-up: the "Data table" plot page is still `ChiTableWidget` (Qt) —
+  a port of that 5.4k-line table framework to emtk's `DataTable` is its own ticket.

@@ -15,6 +15,7 @@ from chisurf.core.registry.file_formats import FILE_FORMATS as _FILE_FORMATS
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.plots import plotbase
+from chisurf.gui.plots.emtk_text_view import EmtkTextView
 from chisurf.gui.widgets.metadata_editor import MetadataEditor
 
 
@@ -91,12 +92,7 @@ class FitInfo(plotbase.Plot):
         self._memory_metadata = getattr(fit, "flr_metadata", {})
         self._memory_streams = getattr(fit, "flr_photon_streams", [])
 
-        self.textedit = QtWidgets.QPlainTextEdit()
-        self.textedit.setReadOnly(True)
-        font = self.textedit.font()
-        font.setFamily("Menlo, Courier, monospace")
-        font.setPointSize(font.pointSize() - 1)
-        self.textedit.setFont(font)
+        self.textedit = EmtkTextView()
         self.layout.addWidget(self.textedit)
 
         self.plot_controller = QtWidgets.QTabWidget(self)
@@ -509,12 +505,7 @@ class FitInfo(plotbase.Plot):
         toolbar.addAction(save_btn)
         layout.addWidget(toolbar)
 
-        self.cif_preview = QtWidgets.QPlainTextEdit()
-        self.cif_preview.setReadOnly(True)
-        font = self.cif_preview.font()
-        font.setFamily("Menlo, Courier, monospace")
-        font.setPointSize(font.pointSize() - 2)
-        self.cif_preview.setFont(font)
+        self.cif_preview = EmtkTextView()
         layout.addWidget(self.cif_preview, 1)
 
         self.plot_controller.addTab(tab, "Export")
