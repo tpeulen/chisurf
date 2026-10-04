@@ -78,10 +78,10 @@ class DockSplitter(QtWidgets.QSplitter):
         self.setHandleWidth(4)
         self.setStyleSheet("""
             QSplitter::handle {
-                background-color: rgba(128, 128, 128, 60);
+                background-color: #30343e;
             }
             QSplitter::handle:hover {
-                background-color: rgba(0, 150, 255, 150);
+                background-color: #3282f0;
             }
         """)
 
@@ -108,24 +108,54 @@ class DockTabWidget(QtWidgets.QTabWidget):
         self._new_tab_btn = None
 
         self.setStyleSheet("""
+            QTabWidget {
+                background-color: #1e2026;
+            }
             QTabWidget::pane {
-                border: 1px solid rgba(128, 128, 128, 40);
-                background-color: transparent;
+                border: none;
+                border-top: 1px solid #30343e;
+                background-color: #181a1f;
+            }
+            QTabBar {
+                background-color: #1e2026;
+                qproperty-drawBase: 0;
             }
             QTabBar::tab {
-                background-color: rgba(128, 128, 128, 30);
+                background-color: #1e2026;
+                color: #a0a5af;
                 padding: 0px 8px;
-                border: 1px solid rgba(128, 128, 128, 30);
-                border-bottom: none;
-                border-top-left-radius: 3px;
-                border-top-right-radius: 3px;
+                margin-right: 2px;
+                border: 1px solid transparent;
+                border-bottom: 2px solid transparent;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 12px;
             }
             QTabBar::tab:selected {
-                background-color: rgba(0, 150, 255, 40);
-                border-color: rgba(0, 150, 255, 100);
+                background-color: #2a303c;
+                color: #ffffff;
+                border-bottom: 2px solid #3282f0;
             }
             QTabBar::tab:hover:!selected {
-                background-color: rgba(128, 128, 128, 50);
+                background-color: #242830;
+                color: #dce1eb;
+            }
+            QTabBar QToolButton {
+                background-color: #1e2026;
+                border: 1px solid #30343e;
+                border-radius: 2px;
+                margin: 1px;
+                padding: 1px;
+            }
+            QTabBar QToolButton:hover {
+                background-color: #2a303c;
+                border-color: #3282f0;
+            }
+            QTabBar QToolButton:pressed {
+                background-color: #3282f0;
+            }
+            QTabBar QToolButton:disabled {
+                background-color: #1e2026;
+                border-color: #262930;
             }
         """)
         transparent = QtGui.QColor(0, 0, 0, 0)

@@ -28,6 +28,8 @@ class DockTabBar(QtWidgets.QTabBar):
         """
         super().__init__(parent)
         self.setAcceptDrops(True)
+        self.setUsesScrollButtons(True)
+        self.setElideMode(QtCore.Qt.ElideNone)
         self._drag_start_pos = None
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:

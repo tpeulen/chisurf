@@ -101,6 +101,113 @@ def test_fit_plots_area_layout_state_roundtrip(qapp, qtbot):
     assert restored.currentIndex() == 1
 
 
+def test_fit_plots_area_rearrange_and_split_docks(qapp, qtbot):
+    """FitPlotsArea allows splitting and rearranging docks into different regions."""
+    area = FitPlotsArea()
+    qtbot.addWidget(area)
+
+    w1 = QtWidgets.QLabel("Fit Plot")
+    w2 = QtWidgets.QLabel("Residuals Plot")
+    w3 = QtWidgets.QLabel("Parameters")
+    w1.setProperty("key", "plot_fit")
+    w2.setProperty("key", "plot_res")
+    w3.setProperty("key", "plot_param")
+
+    area.addTab(w1, "Fit")
+    area.addTab(w2, "Residuals")
+    area.addTab(w3, "Parameters")
+
+    main_tw = area.find_main_tab_widget()
+    assert main_tw is not None
+    assert len(area._find_tab_widgets()) == 1
+
+    # Split: create a new tab widget on the right with the residuals tab
+    new_tw = area._create_tab_widget()
+    # Move widget w2 to new_tw
+    main_tw.removeTab(1)
+    new_tw.addTab(w2, "Residuals")
+    area.split_tab_widget(main_tw, new_tw, "right")
+
+    tab_widgets = area._find_tab_widgets()
+    assert len(tab_widgets) == 2
+    assert area.count() == 3
+
+    # State serialization of split layout
+    state = area.get_layout_state(key_func=lambda w: w.property("key"))
+    assert state["root"]["type"] == "splitter"
+    assert len(state["root"]["children"]) == 2
+
+    # Roundtrip restore into fresh area
+    restored = FitPlotsArea()
+    qtbot.addWidget(restored)
+    restored.addTab(w1, "Fit")
+    restored.addTab(w2, "Residuals")
+    restored.addTab(w3, "Parameters")
+    assert restored.set_layout_state(state, key_func=lambda w: w.property("key"), emit_change=False)
+    active_tw = [tw for tw in restored._find_tab_widgets() if tw.count() > 0]
+    assert len(active_tw) == 2
+
+
+def test_fit_plots_area_tab_overflow_navigation(qapp, qtbot):
+    """DockTabBar in FitPlotsArea uses scroll buttons and ElideNone for tab overflow."""
+    area = FitPlotsArea()
+    qtbot.addWidget(area)
+
+    tabs = ["Fit", "Data table", "Info", "Parameter scan", "Distribution", "Residuals"]
+    for t in tabs:
+        area.addTab(QtWidgets.QLabel(t), t)
+
+    main_tw = area.find_main_tab_widget()
+    tab_bar = main_tw.tabBar()
+    assert tab_bar.usesScrollButtons() is True
+    assert tab_bar.elideMode() == QtCore.Qt.ElideNone
+
+    # Resize to narrow width
+    area.resize(250, 200)
+    area.show()
+    qapp.processEvents()
+
+    # Tool buttons (◀ and ▶) exist on QTabBar when content overflows
+    tool_buttons = tab_bar.findChildren(QtWidgets.QToolButton)
+    assert len(tool_buttons) >= 2
+
+
+def test_fit_tab_bar_control_overflow_scroll_buttons(qapp, qtbot):
+    """FitTabBarControl renders ◀ and ▶ buttons when tabs exceed available width."""
+    control = FitTabBarControl()
+    control.set_tabs(["Fit", "Data table", "Info", "Parameter scan", "Distribution", "Residuals"])
+
+    # Wide render: no scroll buttons needed
+    pix_wide = QtGui.QPixmap(800, 28)
+    pix_wide.fill(QtCore.Qt.black)
+    p_wide = QtGui.QPainter(pix_wide)
+    try:
+        control.draw(QtPainter(p_wide), 0.0, 0.0, 800.0, 28.0)
+    finally:
+        p_wide.end()
+    assert control._left_arrow_rect is None
+    assert control._right_arrow_rect is None
+
+    # Narrow render (250px): scroll buttons appear
+    pix_narrow = QtGui.QPixmap(250, 28)
+    pix_narrow.fill(QtCore.Qt.black)
+    p_narrow = QtGui.QPainter(pix_narrow)
+    try:
+        control.draw(QtPainter(p_narrow), 0.0, 0.0, 250.0, 28.0)
+    finally:
+        p_narrow.end()
+    assert control._left_arrow_rect is not None
+    assert control._right_arrow_rect is not None
+    assert control._can_scroll_right is True
+
+    # Click right arrow scrolls offset
+    rx, ry, rw, rh = control._right_arrow_rect
+    prev_offset = control.scroll_offset
+    control.press(rx + rw / 2.0, ry + rh / 2.0)
+    assert control.scroll_offset > prev_offset
+
+
+
 def test_fit_subwindow_uses_fit_plots_area(tmp_path):
     """FitSubWindow hosts FitPlotsArea and refreshes plots cleanly."""
     import os
