@@ -2,6 +2,8 @@
 
 ## 2026-10-04
 
+- **Fit plots in FitSubWindow migrated to EMTK (`FitPlotsArea`)**: replaced legacy PyQt `DockArea` in `FitSubWindow` with EMTK-based `FitPlotsArea` hosting `FitTabBarControl` inside `ControlHost`. Maintained complete `plot_tab_widget` contract (`addTab`, `count`, `currentIndex`, `setCurrentIndex`, `widget`, `tabText`, `get_layout_state`, `set_layout_state`, signals). Visual parity verified headlessly across all 6 tabs (Decay, DataTable, Info, ParameterScan, Distribution, Residuals) with real TCSPC data. Fixed `LinePlotControl` `data_logy`/`scale_x` round-trip setter bug. Fixed `core_fit.py` `sip` import breakage. Added comprehensive test suite `test/gui/test_fit_plots_area.py` (4/4 passing) and verified `test_fit_first_use.py` (16/16 passing). [Subsystem reference and resume point](subsystems/gui-autoform.md#fitplotsarea-emtk-tabbed-plot-surface-in-fitsubwindow).
+
 - **TCSPC first-use GUI optimized**: lazy Code/plot/section loading, complete-catalog metadata layout and sample-preserving Qt strokes; scoped tests and independent reviews passed. Isolated native windows: 1.89x cold / 2.07x warm; successful-action Main pairing remains open. [Evidence and resume point](validation/tcspc-first-fit.md).
 
 ## 2026-10-03

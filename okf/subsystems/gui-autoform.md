@@ -32,6 +32,18 @@ The latest guarded smoke passes on the current shared tree; the cause of that ch
 raw measurements, limits and next acceptance gates are in
 [TCSPC first-fit validation](/validation/tcspc-first-fit.md).
 
+## FitPlotsArea: EMTK tabbed plot surface in FitSubWindow
+
+The legacy PyQt `DockArea` inside `FitSubWindow` has been replaced with `FitPlotsArea` (`chisurf/gui/widgets/fitting/fit_plots_area.py`).
+`FitPlotsArea` embeds an EMTK tab bar (`FitTabBarControl` inside `ControlHost`) styled in dark theme `(30, 32, 38)` with blue underline accents `(50, 130, 240)` and hosts the plot stack in a lightweight `QStackedWidget`.
+This retains 100% API parity with the former `plot_tab_widget` contract (`addTab`, `count`, `currentIndex`, `setCurrentIndex`, `widget`, `tabText`, `get_layout_state`, `set_layout_state`, signals), eliminates `DockArea` C++ ownership/destruction crashes on MDI subwindow close, and brings the fit window into alignment with ChiSurf's application-wide EMTK migration.
+
+### Where to pick this up
+- Measurement/Verification: Before/after headless visual parity captured and inspected across all 6 tabs (Decay, DataTable, Info, ParameterScan, Distribution, Residuals) with real TCSPC data.
+- Unit/contract test suite: `test/gui/test_fit_plots_area.py` (4/4 passing).
+- Fixed companion bug in `chisurf/gui/plots/lineplot/lineplot.py` (`data_logy` / `scale_x` setters preserving `"linear"`).
+- Fixed safe `sip` import in `chisurf/macros/core_fit.py`.
+
 # AutoForm
 
 `chisurf/gui/autoform/` renders UI declaratively from JSON view schemes

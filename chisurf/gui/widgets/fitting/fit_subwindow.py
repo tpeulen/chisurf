@@ -16,7 +16,7 @@ import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui.widgets.dock_area import DockArea
+from chisurf.gui.widgets.fitting.fit_plots_area import FitPlotsArea
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.mdi_custom_titlebar import CustomMdiSubWindow
 
@@ -86,8 +86,8 @@ class FitSubWindow(CustomMdiSubWindow):
         self.front_layout.setSpacing(0)
         self.front_widget.setLayout(self.front_layout)
 
-        # Create DockArea
-        self.plot_tab_widget = DockArea(self)
+        # Create EMTK-based FitPlotsArea
+        self.plot_tab_widget = FitPlotsArea(self)
         self.plot_tab_widget.setNewTabButtonVisible(False)
         self.flip_to_code_btn = QtWidgets.QToolButton()
         self.flip_to_code_btn.setText("Code")
@@ -538,7 +538,10 @@ class FitSubWindow(CustomMdiSubWindow):
         if plot is None or not hasattr(plot, "plot_controller"):
             return
         self.current_plot_controller = plot.plot_controller
-        self.current_plot_controller.show()
+        try:
+            self.current_plot_controller.show()
+        except Exception:
+            pass
         # Ensure the newly visible plot refreshes its content; we defer the
         # heavy update to the next event-loop turn to avoid deep re-entrancy
         # during fit creation.

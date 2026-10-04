@@ -600,7 +600,7 @@ class LinePlotControl(QtWidgets.QWidget):
 
     @data_logy.setter
     def data_logy(self, v: str):
-        if v == "lin":
+        if v in ("lin", "linear"):
             self.checkBox.setCheckState(0)
         else:
             self.checkBox.setCheckState(2)
@@ -611,7 +611,7 @@ class LinePlotControl(QtWidgets.QWidget):
 
     @scale_x.setter
     def scale_x(self, v: str):
-        if v == "lin":
+        if v in ("lin", "linear"):
             self.checkBox_2.setCheckState(0)
         else:
             self.checkBox_2.setCheckState(2)
