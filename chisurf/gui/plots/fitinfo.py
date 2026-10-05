@@ -4,7 +4,7 @@ import io
 import json
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 from qtpy import QtGui, QtWidgets
@@ -78,6 +78,95 @@ class DropTable(QtWidgets.QTableWidget):
                 added += 1
         if added:
             event.acceptProposedAction()
+
+
+class _ReadOnlyBridge:
+    """The analysis-id line: ``setText`` fills the emtk field, ``text`` reads it."""
+
+    def __init__(self, form, attribute: str) -> None:
+        self._form = form
+        self._attribute = attribute
+
+    def setText(self, text: str) -> None:  # noqa: N802 - Qt's spelling
+        getattr(self._form, f"set_{self._attribute}")(str(text))
+
+    def text(self) -> str:
+        return getattr(self._form, self._attribute).text
+
+
+class _LineBridge:
+    """A one-line field: the Qt ``text``/``setText`` surface on the emtk form."""
+
+    def __init__(self, form, attribute: str, reader: Callable[[], str]) -> None:
+        self._form = form
+        self._attribute = attribute
+        self._reader = reader
+
+    def setText(self, text: str) -> None:  # noqa: N802 - Qt's spelling
+        getattr(self._form, f"set_{self._attribute}")(str(text))
+
+    def text(self) -> str:
+        return self._reader()
+
+
+class _SampleComboBridge:
+    """The editable sample combo: Qt's surface over the emtk EditableComboBox."""
+
+    def __init__(self, page) -> None:
+        self._page = page
+
+    @property
+    def _combo(self):
+        return self._page.analysis_form.sample
+
+    def setEditText(self, text: str) -> None:  # noqa: N802 - Qt's spelling
+        self._combo.set_text(str(text))
+        self._page._update_sample_uuid_display()
+        self._page._on_changed()
+
+    def currentText(self) -> str:  # noqa: N802 - Qt's spelling
+        return self._combo.text
+
+    def blockSignals(self, _on: bool):  # noqa: N802 - Qt's spelling
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc) -> None:
+        return None
+
+    def clear(self) -> None:
+        self._combo.set_options([])
+
+    def addItem(self, _label: str, _data=None) -> None:  # noqa: N802 - Qt's spelling
+        return None
+
+
+class _UuidLabelBridge:
+    """The sample-UUID line: Qt's ``setText``/``text`` on the form's caption."""
+
+    def __init__(self, form) -> None:
+        self._form = form
+
+    def setText(self, text: str) -> None:  # noqa: N802 - Qt's spelling
+        self._form.set_uuid(str(text))
+
+    def text(self) -> str:
+        return self._form.uuid_text
+
+
+class _DetailBridge:
+    """A detail editor: the QPlainTextEdit surface on an emtk detail editor."""
+
+    def __init__(self, detail) -> None:
+        self._detail = detail
+
+    def setPlainText(self, text: str) -> None:  # noqa: N802 - Qt's spelling
+        self._detail.set_text(str(text))
+
+    def toPlainText(self) -> str:  # noqa: N802 - Qt's spelling
+        return self._detail.text
 
 
 class FitInfo(plotbase.Plot):
@@ -177,68 +266,110 @@ class FitInfo(plotbase.Plot):
     # ── Analysis tab ───────────────────────────────────────────────
 
     def _build_analysis_tab(self):
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QFormLayout(tab)
-        layout.setSpacing(4)
-        layout.setContentsMargins(6, 6, 6, 6)
+        try:
+            from emtk.qt_host import ControlHost
 
-        self.analysis_id_edit = QtWidgets.QLineEdit()
-        self.analysis_id_edit.setReadOnly(True)
+            from .emtk_analysis_form import EmtkAnalysisForm
 
-        self.method_edit = QtWidgets.QLineEdit()
-        self.method_edit.setPlaceholderText("auto-detected or type here")
-        # Prefill from model / method name
-        model = getattr(self.fit, "model", None)
-        if model is not None:
-            hint = type(model).__name__
-            if hint and hint != "object":
-                self.method_edit.setText(hint)
-        self.method_edit.textChanged.connect(self._on_changed)
+            # The emtk fields report changes as they are filled (the Qt ones
+            # only after their signals get connected), so the construction
+            # prefill must not persist anything: the metadata editor below
+            # does not exist yet.
+            was_suppressed = getattr(self, "_suppress_change", True)
+            self._suppress_change = True
+            try:
+                self.analysis_form = EmtkAnalysisForm(
+                    on_generate_uuid=self._generate_sample_uuid,
+                    on_changed=self._on_changed,
+                )
+                self.analysis_host = ControlHost(self.analysis_form)
+                self.analysis_host.setToolTip("FLR analysis details")
+                tab = QtWidgets.QWidget()
+                tab_layout = QtWidgets.QVBoxLayout(tab)
+                tab_layout.setContentsMargins(0, 0, 0, 0)
+                tab_layout.addWidget(self.analysis_host, 1)
+                # Bridges: every existing reader/writer keeps its vocabulary.
+                self.analysis_id_edit = _ReadOnlyBridge(self.analysis_form, "analysis_id")
+                self.method_edit = _LineBridge(
+                    self.analysis_form, "method", self.analysis_form.method_value
+                )
+                self.sample_combo = _SampleComboBridge(self)
+                self.sample_uuid_label = _UuidLabelBridge(self.analysis_form)
+                self.sample_details_edit = _DetailBridge(self.analysis_form.sample_details)
+                self.condition_details_edit = _DetailBridge(self.analysis_form.condition_details)
+                # The model-hint prefill the Qt branch does before connecting.
+                model = getattr(self.fit, "model", None)
+                if model is not None:
+                    hint = type(model).__name__
+                    if hint and hint != "object":
+                        self.analysis_form.set_method(hint)
+            finally:
+                self._suppress_change = was_suppressed
+        except ImportError:
+            tab = QtWidgets.QWidget()
+            layout = QtWidgets.QFormLayout(tab)
+            layout.setSpacing(4)
+            layout.setContentsMargins(6, 6, 6, 6)
 
-        # Sample id: editable combo with autocomplete from DB
-        self.sample_combo = QtWidgets.QComboBox()
-        self.sample_combo.setEditable(True)
-        self.sample_combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
-        self.sample_combo.setPlaceholderText("type sample id or select existing")
-        self.sample_combo.currentTextChanged.connect(self._update_sample_uuid_display)
-        self.sample_combo.currentTextChanged.connect(self._on_changed)
+            self.analysis_id_edit = QtWidgets.QLineEdit()
+            self.analysis_id_edit.setReadOnly(True)
 
-        completer = self.sample_combo.completer()
-        if completer is not None:
-            completer.setFilterMode(Qt.MatchContains)
-            completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self._populate_sample_combo()
+            self.method_edit = QtWidgets.QLineEdit()
+            self.method_edit.setPlaceholderText("auto-detected or type here")
+            # Prefill from model / method name
+            model = getattr(self.fit, "model", None)
+            if model is not None:
+                hint = type(model).__name__
+                if hint and hint != "object":
+                    self.method_edit.setText(hint)
+            self.method_edit.textChanged.connect(self._on_changed)
 
-        # UUID button next to sample combo — small toolbutton
-        uuid_row = QtWidgets.QHBoxLayout()
-        uuid_row.setSpacing(2)
-        gen_uuid_btn = QtWidgets.QToolButton()
-        gen_uuid_btn.setText(Glyphs.REFRESH)
-        gen_uuid_btn.setToolTip("Generate new UUID")
-        gen_uuid_btn.setFixedSize(24, 24)
-        gen_uuid_btn.clicked.connect(self._generate_sample_uuid)
-        uuid_row.addWidget(self.sample_combo, stretch=1)
-        uuid_row.addWidget(gen_uuid_btn, stretch=0)
+            # Sample id: editable combo with autocomplete from DB
+            self.sample_combo = QtWidgets.QComboBox()
+            self.sample_combo.setEditable(True)
+            self.sample_combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+            self.sample_combo.setPlaceholderText("type sample id or select existing")
+            self.sample_combo.currentTextChanged.connect(self._update_sample_uuid_display)
+            self.sample_combo.currentTextChanged.connect(self._on_changed)
 
-        self.sample_uuid_label = QtWidgets.QLabel("")
-        self.sample_uuid_label.setStyleSheet("color: gray; font-size: 10px;")
+            completer = self.sample_combo.completer()
+            if completer is not None:
+                completer.setFilterMode(Qt.MatchContains)
+                completer.setCaseSensitivity(Qt.CaseInsensitive)
+            self._populate_sample_combo()
 
-        self.sample_details_edit = QtWidgets.QPlainTextEdit()
-        self.sample_details_edit.setPlaceholderText("sample description and free-form details")
-        self.sample_details_edit.setMaximumHeight(60)
-        self.sample_details_edit.textChanged.connect(self._on_changed)
+            # UUID button next to sample combo — small toolbutton
+            uuid_row = QtWidgets.QHBoxLayout()
+            uuid_row.setSpacing(2)
+            gen_uuid_btn = QtWidgets.QToolButton()
+            gen_uuid_btn.setText(Glyphs.REFRESH)
+            gen_uuid_btn.setToolTip("Generate new UUID")
+            gen_uuid_btn.setFixedSize(24, 24)
+            gen_uuid_btn.clicked.connect(self._generate_sample_uuid)
+            uuid_row.addWidget(self.sample_combo, stretch=1)
+            uuid_row.addWidget(gen_uuid_btn, stretch=0)
 
-        self.condition_details_edit = QtWidgets.QPlainTextEdit()
-        self.condition_details_edit.setPlaceholderText("pH=7.4; temperature=293.15 K; buffer=...")
-        self.condition_details_edit.setMaximumHeight(60)
-        self.condition_details_edit.textChanged.connect(self._on_changed)
+            self.sample_uuid_label = QtWidgets.QLabel("")
+            self.sample_uuid_label.setStyleSheet("color: gray; font-size: 10px;")
 
-        layout.addRow("Analysis id", self.analysis_id_edit)
-        layout.addRow("Analysis type", self.method_edit)
-        layout.addRow("Sample", uuid_row)
-        layout.addRow("Sample UUID", self.sample_uuid_label)
-        layout.addRow("Sample details", self.sample_details_edit)
-        layout.addRow("Condition details", self.condition_details_edit)
+            self.sample_details_edit = QtWidgets.QPlainTextEdit()
+            self.sample_details_edit.setPlaceholderText("sample description and free-form details")
+            self.sample_details_edit.setMaximumHeight(60)
+            self.sample_details_edit.textChanged.connect(self._on_changed)
+
+            self.condition_details_edit = QtWidgets.QPlainTextEdit()
+            self.condition_details_edit.setPlaceholderText(
+                "pH=7.4; temperature=293.15 K; buffer=..."
+            )
+            self.condition_details_edit.setMaximumHeight(60)
+            self.condition_details_edit.textChanged.connect(self._on_changed)
+
+            layout.addRow("Analysis id", self.analysis_id_edit)
+            layout.addRow("Analysis type", self.method_edit)
+            layout.addRow("Sample", uuid_row)
+            layout.addRow("Sample UUID", self.sample_uuid_label)
+            layout.addRow("Sample details", self.sample_details_edit)
+            layout.addRow("Condition details", self.condition_details_edit)
         self.plot_controller.addTab(tab, "Analysis")
 
     def _populate_sample_combo(self):
@@ -261,6 +392,43 @@ class FitInfo(plotbase.Plot):
     def _on_tab_changed(self, index):
         if self.plot_controller.tabText(index) == "Export":
             self._update_cif_preview(full=False)
+
+    # -- the Analysis tab's typed-input surface (tests and helpers) ----- #
+    def sample_type(self, text: str) -> None:
+        """Type a sample id into the emtk combo, as a user would."""
+        self.sample_combo.setEditText(text)
+
+    def method_type(self, text: str) -> None:
+        self.method_edit.setText(text)
+
+    def sample_details_type(self, text: str) -> None:
+        self.sample_details_edit.setPlainText(text)
+
+    def condition_details_type(self, text: str) -> None:
+        self.condition_details_edit.setPlainText(text)
+
+    def method_value(self) -> str:
+        return self.method_edit.text()
+
+    def sample_value(self) -> str:
+        return self.sample_combo.currentText()
+
+    def sample_details_value(self) -> str:
+        return self.sample_details_edit.toPlainText()
+
+    def condition_details_value(self) -> str:
+        return self.condition_details_edit.toPlainText()
+
+    def sample_count(self) -> int:
+        return len(self.analysis_form.sample.options)
+
+    def sample_pick(self, index: int) -> None:
+        from emtk.keys import KEY_ENTER
+
+        self.analysis_form.sample.select(index)
+        self.analysis_form.sample.key(KEY_ENTER, "", 0)
+        self._update_sample_uuid_display()
+        self._on_changed()
 
     def _update_sample_uuid_display(self):
         sid = self.sample_combo.currentText().strip()

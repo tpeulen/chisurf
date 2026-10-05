@@ -40954,3 +40954,15 @@ side of the line.
   `test_plots_no_orphan_modules` already flags 17 plot modules at 6cf489e53
   (the AST guard predates the string-keyed plot registry; table_plot_emtk
   joins the same pre-existing list). ruff clean.
+- 2026-10-04 (hermes, continued 2) — FitInfo Analysis tab ported to emtk.
+  New `chisurf/gui/plots/emtk_analysis_form.py` (`EmtkAnalysisForm`): the whole
+  form — analysis id / type `TextInput`s, the sample `EditableComboBox`
+  (emtk commit 1417f0e: combo preview is a TextField; type or pick), the ↻
+  `SmallButton`, two small read-write `TextEditor`s for sample/condition
+  details — drawn in one `ControlHost`, click-driven focus routing. Qt call
+  surface preserved via bridge classes so `_refresh`/`_on_changed` and tests
+  keep `setEditText`/`setPlainText`/`toPlainText` vocabulary; Qt QFormLayout
+  branch kept as ImportError fallback. 4 new tests
+  `test/gui/test_emtk_fit_analysis_form.py`; fitinfo/table sweeps green (40
+  passed), ruff clean. Remaining Qt in the plot window: Metadata tab
+  (MetadataEditor) and the External-data drop table.
