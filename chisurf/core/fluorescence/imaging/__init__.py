@@ -29,6 +29,7 @@ from .frap import (
     rfrap_model,
 )
 from .image_source import ImageStack, is_photon_stream, load_image_stack
+from .intensity import clsm_intensity_counts
 from .number_brightness import (
     GAMMA_3D_GAUSSIAN,
     NB_PIPELINE_DEFAULTS,
@@ -130,6 +131,7 @@ __all__ = [
     "simulate_clsm_diffusion",
     "simulate_clsm_molecules",
     "build_clsm",
+    "clsm_intensity_counts",
     "build_clsm_windowed",
     "cached_clsm",
     "calibration_histograms",
