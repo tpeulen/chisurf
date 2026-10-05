@@ -8,19 +8,6 @@ import matplotlib.colors
 import numpy as np
 
 import chisurf as cs
-from chisurf import typing
-from chisurf.gui import QtCore, QtWidgets
-from chisurf.gui import chiplot as cp
-from chisurf.gui.widgets.dock_area.dock_area import DockSplitter
-
-try:
-    from qtpy import sip
-except ImportError:
-    try:
-        import sip
-    except ImportError:
-        sip = None
-
 import chisurf.core.data
 import chisurf.core.experiments
 import chisurf.core.fitting
@@ -30,7 +17,11 @@ import chisurf.core.plotting.transforms as plot_transforms
 import chisurf.core.settings
 import chisurf.core.support.decorators
 import chisurf.gui.decorators
+from chisurf import typing
+from chisurf.gui import QtCore, QtWidgets
+from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
+from chisurf.gui.widgets.dock_area.dock_area import DockSplitter
 
 colors = cs.core.settings.gui["plot"]["colors"]
 

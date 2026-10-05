@@ -5,9 +5,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from qtpy import QtCore, QtWidgets, sip
+from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.plots.lineplot.lineplot import LinePlot
+from chisurf.gui.qt_lifetime import is_deleted
 from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 
 
@@ -63,8 +64,8 @@ def test_control_host_destruction_retires_pending_plot_update(qapp, qtbot, tmp_p
 
     host.deleteLater()
     qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-    assert sip.isdeleted(checkbox)
-    assert not sip.isdeleted(plot)
+    assert is_deleted(checkbox)
+    assert not is_deleted(plot)
     qtbot.waitUntil(lambda: bool(delivered))
 
 
@@ -86,9 +87,9 @@ def test_plot_destruction_disposes_externally_hosted_controls(qapp, qtbot, tmp_p
     timer.start(0)
     plot.deleteLater()
     qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-    assert sip.isdeleted(plot)
+    assert is_deleted(plot)
     qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-    assert sip.isdeleted(controller)
+    assert is_deleted(controller)
     qtbot.waitUntil(lambda: bool(delivered))
 
 
@@ -110,7 +111,7 @@ def test_detached_controls_remain_live_for_rollback(qapp, qtbot, tmp_path, monke
     timer.start(0)
     qtbot.wait(20)
     assert plot.plot_controller is controller
-    assert not sip.isdeleted(controller.checkBox)
+    assert not is_deleted(controller.checkBox)
     layout.addWidget(controller)
     controller.show()
     controller.checkBox.setChecked(True)
@@ -209,7 +210,7 @@ def test_tcspc_replacement_rollback_and_retired_callbacks(qapp, qtbot, tmp_path,
         assert cs.fits[0] is fit
         assert cs_gui.fit_windows == [original]
         assert plot.plot_controller is controller
-        assert not sip.isdeleted(controller.checkBox)
+        assert not is_deleted(controller.checkBox)
         plot.update()
         _capture(main, f"plot-lifetime-rollback-{attempt}.png", tmp_path)
 
@@ -232,7 +233,7 @@ def test_tcspc_replacement_rollback_and_retired_callbacks(qapp, qtbot, tmp_path,
         timer.start(0)
         controller.deleteLater()
         qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-        assert sip.isdeleted(controller.checkBox)
+        assert is_deleted(controller.checkBox)
         qtbot.waitUntil(lambda: bool(delivered))
         assert plot.plot_controller is None
         original.deleteLater()
