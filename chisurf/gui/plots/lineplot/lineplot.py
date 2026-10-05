@@ -887,6 +887,12 @@ class LinePlot(plotbase.Plot):
         plots["top_left_plot"].set_axis_visible(bottom=False)
         plots["top_right_plot"].set_axis_visible(bottom=False)
         self._panels = (p2, p1, p3)  # A.corr. residuals, residuals, data
+        # Owned by the page, never shown: the fit window's surface draws their
+        # canvases. Left parentless they were top-level widgets, destroyed in
+        # whatever order the interpreter reached them at exit -- a crash.
+        for panel in self._panels:
+            panel.setParent(self)
+            panel.hide()
         self.plot_stack = None
 
         # Labels - draggable text box for the fit-quality metrics overlay: light

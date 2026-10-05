@@ -369,3 +369,22 @@ def test_a_page_in_another_region_shows_its_data(window, qapp):
     window.refresh_current_plot()
     x2, _ = residuals.curves[0].get_data()
     assert len(x2) == len(x)
+
+
+def test_no_page_leaves_a_panel_as_a_top_level_widget(window, qapp):
+    """Every page's chiplot panels belong to the page.
+
+    The surface draws a panel's canvas, so nothing adds the panel to a shown
+    layout. Left parentless, LinePlot's three panels were top-level widgets
+    that the interpreter destroyed in arbitrary order at exit: a segfault after
+    the last test of a run.
+    """
+    from chisurf.gui.chiplot.canvas import Plot
+
+    area = window.plot_tab_widget
+    for index in range(area.count()):
+        window.ensure_plot_created(index)
+    _frames(qapp, window)
+    stray = [w for w in QtWidgets.QApplication.topLevelWidgets() if isinstance(w, Plot)
+             and any(w in getattr(p, "_panels", ()) for p in window._plots_all if p is not None)]
+    assert stray == []
