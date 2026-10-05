@@ -1,1 +1,2 @@
 ../../tttrlib/okf/agent-board.md
+  - Update 2026-10-06 (T-20261005-NOMPL): allow-list 31 -> 8. Done: colormap route (emtk.colormaps), figure route except trace-browser DOCX picture (reverted: nested figure corrupts host emtk child stack; emtk fix open) and ndXplorer publication figure (needs SVG/PDF painter), unres script moved to build_tools. Open: math route (emtk TeX typesetter, design), lltf Qt wizard (other lane's emtk app), manifests. Resume: okf/subsystems/matplotlib-retirement.md. Released.

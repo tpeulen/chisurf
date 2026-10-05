@@ -9,53 +9,57 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
-The tracker is `test/matplotlib_import_allowlist.txt` (31 files at the start,
-2026-10-05; the two console files are optional integrations, not entries); the guard is `test/test_matplotlib_seam.py` (no new importer, no
-stale entry, console integrations import only inside functions). Open front,
-in order:
+Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 8** (2026-10-05/06),
+guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
+`emtk.colormaps`), **delete** (1), **figure** (all but the two below, via
+`emtk.figure`). Open, in order:
 
-1. **figure route, remaining files.** Each is a port to `emtk.figure` once a
-   before-PNG is taken with the matplotlib code: render the result with
-   realistic data, `savefig`, port, re-render, compare the control inventory
-   (see "How a figure port is proven" below).
-   - ndXplorer `export/publication_figure.py` -- **blocked on a vector
-     backend**: it exports PDF and SVG (`EXPORT_FORMATS`), and `emtk.figure`
-     rasterises. Porting it now would drop the vector export, a lost feature.
-     What unblocks it: an SVG painter in emtk implementing the painter
-     contract (rects, polylines, triangles, text as `<text>`), with PDF from
-     the same drawing calls; plus a log colour scale on `heatmap` (it uses
-     `LogNorm`). Design it in emtk with golden tests, then port.
-2. **plot route.** `plugins/fluorescence_decay/lltf/lltf_gui.py`: a Qt
-   `FigureCanvasQTAgg` in the legacy Qt LLTF wizard. Another lane is building
-   the emtk LLTF app (`lltf/gui/app.py`, uncommitted 2026-10-05); when that
-   replaces the wizard, the Qt file goes with it. Do not port it in parallel.
-3. **math route -- the hard one, needs a design, not a port.** Five files
-   render LaTeX to an image with matplotlib's mathtext:
-   `gui/widgets/{equation_editor,expression_input,general}.py`,
-   `plugins/core/help/{api/mathtext.py,gui/help_app.py}`. **emtk.mathtext is
-   not an alternative today**: it is itself a front end to matplotlib's
-   mathtext with a Unicode fallback (`latex_to_unicode`). What is missing is a
-   small TeX box-layout typesetter in emtk drawing glyphs from emtk's atlas:
-   fractions, sub/superscripts, square roots, big operators with limits,
-   stretchy delimiters, accents, `\text`. The atlas already covers Greek and
-   the math symbols (checked: `∈ ≤ ≥ ± × → ∞ ≈ ∑ √` all `covers()`); what is
-   missing is layout. Do it as an emtk module with golden tests against
-   matplotlib's renders, then route the five callers. Until then those five
-   stay on the list.
-4. **Manifests.** When the list is empty: drop `matplotlib-base` from
-   `pixi.toml` `[dependencies]` (keep it in the `test` and `docs` features --
-   `docs/guides/make_figures.py` draws the guide figures with it), drop
-   `matplotlib` from `rattler-recipe/recipe.yaml` `run:` and from
-   `modules/ndxplorer/pyproject.toml`, and add it to `RETIRED` in
+1. **trace browser DOCX picture** (`plugins/tttr/trace_browser/gui/model.py`,
+   `_render_trace_png`) -- ported in `f992386bb`, **restored to matplotlib**
+   in the next commit because it broke `test_emtk_trace_browser_t4.py -k docx`
+   (A/B in a clean worktree: old 4/4 green, ported 0/4). Cause: the figure is
+   drawn from inside the app's docked `plot` window; emtk.figure's nested
+   ImApp corrupts the host context's `_child` stack (`im_core.end_child`:
+   "not enough values to unpack (expected 6, got 2)"). emtk `1c13d40` isolates
+   implot's global context and im's current context, which fixes the
+   "begin_plot() inside a plot" half but not the child-stack half. The fix
+   belongs in emtk: find what state a nested `ImApp.draw` shares with the
+   host (`Context` class-level / module storage; check `im_core` globals
+   besides `_CURRENT`), add it to `emtk.figure._isolated`, prove with a test
+   that saves a figure from inside a *docked* window, then re-port (the
+   ported function is in `f992386bb`).
+2. **ndXplorer `export/publication_figure.py`** -- blocked on a vector
+   backend: it exports PDF/SVG (`EXPORT_FORMATS`); `emtk.figure` rasterises.
+   Needs an SVG (and PDF) painter in emtk implementing the painter contract,
+   plus a log colour scale on `heatmap` (`LogNorm`). Porting before that
+   would drop vector export.
+3. **plot route**: `plugins/fluorescence_decay/lltf/lltf_gui.py`, legacy Qt
+   `FigureCanvasQTAgg`. Another lane is building the emtk LLTF app
+   (`lltf/gui/app.py`); the Qt wizard goes with it. Do not port in parallel.
+4. **math route -- needs a design, not a port.** `gui/widgets/{equation_editor,
+   expression_input,general}.py`, `plugins/core/help/{api/mathtext.py,
+   gui/help_app.py}` render LaTeX via matplotlib mathtext, and
+   **emtk.mathtext is itself a matplotlib front end** (Unicode fallback only).
+   Plan: a small TeX box-layout typesetter in emtk (fractions, sub/super,
+   roots, big operators with limits, stretchy delimiters, accents, `\text`)
+   drawing glyphs from emtk's atlas (it already covers Greek and math symbols;
+   `covers()`), golden tests against matplotlib's renders, then route the five
+   callers and make `emtk.mathtext` use it.
+5. **Static exports go through emtk.figure, not chiplot**: `chisurf.gui`
+   imports Qt, and callers include Qt-free api/server/agent code. chiplot
+   stays the API for plots *inside* GUIs.
+6. **Manifests** once the list is empty: drop `matplotlib-base` from
+   `pixi.toml` `[dependencies]` (keep it for `test`/`docs` --
+   `docs/guides/make_figures.py`), `matplotlib` from the recipe `run:` and
+   `modules/ndxplorer/pyproject.toml`; add it to `RETIRED` in
    `test/test_no_retired_dependency_imports.py`.
 
-Not in scope here and left as found: `tttr_photon_filter_plots.py` still
-imports pyqtgraph directly (its colour parse is routed). Its consumer is the
-Qt burst-selection wizard, which the BURSTEMTK lane is replacing with a native
-emtk app; porting the plots inside another lane's claim would conflict.
-`BurstWorkflow.recurrence()` raises on the demo simulation's burst table (no
-proximity-ratio column); the RASP plot was proven on a `Recurrence` built
-directly.
+Trap when committing here: the tree is shared and most of these files carry
+other lanes' edits. Save `git diff <file>` before editing, stage via a temp
+`GIT_INDEX_FILE` with `git merge-file` (HEAD, HEAD+foreign, working tree);
+where hunks overlap, stage HEAD with only your function swapped in. One
+concurrent commit in ndXplorer took this lane's content under another
+session's message (`ea40470` = the report port).
 
 # Why
 
@@ -183,4 +187,5 @@ labels sit a fixed 10 px above the bar.
   colour bar overlapping the panels (one bar per panel, shared levels). A
   heatmap panel now fills its frame (emtk `fdaafdd`). 9 -> 8.
 - 2026-10-05 trace browser's DOCX trace picture (`_render_trace_png`), at
-  parity on BH_SPC132. 8 -> 7.
+  parity on BH_SPC132. 8 -> 7. **Reverted** (see Where to pick this up, 1):
+  7 -> 8.
