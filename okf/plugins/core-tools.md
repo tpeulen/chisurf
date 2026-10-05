@@ -17,6 +17,19 @@ so ChiSurf's own plumbing is packaged as plugins too.
 Two open fronts: the **PTO inspector**'s operation index, and **Global View**
 (see [below](#global-view-the-parameter-network) for what it now is).
 
+### MMFDB Admin native port (T-20261005-MMFDBEMTK, stopped 2026-10-05)
+
+`core/mmfdb_admin` still opens Qt: the native app is **not written**, and the manifest
+deliberately has no `entrypoints.emtk` yet. Done: the Qt before-images of all 35
+panels and 4 dialogs in a seeded temp database plus a 457-control inventory
+(`okf/plugins/emtk-ports/mmfdb_admin/`), the Qt-free pieces the app needs
+(`legacy_schemas`, `entity_values`, `password_strength`, `optical_components/duplicates`,
+`core/fio/mmcif/metadata_keys`, `core/fluorescence/spectrum_traces`), the seeded test
+helper `mmfdb_admin/test/seeded_admin.py`, and three emtk widgets (multi-line text
+fields, FK link cells with `activated_cell_call`, value-coloured cells; emtk `7751e7d`).
+Next steps, the Qt defects to fix as deliberate improvements, and the traps:
+[REPORT.md](emtk-ports/mmfdb_admin/REPORT.md#where-to-pick-this-up).
+
 ### PTO inspector
 
 1. **Four shipped operations have no tool claiming them**, so ▶ Open tool is

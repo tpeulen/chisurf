@@ -18,7 +18,7 @@ from chisurf.gui.widgets.general import apply_compact_table_style
 
 from .entity_registry import EntitySpec
 from .entity_schema import FieldSpec, field_specs_for_category
-from .generic_form import SCHEMAS
+from .legacy_schemas import SCHEMAS
 
 
 class SchemaMixin:
@@ -296,7 +296,7 @@ class FormMixin:
                     dropdown_providers[fs.name] = provider
 
         # Render the entity detail form through the declarative AutoForm
-        # machinery (PRD-40). EntityForm matches MMFDBDetailWidget's public API
+        # machinery. EntityForm matches MMFDBDetailWidget's public API
         # (set_data/get_data/commitRequested), so the rest of FormMixin is
         # transport-agnostic — load_into_form/collect_form duck-type the form.
         form = EntityForm(

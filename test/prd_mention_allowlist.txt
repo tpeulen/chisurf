@@ -74,17 +74,14 @@ chisurf/plugins/calculator/phasor_calculator/tests/test_phasor_calculator.py
 chisurf/plugins/core/acq/tcspc_devices/simulation/core/algorithms.py
 chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py
 chisurf/plugins/core/mmfdb_admin/__init__.py
-chisurf/plugins/core/mmfdb_admin/gui/autoform_entity_form.py
 chisurf/plugins/core/mmfdb_admin/gui/calibrations_view.py
 chisurf/plugins/core/mmfdb_admin/gui/client.py
 chisurf/plugins/core/mmfdb_admin/gui/lifecycle_view.py
-chisurf/plugins/core/mmfdb_admin/gui/mixins.py
 chisurf/plugins/core/mmfdb_admin/gui/optical_components/component_dock.py
 chisurf/plugins/core/mmfdb_admin/gui/pipelines_view.py
 chisurf/plugins/core/mmfdb_admin/gui/protocols_view.py
 chisurf/plugins/core/mmfdb_admin/gui/reagents_view.py
 chisurf/plugins/core/mmfdb_admin/gui/studies_view.py
-chisurf/plugins/core/mmfdb_admin/gui/tool.py
 chisurf/plugins/core/mmfdb_admin/test/test_admin_handlers.py
 chisurf/plugins/core/mmfdb_admin/test/test_calibration_handlers.py
 chisurf/plugins/core/mmfdb_admin/test/test_calibrations_view.py

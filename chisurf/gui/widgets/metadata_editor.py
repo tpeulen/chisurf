@@ -3,49 +3,16 @@ from __future__ import annotations
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 
+# The key catalogue is Qt-free and shared with the native emtk editors.
+from chisurf.core.fio.mmcif.metadata_keys import (
+    COMMON_METADATA_KEYS,
+    all_metadata_keys,
+    key_description,
+)
 from chisurf.core.fio.mmcif.pdbx_metadata import (
     get_pdbx_metadata_descriptions,
     get_pdbx_metadata_keys,
 )
-
-# ---------------------------------------------------------------------------
-# Shared metadata key definitions (previously duplicated in fitinfo.py and
-# burst_selection/gui/tool.py)
-# ---------------------------------------------------------------------------
-
-COMMON_METADATA_KEYS = [
-    "pH",
-    "temperature",
-    "ionic_strength",
-    "buffer_composition",
-    "solvent_phase",
-    "labeling_efficiency",
-    "donor_only_fraction",
-    "acceptor_only_fraction",
-    "dye_ratio",
-    "quencher_concentration",
-    "time_resolution",
-    "excitation_wavelength",
-    "emission_wavelength",
-    "power",
-    "temperature_control",
-    "data_notes",
-    "_exptl_crystal_grow.ph",
-    "_exptl_crystal_grow.temp",
-    "_exptl_crystal_grow.method",
-    "_exptl_crystal_grow.comp_details",
-    "_diffrn_radiation_wavelength.wavelength",
-    "_diffrn_radiation.monochromator",
-    "_diffrn_detector.detector",
-    "_diffrn_detector.type",
-    "_diffrn_standards.number",
-    "_diffrn_standards.interval_count",
-    "pdbx.sample_type",
-    "pdbihm.entry_id",
-    "flrcif.sample_class",
-    "flrcif.experiment_type",
-    "flrcif.data_type",
-]
 
 # Keep the historical star-import surface, including the demand-loaded catalog.
 ALL_METADATA_KEYS: list[str]  # The real list is supplied on demand by __getattr__.
@@ -61,11 +28,7 @@ def _all_metadata_keys() -> list[str]:
     """Load the full catalog only when a key picker (or public export) needs it."""
     keys = globals().get("ALL_METADATA_KEYS")
     if keys is None:
-        try:
-            pdbx_keys = get_pdbx_metadata_keys()
-        except Exception:
-            pdbx_keys = []
-        keys = COMMON_METADATA_KEYS + [k for k in pdbx_keys if k not in COMMON_METADATA_KEYS]
+        keys = all_metadata_keys()
         globals()["ALL_METADATA_KEYS"] = keys
     return keys
 
@@ -78,46 +41,6 @@ def __getattr__(name: str):
 
 def __dir__():
     return sorted(set(globals()) | {"ALL_METADATA_KEYS"})
-
-
-_PDBX_DESCRIPTIONS: dict[str, str] | None = None
-
-_COMMON_DESCRIPTIONS: dict[str, str] = {
-    "pH": "Solution pH",
-    "temperature": "Temperature in Kelvin",
-    "ionic_strength": "Ionic strength (mM or M)",
-    "buffer_composition": "Buffer composition and concentration",
-    "solvent_phase": "Solvent phase (liquid, solid, gas)",
-    "labeling_efficiency": "Fraction of labeled molecules",
-    "donor_only_fraction": "Fraction of donor-only molecules",
-    "acceptor_only_fraction": "Fraction of acceptor-only molecules",
-    "dye_ratio": "Dye stoichiometry ratio",
-    "quencher_concentration": "Quencher concentration",
-    "time_resolution": "Time resolution of the measurement",
-    "excitation_wavelength": "Excitation wavelength in nm",
-    "emission_wavelength": "Emission wavelength in nm",
-    "power": "Excitation power",
-    "temperature_control": "Temperature control method",
-    "data_notes": "Free-form data notes",
-    "pdbx.sample_type": "PDBx sample type",
-    "pdbihm.entry_id": "PDB-IHM entry identifier",
-    "flrcif.sample_class": "FLR-CIF sample class",
-    "flrcif.experiment_type": "FLR-CIF experiment type",
-    "flrcif.data_type": "FLR-CIF data type",
-}
-
-
-def key_description(key: str) -> str:
-    global _PDBX_DESCRIPTIONS
-    desc = _COMMON_DESCRIPTIONS.get(key)
-    if desc:
-        return desc
-    if _PDBX_DESCRIPTIONS is None:
-        try:
-            _PDBX_DESCRIPTIONS = get_pdbx_metadata_descriptions()
-        except Exception:
-            _PDBX_DESCRIPTIONS = {}
-    return _PDBX_DESCRIPTIONS.get(key, "")
 
 
 class _MetadataKeyModel(QtCore.QStringListModel):

@@ -2,7 +2,7 @@
 
 Drop-in replacement for :class:`generic_form.MMFDBDetailWidget` that renders an
 entity's :class:`entity_schema.FieldSpec` list through the project's declarative
-AutoForm machinery (PRD-40) instead of a hand-rolled ``QFormLayout``.
+AutoForm machinery instead of a hand-rolled ``QFormLayout``.
 
 Public surface matches ``MMFDBDetailWidget`` so ``mixins.FormMixin`` can use it
 unchanged: ``commitRequested`` / ``dataChanged`` signals, ``set_data(dict)``,
@@ -11,7 +11,6 @@ unchanged: ``commitRequested`` / ``dataChanged`` signals, ``set_data(dict)``,
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from typing import Any
 
@@ -20,10 +19,7 @@ from qtpy import QtCore, QtWidgets
 import chisurf.core.dataspec as ds
 from chisurf.gui.autoform import AutoForm
 
-# Fields that are stored as JSON in the DB but edited as text (mirrors
-# generic_form.MMFDBDetailWidget.get_data special-casing).
-_JSON_LIST_FIELDS = {"laser_wavelengths"}
-_JSON_DICT_FIELDS = {"detector_channels"}
+from . import entity_values
 
 
 def _section_for_field(
@@ -197,64 +193,15 @@ class EntityForm(QtWidgets.QWidget):
             out[fs.name] = self._coerce_out(fs, getattr(self._model, fs.name, None))
         return out
 
-    # -- coercion (mirrors generic_form.MMFDBDetailWidget) ----------------
+    # -- coercion: one definition shared with the native admin (entity_values) --
     @staticmethod
     def _default_for(fs: Any) -> Any:
         """Typed empty default so AutoForm editors build without coercion errors."""
-        widget = getattr(fs, "widget", "str")
-        if widget == "int":
-            return 0
-        if widget == "float":
-            return 0.0
-        if widget == "bool":
-            return False
-        return ""
+        return entity_values.default_for(fs)
 
     @staticmethod
     def _coerce_in(fs: Any, val: Any) -> Any:
-        widget = getattr(fs, "widget", "str")
-        if isinstance(val, (list, dict)):
-            return json.dumps(val)
-        if widget == "int":
-            try:
-                return int(val) if val not in (None, "") else 0
-            except (TypeError, ValueError):
-                return 0
-        if widget == "float":
-            try:
-                return float(val) if val not in (None, "") else 0.0
-            except (TypeError, ValueError):
-                return 0.0
-        if widget == "bool":
-            return bool(val)
-        return "" if val is None else str(val)
+        return entity_values.coerce_in(fs, val)
 
     def _coerce_out(self, fs: Any, raw: Any) -> Any:
-        name = fs.name
-        widget = getattr(fs, "widget", "str")
-        if widget == "bool":
-            val: Any = 1 if raw else 0
-        elif widget == "int":
-            try:
-                val = int(raw)
-            except (TypeError, ValueError):
-                val = 0
-        elif widget == "float":
-            try:
-                val = float(raw)
-            except (TypeError, ValueError):
-                val = 0.0
-        else:
-            val = (str(raw).strip() or None) if raw is not None else None
-
-        if name in _JSON_LIST_FIELDS:
-            try:
-                return json.loads(val) if val else []
-            except Exception:
-                return []
-        if name in _JSON_DICT_FIELDS:
-            try:
-                return json.loads(val) if val else {}
-            except Exception:
-                return {}
-        return val
+        return entity_values.coerce_out(fs, raw)

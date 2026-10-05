@@ -357,30 +357,9 @@ class PasswordChangeDialog(QtWidgets.QDialog):
     @staticmethod
     def _score_password(password: str) -> tuple[int, list[str]]:
         """Return strength score and missing requirements."""
-        score = 0
-        feedback: list[str] = []
-        if len(password) >= 8:
-            score += 1
-        else:
-            feedback.append("at least 8 characters")
-        if any(char.islower() for char in password):
-            score += 1
-        else:
-            feedback.append("one lowercase letter")
-        if any(char.isupper() for char in password):
-            score += 1
-        else:
-            feedback.append("one uppercase letter")
-        if any(char.isdigit() for char in password):
-            score += 1
-        else:
-            feedback.append("one number")
-        special_chars = "!@#$%^&*()_+-=[]{}|;':\",./<>?"
-        if any(char in special_chars for char in password):
-            score += 1
-        else:
-            feedback.append("one special character")
-        return score, feedback
+        from .password_strength import score_password
+
+        return score_password(password)
 
 
 class MMFDBWidget(NavigationPanelTool):
@@ -1456,8 +1435,28 @@ class MMFDBWidget(NavigationPanelTool):
         if not user_id:
             dialogs.information(self, "No user selected", "Select a user row first.")
             return
-        dlg = PasswordChangeDialog(user_id=user_id, client=self.client, parent=self)
-        dlg.exec()
+        # The dialog takes no client (it used to be passed one, which raised a
+        # TypeError on every click); it returns the password and this saves it.
+        row = dock._row_cache.get(user_id, {}) if isinstance(dock, EntityDock) else {}
+        dlg = PasswordChangeDialog(
+            user_id=user_id, is_admin=bool(row.get("is_admin")), parent=self
+        )
+        if dlg.exec() != QtWidgets.QDialog.Accepted:
+            return
+        try:
+            self.client.save_user(
+                {
+                    "user_id": user_id,
+                    "password": "" if dlg.cleared else dlg.password,
+                    "requester_id": self._active_mmfdb_user_id(),
+                }
+            )
+        except Exception as exc:
+            dialogs.error(self, "Error", f"Could not change password: {exc}")
+            return
+        self.status_label.setText(
+            f"Password {'cleared' if dlg.cleared else 'updated'} for '{user_id}'."
+        )
 
     def _set_branch_head_for_selected(self) -> None:
         """Prompt for a head operation ID and update the selected branch."""
@@ -3061,7 +3060,7 @@ class MMFDBWidget(NavigationPanelTool):
         full_btn = self._text_icon_button(
             "Full description",
             QtWidgets.QStyle.SP_FileDialogDetailedView,
-            "Show PRD-02 nested sample description",
+            "Show nested sample description",
             self.show_sample_full_description,
         )
         validate_btn = self._text_icon_button(
@@ -4713,7 +4712,7 @@ class MMFDBWidget(NavigationPanelTool):
                 )
 
     def refresh_entities_table(self) -> None:
-        """Refresh standalone entities from the new PRD-02 entity service."""
+        """Refresh standalone entities from the entity service."""
         self.fill_entities(self.client.list_entities())
 
     def save_selected_entity(self) -> None:
@@ -5655,7 +5654,7 @@ class MMFDBWidget(NavigationPanelTool):
         self.status_label.setText(f"Exported {result.get('output_path')}")
 
     def show_sample_full_description(self) -> None:
-        """Show the nested PRD-02 sample description in the preview pane."""
+        """Show the nested sample description in the preview pane."""
         sample_id = self._active_sample_id()
         if not sample_id:
             self.status_label.setText("Select or enter a sample id")

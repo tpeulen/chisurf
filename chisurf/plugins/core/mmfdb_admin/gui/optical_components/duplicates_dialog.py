@@ -1,85 +1,12 @@
 from __future__ import annotations
 
-import math
-import re
-from collections import defaultdict
-from difflib import SequenceMatcher
 from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui import dialogs
 
-
-def _norm(name: str) -> str:
-    n = (name or "").lower()
-    for filler in ["fluor", "dye", "fluorescent"]:
-        n = n.replace(filler, "")
-    if n.startswith("af-") or n.startswith("af "):
-        n = n.replace("af", "alexa", 1)
-    elif n.startswith("af") and len(n) > 2 and n[2].isdigit():
-        n = "alexa" + n[2:]
-    n = n.replace("cyanine", "cy")
-    return re.sub(r"[^a-z0-9]", "", n)
-
-
-def _calc_prob(p1: dict, p2: dict) -> float:
-    # Prior probability
-    P_dup = 0.001
-    P_not_dup = 1 - P_dup
-
-    # 1. Name Match
-    n1 = _norm(p1["chromophore_name"])
-    n2 = _norm(p2["chromophore_name"])
-
-    if n1 == n2:
-        L_name_dup = 0.99
-        L_name_not = 0.0001
-    else:
-        sim = SequenceMatcher(None, n1, n2).ratio()
-
-        if sim < 0.6:
-            L_name_dup = 1e-6
-            L_name_not = 0.99
-        else:
-            L_name_dup = math.exp(-10 * (1 - sim) ** 2)
-            L_name_not = 0.01 if sim > 0.8 else 0.1
-
-    # 2. Abs Max Match
-    a1, a2 = p1.get("abs_max"), p2.get("abs_max")
-    if a1 and a2:
-        try:
-            diff = abs(float(a1) - float(a2))
-            L_abs_dup = math.exp(-0.5 * (diff / 5.0) ** 2)
-            L_abs_not = 1.0 / 300.0  # Approx chance of random match in 300nm range
-        except ValueError:
-            L_abs_dup = L_abs_not = 1.0
-    else:
-        # If missing, it tells us nothing
-        L_abs_dup = L_abs_not = 1.0
-
-    # 3. Em Max Match
-    e1, e2 = p1.get("em_max"), p2.get("em_max")
-    if e1 and e2:
-        try:
-            diff = abs(float(e1) - float(e2))
-            L_em_dup = math.exp(-0.5 * (diff / 5.0) ** 2)
-            L_em_not = 1.0 / 300.0
-        except ValueError:
-            L_em_dup = L_em_not = 1.0
-    else:
-        L_em_dup = L_em_not = 1.0
-
-    num = P_dup * L_name_dup * L_abs_dup * L_em_dup
-    den = num + P_not_dup * L_name_not * L_abs_not * L_em_not
-    prob = num / den if den > 0 else 0
-
-    # Strongly penalize duplicates from the same curated source
-    s1, s2 = p1.get("source"), p2.get("source")
-    if s1 and s2 and s1 == s2 and s1 in ("fpbase", "pubmed"):
-        prob *= 0.01  # Highly unlikely that fpbase has exact duplicates of its own entries
-
-    return prob
+from .duplicates import _calc_prob, _norm, find_duplicate_groups  # noqa: F401  (re-exported)
 
 
 class DuplicateFinderThread(QtCore.QThread):
@@ -91,95 +18,13 @@ class DuplicateFinderThread(QtCore.QThread):
         self.probes = probes
 
     def run(self) -> None:
-        by_category = defaultdict(list)
-        for p in self.probes:
-            by_category[p.get("category", "other")].append(p)
-
-        edges = []
-        total_categories = len(by_category)
-
-        for cat_idx, cat_probes in enumerate(by_category.values()):
-            if self.isInterruptionRequested():
-                return
-
-            self.progress.emit(int(cat_idx / max(1, total_categories) * 90))
-
-            # Sort probes by abs_max (or a large number if None)
-            def _get_abs(p):
-                try:
-                    return float(p.get("abs_max"))
-                except (TypeError, ValueError):
-                    return 999999.0
-
-            cat_probes.sort(key=_get_abs)
-
-            n = len(cat_probes)
-            for i in range(n):
-                if self.isInterruptionRequested():
-                    return
-
-                p1 = cat_probes[i]
-                a1 = _get_abs(p1)
-
-                for j in range(i + 1, n):
-                    p2 = cat_probes[j]
-                    a2 = _get_abs(p2)
-
-                    # Exact name matches are always checked
-                    if _norm(p1["chromophore_name"]) == _norm(p2["chromophore_name"]):
-                        edges.append((p1["probe_id"], p2["probe_id"]))
-                        continue
-
-                    # If abs_max diff > 15nm, break inner loop (since sorted)
-                    if a1 != 999999.0 and a2 != 999999.0:
-                        if a2 - a1 > 15.0:
-                            break
-
-                    # Otherwise compute full probability
-                    prob = _calc_prob(p1, p2)
-                    if prob > 0.8:
-                        edges.append((p1["probe_id"], p2["probe_id"]))
-
-        self.progress.emit(95)
-
-        # Connected components
-        parent = {}
-
-        def find(i):
-            if parent[i] == i:
-                return i
-            parent[i] = find(parent[i])
-            return parent[i]
-
-        def union(i, j):
-            root_i = find(i)
-            root_j = find(j)
-            if root_i != root_j:
-                parent[root_i] = root_j
-
-        for p in self.probes:
-            parent[p["probe_id"]] = p["probe_id"]
-
-        for i, j in edges:
-            union(i, j)
-
-        groups_by_root = defaultdict(list)
-        probe_map = {p["probe_id"]: p for p in self.probes}
-
-        for pid in parent:
-            root = find(pid)
-            groups_by_root[root].append(probe_map[pid])
-
-        duplicate_groups = []
-        for root, group_probes in groups_by_root.items():
-            if len(group_probes) > 1:
-                group_probes.sort(key=lambda p: len(p["chromophore_name"]))
-                group_name = group_probes[0]["chromophore_name"]
-                duplicate_groups.append({"norm_name": group_name, "probes": group_probes})
-
-        duplicate_groups.sort(key=lambda g: g["norm_name"].lower())
-        self.progress.emit(100)
-        self.finished_groups.emit(duplicate_groups)
+        groups = find_duplicate_groups(
+            self.probes,
+            progress=self.progress.emit,
+            interrupted=self.isInterruptionRequested,
+        )
+        if groups is not None:
+            self.finished_groups.emit(groups)
 
 
 class GroupDetailModel:
