@@ -12,12 +12,15 @@ points at a sibling checkout (the same arrangement as ``modules/mmfdb``). When
 it does not resolve this script fails loudly: with no conda package behind it,
 silently continuing would leave the environment with no tttrlib at all.
 
-After a successful build the artifacts are **symlinked** into any extra developer
-environment (by default a conda env named ``arm64``), so that env imports this build
-directly and never needs its own ``pip install``. A rebuild is then visible everywhere
-at once. Set ``CHISURF_TTTRLIB_LINK_ENVS`` to override the targets, or to an empty
-string to switch it off. Linking is a convenience: a missing or ABI-incompatible env is
-reported and skipped, never a build failure.
+After a successful build every extra developer environment (by default a conda
+env named ``arm64``) gets **its own build**, against its own native libraries,
+installed as real files. It used to get symlinks into this environment instead,
+which broke twice over: pixi environments are detached into
+``~/Library/Caches/rattler``, which macOS purges under disk pressure -- taking
+every linked environment's tttrlib with it mid-run -- and one build is only
+loadable where the native libraries (HDF5) agree. Set
+``CHISURF_TTTRLIB_LINK_ENVS`` to override the targets, or to an empty string to
+switch it off. A target environment that then cannot import tttrlib fails the task.
 
 The build itself needs nothing beyond the environment prefix. It used to inject
 macOS-specific ``libomp`` linker flags, because tttrlib's Python extension
@@ -44,31 +47,36 @@ _SRC = _REPO / "modules" / "tttrlib"
 # SWIG wrapper that fails to compile.
 _BUILD_DIR = _REPO / "build" / "tttrlib"
 
-# Extra environments that should see this build without a second install. The pixi
-# environment is where the wheel lands; a developer usually *also* has a conda env they
-# run scripts and editors from (here `arm64`), and re-installing tttrlib into it after
-# every C++ change is both slow and the source of the stale-copy litter this replaces.
-# Symlinking instead means one build serves both, and a rebuild is visible immediately.
+# Extra environments that should import this source as well: a developer usually
+# *also* has a conda env they run scripts and editors from (here `arm64`). Each one
+# gets its own build (see the module docstring for why never a symlink).
 #
 # Override with CHISURF_TTTRLIB_LINK_ENVS (os.pathsep-separated env prefixes); set it to
-# an empty string to disable. Missing envs are skipped silently — this is a convenience,
-# never a build failure.
+# an empty string to disable. Missing envs are skipped silently.
 _LINK_ENVS_VAR = "CHISURF_TTTRLIB_LINK_ENVS"
 _DEFAULT_LINK_ENV_NAMES = ("arm64",)
 
-#: The files a tttrlib install consists of. Only these names are ever replaced.
-#:
-#: tttrlib ships in one of two shapes and this has to handle both, because which
-#: one you get depends on the checkout under ``modules/tttrlib`` rather than on
-#: anything here. Before the module split it was a flat wrapper plus one
-#: extension; after it, a **package directory** holding the extension and one
-#: shared library per module. Linking only the flat names against a split build
-#: finds no extension and skips silently -- which is what left the sibling env
-#: with three dangling symlinks and no tttrlib at all.
-_ARTIFACTS = ("tttrlib.py",)
-_ARTIFACT_GLOBS = ("_tttrlib*.so", "tttrlib-*.dist-info")
-#: The post-split package directory, linked whole when it is what was built.
+#: The post-split package directory (extension + one library per module).
 _PACKAGE_DIR = "tttrlib"
+#: Every name a tttrlib install -- either layout, either scheme -- leaves in
+#: site-packages: the package, the pre-split flat wrapper and extension, and the
+#: distribution metadata.
+_INSTALL_GLOBS = (_PACKAGE_DIR, "tttrlib.py", "_tttrlib*.so", "tttrlib-*.dist-info")
+
+
+def _clear_tttrlib(site_packages: Path) -> None:
+    """Remove every tttrlib install from *site_packages*, dangling links included.
+
+    A symlink whose target was purged still *names* an install, so it reads as
+    one and shadows nothing useful; ``Path.exists`` is False for it, which is
+    why this tests ``is_symlink`` first.
+    """
+    for pattern in _INSTALL_GLOBS:
+        for path in sorted(site_packages.glob(pattern)):
+            if path.is_symlink() or path.is_file():
+                path.unlink()
+            elif path.is_dir():
+                shutil.rmtree(path)
 
 
 def _conda_env_prefixes() -> list[Path]:
@@ -120,12 +128,10 @@ def _verify(prefix: Path) -> bool:
     not exist yet -- at ``import tttrlib``, i.e. at application start, far from
     whatever produced the mismatch.
 
-    This is not hypothetical. ``tttrlib.py`` is shared with the linked
-    environments by symlink while each keeps its own ``_tttrlib*.so``, so any
-    build that copies a wrapper into a *linked* environment writes through the
-    symlink and replaces the shared one, leaving every other environment with an
-    older extension. Verifying the environment we installed into turns that into
-    a failed build task instead of a broken launch.
+    It happened while environments shared the wrapper by symlink and kept their
+    own extensions; a copy into one wrote through the link into all of them.
+    Verifying the environment we installed into turns any such mismatch into a
+    failed build task instead of a broken launch.
     """
     python = prefix / "bin" / "python"
     if not python.is_file():
@@ -145,96 +151,6 @@ def _verify(prefix: Path) -> bool:
         )
         return False
     print(f"build-tttrlib: {prefix.name} -> {check.stdout.strip()}", flush=True)
-    return True
-
-
-def _link_into(prefix: Path, source_sp: Path) -> bool:
-    """Symlink the freshly built tttrlib from *source_sp* into the env at *prefix*.
-
-    Returns True when the environment ends up importing this build.
-    """
-    target_sp = _site_packages(prefix)
-    if target_sp is None:
-        print(f"build-tttrlib: {prefix} has no site-packages; skipped", flush=True)
-        return False
-
-    # A compiled extension is tied to an exact CPython ABI. Linking a cp312 module into a
-    # cp311 env produces an ImportError at first use, far from the cause, so refuse here.
-    package = source_sp / _PACKAGE_DIR
-    ext_globs = ([package.glob("_tttrlib*.so")] if package.is_dir() else []) + [
-        source_sp.glob("_tttrlib*.so")
-    ]
-    src_ext = next((e for glob in ext_globs for e in sorted(glob)), None)
-    if src_ext is None:
-        print("build-tttrlib: no built extension to link from; skipped", flush=True)
-        return False
-    tag = src_ext.name.split(".")[1]  # e.g. cpython-312-darwin
-    target_py = target_sp.parent.name  # e.g. python3.12
-    want = "cpython-" + target_py.replace("python", "").replace(".", "")
-    if not tag.startswith(want):
-        print(
-            f"build-tttrlib: {prefix.name} is {target_py} but the extension is '{tag}'; "
-            "skipped (a compiled extension cannot cross CPython versions)",
-            flush=True,
-        )
-        return False
-
-    linked = []
-    if package.is_dir():
-        # The split build: one link for the package, which carries the extension
-        # and every module library with it.
-        linked.append((package, target_sp / _PACKAGE_DIR))
-    else:
-        for name in _ARTIFACTS:
-            src = source_sp / name
-            if src.is_file():
-                linked.append((src, target_sp / name))
-        for pattern in ("_tttrlib*.so",):
-            for src in sorted(source_sp.glob(pattern)):
-                linked.append((src, target_sp / src.name))
-    for src in sorted(source_sp.glob("tttrlib-*.dist-info")):
-        linked.append((src, target_sp / src.name))
-
-    # Whichever shape was *not* built leaves its own names behind, and a stale
-    # symlink to a file that no longer exists is worse than an absent one: it
-    # reads as an install. Clear the other layout's artefacts before linking.
-    stale = (
-        [target_sp / _PACKAGE_DIR]
-        if not package.is_dir()
-        else [target_sp / name for name in _ARTIFACTS] + sorted(target_sp.glob("_tttrlib*.so"))
-    )
-    for path in stale:
-        if path.is_symlink() or path.is_file():
-            path.unlink()
-        elif path.is_dir():
-            shutil.rmtree(path)
-
-    for src, dst in linked:
-        # Replace whatever is there — a previous real install, or an older symlink.
-        if dst.is_symlink() or dst.is_file():
-            dst.unlink()
-        elif dst.is_dir():
-            shutil.rmtree(dst)
-        dst.symlink_to(src)
-
-    # Prove it: a link that does not import is worse than no link, because the failure
-    # surfaces later in someone else's script.
-    python = prefix / "bin" / "python"
-    if not python.is_file():
-        print(f"build-tttrlib: linked into {prefix} (no interpreter found to verify)", flush=True)
-        return True
-    check = subprocess.run(
-        [str(python), "-c", "import tttrlib,sys;print(tttrlib.__version__, tttrlib.__file__)"],
-        capture_output=True,
-        text=True,
-    )
-    if check.returncode != 0:
-        print(
-            f"build-tttrlib: linked into {prefix} but it does not import:\n{check.stderr.strip()}",
-            flush=True,
-        )
-        return False
-    print(f"build-tttrlib: linked into {prefix.name} -> {check.stdout.strip()}", flush=True)
     return True
 
 
@@ -321,17 +237,16 @@ def _cmake_args(prefix: Path) -> str:
 def _build_into(prefix: Path) -> bool:
     """Build tttrlib against *prefix* and install it there as a real directory.
 
-    The fallback when a symlink to the shared build cannot be loaded. One build
-    can serve two environments only while they agree on the native libraries it
-    links; they do not have to. HDF5 is the one that bites — an environment
+    One build can serve two environments only while they agree on the native
+    libraries it links; they do not have to. HDF5 is the one that bites — an environment
     solving HDF5 2.1 produces an extension wanting ``libhdf5.320``, which an
     environment carrying 1.14 cannot load at all:
 
         ImportError: dlopen(...): Library not loaded: @rpath/libhdf5.320.dylib
 
     So this environment gets an extension linked against *its own* libraries,
-    installed as real files rather than symlinks so the next shared build does
-    not silently point it back at something it cannot load.
+    installed as real files, so nothing it imports lives in another
+    environment (or in a cache that can be purged under it).
 
     Parameters
     ----------
@@ -358,8 +273,8 @@ def _build_into(prefix: Path) -> bool:
         env["CMAKE_BUILD_PARALLEL_LEVEL"] = str(os.cpu_count() or 2)
     env["CMAKE_ARGS"] = _cmake_args(prefix)
     print(
-        f"build-tttrlib: {prefix.name} cannot load the shared build; "
-        "building against its own libraries (this takes a few minutes)",
+        f"build-tttrlib: building for {prefix.name} against its own libraries "
+        "(this takes a few minutes)",
         flush=True,
     )
     rc = subprocess.call(
@@ -382,19 +297,15 @@ def _build_into(prefix: Path) -> bool:
         print(f"build-tttrlib: dedicated build for {prefix.name} failed", flush=True)
         return False
 
+    # Unlinking drops a link from the old scheme, never the environment it
+    # pointed into.
+    _clear_tttrlib(target_sp)
     installed = []
-    for src in [staging / _PACKAGE_DIR, *sorted(staging.glob("tttrlib-*.dist-info"))]:
-        if not src.exists():
-            continue
-        dst = target_sp / src.name
-        # Symlinks from an earlier shared build: unlink drops the link, never
-        # the environment it points into.
-        if dst.is_symlink() or dst.is_file():
-            dst.unlink()
-        elif dst.is_dir():
-            shutil.rmtree(dst)
-        shutil.copytree(src, dst) if src.is_dir() else shutil.copy2(src, dst)
-        installed.append(dst)
+    for pattern in _INSTALL_GLOBS:
+        for src in sorted(staging.glob(pattern)):
+            dst = target_sp / src.name
+            shutil.copytree(src, dst) if src.is_dir() else shutil.copy2(src, dst)
+            installed.append(dst)
 
     # macOS refuses a copied extension whose signature the copy invalidated, and
     # kills the interpreter (exit 137) with no message rather than raising.
@@ -411,35 +322,15 @@ def _build_into(prefix: Path) -> bool:
 
 
 def link_build() -> bool:
-    """Make every configured extra environment import this build.
-
-    Symlinks the freshly built tttrlib into each one, and where that link cannot
-    be *loaded* — different CPython ABI, or native libraries that disagree —
-    builds a dedicated copy for that environment instead. A link that does not
-    import is worse than no link: the failure surfaces later, in someone else's
-    script, as an environment with no tttrlib.
+    """Give every configured extra environment its own build of this source.
 
     Returns
     -------
     bool
         ``True`` when every target environment imports tttrlib afterwards.
     """
-    source_sp = Path(
-        subprocess.run(
-            [sys.executable, "-c", "import site;print(site.getsitepackages()[0])"],
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-    )
-    if not source_sp.is_dir():
-        return True
     ok = True
     for prefix in _link_targets():
-        try:
-            if _link_into(prefix, source_sp):
-                continue
-        except OSError as exc:
-            print(f"build-tttrlib: could not link into {prefix}: {exc}", flush=True)
         if (prefix / "bin" / "python").is_file() and not _build_into(prefix):
             print(f"build-tttrlib: {prefix.name} still cannot import tttrlib", flush=True)
             ok = False
@@ -453,7 +344,7 @@ def main() -> int:
     -------
     int
         Process exit status: ``0`` when the build installed and every
-        environment -- the one built into and each linked one -- imports it.
+        environment -- this one and each extra one -- imports it.
     """
     if not (_SRC / "pyproject.toml").is_file():
         print(
@@ -514,7 +405,7 @@ def main() -> int:
         return rc
     if not _verify(Path(sys.prefix)):
         return 1
-    # A linked environment that cannot import what was built is a failed build,
+    # An extra environment that cannot import its build is a failed build,
     # not a cosmetic warning: it is discovered later, as a suite that cannot
     # collect, by someone with no reason to suspect this task.
     return 0 if link_build() else 1

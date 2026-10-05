@@ -40966,3 +40966,10 @@ side of the line.
   `test/gui/test_emtk_fit_analysis_form.py`; fitinfo/table sweeps green (40
   passed), ruff clean. Remaining Qt in the plot window: Metadata tab
   (MetadataEditor) and the External-data drop table.
+- 2026-10-05 · `build-tttrlib`: sibling envs (default `arm64`) now get **their own build** (real
+  files, own HDF5, codesigned) instead of symlinks into the pixi env. The pixi env is detached
+  into `~/Library/Caches/rattler`; the disk filled, macOS purged it, and `arm64` lost tttrlib
+  mid-run (41/42 GUI-matrix rows). `_link_into` removed; `_clear_tttrlib` clears old/dangling
+  links. Also removed 18 dangling hand-added `arm64/lib/libhdf5*.320` links into the same cache
+  (conda owns hdf5 1.14 there; nothing linked .320). Guard:
+  `test/test_build_tttrlib_sibling_envs.py`; docs: `okf/workflows/build-and-env.md`.
