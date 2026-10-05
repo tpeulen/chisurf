@@ -153,7 +153,18 @@ class CardShell(TourTarget, ImApp):
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         im.begin_disabled(self.blocked)
-        self.docks.draw(box)
+        top = float(self.toolbar_height())
+        if top > 0:
+            # A fixed strip above the windows (toolbar, status): the windows below can be rearranged by the user.
+            im.set_next_window_pos((box[0], box[1]), im.Cond.ALWAYS)
+            im.set_next_window_size((box[2], top), im.Cond.ALWAYS)
+            if im.begin(f"##{self.card_key}-toolbar", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+                im.set_cursor_pos((box[0] + 6.0, box[1] + 4.0))  # the dock windows' content padding
+                im.indent(6.0)
+                self.draw_toolbar((box[0], box[1], box[2], top))
+                im.unindent(6.0)
+            im.end()
+        self.docks.draw((box[0], box[1] + top, box[2], max(box[3] - top, 1.0)))
         im.end_disabled()
         if self.dialog is not None:
             self._draw_file_dialog(box)
@@ -164,6 +175,13 @@ class CardShell(TourTarget, ImApp):
 
     def before_frame(self) -> None:
         """Called at the top of every frame (collect finished work)."""
+
+    def toolbar_height(self) -> float:
+        """Height of a fixed strip above the dock windows (0: none); a card with movable views draws its toolbar there."""
+        return 0.0
+
+    def draw_toolbar(self, box) -> None:  # pragma: no cover - drawn only when toolbar_height() > 0
+        """The fixed strip above the windows."""
 
     def _draw_main(self, box) -> None:  # pragma: no cover - overridden
         raise NotImplementedError

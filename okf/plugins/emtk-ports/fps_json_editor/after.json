@@ -110,6 +110,7 @@
     "41",
     "42",
     "43",
+    "44",
     "5",
     "5.1",
     "52.0",
@@ -177,12 +178,11 @@
     "flexfit",
     "flexibleresidues",
     "forsterradius(r0,a)",
-    "fpsjsoneditor",
     "gridresolution",
     "guide",
     "help",
     "json",
-    "k3g5c00000gn/t/tmp7z7m3ix6/protein_1r0a.pdb",
+    "k3g5c00000gn/t/tmpywj6_4v2/protein_1r0a.pdb",
     "label1",
     "label2",
     "linkerlength",
@@ -310,36 +310,6 @@
       "label": "Help",
       "id": "Help",
       "tooltip": "What the tool does, what it writes, and its limits."
-    },
-    {
-      "kind": "button",
-      "label": "Positions",
-      "id": "Positions",
-      "tooltip": "Labelling positions: structure, chain, residue, atom and the dye of each."
-    },
-    {
-      "kind": "button",
-      "label": "Distances",
-      "id": "Distances",
-      "tooltip": "Distance restraints between two positions, and the scoring groups."
-    },
-    {
-      "kind": "button",
-      "label": "FlexFit",
-      "id": "FlexFit",
-      "tooltip": "Flexible residues and bonds for the FlexFit simulation."
-    },
-    {
-      "kind": "button",
-      "label": "JSON",
-      "id": "JSON",
-      "tooltip": "The raw fps.json text; edit it and press Update."
-    },
-    {
-      "kind": "button",
-      "label": "3D View",
-      "id": "3D View",
-      "tooltip": "The accessible volumes and distance lines of the computed positions."
     },
     {
       "kind": "button",

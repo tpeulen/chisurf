@@ -77,6 +77,32 @@ a position removes its volume; a drag rotates and the wheel zooms (the frame cha
 The same `ChimolView` replaces the `implot3d` CA/P trace in the `fret_docking` Structure tab (`cards/docking.py`); its
 click suite passes unchanged.
 
+## The views are dock windows (2026-10-05, owner: "in the old one, i could move the docks around, in the current all is fixed")
+
+Qt's editor put its views in dock widgets the user could rearrange; the first native port drew one fixed window with
+an internal tab strip. Now `FpsJsonCard.build_docks` returns one emtk dock window per view (Positions, Distances,
+FlexFit, JSON, 3D View; not closable, a tooltip each), tabbed in one region by default; a dragged tab splits the window
+or re-tabs it. The toolbar and status line sit in a fixed strip above the windows (`CardShell.toolbar_height` /
+`draw_toolbar`, zero for the other cards). `card.tab` is still the view in front: setting it focuses that window, and a
+press inside a view makes it the current one (with views side by side). `tab_<title>` item rects come from emtk's new
+`DockManager.tab_rect`, so the guide and tests still point at the tabs. The arrangement persists through
+`chisurf.emtk.state.bind_layout` like every native dock layout.
+
+Found on the way, fixed in emtk with tests:
+- A layout saved with other region names (the old one-window editor's `main`) left every window docked in a region
+  that no longer existed: visible, and never drawn, so the editor opened blank. `DockManager.restore` now re-homes
+  such windows into the first region (`test_a_layout_from_other_regions_leaves_no_window_off_screen`).
+- In the narrower split the Positions table painted `protein_1R0A.pdb` over Chain and Res: the column without a
+  declared width got a 1 px share when the declared ones filled the box, and `fit_text` returned the whole label when
+  there was no room. The undeclared column now gets at least `DataTable.FLEX_MIN` (72 px) before the shrink, and
+  `fit_text` returns `""` without room.
+- `DockWindow.tooltip`: a tab's hover text says what the view shows, before the move hint.
+
+Tests (`test_emtk_real_input.py`, 17 pass): a real drag of the Distances tab onto the right pad splits the window and
+both tables stay clickable; a split survives close and reopen, and the old one-window layout opens with all five views.
+Evidence: `after_split_3dview_{1200x800,800x600}.png` from `scripts/capture_split.py`; parity re-run `lost: []`,
+`untooltipped: []`, Qt-free.
+
 ## Docs
 
 Guide 23 (*The FPS JSON Editor*) rewritten for the native window. Its figures (`23_fps_editor.png`, `_distances.png`, new

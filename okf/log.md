@@ -41051,3 +41051,10 @@ side of the line.
   `__init__`; emtk app with spec controls, linked trace/histogram grid, Results dock, the shared detector editor as
   the Setup tab, a seeded two-state demo. Fixed Qt's "bins only the first ticked routing channel". Guide 74 and its
   figure updated. [report](plugins/emtk-ports/intensity_trace/REPORT.md).
+- 2026-10-05 · emtk: **FPS JSON editor views are movable dock windows** (owner: "in the old one, i could move the docks
+  around, in the current all is fixed"). Positions / Distances / FlexFit / JSON / 3D View are emtk dock windows under a
+  fixed toolbar strip (new `CardShell.toolbar_height` / `draw_toolbar` hook); a dragged tab splits or re-tabs them and
+  the arrangement persists. emtk: `DockManager.tab_rect`, `DockWindow.tooltip`, restore re-homes windows of a vanished
+  region (an old one-window layout opened the editor blank), an undeclared table column is no longer squeezed to 1 px
+  and `fit_text` draws nothing without room (narrow tables painted cells over their neighbours). Guide
+  `88_structure_tools` gains the split figure; [fps_json_editor report](plugins/emtk-ports/fps_json_editor/REPORT.md).

@@ -34,8 +34,17 @@ Preview list now (2026-10-05): `code_editor` only.
    `audit_emtk_overflow` cannot see it: it shows only with populated data, open folded panels, and the window wheeled
    to its end. Method: `fps_json_editor/scripts/capture_emtk.py` (open the panels, wheel *over the form, not the
    table*, then assert the last field's rect is inside the window).
-4. **`tttr_toolbox` onto `chisurf/emtk/tool_hub.py`**: its `gui/app.py` is the hub the generic one was generalised
-   from (another stream's open edits there, 2026-10-05); port it once that settles and delete the copy.
+4. **Fixed views where Qt had movable docks** (owner, 2026-10-05: "in the old one, i could move the docks around, in
+   the current all is fixed"). FPS JSON editor done: one dock window per view under a fixed toolbar strip
+   (`CardShell.toolbar_height` / `draw_toolbar`), [report](fps_json_editor/REPORT.md). Same defect, not yet ported:
+   the `fret_docking` card's Results / Score / Structure tabs and the QuEst card's Quenching Chemistry / Project JSON
+   tabs (`structure_tools/cards/docking.py`, `quest.py`). Find more: grep card and app code for a hand-drawn tab strip
+   (`_tab_strip`, `begin_tab_bar` inside a single dock window) where the Qt tool used `QDockWidget`s. Pattern:
+   `FpsJsonCard.build_docks` + the `tab` property + `tab_<title>` rects from `DockManager.tab_rect`; keep a test that
+   drags a tab with real input (`_drag_tab_to_right_pad` in `fps_json_editor/test/test_emtk_real_input.py`). TTTR Tools
+   moved onto `tool_hub.py` in another session (fcb2f06b3).
+   **Needs emtk `bf6b5fe`** (`DockManager.tab_rect`, `DockWindow.tooltip`): local, unpushed; `pixi.lock` still pins
+   `42859fc`, so a pixi env built from the lock fails with `AttributeError: tab_rect`. Push emtk and re-lock.
 5. **ChiSurf Settings rows** (owner, 2026-10-05: label above field "wastes vertical space"): now key | field on one
    row, the full name in the tooltip. About 12 → 25 settings visible at 1200x800, 16 at 800x600
    (`setup/settings-rows/before_*.png` / `after_*.png`, `capture.py`). **Uncommitted**: it sits on the uncommitted

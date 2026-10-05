@@ -30,6 +30,17 @@ accessible-volume message.
 | **JSON** | The file text; edit it and press **Update** in the toolbar. |
 | **3D View** | The ChiMOL viewer: the structures as cartoon, the accessible volumes as surfaces with their mean positions, the distance lines; clicking an atom attaches the selected position to it. |
 
+The five views are dock windows, tabbed together at first. Drag a tab onto a side of the window (the drop pads show where
+it lands) to see two views at once, for example the 3D View beside the Positions table; drag it back onto the tab strip
+to tab it again. The arrangement is kept for the next time the editor opens.
+
+```{figure} figures/88_fps_split.png
+:width: 100%
+
+The 3D View dragged beside the Positions table: both stay live, so a row picked in the table and an atom clicked in the
+viewer act on the same position.
+```
+
 Toolbar: **Load**, **Save**, **Update**, **Clear** (asks first), **Guide**, **Help**. The accessible volume of a position is
 computed in the background whenever its inputs change. Deleting a position asks, and removes the distances that use it;
 renaming a position renames it in those distances.

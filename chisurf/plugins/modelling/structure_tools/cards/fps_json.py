@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 from emtk import im, implot3d
+from emtk.docking import DockManager, Region
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.chimol_view import ChimolView
@@ -27,6 +28,19 @@ HERE = Path(__file__).resolve().parent
 RES = HERE / "resources" / "fps_json"
 VIEWS = HERE / "views"
 TABS = ("Positions", "Distances", "FlexFit", "JSON", "3D View")
+#: The dock window of each view (the Qt editor's docks; the user can split and rearrange them).
+VIEW_KEYS = {"Positions": "positions", "Distances": "distances", "FlexFit": "flexfit", "JSON": "json",
+             "3D View": "view3d"}
+TAB_TIPS = {
+    "Positions": "Labelling positions: structure, chain, residue, atom and the dye of each.",
+    "Distances": "Distance restraints between two positions, and the scoring groups.",
+    "FlexFit": "Flexible residues and bonds for the FlexFit simulation.",
+    "JSON": "The raw fps.json text; edit it and press Update.",
+    "3D View": "The accessible volumes and distance lines of the computed positions.",
+}
+FPS_FILTER = "fps.json (*.fps.json *.json);;All files (*)"
+PDB_FILTER = "PDB (*.pdb *.pdb.gz *.ent);;All files (*)"
+MRC_FILTER = "MRC map (*.mrc *.map *.ccp4);;All files (*)"
 FPS_FILTER = "fps.json (*.fps.json *.json);;All files (*)"
 PDB_FILTER = "PDB (*.pdb *.pdb.gz *.ent);;All files (*)"
 MRC_FILTER = "MRC map (*.mrc *.map *.ccp4);;All files (*)"
@@ -306,7 +320,8 @@ class FpsJsonCard(CardShell):
 
     def __init__(self, editor: FpsEditor | None = None) -> None:
         self.editor = editor or FpsEditor()
-        self.tab = TABS[0]
+        self._tab = TABS[0]
+        self._seen_selection: dict = {}
         self.views = {}
         super().__init__("FPS JSON Editor", RES, "fps")
         self.editor.on_change = self.request_frame
@@ -456,48 +471,96 @@ class FpsJsonCard(CardShell):
     def next_frame_in(self):
         return 0.05 if self.editor.busy else super().next_frame_in()
 
-    def _draw_main(self, box) -> None:
-        ed = self.editor
-        pressed = self.toolbar([
-            {"label": "Load", "key": "load", "tip": "Open an fps.json labelling file (a dropped .json file does the same)."},
-            {"label": "Save", "key": "save", "tip": "Save the whole configuration as an fps.json file."},
-            {"label": "Update", "key": "update", "tip": "Update the editor from the text of the JSON tab."},
-            {"label": "Clear", "key": "clear", "tip": "Remove all positions and distances to start from scratch (asks first)."},
-            *self.help_buttons(),
-        ])
+    # ── windows ───────────────────────────────────────────────────────────
+
+    def build_docks(self) -> DockManager:
+        """One dock window per view, tabbed together at first as the Qt editor's dock area; the user can drag a tab
+        out to split the window or put views side by side (the arrangement is kept with the card's layout)."""
+        docks = DockManager(Region("views"))
+        draw = {"Positions": self._draw_positions, "Distances": self._draw_distances,
+                "FlexFit": self._draw_flexfit, "JSON": self._draw_json, "3D View": self._draw_3d}
+        for title in TABS:
+            docks.add_window(VIEW_KEYS[title], title, lambda box, t=title, f=draw[title]: self._draw_view(box, t, f),
+                             dock="views",
+                             closable=False, tooltip=TAB_TIPS[title])
+        docks.focus(VIEW_KEYS[TABS[0]])
+        return docks
+
+    def _draw_view(self, box, title, draw) -> None:
+        """One view; a press inside it brings it forward as :attr:`tab` (with views side by side, the one in use)."""
+        if im.is_mouse_clicked(0):
+            mx, my = im.get_mouse_pos()
+            if box[0] <= mx < box[0] + box[2] and box[1] <= my < box[1] + box[3] and self._tab != title:
+                self._tab = title
+                self.used(f"tab_{title}")
+        draw()
+
+    @property
+    def tab(self) -> str:
+        """The view in front (the last one the user picked, or that was brought forward)."""
+        return self._tab
+
+    @tab.setter
+    def tab(self, title: str) -> None:
+        if title in VIEW_KEYS:
+            self._tab = title
+            if getattr(self, "docks", None) is not None:
+                self.docks.focus(VIEW_KEYS[title])
+
+    def toolbar_height(self) -> float:
+        return 52.0
+
+    def draw_toolbar(self, box) -> None:
+        pressed = self.toolbar(
+            [
+                {
+                    "label": "Load",
+                    "key": "load",
+                    "tip": "Open an fps.json labelling file (a dropped .json file does the same).",
+                },
+                {
+                    "label": "Save",
+                    "key": "save",
+                    "tip": "Save the whole configuration as an fps.json file.",
+                },
+                {
+                    "label": "Update",
+                    "key": "update",
+                    "tip": "Update the editor from the text of the JSON tab.",
+                },
+                {
+                    "label": "Clear",
+                    "key": "clear",
+                    "tip": "Remove all positions and distances to start from scratch (asks first).",
+                },
+                *self.help_buttons(),
+            ]
+        )
         if pressed:
-            {"load": self.load, "save": self.save, "update": self.update_from_json, "clear": self.clear,
-             "guide": self.start_guide, "help": self.show_help}[pressed]()
+            {
+                "load": self.load,
+                "save": self.save,
+                "update": self.update_from_json,
+                "clear": self.clear,
+                "guide": self.start_guide,
+                "help": self.show_help,
+            }[pressed]()
         self.status_line()
-        im.separator()
-        self._tab_strip()
-        im.separator()
-        view = {"Positions": self._draw_positions, "Distances": self._draw_distances,
-                "FlexFit": self._draw_flexfit, "JSON": self._draw_json, "3D View": self._draw_3d}[self.tab]
-        view()
+        self._track_views()
 
-    def _tab_strip(self) -> None:
-        from emtk.im_core import Col
-
-        for i, tab in enumerate(TABS):
-            if i:
-                im.same_line()
-            selected = tab == self.tab
-            if selected:
-                im.push_style_color(Col.BUTTON, im.get_style().color(Col.TAB_SELECTED))
-            if im.button(tab):
-                self.tab = tab
-                self.used(f"tab_{tab}")
-            if selected:
-                im.pop_style_color(1)
-            im.set_item_tooltip({
-                "Positions": "Labelling positions: structure, chain, residue, atom and the dye of each.",
-                "Distances": "Distance restraints between two positions, and the scoring groups.",
-                "FlexFit": "Flexible residues and bonds for the FlexFit simulation.",
-                "JSON": "The raw fps.json text; edit it and press Update.",
-                "3D View": "The accessible volumes and distance lines of the computed positions.",
-            }[tab])
-            self.remember(f"tab_{tab}")
+    def _track_views(self) -> None:
+        """The views' tabs for the tour and the tests (``tab_<title>``), and which view the user brought forward."""
+        keys = {key: title for title, key in VIEW_KEYS.items()}
+        for title, key in VIEW_KEYS.items():
+            rect = self.docks.tab_rect(key)
+            if rect is not None:
+                self.item_rects[f"tab_{title}"] = tuple(rect)
+        for region, key in self.docks.selected.items():
+            if key in keys and self._seen_selection.get(region) != key:
+                if region in self._seen_selection:  # a pick, not the first frame
+                    self._tab = keys[key]
+                    self.used(f"tab_{keys[key]}")
+                self._seen_selection[region] = key
 
     def _draw_positions(self) -> None:
         ed = self.editor

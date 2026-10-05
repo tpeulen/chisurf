@@ -225,6 +225,8 @@ def test_distance_form_and_scoring_groups(fps):
                              ("Forster_radius", "54", 54.0), ("distance", "-4", 0.0)):
         _type_field(ui, key, text)
         assert ed._dist(ed.selected_dist)[key] == pytest.approx(value), key
+    ui.app.wheel(20, 500, 10)  # typing scrolled the view down to the form; the toolbar row is back at the top
+    ui.draw(2)
     ui.click("add_set")
     assert ui.app.modal is not None
     ui.type_text("first_two")
@@ -428,3 +430,71 @@ def test_clicking_an_atom_attaches_the_selected_position(view3d):
     assert int(ed.position_field("p51_E194C", "residue_seq_number", 0)) == int(picked["res_id"])
     assert ed.position_field("p51_E194C", "atom_name", "") == str(picked["atom_name"]).strip()
     assert view3d.shown("(picked)")
+
+
+# ---- the views are dock windows ---------------------------------------------------------------------------------
+
+
+def _drag_tab_to_right_pad(ui, title):
+    """Press on a view's tab, drag it onto the right pad of the drop target and let go (a real drag)."""
+    ui.draw(1)
+    x, y, w, h = ui.app.item_rects[f"tab_{title}"]
+    ui.app.pointer_move(x + w / 2, y + h / 2)
+    ui.draw(1)
+    ui.app.press(x + w / 2, y + h / 2)
+    ui.draw(1)
+    from chisurf.plugins.modelling.structure_tools.cards.fps_json import VIEW_KEYS
+
+    rx, ry, rw, rh = ui.app.docks.region_boxes[ui.app.docks.region_of(VIEW_KEYS[title])]
+    tx, ty = rx + rw / 2, ry + rh / 2
+    for i in range(1, 9):  # a few moves: the drag starts past a threshold, then the pads appear
+        ui.app.pointer_move(x + (tx - x) * i / 8, y + (ty - y) * i / 8)
+        ui.draw(1)
+    side = min(max(min(rw, rh) * 0.34, 44.0), 110.0, min(rw, rh))
+    btn = min(side * 0.65, 32.0)
+    px, py = rx + (rw - btn) / 2 + btn + 3.0 + btn / 2, ry + rh / 2
+    ui.app.pointer_move(px, py)
+    ui.draw(2)
+    ui.app.release()
+    return ui.draw(3)
+
+
+def test_a_view_dragged_out_splits_the_window_and_both_stay_live(fps):
+    """The Qt editor's views were dock widgets the user could rearrange; here a dragged tab splits the window."""
+    ui = _open(fps)
+    docks = ui.app.docks
+    assert len({r for r, k in docks.selected.items() if k}) == 1
+    _drag_tab_to_right_pad(ui, "Distances")
+    shown = {k for k in docks.selected.values() if k}
+    assert "distances" in shown and len(shown) == 2, docks.selected
+    # both views are drawn and react: the Distances table beside the Positions one
+    assert ui.app.item_rects["dist_rows"][0] > ui.app.item_rects["pos_rows"][0]
+    ed = ui.app.editor
+    _click_row(ui, "dist_rows", 1)
+    assert ed.selected_dist == ed.rows_dist[1]["row"]
+    assert ui.app.tab == "Distances"
+    ui.app.close()
+
+
+def test_the_arrangement_is_kept_and_an_old_single_window_layout_is_ignored(fps, tmp_path):
+    """A split is restored on the next open; a layout saved by the earlier one-window editor still opens."""
+    from emtk.docking import DockManager, Region
+
+    from chisurf.emtk.state import attach_native_state, bind_layout
+
+    legacy = bind_layout("fps_json_editor.main", DockManager(Region("main")))
+    legacy.add_window("main", "FPS JSON Editor", lambda _b: None, dock="main", closable=False)
+    assert legacy.save()
+    app = attach_native_state("fps_json_editor", make_app())
+    app.editor.auto_av = False
+    ui = Ui(app, (1200, 800))
+    assert ui.drop(fps)
+    ui.draw(2)
+    assert all(app.docks.windows[k].visible for k in ("positions", "distances", "flexfit", "json", "view3d"))
+    _drag_tab_to_right_pad(ui, "Distances")
+    split = dict(app.docks.selected)
+    app.close()
+    again = attach_native_state("fps_json_editor", make_app())
+    Ui(again, (1200, 800)).draw(3)
+    assert {k for k in again.docks.selected.values() if k} == {k for k in split.values() if k}
+    again.close()
