@@ -41062,3 +41062,4 @@ side of the line.
   region (an old one-window layout opened the editor blank), an undeclared table column is no longer squeezed to 1 px
   and `fit_text` draws nothing without room (narrow tables painted cells over their neighbours). Guide
   `88_structure_tools` gains the split figure; [fps_json_editor report](plugins/emtk-ports/fps_json_editor/REPORT.md).
+- **2026-10-05** — Startup: two RPC double-registrations fixed (code_editor, project_browser manifests duplicated central owners; the new transactional dispatcher logged both as failures every start) and the embedded server ctor cut 4.3 s → 2.2 s by moving scipy.signal/scipy.optimize/scipy.io/pyplot/fastapi imports off the service-registration path. Dependency guard: IMP build headers (eigen, libboost-headers, cereal) marked build-only. Invariants + resume point: `okf/architecture/gui-startup.md`.

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import scipy.optimize
 
 import chisurf.core.math.datatools
 from chisurf import typing
@@ -580,6 +579,8 @@ def et2pRDA(ts, et, t_matrix=None, r_DA=None, **kwargs):
     """
     if t_matrix is None or r_DA is None:
         t_matrix, r_DA = calc_transfer_matrix(ts, 5, 200, 200, **kwargs)
+    import scipy.optimize
+
     p_rDA = scipy.optimize.nnls(t_matrix.T, et)[0]
     return r_DA, p_rDA
 

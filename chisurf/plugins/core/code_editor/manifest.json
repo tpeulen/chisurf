@@ -39,7 +39,6 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.core.code_editor.gui.tool:CodeEditorEmtkTool",
-    "services": "chisurf.plugins.core.code_editor.backend.services:register_services",
     "emtk": "chisurf.plugins.core.code_editor.gui.editor_app:make_editor_app"
   },
   "rpc_methods": [

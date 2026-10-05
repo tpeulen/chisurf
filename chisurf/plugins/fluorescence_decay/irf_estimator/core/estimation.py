@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf.core.fluorescence.tcspc import IRFEstimator as _IRFEstimator
-
 from ..api.models import IRFEstimationResult, IRFEstimationSettings
 
 
@@ -54,6 +52,10 @@ def estimate_irf(
         min_ch, max_ch = settings.range_bounds
         mask = (np.arange(len(decay)) >= min_ch) & (np.arange(len(decay)) <= max_ch)
         decay[~mask] = 0.0
+
+    # Imported here: the estimator pulls in scipy.signal (~0.8 s), and this
+    # module is loaded by the RPC registration every server start-up runs.
+    from chisurf.core.fluorescence.tcspc import IRFEstimator as _IRFEstimator
 
     estimator = _IRFEstimator(decay.reshape(-1, 1), dt=1.0)
 

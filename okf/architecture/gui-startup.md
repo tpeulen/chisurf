@@ -4,8 +4,26 @@ title: GUI Startup
 description: The staged, JSON-declared GUI startup path and the laziness invariants that keep it fast.
 resource: chisurf/startup/
 tags: [startup, gui, performance, plugins]
-timestamp: '2026-07-20T00:00:00Z'
+timestamp: '2026-10-05T00:00:00Z'
 ---
+
+# Where to pick this up
+
+1. **Embedded server ctor is ~2.2 s** (was 4.3 s on 2026-10-05). Measure with
+   `python -X importtime -c "from chisurf.server.app import ChiSurfServer; ChiSurfServer(cmd_port=0, pub_port=0)"`
+   and walk each heavy leaf (`scipy.*`, `matplotlib`, `fastapi`, `IMP.bff`, `mmfdb.models`)
+   up to its nearest `chisurf.plugins.*.backend.services` ancestor -- that ancestor is
+   what the registration loop imported. Trap: `ServiceDispatcher` is created and
+   torn down in-process, so time the ctor, not `python -m chisurf` wall time
+   (that is noise-dominated on a loaded machine, ±1 s).
+2. Left on that path: `IMP.bff` via `core.fitting` (0.3 s; pinned eager by
+   `test_bff_is_the_backend`, see `core/fitting/__init__.py`), ebfret `dist`
+   (scipy.special, 0.06 s -- goes away with the bff numerics), `mmfdb.models` (0.15 s).
+3. Every RPC method has exactly one owner. The dispatcher's registration
+   transaction raises on a second registration; a startup log line
+   `Failed to register services for plugin` means a manifest `services` entry
+   duplicates the central config (`server_methods.json`, the mmfdb startup
+   service). Drop the manifest entry, keep the central owner.
 
 # Staged startup
 
@@ -78,6 +96,16 @@ button that silently opens the wrong tool is worse than a missing one. Pinned by
 `test/gui/test_toolbar_plugin_names.py`, which asserts every shipped entry
 resolves *and* that the legacy names still sitting in existing `~/.chisurf`
 files reach the right module.
+
+**Service registration imports every plugin backend, so backends import lazily.**
+`ChiSurfServer.__init__` calls each manifest's `services` entrypoint, which
+imports that plugin's backend module and everything it imports at module
+scope. A heavy library imported at module scope in *any* backend -- or in a
+core module a backend reaches -- is paid by every start-up whether the tool is
+ever opened or not. scipy.signal (via the IRF estimator), scipy.optimize (burst
+background, `core.fluorescence.general`), pyplot (FCS MaxEnt) and fastapi (the
+FRET API's optional HTTP surface) were each costing 0.3-0.8 s this way; they are
+imported inside the function that uses them now.
 
 # Stylesheet
 

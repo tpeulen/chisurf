@@ -16,14 +16,6 @@ from typing import Any
 import numpy as np
 import tttrlib
 
-try:  # SciPy is a core dependency of ChiSurf, but fail clearly if missing
-    from scipy.optimize import minimize
-except Exception as exc:  # pragma: no cover - defensive guard
-    raise ImportError(
-        "chisurf.core.fluorescence.burst.background requires SciPy. "
-        "Please ensure that the 'scipy' package is installed."
-    ) from exc
-
 
 @dataclass
 class BackgroundDiagnostics:
@@ -117,6 +109,10 @@ def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts, ta
     # a NaN gradient, and an early stop reported as failure. The fallback then
     # returns the inverse mean tail interval instead of the fitted rate, which is
     # a different (and biased) estimator arriving with no error at all.
+    # Imported here: scipy.optimize costs ~0.4 s, and this module is reached
+    # from the burst RPC registration every server start-up runs.
+    from scipy.optimize import minimize
+
     result = minimize(
         neg_log_likelihood,
         np.array([B0, lam0], dtype=float),

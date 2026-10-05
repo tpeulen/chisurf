@@ -19,8 +19,7 @@
   },
   "entrypoints": {
     "emtk": "chisurf.plugins.core.project_browser.gui.app:make_app",
-    "gui": "chisurf.plugins.core.project_browser.gui.tool:ProjectBrowserTool",
-    "services": "chisurf.plugins.core.project_browser.backend.services:register_services"
+    "gui": "chisurf.plugins.core.project_browser.gui.tool:ProjectBrowserTool"
   },
   "rpc_methods": [
     {

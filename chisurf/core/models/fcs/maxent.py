@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -1294,6 +1293,8 @@ def plot_fcs_maxent_result(
     g_fit = np.asarray(result["g_fit"])
     td_grid = np.asarray(result["td_grid"])
     p = np.asarray(result["p"])
+
+    import matplotlib.pyplot as plt
 
     created_fig = False
     if ax_corr is None or ax_dist is None:

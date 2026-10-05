@@ -143,6 +143,11 @@ _BUILD_ONLY = {
     # package depends on that library, already linked -- so it belongs here
     # rather than in the recipe's run list.
     "hdf5",
+    # Headers for building IMP/imp.bff from source in the dev env (see the
+    # comment beside them in pixi.toml). The shipped package gets imp-bff built.
+    "eigen",
+    "libboost-headers",
+    "cereal",
 }
 
 #: In the dev env but deliberately not in the released package, with the reason.

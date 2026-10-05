@@ -4,7 +4,6 @@ import pathlib
 import warnings
 
 import numpy as np
-import scipy.io
 
 import chisurf as cs
 import chisurf.core.fluorescence.fcs
@@ -21,6 +20,8 @@ def _load_nested_mat(path: pathlib.Path) -> dict:
     """
     # Suppress architecture-related scipy.io warnings; this mirrors what
     # the original SFCS tools do while keeping the behavior explicit.
+    import scipy.io
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         data = scipy.io.loadmat(str(path), struct_as_record=False, squeeze_me=True)
