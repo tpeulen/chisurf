@@ -97,10 +97,12 @@ def normalize_settings(settings: dict[str, Any] | None = None) -> dict[str, Any]
     return base
 
 
-def load_structure(source: str | Path | ProteinCentroid) -> ProteinCentroid:
+def load_structure(source: str | Path | Structure) -> ProteinCentroid:
     """Load a ProteinCentroid from a path, PDB id, or existing structure."""
     if isinstance(source, ProteinCentroid):
         return source
+    if isinstance(source, Structure):
+        return ProteinCentroid(_standard_residue_pdb(source))
     source_text = str(source)
     if len(source_text) == 4 and not Path(source_text).exists():
         _patch_rcsb_fetch_url()
@@ -133,7 +135,7 @@ def _protonated_structure_file(source: str) -> str:
     return _standard_residue_pdb(source)
 
 
-def _standard_residue_pdb(source: str) -> str:
+def _standard_residue_pdb(source: str | Structure) -> str:
     """Write a temporary, protonated PDB containing only standard amino-acid residues."""
     structure = Structure(source)
     atoms = structure.atoms
@@ -202,6 +204,8 @@ def build_move_map_from_flexfit(
     structure: ProteinCentroid,
     labeling_file: str | Path,
     flexfit_set: str | None = None,
+    *,
+    labeling_payload: dict | None = None,
 ) -> np.ndarray | None:
     """Build a per-residue move probability map from a FlexFit set.
 
@@ -228,7 +232,7 @@ def build_move_map_from_flexfit(
         ``None`` when no FlexFit data is available or no residues
         matched the structure.
     """
-    payload = load_json(labeling_file)
+    payload = labeling_payload if labeling_payload is not None else load_json(labeling_file)
     flexfit = payload.get("FlexFit", {}) or {}
     if not isinstance(flexfit, dict) or not flexfit:
         return None
@@ -284,6 +288,8 @@ class DirectLabelingPotential:
         structure: ProteinCentroid,
         labeling_file: str | Path,
         score_set: str = "",
+        *,
+        labeling_payload: dict | None = None,
     ) -> None:
         """Create a direct-distance potential from an FPS JSON file.
 
@@ -299,7 +305,7 @@ class DirectLabelingPotential:
         """
         self.structure = structure
         self.labeling_file = str(labeling_file)
-        payload = load_json(labeling_file)
+        payload = labeling_payload if labeling_payload is not None else load_json(labeling_file)
         self.all_positions = payload["Positions"]
         all_distances = payload["Distances"]
 
@@ -377,7 +383,7 @@ class ProteinMCRunner:
 
     def __init__(
         self,
-        structure_source: str | Path | ProteinCentroid,
+        structure_source: str | Path | Structure,
         *,
         flexfit_set: str | None = None,
         settings: dict[str, Any] | None = None,
@@ -386,6 +392,7 @@ class ProteinMCRunner:
         initial_frames: list[np.ndarray] | None = None,
         progress_callback: ProgressCallback | None = None,
         verbose: bool = False,
+        labeling_payload: dict | None = None,
     ) -> None:
         """Initialize the ProteinMC runner.
 
@@ -415,6 +422,7 @@ class ProteinMCRunner:
         self.initial_frames = [np.asarray(frame, dtype=float) for frame in (initial_frames or [])]
         self.progress_callback = progress_callback
         self.verbose = verbose
+        self.labeling_payload = labeling_payload
         self.exiting = False
         self.universe = Universe()
         self.rmsd: list[float] = []
@@ -430,7 +438,9 @@ class ProteinMCRunner:
         self._last_energies = [0.0] * len(self.universe.potentials)
         fps_file = self._find_fps_file()
         if "move_map" not in self.settings and fps_file:
-            derived = build_move_map_from_flexfit(self.structure, fps_file, flexfit_set)
+            derived = build_move_map_from_flexfit(
+                self.structure, fps_file, flexfit_set, labeling_payload=self.labeling_payload
+            )
             if derived is not None:
                 self.settings["move_map"] = derived
 
@@ -466,7 +476,10 @@ class ProteinMCRunner:
                 score_set = kwargs.pop("score_set", "")
                 if labeling_file:
                     potential = DirectLabelingPotential(
-                        self.structure, str(labeling_file), score_set
+                        self.structure,
+                        str(labeling_file),
+                        score_set,
+                        labeling_payload=self.labeling_payload,
                     )
                     self.universe.addPotential(potential, weight)
                     self._eval_intervals.append(interval)
@@ -531,19 +544,19 @@ class ProteinMCRunner:
             ]
             moving_aa = int(np.asarray(weighted_choice(move_map, 1)).flat[0])
             if move_phi and c_phi.size:
-                c_phi *= 0.0
+                c_phi.fill(0.0)
                 c_phi[moving_aa % c_phi.size] += (np.random.ranf() - 0.5) * scale
                 self.structure.phi = self.structure.phi + c_phi
             if move_psi and c_psi.size:
-                c_psi *= 0.0
+                c_psi.fill(0.0)
                 c_psi[moving_aa % c_psi.size] += (np.random.ranf() - 0.5) * scale
                 self.structure.psi = self.structure.psi + c_psi
             if move_omega and c_omega.size:
-                c_omega *= 0.0
+                c_omega.fill(0.0)
                 c_omega[moving_aa % c_omega.size] += (np.random.ranf() - 0.5) * scale
                 self.structure.omega = self.structure.omega + c_omega
             if move_chi and c_chi.size:
-                c_chi *= 0.0
+                c_chi.fill(0.0)
                 c_chi[moving_aa % n_chi] += (np.random.ranf() - 0.5) * scale
                 self.structure.chi = self.structure.chi + c_chi
 

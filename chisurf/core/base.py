@@ -269,8 +269,12 @@ class Base:
 
     @unique_identifier.setter
     def unique_identifier(self, v):
-        """Set the UUID that uniquely identifies this instance."""
+        """Set and re-index this object's UUID without removing another owner."""
+        previous = self.meta_data.get("unique_identifier")
+        if previous is not None and Base._uuid_index.get(str(previous)) is self:
+            Base._uuid_index.pop(str(previous), None)
         self.meta_data["unique_identifier"] = v
+        Base._uuid_index[str(v)] = self
 
     def __eq__(self, other: object) -> bool:
         """Compare two Base instances by their unique identifier."""
@@ -295,8 +299,9 @@ class Base:
 
         Returns ``None`` if no live instance with that UID exists.
 
-        If multiple live instances share the same UID (e.g. a copy was made
-        with :func:`copy.copy`), the most recently created one is returned.
+        If multiple live instances share the same UID, the most recently
+        registered or transactionally published one is returned. Services use
+        their session's owned graph to distinguish concurrent owners.
         """
         if not uid:
             return None

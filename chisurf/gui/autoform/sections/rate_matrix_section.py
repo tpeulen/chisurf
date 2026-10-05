@@ -81,6 +81,9 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self._model = model
         self._attr = target or options.get("attr", "")
         self._size_attr = options.get("size_attr", "")
+        from chisurf.core.dataspec.rate_binding import RateMatrixBinding
+
+        self._binding = RateMatrixBinding(model, self._attr, size_attr=self._size_attr)
         self._labels_attr = options.get("labels_attr", "")
         self._min = float(options.get("minimum", 0.0))
         self._max = float(options.get("maximum", 1_000_000.0))
@@ -107,7 +110,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         apply_compact_table_style(self.table)
         t_font = table_font()
         t_font.setStyleStrategy(QtGui.QFont.PreferAntialias)
@@ -258,11 +261,38 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 self._max,
                 shown,
             )
-            spin.setToolTip(
-                f"Stored value {raw:g} is outside the range this grid shows "
-                f"({self._min:g} … {self._max:g}), so it is shown as {shown:g}. "
-                f"Editing this cell replaces it with the shown value."
+        self._update_cell_tooltip(i, j, spin, raw, shown)
+
+    def _update_cell_tooltip(
+        self, i: int, j: int, spin: QtWidgets.QDoubleSpinBox, raw: float, shown: float
+    ) -> None:
+        """Describe live metadata and any display clamping on all cell controls."""
+        descriptions = self._descriptions(self._size())
+        if i == 0 and self._disable_row0:
+            tooltip = (
+                f"Ground state {descriptions[0]} dark transition is 0 (excitation is optical)."
             )
+        elif i == j and not self._diagonal:
+            tooltip = f"Self-transition for state {descriptions[i]} is fixed at 0."
+        else:
+            tooltip = f"Transition rate from {descriptions[i]} to {descriptions[j]}" + (
+                f" ({self._unit})" if self._unit else ""
+            )
+            param = self._get_cell_parameter(i, j)
+            if param is not None:
+                status = "Fixed" if param.fixed else f"Free [{param.lb:.4g}, {param.ub:.4g}]"
+                linked = " (Linked)" if getattr(param, "is_linked", False) else ""
+                tooltip = f"<b>{param.name}</b> = {param.value:.4g} ({status}{linked})<br>{tooltip}"
+            if not self._min <= raw <= self._max:
+                tooltip += (
+                    f"<br>Stored value {raw:g} is outside the range this grid shows "
+                    f"({self._min:g} … {self._max:g}), so it is shown as {shown:g}. "
+                    f"Editing this cell replaces it with the shown value."
+                )
+        cell = spin.parentWidget()
+        cell.setToolTip(tooltip)
+        spin.setToolTip(tooltip)
+        cell.findChild(QtWidgets.QCheckBox).setToolTip(tooltip)
 
     def _cell_value(self, i: int, j: int, spin: QtWidgets.QDoubleSpinBox) -> float:
         """Return the value to store for one cell: the edit, or what was read."""
@@ -270,6 +300,11 @@ class RateMatrixWidget(QtWidgets.QWidget):
         if loaded is not None and float(spin.value()) == loaded[1]:
             return loaded[0]
         return float(spin.value())
+
+    def _commit_cell(self, source: int, target: int) -> None:
+        """Commit just the edited cell, then display the current live matrix."""
+        self._binding.commit_cell(source, target, self._spins[(source, target)].value())
+        self.refresh()
 
     def _write_back(self, n: int) -> None:
         flat = [0.0] * (n * n)
@@ -291,20 +326,8 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 pass
 
     def _get_cell_parameter(self, i: int, j: int):
-        """Look up the FittingParameter corresponding to cell (i, j)."""
-        target_obj = _resolve(self._model, self._attr, None)
-        if target_obj is None and "." in self._attr:
-            parent_path = self._attr.rsplit(".", 1)[0]
-            target_obj = _resolve(self._model, parent_path, None)
-        if target_obj is not None:
-            if hasattr(target_obj, "rate_items"):
-                rate_map = dict(target_obj.rate_items())
-                return rate_map.get((i + 1, j + 1))
-            elif hasattr(target_obj, "rates_by_name"):
-                prefix = getattr(target_obj, "rate_prefix", "k")
-                name = f"{prefix}{i + 1}_{j + 1}"
-                return target_obj.rates_by_name().get(name)
-        return None
+        """Look up the live cell parameter through the toolkit-neutral binding."""
+        return self._binding.parameter(i, j)
 
     # -- build / refresh ----------------------------------------------
     def _build(self) -> None:
@@ -319,6 +342,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self.table.clear()
         self._spins.clear()
         self._checkboxes: dict[tuple[int, int], QtWidgets.QCheckBox] = {}
+        self._cell_styles = {}
         self._loaded.clear()
         self.table.setRowCount(n)
         self.table.setColumnCount(n)
@@ -343,7 +367,6 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 c_layout.setSpacing(1)
 
                 chk_fix = QtWidgets.QCheckBox(cell_w)
-                chk_fix.setToolTip("Fix parameter (checked = fixed, unchecked = free for fitting)")
                 chk_fix.setStyleSheet(
                     "QCheckBox { spacing: 0px; background: transparent; } "
                     "QCheckBox::indicator { width: 11px; height: 11px; border: 1px solid #777777; border-radius: 2px; background-color: #2b2b2b; } "
@@ -353,7 +376,6 @@ class RateMatrixWidget(QtWidgets.QWidget):
                     "QCheckBox::indicator:checked:disabled { background-color: #552222; border: 1px solid #444444; }"
                 )
 
-                pending_load = None
                 spin = QtWidgets.QDoubleSpinBox(cell_w)
                 spin.setFont(t_font)
                 spin.setRange(self._min, self._max)
@@ -383,7 +405,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
                     is_linked = getattr(p, "is_linked", False) if p is not None else False
                     is_fixed = bool(p.fixed) if p is not None else True
 
-                    chk.setTristate(True)
+                    chk.setTristate(is_linked)
                     if is_linked:
                         chk.setCheckState(QtCore.Qt.PartiallyChecked)
                         color = "#2a88ff"  # Blue
@@ -411,24 +433,11 @@ class RateMatrixWidget(QtWidgets.QWidget):
                     spin.setEnabled(False)
                     chk_fix.setChecked(True)
                     chk_fix.setEnabled(False)
-                    if i == 0 and self._disable_row0:
-                        tt = f"Ground state {descriptions[0]} dark transition is 0 (excitation is optical)."
-                    else:
-                        tt = f"Self-transition for state {descriptions[i]} is fixed at 0."
-                    spin.setToolTip(tt)
-                    chk_fix.setToolTip(tt)
                     _update_cell_style()
                 else:
-                    tt_desc = f"Transition rate from {descriptions[i]} to {descriptions[j]}" + (
-                        f" ({self._unit})" if self._unit else ""
+                    spin.valueChanged.connect(
+                        lambda _v, source=i, target=j: self._commit_cell(source, target)
                     )
-                    # Loaded once the cell's tooltips are set, below: _load
-                    # warns through the tooltip when a stored rate is outside
-                    # the range the grid can show, and the description written
-                    # after it used to replace that warning, so a clamped rate
-                    # looked like any other.
-                    pending_load = (i, j, spin, raw)
-                    spin.valueChanged.connect(lambda _v, ni=n: self._write_back(ni))
 
                     if param is not None:
                         from chisurf.gui.widgets.fitting.parameter_widgets import (
@@ -437,37 +446,23 @@ class RateMatrixWidget(QtWidgets.QWidget):
                         )
 
                         def _on_proxy_change():
-                            self._load_all()
-                            _update_cell_style()
-                            if hasattr(self._model, "update"):
-                                self._model.update()
+                            self._binding.notify_changed()
+                            self.refresh()
 
                         ctrl = FittingParameterProxyController(
                             fitting_parameter=param, parent=cell_w, on_change=_on_proxy_change
                         )
 
-                        st_str = (
-                            "Fixed" if param.fixed else f"Free [{param.lb:.4g}, {param.ub:.4g}]"
-                        )
-                        lnk_str = " (Linked)" if getattr(param, "is_linked", False) else ""
-                        rich_tt = (
-                            f"<b>{param.name}</b> = {param.value:.4g} ({st_str}{lnk_str})<br>"
-                            f"{tt_desc}"
-                        )
-                        spin.setToolTip(rich_tt)
-                        chk_fix.setToolTip(rich_tt)
-                        cell_w.setToolTip(rich_tt)
-
                         _update_cell_style()
 
-                        def _on_fix_state_changed(state, p=param):
+                        def _on_fix_state_changed(state, p=param, change_style=_update_cell_style):
                             if state == QtCore.Qt.Checked:
                                 p.fixed = True
                             elif state == QtCore.Qt.Unchecked:
                                 p.fixed = False
-                            _update_cell_style()
-                            if hasattr(self._model, "update"):
-                                self._model.update()
+                            change_style()
+                            self._binding.notify_changed()
+                            self.refresh()
 
                         chk_fix.stateChanged.connect(_on_fix_state_changed)
 
@@ -518,19 +513,23 @@ class RateMatrixWidget(QtWidgets.QWidget):
                         cell_w.installEventFilter(flt)
                     else:
                         chk_fix.setChecked(True)
-                        spin.setToolTip(tt_desc)
-                        chk_fix.setToolTip(tt_desc)
 
-                if pending_load is not None:
-                    self._load(*pending_load)
-                    pending_load = None
+                if not is_disabled_cell:
+                    self._load(i, j, spin, raw)
                 c_layout.addWidget(chk_fix)
                 c_layout.addWidget(spin, 1)
 
                 self._spins[(i, j)] = spin
+                self._cell_styles[(i, j)] = _update_cell_style
                 self._checkboxes[(i, j)] = chk_fix
                 self.table.setCellWidget(i, j, cell_w)
 
+        column_w = max(
+            self.table.cellWidget(i, j).minimumSizeHint().width()
+            for i in range(n)
+            for j in range(n)
+        )
+        self.table.horizontalHeader().setMinimumSectionSize(column_w)
         for col in range(n):
             self.table.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
         for row in range(n):
@@ -544,7 +543,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 cell = self.table.cellWidget(i, j)
                 if cell is not None:
                     row_h = max(row_h, cell.sizeHint().height())
-        header_h = table_header_height()
+        header_h = max(table_header_height(), self.table.horizontalHeader().sizeHint().height())
         self.table.verticalHeader().setDefaultSectionSize(row_h)
         self.table.horizontalHeader().setDefaultSectionSize(header_h)
         # The frame and, on a narrow panel, the horizontal scroll bar both eat
@@ -578,11 +577,11 @@ class RateMatrixWidget(QtWidgets.QWidget):
                     raw = 0.0
                 elif i == j and not self._diagonal:
                     raw = 0.0
-                self._load(i, j, spin, raw)
                 param = self._get_cell_parameter(i, j)
                 if param is not None and (i, j) in self._checkboxes:
                     cb = self._checkboxes[(i, j)]
                     cb.blockSignals(True)
-                    cb.setChecked(bool(param.fixed))
+                    self._cell_styles[(i, j)]()
                     cb.blockSignals(False)
+                self._load(i, j, spin, raw)
             self._update_button()

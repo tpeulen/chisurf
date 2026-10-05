@@ -180,6 +180,34 @@ def session_owners(
         members = getattr(fit, "grouped_fits", None) if isinstance(fit, FitGroup) else None
         model = getattr(fit, "model", None)
         if not members and isinstance(model, GlobalFitModel):
+            # The aggregate is skipped so member parameters are not listed
+            # twice, but the model's *own* declared global ports (e.g.
+            # ``shared rate``) would vanish with it: they belong to no member,
+            # yet the canonical document ownership (get_session_parameters)
+            # and the catalogue's scientific edit both address them. Emit an
+            # owner carrying exactly those declared ports.
+            get_session_parameters = getattr(model, "get_session_parameters", None)
+            owned = list(get_session_parameters()) if callable(get_session_parameters) else []
+            if owned:
+                try:
+                    filename = str(getattr(getattr(fit, "data", None), "filename", "") or "")
+                except Exception:  # noqa: BLE001
+                    filename = ""
+                owners.append(
+                    Owner(
+                        "fit",
+                        str(getattr(fit, "name", f"Fit {index}")),
+                        "[global]",
+                        owned,
+                        index,
+                        None,
+                        _uid(fit),
+                        _uid(model),
+                        "",
+                        filename,
+                        _model_name(model),
+                    )
+                )
             continue
         label = str(getattr(fit, "name", f"Fit {index}"))
         try:

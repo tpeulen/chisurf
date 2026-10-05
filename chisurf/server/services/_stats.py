@@ -122,6 +122,8 @@ def _param_entry(p: Any, fit_uid: str, group_name: str = "") -> dict[str, Any]:
         "fit_uid": fit_uid,
         "value": getattr(p, "value", None),
         "fixed": bool(getattr(p, "fixed", False)),
+        # Outputs are recomputed by every model update; clients must not edit them.
+        "is_output": getattr(p, "is_output", False) is True,
         "bounds": getattr(p, "bounds", None),
         "bounds_on": bool(getattr(p, "bounds_on", False)),
         "is_linked": bool(getattr(p, "is_linked", False)),

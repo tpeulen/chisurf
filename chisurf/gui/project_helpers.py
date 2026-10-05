@@ -120,7 +120,7 @@ def open_recent_project(window, project_path: str) -> None:
     try:
         path = pathlib.Path(project_path)
     except Exception:
-        return
+        return False
 
     try:
         if path.is_dir():
@@ -141,7 +141,7 @@ def open_recent_project(window, project_path: str) -> None:
                     refresh_recent_projects_menu(window)
                 except Exception:
                     pass
-                return
+                return False
             path = project_file
         elif not str(path).lower().endswith(".cs.pto"):
             dialogs.warning(
@@ -159,7 +159,7 @@ def open_recent_project(window, project_path: str) -> None:
                 refresh_recent_projects_menu(window)
             except Exception:
                 pass
-            return
+                return False
         if not path.is_file():
             try:
                 current = list(getattr(window, "_recent_projects", []) or [])
@@ -171,33 +171,53 @@ def open_recent_project(window, project_path: str) -> None:
                 refresh_recent_projects_menu(window)
             except Exception:
                 pass
-            return
+                return False
     except Exception:
-        return
+        return False
 
-    try:
-        cs.working_path = path.parent
-    except Exception:
-        pass
+    if hasattr(window, "_guard_project_transition") and not window._guard_project_transition():
+        return False
 
+    # Validate and stage the document before asking the live application to
+    # replace its current state. A malformed archive must not destroy it.
     try:
-        cs.core.actions.dispatch(
-            name="project.load",
-            payload={"project_path": path.as_posix()},
-        )
-    except Exception:
+        from chisurf.core.project import storage
+        from chisurf.core.project.transition import replace_project
+        from chisurf.macros.core_fit import restore_gui_from_fits
+
+        project = storage.load_file(path)
+        document = window._get_project_document()
+        staged_document = document.stage_file_save(project, path)
+    except Exception as exc:
         try:
             logging.exception(f"Failed to load recent project: {path}")
         except Exception:
             pass
-        return
+        dialogs.warning(window, "Open Project Failed", str(exc))
+        return False
 
     try:
-        window._current_project_path = path
-    except Exception:
-        pass
+        restored = replace_project(
+            project,
+            gui=window,
+            document=document,
+            target_identity=staged_document,
+            present=restore_gui_from_fits,
+            confirmed=True,
+        )
+        if restored.get("ok") is not True:
+            return False
+        cs.working_path = path.parent
+    except Exception as exc:
+        try:
+            logging.exception(f"Failed to restore recent project: {path}")
+        except Exception:
+            pass
+        dialogs.warning(window, "Open Project Failed", str(exc))
+        return False
 
     add_recent_project(window, path)
+    return True
 
 
 def refresh_recent_projects_menu(window) -> None:

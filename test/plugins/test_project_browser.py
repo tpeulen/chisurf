@@ -77,21 +77,13 @@ def temp_db(monkeypatch, tmp_path):
     db.close()
 
 
-@pytest.fixture
-def sample_payload():
-    return {
-        "name": "test_project",
-        "project_format_version": 4,
-        "meta": {
-            "chisurf_version": "1.0.0",
-            "created": "2026-01-01T00:00:00",
-        },
-        "datasets": {},
-        "experiments": {},
-        "fits": [],
-        "ui": {},
-        "extra": {},
-    }
+def _payload(name, **labels):
+    """Capture a real canonical session, with arbitrary labels confined to extra."""
+    from chisurf.core.project import capture_session
+
+    project = capture_session([], [], name=name)
+    project.extra.update(labels)
+    return project.to_dict()
 
 
 class TestListProjects:
@@ -104,7 +96,7 @@ class TestListProjects:
         save_project_handler(
             auth=mock_auth,
             project_name="TestProject",
-            project_payload={"test": "data"},
+            project_payload=_payload("TestProject", test="data"),
         )
         result = list_projects_handler(auth=mock_auth)
         assert result["ok"]
@@ -120,7 +112,7 @@ class TestSaveProject:
         r1 = save_project_handler(
             auth=mock_auth,
             project_name="Proj",
-            project_payload={"v": 1},
+            project_payload=_payload("Proj", v=1),
         )
         assert r1["ok"]
         v1_id = r1["version_id"]
@@ -128,7 +120,7 @@ class TestSaveProject:
         r2 = save_project_handler(
             auth=mock_auth,
             project_name="Proj",
-            project_payload={"v": 2},
+            project_payload=_payload("Proj", v=2),
             project_id=r1["project_id"],
             parent_version_id=r1["version_id"],
         )
@@ -151,15 +143,25 @@ class TestSaveProject:
         r1 = save_project_handler(
             auth=mock_auth,
             project_name="NoOverwrite",
-            project_payload={"data": "a"},
+            project_payload=_payload("NoOverwrite", data="a"),
         )
         r2 = save_project_handler(
             auth=mock_auth,
             project_name="NoOverwrite",
-            project_payload={"data": "b"},
+            project_payload=_payload("NoOverwrite", data="b"),
             project_id=r1["project_id"],
         )
-        assert r2["version_number"] > r1["version_number"]
+        assert r1["ok"] and r2["ok"]
+        assert r2["version_number"] == r1["version_number"] + 1
+        assert r2["parent_version_id"] == r1["version_id"]
+        assert (
+            restore_project_handler(auth=mock_auth, version_id=r1["version_id"])["project_payload"]
+            == r1["project_payload"]
+        )
+        assert (
+            restore_project_handler(auth=mock_auth, version_id=r2["version_id"])["project_payload"]
+            == r2["project_payload"]
+        )
 
         # Both versions should exist
         list_result = list_projects_handler(auth=mock_auth)
@@ -170,7 +172,7 @@ class TestSaveProject:
         result = save_project_handler(
             auth=admin_auth,
             project_name="OwnedProject",
-            project_payload={},
+            project_payload=_payload("OwnedProject"),
         )
         assert result["ok"]
         list_result = list_projects_handler(auth=admin_auth)
@@ -181,7 +183,7 @@ class TestSaveProject:
         result = save_project_handler(
             auth=mock_auth,
             project_name="OwnedProject",
-            project_payload={},
+            project_payload=_payload("OwnedProject"),
         )
         assert result["ok"]
         list_result = list_projects_handler(auth=mock_auth)
@@ -189,10 +191,18 @@ class TestSaveProject:
         assert proj["owner_user_id"] == "user_test"
 
     def test_counts_from_payload(self, temp_db, mock_auth):
+        from chisurf.core.data import DataCurve
+        from chisurf.core.fitting.fit import Fit
+        from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
+        from chisurf.core.project import capture_session
+
+        curves = [DataCurve(x=[0.0, 1.0], y=[2.0, 3.0], name=f"curve-{i}") for i in range(2)]
+        fit = Fit(data=curves[0], model_class=LifetimeModel)
+        payload = capture_session(curves, [fit], name="CountProject").to_dict()
         result = save_project_handler(
             auth=mock_auth,
             project_name="CountProject",
-            project_payload={"datasets": {"ds1": {}, "ds2": {}}, "fits": [{"uid": "f1"}]},
+            project_payload=payload,
         )
         assert result["ok"]
         list_result = list_projects_handler(auth=mock_auth)
@@ -204,7 +214,7 @@ class TestSaveProject:
         result = save_project_handler(
             auth=mock_auth,
             project_name="PrivateProj",
-            project_payload={},
+            project_payload=_payload("PrivateProj"),
             visibility="private",
         )
         assert result["ok"]
@@ -216,7 +226,7 @@ class TestSaveProject:
         result = save_project_handler(
             auth=mock_auth,
             project_name="PublicProj",
-            project_payload={},
+            project_payload=_payload("PublicProj"),
             visibility="public",
         )
         assert result["ok"]
@@ -230,20 +240,7 @@ class TestRestoreProject:
         save = save_project_handler(
             auth=mock_auth,
             project_name="RestoreTest",
-            project_payload={
-                "name": "RestoreTest",
-                "project_format_version": 4,
-                "meta": {
-                    "chisurf_version": "1.0.0",
-                    "created": "2026-01-01T00:00:00",
-                    "name": "RestoreTest",
-                },
-                "datasets": {},
-                "experiments": {},
-                "fits": [],
-                "ui": {},
-                "extra": {},
-            },
+            project_payload=_payload("RestoreTest"),
         )
         version_id = save["version_id"]
         result = restore_project_handler(auth=mock_auth, version_id=version_id)
@@ -255,6 +252,7 @@ class TestRestoreProject:
         assert payload.get("datasets") == {}
         assert payload.get("fits") == []
         assert payload.get("experiments") == {}
+        assert payload == save["project_payload"]
 
 
 class TestExportImport:
@@ -262,7 +260,7 @@ class TestExportImport:
         save = save_project_handler(
             auth=mock_auth,
             project_name="ExportTest",
-            project_payload={"data": "hello"},
+            project_payload=_payload("ExportTest", data="hello"),
         )
         version_id = save["version_id"]
 
@@ -286,12 +284,15 @@ class TestExportImport:
         assert imported["ok"]
         assert imported["project_id"] is not None
         assert imported["version_id"] is not None
+        restored = restore_project_handler(auth=mock_auth, version_id=imported["version_id"])
+        assert restored["ok"]
+        assert restored["project_payload"] == save["project_payload"]
 
     def test_collision_detection(self, temp_db, mock_auth):
         save = save_project_handler(
             auth=mock_auth,
             project_name="CollisionTest",
-            project_payload={"x": 1},
+            project_payload=_payload("CollisionTest", x=1),
         )
         version_id = save["version_id"]
 
@@ -320,7 +321,7 @@ class TestExportImport:
         save = save_project_handler(
             auth=mock_auth,
             project_name="CollisionResolve",
-            project_payload={"z": 2},
+            project_payload=_payload("CollisionResolve", z=2),
         )
         version_id = save["version_id"]
 
@@ -356,7 +357,7 @@ class TestDeleteVersion:
         save = save_project_handler(
             auth=mock_auth,
             project_name="DeleteTest",
-            project_payload={},
+            project_payload=_payload("DeleteTest"),
         )
         version_id = save["version_id"]
 
@@ -370,7 +371,7 @@ class TestFiltering:
         save_project_handler(
             auth=mock_auth,
             project_name="PublicProj",
-            project_payload={},
+            project_payload=_payload("PublicProj"),
             visibility="public",
         )
         list_all = list_projects_handler(auth=mock_auth, show_public=True)
@@ -383,12 +384,12 @@ class TestFiltering:
         save_project_handler(
             auth=mock_auth,
             project_name="AlphaProject",
-            project_payload={},
+            project_payload=_payload("AlphaProject"),
         )
         save_project_handler(
             auth=mock_auth,
             project_name="BetaProject",
-            project_payload={},
+            project_payload=_payload("BetaProject"),
         )
         result = list_projects_handler(auth=mock_auth, search="Alpha")
         assert len(result["projects"]) == 1

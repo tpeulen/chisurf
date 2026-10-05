@@ -11,8 +11,13 @@ from chisurf.core.data import DataCurve
 from chisurf.core.fitting.fit import Fit
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models.model import ModelCurve
-from chisurf.core.project import Project, load_project, save_project
-from chisurf.core.project.fit_state import apply_fit_record, make_fit_record
+from chisurf.core.project import (
+    ProjectArchive,
+    capture_session,
+    load_project,
+    restore_session,
+    save_project,
+)
 
 
 class DummyLinearModel(ModelCurve):
@@ -50,21 +55,9 @@ def _make_dummy_fit() -> Fit:
 
 
 def test_project_fits_roundtrip_with_single_fit(tmp_path):
-    # Prepare a simple project with one dataset, one experiment and one fit
-    project_dir = tmp_path / "proj1"
-
-    p = Project(
-        name="proj_with_fit",
-        description="Project.fits JSON round-trip test",
-        chisurf_version="test-version",
-    )
-
-    # Minimal dataset / experiment references
-    p.datasets["ds1"] = {"path": "data/file1.dat"}
-    p.experiments["exp1"] = {"type": "dummy-experiment"}
-
     fit = _make_dummy_fit()
-    # Customize parameter values to check that they are restored later
+    fit.unique_identifier = "fit-uid-1"
+    fit.fit_range = (1, 3)
     params = fit.model.parameters_all_dict
     params["p0"].value = 2.0
     params["p0"].bounds = (0.0, 5.0)
@@ -73,52 +66,34 @@ def test_project_fits_roundtrip_with_single_fit(tmp_path):
     params["p1"].value = -0.5
     params["p1"].fixed = True
 
-    fit_record = make_fit_record(
-        fit_id="fit-uid-1",
-        fit=fit,
-        dataset_id="ds1",
-        experiment_id="exp1",
-    )
-    fit_record["uid"] = "fit-uid-1"
-    p.fits.append(fit_record)
-
-    archive_path = save_project(p, project_dir)
+    project = capture_session([fit.data], [fit], name="proj_with_fit")
+    archive_path = save_project(project, tmp_path / "proj1")
     assert archive_path.is_file()
 
-    # Inspect raw JSON to ensure fits structure is present
-    import zipfile
-
-    with zipfile.ZipFile(archive_path, "r") as zf:
-        raw = json.loads(zf.read("project.json"))
+    # Inspect the exact returned PTO path to ensure fits structure is present.
+    archive = ProjectArchive.open(archive_path)
+    raw = json.loads(archive.read_text("project.json"))
+    archive.close()
 
     assert "fits" in raw
     assert len(raw["fits"]) == 1
     raw_fit = raw["fits"][0]
-    assert raw_fit["dataset_id"] == "ds1"
-    assert raw_fit["experiment_id"] == "exp1"
-    assert "fit_state" in raw_fit
+    assert raw_fit["uid"] == "fit-uid-1"
+    assert raw_fit["members"][0]["dataset_uid"] == fit.data.unique_identifier
+    assert raw_fit["members"][0]["fit_range"] == [1, 3]
+    assert raw_fit["members"][0]["model"]["model_class"] == "DummyLinearModel"
 
-    # Reload project and reconstruct a new Fit from the stored record
-    loaded_project = load_project(project_dir)
-    assert isinstance(loaded_project, Project)
-    assert len(loaded_project.fits) == 1
-
-    loaded_record = loaded_project.fits[0]
-
-    # Make a fresh fit with default parameters and apply the stored record
-    fit2 = _make_dummy_fit()
+    loaded_project = load_project(archive_path)
+    restored = restore_session(loaded_project)
+    assert len(restored.fits) == 1
+    fit2 = restored.fits[0]
     params2 = fit2.model.parameters_all_dict
 
-    # Ensure defaults differ from the customized values
-    assert not np.isclose(params2["p0"].value, 2.0)
-    assert not np.isclose(params2["p1"].value, -0.5)
-
-    apply_fit_record(fit2, loaded_record)
-
-    # After applying the record, the parameter state should match
     assert np.isclose(params2["p0"].value, 2.0)
     assert params2["p0"].bounds_on is True
     assert np.allclose(params2["p0"].bounds, [0.0, 5.0])
 
     assert np.isclose(params2["p1"].value, -0.5)
     assert params2["p1"].fixed is True
+    assert fit2.fit_range == (1, 3)
+    assert fit2.data.unique_identifier == fit.data.unique_identifier

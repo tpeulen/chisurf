@@ -187,6 +187,8 @@ class ChiSurfAPI:
                 datasets=_global_datasets(),
                 fits=_global_fits(),
             )
+            self._state.project_resources = getattr(cs, "project_resources", None)
+            self._state.history = getattr(cs, "history", None)
 
     # ── datasets ─────────────────────────────────────────────────
 
@@ -973,14 +975,94 @@ class ChiSurfAPI:
         }
 
     def save_project(self, target_path: str, project_name: str | None = None) -> dict[str, Any]:
+        """Save this API's session with the canonical portable project service."""
         if self.mode == "server" and self.client is not None:
             return self.client.project__save(target_path=target_path, project_name=project_name)
-        return {"ok": False, "error": "project.save requires server mode"}
+        from chisurf.server.services.projects import save_project
+
+        return save_project(self._state, target_path, project_name)
 
     def load_project(self, project_path: str) -> dict[str, Any]:
+        """Stage and restore a portable project into this API's explicit session."""
         if self.mode == "server" and self.client is not None:
+            if self._project_gui() is not None:
+                return self._replace_remote_project(project_path=project_path)
             return self.client.project__load(project_path=project_path)
-        return {"ok": False, "error": "project.load requires server mode"}
+        from chisurf.server.services.projects import load_project
+
+        return load_project(self._state, project_path)
+
+    def capture_project(self, project_name: str = "chisurf_project"):
+        """Capture this API's authoritative session as a detached Project."""
+        from chisurf.core.project.capture import project_from_capture_reply
+        from chisurf.core.project.transition import _bound_project_gui
+        from chisurf.core.project.ui_state import get_ui_state
+        from chisurf.server.services.projects import _capture_project
+
+        ui_state = get_ui_state(_bound_project_gui(self._state))
+        if self.mode == "server" and self.client is not None:
+            result = self.client.call("project.capture", {"ui_state": ui_state})
+            return project_from_capture_reply(result, name=project_name)
+        return _capture_project(self._state, name=project_name, ui_state=ui_state)
+
+    def restore_project_payload(self, project: Any) -> dict[str, Any]:
+        """Restore a detached Project through the owning session boundary."""
+        if self.mode == "server" and self.client is not None:
+            if self._project_gui() is not None:
+                return self._replace_remote_project(project=project)
+            return self.client.call(
+                "project.restore_payload",
+                {
+                    "project": project.to_dict(),
+                    "resources": project.resources.to_transport_dict(),
+                },
+            )
+        from chisurf.server.services.projects import restore_project_payload
+
+        return restore_project_payload(self._state, project)
+
+    def _replace_remote_project(
+        self,
+        *,
+        project: Any = None,
+        project_path: str | None = None,
+        reset: bool = False,
+    ) -> dict[str, Any]:
+        """Authorize on the GUI before using the remote owner's staged transaction."""
+        from chisurf.core.project import Project, capture_session
+        from chisurf.core.project.project import ResourceContext
+        from chisurf.server.services import OPERATION_FAILED, service_error
+        from chisurf.server.services.projects import _public_transition
+
+        def load():
+            """Decode detached science without invoking a public replacement RPC."""
+            if reset:
+                return capture_session([], [], name="untitled"), None
+            if project_path is None:
+                return project, None
+            result = self.client.call("project.read", {"project_path": project_path})
+            if not isinstance(result, dict) or result.get("ok") is not True:
+                raise RuntimeError(result.get("error", "Project read failed"))
+            decoded = Project.from_dict(result["project"])
+            decoded.resources = ResourceContext.from_transport_dict(result["resources"])
+            return decoded, result["path"]
+
+        try:
+            attached = self.client.call("project.presentation.attach")
+            if not isinstance(attached, dict) or attached.get("ok") is not True:
+                raise RuntimeError("Remote owner did not accept GUI presentation ownership")
+            return _public_transition(
+                self._state,
+                load,
+                reset=reset,
+                client=self.client,
+            )
+        except Exception as exc:
+            return service_error(str(exc), error_code=OPERATION_FAILED, exception=exc)
+
+    def _project_gui(self) -> Any:
+        """Retain an attached GUI rather than treating a missing global as consent."""
+        return getattr(self._state, "_project_gui", None) or getattr(cs, "cs", None)
 
     # ── convenience ───────────────────────────────────────────────
 
@@ -1012,16 +1094,16 @@ class ChiSurfAPI:
         }
 
     def session_restore(self, project_path: str | None = None) -> dict[str, Any]:
-        if self.client is not None:
-            return self.client.session__restore(project_path=project_path)
+        """Open or reset through the owning project's guarded lifecycle."""
         if project_path:
-            return {
-                "ok": False,
-                "error": "session restore requires server mode for project loading",
-            }
-        self._state.fits.clear()
-        self._state.datasets.clear()
-        return {"ok": True, "message": "session cleared locally"}
+            return self.load_project(project_path)
+        if self.mode == "server" and self.client is not None:
+            if self._project_gui() is not None:
+                return self._replace_remote_project(reset=True)
+            return self.client.session__restore(project_path=project_path)
+        from chisurf.server.services.projects import reset_project
+
+        return reset_project(self._state)
 
     @property
     def fit_count(self) -> int:
@@ -1060,11 +1142,18 @@ class ChiSurfAPI:
             return
         from chisurf.core.api._proxies import install_proxies
 
+        gui = self._project_gui()
+        if gui is not None:
+            attached = self.client.call("project.presentation.attach")
+            if not isinstance(attached, dict) or attached.get("ok") is not True:
+                raise RuntimeError("Remote owner did not accept GUI presentation ownership")
         install_proxies(self.client)
         self._state = SessionState(
             datasets=getattr(cs, "imported_datasets", []),
             fits=getattr(cs, "fits", []),
         )
+        if gui is not None:
+            self._state._project_gui = gui
 
     # ---- graph ----
     def build_fit_graph(

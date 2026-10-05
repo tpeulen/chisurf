@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import inspect
 import types
+from functools import wraps
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -10,6 +12,7 @@ import chisurf.core.models
 import chisurf.core.parameter
 import chisurf.core.support.decorators
 from chisurf import typing
+from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models import model
 from chisurf.core.models.catalogue import EquationCatalogueMixin
 
@@ -26,6 +29,7 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
     """
 
     name = "Parameter Transform"
+    model_name: str
 
     #: Its catalogue entries hold a Python ``code:`` block assigned to
     #: :attr:`function`, where a parse model holds an ``equation:`` for ``func``.
@@ -51,19 +55,17 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
         for output in self._model._node.outputs.values():
             output.fixed = False
 
-        # Evaluate the model node with error handling
         try:
             self._model._node.evaluate()
-        except Exception as e:
-            # Log the error but continue
-            import logging
+        finally:
+            for output in self._model._node.outputs.values():
+                output.fixed = True
 
-            logging.warning(f"Error during model node evaluation: {str(e)}")
-            # Don't re-raise the exception to allow the UI to continue functioning
-
-        # Lock the outputs again after evaluation
-        for output in self._model._node.outputs.values():
-            output.fixed = True
+    def update(self, **kwargs):
+        """Evaluate the single wrapped graph and propagate scientific failures."""
+        if self.__dict__.get("_frozen_structure") is None:
+            self.find_parameters()
+        self._update_model(**kwargs)
 
     @property
     def n_points(self):
@@ -137,13 +139,121 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
         self._function = fun
         m = chisurf.core.models.function_to_model_decorator(name=self.name)
 
+        @wraps(function_obj)
+        def scalar_function(**arguments):
+            """Convert native scalar-port buffers to the declared scalar inputs."""
+            return function_obj(
+                **{name: np.asarray(value).item() for name, value in arguments.items()}
+            )
+
         # Create the model class with the function
-        model_class = m(function_obj)
+        model_class = m(scalar_function)
 
         if self.fit is None:
             raise ValueError("Fit object cannot be None")
 
         self._model = model_class(self.fit)
+        node = self._model._node
+        # Document inputs are independent ports. Linking two inputs of the
+        # same native node creates a node self-edge in the installed runtime's
+        # cross-node cycle check. The node consumes the document ports instead,
+        # so both local aliases and cross-fit dependencies form a real DAG.
+        parameters = []
+        for parameter in self._model.parameters_all:
+            name = parameter.name
+            if name in node.inputs:
+                document_parameter = FittingParameter(name=name, value=parameter.value)
+                node.inputs[name].link = document_parameter._port
+                parameters.append(document_parameter)
+            else:
+                parameter.is_output = True
+                parameters.append(parameter)
+        self._model.node_parameters = parameters
+        self._model.find_parameters()
+
+    @property
+    def parameters_all(self):
+        """Expose the wrapped native ports without recursive attribute discovery."""
+        return self._model.parameters_all
+
+    def find_parameters(self, *args, **kwargs):
+        """Refresh the wrapped model's inventory after selecting a definition."""
+        self._model.find_parameters(*args, **kwargs)
+
+    def apply_initial_values(self, name=None):
+        """Apply the transform catalogue's declared numeric values and bounds."""
+        entry = self.catalogue.get(name or self.model_name) or {}
+        for key, setting in (entry.get("initial") or {}).items():
+            parameter = self.parameters_all_dict.get(key)
+            if parameter is None:
+                continue
+            if isinstance(setting, dict):
+                parameter.value = float(setting["value"])
+                if "bounds" in setting:
+                    parameter.bounds = tuple(float(v) for v in setting["bounds"])
+                    parameter.bounds_on = True
+            else:
+                parameter.value = float(setting)
+
+    def get_state(self) -> dict:
+        """Declare a shipped definition and native node without saving executable code."""
+        entry = self.catalogue.get(self.model_name)
+        if not entry or self.function != str(entry.get("code", "")):
+            raise ValueError("Only unchanged shipped catalogue transforms support snapshots")
+        node = self._model._node
+        return {
+            "catalogue_name": self.model_name,
+            "definition_sha256": hashlib.sha256(self.function.encode("utf-8")).hexdigest(),
+            "node_uid": str(node.get_uid()),
+            "input_names": list(node.inputs),
+            "input_port_uids": {name: str(port.get_uid()) for name, port in node.inputs.items()},
+            "output_names": list(node.outputs),
+        }
+
+    def get_session_native_nodes(self) -> list:
+        """Declare the selected transform node, excluding superseded constructors."""
+        return [self._model._node]
+
+    def _verified_session_source(self, state: dict) -> str:
+        """Validate the declaration before constructing any scientific native graph."""
+        keys = {
+            "catalogue_name",
+            "definition_sha256",
+            "node_uid",
+            "input_names",
+            "input_port_uids",
+            "output_names",
+        }
+        if not isinstance(state, dict) or set(state) != keys:
+            raise ValueError("Invalid parameter transform snapshot")
+        entry = self.catalogue.get(state["catalogue_name"])
+        if entry is None:
+            raise ValueError("Unknown shipped parameter transform")
+        source = str(entry.get("code", ""))
+        if hashlib.sha256(source.encode("utf-8")).hexdigest() != state["definition_sha256"]:
+            raise ValueError("Shipped parameter transform definition changed")
+        if not isinstance(state["node_uid"], str) or not state["node_uid"]:
+            raise ValueError("Missing parameter transform native node UID")
+        return source
+
+    def set_state(self, state: dict) -> None:
+        """Configure the trusted definition before the codec routes exact scalar UIDs."""
+        source = self._verified_session_source(state)
+        if self.model_name != state["catalogue_name"] or self.function != source:
+            self.model_name = state["catalogue_name"]
+        node = self._model._node
+        if list(node.inputs) != state["input_names"] or list(node.outputs) != state["output_names"]:
+            raise ValueError("Parameter transform native topology changed")
+        input_uids = state["input_port_uids"]
+        if (
+            not isinstance(input_uids, dict)
+            or list(input_uids) != list(node.inputs)
+            or any(not isinstance(uid, str) or not uid for uid in input_uids.values())
+        ):
+            raise ValueError("Invalid parameter transform native input identities")
+        node.set_uid(state["node_uid"])
+        for name, port in node.inputs.items():
+            port.set_uid(input_uids[name])
 
     @property
     def _parameters(self) -> typing.List[chisurf.core.fitting.parameter.FittingParameter]:
@@ -155,7 +265,19 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
         """No-op setter to satisfy the read-only property protocol."""
         pass
 
-    def __init__(self, fit: Fit, function: typing.Callable = None, *args, **kwargs):
+    @classmethod
+    def from_session_state(cls, fit: Fit, state: dict):
+        """Construct only the saved trusted definition in a staged session."""
+        return cls(fit, session_state=state)
+
+    def __init__(
+        self,
+        fit: Fit,
+        function: str | None = None,
+        *args,
+        session_state: dict | None = None,
+        **kwargs,
+    ):
         """Initialize the parameter transform model.
 
         Parameters
@@ -163,19 +285,25 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
         fit : Fit
             The fit object this model is attached to.
         function : str, optional
-            Python function definition string. Defaults to ``'def f(x): return x'``.
+            Python function definition string. Defaults to the first shipped definition.
+        session_state : dict, optional
+            Saved declaration to validate before constructing only its definition.
         """
         self.fit = fit
-        if function is None:
-            # Open on a real transform: the catalogue's first entry, as the
-            # hand-written editor's combo box did. The identity function is only the
-            # fallback when no catalogue ships.
-            self.function = "def f(x): return x"
-            super().__init__(fit, *args, **kwargs)
+        if session_state is not None:
+            if function is not None:
+                raise ValueError("A session definition cannot be combined with a user function")
+            self._verified_session_source(session_state)
+            self.model_name = session_state["catalogue_name"]
+        elif function is None:
             self.select_first_catalogue_entry()
-            return
-        self.function = function
+            if not self.model_name:
+                self.function = "def f(x): return x"
+        else:
+            self.function = function
         super().__init__(fit, *args, **kwargs)
+        if session_state is not None:
+            self.set_state(session_state)
 
     def __str__(self):
         """Return a string summary of the model function and parameters."""

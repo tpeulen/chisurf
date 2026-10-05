@@ -21,7 +21,15 @@ import numpy as np
 import chisurf.core.fitting
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.fluorescence import diffusion
-from chisurf.core.fluorescence.dyes import diffusion_coefficient_25C, dye_names
+from chisurf.core.fluorescence.dyes import (
+    ReferenceSourceUnavailable,
+    _entries_from_package,
+    _normalized,
+    diffusion_coefficient_25C,
+    dye_names,
+    get_dye,
+    validate_reference,
+)
 from chisurf.core.models.model import ModelCurve
 
 #: Reference temperature (K) of the curated ``D(25 °C, water)`` values.
@@ -49,6 +57,11 @@ def dye_diffusion_m2_s(dye_name: str, temperature_K: float) -> float:
         physical model cannot be evaluated at that temperature.
     """
     D25_um2_s = diffusion_coefficient_25C(dye_name)
+    return _diffusion_m2_s(D25_um2_s, temperature_K)
+
+
+def _diffusion_m2_s(D25_um2_s: float, temperature_K: float) -> float:
+    """Apply the existing viscosity/radius equations to an owned reference input."""
     if not math.isfinite(D25_um2_s) or D25_um2_s <= 0.0:
         return float("nan")
 
@@ -228,10 +241,57 @@ class DyeShapeFCSModel(ModelCurve):
 
         self.find_parameters()
 
-        self._dye_name: str = ""
-        names = self.dye_names()
-        if names:
-            self._dye_name = names[0]
+        # Construction precedes set_state in the explicit session codec. Never
+        # require an external repository before its saved inputs can be applied.
+        self._reference = min(_entries_from_package(), key=lambda entry: entry["name"])
+        self._dye_name = self._reference["name"]
+        self._reference_pending = True
+        self._reference_restored = False
+
+    def _ensure_reference(self) -> None:
+        """Resolve a new model's default once; saved/selected inputs already own it."""
+        if self._reference_pending:
+            names = dye_names()
+            if not names:
+                raise ValueError("configured source has no diffusion reference species")
+            self.dye_name = names[0]
+
+    def get_state(self) -> dict:
+        """Return explicit reference inputs; scalar controls use the session codec."""
+        self._ensure_reference()
+        return {
+            "version": 1,
+            "dye_name": self._dye_name,
+            "reference": validate_reference(self._reference),
+        }
+
+    def set_state(self, state: dict) -> None:
+        """Restore selected scientific inputs without looking up any external source.
+
+        Parameters
+        ----------
+        state : dict
+            Versioned data-only reference selection returned by get_state.
+        """
+        if (
+            not isinstance(state, dict)
+            or type(state.get("version")) is not int
+            or state["version"] != 1
+        ):
+            raise ValueError("invalid dye-shape reference state version")
+        name = state.get("dye_name")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("invalid selected reference name")
+        reference = validate_reference(state.get("reference"))
+        if not any(
+            _normalized(name) == _normalized(candidate)
+            for candidate in [reference["name"], *reference.get("aliases", [])]
+        ):
+            raise ValueError("selected name does not identify the saved reference")
+        self._reference = reference
+        self._dye_name = name
+        self._reference_pending = False
+        self._reference_restored = True
 
     def _shape_parameter_rows(self) -> list:
         """Return the fitted amplitude and confocal-volume parameters, in order."""
@@ -246,11 +306,19 @@ class DyeShapeFCSModel(ModelCurve):
         return [self._D, self._tauD, self._cpm, self._cpm_all]
 
     def dye_names(self) -> list[str]:
-        """List the reference species MMFDB can supply a ``D(25 °C)`` for."""
+        """List usable choices, always including the saved reference selection."""
         try:
-            return list(dye_names())
-        except Exception:
-            return []
+            names = set(dye_names())
+        except ReferenceSourceUnavailable:
+            # A saved calibration remains editable when its original source is
+            # absent. Permission, schema and scientific-data failures propagate.
+            if not self._reference_restored:
+                raise
+            names = {entry["name"] for entry in _entries_from_package()}
+        if not names and self._reference_restored:
+            names = {entry["name"] for entry in _entries_from_package()}
+        names.update((self._dye_name, self._reference["name"]))
+        return sorted(names)
 
     @property
     def dye_name(self) -> str:
@@ -266,7 +334,39 @@ class DyeShapeFCSModel(ModelCurve):
         name : str
             Name of an MMFDB species carrying a diffusion coefficient.
         """
-        self._dye_name = str(name)
+        name = str(name)
+        saved_names = [self._dye_name, self._reference["name"], *self._reference.get("aliases", [])]
+        if not self._reference_pending and any(
+            _normalized(name) == _normalized(saved) for saved in saved_names
+        ):
+            self._dye_name = name
+            return
+        try:
+            entry = get_dye(name)
+        except ReferenceSourceUnavailable:
+            if not self._reference_restored:
+                raise
+            entry = self._portable_reference(name)
+            if entry is None:
+                raise
+        if entry is None and self._reference_restored:
+            entry = self._portable_reference(name)
+        if entry is None:
+            raise ValueError(f"unknown diffusion reference species: {name!r}")
+        reference = validate_reference(entry)
+        self._reference = reference
+        self._dye_name = name
+        self._reference_pending = False
+
+    def _portable_reference(self, name: str) -> dict | None:
+        """Resolve a deliberate offline selection from the exact portable export."""
+        for entry in _entries_from_package():
+            if any(
+                _normalized(name) == _normalized(candidate)
+                for candidate in [entry["name"], *entry.get("aliases", [])]
+            ):
+                return entry
+        return None
 
     def _update_model(self, **kwargs) -> None:
         """Compute the FCS curve for the selected dye and confocal volume.
@@ -291,7 +391,8 @@ class DyeShapeFCSModel(ModelCurve):
         # Diffusion coefficient of the selected dye at the experimental
         # temperature. The fitting parameter is in °C; the physics is in K.
         T_K = float(self._temp.value) + 273.15
-        D_m2_s = dye_diffusion_m2_s(self._dye_name, T_K)
+        self._ensure_reference()
+        D_m2_s = _diffusion_m2_s(self._reference["d25_um2_s"], T_K)
         if not (math.isfinite(D_m2_s) and D_m2_s > 0.0):
             self.x = tau
             self.y = np.full_like(tau, float("nan"))

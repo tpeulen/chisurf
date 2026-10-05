@@ -16,17 +16,49 @@ import chisurf as cs
 import chisurf.core.base
 import chisurf.core.data
 import chisurf.core.fitting
-import chisurf.gui
-import chisurf.gui.widgets
 from chisurf import typing
 from chisurf.core.actions import get_action_catalog, record_action
 from chisurf.core.experiments.core.reader import ExperimentReader
 from chisurf.core.experiments.core.serialize import decode_array, encode_array
 from chisurf.core.project import Project as CSProject
-from chisurf.core.project import ProjectArchive
+from chisurf.core.project import ProjectArchive, capture_session, restore_session
 from chisurf.core.project import fit_state as project_fit_state
 from chisurf.core.project import load_project as project_load_json
 from chisurf.core.project.archive import DATA_DIR, PROJECT_ARCHIVE_SUFFIX, PROJECT_JSON
+from chisurf.core.project.storage import load_file, save_file
+from chisurf.emtk.datasets import (
+    _BULK_PDA_KEYS as _BULK_PDA_KEYS,
+)
+from chisurf.emtk.datasets import (
+    _apply_anisotropy_calibration_to_fit as _apply_anisotropy_calibration_to_fit,
+)
+from chisurf.emtk.datasets import (
+    _apply_g_factor_to_fit as _apply_g_factor_to_fit,
+)
+from chisurf.emtk.datasets import (
+    _attach_tttr_header as _attach_tttr_header,
+)
+from chisurf.emtk.datasets import (
+    _auto_link_non_nuisance_group_parameters as _auto_link_non_nuisance_group_parameters,
+)
+from chisurf.emtk.datasets import (
+    _coerce_finite_float as _coerce_finite_float,
+)
+from chisurf.emtk.datasets import (
+    _collect_group_nuisance_parameter_names as _collect_group_nuisance_parameter_names,
+)
+from chisurf.emtk.datasets import (
+    _flatten_metadata as _flatten_metadata,
+)
+from chisurf.emtk.datasets import (
+    _iter_group_members as _iter_group_members,
+)
+from chisurf.emtk.datasets import (
+    _resolve_dataset_anisotropy_calibration as _resolve_dataset_anisotropy_calibration,
+)
+from chisurf.emtk.datasets import (
+    _resolve_dataset_g_factor as _resolve_dataset_g_factor,
+)
 
 
 def _call_gui_reinitialize(
@@ -70,216 +102,6 @@ def _call_gui_reinitialize(
         gui.onCloseAllFits()
     except Exception:
         pass
-
-
-def _iter_group_members(group):
-    if isinstance(group, (list, tuple)):
-        yield from group
-    else:
-        yield group
-
-
-def _coerce_finite_float(value: typing.Any) -> typing.Optional[float]:
-    try:
-        v = float(value)
-    except Exception:
-        return None
-    if not np.isfinite(v):
-        return None
-    return v
-
-
-def _resolve_dataset_anisotropy_calibration(data_group):
-    calibration: typing.Dict[str, typing.Optional[float]] = {
-        "g_factor": None,
-        "l1": None,
-        "l2": None,
-    }
-
-    reader = getattr(data_group, "data_reader", None)
-    if reader is None:
-        for member in _iter_group_members(data_group):
-            reader = getattr(member, "data_reader", None)
-            if reader is not None:
-                break
-    if reader is not None:
-        for key in ("g_factor", "l1", "l2"):
-            value = getattr(reader, key, None)
-            if value is None:
-                continue
-            v = _coerce_finite_float(value)
-            if v is not None:
-                calibration[key] = v
-
-    metas = []
-    meta_data = getattr(data_group, "meta_data", None)
-    if isinstance(meta_data, dict):
-        metas.append(meta_data)
-    for member in _iter_group_members(data_group):
-        meta = getattr(member, "meta_data", None)
-        if isinstance(meta, dict):
-            metas.append(meta)
-    for meta in metas:
-        for key in ("g_factor", "l1", "l2"):
-            if calibration.get(key) is not None:
-                continue
-            if key not in meta:
-                continue
-            v = _coerce_finite_float(meta[key])
-            if v is not None:
-                calibration[key] = v
-    return calibration
-
-
-def _resolve_dataset_g_factor(data_group):
-    calibration = _resolve_dataset_anisotropy_calibration(data_group)
-    return calibration.get("g_factor")
-
-
-def _apply_g_factor_to_fit(fit_group, g_factor: float) -> None:
-    _apply_anisotropy_calibration_to_fit(fit_group, {"g_factor": g_factor})
-
-
-def _apply_anisotropy_calibration_to_fit(
-    fit_group, calibration: typing.Dict[str, typing.Any]
-) -> None:
-    if not isinstance(calibration, dict):
-        return
-
-    resolved = {}
-    for source_key in ("g_factor", "l1", "l2"):
-        value = _coerce_finite_float(calibration.get(source_key))
-        if value is None:
-            continue
-        resolved[source_key] = value
-    if not resolved:
-        return
-
-    mapping = {
-        "g_factor": ("_g", "g"),
-        "l1": ("_l1", "l1"),
-        "l2": ("_l2", "l2"),
-    }
-
-    def _set_anisotropy(anisotropy):
-        if anisotropy is None:
-            return
-        params = getattr(anisotropy, "parameters_all_dict", None)
-        for source_key, value in resolved.items():
-            private_name, public_name = mapping[source_key]
-            private_param = getattr(anisotropy, private_name, None)
-            applied = False
-            if private_param is not None and hasattr(private_param, "value"):
-                private_param.value = value
-                applied = True
-            elif isinstance(private_param, (int, float, np.floating)):
-                setattr(anisotropy, private_name, value)
-                applied = True
-            if (not applied) and isinstance(params, dict):
-                param_entry = params.get(public_name)
-                if param_entry is not None and hasattr(param_entry, "value"):
-                    param_entry.value = value
-                    applied = True
-            if not applied:
-                try:
-                    setattr(anisotropy, public_name, value)
-                except Exception:
-                    pass
-
-    _set_anisotropy(getattr(getattr(fit_group, "model", None), "anisotropy", None))
-    for member in getattr(fit_group, "grouped_fits", []):
-        _set_anisotropy(getattr(member.model, "anisotropy", None))
-
-
-def _collect_group_nuisance_parameter_names(model: typing.Any) -> typing.Set[str]:
-    names: typing.Set[str] = set()
-    if model is None:
-        return names
-    # A model that knows which of its parameters are the instrument's says so
-    # (a BFF-described view, by its description's groups).
-    declared = getattr(model, "nuisance_parameter_names", None)
-    if callable(declared):
-        return set(declared())
-    for attr_name, attr_value in getattr(model, "__dict__", {}).items():
-        lname = str(attr_name).lower()
-        is_nuisance_attr = (
-            lname in {"nuisance", "nusiance", "generic", "corrections", "convolve"}
-            or "nuisance" in lname
-            or "nusiance" in lname
-        )
-        if not is_nuisance_attr:
-            continue
-        try:
-            params = getattr(attr_value, "parameters_all", None)
-            if isinstance(params, (list, tuple)):
-                for p in params:
-                    pname = str(getattr(p, "name", ""))
-                    if pname:
-                        names.add(pname)
-                continue
-            params_dict = getattr(attr_value, "parameters_all_dict", None)
-            if isinstance(params_dict, dict):
-                for pname in params_dict.keys():
-                    if pname:
-                        names.add(str(pname))
-        except Exception:
-            continue
-    return names
-
-
-def _auto_link_non_nuisance_group_parameters(fit_group) -> typing.Tuple[int, int]:
-    grouped_fits = list(getattr(fit_group, "grouped_fits", []) or [])
-    if len(grouped_fits) <= 1:
-        return 0, 0
-
-    master_fit = grouped_fits[0]
-    master_model = getattr(master_fit, "model", None)
-    master_params = getattr(master_model, "parameters_all_dict", None)
-    if not isinstance(master_params, dict) or not master_params:
-        return 0, 0
-
-    nuisance_names = _collect_group_nuisance_parameter_names(master_model)
-    linked_master_parameters = 0
-    linked_followers = 0
-
-    for parameter_name, master_parameter in master_params.items():
-        if parameter_name in nuisance_names:
-            continue
-        if bool(getattr(master_parameter, "is_output", False)):
-            continue
-        if not hasattr(master_parameter, "link"):
-            continue
-
-        try:
-            master_parameter.is_link_master = True
-        except Exception:
-            pass
-
-        linked_this_parameter = False
-        for local_fit in grouped_fits[1:]:
-            try:
-                local_params = getattr(
-                    getattr(local_fit, "model", None), "parameters_all_dict", None
-                )
-                if not isinstance(local_params, dict):
-                    continue
-                follower_parameter = local_params.get(parameter_name)
-                if follower_parameter is None:
-                    continue
-                try:
-                    follower_parameter.is_link_master = False
-                except Exception:
-                    pass
-                follower_parameter.link = master_parameter
-                linked_followers += 1
-                linked_this_parameter = True
-            except Exception:
-                continue
-
-        if linked_this_parameter:
-            linked_master_parameters += 1
-
-    return linked_master_parameters, linked_followers
 
 
 HISTORY_FILENAME = "history.jsonl"
@@ -750,143 +572,6 @@ def _decode_curve_payload(
     return x, y, ex, ey
 
 
-_BULK_PDA_KEYS = frozenset(
-    {
-        "s1s2",
-        "ps",
-        "row_indices",
-        "col_indices",
-        "tttr_indices",
-    }
-)
-
-
-def _flatten_metadata(
-    src: dict,
-    *,
-    skip_keys: typing.Collection[str] = (),
-    prefix: str = "",
-) -> typing.Dict[str, str]:
-    """Flatten a nested metadata dict into ``{key: str(value)}`` pairs.
-
-    Parameters
-    ----------
-    src : dict
-        Source metadata dictionary.
-    skip_keys : collection of str
-        Top-level keys to skip entirely.
-    prefix : str
-        Optional prefix for output keys.
-    """
-    result: typing.Dict[str, str] = {}
-    for k, v in src.items():
-        if k in skip_keys:
-            continue
-        if v is None or v == "":
-            continue
-        pkey = f"{prefix}{k}"
-        if isinstance(v, dict):
-            result.update(_flatten_metadata(v, prefix=f"{pkey}."))
-        elif isinstance(v, (list, tuple)):
-            # Flatten short lists inline; skip large arrays
-            if len(v) <= 12:
-                result[pkey] = str(v)
-        elif isinstance(v, float):
-            result[pkey] = f"{v:.6e}"
-        else:
-            result[pkey] = str(v)
-    return result
-
-
-def _attach_tttr_header(fit_group, data_group):
-    """Extract metadata from the first data curve onto the fit group.
-
-    Parsed TTTR header tags and other reader-level metadata (PDA, etc.)
-    are stored on ``fit_group.flr_metadata``, giving GUI components a
-    unified view of reader-provided metadata without re-opening files.
-    """
-    try:
-        d = data_group[0] if hasattr(data_group, "__getitem__") else data_group
-        meta = getattr(d, "meta_data", None) or {}
-    except Exception:
-        return
-
-    if not hasattr(fit_group, "flr_metadata") or fit_group.flr_metadata is None:
-        fit_group.flr_metadata = {}
-
-    entries: typing.Dict[str, str] = {}
-
-    # 1) Parse TTTR header JSON tags
-    hdr = meta.get("tttr_header_json")
-    if hdr:
-        try:
-            raw = json.loads(hdr) if isinstance(hdr, str) else hdr
-        except Exception:
-            raw = None
-        if raw:
-            tags = raw.get("tags", [])
-            for tag in tags:
-                name = tag.get("name", "")
-                value = tag.get("value", "")
-                idx = tag.get("idx", 0)
-                if value is None or value == "":
-                    continue
-                if isinstance(value, float):
-                    value = f"{value:.6e}"
-                key = name
-                if idx and idx > 0:
-                    key = f"{name}[{idx}]"
-                if key not in entries:
-                    entries[str(key)] = str(value)
-
-    # 2) Surface non-bulk keys from meta_data
-    entries.update(_flatten_metadata(meta, skip_keys={"tttr_header_json"}))
-
-    # 3) Surface non-bulk keys from the pda dict
-    pda = getattr(d, "pda", None) or {}
-    entries.update(_flatten_metadata(pda, skip_keys=_BULK_PDA_KEYS, prefix="pda."))
-
-    # Add entries to flr_metadata (user metadata takes precedence)
-    for k, v in entries.items():
-        if k not in fit_group.flr_metadata:
-            fit_group.flr_metadata[k] = v
-
-    # 4) Populate photon streams only for TTTR-originating data (indicated by a
-    #    non-empty tttr_header_json in meta_data). Non-TTTR files (e.g. TCSPC CSV)
-    #    set data.filename but should not appear in the photon-streams panel.
-    if meta.get("tttr_header_json"):
-        raw_filenames = meta.get("filenames")
-        if not raw_filenames:
-            try:
-                raw_filenames = [
-                    str(getattr(d, "filename", ""))
-                    for d in (data_group if hasattr(data_group, "__getitem__") else [data_group])
-                    if getattr(d, "filename", None)
-                ]
-            except Exception:
-                raw_filenames = []
-        if raw_filenames:
-            streams = []
-            for i, entry in enumerate(raw_filenames, 1):
-                if isinstance(entry, dict):
-                    streams.append(
-                        {
-                            "stream_id": f"stream_{i}",
-                            "file_path": entry.get("path", ""),
-                            "file_format": entry.get("format", ""),
-                        }
-                    )
-                else:
-                    streams.append(
-                        {
-                            "stream_id": f"stream_{i}",
-                            "file_path": str(entry),
-                            "file_format": "",
-                        }
-                    )
-            fit_group.flr_photon_streams = streams
-
-
 def add_fit(
     dataset_indices: typing.List[int] = None,
     model_name: str = None,
@@ -1266,59 +951,19 @@ def add_fit(
                             plo_parent.setUpdatesEnabled(False)
                         gui.mdiarea.setUpdatesEnabled(False)
 
-                    from chisurf.gui.widgets.fitting import (
-                        FitSubWindow,
-                        FittingControllerWidget,
-                    )
-
-                    fit_control_widget = FittingControllerWidget(fit=fit_group)
-                    header_layout = getattr(gui, "analysisHeaderLayout", None)
-                    if header_layout is not None:
-                        header_layout.addWidget(fit_control_widget)
-                    else:
-                        gui.modelLayout.addWidget(fit_control_widget)
-                    from chisurf.gui.widgets.models.model_editor import (
-                        build_model_editor,
-                    )
-
-                    for fit in fit_group:
-                        # A pure model is not a widget; build_model_editor returns
-                        # the legacy model-widget unchanged or an AutoModelWidget
-                        # bound to the pure model (PRD-38).
-                        gui.modelLayout.addWidget(build_model_editor(fit.model))
-
-                    fit_window = FitSubWindow(
-                        fit=fit_group,
-                        control_layout=gui.plotOptionsLayout,
-                        fit_widget=fit_control_widget,
-                    )
-
-                    fit_window.setWindowTitle(fit.name)
-                    fit_window = gui.mdiarea.addSubWindow(fit_window)
-                    import chisurf.gui as _gui_mod
-
-                    _gui_mod.fit_windows.append(fit_window)
-                    gui.current_fit = fit_group
-                    # Run auto-fit range synchronously so that each fit completes
-                    # its range setup and model/plot updates before the next fit
-                    # is created. This mirrors the stable sequential behaviour.
-                    try:
-                        fit_control_widget.onAutoFitRange()
-                    except Exception:
-                        pass
+                    # The main window owns opening a fit window: the
+                    # ``fit.added`` event published above goes to the same
+                    # opener, which de-duplicates per fit. A second, inline
+                    # copy here opened a duplicate window whenever an event
+                    # loop spun mid-build and delivered that event first.
+                    gui._open_fit_subwindow(fit_group)
                 finally:
-                    # Re-enable updates and show
                     if not _ui_updates_frozen:
                         gui.mdiarea.setUpdatesEnabled(True)
                         if mdl_parent:
                             mdl_parent.setUpdatesEnabled(True)
                         if plo_parent:
                             plo_parent.setUpdatesEnabled(True)
-                    try:
-                        fit_window.show()
-                        fit_window.refresh_current_plot()
-                    except Exception:
-                        pass
 
     if gui is not None and not _defer_cs_update:
         try:
@@ -1966,213 +1611,34 @@ def change_selected_fit_of_group(selected_fit: int) -> None:
 
 
 def get_project_payload(project_name: str = "chisurf_project") -> CSProject:
-    """Gather the entire current project state as a serialized CSProject instance."""
-    log = cs.logging
+    """Capture owned science and client presentation through the shared codec."""
+    from chisurf.core.project.ui_state import get_ui_state
+
     gui = getattr(cs, "cs", None)
+    ui_state = get_ui_state(gui)
+    selected = getattr(gui, "fit_idx", getattr(cs, "current_fit_idx", -1))
+    ui_state["current_fit_index"] = selected if cs.fits else None
+    client = getattr(cs, "__client__", None)
+    if client is not None:
+        from chisurf.core.api._proxies import ProxyDatasetList, ProxyFitList
 
-    # --- Collect datasets as plain arrays ---------------------------------
-    datasets: typing.Dict[str, typing.Dict] = {}
-    dataset_id_by_obj: typing.Dict[int, str] = {}
-    ds_counter = 0
+        if isinstance(cs.imported_datasets, ProxyDatasetList) and isinstance(cs.fits, ProxyFitList):
+            result = client.call("project.capture", {"ui_state": ui_state})
+            from chisurf.core.project.capture import project_from_capture_reply
 
-    def register_datacurve(dc: cs.core.data.DataCurve) -> str:
-        nonlocal ds_counter
-        key = id(dc)
-        if key in dataset_id_by_obj:
-            return dataset_id_by_obj[key]
-        ds_id = f"ds{ds_counter:03d}"
-        ds_counter += 1
-        x, y, ex, ey = _datacurve_arrays(dc)
-        filename = getattr(dc, "filename", "")
-        datasets[ds_id] = {
-            "name": getattr(dc, "name", ""),
-            "filename": filename,
-            "x": _encode_curve_array(x),
-            "y": _encode_curve_array(y),
-            "ex": _encode_curve_array(ex),
-            "ey": _encode_curve_array(ey),
-            "data_reader": _serialize_reader(getattr(dc, "data_reader", None)),
-            "experiment_name": getattr(getattr(dc, "experiment", None), "name", None),
-        }
-        dataset_id_by_obj[key] = ds_id
-        return ds_id
-
-    for item in cs.imported_datasets:
-        if isinstance(item, cs.core.data.DataCurve):
-            register_datacurve(item)
-        elif isinstance(item, cs.core.data.DataGroup):
-            for dc in item:
-                if isinstance(dc, cs.core.data.DataCurve):
-                    register_datacurve(dc)
-
-    dataset_layout: typing.List[typing.Dict[str, typing.Any]] = []
-    for item in cs.imported_datasets:
-        if isinstance(item, cs.core.data.DataCurve):
-            ds_id = register_datacurve(item)
-            dataset_layout.append(
-                {
-                    "kind": "dataset",
-                    "dataset_id": ds_id,
-                }
-            )
-            continue
-
-        if isinstance(item, cs.core.data.DataGroup):
-            member_ids: typing.List[str] = []
-            for dc in item:
-                if isinstance(dc, cs.core.data.DataCurve):
-                    member_ids.append(register_datacurve(dc))
-            if not member_ids:
-                continue
-
-            rec: typing.Dict[str, typing.Any] = {
-                "kind": "group",
-                "group_type": type(item).__name__,
-                "dataset_ids": member_ids,
-            }
-            try:
-                group_name = getattr(item, "name", "")
-                if group_name:
-                    rec["name"] = str(group_name)
-            except Exception:
-                pass
-            try:
-                current_dataset_idx = int(getattr(item, "_current_dataset", 0))
-                if 0 <= current_dataset_idx < len(member_ids):
-                    rec["current_dataset_index"] = current_dataset_idx
-            except Exception:
-                pass
-            dataset_layout.append(rec)
-
-    # --- Collect fits & global links --------------------------------------
-    manifest_fits: typing.List[typing.Dict[str, typing.Any]] = []
-    fit_sources = cs.fits
-    for i, fit_group in enumerate(fit_sources):
-        if fit_group is None:
-            continue
-
-        base_name = getattr(fit_group, "name", "") or f"fitgroup_{i:03d}"
-        fg_id = cs.core.base.clean_string(str(base_name)) or f"fitgroup_{i:03d}"
-
-        local_fits_state: typing.List[typing.Dict[str, typing.Any]] = []
-        model_name = None
-
-        grouped = getattr(fit_group, "grouped_fits", [])
-        for local_fit in grouped:
-            data_obj = getattr(local_fit, "data", None)
-            ds_id = None
-            if isinstance(data_obj, cs.core.data.DataCurve):
-                ds_id = register_datacurve(data_obj)
-
-            if model_name is None and data_obj is not None:
-                try:
-                    exp = getattr(data_obj, "experiment", None)
-                    mn = getattr(exp, "model_names", [])
-                    mc = getattr(exp, "model_classes", [])
-                    for name, cls in zip(mn, mc):
-                        try:
-                            if isinstance(local_fit.model, cls):
-                                model_name = name
-                                break
-                        except Exception:
-                            continue
-                except Exception:
-                    pass
-
-            if model_name is None and local_fit is not None:
-                try:
-                    model_name = getattr(local_fit.model, "name", None)
-                except Exception:
-                    pass
-
-            try:
-                get_state = getattr(local_fit, "get_state", None)
-                if callable(get_state):
-                    fit_state = get_state()
-                else:
-                    fit_state = project_fit_state.fit_to_state(local_fit)
-            except Exception as exc:
-                log.warning(f"save_project: could not serialize fit group {fg_id}: {exc}")
-                fit_state = {}
-
-            try:
-                fr = getattr(local_fit, "fit_range", None)
-                if isinstance(fr, tuple) and len(fr) == 2:
-                    fit_range = [int(fr[0]), int(fr[1])]
-                else:
-                    fit_range = None
-            except Exception:
-                fit_range = None
-
-            rec = {
-                "dataset_id": ds_id,
-                "fit_state": fit_state,
-            }
-            if fit_range is not None:
-                rec["fit_range"] = fit_range
-
-            local_fits_state.append(rec)
-
-        fit_record = {
-            "id": fg_id,
-            "name": getattr(fit_group, "name", fg_id),
-            "model_name": model_name,
-            "data_group_name": str(getattr(getattr(fit_group, "_data", None), "name", "")),
-            "local_fits": local_fits_state,
-        }
-        plot_state = _fitgroup_plot_state(fit_group)
-        if plot_state:
-            fit_record["plot_state"] = plot_state
-        manifest_fits.append(fit_record)
-
-    ui_state = {}
-    if dataset_layout:
-        ui_state["dataset_layout"] = dataset_layout
-
-    if gui is not None:
-        ui_state["current_fit_index"] = getattr(gui, "fit_idx", 0)
-        ui_state["current_experiment_idx"] = getattr(gui, "current_experiment_idx", 0)
-        ui_state["current_setup_idx"] = getattr(gui, "current_setup_idx", 0)
-        try:
-            from chisurf.core.project.ui_state import get_ui_state
-
-            gui_state = get_ui_state(gui)
-            if gui_state:
-                ui_state.update(gui_state)
-        except Exception as exc:
-            log.warning(f"save_project: could not capture UI state: {exc}")
-
-    proj = CSProject(
-        name=project_name,
-        description=f"ChiSurf project '{project_name}'",
-        chisurf_version=getattr(cs.core.info, "__version__", None),
-        datasets=datasets,
+            return project_from_capture_reply(result, name=project_name)
+    project = capture_session(
+        cs.imported_datasets,
+        cs.fits,
         experiments={},
-        fits=manifest_fits,
         ui_state=ui_state,
+        name=project_name,
+        resources=getattr(cs, "project_resources", None),
     )
+    from chisurf.core.project.history import capture_history
 
-    try:
-        proj.extra["history"] = {
-            "filename": HISTORY_FILENAME,
-            "event_count": _history_event_count(),
-        }
-        history_obj = getattr(cs, "history", None)
-        if history_obj is not None and hasattr(history_obj, "list_events"):
-            proj.extra["history_events"] = history_obj.list_events()
-    except Exception:
-        pass
-
-    try:
-        from chisurf.core.actions._infra import get_action_catalog
-
-        proj.extra["action_catalog"] = {
-            "entries": get_action_catalog(),
-        }
-    except Exception:
-        pass
-
-    return proj
+    project.extra.update(capture_history(getattr(cs, "history", None)))
+    return project
 
 
 def build_project_archive(
@@ -2197,13 +1663,8 @@ def build_project_archive(
     tuple
         The project payload and finalized archive bytes.
     """
-    log = cs.logging
     proj = get_project_payload(project_name)
-    project_root = _current_project_root()
     archive = ProjectArchive()
-
-    _embed_external_file_refs(proj, archive, project_root, log)
-    _write_bff_session_to_archive(archive)
     if include_save_history_event and target_path is not None:
         _record_history(
             action_type="project_save",
@@ -2225,19 +1686,9 @@ def save_project(target_path: str, project_name: str = "chisurf_project"):
     """
     log = cs.logging
     gui = getattr(cs, "cs", None)
-
     project_path, project_name = _project_archive_path(target_path, project_name)
-
-    try:
-        _, archive_bytes = build_project_archive(
-            project_name,
-            include_save_history_event=True,
-            target_path=project_path,
-        )
-        ProjectArchive.open_bytes(archive_bytes).save(project_path)
-    except Exception as exc:
-        log.error(f"save_project: could not save project archive {project_path}: {exc}")
-        return None
+    project = get_project_payload(project_name)
+    project_path = save_file(project, project_path)
 
     log.info(f"Project saved to {project_path}")
     try:
@@ -2575,368 +2026,23 @@ def _apply_pending_plot_state(
 
 
 def save_fit_project(target_path: str, fit_window=None, fit_name: str = "chisurf_project"):
-    """Save a single fit (data + model state + window) as a ``.cs.pto`` project.
-
-    The output can be reloaded with :func:`load_fit_project` similarly to full
-    projects, but without touching other open fits.
-    """
-    log = cs.logging
+    """Export one fit with the canonical detached codec and portable transport."""
     gui = getattr(cs, "cs", None)
-    # Headless-safe: gui may be None
     if fit_window is None and gui is not None:
         fit_window = getattr(gui.mdiarea, "currentSubWindow", lambda: None)()
-    if fit_window is None:
-        # Headless: try to use the last fit group directly
-        if cs.fits:
-            fit_group = cs.fits[-1]
-        else:
-            log.error("save_fit_project: no fit window or fit group available")
-            return
-    else:
-        fit_group = getattr(fit_window, "fit", None)
-        if fit_group is None:
-            log.error("save_fit_project: fit window has no fit group")
-            return
-
-    project_path, fit_name = _project_archive_path(target_path, fit_name)
-    archive = ProjectArchive()
-    project_root = _current_project_root()
-
-    datasets: typing.Dict[str, typing.Dict] = {}
-    dataset_id_by_obj: typing.Dict[int, str] = {}
-    ds_counter = 0
-
-    def register_datacurve(dc: cs.core.data.DataCurve) -> str:
-        nonlocal ds_counter
-        key = id(dc)
-        if key in dataset_id_by_obj:
-            return dataset_id_by_obj[key]
-        ds_id = f"ds{ds_counter:03d}"
-        ds_counter += 1
-        x, y, ex, ey = _datacurve_arrays(dc)
-        filename = getattr(dc, "filename", "")
-        datasets[ds_id] = {
-            "name": getattr(dc, "name", ""),
-            "filename": filename,
-            "x": _encode_curve_array(x),
-            "y": _encode_curve_array(y),
-            "ex": _encode_curve_array(ex),
-            "ey": _encode_curve_array(ey),
-        }
-        dataset_id_by_obj[key] = ds_id
-        return ds_id
-
-    fg_key, fit_payload = _build_fitgroup_payload(fit_group, register_datacurve, log, group_index=0)
-    if not fit_payload:
-        log.error("save_fit_project: fit payload empty; aborting")
-        return
-
-    fit_ui_state = {}
-    if gui is not None:
-        fit_ui_state["current_fit_index"] = getattr(gui, "fit_idx", 0)
-        try:
-            history_browser = getattr(gui, "historyBrowser", None)
-            get_hist_state = getattr(history_browser, "get_ui_state", None)
-            if callable(get_hist_state):
-                fit_ui_state["history_browser"] = get_hist_state()
-        except Exception:
-            pass
-
-    proj = CSProject(
-        name=fit_name,
-        description=f"ChiSurf fit '{fit_name}'",
-        chisurf_version=getattr(cs.core.info, "__version__", None),
-        datasets=datasets,
-        experiments={},
-        fits={fg_key: fit_payload},
-        ui_state=fit_ui_state,
+    fit_group = (
+        getattr(fit_window, "fit", None)
+        if fit_window is not None
+        else (cs.fits[-1] if cs.fits else None)
     )
-
-    try:
-        proj.extra["history"] = {
-            "filename": HISTORY_FILENAME,
-            "event_count": _history_event_count(),
-        }
-    except Exception:
-        pass
-
-    try:
-        proj.extra["action_catalog"] = {
-            "entries": get_action_catalog(),
-        }
-    except Exception:
-        pass
-
-    try:
-        _embed_external_file_refs(proj, archive, project_root, log)
-        _write_bff_session_to_archive(archive)
-        archive.write_text(PROJECT_JSON, json.dumps(proj.to_dict(), indent=2, sort_keys=True))
-        archive.write_text("fit.json", json.dumps(proj.to_dict(), indent=2, sort_keys=True))
-        _record_history(
-            action_type="fit_save",
-            summary=f"save fit '{fit_name}' to '{project_path.as_posix()}'",
-            payload={
-                "project_path": project_path.as_posix(),
-                "fit_name": fit_name,
-            },
-        )
-        _write_history_snapshot_to_archive(archive)
-        project_path = archive.save(project_path)
-    except Exception as exc:
-        log.error(f"save_fit_project: could not save fit archive {project_path}: {exc}")
-        return None
-
-    log.info(f"Fit saved to {project_path}")
-    return project_path
-
-
-def load_fit_project(project_path: str):
-    """Load a ChiSurf project and append its fit/data to the current session.
-
-    Existing datasets and fits are left untouched. The stored dataset(s) are
-    appended, then the fit group is rebuilt and its state restored.
-
-    Works in headless mode (without GUI / ``cs.cs``).
-    """
-    log = cs.logging
-    gui = getattr(cs, "cs", None)
-
-    proj = None
-    history_base_dir = None
-    archive_handle = None
-    path = pathlib.Path(project_path)
-    if str(path).lower().endswith(PROJECT_ARCHIVE_SUFFIX) or path.is_dir():
-        archive_path = _project_archive_input_path(project_path)
-        try:
-            archive = ProjectArchive.open(archive_path)
-            temp_dir, archive_handle = archive.extract_to_temp()
-            data = json.loads(archive.read_text(PROJECT_JSON))
-            proj = CSProject.from_dict(data)
-            proj._archive = archive
-            proj._archive_path = archive_path
-            proj._archive_temp_dir = temp_dir
-            proj._archive_temp_handle = archive_handle
-            history_base_dir = temp_dir
-            if gui is not None:
-                temp_dirs = list(getattr(gui, "_project_archive_temp_dirs", []) or [])
-                temp_dirs.append(temp_dir)
-                gui._project_archive_temp_dirs = temp_dirs
-        except Exception as exc:
-            log.error(f"load_fit_project: failed to read project archive {archive_path}: {exc}")
-            return
-    elif project_path.endswith(".json") and os.path.isfile(project_path):
-        # Accept direct fit.json/project.json paths
-        try:
-            with open(project_path, encoding="utf-8") as f:
-                data = json.load(f)
-            proj = CSProject.from_dict(data)
-            history_base_dir = os.path.dirname(project_path)
-        except Exception as exc:
-            log.error(f"load_fit_project: failed to read {project_path}: {exc}")
-            return
-    else:
-        base_dir = project_path
-        if not os.path.isdir(base_dir):
-            log.error(f"load_fit_project: path {project_path} does not exist")
-            return
-        try:
-            proj = project_load_json(base_dir)
-            history_base_dir = base_dir
-        except Exception as exc:
-            log.error(f"load_fit_project: failed to read project.json from {base_dir}: {exc}")
-            return
-
-    # Append project-local history to current session history (fit import is additive).
-    history_loaded = False
-    try:
-        if history_base_dir:
-            history_loaded = bool(_load_history_snapshot(history_base_dir, replace=False))
-    except Exception:
-        pass
-
-    # --- Reconstruct datasets and append to existing imports ---------------
-    dataset_objects: typing.Dict[str, cs.core.data.DataCurve] = {}
-    dataset_indices: typing.Dict[str, int] = {}
-
-    file_backed_datasets: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
-    for ds_id, payload in (proj.datasets or {}).items():
-        if _is_file_backed_dataset(payload):
-            if isinstance(payload, dict):
-                file_backed_datasets[ds_id] = payload
-            continue
-        try:
-            name = payload.get("name", ds_id)
-            filename = payload.get("filename", "")
-            x, y, ex, ey = _decode_curve_payload(payload)
-            dc = cs.core.data.DataCurve(x=x, y=y, ex=ex, ey=ey, name=name)
-
-            if filename:
-                try:
-                    dc.filename = filename
-                except Exception:
-                    pass
-
-            try:
-                exp_obj = getattr(gui, "current_experiment", None) if gui is not None else None
-            except Exception:
-                exp_obj = None
-            if exp_obj is not None:
-                try:
-                    dc.experiment = exp_obj
-                except Exception as e_exp:
-                    log.warning(
-                        f"load_fit_project: could not attach experiment to dataset {ds_id}: {e_exp}"
-                    )
-
-            dataset_objects[ds_id] = dc
-            cs.imported_datasets.append(dc)
-            dataset_indices[ds_id] = len(cs.imported_datasets) - 1
-        except Exception as exc:
-            log.warning(f"load_fit_project: could not reconstruct dataset {ds_id}: {exc}")
-            continue
-
-    if gui is not None:
-        try:
-            gui.dataset_selector.update()
-        except Exception:
-            pass
-
-    # --- Rebuild fit groups and restore their state -----------------------
-    # ``Project.fits`` is a list of records, each carrying its own uid — as
-    # every other consumer of it assumes. Iterating it as a mapping raised
-    # ``'list' object has no attribute 'items'`` and made every project
-    # unloadable.
-    for position, rec in enumerate(proj.fits or []):
-        if not isinstance(rec, dict):
-            continue
-        key = rec.get("uid") or rec.get("id") or f"#{position}"
-        # ``type`` is optional: the writer emits fit-group records without it,
-        # and demanding it here skipped every fit in every saved project. A
-        # record that carries ``local_fits`` *is* a fit group.
-        record_type = rec.get("type")
-        if record_type is not None and record_type != "fit_group":
-            continue
-
-        local_fits = rec.get("local_fits") or []
-        if not isinstance(local_fits, list) or not local_fits:
-            log.warning(f"load_fit_project: fit record {key} has no local_fits; skipping")
-            continue
-
-        group_indices: typing.List[int] = []
-        for lf in local_fits:
-            if not isinstance(lf, dict):
-                continue
-            ds_id = lf.get("dataset_id")
-            if not ds_id:
-                continue
-            idx = dataset_indices.get(ds_id)
-            if idx is not None:
-                group_indices.append(idx)
-
-        if not group_indices:
-            log.warning(f"load_fit_project: fit record {key} has no valid datasets; skipping")
-            continue
-
-        model_name = rec.get("model_name")
-        first_state = (local_fits[0].get("fit_state") or {}) if local_fits else {}
-        model_module = rec.get("model_module") or first_state.get("model_module")
-        model_class_name = rec.get("model_class") or first_state.get("model_class")
-        if gui is None and model_name == "ProteinMC":
-            log.info("load_project: skipping GUI ProteinMC fit restore without QApplication")
-            continue
-        try:
-            add_fit(
-                dataset_indices=group_indices,
-                model_name=model_name,
-                model_module=model_module,
-                model_class_name=model_class_name,
-                group_datasets=len(local_fits) > 1,
-                data_group_name=rec.get("data_group_name"),
-                _force_local=True,
-            )
-        except Exception as exc:
-            log.warning(f"load_fit_project: add_fit failed for record {key}: {exc}")
-            continue
-
-        # Newly created FitGroup is appended to cs.fits
-        try:
-            fit_group = cs.fits[-1]
-        except Exception:
-            continue
-        _apply_pending_plot_state(fit_group, rec)
-
-        grouped_new = getattr(fit_group, "grouped_fits", [])
-        for lf_rec, new_fit in zip(local_fits, grouped_new):
-            state = lf_rec.get("fit_state") or {}
-            project_root = getattr(proj, "_archive_temp_dir", history_base_dir)
-            state = _resolve_project_local_model_state(
-                state, pathlib.Path(project_root) if project_root else None
-            )
-            if isinstance(state, dict):
-                try:
-                    set_state = getattr(new_fit, "set_state", None)
-                    if callable(set_state):
-                        set_state(state)
-                    else:
-                        # Extract dependency_edges for this specific fit
-                        fit_record_id = key
-                        version_id = getattr(proj, "_version_id", "")
-                        if version_id and hasattr(proj, "dependency_edges"):
-                            pattern = f"fit_{version_id}:{fit_record_id}:"
-                            dependency_edges = [
-                                edge
-                                for edge in proj.dependency_edges
-                                if edge.get("operation_id", "").startswith(pattern)
-                            ]
-                        else:
-                            dependency_edges = []
-                        project_fit_state.apply_state_to_fit(
-                            new_fit, state, dependency_edges, fit_record_id
-                        )
-                except Exception as exc:
-                    log.warning(
-                        f"load_fit_project: could not restore state for local fit in {key}: {exc}"
-                    )
-
-            fr = lf_rec.get("fit_range")
-            if isinstance(fr, (list, tuple)) and len(fr) == 2:
-                try:
-                    new_fit.fit_range = (int(fr[0]), int(fr[1]))
-                except Exception as exc:
-                    log.warning(
-                        f"load_fit_project: could not restore fit_range for local fit in {key}: {exc}"
-                    )
-
-    # Best-effort: bring the newest fit window to front (GUI only)
-    if gui is not None:
-        try:
-            if cs.gui.fit_windows:
-                win = cs.gui.fit_windows[-1]
-                win.show()
-                win.setFocus()
-        except Exception:
-            pass
-
-    if gui is not None:
-        try:
-            fit_ui_state = proj.ui_state or {}
-            history_browser_state = fit_ui_state.get("history_browser") or {}
-            history_browser = getattr(gui, "historyBrowser", None)
-            set_hist_state = getattr(history_browser, "set_ui_state", None)
-            if callable(set_hist_state) and isinstance(history_browser_state, dict):
-                set_hist_state(history_browser_state)
-        except Exception:
-            pass
-
-    _refresh_history_browser()
-    _record_history(
-        action_type="fit_load",
-        summary=f"load ChiSurf project from '{project_path}'",
-        payload={
-            "project_path": str(project_path),
-            "history_loaded": bool(history_loaded),
-        },
-    )
+    if fit_group is None:
+        raise ValueError("No fit is available to save")
+    members = list(getattr(fit_group, "grouped_fits", None) or [fit_group])
+    data = cs.core.data.DataCurveGroup([member.data for member in members], name=fit_name)
+    project = capture_session([data], [fit_group], name=fit_name)
+    project.metadata["document_kind"] = "fit"
+    project_path, _name = _project_archive_path(target_path, fit_name)
+    return save_file(project, project_path)
 
 
 def load_project_payload(
@@ -2945,453 +2051,51 @@ def load_project_payload(
     _skip_gui_creation: bool = False,
     _history_transaction: bool = True,
 ):
-    """Restore one canonical project payload as a single state transaction.
+    """Replace science through its authoritative owner, returning normalized UIDs."""
+    del _skip_gui_creation, _history_transaction
+    from chisurf.core.project.transition import replace_project
 
-    History projection is an observer of accepted state.  Letting intermediate
-    dataset/model construction emit history while a project is being restored
-    caused the observer to recreate per-dataset fits before the saved global
-    group was committed.  Suppress those intermediate events and expose only
-    the completed state.
-    """
-    if _history_transaction:
-        history_obj = getattr(cs, "history", None)
-        suppress = getattr(history_obj, "suppress_recording", None)
-        if callable(suppress):
-            with suppress():
-                return load_project_payload(
-                    proj,
-                    project_path,
-                    _skip_gui_creation=_skip_gui_creation,
-                    _history_transaction=False,
-                )
-    """Restore a project state from a Project dataclass instance.
-
-    Parameters
-    ----------
-    proj : Project
-        The project instance containing the serialized project state.
-    project_path : str, optional
-        The project directory path on disk (if restored from files).
-    """
-    log = cs.logging
     gui = getattr(cs, "cs", None)
-
-    project_root = getattr(proj, "_archive_temp_dir", None)
-    if project_root is None and project_path is not None:
-        project_root = pathlib.Path(project_path)
-
-    # Full project load replaces current operation history when available.
-    history_loaded = False
-    if project_root is not None:
-        try:
-            history_loaded = bool(_load_history_snapshot(project_root, replace=True))
-        except Exception:
-            pass
-
-    if not history_loaded:
-        events = proj.extra.get("history_events")
-        if events:
-            try:
-                history_obj = getattr(cs, "history", None)
-                if history_obj is not None and hasattr(history_obj, "load_events"):
-                    history_obj.load_events(events, replace=True)
-                    history_loaded = True
-            except Exception:
-                pass
-
-    if gui is not None:
-        try:
-            _call_gui_reinitialize(
-                gui,
-                show_confirmation=False,
-                show_success=False,
-            )
-        except Exception:
-            pass
-
-    # Unconditionally clear headless state
-    try:
-        cs.fits.clear()
-    except Exception:
-        pass
-    try:
-        cs.gui.fit_windows.clear()
-    except Exception:
-        pass
-
-    # --- Restore experiment/setup state early so we can attach it to datasets
-    ui_state = proj.ui_state or {}
-
-    if gui is not None:
-        try:
-            # Prefer the experiment name saved in the project so that ProteinMC /
-            # Chimol projects select the correct experiment by name or key
-            # rather than relying on a hard-coded comboBox index.
-            current_exp_token = ui_state.get("current_experiment_name") or ui_state.get(
-                "current_experiment_key"
-            )
-            exp_combo = getattr(gui, "comboBox_experimentSelect", None)
-            matched_idx = None
-            if isinstance(current_exp_token, str) and current_exp_token and exp_combo is not None:
-                # Try matching the comboBox display text first, then the
-                # experiment registry name/key.
-                idx = exp_combo.findText(current_exp_token)
-                if idx >= 0:
-                    matched_idx = idx
-                else:
-                    for i in range(exp_combo.count()):
-                        if exp_combo.itemText(i) == current_exp_token:
-                            matched_idx = i
-                            break
-                    if matched_idx is None:
-                        for reg_key, reg_exp in getattr(cs, "experiment", {}).items():
-                            if (
-                                str(getattr(reg_exp, "name", "")) == current_exp_token
-                                or reg_key == current_exp_token
-                            ):
-                                idx = exp_combo.findText(str(getattr(reg_exp, "name", reg_key)))
-                                if idx >= 0:
-                                    matched_idx = idx
-                                    break
-            if matched_idx is None:
-                current_experiment_idx = ui_state.get("current_experiment_idx", 0)
-                if exp_combo is not None and 0 <= current_experiment_idx < exp_combo.count():
-                    matched_idx = current_experiment_idx
-            if matched_idx is not None:
-                gui.set_current_experiment_idx(matched_idx)
-        except Exception:
-            pass
-
-        try:
-            current_setup_idx = ui_state.get("current_setup_idx", 0)
-            total_setup = gui.comboBox_setupSelect.count()
-            if 0 <= current_setup_idx < total_setup:
-                gui.set_current_setup_idx(current_setup_idx)
-        except Exception:
-            pass
-
-    # --- Reconstruct datasets ---------------------------------------------
-    dataset_objects: typing.Dict[str, cs.core.data.DataCurve] = {}
-    dataset_indices: typing.Dict[str, int] = {}
-    file_backed_datasets: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
-
-    for ds_id, payload in (proj.datasets or {}).items():
-        if _is_file_backed_dataset(payload):
-            if isinstance(payload, dict):
-                file_backed_datasets[ds_id] = payload
-            continue
-        try:
-            name = payload.get("name", ds_id)
-            filename = payload.get("filename", "")
-            x, y, ex, ey = _decode_curve_payload(payload)
-            dc = cs.core.data.DataCurve(x=x, y=y, ex=ex, ey=ey, name=name)
-
-            if filename:
-                try:
-                    dc.filename = filename
-                except Exception:
-                    pass
-
-            reader_info = payload.get("data_reader")
-            reader_obj = _deserialize_reader(reader_info)
-            if reader_obj is not None:
-                try:
-                    dc.data_reader = reader_obj
-                except Exception:
-                    pass
-
-            exp_obj = None
-            stored_exp_name = payload.get("experiment_name")
-
-            if stored_exp_name:
-                exp_obj = cs.experiment.get(stored_exp_name)
-
-            if exp_obj is None:
-                ds_name_lower = str(name or ds_id).lower()
-                if "global" in ds_name_lower:
-                    exp_obj = cs.experiment.get("Global")
-                    if exp_obj is None:
-                        for en in ("Global", "Global-Fit", "Global fit"):
-                            exp_obj = cs.experiment.get(en)
-                            if exp_obj is not None:
-                                break
-
-            if exp_obj is None and gui is not None:
-                exp_obj = getattr(gui, "current_experiment", None)
-
-            if exp_obj is not None:
-                try:
-                    dc.experiment = exp_obj
-                except Exception as e_exp:
-                    log.warning(
-                        f"load_project: could not attach experiment to dataset {ds_id}: {e_exp}"
-                    )
-
-            dataset_objects[ds_id] = dc
-        except Exception as exc:
-            log.warning(f"load_project: could not reconstruct dataset {ds_id}: {exc}")
-            continue
-
-    if file_backed_datasets:
-        try:
-            log.info(
-                "load_project: restored %d file-backed datasets as project metadata",
-                len(file_backed_datasets),
-            )
-        except Exception:
-            pass
-
-    dataset_layout = ui_state.get("dataset_layout")
-    restored_datasets: typing.List[typing.Any] = []
-    used_dataset_ids: typing.Set[str] = set()
-
-    if isinstance(dataset_layout, list) and dataset_layout:
-        for rec in dataset_layout:
-            if not isinstance(rec, dict):
-                continue
-            kind = rec.get("kind")
-
-            if kind == "dataset":
-                ds_id = rec.get("dataset_id")
-                dc = dataset_objects.get(ds_id)
-                if dc is None:
-                    continue
-                dataset_indices[ds_id] = len(restored_datasets)
-                restored_datasets.append(dc)
-                used_dataset_ids.add(ds_id)
-                continue
-
-            if kind == "group":
-                member_ids = rec.get("dataset_ids")
-                if not isinstance(member_ids, list):
-                    continue
-                members = [dataset_objects.get(ds_id) for ds_id in member_ids]
-                members = [dc for dc in members if dc is not None]
-                if not members:
-                    continue
-
-                group_class = cs.core.data.ExperimentDataCurveGroup
-                if rec.get("group_type") == "ExperimentDataGroup":
-                    group_class = cs.core.data.ExperimentDataGroup
-                try:
-                    group_obj = group_class(members)
-                except Exception:
-                    group_obj = cs.core.data.ExperimentDataCurveGroup(members)
-
-                group_name = rec.get("name")
-                if isinstance(group_name, str) and group_name:
-                    group_obj.__dict__["name"] = group_name
-
-                try:
-                    current_idx = int(rec.get("current_dataset_index", 0))
-                except Exception:
-                    current_idx = 0
-                if 0 <= current_idx < len(group_obj):
-                    group_obj._current_dataset = current_idx
-
-                dataset_idx = len(restored_datasets)
-                restored_datasets.append(group_obj)
-                for ds_id in member_ids:
-                    if ds_id in dataset_objects:
-                        dataset_indices[ds_id] = dataset_idx
-                        used_dataset_ids.add(ds_id)
-
-    for ds_id, dc in dataset_objects.items():
-        if ds_id in used_dataset_ids:
-            continue
-        dataset_indices[ds_id] = len(restored_datasets)
-        restored_datasets.append(dc)
-
-    cs.imported_datasets[:] = restored_datasets
-
-    from chisurf.macros.core_data import restore_global_fit_dataset
-
-    try:
-        restore_global_fit_dataset(_from_controller=True, update_ui=False)
-    except Exception:
-        pass
-
-    if gui is not None:
-        try:
-            gui.dataset_selector.update()
-        except Exception:
-            pass
-
-    _restore_chimol_project_files(gui, project_root, ui_state, log)
-
-    # --- Rebuild fit groups and restore their state -----------------------
-    fits_list = proj.fits or []
-    fits_root = project_root
-    for rec in fits_list:
-        if not isinstance(rec, dict):
-            continue
-        key = rec.get("id") or rec.get("name")
-        local_fits = rec.get("local_fits") or []
-        if not isinstance(local_fits, list) or not local_fits:
-            log.warning(f"load_project: fit record {key} has no local_fits; skipping")
-            continue
-
-        group_indices: typing.List[int] = []
-        for lf in local_fits:
-            if not isinstance(lf, dict):
-                continue
-            ds_id = lf.get("dataset_id")
-            if not ds_id:
-                continue
-            idx = dataset_indices.get(ds_id)
-            if idx is not None:
-                group_indices.append(idx)
-
-        deduped_indices: typing.List[int] = []
-        seen_indices: typing.Set[int] = set()
-        for idx in group_indices:
-            if idx in seen_indices:
-                continue
-            seen_indices.add(idx)
-            deduped_indices.append(idx)
-        group_indices = deduped_indices
-
-        if not group_indices:
-            log.warning(f"load_project: fit record {key} has no valid datasets; skipping")
-            continue
-
-        model_name = rec.get("model_name")
-        first_state = (local_fits[0].get("fit_state") or {}) if local_fits else {}
-        model_module = rec.get("model_module") or first_state.get("model_module")
-        model_class_name = rec.get("model_class") or first_state.get("model_class")
-        if gui is None and model_name == "ProteinMC":
-            log.info("load_project: skipping GUI ProteinMC fit restore without QApplication")
-            continue
-        try:
-            add_fit(
-                dataset_indices=group_indices,
-                model_name=model_name,
-                model_module=model_module,
-                model_class_name=model_class_name,
-                group_datasets=len(local_fits) > 1,
-                data_group_name=rec.get("data_group_name"),
-                _force_local=True,
-                _skip_gui_creation=_skip_gui_creation,
-            )
-        except Exception as exc:
-            log.warning(f"load_project: add_fit failed for record {key}: {exc}")
-            continue
-
-        try:
-            fit_group = cs.fits[-1]
-        except Exception:
-            continue
-        _apply_pending_plot_state(fit_group, rec)
-
-        grouped_new = getattr(fit_group, "grouped_fits", [])
-        for lf_rec, new_fit in zip(local_fits, grouped_new):
-            state = lf_rec.get("fit_state") or {}
-            state = _resolve_project_local_model_state(state, fits_root)
-
-            if isinstance(state, dict):
-                try:
-                    set_state = getattr(new_fit, "set_state", None)
-                    if callable(set_state):
-                        set_state(state)
-                    else:
-                        # Extract dependency_edges for this specific fit
-                        fit_record_id = key
-                        version_id = getattr(proj, "_version_id", "")
-                        if version_id and hasattr(proj, "dependency_edges"):
-                            pattern = f"fit_{version_id}:{fit_record_id}:"
-                            dependency_edges = [
-                                edge
-                                for edge in proj.dependency_edges
-                                if edge.get("operation_id", "").startswith(pattern)
-                            ]
-                        else:
-                            dependency_edges = []
-                        project_fit_state.apply_state_to_fit(
-                            new_fit, state, dependency_edges, fit_record_id
-                        )
-                except Exception as exc:
-                    log.warning(
-                        f"load_project: could not restore state for local fit in {key}: {exc}"
-                    )
-
-            fr = lf_rec.get("fit_range")
-            if isinstance(fr, (list, tuple)) and len(fr) == 2:
-                try:
-                    new_fit.fit_range = (int(fr[0]), int(fr[1]))
-                except Exception as exc:
-                    log.warning(
-                        f"load_project: could not restore fit_range for local fit in {key}: {exc}"
-                    )
-
-    # --- Restore UI state (current fit and window layout) -----------------
-    if gui is not None:
-        current_fit_idx = ui_state.get("current_fit_index", 0)
-        if 0 <= current_fit_idx < len(cs.fits):
-            try:
-                gui.current_fit = cs.fits[current_fit_idx]
-            except Exception:
-                pass
-
-        try:
-            gui.fit_selector.update()
-        except Exception:
-            pass
-
-        try:
-            from chisurf.core.project.ui_state import set_ui_state
-
-            set_ui_state(gui, ui_state)
-        except Exception as exc:
-            log.warning(f"load_project: could not restore UI state from dict: {exc}")
-
-        try:
-            gui.update()
-        except Exception:
-            pass
-
-    _refresh_history_browser()
-    _record_history(
-        action_type="project_load",
-        summary=f"load project from '{project_path}'"
-        if project_path is not None
-        else "load project from database",
-        payload={
-            "project_path": str(project_path) if project_path is not None else "",
-            "history_loaded": bool(history_loaded),
-        },
+    document = getattr(gui, "_get_project_document", lambda: None)()
+    staged = (
+        document.stage_file_save(proj, project_path)
+        if document is not None and project_path is not None
+        else None
+    )
+    return replace_project(
+        proj,
+        gui=gui,
+        document=document,
+        target_identity=staged,
+        project_path=project_path,
+        present=restore_gui_from_fits if gui is not None else None,
     )
 
-    if project_path is not None:
-        log.info(f"Project loaded from {project_path}")
-        try:
-            if gui is not None:
-                from chisurf.gui.project_helpers import add_recent_project
 
-                add_recent_project(gui, project_path)
-        except Exception:
-            pass
-    else:
-        log.info("Project loaded from database")
+def load_fit_project(project_path: str):
+    """Import detached fit state without replacing any existing live fits."""
+    archive_path = _project_archive_input_path(project_path)
+    project = _load_project_archive(str(archive_path))
+    restored = restore_session(project)
+    existing = capture_session(cs.imported_datasets, cs.fits)
+    existing_fit_ids = {record["uid"] for record in existing.fits}
+    incoming_fit_ids = {record["uid"] for record in project.fits}
+    if existing_fit_ids & incoming_fit_ids or set(existing.datasets) & set(project.datasets):
+        raise ValueError("Imported fit or dataset UIDs already exist in the live session")
+    old_datasets, old_fits = list(cs.imported_datasets), list(cs.fits)
+    try:
+        cs.imported_datasets[:] = old_datasets + restored.datasets
+        cs.fits[:] = old_fits + restored.fits
+    except Exception:
+        cs.imported_datasets[:] = old_datasets
+        cs.fits[:] = old_fits
+        raise
+    return restored
 
 
 def _load_project_archive(project_path: str) -> CSProject:
     """Load a full project from a ``.cs.pto`` container."""
-    archive_path = _project_archive_input_path(project_path)
-    archive = ProjectArchive.open(archive_path)
-    data = json.loads(archive.read_text(PROJECT_JSON))
-    proj = CSProject.from_dict(data)
-    temp_dir, temp_handle = archive.extract_to_temp()
-    proj._archive = archive
-    proj._archive_path = archive_path
-    proj._archive_temp_dir = temp_dir
-    proj._archive_temp_handle = temp_handle
-
-    gui = getattr(cs, "cs", None)
-    if gui is not None:
-        temp_dirs = list(getattr(gui, "_project_archive_temp_dirs", []) or [])
-        temp_dirs.append(temp_dir)
-        gui._project_archive_temp_dirs = temp_dirs
-    return proj
+    return load_file(_project_archive_input_path(project_path))
 
 
 def load_project_data(project_path: str) -> list:
@@ -3410,65 +2114,333 @@ def load_project_data(project_path: str) -> list:
         UIDs of the fits that were restored.
     """
     proj = _load_project_archive(project_path)
-    load_project_payload(proj, project_path, _skip_gui_creation=True)
-    return [str(getattr(f, "unique_identifier", "")) for f in getattr(cs, "fits", [])]
+    result = load_project_payload(proj, project_path, _skip_gui_creation=True)
+    return result.get("fit_uids", [])
 
 
-def restore_gui_from_fits(fit_uids: list) -> None:
-    """Create MDI subwindows for each restored fit.
-
-    Must be called from the GUI thread. Silently skips if the
-    main window (``chisurf.cs``) is not available.
+def restore_gui_from_fits(
+    fit_uids: list,
+    ui_state: dict | None = None,
+    *,
+    main_window=None,
+    fits=None,
+):
+    """Stage replacement MDI windows and return reversible synchronous publication.
 
     Parameters
     ----------
     fit_uids : list of str
-        UIDs returned by :func:`load_project_data`.
-    """
-    import chisurf as _cs
+        Installed authoritative fit identities, in canonical order.
+    ui_state : dict, optional
+        Canonical presentation and selection state.
 
-    main_window = getattr(_cs, "cs", None)
+    Returns
+    -------
+    PreparedPresentation or None
+        Reversible window publication for the owner transaction; None headlessly.
+        Original windows remain alive until the caller accepts the transaction.
+    """
+    import sys
+
+    from chisurf.core.project.transition import PreparedPresentation, ProjectTransitionError
+
+    main_window = main_window if main_window is not None else getattr(cs, "cs", None)
     if main_window is None:
-        _cs.logging.warning(
-            "restore_gui_from_fits: main window not available, skipping GUI restore"
+        return None
+    area = getattr(main_window, "mdiarea", None)
+    old_windows = list(area.subWindowList()) if area is not None else []
+    old_visibility = [(window, window.isVisible()) for window in old_windows]
+    gui_module = sys.modules.get("chisurf.gui")
+    registry = getattr(gui_module, "fit_windows", None)
+    old_registry = list(registry) if registry is not None else []
+    layouts = [
+        getattr(main_window, name, None)
+        for name in (
+            "modelLayout",
+            "analysisHeaderLayout",
+            "plotOptionsLayout",
         )
-        return
-    for uid in fit_uids:
-        fit_obj = None
-        for f in getattr(_cs, "fits", []):
-            if str(getattr(f, "unique_identifier", "")) == str(uid):
-                fit_obj = f
-                break
-        if fit_obj is not None:
+    ]
+    old_controls = [
+        (layout, index, widget, widget.isVisible())
+        for layout in layouts
+        if layout is not None
+        for index in range(layout.count())
+        if (widget := layout.itemAt(index).widget()) is not None
+    ]
+    old_widgets = {widget for _layout, _index, widget, _visible in old_controls}
+    previous_fit = getattr(main_window, "current_fit", None)
+    previous_index = getattr(main_window, "_fit_idx", -1)
+    from chisurf.core.project.ui_state import get_ui_state, set_ui_state
+
+    previous_ui = get_ui_state(main_window)
+    previous_active = area.activeSubWindow() if area is not None else None
+    window_geometry = [(window, window.geometry()) for window in old_windows]
+    previous_title = getattr(main_window, "windowTitle", lambda: None)()
+    previous_runtime = {
+        name: (name in vars(main_window), getattr(main_window, name, None))
+        for name in ("_current_dataset", "_current_model_class", "current_fit_widget")
+    }
+    model_combo = getattr(main_window, "comboBox_Model", None)
+    model_items = (
+        [(model_combo.itemText(i), model_combo.itemData(i)) for i in range(model_combo.count())]
+        if model_combo is not None
+        else []
+    )
+    model_index = model_combo.currentIndex() if model_combo is not None else -1
+    selector_states = []
+    for name in ("dataset_selector", "fit_selector"):
+        selector = getattr(main_window, name, None)
+        if selector is None or not callable(getattr(selector, "topLevelItemCount", None)):
+            continue
+        roots = [selector.topLevelItem(i) for i in range(selector.topLevelItemCount())]
+        expanded = []
+        pending = list(roots)
+        while pending:
+            item = pending.pop()
+            expanded.append((item, item.isExpanded()))
+            pending.extend(item.child(i) for i in range(item.childCount()))
+        selector_states.append(
+            (
+                selector,
+                roots,
+                selector.currentItem(),
+                selector.selectedItems(),
+                expanded,
+                selector.horizontalScrollBar().value(),
+                selector.verticalScrollBar().value(),
+            )
+        )
+
+    def rollback_windows():
+        """Discard staged views and reinstate original live windows and controls."""
+        main_window.current_fit = previous_fit
+        main_window._fit_idx = previous_index
+        if area is not None:
+            blocked = area.blockSignals(True)
             try:
-                main_window._open_fit_subwindow(fit_obj)
-            except Exception:
-                _cs.logging.exception("restore_gui_from_fits: failed to open subwindow for %s", uid)
+                for window in list(area.subWindowList()):
+                    if window not in old_windows:
+                        area.removeSubWindow(window)
+                        window.close_confirm = False
+                        window.close()
+                for window, visible in old_visibility:
+                    if window not in area.subWindowList():
+                        area.addSubWindow(window)
+                    window.setVisible(visible)
+            finally:
+                area.blockSignals(blocked)
+        if registry is not None:
+            registry[:] = old_registry
+        for layout in layouts:
+            if layout is None:
+                continue
+            for index in reversed(range(layout.count())):
+                widget = layout.itemAt(index).widget()
+                if widget is not None and widget not in old_widgets:
+                    layout.removeWidget(widget)
+                    widget.hide()
+                    widget.deleteLater()
+        for layout, index, widget, visible in old_controls:
+            if layout.indexOf(widget) < 0:
+                layout.insertWidget(index, widget)
+            widget.setVisible(visible)
+        main_window.current_fit = previous_fit
+        main_window._fit_idx = previous_index
+        set_ui_state(main_window, previous_ui)
+        for window, geometry in window_geometry:
+            window.setGeometry(geometry)
+        if area is not None and previous_active is not None:
+            blocked = area.blockSignals(True)
+            try:
+                area.setActiveSubWindow(previous_active)
+            finally:
+                area.blockSignals(blocked)
+        for selector, roots, current, selected, expanded, horizontal, vertical in selector_states:
+            blocked = selector.blockSignals(True)
+            selection = selector.selectionModel()
+            selection_blocked = selection.blockSignals(True)
+            try:
+                # Keep the exact old items (including tooltip callbacks), even
+                # when failure occurred before all old rows were detached.
+                for index in reversed(range(selector.topLevelItemCount())):
+                    if selector.topLevelItem(index) not in roots:
+                        selector.takeTopLevelItem(index)
+                for index, item in enumerate(roots):
+                    position = selector.indexOfTopLevelItem(item)
+                    if position != index:
+                        if position >= 0:
+                            selector.takeTopLevelItem(position)
+                        selector.insertTopLevelItem(index, item)
+                selector.setCurrentItem(current)
+                selector.clearSelection()
+                for item in selected:
+                    item.setSelected(True)
+                for item, was_expanded in expanded:
+                    item.setExpanded(was_expanded)
+                selector.horizontalScrollBar().setValue(horizontal)
+                selector.verticalScrollBar().setValue(vertical)
+            finally:
+                selection.blockSignals(selection_blocked)
+                selector.blockSignals(blocked)
+        if model_combo is not None:
+            blocked = model_combo.blockSignals(True)
+            try:
+                model_combo.clear()
+                for text, data in model_items:
+                    model_combo.addItem(text, data)
+                model_combo.setCurrentIndex(model_index)
+            finally:
+                model_combo.blockSignals(blocked)
+        for name, (existed, value) in previous_runtime.items():
+            if existed:
+                setattr(main_window, name, value)
+            elif name in vars(main_window):
+                delattr(main_window, name)
+        if previous_title is not None:
+            main_window.setWindowTitle(previous_title)
+
+    try:
+        # Selector.update clears and destroys its items. Detach originals before
+        # any window construction or publication callback can refresh them.
+        for selector, roots, *_rest in selector_states:
+            blocked = selector.blockSignals(True)
+            selection = selector.selectionModel()
+            selection_blocked = selection.blockSignals(True)
+            try:
+                for _item in roots:
+                    selector.takeTopLevelItem(0)
+            finally:
+                selection.blockSignals(selection_blocked)
+                selector.blockSignals(blocked)
+        if area is not None:
+            for window in old_windows:
+                area.removeSubWindow(window)
+                window.hide()
+        installed = {
+            str(getattr(fit, "unique_identifier", getattr(fit, "uid", ""))): fit
+            for fit in (cs.fits if fits is None else fits)
+        }
+        for uid in fit_uids:
+            fit_obj = installed.get(str(uid))
+            if fit_obj is None:
+                raise ProjectTransitionError(
+                    f"Restored fit {uid!r} is not available for presentation"
+                )
+            main_window._open_fit_subwindow(fit_obj, restored=True)
+            if area is not None and not any(
+                getattr(window, "fit", None) is fit_obj
+                or str(
+                    getattr(
+                        getattr(window, "fit", None),
+                        "unique_identifier",
+                        getattr(getattr(window, "fit", None), "uid", ""),
+                    )
+                )
+                == str(uid)
+                for window in area.subWindowList()
+            ):
+                raise ProjectTransitionError(f"Window construction failed for fit {uid!r}")
+    except Exception:
+        rollback_windows()
+        raise
+
+    def publish_windows():
+        """Apply selection and refresh views before the owner accepts science."""
+        if registry is not None:
+            registry[:] = [window for window in registry if window not in old_windows]
+        for window in old_windows:
+            window.setParent(None)
+        for layout, _index, widget, _visible in old_controls:
+            layout.removeWidget(widget)
+            widget.hide()
+            widget.setParent(None)
+        state = ui_state or {}
+        selected = state.get("current_fit_index")
+        selected_uid = state.get("current_fit_uid")
+        if selected_uid is not None:
+            selected = next(
+                (i for i, uid in enumerate(fit_uids) if str(uid) == str(selected_uid)), -1
+            )
+        selected = -1 if selected is None else selected
+        main_window.current_fit = (
+            installed.get(str(fit_uids[selected])) if 0 <= selected < len(fit_uids) else None
+        )
+        main_window._fit_idx = selected
+        if state:
+            set_ui_state(main_window, state)
+        for selector_name in ("dataset_selector", "fit_selector"):
+            selector = getattr(main_window, selector_name, None)
+            if selector is not None:
+                selector.update()
+        changed = getattr(main_window, "onCurrentDatasetChanged", None)
+        if callable(changed):
+            changed()
+        if not fit_uids and hasattr(main_window, "current_fit_widget"):
+            main_window.current_fit_widget = None
+
+    def finalize_windows():
+        """Retire detached view resources only after the scientific owner accepts."""
+        from qtpy import QtCore
+
+        try:
+            from qtpy import sip
+        except ImportError:
+            try:
+                from PyQt5 import sip
+            except ImportError:
+                try:
+                    import sip
+                except ImportError:
+                    sip = None
+
+        def _is_deleted(w):
+            if sip is not None:
+                try:
+                    return bool(sip.isdeleted(w))
+                except Exception:
+                    pass
+            try:
+                w.objectName()
+                return False
+            except RuntimeError:
+                return True
+
+        retired = set()
+        for widget in [*old_windows, *old_widgets]:
+            if id(widget) in retired or _is_deleted(widget):
+                continue
+            retired.add(id(widget))
+            for timer in widget.findChildren(QtCore.QTimer):
+                timer.stop()
+            # Deferred deletion also releases externally hosted plot controls
+            # through their existing destroyed callbacks. Do not call close():
+            # those handlers can dispatch removal into the newly installed fit.
+            widget.hide()
+            widget.deleteLater()
+
+    return PreparedPresentation(
+        commit=publish_windows,
+        rollback=rollback_windows,
+        finalize=finalize_windows,
+    )
 
 
 def load_project(project_path: str):
-    """Load a project from a ``.cs.pto`` container.
+    """Replace science and its synchronous presentation through one owner transaction."""
+    from chisurf.server.services.projects import _public_transition
 
-    Datasets are reconstructed from the stored x/y/ex/ey arrays,
-    :func:`add_fit` is used to rebuild each :class:`FitGroup`, and per-fit
-    parameter state plus global links are restored via
-    :mod:`cs.core.project.fit_state`.
-
-    Parameters
-    ----------
-    project_path : str
-        Path to the ``.cs.pto`` project.
-    """
-    log = cs.logging
     archive_path = _project_archive_input_path(project_path)
-    if not archive_path.is_file():
-        log.error(f"Project archive {archive_path} does not exist")
-        return
+    from chisurf.core.api._proxies import ProxyDatasetList, ProxyFitList
+    from chisurf.core.project import storage
 
-    try:
-        proj = _load_project_archive(str(archive_path))
-    except Exception as exc:
-        log.error(f"load_project: failed to read project archive {archive_path}: {exc}")
-        return
-
-    load_project_payload(proj, str(archive_path))
+    client = None
+    if isinstance(cs.imported_datasets, ProxyDatasetList) and isinstance(cs.fits, ProxyFitList):
+        client = getattr(cs, "__client__", None)
+        if client is None:
+            raise RuntimeError("Installed proxies have no authoritative client")
+    return _public_transition(
+        cs,
+        lambda: (storage.load_file(archive_path), str(archive_path)),
+        client=client,
+    )

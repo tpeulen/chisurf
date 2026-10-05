@@ -240,7 +240,7 @@ def green_probability_from_efficiency(E, nuisance) -> np.ndarray:
 #: Named 1D PDA histogram axes. Each callback receives the tttrlib S1S2
 #: counts as (ch1, ch2) = (red, green) and returns the scalar plotted on the
 #: x-axis. Keeping these as named strings (not lambdas) lets the distribution
-#: plot be authored declaratively in ``*.view.json`` (PRD-38).
+#: plot be authored declaratively in ``*.view.json``.
 _PDA_HISTOGRAM_AXES = {
     # Red fraction S1/(S0+S1) with S0=green, S1=red.
     "S1/(S0+S1)": lambda ch1, ch2: ch1 / max(1, ch1 + ch2),
@@ -863,6 +863,44 @@ class Pda2cModelMixin:
     S1S2 histogram, which is what keeps them out of the model list of a
     three-colour dataset read by the same PDA reader.
     """
+
+    def get_state(self) -> dict:
+        """Include the scientific projection and residual statistic in state."""
+        state = getattr(super(), "get_state")()
+        state["fit_settings"] = self.fit_settings.to_dict()
+        state["residual_mode"] = self.residual_mode
+        return state
+
+    def set_state(self, state: dict) -> None:
+        """Restore the projection used by the fit, before evaluating its model.
+
+        Parameters
+        ----------
+        state : dict
+            Explicit model state, including histogram settings.
+        """
+        settings = state.get("fit_settings")
+        if not isinstance(settings, dict) or settings.get("axis") not in PDA_AXES:
+            raise ValueError("invalid PDA histogram axis")
+        if settings.get("statistic") not in PDA_STATISTICS:
+            raise ValueError("invalid PDA histogram statistic")
+        if (
+            type(settings.get("n_bins")) is not int
+            or settings["n_bins"] < 1
+            or type(settings.get("n_min")) is not int
+            or settings["n_min"] < 0
+            or type(settings.get("log_x")) is not bool
+            or not np.isfinite(settings["x_min"])
+            or not np.isfinite(settings["x_max"])
+            or settings["x_min"] >= settings["x_max"]
+        ):
+            raise ValueError("invalid PDA histogram settings")
+        mode = state.get("residual_mode")
+        if mode not in ("1D", "2D"):
+            raise ValueError("invalid PDA residual mode")
+        self.fit_settings = Pda2cFitSettings(**settings)
+        self.residual_mode = mode
+        getattr(super(), "set_state")(state)
 
     @classmethod
     def supports_data(cls, data) -> bool:

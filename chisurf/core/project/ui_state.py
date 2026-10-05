@@ -1,6 +1,72 @@
 from __future__ import annotations
 
+import copy
+import json
 import typing
+
+
+class ProjectUIStateError(ValueError):
+    """The requested document view cannot be captured or published exactly."""
+
+
+def _fit_window_map(main_window: typing.Any) -> dict[str, typing.Any]:
+    """Resolve real document fit windows by scientific identity, never MDI order."""
+    mdi = getattr(main_window, "mdiarea", None)
+    enumerate_windows = getattr(mdi, "subWindowList", None)
+    windows = enumerate_windows() if callable(enumerate_windows) else []
+    result = {}
+    for window in windows:
+        fit = getattr(window, "fit", None)
+        if fit is None:
+            continue
+        uid = getattr(fit, "unique_identifier", None)
+        if not isinstance(uid, str) or not uid:
+            raise ProjectUIStateError("fit view has no scientific UID")
+        if uid in result:
+            raise ProjectUIStateError(f"duplicate fit view UID: {uid}")
+        result[uid] = window
+    return result
+
+
+def _capture_fit_windows(main_window: typing.Any) -> dict[str, dict]:
+    """Capture detached per-fit plot/controller state using explicit view hooks."""
+    states = {}
+    for uid, window in _fit_window_map(main_window).items():
+        capture = getattr(window, "get_project_plot_state", None)
+        if not callable(capture):
+            raise ProjectUIStateError(f"fit view cannot capture plot state: {uid}")
+        try:
+            state = capture()
+            if not isinstance(state, dict):
+                raise ValueError("plot state must be a mapping")
+            # Explicit JSON view hooks must not publish controllers, callbacks,
+            # or non-finite/opaque values into the scientific document.
+            json.dumps(state, allow_nan=False)
+            states[uid] = copy.deepcopy(state)
+        except Exception as exc:
+            raise ProjectUIStateError(f"fit view capture failed for {uid}: {exc}") from exc
+    return states
+
+
+def _prepare_fit_windows(main_window: typing.Any, state: dict) -> list[tuple]:
+    """Validate all view targets before allowing any presentation mutation."""
+    if "fit_windows" not in state:
+        return []
+    records = state["fit_windows"]
+    if not isinstance(records, dict):
+        raise ProjectUIStateError("fit_windows must be a mapping")
+    windows = _fit_window_map(main_window)
+    prepared = []
+    for uid, record in records.items():
+        if not isinstance(uid, str) or uid not in windows:
+            raise ProjectUIStateError(f"unknown fit view UID: {uid}")
+        if not isinstance(record, dict):
+            raise ProjectUIStateError(f"invalid plot state for {uid}")
+        apply = getattr(windows[uid], "set_project_plot_state", None)
+        if not callable(apply):
+            raise ProjectUIStateError(f"fit view cannot apply plot state: {uid}")
+        prepared.append((uid, apply, copy.deepcopy(record)))
+    return prepared
 
 
 def get_ui_state(main_window: typing.Any) -> dict[str, typing.Any]:
@@ -17,6 +83,11 @@ def get_ui_state(main_window: typing.Any) -> dict[str, typing.Any]:
 
     if main_window is None:
         return state
+
+    state["fit_windows"] = _capture_fit_windows(main_window)
+    state["active_tabs"] = get_active_tabs(main_window)
+    if hasattr(main_window, "fit_idx"):
+        state["current_fit_index"] = main_window.fit_idx
 
     try:
         save_geom = getattr(main_window, "saveGeometry", None)
@@ -75,7 +146,15 @@ def set_ui_state(main_window: typing.Any, state: dict[str, typing.Any]) -> bool:
     if main_window is None:
         return False
 
+    prepared_views = _prepare_fit_windows(main_window, state)
     success = False
+    for uid, apply, record in prepared_views:
+        try:
+            if apply(record) is False:
+                raise ValueError("view rejected saved plot state")
+            success = True
+        except Exception as exc:
+            raise ProjectUIStateError(f"fit view publication failed for {uid}: {exc}") from exc
 
     try:
         geom_hex = state.get("geometry")
@@ -122,6 +201,16 @@ def set_ui_state(main_window: typing.Any, state: dict[str, typing.Any]) -> bool:
     except Exception:
         pass
 
+    browser_state = state.get("history_browser")
+    browser = getattr(main_window, "historyBrowser", None)
+    apply_browser = getattr(browser, "set_ui_state", None)
+    if isinstance(browser_state, dict) and callable(apply_browser):
+        apply_browser(copy.deepcopy(browser_state))
+        success = True
+    tabs = state.get("active_tabs")
+    if isinstance(tabs, dict):
+        set_active_tabs(main_window, tabs)
+        success = bool(tabs) or success
     return success
 
 

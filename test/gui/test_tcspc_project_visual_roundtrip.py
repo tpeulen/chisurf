@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -19,6 +21,44 @@ from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
 from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
 from chisurf.gui.widgets.fitting import FitSubWindow, FittingControllerWidget
 from chisurf.macros.core_fit import load_project, save_project
+
+
+def _native_process(node: str, tmp_path: Path) -> bool:
+    """Exercise each startup in a fresh native Qt/BFF process, never skip it.
+
+    Standalone FitWindow teardown followed by Main construction crashes this
+    macOS Qt host even in a baseline probe with no persistence calls. Keeping
+    each full startup in its own interpreter also tests the intended restart.
+    """
+    if os.environ.get("CHISURF_VISUAL_TEST_CHILD") == "1":
+        return False
+    env = os.environ.copy()
+    env["CHISURF_VISUAL_TEST_CHILD"] = "1"
+    env["QT_QPA_PLATFORM"] = "offscreen"
+    env["CHISURF_SETTINGS_DIR"] = str(tmp_path / "settings")
+    env["MMFDB_SETTINGS_DIR"] = str(tmp_path / "mmfdb")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            f"{__file__}::{node}",
+            "-q",
+            "--tb=short",
+            f"--basetemp={tmp_path / 'native-process'}",
+            f"--junitxml={tmp_path / 'native.xml'}",
+            "-p",
+            "no:cacheprovider",
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=90,
+    )
+    (tmp_path / "native-process.log").write_text(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return True
 
 
 def _simulated_fit() -> FitGroup:
@@ -104,6 +144,8 @@ def _input_parameter_values(model) -> dict[str, float]:
 
 
 def test_simulated_tcspc_fit_window_survives_project_roundtrip(qapp, qtbot, tmp_path):
+    if _native_process("test_simulated_tcspc_fit_window_survives_project_roundtrip", tmp_path):
+        return
     old_fits = cs.fits
     old_datasets = cs.imported_datasets
     old_windows = cs_gui.fit_windows
@@ -115,7 +157,12 @@ def test_simulated_tcspc_fit_window_survives_project_roundtrip(qapp, qtbot, tmp_
         cs.fits.append(fit)
         assert len(cs.fits) == 1
         assert len(cs.fits[0].grouped_fits) == 2
-        cs.imported_datasets.extend(fit.data)
+        cs.imported_datasets.append(
+            DataCurveGroup(
+                [member.data for member in fit.grouped_fits],
+                name=fit.name,
+            )
+        )
         before_window = _window(fit, qtbot)
         cs_gui.fit_windows.append(before_window)
         before_image = _capture(before_window, "tcspc-project-before.png", tmp_path)
@@ -166,7 +213,16 @@ def test_simulated_tcspc_fit_window_survives_project_roundtrip(qapp, qtbot, tmp_
         cs_gui.fit_windows = old_windows
 
 
-def test_main_window_recreates_tcspc_fit_window_from_project(qapp, qtbot, tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "exercise_reset", [None, "failure", "success"], ids=["ranges", "reset", "reset-success"]
+)
+def test_main_window_recreates_tcspc_fit_window_from_project(
+    qapp, qtbot, tmp_path, monkeypatch, exercise_reset
+):
+    label = {None: "ranges", "failure": "reset", "success": "reset-success"}[exercise_reset]
+    node = f"test_main_window_recreates_tcspc_fit_window_from_project[{label}]"
+    if _native_process(node, tmp_path):
+        return
     from qtpy import QtCore
 
     from chisurf.gui.main import Main
@@ -202,10 +258,36 @@ def test_main_window_recreates_tcspc_fit_window_from_project(qapp, qtbot, tmp_pa
     try:
         fit = _simulated_fit()
         cs.fits.append(fit)
-        cs.imported_datasets.extend(fit.data)
+        cs.imported_datasets.append(
+            DataCurveGroup(
+                [member.data for member in fit.grouped_fits],
+                name=fit.name,
+            )
+        )
+        from chisurf.core.experiments.tcspc import TCSPCReader
+
+        reader = TCSPCReader(
+            dt=0.048,
+            fit_count_threshold=2.0,
+            fit_start_fraction=0.1,
+            experiment=main.current_experiment,
+        )
+        for member in fit.grouped_fits:
+            member.data.data_reader = reader
+        expected_automatic_range = tuple(reader.autofitrange(fit.data))
         main._open_fit_subwindow(fit)
         qapp.processEvents()
         assert len(main.mdiarea.subWindowList()) == 1
+        # New fits retain reader-driven automatic range selection. The saved
+        # scientific ranges below deliberately differ from that initial range.
+        automatic_range = tuple(fit.fit_range)
+        assert automatic_range == expected_automatic_range
+        assert automatic_range != (37, 197)
+        fit.fit_range = (37, 197)
+        fit.grouped_fits[1].fit_range = (46, 183)
+        fit.update()
+        expected_member_ranges = [tuple(member.fit_range) for member in fit.grouped_fits]
+        main.mdiarea.subWindowList()[0].refresh_current_plot()
         _capture(main, "tcspc-main-before.png", tmp_path)
 
         project_path = save_project(str(tmp_path), "tcspc-main-roundtrip")
@@ -217,8 +299,9 @@ def test_main_window_recreates_tcspc_fit_window_from_project(qapp, qtbot, tmp_pa
         saved_payload = json.loads(saved_archive.read_text("project.json"))
         saved_archive.close()
         assert len(saved_payload["fits"]) == 1
-        assert len(saved_payload["fits"][0]["local_fits"]) == 2
-        assert saved_payload["fits"][0]["data_group_name"] == "simulated-tcspc-global"
+        assert len(saved_payload["fits"][0]["members"]) == 2
+        assert saved_payload["fits"][0]["kind"] == "group"
+        assert saved_payload["fits"][0]["name"] == fit.name
         expected_range = tuple(fit.fit_range)
         expected_member_count = len(fit.grouped_fits)
         expected_group_name = fit.name
@@ -238,6 +321,7 @@ def test_main_window_recreates_tcspc_fit_window_from_project(qapp, qtbot, tmp_pa
         cs_gui.fit_windows.clear()
         load_project(str(project_path))
         qapp.processEvents()
+        _capture(main, "tcspc-main-after.png", tmp_path)
 
         assert len(cs.fits) == 1, [
             (fit_group.name, len(fit_group.grouped_fits)) for fit_group in cs.fits
@@ -245,12 +329,14 @@ def test_main_window_recreates_tcspc_fit_window_from_project(qapp, qtbot, tmp_pa
         assert len(cs.fits[0].grouped_fits) == expected_member_count
         assert cs.fits[0].name == expected_group_name
         assert tuple(cs.fits[0].fit_range) == expected_range
+        assert [
+            tuple(member.fit_range) for member in cs.fits[0].grouped_fits
+        ] == expected_member_ranges
         for restored_member, expected_member in zip(cs.fits[0].grouped_fits, expected_members):
             assert restored_member.data.name == expected_member["name"]
             np.testing.assert_allclose(restored_member.data.y, expected_member["data"])
             restored_member.update()
-            for name, value in expected_member["parameters"].items():
-                assert _input_parameter_values(restored_member.model)[name] == pytest.approx(value)
+            assert _input_parameter_values(restored_member.model) == expected_member["parameters"]
             np.testing.assert_allclose(
                 restored_member.model.y,
                 expected_member["model"],
@@ -261,6 +347,56 @@ def test_main_window_recreates_tcspc_fit_window_from_project(qapp, qtbot, tmp_pa
         assert len(cs_gui.fit_windows) == 1
         assert cs_gui.fit_windows[0].fit is cs.fits[0]
         _capture(main, "tcspc-main-after.png", tmp_path)
+
+        if not exercise_reset:
+            return
+
+        # Exercise reset on this actual Main/native canvas too. A failed
+        # document publisher must keep the same fitted scientific windows.
+        document = main._get_project_document()
+        live_fit = cs.fits[0]
+        live_window = cs_gui.fit_windows[0]
+        live_datasets = list(cs.imported_datasets)
+        old_document = document.__dict__.copy()
+        errors = []
+        from chisurf.core.project.lifecycle import SaveDecision
+
+        monkeypatch.setattr(main, "_save_decision", lambda: SaveDecision.DISCARD)
+
+        def reject_reset_identity(live_document, staged):
+            """Fail after a partial publication at the real reset boundary."""
+            assert live_document is document
+            document.name = staged.name
+            raise RuntimeError("real Main reset publication failed")
+
+        if exercise_reset == "failure":
+            with monkeypatch.context() as patch:
+                patch.setattr(type(document), "adopt", reject_reset_identity)
+                patch.setattr(
+                    "chisurf.gui.main_helper.dialogs.error", lambda *args: errors.append(args[-1])
+                )
+                assert main.reinitialize(False, False) is False
+                assert errors and "real Main reset publication failed" in errors[-1]
+            assert cs.fits == [live_fit]
+            assert all(
+                actual is expected for actual, expected in zip(cs.imported_datasets, live_datasets)
+            )
+            assert cs_gui.fit_windows == [live_window]
+            assert live_window in main.mdiarea.subWindowList() and live_window.isVisible()
+            assert document.__dict__ == old_document
+            assert [
+                tuple(member.fit_range) for member in live_fit.grouped_fits
+            ] == expected_member_ranges
+            _capture(main, "tcspc-main-reset-retained.png", tmp_path)
+
+        assert main.reinitialize(False, False) is True
+        qapp.processEvents()
+        assert cs.fits == [] and cs.imported_datasets == []
+        assert main.mdiarea.subWindowList() == [] and cs_gui.fit_windows == []
+        assert main.current_fit is None and main.fit_idx == -1
+        assert main.current_experiment is not None and main.current_setup is not None
+        assert document.path is document.project_id is document.version_id is None
+        _capture(main, "tcspc-main-reset-empty.png", tmp_path)
     finally:
         main.hide()
         cs.cs = old_main

@@ -544,8 +544,13 @@ class ProxyDatasetList(ProxyList):
     """Proxy for ``cs.imported_datasets``."""
 
     def _fetch(self) -> list[dict[str, Any]]:
-        resp = self._client.dataset__list()
-        return list(resp) if resp else []
+        fetch = getattr(self._client, "dataset__list", None)
+        if callable(fetch):
+            return list(fetch() or [])
+        resp = self._client.call("dataset.list")
+        if resp.get("ok") is not True:
+            raise RuntimeError(resp.get("error", "Could not read authoritative datasets"))
+        return list(resp["datasets"])
 
     def _wrap(self, data: dict) -> DatasetProxy:
         return DatasetProxy(data, client=self._client)
@@ -568,8 +573,13 @@ class ProxyFitList(ProxyList):
     """Proxy for ``cs.fits``."""
 
     def _fetch(self) -> list[dict[str, Any]]:
-        resp = self._client.fit__list()
-        return list(resp) if resp else []
+        fetch = getattr(self._client, "fit__list", None)
+        if callable(fetch):
+            return list(fetch() or [])
+        resp = self._client.call("fit.list")
+        if resp.get("ok") is not True:
+            raise RuntimeError(resp.get("error", "Could not read authoritative fits"))
+        return list(resp["fits"])
 
     def _wrap(self, data: dict) -> FitProxy:
         return FitProxy(data, client=self._client)

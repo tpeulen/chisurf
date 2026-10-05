@@ -19,6 +19,7 @@ no IRF taken on a different day at a different alignment.
 
 from __future__ import annotations
 
+import base64
 import pathlib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -223,6 +224,39 @@ def estimate_responses(
     return responses
 
 
+def _session_array(array: np.ndarray) -> dict:
+    """Encode a declared measurement array without pickle or sentinel conversion."""
+    array = np.ascontiguousarray(array)
+    if array.dtype.hasobject:
+        values = array.ravel().tolist()
+        if not all(isinstance(value, str) for value in values):
+            raise ValueError("MFD object arrays may contain only source file names")
+        return {"dtype": "object", "shape": list(array.shape), "strings": values}
+    return {
+        "dtype": array.dtype.str,
+        "shape": list(array.shape),
+        "bytes": base64.b64encode(array.tobytes()).decode("ascii"),
+    }
+
+
+def _session_array_restore(state: dict) -> np.ndarray:
+    """Decode a declared measurement array, validating its shape and byte count."""
+    dtype = np.dtype(state["dtype"])
+    shape = state["shape"]
+    if not isinstance(shape, list) or any(type(n) is not int or n < 0 for n in shape):
+        raise ValueError("invalid MFD measurement array shape")
+    size = int(np.prod(shape, dtype=np.int64))
+    if dtype.hasobject:
+        values = state["strings"]
+        if not all(isinstance(value, str) for value in values) or len(values) != size:
+            raise ValueError("invalid MFD source file names")
+        return np.asarray(values, dtype=object).reshape(shape)
+    raw = base64.b64decode(state["bytes"], validate=True)
+    if len(raw) != size * dtype.itemsize:
+        raise ValueError("invalid MFD measurement array byte count")
+    return np.frombuffer(raw, dtype=dtype).copy().reshape(shape)
+
+
 @dataclass
 class MfdData:
     """Everything about the measurement that a fit does not change.
@@ -250,6 +284,189 @@ class MfdData:
     responses: dict[str, ChannelResponse]
     channels: tuple[str, str]
     _arrivals: tuple | None = field(default=None, repr=False)
+
+    def get_session_state(self) -> dict:
+        """Declare detached measurements, responses and photons for every MFD source.
+
+        Source paths remain provenance only. Embedded photon arrays support the
+        burst-wise likelihood and arrival-time occupation law after source removal.
+        Derived response FFTs and arrival caches are rebuilt from these inputs.
+        """
+        preparation = self.preparation
+        arrays = (
+            "counts",
+            "spans",
+            "span_is_sentinel",
+            "mean_micro_time",
+            "duration",
+            "total_counts",
+            "first_photon",
+            "last_photon",
+            "file_key",
+            "rows",
+        )
+        photons = {}
+        for key, tttr in (preparation.summary.get("_tttrs") or {}).items():
+            photons[key] = {
+                "header": tttr.header.get_json(),
+                "arrays": {
+                    name: _session_array(np.asarray(getattr(tttr, name)))
+                    for name in ("macro_times", "micro_times", "routing_channels", "event_types")
+                },
+            }
+        return {
+            "version": 1,
+            "channels": list(self.channels),
+            "preparation": {
+                "channels": list(preparation.channels),
+                "arrays": {name: _session_array(getattr(preparation, name)) for name in arrays},
+                "streams": [
+                    {
+                        "name": stream.name,
+                        "channels": list(stream.channels),
+                        "micro_time_ranges": [list(pair) for pair in stream.micro_time_ranges],
+                    }
+                    for stream in preparation.streams
+                ],
+                "convention": {
+                    "inclusive": preparation.convention.inclusive,
+                    "agreement": preparation.convention.agreement,
+                },
+                "sources": {
+                    "paths": {key: str(value) for key, value in preparation.sources.paths.items()},
+                    "origin": dict(preparation.sources.origin),
+                    "container_type": dict(preparation.sources.container_type),
+                },
+                "folder": str(preparation.folder),
+                "summary": {
+                    key: value for key, value in preparation.summary.items() if key != "_tttrs"
+                },
+                "photons": photons,
+            },
+            "nuisance": {
+                "channels": list(self.nuisance.channels),
+                "arrays": {
+                    name: _session_array(getattr(self.nuisance, name))
+                    for name in ("signal", "spans", "counts", "duration", "rows")
+                },
+                "summary": dict(self.nuisance.summary),
+            },
+            "binned": [
+                _session_array(self.binned[0]),
+                _session_array(self.binned[1]),
+                [_session_array(array) for array in self.binned[2]],
+            ],
+            "observed": {
+                "counts": _session_array(self.observed.counts),
+                "ratio_edges": _session_array(self.axes.ratio_edges),
+                "micro_time_edges": _session_array(self.axes.micro_time_edges),
+                "summary": dict(self.observed.summary),
+            },
+            "responses": {
+                name: {
+                    "irf": _session_array(response.irf),
+                    "dt": response.dt,
+                    "background_rate": response.background_rate,
+                    "scatter_fraction": response.scatter_fraction,
+                    "background_pattern": (
+                        _session_array(response.background_pattern)
+                        if response.background_pattern is not None
+                        else None
+                    ),
+                }
+                for name, response in self.responses.items()
+            },
+        }
+
+    @classmethod
+    def from_session_state(cls, state: dict) -> MfdData:
+        """Rebuild the explicit typed payload without opening measurement files."""
+        import tttrlib
+
+        from chisurf.core.fluorescence.burst.photons import streams_from_dicts
+        from chisurf.core.fluorescence.mfd.prepare import PhotonIndexConvention, SourceResolution
+
+        if state.get("version") != 1:
+            raise ValueError("unsupported MFD payload version")
+        prepared = state["preparation"]
+        summary = dict(prepared["summary"])
+        photons = {}
+        for key, record in prepared["photons"].items():
+            tttr = tttrlib.TTTR()
+            arrays = record["arrays"]
+            tttr.append_events(
+                *[
+                    _session_array_restore(arrays[name])
+                    for name in ("macro_times", "micro_times", "routing_channels", "event_types")
+                ],
+                shift_macro_time=False,
+            )
+            header = tttr.header
+            header.set_json(record["header"])
+            tttr.set_header(header)
+            photons[key] = tttr
+        if photons:
+            summary["_tttrs"] = photons
+        source = prepared["sources"]
+        preparation = BurstPreparation(
+            channels=tuple(prepared["channels"]),
+            **{name: _session_array_restore(value) for name, value in prepared["arrays"].items()},
+            streams=tuple(streams_from_dicts(prepared["streams"])),
+            convention=PhotonIndexConvention(**prepared["convention"]),
+            sources=SourceResolution(
+                paths={key: pathlib.Path(value) for key, value in source["paths"].items()},
+                origin=dict(source["origin"]),
+                container_type=dict(source["container_type"]),
+            ),
+            folder=pathlib.Path(prepared["folder"]),
+            summary=summary,
+        )
+        nuisance = state["nuisance"]
+        observed = state["observed"]
+        responses = {}
+        for name, response in state["responses"].items():
+            irf = _session_array_restore(response["irf"])
+            responses[name] = ChannelResponse(
+                irf=irf,
+                dt=response["dt"],
+                background_rate=response["background_rate"],
+                scatter_fraction=response["scatter_fraction"],
+                background_pattern=(
+                    _session_array_restore(response["background_pattern"])
+                    if response["background_pattern"] is not None
+                    else None
+                ),
+            )
+            # The saved response is already normalised. Preserve its exact bytes
+            # rather than normalising it a second time on every load/resave.
+            responses[name].irf = irf
+            responses[name]._spectrum = np.fft.rfft(irf)
+        return cls(
+            preparation=preparation,
+            nuisance=NuisanceMeasure(
+                channels=tuple(nuisance["channels"]),
+                **{
+                    name: _session_array_restore(value)
+                    for name, value in nuisance["arrays"].items()
+                },
+                summary=dict(nuisance["summary"]),
+            ),
+            binned=(
+                _session_array_restore(state["binned"][0]),
+                _session_array_restore(state["binned"][1]),
+                [_session_array_restore(value) for value in state["binned"][2]],
+            ),
+            observed=MfdHistogram(
+                counts=_session_array_restore(observed["counts"]),
+                axes=HistogramAxes(
+                    _session_array_restore(observed["ratio_edges"]),
+                    _session_array_restore(observed["micro_time_edges"]),
+                ),
+                summary=dict(observed["summary"]),
+            ),
+            responses=responses,
+            channels=tuple(state["channels"]),
+        )
 
     @property
     def axes(self) -> HistogramAxes:

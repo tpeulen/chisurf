@@ -153,11 +153,15 @@ class ProjectBrowserTool(ChisurfDockTool):
         self.refresh()
 
     def _make_client(self) -> ProjectBrowserClient:
-        return ProjectBrowserClient(inprocess=True)
+        from chisurf.core.project.storage import select_backend
+
+        # Follow the storage policy: local bootstrap uses the embedded service,
+        # while a configured deployment uses the real endpoint.
+        return ProjectBrowserClient(inprocess=select_backend() != "mmfdb")
 
     @property
     def client(self) -> ProjectBrowserClient:
-        """Return the in-process project browser RPC client."""
+        """Return the configured project-browser RPC client."""
         if self._client is None:
             self._client = self._make_client()
         return self._client

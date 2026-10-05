@@ -186,7 +186,7 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
 
     name = "PDA2c-dynamic-N-state"
 
-    #: Declarative AutoForm layout (PRD-38 model/view-spec split).
+    #: Declarative AutoForm layout.
     view_spec_file = "dynamic_mc.view.json"
 
     def __init__(
@@ -247,6 +247,35 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
         # binned, and under which counting statistic (see Pda2cFitSettings).
         self.fit_settings = resolve_fit_settings(None, None)
         self.residual_mode = "1D"
+
+    def get_state(self) -> dict:
+        """Include the scheme size and reproducible integration settings."""
+        state = super().get_state()
+        state.update(n_states=self.n_states, method=self.method, seed=self.seed, n_hist=self.n_hist)
+        return state
+
+    def set_state(self, state: dict) -> None:
+        """Resize the kinetic scheme before restoring scalar identities.
+
+        Parameters
+        ----------
+        state : dict
+            State from :meth:`get_state`.
+        """
+        count, bins, seed = state.get("n_states"), state.get("n_hist"), state.get("seed")
+        if (
+            type(count) is not int
+            or count < 2
+            or type(bins) is not int
+            or bins < 1
+            or type(seed) is not int
+            or seed < 0
+            or state.get("method") not in ("szabo-gopich", "monte-carlo")
+        ):
+            raise ValueError("invalid dynamic PDA integration settings")
+        self.n_states = count
+        self.n_hist, self.seed, self.method = bins, seed, state["method"]
+        super().set_state(state)
 
     # -- scheme size, delegated so the editor can bind to the model ---------
 

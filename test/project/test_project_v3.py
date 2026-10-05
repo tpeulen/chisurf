@@ -1,130 +1,53 @@
+"""V5 project schema tests; legacy formats are intentionally unsupported."""
+
 import json
-import os
-import tempfile
-import unittest
+
+import numpy as np
+import pytest
 
 from chisurf.core.project import Project, ProjectArchive, load_project, save_project
 
 
-class TestProjectFormat(unittest.TestCase):
-    def test_v4_format_roundtrip(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            project_dir = os.path.join(tmpdir, "test_v4_project")
+def test_v5_format_roundtrip_and_deterministic_dataset_order(tmp_path):
+    from chisurf.core.data import DataCurve
+    from chisurf.core.project import capture_session
 
-            p = Project(
-                name="v4_test_project",
-                description="Project v4 format test",
-                chisurf_version="test-version",
-                project_format_version=4,
-            )
-            p.datasets["ds1"] = {"path": "data/file1.dat", "checksum": "abc123", "uid": "ds-uid-1"}
-            p.datasets["ds2"] = {"path": "data/file2.dat", "checksum": "def456", "uid": "ds-uid-2"}
-            p.experiments["exp1"] = {"type": "tcspc", "dataset_id": "ds-uid-1", "uid": "exp-uid-1"}
-            p.fits.append(
-                {
-                    "uid": "fit-uid-1",
-                    "name": "fit1",
-                    "dataset_uid": "ds-uid-1",
-                    "created": "2024-01-01T00:00:00",
-                    "local_fits": [{"uid": "lf-uid-1", "name": "local1", "parameters": []}],
-                }
-            )
-            p.ui_state["current_experiment_id"] = "exp-uid-1"
-            p.metadata["checkpoint_interval"] = 50
+    curves = [
+        DataCurve(x=np.array([0.0, 1.0]), y=np.array([2.0, 1.0]), unique_identifier=uid)
+        for uid in ("z-dataset", "a-dataset", "m-dataset")
+    ]
+    project = capture_session(curves, [], name="v5_project")
+    project.description = "portable"
 
-            archive_path = save_project(p, project_dir)
-            assert archive_path.is_file()
+    archive_path = save_project(project, tmp_path / "project")
+    archive = ProjectArchive.open(archive_path)
+    raw = json.loads(archive.read_text("project.json"))
+    archive.close()
 
-            archive = ProjectArchive.open(archive_path)
-            raw = json.loads(archive.read_text("project.json"))
-            archive.close()
+    assert archive_path.name == "project.cs.pto"
+    assert raw["project_format_version"] == 5
+    assert list(raw["datasets"]) == ["a-dataset", "m-dataset", "z-dataset"]
 
-            self.assertEqual(raw["project_format_version"], 4)
-            self.assertIn("meta", raw)
-            self.assertEqual(raw["meta"]["name"], "v4_test_project")
-            self.assertIn("ds1", raw["datasets"])
-
-            loaded = load_project(project_dir)
-            self.assertEqual(loaded.project_format_version, 4)
-            self.assertEqual(loaded.name, "v4_test_project")
-            self.assertEqual(len(loaded.datasets), 2)
-            self.assertEqual(len(loaded.fits), 1)
-            self.assertEqual(loaded.fits[0]["uid"], "fit-uid-1")
-
-    def test_v4_deterministic_ordering(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            project_dir = os.path.join(tmpdir, "test_ordering")
-
-            p = Project(
-                name="ordering_test",
-                description="Test",
-                project_format_version=4,
-            )
-            p.datasets["z_dataset"] = {"uid": "z"}
-            p.datasets["a_dataset"] = {"uid": "a"}
-            p.datasets["m_dataset"] = {"uid": "m"}
-
-            archive_path = save_project(p, project_dir)
-
-            archive = ProjectArchive.open(archive_path)
-            raw = json.loads(archive.read_text("project.json"))
-            archive.close()
-
-            dataset_keys = list(raw["datasets"].keys())
-            self.assertEqual(dataset_keys, sorted(dataset_keys))
-
-    def test_v4_always_outputs_v4(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            project_dir = os.path.join(tmpdir, "test_v1")
-
-            p = Project(
-                name="v4_project",
-                description="V4 format",
-                project_format_version=4,
-            )
-            p.datasets["ds1"] = {"path": "data/file1.dat"}
-
-            archive_path = save_project(p, project_dir)
-
-            archive = ProjectArchive.open(archive_path)
-            raw = json.loads(archive.read_text("project.json"))
-            archive.close()
-
-            self.assertEqual(raw["project_format_version"], 4)
-            self.assertIn("meta", raw)
-
-            loaded = load_project(project_dir)
-            self.assertEqual(loaded.project_format_version, 4)
-            self.assertEqual(loaded.name, "v4_project")
-
-    def test_get_dataset_by_uid(self):
-        p = Project(name="test", project_format_version=4)
-        p.datasets["uid1"] = {"name": "dataset1"}
-        p.datasets["uid2"] = {"name": "dataset2"}
-
-        self.assertEqual(p.get_dataset("uid1")["name"], "dataset1")
-        self.assertIsNone(p.get_dataset("nonexistent"))
-
-    def test_get_fit_by_uid(self):
-        p = Project(name="test", project_format_version=4)
-        p.fits.append({"uid": "fit1", "name": "Fit 1"})
-        p.fits.append({"uid": "fit2", "name": "Fit 2"})
-
-        self.assertEqual(p.get_fit("fit1")["name"], "Fit 1")
-        self.assertIsNone(p.get_fit("nonexistent"))
-
-    def test_list_uids(self):
-        p = Project(name="test", project_format_version=4)
-        p.datasets["z"] = {"uid": "z"}
-        p.datasets["a"] = {"uid": "a"}
-        p.datasets["m"] = {"uid": "m"}
-        p.fits.append({"uid": "fit3"})
-        p.fits.append({"uid": "fit1"})
-        p.fits.append({"uid": "fit2"})
-
-        self.assertEqual(p.list_dataset_uids(), ["a", "m", "z"])
-        self.assertEqual(p.list_fit_uids(), ["fit1", "fit2", "fit3"])
+    loaded = load_project(archive_path)
+    assert loaded.project_format_version == 5
+    assert loaded.name == project.name
+    assert loaded.datasets == project.datasets
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_uid_helpers_are_stable_and_sorted():
+    project = Project(name="test", project_format_version=5)
+    project.datasets.update({"uid2": {"name": "two"}, "uid1": {"name": "one"}})
+    project.fits.extend([{"uid": "fit2"}, {"uid": "fit1"}])
+
+    assert project.get_dataset("uid1")["name"] == "one"
+    assert project.get_dataset("missing") is None
+    assert project.get_fit("fit1")["uid"] == "fit1"
+    assert project.get_fit("missing") is None
+    assert project.list_dataset_uids() == ["uid1", "uid2"]
+    assert project.list_fit_uids() == ["fit1", "fit2"]
+
+
+@pytest.mark.parametrize("version", [1, 2, 3, 4, 6])
+def test_non_v5_payloads_fail_closed(version):
+    with pytest.raises(ValueError, match="requires v5"):
+        Project.from_dict({"project_format_version": version})

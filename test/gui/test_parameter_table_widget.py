@@ -514,6 +514,33 @@ def test_typed_value_is_committed(qapp, commit):
     assert widget.table_model.data(index, QtCore.Qt.DisplayRole) == "408.147"
 
 
+def test_typed_full_precision_value_survives_table_commit(qapp):
+    """A real table edit must retain the exact finite decimal that was typed.
+
+    The compact display intentionally uses significant figures, but the delegate
+    must commit the text that reached it rather than a value rounded by a prior
+    programmatic ``setValue`` refresh.  This mirrors canonical-session edits,
+    where exact float state is compared after a real GUI commit.
+    """
+    from qtpy import QtCore
+
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.gui.autoform.sections.parameter_table import (
+        COL_VALUE,
+        ParameterGroupTableWidget,
+    )
+
+    target = 55.550999999999995
+    parameter = FittingParameter(name="Rrms", value=55.0)
+    widget = ParameterGroupTableWidget(params=[parameter])
+    widget.show()
+    index = widget.table_model.index(0, COL_VALUE)
+
+    _type_into_cell(qapp, widget.table_view, index, repr(target), QtCore.Qt.Key_Return)
+
+    assert float(parameter.value) == target
+
+
 def test_typed_value_is_committed_paired_table(qapp):
     """The paired (dynamic-group) table shares the delegate — same guarantee."""
     from qtpy import QtCore

@@ -1,12 +1,45 @@
 ---
 type: Reference
 title: Use case — Save, version, export and restore a ChiSurf project
-description: Persist a whole analysis session as a versioned MMFDB project, export it as a .csp archive, import it back, and restore it into a fresh ChiSurf.
+description: Persist complete ChiSurf sessions through optional real MMFDB or native .cs.pto files; historical pre-replacement workflow retained below.
 tags: [usecase, project, persistence, mmfdb, versioning, gui]
 timestamp: '2026-07-28T00:00:00Z'
 ---
 
-# Use case: save, version, export and restore a project
+# Use case: save and restore a project
+
+## Current workflow — 2026-10-03
+
+- With absent or desktop-bootstrap MMFDB, Save Project (`Ctrl+S`) writes a
+  `.cs.pto` file. Subsequent saves reuse the current destination. Save As
+  (`Ctrl+Shift+S`) explicitly chooses another portable destination.
+- With an authenticated real remote deployment, ordinary Save stores and
+  verifies a canonical project version. Explicit version restore uses that
+  same snapshot. A standalone service on localhost is real; the desktop seed
+  is not an ordinary persistence backend.
+- Replacement is staged before changing live science/history/document state.
+  Close, replace and reset require Save / Don't Save / Cancel; Cancel and a
+  cancelled/failed save preserve the session.
+- Version 5 has no backwards compatibility with v4 or `.csp`/ZIP archives.
+  The user guide is `docs/guides/saving_projects.md`.
+
+**Acceptance remains open: REQUEST_CHANGES — October 4, 2026.** Earlier gates
+now have passing parent regressions (916 project/server/agent passes with two
+pre-existing no-parameter skips, 53 authenticated browser/transport checks,
+118 standalone version/auth checks and four actual measured-data Main scenarios).
+A fresh specification review nevertheless reproduced six unresolved blockers:
+public API authorization/presentation, stale UID-addressed parameters, lost
+portable attachments, shipped TTTR/DEER reader rejection, forced local import
+authentication and export truncation on write failure. Three disjoint revision
+owners are active. See `subsystems/project-persistence.md` and the updated plan
+for exact evidence and gates. These totals are not proof of complete acceptance;
+preserve raw files and existing analyses. The historical workflow below is not
+an assertion that its operations have all been retested.
+
+## Historical workflow and audit — 2026-07-28
+
+The material below describes the earlier MMFDB/`.csp` implementation and is
+retained as a diagnosis, not the current format or acceptance result.
 
 **Goal:** the workflow that surrounds every other one — a user has spent an hour
 loading data and optimising a fit, and wants to *stop*, come back tomorrow, and

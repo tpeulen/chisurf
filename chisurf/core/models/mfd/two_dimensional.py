@@ -459,6 +459,17 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         self.find_parameters()
         self.seed_from_data()
 
+    def get_state(self) -> dict:
+        """Declare the topology needed before session scalar ports are routed."""
+        return {"n_states": self.n_states}
+
+    def set_state(self, state: dict) -> None:
+        """Restore the state and rate-matrix sizes before assigning saved ports."""
+        count = state.get("n_states", 2)
+        if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+            raise ValueError("MFD state count must be a positive integer")
+        self.n_states = count
+
     def seed_from_data(self) -> dict:
         """Set the free parameters to values read off this fit's measurement.
 

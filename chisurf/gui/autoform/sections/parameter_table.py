@@ -80,6 +80,23 @@ SLOT_COLUMN_META = [m for m in COLUMN_META if m[0] != "name"]
 SLOT_COLUMN_IDS = [m[0] for m in SLOT_COLUMN_META]
 
 
+def _display_binding_field_editability(param: FittingParameter, col_id: str) -> bool | None:
+    """Return a declared display row's editability, or ``None`` for a port.
+
+    Description scalars have a meaningful value edit only; their artificial
+    fixed/bounds fields must not look interactive.  Computed/data-metadata
+    projections are entirely read-only.  Scientific ports keep the existing
+    parameter-table policy below.
+    """
+    binding = getattr(param, "display_binding", None)
+    if binding is None:
+        return None
+    from chisurf.core.dataspec.display_binding import validate_display_binding
+
+    binding = validate_display_binding(binding)
+    return bool(binding["editable"]) and col_id == "value"
+
+
 def _editor(param: FittingParameter):
     """Return the parameter's controller when it can apply edits, else ``None``.
 
@@ -857,6 +874,9 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
             return base
         if entry.kind == "item" and col_id != "value":
             return base
+        display_editable = _display_binding_field_editability(param, col_id)
+        if display_editable is not None:
+            return base | QtCore.Qt.ItemIsEditable if display_editable else base
         # A derived output is computed from the others; nothing about it is
         # editable, including the fix flag and the bounds.
         if getattr(param, "is_output", False):
@@ -884,6 +904,9 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
         entry = self._rows[index.row()]
         param = entry.param
         col_id, _, _, _ = COLUMN_META[index.column()]
+        display_editable = _display_binding_field_editability(param, col_id)
+        if display_editable is False:
+            return False
 
         if entry.kind == "vector":
             done = [
@@ -1985,6 +2008,9 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
         if not editable:
             return base
         param, _ = pa
+        display_editable = _display_binding_field_editability(param, col_id)
+        if display_editable is not None:
+            return base | QtCore.Qt.ItemIsEditable if display_editable else base
         if col_id == "value":
             is_follower = getattr(param, "is_linked", False) and not getattr(
                 param, "is_link_master", False
@@ -2003,6 +2029,9 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
         if pa is None:
             return False
         param, col_id = pa
+        display_editable = _display_binding_field_editability(param, col_id)
+        if display_editable is False:
+            return False
         if not _set_param_value(param, col_id, value):
             return False
         # Row-wide, for the reason given in ``ParameterGroupTableModel.setData``.

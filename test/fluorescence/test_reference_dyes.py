@@ -11,8 +11,12 @@ import chisurf.core.fluorescence.dyes as dyes
 
 @pytest.fixture
 def fresh_database(tmp_path, monkeypatch):
-    """Point MMFDB at an empty database and clear the process-level cache."""
+    """Explicitly provision the test repository; reference reads never seed it."""
+    from mmfdb.repository import MFDatabase
+
     monkeypatch.setenv("MMFDB_DATABASE_PATH", str(tmp_path / "dyes.db"))
+    with MFDatabase(str(tmp_path / "dyes.db")) as db:
+        db.import_reference_diffusion()
     monkeypatch.setattr(dyes, "_CACHE", None)
     monkeypatch.setattr(dyes, "_ALIASES", None)
     yield
@@ -21,7 +25,7 @@ def fresh_database(tmp_path, monkeypatch):
 
 
 def test_reference_dyes_are_read_from_mmfdb(fresh_database):
-    """A fresh database is seeded and every species is a real MMFDB probe."""
+    """Every species comes from the explicitly provisioned MMFDB repository."""
     table = dyes.reference_dyes()
     assert table, "no reference species available"
     assert "Rhodamine 6G" in table

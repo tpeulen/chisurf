@@ -90,3 +90,21 @@ def test_choosing_a_catalogue_entry_changes_the_equation(equation_field):
     before = str(model.func)
     model.model_name = next(n for n in names if n != model.model_name)
     assert str(model.func) != before
+
+
+def test_parse_convolution_rows_only_declare_persisted_scalars(equation_field):
+    """Generated ParseDecay rows cannot expose an inert non-persisted scalar."""
+    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+    from chisurf.gui.widgets.models.model_editor import model_editor_widget
+
+    _field, model = equation_field
+    editor = model_editor_widget(model)
+    assert editor is not None and editor.model is model
+    unsupported = []
+    for table in editor.findChildren(ParameterGroupTableWidget):
+        for parameter in table.table_model._params:
+            binding = getattr(parameter, "display_binding", None)
+            if binding and binding["kind"] == "model_scalar":
+                if binding["path"] not in model.scalar_names():
+                    unsupported.append((parameter.name, binding["path"]))
+    assert not unsupported

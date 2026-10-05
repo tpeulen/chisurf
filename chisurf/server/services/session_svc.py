@@ -40,10 +40,12 @@ def session_describe(state: SessionState) -> ServiceResult:
     }
 
 
-def session_clear(state: SessionState) -> ServiceResult:
-    """Clear all session state."""
-    state.clear()
-    return {"ok": True}
+def session_clear(state: SessionState, event_bus: Any = None) -> ServiceResult:
+    """Reset science through the same lifecycle gate as public project restore."""
+    from chisurf.server.services.projects import reset_project
+
+    del event_bus
+    return reset_project(state)
 
 
 def session_snapshot(state: SessionState) -> ServiceResult:
@@ -69,10 +71,10 @@ def session_restore(
         from chisurf.server.services.projects import load_project
 
         result = load_project(state, project_path)
-        if event_bus is not None:
+        if result.get("ok") is True and event_bus is not None:
             event_bus.publish("session.restored", {"project_path": project_path})
         return result
-    state.clear()
-    if event_bus is not None:
+    result = session_clear(state)
+    if result.get("ok") is True and event_bus is not None:
         event_bus.publish("session.restored", {})
-    return {"ok": True, "message": "session cleared"}
+    return {**result, "message": "session cleared"} if result.get("ok") is True else result

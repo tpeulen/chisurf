@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import base64
+from pathlib import Path
 from typing import Any
 
-from chisurf import logging
 from chisurf.core.plugin.client import InProcessClient
 from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
@@ -14,11 +15,12 @@ class ProjectBrowserClient(MMFDBClient):
         if mmfdb_client is not None:
             self._client = mmfdb_client._client
             self._token = mmfdb_client.token
+            self.mode = mmfdb_client.mode
+            for field in ("base_url", "host", "cmd_port", "pub_port", "inprocess"):
+                if hasattr(mmfdb_client, field):
+                    setattr(self, field, getattr(mmfdb_client, field))
         else:
-            kwargs.setdefault("inprocess", True)
             super().__init__(**kwargs)
-            if self._token is None:
-                self._auto_auth()
 
     def _make_inprocess_client(self) -> InProcessClient:
         from chisurf.core.mmfdb_services import register_services as register_mmfdb_services
@@ -32,70 +34,6 @@ class ProjectBrowserClient(MMFDBClient):
         register_mmfdb_services(dispatcher)
         register_project_browser_services(dispatcher)
         return InProcessClient(dispatcher)
-
-    def _auto_auth(self) -> None:
-        """Use the active MMFDB login token for in-process project-browser RPC calls."""
-        from mmfdb.repository import MFDatabase
-        from mmfdb.security.auth import _hash_token
-        from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
-        from mmfdb.store.database_resolver import resolve_database_path
-
-        import chisurf.core.settings as cs_settings
-
-        try:
-            mmfdb_settings = getattr(cs_settings, "cs_settings", {}).get("mmfdb", {})
-            server_host = mmfdb_settings.get("last_server", "127.0.0.1")
-            server_port = int(mmfdb_settings.get("last_port", 8765))
-            prefix = f"{server_host}:{server_port}:"
-            token = None
-            for key, value in _RUNTIME_SESSION_TOKENS.items():
-                if key.startswith(prefix):
-                    token = value
-                    break
-            if token is None and _RUNTIME_SESSION_TOKENS:
-                token = next(iter(_RUNTIME_SESSION_TOKENS.values()))
-
-            db = MFDatabase(resolve_database_path())
-            if token:
-                token_hash = _hash_token(token)
-                row = db.conn.execute(
-                    """SELECT u.user_id
-                       FROM mmfdb_session AS s
-                       JOIN flr_sample_users AS u ON u.user_id = s.user_id
-                       WHERE s.token_hash = ?""",
-                    (token_hash,),
-                ).fetchone()
-                if row:
-                    user_id = row[0]
-                    self._token = token
-                    logging.info("In-process auto-auth: using active token for user=%s", user_id)
-                    return
-
-            import uuid
-
-            token = f"inproc_{uuid.uuid4().hex}"
-            token_hash = _hash_token(token)
-            session_id = f"inproc_{uuid.uuid4().hex[:12]}"
-            requested_user_id = mmfdb_settings.get("default_user_id", "user_default")
-            row = db.conn.execute(
-                "SELECT user_id FROM flr_sample_users WHERE user_id = ? LIMIT 1",
-                (requested_user_id,),
-            ).fetchone()
-            if row is None:
-                row = db.conn.execute(
-                    """SELECT user_id FROM flr_sample_users
-                       ORDER BY is_admin ASC, user_id ASC LIMIT 1"""
-                ).fetchone()
-            user_id = row[0] if row else "user_default"
-            db.conn.execute(
-                "INSERT OR IGNORE INTO mmfdb_session (session_id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)",
-                (session_id, user_id, token_hash, "2099-12-31T23:59:59"),
-            )
-            db.conn.commit()
-            self._token = token
-            logging.info("In-process auto-auth: token created for user=%s", user_id)
-        except Exception as exc:
-            logging.warning("In-process auto-auth failed: %s", exc)
 
     def list_projects(
         self,
@@ -126,6 +64,7 @@ class ProjectBrowserClient(MMFDBClient):
             {
                 "project_name": project_name,
                 "project_payload": project_payload,
+                "resource_bundle": project_resources(project_payload),
                 "project_id": project_id,
                 "parent_version_id": parent_version_id,
                 "notes": notes,
@@ -143,31 +82,28 @@ class ProjectBrowserClient(MMFDBClient):
             },
         )
 
-    def export_csp(
-        self,
-        version_id: str,
-        target_path: str | None = None,
-    ) -> dict[str, Any]:
-        return self._call(
-            "project_browser.export_csp",
-            {
-                "version_id": version_id,
-                "target_path": target_path,
-            },
-        )
+    def export_csp(self, version_id: str, target_path: str | None = None) -> dict[str, Any]:
+        """Fetch exact PTO content and optionally write the client-owned file."""
+        result = self._call("project_browser.export_csp", {"version_id": version_id})
+        if result.get("version_id") != version_id:
+            raise ValueError("Export returned a different version identity")
+        if result.get("ok") is not True or not result.get("project_id"):
+            raise ValueError("Export returned no authenticated project identity")
+        if target_path is not None:
+            from chisurf.core.project.pto import publish_project_bytes
+
+            publish_project_bytes(
+                target_path, base64.b64decode(result["archive_bytes"], validate=True)
+            )
+        return result
 
     def import_preview(
-        self,
-        archive_base64: str | None = None,
-        file_path: str | None = None,
+        self, archive_base64: str | None = None, file_path: str | None = None
     ) -> dict[str, Any]:
-        return self._call(
-            "project_browser.import_preview",
-            {
-                "archive_base64": archive_base64,
-                "file_path": file_path,
-            },
-        )
+        """Read chooser files locally and send only archive content."""
+        if file_path is not None:
+            archive_base64 = base64.b64encode(Path(file_path).read_bytes()).decode("ascii")
+        return self._call("project_browser.import_preview", self._archive_content(archive_base64))
 
     def import_csp(
         self,
@@ -175,14 +111,25 @@ class ProjectBrowserClient(MMFDBClient):
         file_path: str | None = None,
         resolve_collisions: bool = False,
     ) -> dict[str, Any]:
+        """Import typed PTO bytes without sending a client filesystem path."""
+        if file_path is not None:
+            archive_base64 = base64.b64encode(Path(file_path).read_bytes()).decode("ascii")
         return self._call(
             "project_browser.import_csp",
             {
-                "archive_base64": archive_base64,
-                "file_path": file_path,
+                **self._archive_content(archive_base64),
                 "resolve_collisions": resolve_collisions,
             },
         )
+
+    def _archive_content(self, encoded: str | None) -> dict[str, Any]:
+        """Use authenticated blob transport for HTTP archives beyond RPC body limits."""
+        if encoded and hasattr(self._client, "upload_object"):
+            obj = self.put_object_bytes(
+                encoded, "project.cs.pto", mime_type="application/octet-stream"
+            )
+            return {"archive_object_uuid": obj["object"]["object_uuid"]}
+        return {"archive_base64": encoded}
 
     def delete_version(self, version_id: str) -> dict[str, Any]:
         return self._call(
@@ -238,3 +185,28 @@ class ProjectBrowserClient(MMFDBClient):
                 "version_id": version_id,
             },
         ).get("parameters", [])
+
+
+def project_resources(payload: Any) -> dict[str, str]:
+    """Bundle actual referenced files on the client; labels never authorize server I/O."""
+    resources = {}
+
+    def visit(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if (
+                    key in {"filename", "file_path", "source_file"}
+                    and isinstance(item, str)
+                    and item
+                ):
+                    path = Path(item)
+                    if path.is_file():
+                        resources[item] = base64.b64encode(path.read_bytes()).decode("ascii")
+                elif isinstance(item, (dict, list)):
+                    visit(item)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+
+    visit(payload)
+    return resources

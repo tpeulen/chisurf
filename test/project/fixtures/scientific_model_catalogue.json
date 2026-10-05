@@ -1,0 +1,212 @@
+[
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_polarized",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_polarized"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_mixture",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_mixture"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_fret_gaussian",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_fret_gaussian"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_fret_discrete",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_fret_discrete"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_fret_worm_like_chain",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_fret_worm_like_chain"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_fret_saw_nu",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_fret_saw_nu"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_fret_ising_chain",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_fret_ising_chain"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_pddem",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_pddem"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_fret_acceptor_density",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_fret_acceptor_density"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.tcspc.parse.tcspc_parse.ParseDecayModel",
+    "identity": "chisurf.core.models.tcspc.parse.tcspc_parse.EquationModel_parse"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.tcspc.fret_structure.FRETStructure",
+    "identity": "chisurf.core.models.tcspc.fret_structure.FRETStructure"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_maxent_lifetime",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_maxent_lifetime"
+  },
+  {
+    "experiment": "tcspc",
+    "configured_path": "chisurf.core.models.description.tcspc_maxent_fret",
+    "identity": "chisurf.core.models.description.DescriptionModel_tcspc_maxent_fret"
+  },
+  {
+    "experiment": "stopped_flow",
+    "configured_path": "chisurf.core.models.stopped_flow.parse.ParseStoppedFlowModel",
+    "identity": "chisurf.core.models.stopped_flow.parse.EquationModel_stopped_flow"
+  },
+  {
+    "experiment": "stopped_flow",
+    "configured_path": "chisurf.core.models.stopped_flow.reaction.ReactionModel",
+    "identity": "chisurf.core.models.stopped_flow.reaction.ReactionModel"
+  },
+  {
+    "experiment": "pda",
+    "configured_path": "chisurf.core.models.pda2c.simple.Pda2cSimpleModel",
+    "identity": "chisurf.core.models.pda2c.simple.Pda2cSimpleModel"
+  },
+  {
+    "experiment": "pda",
+    "configured_path": "chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel",
+    "identity": "chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel"
+  },
+  {
+    "experiment": "pda",
+    "configured_path": "chisurf.core.models.pda2c.saw_nu.Pda2cSawNuModel",
+    "identity": "chisurf.core.models.pda2c.saw_nu.Pda2cSawNuModel"
+  },
+  {
+    "experiment": "pda",
+    "configured_path": "chisurf.core.models.pda2c.dynamic.Pda2cDynamicTwoStateModel",
+    "identity": "chisurf.core.models.pda2c.dynamic.Pda2cDynamicTwoStateModel"
+  },
+  {
+    "experiment": "pda",
+    "configured_path": "chisurf.core.models.pda2c.dynamic_mc.Pda2cDynamicNStateModel",
+    "identity": "chisurf.core.models.pda2c.dynamic_mc.Pda2cDynamicNStateModel"
+  },
+  {
+    "experiment": "pda",
+    "configured_path": "chisurf.core.models.pda2c.anisotropy.Pda2cAnisotropyModel",
+    "identity": "chisurf.core.models.pda2c.anisotropy.Pda2cAnisotropyModel"
+  },
+  {
+    "experiment": "pda",
+    "configured_path": "chisurf.core.models.pda3c.pda3c.Pda3cModel",
+    "identity": "chisurf.core.models.pda3c.pda3c.Pda3cModel"
+  },
+  {
+    "experiment": "deer",
+    "configured_path": "chisurf.core.models.deer.deer.DeerGaussianModel",
+    "identity": "chisurf.core.models.deer.deer.DeerGaussianModel"
+  },
+  {
+    "experiment": "deer",
+    "configured_path": "chisurf.core.models.deer.deer.DeerRiceModel",
+    "identity": "chisurf.core.models.deer.deer.DeerRiceModel"
+  },
+  {
+    "experiment": "deer",
+    "configured_path": "chisurf.core.models.deer.deer.DeerTikhonovModel",
+    "identity": "chisurf.core.models.deer.deer.DeerTikhonovModel"
+  },
+  {
+    "experiment": "deer",
+    "configured_path": "chisurf.core.models.deer.deer.DeerMaxEntModel",
+    "identity": "chisurf.core.models.deer.deer.DeerMaxEntModel"
+  },
+  {
+    "experiment": "fcs",
+    "configured_path": "chisurf.core.models.fcs.parse.ParseFCSModel",
+    "identity": "chisurf.core.models.fcs.parse.EquationModel_fcs"
+  },
+  {
+    "experiment": "fcs",
+    "configured_path": "chisurf.core.models.fcs.dye_shape.DyeShapeFCSModel",
+    "identity": "chisurf.core.models.fcs.dye_shape.DyeShapeFCSModel"
+  },
+  {
+    "experiment": "fcs",
+    "configured_path": "chisurf.core.models.fcs.mdf.MdfFCSModel",
+    "identity": "chisurf.core.models.fcs.mdf.MdfFCSModel"
+  },
+  {
+    "experiment": "fcs",
+    "configured_path": "chisurf.core.models.fcs.general.GeneralFCSModel",
+    "identity": "chisurf.core.models.fcs.general.GeneralFCSModel"
+  },
+  {
+    "experiment": "fcs",
+    "configured_path": "chisurf.core.models.fcs.kinetics.FCSKineticsModel",
+    "identity": "chisurf.core.models.fcs.kinetics.FCSKineticsModel"
+  },
+  {
+    "experiment": "fcs",
+    "configured_path": "chisurf.core.models.fcs.maxent_models.MaxEntFCSModel",
+    "identity": "chisurf.core.models.fcs.maxent_models.MaxEntFCSModel"
+  },
+  {
+    "experiment": "fcs",
+    "configured_path": "chisurf.core.models.fcs.maxent_models.MaxEntRHModel",
+    "identity": "chisurf.core.models.fcs.maxent_models.MaxEntRHModel"
+  },
+  {
+    "experiment": "pcf",
+    "configured_path": "chisurf.core.models.pcf.parse.ParsePCFModel",
+    "identity": "chisurf.core.models.pcf.parse.EquationModel_pcf"
+  },
+  {
+    "experiment": "ics",
+    "configured_path": "chisurf.core.models.ics.ics.ImageCorrelationModel",
+    "identity": "chisurf.core.models.ics.ics.EquationModel_ics"
+  },
+  {
+    "experiment": "ics",
+    "configured_path": "chisurf.core.models.ics.ics.IcsGaussian2DModel",
+    "identity": "chisurf.core.models.ics.ics.EquationModel_ics"
+  },
+  {
+    "experiment": "mfd",
+    "configured_path": "chisurf.core.models.mfd.Mfd2DModel",
+    "identity": "chisurf.core.models.mfd.two_dimensional.Mfd2DModel"
+  },
+  {
+    "experiment": "pch",
+    "configured_path": "chisurf.core.models.pch.pch_model.PchMultiComponentModel",
+    "identity": "chisurf.core.models.pch.pch_model.PchMultiComponentModel"
+  },
+  {
+    "experiment": "pch",
+    "configured_path": "chisurf.core.models.pch.fida_model.FidaModel",
+    "identity": "chisurf.core.models.pch.fida_model.FidaModel"
+  },
+  {
+    "experiment": "structure",
+    "configured_path": "chisurf.core.models.structure.proteinmc_model.ProteinMCModel",
+    "identity": "chisurf.core.models.structure.proteinmc_model.ProteinMCModel"
+  },
+  {
+    "experiment": "global",
+    "configured_path": "chisurf.core.models.global_model.globalfit.GlobalFitModel",
+    "identity": "chisurf.core.models.global_model.globalfit.GlobalFitModel"
+  },
+  {
+    "experiment": "global",
+    "configured_path": "chisurf.core.models.parameter_transform.model.ParameterTransformModel",
+    "identity": "chisurf.core.models.parameter_transform.model.ParameterTransformModel"
+  }
+]

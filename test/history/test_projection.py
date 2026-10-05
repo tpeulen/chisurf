@@ -55,13 +55,7 @@ def test_empty_inputs_give_empty_state():
 
 
 def test_checkpoint_seeds_then_delta_overrides():
-    """A checkpoint seeds the state; replayed deltas override nav lists + merge params.
-
-    This pins the *actual* verbatim merge semantics extracted from the GUI: the
-    navigation list keys (datasets/fits/...) are replaced wholesale by the delta
-    reconstruction whenever present, while parameter state is merged on top of
-    the seeded checkpoint params.
-    """
+    """A delta preserves checkpoint inventory and untouched parameter metadata."""
     checkpoint = {
         "navigation": {
             "datasets": ["ds0"],
@@ -76,10 +70,12 @@ def test_checkpoint_seeds_then_delta_overrides():
         # snapshot param format: keyed dict carrying fit_group/local_fit/parameter_name
         "parameters": {
             "f0|local_0|tau": {
-                "fit_group": "f0",
+                "fit_group": "fit0",
                 "local_fit": "local_0",
                 "parameter_name": "tau",
                 "value": 2.0,
+                "fixed": True,
+                "bounds": [0.1, 10.0],
             }
         },
         "fit_ranges": {},
@@ -89,19 +85,23 @@ def test_checkpoint_seeds_then_delta_overrides():
     delta_events = [
         _ev(
             "parameter.value",
-            {"fit_group": "f0", "local_fit": "local_0", "name": "tau", "value": 9.0},
+            {
+                "fit_group": "fit0",
+                "local_fit": "local_0",
+                "parameter_name": "tau",
+                "new_value": 9.0,
+            },
         ),
     ]
 
     state = history.build_target_state(checkpoint, delta_events, delta_events)
 
-    # nav list keys are replaced by the (empty) delta reconstruction — verbatim semantics
-    nav_delta = _hr.reconstruct_navigation_state(delta_events)
-    assert state.navigation["datasets"] == nav_delta["datasets"]
-    # parameter delta merged on top of the seeded checkpoint params
-    expected = _hr.snapshot_to_replay_state(checkpoint)["parameters"]
-    expected.update(_hr.reconstruct_parameter_state(delta_events))
-    assert state.parameters == expected
+    assert state.navigation == checkpoint["navigation"]
+    assert state.parameters[("fit0", "local_0", "tau")] == {
+        "value": 9.0,
+        "fixed": True,
+        "bounds": (0.1, 10.0),
+    }
 
 
 def test_all_events_argument_is_optional_and_ignored():

@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import pathlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # NOTE: Qt is imported lazily inside ``load_detector_setups`` (only the
 # missing-file warning dialog needs it).  Keeping this module import-time
 # Qt-free lets the Qt-free server reuse ``load_detector_setups`` /
 # ``save_detector_setups`` from ``chisurf.server.services.detector_setups``.
-from mmfdb.repository import MFDatabase
-
 from chisurf.core.fio.setup_store import (
     SetupTypeConfig,
     json_loads,
@@ -18,6 +18,9 @@ from chisurf.core.fio.setup_store import (
     save_setup_row as _save_row,
 )
 from chisurf.core.settings.path_utils import get_path
+
+if TYPE_CHECKING:
+    from mmfdb.repository import MFDatabase
 
 DETECTOR_SETUPS_FILE = get_path("settings") / "detector_setups.json"
 DETECTOR_SETUP_TYPE = "tttr_detector_setup"

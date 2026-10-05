@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import select
 import subprocess
 import sys
 import time
@@ -17,17 +18,25 @@ def test_terminate_and_collect_stderr_does_not_block_live_process():
         [
             sys.executable,
             "-c",
-            "import sys, time; sys.stderr.write('server failed\\n'); sys.stderr.flush(); time.sleep(30)",
+            "import sys, time; sys.stderr.write('server failed' + chr(10)); "
+            "sys.stderr.flush(); print('ready', flush=True); time.sleep(30)",
         ],
-        stdout=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-
-    time.sleep(0.2)
-    stderr = terminate_and_collect_stderr(proc, timeout=1.0)
-
-    assert "server failed" in stderr
-    assert proc.poll() is not None
+    try:
+        assert proc.stdout is not None
+        # Observe readiness instead of racing interpreter startup under load.
+        ready, _, _ = select.select([proc.stdout], [], [], 5.0)
+        assert ready and proc.stdout.readline().strip() == b"ready"
+        assert proc.poll() is None
+        stderr = terminate_and_collect_stderr(proc, timeout=1.0)
+        assert "server failed" in stderr
+        assert proc.poll() is not None
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.communicate(timeout=5.0)
 
 
 def test_terminate_and_collect_stderr_is_bounded():
@@ -41,7 +50,7 @@ def test_terminate_and_collect_stderr_is_bounded():
         stderr=subprocess.PIPE,
     )
 
-    proc.wait(timeout=1.0)
+    proc.wait(timeout=5.0)
     stderr = terminate_and_collect_stderr(proc, limit=10, timeout=1.0)
 
     assert stderr == "x" * 10
@@ -136,11 +145,13 @@ def test_ensure_embedded_chisurf_rpc_server_returns_false_for_unreachable():
 
 
 def test_ensure_embedded_chisurf_rpc_server_returns_true_when_available():
+    import json
     import socket
+    import threading
 
-    from chisurf.server.startup import (
-        ensure_embedded_chisurf_rpc_server,
-    )
+    import zmq
+
+    from chisurf.server.startup import ensure_embedded_chisurf_rpc_server
 
     def _find_free_port() -> int:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -149,29 +160,30 @@ def test_ensure_embedded_chisurf_rpc_server_returns_true_when_available():
 
     cmd = _find_free_port()
     pub = _find_free_port()
-
-    import zmq
-
     ctx = zmq.Context()
-    rep = ctx.socket(zmq.REP)
-    rep.bind(f"tcp://127.0.0.1:{cmd}")
-    import json
-    import threading
+    ready = threading.Event()
+    stop = threading.Event()
 
     def _serve():
-        while True:
-            try:
+        # A ZMQ socket must be created, used and closed on its owning thread.
+        rep = ctx.socket(zmq.REP)
+        try:
+            rep.bind(f"tcp://127.0.0.1:{cmd}")
+            ready.set()
+            while not stop.is_set():
+                if not rep.poll(50, zmq.POLLIN):
+                    continue
                 msg = rep.recv_string()
                 parsed = json.loads(msg)
                 reply = {"jsonrpc": "2.0", "result": {"ok": True}, "id": parsed.get("id", 1)}
                 rep.send_string(json.dumps(reply))
-            except Exception:
-                break
+        finally:
+            rep.close(linger=0)
 
-    t = threading.Thread(target=_serve, daemon=True)
-    t.start()
-
+    thread = threading.Thread(target=_serve, daemon=True)
+    thread.start()
     try:
+        assert ready.wait(5.0)
         available = ensure_embedded_chisurf_rpc_server(
             "127.0.0.1",
             cmd,
@@ -181,7 +193,9 @@ def test_ensure_embedded_chisurf_rpc_server_returns_true_when_available():
         )
         assert available is True
     finally:
-        rep.close(linger=0)
+        stop.set()
+        thread.join(timeout=5.0)
+        assert not thread.is_alive()
         ctx.term()
 
 

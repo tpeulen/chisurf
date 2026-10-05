@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 import chisurf as cs
 from chisurf.core.api import ChiSurfAPI
 from chisurf.core.api.context import PluginContext
@@ -133,6 +135,15 @@ class DummyClient:
 
 
 class TestChiSurfAPI:
+    @pytest.fixture(autouse=True)
+    def _isolated_global_lists(self, monkeypatch):
+        # These facade tests use DummyDataset, not ExperimentalData. A real
+        # DataGroup inherited from an earlier project test deliberately rejects
+        # those dummies on append. Own the fixture containers and restore the
+        # original globals by identity, rather than leaking order assumptions.
+        monkeypatch.setattr(cs, "imported_datasets", [])
+        monkeypatch.setattr(cs, "fits", [])
+
     def test_create_local_mode(self):
         api = ChiSurfAPI(mode="local")
         assert api.mode == "local"
@@ -358,7 +369,7 @@ class TestChiSurfAPI:
             # Every parameter hangs off its own fit ...
             assert {(1, 0), (3, 2), (4, 2)} <= {(e["source"], e["target"]) for e in edges}
             # ... the link joins the two same-named parameters ...
-            assert {"source": 3, "target": 1} in edges
+            assert {"source": 3, "target": 1, "kind": "link"} in edges
             # ... and a linked parameter never links to itself.
             assert not [e for e in edges if e["source"] == e["target"]]
 

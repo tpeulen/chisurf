@@ -4,6 +4,7 @@ import numpy as np
 
 import chisurf as cs
 from chisurf.core.data import DataCurve
+from chisurf.core.experiments.core.experiment import Experiment
 from chisurf.core.fitting.fit import Fit
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models.model import ModelCurve
@@ -63,14 +64,10 @@ def test_e2e_with_real_file_headless(tmp_path):
         ds.path = str(csv_file)
         cs.imported_datasets.append(ds)
 
-        # We need to ensure the experiment and model are resolvable
-        class MockExperiment:
-            name = "MockExp"
-            model_names = ["E2ELinearModel"]
-            model_classes = [E2ELinearModel]
-
-        mock_exp = MockExperiment()
-        ds.experiment = mock_exp
+        # Exercise the real experiment registry, not a class-level fake.
+        experiment = Experiment(name="E2E")
+        experiment.add_model_class(E2ELinearModel)
+        ds.experiment = experiment
 
         print("--- Phase 3: Add fit ---")
         # Add fit and modify param

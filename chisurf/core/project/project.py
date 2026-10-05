@@ -1,16 +1,194 @@
 from __future__ import annotations
 
+import base64
 import datetime
 import json
 import pathlib
-import tempfile
+import zlib
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any, Union
 
 from .archive import ProjectArchive
-from .pto import PROJECT_SUFFIX, ProjectPtoError
+from .pto import PROJECT_SUFFIX
 
 PathLike = Union[str, pathlib.Path]
+_RESOURCE_CONTEXT_ALIAS = "urn:chisurf:project:resource-context"
+
+
+class ResourceContext:
+    """Owned immutable attachment bytes and their exact named source aliases.
+
+    Archive entries remain outside the scientific DTO. Source labels are metadata,
+    never permission to read paths on restoration or on a server.
+    """
+
+    def __init__(
+        self, entries: Mapping[str, bytes] | None = None, sources: Mapping[str, bytes] | None = None
+    ):
+        owned = self._validate_entries(entries or {})
+        aliases = dict(sources or {})
+        if _RESOURCE_CONTEXT_ALIAS in aliases:
+            raise ValueError("Reserved resource context alias")
+        if any(
+            not isinstance(k, str) or not k or not isinstance(v, bytes) for k, v in aliases.items()
+        ):
+            raise TypeError("Resource aliases must map nonempty labels to bytes")
+        if "mmfdb_export.json" in owned:
+            export = json.loads(owned["mmfdb_export.json"])
+            dependencies = export.get("dependencies", {})
+            objects = {
+                obj["object_uuid"]: base64.b64decode(obj["data_base64"], validate=True)
+                for obj in dependencies.get("objects", [])
+            }
+            carried = None
+            for artifact in dependencies.get("artifacts", []):
+                if artifact.get("artifact_kind") == "raw_measurement":
+                    label = artifact["file_path"]
+                    content = objects[artifact["object_uuid"]]
+                    if label == _RESOURCE_CONTEXT_ALIAS:
+                        carried = self._decode_database_descriptor(content)
+                        continue
+                    if label in aliases and aliases[label] != content:
+                        raise ValueError(f"Conflicting resource alias {label!r}")
+                    aliases[label] = content
+            if carried is not None:
+                # Preserve the originally supplied native entries, rather than
+                # recursively embedding every subsequently generated DB export.
+                owned = self._validate_entries(carried["entries"])
+                for label, content in carried["sources"].items():
+                    if label in aliases and aliases[label] != content:
+                        raise ValueError(f"Conflicting resource alias {label!r}")
+                    aliases[label] = content
+        if "resources.json" in owned:
+            encoded = json.loads(owned["resources.json"])
+            if not isinstance(encoded, dict) or any(
+                not isinstance(k, str) or not k or not isinstance(v, str)
+                for k, v in encoded.items()
+            ):
+                raise ValueError("Invalid portable resource byte codec")
+            for label, value in encoded.items():
+                content = base64.b64decode(value, validate=True)
+                if label in aliases and aliases[label] != content:
+                    raise ValueError(f"Conflicting resource alias {label!r}")
+                aliases[label] = content
+        if _RESOURCE_CONTEXT_ALIAS in aliases or any(
+            not isinstance(k, str) or not k or not isinstance(v, bytes) for k, v in aliases.items()
+        ):
+            raise ValueError("Invalid retained resource aliases")
+        self.entries = MappingProxyType(owned)
+        self.sources = MappingProxyType(aliases)
+
+    @staticmethod
+    def _validate_entries(entries: Mapping[str, bytes]) -> dict[str, bytes]:
+        """Validate native entry names and exact byte values without extraction."""
+        owned = {}
+        for name, value in entries.items():
+            if (
+                not isinstance(name, str)
+                or not name
+                or name.startswith("/")
+                or "\\" in name
+                or ".." in pathlib.PurePosixPath(name).parts
+                or name == "project.json"
+            ):
+                raise ValueError(f"Unsafe resource entry {name!r}")
+            if not isinstance(value, bytes):
+                raise TypeError("Resource content must be bytes")
+            owned[name] = value
+        return owned
+
+    def __deepcopy__(self, memo: dict) -> ResourceContext:
+        """Retain immutable bytes by identity when snapshots copy owned history."""
+        return self
+
+    def write_to_archive(self, archive: Any) -> None:
+        """Write retained entries and explicit byte aliases without path access."""
+        for name, content in self.entries.items():
+            if name != "resources.json":
+                archive.write_bytes(name, content)
+        if self.sources:
+            archive.write_text("resources.json", json.dumps(self.encoded_sources(), sort_keys=True))
+
+    def encoded_sources(self) -> dict[str, str]:
+        """Encode named source bytes for authenticated JSON transport."""
+        return {name: base64.b64encode(data).decode("ascii") for name, data in self.sources.items()}
+
+    def to_transport_dict(self) -> dict[str, dict[str, str]]:
+        """Encode only named bytes for the public owner transaction transport."""
+        return {
+            "entries": {
+                name: base64.b64encode(data).decode("ascii") for name, data in self.entries.items()
+            },
+            "sources": self.encoded_sources(),
+        }
+
+    @classmethod
+    def from_transport_dict(cls, payload: Any) -> ResourceContext:
+        """Validate a resource-only byte codec without importing or opening paths."""
+        return cls(**cls._decode_transport_dict(payload))
+
+    @staticmethod
+    def _decode_transport_dict(payload: Any) -> dict[str, dict[str, bytes]]:
+        """Decode a finite named byte descriptor, without recursively constructing it."""
+        if not isinstance(payload, dict) or set(payload) != {"entries", "sources"}:
+            raise ValueError("Invalid resource transport codec")
+        decoded = {}
+        for kind, values in payload.items():
+            if not isinstance(values, dict) or any(
+                not isinstance(k, str) or not k or not isinstance(v, str) for k, v in values.items()
+            ):
+                raise ValueError("Invalid resource transport mapping")
+            decoded[kind] = {
+                name: base64.b64decode(value, validate=True) for name, value in values.items()
+            }
+        return decoded
+
+    def database_bundle(self) -> dict[str, str]:
+        """Carry native entries and source aliases through existing resource_bundle."""
+        bundle = self.encoded_sources()
+        if self.entries:
+            # Aliases already travel separately. Do not duplicate their bytes
+            # inside the native-entry descriptor or recursively grow exports.
+            state = self.to_transport_dict()
+            state["sources"] = {}
+            decoded = json.dumps(state, sort_keys=True).encode("utf-8")
+            descriptor = json.dumps(
+                {
+                    "encoding": "zlib-base64",
+                    "decoded_size": len(decoded),
+                    "data": base64.b64encode(zlib.compress(decoded)).decode("ascii"),
+                }
+            ).encode("utf-8")
+            bundle[_RESOURCE_CONTEXT_ALIAS] = base64.b64encode(descriptor).decode("ascii")
+        return bundle
+
+    @classmethod
+    def _decode_database_descriptor(cls, content: bytes) -> dict[str, dict[str, bytes]]:
+        """Decode only the bounded lossless native-entry byte descriptor."""
+        descriptor = json.loads(content)
+        if (
+            not isinstance(descriptor, dict)
+            or set(descriptor) != {"encoding", "decoded_size", "data"}
+            or descriptor["encoding"] != "zlib-base64"
+            or type(descriptor["decoded_size"]) is not int
+            or not 0 <= descriptor["decoded_size"] <= 64 * 1024 * 1024
+            or not isinstance(descriptor["data"], str)
+        ):
+            raise ValueError("Invalid database resource byte descriptor")
+        decompressor = zlib.decompressobj()
+        decoded = decompressor.decompress(
+            base64.b64decode(descriptor["data"], validate=True), descriptor["decoded_size"] + 1
+        )
+        if (
+            len(decoded) != descriptor["decoded_size"]
+            or not decompressor.eof
+            or decompressor.unused_data
+            or decompressor.unconsumed_tail
+        ):
+            raise ValueError("Invalid database resource byte length")
+        return cls._decode_transport_dict(json.loads(decoded))
 
 
 @dataclass
@@ -25,7 +203,7 @@ class Project:
     name: str = "untitled"
     description: str = ""
     chisurf_version: str | None = None
-    project_format_version: int = 4
+    project_format_version: int = 5
     # Creation timestamp (ISO 8601). Mainly for user information.
     created: str = field(default_factory=lambda: datetime.datetime.now().isoformat())
 
@@ -38,6 +216,7 @@ class Project:
     extra: dict[str, Any] = field(default_factory=dict)
     dependency_edges: list[dict[str, Any]] = field(default_factory=list)
     parameters: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    resources: ResourceContext = field(default_factory=ResourceContext, repr=False, compare=False)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert this project into a deterministic JSON-serializable dictionary."""
@@ -64,15 +243,31 @@ class Project:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Project:
-        """Reconstruct a :class:`Project` from a dictionary. V4 format only."""
-        version = int(data.get("project_format_version", 1))
-        if version < 4:
+        """Reconstruct a :class:`Project` from a dictionary. V5 format only."""
+        if not isinstance(data, dict):
+            raise ValueError("Project payload must be a mapping")
+        version = int(data.get("project_format_version", 0))
+        if version != 5:
             raise ValueError(
-                f"Unsupported project format version: {version}. "
-                "This build requires v4 (UID-keyed). v3 and earlier projects are not supported."
+                f"Unsupported project format version: {version}; this build requires v5"
             )
 
         meta = data.get("meta", {})
+        if not isinstance(meta, dict):
+            raise ValueError("Project section 'meta' must be a mapping")
+
+        expected_types = {
+            "datasets": dict,
+            "experiments": dict,
+            "fits": list,
+            "ui": dict,
+            "extra": dict,
+            "dependency_edges": list,
+            "parameters": dict,
+        }
+        for section, expected in expected_types.items():
+            if section in data and not isinstance(data[section], expected):
+                raise ValueError(f"Project section {section!r} must be a {expected.__name__}")
 
         # Extract explicit metadata keys not part of the root
         core_meta_keys = {"name", "description", "chisurf_version", "created"}
@@ -82,7 +277,7 @@ class Project:
             name=meta.get("name", "untitled"),
             description=meta.get("description", ""),
             chisurf_version=meta.get("chisurf_version"),
-            project_format_version=4,
+            project_format_version=5,
             created=meta.get("created") or datetime.datetime.now().isoformat(),
             datasets=data.get("datasets") or {},
             experiments=data.get("experiments") or {},
@@ -122,6 +317,7 @@ class Project:
         assembly path aligned with :meth:`save` without reintroducing ZIP.
         """
         archive.write_text("project.json", json.dumps(self.to_dict(), indent=2, sort_keys=True))
+        self.resources.write_to_archive(archive)
 
     def save(self, target_path: PathLike) -> pathlib.Path:
         """Save this project as a validated ``.cs.pto`` container.
@@ -138,23 +334,8 @@ class Project:
         Path to the saved ``.cs.pto`` project.
         """
         project_path = _project_output_path(target_path)
-        session_bytes = None
-        try:
-            import IMP.bff as bff
-
-            with tempfile.TemporaryDirectory() as tmpdir:
-                session_path = pathlib.Path(tmpdir) / "session.jsonl"
-                bff.get_session().save(str(session_path))
-                session_bytes = session_path.read_bytes()
-        except ImportError:
-            # A headless portable project remains useful without the optional
-            # native graph backend. A project that needs it will say so via its
-            # own records when opened.
-            pass
         archive = ProjectArchive()
         self.save_to_archive(archive)
-        if session_bytes is not None:
-            archive.write_bytes("session.jsonl", session_bytes)
         return archive.save(project_path)
 
     @classmethod
@@ -174,67 +355,20 @@ class Project:
         project_path = _project_input_path(target_path)
         archive = ProjectArchive.open(project_path)
         data = json.loads(archive.read_text("project.json"))
-        session_bytes = (
-            archive.read_bytes("session.jsonl") if archive.has_entry("session.jsonl") else None
-        )
+        from .pto import _validate_project_payload
+
+        data = _validate_project_payload(data)
         archive.close()
         project = cls.from_dict(data)
+        project.resources = ResourceContext(
+            {
+                name: archive.read_bytes(name)
+                for name in archive.list_entries()
+                if name != "project.json"
+            }
+        )
         project._archive_path = project_path
-
-        if session_bytes is not None:
-            try:
-                import IMP.bff as bff
-
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    session_path = pathlib.Path(tmpdir) / "session.jsonl"
-                    session_path.write_bytes(session_bytes)
-                    _restore_bff_session(bff, session_path)
-            except ImportError as exc:
-                raise ProjectPtoError(
-                    "This project contains a BFF graph session but IMP.bff is unavailable"
-                ) from exc
-
         return project
-
-
-def _restore_bff_session(bff, session_path) -> bool:
-    """Load a saved node graph into the process-level bff session.
-
-    ``Session.load`` is a *staticmethod* here too: it builds and returns a
-    new session. Calling it and letting the result go would restore the
-    graph into an object that was immediately discarded, so opening a
-    project silently brought back no nodes at all.
-
-    The restored nodes -- and the free ports, which is what chisurf's fit
-    parameters are -- are moved into the existing ``bff.get_session()``
-    instead of rebinding anything, so references held elsewhere keep
-    pointing at the live session. The archive entry is unchanged: the same
-    ``session.jsonl``, chinet's format, which bff's Session reads and
-    writes field for field, so archives written by chinet-era chisurf open
-    as they are.
-
-    Parameters
-    ----------
-    bff : module
-        The imported ``IMP.bff`` module.
-    session_path : str or pathlib.Path
-        The extracted ``session.jsonl``.
-
-    Returns
-    -------
-    bool
-        Whether a session was restored.
-    """
-    restored = bff.GraphSession.load(str(session_path))
-    if restored is None:
-        return False
-    session = bff.get_session()
-    session.clear()
-    for name, node in restored.get_nodes().items():
-        session.add_node(name, node)
-    for port in restored.get_ports():
-        session.add_port(port)
-    return True
 
 
 def save_project(project: Project, target_path: PathLike) -> pathlib.Path:

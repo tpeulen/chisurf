@@ -150,7 +150,7 @@ class TestHistory(unittest.TestCase):
         history.clear()
         self.assertEqual(history.checkpoint_count(), 0)
 
-    def test_load_jsonl_clears_checkpoints(self):
+    def test_load_jsonl_restores_persisted_checkpoints(self):
         history = OperationHistory(checkpoint_interval=5)
 
         def capture_fn():
@@ -168,7 +168,7 @@ class TestHistory(unittest.TestCase):
             history.save_jsonl(target)
             history.load_jsonl(target, replace=True)
 
-        self.assertEqual(history.checkpoint_count(), 0)
+        self.assertEqual(history.checkpoint_count(), 1)
 
 
 if __name__ == "__main__":

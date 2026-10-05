@@ -151,7 +151,7 @@ class TestHistoryReplayState(unittest.TestCase):
             }
         ]
         state = history_replay.reconstruct_parameter_state(events)
-        key = ("fg", "l1", "tau")
+        key = ("fit-u-1", "local-u-1", "param-u-1")
         self.assertEqual(state[key]["source_fit_uid"], "fit-u-1")
         self.assertEqual(state[key]["source_local_fit_uid"], "local-u-1")
         self.assertEqual(state[key]["source_parameter_uid"], "param-u-1")
@@ -346,7 +346,7 @@ class TestHistoryReplayState(unittest.TestCase):
         self.assertEqual(state["navigation"]["selected_dataset"], "d2")
         self.assertEqual(state["navigation"]["selected_fit"], "f1")
 
-        param_key = ("fg", "l1", "tau")
+        param_key = ("fg-u", "l1-u", "tau-u")
         self.assertIn(param_key, state["parameters"])
         self.assertEqual(state["parameters"][param_key]["value"], 2.5)
         self.assertEqual(state["parameters"][param_key]["fixed"], True)
@@ -364,6 +364,7 @@ class TestHistoryReplayState(unittest.TestCase):
                 "source_uid": "fit-u1",
                 "payload": {
                     "component_name": "gaussian1",
+                    "local_fit_uid": "local-u1",
                 },
             },
             {
@@ -371,6 +372,7 @@ class TestHistoryReplayState(unittest.TestCase):
                 "source_uid": "fit-u1",
                 "payload": {
                     "correction_type": "pileup",
+                    "local_fit_uid": "local-u1",
                     "value": 0.05,
                 },
             },
@@ -379,6 +381,7 @@ class TestHistoryReplayState(unittest.TestCase):
                 "source_uid": "fit-u1",
                 "payload": {
                     "irf_idx": 0,
+                    "local_fit_uid": "local-u1",
                     "irf_name": "measured",
                 },
             },
@@ -387,6 +390,7 @@ class TestHistoryReplayState(unittest.TestCase):
                 "source_uid": "fit-u1",
                 "payload": {
                     "component_name": "gaussian1",
+                    "local_fit_uid": "local-u1",
                 },
             },
         ]
@@ -399,10 +403,10 @@ class TestHistoryReplayState(unittest.TestCase):
         fg_state = state["fit-u1"]
         self.assertEqual(fg_state["fit_group_uid"], "fit-u1")
 
-        # Check that local fits were tracked (default local_0)
-        self.assertIn("local_0", fg_state["local_fits"])
+        # Check that local fits were tracked (exact UID local-u1)
+        self.assertIn("local-u1", fg_state["local_fits"])
 
-        local_state = fg_state["local_fits"]["local_0"]
+        local_state = fg_state["local_fits"]["local-u1"]
 
         # Check components - the remove should overwrite the add
         self.assertEqual(len(local_state["components"]), 1)
@@ -420,12 +424,12 @@ class TestHistoryReplayState(unittest.TestCase):
             {
                 "action_type": "model_add_component",
                 "source_uid": "fit-u1",
-                "payload": {"component_name": "comp1"},
+                "payload": {"component_name": "comp1", "local_fit_uid": "local-u1"},
             },
             {
                 "action_type": "model_add_component",
                 "source_uid": "fit-u2",
-                "payload": {"component_name": "comp2"},
+                "payload": {"component_name": "comp2", "local_fit_uid": "local-u2"},
             },
         ]
 
@@ -436,11 +440,15 @@ class TestHistoryReplayState(unittest.TestCase):
         self.assertIn("fit-u2", state)
 
         # Check components in each fit
-        self.assertEqual(len(state["fit-u1"]["local_fits"]["local_0"]["components"]), 1)
-        self.assertEqual(state["fit-u1"]["local_fits"]["local_0"]["components"][0]["name"], "comp1")
+        self.assertEqual(len(state["fit-u1"]["local_fits"]["local-u1"]["components"]), 1)
+        self.assertEqual(
+            state["fit-u1"]["local_fits"]["local-u1"]["components"][0]["name"], "comp1"
+        )
 
-        self.assertEqual(len(state["fit-u2"]["local_fits"]["local_0"]["components"]), 1)
-        self.assertEqual(state["fit-u2"]["local_fits"]["local_0"]["components"][0]["name"], "comp2")
+        self.assertEqual(len(state["fit-u2"]["local_fits"]["local-u2"]["components"]), 1)
+        self.assertEqual(
+            state["fit-u2"]["local_fits"]["local-u2"]["components"][0]["name"], "comp2"
+        )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import os
 from types import SimpleNamespace
 from unittest import mock
@@ -17,32 +18,6 @@ def qapp():
     from qtpy import QtWidgets
 
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def _seed_project_browser_db(tmp_path, monkeypatch):
-    from mmfdb.repository import MFDatabase
-    from mmfdb.security.auth import create_session
-
-    from chisurf.plugins.core.project_browser.backend import services
-
-    db_path = tmp_path / "project_browser_gui.db"
-    object_root = tmp_path / "objects"
-    with MFDatabase(db_path) as db:
-        db.add_user("user_default", "Default User")
-        db.add_user("admin_user", "Admin User", is_admin=1)
-        session = create_session(db.conn, "admin_user", client_name="pytest-gui")
-        db.conn.commit()
-
-    monkeypatch.setattr(services, "resolve_database_path", lambda: db_path)
-    monkeypatch.setattr(
-        "mmfdb.store.database_resolver.resolve_database_path",
-        lambda: db_path,
-    )
-    monkeypatch.setattr(
-        "mmfdb.store.database_resolver.object_store_root",
-        lambda: object_root,
-    )
-    return db_path, {"token": session["token"]}
 
 
 def _sample_payload(tmp_path):
@@ -182,23 +157,30 @@ def test_project_browser_toolbar_buttons_fire_their_handler_once(qapp, monkeypat
         widget.close()
 
 
-def test_project_browser_gui_uses_inprocess_chisurf_services_with_sample_data(
-    qapp,
-    tmp_path,
-    monkeypatch,
-):
-    from chisurf.plugins.core.project_browser.backend.services import save_project_handler
+@pytest.fixture
+def deployment(authenticated_browser, sample_project_payload, monkeypatch):
+    """The Qt tool on the authenticated MMFDB deployment the Save path uses."""
     from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
 
-    _, auth = _seed_project_browser_db(tmp_path, monkeypatch)
-    saved = save_project_handler(
-        auth=auth,
-        project_name="Sample Project",
-        project_payload=_sample_payload(tmp_path),
-        visibility="public",
-        notes="headless in-process GUI test",
-    )
-    assert saved["ok"] is True
+    client = authenticated_browser["client"]
+    monkeypatch.setattr(ProjectBrowserTool, "_make_client", lambda self: client)
+
+    def save(name, visibility="public", notes=""):
+        payload = copy.deepcopy(sample_project_payload)
+        payload["meta"]["name"] = name
+        saved = client.save_project(
+            project_name=name, project_payload=payload, visibility=visibility, notes=notes
+        )
+        assert saved["ok"] is True, saved
+        return saved, payload
+
+    return SimpleNamespace(client=client, save=save, tmp_path=authenticated_browser["tmp_path"])
+
+
+def test_project_browser_gui_uses_inprocess_chisurf_services_with_sample_data(qapp, deployment):
+    from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
+
+    saved, _ = deployment.save("Sample Project", notes="headless GUI test")
 
     widget = ProjectBrowserTool()
     try:
@@ -215,28 +197,10 @@ def test_project_browser_gui_uses_inprocess_chisurf_services_with_sample_data(
         widget.close()
 
 
-def test_project_browser_gui_deletes_selected_version_with_confirmation(
-    qapp,
-    tmp_path,
-    monkeypatch,
-):
-    from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
-
-    from chisurf.plugins.core.project_browser.backend.services import (
-        save_project_handler,
-    )
+def test_project_browser_gui_deletes_selected_version_with_confirmation(qapp, deployment):
     from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
 
-    _, auth = _seed_project_browser_db(tmp_path, monkeypatch)
-    saved = save_project_handler(
-        auth=auth,
-        project_name="Delete Project",
-        project_payload=_sample_payload(tmp_path),
-        visibility="public",
-        notes="headless delete GUI test",
-    )
-    assert saved["ok"] is True
-    monkeypatch.setitem(_RUNTIME_SESSION_TOKENS, "pytest-gui", auth["token"])
+    saved, _ = deployment.save("Delete Project", notes="headless delete GUI test")
 
     widget = ProjectBrowserTool()
     try:
@@ -267,36 +231,18 @@ def test_project_browser_gui_deletes_selected_version_with_confirmation(
         widget.close()
 
 
-def test_project_browser_gui_imports_archive_with_collision_remap(
-    qapp,
-    tmp_path,
-    monkeypatch,
-):
+def test_project_browser_gui_imports_archive_with_collision_remap(qapp, deployment):
     from qtpy import QtWidgets
 
-    from chisurf.plugins.core.project_browser.backend.services import (
-        export_csp_handler,
-        save_project_handler,
-    )
     from chisurf.plugins.core.project_browser.gui.tool import (
         CollisionDialog,
         ProjectBrowserTool,
     )
 
-    _, auth = _seed_project_browser_db(tmp_path, monkeypatch)
-    saved = save_project_handler(
-        auth=auth,
-        project_name="Import Project",
-        project_payload=_sample_payload(tmp_path),
-        visibility="public",
-        notes="headless import GUI test",
-    )
-    assert saved["ok"] is True
-    archive_path = tmp_path / "import-project.cs.pto"
-    exported = export_csp_handler(
-        auth=auth,
-        version_id=saved["version_id"],
-        target_path=str(archive_path),
+    saved, _ = deployment.save("Import Project", notes="headless import GUI test")
+    archive_path = deployment.tmp_path / "import-project.cs.pto"
+    exported = deployment.client.export_csp(
+        version_id=saved["version_id"], target_path=str(archive_path)
     )
     assert exported["ok"] is True
 
@@ -328,32 +274,17 @@ def test_project_browser_gui_imports_archive_with_collision_remap(
 
 
 def test_project_browser_gui_restores_selected_version_into_chisurf_context(
-    qapp,
-    tmp_path,
-    monkeypatch,
+    qapp, deployment, monkeypatch
 ):
-    from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
     from qtpy import QtCore
 
     import chisurf as cs
     import chisurf.macros.core_fit as core_fit
-    from chisurf.plugins.core.project_browser.backend.services import (
-        save_project_handler,
-    )
     from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
 
-    _, auth = _seed_project_browser_db(tmp_path, monkeypatch)
-    payload = _sample_payload(tmp_path)
-    payload["meta"]["name"] = "Restore Project"
-    saved = save_project_handler(
-        auth=auth,
-        project_name="Restore Project",
-        project_payload=payload,
-        visibility="private",
-        notes="headless restore GUI test",
+    saved, payload = deployment.save(
+        "Restore Project", visibility="private", notes="headless restore GUI test"
     )
-    assert saved["ok"] is True
-    monkeypatch.setitem(_RUNTIME_SESSION_TOKENS, "pytest-gui", auth["token"])
 
     chisurf_context = SimpleNamespace(
         _current_project_id=None,
@@ -394,7 +325,7 @@ def test_project_browser_gui_restores_selected_version_into_chisurf_context(
         loaded_project, project_path = loaded_projects[0]
         assert project_path is None
         assert loaded_project.name == "Restore Project"
-        assert "ds_sample" in loaded_project.datasets
+        assert set(loaded_project.datasets) == set(payload["datasets"])
         assert gui_restore_projects == [loaded_project]
         assert chisurf_context._current_project_id == saved["project_id"]
         assert chisurf_context._current_project_version_id == saved["version_id"]

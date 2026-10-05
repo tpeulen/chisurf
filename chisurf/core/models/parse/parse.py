@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from re import Scanner
+import ast
+import builtins
+import math
+from re import Scanner  # type: ignore[attr-defined]  # Runtime API absent from the re stub.
+from typing import Callable
 
 import numpy
 from numpy import *
@@ -16,6 +20,92 @@ from chisurf.core.models.model import ModelCurve
 
 class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
     name = "Parse-Model"
+
+    @staticmethod
+    def _validate_expression(expression: object) -> None:
+        """Accept numerical expressions without Python execution capabilities."""
+        import scipy.special
+
+        if not isinstance(expression, str) or not expression.strip():
+            raise ValueError("ParseModel expression is missing")
+        try:
+            tree = ast.parse(expression, mode="eval")
+        except SyntaxError as exc:
+            raise ValueError("invalid ParseModel expression") from exc
+        functions = {
+            name for name, value in vars(numpy).items() if isinstance(value, numpy.ufunc)
+        } | {"abs", "min", "max", "pow"}
+        special_functions = {
+            name for name, value in vars(scipy.special).items() if isinstance(value, numpy.ufunc)
+        }
+        calls = (
+            functions
+            | {f"{module}.{name}" for module in ("numpy", "np") for name in functions}
+            | {f"scipy.special.{name}" for name in special_functions}
+        )
+        attributes = (
+            (calls - functions)
+            | {f"{module}.{name}" for module in ("numpy", "np") for name in ("pi", "e")}
+            | {"scipy.special"}
+        )
+        allowed = (
+            ast.Expression,
+            ast.BinOp,
+            ast.UnaryOp,
+            ast.Add,
+            ast.Sub,
+            ast.Mult,
+            ast.Div,
+            ast.Pow,
+            ast.UAdd,
+            ast.USub,
+            ast.Load,
+            ast.Call,
+            ast.Name,
+            ast.Attribute,
+            ast.Constant,
+        )
+        for node in ast.walk(tree):
+            if not isinstance(node, allowed):
+                raise ValueError("unsupported ParseModel expression syntax")
+            if isinstance(node, ast.Name) and node.id.startswith("_"):
+                raise ValueError("private names are not numerical variables")
+            if isinstance(node, ast.Constant) and (
+                isinstance(node.value, builtins.bool)
+                or not isinstance(node.value, (int, float))
+                or not math.isfinite(node.value)
+            ):
+                raise ValueError("ParseModel constants must be finite numbers")
+            if isinstance(node, ast.Attribute):
+                path = ast.unparse(node)
+                if path not in attributes:
+                    raise ValueError("unsupported ParseModel numerical attribute")
+            if isinstance(node, ast.Call):
+                path = ast.unparse(node.func)
+                if path not in calls or node.keywords:
+                    raise ValueError("unsupported ParseModel numerical function")
+
+    def get_state(self) -> dict:
+        """Capture the exact equation independently of an external catalogue."""
+        self._validate_expression(self.func)
+        state = super().get_state()
+        state.update(expression=self.func, model_name=self.model_name)
+        return state
+
+    def set_state(self, state: dict) -> None:
+        """Restore an explicit, validated equation before applying coefficients."""
+        if not isinstance(state, dict) or not isinstance(state.get("model_name"), str):
+            raise ValueError("ParseModel catalogue selection is missing")
+        allowed = {"model_module", "model_class", "parameters", "expression", "model_name"}
+        if set(state) - allowed:
+            raise ValueError("unexpected ParseModel state fields")
+        expression = state.get("expression")
+        self._validate_expression(expression)
+        # Identity is descriptive; never replace the saved equation with today's
+        # catalogue entry or load a catalogue path supplied by an archive.
+        self._catalogue_state()["name"] = state["model_name"]
+        self.func = expression
+        super().set_state(state)
 
     @property
     def func(self) -> str:
@@ -212,8 +302,8 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
         self._keys = list()
         self._count = 0
         self._func = "x*0"
-        self._parameters_equation = list()
-        self._func_listeners = []
+        self._parameters_equation: list[FittingParameter] = []
+        self._func_listeners: list[Callable] = []
         self._expression = None
         # Which evaluator actually ran, counted rather than assumed. The whole
         # shipped catalogue is expected to evaluate in C++, and a test pins
@@ -234,7 +324,7 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
         self.select_first_catalogue_entry()
 
     @property
-    def evaluates_in_cpp(self) -> bool:
+    def evaluates_in_cpp(self) -> builtins.bool:
         """Whether this model's equation compiled for the C++ engine.
 
         False means :meth:`update_model` runs Python's ``eval`` instead --
@@ -294,8 +384,25 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
                 )
                 self._expression = None
 
-        [p.value for p in self._parameters_equation]
-        # TODO: better evaluate when the func is set
-        y = eval(self.code)
+        import scipy.special
+
+        self._validate_expression(self.func)
+        scope = {
+            name: value for name, value in vars(numpy).items() if isinstance(value, numpy.ufunc)
+        }
+        scope.update(
+            x=x,
+            numpy=numpy,
+            np=numpy,
+            scipy=scipy,
+            pi=numpy.pi,
+            e=numpy.e,
+            abs=numpy.abs,
+            min=numpy.minimum,
+            max=numpy.maximum,
+            pow=numpy.power,
+        )
+        scope.update({p.name: p.value for p in self._parameters_equation})
+        y = eval(self.func, {"__builtins__": {}}, scope)
         self.y = y
         self._n_eval_python += 1

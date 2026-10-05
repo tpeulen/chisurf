@@ -6,10 +6,12 @@ These exercise the ``parameter_uid`` / ``owner_uid`` resolution path added so
 parameters that live outside ``chisurf.fits`` (e.g. a plugin working model) can
 be read, edited and linked through the same service as fit parameters. Real
 :class:`FittingParameter` / :class:`FittingParameterGroup` objects are required
-because resolution goes through the global ``Base._uuid_index``.
+because resolution must follow the addressed session's registered plugin/fit
+roots; process-global registration alone confers no mutation authority.
 """
 
 import pathlib
+from uuid import uuid4
 
 import utils
 
@@ -37,12 +39,19 @@ def _group(names):
     return g
 
 
+def _owned_state(*groups, fits=None):
+    """Register actual working models at the addressed plugin session owner."""
+    state = SessionState(fits=list(fits or []))
+    state.plugins.update({group.unique_identifier: group for group in groups})
+    return state
+
+
 class TestParameterUidPath:
     def test_get_by_parameter_uid(self):
         g = _group(["tau"])
         p = g.parameters_all_dict["tau"]
         p.value = 3.5
-        state = SessionState(fits=[])
+        state = _owned_state(g)
         result = get_parameter(state, parameter_uid=p.unique_identifier)
         assert result["ok"]
         assert result["parameter"]["value"] == 3.5
@@ -56,7 +65,7 @@ class TestParameterUidPath:
     def test_set_value_by_uid(self):
         g = _group(["tau"])
         p = g.parameters_all_dict["tau"]
-        state = SessionState(fits=[])
+        state = _owned_state(g)
         result = set_parameter_value(
             state,
             value=7.0,
@@ -70,7 +79,7 @@ class TestParameterUidPath:
         g = _group(["tau"])
         p = g.parameters_all_dict["tau"]
         p.fixed = False
-        state = SessionState(fits=[])
+        state = _owned_state(g)
         result = set_parameter_fixed(
             state,
             fixed=True,
@@ -84,7 +93,7 @@ class TestParameterUidPath:
         g_follower = _group(["f"])
         master = g_master.parameters_all_dict["m"]
         follower = g_follower.parameters_all_dict["f"]
-        state = SessionState(fits=[])
+        state = _owned_state(g_master, g_follower)
 
         result = parameter_link(
             state,
@@ -105,9 +114,9 @@ class TestParameterUidPath:
 
         class _Fit:
             model = fit_model
-            unique_identifier = fit_model.unique_identifier
+            unique_identifier = str(uuid4())
 
-        state = SessionState(fits=[_Fit()])
+        state = _owned_state(plugin_group, fits=[_Fit()])
 
         # Link the plugin parameter (out of fit) to the fit parameter by UUID.
         result = parameter_link(
@@ -128,7 +137,7 @@ class TestParameterUidPath:
         follower.link = master
         assert follower.is_linked
 
-        state = SessionState(fits=[])
+        state = _owned_state(g_master, g_follower)
         result = parameter_unlink(
             state,
             parameter_uid=follower.unique_identifier,
@@ -139,7 +148,7 @@ class TestParameterUidPath:
     def test_link_unknown_target_uid(self):
         g = _group(["f"])
         follower = g.parameters_all_dict["f"]
-        state = SessionState(fits=[])
+        state = _owned_state(g)
         result = parameter_link(
             state,
             parameter_uid=follower.unique_identifier,

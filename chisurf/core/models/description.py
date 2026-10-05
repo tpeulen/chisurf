@@ -53,6 +53,9 @@ class DescriptionParameter(FittingParameter):
     def value(self) -> float:
         # A port that follows another (a link across fits) reads as a
         # one-element vector.
+        target = self.__dict__.get("_link")
+        if target is not None:
+            return float(target.value)
         pv = self._port.value
         return pv if type(pv) is float else float(np.atleast_1d(pv)[0])
 
@@ -64,6 +67,24 @@ class DescriptionParameter(FittingParameter):
         self._port.fixed = False
         self._port.value = float(value)
         self._port.fixed = was
+
+    @property
+    def link(self):
+        """Return the exact shared parameter followed by this canonical port."""
+        return FittingParameter.link.fget(self)
+
+    @link.setter
+    def link(self, target):
+        """Initialize the canonical buffer before wiring its downstream followers.
+
+        Native structure inputs follow the canonical port. Initial link binding
+        reads through the target without copying its value into that buffer;
+        subsequent target writes propagate normally. Seed the buffer so the
+        initial evaluation and unlinking both keep the effective value.
+        """
+        if target is not None or self.link is not None:
+            self.value = float(target.value if target is not None else self.value)
+        FittingParameter.link.fset(self, target)
 
     @property
     def bounds_on(self) -> bool:
@@ -478,6 +499,7 @@ class DescriptionModel(ModelCurve):
                 *presentation.get("values", {}),
             ]
         )
+        self._update_statistics(evaluate=False)
         self._assign_group_position(fit)
 
     def _assign_group_position(self, fit) -> None:
@@ -699,17 +721,34 @@ class DescriptionModel(ModelCurve):
         if missing or self.__dict__.get("_bound_primary") is None:
             return None
         rebuilt = not self._spec.get_model_is_current()
+        linked_flags = (
+            {
+                parameter.canonical_id: bool(parameter._port.fixed)
+                for group in self._groups.values()
+                for parameter in group.parameters_all
+                if isinstance(parameter, DescriptionParameter) and parameter.link is not None
+            }
+            if rebuilt
+            else {}
+        )
         model = self._spec.get_model()
         if rebuilt:
             self._adopt(model)
+            # BFF excludes linked ports from optimisation independently of
+            # their physical hold flag. Preserve that flag across a data rebind.
+            for canonical, held in linked_flags.items():
+                model.get_parameter(canonical).fixed = held
+            self._restore_native_graph_identity(model)
         pending = self.__dict__.pop("_pending_defaults", None)
         if pending:
             ids = set(model.get_parameter_ids())
             for canonical, value in pending.items():
                 if canonical in ids:
                     port = model.get_parameter(canonical)
+                    held = port.fixed
                     port.fixed = False
                     port.value = value
+                    port.fixed = held
                     model.set_parameter_locked(canonical, True)
         starts = self.__dict__.pop("_pending_starts", None)
         if starts:
@@ -1295,12 +1334,35 @@ class DescriptionModel(ModelCurve):
     def source_models(self) -> list:
         return list(self._source_models)
 
+    def get_model_references(self) -> dict:
+        """Return runtime model inputs for exact session identity addressing."""
+        if self.source_info and self.source_info.get("kind", "models") == "models":
+            return {"sources": self.source_models}
+        return {}
+
+    def set_model_references(self, references: dict) -> None:
+        """Bind restored model inputs before rebuilding the dependent problem.
+
+        Parameters
+        ----------
+        references : dict
+            Resolved model instances, supplied by the validated session graph.
+        """
+        if not references:
+            return
+        if set(references) != {"sources"} or self.source_info.get("kind", "models") != "models":
+            raise ValueError("invalid described-model input roles")
+        self.clear_sources()
+        for source in references["sources"]:
+            self.append_model(source)
+
     @property
     def model_names(self) -> typing.List[str]:
         return list(self._source_names)
 
     def _bind_sources(self) -> None:
         info = self.source_info
+        old_bound = set(self._bound_ports)
         for name in self._bound_ports:
             self._spec.unset_port(name)
         self._bound_ports = []
@@ -1309,8 +1371,16 @@ class DescriptionModel(ModelCurve):
             if info.get("kind") == "values":
                 # A port of our own holding the array; kept, since the spec only
                 # references it.
-                port = _bff.GraphPort(list(source))
-                self.__dict__.setdefault("_value_ports", {})[name] = port
+                value_ports = self.__dict__.setdefault("_value_ports", {})
+                port = value_ports.get(name)
+                if port is None:
+                    port = _bff.GraphPort(list(source))
+                    value_ports[name] = port
+                else:
+                    held = port.fixed
+                    port.fixed = False
+                    port.value = list(source)
+                    port.fixed = held
                 self._spec.set_port(name, port)
             else:
                 problem = source.problem
@@ -1321,6 +1391,9 @@ class DescriptionModel(ModelCurve):
                     )
                 self._spec.set_port(name, problem.get_output_port(info["output"]))
             self._bound_ports.append(name)
+        if info.get("kind") == "values":
+            for name in old_bound - set(self._bound_ports):
+                self._value_ports.pop(name, None)
         self.set_scalar(info["count"], float(max(1, len(self._source_models))))
         self._forget_discovery()
         factorgraph.bump_structure_version()
@@ -1415,7 +1488,8 @@ class DescriptionModel(ModelCurve):
     def _widen_for(self, group: str, wanted: int, counts, delta: int):
         """Move a scalar that bounds the component axes until the topology exists."""
         names = set(self.scalar_names())
-        fixed, upper = [], []
+        fixed: list[str] = []
+        upper: list[str] = []
         for axis in (self._document.get("axes") or {}).values():
             low, high = axis.get("from"), axis.get("to")
             if isinstance(high, str) and high in names:
@@ -1501,7 +1575,8 @@ class DescriptionModel(ModelCurve):
             return self._presented_number(name)
         raise AttributeError(name)
 
-    def _update_statistics(self) -> None:
+    def _update_statistics(self, evaluate: bool = True) -> None:
+        """Declare output parameters independently of evaluating the scientific graph."""
         statistics = self.presentation.get("statistics", {})
         # Reporting a description asks the application for (an efficiency
         # from a density): a Python function of parameters, called on demand
@@ -1526,6 +1601,8 @@ class DescriptionModel(ModelCurve):
                 parameters=list(outputs.values()), name="Outputs"
             )
             self._forget_discovery()
+        if not evaluate:
+            return
         for key in (*statistics, *reports, *values):
             try:
                 outputs[key].value = self._presented_number(key)
@@ -1687,6 +1764,18 @@ class DescriptionModel(ModelCurve):
         if problem is None:
             self.y = np.zeros_like(np.asarray(self.x, dtype=float))
             return
+        for group in self._groups.values():
+            for parameter in group.parameters_all:
+                if isinstance(parameter, DescriptionParameter) and parameter.link is not None:
+                    # Native structure inputs follow the canonical buffer one
+                    # hop away. Held linked owners do not receive propagated
+                    # writes, so synchronize the effective shared value here.
+                    bounded = parameter._port.bounded
+                    parameter._port.bounded = False
+                    try:
+                        parameter.value = float(parameter.link.value)
+                    finally:
+                        parameter._port.bounded = bounded
         active = problem.get_active_structure()
         node = problem.get_structure_curve_node(active, self.primary_dataset)
         self.y = np.array(problem.get_structure_output(active, node), dtype=float)
@@ -1769,11 +1858,101 @@ class DescriptionModel(ModelCurve):
             self.y = saved_y
 
     # --- persistence -----------------------------------------------------------
+    def get_session_native_nodes(self) -> list:
+        """Declare the current owned native topology for detached UID routing."""
+        problem = self.problem
+        return [] if problem is None else list(self._native_graph_nodes(problem).values())
+
+    def restore_session_link_fixed(self, parameter, fixed: bool) -> None:
+        """Restore a linked port's physical hold without creating a scientific lock.
+
+        The adapter state already restores user locks and releases. Native
+        optimisation also holds linked owners, so their physical fixed flag is
+        separate state and must not be translated into another user lock.
+        """
+        if not isinstance(parameter, DescriptionParameter):
+            # Derived outputs use ordinary FittingParameter state and do not
+            # participate in the native problem's lock/release vocabulary.
+            parameter.fixed = bool(fixed)
+        else:
+            parameter._port.fixed = bool(fixed)
+
+    def _native_graph_nodes(self, problem) -> dict:
+        """Declared objective topologies and published relays, without evaluation."""
+        nodes = {}
+        external_outputs: set[str] = set()
+        for source in self._source_models:
+            if isinstance(source, DescriptionModel) and source.problem is not None:
+                external_outputs.update(
+                    str(source.problem.get_output_port(name).uid)
+                    for name in source.problem.get_output_names()
+                )
+        for structure in problem.get_structure_keys():
+            pending = [problem.get_structure_objective(structure)]
+            visited = set()
+            while pending:
+                node = pending.pop()
+                uid = str(node.get_uid())
+                if uid in visited:
+                    continue
+                visited.add(uid)
+                name = str(node.get_name())
+                # Referenced models retain their own identities and are restored
+                # by the session dependency graph, never as owned child nodes.
+                if not name.startswith(f"{structure}."):
+                    continue
+                nodes[f"structure/{structure}/{name}"] = node
+                for port in node.get_input_ports().values():
+                    linked = port.get_link()
+                    if linked is not None and str(linked.uid) in external_outputs:
+                        continue
+                    source = None if linked is None else linked.get_node()
+                    if source is not None:
+                        pending.append(source)
+        for name in problem.get_output_names():
+            node = problem.get_output_port(name).get_node()
+            if node is not None:
+                nodes[f"published/{name}"] = node
+        return nodes
+
+    def _restore_native_graph_identity(self, problem) -> None:
+        """Route saved identities onto the shipped topology rather than deserialize code."""
+        state = self.__dict__.get("_saved_native_graph_identity")
+        if not state:
+            return
+        nodes = self._native_graph_nodes(problem)
+        for key, saved in state.items():
+            node = nodes.get(key)
+            if node is None:
+                # A later scientific topology edit may remove a saved structure.
+                continue
+            ports = node.get_ports()
+            if set(ports) != set(saved["ports"]):
+                raise ValueError(f"native described-model port topology changed for {key!r}")
+            node.set_uid(saved["uid"])
+            for name, uid in saved["ports"].items():
+                ports[name].uid = uid
+
     def get_state(self) -> dict:
         problem = self.problem
         state = {
             "family": self.family,
             "scalars": dict(self._scalars),
+            "value_ports": {
+                name: np.asarray(port.value, dtype=float).ravel().tolist()
+                for name, port in self.__dict__.get("_value_ports", {}).items()
+                if name not in self._bound_ports
+            },
+            "value_port_uids": {
+                name: str(port.uid)
+                for name, port in self.__dict__.get("_value_ports", {}).items()
+                if name not in self._bound_ports
+            },
+            "source_value_port_uids": {
+                name: str(self._value_ports[name].uid) for name in self._bound_ports
+            }
+            if self.source_info.get("kind") == "values"
+            else {},
             # By name: a source is another fit, which a project restores itself.
             "source_fits": list(self._source_names),
             "datasets": {
@@ -1785,9 +1964,18 @@ class DescriptionModel(ModelCurve):
             },
         }
         if problem is not None:
+            state["native_graph_identity"] = {
+                key: {
+                    "uid": str(node.get_uid()),
+                    "ports": {name: str(port.uid) for name, port in node.get_ports().items()},
+                }
+                for key, node in self._native_graph_nodes(problem).items()
+            }
             ids = list(problem.get_parameter_ids())
             state["structure"] = str(problem.get_active_structure())
-            state["values"] = {i: float(problem.get_parameter(i).value) for i in ids}
+            state["values"] = {
+                i: float(np.atleast_1d(problem.get_parameter(i).value)[0]) for i in ids
+            }
             state["locked"] = [i for i in ids if problem.get_parameter_locked(i)]
             state["released"] = [i for i in ids if problem.get_parameter_released(i)]
         return state
@@ -1795,15 +1983,70 @@ class DescriptionModel(ModelCurve):
     def set_state(self, state: dict) -> None:
         import chisurf.core.curve
 
+        names = state.get("source_fits", [])
+        if len(names) != len(self._source_models):
+            raise ValueError("model inputs must be bound before restoring described state")
+        if any(not isinstance(name, str) for name in names):
+            raise ValueError("invalid model input labels")
+        self._source_names = list(names)
         for name, value in state.get("scalars", {}).items():
             self.set_scalar(name, value)
+        source_uids = state.get("source_value_port_uids")
+        if source_uids is not None:
+            expected = set(self._bound_ports) if self.source_info.get("kind") == "values" else set()
+            if (
+                not isinstance(source_uids, dict)
+                or set(source_uids) != expected
+                or any(not isinstance(uid, str) or not uid for uid in source_uids.values())
+                or len(set(source_uids.values())) != len(source_uids)
+            ):
+                raise ValueError("invalid owned source-value port identities")
+            for name, uid in source_uids.items():
+                self._value_ports[name].uid = uid
+        declared_ports = self._document.get("ports", {})
+        axis_port = self.source_info.get("axis_port")
+        for name, values in state.get("value_ports", {}).items():
+            if name not in declared_ports and name != axis_port:
+                raise ValueError(f"undeclared described-model value port {name!r}")
+            self.set_port_values(name, values)
+            uid = state.get("value_port_uids", {}).get(name)
+            if uid:
+                self._value_ports[name].uid = str(uid)
         for slot, curve in state.get("datasets", {}).items():
             self.set_dataset(
                 slot, chisurf.core.curve.Curve(x=np.asarray(curve["x"]), y=np.asarray(curve["y"]))
             )
+        # Building an inverse graph may evaluate its initial configuration.
+        # Seed the saved grid before binding a grid-sized prior to that graph.
+        for canonical, value in state.get("values", {}).items():
+            declared = self._document.get("parameters", {}).get(canonical, {})
+            # ModelSearchSpec defaults omitted ``free`` to true, with each
+            # topology selecting which of those eligible ports is active.
+            self._spec.set_parameter_value(
+                canonical, float(value), bool(declared.get("free", True))
+            )
         problem = self.problem
         if problem is None or "values" not in state:
             return
+        graph_identity = state.get("native_graph_identity")
+        if graph_identity is not None:
+            if not isinstance(graph_identity, dict):
+                raise ValueError("invalid native described-model identity")
+            if set(graph_identity) != set(self._native_graph_nodes(problem)):
+                raise ValueError("native described-model topology changed")
+            for key, saved in graph_identity.items():
+                if not isinstance(saved, dict) or set(saved) != {"uid", "ports"}:
+                    raise ValueError(f"invalid native described-model identity for {key!r}")
+                if (
+                    not isinstance(saved["uid"], str)
+                    or not saved["uid"]
+                    or not isinstance(saved["ports"], dict)
+                ):
+                    raise ValueError(f"invalid native described-model UID for {key!r}")
+                if any(not isinstance(uid, str) or not uid for uid in saved["ports"].values()):
+                    raise ValueError(f"invalid native described-model port UID for {key!r}")
+            self.__dict__["_saved_native_graph_identity"] = graph_identity
+            self._restore_native_graph_identity(problem)
         ids = set(problem.get_parameter_ids())
         for canonical in ids:
             problem.set_parameter_locked(canonical, canonical in state.get("locked", ()))
@@ -1818,7 +2061,6 @@ class DescriptionModel(ModelCurve):
                 port.value = float(value)
                 port.fixed = was
         factorgraph.bump_structure_version()
-        self.update()
 
 
 _FAMILIES: typing.Dict[str, type] = {}

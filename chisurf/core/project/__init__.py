@@ -9,5 +9,15 @@ from __future__ import annotations
 
 from .archive import ProjectArchive
 from .project import Project, load_project, save_project
+from .session import RestoredSession, SessionCodecError, capture_session, restore_session
 
-__all__ = ["Project", "ProjectArchive", "save_project", "load_project"]
+__all__ = [
+    "Project",
+    "ProjectArchive",
+    "save_project",
+    "load_project",
+    "RestoredSession",
+    "SessionCodecError",
+    "capture_session",
+    "restore_session",
+]

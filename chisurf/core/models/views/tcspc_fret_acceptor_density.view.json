@@ -190,7 +190,7 @@
       "options": {
         "distribution_options": {
           "Donor lifetimes": {
-            "attribute": "lifetime_spectrum",
+            "attribute": "donor_lifetime_spectrum",
             "accessor": "interleaved_to_two_columns",
             "accessor_kwargs": {
               "sort": true

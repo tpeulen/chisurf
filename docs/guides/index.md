@@ -19,6 +19,14 @@ The guides are grouped by what you are trying to measure. If you are starting
 from a raw photon file, begin with *Photon data and the burst pipeline*; if you
 already have a burst list or a decay, jump straight to the analysis you need.
 
+## Projects and session lifecycle
+
+```{toctree}
+:maxdepth: 1
+
+saving_projects
+```
+
 ## Photon data and the burst pipeline
 
 ```{toctree}

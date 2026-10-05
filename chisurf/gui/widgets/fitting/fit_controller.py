@@ -18,6 +18,7 @@ import chisurf.gui.widgets.experiments.widgets
 import chisurf.logging
 from chisurf.core.actions import record_action
 from chisurf.core.math.optimization import OptimizationCancelled
+from chisurf.gui.widgets.fitting import presentation_fit_members
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.general import Controller
 
@@ -565,7 +566,7 @@ class FittingControllerWidget(Controller):
 
         labels = []
         if fit is not None:
-            for f in fit:
+            for f in presentation_fit_members(fit):
                 data = getattr(f, "data", None)
                 try:
                     base_name = os.path.basename(
@@ -575,6 +576,13 @@ class FittingControllerWidget(Controller):
                     base_name = getattr(data, "name", "Unknown")
                 labels.append((self._format_dataset_label(base_name), base_name))
         self._build_controls(labels)
+        blocked = self.comboBox.blockSignals(True)
+        try:
+            self.comboBox.setCurrentIndex(
+                fit.selected_fit_index if isinstance(fit, cs.core.fitting.fit.FitGroup) else 0
+            )
+        finally:
+            self.comboBox.blockSignals(blocked)
 
         # The view-model starts numeric fields at zero. Load the fit's actual
         # range before a plot can be constructed; an empty [0, 0] range makes
@@ -782,13 +790,24 @@ class FittingControllerWidget(Controller):
 
     def onDatasetChanged(self):
         index = self.selected_fit
+        grouped = isinstance(self.fit, cs.core.fitting.fit.FitGroup)
 
         # Switch the locally selected group member so the model, data and
         # plots follow the combobox. We update the local object directly
         # instead of relying on the server round-trip, which may time out and
         # would otherwise leave the GUI showing the previous dataset.
         try:
-            self.fit.selected_fit = index
+            if grouped:
+                self.fit.selected_fit = index
+            elif index != 0:
+                raise ValueError("single Fit has only one presentation member")
+            xmin, xmax = self.fit.fit_range
+            for editor, value in ((self.spinBox_2, xmin), (self.spinBox, xmax)):
+                blocked = editor.blockSignals(True)
+                try:
+                    editor.setValue(int(value))
+                finally:
+                    editor.blockSignals(blocked)
             self.fit.update()
             try:
                 self.fit.model.finalize()
@@ -808,7 +827,7 @@ class FittingControllerWidget(Controller):
 
         # Keep the server session state in sync (best-effort).
         fc = get_fitting_client()
-        if fc is not None:
+        if fc is not None and grouped:
             try:
                 fc.group_select_member(
                     fit_uid=str(getattr(self.fit, "unique_identifier", "") or ""),
@@ -1364,6 +1383,8 @@ class FittingControllerWidget(Controller):
                 xmin=self.xmin,
                 xmax=self.xmax,
             )
+        else:
+            self.fit.fit_range = (self.xmin, self.xmax)
         if getattr(self, "_is_2d_dataset", False):
             try:
                 self._update_2d_mask_from_spinboxes()

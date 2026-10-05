@@ -1,4 +1,4 @@
-"""General composable FCS model (PRD-62).
+"""General composable FCS model.
 
 Pick a diffusion type — ``"gauss"`` (a classic single-focus 3-D-Gaussian PSF,
 the default), ``"mdf"`` (the Enderlein Gauss-Lorentz MDF, :mod:`.mdf`), or
@@ -373,6 +373,29 @@ class GeneralFCSModel(ModelCurve):
         #: calls ``update_model`` again; without this guard that cycle recursed
         #: ~200 deep on every update.
         self._updating_model = False
+        self.find_parameters()
+
+    def get_session_parameters(self) -> list:
+        """Snapshot inactive presets too, while keeping them out of optimisation."""
+        return list(super().parameters_all)
+
+    def get_state(self) -> dict:
+        """Return the selected diffusion mode and component topology."""
+        return {"diffusion_mode": self.diffusion_mode, "n_species": self.species.n_species}
+
+    def set_state(self, state: dict) -> None:
+        """Restore topology before assigning all active and inactive preset ports.
+
+        Parameters
+        ----------
+        state : dict
+            Data-only configuration returned by :meth:`get_state`.
+        """
+        mode, count = state.get("diffusion_mode"), state.get("n_species")
+        if mode not in self._DIFFUSION_MODES or type(count) is not int or count < 1:
+            raise ValueError("invalid FCS diffusion configuration")
+        self.species._rebuild_species(count)
+        self._diffusion_mode = mode
         self.find_parameters()
 
     @property

@@ -111,6 +111,20 @@ def test_every_pda_model_carries_editable_fit_settings():
     assert fit.model.fit_settings.statistic == "poisson"
 
 
+def test_gaussian_distance_recompute_preserves_raw_component_amplitudes():
+    """Predictions and UI finalization use normalized weights without changing inputs."""
+    fit = _gaussian_fit()
+    distances = fit.model.distances
+    distances.append(mean=62.0, sigma=5.0, amplitude=0.4)
+    raw_before = [float(parameter.value) for parameter in distances._amplitudes]
+
+    fit.update()
+    fit.model.finalize()
+
+    assert [float(parameter.value) for parameter in distances._amplitudes] == raw_before
+    assert np.allclose(distances.amplitudes, [1.0 / 1.4, 0.4 / 1.4])
+
+
 # ── the statistics themselves ──────────────────────────────────────────────
 
 

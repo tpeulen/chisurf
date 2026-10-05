@@ -2,22 +2,10 @@
 
 from __future__ import annotations
 
-from chisurf.gui import dialogs
-
-try:
-    from qtpy import sip
-except ImportError:
-    try:
-        import sip
-    except ImportError:
-        sip = None
-
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
-
-from .gui.tool import MMFDBWidget
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -32,7 +20,27 @@ cli_entrypoint = "fluorophore=mmfdb.admin.cli:cli"
 __all__ = ["MMFDBWidget", "name", "cli_entrypoint"]
 
 
+def __getattr__(name: str):
+    """Keep client and session imports independent of the optional Qt window."""
+    if name == "MMFDBWidget":
+        from .gui.tool import MMFDBWidget
+
+        return MMFDBWidget
+    raise AttributeError(name)
+
+
 if __name__ == "plugin":
+    from chisurf.gui import dialogs
+
+    from .gui.tool import MMFDBWidget
+
+    try:
+        from qtpy import sip
+    except ImportError:
+        try:
+            import sip
+        except ImportError:
+            sip = None
     existing = globals().get("window")
     if existing is not None and sip is not None and sip.isdeleted(existing):
         existing = None

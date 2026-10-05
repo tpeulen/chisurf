@@ -241,7 +241,7 @@ class Pda2cDynamicTwoStateModel(Pda2cModelMixin, ModelCurve):
 
     name = "PDA2c-dynamic-2-state"
 
-    #: Declarative AutoForm layout (PRD-38 model/view-spec split).
+    #: Declarative AutoForm layout.
     view_spec_file = "dynamic.view.json"
 
     def __init__(
@@ -286,6 +286,26 @@ class Pda2cDynamicTwoStateModel(Pda2cModelMixin, ModelCurve):
         # binned, and under which counting statistic (see Pda2cFitSettings).
         self.fit_settings = resolve_fit_settings(None, None)
         self.residual_mode = "1D"
+
+    def get_state(self) -> dict:
+        """Return shared projection settings and occupation-time grid size."""
+        state = super().get_state()
+        state["n_grid"] = self.n_grid
+        return state
+
+    def set_state(self, state: dict) -> None:
+        """Restore the scientific integration resolution.
+
+        Parameters
+        ----------
+        state : dict
+            State produced by :meth:`get_state`.
+        """
+        count = state.get("n_grid")
+        if type(count) is not int or count < 2:
+            raise ValueError("invalid PDA occupation-time grid")
+        self.n_grid = count
+        super().set_state(state)
 
     # -- helpers ------------------------------------------------------------
     @property

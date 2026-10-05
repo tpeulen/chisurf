@@ -64,12 +64,22 @@ class ChiSurfServer:
         )
         self.dispatcher = ServiceDispatcher(self.state, event_bus=self.event_bus)
         self.dispatcher._build_default_registry()
+        from chisurf.server.services.projects import register_project_snapshot_services
+
+        register_project_snapshot_services(self.dispatcher, self.state)
         self.service_startup_manager = AppStartupServiceManager(
             dispatcher=self.dispatcher,
             state=self.state,
             event_bus=self.event_bus,
             job_manager=self.job_manager,
         )
+        if self.state.flr_database is None:
+            for spec in self.service_startup_manager.specs:
+                if spec.id == "mmfdb":
+                    self.service_startup_manager._skipped[spec.id] = (
+                        spec,
+                        "optional mmfdb package is not installed",
+                    )
         self.service_startup_manager.start(surface="server", phase="pre_server_listen")
         # Auto-discover and register all plugin services from manifests.
         # Services declared in startup config files are owned by that flow.
@@ -122,9 +132,14 @@ class ChiSurfServer:
     @staticmethod
     def _prepare_embedded_mmfdb() -> None:
         """Initialize ChiSurf-owned MMFDB state before services are registered."""
-        from chisurf.core.mmfdb_services import prepare_embedded_mmfdb
-        from chisurf.core.settings import cs_settings
-        from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
+        try:
+            from chisurf.core.mmfdb_services import prepare_embedded_mmfdb
+            from chisurf.core.settings import cs_settings
+            from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
+        except ModuleNotFoundError as exc:
+            if exc.name == "mmfdb" or str(exc.name).startswith("mmfdb."):
+                return
+            raise
 
         settings = cs_settings.get("mmfdb", {}) or {}
         if client_config(settings)["mode"] == "embedded":
@@ -133,7 +148,12 @@ class ChiSurfServer:
     @staticmethod
     def _init_flr_database():
         """Create or attach the FLR database."""
-        from mmfdb.repository import MFDatabase
+        try:
+            from mmfdb.repository import MFDatabase
+        except ModuleNotFoundError as exc:
+            if exc.name == "mmfdb" or str(exc.name).startswith("mmfdb."):
+                return None
+            raise
 
         return MFDatabase()
 

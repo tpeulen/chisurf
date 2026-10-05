@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import base64
-import copy
 import json
+from pathlib import Path
 
+import numpy as np
 import pytest
+
+from test.project.test_real_mmfdb_http import standalone_server as standalone_server
 
 
 @pytest.fixture
@@ -35,36 +38,90 @@ def project_db(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def sample_project_payload(project_db):
-    data_path = project_db["tmp_path"] / "sample_curve.csv"
-    data_path.write_text("time,intensity\n0,10\n1,12\n2,11\n", encoding="utf-8")
-    return {
-        "project_format_version": 5,
-        "meta": {
-            "name": "Sample Project",
-            "description": "sample-data-backed service test",
-            "chisurf_version": "test",
-        },
-        "datasets": {
-            "ds_sample": {
-                "uid": "ds_sample",
-                "name": "Sample Curve",
-                "filename": str(data_path),
-                "experiment_name": "TCSPC",
-                "x": [0.0, 1.0, 2.0],
-                "y": [10.0, 12.0, 11.0],
-                "data_reader": {
-                    "module": "chisurf.test",
-                    "class": "SampleReader",
-                    "state": {"source": "pytest"},
-                },
-            },
-        },
-        "fits": [],
-        "experiments": {},
-        "ui": {},
-        "extra": {},
+def sample_project_payload(tmp_path):
+    """Capture measured TCSPC arrays and the real reader, retaining its source file."""
+    import shutil
+
+    from chisurf.core.experiments.tcspc import TCSPCReader
+    from chisurf.core.project import capture_session
+
+    source = Path(__file__).resolve().parents[5] / "test/data/tcspc/ibh_sample/Decay_577D.txt"
+    data_path = tmp_path / source.name
+    shutil.copyfile(source, data_path)
+    reader = TCSPCReader(
+        dt=0.048, rep_rate=80.0, skiprows=9, use_header=False, rebin=(1, 1), record_provenance=False
+    )
+    curve = reader.get_data(filename=str(data_path))[0]
+    curve.unique_identifier = "ds_sample"
+    curve.name = "Sample Curve"
+    raw = np.loadtxt(source, skiprows=9)
+    np.testing.assert_array_equal(curve.y, raw[:, 1])
+    np.testing.assert_allclose(curve.x, raw[:, 0] * reader.dt)
+    return capture_session([curve], [], name="Sample Project").to_dict()
+
+
+@pytest.fixture
+def authenticated_browser(standalone_server, tmp_path, monkeypatch):
+    """Configure the exact authenticated standalone deployment used by Save."""
+    from mmfdb.security.credentials import credential_account, session_token_registry
+
+    import chisurf
+    from chisurf.core.settings import cs_settings
+    from chisurf.plugins.core.mmfdb_admin.gui.client import (
+        MMFDBClient,
+        client_config,
+        credential_endpoint,
+    )
+    from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
+
+    monkeypatch.setattr(chisurf, "imported_datasets", [])
+    monkeypatch.setattr(chisurf, "fits", [])
+    monkeypatch.setattr(chisurf, "cs", None, raising=False)
+    monkeypatch.setattr(chisurf, "current_fit_idx", -1, raising=False)
+    url, token, path = standalone_server
+    settings = {
+        "client": {
+            "mode": "remote",
+            "base_url": url,
+            "allow_insecure_http": True,
+            "username": "real-http-user",
+        }
     }
+    monkeypatch.setitem(cs_settings, "mmfdb", settings)
+    endpoint = credential_endpoint(client_config(settings))
+    monkeypatch.setitem(
+        session_token_registry(), credential_account(*endpoint, "real-http-user"), token
+    )
+    base_client = MMFDBClient(
+        mode="remote", base_url=url, allow_insecure_http=True, inprocess=False
+    )
+    base_client.token = token
+    return {
+        "url": url,
+        "token": token,
+        "path": path,
+        "tmp_path": tmp_path,
+        "client": ProjectBrowserClient(mmfdb_client=base_client),
+        "settings": settings,
+    }
+
+
+def assert_scientific_roundtrip(payload):
+    """Restore real science and recapture every array, UID, model and UI field."""
+    from chisurf.core.project import Project, capture_session, restore_session
+
+    project = Project.from_dict(payload)
+    restored = restore_session(project)
+    captured = capture_session(
+        restored.datasets,
+        restored.fits,
+        ui_state=restored.ui_state,
+        experiments=restored.experiments,
+        name=project.name,
+    ).to_dict()
+    for section in ("datasets", "fits", "ui", "experiments", "parameters", "dependency_edges"):
+        assert captured[section] == payload[section]
+    return restored
 
 
 def test_save_list_restore_and_export_sample_project(project_db, sample_project_payload):
@@ -103,7 +160,28 @@ def test_save_list_restore_and_export_sample_project(project_db, sample_project_
 
     exported = export_csp_handler(auth=auth, version_id=saved["version_id"])
     assert exported["ok"] is True
-    assert base64.b64decode(exported["archive_bytes"])
+    archive_bytes = base64.b64decode(exported["archive_bytes"])
+    assert archive_bytes
+    from chisurf.core.project.archive import ProjectArchive
+
+    assert restored["version_id"] == saved["version_id"]
+    assert restored["project_id"] == saved["project_id"]
+    assert_scientific_roundtrip(restored_payload)
+    archive_path = project_db["tmp_path"] / "exported.cs.pto"
+    archive_path.write_bytes(archive_bytes)
+    archive = ProjectArchive.open(archive_path)
+    source = Path(sample_project_payload["datasets"]["ds_sample"]["filename"])
+    dependencies = json.loads(archive.read_text("mmfdb_export.json"))["dependencies"]
+    source_artifacts = [
+        artifact
+        for artifact in dependencies["artifacts"]
+        if artifact["artifact_kind"] == "raw_measurement"
+    ]
+    assert len(source_artifacts) == 1
+    objects = {obj["object_uuid"]: obj for obj in dependencies["objects"]}
+    source_object = objects[source_artifacts[0]["object_uuid"]]
+    assert base64.b64decode(source_object["data_base64"], validate=True) == source.read_bytes()
+    assert source_object["filename"] == str(source)
 
 
 def test_project_browser_services_register_with_dispatcher(project_db):
@@ -125,45 +203,21 @@ def test_project_browser_services_register_with_dispatcher(project_db):
 
 
 def _payload_with_fit(sample_project_payload):
-    payload = copy.deepcopy(sample_project_payload)
-    payload["fits"] = [
-        {
-            "id": "fit_sample",
-            "name": "Sample Fit",
-            "model_name": "Linear",
-            "local_fits": [
-                {
-                    "id": "local_0",
-                    "dataset_id": "ds_sample",
-                    "fit_state": {
-                        "model_module": "chisurf.test",
-                        "model_class": "SampleModel",
-                        "parameters": {
-                            "amp": {
-                                "uid": "amp",
-                                "name": "amp",
-                                "value": 2.0,
-                                "fixed": False,
-                                "bounds": [0.0, 10.0],
-                                "bounds_on": True,
-                                "link_target": None,
-                            },
-                            "tau": {
-                                "uid": "tau",
-                                "name": "tau",
-                                "value": 4.0,
-                                "fixed": True,
-                                "bounds": [0.0, 20.0],
-                                "bounds_on": False,
-                                "link_target": None,
-                            },
-                        },
-                    },
-                },
-            ],
-        },
-    ]
-    return payload
+    """Capture a real lifetime model with bounded and fixed parameters."""
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.core.models.parse.parse import ParseModel
+    from chisurf.core.project import Project, capture_session, restore_session
+
+    curve = restore_session(Project.from_dict(sample_project_payload)).datasets[0]
+    fit = Fit(data=curve, model_class=ParseModel)
+    fit.unique_identifier = "fit_sample"
+    fit.name = "Sample Fit"
+    fit.model.func = "amp*x+tau"
+    amplitude, lifetime = fit.model.parameters_all[:2]
+    amplitude.value, amplitude.bounds, amplitude.bounds_on = 2.0, (0.0, 10.0), True
+    lifetime.value, lifetime.fixed = 4.0, True
+    fit.model.update()
+    return capture_session([curve], [fit], name="Sample Project").to_dict()
 
 
 def test_artifact_and_parameter_browsing_for_project_version(
@@ -177,16 +231,17 @@ def test_artifact_and_parameter_browsing_for_project_version(
     )
 
     auth = project_db["auth"]
+    payload = _payload_with_fit(sample_project_payload)
     saved = save_project_handler(
         auth=auth,
         project_name="Sample Project",
-        project_payload=_payload_with_fit(sample_project_payload),
+        project_payload=payload,
         visibility="private",
         notes="artifact and parameter coverage",
     )
-    assert saved["ok"] is True
+    assert saved["ok"] is True, saved
     assert saved["artifact_count"] >= 2
-    assert saved["parameter_count"] == 2
+    assert saved["parameter_count"] == len(payload["fits"][0]["members"][0]["model"]["parameters"])
 
     artifacts = list_project_artifacts_handler(auth=auth, version_id=saved["version_id"])
     assert artifacts["ok"] is True
@@ -199,6 +254,139 @@ def test_artifact_and_parameter_browsing_for_project_version(
     assert by_name["amp"]["value"] == 2.0
     assert by_name["amp"]["bounds_on"] == 1
     assert by_name["tau"]["parameter_type"] == "fixed"
+
+
+def test_authenticated_canonical_indexes_retain_arrays_links_and_version_identity(
+    authenticated_browser, sample_project_payload
+):
+    """Read real measured data, global links and immutable indexes after HTTP saves."""
+    from mmfdb.repository import MFDatabase
+
+    from chisurf.core.data import DataCurveGroup
+    from chisurf.core.fitting.fit import FitGroup
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.core.models.parse.parse import ParseModel
+    from chisurf.core.project import Project, capture_session, restore_session
+
+    first = restore_session(Project.from_dict(sample_project_payload)).datasets[0]
+    second = restore_session(Project.from_dict(sample_project_payload)).datasets[0]
+    second.unique_identifier = "ds_index_second"
+    resource_path = Path(__file__).resolve().parents[5] / "test/data/tcspc/ibh_sample/Prompt.txt"
+    assert resource_path.is_file()
+    import shutil
+
+    resource_alias = authenticated_browser["tmp_path"] / "reader-prompt-copy.txt"
+    shutil.copyfile(resource_path, resource_alias)
+    first.meta_data["reader_resource"] = [
+        {"filename": str(resource_path)},
+        {"filename": str(resource_alias)},
+    ]
+    group = FitGroup(DataCurveGroup([first, second]), model_class=ParseModel)
+    shared = FittingParameter(name="tau-global", value=4.1)
+    group._model.append_global_parameter(shared)
+    for member in group.grouped_fits:
+        member.model.func = "amp*x+tau"
+        member.model.parameters_all[1].link = shared
+        member.mask = np.ones(len(first.y), dtype=np.float64)
+        member.mask[:12] = 0
+        member.model.update()
+    client = authenticated_browser["client"]
+    payload = capture_session([first, second], [group], name="Indexed project").to_dict()
+    saved = client.save_project("Indexed project", project_payload=payload)
+    assert saved["ok"] and saved["parameter_count"] == 5, saved
+    assert client.restore_project(saved["version_id"])["project_payload"] == payload
+
+    def read_indexes(version_id):
+        """Read attached bytes and actual SQL rows from the deployment database."""
+        with MFDatabase(authenticated_browser["path"]) as db:
+            artifacts = db.conn.execute(
+                "SELECT a.* FROM mmfdb_artifact a JOIN mmfdb_edge e "
+                "ON e.target_node_id = a.artifact_id "
+                "WHERE e.source_node_id = ? AND e.relationship_type = 'project_contains'",
+                (version_id,),
+            ).fetchall()
+            datasets = {
+                json.loads(row["metadata_json"])["ds_id"]: json.loads(
+                    db.get_object(row["object_uuid"])
+                )
+                for row in artifacts
+                if row["artifact_kind"] == "processed_data"
+            }
+            fits = [
+                json.loads(row["data_json"])
+                for row in artifacts
+                if row["artifact_kind"] == "fit_result"
+            ]
+            parameters = [
+                dict(row)
+                for row in db.conn.execute(
+                    "SELECT * FROM mmfdb_parameter WHERE operation_id = ? "
+                    "OR operation_id LIKE ? ORDER BY parameter_uuid",
+                    (version_id, f"fit_{version_id}:%"),
+                )
+            ]
+            links = [
+                dict(row)
+                for row in db.conn.execute(
+                    "SELECT * FROM mmfdb_edge WHERE operation_id = ? "
+                    "AND relationship_type = 'parameter_depends_on' ORDER BY source_node_id",
+                    (version_id,),
+                )
+            ]
+            sources = db.conn.execute(
+                "SELECT a.* FROM mmfdb_artifact a JOIN mmfdb_operation_artifact l "
+                "ON l.artifact_id = a.artifact_id WHERE l.operation_id = ? "
+                "AND a.artifact_kind = 'raw_measurement' ORDER BY a.artifact_id",
+                (version_id,),
+            ).fetchall()
+            assert sources
+            assert {source["file_path"] for source in sources} == {
+                first.filename,
+                str(resource_path),
+                str(resource_alias),
+            }
+            for source in sources:
+                assert (
+                    db.get_object(source["object_uuid"]) == Path(source["file_path"]).read_bytes()
+                )
+        return datasets, fits, parameters, links, [dict(source) for source in sources]
+
+    datasets, fits, parameters, links, sources = before = read_indexes(saved["version_id"])
+    assert len(sources) == 3
+    assert datasets == payload["datasets"]
+    assert len(fits) == 2
+    assert all(item["fit"] == payload["fits"][0] for item in fits)
+    assert {item["member_uid"] for item in fits} == {
+        member["uid"] for member in payload["fits"][0]["members"]
+    }
+    assert len(parameters) == 5 and len(links) == 2
+    by_uid = {json.loads(row["metadata_json"])["fit_parameter_uid"]: row for row in parameters}
+    models = [member["model"] for member in payload["fits"][0]["members"]]
+    models.append(payload["fits"][0]["aggregate_model"])
+    for model in models:
+        for parameter in model["parameters"]:
+            row = by_uid[parameter["uid"]]
+            assert row["value"] == parameter["value"]
+            assert json.loads(row["metadata_json"])["parameter"] == parameter
+    for edge in links:
+        metadata = json.loads(edge["metadata_json"])
+        assert edge["source_node_id"] == by_uid[metadata["parameter_uid"]]["parameter_uuid"]
+        assert (
+            edge["target_node_id"]
+            == by_uid[metadata["link_target"]["parameter_uid"]]["parameter_uuid"]
+        )
+    shared.value = 6.2
+    newer = capture_session([first, second], [group], name="Indexed project").to_dict()
+    next_version = client.save_project(
+        "Indexed project",
+        project_payload=newer,
+        project_id=saved["project_id"],
+        parent_version_id=saved["version_id"],
+    )
+    assert next_version["ok"] and next_version["parameter_count"] == 5
+    assert read_indexes(saved["version_id"]) == before
+    assert client.restore_project(saved["version_id"])["project_payload"] == payload
+    assert client.restore_project(next_version["version_id"])["project_payload"] == newer
 
 
 def test_branch_dag_and_version_graph_roots_and_leaves(
@@ -348,28 +536,42 @@ def test_import_and_restore_a_regular_chisurf_pto_project(
     assert restored_payload["meta"]["name"] == sample_project_payload["meta"]["name"]
     assert set(restored_payload["datasets"]) == set(sample_project_payload["datasets"])
     assert restored_payload["fits"] == sample_project_payload["fits"]
+    assert_scientific_roundtrip(restored_payload)
 
 
-def test_restore_preserves_global_fit_and_window_state(project_db, sample_project_payload):
+def test_restore_preserves_global_fit_and_window_state(project_db, sample_project_payload, qapp):
+    from chisurf.core.data import DataCurveGroup
+    from chisurf.core.fitting.fit import FitGroup
+    from chisurf.core.fitting.parameter import FittingParameter
+    from chisurf.core.models.parse.parse import ParseModel
+    from chisurf.core.project import Project, capture_session, restore_session
     from chisurf.plugins.core.project_browser.backend.services import (
         restore_project_handler,
         save_project_handler,
     )
 
-    payload = copy.deepcopy(sample_project_payload)
-    payload["ui"] = {
-        "current_fit_index": 2,
-        "fit_windows": {"global-fit": {"geometry": "serialized-window-state"}},
-    }
-    payload["fits"] = [
-        {
-            "id": "global-fit",
-            "name": "global fit",
-            "local_fits": [{"id": "local-a"}, {"id": "local-b"}],
-            "global_parameters": [{"uid": "tau-global", "name": "tau", "value": 4.1}],
-            "links": [{"source": "local-a:tau", "target": "tau-global"}],
-        }
-    ]
+    first = restore_session(Project.from_dict(sample_project_payload)).datasets[0]
+    second = restore_session(Project.from_dict(sample_project_payload)).datasets[0]
+    second.unique_identifier = "ds_second"
+    curves = DataCurveGroup([first, second], name="measured decays")
+    group = FitGroup(curves, model_class=ParseModel)
+    group.unique_identifier = "global-fit"
+    shared = FittingParameter(name="tau-global", value=4.1)
+    group._model.append_global_parameter(shared)
+    for local in group.grouped_fits:
+        local.model.func = "amp*x+tau"
+        local.model.parameters_all[1].link = shared
+        local.model.update()
+    from qtpy import QtWidgets
+
+    from chisurf.core.project.ui_state import get_ui_state
+
+    window = QtWidgets.QMainWindow()
+    window.resize(1100, 700)
+    ui = {**get_ui_state(window), "current_fit_index": 0, "current_fit_uid": "global-fit"}
+    window.close()
+    assert ui["geometry"] and ui["dock_state"]
+    payload = capture_session([curves], [group], name="Global Project", ui_state=ui).to_dict()
 
     saved = save_project_handler(
         auth=project_db["auth"],
@@ -381,6 +583,18 @@ def test_restore_preserves_global_fit_and_window_state(project_db, sample_projec
     restored = restore_project_handler(auth=project_db["auth"], version_id=saved["version_id"])
     assert restored["ok"] is True
     assert restored["project_payload"] == payload
+    session = assert_scientific_roundtrip(restored["project_payload"])
+    restored_group = session.fits[0]
+    assert restored_group.unique_identifier == "global-fit"
+    shared_restored = restored_group._model.global_parameters_all[0]
+    assert shared_restored.value == 4.1
+    assert all(
+        local.model.parameters_all[1].link is shared_restored
+        for local in restored_group.grouped_fits
+    )
+    assert session.ui_state["current_fit_uid"] == "global-fit"
+    assert session.ui_state["geometry"] == ui["geometry"]
+    assert session.ui_state["dock_state"] == ui["dock_state"]
 
 
 def test_delete_version_requires_manage_permission(project_db, sample_project_payload):

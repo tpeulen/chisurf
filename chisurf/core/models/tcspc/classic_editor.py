@@ -25,6 +25,11 @@ import typing
 
 import numpy as np
 
+from chisurf.core.dataspec.display_binding import (
+    computed_output_binding,
+    model_scalar_binding,
+    validate_display_binding,
+)
 from chisurf.core.fitting.parameter import FittingParameter
 
 #: Polarization scalar value <-> the classic editor's names.
@@ -40,6 +45,8 @@ class ScalarRow(FittingParameter):
 
     Reads and writes the scalar through *get* / *set*, so the table cell, the
     scalar and the model agree; it is never free, since a scalar is not fitted.
+    ``display_binding`` is plain JSON-compatible owner/path/kind data that
+    makes this intentional projection distinct from an optimizer port.
     """
 
     def __init__(
@@ -47,9 +54,13 @@ class ScalarRow(FittingParameter):
         name: str,
         get: typing.Callable[[], float],
         set_: typing.Callable[[float], None],
+        *,
+        display_binding: typing.Mapping[str, typing.Any],
         **kwargs,
     ):
         self.__dict__["_get"] = get
+        #: Copy the serializable declaration; never retain renderer objects here.
+        self.__dict__["display_binding"] = validate_display_binding(display_binding)
         try:
             start = float(get())
         except Exception:
@@ -84,8 +95,25 @@ class ScalarRow(FittingParameter):
 class OutputRow(ScalarRow):
     """A quantity computed from the model, shown read-only (``#Ph_B``, ``E_FRET``)."""
 
-    def __init__(self, name: str, get: typing.Callable[[], float], **kwargs):
-        super().__init__(name, get, lambda _v: None, is_output=True, **kwargs)
+    def __init__(
+        self,
+        name: str,
+        get: typing.Callable[[], float],
+        *,
+        display_binding: typing.Mapping[str, typing.Any],
+        **kwargs,
+    ):
+        binding = validate_display_binding(display_binding)
+        if binding["kind"] != "computed_output" or binding["editable"]:
+            raise ValueError("OutputRow requires a read-only computed-output binding")
+        super().__init__(
+            name,
+            get,
+            lambda _v: None,
+            display_binding=binding,
+            is_output=True,
+            **kwargs,
+        )
 
 
 class _Group:
@@ -214,18 +242,20 @@ class Convolve(_Group):
     def parameters_all(self) -> list:
         rows = []
         rows += self._parameters(["instrument.n0"])
-        rows.append(
-            self._row(
-                "dt",
-                lambda: ScalarRow(
+        if self._has("dt"):
+            rows.append(
+                self._row(
                     "dt",
-                    lambda: self._dt(),
-                    lambda v: self._set("dt", v),
-                    decimals=4,
-                    description="Time bin width of the TCSPC histogram (ns per channel).",
-                ),
+                    lambda: ScalarRow(
+                        "dt",
+                        lambda: self._dt(),
+                        lambda v: self._set("dt", v),
+                        display_binding=model_scalar_binding("dt"),
+                        decimals=4,
+                        description="Time bin width of the TCSPC histogram (ns per channel).",
+                    ),
+                )
             )
-        )
         rows.append(
             self._row(
                 "rep",
@@ -233,6 +263,7 @@ class Convolve(_Group):
                     "rep",
                     lambda: 1000.0 / max(self._get("period", 100.0), 1e-12),
                     lambda v: self._set("period", 1000.0 / v if v > 0 else 100.0),
+                    display_binding=model_scalar_binding("period"),
                     description="Laser repetition rate of the excitation source (MHz).",
                 ),
             )
@@ -251,6 +282,7 @@ class Convolve(_Group):
                             * self._dt()
                         ),
                         lambda v: self._set("convolution_stop", max(1.0, round(v / self._dt()))),
+                        display_binding=model_scalar_binding("convolution_stop"),
                         description="Stop time of the convolution window (ns).",
                     ),
                 )
@@ -270,6 +302,7 @@ class Convolve(_Group):
                         if key == "irf_stop"
                         else (lambda: self._get(scalar, 0.0)),
                         lambda v, scalar=scalar: self._set(scalar, v),
+                        display_binding=model_scalar_binding(scalar),
                         label_text=label,
                         description="Region of the IRF used for the convolution (ns).",
                     ),
@@ -298,6 +331,11 @@ class Generic(_Group):
 
     @property
     def background_curve(self):
+        # MaxEnt and other valid TCSPC descriptions need not declare an
+        # optional background-pattern source.  A missing slot is equivalent to
+        # no curve, not an invalid read from the presentation layer.
+        if not self._view.has_dataset("background_pattern"):
+            return None
         return self._view.datasets.background_pattern
 
     @background_curve.setter
@@ -350,6 +388,7 @@ class Generic(_Group):
                             key,
                             lambda: self._get(scalar, 1.0),
                             lambda v: self._set(scalar, v),
+                            display_binding=model_scalar_binding(scalar),
                             description=text,
                         ),
                     )
@@ -360,6 +399,7 @@ class Generic(_Group):
                 lambda: OutputRow(
                     "PhB",
                     lambda: self.n_ph_bg,
+                    display_binding=computed_output_binding("generic.n_ph_bg"),
                     label_text="#Ph<sub>B</sub>",
                     decimals=0,
                     description="Estimated number of background photons in the TCSPC trace.",
@@ -372,6 +412,7 @@ class Generic(_Group):
                 lambda: OutputRow(
                     "PhF",
                     lambda: self.n_ph_fl,
+                    display_binding=computed_output_binding("generic.n_ph_fl"),
                     label_text="#Ph<sub>F</sub>",
                     decimals=0,
                     description="Estimated number of fluorescence photons (after background subtraction).",
@@ -459,6 +500,7 @@ class Corrections(_Group):
                         "tDead",
                         lambda: self._get("dead_time", 0.0),
                         lambda v: self._set("dead_time", v),
+                        display_binding=model_scalar_binding("dead_time"),
                         decimals=1,
                         description="Dead time of the TCSPC detector (ns), used for pile-up correction.",
                     ),
@@ -472,6 +514,7 @@ class Corrections(_Group):
                         "win-size",
                         lambda: self._get("lin_window_length", 17.0),
                         lambda v: self._set("lin_window_length", round(v)),
+                        display_binding=model_scalar_binding("lin_window_length"),
                         decimals=0,
                         description="Window length of the linearization smoothing (channels).",
                     ),
@@ -646,6 +689,11 @@ class FRETParameters(_Group):
         return self._parameter("fret.kappa2")
 
     @property
+    def fret_efficiency(self) -> float:
+        """The declared presentation statistic behind the classic E_FRET row."""
+        return self._view._presented_number("fret_efficiency")
+
+    @property
     def parameters_all(self) -> list:
         rows = self._parameters(["fret.tau0", "fret.forster_radius", "fret.kappa2", "fret.x_donly"])
         if "fret_efficiency" in self._view.presentation.get("statistics", {}):
@@ -654,7 +702,8 @@ class FRETParameters(_Group):
                     "E_FRET",
                     lambda: OutputRow(
                         "E_FRET",
-                        lambda: self._view._presented_number("fret_efficiency"),
+                        lambda: self.fret_efficiency,
+                        display_binding=computed_output_binding("fret_parameters.fret_efficiency"),
                         label_text="E<sub>FRET</sub>",
                         description="Mean FRET efficiency of the model.",
                     ),
@@ -698,6 +747,18 @@ class PDDEMGroup(_Group):
     def __init__(self, view):
         super().__init__(view, "PDDEM")
 
+    def _report(self, key: str) -> float:
+        """Return one declared presentation output without exposing a callback."""
+        return self._view._presented_number(key)
+
+    @property
+    def alpha_a(self) -> float:
+        return self._report("alpha_a")
+
+    @property
+    def alpha_b(self) -> float:
+        return self._report("alpha_b")
+
     def _pddem_parameter_rows(self) -> list:
         rows = []
         for a, b in self._PAIRS:
@@ -710,7 +771,8 @@ class PDDEMGroup(_Group):
                         key,
                         lambda key=key: OutputRow(
                             key,
-                            lambda: self._view._presented_number(key),
+                            lambda key=key: getattr(self, key),
+                            display_binding=computed_output_binding(f"pddem.{key}"),
                             description="Energy transfer efficiency of the fluorophore.",
                         ),
                     )

@@ -244,9 +244,11 @@ class ProteinMCModel(Model):
 
         # Distances read from the labelling file, shown as outputs.
         self._distance_parameters: dict[str, FittingParameter] = {}
+        self._explicit_parameters: list[FittingParameter] = []
         self._distance_definitions: dict[str, dict] = {}
         self._all_positions: dict = {}
         self._distance_position_indices: dict[str, int] = {}
+        self._saved_labeling_payload: dict | None = None
 
         self.find_parameters()
 
@@ -254,6 +256,8 @@ class ProteinMCModel(Model):
 
     def _labeling_payload(self) -> dict:
         """Return the parsed labelling file, or an empty mapping."""
+        if self._saved_labeling_payload is not None:
+            return deepcopy(self._saved_labeling_payload)
         if not self.labeling_file:
             return {}
         try:
@@ -268,6 +272,8 @@ class ProteinMCModel(Model):
 
     def flexfit_set_names(self) -> list[str]:
         """Return the FlexFit sets the labelling file defines."""
+        if self._saved_labeling_payload is not None:
+            return [""] + list(self._labeling_payload().get("FlexFit", {}))
         if not self.labeling_file:
             return [""]
         try:
@@ -293,11 +299,12 @@ class ProteinMCModel(Model):
         }
         return f"{flexible}/{len(seen)} residues flexible"
 
-    def on_labeling_file_changed(self) -> None:
+    def on_labeling_file_changed(self, _value: Any = None) -> None:
         """Re-read the labelling file: score sets, FlexFit sets and distances.
 
         Called by the editor when the path changes; safe to call from a script.
         """
+        self._saved_labeling_payload = None
         names = self.score_set_names()
         if self.score_set not in names:
             self.score_set = names[1] if len(names) > 1 else ""
@@ -502,7 +509,7 @@ class ProteinMCModel(Model):
 
     # -- distances -----------------------------------------------------
 
-    def reload_distances(self) -> None:
+    def reload_distances(self, _value: Any = None) -> None:
         """Rebuild the distance outputs from the labelling file's score set."""
         self._distance_parameters.clear()
         self._distance_definitions.clear()
@@ -510,6 +517,8 @@ class ProteinMCModel(Model):
         self._distance_position_indices.clear()
         payload = self._labeling_payload()
         if not payload:
+            self._explicit_parameters = []
+            self.find_parameters()
             return
 
         all_distances = payload.get("Distances", {}) or {}
@@ -540,6 +549,10 @@ class ProteinMCModel(Model):
                 fixed=True,
                 is_output=True,
             )
+        # The base discovery walk deliberately traverses lists, not arbitrary
+        # mappings. These declared scientific outputs must also be model ports.
+        self._explicit_parameters = list(self._distance_parameters.values())
+        self.find_parameters()
 
     def _distance_parameter_rows(self) -> list:
         """Return the inter-fluorophore distances of the active frame."""
@@ -758,19 +771,27 @@ class ProteinMCModel(Model):
         self.current_frame_index = max(0, min(index, self.frame_count - 1))
         self.update_distance_values()
 
-    def load_starting_structure(self) -> None:
-        """Load :attr:`structure_file` as the structure sampling starts from."""
+    def load_starting_structure(self, _value: Any = None) -> None:
+        """Load :attr:`structure_file` as the structure sampling starts from.
+
+        ``_value`` is the committed control value; the editor's bound ``call``
+        passes it after setting the attribute, so it is ignored here.
+        """
         if not self.structure_file:
             return
         try:
             from chisurf.core.structure import Structure
 
-            self.proteinmc_structure = Structure(self.structure_file)
+            loaded = Structure(self.structure_file)
         except Exception as exc:
             logging.warning(
                 f"ProteinMC: could not load starting structure {self.structure_file!r}: {exc}"
             )
             return
+        # The file is the starting structure (persisted beside
+        # ``structure_source``); sampling advances its own copy.
+        self.structure = loaded
+        self.proteinmc_structure = deepcopy(loaded)
         self.trajectory_frames = []
         self.current_frame_index = 0
         self.update_distance_values()
@@ -812,7 +833,11 @@ class ProteinMCModel(Model):
         directory.mkdir(parents=True, exist_ok=True)
 
         continuing = self.proteinmc_structure is not None and bool(self.trajectory_frames)
-        source = self.proteinmc_structure if continuing else (self.structure_file or self.structure)
+        source = (
+            self.proteinmc_structure
+            if self.proteinmc_structure is not None
+            else (self.structure if self.structure is not None else self.structure_file)
+        )
         if not source:
             logging.warning("ProteinMC: select a structure or enter a PDB ID first")
             return
@@ -855,6 +880,7 @@ class ProteinMCModel(Model):
                 "settings": settings,
                 "output_file": directory / "proteinmc.rmf3",
                 "initial_frames": initial_frames,
+                "labeling_payload": self._labeling_payload() or None,
             },
             daemon=True,
             name="proteinmc-sampling",
@@ -948,6 +974,8 @@ class ProteinMCModel(Model):
 
     def get_state(self, **kwargs) -> dict:
         """Return the project-serializable ProteinMC state."""
+        from chisurf.core.models.structure.snapshot import capture_structure
+
         state = super().get_state(**kwargs) if hasattr(super(), "get_state") else {}
         state["proteinmc"] = {
             "structure_source": self.structure_file,
@@ -956,7 +984,19 @@ class ProteinMCModel(Model):
             "use_flexfit": bool(self.use_flexfit),
             "flexfit_set": self.flexfit_set,
             "output_directory": self.output_directory,
+            "structure": capture_structure(self.structure),
+            "current_structure": capture_structure(self.proteinmc_structure),
+            "labeling_payload": self._labeling_payload(),
+            "trajectory_frames": [np.asarray(frame).tolist() for frame in self.trajectory_frames],
+            "current_frame_index": int(self.current_frame_index),
+            "traces": {
+                "rmsd": list(self.rmsd),
+                "drmsd": list(self.drmsd),
+                "energy": list(self.energy),
+                "chi2r": list(self.chi2r),
+            },
             "settings": {
+                "n_runs": int(self.n_runs),
                 "n_iter": int(self.n_iter),
                 "n_out": int(self.n_out),
                 "n_written": int(self.n_written),
@@ -979,6 +1019,8 @@ class ProteinMCModel(Model):
         **kwargs
             Forwarded to the base implementation.
         """
+        from chisurf.core.models.structure.snapshot import restore_structure
+
         payload = state.get("proteinmc", state) if isinstance(state, dict) else {}
         if not isinstance(payload, dict):
             return
@@ -997,6 +1039,7 @@ class ProteinMCModel(Model):
         if isinstance(settings, dict):
             for attr, key in (
                 ("n_iter", "n_iter"),
+                ("n_runs", "n_runs"),
                 ("n_out", "n_out"),
                 ("n_written", "n_written"),
                 ("scale", "scale"),
@@ -1010,8 +1053,19 @@ class ProteinMCModel(Model):
                     setattr(self, attr, type(getattr(self, attr))(value))
             self._restore_potentials(settings.get("potentials", []))
 
-        if self.structure_file:
+        self._saved_labeling_payload = deepcopy(payload.get("labeling_payload"))
+        if "structure" in payload:
+            self.structure = restore_structure(payload["structure"])
+            self.proteinmc_structure = restore_structure(payload.get("current_structure"))
+        elif self.structure_file:
             self.load_starting_structure()
+        self.trajectory_frames = [
+            np.asarray(frame, dtype=float) for frame in payload.get("trajectory_frames", [])
+        ]
+        self.current_frame_index = int(payload.get("current_frame_index", 0))
+        traces = payload.get("traces", {})
+        for name in ("rmsd", "drmsd", "energy", "chi2r"):
+            setattr(self, name, list(traces.get(name, [])))
         self._sync_labeling_into_dye_potential()
         self._sync_dye_potential_into_labeling()
         self.reload_distances()

@@ -3,14 +3,28 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from mmfdb.repository import MFDatabase
-from mmfdb.store.database_resolver import resolve_database_path
 from qtpy import QtCore, QtWidgets
 
 from chisurf.core.fluorescence.fret.forster import forster_radius_from_spectra
+
+if TYPE_CHECKING:
+    from mmfdb.repository import MFDatabase
+
+
+def _open_spectra_database() -> MFDatabase:
+    """Open the optional spectra repository only when the calculator needs it."""
+    try:
+        from mmfdb.repository import MFDatabase
+        from mmfdb.store.database_resolver import resolve_database_path
+    except ModuleNotFoundError as exc:
+        if exc.name != "mmfdb" and not (exc.name or "").startswith("mmfdb."):
+            raise
+        raise RuntimeError("MMFDB is unavailable; spectra selection requires MMFDB.") from exc
+    return MFDatabase(str(resolve_database_path()), readonly=True)
+
 
 _EXT_COEFF_ALIASES = frozenset(
     {
@@ -229,8 +243,13 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
 
     def _load_probes(self) -> None:
         try:
-            db_path = resolve_database_path()
-            db = MFDatabase(str(db_path), readonly=True)
+            db = _open_spectra_database()
+        except RuntimeError as exc:
+            self.result_label.setText(str(exc))
+            self.donor_combo.setEnabled(False)
+            self.acceptor_combo.setEnabled(False)
+            self.apply_btn.setEnabled(False)
+            return
         except Exception:
             self.result_label.setText("Could not open MMFDB database.")
             self.apply_btn.setEnabled(False)
@@ -290,7 +309,7 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
 
     def _db_for_read(self) -> MFDatabase | None:
         try:
-            return MFDatabase(str(resolve_database_path()), readonly=True)
+            return _open_spectra_database()
         except Exception:
             return None
 

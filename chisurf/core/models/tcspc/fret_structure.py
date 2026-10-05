@@ -80,6 +80,7 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
         super().__init__(fit, **kwargs)
         self.__dict__["_labels"] = {**LABEL_DEFAULTS, **labels}
         self.__dict__["_structure_files"] = []
+        self._structures: list = []
         self.names = []
         self.set_port_values("distance_axis", self.rda_axis)
         self._bind_empty_ensemble()
@@ -129,6 +130,7 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
             self.clear_sources()
         self.append_values(distribution, name=name)
         self.names.append(name)
+        self._structures.append(structure)
         problem = self.problem
         if problem is not None:
             port = problem.get_parameter(f"distance.amplitude.{len(self.names) - 1}")
@@ -140,11 +142,13 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
     def pop(self) -> None:
         if self.names:
             self.names.pop()
+            self._structures.pop()
             self.pop_model()
             self._bind_empty_ensemble()
 
     def clear(self) -> None:
         self.names = []
+        self._structures = []
         self.clear_sources()
         self._bind_empty_ensemble()
 
@@ -173,12 +177,28 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
             self._structure_files.append(str(path))
 
     def get_state(self) -> dict:
+        """Save label controls, source references, atoms and computed distributions."""
+        from chisurf.core.models.structure.snapshot import capture_structure
+
         state = super().get_state()
         state["labels"] = dict(self._labels)
         state["structure_files"] = list(self._structure_files)
+        state["ensemble"] = [
+            {
+                "name": name,
+                "structure": capture_structure(structure),
+                "distribution": np.asarray(distribution).tolist(),
+            }
+            for name, structure, distribution in zip(
+                self.names, self._structures, self.source_models
+            )
+        ]
         return state
 
     def set_state(self, state: dict) -> None:
+        """Restore an ensemble from its snapshot without rereading its source PDBs."""
+        from chisurf.core.models.structure.snapshot import restore_structure
+
         # A project saved by the classic structure model keeps its labels and
         # structures under "extra"; read those too.
         extra = state.get("extra") or {}
@@ -187,6 +207,35 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
         files = state.get("structure_files")
         if files is None:
             files = [s.get("filename") for s in extra.get("structures", []) if s.get("filename")]
-        self.load_structures(files)
+        if "ensemble" in state:
+            self.clear()
+            ensemble = state["ensemble"]
+            if ensemble:
+                self.clear_sources()
+                for item in ensemble:
+                    self.append_values(
+                        np.asarray(item["distribution"], dtype=float), name=item["name"]
+                    )
+                    self.names.append(item["name"])
+                    self._structures.append(restore_structure(item["structure"]))
+            self._structure_files = list(files or [])
+        else:
+            self.load_structures(files)
         if "family" in state:
             super().set_state(state)
+
+    def recompute_structures(self) -> None:
+        """Recompute the saved ensemble after atom or label edits, preserving fractions."""
+        amplitudes = [float(parameter.value) for parameter in self._fractions]
+        if self._structures:
+            distributions = [
+                av_distance_distribution(structure, self.rda_axis, **self._labels)
+                for structure in self._structures
+            ]
+            # Replacing values keeps the existing ensemble topology and native
+            # input identities. Clearing would remove those owned ports first.
+            self._source_models[:] = distributions
+            self._bind_sources()
+            for parameter, amplitude in zip(self._fractions, amplitudes):
+                parameter.value = amplitude
+        self.update()

@@ -1,4 +1,4 @@
-"""Qt-free DEER/PELDOR fitting models (PRD-38 model/view-spec split).
+"""Qt-free DEER/PELDOR fitting models.
 
 Native reimplementation (numpy only) of 4-pulse DEER analysis.
 Models operate on the time-domain trace ``V(t)`` stored as the ``DataCurve``
@@ -318,6 +318,42 @@ class DeerRegularization(FittingParameterGroup):
 class _DeerModelBase(ModelCurve):
     """Shared DEER plumbing: read ``V(t)``, build the r-grid, store ``P(r)``."""
 
+    def get_state(self) -> dict:
+        """Return distribution topology and declared background/solver choices."""
+        state: dict = {"background_model": self.background.model}
+        if hasattr(self, "gaussians"):
+            state["n_gaussians"] = len(self.gaussians)
+        if hasattr(self, "regularization"):
+            state["regularization_method"] = self.regularization.method
+        return state
+
+    def set_state(self, state: dict) -> None:
+        """Restore the distance distribution topology before scalar assignment.
+
+        Parameters
+        ----------
+        state : dict
+            Explicit state returned by :meth:`get_state`.
+        """
+        background = state.get("background_model")
+        if background not in ("hom3d", "exp", "strexp"):
+            raise ValueError("invalid DEER background model")
+        if hasattr(self, "gaussians"):
+            count = state.get("n_gaussians")
+            if type(count) is not int or count < 1:
+                raise ValueError("invalid DEER Gaussian count")
+            while len(self.gaussians) < count:
+                self.gaussians.append(mean=35.0, sigma=3.0, amplitude=1.0)
+            while len(self.gaussians) > count:
+                self.gaussians.pop()
+        if hasattr(self, "regularization"):
+            method = state.get("regularization_method")
+            if method not in ("gcv", "lcurve"):
+                raise ValueError("invalid DEER regularization method")
+            self.regularization.method = method
+        self.background.model = background
+        self.find_parameters()
+
     def __init__(self, fit: cs.core.fitting.fit.Fit, **kwargs) -> None:
         """Initialize the shared modulation/background groups and caches."""
         super().__init__(fit, **kwargs)
@@ -538,7 +574,7 @@ class _DeerModelBase(ModelCurve):
         hi = np.maximum(hi, p_best)
         return r, p_best, lo, hi
 
-    # -- band-level bootstrap infrastructure (PRD-132) -----------------------
+    # -- band-level bootstrap infrastructure --------------------------------
     def _bootstrap_band(self, replicas: list[np.ndarray]):
         """Build one reusable optimiser for the whole bootstrap band.
 
@@ -622,7 +658,7 @@ class DeerGaussianModel(_DeerModelBase):
             kernel=self._get_kernel(t, r),
         )
 
-    # -- C++ band bootstrap (PRD-132) ----------------------------------------
+    # -- C++ band bootstrap -------------------------------------------------
     def _bootstrap_band(self, replicas: list[np.ndarray]):
         """Build one C++ :class:`Minimizer` for the whole Gaussian band.
 
@@ -732,7 +768,7 @@ class DeerRiceModel(_DeerModelBase):
             kernel=self._get_kernel(t, r),
         )
 
-    # -- C++ band bootstrap (PRD-132) ----------------------------------------
+    # -- C++ band bootstrap -------------------------------------------------
     def _bootstrap_band(self, replicas: list[np.ndarray]):
         """Build one C++ :class:`Minimizer` for the whole Rice band."""
         try:
@@ -888,6 +924,55 @@ class DeerMaxEntModel(_DeerModelBase):
         super().__init__(fit, **kwargs)
         self.regularization = DeerRegularization(name="deer_regularization", fit=fit)
         self._alpha_used: float = 0.0
+        self.maxent_iterations = 1000
+        self.maxent_alpha_samples = 20
+        self.maxent_prior: np.ndarray | None = None
+
+    def get_state(self) -> dict:
+        """Preserve inverse settings and the entropy weight selected for later edits."""
+        state = super().get_state()
+        state.update(
+            {
+                "maxent_iterations": self.maxent_iterations,
+                "maxent_alpha_samples": self.maxent_alpha_samples,
+                "maxent_prior": None
+                if self.maxent_prior is None
+                else np.asarray(self.maxent_prior, dtype=float).ravel().tolist(),
+                "alpha_cached": self._alpha_cached,
+                "alpha_used": self._alpha_used,
+            }
+        )
+        return state
+
+    def set_state(self, state: dict) -> None:
+        """Restore explicit inverse controls before the session recomputes the trace."""
+        iterations = state.get("maxent_iterations", 1000)
+        samples = state.get("maxent_alpha_samples", 20)
+        if type(iterations) is not int or iterations < 1:
+            raise ValueError("invalid DEER MaxEnt iteration budget")
+        if type(samples) is not int or samples < 3:
+            raise ValueError("invalid DEER MaxEnt alpha sample count")
+        prior = state.get("maxent_prior")
+        if prior is not None:
+            prior = np.asarray(prior, dtype=float)
+            if (
+                prior.ndim != 1
+                or not prior.size
+                or not np.all(np.isfinite(prior))
+                or np.any(prior <= 0)
+            ):
+                raise ValueError("invalid DEER MaxEnt prior")
+        cached, used = state.get("alpha_cached"), state.get("alpha_used", 0.0)
+        if cached is not None and (not np.isfinite(cached) or cached <= 0):
+            raise ValueError("invalid DEER MaxEnt cached alpha")
+        if not np.isfinite(used) or used < 0:
+            raise ValueError("invalid DEER MaxEnt used alpha")
+        super().set_state(state)
+        self.maxent_iterations = iterations
+        self.maxent_alpha_samples = samples
+        self.maxent_prior = prior
+        self._alpha_cached = None if cached is None else float(cached)
+        self._alpha_used = float(used)
 
     def _noise_level(self) -> float:
         """Return the data noise level (from reader metadata, or a default)."""
@@ -910,6 +995,10 @@ class DeerMaxEntModel(_DeerModelBase):
             sigma=self._noise_level(),
             alpha=self._alpha_for_update(reg),
             kernel=self._get_kernel(t, r),
+            n_iter=self.maxent_iterations,
+            n_alpha=self.maxent_alpha_samples,
+            prior=self.maxent_prior,
+            method="lcurve" if reg.method == "lcurve" else "discrepancy",
         )
         self._remember_alpha(reg, alpha_used)
         self._alpha_used = alpha_used
@@ -925,7 +1014,15 @@ class DeerMaxEntModel(_DeerModelBase):
         k_mat, r, f = ff
         alpha = self._alpha_used if self._alpha_used and self._alpha_used > 0 else None
         p, _ = maxent_distance_distribution(
-            k_mat, r, f, sigma=self._noise_level(), alpha=alpha, n_iter=400
+            k_mat,
+            r,
+            f,
+            sigma=self._noise_level(),
+            alpha=alpha,
+            n_iter=400,
+            n_alpha=self.maxent_alpha_samples,
+            prior=self.maxent_prior,
+            method="lcurve" if self.regularization.method == "lcurve" else "discrepancy",
         )
         return p
 
@@ -938,7 +1035,16 @@ class DeerMaxEntModel(_DeerModelBase):
             return None
         k_mat, r, f = ff
         _p, _a, info = maxent_distance_distribution(
-            k_mat, r, f, sigma=self._noise_level(), alpha=None, return_lcurve=True
+            k_mat,
+            r,
+            f,
+            sigma=self._noise_level(),
+            alpha=None,
+            return_lcurve=True,
+            n_iter=self.maxent_iterations,
+            n_alpha=self.maxent_alpha_samples,
+            prior=self.maxent_prior,
+            method="lcurve" if self.regularization.method == "lcurve" else "discrepancy",
         )
         if info is None:
             return None

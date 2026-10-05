@@ -314,7 +314,7 @@ class TestParameterLifecycle:
 
     def test_set_value(self, client):
         ft, params = self._setup(client)
-        p = params[0]["name"]
+        p = next(par["name"] for par in params if not par.get("is_output"))
         assert client.parameter__set_value(p, 42.0, fit_index=ft["fit_index"]).get("ok")
         info = client.fit__get(fit_index=ft["fit_index"])
         for par in info["model"]["parameters_all"]:
@@ -322,6 +322,23 @@ class TestParameterLifecycle:
                 assert par["value"] == 42.0
                 return
         pytest.fail(f"param {p} not found")
+
+    def test_set_value_refuses_a_computed_output(self, client):
+        """The model update after an edit recomputes outputs, so a write is refused."""
+        ft, params = self._setup(client)
+        outputs = [par for par in params if par.get("is_output")]
+        if not outputs:
+            pytest.skip("model declares no outputs")
+        name, before = outputs[0]["name"], outputs[0]["value"]
+        from chisurf.core.api._client import RemoteError
+
+        with pytest.raises(RemoteError, match="computed output"):
+            client.parameter__set_value(name, before + 41.0, fit_index=ft["fit_index"])
+        info = client.fit__get(fit_index=ft["fit_index"])
+        assert (
+            next(par["value"] for par in info["model"]["parameters_all"] if par["name"] == name)
+            == before
+        )
 
     def test_set_fixed(self, client):
         ft, params = self._setup(client)
@@ -841,8 +858,9 @@ class TestUnicodeData:
             pytest.skip(f"fit__create: {ft.get('error')}")
         info = client.fit__get(fit_index=ft["fit_index"])
         params = info.get("model", {}).get("parameters_all", [])
-        if params:
-            p = params[0]
+        inputs = [par for par in params if not par.get("is_output")]
+        if inputs:
+            p = inputs[0]
             result = client.parameter__set_value(p["name"], 42.0, fit_index=ft["fit_index"])
             assert result.get("ok") is True
 

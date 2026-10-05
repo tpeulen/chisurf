@@ -515,11 +515,20 @@ class ProteinMCStructurePlot(Plot):
         """Refresh the structure display from the ProteinMC model widget."""
         if self.viewer is None:
             return
+        # The sampler's structure once it exists, else the starting structure
+        # (a restored, not-yet-sampled project). A new structure object -- a
+        # reloaded starting file, a fresh run -- replaces the displayed one.
         structure = getattr(self.model, "proteinmc_structure", None)
+        if structure is None:
+            structure = getattr(self.model, "structure", None)
         frames = getattr(self.model, "trajectory_frames", None)
         if structure is None and not frames:
             return
+        if self.object_id is not None and structure is not getattr(self, "_shown_structure", None):
+            self.viewer.remove_object(self.object_id)
+            self.object_id = None
         if self.object_id is None:
+            self._shown_structure = structure
             if structure is not None:
                 self.object_id = self.viewer.add_structure(structure, name="ProteinMC")
             else:
@@ -588,7 +597,11 @@ class ProteinMCDistanceNetworkPlot(Plot):
         controller = getattr(self, "plot_controller", None)
         if controller is not None and hasattr(controller, "refresh_from_model"):
             controller.refresh_from_model()
+        # Before any sampling (e.g. a freshly restored project) the network is
+        # drawn on the starting structure.
         structure = getattr(self.model, "proteinmc_structure", None)
+        if structure is None:
+            structure = getattr(self.model, "structure", None)
         frames = getattr(self.model, "trajectory_frames", []) or []
         if not frames and structure is not None:
             xyz = getattr(structure, "xyz", None)
@@ -639,7 +652,7 @@ class ProteinMCDistanceNetworkPlot(Plot):
         self._network_node_positions = {}
         self._network_static_items = []
         try:
-            payload = _load_labeling_payload(labeling_file)
+            payload = self._labeling_payload(labeling_file)
             nodes, edges = _network_from_labeling(structure, payload)
         except Exception as exc:
             self._draw_message(f"Cannot load network: {exc}")
@@ -677,6 +690,19 @@ class ProteinMCDistanceNetworkPlot(Plot):
             self._network_static_items.append(label)
         self.plot_widget.set_xlim(-1.25, 1.25, padding=0.02)
         self.plot_widget.set_ylim(-1.25, 1.25, padding=0.02)
+
+    def _labeling_payload(self, labeling_file: str) -> dict:
+        """The model's labelling definition; the file only when it has none.
+
+        A restored project carries the payload, so drawing must not depend on
+        the original labelling file still being on disk.
+        """
+        payload = getattr(self.model, "_labeling_payload", None)
+        if callable(payload):
+            loaded = payload()
+            if loaded:
+                return loaded
+        return _load_labeling_payload(labeling_file)
 
     def _draw_message(self, message: str) -> None:
         self.plot_widget.text(

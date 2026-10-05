@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from chisurf.server.services import (
+    INVALID_INPUT,
     NOT_FOUND,
     OPERATION_FAILED,
     ServiceResult,
@@ -31,6 +32,23 @@ def _model_of(owner: Any) -> Any:
     return model if model is not None else owner
 
 
+def _owned_uid(state: SessionState, uid: str) -> Any:
+    """Resolve an identity only through the addressed session's scientific roots."""
+    from chisurf.core.project.session import owned_scientific_objects
+
+    return owned_scientific_objects(state).get(str(uid))
+
+
+def _parameter_owner(state: SessionState, parameter: Any) -> Any:
+    """Find the owning model so a UID edit refreshes active predictions."""
+    from chisurf.core.project.session import owned_scientific_objects
+
+    for obj in owned_scientific_objects(state).values():
+        if any(item is parameter for item in getattr(obj, "parameters_all", ())):
+            return obj
+    return None
+
+
 def _finalize_owner(owner: Any) -> None:
     """Update and finalise the model/group of a resolved *owner*, best-effort.
 
@@ -40,8 +58,9 @@ def _finalize_owner(owner: Any) -> None:
     model = _model_of(owner)
     if model is None:
         return
-    if hasattr(model, "update_model"):
-        model.update()
+    update = getattr(model, "update", None)
+    if callable(update):
+        update()
     if hasattr(model, "finalize"):
         model.finalize()
 
@@ -68,12 +87,11 @@ def _resolve_parameter(
 
     Resolution order:
 
-    1. ``parameter_uid`` — resolve the parameter directly via
-       :meth:`chisurf.core.base.Base.find_by_uuid`, independent of
-       ``chisurf.fits``. This is what makes out-of-fit (plugin) parameters
-       mutable and linkable through the same path as fit parameters. ``owner_uid``
-       (when given) resolves the containing model/group for finalisation.
-    2. ``owner_uid`` without ``parameter_uid`` — resolve the group by UUID, then
+    1. ``parameter_uid`` — resolve through the addressed state's scientific
+       roots. Out-of-fit groups must be explicitly owned by ``state.plugins``;
+       process-wide UUID registration alone confers no mutation authority.
+       The containing owned model/group is inferred for prediction updates.
+    2. ``owner_uid`` without ``parameter_uid`` — resolve the owned group by UUID, then
        look ``parameter_name`` up in its ``parameters_all_dict``.
     3. Otherwise — the legacy fit-addressed path.
 
@@ -101,22 +119,22 @@ def _resolve_parameter(
         Error message when the parameter is not found.
 
     """
-    # 1. UUID-addressed parameter: resolve independently of chisurf.fits.
+    # 1. UUID-addressed parameter: resolve within the authoritative owner.
     if parameter_uid:
-        from chisurf.core.base import Base
-
-        p = Base.find_by_uuid(str(parameter_uid))
+        p = _owned_uid(state, str(parameter_uid))
         if p is None:
             message = parameter_error or f"parameter uid '{parameter_uid}' not found"
             return None, None, service_error(message, error_code=NOT_FOUND)
-        owner = Base.find_by_uuid(str(owner_uid)) if owner_uid else None
+        owner = _owned_uid(state, str(owner_uid)) if owner_uid else _parameter_owner(state, p)
+        if owner is None or not any(
+            item is p for item in getattr(_model_of(owner), "parameters_all", ())
+        ):
+            return None, None, service_error("parameter owner not found", error_code=NOT_FOUND)
         return owner, p, None
 
     # 2. Owner group addressed by UUID, parameter by name.
     if owner_uid:
-        from chisurf.core.base import Base
-
-        owner = Base.find_by_uuid(str(owner_uid))
+        owner = _owned_uid(state, str(owner_uid))
         if owner is None:
             return None, None, service_error(fit_error, error_code=NOT_FOUND)
         group = _model_of(owner)
@@ -171,6 +189,7 @@ def _parameter_payload(parameter_name: str, parameter: Any) -> dict[str, Any]:
         "name": parameter_name,
         "value": getattr(parameter, "value", None),
         "fixed": bool(getattr(parameter, "fixed", False)),
+        "is_output": getattr(parameter, "is_output", False) is True,
         "bounds": getattr(parameter, "bounds", None),
         "bounds_on": bool(getattr(parameter, "bounds_on", False)),
         "error_estimate": getattr(parameter, "error_estimate", None),
@@ -264,6 +283,13 @@ def set_parameter_value(
     )
     if error is not None:
         return error
+    if getattr(p, "is_output", False) is True:
+        # An output is recomputed by the model update that follows every edit,
+        # so a write would be silently discarded; say so instead.
+        return service_error(
+            f"parameter '{p.name}' is a computed output; set one of its inputs",
+            error_code=INVALID_INPUT,
+        )
     try:
         p.value = float(value)
         _finalize_owner(owner)
@@ -550,18 +576,14 @@ def parameter_link(
     # Target addressed by UUID takes precedence — this is what lets a parameter
     # (in a fit or an out-of-fit plugin group) link to any other parameter.
     if target_parameter_uid:
-        from chisurf.core.base import Base
-
-        link_to = Base.find_by_uuid(str(target_parameter_uid))
+        link_to = _owned_uid(state, str(target_parameter_uid))
         if link_to is None:
             return service_error(
                 f"target parameter uid '{target_parameter_uid}' not found",
                 error_code=NOT_FOUND,
             )
     elif target_owner_uid and target_parameter_name:
-        from chisurf.core.base import Base
-
-        target_owner = Base.find_by_uuid(str(target_owner_uid))
+        target_owner = _owned_uid(state, str(target_owner_uid))
         if target_owner is None:
             return service_error("target group not found", error_code=NOT_FOUND)
         tdict = getattr(_model_of(target_owner), "parameters_all_dict", {}) or {}

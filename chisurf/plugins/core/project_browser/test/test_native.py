@@ -1,5 +1,6 @@
 """Native project browser against real temporary MMFDB/archive services."""
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -8,24 +9,33 @@ from types import SimpleNamespace
 import pytest
 
 from chisurf.plugins.core.project_browser.gui.app import ProjectBrowserApp
-from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
 from chisurf.plugins.core.project_browser.gui.model import ProjectBrowserModel
 from chisurf.plugins.core.project_browser.test.test_project_browser_services import (
-    project_db as project_db,
+    _payload_with_fit,
+    assert_scientific_roundtrip,
+)
+from chisurf.plugins.core.project_browser.test.test_project_browser_services import (
+    authenticated_browser as authenticated_browser,
 )
 from chisurf.plugins.core.project_browser.test.test_project_browser_services import (
     sample_project_payload as sample_project_payload,
 )
+from chisurf.plugins.core.project_browser.test.test_project_browser_services import (
+    standalone_server as standalone_server,
+)
 
 
 def browser_model(project_db, sample_project_payload):
-    client = ProjectBrowserClient(inprocess=True)
-    client.token = project_db["auth"]["token"]
+    client = project_db["client"]
+    sample_project_payload = _payload_with_fit(sample_project_payload)
     loaded = []
     context = SimpleNamespace()
     model = ProjectBrowserModel(
         client=client,
-        payload_provider=lambda name: sample_project_payload,
+        payload_provider=lambda name: {
+            **sample_project_payload,
+            "meta": {**sample_project_payload["meta"], "name": name},
+        },
         payload_loader=loaded.append,
         context=context,
     )
@@ -42,8 +52,9 @@ def finish(app):
 
 
 def test_real_save_parent_versions_latest_restore_exact_export_and_import(
-    project_db, sample_project_payload
+    authenticated_browser, sample_project_payload
 ):
+    project_db = authenticated_browser
     model, loaded, context = browser_model(project_db, sample_project_payload)
     app = ProjectBrowserApp(model, autoload=False)
     try:
@@ -67,7 +78,33 @@ def test_real_save_parent_versions_latest_restore_exact_export_and_import(
         model.selected_id = project["project_id"]
         app.open_selected()
         finish(app)
-        assert context._current_project_version_id == latest and loaded[-1]["datasets"]
+        assert context._current_project_version_id == latest
+        installed = assert_scientific_roundtrip(loaded[-1])
+        import numpy as np
+
+        import chisurf
+
+        assert (
+            chisurf.imported_datasets[0].unique_identifier
+            == installed.datasets[0].unique_identifier
+        )
+        np.testing.assert_array_equal(chisurf.imported_datasets[0].y, installed.datasets[0].y)
+        assert chisurf.fits[0].unique_identifier == installed.fits[0].unique_identifier
+        np.testing.assert_array_equal(chisurf.fits[0].model.y, installed.fits[0].model.y)
+        import json
+
+        from mmfdb.repository import MFDatabase
+
+        with MFDatabase(project_db["path"]) as db:
+            rows = db.conn.execute(
+                "SELECT metadata_json FROM mmfdb_operation WHERE operation_id IN (?, ?)",
+                (first, latest),
+            ).fetchall()
+        assert len(rows) == 2
+        assert sorted(json.loads(row[0])["version_number"] for row in rows) == [1, 2]
+        exact = model.client.restore_project(first)
+        assert exact["version_id"] == first and exact["project_id"] == project["project_id"]
+        assert_scientific_roundtrip(exact["project_payload"])
         model.selected_id = first
         version = model.require_version()
         archive = model.export(version, project_db["tmp_path"] / "portable")
@@ -94,7 +131,10 @@ def test_real_save_parent_versions_latest_restore_exact_export_and_import(
         app.close()
 
 
-def test_invalid_inputs_archive_errors_cancel_and_preferences(project_db, sample_project_payload):
+def test_invalid_inputs_archive_errors_cancel_and_preferences(
+    authenticated_browser, sample_project_payload
+):
+    project_db = authenticated_browser
     model, _, _ = browser_model(project_db, sample_project_payload)
     app = ProjectBrowserApp(model, autoload=False)
     try:
@@ -187,11 +227,50 @@ restored=next(curve for curve in chisurf.imported_datasets if getattr(curve,'nam
 assert np.allclose(restored.y,[10.,12.,11.])
 assert 'chisurf.gui' not in sys.modules
 """
+    settings = tmp_path / "native-settings"
+    settings.mkdir()
+    env = dict(os.environ, CHISURF_SETTINGS_DIR=str(settings), MMFDB_SETTINGS_DIR=str(settings))
     result = subprocess.run(
         [sys.executable, "-c", script],
+        env=env,
         cwd=Path(__file__).resolve().parents[5],
         capture_output=True,
         text=True,
         timeout=60,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "settings", [{}, {"client": {"mode": "embedded"}}, {"database_path": "bootstrap.sqlite"}]
+)
+def test_bootstrap_local_save_routes_portable(settings, sample_project_payload, monkeypatch):
+    """Injecting a client or a local DB path must not select real database storage."""
+    from chisurf.core.project.storage import ProjectStorageError, select_backend
+    from chisurf.core.settings import cs_settings
+
+    monkeypatch.setitem(cs_settings, "mmfdb", settings)
+    assert select_backend() == "file"
+    model = ProjectBrowserModel(
+        client=object(),
+        context=SimpleNamespace(),
+        payload_provider=lambda name: sample_project_payload,
+    )
+    with pytest.raises(ProjectStorageError, match="Portable project save requires"):
+        model.save_remote("Sample Project", "private", "", model.save_snapshot("Sample Project"))
+
+
+def test_real_deployment_rejects_invalid_auth(authenticated_browser):
+    from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
+    from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
+
+    base = MMFDBClient(
+        mode="remote",
+        base_url=authenticated_browser["url"],
+        allow_insecure_http=True,
+        inprocess=False,
+    )
+    base.token = "invalid-token"
+    client = ProjectBrowserClient(mmfdb_client=base)
+    with pytest.raises(Exception, match="[Aa]uth|[Ss]ession|[Tt]oken"):
+        client.list_projects()

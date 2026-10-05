@@ -49,6 +49,18 @@ from chisurf.gui.main_helper import (
 )
 
 
+def configure_project_shortcuts(window) -> None:
+    """Assign conventional project shortcuts without colliding with fit export."""
+    for action, shortcut in (
+        (window.actionSave_Project, "Ctrl+S"),
+        (window.actionExport_Project, "Ctrl+Shift+S"),
+        (window.actionSaveCurrentFit, "Ctrl+Alt+S"),
+    ):
+        action.setShortcut(QtGui.QKeySequence(shortcut))
+        action.setShortcutContext(QtCore.Qt.ApplicationShortcut)
+        window.addAction(action)
+
+
 def find_toolbar_plugin(plugin_infos: list, target_name: str):
     """Resolve one ``toolbar_plugins`` entry, tolerating a renamed plugin.
 
@@ -386,13 +398,32 @@ class Main(
         except Exception:
             pass
 
+    def _project_has_content(self) -> bool:
+        """Protect retained resources as well as the owning scientific collections."""
+        if super()._project_has_content():
+            return True
+        from chisurf.macros.core_fit import get_project_payload
+
+        resources = get_project_payload().resources
+        return bool(resources.entries or resources.sources)
+
     def closeEvent(self, event: QtGui.QCloseEvent):
-        # Always save window state regardless of confirmation
+        # Guard before geometry saving, fit teardown, and plugin shutdown.
+        try:
+            if not self._guard_project_transition():
+                event.ignore()
+                return
+        except Exception as exc:
+            dialogs.warning(self, "Close Project Failed", str(exc))
+            event.ignore()
+            return
+
+        # Always save window state after the project guard has passed.
         try:
             self._save_window_state()
         except Exception:
             pass
-        if cs.core.settings.gui["confirm_close_program"]:
+        if cs.core.settings.gui["confirm_close_program"] and not self._project_has_content():
             reply = dialogs.question(
                 self,
                 "Message",
@@ -1127,6 +1158,7 @@ class Main(
         self._current_project_id = None
         self._current_project_version_id = None
         self._current_project_name = None
+        self._project_document = None
 
         self.experiment_names = list()
         self.dataset_selector = _gw.experiments.ExperimentalDataSelector(
@@ -1491,7 +1523,7 @@ class Main(
         self.actionSaveAllFits.triggered.connect(self.onSaveFits)
         self.actionSaveCurrentFit.triggered.connect(self.onSaveFit)
         try:
-            self.actionSaveCurrentFit.setShortcut(QtGui.QKeySequence("Ctrl+S"))
+            self.actionSaveCurrentFit.setShortcut(QtGui.QKeySequence("Ctrl+Alt+S"))
             self.actionSaveCurrentFit.setShortcutContext(QtCore.Qt.ApplicationShortcut)
             self.addAction(self.actionSaveCurrentFit)
         except Exception:
@@ -1517,6 +1549,8 @@ class Main(
                 self.menuProject.addAction(action)
         except Exception:
             pass
+
+        configure_project_shortcuts(self)
 
         try:
             action_from_db = QtWidgets.QAction("Open Project...", self)
@@ -1859,11 +1893,10 @@ class Main(
         member and hiding its siblings.
         """
         try:
+            from chisurf.gui.widgets.fitting import presentation_fit_members
             from chisurf.gui.widgets.models.model_editor import model_editor_widget
 
-            grouped = list(getattr(fit_group, "grouped_fits", []) or [])
-            if not grouped:
-                return
+            grouped = presentation_fit_members(fit_group)
             try:
                 sel = int(getattr(fit_group, "selected_fit_index", 0) or 0)
             except Exception:
@@ -1959,21 +1992,37 @@ class Main(
         except Exception:
             pass
 
-    def _open_fit_subwindow(self, fit_obj) -> None:
+    def _open_fit_subwindow(self, fit_obj, *, restored: bool = False) -> None:
         """Create an MDI subwindow for a fit object.
 
         Parameters
         ----------
         fit_obj : FitGroup
             The fit group to create a subwindow for.
+        restored : bool, optional
+            Whether this is an existing scientific fit whose stored range must
+            be retained. New fits use the reader's automatic range selection.
         """
+        uid = str(getattr(fit_obj, "unique_identifier", ""))
+        # A window still being built is not in the MDI area yet. An event loop
+        # spun during the build (an error box, a progress dialog) can deliver
+        # ``fit.added`` for the same fit and re-enter here.
+        opening = getattr(self, "_opening_fit_uids", None)
+        if opening is None:
+            opening = self._opening_fit_uids = set()
+        if uid in opening:
+            return
+        opening.add(uid)
         try:
-            # Skip if subwindow already exists for this fit
             for sub in self.mdiarea.subWindowList():
                 existing_uid = str(getattr(getattr(sub, "fit", None), "unique_identifier", ""))
-                if existing_uid == str(getattr(fit_obj, "unique_identifier", "")):
+                if existing_uid == uid:
                     return
-            from chisurf.gui.widgets.fitting import FitSubWindow, FittingControllerWidget
+            from chisurf.gui.widgets.fitting import (
+                FitSubWindow,
+                FittingControllerWidget,
+                presentation_fit_members,
+            )
 
             fit_control_widget = FittingControllerWidget(fit=fit_obj)
             header_layout = getattr(self, "analysisHeaderLayout", None)
@@ -1983,7 +2032,7 @@ class Main(
                 self.modelLayout.addWidget(fit_control_widget)
             from chisurf.gui.widgets.models.model_editor import build_model_editor
 
-            for fit in fit_obj:
+            for fit in presentation_fit_members(fit_obj):
                 self.modelLayout.addWidget(build_model_editor(fit.model))
             # Only the selected member's editor should be visible; otherwise
             # every member (e.g. VV and VH) clutters the Analysis dock.
@@ -1999,16 +2048,18 @@ class Main(
 
             _gui_mod.fit_windows.append(fit_window)
             self.current_fit = fit_obj
-            try:
+            if not restored:
                 fit_control_widget.onAutoFitRange()
-            except Exception:
-                pass
             fit_window.show()
             fit_window.refresh_current_plot()
         except Exception:
             import chisurf.logging
 
             chisurf.logging.exception("Failed to open fit subwindow")
+            if restored:
+                raise
+        finally:
+            opening.discard(uid)
 
     def _open_fit_subwindow_for_event(self, payload: dict) -> None:
         """Open an MDI subwindow for a newly added fit.

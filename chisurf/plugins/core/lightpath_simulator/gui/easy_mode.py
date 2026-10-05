@@ -7,15 +7,21 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from mmfdb.repository import MFDatabase
 from qtpy import QtCore, QtWidgets
 
+# Canonical conversions, shared with native detector setup editing.
+from chisurf.core.optical_configuration import (
+    _graph_to_config,
+    build_easy_graph,
+    normalize_lightpath_graph,
+)
 from chisurf.core.settings import cs_settings
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.filtered_table import FilteredTableWidget
 from chisurf.plugins.core.lightpath_simulator.core.workflow import (
     MFDatabaseAdapter,
+    _database_type,
     _simulate_with_db,
     resolve_db_path,
 )
@@ -249,7 +255,7 @@ class _SingleProbeTable(QtWidgets.QWidget):
         if not self._db_opened and self._db_path:
             self._db_opened = True
             try:
-                self._db_adapter = MFDatabaseAdapter(MFDatabase(self._db_path))
+                self._db_adapter = MFDatabaseAdapter(_database_type()(self._db_path))
             except Exception:
                 self._db_adapter = None
         return self._db_adapter
@@ -294,173 +300,6 @@ class _SingleProbeTable(QtWidgets.QWidget):
 # ---------------------------------------------------------------------------
 
 
-def _graph_to_config(graph: dict) -> dict:
-    """Convert a GraphDef graph dict back into an easy-mode config dict.
-
-    Handles presets saved from the Full Simulator (which store the full
-    node/edge graph) so the Easy Mode form can populate correctly.
-    """
-    nodes_list = graph.get("nodes", [])
-    edges_list = graph.get("edges", [])
-    nodes_map: dict[str, dict] = {n["id"]: n for n in nodes_list}
-
-    # Build forward adjacency: source_id → [(source_port, target_id, target_port)]
-    forward: dict[str, list[tuple[int, str, int]]] = {}
-    for e in edges_list:
-        src = e["source"]
-        forward.setdefault(src, []).append((e["source_port"], e["target"], e["target_port"]))
-
-    def node_type_of(nid: str) -> str:
-        nd = nodes_map.get(nid)
-        return nd["type"] if nd else ""
-
-    config: dict = {}
-
-    # --- Lasers ---
-    for n in nodes_list:
-        if n["type"] == "light_source":
-            config["lasers"] = n.get("config", {}).get("manual_lines", "488:1.0, 640:1.0")
-            break
-
-    # --- Dyes ---
-    for n in nodes_list:
-        if n["type"] == "sample":
-            dye_props = n.get("config", {}).get("dye_properties", {})
-            if dye_props:
-                config["dyes"] = dye_props
-            else:
-                pids = n.get("config", {}).get("probe_ids", [])
-                if pids:
-                    config["dyes"] = {str(pid): {"qy": 1.0, "ec": 1.0} for pid in pids}
-            break
-
-    # --- Förster parameters ---
-    for n in nodes_list:
-        if n["type"] == "forster_radius":
-            fcfg = n.get("config", {})
-            config["kappa2"] = fcfg.get("kappa2", 0.6667)
-            config["n"] = fcfg.get("n", 1.33)
-            break
-
-    # --- Classify splitters ---
-    sample_id: str | None = None
-    for n in nodes_list:
-        if n["type"] == "sample":
-            sample_id = n["id"]
-            break
-
-    # Splitters fed by Sample's output port 1 are excitation dichroics
-    exci_splitter_ids: set[str] = set()
-    exci_bw_id: str | None = None
-    if sample_id is not None:
-        for sp, tgt, tp in forward.get(sample_id, []):
-            if sp == 1 and node_type_of(tgt) == "splitter":
-                exci_splitter_ids.add(tgt)
-                exci_bw_id = tgt
-                break
-
-    # Excitation dichroic probe (from ExciBW)
-    if exci_bw_id is not None:
-        pid = nodes_map[exci_bw_id].get("config", {}).get("probe_id")
-        if pid is not None:
-            config["excitation_dichroic_probe_id"] = pid
-
-    # --- Walk emission cascade from ExciBW's transmission (port 1) ---
-    splitters: list[dict] = []
-    detectors: list[dict] = []
-
-    def _add_detector_from_chain(start_id: str) -> None:
-        """Resolve a filter→detector chain and add the detector."""
-        dname, bp_pid, qe_pid = _resolve_detector_chain(start_id, nodes_map, forward)
-        detectors.append(
-            {
-                "name": dname,
-                "bandpass_probe_id": bp_pid,
-                "qe_probe_id": qe_pid,
-            }
-        )
-
-    def _walk_splitter(splitter_id: str, visited: set[str]) -> str | None:
-        """Record one emission splitter and find the next one."""
-        nd = nodes_map.get(splitter_id, {})
-        cfg = nd.get("config", {})
-        splitters.append(
-            {
-                "type": cfg.get("splitter_type", "Dichroic"),
-                "probe_id": cfg.get("probe_id"),
-            }
-        )
-        # Detector on transmission port (port 1)
-        for sp, tgt, tp in forward.get(splitter_id, []):
-            if sp == 1:
-                _add_detector_from_chain(tgt)
-                break
-        # Next splitter on reflection port (port 2)
-        for sp, tgt, tp in forward.get(splitter_id, []):
-            if sp == 2:
-                next_type = node_type_of(tgt)
-                if next_type == "splitter" and tgt not in visited:
-                    return tgt
-                # Reflection feeds a detector chain directly (last splitter)
-                if next_type in ("filter", "detector"):
-                    _add_detector_from_chain(tgt)
-                break
-        return None
-
-    if exci_bw_id is not None:
-        # Walk from ExciBW's transmission port
-        for sp, tgt, tp in forward.get(exci_bw_id, []):
-            if sp == 1:
-                cur = tgt
-                visited: set[str] = set()
-                while cur is not None and cur not in visited:
-                    visited.add(cur)
-                    nt = node_type_of(cur)
-                    if nt == "splitter":
-                        nxt = _walk_splitter(cur, visited)
-                        cur = nxt
-                    elif nt in ("filter", "detector"):
-                        # Direct connection to detector chain (no splitters)
-                        _add_detector_from_chain(cur)
-                        break
-                    else:
-                        # Unknown — follow single outgoing edge
-                        nxt = None
-                        for sp2, tgt2, tp2 in forward.get(cur, []):
-                            nxt = tgt2
-                            break
-                        cur = nxt
-                break
-
-    # --- Fallbacks when edges are missing or cascade walk found nothing ---
-
-    # Fallback 1: collect ALL detectors from the node list
-    found_det_names = {d["name"] for d in detectors}
-    for n in nodes_list:
-        if n["type"] == "detector":
-            dname = _node_display_name(n, "detector_name", "Detector")
-            if dname not in found_det_names:
-                detectors.append(
-                    {
-                        "name": dname,
-                        "bandpass_probe_id": None,
-                        "qe_probe_id": n.get("config", {}).get("probe_id"),
-                    }
-                )
-                found_det_names.add(dname)
-
-    # Fallback 2: if no splitters found but detectors exist, infer the
-    # splitter that feeds them (the excitation dichroic itself is the
-    # emission splitter in single-splitter topologies)
-    if not splitters and len(detectors) >= 2:
-        exci_pid = config.get("excitation_dichroic_probe_id")
-        splitters.append({"type": "Dichroic", "probe_id": exci_pid})
-
-    config["emission_splitters"] = splitters
-    config["detectors"] = detectors
-    return config
-
-
 def _resolve_detector_chain(
     start_id: str,
     nodes_map: dict[str, dict],
@@ -497,25 +336,6 @@ def _resolve_detector_chain(
         cur = next_id
 
     return det_name, bp_pid, qe_pid
-
-
-def normalize_lightpath_graph(graph: dict) -> dict:
-    """Return a graph dict with easy edges repaired, in graph-schema v1.
-
-    The port indices here are the schema's: a ``source_port`` counts from zero
-    through the node's ``outputs``, a ``target_port`` through its ``inputs``.
-    Graphs saved by the retired scene editor used one flat per-node list
-    (inputs, then outputs); such a file loads with its output-side edges
-    either dropped — the loader warns loudly per edge — or attached to the
-    wrong pin of a multi-output node, and is best rebuilt via Easy Mode or
-    Reset to Default rather than translated back.
-    """
-    if not isinstance(graph, dict) or not isinstance(graph.get("nodes"), list):
-        return graph
-
-    normalized = copy.deepcopy(graph)
-    _repair_easy_topology_edges(normalized)
-    return normalized
 
 
 def _repair_easy_topology_edges(graph: dict) -> None:
@@ -747,257 +567,6 @@ def _node(
     }
 
 
-def build_easy_graph(config: dict) -> dict:
-    """Build a GraphDef-compatible dict from an easy-mode preset config.
-
-    Optical path:
-      Light Source → Sample
-      Sample → Excitation Dichroic → cascaded Emission Splitters → N Detectors
-      Sample → Förster Radius
-
-    Supports two config formats:
-    - New: ``emission_splitters`` (list of ``{type, probe_id}``)
-    - Legacy: ``emission_splitter_probe_id`` + ``emission_splitter_type`` (single splitter)
-    """
-    nodes = []
-    edges = []
-
-    light_id = str(uuid.uuid4())
-    sample_id = str(uuid.uuid4())
-    exci_id = str(uuid.uuid4())
-    forster_id = str(uuid.uuid4())
-
-    # 1. Light source
-    lasers = config.get("lasers", "488:1.0, 640:1.0")
-    nodes.append(
-        _node(
-            id=light_id,
-            type_="light_source",
-            title="Light Source",
-            inputs=[],
-            outputs=["Light"],
-            config={"source_mode": "manual", "manual_lines": lasers},
-            pos=(50.0, 200.0),
-        )
-    )
-
-    # 2. Sample
-    dye_ids = []
-    dye_props = {}
-    for pid_str, props in config.get("dyes", {}).items():
-        pid = _normalize_pid(pid_str)
-        if pid is not None:
-            dye_ids.append(pid)
-            dye_props[pid_str] = props
-    nodes.append(
-        _node(
-            id=sample_id,
-            type_="sample",
-            title="Sample / Fluorophore",
-            inputs=["In"],
-            outputs=["Out", "Dye Data"],
-            config={
-                "probe_ids": dye_ids,
-                "probe_id": dye_ids[0] if dye_ids else None,
-                "dye_properties": dye_props,
-            },
-            pos=(300.0, 200.0),
-        )
-    )
-
-    # 3. Excitation dichroic — emission path
-    exci_pid = _normalize_pid(config.get("excitation_dichroic_probe_id"))
-    nodes.append(
-        _node(
-            id=exci_id,
-            type_="splitter",
-            title="Excitation Dichroic",
-            inputs=["In"],
-            outputs=["Transmission", "Reflection"],
-            config={"probe_id": exci_pid},
-            pos=(500.0, 200.0),
-        )
-    )
-    # Schema port indices: source ports count through outputs, target ports
-    # through inputs. The sample's "Out" is output 0, "Dye Data" output 1; a
-    # splitter's Transmission is output 0, its Reflection output 1.
-    edges.append({"source": light_id, "source_port": 0, "target": sample_id, "target_port": 0})
-    edges.append({"source": sample_id, "source_port": 0, "target": exci_id, "target_port": 0})
-
-    # 4. Emission splitters (cascaded) → Detector channels
-    splitters = config.get("emission_splitters", [])
-    if not splitters:
-        # Legacy: single splitter from emission_splitter_probe_id + emission_splitter_type
-        legacy_pid = _normalize_pid(config.get("emission_splitter_probe_id"))
-        legacy_type = config.get("emission_splitter_type", "Dichroic")
-        if legacy_pid is not None:
-            splitters = [{"type": legacy_type, "probe_id": legacy_pid}]
-
-    detectors = config.get("detectors", [])
-    splitters = _clean_splitters_for_detector_count(splitters, len(detectors))
-    n_detectors = len(splitters) + 1  # N splitters → N+1 detectors
-
-    # Auto-generate splitters if more detectors than splitters allow
-    while n_detectors < len(detectors):
-        splitters.append({"type": "Dichroic", "probe_id": None})
-        n_detectors = len(splitters) + 1
-
-    # Ensure detector list has enough entries
-    while len(detectors) < n_detectors:
-        detectors.append({"name": f"Channel {len(detectors) + 1}"})
-
-    # Build cascaded splitters
-    prev_node_id = exci_id
-    prev_port = 0  # Excitation dichroic transmission output
-    splitter_ids = []
-
-    for i, sp in enumerate(splitters):
-        sp_id = str(uuid.uuid4())
-        splitter_ids.append(sp_id)
-        sp_pid = _normalize_pid(sp.get("probe_id"))
-        sp_type = sp.get("type", "Dichroic")
-        nodes.append(
-            _node(
-                id=sp_id,
-                type_="splitter",
-                title=f"{sp_type} Splitter {i + 1}",
-                inputs=["In"],
-                outputs=["Transmission", "Reflection"],
-                config={"probe_id": sp_pid, "splitter_type": sp_type},
-                pos=(550.0 + i * 30.0, 200.0 + i * 80.0),
-            )
-        )
-        edges.append(
-            {"source": prev_node_id, "source_port": prev_port, "target": sp_id, "target_port": 0}
-        )
-
-        # Transmission → detector i
-        det = detectors[i] if i < len(detectors) else {}
-        det_name = det.get("name", f"Channel {i + 1}")
-        bp_pid = _normalize_pid(det.get("bandpass_probe_id"))
-        dn_id = str(uuid.uuid4())
-
-        chain_node = sp_id
-        chain_port = 0  # Transmission output
-
-        if bp_pid:
-            bp_node_id = str(uuid.uuid4())
-            nodes.append(
-                _node(
-                    id=bp_node_id,
-                    type_="filter",
-                    title=f"Bandpass: {det_name}",
-                    inputs=["In"],
-                    outputs=["Out"],
-                    config={"probe_id": bp_pid},
-                    pos=(700.0 + i * 30.0, 100.0 + i * 200.0),
-                )
-            )
-            edges.append(
-                {
-                    "source": chain_node,
-                    "source_port": chain_port,
-                    "target": bp_node_id,
-                    "target_port": 0,
-                }
-            )
-            chain_node = bp_node_id
-            chain_port = 0
-
-        qe_pid = _normalize_pid(det.get("qe_probe_id"))
-        nodes.append(
-            _node(
-                id=dn_id,
-                type_="detector",
-                title=det_name,
-                inputs=["In"],
-                outputs=[],
-                config={"detector_name": det_name, "probe_id": qe_pid},
-                pos=(850.0 + i * 30.0, 100.0 + i * 200.0),
-            )
-        )
-        edges.append(
-            {"source": chain_node, "source_port": chain_port, "target": dn_id, "target_port": 0}
-        )
-
-        # Next splitter feeds from this splitter's Reflection
-        prev_node_id = sp_id
-        prev_port = 1  # Reflection output
-
-    # Last detector on the reflection port of the last splitter (or from ExciBW if no splitters)
-    last_idx = len(splitters)
-    if last_idx < len(detectors):
-        det = detectors[last_idx]
-        det_name = det.get("name", f"Channel {last_idx + 1}")
-        bp_pid = _normalize_pid(det.get("bandpass_probe_id"))
-        dn_id = str(uuid.uuid4())
-
-        chain_node = prev_node_id
-        chain_port = prev_port
-
-        if bp_pid:
-            bp_node_id = str(uuid.uuid4())
-            nodes.append(
-                _node(
-                    id=bp_node_id,
-                    type_="filter",
-                    title=f"Bandpass: {det_name}",
-                    inputs=["In"],
-                    outputs=["Out"],
-                    config={"probe_id": bp_pid},
-                    pos=(700.0 + last_idx * 30.0, 100.0 + last_idx * 200.0),
-                )
-            )
-            edges.append(
-                {
-                    "source": chain_node,
-                    "source_port": chain_port,
-                    "target": bp_node_id,
-                    "target_port": 0,
-                }
-            )
-            chain_node = bp_node_id
-            chain_port = 0
-
-        qe_pid = _normalize_pid(det.get("qe_probe_id"))
-        nodes.append(
-            _node(
-                id=dn_id,
-                type_="detector",
-                title=det_name,
-                inputs=["In"],
-                outputs=[],
-                config={"detector_name": det_name, "probe_id": qe_pid},
-                pos=(850.0 + last_idx * 30.0, 100.0 + last_idx * 200.0),
-            )
-        )
-        edges.append(
-            {"source": chain_node, "source_port": chain_port, "target": dn_id, "target_port": 0}
-        )
-
-    # 5. Förster radius node
-    kappa2 = config.get("kappa2", 0.6667)
-    n_val = config.get("n", 1.33)
-    nodes.append(
-        _node(
-            id=forster_id,
-            type_="forster_radius",
-            title="Förster Radius",
-            inputs=[
-                "Dye Data",
-                {"name": "kappa2", "type": "number"},
-                {"name": "n", "type": "number"},
-            ],
-            outputs=[],
-            config={"kappa2": kappa2, "n": n_val, "_last_results": []},
-            pos=(300.0, 500.0),
-        )
-    )
-    edges.append({"source": sample_id, "source_port": 1, "target": forster_id, "target_port": 0})
-
-    return {"nodes": nodes, "edges": edges, "version": 1}
-
-
 # ---------------------------------------------------------------------------
 # Preset I/O
 # ---------------------------------------------------------------------------
@@ -1087,7 +656,7 @@ class _DyeTableWidget(QtWidgets.QWidget):
             self._db_opened = True
             if self._db_path:
                 try:
-                    self._db_adapter = MFDatabaseAdapter(MFDatabase(self._db_path))
+                    self._db_adapter = MFDatabaseAdapter(_database_type()(self._db_path))
                 except Exception:
                     self._db_adapter = None
         return self._db_adapter
@@ -1905,7 +1474,7 @@ class LightPathEasyWidget(QtWidgets.QWidget):
             return
         try:
             graph = build_easy_graph(cfg)
-            with MFDatabase(resolve_db_path()) as db:
+            with _database_type()(resolve_db_path()) as db:
                 result = _simulate_with_db(graph, db)
             self._last_results = result
             self._show_results(result)
@@ -2034,8 +1603,3 @@ class LightPathEasyDialog(QtWidgets.QDialog):
 
     def get_optical_config(self) -> dict:
         return self.easy_widget.get_optical_config()
-
-# Canonical conversions are shared with native detector setup editing.
-from chisurf.core.optical_configuration import build_easy_graph, _graph_to_config
-
-from chisurf.core.optical_configuration import normalize_lightpath_graph

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
+
 import chisurf as cs
 from chisurf import typing
 from chisurf.core.actions._infra import canonical as _canon
@@ -18,124 +20,136 @@ def _is(action_type: str, *names: str) -> bool:
 
 def reconstruct_navigation_state(
     events: typing.List[typing.Dict[str, typing.Any]],
+    base: typing.Optional[typing.Dict[str, typing.Any]] = None,
 ) -> typing.Dict[str, typing.Any]:
-    datasets: typing.List[str] = []
-    dataset_uids: typing.List[str] = []
-    fits: typing.List[str] = []
-    fit_uids: typing.List[str] = []
-    selected_dataset: typing.Optional[str] = None
-    selected_dataset_uid: typing.Optional[str] = None
-    selected_fit: typing.Optional[str] = None
-    selected_fit_uid: typing.Optional[str] = None
+    """Apply audit navigation deltas to detached UID/name inventories.
 
-    def append_unique(lst: typing.List[str], value: str) -> None:
-        v = str(value)
-        if v and v not in lst:
-            lst.append(v)
+    UIDs determine identity when supplied. A display name is only a fallback
+    for older audit rows with no UID; it never removes another UID's entity.
+    """
+    state = deepcopy(base or {})
+    for kind, plural, uid_key in (
+        ("dataset", "datasets", "dataset_uids"),
+        ("fit", "fits", "fit_uids"),
+    ):
+        state.setdefault(plural, [])
+        state.setdefault(uid_key, [])
+        state.setdefault(f"selected_{kind}", None)
+        state.setdefault(f"selected_{kind}_uid", None)
 
-    def remove_values(lst: typing.List[str], values: typing.Set[str]) -> typing.List[str]:
-        return [v for v in lst if v not in values]
+    def pairs(kind):
+        """Return the ordered identity/display-name pairs for one inventory."""
+        names = state["datasets" if kind == "dataset" else "fits"]
+        uids = state[f"{kind}_uids"]
+        return [(str(uids[i]) if i < len(uids) else "", str(name)) for i, name in enumerate(names)]
+
+    def publish(kind, rows):
+        """Publish an inventory without separating names from their identities."""
+        state["datasets" if kind == "dataset" else "fits"] = [name for _, name in rows]
+        state[f"{kind}_uids"] = [uid for uid, _ in rows]
+
+    def select(kind, uid, name=None):
+        """Resolve selection names through their exact UID when available."""
+        if uid:
+            match = next((n for u, n in pairs(kind) if u == uid), None)
+            if match is None:
+                return
+            name = match
+        elif name is not None:
+            matches = [u for u, n in pairs(kind) if n == name]
+            if len(matches) > 1:
+                raise ValueError("Name-only navigation selection is ambiguous; supply exact UIDs")
+            if matches:
+                uid = matches[0]
+        state[f"selected_{kind}"] = name
+        state[f"selected_{kind}_uid"] = uid or None
+
+    def add(kind, names, uids):
+        """Append new identities, retaining equal display names."""
+        rows = pairs(kind)
+        for i, name in enumerate(names):
+            uid = str(uids[i]) if i < len(uids) else ""
+            name = str(name)
+            if not name:
+                continue
+            identity = uid if uid else name
+            if not any((u if uid else n) == identity for u, n in rows):
+                rows.append((uid, name))
+        publish(kind, rows)
+        if names:
+            select(kind, str(uids[-1]) if uids else "", str(names[-1]))
+
+    def remove(kind, names, uids):
+        """Remove UID matches or an unambiguous name-only audit match."""
+        rows = pairs(kind)
+        uid_set = {str(u) for u in uids if u}
+        name_set = {str(n) for n in names}
+        if not uid_set and any(sum(n == name for _, n in rows) > 1 for name in name_set):
+            raise ValueError("Name-only navigation removal is ambiguous; supply exact UIDs")
+        removed = [(u, n) for u, n in rows if (u in uid_set if uid_set else n in name_set)]
+        publish(kind, [row for row in rows if row not in removed])
+        current_uid = state[f"selected_{kind}_uid"]
+        current_name = state[f"selected_{kind}"]
+        if any((u == current_uid if current_uid else n == current_name) for u, n in removed):
+            remaining = pairs(kind)
+            select(kind, remaining[-1][0], remaining[-1][1]) if remaining else select(
+                kind, "", None
+            )
 
     for event in events:
-        action_type = _canon(str(event.get("action_type", "")))
-        payload = event.get("payload", {}) or {}
-
-        if _is(action_type, "dataset.add"):
-            loaded = payload.get("loaded_names", [])
-            loaded_uids = payload.get("loaded_uids", [])
-            if isinstance(loaded, list):
-                for name in loaded:
-                    append_unique(datasets, str(name))
-                if loaded:
-                    selected_dataset = str(loaded[-1])
-            if isinstance(loaded_uids, list):
-                for uid in loaded_uids:
-                    append_unique(dataset_uids, str(uid))
-                if loaded_uids:
-                    selected_dataset_uid = str(loaded_uids[-1])
-
-        elif _is(action_type, "dataset.group"):
-            name = str(payload.get("group_name", ""))
-            uid = str(payload.get("group_uid", ""))
-            if name:
-                append_unique(datasets, name)
-                selected_dataset = name
-            if uid:
-                append_unique(dataset_uids, uid)
-                selected_dataset_uid = uid
-
-        elif _is(action_type, "dataset.remove"):
-            removed = payload.get("removed_names", [])
-            removed_uids = payload.get("removed_uids", [])
-            if isinstance(removed, list):
-                removed_set = {str(n) for n in removed}
-                datasets = remove_values(datasets, removed_set)
-                if selected_dataset in removed_set:
-                    selected_dataset = datasets[-1] if datasets else None
-            if isinstance(removed_uids, list):
-                removed_uid_set = {str(n) for n in removed_uids}
-                dataset_uids = remove_values(dataset_uids, removed_uid_set)
-                if selected_dataset_uid in removed_uid_set:
-                    selected_dataset_uid = dataset_uids[-1] if dataset_uids else None
-
-        elif _is(action_type, "dataset.ungroup"):
-            group_names = payload.get("group_names", [])
-            group_uids = payload.get("group_uids", [])
-            expanded_names = payload.get("expanded_names", [])
-            expanded_uids = payload.get("expanded_uids", [])
-            if isinstance(group_names, list):
-                remove_set = {str(n) for n in group_names}
-                datasets = remove_values(datasets, remove_set)
-                if selected_dataset in remove_set:
-                    selected_dataset = None
-            if isinstance(group_uids, list):
-                remove_uid_set = {str(n) for n in group_uids}
-                dataset_uids = remove_values(dataset_uids, remove_uid_set)
-                if selected_dataset_uid in remove_uid_set:
-                    selected_dataset_uid = None
-            if isinstance(expanded_names, list):
-                for name in expanded_names:
-                    append_unique(datasets, str(name))
-                if expanded_names:
-                    selected_dataset = str(expanded_names[-1])
-            if isinstance(expanded_uids, list):
-                for uid in expanded_uids:
-                    append_unique(dataset_uids, str(uid))
-                if expanded_uids:
-                    selected_dataset_uid = str(expanded_uids[-1])
-
-        elif _is(action_type, "fit.add"):
-            fit_name = str(payload.get("fit_group_name") or payload.get("fit_name") or "")
-            fit_uid = str(event.get("source_uid") or payload.get("fit_uid") or "")
-            if fit_name:
-                append_unique(fits, fit_name)
-                selected_fit = fit_name
-            if fit_uid:
-                append_unique(fit_uids, fit_uid)
-                selected_fit_uid = fit_uid
-
-        elif _is(action_type, "fit.close"):
-            fit_name = str(payload.get("fit_name") or "")
-            fit_uid = str(event.get("source_uid") or payload.get("fit_uid") or "")
-            if fit_name:
-                fits = [f for f in fits if f != fit_name]
-                if selected_fit == fit_name:
-                    selected_fit = fits[-1] if fits else None
-            if fit_uid:
-                fit_uids = [u for u in fit_uids if u != fit_uid]
-                if selected_fit_uid == fit_uid:
-                    selected_fit_uid = fit_uids[-1] if fit_uids else None
-
-        elif _is(action_type, "fit.run.start", "fit.run.finish", "fit.run.abort"):
-            fit_name = str(payload.get("fit_name") or "")
-            fit_uid = str(event.get("source_uid") or payload.get("fit_uid") or "")
-            if fit_name:
-                selected_fit = fit_name
-            if fit_uid:
-                selected_fit_uid = fit_uid
-
+        action = _canon(str(event.get("action_type", "")))
+        payload = deepcopy(event.get("payload", {}) or {})
+        if _is(action, "dataset.add"):
+            add("dataset", payload.get("loaded_names", []), payload.get("loaded_uids", []))
+        elif _is(action, "dataset.remove"):
+            remove("dataset", payload.get("removed_names", []), payload.get("removed_uids", []))
+        elif _is(action, "dataset.group"):
+            remove("dataset", [], payload.get("member_uids", []))
+            add("dataset", [payload.get("group_name", "")], [payload.get("group_uid", "")])
+        elif _is(action, "dataset.ungroup"):
+            group_uids = set(payload.get("group_uids", []))
+            group_names = set(payload.get("group_names", []))
+            if len(group_uids or group_names) > 1:
+                raise ValueError("Aggregated ungroup audit requires per-group member identities")
+            before = pairs("dataset")
+            position = next(
+                (
+                    i
+                    for i, (u, n) in enumerate(before)
+                    if (u in group_uids if group_uids else n in group_names)
+                ),
+                len(before),
+            )
+            remove("dataset", payload.get("group_names", []), payload.get("group_uids", []))
+            retained = pairs("dataset")
+            add("dataset", payload.get("expanded_names", []), payload.get("expanded_uids", []))
+            inserted = [row for row in pairs("dataset") if row not in retained]
+            publish("dataset", retained[:position] + inserted + retained[position:])
+        elif _is(action, "dataset.select"):
+            select(
+                "dataset",
+                str(payload.get("dataset_uid") or event.get("source_uid") or ""),
+                payload.get("dataset_name"),
+            )
         elif _is(
-            action_type,
+            action,
+            "fit.add",
+            "fit.close",
+            "fit.select",
+            "fit.run.start",
+            "fit.run.finish",
+            "fit.run.abort",
+        ):
+            uid = str(payload.get("fit_uid") or event.get("source_uid") or "")
+            name = str(payload.get("fit_group_name") or payload.get("fit_name") or "")
+            if _is(action, "fit.add"):
+                add("fit", [name], [uid])
+            elif _is(action, "fit.close"):
+                remove("fit", [name], [uid])
+            else:
+                select("fit", uid, name or None)
+        elif _is(
+            action,
             "parameter.value",
             "parameter.fixed",
             "parameter.bounds.set",
@@ -145,20 +159,35 @@ def reconstruct_navigation_state(
             "fit.range.set",
             "fit.mask_set",
         ):
-            fit_name = str(payload.get("fit_group") or payload.get("source_fit_group") or "")
-            if fit_name:
-                selected_fit = fit_name
+            uid = str(payload.get("fit_uid") or payload.get("source_fit_uid") or "")
+            selection_name = payload.get("fit_group") or payload.get("source_fit_group")
+            if uid or selection_name:
+                select("fit", uid, selection_name)
+    return state
 
-    return {
-        "datasets": datasets,
-        "dataset_uids": dataset_uids,
-        "fits": fits,
-        "fit_uids": fit_uids,
-        "selected_dataset": selected_dataset,
-        "selected_dataset_uid": selected_dataset_uid,
-        "selected_fit": selected_fit,
-        "selected_fit_uid": selected_fit_uid,
-    }
+
+def _parameter_key(payload):
+    """Resolve a complete UID identity, falling back only for name-only audit rows."""
+    uids = (
+        str(
+            payload.get("fit_uid")
+            or payload.get("fit_group_uid")
+            or payload.get("source_fit_uid")
+            or ""
+        ),
+        str(payload.get("local_fit_uid") or payload.get("source_local_fit_uid") or ""),
+        str(payload.get("parameter_uid") or payload.get("source_parameter_uid") or ""),
+    )
+    if all(uids):
+        return uids
+    if any(uids):
+        raise ValueError("Parameter audit identity must supply all three UIDs")
+    names = (
+        str(payload.get("fit_group") or payload.get("source_fit_group") or ""),
+        str(payload.get("local_fit") or payload.get("source_local_fit") or ""),
+        str(payload.get("parameter_name") or payload.get("source_parameter") or ""),
+    )
+    return names if all(names) else None
 
 
 def reconstruct_parameter_state(
@@ -166,19 +195,10 @@ def reconstruct_parameter_state(
 ) -> typing.Dict[typing.Tuple[str, str, str], typing.Dict[str, typing.Any]]:
     """Build parameter state map up to cursor from history events.
 
-    Key is (fit_group_name, local_fit_name, parameter_name).
+    Keys are complete (fit UID, local-fit UID, parameter UID) tuples when
+    available; name-only audit rows retain name tuples.
     """
     state: typing.Dict[typing.Tuple[str, str, str], typing.Dict[str, typing.Any]] = {}
-
-    def get_key(
-        payload: typing.Dict[str, typing.Any],
-    ) -> typing.Optional[typing.Tuple[str, str, str]]:
-        fit_group = str(payload.get("fit_group") or payload.get("source_fit_group") or "")
-        local_fit = str(payload.get("local_fit") or payload.get("source_local_fit") or "")
-        param_name = str(payload.get("parameter_name") or payload.get("source_parameter") or "")
-        if not fit_group or not local_fit or not param_name:
-            return None
-        return fit_group, local_fit, param_name
 
     def apply_snapshot_rows(rows: typing.Any) -> None:
         if not isinstance(rows, list):
@@ -191,7 +211,7 @@ def reconstruct_parameter_state(
             param_name = str(row.get("parameter_name") or "")
             if not fit_group or not local_fit or not param_name:
                 continue
-            key = (fit_group, local_fit, param_name)
+            key = _parameter_key(row)
             entry = state.setdefault(key, {})
             if "value" in row:
                 entry["value"] = row.get("value")
@@ -209,7 +229,7 @@ def reconstruct_parameter_state(
 
     for event in events:
         action_type = _canon(str(event.get("action_type", "")))
-        payload = event.get("payload", {}) or {}
+        payload = deepcopy(event.get("payload", {}) or {})
 
         if _is(action_type, "fit.run.start"):
             apply_snapshot_rows(payload.get("parameter_snapshot_before"))
@@ -218,7 +238,17 @@ def reconstruct_parameter_state(
             apply_snapshot_rows(payload.get("parameter_snapshot_after"))
             continue
 
-        key = get_key(payload)
+        if not _is(
+            action_type,
+            "parameter.value",
+            "parameter.fixed",
+            "parameter.bounds.on",
+            "parameter.bounds.set",
+            "parameter.link",
+            "parameter.unlink",
+        ):
+            continue
+        key = _parameter_key(payload)
         if key is None:
             continue
         entry = state.setdefault(key, {})
@@ -272,6 +302,7 @@ def reconstruct_parameter_state(
 
         elif _is(action_type, "parameter.unlink"):
             entry["link"] = None
+            entry["link_uid"] = None
 
     return state
 
@@ -288,7 +319,9 @@ def reconstruct_fit_range_state(
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            fit_group = str(row.get("fit_group") or "")
+            fit_group = str(
+                row.get("fit_uid") or row.get("fit_group_uid") or row.get("fit_group") or ""
+            )
             if not fit_group:
                 continue
             xmin = row.get("xmin")
@@ -305,7 +338,7 @@ def reconstruct_fit_range_state(
 
     for event in events:
         action_type = _canon(str(event.get("action_type", "")))
-        payload = event.get("payload", {}) or {}
+        payload = deepcopy(event.get("payload", {}) or {})
 
         if _is(action_type, "fit.run.start"):
             apply_range_rows(payload.get("fit_range_snapshot_before"))
@@ -315,7 +348,13 @@ def reconstruct_fit_range_state(
             continue
 
         if _is(action_type, "fit.range.set"):
-            fit_group = str(payload.get("fit_group") or "")
+            fit_group = str(
+                payload.get("fit_uid")
+                or payload.get("fit_group_uid")
+                or event.get("source_uid")
+                or payload.get("fit_group")
+                or ""
+            )
             xmin = payload.get("xmin")
             xmax = payload.get("xmax")
             if fit_group and xmin is not None and xmax is not None:
@@ -349,12 +388,10 @@ def touched_parameter_keys(
         action_type = _canon(str(event.get("action_type", "")))
         if action_type not in actions:
             continue
-        payload = event.get("payload", {}) or {}
-        fit_group = str(payload.get("fit_group") or payload.get("source_fit_group") or "")
-        local_fit = str(payload.get("local_fit") or payload.get("source_local_fit") or "")
-        param_name = str(payload.get("parameter_name") or payload.get("source_parameter") or "")
-        if fit_group and local_fit and param_name:
-            keys.add((fit_group, local_fit, param_name))
+        payload = deepcopy(event.get("payload", {}) or {})
+        key = _parameter_key(payload)
+        if key is not None:
+            keys.add(key)
     return keys
 
 
@@ -367,7 +404,7 @@ def reconstruct_setup_state(
 
     for event in events:
         action_type = _canon(str(event.get("action_type", "")))
-        payload = event.get("payload", {}) or {}
+        payload = deepcopy(event.get("payload", {}) or {})
 
         if _is(action_type, "experiment.set"):
             name = str(payload.get("name") or "")
@@ -407,9 +444,11 @@ def reconstruct_model_state(
 
     for event in events:
         action_type = _canon(str(event.get("action_type", "")))
-        payload = event.get("payload", {}) or {}
-        source_uid = str(event.get("source_uid", ""))
-        target_uid = str(event.get("target_uid", ""))
+        payload = deepcopy(event.get("payload", {}) or {})
+        if not action_type.startswith(_canon("model.")):
+            continue
+        source_uid = str(event.get("source_uid") or "")
+        target_uid = str(event.get("target_uid") or "")
 
         # Determine which fit group this event applies to
         fit_group_uid = source_uid or target_uid
@@ -424,12 +463,9 @@ def reconstruct_model_state(
         if fit_group_uid not in state:
             state[fit_group_uid] = {"fit_group_uid": fit_group_uid, "local_fits": {}}
 
-        # Determine which local fit this applies to (default to first local fit)
         local_fit_uid = str(payload.get("local_fit_uid") or "")
         if not local_fit_uid:
-            # For some model operations, we need to find the local fit
-            # This is a simplification - in a full implementation, we'd track this properly
-            local_fit_uid = "local_0"  # Default assumption
+            raise ValueError("Model audit delta requires an exact local fit UID")
 
         # Initialize local fit entry if not exists
         fg_state = state[fit_group_uid]
@@ -525,7 +561,11 @@ def reconstruct_model_state(
 
 
 def capture_domain_snapshot() -> typing.Dict[str, typing.Any]:
-    """Capture current domain state for checkpoint storage.
+    """Capture legacy display metadata for audit inspection only.
+
+    This is not a scientific checkpoint: it contains neither canonical model
+    adapters nor the complete resources needed to restore numerical state.
+    Scientific history must capture the canonical project-owned snapshot.
 
     Returns a JSON-serializable dict containing:
     - navigation: datasets, fits, selections
@@ -788,6 +828,7 @@ def snapshot_to_replay_state(
     - setup: same as reconstruct_setup_state output
     - models: same as captured model state
     """
+    snapshot = deepcopy(snapshot)
     result: typing.Dict[str, typing.Any] = {
         "navigation": {},
         "parameters": {},
@@ -818,7 +859,7 @@ def snapshot_to_replay_state(
         pname = str(entry.get("parameter_name", ""))
         if not fg or not local or not pname:
             continue
-        param_key = (fg, local, pname)
+        param_key = _parameter_key(entry)
         state_entry: typing.Dict[str, typing.Any] = {}
         if "value" in entry:
             state_entry["value"] = entry["value"]
@@ -838,6 +879,9 @@ def snapshot_to_replay_state(
                 link_pname = str(link.get("parameter_name", ""))
                 if link_fg and link_local and link_pname:
                     state_entry["link"] = (link_fg, link_local, link_pname)
+        if "link_uid" in entry:
+            link_uid = entry["link_uid"]
+            state_entry["link_uid"] = tuple(link_uid) if link_uid is not None else None
         if entry.get("fit_group_uid"):
             state_entry["source_fit_uid"] = str(entry.get("fit_group_uid"))
         if entry.get("local_fit_uid"):
@@ -851,7 +895,20 @@ def snapshot_to_replay_state(
 
     result["setup"] = snapshot.get("setup", {})
 
-    result["models"] = snapshot.get("models", {})
+    models = {}
+    for key, group in snapshot.get("models", {}).items():
+        group_key = str(group.get("fit_group_uid") or key)
+        if group_key in models:
+            raise ValueError("Duplicate fit UID in audit checkpoint model metadata")
+        local_fits = {}
+        for local_key, local in group.get("local_fits", {}).items():
+            local_uid = str(local.get("local_fit_uid") or local_key)
+            if local_uid in local_fits:
+                raise ValueError("Duplicate local fit UID in audit checkpoint model metadata")
+            local_fits[local_uid] = local
+        group["local_fits"] = local_fits
+        models[group_key] = group
+    result["models"] = models
 
     return result
 
@@ -860,163 +917,14 @@ def sync_domain_entities(
     target_nav_state: typing.Dict[str, typing.Any],
     all_events: typing.List[typing.Dict[str, typing.Any]],
 ) -> None:
-    """Synchronize live domain entities (datasets, fits) with the target state.
+    """Reject reconstruction of live science from an incomplete audit projection.
 
-    This identifies missing or extra entities by UID and uses action services
-    to reconcile them, with history recording suppressed.
-
-    Returns
-    -------
-    dict
-        Map of recorded (old) UID -> re-created (new) UID for entities re-added on
-        redo. Empty when nothing was re-created. Callers must rewrite any
-        UID-keyed reconstructed state (e.g. ``model_state``) through this map
-        before applying it, since re-creation yields fresh UIDs.
+    Live history publication must restore the canonical scientific snapshot via
+    its project owner. Audit rows have neither complete numerical resources nor
+    sufficient identity to recreate a dataset or fit from its old source path.
     """
-    import chisurf.core.actions as actions
-
-    target_ds_uids = set(target_nav_state.get("dataset_uids", []))
-    target_fit_uids = set(target_nav_state.get("fit_uids", []))
-
-    current_ds_uids = {
-        str(getattr(ds, "unique_identifier", "")) for ds in getattr(cs, "imported_datasets", [])
-    }
-    current_fit_uids = {str(getattr(f, "unique_identifier", "")) for f in getattr(cs, "fits", [])}
-
-    # Identify missing UIDs
-    missing_ds = target_ds_uids - current_ds_uids
-    missing_fits = target_fit_uids - current_fit_uids
-
-    # Identify extra UIDs
-    extra_ds_indices = [
-        i
-        for i, ds in enumerate(getattr(cs, "imported_datasets", []))
-        if str(getattr(ds, "unique_identifier", "")) not in target_ds_uids
-        and str(getattr(ds, "name", "")) != "Global Dataset"
-    ]
-    extra_fit_indices = [
-        i
-        for i, f in enumerate(getattr(cs, "fits", []))
-        if str(getattr(f, "unique_identifier", "")) not in target_fit_uids
-    ]
-
-    try:
-        cs.logging.info(
-            "HISTNAV: sync_domain_entities missing_ds=%d missing_fits=%d "
-            "extra_ds=%d extra_fits=%d"
-            % (len(missing_ds), len(missing_fits), len(extra_ds_indices), len(extra_fit_indices))
-        )
-    except Exception:
-        pass
-
-    # Maps a recorded (old) entity UID to the UID of the entity re-created for it
-    # on redo. Re-creating a dataset/fit by replay yields a fresh UID, so any
-    # reconstructed state still keyed by the old UID (notably model_state, keyed by
-    # fit-group UID) must be rewritten through this map before it is applied.
-    uid_remap: typing.Dict[str, str] = {}
-
-    history = getattr(cs, "history", None)
-    if history is None:
-        return uid_remap
-
-    with history.suppress_recording():
-        # 1. Remove extra entities (reverse order to keep indices valid)
-        if extra_fit_indices:
-            for idx in sorted(extra_fit_indices, reverse=True):
-                actions.dispatch("fit.close", {"idx": idx})
-
-        if extra_ds_indices:
-            # dataset_service.remove_datasets takes a list
-            actions.dispatch("dataset.remove", {"dataset_indices": extra_ds_indices})
-
-            # 2a. Build UID -> Current Index map for resolving dependencies
-            uid_to_idx = {
-                str(getattr(ds, "unique_identifier", "")): i
-                for i, ds in enumerate(getattr(cs, "imported_datasets", []))
-            }
-
-            # Map UID -> Event for creation actions
-            creation_map: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
-            # uid_to_event_uids: typing.Dict[str, typing.List[str]] = {} # Map UID to all UIDs created in same event
-
-            for event in all_events:
-                atype = _canon(str(event.get("action_type", "")))
-                payload = event.get("payload", {}) or {}
-                if _is(atype, "dataset.add"):
-                    uids = [str(u) for u in payload.get("loaded_uids", [])]
-                    for uid in uids:
-                        creation_map[uid] = event
-                        # uid_to_event_uids[uid] = uids
-                elif _is(atype, "fit.add"):
-                    # Key on source_uid first — that is the fit-group UID that
-                    # reconstruct_navigation_state records into fit_uids, so the
-                    # redo lookup (creation_map.get(missing_fit_uid)) matches.
-                    uid = str(
-                        event.get("source_uid")
-                        or event.get("target_uid")
-                        or payload.get("fit_uid")
-                        or ""
-                    )
-                    if uid:
-                        creation_map[uid] = event
-                elif _is(atype, "dataset.group"):
-                    uid = str(payload.get("group_uid", ""))
-                    if uid:
-                        creation_map[uid] = event
-
-            def resolve_indices(old_indices: list, creator_event: dict) -> list:
-                payload = creator_event.get("payload", {})
-                member_uids = payload.get("member_uids", [])
-                if member_uids:
-                    return [uid_to_idx[str(u)] for u in member_uids if str(u) in uid_to_idx]
-                return [int(i) for i in old_indices]
-
-            # Replay missing datasets
-            processed_events: typing.Set[str] = set()
-            for uid in sorted(missing_ds):  # Deterministic order
-                event = creation_map.get(uid)
-                if event and event["event_id"] not in processed_events:
-                    atype = _canon(str(event.get("action_type", "")))
-                    if _is(atype, "dataset.add"):
-                        payload = event.get("payload", {})
-                        if "experiment_reader" not in payload:
-                            payload = dict(payload)
-                            payload["experiment_reader"] = None
-                        actions.dispatch("dataset.add", payload)
-                    elif _is(atype, "dataset.group"):
-                        payload = event.get("payload", {})
-                        new_indices = resolve_indices(payload.get("dataset_indices", []), event)
-                        actions.dispatch("dataset.group", {"dataset_indices": new_indices})
-                    processed_events.add(event["event_id"])
-
-                    # Update uid_to_idx after adding
-                    uid_to_idx = {
-                        str(getattr(ds, "unique_identifier", "")): i
-                        for i, ds in enumerate(getattr(cs, "imported_datasets", []))
-                    }
-
-            # Replay missing fits
-            for uid in sorted(missing_fits):
-                event = creation_map.get(uid)
-                if event and event["event_id"] not in processed_events:
-                    payload = event.get("payload", {})
-                    new_indices = resolve_indices(payload.get("dataset_indices", []), event)
-                    fits_before = {id(f) for f in getattr(cs, "fits", [])}
-                    actions.dispatch(
-                        "fit.add",
-                        {
-                            "dataset_indices": new_indices,
-                            "model_name": payload.get("model_name"),
-                            "model_kw": payload.get("model_kw"),
-                        },
-                    )
-                    # Map the recorded fit-group UID -> the re-created fit's UID so
-                    # model_state keyed by the old UID can resolve after redo.
-                    new_fits = [f for f in getattr(cs, "fits", []) if id(f) not in fits_before]
-                    if new_fits:
-                        new_uid = str(getattr(new_fits[-1], "unique_identifier", ""))
-                        if new_uid:
-                            uid_remap[uid] = new_uid
-                    processed_events.add(event["event_id"])
-
-    return uid_remap
+    del target_nav_state, all_events
+    raise RuntimeError(
+        "History audit projection cannot restore live science; "
+        "publish a canonical scientific snapshot through the project owner"
+    )

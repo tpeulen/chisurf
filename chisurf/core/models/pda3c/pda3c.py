@@ -1,9 +1,9 @@
-r"""Three-colour PDA fitting model (PRD-65 stage 2, GUI surface).
+r"""Three-colour PDA fitting model and its GUI surface.
 
 Wraps the compute core in :mod:`chisurf.core.fluorescence.pda3c` as a ChiSurf
 fitting model, so three-colour PDA is reachable from the add-fit flow like any
 other model. The compute definition lives here; the editor layout is declared
-separately in ``pda3c.view.json`` (PRD-38 model/view-spec split).
+separately in ``pda3c.view.json``.
 
 What is fitted
 --------------
@@ -528,8 +528,63 @@ class Pda3cModel(ModelCurve):
     #: docstring's error-surface section for the measurement).
     objective_type = "likelihood"
 
-    #: Declarative AutoForm layout (PRD-38 model/view-spec split).
+    #: Declarative AutoForm layout.
     view_spec_file = "pda3c.view.json"
+
+    _STATE_CONTROLS = (
+        "n_nodes",
+        "truncate",
+        "stochastic_labeling",
+        "brightness_correction",
+        "dynamic",
+        "dynamic_samples",
+        "dynamic_max_transitions",
+        "dynamic_resolution",
+        "dynamic_max_nodes",
+        "dynamic_seed",
+    )
+
+    def get_state(self) -> dict:
+        """Return species topology and explicit quadrature/kinetic controls."""
+        return {
+            "n_species": len(self.species),
+            **{name: getattr(self, name) for name in self._STATE_CONTROLS},
+        }
+
+    def set_state(self, state: dict) -> None:
+        """Rebuild species and kinetic ports before scalar state restoration.
+
+        Parameters
+        ----------
+        state : dict
+            Data-only state produced by :meth:`get_state`.
+        """
+        count = state.get("n_species")
+        if type(count) is not int or count < 1:
+            raise ValueError("invalid PDA3c species count")
+        for name in ("n_nodes", "dynamic_samples", "dynamic_resolution", "dynamic_max_nodes"):
+            if type(state.get(name)) is not int or state[name] < 1:
+                raise ValueError(f"invalid PDA3c {name}")
+        if type(state.get("dynamic_seed")) is not int or state["dynamic_seed"] < 0:
+            raise ValueError("invalid PDA3c seed")
+        for name in ("stochastic_labeling", "brightness_correction", "dynamic"):
+            if type(state.get(name)) is not bool:
+                raise ValueError(f"invalid PDA3c {name}")
+        for name in ("truncate", "dynamic_max_transitions"):
+            if (
+                not isinstance(state.get(name), (int, float))
+                or not np.isfinite(state[name])
+                or state[name] < 0
+            ):
+                raise ValueError(f"invalid PDA3c {name}")
+        while len(self.species) < count:
+            self.species.append()
+        while len(self.species) > count:
+            self.species.pop()
+        self.kinetics.n_states = max(2, count)
+        for name in self._STATE_CONTROLS:
+            setattr(self, name, state[name])
+        self.find_parameters()
 
     def __init__(self, fit, species: Pda3cSpecies = None, setup: Pda3cSetup = None, **kwargs):
         """Initialize the three-colour PDA model.

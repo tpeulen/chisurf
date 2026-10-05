@@ -20,6 +20,7 @@ class SessionState:
     current_setup: str | None = None
     current_fit_uid: str | None = None
     flr_database: Any | None = None
+    native_session: Any | None = None
 
     def __post_init__(self):
         """Initialise the project registry after dataclass field assignment."""

@@ -6,15 +6,30 @@ import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from mmfdb.repository import MFDatabase
-from mmfdb.store.database_resolver import resolve_database_path
 
 from chisurf.plugins.core.lightpath_simulator.backend.simulator import (
     OpticalPathSimulator,
 )
+
+if TYPE_CHECKING:
+    from mmfdb.repository import MFDatabase
+
+
+def _database_type():
+    """Load MMFDB only when a database-backed workflow is requested."""
+    try:
+        from mmfdb.repository import MFDatabase
+    except ModuleNotFoundError as exc:
+        if exc.name != "mmfdb" and not (exc.name or "").startswith("mmfdb."):
+            raise
+        raise RuntimeError(
+            "MMFDB is unavailable; database-backed lightpath workflows require MMFDB."
+        ) from exc
+    return MFDatabase
+
 
 #: Spectrum types that describe how strongly a probe absorbs, most specific
 #: first.  A large part of the catalogue stores a dye's absorption curve as an
@@ -151,6 +166,9 @@ def resolve_db_path(db_path: str | None = None) -> str:
     if configured:
         return str(configured)
 
+    _database_type()
+    from mmfdb.store.database_resolver import resolve_database_path
+
     return str(resolve_database_path())
 
 
@@ -208,7 +226,7 @@ def simulate_lightpath(
     db_path: str | None = None,
 ) -> dict[str, Any]:
     """Run a light-path simulation for a JSON graph."""
-    with MFDatabase(resolve_db_path(db_path)) as db:
+    with _database_type()(resolve_db_path(db_path)) as db:
         return _simulate_with_db(graph, db)
 
 
@@ -218,7 +236,7 @@ def save_lightpath(
     db_path: str | None = None,
 ) -> dict[str, Any]:
     """Persist a graph and its simulated outputs as MMFDB artifacts."""
-    with MFDatabase(resolve_db_path(db_path)) as db:
+    with _database_type()(resolve_db_path(db_path)) as db:
         result = _simulate_with_db(graph, db)
         operation_id = f"lightpath_{_utc_stamp()}_{uuid.uuid4().hex[:8]}"
         base_metadata = {
@@ -303,7 +321,7 @@ def save_lightpath(
 
 def list_lightpaths(db_path: str | None = None) -> dict[str, Any]:
     """List saved light-path simulations from MMFDB."""
-    with MFDatabase(resolve_db_path(db_path)) as db:
+    with _database_type()(resolve_db_path(db_path)) as db:
         rows = db.get_operations(operation_type="analysis", status="succeeded")
         simulations = []
         for row in rows:
@@ -324,7 +342,7 @@ def list_lightpaths(db_path: str | None = None) -> dict[str, Any]:
 
 def get_lightpath(operation_id: str, db_path: str | None = None) -> dict[str, Any]:
     """Return the graph and saved outputs for one light-path simulation."""
-    with MFDatabase(resolve_db_path(db_path)) as db:
+    with _database_type()(resolve_db_path(db_path)) as db:
         operation = db.get_operation(operation_id)
         if operation is None:
             raise KeyError(f"Operation not found: {operation_id}")
@@ -390,7 +408,7 @@ def _spectra_types_by_probe_id(db: MFDatabase) -> dict[int, set[str]]:
 
 def get_probes_info(db_path: str | None = None) -> dict[str, Any]:
     """Return probe names, ids, spectra availability, QY, and extinction."""
-    with MFDatabase(resolve_db_path(db_path)) as db:
+    with _database_type()(resolve_db_path(db_path)) as db:
         probes = db.get_probes()
         spectra_by_probe = _spectra_types_by_probe_id(db)
         res = []

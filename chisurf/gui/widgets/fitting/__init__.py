@@ -15,7 +15,18 @@ _EXPORTS = {
     "make_fitting_parameter_widget": "parameter_widgets",
 }
 _MODULES = frozenset(_EXPORTS.values()) | {"fitting_client", "widgets"}
-__all__ = list(_EXPORTS) + ["parameter_settings"]
+__all__ = list(_EXPORTS) + ["parameter_settings", "presentation_fit_members"]
+
+
+def presentation_fit_members(fit):
+    """Return the actual scientific members presented by a Fit or FitGroup."""
+    from chisurf.core.fitting.fit import Fit, FitGroup
+
+    if isinstance(fit, FitGroup):
+        return tuple(fit.grouped_fits)
+    if isinstance(fit, Fit):
+        return (fit,)
+    raise TypeError("fit presentation requires a Fit or FitGroup")
 
 
 def __getattr__(name: str):

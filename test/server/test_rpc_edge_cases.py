@@ -94,7 +94,12 @@ class TestInfNanEdgeCases:
                 "reader_name": "PInfReader",
                 "filename": "/tmp/pinf_test.dat",
                 "name": "PInfTest",
-                "curve_data": {"x": [0.0], "y": [1.0]},
+                # A decay the TCSPC model can be built on; a single point leaves it
+                # with nothing but computed outputs to address.
+                "curve_data": {
+                    "x": [0.1 * k for k in range(64)],
+                    "y": [1000.0 * 0.95**k + 1.0 for k in range(64)],
+                },
             },
         )
         assert ds.get("ok") is True
@@ -105,7 +110,8 @@ class TestInfNanEdgeCases:
         params = info.get("model", {}).get("parameters_all", [])
         if not params:
             pytest.skip("no parameters available")
-        pname = params[0]["name"]
+        # Outputs are recomputed after every edit and refused; set an input.
+        pname = next(p["name"] for p in params if not p.get("is_output"))
         result = client.parameter__set_value(pname, float("inf"), fit_index=ft["fit_index"])
         assert result.get("ok") is True
 

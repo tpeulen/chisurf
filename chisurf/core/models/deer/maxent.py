@@ -54,7 +54,7 @@ from .tikhonov import second_derivative_operator
 def maxent_inversion(
     kernel: np.ndarray,
     b: np.ndarray,
-    weights: np.ndarray,
+    weights: np.ndarray | float,
     alpha: float,
     prior: np.ndarray | None = None,
     p_init: np.ndarray | None = None,
@@ -121,6 +121,7 @@ def maxent_distance_distribution(
     n_alpha: int = 20,
     method: str = "discrepancy",
     return_lcurve: bool = False,
+    prior: np.ndarray | None = None,
 ):
     """Invert ``K @ P = v_target`` for a non-negative ``P(r)`` by MaxEnt.
 
@@ -149,6 +150,8 @@ def maxent_distance_distribution(
     return_lcurve : bool
         When True, also return an ``info`` dict with the sampled ``alphas``,
         residual norms ``rho``, roughness ``eta`` and the selected index.
+    prior : numpy.ndarray, optional
+        Positive reference masses on the distance grid; uniform when omitted.
 
     Returns
     -------
@@ -170,7 +173,7 @@ def maxent_distance_distribution(
     info: dict | None = None
     if alpha is not None and alpha > 1e-8:
         # A concrete, non-trivial alpha was requested (floored for stability).
-        p = maxent_inversion(K, b, w, max(float(alpha), 1e-6), n_iter=n_iter)
+        p = maxent_inversion(K, b, w, max(float(alpha), 1e-6), prior=prior, n_iter=n_iter)
         alpha = float(alpha)
     else:
         alphas = np.logspace(-3, 1.3, int(n_alpha))  # small -> large smoothing
@@ -178,7 +181,7 @@ def maxent_distance_distribution(
         eta = np.empty(alphas.size)
         masses: list[np.ndarray] = []
         for i, a in enumerate(alphas):
-            p_i = maxent_inversion(K, b, w, a, n_iter=n_iter)
+            p_i = maxent_inversion(K, b, w, a, prior=prior, n_iter=n_iter)
             masses.append(p_i)
             rho[i] = float(np.linalg.norm(K @ p_i - b))
             eta[i] = float(np.linalg.norm(L @ p_i))
@@ -199,7 +202,7 @@ def maxent_distance_distribution(
 
         alpha = float(alphas[idx])
         # Refine the chosen alpha with a longer, warm-started solve.
-        p = maxent_inversion(K, b, w, alpha, p_init=masses[idx], n_iter=n_iter * 3)
+        p = maxent_inversion(K, b, w, alpha, prior=prior, p_init=masses[idx], n_iter=n_iter * 3)
         info = {"alphas": alphas, "rho": rho, "eta": eta, "corner": idx}
 
     # masses (sum=1) -> density, area-normalised on r with the trapezoidal rule

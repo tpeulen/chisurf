@@ -19,16 +19,20 @@ core module that imports a GUI toolkit or ``chisurf.gui`` -- this file is why
 that test could be widened from two packages to the whole of ``chisurf.core``.
 """
 
+from __future__ import annotations
+
 import json
+import logging
 import pathlib
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-
-from mmfdb.repository import MFDatabase
-from mmfdb.store.database_resolver import resolve_database_path
+from typing import TYPE_CHECKING
 
 from chisurf.core.settings.file_utils import safe_open_file
+
+if TYPE_CHECKING:
+    from mmfdb.repository import MFDatabase
 
 
 @dataclass
@@ -73,6 +77,16 @@ def use_mmfdb(file_path: str | None, canonical: pathlib.Path) -> bool:
 
 def get_db(db_path: str | None = None) -> MFDatabase | None:
     """Open the MMFDB. ``db_path`` overrides the resolved default (test seam)."""
+    try:
+        from mmfdb.repository import MFDatabase
+        from mmfdb.store.database_resolver import resolve_database_path
+    except ModuleNotFoundError as exc:
+        if exc.name != "mmfdb" and not (exc.name or "").startswith("mmfdb."):
+            raise
+        logging.getLogger(__name__).warning(
+            "MMFDB is unavailable; instrument setups use JSON files."
+        )
+        return None
     try:
         db = MFDatabase(db_path or resolve_database_path())
         db._chisurf_setup_owned = True

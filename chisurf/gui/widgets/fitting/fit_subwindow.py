@@ -16,6 +16,7 @@ import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.fitting import presentation_fit_members
 from chisurf.gui.widgets.fitting.fit_plots_area import FitPlotsArea
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.mdi_custom_titlebar import CustomMdiSubWindow
@@ -37,18 +38,15 @@ class FitSubWindow(CustomMdiSubWindow):
         parameter-value edit or a finished fit (delivered as ``fit.updated`` /
         ``fit.ran`` events) is reflected in the trace without switching tabs.
         """
-        try:
-            idx = self.plot_tab_widget.currentIndex()
-            plot = self.ensure_plot_created(idx)
-            if plot is None:
-                return
-            update_all = getattr(plot, "update_all", None)
-            if callable(update_all):
-                update_all()
-            elif hasattr(plot, "update"):
-                plot.update()
-        except Exception:
-            pass
+        idx = self.plot_tab_widget.currentIndex()
+        plot = self.ensure_plot_created(idx)
+        if plot is None:
+            return
+        update_all = getattr(plot, "update_all", None)
+        if callable(update_all):
+            update_all()
+        elif hasattr(plot, "update"):
+            plot.update()
 
     def __init__(
         self,
@@ -143,7 +141,7 @@ class FitSubWindow(CustomMdiSubWindow):
             self.plot_tab_widget.addTab(container, tab_name)
         # Share created plot list with FitGroup and its member Fits
         fit.plots = self._created_plots
-        for f in fit:
+        for f in presentation_fit_members(fit):
             f.plots = self._created_plots
 
         # Instantiate the initially visible plot after the event loop returns
@@ -204,17 +202,11 @@ class FitSubWindow(CustomMdiSubWindow):
             controller_state = {}
             get_controller_state = getattr(controller, "get_state", None)
             if callable(get_controller_state):
-                try:
-                    controller_state = get_controller_state()
-                except Exception:
-                    controller_state = {}
+                controller_state = get_controller_state()
             plot_state = {}
             get_plot_state = getattr(plot, "get_state", None)
             if callable(get_plot_state):
-                try:
-                    plot_state = get_plot_state()
-                except Exception:
-                    plot_state = {}
+                plot_state = get_plot_state()
             rec: dict[str, object] = {
                 "index": idx,
                 "name": self._plot_containers[idx].property("fit_plot_name"),
@@ -272,35 +264,34 @@ class FitSubWindow(CustomMdiSubWindow):
         if not isinstance(state, dict):
             return False
         applied = False
-        plot_records = state.get("plots")
-        if isinstance(plot_records, list):
+        if "plots" in state:
+            plot_records = state.get("plots")
+            if not isinstance(plot_records, list):
+                raise ValueError("saved plots must be a list")
+            seen = set()
             for rec in plot_records:
                 if not isinstance(rec, dict):
-                    continue
-                try:
-                    idx = int(rec["index"])
-                except Exception:
-                    continue
+                    raise ValueError("invalid saved plot record")
+                idx = rec.get("index")
+                if type(idx) is not int or not 0 <= idx < len(self._plot_specs) or idx in seen:
+                    raise ValueError(f"invalid saved plot index: {idx}")
+                if rec.get("name") != self._plot_containers[idx].property("fit_plot_name"):
+                    raise ValueError(f"saved plot name differs at index {idx}")
+                seen.add(idx)
+            for rec in plot_records:
+                idx = rec["index"]
                 plot = self.ensure_plot_created(idx)
-                if plot is None:
-                    continue
                 plot_state = rec.get("plot")
                 set_plot_state = getattr(plot, "set_state", None)
                 if isinstance(plot_state, dict) and callable(set_plot_state):
-                    try:
-                        set_plot_state(plot_state)
-                        applied = True
-                    except Exception:
-                        pass
+                    set_plot_state(plot_state)
+                    applied = True
                 controller_state = rec.get("controller")
                 controller = getattr(plot, "plot_controller", None)
                 set_controller_state = getattr(controller, "set_state", None)
                 if isinstance(controller_state, dict) and callable(set_controller_state):
-                    try:
-                        set_controller_state(controller_state)
-                        applied = True
-                    except Exception:
-                        pass
+                    set_controller_state(controller_state)
+                    applied = True
 
         dock_state = state.get("dock_layout")
         if isinstance(dock_state, dict):
@@ -469,16 +460,7 @@ class FitSubWindow(CustomMdiSubWindow):
         if self._plots_all[idx] is not None:
             return self._plots_all[idx]
         plot_class, kwargs = self._plot_specs[idx]
-        try:
-            plot = plot_class(self.fit, **kwargs)
-        except Exception as e:
-            # Provide a fallback widget to avoid breaking the tab UI
-            fallback = QtWidgets.QLabel(
-                f"Failed to create plot: {getattr(plot_class, 'name', plot_class.__name__)}\n{e}"
-            )
-            self._plot_containers[idx].layout().addWidget(fallback)
-            self._plots_all[idx] = fallback
-            return fallback
+        plot = plot_class(self.fit, **kwargs)
         # Attach to container and control layout
         plot.plot_controller.hide()
         self._plot_containers[idx].layout().addWidget(plot, stretch=1)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from chisurf.history.core import OperationHistory
 from chisurf.history.projection import DomainState, build_target_state
 from chisurf.history.replay import (
@@ -52,7 +54,11 @@ _history_singleton: OperationHistory | None = None
 
 
 def get_history() -> OperationHistory:
-    """Return the process-wide :class:`OperationHistory` singleton."""
+    """Resolve an installed runtime owner, otherwise the default singleton."""
+    runtime = sys.modules.get("chisurf")
+    owned = vars(runtime).get("history") if runtime is not None else None
+    if isinstance(owned, OperationHistory):
+        return owned
     global _history_singleton
     if _history_singleton is None:
         _history_singleton = OperationHistory()

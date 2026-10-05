@@ -515,17 +515,14 @@ class TestEdgeCaseBugs:
     # --- session_restore ---
 
     def test_session_restore_with_project_and_event_bus(self):
-        """session_restore must NOT pass event_bus to load_project (it doesn't accept it)."""
+        """A failed project load is graceful and must not announce successful restore."""
         from chisurf.server.services.session_svc import session_restore
 
         state = SessionState()
         event_bus = MagicMock()
-        # project_path points to nonexistent dir -> load_project returns error,
-        # but the call itself must not crash with TypeError
         result = session_restore(state, project_path="/nonexistent/project", event_bus=event_bus)
-        # load_project should fail gracefully
         assert result.get("ok") is False
-        event_bus.publish.assert_called_once()
+        event_bus.publish.assert_not_called()
 
     def test_session_restore_without_project_clears(self):
         """session_restore with no project_path just clears the session."""

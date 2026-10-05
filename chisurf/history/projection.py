@@ -1,14 +1,8 @@
-"""Pure, Qt-free replay projection.
+"""Detached, Qt-free projection of human-readable scientific audit metadata.
 
-Reconstructs the target domain state for a given history cursor position by
-seeding from a checkpoint snapshot (when available) and merging the deltas
-reconstructed from the events that follow it.
-
-This module is deliberately free of any GUI dependency: it consumes history
-events and a checkpoint snapshot and returns a :class:`DomainState` of plain
-dicts.  Applying that state to live widgets is the job of the GUI adapter
-(``chisurf/gui/main_helper.py``).  Keeping the merge here makes the whole
-replay path testable headless and reusable for server-side reconstruction.
+This layer applies UID-addressed deltas to checkpoint audit metadata. It is not
+runtime replay data: live science is restored only from the canonical typed
+scientific snapshot through its project owner transaction.
 """
 
 from __future__ import annotations
@@ -21,7 +15,7 @@ from chisurf.history import replay as _hr
 
 @dataclass
 class DomainState:
-    """Reconstructed scientific state at a history cursor position.
+    """Detached audit metadata at a history cursor position.
 
     Each field is a plain JSON-serializable dict produced by the
     ``reconstruct_*_state`` functions in :mod:`chisurf.history.replay`.
@@ -51,8 +45,8 @@ def build_target_state(
         Events to replay on top of the checkpoint.  When ``checkpoint_snapshot``
         is ``None`` this is the full list of events up to the cursor.
     all_events:
-        Reserved for future use (e.g. folding ``sync_domain_entities`` into the
-        pure layer).  Currently unused by the merge.
+        Retained for audit callers. The projection does not execute these rows
+        or synchronize live scientific entities.
 
     Returns
     -------
@@ -68,25 +62,19 @@ def build_target_state(
         fit_range_state = replay_state.get("fit_ranges", {})
         setup_state = replay_state.get("setup", {})
         model_state = replay_state.get("models", {})
-        nav_delta = _hr.reconstruct_navigation_state(events_to_replay)
+        nav_state = _hr.reconstruct_navigation_state(events_to_replay, nav_state)
         param_delta = _hr.reconstruct_parameter_state(events_to_replay)
         range_delta = _hr.reconstruct_fit_range_state(events_to_replay)
         setup_delta = _hr.reconstruct_setup_state(events_to_replay)
         model_delta = _hr.reconstruct_model_state(events_to_replay)
-        for key in ["datasets", "dataset_uids", "fits", "fit_uids"]:
-            if key in nav_delta:
-                nav_state[key] = nav_delta[key]
-        if nav_delta.get("selected_dataset"):
-            nav_state["selected_dataset"] = nav_delta["selected_dataset"]
-        if nav_delta.get("selected_dataset_uid"):
-            nav_state["selected_dataset_uid"] = nav_delta["selected_dataset_uid"]
-        if nav_delta.get("selected_fit"):
-            nav_state["selected_fit"] = nav_delta["selected_fit"]
-        if nav_delta.get("selected_fit_uid"):
-            nav_state["selected_fit_uid"] = nav_delta["selected_fit_uid"]
-        parameter_state.update(param_delta)
+        for key, delta in param_delta.items():
+            parameter_state.setdefault(key, {}).update(delta)
         fit_range_state.update(range_delta)
-        setup_state.update(setup_delta)
+        for key in ("experiment", "setup"):
+            if setup_delta.get(key) is not None:
+                setup_state[key] = setup_delta[key]
+        if setup_delta.get("params"):
+            setup_state.setdefault("params", {}).update(setup_delta["params"])
         for fg_uid, fg_data in model_delta.items():
             if fg_uid not in model_state:
                 model_state[fg_uid] = fg_data

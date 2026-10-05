@@ -73,7 +73,21 @@ def tikhonov_signal(
 
 
 def maxent_signal(
-    t, r, v_data, mod_depth, bg_model, bg_k, bg_d, scale, sigma=1.0, alpha=None, kernel=None
+    t,
+    r,
+    v_data,
+    mod_depth,
+    bg_model,
+    bg_k,
+    bg_d,
+    scale,
+    sigma=1.0,
+    alpha=None,
+    kernel=None,
+    n_iter=1000,
+    n_alpha=20,
+    prior=None,
+    method="discrepancy",
 ):
     """Model-free signal via maximum-entropy inversion of ``P(r)``.
 
@@ -93,7 +107,15 @@ def maxent_signal(
     # Noise on the form factor is amplified from the V-space noise by 1/lambda.
     sigma_form = float(sigma) / lam
     p, alpha_used = maxent_distance_distribution(
-        k_mat, r, form_factor, sigma=sigma_form, alpha=alpha
+        k_mat,
+        r,
+        form_factor,
+        sigma=sigma_form,
+        alpha=alpha,
+        n_iter=n_iter,
+        n_alpha=n_alpha,
+        prior=prior,
+        method=method,
     )
     v_model = deer_signal(t, r, p, lam, bg_model, bg_k, bg_d, s, kernel=k_mat)
     return v_model, p, alpha_used

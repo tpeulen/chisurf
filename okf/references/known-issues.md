@@ -1,3 +1,21 @@
+## Native TCSPC visual-test teardown/restart (2026-10-03)
+
+The standalone FitWindow visual round-trip followed by Main construction in the
+same offscreen process exits 139 in `qapp.processEvents()` before the second test
+has made any persistence calls. A scratch baseline probe that only constructed,
+closed and repainted the native windows (no capture, save or restore anywhere)
+reported **2 passed**, then exited 138 during interpreter teardown. This confirms
+an independent native-host lifetime problem, not a scientific serializer failure;
+the precise Qt/BFF teardown cause is not yet established. Evidence:
+`chisurf-project-visual-crash.log`, `chisurf-native-host-baseline.log` and
+`chisurf-native-host-baseline-test.py` under the Hermes scratch directory.
+
+`test/gui/test_tcspc_project_visual_roundtrip.py` runs each complete GUI startup
+in a fresh subprocess and asserts the child's exit status and all scientific,
+window/model-plot assertions. Neither scenario is skipped or xfailed. Keep these
+startup scenarios isolated until native-host teardown is independently fixed;
+do not weaken project round-trip assertions to mask the issue.
+
 ## ndX recovery: intermittent mixed-Qt test-process crash (2026-10-03)
 
 During recovery, an early combined ndX-host/FRET/ALEX pytest process exited 139.

@@ -103,10 +103,15 @@ class Pda2cGaussianDistances(FittingParameterGroup):
         return np.vstack((r, p))
 
     def finalize(self):
-        """Synchronize internal amplitude parameters with normalization rules."""
-        amplitudes = self.amplitudes
-        for i, p in enumerate(self._amplitudes):
-            p.value = amplitudes[i]
+        """Finalize controllers without renormalizing persisted raw amplitudes.
+
+        :attr:`amplitudes` already supplies normalized non-negative mixture
+        weights to the computation.  Mutating the underlying fit parameters
+        during a GUI/model refresh changes canonical scientific state merely by
+        opening a project, so only the base controller finalization belongs
+        here.
+        """
+        super().finalize()
 
     def _distance_parameter_rows(self) -> list:
         """Return components interleaved as (mean_i, sigma_i, amplitude_i) triples.

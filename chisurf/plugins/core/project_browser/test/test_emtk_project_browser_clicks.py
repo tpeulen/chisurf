@@ -11,8 +11,16 @@ from __future__ import annotations
 import pytest
 from emtk import keys
 
-from .driving import BIG, SMALL, BrowserDriver, clipped_texts, draw_clip, hermetic_env, layout_problems
-from .test_emtk_project_browser_parity import _app, _project, db  # noqa: F401  (db is the scratch database fixture)
+from .driving import (
+    BIG,
+    SMALL,
+    BrowserDriver,
+    clipped_texts,
+    draw_clip,
+    hermetic_env,
+    layout_problems,
+)
+from .test_emtk_project_browser_parity import _app, _project
 
 
 @pytest.fixture(autouse=True)
@@ -41,7 +49,9 @@ def no_window_failed_to_draw(caplog):
 
 @pytest.fixture
 def drv(db):
-    app = _app(payload_provider=lambda name: {"datasets": {}, "fits": [], "name": name})
+    # The authenticated client and a canonical snapshot: the service rejects
+    # anything that is not a validated v5 payload.
+    app = _app(db)
     d = BrowserDriver(app, BIG)
     d.settle()
     yield d
@@ -51,7 +61,11 @@ def drv(db):
 def row_rect(drv, label):
     """The rectangle of the drawn text *label* inside the project table."""
     x, y, w, h = drv.rect("tree_rows")
-    hits = [t[:4] for t in drv.draw(2).texts if t[5].startswith(label) and x <= t[0] <= x + w and y <= t[1] <= y + h]
+    hits = [
+        t[:4]
+        for t in drv.draw(2).texts
+        if t[5].startswith(label) and x <= t[0] <= x + w and y <= t[1] <= y + h
+    ]
     assert hits, f"{label!r} is not a row: {[t[5] for t in drv.painter.texts if t[1] > y][:40]}"
     return hits[0]
 
@@ -95,7 +109,9 @@ def status(drv):
 def test_actions_that_need_a_selection_are_greyed_and_a_click_on_them_does_nothing(drv):
     panel = drv.app.panel
     assert [panel.enabled(a) for a in ("open", "export", "delete", "inspect")] == [False] * 4
-    assert [panel.enabled(a) for a in ("save", "import_project", "refresh", "guide", "help")] == [True] * 5
+    assert [panel.enabled(a) for a in ("save", "import_project", "refresh", "guide", "help")] == [
+        True
+    ] * 5
     for action in ("open", "export", "delete", "inspect"):
         drv.click(action)
     assert drv.app.modal == "" and drv.app.dialog is None and drv.app.jobs.future is None
@@ -105,7 +121,12 @@ def test_actions_that_need_a_selection_are_greyed_and_a_click_on_them_does_nothi
 def test_selecting_a_project_enables_open_and_inspect_and_a_version_also_export_and_delete(drv):
     select(drv, "decay study")
     panel = drv.app.panel
-    assert panel.enabled("open") and panel.enabled("inspect") and not panel.enabled("export") and not panel.enabled("delete")
+    assert (
+        panel.enabled("open")
+        and panel.enabled("inspect")
+        and not panel.enabled("export")
+        and not panel.enabled("delete")
+    )
     expand(drv, "decay study")
     select(drv, "v2 decay study")
     assert all(panel.enabled(a) for a in ("open", "inspect", "export", "delete"))
@@ -141,7 +162,9 @@ def test_search_matches_a_version_note(drv):
 def test_a_search_with_no_match_says_so(drv):
     drv.type_into("search", "zzz-no-such-project")
     drv.settle()
-    assert names(drv) == [] and any(s.startswith("No matching projects") for s in drv.draw(2).strings)
+    assert names(drv) == [] and any(
+        s.startswith("No matching projects") for s in drv.draw(2).strings
+    )
 
 
 def test_show_public_toggle_hides_and_shows_the_public_projects(drv):
@@ -162,7 +185,9 @@ def test_the_triangle_expands_a_project_and_a_second_click_collapses_it(drv):
     assert not any(s.startswith("v2 decay study") for s in drv.draw(2).strings)
     expand(drv, "decay study")
     shown = drv.draw(2).strings
-    assert any(s.startswith("v2 decay study") for s in shown) and any(s.startswith("v1 decay study") for s in shown)
+    assert any(s.startswith("v2 decay study") for s in shown) and any(
+        s.startswith("v1 decay study") for s in shown
+    )
     assert "refit with IRF" in shown and "first fit" in shown
     expand(drv, "decay study")
     assert not any(s.startswith("v2 decay study") for s in drv.draw(2).strings)
@@ -178,7 +203,9 @@ def test_a_click_on_a_row_selects_it_and_clears_the_loaded_details(drv):
 def test_clicking_a_column_header_sorts_the_projects(drv):
     first = names(drv)
     x, y, w, h = drv.rect("tree_rows")
-    head = next(t for t in drv.draw(2).texts if t[5].startswith("Project / Version") and x <= t[0] <= x + w)
+    head = next(
+        t for t in drv.draw(2).texts if t[5].startswith("Project / Version") and x <= t[0] <= x + w
+    )
     drv.click_at(head[0] + 6, head[1] + 6)
     second = names(drv)
     assert sorted(first) in (first, first[::-1]) and second == first[::-1]
@@ -196,7 +223,9 @@ def test_the_id_and_status_columns_show_when_there_is_room_and_the_toggles_decid
         wide.settle()
         expand(wide, "decay study")
         shown = table_strings(wide)
-        assert "ID" in shown and "Status" in shown and "succeeded" in shown  # all nine columns fit at 1200 px, as in Qt
+        assert (
+            "ID" in shown and "Status" in shown and "succeeded" in shown
+        )  # all nine columns fit at 1200 px, as in Qt
         wide.click("show_id")  # the user hides the ID column
         shown = table_strings(wide)
         assert "ID" not in shown and "Status" in shown and app.show_id is False
@@ -205,7 +234,9 @@ def test_the_id_and_status_columns_show_when_there_is_room_and_the_toggles_decid
         narrow = BrowserDriver(app, SMALL)
         app.show_id = app.show_status = None
         shown = table_strings(narrow)
-        assert "ID" not in shown and "Status" not in shown  # 800 px has no room: the cells stay whole instead
+        assert (
+            "ID" not in shown and "Status" not in shown
+        )  # 800 px has no room: the cells stay whole instead
         narrow.click("show_status")
         assert app.show_status is True and "Status" in table_strings(narrow)
     finally:
@@ -245,7 +276,10 @@ def test_a_double_click_on_a_row_restores_it(drv):
         drv.app.pointer_release(x, y, 1)
         drv.draw(2)
     drv.settle()
-    assert len(drv.app.restored) == 1 and drv.app.model.context._current_project_name == "fcs titration"
+    assert (
+        len(drv.app.restored) == 1
+        and drv.app.model.context._current_project_name == "fcs titration"
+    )
 
 
 # -- the context menu --------------------------------------------------------------------------------------------- #
@@ -266,7 +300,12 @@ def test_the_context_menu_of_a_project_row_greys_export_and_delete(drv):
     x, y = centre(row_rect(drv, "decay study"))
     press_on(drv, x, y, 2)
     entries = {i.label: i.enabled for i in drv.app.context_menu.entries}
-    assert entries == {"Open / Restore": True, "Inspect version": True, "Export .cs.pto": False, "Delete Version": False}
+    assert entries == {
+        "Open / Restore": True,
+        "Inspect version": True,
+        "Export .cs.pto": False,
+        "Delete Version": False,
+    }
 
 
 def test_a_click_elsewhere_dismisses_the_context_menu(drv):
@@ -282,9 +321,15 @@ def test_a_click_elsewhere_dismisses_the_context_menu(drv):
 
 def test_save_opens_the_dialog_a_new_project_needs_a_name_and_the_typed_name_is_saved(drv):
     drv.click("save")
-    assert drv.app.modal == "save" and drv.app.modal_window.title == "Save Project" and drv.app.allow_name_edit
+    assert (
+        drv.app.modal == "save"
+        and drv.app.modal_window.title == "Save Project"
+        and drv.app.allow_name_edit
+    )
     drv.draw(3)
-    drv.click("confirm_save") if "confirm_save" in drv.app.item_rects else drv.click_text("Save version")
+    drv.click("confirm_save") if "confirm_save" in drv.app.item_rects else drv.click_text(
+        "Save version"
+    )
     drv.settle()
     assert status(drv) == "Error: A project name is required."
     assert drv.app.modal == "save"  # the dialog stays so the name can be typed
@@ -304,7 +349,9 @@ def test_the_save_dialog_visibility_choice_and_notes_are_stored(drv):
     drv.click("visibility_name")
     drv.click_text("Public", last=True)
     assert drv.app.visibility == 1
-    drv.click("notes", fx=0.3, fy=0.2)  # the notes editor takes the keys, and the name field no longer does
+    drv.click(
+        "notes", fx=0.3, fy=0.2
+    )  # the notes editor takes the keys, and the name field no longer does
     drv.type_text("looks good")
     assert drv.app.name == "second project" and drv.app.notes == "looks good"
     drv.click_text("Save version")
@@ -313,10 +360,18 @@ def test_the_save_dialog_visibility_choice_and_notes_are_stored(drv):
     assert project["visibility"] == "public" and project["versions"][0]["notes"] == "looks good"
 
 
-def test_saving_again_makes_a_new_version_and_the_name_field_is_greyed(drv):
+def test_saving_again_makes_a_new_version_and_the_name_field_is_greyed(drv, db):
     project = _project(drv.app, "decay study")
-    drv.app.model.update_current({"project_id": project["project_id"], "version_id": project["latest_version_id"],
-                                  "project_name": "decay study"})
+    # The document adopts an identity together with the snapshot it accepted.
+    drv.app.model.update_current(
+        {
+            "ok": True,
+            "project_id": project["project_id"],
+            "version_id": project["latest_version_id"],
+            "project_name": "decay study",
+            "project_payload": db["payload"],
+        }
+    )
     drv.click("save")
     assert drv.app.modal_window.title == "Save New Version" and not drv.app.allow_name_edit
     drv.draw(3)
@@ -326,7 +381,10 @@ def test_saving_again_makes_a_new_version_and_the_name_field_is_greyed(drv):
     assert drv.app.name == "decay study"
     drv.click_text("Save version")
     drv.settle()
-    assert _project(drv.app, "decay study")["version_count"] == 3 and drv.app.notice == "Saved 'decay study' as version 3."
+    assert (
+        _project(drv.app, "decay study")["version_count"] == 3
+        and drv.app.notice == "Saved 'decay study' as version 3."
+    )
 
 
 def test_cancel_in_the_save_dialog_changes_nothing(drv):
@@ -335,7 +393,9 @@ def test_cancel_in_the_save_dialog_changes_nothing(drv):
     drv.type_into("name", "never saved")
     drv.click_text("Cancel")
     drv.settle()
-    assert drv.app.modal == "" and not any(p["project_name"] == "never saved" for p in drv.app.model.projects)
+    assert drv.app.modal == "" and not any(
+        p["project_name"] == "never saved" for p in drv.app.model.projects
+    )
 
 
 def test_the_save_dialog_close_button_closes_it(drv):
@@ -386,10 +446,15 @@ def test_import_previews_the_archive_and_confirm_adds_the_version(drv, tmp_path)
     drv.settle()
     assert drv.app.modal == "import" and drv.app.modal_window.title == "Confirm Project Import"
     shown = drv.draw(2).strings
-    assert "Remap & Import" in shown and any("already exist" in s for s in shown)  # the archive is already in the database
+    assert "Remap & Import" in shown and any(
+        "already exist" in s for s in shown
+    )  # the archive is already in the database
     drv.click_text("Remap & Import")
     drv.settle()
-    assert drv.app.notice.startswith("Imported project") and _project(drv.app, "decay study")["version_count"] == 3
+    assert (
+        drv.app.notice.startswith("Imported project")
+        and _project(drv.app, "decay study")["version_count"] == 3
+    )
 
 
 def test_import_cancel_in_the_preview_changes_nothing(drv, tmp_path):
@@ -458,7 +523,10 @@ def test_inspect_fills_the_detail_tabs_and_each_tab_can_be_opened(drv):
     drv.settle()
     assert status(drv) == "Loaded version artifacts, fit parameters and branches."
     drv.click_text("Branches")
-    assert drv.app.details_tab == "Branches" and "Press Inspect Stored Version to load this information." not in drv.draw(2).strings
+    assert (
+        drv.app.details_tab == "Branches"
+        and "Press Inspect Stored Version to load this information." not in drv.draw(2).strings
+    )
     drv.click_text("Version graph")
     assert drv.app.details_tab == "Version graph"
     drv.click_text("Summary")
@@ -467,7 +535,9 @@ def test_inspect_fills_the_detail_tabs_and_each_tab_can_be_opened(drv):
 
 
 def test_the_details_say_what_to_do_before_anything_is_selected(drv):
-    assert any(s.startswith("Select a project to restore its latest version") for s in drv.draw(2).strings)
+    assert any(
+        s.startswith("Select a project to restore its latest version") for s in drv.draw(2).strings
+    )
 
 
 # -- guide and help ------------------------------------------------------------------------------------------------- #
@@ -496,7 +566,6 @@ def test_guide_waits_for_the_real_controls_and_the_awaited_steps_complete_on_use
     assert not tour.awaiting
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the tour card does not block what is under it, so its Next button is dead over the table")
 def test_the_tour_next_button_works_where_the_card_lies_over_the_table(drv):
     drv.click("guide")
     drv.click_text("Next ►")
@@ -546,6 +615,8 @@ def test_the_layout_is_clean(db, size, state):
         assert not problems, problems[:6]
         if state != "empty":
             strings = painter.strings
-            assert any(s.startswith("decay study (2 versions)") and not s.endswith(".") for s in strings)
+            assert any(
+                s.startswith("decay study (2 versions)") and not s.endswith(".") for s in strings
+            )
     finally:
         app.close()

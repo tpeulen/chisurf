@@ -38,6 +38,23 @@ class _MaxEntFCSBase(ModelCurve):
     they recover the distribution on differ.
     """
 
+    def get_state(self) -> dict:
+        """Return the inversion's non-parameter prior selection."""
+        return {"prior_kind": self.prior_kind}
+
+    def set_state(self, state: dict) -> None:
+        """Restore the declared prior kind before recomputing the inversion.
+
+        Parameters
+        ----------
+        state : dict
+            State returned by :meth:`get_state`.
+        """
+        prior = state.get("prior_kind")
+        if prior not in self.prior_choices():
+            raise ValueError("invalid MaxEnt prior kind")
+        self.prior_kind = prior
+
     def _init_prior_parameters(self, center_label: str, center_value: float):
         """Create the entropy-prior controls (uniform by default).
 

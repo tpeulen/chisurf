@@ -111,25 +111,35 @@ def set_setup_params(params: typing.Dict[str, typing.Any]):
 
 @action("project.save", schema={"project_name": str})
 def save_project(target_path: str, project_name: str):
-    """Save the overall project."""
+    """Save the overall project and publish its verified file identity."""
+    from pathlib import Path
+
+    from chisurf.core.project import storage
     from chisurf.macros import core_fit
 
-    return core_fit.save_project(target_path=target_path, project_name=project_name)
+    saved_path = Path(core_fit.save_project(target_path=target_path, project_name=project_name))
+    project = storage.load_file(saved_path)
+    gui = getattr(cs, "cs", None)
+    if gui is not None:
+        document = gui._get_project_document()
+        staged = document.stage_file_save(project, saved_path)
+        document.adopt(staged)
+        gui._current_project_path = saved_path
+        gui._current_project_id = None
+        gui._current_project_version_id = None
+        gui._current_project_name = document.name
+    return {"ok": True, "backend": "file", "file_path": str(saved_path)}
 
 
 @action("project.load", schema={"project_path": str})
 def load_project(project_path: str):
-    """Load a project from a ``.cs.pto`` file."""
-    from chisurf.core.runtime import presentation
-    from chisurf.macros.core_fit import load_project_data, restore_gui_from_fits
+    """Guard and replace a file project through the authoritative runtime owner."""
+    from chisurf.macros.core_fit import load_project
 
-    fit_uids = load_project_data(project_path)
-    # Deferred, not immediate: the view rebuilds itself from the fits this
-    # action has just created, and doing that inside the action would hand it
-    # a half-loaded project. The Qt deferrer is a zero-delay single-shot
-    # timer, which also puts the widget creation on the GUI thread; headless
-    # there is no deferrer and the rebuild is a no-op with no fits to show.
-    presentation.defer(restore_gui_from_fits, fit_uids)
+    result = load_project(project_path)
+    if result.get("ok") is not True:
+        return result
+    return {**result, "backend": "file", "file_path": str(project_path)}
 
 
 @action(
@@ -149,24 +159,24 @@ def archive_project(
     input_processed_data_ids: list[str] | None = None,
     notes: str | None = None,
 ):
-    """Archive the current project state to the canonical MMFDB project store."""
+    """Persist to the configured database, or a portable file when absent."""
+    from chisurf.core.project import storage
     from chisurf.macros.core_fit import get_project_payload
-    from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
 
-    payload = get_project_payload(project_name)
-    payload_data = payload.to_dict() if hasattr(payload, "to_dict") else payload
-    datasets = getattr(cs, "imported_datasets", {}) or {}
-    fit_count, dataset_count = _project_counts_from_payload(payload_data)
-    if not dataset_count and isinstance(datasets, dict):
-        dataset_count = len(datasets)
+    project = get_project_payload(project_name)
+    if storage.select_backend() == "file":
+        import pathlib
 
-    return ProjectBrowserClient(inprocess=True).save_project(
-        project_name=project_name,
-        project_payload=payload_data,
-        project_id=project_id,
-        notes=notes,
-        fit_count=fit_count,
-        dataset_count=dataset_count,
+        path = pathlib.Path(cs.working_path) / f"{project_name}.cs.pto"
+        saved_path = storage.save_file(project, path)
+        return {"ok": True, "backend": "file", "file_path": str(saved_path)}
+    document = getattr(getattr(cs, "cs", None), "_project_document", None)
+    parent = getattr(document, "version_id", None)
+    return storage.save_database(
+        project,
+        project_id=project_id or getattr(document, "project_id", None),
+        parent_version_id=parent,
+        notes=notes or "",
     )
 
 
@@ -184,89 +194,66 @@ def _project_counts_from_payload(payload: dict[str, Any] | None) -> tuple[int, i
 
 @action("project.restore", schema={"project_id": str})
 def restore_project(project_id: str):
-    """Restore a project version, or the latest version of a project id, from MMFDB."""
-    from chisurf.core.project import Project as CSProject
-    from chisurf.macros.core_fit import load_project_payload
-    from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
+    """Restore an exact version (or current project head) from a real store."""
+    from chisurf.core.project import storage
+    from chisurf.core.project.transition import replace_project
+    from chisurf.macros.core_fit import restore_gui_from_fits
 
-    client = ProjectBrowserClient(inprocess=True)
-    if project_id.startswith("ver_"):
-        result = client.restore_project(version_id=project_id)
-    else:
-        result = {"ok": False, "error": f"Project version not found: {project_id}"}
+    if storage.select_backend() != "mmfdb":
+        raise storage.ProjectStorageError(
+            "No real MMFDB is configured; open a .cs.pto file instead"
+        )
+    gui = getattr(cs, "cs", None)
+    guard = getattr(gui, "_guard_project_transition", None)
+    if callable(guard) and not guard():
+        return {"ok": False, "cancelled": True}
+    client = storage._real_client(storage._settings(None))
+    version_id = project_id
+    if not project_id.startswith("ver_"):
         for project in client.list_projects(show_public=True):
-            versions = project.get("versions", [])
             if project.get("project_id") == project_id:
-                latest = versions[0] if versions else None
-                if latest:
-                    result = client.restore_project(version_id=latest["version_id"])
-                    break
-            for version in versions:
-                if version.get("version_id") == project_id:
-                    result = client.restore_project(version_id=version["version_id"])
-                    break
-            if result.get("ok"):
+                versions = project.get("versions") or []
+                if not versions:
+                    raise storage.ProjectStorageError(
+                        f"Project has no saved versions: {project_id}"
+                    )
+                version_id = versions[0]["version_id"]
                 break
-        if not result.get("ok"):
-            result = client.restore_project(version_id=project_id)
-
-    if not result.get("ok"):
-        raise ValueError(result.get("error", f"Project not found: {project_id}"))
-
-    payload = result.get("project_payload")
-    if not payload:
-        raise ValueError(f"No project payload found for: {project_id}")
-    proj = CSProject.from_dict(payload)
-    load_project_payload(proj, project_path=None)
-    return result
+    project, result = storage.load_database(version_id, client=client)
+    result = {**result, "ok": True}
+    document = gui._get_project_document() if gui is not None else None
+    staged = document.stage_database_save(project, result) if document is not None else None
+    transition = replace_project(
+        project,
+        gui=gui,
+        document=document,
+        target_identity=staged,
+        present=restore_gui_from_fits if gui is not None else None,
+        confirmed=True,
+    )
+    return result if transition.get("ok") is True else transition
 
 
 @action("project.close")
-def close_project(main_window: typing.Any = None):
-    """Close the current project."""
-    if main_window:
-        # Instead of calling reinitialize() (which might trigger confirmation
-        # or another project.close dispatch), we perform a focused cleanup.
-        try:
-            # Close all fits
-            if hasattr(main_window, "onCloseAllFits"):
-                main_window.onCloseAllFits()
+def close_project(main_window: typing.Any = None, confirmed: bool = False):
+    """Replace the active project with an empty session through its runtime owner."""
+    from chisurf.core.project import capture_session
+    from chisurf.core.project.lifecycle import ProjectDocument
+    from chisurf.core.project.transition import replace_project
+    from chisurf.macros.core_fit import restore_gui_from_fits
 
-            # Clean project archive temp extraction directories
-            for temp_dir in list(getattr(main_window, "_project_archive_temp_dirs", []) or []):
-                try:
-                    import shutil
-
-                    shutil.rmtree(temp_dir, ignore_errors=True)
-                except Exception:
-                    pass
-            main_window._project_archive_temp_dirs = []
-
-            # Clear imported datasets
-            if hasattr(cs, "imported_datasets"):
-                cs.imported_datasets.clear()
-                from chisurf.macros.core_data import restore_global_fit_dataset
-
-                try:
-                    restore_global_fit_dataset(_from_controller=True, update_ui=False)
-                except Exception:
-                    pass
-
-            # Reset project tracking
-            main_window._current_project_path = None
-            main_window._current_project_id = None
-            main_window._current_project_version_id = None
-            main_window._current_project_name = None
-
-            # Refresh UI selectors
-            if hasattr(main_window, "dataset_selector"):
-                main_window.dataset_selector.update()
-            if hasattr(main_window, "fit_selector"):
-                main_window.fit_selector.update()
-        except Exception as e:
-            cs.logging.error(f"Error in project.close action: {e}")
-
-    return {}
+    main_window = main_window or getattr(cs, "cs", None)
+    document = getattr(main_window, "_get_project_document", lambda: None)()
+    if document is None:
+        document = getattr(main_window, "_project_document", None)
+    return replace_project(
+        capture_session([], [], name="untitled"),
+        gui=main_window,
+        document=document,
+        target_identity=ProjectDocument() if document is not None else None,
+        present=restore_gui_from_fits if main_window is not None else None,
+        confirmed=confirmed,
+    )
 
 
 @action("action.catalog.export")

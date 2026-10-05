@@ -181,25 +181,37 @@ def test_absorption_falls_back_to_the_excitation_curve():
 # ---------------------------------------------------------------------------
 
 
-def test_real_database_pair_reproduces_the_literature():
+def test_real_database_pair_reproduces_the_literature(tmp_path):
     """A curated pair computed from real spectra lands on the known R0.
 
     EGFP → mCherry is ~52 Å and ATTO 550 → ATTO 643 ~65 Å in the literature;
     computing them from the database's own spectra is the end-to-end check that
     the properties, the spectra and the overlap integral fit together.
     """
-    pytest.importorskip("mmfdb")
+    import shutil
+
+    from mmfdb.repository import MFDatabase
+    from mmfdb.store.database_resolver import _default_reference_spectra_path
+
+    database = MFDatabase(tmp_path / "curated-reference.db")
+    # Packaged SQLite data may use WAL: read its scratch copy so SQLite never
+    # tries to create journal sidecars beside an optional-package source asset.
+    reference = tmp_path / "spectra.db"
+    shutil.copyfile(_default_reference_spectra_path(), reference)
+    database.import_reference_set(source_path=str(reference))
     expectations = {("EGFP", "mCherry"): (48.0, 57.0), ("ATTO 550", "ATTO 643"): (60.0, 70.0)}
     checked = 0
-    for (donor, acceptor), (low, high) in expectations.items():
-        pair = fret_pair(donor, acceptor)
-        if pair is None or pair.forster_radius is None:
-            continue
-        assert low < pair.forster_radius < high, f"{donor}->{acceptor}"
-        assert pair.provenance["forster_radius"] == "mmfdb:spectra"
-        checked += 1
-    if checked == 0:
-        pytest.skip("no curated pair with spectra available in this database")
+    try:
+        for (donor, acceptor), (low, high) in expectations.items():
+            pair = fret_pair(donor, acceptor, db=database)
+            if pair is None or pair.forster_radius is None:
+                continue
+            assert low < pair.forster_radius < high, f"{donor}->{acceptor}"
+            assert pair.provenance["forster_radius"] == "mmfdb:spectra"
+            checked += 1
+        assert checked > 0, "curated reference set contains no usable literature pair"
+    finally:
+        database.close()
 
 
 def test_real_repository_round_trip(tmp_path):
@@ -210,7 +222,6 @@ def test_real_repository_round_trip(tmp_path):
     the spectrum storage are exercised as they are in a real database — the stub
     above could agree with itself while disagreeing with MMFDB.
     """
-    pytest.importorskip("mmfdb")
     from mmfdb.repository import MFDatabase
 
     grid = np.arange(400.0, 801.0, 1.0)

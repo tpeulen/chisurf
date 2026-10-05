@@ -77,6 +77,7 @@ class _Panel:
 
     def _timing(self) -> list:
         """The reader's scan timing, which made the carpet's lag times: shown, not fitted."""
+        from chisurf.core.dataspec.display_binding import data_metadata_binding
         from chisurf.core.experiments.ics import IcsTiming
         from chisurf.core.models.tcspc.classic_editor import ScalarRow
 
@@ -89,7 +90,14 @@ class _Panel:
                 return getattr(IcsTiming.from_meta(meta or {}), attribute)
 
             self._timing_rows = [
-                ScalarRow(name, lambda a=attribute: read(a), lambda _v: None, label_text=label)
+                ScalarRow(
+                    name,
+                    lambda a=attribute: read(a),
+                    lambda _v: None,
+                    display_binding=data_metadata_binding(f"ics.{attribute}"),
+                    is_output=True,
+                    label_text=label,
+                )
                 for name, attribute, label in (
                     ("pxl_dur", "pixel_duration_us", "t<sub>pix</sub>[µs]"),
                     ("line_dur", "line_duration_ms", "t<sub>line</sub>[ms]"),

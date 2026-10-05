@@ -646,6 +646,51 @@ class FCSKineticsModel(ModelCurve):
         self._updating_model = False
         self.find_parameters()
 
+    def get_state(self) -> dict:
+        """Return kinetic topology, units, mode and declared state labels."""
+        sat = self.saturation
+        return {
+            "n_states": sat.n_states,
+            "saturation_mode": self.saturation_mode,
+            "dark_unit": sat.dark_unit,
+            "state_labels": sat._custom_state_labels,
+            "state_names": sat._custom_state_names,
+            "dye_name": sat._dye_name,
+        }
+
+    def set_state(self, state: dict) -> None:
+        """Restore configuration before scalar ports and matrices are assigned.
+
+        Parameters
+        ----------
+        state : dict
+            Configuration from :meth:`get_state`, without callbacks or data handles.
+        """
+        count = state.get("n_states")
+        mode, unit = state.get("saturation_mode"), state.get("dark_unit")
+        if type(count) is not int or count < 2 or mode not in self._SATURATION_MODES:
+            raise ValueError("invalid kinetic state count or mode")
+        if unit not in DARK_RATE_UNITS:
+            raise ValueError("invalid kinetic rate unit")
+        for field in ("state_labels", "state_names"):
+            values = state.get(field)
+            if values is not None and (
+                not isinstance(values, list) or any(not isinstance(v, str) for v in values)
+            ):
+                raise ValueError("invalid kinetic state labels")
+        if not isinstance(state.get("dye_name", ""), str):
+            raise ValueError("invalid kinetic dye name")
+        # Do not evaluate the partially rebuilt scheme in full mode. Evaluation
+        # follows parameter/link publication in the scientific session codec.
+        self._saturation_mode = mode
+        sat = self.saturation
+        sat.dark_unit = str(unit)
+        sat.n_states = count
+        sat._custom_state_labels = state.get("state_labels")
+        sat._custom_state_names = state.get("state_names")
+        sat._dye_name = str(state.get("dye_name", ""))
+        self.find_parameters()
+
     @property
     def parameters_all(self):
         """Every parameter of the model: optics, dark rates, cross sections, brightness.

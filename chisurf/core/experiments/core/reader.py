@@ -110,6 +110,7 @@ class ExperimentReader(chisurf.core.base.Base):
         self.object_store = object_store
         self.record_provenance = record_provenance
         self.sample_id = sample_id
+        self.experiment = kwargs.get("experiment", None)
         self._last_operation_id: str | None = None
         self._source_md5s: dict[str, str] = {}
         self._source_object_uuids: list[str] = []
@@ -276,6 +277,13 @@ class ExperimentReader(chisurf.core.base.Base):
         # the reader knows that it can produce a usable ChiSurf dataset.
         data = self.read(**kwargs)
 
+        if type(data) in (list, tuple):
+            group_type = (
+                chisurf.core.data.ExperimentDataCurveGroup
+                if all(isinstance(d, chisurf.core.data.DataCurve) for d in data)
+                else chisurf.core.data.ExperimentDataGroup
+            )
+            data = group_type(data)
         if isinstance(data, chisurf.core.data.ExperimentalData):
             data = chisurf.core.data.ExperimentDataGroup([data])
         if isinstance(data, chisurf.core.data.ExperimentDataGroup):

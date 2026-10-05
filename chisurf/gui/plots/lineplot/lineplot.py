@@ -868,6 +868,10 @@ class LinePlot(plotbase.Plot):
         self.plot_controller = LinePlotControl(
             parent=self, scale_x=scale_x, d_scaley=d_scaley, r_scaley=r_scaley
         )
+        # Fit windows host controls in a separate layout. That host can be
+        # destroyed before this plot and its window-owned deferred callbacks.
+        # Hiding/reparenting is reversible; actual destruction retires the plot.
+        self.plot_controller.destroyed.connect(self._on_controller_destroyed)
 
         # If the plot is associated with a FitGroup containing multiple local fits,
         # default to displaying the full group. Do this once and avoid overriding
@@ -936,6 +940,8 @@ class LinePlot(plotbase.Plot):
             self.region = region
 
             def onRegionUpdate(*_):
+                if self.plot_controller is None:
+                    return
                 # Get the currently selected fit for region update
                 if hasattr(fit, "selected_fit"):
                     current_fit = fit.selected_fit
@@ -1007,6 +1013,11 @@ class LinePlot(plotbase.Plot):
         self.lines = lines
         self.plots = plots
         self.plot_controller.fill_line_widget()
+
+    @QtCore.Slot()
+    def _on_controller_destroyed(self) -> None:
+        """Retire callbacks when the separately hosted controls are destroyed."""
+        self.plot_controller = None
 
     #: The data panel's share of the stack. The residual strips split the rest,
     #: so data : (a.corr + w.res) is the golden ratio.
@@ -1357,7 +1368,11 @@ class LinePlot(plotbase.Plot):
             return None
         return [a_min, a_max]
 
+    @QtCore.Slot()
     def update(self, only_fit_range: bool = False, *args, **kwargs) -> None:
+        """Refresh an active plot; retired controls end its update lifetime."""
+        if self.plot_controller is None:
+            return
         super().update(*args, **kwargs)
 
         # Auto-enable group display once for multi-fit groups (do not override

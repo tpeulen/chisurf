@@ -11,6 +11,7 @@ import os
 import sys
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 # Ensure chisurf package is on the path
@@ -21,6 +22,9 @@ if ROOT not in sys.path:
 import chisurf as cs  # noqa: E402
 import chisurf.gui  # noqa: E402,F401  # ensure cs.gui is a module
 import chisurf.gui.widgets  # noqa: E402,F401  # ensure cs.gui.widgets resolves
+from chisurf.core.data import DataCurve  # noqa: E402
+from chisurf.core.project import capture_session, restore_session, save_project  # noqa: E402
+from chisurf.core.project.storage import ProjectStorageError  # noqa: E402
 from chisurf.macros.core_fit import load_project_data  # noqa: E402
 
 EXAMPLES_DIR = os.path.abspath(
@@ -28,8 +32,29 @@ EXAMPLES_DIR = os.path.abspath(
 )
 
 
+@pytest.fixture(autouse=True)
+def isolated_project_owner(monkeypatch):
+    """Use a concrete local owner without borrowing another test's GUI or lists."""
+    from chisurf.core.project.project import ResourceContext
+    from chisurf.history.core import OperationHistory
+
+    for name, value in (
+        ("fits", []),
+        ("imported_datasets", []),
+        ("cs", None),
+        ("__client__", None),
+        ("_project_gui", None),
+        ("_project_authorizations", {}),
+        ("_project_transition", None),
+        ("history", OperationHistory()),
+        ("native_session", None),
+        ("project_resources", ResourceContext()),
+    ):
+        monkeypatch.setattr(cs, name, value, raising=False)
+
+
 def _reset_state():
-    """Reset module-level state to a clean headless baseline."""
+    """Reset this fixture's local owner collections to a headless baseline."""
     cs.fits.clear()
     cs.imported_datasets.clear()
     try:
@@ -58,8 +83,8 @@ def _is_csp_project(path):
     return False
 
 
-def test_t4l_chimol_project_loads():
-    """The t4l_chimol example project should load without errors."""
+def test_t4l_chimol_project_loads(tmp_path):
+    """The v4 fixture is rejected; an equivalent v5 PTO loads end-to-end."""
     project_path = os.path.join(EXAMPLES_DIR, "t4l_chimol")
     csp_path = project_path + ".cs.pto"
     if _is_csp_project(csp_path):
@@ -72,7 +97,24 @@ def test_t4l_chimol_project_loads():
         pytest.skip(f"Example project not found: {project_path}")
 
     _reset_state()
-    fit_uids = load_project_data(load_path)
+    sentinel = object()
+    cs.imported_datasets.append(sentinel)
+    with pytest.raises(ProjectStorageError, match="Could not load project file"):
+        load_project_data(load_path)
+    assert cs.imported_datasets == [sentinel]
+    assert cs.fits == []
+
+    curve = DataCurve(
+        x=np.arange(4, dtype=float),
+        y=np.array([1.0, 2.0, 3.0, 4.0]),
+        name="t4l-chimol-v5",
+        unique_identifier="t4l-chimol-dataset",
+    )
+    v5_path = save_project(
+        capture_session([curve], [], name="t4l_chimol-v5"), tmp_path / "t4l_chimol_v5"
+    )
+    _reset_state()
+    fit_uids = load_project_data(str(v5_path))
     assert isinstance(fit_uids, list)
     # 0 fits by design
     assert len(cs.fits) == 0
@@ -80,15 +122,8 @@ def test_t4l_chimol_project_loads():
     assert cs.gui.__name__ == "chisurf.gui"
 
 
-def test_t4l_proteinmc_project_loads():
-    """The t4l_proteinmc example project should load and restore its
-    ProteinMC fit in headless mode up to the model-resolution step.
-
-    In a headless environment (no QApplication) the ProteinMC fit
-    itself is skipped because it requires Qt. The test verifies that
-    the surrounding infrastructure (datasets, experiment context,
-    history) is restored without errors.
-    """
+def test_t4l_proteinmc_project_loads(tmp_path):
+    """Reject the v4 example, then portably restore an actual structured T4L fit."""
     project_path = os.path.join(EXAMPLES_DIR, "t4l_proteinmc")
     csp_path = project_path + ".cs.pto"
     if _is_csp_project(csp_path):
@@ -101,24 +136,79 @@ def test_t4l_proteinmc_project_loads():
         pytest.skip(f"Example project not found: {project_path}")
 
     _reset_state()
-    fit_uids = load_project_data(load_path)
+    sentinel = object()
+    cs.imported_datasets.append(sentinel)
+    with pytest.raises(ProjectStorageError, match="Could not load project file"):
+        load_project_data(load_path)
+    assert cs.imported_datasets == [sentinel]
+    assert cs.fits == []
+
+    import shutil
+    from pathlib import Path
+
+    from chisurf.core.experiments.core import Experiment
+    from chisurf.core.experiments.modelling.reader import StructureReader
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.core.models.structure.proteinmc_model import ProteinMCModel
+
+    source = tmp_path / "148l.pdb"
+    shutil.copyfile(Path(ROOT) / "test/data/atomic_coordinates/pdb_files/148l.pdb", source)
+    reader = StructureReader(experiment=Experiment(name="Structure"), record_provenance=False)
+    curve = reader.get_data(filename=str(source))[0]
+    curve.data_reader = reader
+    curve.name = "t4l-proteinmc-v5"
+    curve.unique_identifier = "t4l-proteinmc-dataset"
+    assert curve.atoms.dtype.names and len(curve.atoms) > 0
+
+    fit = Fit(model_class=ProteinMCModel, data=curve)
+    fit.unique_identifier = "t4l-proteinmc-fit"
+    fit.fit_range = reader.autofitrange(curve)
+    assert tuple(fit.fit_range) == (0, 0)  # Structure data has no curve interval.
+    fit.model.n_iter = 37
+    fit.model.n_out = 3
+    captured = capture_session([curve], [fit], name="t4l_proteinmc-v5")
+    v5_path = save_project(captured, tmp_path / "t4l_proteinmc_v5")
+    source.unlink()
+    restored = restore_session(captured)
+    _reset_state()
+    fit_uids = load_project_data(str(v5_path))
     assert isinstance(fit_uids, list)
-    # In headless mode the ProteinMC model is not created, so fits is 0.
-    # In GUI mode the fit would be added. We only assert no crash here.
-    # The dataset list contains the proteinmc input + the global-fit slot.
-    assert len(cs.imported_datasets) >= 1
+    assert len(restored.fits) == 1
+    restored_fit = restored.fits[0]
+    assert type(restored_fit.model) is ProteinMCModel
+    assert restored_fit.fit_range == (0, 0)
+    assert restored_fit.model.n_iter == fit.model.n_iter == 37
+    assert restored_fit.model.n_out == fit.model.n_out == 3
+    assert restored_fit.data is restored.datasets[0]
+    restored_structure = restored_fit.model.structure
+    assert restored_structure is not None
+    np.testing.assert_array_equal(restored_structure.atoms, curve.atoms)
+    np.testing.assert_array_equal(restored_structure.xyz, curve.xyz)
+    assert len(cs.fits) == 1
+    assert cs.fits[0].unique_identifier == fit.unique_identifier
+    assert cs.fits[0].data is cs.imported_datasets[0]
+    loaded_structure = cs.fits[0].model.structure
+    assert loaded_structure is not None
+    np.testing.assert_array_equal(loaded_structure.atoms, curve.atoms)
+    assert not source.exists()
     # Loading must not have corrupted `cs.gui`.
     assert cs.gui.__name__ == "chisurf.gui"
 
 
-def test_load_project_payload_reinitializes_gui_without_messages():
-    """Project loading should not show confirmation or completion dialogs."""
+def test_load_project_payload_does_not_reinitialize_gui_during_staging(monkeypatch):
+    """Detached loading must not reset the GUI before restoration completes."""
     from chisurf.core.project import Project
     from chisurf.macros.core_fit import load_project_payload
 
     calls = []
+    guard_calls = []
 
     class FakeGui:
+        def _guard_project_transition(self):
+            """Represent explicit consent from this concrete document owner."""
+            guard_calls.append("confirm")
+            return True
+
         def reinitialize(self, show_confirmation=True, show_success=True):
             calls.append((show_confirmation, show_success))
 
@@ -128,14 +218,15 @@ def test_load_project_payload_reinitializes_gui_without_messages():
         dataset_selector = SimpleNamespace(update=lambda: None)
         fit_selector = SimpleNamespace(update=lambda: None)
 
-    saved_cs_cs = getattr(cs, "cs", None)
-    try:
-        cs.cs = FakeGui()
-        load_project_payload(Project(name="test"), project_path=None)
-    finally:
-        cs.cs = saved_cs_cs
+    gui = FakeGui()
+    monkeypatch.setattr(cs, "cs", gui)
+    monkeypatch.setattr(cs, "_project_gui", gui, raising=False)
+    monkeypatch.setattr(chisurf.gui, "fit_windows", [])
+    result = load_project_payload(Project(name="test"), project_path=None)
 
-    assert calls == [(False, False)]
+    assert result["ok"] is True
+    assert guard_calls and set(guard_calls) == {"confirm"}
+    assert calls == []
 
 
 def test_reinitialize_application_does_not_overwrite_cs_gui():

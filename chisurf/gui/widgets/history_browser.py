@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -11,13 +12,16 @@ from chisurf.gui.widgets.general import apply_compact_table_style
 
 class HistoryBrowserWidget(QtWidgets.QWidget):
     cursorChanged = QtCore.Signal(object)
+    historyChanged = QtCore.Signal(object)
 
     def __init__(self, parent: QtWidgets.QWidget = None):
         super().__init__(parent)
-        self._history = None
+        self._history: typing.Any = None
         self._events: typing.List[typing.Dict[str, typing.Any]] = []
         self._cursor_event_id: typing.Optional[str] = None
         self._suspend_selection_signal = False
+        self.historyChanged.connect(self.reload)
+        self.destroyed.connect(lambda: self._detach_history())
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -169,34 +173,35 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
             return
         if self._history is not None:
             try:
-                self._history.unsubscribe(self._on_event_recorded)
+                self._history.unsubscribe_state(self._on_history_state)
             except Exception:
                 pass
         self._history = history_obj
         if self._history is not None:
             try:
-                self._history.subscribe(self._on_event_recorded)
+                self._history.subscribe_state(self._on_history_state)
             except Exception:
                 pass
         self.reload()
 
-    def reload(self) -> None:
-        self._events = []
+    def _detach_history(self) -> None:
+        """Release the owner subscription when Qt destroys this browser."""
         if self._history is not None:
-            try:
-                self._events = list(self._history.list_events())
-            except Exception:
-                self._events = []
-        if self._events:
-            if not self._cursor_event_id:
-                self._cursor_event_id = str(self._events[-1].get("event_id") or "") or None
-        else:
-            self._cursor_event_id = None
+            self._history.unsubscribe_state(self._on_history_state)
+            self._history = None
+
+    def reload(self) -> None:
+        """Display only the owner's acknowledged event list and cursor."""
+        self._events = self._history.list_events() if self._history is not None else []
+        cursor = self._history.cursor_index() if self._history is not None else -1
+        self._cursor_event_id = (
+            self._events[cursor]["event_id"] if 0 <= cursor < len(self._events) else None
+        )
         self._render()
 
-    def _on_event_recorded(self, event: typing.Dict[str, typing.Any]) -> None:
-        self._events.append(event)
-        self._render()
+    def _on_history_state(self, state) -> None:
+        """Marshal owner notifications to this widget's Qt thread."""
+        self.historyChanged.emit(copy.deepcopy(state))
 
     def _render(self) -> None:
         needle = self.filter_edit.text().strip().lower()
@@ -228,20 +233,14 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
         if cursor_item is not None:
             self.table.setCurrentItem(cursor_item)
             self.table.scrollToItem(cursor_item)
-        elif self.table.topLevelItemCount() > 0:
-            fallback = self.table.topLevelItem(self.table.topLevelItemCount() - 1)
-            self.table.setCurrentItem(fallback)
-            try:
-                event = fallback.data(0, QtCore.Qt.UserRole)
-                if isinstance(event, dict):
-                    event_id = str(event.get("event_id") or "")
-                    self._cursor_event_id = event_id or None
-            except Exception:
-                pass
         else:
             self.details.clear()
-            self._cursor_event_id = None
+            if self._cursor_event_id is None:
+                self.details.setPlainText("Initial scientific state (before the first event)")
         self._suspend_selection_signal = False
+
+        if cursor_item is not None:
+            self._show_selected_details()
 
     def _apply_filter(self) -> None:
         self._render()
@@ -257,14 +256,11 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
         if not isinstance(event, dict):
             self.details.clear()
             return
-        event_id = str(event.get("event_id") or "")
-        self._cursor_event_id = event_id or None
         try:
             txt = json.dumps(event, indent=2, sort_keys=True)
         except Exception:
             txt = str(event)
         self.details.setPlainText(txt)
-        self.cursorChanged.emit(event)
 
     def _on_item_clicked(self, item: QtWidgets.QTreeWidgetItem, _column: int) -> None:
         if item is None:
@@ -272,9 +268,17 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
         event = item.data(0, QtCore.Qt.UserRole)
         if not isinstance(event, dict):
             return
-        event_id = str(event.get("event_id") or "")
-        self._cursor_event_id = event_id or None
-        self.cursorChanged.emit(event)
+        index = next(
+            (i for i, row in enumerate(self._events) if row["event_id"] == event["event_id"]), None
+        )
+        if index is not None:
+            try:
+                self._history.navigate(index)
+                self.reload()
+                self.cursorChanged.emit(copy.deepcopy(event))
+            except Exception:
+                self.reload()
+                cs.logging.exception("History navigation was rejected")
 
     def _on_clear_clicked(self) -> None:
         if self._history is not None:
@@ -291,7 +295,7 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
             return None
         for event in self._events:
             if str(event.get("event_id") or "") == self._cursor_event_id:
-                return event
+                return copy.deepcopy(event)
         return None
 
     def _cursor_index(self) -> int:
@@ -309,53 +313,48 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
         idx = self._cursor_index()
         if idx < 0:
             return []
-        return list(self._events[: idx + 1])
+        return copy.deepcopy(self._events[: idx + 1])
 
     def all_events(self) -> typing.List[typing.Dict[str, typing.Any]]:
-        return list(self._events)
+        return copy.deepcopy(self._events)
 
     def can_undo(self) -> bool:
-        idx = self._cursor_index()
-        return idx > 0
+        """Whether an earlier complete scientific state is restorable."""
+        return bool(
+            self._history is not None
+            and any(self._history.can_navigate(i) for i in range(-1, self._cursor_index()))
+        )
 
     def can_redo(self) -> bool:
-        idx = self._cursor_index()
-        return 0 <= idx < (len(self._events) - 1)
-
-    def move_cursor(
-        self, delta: int, state_only: bool = False
-    ) -> typing.Optional[typing.Dict[str, typing.Any]]:
-        if not self._events:
-            return None
-        idx = self._cursor_index()
-        if idx < 0:
-            idx = len(self._events) - 1
-        new_idx = idx + int(delta)
-        if new_idx < 0:
-            new_idx = 0
-        if new_idx >= len(self._events):
-            new_idx = len(self._events) - 1
-
-        skipped = 0
-        if state_only:
-            step = -1 if int(delta) < 0 else 1
-            i = new_idx
-            while 0 <= i < len(self._events):
-                action = str(self._events[i].get("action_type", ""))
-                if self._is_state_action(action):
-                    new_idx = i
-                    break
-                i += step
-                skipped += 1
-
-        event = self._events[new_idx]
-        self._cursor_event_id = str(event.get("event_id") or "") or None
-        self._render()
-        self._log_info(
-            f"cursor {idx} -> {new_idx}; action={event.get('action_type', '?')}; state_only={state_only}; skipped={skipped}"
+        """Whether a later complete scientific state is restorable."""
+        return bool(
+            self._history is not None
+            and any(
+                self._history.can_navigate(i)
+                for i in range(self._cursor_index() + 1, len(self._events))
+            )
         )
-        self.cursorChanged.emit(event)
-        return event
+
+    def move_cursor(self, delta: int, state_only: bool = False):
+        """Request owner publication before updating the visible cursor."""
+        del state_only  # Complete canonical states determine scientific reachability.
+        if self._history is None or not delta:
+            return None
+        step = -1 if delta < 0 else 1
+        index = self._cursor_index() + step
+        while -1 <= index < len(self._events):
+            if self._history.can_navigate(index):
+                try:
+                    self._history.navigate(index)
+                except Exception:
+                    self.reload()
+                    raise
+                self.reload()
+                event = self.current_event()
+                self.cursorChanged.emit(event)
+                return event
+            index += step
+        return None
 
     def undo_step(self) -> typing.Optional[typing.Dict[str, typing.Any]]:
         return self.move_cursor(-1, state_only=True)

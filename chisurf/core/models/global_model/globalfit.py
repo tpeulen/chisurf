@@ -19,6 +19,42 @@ if TYPE_CHECKING:
 class GlobalFitModel(model.Model, Curve):
     name = "Global fit"
     view_spec_file = "globalfit.view.json"
+    _global_parameters: dict[str, cs.core.fitting.parameter.FittingParameter]
+
+    def get_session_parameters(self) -> list:
+        """Return owned global ports; member ports belong to the member fits."""
+        return self.global_parameters_all
+
+    def get_model_references(self) -> dict:
+        """Declare ordered members without copying their parameters or data."""
+        return {"members": [fit.model for fit in self.fits]}
+
+    def set_model_references(self, references: dict) -> None:
+        """Bind restored members by their exact model objects."""
+        if set(references) != {"members"}:
+            raise ValueError("global fit requires its ordered members")
+        self.fits = [member.fit for member in references["members"]]
+        self._invalidate_structure()
+
+    def get_state(self) -> dict:
+        """Declare the owned global port topology, independent of member names."""
+        return {"global_parameters": self.global_parameters_all_names}
+
+    def set_state(self, state: dict) -> None:
+        """Rebuild owned global ports before the codec restores their identities."""
+        from chisurf.core.fitting.parameter import FittingParameter
+
+        names = state.get("global_parameters", [])
+        if (
+            not isinstance(names, list)
+            or any(not isinstance(name, str) for name in names)
+            or len(set(names)) != len(names)
+        ):
+            raise ValueError("invalid global parameter topology")
+        self._global_parameters = {}
+        for name in names:
+            self.append_global_parameter(FittingParameter(name=name))
+        self._invalidate_structure()
 
     @property
     def weighted_residuals(self) -> np.ndarray:

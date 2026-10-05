@@ -81,7 +81,7 @@ class ReactionModel(ReactionSystem, ModelCurve):
         #: Rescale the model to the data's integral inside the fit window.
         self.autoscale = False
         #: Row dict of the reaction currently selected in the reaction table.
-        self.selected_reaction = None
+        self.selected_reaction: dict | None = None
 
         scheme = kwargs.get("parameter")
         if isinstance(scheme, dict):
@@ -95,6 +95,57 @@ class ReactionModel(ReactionSystem, ModelCurve):
         self.find_parameters()
 
     # -- the scheme -----------------------------------------------------
+
+    def get_state(self) -> dict:
+        """Return the reaction topology and non-parameter editor settings."""
+        row = self.selected_reaction
+        return {
+            "scheme": self.scheme,
+            "autoscale": self.autoscale,
+            "selected_reaction": row["index"] if isinstance(row, dict) else None,
+        }
+
+    def set_state(self, state: dict) -> None:
+        """Rebuild the scheme before project restoration assigns parameter UIDs.
+
+        Parameters
+        ----------
+        state : dict
+            Explicit topology and settings returned by :meth:`get_state`.
+        """
+        scheme = state.get("scheme")
+        if not isinstance(scheme, dict):
+            raise ValueError("reaction state requires a scheme")
+        species, reactions = scheme.get("species"), scheme.get("reactions")
+        if not isinstance(species, list) or not species or not isinstance(reactions, list):
+            raise ValueError("reaction scheme requires species and reactions")
+        for reaction in reactions:
+            for indices, counts in (
+                ("educts", "educt_stoichiometry"),
+                ("products", "product_stoichometry"),
+            ):
+                values, coefficients = reaction[indices], reaction[counts]
+                if (
+                    not isinstance(values, list)
+                    or len(values) != len(coefficients)
+                    or any(type(i) is not int or not 0 <= i < len(species) for i in values)
+                    or any(not np.isfinite(v) or v <= 0 for v in coefficients)
+                ):
+                    raise ValueError("invalid reaction stoichiometry")
+            if not np.isfinite(reaction["rate"]) or reaction["rate"] < 0:
+                raise ValueError("invalid reaction rate")
+        selected = state.get("selected_reaction")
+        if selected is not None and (
+            type(selected) is not int or not 0 <= selected < len(reactions)
+        ):
+            raise ValueError("invalid selected reaction")
+        autoscale = state.get("autoscale", False)
+        if type(autoscale) is not bool:
+            raise ValueError("invalid reaction autoscale setting")
+        self.set_scheme(scheme)
+        self.autoscale = autoscale
+        self.selected_reaction = None if selected is None else self.reaction_rows()[selected]
+        self.find_parameters()
 
     @staticmethod
     def default_scheme() -> dict:

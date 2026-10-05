@@ -9,8 +9,6 @@ import chisurf.core.data
 import chisurf.core.experiments
 import chisurf.core.experiments.modelling
 import chisurf.core.fitting
-import chisurf.gui
-import chisurf.gui.widgets
 from chisurf import logging, typing
 from chisurf.core.actions import record_action
 from chisurf.core.data import DataGroup, ExperimentDataCurveGroup, ExperimentDataGroup

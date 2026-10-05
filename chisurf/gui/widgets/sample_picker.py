@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from mmfdb.models import (
-    EntityDefinition,
-    FretPairDefinition,
-    MutationDefinition,
-    ProbeDefinition,
-    SampleDefinition,
-)
-from mmfdb.samples.external_refs import diff_sequences, fetch_uniprot
-from mmfdb.samples.sample_manager import create_sample, list_samples
+from typing import TYPE_CHECKING
+
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui import dialogs
+
+if TYPE_CHECKING:
+    from mmfdb.models import MutationDefinition, SampleDefinition
 
 
 class SamplePicker(QtWidgets.QWidget):
@@ -72,6 +68,8 @@ class SamplePicker(QtWidgets.QWidget):
             self.set_samples([])
             return
         try:
+            from mmfdb.samples.sample_manager import list_samples
+
             self.set_samples(list_samples(self._db))
         except Exception:
             self.set_samples([])
@@ -92,6 +90,17 @@ class SamplePicker(QtWidgets.QWidget):
         self.sample_changed.emit(sample_id)
 
     def _on_new_sample(self) -> None:
+        try:
+            from mmfdb.models import SampleDefinition  # noqa: F401
+        except ModuleNotFoundError as exc:
+            if exc.name != "mmfdb" and not (exc.name or "").startswith("mmfdb."):
+                raise
+            dialogs.warning(
+                self,
+                "Sample creation unavailable",
+                "MMFDB is unavailable; creating sample definitions requires MMFDB.",
+            )
+            return
         dialog = _SampleDefinitionDialog(self._db, parent=self)
         if dialog.exec_() != QtWidgets.QDialog.Accepted:
             return
@@ -100,6 +109,8 @@ class SamplePicker(QtWidgets.QWidget):
             return
         if self._db is not None:
             try:
+                from mmfdb.samples.sample_manager import create_sample
+
                 sample_id = create_sample(self._db, definition)
                 self.refresh()
                 self.set_selected(sample_id)
@@ -223,6 +234,8 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
             import pathlib
 
             cache_dir = pathlib.Path(self._db.db_path).parent / "uniprot_cache"
+        from mmfdb.samples.external_refs import fetch_uniprot
+
         result = fetch_uniprot(accession, cache_dir=cache_dir)
         if result is None:
             dialogs.warning(
@@ -249,6 +262,8 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
             dialogs.information(self, "Diff", "Enter a reference sequence first (or click Fetch).")
             return
         try:
+            from mmfdb.samples.external_refs import diff_sequences
+
             mutations = diff_sequences(construct, reference)
         except ValueError as exc:
             dialogs.warning(self, "Diff failed", str(exc))
@@ -293,6 +308,8 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
         self._mut_table.setRowCount(0)
 
     def _read_mutations_from_table(self) -> list[MutationDefinition]:
+        from mmfdb.models import MutationDefinition
+
         mutations: list[MutationDefinition] = []
         for row in range(self._mut_table.rowCount()):
             seq_id_item = self._mut_table.item(row, 0)
@@ -334,6 +351,13 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
         if not name:
             dialogs.warning(self, "Missing name", "Sample name is required.")
             return
+
+        from mmfdb.models import (
+            EntityDefinition,
+            FretPairDefinition,
+            ProbeDefinition,
+            SampleDefinition,
+        )
 
         entity = EntityDefinition(
             name=self.entity_name_edit.text().strip() or name,

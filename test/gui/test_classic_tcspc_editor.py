@@ -244,3 +244,29 @@ def test_the_classic_rows_are_not_fitted(lifetime):
     _fit_, model, _editor = lifetime
     fitted = {p.name for p in model.parameters_all}
     assert not {"dt", "rep", "stop", "tBg", "tMeas", "PhB", "PhF", "tDead", "win-size"} & fitted
+
+
+def test_acceptor_density_distribution_tab_binds_its_declared_donor_spectrum(qapp):
+    """The real distribution tab must construct from the described donor spectrum."""
+    from chisurf.gui.plots.distribution import DistributionPlot
+    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+
+    fit, model = _fit("tcspc_fret_acceptor_density")
+    model.update()
+    _plot_class, options = next(
+        (plot_class, options)
+        for plot_class, options in model_plot_specs(model)
+        if plot_class is DistributionPlot
+    )
+
+    plot = DistributionPlot(fit, **options)
+    try:
+        plot.show()
+        qapp.processEvents()
+        assert plot.plot_controller.selector.currentText() == "Donor lifetimes"
+        option = options["distribution_options"]["Donor lifetimes"]
+        assert option["attribute"] == "donor_lifetime_spectrum"
+        assert np.asarray(getattr(model, option["attribute"])).size >= 2
+        plot.update()
+    finally:
+        plot.close()
