@@ -318,7 +318,7 @@ def test_the_exchange_scheme_is_drawn_like_any_other(fit, qapp):
     model.rate_values = rates
 
     plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
-    scheme = plot.scheme_widget._get_saturation()
+    scheme = plot.binding.scheme()
     assert scheme.n_states == n
     assert list(scheme.state_labels) == list(model.state_names)
     drawn = np.asarray(scheme.dark.rate_matrix())
@@ -341,8 +341,8 @@ def test_a_plain_rate_scheme_has_no_pumped_transition(fit, qapp):
     from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
 
     plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
-    assert plot.scheme_widget._excitation() is None
-    assert plot.scheme_widget._get_saturation().excitation_edge is None
+    assert plot.binding.excitation() is None
+    assert plot.binding.scheme().excitation_edge is None
 
 
 def test_a_declared_pumped_transition_is_still_honoured(qapp):
@@ -361,49 +361,37 @@ def test_the_preset_toolbar_is_hidden_when_it_would_do_nothing(fit, qapp):
     from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
 
     plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
-    combo = plot.scheme_widget.combo_preset
-    assert combo.count() == 1
-    assert combo.parent().isHidden()
+    assert len(plot.binding.preset_names()) <= 1
+    assert not plot.show_toolbar
 
 
 def test_the_scheme_zooms_about_the_pointer(fit, qapp):
     """And hit-testing follows it, or a zoomed node cannot be clicked."""
-    from qtpy import QtCore, QtGui
+    from emtk.testing import RecordingPainter
 
     from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
+    from chisurf.gui.plots.state_scheme_emtk import ZOOM_RANGE
 
     plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
-    widget = plot.scheme_widget
-    assert widget._view.zoom == pytest.approx(1.0)
+    canvas = plot.canvas
+    canvas.draw(RecordingPainter(), 0.0, 0.0, 600.0, 400.0)
+    assert canvas.zoom == pytest.approx(1.0)
 
-    anchor = QtCore.QPointF(260.0, 120.0)
-    before = widget._scene_pos(anchor)
-    event = QtGui.QWheelEvent(
-        anchor,
-        anchor,
-        QtCore.QPoint(0, 0),
-        QtCore.QPoint(0, 480),
-        QtCore.Qt.NoButton,
-        QtCore.Qt.NoModifier,
-        QtCore.Qt.NoScrollPhase,
-        False,
-    )
-    widget._on_canvas_wheel(event)
-    assert widget._view.zoom > 1.5
+    anchor = (260.0, 120.0)
+    before = canvas.to_scene(*anchor)
+    canvas.zoom_about(4.0, *anchor)
+    assert canvas.zoom > 1.5
     # What was under the pointer is still under the pointer.
-    after = widget._scene_pos(anchor)
-    assert after.x() == pytest.approx(before.x(), abs=1e-6)
-    assert after.y() == pytest.approx(before.y(), abs=1e-6)
+    after = canvas.to_scene(*anchor)
+    assert after == pytest.approx(before, abs=1e-6)
 
     # A scene point maps to canvas and back exactly, so clicks still land.
-    widget._init_coords(widget._get_saturation().n_states)
-    node = widget._node_coords[0]
-    assert widget._scene_pos(widget._transform().map(node)).x() == pytest.approx(node.x())
+    node = canvas.coords[0]
+    assert canvas.to_scene(*canvas.to_canvas(node)) == pytest.approx(node)
 
-    low, high = widget.ZOOM_RANGE
     for _ in range(40):
-        widget._on_canvas_wheel(event)
-    assert widget._view.zoom <= high
+        canvas.zoom_about(4.0, *anchor)
+    assert canvas.zoom <= ZOOM_RANGE[1]
 
 
 def test_the_node_palette_does_not_run_out(qapp):

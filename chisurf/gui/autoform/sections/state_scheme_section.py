@@ -636,7 +636,14 @@ class StateSchemeWidget(QtWidgets.QWidget):
 
 
 class StateSchemePlot(QtWidgets.QWidget):
-    """Fit-window plot tab wrapper for interactive HMM State Scheme visualization."""
+    """The fit window's "State Scheme" page, drawn by emtk.
+
+    The page object is a hidden ``QWidget`` only because fit-window pages are;
+    what it shows is :meth:`emtk_draw`: the preset bar (when the model has
+    presets or a scheme file) and a
+    :class:`~chisurf.gui.plots.state_scheme_emtk.SchemeCanvas`, with the rate
+    field a double-clicked badge opens.
+    """
 
     name = "State Scheme"
 
@@ -649,29 +656,137 @@ class StateSchemePlot(QtWidgets.QWidget):
         **options,
     ):
         super().__init__()
+        from chisurf.gui.plots.state_scheme_emtk import SchemeBinding, SchemeCanvas
+
         self.fit = fit
         self.plot_controller = QtWidgets.QWidget()
         model = getattr(fit, "model", None) if fit is not None else None
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.scheme_widget = StateSchemeWidget(
+        self.binding = SchemeBinding(
             model,
             target=target,
-            unit_attr=unit_attr,
             labels_attr=labels_attr,
-            options=options,
+            excitation_edge=options.get("excitation_edge"),
+            on_changed=self._model_changed,
         )
-        layout.addWidget(self.scheme_widget)
+        self.canvas = SchemeCanvas(self.binding)
+        self.panel_items = []
+        self._edit_text = ""
+        self._edit_for = None
+        show = options.get("show_toolbar", None)
+        if show is None:
+            show = len(self.binding.preset_names()) > 1 or self.binding.can_save()
+        self.show_toolbar = bool(show)
+
+    def _model_changed(self) -> None:
+        """A rate, preset or file changed the model: recompute the fit's curve."""
+        try:
+            from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+
+            client = get_fitting_client()
+            if client is not None:
+                client.update_fit(fit_index=getattr(self.fit, "fit_idx", None))
+        except Exception:
+            pass
+        self.canvas.refresh()
+
+    def set_refresh_target(self, callback) -> None:
+        """Repaint requests go to the surface drawing this page."""
+        self.canvas.set_refresh_target(callback)
 
     def update_plot(self, *args, **kwargs):
-        """Update plot tab content on fit/model parameter change."""
-        if hasattr(self, "scheme_widget"):
-            self.scheme_widget.refresh()
+        """Redraw on a fit/model change (the canvas reads the model every frame)."""
+        self.canvas.refresh()
 
     def update(self, *args, **kwargs):
         super().update(*args, **kwargs)
-        if hasattr(self, "scheme_widget"):
-            self.scheme_widget.refresh()
+        self.canvas.refresh()
+
+    def _ask_path(self, save: bool) -> str:
+        if save:
+            path, _ = QtWidgets.QFileDialog.getSaveFileName(
+                None, "Save kinetics scheme", "custom_scheme.json", "JSON files (*.json)"
+            )
+        else:
+            path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                None, "Load kinetics scheme", "", "JSON files (*.json);;All files (*)"
+            )
+        return path or ""
+
+    def emtk_draw(self, box) -> None:
+        """Preset bar, the diagram, and the rate field while one is typed."""
+        from emtk import im
+
+        binding = self.binding
+        if self.show_toolbar:
+            names = binding.preset_names() or ["Custom"]
+            current = names.index(binding.preset()) if binding.preset() in names else 0
+            im.set_next_item_width(200.0)
+            changed, picked = im.combo("##scheme-preset", current, names)
+            im.set_item_tooltip("Kinetic scheme template; picking one replaces the rate matrix.")
+            if changed:
+                binding.set_preset(names[picked])
+            if binding.can_load():
+                im.same_line()
+                if im.small_button("📂 Load"):
+                    path = self._ask_path(save=False)
+                    if path:
+                        binding.load(path)
+                im.set_item_tooltip("Load a kinetics scheme from a JSON file.")
+            if binding.can_save():
+                im.same_line()
+                if im.small_button("💾 Save"):
+                    path = self._ask_path(save=True)
+                    if path:
+                        binding.save(path)
+                im.set_item_tooltip("Save this kinetics scheme to a JSON file.")
+            im.same_line()
+        if im.small_button("Reset view"):
+            self.canvas.reset_view()
+        im.set_item_tooltip("Back to 1:1 zoom, unpanned.")
+        im.host_control("##scheme-canvas", self.canvas)
+        self._draw_rate_field()
+
+    def _draw_rate_field(self) -> None:
+        """The field over a double-clicked badge: Enter writes the rate, Escape drops it."""
+        from emtk import im
+        from emtk.keys import KEY_ESCAPE
+
+        canvas = self.canvas
+        if canvas.editing is None or canvas.edit_anchor is None:
+            self._edit_for = None
+            return
+        i, j = canvas.editing
+        if self._edit_for != canvas.editing:
+            n = self.binding.n_states()
+            rates = self.binding.rates()
+            k = i * n + j
+            self._edit_text = f"{float(rates[k]) if k < len(rates) else 0.0:g}"
+            self._edit_for = canvas.editing
+            im.set_keyboard_focus_here(0)
+        ax, ay = canvas.edit_anchor
+        # An opaque plate with the editing outline, so the badge under the
+        # field does not show through it.
+        draw = im.get_window_draw_list()
+        height = im.get_frame_height()
+        draw.add_rect_filled((ax - 48.0, ay - height / 2 - 3.0), (ax + 48.0, ay + height / 2 + 3.0),
+                             (26, 26, 26, 255), 4.0)
+        draw.add_rect((ax - 48.0, ay - height / 2 - 3.0), (ax + 48.0, ay + height / 2 + 3.0),
+                      (255, 51, 51, 255), 4.0, 0, 2.0)
+        im.set_cursor_screen_pos((ax - 45.0, ay - height / 2))
+        im.set_next_item_width(90.0)
+        entered, self._edit_text = im.input_text(
+            "##scheme-rate", self._edit_text, flags=im.InputTextFlags.ENTER_RETURNS_TRUE
+        )
+        im.set_item_tooltip(f"Rate {i} → {j}; Enter sets it, Escape cancels.")
+        escaped = any(int(key) == KEY_ESCAPE for key, *_ in im.get_io().key_events)
+        if entered:
+            try:
+                self.binding.set_rate(i, j, max(0.0, float(self._edit_text)))
+            except ValueError:
+                pass
+            canvas.editing = None
+        elif escaped:
+            canvas.editing = None
 
 
 from .registry import register_plot

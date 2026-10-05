@@ -136,6 +136,8 @@ def page_body(page: QtWidgets.QWidget) -> PageBody:
 
 def _collect_refreshables(page: QtWidgets.QWidget, body: PageBody) -> None:
     """Gather every repaintable inside *page* (for a page that built its own body)."""
+    if callable(getattr(page, "set_refresh_target", None)):
+        body.refreshables.append(page)
     from chisurf.gui.chiplot.canvas import Plot as ChiPlot
 
     for plot in getattr(page, "_panels", None) or page.findChildren(ChiPlot):

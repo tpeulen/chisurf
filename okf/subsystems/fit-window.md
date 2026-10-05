@@ -18,15 +18,15 @@ timestamp: '2026-10-05T00:00:00Z'
    fit window fails to draw. After emtk is pushed: `pixi update emtk` (or edit
    the five `emtk.git?branch=main#...` lines) and commit the lock, as
    `70c055272` did.
-1. **Port `StateSchemePlot`** (FCS kinetics, ICS; also the MFD 2D model's
-   "State Scheme" tab). It is a QPainter node-link canvas
-   (`chisurf/gui/autoform/sections/state_scheme_section.py`, marks from
-   `chisurf/gui/widgets/graph_canvas.py`, shared with Global View) with a preset
-   combo, load/save, inline rate edits, node drags and wheel zoom. Until it is
-   ported the surface lays the Qt widget over the page's dock box (an
-   *island*), so nothing is lost. Port it as an `emtk_draw(box)` page (im
-   controls above a retained canvas control); strike it from `QT_PAGES` in
-   `test/gui/test_fit_window_pages_all_models.py`.
+1. **emtk history needs a decision** (2026-10-05): emtk `689f9d9` took the
+   selectable-icon work out of `im_widgets.py`/`__init__.py`, believing
+   `10de583` had swept it in uncommitted; its lane had in fact committed it in
+   `601d02d`, so emtk HEAD is red on `tests/test_selectable_icon.py` (3). The
+   restore (a commit putting `601d02d`'s two files back, or `git revert
+   689f9d9`) was refused by the permission classifier and is the owner's call.
+   Also uncommitted in emtk: `qt_painter.py` + `tests/test_painter_triangle.py`
+   -- a translucent `fill_triangle` no longer strokes its seam hairline (a
+   1 px alpha-20 line drew at 71).
 2. **Port `ProteinMCStructurePlot`** (ProteinMC). Its `Viewer` is a 3-D OpenGL
    widget, also an island today. Offscreen grabs of it are black, before and
    after this change, so judge it on a display or port it to chimol's emtk
@@ -47,8 +47,8 @@ timestamp: '2026-10-05T00:00:00Z'
 (about 12 min) opens the real science of all 42 catalogued models in a real
 `Main`, visits every page, and fails on any page not drawn in emtk unless its
 plot class is in `QT_PAGES`. On 2026-10-05: 236 pages, 15 plot classes, every
-page drawn by emtk except `StateSchemePlot` (2 models) and
-`ProteinMCStructurePlot` (1). Trap: a page that never becomes current is never
+page drawn by emtk except `ProteinMCStructurePlot` (1 model).
+`StateSchemePlot` was ported the same day (below). Trap: a page that never becomes current is never
 built; the probe visits each tab, which is why it is slow.
 
 **Tried and reverted** -- the earlier attempt (`FitPlotsArea(DockArea)`,
@@ -115,6 +115,15 @@ new curve shows without waiting for input.
   its tab text "Chi2-Surface" is the panel title.
 * **MFD map**: a chiplot image on the real axes with emtk selectors, instead of
   the Qt `ImageMapWidget`.
+* **State scheme** (`StateSchemePlot`, FCS kinetics, ICS, MFD 2D):
+  `chisurf/gui/plots/state_scheme_emtk.py` -- a Qt-free `SchemeBinding`
+  (scheme from the model in either shape, rates, presets, load/save) and an
+  emtk `SchemeCanvas` drawing the `graph_canvas` marks (grid, gradient discs,
+  curved arrows, rate badges, `k_exc`) with drag node / bend arc / pan / wheel
+  zoom about the pointer, double-click a badge to type a rate (Enter writes it
+  and recomputes the fit). The default layout follows the canvas size until the
+  user arranges it. The AutoForm *form* section (`StateSchemeWidget`) is still
+  Qt; it is not in a fit window.
 * **Code face**: emtk `TextEditor` tabs (model source + its `view.json`),
   toolbar (assistant 🤖, back/forward, File:, Jump to:, Save/Apply), find bar
   (Ctrl+F), go to definition (Ctrl/Cmd-click, F12; local then imported

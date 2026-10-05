@@ -25,9 +25,6 @@ CATALOGUE = json.loads((ROOT / "test/project/fixtures/scientific_model_catalogue
 
 #: Plot pages still drawn by a Qt widget over the surface, and why. Shrinks only.
 QT_PAGES = {
-    # QPainter node-link canvas with presets, load/save, inline rate edits and
-    # node dragging; shares graph_canvas with Global View.
-    "StateSchemePlot",
     # The structure viewer is a 3-D OpenGL widget.
     "ProteinMCStructurePlot",
 }
