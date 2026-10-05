@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pathlib
 import sys
-from dataclasses import dataclass, field
 from typing import Any
 
 from qtpy import QtWidgets
@@ -16,20 +15,12 @@ from chisurf.plugins.fcs.fcs_correlator.wizard import FileAndStepsPage
 # ---------------------------------------------------------------------------
 # Workflow context
 # ---------------------------------------------------------------------------
+from chisurf.plugins.fcs.fcs_correlator.workflow import (  # noqa: E402
+    FcsWorkflow,
+    FcsWorkflowContext,
+)
 
-
-@dataclass
-class FcsWorkflowContext:
-    detector_settings: dict[str, Any] = field(default_factory=dict)
-    channel_defs: dict[str, Any] = field(default_factory=dict)
-    file_paths: list[pathlib.Path] = field(default_factory=list)
-    expanded_files: list[str] = field(default_factory=list)
-    use_photon_filter: bool = False
-    use_fcs_merger: bool = True
-    #: Optional micro-time coarsening factor shared with downstream tools (Filter
-    #: Calculator) so lifetime filters use the same micro-time axis as the
-    #: correlation. The micro-time *resolution* itself comes from the loaded data.
-    microtime_binning: int = 1
+__all__ = ["CORRELATOR_PANELS", "FcsCorrelatorTool", "FcsWorkflowContext"]
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +179,8 @@ class FcsCorrelatorTool(NavigationPanelTool):
         title: str = "FCS Correlator",
         initial_role: str = "files",
     ):
-        self.workflow_context = FcsWorkflowContext()
+        self.workflow = FcsWorkflow()
+        self.workflow_context = self.workflow.context
         self._workflow_panels: dict[str, QtWidgets.QWidget] = {}
         super().__init__(
             title=title,
@@ -280,25 +272,18 @@ class FcsCorrelatorTool(NavigationPanelTool):
         chdef = self._workflow_panels.get("channel_def")
         if chdef is not None:
             try:
-                setup_name, detectors, channel_defs = self._channel_def_context(chdef)
-                # No detector-setup step any more: the container type is
-                # auto-detected per file (``tttr_reading`` left empty), and the
-                # correlation channels / FCS presets come from the channel-def
-                # step's selected setup.
-                self.workflow_context.detector_settings = {
-                    "setup_name": setup_name,
-                    "detectors": detectors,
-                    "tttr_reading": {},
-                }
-                self.workflow_context.channel_defs = channel_defs
+                setup_name = chdef.setup_combo.currentText().strip()
+                self.workflow.set_setup(setup_name, getattr(chdef, "_detector_setups", {}) or {})
             except Exception:
                 pass
         files = self._workflow_panels.get("files")
         if files is not None:
             try:
-                self.workflow_context.file_paths = [pathlib.Path(p) for p in files.checked_files]
-                self.workflow_context.use_photon_filter = files.cb_photon_filter.isChecked()
-                self.workflow_context.use_fcs_merger = files.cb_fcs_merger.isChecked()
+                self.workflow.set_files(
+                    files.checked_files,
+                    files.cb_photon_filter.isChecked(),
+                    files.cb_fcs_merger.isChecked(),
+                )
             except Exception:
                 pass
 
@@ -311,67 +296,15 @@ class FcsCorrelatorTool(NavigationPanelTool):
             self._apply_context_to_merger(widget)
 
     def _apply_context_to_filter(self, widget: QtWidgets.QWidget) -> None:
-        # The AutoForm filter panel only needs the selected files; container
-        # type comes from the detector step, channels are entered as text.
-        self._load_files_into_filter(widget)
-
-    def _load_files_into_filter(self, widget: QtWidgets.QWidget) -> None:
-        """Load the selected TTTR files into the AutoForm filter model.
-
-        Skips reloading when the same files are already loaded so navigating
-        back to this step does not discard the user's filter tweaks.
-        """
         model = getattr(self, "_filter_model", None)
-        if model is None:
-            return
-        expanded = [str(p) for p in self._collect_expanded_files()]
-        if not expanded:
-            return
-        if model._files == expanded and model._tttr is not None:
-            return
-        filetype = str(
-            self.workflow_context.detector_settings.get("tttr_reading", {}).get("file_type", "")
-            or ""
-        )
-        lut_kwargs = self._lut_open_kwargs()
-        objs: dict = {}
-        for fn in expanded:
-            p = pathlib.Path(fn)
-            if not p.exists():
-                continue
-            tt = self._read_tttr(p.as_posix(), filetype, lut_kwargs)
-            if tt is not None:
-                objs[str(p.resolve())] = tt
-        model.set_tttr_objects(objs, expanded)
+        if model is not None:
+            self.workflow.load_files_into_filter(model)
 
     def _apply_context_to_correlator(self, widget: QtWidgets.QWidget) -> None:
         model = getattr(self, "_correlator_model", None)
         if model is None:
             return
-        channel_defs = self.workflow_context.channel_defs
-        if channel_defs:
-            model._channel_defs = channel_defs
-        settings = self.workflow_context.detector_settings
-        dets = settings.get("detectors", {}) or {}
-        dets = {k: v for k, v in dets.items() if isinstance(k, str) and k.strip()}
-        model.load_fcs_presets(settings.get("setup_name", ""), dets)
-        expanded = self._collect_expanded_files()
-        if expanded:
-            parent = pathlib.Path(expanded[0]).resolve().parent
-            model._analysis_folder = parent
-        # The detector step stores the container type under
-        # ``tttr_reading.file_type``; there is no top-level "filetype" key.
-        filetype = str(settings.get("tttr_reading", {}).get("file_type", "") or "")
-        if self.workflow_context.use_photon_filter:
-            # Correlate the photons kept by the Photon/Burst filter step. Fall
-            # back to the raw files if the filter panel has not produced a
-            # usable selection yet, so the correlator is never left empty.
-            filtered = self._filtered_tttr_from_panel()
-            model._tttr = (
-                filtered if filtered is not None else self._load_raw_combined(expanded, filetype)
-            )
-        elif expanded:
-            model._tttr = self._load_raw_combined(expanded, filetype)
+        self.workflow.apply_to_correlator(model, getattr(self, "_filter_model", None))
         try:
             model._form.refresh_plots()
         except Exception:
@@ -384,147 +317,18 @@ class FcsCorrelatorTool(NavigationPanelTool):
                     pass
 
     def _collect_expanded_files(self) -> list[str]:
-        import tttrlib
-
-        files = self.workflow_context.file_paths
-        allowed = {
-            f".{ext.lower()}" if not ext.startswith(".") else ext.lower()
-            for ext in tttrlib.TTTR.get_supported_container_names()
-        }
-        expanded: list[str] = []
-        for p_str in files:
-            p = pathlib.Path(p_str).resolve()
-            if p.is_dir():
-                for child in p.iterdir():
-                    if child.is_file() and child.suffix.lower() in allowed:
-                        expanded.append(str(child.resolve()))
-            else:
-                expanded.append(str(p))
-        return expanded
-
-    @staticmethod
-    def _read_tttr(path: str, filetype: str, lut_kwargs: dict | None = None):
-        """Read a TTTR file, preferring ``filetype`` but auto-detecting on failure.
-
-        ``tttrlib.TTTR(path, "")`` (or a wrong container type) can return an
-        *empty* object without raising, so an empty result also triggers the
-        filename-based auto-detection fallback. When *lut_kwargs* is given (the
-        selected setup's LUT/shift, from
-        :func:`chisurf.core.data_io.detector_setups.setup_lut_open_kwargs`), the
-        read is LUT-aware.
-        """
-        from chisurf.core.fio.staging import open_tttr
-
-        lut_kwargs = lut_kwargs or {}
-        tt = None
-        if filetype:
-            try:
-                tt = open_tttr(path, filetype, **lut_kwargs)
-            except Exception:
-                tt = None
-        if tt is None or len(tt) == 0:
-            try:
-                tt = open_tttr(path, None, **lut_kwargs)
-            except Exception:
-                return tt if (tt is not None and len(tt)) else None
-        return tt
-
-    def _lut_open_kwargs(self) -> dict:
-        """LUT/shift ``open_tttr`` kwargs for the currently selected setup."""
-        from chisurf.core.data_io.detector_setups import setup_lut_open_kwargs
-
-        try:
-            return setup_lut_open_kwargs(self.workflow_context.detector_settings)
-        except Exception:
-            return {}
-
-    def _load_raw_combined(self, expanded: list[str], filetype: str):
-        """Read and concatenate the raw TTTR files (unfiltered path)."""
-        lut_kwargs = self._lut_open_kwargs()
-        tttr_obj = None
-        for fn in expanded:
-            p = pathlib.Path(fn)
-            if not p.exists():
-                continue
-            tt = self._read_tttr(p.as_posix(), filetype, lut_kwargs)
-            if tt is None:
-                continue
-            if tttr_obj is None:
-                tttr_obj = tt
-            else:
-                tttr_obj.append(tt)
-        return tttr_obj
-
-    def _filtered_tttr_from_panel(self):
-        """Build the combined TTTR of photons kept by the photon-filter step.
-
-        For each file loaded in the filter model, evaluate the current selection
-        mask and keep only the selected photons, concatenating the per-file
-        results. Returns ``None`` if the filter model has no usable selection
-        yet (caller then falls back to the raw files).
-        """
-        import numpy as np
-
-        model = getattr(self, "_filter_model", None)
-        if model is None or not model._tttr_objects:
-            return None
-        combined = None
-        for path in model._files:
-            tt = model._tttr_objects.get(str(pathlib.Path(path).resolve()))
-            if tt is None:
-                continue
-            try:
-                mask = np.asarray(model.compute_selection(tt), dtype=bool)
-            except Exception:
-                continue
-            if mask.size != len(tt):
-                continue
-            idx = np.where(mask)[0]
-            if idx.size == 0:
-                continue
-            sub = tt[idx]
-            if combined is None:
-                combined = sub
-            else:
-                combined.append(sub)
-        return combined
+        return self.workflow.expanded_files()
 
     def _apply_context_to_merger(self, widget: QtWidgets.QWidget) -> None:
         correlator_model = getattr(self, "_correlator_model", None)
         merger_model = getattr(self, "_merger_model", None)
         if merger_model is None or correlator_model is None:
             return
-        correlations = getattr(correlator_model, "_correlations", None)
-        analysis_folder = getattr(correlator_model, "_analysis_folder", None)
-        output_subdir = getattr(correlator_model, "_output_subdir", None)
+        correlations, folder = self.workflow.merger_input(correlator_model)
         if correlations:
-            folder = analysis_folder / output_subdir if analysis_folder and output_subdir else None
             merger_model.set_correlations(correlations, folder)
-        elif analysis_folder:
-            folder = analysis_folder / output_subdir if output_subdir else analysis_folder
+        elif folder is not None:
             merger_model.load_correlations(folder)
-
-    @staticmethod
-    def _channel_def_context(
-        widget: QtWidgets.QWidget,
-    ) -> tuple[str, dict, dict]:
-        """Extract (setup_name, detectors, channel_defs) from the channel-def panel.
-
-        ``FCSChannelWidget`` selects a detector setup and builds the same logical
-        channel mapping (``build_channels_from_setup``) that the old detector step
-        exposed via ``channels()``, so the correlator/filter panels get the exact
-        context they expect without a separate detector-setup page.
-        """
-        setup_name = ""
-        try:
-            setup_name = widget.setup_combo.currentText().strip()
-        except Exception:
-            setup_name = ""
-        setups = getattr(widget, "_detector_setups", {}) or {}
-        setup = setups.get(setup_name, {}) if isinstance(setups, dict) else {}
-        detectors = setup.get("detectors", {}) if isinstance(setup, dict) else {}
-        channel_defs = dict(getattr(widget, "_channels_for_setup", {}) or {})
-        return setup_name, (detectors or {}), channel_defs
 
     def _on_channel_setup_changed(self) -> None:
         # Re-derive the correlation context from the newly selected setup and

@@ -1,0 +1,67 @@
+{
+  "_comment": "Guided tour of the FCS hub: the correlator workflow (the steps of chisurf/plugins/fcs/fcs_correlator/guide.json, told for the hub) and the tools below it.",
+  "steps": [
+    {
+      "title": "Five steps, in order",
+      "text": "Correlation turns a photon stream into G(τ): how much more likely a second photon is at lag τ after a first one. The <b>Correlator</b> group of the rail is the order to work in: say which detectors are which channels, choose the files, optionally drop photons that are not from molecules, correlate, then screen and merge the curves.<br/><br/>The steps hand their results on by themselves; you only move forward.",
+      "target": {}
+    },
+    {
+      "title": "Start with data whose answer you know",
+      "text": "<b>Example</b> writes a simulated measurement: molecules crossing the focus in about 0.25 ms on a weak background, split over two detectors. Its curve must decay near half a millisecond. If it does not, the settings are wrong, not the sample.",
+      "target": {
+        "name": "example"
+      },
+      "await": {
+        "hint": "Press <b>Example</b> in Files & Steps."
+      }
+    },
+    {
+      "title": "Only the ticked files are correlated",
+      "text": "Each file has a tick box. A folder adds every TTTR file in it. The two step switches below decide whether the photon filter and the merger are part of the run; a switched-off step is grey in the rail and Back / Next skip it.",
+      "target": {
+        "name": "files"
+      }
+    },
+    {
+      "title": "Which photons go into channel A and B",
+      "text": "Open the <b>Correlator</b>. An empty channel list means all detectors. For a cross-correlation that has no afterpulsing, put one detector in A and the other in B (the example routes to 0 and 1).",
+      "target": {
+        "panel": "Correlator"
+      },
+      "await": {
+        "hint": "Select <b>4. Correlator</b> on the left."
+      }
+    },
+    {
+      "title": "Correlate",
+      "text": "Splits cut the stream into pieces that are correlated separately: their spread is your error bar, and a piece that looks different flags a problem in the measurement (a bubble, bleaching). The work runs in the background; Stop keeps the pieces already done.",
+      "target": {
+        "name": "correlate"
+      },
+      "await": {
+        "hint": "Press <b>Correlate</b>."
+      }
+    },
+    {
+      "title": "Screen and merge",
+      "text": "The <b>FCS Merger</b> receives the pieces. Untick the ones that do not belong, look at the merged curve, then save it or add it to ChiSurf for fitting.",
+      "target": {
+        "panel": "FCS Merger"
+      },
+      "await": {
+        "hint": "Select <b>5. FCS Merger</b> on the left."
+      }
+    },
+    {
+      "title": "The tools below",
+      "text": "The <b>Tools</b> group holds the FCS tools that are not part of the run: 2D-FLCS, a lifetime-FCS simulator, burst-wise FCS, the diffusion / volume calculator and the fFCS filter calculator (its filters are what <b>Load filters...</b> in the Correlator reads). Each has its own <b>Tool help</b>.",
+      "target": {
+        "panel": "Filter Calc"
+      },
+      "await": {
+        "hint": "Select <b>Filter Calc</b> on the left."
+      }
+    }
+  ]
+}

@@ -23,11 +23,14 @@ For what the curve means and how its error bars are estimated, see
 
 * **Correlator** — the five-step workflow this guide walks through:
   *Channel Definitions → Files & Steps → Photon / Burst Filter → Correlator →
-  FCS Merger*. It opens on *Files & Steps*; **Next ▶** / **◀ Back** move along
-  the rail and **⏩** runs the remaining steps. **?** (top right) opens a short
-  help that links back here.
+  FCS Merger*. It opens on *Files & Steps* (**Example** there adds a simulated
+  measurement whose curve falls near 0.5 ms). **Next** runs the open step where
+  it has a run (the Correlator correlates) and then moves on, **Back** goes back,
+  and **>>** runs the remaining steps in order (press it again to stop). A step
+  switched off in *Files & Steps* is grey and skipped. **Help** and **Guide** at
+  the top of the rail open a short help (linking back here) and a guided tour.
 * **Tools** — independent FCS tools hosted in the same window, each with its own
-  **?** help: *2D-FLCS* and *Filter Calc* ({doc}`17_filtered_fcs`), *Lifetime-FCS
+  **Tool help**: *2D-FLCS* and *Filter Calc* ({doc}`17_filtered_fcs`), *Lifetime-FCS
   Sim*, *Burst-wise FCS*, and *Diffusion Calc* (the $\tau_D \leftrightarrow D$,
   volume and concentration calculator, {ref}`concept-fcs-correlation`). A ⚠
   marks a tool flagged experimental.
@@ -101,7 +104,7 @@ selection and the "*kept / total*" line at once.
 :width: 100%
 
 A burst filter on the SPC-132 test stream: photons in stretches with at least 30
-photons and inter-photon times ≤ 0.5 ms are kept (52.7 %).
+photons and inter-photon times ≤ 0.5 ms are kept (39 886 of 183 657, 21.7 %).
 ```
 
 * **Channels / µt range** — routing channels and micro-time windows to keep;
@@ -181,7 +184,7 @@ The chunks arrive here directly; **Browse… / Open** instead loads a folder of
 :width: 100%
 
 Ten chunks with their count rates and durations; chunk 3 is unticked (its curve
-is drawn dashed in *Individual*). The merged curve averages the nine that
+is drawn grey and dashed in *FCS*). The merged curve averages the nine that
 remain. The plot docks are resizable — drag the splitter down to enlarge them.
 ```
 

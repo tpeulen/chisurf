@@ -10,14 +10,23 @@ presets) into a single left-navigation tool. Built on the reusable
 
 from __future__ import annotations
 
-from .tool import FcsTool, FcsToolboxTool
-
-name = "Spectroscopy:FCS"
+name = "Spectroscopy:Correlation:FCS"
 icon = "〰️"
 
 __all__ = ["FcsTool", "FcsToolboxTool", "name"]
 
 
-if __name__ == "plugin":  # pragma: no cover
+def __getattr__(attr):
+    """The Qt tool, imported only when asked for: the native hub (``gui.app``) must load without Qt."""
+    if attr in ("FcsTool", "FcsToolboxTool"):
+        from . import tool
+
+        return getattr(tool, attr)
+    raise AttributeError(attr)
+
+
+if __name__ == "plugin":  # pragma: no cover - the legacy macro launch; the manifest's gui/emtk entries come first
+    from chisurf.plugins.fcs.fcs_toolbox.tool import FcsTool
+
     _fcs_window = FcsTool()
     _fcs_window.show()

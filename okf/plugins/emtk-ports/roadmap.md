@@ -6,6 +6,17 @@ Preview list now (2026-10-05): `code_editor` only.
 
 ## Where to pick this up (2026-10-05)
 
+0. **Ribbon entries that still open Qt** (measured 2026-10-05 with `select_gui_entrypoint(manifest, "auto")` over every
+   manifest with a `gui` / `emtk` / `script` entry). The preview gate and `audit_emtk_overflow` only see manifests
+   that declare *both* `gui` and `emtk`, so **script-entry plugins that build a Qt window were invisible**. That is how
+   "FCS opens the Qt tool" went unnoticed. FCS (`fcs_toolbox` + `fcs_correlator`) is done
+   ([report](fcs_toolbox/REPORT.md)). Still Qt, by size:
+   - `gui` only: `burst_analysis`, `burst_selection`, `mmfdb_admin`, `quenching_estimator`, and `code_editor` (gated);
+   - `script`, opening Qt: `screenshot`, `intensity_trace`, `tttr_correlate`, `tttr_histogram`.
+   Re-measure: the loop in this file's history, or `select_gui_entrypoint` over all manifests, flagging `script`
+   entries whose file calls `.show()`. Template for a rail tool: `chisurf/emtk/tool_hub.py` + a Qt-free workflow
+   (`fcs_correlator/workflow.py`).
+
 1. **`code_editor`**, the last id on the preview list. `code_editor/REPORT.md` + `REPORT_input.md`: 29 Qt controls
    lost (Back/Fwd, Def/Hint, Symbols and Kernel panels, project-tree columns and context menu, LSP status, view toggles,
    shipped notebooks). Re-measure with `emtk_port_parity before|after|compare` against `window:CodeEditorWindow`
@@ -20,7 +31,14 @@ Preview list now (2026-10-05): `code_editor` only.
    `audit_emtk_overflow` cannot see it: it shows only with populated data, open folded panels, and the window wheeled
    to its end. Method: `fps_json_editor/scripts/capture_emtk.py` (open the panels, wheel *over the form, not the
    table*, then assert the last field's rect is inside the window).
-4. Tracks C-F below are unchanged.
+4. **`tttr_toolbox` onto `chisurf/emtk/tool_hub.py`**: its `gui/app.py` is the hub the generic one was generalised
+   from (another stream's open edits there, 2026-10-05); port it once that settles and delete the copy.
+5. **ChiSurf Settings rows** (owner, 2026-10-05: label above field "wastes vertical space"): now key | field on one
+   row, the full name in the tooltip. About 12 → 25 settings visible at 1200x800, 16 at 800x600
+   (`setup/settings-rows/before_*.png` / `after_*.png`, `capture.py`). **Uncommitted**: it sits on the uncommitted
+   scroll / typed-number work in `setup/gui/app.py` and the untracked `test_emtk_setup_settings_scroll.py` (owner
+   unclear); commit together once that is settled. Setup suite: 384 passed with it.
+6. Tracks C-F below are unchanged.
 
 ## Track A: finish the swaps (settings and small plugins)
 1. `switch_user` (agent running), then `setup_channel_definition` (blocked on shared-editor gaps, see Track C), then the hub `setup` (adopts accepted panels).

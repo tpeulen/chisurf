@@ -41019,3 +41019,11 @@ side of the line.
   760x420). FPS: structures as cartoon, AV surfaces + mean spheres, distance lines, atom pick → selected position
   (`FpsEditor.scene3d` / `pick_atom`). 3 new real-input tests; guides 23/88 and figures updated. See
   [fps_json_editor/REPORT](plugins/emtk-ports/fps_json_editor/REPORT.md).
+- 2026-10-05 · emtk: **FCS hub (`fcs_toolbox`) and the correlator are native** (owner: "fcs tools (FCS) opens the
+  qt tool"). Script-entry plugins were invisible to the dual-entrypoint audit; 11 ribbon plugins still opened Qt, now
+  9 (list in [emtk-ports roadmap](plugins/emtk-ports/roadmap.md)). Qt-free `correlator_model.py` /
+  `filter_model.py` / `workflow.py` shared by the Qt tool and the native steps; generic rail hub
+  `chisurf/emtk/tool_hub.py` (maturity markers, workflow hooks, Next runs the step, >> fast-forward); seeded FCS
+  demo; Filter Calc takes the correlator's files as in Qt. Parity lost [] (Qt 274 → 378 controls), 15 real-input
+  tests, guide 75 figures regenerated in their captioned states (one caption number was wrong).
+  [report](plugins/emtk-ports/fcs_toolbox/REPORT.md).

@@ -11,6 +11,8 @@
     "Fluorescence Correlation Spectroscopy"
   ],
   "entrypoints": {
+    "gui": "chisurf.plugins.fcs.fcs_correlator.tool:FcsCorrelatorTool",
+    "emtk": "chisurf.plugins.fcs.fcs_correlator.gui.app:make_app",
     "script": "wizard.py"
   },
   "optional_requires": {
