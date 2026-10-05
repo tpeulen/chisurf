@@ -257,216 +257,55 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return int(box.value()) if box is not None else 20
 
     def _load_state_arrays(self):
-        """Per-photon H2MM states for the loaded measurements.
+        """Per-photon H2MM states for the loaded measurements (see :func:`.state_split.load_state_arrays`).
 
-        Returns ``({stem: int8 array}, n_states)``; ``({}, 0)`` when the folder
-        has no usable H2MM run, with the reason on the status line — a missing
-        upstream analysis turns the split off rather than failing the batch.
+        Returns ``({stem: int8 array}, n_states)``; ``({}, 0)`` when the folder has no usable H2MM run, with the
+        reason on the status line.
         """
-        from chisurf.core.fio.fluorescence import burst_states
+        from . import state_split
 
-        folder = self.batch_stamp_path()
-        folder = folder.parent if folder is not None else None
-        if folder is None:
-            self._set_status("Split by state: no analysis folder — skipped.")
-            return {}, 0
-        sizes = {}
-        for stem, tttr in (self.tttrs or {}).items():
-            try:
-                sizes[str(stem)] = int(np.asarray(tttr.routing_channels).size)
-            except Exception:
-                continue
-        try:
-            arrays, n_states = burst_states.state_arrays(folder, sizes)
-        except (FileNotFoundError, ValueError) as exc:
-            self._set_status(f"Split by state: {exc}")
-            return {}, 0
-        if n_states < 1:
-            self._set_status("Split by state: the H2MM run resolved no states.")
-            return {}, 0
-        labelled = sum(int((a >= 0).sum()) for a in arrays.values())
-        self._set_status(f"Split by state: {n_states} states, {labelled:,} photons labelled.")
+        stamp = self.batch_stamp_path()
+        arrays, n_states, message = state_split.load_state_arrays(
+            stamp.parent if stamp is not None else None, self.tttrs or {}
+        )
+        self._set_status(message)
         return arrays, n_states
 
     def _pool_state_decays(self, jobs, det_order, ctx, max_workers, progress=None):
-        """Sum every burst's photons into one decay per ``(detector, state)``.
+        """Sum every burst's photons into one decay per ``(detector, state)`` (:func:`.state_split.pool_state_decays`).
 
-        Runs the cheap binning-only pass of :func:`pool_states_worker` over the
-        same files and the same shared memory the fit pass uses, and adds the
-        results up across files: the pooled decay of a state is *the whole
-        measurement's* photons of that state.
-
-        ``progress`` (when given) is moved as the files land and read for
-        cancellation between them — this is a second pass over every photon, and
-        without it the window sits at 0 % and ignores Cancel until the pass ends.
-
-        Returns ``{detector: ndarray(n_states, 2, half_len)}``, empty when there
-        is nothing to pool or the user cancelled.
+        ``progress`` (when given) is moved as the files land and read for cancellation between them.
         """
-        from concurrent.futures import ProcessPoolExecutor, as_completed
+        from . import state_split
 
-        from chisurf.plugins.burst.burst_mle_analysis._mp_worker import (
-            pool_states_worker,
-        )
+        def stop() -> bool:
+            return bool(self.stop_processing or (progress is not None and progress.wasCanceled()))
 
-        pool_jobs = [
-            (
-                bursts,
-                rc_name,
-                rc_shape,
-                rc_dtype,
-                mt_name,
-                mt_shape,
-                mt_dtype,
-                det_order,
-                perdet_cfg,
-                state_info,
-            )
-            for (
-                _fname,
-                bursts,
-                rc_name,
-                rc_shape,
-                rc_dtype,
-                mt_name,
-                mt_shape,
-                mt_dtype,
-                _det_order,
-                perdet_cfg,
-                _shift,
-                state_info,
-            ) in jobs
-        ]
-        totals: dict[str, np.ndarray] = {}
-        done = 0
-        with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as ex:
-            futures = [ex.submit(pool_states_worker, j) for j in pool_jobs]
-            for fut in as_completed(futures):
-                # Read the cancel *here*: after the loop it is read once every
-                # future has been joined, which cannot shorten the pass at all.
-                if self.stop_processing or (progress is not None and progress.wasCanceled()):
-                    for pending in futures:
-                        pending.cancel()
-                    return {}
+        def on_file(done: int, total: int) -> None:
+            if progress is not None:
                 try:
-                    part = fut.result()
-                except Exception as exc:
-                    # One unreadable file must not cost the pooled fit: the
-                    # remaining files still describe the states.
-                    cs.logging.warning(f"Pooled state decays: a file failed ({exc})")
-                    part = None
-                for det, arr in (part or {}).items():
-                    if det in totals:
-                        totals[det] += arr
-                    else:
-                        totals[det] = np.asarray(arr, dtype=np.int64).copy()
-                done += 1
-                if progress is not None:
-                    try:
-                        progress.setLabelText(
-                            f"Pooling state decays … {done}/{len(pool_jobs)} files"
-                        )
-                    except Exception:
-                        pass
-                QtWidgets.QApplication.processEvents()
-        return totals
+                    progress.setLabelText(f"Pooling state decays … {done}/{total} files")
+                except Exception:
+                    pass
+            QtWidgets.QApplication.processEvents()
+
+        return state_split.pool_state_decays(
+            jobs, det_order, ctx, max_workers, should_stop=stop, on_file=on_file
+        )
 
     @staticmethod
     def _fit_pooled_state_decays(pooled, det_order, perdet_cfg, shift):
-        """Fit each pooled ``(detector, state)`` decay: the state's global lifetime.
+        """Fit each pooled ``(detector, state)`` decay (:func:`.state_split.fit_pooled_state_decays`)."""
+        from . import state_split
 
-        The headline number of a split-by-state run. A single burst's state
-        holds tens of photons and its lifetime is correspondingly uncertain;
-        pooled over the measurement the same state holds all of them, so this is
-        the lifetime to quote — and, because it is fitted first, the start value
-        every per-burst fit of that state is given.
-
-        The window and the perpendicular-channel shift are applied here, once,
-        to the sum rather than per burst: both are linear, so the result is
-        identical and the pass that produced the sum stays a plain bin count.
-
-        Returns ``{detector: {state: {"x": ndarray, "two_istar": float,
-        "cp": int, "cs": int}}}``; a state below the detector's photon floor is
-        recorded with ``x=None`` rather than dropped, so the table says which
-        state could not be fitted.
-        """
-        from chisurf.plugins.burst.burst_mle_analysis._mp_worker import (
-            _build_fitter,
-            _copy_shifted,
-        )
-
-        out: dict[str, dict[int, dict]] = {}
-        do_shift = int(shift or 0)
-        for det in det_order:
-            arr = pooled.get(det)
-            cfg = perdet_cfg.get(det)
-            if arr is None or cfg is None:
-                continue
-            n = int(cfg["half_len"])
-            s0 = max(0, int(cfg["sb"]))
-            s1 = min(n, int(cfg["eb"]))
-            fitter = _build_fitter(cfg)
-            per_state: dict[int, dict] = {}
-            for state in range(arr.shape[0]):
-                cp = np.asarray(arr[state, 0], dtype=np.uint32)
-                cs_ = np.asarray(arr[state, 1], dtype=np.uint32)
-                cp_sum, cs_sum = int(cp.sum()), int(cs_.sum())
-                entry = {"x": None, "two_istar": float("nan"), "cp": cp_sum, "cs": cs_sum}
-                if (cp_sum + cs_sum) < int(cfg["min_photons"]) or s1 <= s0:
-                    per_state[state] = entry
-                    continue
-                d = np.zeros(2 * n, dtype=np.float64)
-                d[s0:s1] = cp[s0:s1]
-                if do_shift:
-                    _copy_shifted(cs_, d, n, s0, s1, do_shift, n)
-                else:
-                    d[n + s0 : n + s1] = cs_[s0:s1]
-                try:
-                    res = fitter(data=d, initial_values=cfg["x0"], fixed=cfg["fixed"])
-                except Exception as exc:
-                    cs.logging.warning(f"Pooled fit failed for {det} state {state}: {exc}")
-                    per_state[state] = entry
-                    continue
-                entry["x"] = np.asarray(res.x, dtype=np.float64)
-                entry["two_istar"] = float(res.twoIstar)
-                per_state[state] = entry
-            out[det] = per_state
-        return out
+        return state_split.fit_pooled_state_decays(pooled, det_order, perdet_cfg, shift)
 
     @staticmethod
     def _state_lifetime_rows(fits, model, param_names) -> list[dict]:
-        """The pooled per-state fits as plain rows, one per (detector, state)."""
-        rows: list[dict] = []
-        for det, per_state in fits.items():
-            for state in sorted(per_state):
-                entry = per_state[state]
-                x = entry["x"]
+        """The pooled per-state fits as plain rows (:func:`.state_split.state_lifetime_rows`)."""
+        from . import state_split
 
-                def g(i, x=x):
-                    try:
-                        return float(x[i])
-                    except (TypeError, IndexError):
-                        return float("nan")
-
-                row = {
-                    "Detector": det,
-                    "Colour": det.lower(),
-                    "State": int(state),
-                    "Photons (parallel)": entry["cp"],
-                    "Photons (perpendicular)": entry["cs"],
-                    "Photons": entry["cp"] + entry["cs"],
-                    "Tau": g(0),
-                    "2I*": entry["two_istar"],
-                }
-                if model == "fit23":
-                    row["gamma"] = g(1)
-                    row["r0"] = g(2)
-                    row["rho"] = g(3)
-                else:
-                    for i, nm in enumerate(param_names or ()):
-                        row[nm] = g(i)
-                rows.append(row)
-        return rows
+        return state_split.state_lifetime_rows(fits, model, param_names)
 
     def _apply_pooled_state_fits(
         self, jobs, det_order, ctx, max_workers, model, param_names, progress=None
@@ -496,24 +335,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         self.state_lifetimes = rows
         written = self.write_state_lifetimes(rows)
 
-        seeded = 0
-        for job in jobs:
-            cfgs = job[9]
-            for det, per_state in fits.items():
-                cfg = cfgs.get(det)
-                if cfg is None:
-                    continue
-                seeds = {}
-                for state, entry in per_state.items():
-                    x = entry["x"]
-                    if x is None or not np.isfinite(x[0]) or float(x[0]) <= 0.0:
-                        continue  # nothing was fitted; leave the panel's guess
-                    start = np.asarray(cfg["x0"], dtype=np.float64).copy()
-                    start[0] = float(x[0])
-                    seeds[int(state)] = start
-                if seeds:
-                    cfg["state_x0"] = seeds
-                    seeded = max(seeded, len(seeds))
+        from . import state_split
+
+        seeded = state_split.seed_state_fits(jobs, fits)
         taus = ", ".join(
             f"S{r['State']} {r['Colour']} {r['Tau']:.2f} ns" for r in rows if np.isfinite(r["Tau"])
         )
@@ -525,33 +349,18 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         return rows, written
 
     def write_state_lifetimes(self, rows) -> list[Path]:
-        """Write the pooled per-state lifetimes to ``Info/state_lifetimes.csv``.
+        """Write the pooled per-state lifetimes to ``Info/state_lifetimes.csv`` (:func:`.state_split.write_state_lifetimes`).
 
-        Beside the analysis, not inside a ``b?4`` folder and not as a companion:
-        a companion carries **one row per burst** and is merged onto the burst
-        table by position, while this table has one row per *state*. Written as
-        a companion it would misalign every burst after the first — the failure
-        mode the companion contract exists to prevent.
+        Beside the analysis, not inside a ``b?4`` folder and not as a companion: a companion carries **one row per
+        burst** and is merged onto the burst table by position, while this table has one row per *state*.
         """
-        if not rows:
-            return []
-        written: list[Path] = []
+        from . import state_split
+
         try:
             files = self.burst_files_list.get_selected_files()
         except Exception:
             files = []
-        roots = {Path(p).parent.parent for p in files}
-        for root in sorted(roots):
-            info = root / "Info"
-            try:
-                info.mkdir(parents=True, exist_ok=True)
-                target = info / "state_lifetimes.csv"
-                write_csv_table(target, store_from_rows(rows), delimiter=",")
-            except OSError as exc:
-                cs.logging.warning(f"Could not write {info}: {exc}")
-                continue
-            written.append(target)
-        return written
+        return state_split.write_state_lifetimes(rows, {Path(p).parent.parent for p in files})
 
     def experiment_settings(self) -> dict:
         """The per-detector IRF and background this fit actually used.

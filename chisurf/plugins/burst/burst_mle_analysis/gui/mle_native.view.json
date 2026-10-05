@@ -229,6 +229,34 @@
     },
     {
       "type": "panel",
+      "title": "H2MM states",
+      "collapsed": false,
+      "description": "Split the fit by the per-photon states of an H2MM run of the same burst folder.",
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "split_by_state",
+          "label": "Split by H2MM state",
+          "description": "Fit each burst once more per H2MM state (Tau S0 (green) ... beside Tau (green)), after a fit of each state's decay pooled over the measurement, whose lifetime also starts the per-burst fits. Needs an H2MM run of this burst folder."
+        },
+        {
+          "type": "value",
+          "attr": "state_min_photons",
+          "label": "State min photons",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "A burst's state with fewer photons in the window is not fitted (its columns stay empty)."
+        },
+        {
+          "type": "info",
+          "source": "state_lifetime_text",
+          "description": "The pooled lifetime of each state and detector from the last Fit bursts (also written to Info/state_lifetimes.csv)."
+        }
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Burst",
       "collapsed": false,
       "sections": [

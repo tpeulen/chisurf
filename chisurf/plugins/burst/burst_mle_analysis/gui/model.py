@@ -103,6 +103,40 @@ class MleViewModel:
         self.session.set_detectors(settings.get("detectors") or {}, file_type)
         self.notify("setup")
 
+    # -- split by H2MM state ------------------------------------------------------------------------------------ #
+    @property
+    def split_by_state(self) -> bool:
+        """Fit each burst once more per H2MM state, after a pooled fit of each state (the segment-level step)."""
+        return bool(self.session.split_by_state)
+
+    @split_by_state.setter
+    def split_by_state(self, value: bool) -> None:
+        self.session.split_by_state = bool(value)
+        self.notify("settings")
+
+    @property
+    def state_min_photons(self) -> int:
+        """Photon floor of a per-state burst fit."""
+        return int(self.session.state_min_photons)
+
+    @state_min_photons.setter
+    def state_min_photons(self, value: int) -> None:
+        self.session.state_min_photons = max(1, int(value))
+
+    def state_lifetime_text(self) -> str:
+        """The pooled per-state lifetimes of the last batch, one line per detector and state."""
+        rows = list(getattr(self.session, "state_lifetimes", []) or [])
+        if not rows:
+            if self.session.split_by_state:
+                return "No state lifetimes yet: Fit bursts pools each H2MM state's photons and fits them first."
+            return "Not split by state."
+        lines = []
+        for r in rows:
+            tau = r.get("Tau")
+            shown = f"{tau:.3f} ns" if isinstance(tau, float) and np.isfinite(tau) else "not fitted"
+            lines.append(f"S{r['State']} {r['Colour']}: tau {shown} ({r['Photons']} photons)")
+        return "\n".join(lines)
+
     @property
     def current_detector(self) -> str:
         return self.session.current_detector

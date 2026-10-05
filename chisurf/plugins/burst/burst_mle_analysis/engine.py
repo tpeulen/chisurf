@@ -585,12 +585,19 @@ class MleSession:
     decay: np.ndarray | None = None
     outcome: FitOutcome | None = None
     status: str = ""
+    #: Fit every burst once more per H2MM state (``Tau S0 (green)`` ...), after a pooled fit of each state's decay.
+    split_by_state: bool = False
+    #: Photon floor of a per-state burst fit (a state sees far fewer photons than the whole burst).
+    state_min_photons: int = 20
 
     def __post_init__(self) -> None:
         self.tttrs = LazyTTTRs(self.tttr_paths, self.file_type)
         self.det_settings: dict[str, MleSettings] = {}
         #: Rows of the last batch run, one mapping per burst and detector.
         self.burst_results: list[dict] = []
+        #: Pooled per-state lifetimes of the last batch (one row per detector and state) and the state count.
+        self.state_lifetimes: list[dict] = []
+        self.n_states = 0
 
     @property
     def settings(self) -> MleSettings:
@@ -839,7 +846,7 @@ class MleSession:
             "sb": int(sb), "eb": int(eb), "dt": float(dt), "period": float(period),
             "g_factor": float(info.get("g_factor", 1.0)), "l1": float(info.get("l1", 0.0)), "l2": float(info.get("l2", 0.0)),
             "p2s_twoIstar": bool(st.p2s_twoIstar), "BIFL_scatter": bool(st.BIFL_scatter), "min_photons": int(st.min_photons),
-            "state_min_photons": 5, "x0": x0, "fixed": fixed, "irf": np.asarray(irf, dtype=np.float64),
+            "state_min_photons": int(self.state_min_photons), "x0": x0, "fixed": fixed, "irf": np.asarray(irf, dtype=np.float64),
             "bg": np.asarray(bg, dtype=np.float64), "model": st.model,
             "param_names": ["tau", "gamma", "r0", "rho"] if st.model == "fit23" else [],
         }
@@ -873,6 +880,15 @@ class MleSession:
         for fname in dict.fromkeys(first_file.tolist()):
             mask = first_file == fname
             groups[fname] = list(zip(fp[mask].tolist(), lp[mask].tolist()))
+        # Per-photon H2MM states, when the batch is split by state (the wizard's ``_load_state_arrays``).
+        state_arrays, n_states = {}, 0
+        if self.split_by_state and self.bur_files:
+            from . import state_split
+
+            state_arrays, n_states, self.status = state_split.load_state_arrays(
+                self.bur_files[0].parent.parent, self.tttrs
+            )
+        self.n_states = int(n_states)
         blocks, jobs = [], []
         try:
             for fname, bursts in groups.items():
@@ -892,6 +908,15 @@ class MleSession:
                 mt_shm = shared_memory.SharedMemory(create=True, size=mt_bins.nbytes)
                 np.ndarray(mt_bins.shape, dtype=mt_bins.dtype, buffer=mt_shm.buf)[:] = mt_bins
                 blocks.extend([rc_shm, mt_shm])
+                # The per-photon state, indexed as the routing channels are, in a third shared block.
+                state_info = None
+                states_full = state_arrays.get(Path(fname).stem)
+                if states_full is not None and n_states > 0:
+                    states_full = np.ascontiguousarray(states_full, dtype=np.int8)
+                    st_shm = shared_memory.SharedMemory(create=True, size=states_full.nbytes)
+                    np.ndarray(states_full.shape, dtype=states_full.dtype, buffer=st_shm.buf)[:] = states_full
+                    blocks.append(st_shm)
+                    state_info = (st_shm.name, states_full.shape, str(states_full.dtype), int(n_states))
                 rc_max = int(rc_full.max(initial=rc_max_seen)) if rc_full.size else rc_max_seen
                 perdet = {}
                 for det in det_order:
@@ -905,12 +930,29 @@ class MleSession:
                         lut[schs] = 1
                     perdet[det] = dict(configs[det], class_lut=lut)
                 jobs.append((fname, bursts, rc_shm.name, rc_full.shape, str(rc_full.dtype), mt_shm.name, mt_bins.shape,
-                             str(mt_bins.dtype), det_order, perdet, int(self.settings.shift or 0), None))
+                             str(mt_bins.dtype), det_order, perdet, int(self.settings.shift or 0), state_info))
             ctx = mp.get_context("spawn")
             workers = max_workers or max(1, min(os.cpu_count() or 8, len(jobs)) - 1)
             results: list[dict] = []
             total = int(row_count(self.df_bursts))
             done = 0
+            # The pooled per-state fit comes first: its lifetimes are the numbers to quote and the start values of
+            # every per-burst fit of that state.
+            self.state_lifetimes = []
+            if n_states > 0 and jobs:
+                from . import state_split
+
+                model = self.settings_of(det_order[0]).model if det_order else self.template.model
+                self.state_lifetimes, _seeded, self.status = state_split.pooled_state_fits(
+                    jobs,
+                    det_order,
+                    ctx,
+                    workers,
+                    model,
+                    ["tau", "gamma", "r0", "rho"],
+                    int(self.settings.shift or 0),
+                    should_stop=should_stop,
+                )
             with ProcessPoolExecutor(max_workers=workers, mp_context=ctx) as ex:
                 futures = {ex.submit(process_one_file_worker, j): str(j[0]) for j in jobs}
                 for fut in as_completed(futures):
@@ -957,9 +999,14 @@ class MleSession:
         names = ["tau", "gamma", "r0", "rho"]
         for det in self.detectors:
             color = det.lower()
-            det_meta[det] = (color, color[0], state_result_columns(color, self.settings_of(det).model, names, 0))
+            det_meta[det] = (color, color[0], state_result_columns(color, self.settings_of(det).model, names, self.n_states))
         written = write_b4_tables(rows, files_by_stem, det_meta, self.channel_settings(), tick=tick)
-        return [] if written is None else written[0]
+        paths = [] if written is None else list(written[0])
+        if self.state_lifetimes:
+            from . import state_split
+
+            paths += state_split.write_state_lifetimes(self.state_lifetimes, {p.parent.parent for p in self.bur_files})
+        return paths
 
     def settings_payload(self) -> dict:
         """Everything a settings file holds: the detector definition and every detector's settings."""
