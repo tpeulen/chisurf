@@ -1032,6 +1032,52 @@ class FpsEditor:
             backbone = np.asarray(atoms["xyz"])[keep]
         return {"clouds": clouds, "means": means, "lines": lines, "backbone": backbone}
 
+    def scene3d(self) -> dict:
+        """What the molecular viewer of the 3D tab shows, as the Qt editor gave its viewer: every structure a position
+        uses (``{path: structure}``, as cartoon), the AV of each visible computed position as a surface with its mean
+        as a sphere (``(name, points, mean, grid_step, colour)``), and a line per visible distance between computed
+        means, in the colour of its first label (``(key, a, b, length, colour)``)."""
+        structures: dict = {}
+        for params in self.doc.positions.values():
+            pdb = str(params.get("pdb_path") or params.get("pdb_id") or "").strip()
+            struct = self.structure(pdb) if pdb and pdb not in structures else None
+            if struct is not None and getattr(struct, "atoms", None) is not None:
+                structures[pdb] = struct
+        avs, means = [], {}
+        for name, params in self.doc.positions.items():
+            if name in self.av_cache and params.get("visible", True):
+                coords, mean, step, _cached = self.av_cache[name]
+                colour = self.colour_of(name)
+                avs.append((name, np.asarray(coords)[:, :3], np.asarray(mean), float(step), colour))
+                means[name] = (np.asarray(mean), colour)
+        lines = []
+        for key, dist in self.doc.distances.items():
+            a, b = dist.get("position1_name"), dist.get("position2_name")
+            if dist.get("visible", True) and a in means and b in means and a != b:
+                (ma, colour), (mb, _c) = means[a], means[b]
+                lines.append((key, ma, mb, float(np.linalg.norm(ma - mb)), colour))
+        return {"structures": structures, "avs": avs, "lines": lines}
+
+    def pick_atom(self, pdb: str, atom_index: int) -> bool:
+        """An atom picked in the viewer becomes the attachment of the selected position (Qt: the current row takes
+        the picked atom's chain, residue and atom). Only a pick in the selected position's own structure counts."""
+        rid = self.selected_pos
+        params = self._pos(rid)
+        struct = self.structure(pdb) if pdb else None
+        if params is None or struct is None or getattr(struct, "atoms", None) is None:
+            return False
+        own = str(params.get("pdb_path") or params.get("pdb_id") or "").strip()
+        if own != pdb or not 0 <= int(atom_index) < len(struct.atoms):
+            return False
+        atom = struct.atoms[int(atom_index)]
+        chain = atom["chain"].decode() if isinstance(atom["chain"], bytes) else str(atom["chain"])
+        name = atom["atom_name"].decode() if isinstance(atom["atom_name"], bytes) else str(atom["atom_name"])
+        self.set_position(rid, "chain_identifier", chain.strip())
+        self.set_position(rid, "residue_seq_number", int(atom["res_id"]))
+        self.set_position(rid, "atom_name", name.strip())
+        self.say(f"{rid}: attached to {chain.strip()} {int(atom['res_id'])} {name.strip()} (picked)")
+        return True
+
     # ── persistence ───────────────────────────────────────────────────────
 
     def export_settings(self) -> dict:

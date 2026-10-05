@@ -41003,3 +41003,9 @@ side of the line.
 - 2026-10-05 · Persistence: strict full-42 actual-Main matrix **42 passed / 0 failed** in one
   run (2757 s) — every configured model saved to, restored from and re-saved as `.cs.pto` through
   the real Main GUI with source files and MMFDB blocked.
+- 2026-10-05 · emtk: the FPS JSON editor's 3D View and the docking card's Structure tab now embed **ChiMOL** (owner:
+  "should display cartoon, fix usage of chimol"), replacing `implot3d` traces. New shared view
+  `chisurf/emtk/chimol_view.py` (offscreen chimol in any emtk region, input from the emtk context, aspect kept below
+  760x420). FPS: structures as cartoon, AV surfaces + mean spheres, distance lines, atom pick → selected position
+  (`FpsEditor.scene3d` / `pick_atom`). 3 new real-input tests; guides 23/88 and figures updated. See
+  [fps_json_editor/REPORT](plugins/emtk-ports/fps_json_editor/REPORT.md).

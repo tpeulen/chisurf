@@ -11,9 +11,10 @@ Preview list now (2026-10-05): `code_editor` only.
    shipped notebooks). Re-measure with `emtk_port_parity before|after|compare` against `window:CodeEditorWindow`
    (`code_editor/scripts/qt_before_entry.py`): the manifest's `gui` is a Qt host around the emtk app, so a plain
    `before` measures emtk against emtk. Several modules carry another stream's edits; settle ownership first.
-2. **Shared structure viewport**: the FPS 3D View and the `fret_docking` Structure tab draw `implot3d` point/line traces,
-   where Qt embedded the molecular viewer (cartoon, AV surfaces). This is the one visual delta both reports accept
-   (`fps_json_editor/REPORT.md`). Embedding the chimol renderer as an emtk surface closes it for both cards at once.
+2. **ChiMOL in emtk cards: done 2026-10-05.** `chisurf/emtk/chimol_view.py` is the shared view; the FPS 3D View and the
+   `fret_docking` Structure tab use it. Next users: any card still drawing a structure with `implot3d` (grep
+   `implot3d` under `chisurf/plugins/modelling`). Open: `chisurf/plugins/chimol/app.py` (the whole-window host) still
+   embeds chimol in its own code, and still stretches the picture below 760x420; port it onto `ChimolView`.
 3. **Re-audit every accepted port for the scroll defect class.** Until emtk `052b22a`, any dock window with an `expand`
    table (or plot) above more content had an unreachable bottom and an unbounded scroll. The single-frame
    `audit_emtk_overflow` cannot see it: it shows only with populated data, open folded panels, and the window wheeled

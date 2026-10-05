@@ -28,7 +28,7 @@ accessible-volume message.
 | **Distances** | **Add Row**, **Delete Row**, **Add / Remove Scoring Group**, the scoring-group filter; the form of the selected restraint: labels, type (dRDA, dRDAE, dRMP, pRDA), score set, R0, d, errors, **Load DA Distribution...** for pRDA. |
 | **FlexFit** | Set choice with **+** / **-**, residue and bond tables with **Add** / **Remove selected**. |
 | **JSON** | The file text; edit it and press **Update** in the toolbar. |
-| **3D View** | Accessible volumes, mean positions, distance lines and the backbone. |
+| **3D View** | The ChiMOL viewer: the structures as cartoon, the accessible volumes as surfaces with their mean positions, the distance lines; clicking an atom attaches the selected position to it. |
 
 Toolbar: **Load**, **Save**, **Update**, **Clear** (asks first), **Guide**, **Help**. The accessible volume of a position is
 computed in the background whenever its inputs change. Deleting a position asks, and removes the distances that use it;
@@ -47,7 +47,7 @@ Three repeated docking runs of the HIV reverse transcriptase and its DNA: inputs
    example `docking_project.json` of the FRET plugin in one go.
 3. **Op** (dock, refine, screen, score), **Method** (minimize, mc), **Runs** above 1 repeats from random starts.
 4. **Run**; the bar shows progress and the best score, **Stop** ends it. Results are rows of the sortable **Results** table;
-   the **Score** tab plots the trace per trial, the **Structure** tab the CA / P trace of the selected result.
+   the **Score** tab plots the trace per trial, the **Structure** tab the selected result in the ChiMOL viewer, as cartoon (**Previous** / **Next** step through several models).
 
 ## 3. QuEst
 

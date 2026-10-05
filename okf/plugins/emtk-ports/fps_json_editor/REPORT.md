@@ -55,14 +55,27 @@ Found on the way and fixed (not FPS): `structure_tools/test/test_native.py` read
    tables elide long cells (full text in the tooltip).
 5. **Deltas documented**: `deliberate.json` plus the one below.
 
-## Deliberate visual delta: the 3D View
+## The 3D View is ChiMOL (2026-10-05, owner: "should display cartoon, fix usage of chimol")
 
-Qt embeds the molecular viewer: a cartoon of the structure, with the AVs as surfaces (`before_populated_3d.png` shows the
-DNA cartoon only; the AV overlays were not drawn offscreen). The native tab draws, with `implot3d`, the AV point clouds,
-mean positions, distance lines and the CA/P trace of the selected row's structure. This follows the accepted
-`fret_docking` Structure tab. The colour cycle has ten entries, so the 11th AV repeats the first colour. A shared emtk
-structure viewport (the chimol renderer) for the structure cards is the follow-up, listed in "Where to pick this up" of
-[emtk-ports roadmap](../roadmap.md).
+The first acceptance drew the 3D tab with `implot3d` point clouds; Qt embeds the ChiMOL viewer. The card now embeds
+ChiMOL through the shared `chisurf/emtk/chimol_view.py` (`ChimolView`: chimol's offscreen renderer in a region of any
+emtk window, input read from the emtk context, a fixed aspect when scaled below 760x420). It makes the calls the Qt
+editor makes on its viewer:
+- every structure a position uses, as cartoon;
+- each computed AV as a translucent surface (`add_surface_overlay`, Qt's parameters) with its mean position as a sphere;
+- one distance line per restraint, in the first label's colour.
+
+An atom clicked in the viewer becomes the selected position's chain, residue and atom (`FpsEditor.pick_atom`), as in
+Qt. Unlike Qt, both structures (protein and DNA) are shown at once: Qt's `set_structure` kept only the last loaded one.
+The `implot3d` view is kept only for when ChiMOL cannot start (no WebGPU adapter); it says why.
+
+Tests (`test_emtk_real_input.py`): the scene holds the two structures, 11 AV surfaces, 11 means and 20 lines, and hiding
+a position removes its volume; a drag rotates and the wheel zooms (the frame changes); clicking a protein atom attaches
+`p51_E194C` to it. Passed 3 of 3 repeats. Evidence: `after_populated_3dview_{1200x800,800x600}.png`, guide figure
+`23_fps_editor_3d.png`.
+
+The same `ChimolView` replaces the `implot3d` CA/P trace in the `fret_docking` Structure tab (`cards/docking.py`); its
+click suite passes unchanged.
 
 ## Docs
 

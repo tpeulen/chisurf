@@ -17,6 +17,7 @@ from emtk import im, implot, implot3d
 from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
+from chisurf.emtk.chimol_view import ChimolView
 from chisurf.plugins.emtk_layout import layout_spec
 
 from .docking_model import DockingSession
@@ -115,6 +116,9 @@ class DockingCard(CardShell):
         self.result_form = FormState(on_used=self.used)
         self.session.on_change = self.request_frame
         self.error_shown = ""
+        #: The Structure tab's molecular viewer (chimol, as the Qt docking window embeds it).
+        self.chimol = ChimolView()
+        self._chimol_path = ""
 
     def build_docks(self) -> DockManager:
         docks = DockManager(Split("h", 0.46, Region("inputs"), Region("results")))
@@ -326,7 +330,21 @@ class DockingCard(CardShell):
                 s.preview_index += 1
             im.set_item_tooltip("The next docked model.")
             self.remember("preview_next")
-        back = s.backbone(s.preview[min(s.preview_index, len(s.preview) - 1)])
+        path = str(s.preview[min(s.preview_index, len(s.preview) - 1)])
+        viewer = self.chimol.viewer
+        if viewer is not None:
+            if path != self._chimol_path:
+                for obj in viewer.list_objects():
+                    viewer.remove_object(obj["id"])
+                self.chimol.app.load(path)
+                self.chimol.sync_panel()
+                self._chimol_path = path
+            self.chimol.draw(enabled=not self.blocked)
+            im.set_item_tooltip("The structure as cartoon; drag to rotate, wheel to zoom.")
+            self.remember("structure_plot")
+            return
+        im.text_wrapped(f"The molecular viewer could not start ({self.chimol.error}); showing the CA / P trace.")
+        back = s.backbone(path)
         if back is None:
             im.text_wrapped("The structure could not be read.")
             return
@@ -356,6 +374,7 @@ class DockingCard(CardShell):
 
     def close(self) -> None:
         self.session.close()
+        self.chimol.close()
 
 
 def _spin(sections) -> None:

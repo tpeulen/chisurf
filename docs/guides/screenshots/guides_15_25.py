@@ -499,7 +499,7 @@ def _grab_23_fps_editor():
                       ("3D View", "23_fps_editor_3d.png")):
         app.tab = tab
         painter = PixelPainter(1200, 800)
-        for _ in range(3):
+        for _ in range(6):  # chimol's chrome (3D View) settles over a few frames
             painter = PixelPainter(1200, 800)
             app.draw(painter, 0, 0, 1200, 800)
         (FIG / name).write_bytes(png_encode(painter.width, painter.height, painter.px))

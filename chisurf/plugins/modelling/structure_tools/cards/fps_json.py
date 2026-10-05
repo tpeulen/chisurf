@@ -16,6 +16,7 @@ import numpy as np
 from emtk import im, implot3d
 from emtk.view_form import FormState, draw_form
 
+from chisurf.emtk.chimol_view import ChimolView
 from chisurf.plugins.emtk_layout import LabelColumn, layout_spec
 
 from .fps_model import (ALL_DISTANCES, DISTANCE_TYPE_NAMES, DISTANCE_TYPES, POSITION_DEFAULTS, FpsEditor,
@@ -317,6 +318,11 @@ class FpsJsonCard(CardShell):
         self.json_form = FormState(on_used=self.used)
         self.labels = LabelColumn()
         self._av_sizes = {}
+        #: The 3D tab's molecular viewer (chimol, as the Qt editor embeds it); started when the tab is first shown.
+        self.chimol = ChimolView()
+        self._chimol_scene = None
+        self._chimol_objects: dict[str, str] = {}
+        self._chimol_picks = False
 
     # ── status ────────────────────────────────────────────────────────────
 
@@ -633,12 +639,93 @@ class FpsJsonCard(CardShell):
         self.item_rects.update(form.rects)
 
     def _draw_3d(self) -> None:
-        data = self.editor.view3d()
-        if not data["clouds"] and data["backbone"] is None:
-            im.text_wrapped("Nothing to show: compute the accessible volume of a position (Positions tab, "
-                            "Compute AVs) with a structure, chain, residue and atom.")
+        scene = self.editor.scene3d()
+        if not scene["structures"] and not scene["avs"]:
+            im.text_wrapped(
+                "Nothing to show: give a position a structure (Positions tab, PDB file or ID), and compute its "
+                "accessible volume with Compute AVs."
+            )
             self.remember("empty_3d")
             return
+        viewer = self.chimol.viewer
+        if viewer is None:
+            im.text_wrapped(
+                f"The molecular viewer could not start ({self.chimol.error}); the accessible volumes are shown as "
+                "points instead."
+            )
+            self._draw_3d_points()
+            return
+        self._sync_chimol(viewer, scene)
+        self.chimol.draw(enabled=not self.blocked)
+        im.set_item_tooltip(
+            "The structures as cartoon, the accessible volumes as surfaces with their mean positions, and the "
+            "distance lines. Drag to rotate, wheel to zoom; click an atom to attach the selected position to it."
+        )
+        self.remember("plot3d")
+
+    def _sync_chimol(self, viewer, scene: dict) -> None:
+        """Give the viewer what the Qt editor gave its viewer, when it changed: each structure once (cartoon, framed
+        when the set of structures changes), the AV surfaces with mean spheres, and the distance lines."""
+        paths = tuple(scene["structures"])
+        avs = tuple((n, id(p), tuple(c)) for n, p, _m, _s, c in scene["avs"])
+        lines = tuple((k, round(length, 3), tuple(c)) for k, _a, _b, length, c in scene["lines"])
+        signature = (paths, avs, lines)
+        if signature == self._chimol_scene:
+            return
+        new_structures = self._chimol_scene is None or self._chimol_scene[0] != paths
+        self._chimol_scene = signature
+        if not self._chimol_picks:
+            viewer.atomSelectionChanged.connect(self._on_chimol_pick)
+            self._chimol_picks = True
+        if new_structures:
+            for oid in list(self._chimol_objects):
+                viewer.remove_object(oid)
+            self._chimol_objects = {}
+            for path, struct in scene["structures"].items():
+                oid = viewer.add_structure(struct, name=Path(path).stem, source_path=path)
+                self._chimol_objects[oid] = path
+            self.chimol.sync_panel()
+        viewer.clear_point_overlays()
+        for name, points, mean, step, colour in scene["avs"]:
+            viewer.add_surface_overlay(
+                f"av_{name}",
+                points,
+                color=colour,
+                alpha=colour[3],
+                grid_spacing=max(step, 0.1),
+                padding=max(step * 2.0, 1.0),
+                smoothing_sigma=0.75,
+                dilation_iterations=1,
+                max_dim=112,
+                fallback_size_scale=0.02,
+                fallback_min_size=1.5,
+            )
+            viewer.add_sphere(
+                mean, radius=1.5, color=(*colour[:3], max(colour[3], 0.9)), label=name, key=f"mean_{name}"
+            )
+        measurements = {k: v for k, v in viewer.measurements.items() if not k.startswith("dist_line_")}
+        for key, a, b, length, colour in scene["lines"]:
+            measurements[f"dist_line_{key}"] = {
+                "kind": "distance",
+                "positions": np.array([a, b]),
+                "color": [*colour[:3], 0.8],
+                "label": f"{length:.1f} Å",
+            }
+        viewer.measurements = measurements
+        viewer.update_view(fit_camera=new_structures)
+
+    def _on_chimol_pick(self, atom_indices) -> None:
+        """An atom clicked in the viewer: the selected position takes it as its attachment (Qt behaviour)."""
+        if not atom_indices or self.chimol.app is None:
+            return
+        oid = self.chimol.app.viewer.get_active_object_id()
+        if self.editor.pick_atom(self._chimol_objects.get(oid, ""), int(atom_indices[0])):
+            self.sync_status()
+            self.used("pick_atom")
+
+    def _draw_3d_points(self) -> None:
+        """The fallback without chimol: AV point clouds, means, distance lines and the backbone trace."""
+        data = self.editor.view3d()
         flags = implot3d.FLAGS_NO_LEGEND if not data["clouds"] else 0
         if implot3d.begin_plot("Accessible volumes##fps3d", (-1, -1), flags):
             implot3d.setup_axes("x [A]", "y [A]", "z [A]")
@@ -648,19 +735,36 @@ class FpsJsonCard(CardShell):
             for name, pts, color in data["clouds"]:
                 step = max(1, len(pts) // 1500)
                 rgba = (*color[:3], 0.8)
-                spec = implot3d.Spec(marker_size=1.5, marker_fill_color=rgba, marker_line_color=rgba)
-                implot3d.plot_scatter(f"{name}", pts[::step, 0], pts[::step, 1], pts[::step, 2], spec=spec)
+                spec = implot3d.Spec(
+                    marker_size=1.5, marker_fill_color=rgba, marker_line_color=rgba
+                )
+                implot3d.plot_scatter(
+                    f"{name}", pts[::step, 0], pts[::step, 1], pts[::step, 2], spec=spec
+                )
             for name, mean, color in data["means"]:
                 rgba = (*color[:3], 1.0)
-                spec = implot3d.Spec(marker_size=5, marker_fill_color=rgba, marker_line_color=rgba,
-                                     flags=implot3d.ITEM_FLAGS_NO_LEGEND)
-                implot3d.plot_scatter(f"mean {name}", [float(mean[0])], [float(mean[1])], [float(mean[2])], spec=spec)
+                spec = implot3d.Spec(
+                    marker_size=5,
+                    marker_fill_color=rgba,
+                    marker_line_color=rgba,
+                    flags=implot3d.ITEM_FLAGS_NO_LEGEND,
+                )
+                implot3d.plot_scatter(
+                    f"mean {name}", [float(mean[0])], [float(mean[1])], [float(mean[2])], spec=spec
+                )
             for key, a, b, length in data["lines"]:
-                implot3d.plot_line(f"{key} {length:.1f} A", [float(a[0]), float(b[0])], [float(a[1]), float(b[1])],
-                                   [float(a[2]), float(b[2])], spec=implot3d.Spec(flags=implot3d.ITEM_FLAGS_NO_LEGEND))
+                implot3d.plot_line(
+                    f"{key} {length:.1f} A",
+                    [float(a[0]), float(b[0])],
+                    [float(a[1]), float(b[1])],
+                    [float(a[2]), float(b[2])],
+                    spec=implot3d.Spec(flags=implot3d.ITEM_FLAGS_NO_LEGEND),
+                )
             implot3d.end_plot()
-            im.set_item_tooltip("Accessible volumes (points), mean positions and distance lines; "
-                                "drag to rotate, wheel to zoom.")
+            im.set_item_tooltip(
+                "Accessible volumes (points), mean positions and distance lines; "
+                "drag to rotate, wheel to zoom."
+            )
             self.remember("plot3d")
 
     # ── persistence ───────────────────────────────────────────────────────
@@ -677,6 +781,7 @@ class FpsJsonCard(CardShell):
 
     def close(self) -> None:
         self.editor._executor.shutdown(wait=False, cancel_futures=True)
+        self.chimol.close()
 
 
 def _labelled(sections):

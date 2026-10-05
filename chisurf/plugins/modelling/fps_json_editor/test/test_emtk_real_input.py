@@ -13,6 +13,7 @@ import json
 import shutil
 from pathlib import Path
 
+import numpy as np
 import pytest
 from emtk import keys
 
@@ -343,3 +344,87 @@ def test_choice_fields_dye_model_preset_and_distance_type(fps, tmp_path):
     assert ed._dist(rid)["rda"] == [40.0, 50.0, 60.0] and ed._dist(rid)["prda"] == [0.2, 0.6, 0.2]
     assert ui.shown("Loaded: 3 points")
     ui.app.close()
+
+
+# ---- 3D View: the molecular viewer (chimol, as the Qt editor embeds it) --------------------------------------------
+
+
+@pytest.fixture()
+def view3d(fps):
+    """The editor with every AV computed, on the 3D View tab; skipped where chimol cannot render (no WebGPU)."""
+    ui = _open(fps)
+    ui.app.editor.compute_all()
+    _settle(ui)
+    _select(ui, "p51_E194C")
+    ui.click("tab_3D View")
+    ui.draw(3)
+    if ui.app.chimol.error:
+        ui.app.close()
+        pytest.skip(f"chimol cannot render here: {ui.app.chimol.error}")
+    yield ui
+    ui.app.close()
+
+
+def test_3d_view_shows_cartoon_av_surfaces_means_and_distance_lines(view3d):
+    viewer = view3d.app.chimol.viewer
+    assert sorted(o["name"] for o in viewer.list_objects()) == ["dna", "protein_1R0A"]
+    overlays = set(viewer._point_overlays or {})
+    assert sum(k.startswith("av_") for k in overlays) == 11
+    assert sum(k.startswith("mean_") for k in overlays) == 11
+    assert sum(k.startswith("dist_line_") for k in viewer.measurements) == 20
+    frame = view3d.app.chimol.frame
+    assert frame is not None and frame.ndim == 3 and frame[..., :3].std() > 5  # a picture, not a blank canvas
+    # hiding a position takes its volume out of the view, as in Qt
+    view3d.app.editor.set_position("p66_Q6C", "visible", False)
+    view3d.draw(2)
+    assert "av_p66_Q6C" not in set(viewer._point_overlays or {})
+
+
+def test_3d_view_drag_rotates_and_wheel_zooms(view3d):
+    x, y, w, h = view3d.app.item_rects["plot3d"]
+    cx, cy = x + w * 0.4, y + h * 0.5
+    before = view3d.app.chimol.frame.copy()
+    view3d.app.pointer_move(cx, cy)
+    view3d.draw(1)
+    view3d.app.press(cx, cy)
+    view3d.draw(1)
+    for i in range(1, 6):
+        view3d.app.pointer_move(cx + 15 * i, cy + 4 * i, 1)
+        view3d.draw(1)
+    view3d.app.release()
+    view3d.draw(2)
+    rotated = view3d.app.chimol.frame.copy()
+    assert np.abs(rotated.astype(int) - before.astype(int)).mean() > 1.0, "a drag did not rotate"
+    view3d.app.wheel(cx, cy, -3)
+    view3d.draw(2)
+    assert np.abs(view3d.app.chimol.frame.astype(int) - rotated.astype(int)).mean() > 1.0, "the wheel did not zoom"
+
+
+def test_clicking_an_atom_attaches_the_selected_position(view3d):
+    """Qt: an atom picked in the viewer becomes the current row's chain / residue / atom."""
+    app = view3d.app
+    ed = app.editor
+    viewer = app.chimol.viewer
+    renderer = app.chimol.app.renderer
+    struct = ed.structure(ed.position_field("p51_E194C", "pdb_path", ""))
+    picks: list = []
+    viewer.atomSelectionChanged.connect(lambda idx: picks.append(list(idx)))
+    rx, ry, rw, rh = app.chimol.rect
+    fw, fh = app.chimol._render_size
+    ca = np.flatnonzero(struct.atoms["atom_name"] == "CA")
+    scene = viewer._transform_world_coords_to_scene(np.asarray(struct.atoms["xyz"])[ca])
+    sx, sy, visible = renderer.project_to_screen(scene)
+    centre = np.hypot(sx - fw / 2, sy - fh / 2)
+    order = [i for i in np.argsort(centre) if visible[i]][:40]
+    picked = None
+    for i in order:
+        picks.clear()
+        view3d.click_at(rx + sx[i] * rw / fw, ry + sy[i] * rh / fh)
+        if picks and picks[-1] and app._chimol_objects.get(viewer.get_active_object_id(), "").endswith("protein_1R0A.pdb"):
+            picked = struct.atoms[picks[-1][0]]
+            break
+    assert picked is not None, "no protein atom answered a click"
+    assert ed.position_field("p51_E194C", "chain_identifier", "") == str(picked["chain"]).strip()
+    assert int(ed.position_field("p51_E194C", "residue_seq_number", 0)) == int(picked["res_id"])
+    assert ed.position_field("p51_E194C", "atom_name", "") == str(picked["atom_name"]).strip()
+    assert view3d.shown("(picked)")

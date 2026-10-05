@@ -85,9 +85,12 @@ the tool and **Help** explains it. Tabs:
   restraint, a **Score set**, the scoring-group filter with **Add / Remove
   Scoring Group**, and **Load DA Distribution...** for a `pRDA` restraint.
 - **FlexFit** (sets of flexible residues and bonds), **JSON** (the raw file)
-  and **3D View** (the accessible volumes as point clouds, their mean
-  positions, the distance lines, and the backbone trace of the selected row's
-  structure).
+  and **3D View**: the ChiMOL molecular viewer with every structure the
+  positions use as cartoon, each computed accessible volume as a translucent
+  surface with its mean position as a sphere, and a line per distance. Drag to
+  rotate, wheel to zoom, and click an atom to attach the selected position to
+  it. The viewer's own object list, sequence strip and command prompt work as
+  in ChiMOL.
 
 ```{figure} figures/23_fps_editor.png
 :name: fig-23-fps-editor
@@ -114,8 +117,9 @@ first one selected.
 :name: fig-23-fps-editor-3d
 :width: 100%
 
-**3D View** of the same project: the 11 accessible volumes, the distance
-lines, and the CA/P trace of the selected position's structure (1R0A).
+**3D View** of the same project: 1R0A and the DNA as cartoon, the 11
+accessible volumes as surfaces with their mean positions, and the 20 distance
+lines.
 ```
 
 Besides **Load** in the toolbar, the editor window accepts a dropped
