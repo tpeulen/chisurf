@@ -41031,3 +41031,9 @@ side of the line.
   demo; Filter Calc takes the correlator's files as in Qt. Parity lost [] (Qt 274 → 378 controls), 15 real-input
   tests, guide 75 figures regenerated in their captioned states (one caption number was wrong).
   [report](plugins/emtk-ports/fcs_toolbox/REPORT.md).
+- 2026-10-05 · project persistence: **`.cs.pto` UI state is toolkit-neutral** (owner: "must make it abstract, so that the
+  .cs.pto files will open, even if the backend later will change"). New `chisurf/core/project/ui_layout.py` (Qt-free
+  schema + backend registry), Qt adapter `chisurf/gui/layout_state.py`; `ui_state.py` no longer imports Qt or writes
+  top-level Qt bytes (they are an optional `backend.qt` hint; old projects read as such); window_arrangement (from the
+  persistence session) moved behind the adapter; tab titles saved beside indices. Two-process restore proof green.
+  [project-persistence](subsystems/project-persistence.md) "UI state is toolkit-neutral".

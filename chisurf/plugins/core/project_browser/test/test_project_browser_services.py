@@ -570,7 +570,7 @@ def test_restore_preserves_global_fit_and_window_state(project_db, sample_projec
     window.resize(1100, 700)
     ui = {**get_ui_state(window), "current_fit_index": 0, "current_fit_uid": "global-fit"}
     window.close()
-    assert ui["geometry"] and ui["dock_state"]
+    assert ui["layout"]["window"] and set(ui["backend"]["qt"]) == {"geometry", "dock_state"}
     payload = capture_session([curves], [group], name="Global Project", ui_state=ui).to_dict()
 
     saved = save_project_handler(
@@ -593,8 +593,8 @@ def test_restore_preserves_global_fit_and_window_state(project_db, sample_projec
         for local in restored_group.grouped_fits
     )
     assert session.ui_state["current_fit_uid"] == "global-fit"
-    assert session.ui_state["geometry"] == ui["geometry"]
-    assert session.ui_state["dock_state"] == ui["dock_state"]
+    assert session.ui_state["layout"] == ui["layout"]  # toolkit-neutral; any front end restores from it
+    assert session.ui_state["backend"] == ui["backend"]
 
 
 def test_delete_version_requires_manage_permission(project_db, sample_project_payload):

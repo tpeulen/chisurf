@@ -69,15 +69,64 @@ def _prepare_fit_windows(main_window: typing.Any, state: dict) -> list[tuple]:
     return prepared
 
 
+_WINDOW_STATES = ("normal", "maximized", "minimized")
+
+
+def _capture_arrangement(main_window: typing.Any) -> dict[str, typing.Any] | None:
+    """Which fit window is in front, which is active, and how each is shown (by fit UID), from the front end."""
+    from chisurf.core.project import ui_layout
+
+    backend = ui_layout.backend_for(main_window)
+    if backend is None or backend.capture_arrangement is None:
+        return None
+    return backend.capture_arrangement(main_window)
+
+
+def _prepare_arrangement(main_window: typing.Any, state: dict) -> typing.Callable[[], None] | None:
+    """Validate the saved window arrangement before any presentation mutation."""
+    arrangement = state.get("window_arrangement")
+    if arrangement is None:
+        return None
+    if not isinstance(arrangement, dict):
+        raise ProjectUIStateError("window_arrangement must be a mapping")
+    windows = _fit_window_map(main_window)
+    stacking = arrangement.get("stacking", [])
+    states = arrangement.get("window_states", {})
+    active = arrangement.get("active")
+    view_mode = arrangement.get("view_mode", "windows")
+    if not isinstance(stacking, list) or not isinstance(states, dict):
+        raise ProjectUIStateError("invalid window_arrangement")
+    for uid in [*stacking, *states, *([active] if active is not None else [])]:
+        if uid not in windows:
+            raise ProjectUIStateError(f"unknown fit view UID: {uid}")
+    if any(value not in _WINDOW_STATES for value in states.values()):
+        raise ProjectUIStateError("invalid fit window state")
+    if view_mode not in ("windows", "tabbed"):
+        raise ProjectUIStateError("invalid MDI view mode")
+
+    def apply() -> None:
+        from chisurf.core.project import ui_layout
+
+        backend = ui_layout.backend_for(main_window)
+        if backend is not None and backend.apply_arrangement is not None:
+            backend.apply_arrangement(
+                main_window,
+                {"stacking": stacking, "active": active, "window_states": states, "view_mode": view_mode},
+                windows,
+            )
+
+    return apply
+
+
 def get_ui_state(main_window: typing.Any) -> dict[str, typing.Any]:
     """Capture UI state from main window and all sub-windows.
 
-    Returns a dict with:
-    - main_window: geometry and dock state
-    - mdi_area: MDI subwindow layout
-    - dataset_selector: current selection and expanded state
-    - fit_selector: current selection
-    - active_tabs: which tabs are active in each panel
+    Returns a dict with (every part toolkit-neutral; see :mod:`chisurf.core.project.ui_layout`):
+    - fit_windows: each fit view's plot state, by fit UID
+    - window_arrangement: stacking, active view, window states, view mode, by fit UID
+    - layout: main window rectangle, docks by name, fit views by UID
+    - backend: optional exact snapshot of the front end that saved it (a hint; other front ends ignore it)
+    - active_tabs / active_tab_titles: each main panel's active tab, by index and by title
     """
     state: dict[str, typing.Any] = {}
 
@@ -85,44 +134,19 @@ def get_ui_state(main_window: typing.Any) -> dict[str, typing.Any]:
         return state
 
     state["fit_windows"] = _capture_fit_windows(main_window)
+    arrangement = _capture_arrangement(main_window)
+    if arrangement is not None:
+        state["window_arrangement"] = arrangement
     state["active_tabs"] = get_active_tabs(main_window)
     if hasattr(main_window, "fit_idx"):
         state["current_fit_index"] = main_window.fit_idx
 
-    try:
-        save_geom = getattr(main_window, "saveGeometry", None)
-        if callable(save_geom):
-            try:
-                ba = save_geom()
-                state["geometry"] = bytes(ba).hex()
-            except Exception:
-                pass
-    except Exception:
-        pass
+    # The window layout in toolkit-neutral terms (+ this front end's exact snapshot as a hint), so the project
+    # opens whatever front end opens it: see chisurf.core.project.ui_layout.
+    from chisurf.core.project import ui_layout
 
-    try:
-        save_state = getattr(main_window, "saveState", None)
-        if callable(save_state):
-            try:
-                ba = save_state()
-                state["dock_state"] = bytes(ba).hex()
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-    try:
-        mdi = getattr(main_window, "mdiarea", None)
-        if mdi is not None:
-            save_mdi = getattr(mdi, "saveState", None)
-            if callable(save_mdi):
-                try:
-                    ba = save_mdi()
-                    state["mdi_area"] = {"state": bytes(ba).hex()}
-                except Exception:
-                    pass
-    except Exception:
-        pass
+    state.update(ui_layout.capture(main_window))
+    state["active_tab_titles"] = get_active_tab_titles(main_window)
 
     try:
         history_browser = getattr(main_window, "historyBrowser", None)
@@ -147,6 +171,7 @@ def set_ui_state(main_window: typing.Any, state: dict[str, typing.Any]) -> bool:
         return False
 
     prepared_views = _prepare_fit_windows(main_window, state)
+    arrange = _prepare_arrangement(main_window, state)
     success = False
     for uid, apply, record in prepared_views:
         try:
@@ -156,50 +181,13 @@ def set_ui_state(main_window: typing.Any, state: dict[str, typing.Any]) -> bool:
         except Exception as exc:
             raise ProjectUIStateError(f"fit view publication failed for {uid}: {exc}") from exc
 
-    try:
-        geom_hex = state.get("geometry")
-        if geom_hex:
-            restore_geom = getattr(main_window, "restoreGeometry", None)
-            if callable(restore_geom):
-                try:
-                    geom_bytes = bytes.fromhex(geom_hex)
-                    restore_geom(geom_bytes)
-                    success = True
-                except Exception:
-                    pass
-    except Exception:
-        pass
+    from chisurf.core.project import ui_layout
 
-    try:
-        dock_hex = state.get("dock_state")
-        if dock_hex:
-            restore_state = getattr(main_window, "restoreState", None)
-            if callable(restore_state):
-                try:
-                    state_bytes = bytes.fromhex(dock_hex)
-                    restore_state(state_bytes)
-                    success = True
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-    try:
-        mdi_state = state.get("mdi_area", {})
-        mdi_hex = mdi_state.get("state")
-        if mdi_hex:
-            mdi = getattr(main_window, "mdiarea", None)
-            if mdi is not None:
-                restore_mdi = getattr(mdi, "restoreState", None)
-                if callable(restore_mdi):
-                    try:
-                        mdi_bytes = bytes.fromhex(mdi_hex)
-                        restore_mdi(mdi_bytes)
-                        success = True
-                    except Exception:
-                        pass
-    except Exception:
-        pass
+    has_layout = bool(state.get("layout")) or any(
+        ui_layout.backend_hint(state, name) for name in ("qt", *(state.get("backend") or {}))
+    )
+    if has_layout and not ui_layout.restore(main_window, state):
+        success = True
 
     browser_state = state.get("history_browser")
     browser = getattr(main_window, "historyBrowser", None)
@@ -209,8 +197,12 @@ def set_ui_state(main_window: typing.Any, state: dict[str, typing.Any]) -> bool:
         success = True
     tabs = state.get("active_tabs")
     if isinstance(tabs, dict):
-        set_active_tabs(main_window, tabs)
+        set_active_tabs(main_window, tabs, state.get("active_tab_titles"))
         success = bool(tabs) or success
+    if arrange is not None:
+        # Last: per-window geometry and the main window's state are in place.
+        arrange()
+        success = True
     return success
 
 
@@ -327,8 +319,21 @@ def get_active_tabs(main_window: typing.Any) -> dict[str, int]:
     return tabs
 
 
-def set_active_tabs(main_window: typing.Any, tabs: dict[str, int]) -> None:
-    """Set active tab indices for main panels."""
+def get_active_tab_titles(main_window: typing.Any) -> dict[str, str]:
+    """The title of each main panel's active tab: a front end with other tab indices restores by title."""
+    titles: dict[str, str] = {}
+    for name, idx in get_active_tabs(main_window).items():
+        text = getattr(getattr(main_window, name, None), "tabText", None)
+        if callable(text):
+            try:
+                titles[name] = str(text(idx))
+            except Exception:
+                pass
+    return titles
+
+
+def set_active_tabs(main_window: typing.Any, tabs: dict[str, int], titles: dict[str, str] | None = None) -> None:
+    """Set active tabs of the main panels: by saved title where the panel has that tab, else by index."""
     if main_window is None:
         return
 
@@ -336,6 +341,13 @@ def set_active_tabs(main_window: typing.Any, tabs: dict[str, int]) -> None:
         try:
             panel = getattr(main_window, name, None)
             if panel is not None:
+                title = (titles or {}).get(name)
+                count = getattr(panel, "count", None)
+                text = getattr(panel, "tabText", None)
+                if title and callable(count) and callable(text):
+                    match = next((i for i in range(count()) if text(i) == title), None)
+                    if match is not None:
+                        idx = match
                 set_idx = getattr(panel, "setCurrentIndex", None)
                 if callable(set_idx):
                     set_idx(idx)

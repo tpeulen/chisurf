@@ -99,6 +99,7 @@ by quality review must be closed first.
 | `storage.py` | Optional backend policy and exact-version MMFDB readback verification. |
 | `lifecycle.py` | Save/discard/cancel authorization and document identity/clean baseline. |
 | `ui_state.py` | Supported window state; geometry is separate from essential science. |
+| `ui_layout.py` | The window layout in toolkit-neutral terms + per-front-end hints; backend registry (Qt adapter: `chisurf/gui/layout_state.py`). |
 
 ## Scientific state
 
@@ -139,6 +140,32 @@ chooser or save failure is not permission to tear down the current session.
 File and database identities are mutually exclusive and updated only after
 explicit success. Ctrl+S is project save; Ctrl+Shift+S is portable Save As;
 Ctrl+Alt+S is the separate fit save.
+
+## UI state is toolkit-neutral (owner rule, 2026-10-05)
+
+"A `.cs.pto` must open even if the backend later changes": Qt is being replaced by emtk, so nothing a project needs may
+be one toolkit's private format. The saved `ui` record is:
+
+- `fit_windows`: each fit view's plot state, keyed by fit UID. This is already JSON; the fit window's
+  `dock_layout` is emtk `DockManager.state()`, and Qt-era values are ignored on restore.
+- `window_arrangement`: stacking bottom to top, the active view, each view's state, and the MDI view mode, all keyed
+  by fit UID. The data and its validation live in `ui_state.py`; the toolkit calls go through the backend.
+- `layout` (`ui_layout.py`, schema 1): the main window rectangle and maximized flag, docks by stable name (visible,
+  floating, area, rect), fit views by UID (rect, state). This is what every front end restores from.
+- `backend.<name>`: an optional exact snapshot of the front end that saved the project (Qt: `saveGeometry` /
+  `saveState` hex). It is only a hint: a front end applies its own and ignores the others. Projects written earlier
+  kept these bytes at the top level (`geometry`, `dock_state`, `mdi_area`); they are read as `backend.qt`.
+- `active_tabs` + `active_tab_titles`: each main panel's tab, by index and by title. The title wins where it exists.
+
+Applying a layout is presentation. A dock or view the window lacks is reported and skipped, and never stops a project
+from opening. The science-identity checks (an unknown fit UID in `fit_windows` / `window_arrangement`) still raise,
+before anything is mutated. A new front end registers a `LayoutBackend` (matches, capture, apply, optional hint and
+arrangement hooks); `core` imports no toolkit (guard: `test/core/test_ui_layout.py`). Proofs:
+`test/gui/test_layout_state_qt.py`, a neutral round trip including a project written by another front end;
+`test/gui/test_project_window_restore.py`, save in one process and open in a fresh one, every widget fact equal.
+
+Open: plugin tool windows are not part of the project at all (only QSettings per tool). Recording them by plugin id plus
+`export_settings()` would make them reopen in whichever front end is selected.
 
 ## MMFDB policy
 
