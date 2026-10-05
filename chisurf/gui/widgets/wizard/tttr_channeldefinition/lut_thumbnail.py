@@ -3,8 +3,8 @@
 The LUT-handling box shows, on hover over an assigned per-routing-channel LUT, a
 tiny plot of the cumulative TAC-linearization table (``NTAC_fract``) together
 with its per-bin derivative (the correction the LUT applies). Rendering is done
-with matplotlib's Agg backend so it is deterministic and needs no display, which
-also makes it unit-testable headlessly.
+with :mod:`emtk.figure` on the CPU rasteriser, so it is deterministic and needs
+no display, which also makes it unit-testable headlessly.
 
 The returned string is a ``data:`` URI ready to drop into a tooltip::
 
@@ -45,36 +45,22 @@ def render_lut_png(ntac_fract, *, width_px: int = 240, height_px: int = 140) -> 
     bytes
         PNG image bytes. Empty ``NTAC_fract`` yields an empty-plot PNG.
     """
-    import matplotlib
-
-    matplotlib.use("Agg", force=False)
-    from matplotlib.backends.backend_agg import FigureCanvasAgg
-    from matplotlib.figure import Figure
+    from emtk.figure import Figure
 
     arr = np.asarray(ntac_fract, dtype=float).ravel()
-    dpi = 100.0
-    fig = Figure(figsize=(width_px / dpi, height_px / dpi), dpi=dpi)
-    ax = fig.add_subplot(111)
+    fig = Figure(size=(int(width_px), int(height_px)))
+    ax = fig.ax()
     if arr.size:
         x = np.arange(arr.size)
-        ax.plot(x, arr, color="#4c9be8", lw=1.2, label="NTAC_fract")
+        ax.line(x, arr, color="#4c9be8", width=1.2, label="NTAC_fract")
         deriv = np.diff(arr, prepend=arr[0])
-        ax2 = ax.twinx()
-        ax2.plot(x, deriv, color="#e8804c", lw=0.9, alpha=0.8)
-        ax2.tick_params(labelsize=6)
-        ax.set_title("LUT (cumulative + Δ/bin)", fontsize=7)
+        ax.line(x, deriv, color="#e8804c", width=0.9, alpha=0.8, right=True)
+        ax.set_title("LUT (cumulative + Δ/bin)")
     else:
-        ax.text(0.5, 0.5, "empty LUT", ha="center", va="center", fontsize=8)
-    ax.tick_params(labelsize=6)
-    fig.tight_layout(pad=0.3)
-
-    canvas = FigureCanvasAgg(fig)
-    canvas.draw()
-    import io
-
-    buf = io.BytesIO()
-    canvas.print_png(buf)
-    return buf.getvalue()
+        ax.set_xlim(0.0, 1.0)
+        ax.set_ylim(0.0, 1.0)
+        ax.text(0.5, 0.5, "empty LUT")
+    return fig.png_bytes()
 
 
 def render_lut_tooltip(ntac_fract) -> str:

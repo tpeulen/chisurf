@@ -18,7 +18,6 @@ in order:
    `emtk.figure` once a before-PNG is taken with the matplotlib code: render
    the result with realistic data, `savefig`, port, re-render, compare the
    control inventory (see "How a figure port is proven" below). Files:
-   `gui/widgets/wizard/tttr_channeldefinition/lut_thumbnail.py`,
    `plugins/burst/burst_h2mm/gui/native.py`, `plugins/tttr/audifier/{core,lifetime_analysis}.py`,
    `plugins/tttr/trace_browser/gui/model.py`, ndXplorer
    `export/{publication_figure,report}.py`. ndXplorer's publication figure
@@ -154,3 +153,7 @@ labels sit a fixed 10 px above the bar.
   `core/agent/tools/decay.py` (`plot_fit`; now refuses a non-PNG path instead of
   guessing a format). `emtk.figure` gained hidden cells, row/column ratios and
   aligned panels (emtk `85bf146`) for them. 18 -> 15.
+- 2026-10-05 `gui/widgets/wizard/tttr_channeldefinition/lut_thumbnail.py` (tooltip
+  thumbnail; needed `line(..., right=True)`, emtk `figure: lines on a right-hand
+  y-axis`). Text is relatively larger at 240 px than matplotlib's 6 pt ticks;
+  legible, inventory at parity. 15 -> 14.

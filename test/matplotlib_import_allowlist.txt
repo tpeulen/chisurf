@@ -34,7 +34,6 @@
 # --- colormap --- (done 2026-10-05: emtk.colormaps)
 
 # --- figure ---
-chisurf/gui/widgets/wizard/tttr_channeldefinition/lut_thumbnail.py
 chisurf/plugins/burst/burst_h2mm/gui/native.py
 chisurf/plugins/tttr/audifier/core.py
 chisurf/plugins/tttr/audifier/lifetime_analysis.py
