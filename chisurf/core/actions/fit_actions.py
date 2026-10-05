@@ -125,9 +125,13 @@ def toggle_fit_group_link(fit_indices: typing.List[int]):
     return {}
 
 
-@action("fit.update", debounce_ms=200)
+@action("fit.update", debounce_ms=200, side_effect_class="derived")
 def update_fit(fit_index: int = 0):
-    """Update a fit's state."""
+    """Recompute a fit from its current inputs.
+
+    ``derived``: it follows an edit and is part of that edit's undo step, not a
+    step of its own.
+    """
     fit_obj = cs.fits[int(fit_index)]
     fit_obj.update()
     return {"source_uid": str(getattr(fit_obj, "unique_identifier", ""))}

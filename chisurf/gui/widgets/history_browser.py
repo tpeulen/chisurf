@@ -318,21 +318,23 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
     def all_events(self) -> typing.List[typing.Dict[str, typing.Any]]:
         return copy.deepcopy(self._events)
 
+    def _is_stop(self, index: int) -> bool:
+        """A restorable state that ends a user step (derived recomputes do not)."""
+        step_end = getattr(self._history, "is_step_end", None)
+        return self._history.can_navigate(index) and (not callable(step_end) or step_end(index))
+
     def can_undo(self) -> bool:
         """Whether an earlier complete scientific state is restorable."""
         return bool(
             self._history is not None
-            and any(self._history.can_navigate(i) for i in range(-1, self._cursor_index()))
+            and any(self._is_stop(i) for i in range(-1, self._cursor_index()))
         )
 
     def can_redo(self) -> bool:
         """Whether a later complete scientific state is restorable."""
         return bool(
             self._history is not None
-            and any(
-                self._history.can_navigate(i)
-                for i in range(self._cursor_index() + 1, len(self._events))
-            )
+            and any(self._is_stop(i) for i in range(self._cursor_index() + 1, len(self._events)))
         )
 
     def move_cursor(self, delta: int, state_only: bool = False):
@@ -343,7 +345,7 @@ class HistoryBrowserWidget(QtWidgets.QWidget):
         step = -1 if delta < 0 else 1
         index = self._cursor_index() + step
         while -1 <= index < len(self._events):
-            if self._history.can_navigate(index):
+            if self._is_stop(index):
                 try:
                     self._history.navigate(index)
                 except Exception:

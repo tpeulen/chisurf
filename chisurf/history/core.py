@@ -244,6 +244,25 @@ class OperationHistory:
         with self._lock:
             return self._cursor
 
+    @staticmethod
+    def _is_derived(event: typing.Dict[str, typing.Any]) -> bool:
+        payload = event.get("payload") or {}
+        return isinstance(payload, dict) and payload.get("side_effect_class") == "derived"
+
+    def is_step_end(self, index: int) -> bool:
+        """Whether *index* ends a user step, so undo and redo may stop there.
+
+        A ``derived`` event (a recompute such as ``fit.update``) belongs to the
+        step before it: the step ends after its last derived event, and undo goes
+        back past all of them in one press while redo lands after them, with the
+        recomputed outputs current.
+        """
+        with self._lock:
+            if type(index) is not int or not -1 <= index < len(self._events):
+                return False
+            following = self._events[index + 1] if index + 1 < len(self._events) else None
+            return following is None or not self._is_derived(following)
+
     def can_navigate(self, index: int) -> bool:
         """Whether the requested cursor has complete canonical science."""
         with self._lock:
