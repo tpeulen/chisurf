@@ -84,13 +84,19 @@ class WizardHubApp(CalculatorHubApp):
     # -- frame ----------------------------------------------------------------------------------------------------- #
     def render(self):
         width, height = im.get_main_viewport().size
-        left = min(_LIST_MAX_W, max(_LIST_MIN_W, width * 0.15))
+        # Wide enough for the longest label behind its icon, and no wider: the wizard gets the rest.
+        fit = (
+            max((im.calc_text_size(e.label)[0] for e in self.entries), default=0.0)
+            + im.selectable_icon_width()
+            + 3.0 * im.get_style().frame_padding[0]
+        )
+        left = min(_LIST_MAX_W, max(_LIST_MIN_W, width * 0.15, fit))
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
         if im.begin(tr("Wizards"), flags=im.WindowFlags.NO_RESIZE):
             first = last = None
             for entry in self.entries:
-                if im.selectable(entry.label, self.selected == entry.id):
+                if im.selectable(entry.label, self.selected == entry.id, icon=entry.icon):
                     self.select(entry.id)
                     self.tour.notify_used("wizards_list")
                 im.set_item_tooltip(entry.description)

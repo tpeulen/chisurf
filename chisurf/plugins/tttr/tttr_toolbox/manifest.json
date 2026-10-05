@@ -2,7 +2,7 @@
   "id": "tttr_toolbox",
   "version": "1.0.0",
   "display_name": "Tools:TTTR Tools",
-  "description": "Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and Split/Convert.",
+  "description": "Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor, Photon Table, Split/Convert, Count Rate Analysis and Audifier.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -24,6 +24,7 @@
   },
   "optional_requires": {
     "microtime_shifter": "*",
+    "photon_table": "*",
     "ptu_alex_creator": "*",
     "tttr_audifier": "*",
     "tttr_count_rate_analysis": "*",

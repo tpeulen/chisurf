@@ -46,16 +46,16 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [CLSM-Draw](clsm.md) *(hidden)* | Create CLSM-TTTR image representations, select pixels interactively, and export fluorescence-decay histograms. |
-| [Colocalization](img_coloc.md) | Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and photon-stream images, with an interactive intensity scatter gate. |
-| [Drift Correction](img_drift.md) | Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid. |
-| [FRC Resolution](img_frc.md) | Measure the resolution an image actually achieved by Fourier ring correlation — of a TIFF stack or a photon stream — and read it against the 1/7, ½-bit or 2σ criterion. |
-| [Flow Maps](img_flow.md) | Map the velocity field of a sample from its own correlations — one arrow per tile, over the image. No model and no fit: the velocity is read off where a correlation peak is. Ships a simulated demo whose flow profile is known, so the arrows can be checked. |
+| [Colocalization](img_coloc.md) *(hidden)* | Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and photon-stream images, with an interactive intensity scatter gate. |
+| [Drift Correction](img_drift.md) *(hidden)* | Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid. |
+| [FRC Resolution](img_frc.md) *(hidden)* | Measure the resolution an image actually achieved by Fourier ring correlation — of a TIFF stack or a photon stream — and read it against the 1/7, ½-bit or 2σ criterion. |
+| [Flow Maps](img_flow.md) *(hidden)* | Map the velocity field of a sample from its own correlations — one arrow per tile, over the image. No model and no fit: the velocity is read off where a correlation peak is. Ships a simulated demo whose flow profile is known, so the arrows can be checked. |
 | [IRF & BG](img_calibration.md) *(hidden)* | Per-detector IRF file and background (kHz) calibration; transferred to phasor and pixel-wise MLE. Optional (skippable) pipeline step. |
 | [Intensity](img_pixel_intensity.md) *(hidden)* | Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference) that N&B / phasor / MLE enrich. |
 | [Mean Micro-Time](img_pixel_micro_time.md) *(hidden)* | Per-pixel mean micro-time (arrival time) maps from TTTR imaging data. |
 | [Number & Brightness](img_pixel_nb.md) *(hidden)* | Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecular brightness and number, cross N&B, analog-detector calibration, bleaching detrending, and gating a brightness population back onto the image. |
 | [PSF Determination](psf_determination.md) *(hidden)* | 3D Gaussian PSF fitting and bead detection for confocal microscopy. |
-| [Particle Tracking](img_tracking.md) | Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement. |
+| [Particle Tracking](img_tracking.md) *(hidden)* | Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement. |
 | [Phasor-FLIM](img_pixel_phasor.md) *(hidden)* | Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data. |
 | [Spot Finder](spot_finder.md) *(hidden)* | Detect spots and regions in imaging data and persist them, with their pixels, into the measurement's container. |
 
@@ -123,7 +123,7 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [Burst Analysis](burst_analysis.md) | Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation. |
 | [Decay Analysis](lifetime_analysis.md) | Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and VV/VH G-factor calibration. |
 | [FCS](fcs_toolbox.md) | Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.  Merges the FCS *Correlator* workflow (detector → files → filter → correlate → merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, diffusion/volume calculator, fFCS filter calculator, correlation-channel presets) into a single left-navigation tool. Built on the reusable ``NavigationPanelTool`` shell. The ribbon execs this file with ``__name__ == "plugin"``. |
-| [Image Tools](imaging_tools.md) | Unified imaging toolbox: Image Browser, Drift Correction, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination. |
+| [Image Tools](imaging_tools.md) | Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination. |
 | [Light Path Simulator](lightpath_simulator.md) | Optical light path simulator to calculate crosstalk and R0 overlap integrals. |
 | [Spectra Downloader](spectra_downloader.md) | Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources) |
 
@@ -243,7 +243,7 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [File tools](filetools.md) | Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header editor. |
 | [MMFDB Admin](mmfdb_admin.md) | Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives. |
 | [Open Project](project_browser.md) | Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control. |
-| [TTTR Tools](tttr_toolbox.md) | Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and Split/Convert. |
+| [TTTR Tools](tttr_toolbox.md) | Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor, Photon Table, Split/Convert, Count Rate Analysis and Audifier. |
 
 ## Tools → Burst
 
@@ -285,6 +285,7 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [Count Rate Analysis](tttr_count_rate_analysis.md) *(hidden)* | Count rates per detector channel across many TTTR files, with mean/std and a per-file plot. |
 | [LUT Tools](tttr_lut_tools.md) *(hidden)* | Compute TTTR microtime LUTs and create channel LUT settings in one dockable workspace. |
 | [Microtime Shifter](microtime_shifter.md) *(hidden)* | Apply global and per-channel micro-time shifts to TTTR files. |
+| [Photon Table](photon_table.md) *(hidden)* | Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter. |
 
 ## Uncategorized
 

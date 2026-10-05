@@ -137,6 +137,14 @@ def _tracking(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     return widget
 
 
+def _coloc(parent: ImagingToolsTool) -> QtWidgets.QWidget:
+    from chisurf.plugins.microscopy.img_coloc.gui.tool import ImgColocTool
+
+    widget = ImgColocTool(parent=parent, embedded=True)
+    parent._register_panel("coloc", widget)
+    return widget
+
+
 def _pixel_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_mle.gui.tool import ImgPixelMleTool
 
@@ -302,6 +310,18 @@ IMAGING_PANELS: list[dict] = [
         ),
         "factory": _tracking,
         "role": "tracking",
+    },
+    {
+        "name": "Colocalization",
+        "icon": "\U0001f52c",
+        "description": (
+            "Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) with an "
+            "interactive intensity scatter gate. Sits after Drift because a channel "
+            "registration error reads as anti-correlation, and outside the numbered "
+            "steps because it compares two channels rather than building a per-pixel map."
+        ),
+        "factory": _coloc,
+        "role": "coloc",
     },
     {
         "name": "1. Intensity",

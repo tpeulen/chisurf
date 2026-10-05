@@ -119,5 +119,6 @@
     }
   ],
   "events": [],
-  "dependencies": {}
+  "dependencies": {},
+  "menu_hidden": true
 }

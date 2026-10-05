@@ -9,10 +9,11 @@ from emtk import im
 from emtk.i18n import get_locale
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.emtk.plugins import load_plugin, manifests
 from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
 
-#: (plugin id, list label, icon (none: the Qt pictograms are not drawn), description, tour alias)
+#: (plugin id, list label, icon (empty: the plugin's own manifest icon), description, tour alias)
 PANELS = [
     ("irf_estimator", "1. IRF Estimation", "", "Estimate instrument response functions from fluorescence decays.", "IRF Estimation"),
     ("maxent_decay", "2. MaxEnt MEM", "", "Run maximum entropy lifetime and FRET-distance analysis.", "MaxEnt MEM"),
@@ -27,7 +28,13 @@ EXPERIMENTAL_COLOUR = (230, 80, 80, 255)
 class LifetimeAnalysisApp(CalculatorHubApp):
     def __init__(self):
         entries = [
-            SimpleNamespace(id=id, label=label, icon=icon, description=description, alias=alias)
+            SimpleNamespace(
+                id=id,
+                label=label,
+                icon=icon or entry_icon({}, id),
+                description=description,
+                alias=alias,
+            )
             for id, label, icon, description, alias in PANELS
         ]
         super().__init__(entries=entries)
@@ -98,7 +105,7 @@ class LifetimeAnalysisApp(CalculatorHubApp):
     def render(self):
         vp = im.get_main_viewport()
         width, height = vp.size
-        left = min(LIST_MAX_W, max(215.0, width * 0.24))
+        left = min(LIST_MAX_W, max(215.0, width * 0.24)) + im.selectable_icon_width()
         self.item_rects.clear()
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height), im.Cond.ALWAYS)
@@ -110,7 +117,7 @@ class LifetimeAnalysisApp(CalculatorHubApp):
             first = last = None
             for entry in self.visible_entries():
                 mark = " *" if self.experimental_message(entry.id) else ""
-                if im.selectable(entry.label + mark, selected=self.selected == entry.id):
+                if im.selectable(entry.label + mark, selected=self.selected == entry.id, icon=entry.icon):
                     self.select(entry.id)
                 im.set_item_tooltip(entry.description + (" (marked * : experimental, see the banner)" if mark else ""))
                 rect = im.get_item_rect()

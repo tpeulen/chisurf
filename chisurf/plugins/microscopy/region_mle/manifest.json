@@ -10,7 +10,7 @@
     "Imaging",
     "Lifetime"
   ],
-  "icon": "🔬",
+  "icon": "🧩",
   "state_namespace": "region_mle",
   "statefulness": {
     "enabled": true,

@@ -14,6 +14,7 @@ from emtk import im, keys
 from emtk.app import ImApp
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.plugin_icons import entry_icon
 
 from ..core.registry import default_calculators
 
@@ -133,7 +134,11 @@ class CalculatorHubApp(ImApp):
         if im.begin("Calculators", flags=im.WindowFlags.NO_RESIZE):
             first = last = None
             for entry in self.entries:
-                if im.selectable(entry.label, self.selected == entry.id):
+                if im.selectable(
+                    entry.label,
+                    self.selected == entry.id,
+                    icon=entry_icon(entry, getattr(entry, "widget", None)),
+                ):
                     self.select(entry.id)
                     self.tour.notify_used("calculators_list")
                 im.set_item_tooltip(entry.description)

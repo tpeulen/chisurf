@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: One window for the TTTR file tools (TTTR Tools)
-description: How the TTTR Tools window hosts the ALEX Creator, micro-time shifter, header editor, splitter, count-rate analysis and audifier, how to find and step through them, and the two clocks (macro time and micro time) that decide which one you need.
+description: How the TTTR Tools window hosts the ALEX Creator, micro-time shifter, header editor, photon table, splitter, count-rate analysis and audifier, how to find and step through them, and the two clocks (macro time and micro time) that decide which one you need.
 tags: [guides, tttr, tools]
 ---
 
@@ -27,7 +27,8 @@ macro time; PIE gating reads the micro time: the ALEX Creator moves one into the
 
 ## Using the window
 
-1. Click a tool in the list. **Search** narrows the list by name, description or id; an empty result says *No matching tools*.
+1. Click a tool in the list; each row starts with its tool's icon. **Photon Table** shows the photons of a file one row
+   per photon (channel, micro time, macro time). **Search** narrows the list by name, description or id; an empty result says *No matching tools*.
 2. **Back** and **Next** (bottom right) step to the neighbouring tool and are grey at the ends.
 3. **Help** opens the toolbox help, **Tool help** the help of the selected tool, **Guide** a tour that waits for you to select
    *Count Rate Analysis* and *ALEX Creator* yourself.

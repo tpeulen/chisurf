@@ -13,6 +13,7 @@ from emtk import im
 from emtk.i18n import tr
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
 
 from .client import DetectorSetupClient
@@ -54,6 +55,12 @@ PANELS = (
         'microscopy/img_tracking',
         'Tracking',
         'Follow individual particles through the frames and fit their diffusion coefficient. Sits after Drift because a drifting sample looks exactly like directed motion, and outside the numbered steps because it measures motion rather than building a per-pixel map.',
+    ),
+    (
+        'coloc',
+        'microscopy/img_coloc',
+        'Colocalization',
+        'Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) with an interactive intensity scatter gate. Sits after Drift because a channel registration error reads as anti-correlation, and outside the numbered steps because it compares two channels rather than building a per-pixel map.',
     ),
     (
         'pixel_intensity',
@@ -136,7 +143,10 @@ class ImagingToolsApp(CalculatorHubApp):
     ANALYSIS_ROLES = ("pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor")
 
     def __init__(self, client=None, factories=None, mmfdb_db=None, mmfdb_session=None):
-        entries = [SimpleNamespace(id=r, label=name, icon="", description=tip, alias=r) for r, _p, name, tip in PANELS]
+        entries = [
+            SimpleNamespace(id=r, label=name, icon=entry_icon({}, p), description=tip, alias=r)
+            for r, p, name, tip in PANELS
+        ]
         super().__init__(entries=entries)
         self.continuous = False
         self.client = client or DetectorSetupClient()
@@ -427,7 +437,7 @@ class ImagingToolsApp(CalculatorHubApp):
                     im.separator()
                 available = bool(self.factory(entry.id))
                 title = label(entry.label) + ("" if available else " - " + label("pending"))
-                if im.selectable(title, self.selected == entry.id):
+                if im.selectable(title, self.selected == entry.id, icon=entry.icon):
                     self.goto_role(entry.id)
                 im.set_item_tooltip(label(entry.description) + ("" if available else " " + label("Native migration pending for this tool.")))
                 rect = im.get_item_rect()

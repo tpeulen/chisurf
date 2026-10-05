@@ -64,10 +64,17 @@ class AnisotropyApp(ImApp):
             on_step_change=self.reveal_step,
         )
         for name, form in self.forms.items():
-            form.on_used = (lambda n, prefix=name: self.tour.notify_used(f"{prefix}.{n}")) if name in (
-                "lifetime", "rotation") else self.tour.notify_used
-        self.docks = DockManager(Split("h", 0.20, Region("navigation"), Region("step")), name="tr_anisotropy")
-        self.docks.add_window("navigation", "Anisotropy workflow", self.navigation, dock="navigation", closable=False)
+            form.on_used = (
+                (lambda n, prefix=name: self.tour.notify_used(f"{prefix}.{n}"))
+                if name in ("lifetime", "rotation")
+                else self.tour.notify_used
+            )
+        self.docks = DockManager(
+            Split("h", 0.22, Region("navigation"), Region("step")), name="tr_anisotropy"
+        )
+        self.docks.add_window(
+            "navigation", "Anisotropy workflow", self.navigation, dock="navigation", closable=False
+        )
         self.docks.add_window("step", "Workflow step", self.content, dock="step", closable=False)
         super().__init__(self.render, continuous=False)
 

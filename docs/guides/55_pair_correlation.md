@@ -17,8 +17,7 @@ limits the arrows — see {ref}`concept-pair-correlation`.
 
 ## The tool
 
-Velocity fields have their own tool: **Spectroscopy → Image Tools → Flow**, or
-standalone as **Imaging → Flow Maps**. It maps a TIFF stack or a photon stream
+Velocity fields have their own tool: **Spectroscopy → Image Tools → Flow**. It maps a TIFF stack or a photon stream
 into one arrow per tile, with no model and no fit — the velocity is read off
 where a correlation peak *is*.
 

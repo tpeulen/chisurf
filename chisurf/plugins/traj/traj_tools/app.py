@@ -18,6 +18,7 @@ from types import SimpleNamespace
 from emtk import i18n, im
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
 
 from .registry import TOOL_PANELS
@@ -41,8 +42,16 @@ class TrajectoryToolsHubApp(CalculatorHubApp):
 
     def __init__(self) -> None:
         self.panels = TOOL_PANELS
-        entries = [SimpleNamespace(id=p["name"], label=p["name"], icon="", description=p["description"], emtk=p["emtk"])
-                   for p in TOOL_PANELS]
+        entries = [
+            SimpleNamespace(
+                id=p["name"],
+                label=p["name"],
+                icon=entry_icon(p, p["emtk"]),
+                description=p["description"],
+                emtk=p["emtk"],
+            )
+            for p in TOOL_PANELS
+        ]
         super().__init__(entries=entries)
         self.status = "Ready"
         self.help_window = EmTkHelpWindow(title="Trajectory tools - Help", resource=HERE / "gui/help.md", owner=self,
@@ -99,7 +108,7 @@ class TrajectoryToolsHubApp(CalculatorHubApp):
             im.separator()
             first = last = None
             for entry in self.entries:
-                if im.selectable(tr(entry.label), self.selected == entry.id):
+                if im.selectable(tr(entry.label), self.selected == entry.id, icon=entry.icon):
                     self.select(entry.id)
                 im.set_item_tooltip(tr(entry.description))
                 rect = im.get_item_rect()

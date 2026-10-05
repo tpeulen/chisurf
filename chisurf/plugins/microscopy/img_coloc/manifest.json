@@ -9,7 +9,7 @@
   "categories": [
     "Imaging"
   ],
-  "icon": "\ud83d\udd2c",
+  "icon": "🔗",
   "state_namespace": "img_coloc",
   "statefulness": {
     "enabled": true,
@@ -22,5 +22,6 @@
     "gui": "chisurf.plugins.microscopy.img_coloc.gui.tool:ImgColocTool",
     "cli": "img-coloc=chisurf.plugins.microscopy.img_coloc.cli:cli",
     "emtk": "chisurf.plugins.microscopy.img_coloc.gui.app:make_app"
-  }
+  },
+  "menu_hidden": true
 }

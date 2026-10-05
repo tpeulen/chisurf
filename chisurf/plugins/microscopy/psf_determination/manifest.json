@@ -9,7 +9,7 @@
   "categories": [
     "Imaging"
   ],
-  "icon": "\ud83d\udd2c",
+  "icon": "💠",
   "state_namespace": "psf_determination",
   "statefulness": {
     "enabled": true,

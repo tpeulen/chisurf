@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: Two-channel colocalization
-description: The Imaging → Colocalization tool (img_coloc) takes one image with at least two channels and reports the standard colocalization coefficient set for a chosen channel pair — Pearson, Manders (overlap and split), Li's ICQ, Spearman…
+description: The Colocalization tool of Image Tools (img_coloc) takes one image with at least two channels and reports the standard colocalization coefficient set for a chosen channel pair — Pearson, Manders (overlap and split), Li's ICQ, Spearman…
 tags: [guides, imaging, colocalization]
 ---
 
@@ -16,7 +16,9 @@ registration check are explained in the concept page {ref}`concept-colocalizatio
 
 ## What it does
 
-The **Imaging → Colocalization** tool (`img_coloc`) takes one image with at least
+The **Colocalization** tool (`img_coloc`, **Spectroscopy → Image Tools →
+Colocalization**, after *Drift* — a channel registration error reads as
+anti-correlation) takes one image with at least
 two channels and reports the standard colocalization coefficient set for a chosen
 channel pair — Pearson, Manders (overlap and split), Li's ICQ, Spearman — with
 Costes automatic thresholds, a Costes randomization significance test, and van

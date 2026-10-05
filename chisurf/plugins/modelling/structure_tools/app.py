@@ -14,6 +14,8 @@ import importlib
 from emtk import i18n, im
 from emtk.app import ImApp
 
+from chisurf.emtk.plugin_icons import entry_icon
+
 from .registry import STRUCTURE_TOOL_PANELS
 from .strings import install_translations
 
@@ -129,7 +131,9 @@ class StructureToolsHubApp(ImApp):
                     im.separator()
                 last_group = group
                 label = tr(panel["name"])
-                if im.selectable(label, self.selected == panel["name"]):
+                if im.selectable(
+                    label, self.selected == panel["name"], icon=entry_icon(panel, panel.get("emtk"))
+                ):
                     self.select(panel["name"])
                 self.remember(f"nav_{panel['name']}")
                 im.set_item_tooltip(tr(panel["description"]))

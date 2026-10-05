@@ -5,7 +5,7 @@
   "description": "Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Imaging"],
-  "icon": "🎯",
+  "icon": "📌",
   "state_namespace": "img_drift",
   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
   "entrypoints": {
@@ -13,5 +13,6 @@
     "emtk": "chisurf.plugins.microscopy.img_drift.gui.app:make_app",
     "cli": "img-drift=chisurf.plugins.microscopy.img_drift.cli:cli"
   },
-  "operation_types": ["drift_correction"]
+  "operation_types": ["drift_correction"],
+  "menu_hidden": true
 }

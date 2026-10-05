@@ -1,5 +1,5 @@
 {
-  "_comment": "Data-driven panel list for the TTTR Tools toolbox. Each entry names a tool by its GUI entrypoint (module:Class); the toolbox lazily imports and instantiates it. Set \"embed\": true for QMainWindow tools that must be flattened into a plain panel. Add a tool by adding an entry here — no Python needed. Use {\"separator\": true} to group.",
+  "_comment": "Data-driven panel list for the TTTR Tools toolbox. Each entry names a tool by its GUI entrypoint (module:Class); the toolbox lazily imports and instantiates it. \"icon\" is drawn in the navigation list in front of the name. Set \"embed\": true for QMainWindow tools that must be flattened into a plain panel. Add a tool by adding an entry here — no Python needed. Use {\"separator\": true} to group.",
   "title": "🧰 TTTR Tools",
   "panels": [
     {
@@ -23,6 +23,14 @@
       "role": "tttr_header_editor",
       "entrypoint": "chisurf.plugins.tttr.tttr_header_edit.gui.tool:TagsEditor",
       "description": "View, edit, add and remove header tags in TTTR files (PTU/HT3/SPC/HDF5); saves as PTU."
+    },
+    {
+      "name": "Photon Table",
+      "icon": "🔆",
+      "role": "photon_table",
+      "entrypoint": "chisurf.plugins.tttr.photon_table.gui.tool:PhotonTableTool",
+      "embed": true,
+      "description": "Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon."
     },
     {"separator": true, "role": "separator_split"},
     {

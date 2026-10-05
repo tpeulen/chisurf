@@ -200,11 +200,18 @@ def test_a_long_description_or_error_is_never_clipped_by_the_embedded_calculator
     assert app.child_box[1] >= 70.0 and app.child is None
 
 
-def test_no_emoji_in_the_list_and_the_header(app):
+def test_emoji_in_the_list_are_only_the_registry_icons(app):
+    """Each row draws its plain label and, in the icon slot beside it, the registry's icon."""
+    from emtk.im_widgets import icon_text
+
     strings = draw(app).strings
+    icons = {icon_text(entry.icon) for entry in app.entries}
     for entry in app.entries:
-        assert entry.label in strings  # the plain label; the registry icon is not drawn
-    assert not any(ord(ch) > 0x2190 and ch not in "κ²χ" for s in strings[:20] for ch in s), strings[:20]
+        assert entry.label in strings
+        assert icon_text(entry.icon) in strings
+    assert not any(
+        ord(ch) > 0x2190 and ch not in "κ²χ" for s in strings[:20] if s not in icons for ch in s
+    ), strings[:20]
 
 
 # ── 2. clicks: the list, the embedded calculator, keys ------------------------------------------------- #

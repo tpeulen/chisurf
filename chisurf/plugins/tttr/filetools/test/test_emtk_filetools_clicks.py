@@ -17,7 +17,12 @@ import pytest
 from emtk import keys
 from emtk.app import ImApp
 
-from chisurf.plugins.core.project_browser.test.driving import clipped_texts, draw_clip, layout_problems
+from chisurf.emtk.plugin_icons import entry_icon
+from chisurf.plugins.core.project_browser.test.driving import (
+    clipped_texts,
+    draw_clip,
+    layout_problems,
+)
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.tttr.filetools.gui.app import FileToolsApp, caption
 
@@ -282,9 +287,19 @@ def test_every_description_fits_above_the_tool_whatever_the_window_width(size):
     app.close()
 
 
-def test_the_buttons_and_captions_carry_no_emoji(drv):
-    for text in drv.draw(2).strings:
-        assert all(ord(ch) < 0x2190 or 0x2190 <= ord(ch) <= 0x21FF for ch in text), text  # arrows (the .pto caption) only
+def test_emoji_are_only_the_list_rows_icons(drv):
+    """Each row carries its tool's pictogram in the icon slot; buttons and captions carry none."""
+    from emtk.im_widgets import icon_text
+
+    icons = {icon_text(entry_icon(p, p["entrypoint"])) for p in drv.app.panels}
+    strings = drv.draw(2).strings
+    assert icons <= set(strings)
+    for text in strings:
+        if text in icons:
+            continue
+        assert all(ord(ch) < 0x2190 or 0x2190 <= ord(ch) <= 0x21FF for ch in text), (
+            text
+        )  # arrows (the .pto caption) only
 
 
 def test_the_whole_flow_works_in_the_small_window_too():

@@ -99,7 +99,11 @@ class GamesHubApp(ImApp):
             for panel in self.entries:
                 im.dummy(0.0, 4.0)
                 label = tr(panel["name"]) if panel["emtk"] else f"{tr(panel['name'])} ({tr('not available')})"
-                if im.selectable(label + "##game-" + panel["name"], self.selected == panel["name"]):
+                if im.selectable(
+                    label + "##game-" + panel["name"],
+                    self.selected == panel["name"],
+                    icon=panel.get("icon"),
+                ):
                     self.select(panel["name"])
                 im.set_item_tooltip(tr(panel["description"]))
             im.unindent(self.PAD)

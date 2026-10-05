@@ -197,9 +197,10 @@ class TttrToolboxApp(ImApp):
                 if panel["role"] not in matching:
                     continue
                 if im.selectable(
-                    tr(panel["name"]) + "##" + panel["role"],  # (the panels' pictograms are not in emtk's font)
+                    tr(panel["name"]) + "##" + panel["role"],
                     self.selected == panel["role"],
                     size=(left - 8, 28),
+                    icon=panel.get("icon"),
                 ):
                     self.select(panel["role"])
                 im.set_item_tooltip(panel["description"])

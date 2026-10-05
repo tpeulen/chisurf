@@ -11,6 +11,7 @@ from emtk.file_dialog import FileDialog
 from emtk.keys import KEY_ENTER, KEY_RETURN
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.plugin_icons import entry_icon
 
 from .model import (
     DEFAULT_PANEL,
@@ -525,8 +526,10 @@ class UnifiedSettingsApp(ImApp):
     def render(self):
         vp = im.get_main_viewport()
         width, height = vp.size
-        # 200 px like the Qt list; narrower windows give the hosted panel the room (the longest label needs ~140 px)
+        # 200 px like the Qt list; narrower windows give the hosted panel the room (the longest label needs
+        # ~140 px), plus the rows' icon slot
         left = SIDEBAR_WIDTH if width >= 1100 else (180.0 if width >= 900 else 152.0)
+        left += im.selectable_icon_width()
         body = max(1.0, height - STATUS_HEIGHT)
         flags = im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE | im.WindowFlags.NO_MOVE
         self.item_rects["destinations"] = (0.0, 0.0, left, body)
@@ -545,7 +548,12 @@ class UnifiedSettingsApp(ImApp):
             # A window does not scroll in emtk, a child does: the list scrolls with the wheel when it does not fit.
             im.begin_child("##destination_list", (float(avail_w), max(float(avail_h), 30.0)))
             for panel in shown:
-                if im.selectable(panel.label, self.selected == panel.key, size=(0, 26)):
+                if im.selectable(
+                    panel.label,
+                    self.selected == panel.key,
+                    size=(0, 26),
+                    icon=entry_icon(panel, panel.plugin, panel.entry),
+                ):
                     self.choose(panel.key)
                     self.tour.notify_used("destinations")
                 im.set_item_tooltip(panel.description or panel.label)

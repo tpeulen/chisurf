@@ -19,6 +19,7 @@ from emtk.app import ImApp
 
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.emtk.plugin_icons import entry_icon
 
 SPEC = json.loads(Path(__file__).with_name("panels.json").read_text())
 SPLITTER_FIELDS = (
@@ -48,7 +49,7 @@ def native_factory(panel):
 
 
 def caption(panel) -> str:
-    """The panel's name (the Qt list's pictograms are emoji: the native list has none)."""
+    """The panel's name; its pictogram is drawn in the row's icon slot."""
     return tr(panel["name"])
 
 
@@ -167,7 +168,11 @@ class FileToolsApp(TourTarget, ImApp):
                     not in (tr(panel["name"]) + " " + tr(panel["description"])).casefold()
                 ):
                     continue
-                if im.selectable(caption(panel), self.selected == panel["role"]):
+                if im.selectable(
+                    caption(panel),
+                    self.selected == panel["role"],
+                    icon=entry_icon(panel, panel["entrypoint"]),
+                ):
                     self.select(panel["role"])
                 im.set_item_tooltip(tr(panel["description"]))
                 self.remember("nav_" + panel["role"])

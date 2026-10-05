@@ -10,12 +10,14 @@ from __future__ import annotations
 STRUCTURE_TOOL_PANELS: list[dict] = [
     {
         "name": "FPS JSON Editor",
+        "icon": "📝",
         "group": 0,
         "description": "Edit fps.json files for FRET accessible-volume modelling and fetch reference PDBs.",
         "emtk": "chisurf.plugins.modelling.structure_tools.cards.fps_json:make_app",
     },
     {
         "name": "Docking & Screening",
+        "icon": "⚓",
         "group": 0,
         "description": "FRET-restrained rigid-body docking, refinement and structure-library screening (IMP + IMP.bff).",
         "emtk": "chisurf.plugins.modelling.structure_tools.cards.docking:make_app",

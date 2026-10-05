@@ -1,3 +1,15 @@
+## Calculator hub: FCS diffusion child fails under the hermetic test env (2026-10-05)
+
+`calculator/hub/test/test_emtk_hub_parity.py` — two tests (`…every_one_builds_and_draws…`,
+`…clicking_each_list_entry…[fcs_calculator]`) fail with *"configured MMFDB reference database is
+absent"*. The hub's hermetic fixture points `MMFDB_DATABASE_PATH` at a temp file that does not
+exist; `chisurf/core/fluorescence/dyes.py::_entries_from_database` treats a configured-but-missing
+SQLite file as an error instead of falling back to the packaged `reference_diffusion.json`. Not
+caused by the hub-icon change (fails while building the child). Left alone because
+`fcs/fcs_calculator/` had another session's uncommitted edits; the fix is a decision for that
+lane: fall back (and warn) when the configured file is absent, or make the fixture not configure
+one.
+
 ## Native TCSPC visual-test teardown/restart (2026-10-03)
 
 The standalone FitWindow visual round-trip followed by Main construction in the

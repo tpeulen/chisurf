@@ -46,14 +46,14 @@ def test_toolbox_remembers_window_and_selection(qapp, qtbot, tmp_path):
     assert w._settings_key == "tttr_toolbox"
     w._settings = _settings
     w.resize(1180, 760)
-    w.nav_list.setCurrentRow(6)  # Count Rate Analysis
+    w.nav_list.setCurrentRow(7)  # Count Rate Analysis
     w._save_window_state()
 
     w2 = TttrToolboxTool()
     qtbot.addWidget(w2)
     w2._settings = _settings
     w2._restore_window_state()
-    assert w2.nav_list.currentRow() == 6
+    assert w2.nav_list.currentRow() == 7
 
 
 def test_panels_are_data_driven_from_json():

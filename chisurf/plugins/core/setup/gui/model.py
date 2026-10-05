@@ -29,6 +29,8 @@ class Panel:
     filename: str
     description: str
     entry: str | None = None
+    #: The list's pictogram where the plugin's own would be missing or shared with another row.
+    icon: str = ""
 
 
 PANELS = [
@@ -45,6 +47,7 @@ PANELS = [
         None,
         "settings_chisurf.yaml",
         "Edit application settings and retain their YAML value types.",
+        icon="🛠️",
     ),
     Panel(
         "acq",
@@ -53,6 +56,7 @@ PANELS = [
         "settings_chisurf.yaml",
         "Acquisition settings and simulator/device configuration.",
         entry="chisurf.plugins.core.setup.gui.acq_app:make_app",
+        icon="🎚️",
     ),
     Panel(
         "style",
@@ -88,6 +92,7 @@ PANELS = [
         "ai_settings",
         "settings_chisurf.yaml",
         "Configure AI providers, models and editor integration.",
+        icon="🤖",
     ),
     Panel(
         "plugins",
@@ -111,6 +116,7 @@ PANELS = [
         "settings_chisurf.yaml",
         "Package-manager preferences and environment configuration.",
         entry="chisurf.plugins.core.updater.gui.package_app:make_package_app",
+        icon="📚",
     ),
     Panel(
         "channels",

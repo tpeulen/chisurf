@@ -20,8 +20,7 @@ It lives in **Spectroscopy → Image Tools**, as the **Drift** step between
 numbered pipeline below it is built from frames that must already be aligned.
 Correct the drift first, then walk the pipeline with **Next ▶**.
 
-It is also available standalone as **Imaging → Drift Correction**. Either way you
-can drop a file onto the window. It accepts
+Image Tools is its only menu entry. You can drop a file onto the window. It accepts
 
 * **TIFF stacks** (and anything else the image reader handles), and
 * **photon streams** — PTU, HT3, SPC — reconstructed into a confocal-scan image.

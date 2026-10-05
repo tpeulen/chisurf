@@ -2,7 +2,7 @@
   "id": "imaging_tools",
   "version": "1.0.0",
   "display_name": "Spectroscopy:Image Tools",
-  "description": "Unified imaging toolbox: Image Browser, Drift Correction, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination.",
+  "description": "Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -23,6 +23,7 @@
   },
   "optional_requires": {
     "clsm": "*",
+    "img_coloc": "*",
     "img_calibration": "*",
     "img_drift": "*",
     "img_flow": "*",

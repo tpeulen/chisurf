@@ -28,7 +28,7 @@ and **HDF5**. Below: the tool itself, here the Intensity step.
 | Group | Tools |
 | --- | --- |
 | Start | **Setup** (detector channels and PIE windows), **Browser** (choose the photon image) |
-| Motion and resolution | **Drift**, **Resolution** (FRC), **Flow**, **Tracking** |
+| Motion, resolution and channels | **Drift**, **Resolution** (FRC), **Flow**, **Tracking**, **Colocalization** |
 | The numbered per-pixel steps | **1. Intensity**, **2. Number & Brightness**, **3. Mean Micro-Time**, **4. IRF & BG** (optional), **5. Phasor-FLIM**, **6. Pixel-wise MLE** |
 | Below the rule | **CLSM Draw**, **Spot Finder**, **Region MLE**, **PSF Determination** |
 
