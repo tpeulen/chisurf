@@ -15,6 +15,9 @@ def _plugin_ribbon():
         def load_and_show_plugin(self, *args, **kwargs):
             """Stand in for the main window's plugin launcher."""
 
+        def onRunMacro(self, *args, **kwargs):
+            """Stand in for the macro executor older launch paths call."""
+
     class _Host(PluginMethodsMixin):
         def __init__(self, bar):
             self.ribbon_bar = bar
