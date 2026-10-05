@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-from scipy.cluster import hierarchy
-from scipy.cluster.hierarchy import fcluster
+from tttrlib import fcluster, linkage
 
 from chisurf import typing
 from chisurf.core.structure import Structure, average, find_best, rmsd
@@ -50,7 +49,7 @@ def cluster(
     if Z is None:
         # run hierarchical clustering on the distance matrix
         print("\n\nRunning hierarchical clustering (UPGMA)...")
-        Z = hierarchy.linkage(distances, method="average", preserve_input=True)
+        Z = linkage(distances, method="average")
         # get flat clusters from the linkage matrix corresponding to states
         if directory is not None:
             print("Saving cluster-results")

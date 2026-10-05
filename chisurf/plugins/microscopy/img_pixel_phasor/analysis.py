@@ -1,11 +1,11 @@
-"""Pure-``numpy``/``scipy`` phasor analysis (PRD-55 / PRD-56).
+"""Phasor analysis on calibrated ``g,s`` maps, in numpy.
 
-Qt-free and tttrlib-free phasor-space operations that consume calibrated ``g,s``
-maps (as produced by
-:func:`chisurf.core.fluorescence.imaging.pixel_maps.phasor_maps`) and return derived
-maps, cursor masks, and reference-geometry polylines. These functions are the single
-source of truth for the phasor math exposed over the ``phasor.*`` RPC namespace
-(``backend/services.py``) and consumed by ndX (PRD-56).
+Qt-free phasor-space operations that consume calibrated ``g,s`` maps (as produced
+by :func:`chisurf.core.fluorescence.imaging.pixel_maps.phasor_maps`) and return
+derived maps, cursor masks, and reference-geometry polylines; the smoothing
+filters are tttrlib's scipy-identical ``tttrlib.ndimage``. These functions are the
+single source of truth for the phasor math exposed over the ``phasor.*`` RPC
+namespace (``backend/services.py``) and consumed by ndX.
 
 The formulas follow the PhasorPy reference (``thirdparty/phasorpy``, read-only); nothing
 is imported from it and it is **not** a dependency. Angular frequency uses the MHz→ns
@@ -19,7 +19,7 @@ import math
 from collections.abc import Sequence
 
 import numpy as np
-from scipy import ndimage
+from tttrlib import ndimage
 
 __all__ = [
     "angular_frequency",

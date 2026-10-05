@@ -212,7 +212,7 @@ class SpotFinderResult:
         float
             ``nan`` when there is no background left.
         """
-        from scipy import ndimage as ndi
+        from tttrlib import ndimage as ndi
 
         occupied = self.labels > 0
         if margin > 0:
@@ -336,7 +336,7 @@ def detect(image, settings: SpotFinderSettings) -> SpotFinderResult:
 # ---------------------------------------------------------------------------
 def _by_threshold(smoothed, settings: SpotFinderSettings, inside) -> np.ndarray:
     """Threshold, then either connected components or a seeded watershed."""
-    from scipy import ndimage as ndi
+    from tttrlib import ndimage as ndi
 
     from chisurf.core.roi.segmentation import (
         clear_border,

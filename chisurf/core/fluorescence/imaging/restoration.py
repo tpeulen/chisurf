@@ -372,7 +372,7 @@ def effective_psf(
     numpy.ndarray
         A normalised PSF of the same shape, wider along ``fast_axis``.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     optical_psf = np.asarray(optical_psf, dtype=float)
     axis = fast_axis % optical_psf.ndim
@@ -429,7 +429,7 @@ def oversample_psf(psf, factor: int):
         A PSF of odd extent with the same support, ``factor`` samples per
         original sample.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     psf = np.ascontiguousarray(psf, dtype=np.float64)
     factor = int(factor)

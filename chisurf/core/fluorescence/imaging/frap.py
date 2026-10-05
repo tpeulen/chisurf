@@ -258,7 +258,7 @@ def normalise_frap_stack(
 
     reference = out[:n_prebleach].mean(axis=0)
     if median_size and median_size > 1:
-        from scipy.ndimage import median_filter
+        from tttrlib.ndimage import median_filter
 
         reference = median_filter(reference, size=int(median_size), mode="nearest")
     reference = np.where(reference == 0, 1.0, reference)

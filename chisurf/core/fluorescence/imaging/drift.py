@@ -154,10 +154,7 @@ def estimate_drift(
 
     gaussian_filter = None
     if smooth and smooth > 0:
-        try:
-            from scipy.ndimage import gaussian_filter  # type: ignore[assignment]
-        except Exception:  # pragma: no cover - scipy is a hard dependency
-            gaussian_filter = None
+        from tttrlib.ndimage import gaussian_filter  # type: ignore[assignment]
 
     shifts = np.zeros((n_frames, 2), dtype=float)
     # Frame 0 *is* the reference under 'first' and 'previous', so its shift is

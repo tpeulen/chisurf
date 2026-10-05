@@ -27,9 +27,9 @@ References
 from __future__ import annotations
 
 import numpy as np
-from scipy.ndimage import median_filter as scipy_median_filter
 from scipy.optimize import minimize
 from scipy.signal import savgol_filter
+from tttrlib.ndimage import median_filter as nd_median_filter
 
 
 def pad_array(
@@ -116,12 +116,12 @@ def median_filter_nd(
         if w % 2 == 0:
             raise ValueError(f"All window sizes must be odd, got {w}")
 
-    # Build size tuple for scipy median_filter
+    # Build the per-axis size tuple median_filter takes
     size = [1] * x.ndim
     for ax, w in zip(axes, window_size):
         size[ax] = w
 
-    return scipy_median_filter(x, size=size, mode=mode)
+    return nd_median_filter(x, size=size, mode=mode)
 
 
 def generate_truncated_exponential(t: np.ndarray, params: dict[str, float]) -> np.ndarray:

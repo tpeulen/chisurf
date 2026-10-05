@@ -651,7 +651,7 @@ class RegionProperties:
     # --- boundary ----------------------------------------------------------
     def _border_codes(self) -> np.ndarray:
         """Return the 3x3 neighbourhood code of every border pixel."""
-        from scipy import ndimage as ndi
+        from tttrlib import ndimage as ndi
 
         img = self.image.astype(np.uint8)
         eroded = ndi.binary_erosion(img, ndi.generate_binary_structure(2, 1), border_value=0)
@@ -682,7 +682,7 @@ class RegionProperties:
         Less biased than :attr:`perimeter` for large convex regions, more
         sensitive to noise on the boundary of small ones.
         """
-        from scipy import ndimage as ndi
+        from tttrlib import ndimage as ndi
 
         padded = np.pad(self.image.astype(np.uint8), 1, mode="constant")
         codes = ndi.convolve(padded, _CROFTON_KERNEL, mode="constant", cval=0)
@@ -729,9 +729,9 @@ class RegionProperties:
         # one-pixel-wide line still encloses its own area.
         points = (points[:, None, :] + _HULL_OFFSETS[None, :, :]).reshape(-1, 2)
         try:
-            from scipy.spatial import ConvexHull
+            from tttrlib import ConvexHull2D
 
-            hull = ConvexHull(points)
+            hull = ConvexHull2D(points)
         except Exception:  # pragma: no cover - degenerate input
             return self.image.copy()
         ny, nx = self.image.shape
@@ -756,7 +756,7 @@ class RegionProperties:
     @cached_property
     def image_filled(self) -> np.ndarray:
         """The region with its holes filled in."""
-        from scipy import ndimage as ndi
+        from tttrlib import ndimage as ndi
 
         return ndi.binary_fill_holes(self.image)
 
@@ -791,7 +791,7 @@ class RegionProperties:
         int
             The Euler characteristic of the region.
         """
-        from scipy import ndimage as ndi
+        from tttrlib import ndimage as ndi
 
         padded = np.pad(self.image.astype(int), 1, mode="constant")
         codes = ndi.convolve(padded, _CROFTON_KERNEL, mode="constant", cval=0)
@@ -809,10 +809,9 @@ class RegionProperties:
         points = (points[:, None, :] + _HULL_OFFSETS[None, :, :]).reshape(-1, 2)
         points = points * np.asarray(self.spacing, dtype=float)
         try:
-            from scipy.spatial import ConvexHull
-            from scipy.spatial.distance import pdist
+            from tttrlib import ConvexHull2D, pdist
 
-            vertices = points[ConvexHull(points).vertices]
+            vertices = points[ConvexHull2D(points).vertices]
         except Exception:  # pragma: no cover - degenerate input
             vertices = points
         if len(vertices) < 2:
@@ -1134,7 +1133,7 @@ def regionprops(
     # region is cut from its own box instead of scanning the whole frame per
     # label — the difference between O(n_labels x frame) and O(frame) when a
     # segmentation holds thousands of molecules.
-    from scipy import ndimage as ndi
+    from tttrlib import ndimage as ndi
 
     if not np.issubdtype(labels.dtype, np.integer):
         # A float label image is ambiguous — 1.0 and 1.0000001 are different

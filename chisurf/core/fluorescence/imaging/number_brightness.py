@@ -128,7 +128,7 @@ def moving_average(stack: Any, box_pixels: int, box_frames: int) -> np.ndarray:
     numpy.ndarray
         The box-averaged stack, same shape.
     """
-    from scipy.ndimage import uniform_filter
+    from tttrlib.ndimage import uniform_filter
 
     data = as_stack(stack)
     size = [
@@ -398,7 +398,7 @@ def smooth_map(image: Any, kind: str = "none", radius: float = 3.0) -> np.ndarra
     numpy.ndarray
         Smoothed map (same shape; complex input stays complex).
     """
-    from scipy.ndimage import correlate
+    from tttrlib.ndimage import correlate
 
     kernel = smoothing_kernel(kind, radius)
     arr = np.asarray(image)
@@ -414,7 +414,7 @@ def smooth_map(image: Any, kind: str = "none", radius: float = 3.0) -> np.ndarra
 
 def median_filter_3x3(image: Any) -> np.ndarray:
     """3×3 median filter with zero padding (the edge pixels see zeros)."""
-    from scipy.ndimage import median_filter
+    from tttrlib.ndimage import median_filter
 
     return median_filter(np.asarray(image, dtype=float), size=3, mode="constant", cval=0.0)
 
@@ -440,7 +440,7 @@ def gaussian_filter_nan(image: Any, sigma: float) -> np.ndarray:
     numpy.ndarray
         Smoothed map with the input's NaN pattern.
     """
-    from scipy.ndimage import gaussian_filter
+    from tttrlib.ndimage import gaussian_filter
 
     arr = np.asarray(image, dtype=float)
     if sigma is None or sigma <= 0.0:

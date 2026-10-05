@@ -120,7 +120,7 @@ def segment_objects(
     ObjectSet
         The segmented objects (possibly empty).
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     data = np.asarray(image, dtype=float)
     if data.ndim != 2:
@@ -179,7 +179,7 @@ def segment_objects(
 
 def _watershed_split(binary: np.ndarray) -> np.ndarray:
     """Split touching objects with a distance-transform watershed."""
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     from chisurf.core.roi.segmentation import peak_local_max, watershed
 
@@ -198,9 +198,10 @@ def _nearest_distances(source: np.ndarray, target: np.ndarray) -> np.ndarray:
     """Return each *source* centroid's distance to the nearest *target* centroid."""
     if source.size == 0 or target.size == 0:
         return np.full(source.shape[0], np.nan)
-    from scipy.spatial import cKDTree
+    from tttrlib import KDTree
 
-    distances, _ = cKDTree(target).query(source, k=1)
+    tree = KDTree(np.ascontiguousarray(target, dtype=np.float64))
+    distances, _ = tree.query(np.asarray(source, dtype=np.float64), k=1)
     return np.asarray(distances, dtype=float)
 
 
@@ -216,7 +217,7 @@ def _centroids_inside(centroids: np.ndarray, labels: np.ndarray) -> np.ndarray:
 
 def _overlap_fractions(objects: ObjectSet, other_mask: np.ndarray) -> np.ndarray:
     """Return, per object, the fraction of its area covered by *other_mask*."""
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     if objects.count == 0:
         return np.zeros(0, dtype=float)

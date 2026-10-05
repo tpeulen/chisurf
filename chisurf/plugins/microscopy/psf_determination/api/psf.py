@@ -205,7 +205,7 @@ def detect_beads(
     list of (z, y, x) tuples
         Detected bead positions, rounded to the nearest pixel.
     """
-    from scipy import ndimage as ndi
+    from tttrlib import ndimage as ndi
 
     from chisurf.core.roi import regionprops
 

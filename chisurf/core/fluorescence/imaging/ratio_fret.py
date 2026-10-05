@@ -242,7 +242,7 @@ def ratio_image(
     ValueError
         If the two stacks disagree in shape.
     """
-    from scipy.ndimage import median_filter
+    from tttrlib.ndimage import median_filter
 
     d = np.asarray(donor, dtype=float)
     a = np.asarray(acceptor, dtype=float)

@@ -86,7 +86,7 @@ def gaussian(image, sigma=1.0, *, mode: str = "nearest", cval: float = 0.0, trun
     numpy.ndarray
         The smoothed image, as float.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     return ndimage.gaussian_filter(
         np.asarray(image, dtype=float), sigma, mode=mode, cval=cval, truncate=truncate
@@ -188,7 +188,7 @@ def clear_border(labels, buffer_size: int = 0, bgval: int = 0, mask=None, *, out
     numpy.ndarray
         ``labels`` with the border-touching objects set to ``bgval``.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     labels = np.asarray(labels)
     if mask is None and any(buffer_size >= size for size in labels.shape):
@@ -236,10 +236,14 @@ def _ensure_spacing(coordinates, spacing, p_norm, max_out):
     The points arrive brightest-first, so "the first" is "the brightest", which
     is what makes this a peak selection rather than an arbitrary thinning.
     """
-    from scipy.spatial import cKDTree, distance
+    from tttrlib import KDTree
 
-    tree = cKDTree(coordinates)
-    candidates_per_point = tree.query_ball_point(coordinates, r=spacing, p=p_norm)
+    coordinates = np.asarray(coordinates)
+    if len(coordinates) == 0:
+        return coordinates
+    points = np.asarray(coordinates, dtype=np.float64)
+    tree = KDTree(points)
+    candidates_per_point = tree.query_ball_point(points, r=spacing, p=p_norm)
     rejected: set[int] = set()
     accepted = 0
     for index, candidates in enumerate(candidates_per_point):
@@ -249,9 +253,16 @@ def _ensure_spacing(coordinates, spacing, p_norm, max_out):
         candidates.remove(index)
         # Points at *exactly* `spacing` are kept: the parameter is the minimum
         # allowed separation, not a radius of exclusion.
-        distances = distance.cdist(
-            [coordinates[index]], coordinates[candidates], "minkowski", p=p_norm
-        ).reshape(-1)
+        # Minkowski distance as cdist computes it: sqrt for p = 2, no pow round trip
+        gaps = np.abs(points[candidates] - points[index])
+        if np.isinf(p_norm):
+            distances = gaps.max(axis=1)
+        elif p_norm == 2:
+            distances = np.sqrt((gaps * gaps).sum(axis=1))
+        elif p_norm == 1:
+            distances = gaps.sum(axis=1)
+        else:
+            distances = np.power(np.power(gaps, p_norm).sum(axis=1), 1.0 / p_norm)
         rejected.update(c for c, d in zip(candidates, distances) if d < spacing)
         accepted += 1
         if max_out is not None and accepted >= max_out:
@@ -286,7 +297,7 @@ def _spaced(coordinates, spacing, p_norm, max_out, min_split_size=50, max_split_
 
 def _peak_mask(image, footprint, threshold, mask=None):
     """Boolean image of the pixels that equal their neighbourhood maximum."""
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     if footprint.size == 1 or image.size == 1:
         return image > threshold
@@ -387,7 +398,7 @@ def peak_local_max(
     numpy.ndarray
         ``(n_peaks, image.ndim)`` integer coordinates, brightest first.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     image = np.asarray(image)
     if image.size == 0:
@@ -672,7 +683,7 @@ def watershed(
     numpy.ndarray
         Label image of the same shape as ``image``.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     if compactness:
         raise NotImplementedError("compact watershed is not implemented; pass compactness=0")
@@ -768,7 +779,7 @@ def remove_small_objects(labels, min_size: int = 64, connectivity: int = 1, *, o
     numpy.ndarray
         The input with the small components set to 0.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     labels = np.asarray(labels)
     if labels.dtype != bool and not np.issubdtype(labels.dtype, np.integer):
@@ -895,7 +906,7 @@ def expand_labels(labels, distance: float = 1.0, spacing=None):
     numpy.ndarray
         The grown label image.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     labels = np.asarray(labels)
     distances, indices = ndimage.distance_transform_edt(
@@ -929,7 +940,7 @@ def find_boundaries(labels, connectivity: int = 1, mode: str = "thick", backgrou
     numpy.ndarray
         Boolean image of the boundary pixels.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     labels = np.asarray(labels)
     if labels.dtype == bool:
@@ -1045,7 +1056,7 @@ def white_tophat(image, footprint=None, size: int = 15):
     numpy.ndarray
         The background-subtracted image, never negative.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     image = np.asarray(image, dtype=float)
     if footprint is None:
@@ -1089,13 +1100,13 @@ def _prune_blobs(blobs, overlap: float):
     several times at neighbouring sigmas; without this a detector returns three
     copies of everything.
     """
-    from scipy import spatial
+    from tttrlib import KDTree
 
     if len(blobs) < 2:
         return blobs
     largest_sigma = blobs[:, -1].max()
     reach = 2 * largest_sigma * np.sqrt(blobs.shape[1] - 1)
-    tree = spatial.cKDTree(blobs[:, :-1])
+    tree = KDTree(np.ascontiguousarray(blobs[:, :-1], dtype=np.float64))
     pairs = np.array(list(tree.query_pairs(reach)))
     if len(pairs) == 0:
         return blobs
@@ -1148,7 +1159,7 @@ def blob_dog(
     numpy.ndarray
         ``(n_blobs, image.ndim + 1)``: coordinates then sigma.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     image = np.asarray(image, dtype=float)
     if sigma_ratio <= 1.0:
@@ -1204,7 +1215,7 @@ def blob_log(
     numpy.ndarray
         ``(n_blobs, image.ndim + 1)``: coordinates then sigma.
     """
-    from scipy import ndimage
+    from tttrlib import ndimage
 
     image = np.asarray(image, dtype=float)
     if log_scale:

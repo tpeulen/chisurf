@@ -35,7 +35,7 @@ def _box_mean(image: np.ndarray, size: int, mode: str = "nearest") -> np.ndarray
     numpy.ndarray
         The windowed mean, same shape as the input.
     """
-    from scipy.ndimage import uniform_filter
+    from tttrlib.ndimage import uniform_filter
 
     return uniform_filter(np.asarray(image, dtype=float), size=size, mode=mode)
 
@@ -172,7 +172,7 @@ def arbitrary_region(
     if intensity_max is not None:
         keep &= mean_image <= float(intensity_max)
     if median_filter:
-        from scipy.ndimage import median_filter as _median
+        from tttrlib.ndimage import median_filter as _median
 
         keep = _median(keep.astype(np.uint8), size=int(window)).astype(bool)
 

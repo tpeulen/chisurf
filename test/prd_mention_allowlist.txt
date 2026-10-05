@@ -98,7 +98,6 @@ chisurf/plugins/fcs/fcs_channel_preset/gui/fcs_channel_preset.view.json
 chisurf/plugins/fret_line/__init__.py
 chisurf/plugins/fret_line/backend/services.py
 chisurf/plugins/microscopy/img_flow/test/test_img_flow.py
-chisurf/plugins/microscopy/img_pixel_phasor/analysis.py
 chisurf/plugins/microscopy/img_pixel_phasor/backend/__init__.py
 chisurf/plugins/microscopy/img_pixel_phasor/backend/services.py
 chisurf/plugins/microscopy/img_pixel_phasor/test/test_analysis.py

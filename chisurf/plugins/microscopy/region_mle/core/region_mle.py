@@ -294,7 +294,7 @@ class RegionMleResult:
             The background region, further restricted to the analysis region
             when one was set.
         """
-        from scipy import ndimage as ndi
+        from tttrlib import ndimage as ndi
 
         from chisurf.core.roi import MaskROI
 

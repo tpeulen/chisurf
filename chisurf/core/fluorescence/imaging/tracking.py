@@ -20,10 +20,11 @@ Linking: why an assignment, not a nearest neighbour
 The obvious algorithm — for each particle take the nearest detection in the next
 frame — is wrong whenever two particles approach each other, because both can
 claim the same neighbour and the choice depends on iteration order. Framing it
-as a **global assignment** and solving it exactly (:func:`scipy.optimize.
-linear_sum_assignment`, the Hungarian algorithm) minimises the *total* squared
-displacement instead, which is the maximum-likelihood pairing under isotropic
-Brownian motion and is order-independent.
+as a **global assignment** and solving it exactly
+(:func:`tttrlib.linear_sum_assignment`, the shortest-augmenting-path Hungarian
+algorithm, scipy's port) minimises the *total* squared displacement instead,
+which is the maximum-likelihood pairing under isotropic Brownian motion and is
+order-independent.
 
 A maximum linking distance is not a refinement, it is the whole safety margin: it
 is what stops a particle that blinked out being linked to an unrelated one
@@ -258,7 +259,7 @@ def _atrous_spot_map(frame: np.ndarray, scale: int = 2) -> np.ndarray:
         pixels to exactly zero, which sends the median absolute deviation to
         zero and destroys any noise estimate made from the map itself.
     """
-    from scipy import ndimage as ndi
+    from tttrlib import ndimage as ndi
 
     def robust_sigma(values: np.ndarray) -> float:
         """Gaussian-equivalent sigma from the median absolute deviation."""
@@ -357,7 +358,7 @@ def detect_particles(
     ValueError
         If *frames* is not 2- or 3-dimensional, or *method* is unknown.
     """
-    from scipy import ndimage as ndi
+    from tttrlib import ndimage as ndi
 
     stack = np.asarray(frames)
     if stack.ndim == 2:
@@ -430,10 +431,10 @@ def detect_particles(
         # A KD-tree rather than an all-pairs scan: a mis-set threshold can leave
         # thousands of candidates in a frame, and the quadratic version turned
         # that from a bad result into an apparent hang.
-        from scipy.spatial import cKDTree
+        from tttrlib import KDTree
 
         points = np.array([[c[1], c[2]] for c in candidates], dtype=float)
-        tree = cKDTree(points)
+        tree = KDTree(points)
         suppressed = np.zeros(len(candidates), dtype=bool)
         accepted: list[tuple[float, float, float]] = []
         for i, candidate in enumerate(candidates):
@@ -495,7 +496,7 @@ def link_detections(
     ValueError
         If *max_distance* is not positive.
     """
-    from scipy.optimize import linear_sum_assignment
+    from tttrlib import linear_sum_assignment
 
     if not np.isfinite(max_distance) or max_distance <= 0.0:
         raise ValueError("max_distance must be a positive number of pixels")
@@ -564,7 +565,7 @@ def _close_gaps(tracks: Tracks, max_distance: float, max_frame_gap: int) -> Trac
     radius grown as ``sqrt(gap)`` — the distance diffusion covers while the
     particle was missing.
     """
-    from scipy.optimize import linear_sum_assignment
+    from tttrlib import linear_sum_assignment
 
     identifiers = tracks.ids()
     if identifiers.size < 2:
