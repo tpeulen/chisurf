@@ -286,6 +286,23 @@ def schema_sections(schema: dict[str, Any], *, skip: tuple[str, ...] = ()) -> li
     return sections
 
 
+class GmmSettings:
+    """The advanced Gaussian-mixture settings as attributes (a spec form binds them)."""
+
+    def __init__(self, model: BurstSelectionModel) -> None:
+        object.__setattr__(self, "_model", model)
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_") or name not in DEFAULT_GMM_SETTINGS:
+            raise AttributeError(name)
+        return self._model.gmm_settings.get(name, DEFAULT_GMM_SETTINGS[name])
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name not in DEFAULT_GMM_SETTINGS:
+            raise AttributeError(name)
+        self._model.gmm_settings[name] = type(DEFAULT_GMM_SETTINGS[name])(value)
+
+
 class BurstSelectionModel:
     """Files, detector setup, filter and search settings, results and plot data of Burst Selection."""
 
@@ -346,6 +363,9 @@ class BurstSelectionModel:
         self.gmm_components = 0
         self.gmm_auto_components = False
         self.gmm_settings = dict(DEFAULT_GMM_SETTINGS)
+        self.gmm = GmmSettings(self)
+        self.metadata_key = COMMON_METADATA_KEYS[0]
+        self.metadata_value = ""
         self.scatter_x, self.scatter_y = SCATTER_DEFAULTS
         # -- results --------------------------------------------------------------------------------------- #
         self.status_text = "Add TTTR files and choose a detector setup, then press Run."
@@ -650,6 +670,21 @@ class BurstSelectionModel:
             ]
         self.settings_changed()
 
+    @property
+    def algorithm_choice(self) -> str:
+        """The selected search, for a choice field (a change resets the parameters to that search's defaults)."""
+        return self.algorithm
+
+    @algorithm_choice.setter
+    def algorithm_choice(self, name: str) -> None:
+        self.set_algorithm(name)
+
+    def bounds(self, name: str):
+        """Spec hook: the visible-window start runs over the active file."""
+        if name == "window_start_s":
+            return (0.0, max(0.0, self.timeline_span() - float(self.window_length_s)))
+        return None
+
     def search_schema(self) -> dict[str, Any]:
         return dict((self.algorithms.get(self.algorithm) or {}).get("params_schema") or {})
 
@@ -698,6 +733,8 @@ class BurstSelectionModel:
             return bool(self.dt_max_active)
         if name == "merge_gap":
             return bool(self.use_gap_fill)
+        if name == "sample_id":
+            return bool(self.mmfdb_output)
         return True
 
     def analysis_settings(self) -> AnalysisSettings:
@@ -971,12 +1008,16 @@ class BurstSelectionModel:
         ]
         if frame is not None and row_count(frame):
             data = _display_rows_frame(frame)
-            for name in ("Number of Photons", "Duration (ms)", "Count Rate (KHz)"):
+            for name, label in (
+                ("Number of Photons", "Mean photons"),
+                ("Duration (ms)", "Mean duration (ms)"),
+                ("Count Rate (KHz)", "Mean rate (kHz)"),
+            ):
                 if name in column_names(data):
                     values = numeric_column(data, name)
                     values = values[np.isfinite(values)]
                     if values.size:
-                        rows.append((f"Mean {name}", f"{float(np.mean(values)):.4g}"))
+                        rows.append((label, f"{float(np.mean(values)):.4g}"))
         return [{"key": str(k), "value": str(v)} for k, v in rows]
 
     def result_json(self) -> str:
@@ -1357,6 +1398,32 @@ class BurstSelectionModel:
         except Exception:  # noqa: BLE001
             extra = []
         return COMMON_METADATA_KEYS + [k for k in extra if k not in COMMON_METADATA_KEYS]
+
+    def add_metadata(self, *_args) -> None:
+        """Add (or replace) the entry ``metadata_key`` = ``metadata_value``."""
+        self.set_metadata(self.metadata_key, self.metadata_value)
+        self.status_text = f"Metadata updated. {len(self.metadata)} entries."
+
+    def remove_metadata_row(self, record: dict) -> None:
+        """``data_table`` delete hook of the metadata table."""
+        self.delete_metadata(str((record or {}).get("key", "")))
+
+    def burst_table_columns(self) -> list[dict[str, str]]:
+        """Columns of the bursts table (the UI columns the table has)."""
+        present = set(self.burst_columns())
+        return [
+            {
+                "key": "row",
+                "title": "#",
+                "width": 46,
+                "tooltip": "Burst number in the displayed table.",
+            },
+            *(
+                {"key": name, "title": name, "width": 110, "tooltip": f"{name} of the burst."}
+                for name in UI_COLUMNS
+                if name in present
+            ),
+        ]
 
     def output_path(self) -> str | None:
         """Folder or file of the last run's output (what ndX opens)."""

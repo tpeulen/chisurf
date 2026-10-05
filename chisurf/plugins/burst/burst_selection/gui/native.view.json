@@ -1,0 +1,219 @@
+{
+  "_comment": "Native Burst Selection (emtk). Binds to BurstSelectionModel (gui/model.py). The parameters of the selected burst search are not here: they are generated from the JSON Schema tttrlib publishes (model.search_sections), so a new search needs no change. The app picks sections by title.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Files",
+      "collapsed": false,
+      "description": "The raw TTTR files of the search.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "The TTTR files searched by Run, in order. Click a row to show that file in the plots and the bursts table; Delete removes it. Drop files or folders on the window to add them.",
+          "options": {
+            "source": "file_rows",
+            "row_key": "path",
+            "selected_call": "select_file",
+            "delete_call": "remove_file_row",
+            "editable": false,
+            "height": 130,
+            "fit_columns": false,
+            "min_column_width": 60,
+            "tooltip_key": "path",
+            "columns": [
+              {"key": "file", "title": "File", "width": 120, "tooltip": "The file name; hover a row for the full path."},
+              {"key": "bursts", "title": "Bursts", "width": 60, "tooltip": "Bursts found in this file by the last Run (empty before a run)."},
+              {"key": "folder", "title": "Folder", "width": 260, "tooltip": "The folder the file is in."}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Output",
+      "collapsed": false,
+      "description": "Where a run writes the bursts.",
+      "sections": [
+        {"type": "info", "source": "output_text", "description": "Where the results go is decided by the input: a .pto keeps its bursts inside itself; a vendor file gets the bi4_bur/ companion folder beside it."},
+        {"type": "toggle", "attr": "zip_output", "label": "Zip output", "description": "Zip the companion folder after the run (vendor files only; a .pto has no folder)."},
+        {"type": "toggle", "attr": "remove_folder", "label": "Remove folder", "description": "Delete the unzipped companion folder once it is zipped."},
+        {"type": "toggle", "attr": "mmfdb_output", "label": "MMFDB", "description": "Also register the raw files and the burst selection in the MMFDB, linked to a sample."},
+        {"type": "choice", "attr": "sample_id", "label": "Sample", "options_source": "sample_options", "description": "The MMFDB sample the raw files belong to. From the raw files: use the sample they are already registered with."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Burst search",
+      "collapsed": false,
+      "description": "Which burst search runs; its parameters follow.",
+      "sections": [
+        {"type": "choice", "attr": "algorithm_choice", "label": "Search", "options_source": "algorithm_options", "description": "The burst search, from tttrlib's registry. Changing it starts the parameters from that search's defaults."},
+        {"type": "info", "source": "search_summary", "description": "What the selected search does (from the registry)."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Channel selection",
+      "collapsed": false,
+      "description": "Which photons the search sees.",
+      "sections": [
+        {"type": "choice", "attr": "detector", "label": "Detector", "options_source": "detector_options", "description": "Search only the routing channels of this detector. All: every photon."},
+        {"type": "info", "source": "channel_text", "description": "The routing channels the filter keeps."},
+        {"type": "choice", "attr": "window", "label": "Micro-time window", "options_source": "window_options", "description": "Search only photons inside this PIE window. All: the full decay."},
+        {"type": "info", "source": "window_text", "description": "The micro-time ranges the filter keeps."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Macro time interval",
+      "collapsed": false,
+      "description": "Cuts on the time between consecutive photons, applied before the search.",
+      "sections": [
+        {"type": "toggle", "attr": "dt_min_active", "label": "Use min dT", "description": "Drop photons that follow the previous one sooner than the minimum."},
+        {"type": "value", "attr": "dt_min", "label": "Min dT", "kind": "float", "decimals": 4, "minimum": 0.0, "maximum": 1000.0, "suffix": " ms", "description": "Minimum inter-photon time in milliseconds (active when Use min dT is on)."},
+        {"type": "toggle", "attr": "dt_max_active", "label": "Use max dT", "description": "Keep only photons that follow the previous one within the maximum: the burst photons."},
+        {"type": "value", "attr": "dt_max", "label": "Max dT", "kind": "float", "decimals": 4, "minimum": 0.0, "maximum": 1000.0, "suffix": " ms", "description": "Maximum inter-photon time in milliseconds (active when Use max dT is on). It also names the output folder."},
+        {"type": "toggle", "attr": "use_gap_fill", "label": "Fill gaps", "description": "Merge selections separated by a few unselected photons."},
+        {"type": "value", "attr": "merge_gap", "label": "Merge gap", "kind": "int", "minimum": 0, "maximum": 1000, "description": "Largest run of unselected photons that is filled (when Fill gaps is on)."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Filter",
+      "collapsed": false,
+      "description": "The photon filter switches and the burst-level size cut.",
+      "sections": [
+        {"type": "toggle", "attr": "filter_active", "label": "Filter on", "description": "Apply the photon filter. Off: every photon goes to the search."},
+        {"type": "toggle", "attr": "invert", "label": "Invert", "description": "Invert the filter selection."},
+        {"type": "value", "attr": "min_photons", "label": "Min photons", "kind": "int", "minimum": 2, "maximum": 1000000, "description": "A burst with fewer photons is dropped after the search (every search). It names the output folder."},
+        {"type": "value", "attr": "photon_window", "label": "Count-rate photons", "kind": "int", "minimum": 2, "maximum": 999, "description": "Photons used to compute a count rate (recorded with the run)."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Display",
+      "collapsed": false,
+      "description": "What the diagnostic plots draw.",
+      "sections": [
+        {"type": "toggle", "attr": "show_all_photons", "label": "All photons", "description": "Draw the layers computed from every photon in the visible window."},
+        {"type": "toggle", "attr": "show_selected_photons", "label": "Selected photons", "description": "Draw the layers computed from the photons the search kept."},
+        {"type": "value", "attr": "window_start_s", "label": "Window start", "kind": "float", "style": "slider", "decimals": 2, "suffix": " s", "minimum": 0.0, "maximum": 100000.0, "description": "Start of the visible window in the active file. The plots and the preview are computed for this slice only."},
+        {"type": "value", "attr": "window_length_s", "label": "Window length", "kind": "float", "decimals": 2, "minimum": 0.0, "maximum": 100000.0, "suffix": " s", "description": "Length of the visible window; 0 shows the whole file."},
+        {"type": "value", "attr": "trace_bin_ms", "label": "MCS bin width", "kind": "float", "decimals": 3, "minimum": 0.05, "maximum": 9999.0, "suffix": " ms", "description": "Bin width of the count-rate trace."},
+        {"type": "value", "attr": "decay_bins", "label": "Decay coarsening", "kind": "int", "minimum": 1, "maximum": 9999, "description": "Micro-time channels summed per decay bin."},
+        {"type": "value", "attr": "burst_bins", "label": "Burst bins", "kind": "int", "minimum": 3, "maximum": 999, "description": "Bins of the burst-duration histogram."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Histogram",
+      "collapsed": false,
+      "n_col": 2,
+      "description": "The 1D histogram of one burst feature.",
+      "sections": [
+        {"type": "choice", "attr": "hist_feature", "label": "Feature", "options_source": "feature_options", "description": "The burst-table column histogrammed (the proximity ratio is computed from the green and red photons)."},
+        {"type": "value", "attr": "hist_bins", "label": "Bins", "kind": "int", "minimum": 1, "maximum": 999, "description": "Number of histogram bins."},
+        {"type": "value", "attr": "hist_min", "label": "Range from", "kind": "float", "decimals": 4, "minimum": -9999.0, "maximum": 9999.0, "description": "Lower histogram bound (a range with from >= to uses the data range)."},
+        {"type": "value", "attr": "hist_max", "label": "Range to", "kind": "float", "decimals": 4, "minimum": -9999.0, "maximum": 9999.0, "description": "Upper histogram bound."},
+        {"type": "toggle", "attr": "hist_log", "label": "Log counts", "description": "Logarithmic count axis."},
+        {"type": "value", "attr": "gmm_components", "label": "GMM components", "kind": "int", "minimum": 0, "maximum": 10, "description": "Gaussians fitted by Fit GMM (0 with Auto components: chosen by BIC)."},
+        {"type": "toggle", "attr": "gmm_auto_components", "label": "Auto components", "description": "With 0 components, choose the number by the Bayesian information criterion."}
+      ]
+    },
+    {
+      "type": "table",
+      "title": "GMM",
+      "source": "gmm_rows",
+      "height": 90,
+      "description": "Weight, mean and standard deviation of each fitted Gaussian.",
+      "columns": [
+        {"key": "component", "label": "Gaussian", "width": 70, "description": "Component number."},
+        {"key": "weight", "label": "Weight", "width": 70, "description": "Mixture weight."},
+        {"key": "mean", "label": "Mean", "width": 80, "description": "Component mean."},
+        {"key": "std", "label": "Std. dev.", "width": 80, "description": "Component standard deviation."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Scatter",
+      "collapsed": false,
+      "description": "Two burst features against each other.",
+      "sections": [
+        {"type": "choice", "attr": "scatter_x", "label": "X", "options_source": "feature_options", "description": "Feature on the horizontal axis."},
+        {"type": "choice", "attr": "scatter_y", "label": "Y", "options_source": "feature_options", "description": "Feature on the vertical axis."}
+      ]
+    },
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "Bursts",
+      "description": "The bursts of the active file (or of the visible window before a run), without the zero separator rows. Click a header to sort.",
+      "options": {
+        "source": "burst_rows",
+        "columns_source": "burst_table_columns",
+        "editable": false,
+        "fit_columns": false,
+        "min_column_width": 50,
+        "expand": true,
+        "filter": true
+      }
+    },
+    {
+      "type": "table",
+      "title": "Summary",
+      "source": "summary_rows",
+      "expand": true,
+      "description": "Key figures of the last run.",
+      "columns": [
+        {"key": "key", "label": "Quantity", "width": 150, "description": "What the row reports."},
+        {"key": "value", "label": "Value", "width": 420, "description": "Its value."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "GMM settings",
+      "collapsed": false,
+      "description": "Advanced Gaussian-mixture settings (drawn over model.gmm).",
+      "sections": [
+        {"type": "choice", "attr": "covariance_type", "label": "Covariance type", "options": ["full", "tied", "diag", "spherical"], "description": "Covariance model of the mixture."},
+        {"type": "value", "attr": "random_state", "label": "Random state", "kind": "int", "minimum": 0, "maximum": 1000000, "description": "Seed of the initialisation (fixed for reproducible fits)."},
+        {"type": "value", "attr": "max_iter", "label": "Max iterations", "kind": "int", "minimum": 1, "maximum": 100000, "description": "Expectation-maximisation iterations per start."},
+        {"type": "value", "attr": "n_init", "label": "Starts", "kind": "int", "minimum": 1, "maximum": 1000, "description": "Random starts; the best is kept."},
+        {"type": "value", "attr": "tol", "label": "Tolerance", "kind": "float", "style": "scientific", "decimals": 2, "minimum": 1e-12, "maximum": 1.0, "description": "Convergence threshold of the log-likelihood gain."},
+        {"type": "value", "attr": "max_components", "label": "Max components", "kind": "int", "minimum": 1, "maximum": 50, "description": "Largest number of components tried by Auto components."},
+        {"type": "value", "attr": "reg_covar", "label": "Covariance regularisation", "kind": "float", "style": "scientific", "decimals": 2, "minimum": 0.0, "maximum": 1.0, "description": "Added to the covariance diagonal for stability."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Metadata",
+      "collapsed": false,
+      "description": "Analysis metadata written with the flrCIF export.",
+      "sections": [
+        {"type": "choice", "attr": "metadata_key", "label": "Key", "options_source": "metadata_keys", "description": "A metadata key (the common ones first, then the PDBx keys)."},
+        {"type": "value", "attr": "metadata_value", "label": "Value", "kind": "str", "description": "Its value."},
+        {"type": "button_row", "buttons": [{"label": "Add entry", "action": "add_metadata", "description": "Add or replace the entry for this key."}]},
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "The metadata entries. Select a row and press Delete to remove it.",
+          "options": {
+            "source": "metadata_rows",
+            "row_key": "key",
+            "delete_call": "remove_metadata_row",
+            "editable": false,
+            "height": 140,
+            "columns": [
+              {"key": "key", "title": "Key", "width": 160, "tooltip": "Metadata key."},
+              {"key": "value", "title": "Value", "width": 220, "tooltip": "Metadata value."}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
