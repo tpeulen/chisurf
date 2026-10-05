@@ -24,6 +24,13 @@ timestamp: '2026-10-05T00:00:00Z'
    `Failed to register services for plugin` means a manifest `services` entry
    duplicates the central config (`server_methods.json`, the mmfdb startup
    service). Drop the manifest entry, keep the central owner.
+4. **Post-show services only see declared dependencies.** The `post_gui_show`
+   runner builds `context.dependencies` from `depends_on`; the window comes via
+   `context.main_window` (`_get_window`). Model classes are resolved post-show,
+   so anything that lists models must resolve its own experiment first
+   (`_ensure_experiment_models`) -- the start-up sample is selected before the
+   service runs. Check with a TCSPC dataset selected, not the Global one, which
+   has its models eagerly.
 
 # Staged startup
 
