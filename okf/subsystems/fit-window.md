@@ -16,6 +16,17 @@ Done 2026-10-05: emtk pushed at `d8caa62` and `pixi.lock` pinned to it
 another lane's committed selectable-icon work (reverted in `649d47b`), and its
 atlas guard was red since `601d02d` (fixed in `d8caa62`).
 
+0. **Exit crash of `test/gui/test_fit_window_emtk.py`** (all tests pass, then
+   SIGSEGV/SIGBUS at interpreter exit). Native backtrace (lldb):
+   `dealloc_QApplication -> sip_api_visit_wrappers -> cleanup_qobject` reading
+   freed memory: some Qt wrapper outlives a Python object it needs at session
+   teardown. Intermittent on a clean HEAD worktree (1 in 2 at `09673456f`),
+   every run with other lanes' uncommitted work in the tree. Not from the grid
+   toolbar (A/B), not the top-level guard test (excluded, still crashes).
+   **Tried and reverted:** flushing `DeferredDelete` in the fixture teardown --
+   made it worse (2 errors + crash). Next: run under lldb with
+   `PYTHONMALLOC=debug`, find which wrapper's type is freed (the runtime-built
+   `ControlHost` class from `emtk.qt_host.host_class()` is the suspect).
 1. **Port `ProteinMCStructurePlot`** (ProteinMC). Its `Viewer` is a 3-D OpenGL
    widget, also an island today. Offscreen grabs of it are black, before and
    after this change, so judge it on a display or port it to chimol's emtk
@@ -71,6 +82,17 @@ draws
 `plot_tab_widget` (`addTab`, `count`, `widget`, `currentIndex`,
 `setCurrentIndex`, `tabText`, `currentChanged`, `layoutChanged`,
 `get/set_layout_state`, `update`), answered from the surface.
+
+## Frame cost
+
+Measured 2026-10-05 on the IBH sample decay, Fit page 1100x750, Qt painter:
+**51 ms a frame before, 9.6 ms after (13.8 at 2x)**. The cost was emtk's line
+drawing, fixed in emtk `62c7d5f` (vectorised mapping, per-pixel-column
+thinning, one painter call per series, 1 px pen sweep instead of Qt's wide-pen
+outline). Re-measure with a repaint loop around `FitPlotsArea.host` and a
+`cProfile` of `surface.draw`; idle cost is zero frames (nothing animates).
+Trap: Qt's wide antialiased/joined pens are the expensive path (126 ms on four
+noisy decays at 2x, round joins 605 ms) -- keep plot pens out of it.
 
 ## Page bodies
 
