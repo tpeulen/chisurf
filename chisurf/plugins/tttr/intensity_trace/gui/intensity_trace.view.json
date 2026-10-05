@@ -1,0 +1,280 @@
+{
+  "_comment": "Native intensity-trace tool, drawn by emtk.view_form over gui/app.py's _Form (the model's fields, the app's actions). Two panels shown as the Qt widget's two tabs; the detector list is the custom section `detectors` (one tick per detector of the setup, else per routing channel). The plots and the result views are dock windows drawn by gui/app.py.",
+  "panels": {
+    "file": {
+      "sections": [
+        {
+          "type": "button_row",
+          "weight": 0,
+          "description": "Open a TTTR file, choose the detector setup, help and the guided tour.",
+          "buttons": [
+            {
+              "action": "request_load",
+              "label": "Load TTTR",
+              "description": "Open a TTTR file (PTU, HT3, SPC, HDF5, ...) and bin it into an intensity trace; a dropped file does the same."
+            },
+            {
+              "action": "request_example",
+              "label": "Example",
+              "description": "Load a simulated molecule switching between two FRET states (dwell 20 / 80 ms, two detectors): data whose answer is known, for trying the tool."
+            },
+            {
+              "action": "request_help",
+              "label": "Help",
+              "description": "What the trace, the histograms and the hidden Markov model show, and what Compute HMM writes."
+            },
+            {
+              "action": "request_guide",
+              "label": "Guide",
+              "description": "A step-by-step walk through the tool, pointing at each control."
+            }
+          ]
+        },
+        {
+          "type": "value",
+          "attr": "path",
+          "label": "File",
+          "kind": "str",
+          "read_only": true,
+          "elide": "start",
+          "placeholder": "No file selected",
+          "description": "The TTTR file being shown (load another with Load TTTR or drop one on the window)."
+        },
+        {
+          "type": "choice",
+          "attr": "setup_name",
+          "label": "Setup",
+          "options_source": "setup_names",
+          "call": "setup_chosen",
+          "description": "The detector setup: which routing channels (and micro-time ranges) make each detector. 'Routing channels' bins every routing channel on its own."
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "buttons": [
+            {
+              "action": "request_edit_setup",
+              "label": "Edit setups",
+              "description": "Open the detector setup editor (setups, PIE windows, detectors, LUT handling, optical setup): the Qt tool's Setup dialog. A change re-bins the file."
+            }
+          ],
+          "description": "Edit the detector setups."
+        }
+      ]
+    },
+    "processing": {
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Time Window",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "window_ms",
+              "label": "ms",
+              "kind": "float",
+              "style": "spin",
+              "minimum": 0.1,
+              "maximum": 999.0,
+              "decimals": 2,
+              "step": 0.5,
+              "call": "window_changed",
+              "description": "Width of one bin of the trace, in milliseconds; the file is binned again when it changes."
+            },
+            {
+              "type": "button_row",
+              "weight": 0,
+              "buttons": [
+                {
+                  "action": "request_save_traces",
+                  "label": "Save Traces",
+                  "description": "Write the traces (and the HMM state, once computed) to a CSV file."
+                }
+              ],
+              "description": "Save the binned traces."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "detectors",
+          "title": "Detector Selection",
+          "description": "The detectors (or routing channels) that are binned; each ticked one is its own trace."
+        },
+        {
+          "type": "panel",
+          "title": "Histogram Settings",
+          "n_col": 3,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "n_bins",
+              "label": "Bins",
+              "kind": "int",
+              "style": "spin",
+              "minimum": 10,
+              "maximum": 500,
+              "description": "Number of bins of the count histograms beside the traces."
+            },
+            {
+              "type": "value",
+              "attr": "hist_min",
+              "label": "Min Counts",
+              "kind": "float",
+              "style": "spin",
+              "minimum": 0.0,
+              "maximum": 10000.0,
+              "decimals": 2,
+              "description": "Lowest count per bin included in the histograms."
+            },
+            {
+              "type": "value",
+              "attr": "hist_max",
+              "label": "Max Counts",
+              "kind": "float",
+              "style": "spin",
+              "minimum": 0.0,
+              "maximum": 10000.0,
+              "decimals": 2,
+              "description": "Highest count per bin included in the histograms."
+            }
+          ]
+        }
+      ]
+    },
+    "hmm": {
+      "sections": [
+        {
+          "type": "button_row",
+          "weight": 0,
+          "buttons": [
+            {
+              "action": "request_hmm",
+              "label": "Compute HMM",
+              "description": "Fit a hidden Markov model of the chosen number of states to the trace, then write burst IDs, traces and histograms beside the file (<file>_HMM#<n>_<ms>ms)."
+            }
+          ],
+          "description": "Fit the hidden Markov model."
+        },
+        {
+          "type": "panel",
+          "title": "HMM Settings",
+          "sections": [
+            {
+              "type": "value",
+              "attr": "n_states",
+              "label": "HMM Components",
+              "kind": "int",
+              "style": "spin",
+              "minimum": 1,
+              "maximum": 15,
+              "description": "Number of hidden states of the model."
+            },
+            {
+              "type": "button_row",
+              "weight": 0,
+              "buttons": [
+                {
+                  "action": "request_bic",
+                  "label": "BIC Elbow",
+                  "description": "Fit models of 1 to 15 states and plot their BIC: the elbow is the number of states the data supports."
+                }
+              ],
+              "description": "Choose the number of states."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "HMM Results",
+          "sections": [
+            {
+              "type": "button_row",
+              "weight": 0,
+              "buttons": [
+                {
+                  "action": "request_matrix",
+                  "label": "HMM Matrix",
+                  "description": "The transition probabilities between the states."
+                },
+                {
+                  "action": "request_dwell",
+                  "label": "Dwell Times",
+                  "description": "How long each state lasts: histograms with single-exponential fits."
+                },
+                {
+                  "action": "request_fret",
+                  "label": "FRET Distributions",
+                  "description": "FRET efficiency (first detector over the sum) of the bins in each state; needs two detectors."
+                }
+              ],
+              "description": "Show the results of the model."
+            }
+          ]
+        }
+      ]
+    },
+    "dwell": {
+      "sections": [
+        {
+          "type": "panel",
+          "n_col": 2,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "dwell_min",
+              "label": "Min Bin",
+              "kind": "float",
+              "style": "spin",
+              "minimum": 0.0,
+              "maximum": 90000.0,
+              "decimals": 2,
+              "suffix": " ms",
+              "description": "Shortest dwell time in the histograms."
+            },
+            {
+              "type": "value",
+              "attr": "dwell_max",
+              "label": "Max Bin",
+              "kind": "float",
+              "style": "spin",
+              "minimum": 0.1,
+              "maximum": 90000.0,
+              "decimals": 2,
+              "suffix": " ms",
+              "description": "Longest dwell time in the histograms."
+            },
+            {
+              "type": "value",
+              "attr": "dwell_bins",
+              "label": "Number of Bins",
+              "kind": "int",
+              "style": "spin",
+              "minimum": 10,
+              "maximum": 200,
+              "description": "Number of bins of each dwell-time histogram."
+            },
+            {
+              "type": "toggle",
+              "attr": "dwell_normalize",
+              "label": "Normalize Histogram",
+              "description": "Show each histogram as fractions of its dwells."
+            }
+          ]
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "buttons": [
+            {
+              "action": "request_save_dwell",
+              "label": "Save Histograms and Fits",
+              "description": "Write every state's histogram and its fit (A, tau) to a CSV file."
+            }
+          ],
+          "description": "Save the dwell-time histograms."
+        }
+      ]
+    }
+  }
+}

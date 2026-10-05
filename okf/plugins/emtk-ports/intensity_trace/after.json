@@ -1,0 +1,540 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "-0.5",
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/tmp8y51dnbq/bh_spc132.spc",
+    "0",
+    "0.0",
+    "0.00",
+    "0.000000",
+    "0.008",
+    "0.00ms",
+    "0.042",
+    "0.116",
+    "0.284",
+    "0.300",
+    "0.4",
+    "0.404",
+    "0.416",
+    "0.480",
+    "0.5",
+    "0.8",
+    "0.949",
+    "1",
+    "1.2",
+    "1.5",
+    "1.6",
+    "10",
+    "10.00",
+    "100",
+    "1000",
+    "1000.00",
+    "1000.00ms",
+    "12",
+    "14",
+    "150",
+    "2",
+    "2.5",
+    "20",
+    "200",
+    "2000",
+    "250",
+    "3",
+    "30",
+    "300",
+    "3000",
+    "31",
+    "350",
+    "35000",
+    "4",
+    "40",
+    "400",
+    "4000",
+    "40000",
+    "41",
+    "450",
+    "45000",
+    "50",
+    "500",
+    "5000",
+    "50000",
+    "55000",
+    "6",
+    "60",
+    "600",
+    "700",
+    "8",
+    "800",
+    "900",
+    "?",
+    "add",
+    "adjustshifts",
+    "applytaclinearization(lut)whenreading",
+    "assignlut",
+    "auto",
+    "bh_spc132.spc6233binsof10ms,ch0",
+    "bic(lowerisbetter)",
+    "bicelbow",
+    "bicof1-15states;lowestat5",
+    "bicvsnumberofstates",
+    "bins",
+    "calibration",
+    "ch0",
+    "ch1",
+    "ch2",
+    "ch3",
+    "ch4",
+    "ch5",
+    "ch6",
+    "ch7",
+    "ch8",
+    "ch9",
+    "channel",
+    "channels",
+    "computehmm",
+    "configureluts",
+    "controls",
+    "count",
+    "countsper10msbin;righthowofteneachcountoccurs(log).",
+    "delete",
+    "detectorname",
+    "detectors",
+    "detectorselection",
+    "detectorsetup",
+    "dwelltime(ms)",
+    "dwelltimedistributions",
+    "dwelltimes",
+    "editsetups",
+    "eff.microtime(ps)",
+    "example",
+    "file",
+    "filetype",
+    "fretdistributions",
+    "fretneedstwodetectors(firstdetectoroverthesum).",
+    "fromstate",
+    "g-factor",
+    "guide",
+    "help",
+    "histogramsettings",
+    "hmm",
+    "hmmcomponents",
+    "hmmmatrix",
+    "hmmof3statesstate05692bins,state1386bins,state2155bins.writtentobh_spc132_hmm#3_10ms/",
+    "hmmresults",
+    "hmmsettings",
+    "latest",
+    "loadatttrfile.",
+    "loadtttr",
+    "lut",
+    "luthandling(taclinearization)",
+    "macrotimeres.(ns)",
+    "maxbin",
+    "maxcounts",
+    "microtimebinning",
+    "microtimeranges",
+    "microtimeres.(ps)",
+    "minbin",
+    "mincounts",
+    "ms",
+    "nofileselected",
+    "normalizehistogram",
+    "notraceloadatttrfile(loadtttr,ordroponehere).",
+    "numberofbins",
+    "numberofstates",
+    "occurrences(log)",
+    "opticalsetup",
+    "piewindows",
+    "plot",
+    "polarizationresolved",
+    "pressbicelbow(hmmtab)tofitmodelsof1to15",
+    "processing",
+    "public",
+    "read",
+    "rename",
+    "results",
+    "routingchannels",
+    "save",
+    "savehistogramsandfits",
+    "savetraces",
+    "setup",
+    "shift",
+    "state",
+    "state(sorted)",
+    "state0τ=151.1ms",
+    "state1τ=13.1ms",
+    "state2τ=11.9ms",
+    "states.",
+    "sum",
+    "time(s)",
+    "timewindow",
+    "tostate",
+    "traces",
+    "transitionmatrix",
+    "tttrreadingroutine",
+    "unsaved"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Load TTTR",
+      "id": "Load TTTR##request_load",
+      "tooltip": "Open a TTTR file (PTU, HT3, SPC, HDF5, ...) and bin it into an intensity trace; a dropped file does the same."
+    },
+    {
+      "kind": "button",
+      "label": "Example",
+      "id": "Example##request_example",
+      "tooltip": "Load a simulated molecule switching between two FRET states (dwell 20 / 80 ms, two detectors): data whose answer is known, for trying the tool."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help##request_help",
+      "tooltip": "What the trace, the histograms and the hidden Markov model show, and what Compute HMM writes."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide##request_guide",
+      "tooltip": "A step-by-step walk through the tool, pointing at each control."
+    },
+    {
+      "kind": "input_text",
+      "label": "path",
+      "id": "##path",
+      "tooltip": "The TTTR file being shown (load another with Load TTTR or drop one on the window)."
+    },
+    {
+      "kind": "button",
+      "label": "Edit setups",
+      "id": "Edit setups##request_edit_setup",
+      "tooltip": "Open the detector setup editor (setups, PIE windows, detectors, LUT handling, optical setup): the Qt tool's Setup dialog. A change re-bins the file."
+    },
+    {
+      "kind": "button",
+      "label": "Processing",
+      "id": "Processing",
+      "tooltip": "Time window, detector selection and histogram settings."
+    },
+    {
+      "kind": "button",
+      "label": "HMM",
+      "id": "HMM",
+      "tooltip": "Fit a hidden Markov model and show its results."
+    },
+    {
+      "kind": "input_text",
+      "label": "window_ms",
+      "id": "##window_ms",
+      "tooltip": "Width of one bin of the trace, in milliseconds; the file is binned again when it changes."
+    },
+    {
+      "kind": "button",
+      "label": "Save Traces",
+      "id": "Save Traces##request_save_traces",
+      "tooltip": "Write the traces (and the HMM state, once computed) to a CSV file."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch0",
+      "id": "Ch0##det0",
+      "tooltip": "Bin Ch0 as its own trace."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch1",
+      "id": "Ch1##det1",
+      "tooltip": "Bin Ch1 as its own trace."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch2",
+      "id": "Ch2##det2",
+      "tooltip": "Bin Ch2 as its own trace."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch3",
+      "id": "Ch3##det3",
+      "tooltip": "Bin Ch3 as its own trace."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch4",
+      "id": "Ch4##det4",
+      "tooltip": "Bin Ch4 as its own trace."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch5",
+      "id": "Ch5##det5",
+      "tooltip": "Bin Ch5 as its own trace."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch6",
+      "id": "Ch6##det6",
+      "tooltip": "Bin Ch6 as its own trace."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch7",
+      "id": "Ch7##det7",
+      "tooltip": "Bin Ch7 as its own trace."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bins",
+      "id": "##n_bins",
+      "tooltip": "Number of bins of the count histograms beside the traces."
+    },
+    {
+      "kind": "input_text",
+      "label": "hist_min",
+      "id": "##hist_min",
+      "tooltip": "Lowest count per bin included in the histograms."
+    },
+    {
+      "kind": "input_text",
+      "label": "hist_max",
+      "id": "##hist_max",
+      "tooltip": "Highest count per bin included in the histograms."
+    },
+    {
+      "kind": "button",
+      "label": "BIC Elbow",
+      "id": "BIC Elbow##result_0",
+      "tooltip": "BIC of models with 1 to 15 states."
+    },
+    {
+      "kind": "button",
+      "label": "Dwell Times",
+      "id": "Dwell Times##result_1",
+      "tooltip": "Dwell-time histograms per state with exponential fits."
+    },
+    {
+      "kind": "button",
+      "label": "HMM Matrix",
+      "id": "HMM Matrix##result_2",
+      "tooltip": "Transition probabilities between the states, per bin."
+    },
+    {
+      "kind": "button",
+      "label": "FRET Distributions",
+      "id": "FRET Distributions##result_3",
+      "tooltip": "FRET efficiency of the bins in each state."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch8",
+      "id": "Ch8##det2",
+      "tooltip": "Bin Ch8 as its own trace."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Ch9",
+      "id": "Ch9##det3",
+      "tooltip": "Bin Ch9 as its own trace."
+    },
+    {
+      "kind": "combo",
+      "label": "setup_choice",
+      "id": "##setup_choice",
+      "tooltip": "Choose a saved detector setup; its detectors, PIE windows, reading routine, LUTs and optical setup replace the working definition."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save",
+      "tooltip": "Ask for a name and store the working definition as a saved setup."
+    },
+    {
+      "kind": "button",
+      "label": "Rename",
+      "id": "Rename",
+      "tooltip": "Give the selected saved setup another name."
+    },
+    {
+      "kind": "button",
+      "label": "Delete",
+      "id": "Delete",
+      "tooltip": "Delete the selected saved setup after asking."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Public",
+      "id": "Public",
+      "tooltip": "When checked, the setup is visible to all users in the MMFDB; it takes effect with Save. Only the owner of a saved setup can change this."
+    },
+    {
+      "kind": "combo",
+      "label": "calibration_choice",
+      "id": "##calibration_choice",
+      "tooltip": "Pick a stored calibration snapshot of the selected setup: its G factor, l1 and l2 are applied to the detectors. Latest leaves the factors as they are."
+    },
+    {
+      "kind": "button",
+      "label": "?",
+      "id": "?##page_help",
+      "tooltip": "Explain the page: setups, reading routine, PIE windows, detectors and the units of micro-time ranges."
+    },
+    {
+      "kind": "selectable",
+      "label": "▼ TTTR Reading routine",
+      "id": "▼ TTTR Reading routine##section_reading",
+      "tooltip": "File type, timing and binning used to read TTTR files."
+    },
+    {
+      "kind": "combo",
+      "label": "tttr_format",
+      "id": "##tttr_format",
+      "tooltip": "The TTTR container format used to read measurements; Auto detects it from the file."
+    },
+    {
+      "kind": "button",
+      "label": "Read",
+      "id": "Read",
+      "tooltip": "Read a measurement or BH SET calibration: macro and micro time resolution from the header, and the decay of every routing channel."
+    },
+    {
+      "kind": "input_text",
+      "label": "macro_time_resolution",
+      "id": "##macro_time_resolution",
+      "tooltip": "Macro-time tick (the excitation period) in nanoseconds."
+    },
+    {
+      "kind": "input_text",
+      "label": "micro_time_resolution",
+      "id": "##micro_time_resolution",
+      "tooltip": "Micro-time channel width in picoseconds."
+    },
+    {
+      "kind": "combo",
+      "label": "binning",
+      "id": "##binning",
+      "tooltip": "Number of original TAC channels per analysis bin."
+    },
+    {
+      "kind": "input_text",
+      "label": "effective",
+      "id": "##effective",
+      "tooltip": "Microtime resolution times the binning (read-only)."
+    },
+    {
+      "kind": "button",
+      "label": "Plot",
+      "id": "Plot",
+      "tooltip": "Show or hide the micro-time decay preview with the PIE windows and detector gates overlaid."
+    },
+    {
+      "kind": "selectable",
+      "label": "▶ PIE Windows",
+      "id": "▶ PIE Windows##section_windows",
+      "tooltip": "PIE excitation windows (start and end TAC channel)."
+    },
+    {
+      "kind": "selectable",
+      "label": "▼ Detectors",
+      "id": "▼ Detectors##section_detectors",
+      "tooltip": "Detectors: routing channels, micro-time gates and polarization factors."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Polarization resolved",
+      "id": "Polarization resolved",
+      "tooltip": "ON: each detector's routing channels are interleaved parallel/perpendicular (VV/VH) for anisotropy. OFF: one unpolarized stream per detector."
+    },
+    {
+      "kind": "button",
+      "label": "Add",
+      "id": "Add##add_detector",
+      "tooltip": "Add a detector (channels 0, 1; range 0:2048) with a free name; rename and edit it in the table."
+    },
+    {
+      "kind": "selectable",
+      "label": "▼ LUT handling (TAC linearization)",
+      "id": "▼ LUT handling (TAC linearization)##section_lut",
+      "tooltip": "TAC linearization tables and micro-time shifts per routing channel."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Apply TAC linearization (LUT) when reading",
+      "id": "Apply TAC linearization (LUT) when reading",
+      "tooltip": "When checked, each routing channel's assigned LUT linearizes the raw micro-times at read time (needed for e.g. SPC-130). If a used channel has no LUT, you are offered the LUT calculator."
+    },
+    {
+      "kind": "button",
+      "label": "Assign LUT...",
+      "id": "Assign LUT...",
+      "tooltip": "Assign a LUT file (.npy / .npz / .txt) to the selected channel row."
+    },
+    {
+      "kind": "button",
+      "label": "Configure LUTs...",
+      "id": "Configure LUTs...",
+      "tooltip": "Open the LUT tools: compute a LUT from the loaded calibration decay (linear region or automatic), assign, export or remove it."
+    },
+    {
+      "kind": "button",
+      "label": "Adjust shifts...",
+      "id": "Adjust shifts...",
+      "tooltip": "Visually align the per-channel micro-time shifts on the (LUT-corrected) calibration decay; read a calibration file first."
+    },
+    {
+      "kind": "button",
+      "label": "Optical Setup...",
+      "id": "Optical Setup...",
+      "tooltip": "Open the light-path editor: configure filters, dyes and detectors, and compute Foerster radii and cross-talk."
+    },
+    {
+      "kind": "button",
+      "label": "Compute HMM",
+      "id": "Compute HMM##request_hmm",
+      "tooltip": "Fit a hidden Markov model of the chosen number of states to the trace, then write burst IDs, traces and histograms beside the file (<file>_HMM#<n>_<ms>ms)."
+    },
+    {
+      "kind": "input_text",
+      "label": "n_states",
+      "id": "##n_states",
+      "tooltip": "Number of hidden states of the model."
+    },
+    {
+      "kind": "input_text",
+      "label": "dwell_min",
+      "id": "##dwell_min",
+      "tooltip": "Shortest dwell time in the histograms."
+    },
+    {
+      "kind": "input_text",
+      "label": "dwell_max",
+      "id": "##dwell_max",
+      "tooltip": "Longest dwell time in the histograms."
+    },
+    {
+      "kind": "input_text",
+      "label": "dwell_bins",
+      "id": "##dwell_bins",
+      "tooltip": "Number of bins of each dwell-time histogram."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Normalize Histogram",
+      "id": "Normalize Histogram##dwell_normalize",
+      "tooltip": "Show each histogram as fractions of its dwells."
+    },
+    {
+      "kind": "button",
+      "label": "Save Histograms and Fits",
+      "id": "Save Histograms and Fits##request_save_dwell",
+      "tooltip": "Write every state's histogram and its fit (A, tau) to a CSV file."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}

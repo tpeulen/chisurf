@@ -41044,3 +41044,8 @@ side of the line.
   revert/reapply an edit in one press (`fit.update` is `derived`, history stops at step ends).
   CI still blocked at collection by other lanes' uncommitted files — see project-persistence
   "Where to pick this up" item 7.
+- 2026-10-05 · emtk: **Intensity trace is native** (ribbon entry opened the Qt widget). Qt-free `model.py` (trace
+  browser binner, shared HMM core) reproduces the Qt numbers exactly; Qt widget moved to `qt_tool.py` behind a lazy
+  `__init__`; emtk app with spec controls, linked trace/histogram grid, Results dock, the shared detector editor as
+  the Setup tab, a seeded two-state demo. Fixed Qt's "bins only the first ticked routing channel". Guide 74 and its
+  figure updated. [report](plugins/emtk-ports/intensity_trace/REPORT.md).

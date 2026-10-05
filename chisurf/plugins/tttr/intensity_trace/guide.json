@@ -1,0 +1,26 @@
+{
+  "_comment": "Guided tour of the native intensity-trace tool. Targets are the app's item_rects / spec action names; awaited steps wait for the user's own press.",
+  "steps": [
+    {"title": "A trace is photons counted per time window",
+     "text": "Each detector's photons are counted in bins of the time window; the histogram beside each trace says how often each count occurs. Single molecules switching between states show up as jumps between levels.",
+     "target": {}},
+    {"title": "Start with data whose answer you know",
+     "text": "<b>Example</b> loads a simulated molecule that switches between two FRET states (visits of 20 and 80 ms) on two detectors. Two levels must be visible, anti-correlated between the detectors.",
+     "target": {"name": "request_example"}, "await": {"hint": "Press <b>Example</b>."}},
+    {"title": "The time window decides what you can resolve",
+     "text": "Short bins resolve fast switching but carry few photons each; long bins average short visits away. The file is binned again when you change it.",
+     "target": {"attr": "window_ms"}},
+    {"title": "Fit the hidden states",
+     "text": "Open the <b>HMM</b> tab, then <b>Compute HMM</b>: the model assigns every bin to a state (dimmest first) and writes burst IDs, traces and histograms beside the file.",
+     "target": {"name": "tab_HMM"}, "await": {"hint": "Open the <b>HMM</b> tab."}},
+    {"title": "Compute HMM",
+     "text": "Two components for the example. The states and the FRET trace appear under the traces.",
+     "target": {"name": "request_hmm"}, "await": {"hint": "Press <b>Compute HMM</b>."}},
+    {"title": "How long each state lasts",
+     "text": "<b>Dwell Times</b>: one histogram per state with an exponential fit. A visit shorter than a few bins is not resolved, so the fitted times come out somewhat longer than the simulated 20 / 80 ms.",
+     "target": {"name": "request_dwell"}, "await": {"hint": "Press <b>Dwell Times</b>."}},
+    {"title": "How many states?",
+     "text": "<b>BIC Elbow</b> fits 1 to 15 states; where the curve stops falling is the number the data support.",
+     "target": {"name": "request_bic"}}
+  ]
+}

@@ -12,7 +12,10 @@ Preview list now (2026-10-05): `code_editor` only.
    "FCS opens the Qt tool" went unnoticed. FCS (`fcs_toolbox` + `fcs_correlator`) is done
    ([report](fcs_toolbox/REPORT.md)). Still Qt, by size:
    - `gui` only: `burst_analysis`, `burst_selection`, `mmfdb_admin`, `quenching_estimator`, and `code_editor` (gated);
-   - `script`, opening Qt: `screenshot`, `intensity_trace`, `tttr_correlate`, `tttr_histogram`.
+   - `script`, opening Qt: `screenshot`; `tttr_correlate` and `tttr_histogram` are menu-hidden (and so is
+     `quenching_estimator`, replaced by the Structure Tools QuEst card). `intensity_trace` done 2026-10-05
+     ([report](intensity_trace/REPORT.md)). `burst_analysis` is blocked (burst-survey B2/B3: other streams' uncommitted
+     work and the owner's yes needed).
    Re-measure: the loop in this file's history, or `select_gui_entrypoint` over all manifests, flagging `script`
    entries whose file calls `.show()`. Template for a rail tool: `chisurf/emtk/tool_hub.py` + a Qt-free workflow
    (`fcs_correlator/workflow.py`).

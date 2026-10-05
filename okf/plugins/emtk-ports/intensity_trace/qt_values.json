@@ -1,0 +1,67 @@
+{
+ "channels": [
+  "Ch0"
+ ],
+ "n_bins": 6233,
+ "counts_sum": [
+  56499.0
+ ],
+ "window_ms": 10.0,
+ "state_counts": [
+  5692,
+  386,
+  155
+ ],
+ "transmat": [
+  [
+   0.949395,
+   0.042303,
+   0.008302
+  ],
+  [
+   0.480162,
+   0.40369,
+   0.116148
+  ],
+  [
+   0.284244,
+   0.299912,
+   0.415844
+  ]
+ ],
+ "bic": [
+  [
+   1.0,
+   55129.763891174916
+  ],
+  [
+   2.0,
+   34878.487182299534
+  ],
+  [
+   3.0,
+   34154.53571865465
+  ],
+  [
+   4.0,
+   33939.554150170865
+  ],
+  [
+   5.0,
+   33889.276583850326
+  ],
+  [
+   6.0,
+   33959.45007090488
+  ]
+ ],
+ "outputs": [
+  "BH_SPC132_HMM#3_10ms/bst/BH_SPC132_state_0.bst",
+  "BH_SPC132_HMM#3_10ms/bst/BH_SPC132_state_1.bst",
+  "BH_SPC132_HMM#3_10ms/bst/BH_SPC132_state_2.bst",
+  "BH_SPC132_HMM#3_10ms/hist/BH_SPC132_hist_Ch0.csv",
+  "BH_SPC132_HMM#3_10ms/hist/BH_SPC132_hist_sum.csv",
+  "BH_SPC132_HMM#3_10ms/traces/BH_SPC132_state_traj.csv",
+  "BH_SPC132_HMM#3_10ms/traces/BH_SPC132_traces.csv"
+ ]
+}

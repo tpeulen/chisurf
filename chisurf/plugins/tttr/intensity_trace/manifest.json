@@ -11,9 +11,12 @@
     "Single-Molecule"
   ],
   "entrypoints": {
+    "gui": "chisurf.plugins.tttr.intensity_trace.qt_tool:IntensityTrace",
+    "emtk": "chisurf.plugins.tttr.intensity_trace.gui.app:make_app",
     "script": "__init__.py"
   },
   "optional_requires": {
-    "hmm": "*"
+    "hmm": "*",
+    "trace_browser": "*"
   }
 }

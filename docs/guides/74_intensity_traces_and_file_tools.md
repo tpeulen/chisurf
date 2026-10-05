@@ -31,18 +31,22 @@ tttrlib reads (PTU, HT3, SPC, Photon-HDF5, `.pto`).
 :width: 100%
 
 The intensity trace of an smFRET measurement on freely diffusing molecules
-(`test/data/tttr/BH/132/BH_SPC132.spc`), binned at 5 ms, zoomed to 6 s. Rows,
-top to bottom: red detector, green detector, their sum, each with its count
-histogram on the right; the decoded two-state HMM path with its occupancy; the
-per-bin fraction $n_\mathrm{red}/(n_\mathrm{red}+n_\mathrm{green})$ with its
-histogram per state. The bursts are the bright state.
+(`test/data/tttr/BH/132/BH_SPC132.spc`), binned at 5 ms. Rows, top to bottom:
+red detector, green detector, their sum, each with its count histogram on the
+right; the decoded two-state HMM path with its occupancy; the per-bin fraction
+$n_\mathrm{red}/(n_\mathrm{red}+n_\mathrm{green})$ with its histogram per state.
+The bursts are the bright state. Right: the dwell times of the two states.
 ```
 
 ### Load and bin
 
-1. **Setup** — define the detectors: which routing channels (and, optionally,
-   which micro-time ranges, for PIE) make up each one. The tool uses the setup
-   you last used in any detector wizard. Each detector becomes one trace.
+1. **Setup** — choose the detector setup: which routing channels (and, optionally,
+   which micro-time ranges, for PIE) make up each detector; it starts on the setup
+   you last used. **Edit setups** opens the detector editor (setups, PIE windows,
+   detectors, LUT handling) as a tab beside the results; a change there re-bins the
+   file. Each detector becomes one trace. **Example** loads a simulated molecule
+   switching between two FRET states (dwells 20 / 80 ms), to try the tool on data
+   whose answer is known.
 2. **Load TTTR** — pick the file. It is binned at once.
 3. **Time Window → ms** — the bin width $\Delta t$ (0.1–999 ms, default 10 ms).
    Changing it re-bins the file. Pick it from the dwell you want to see: about
@@ -58,9 +62,8 @@ histogram per state. The bursts are the bright state.
 **Save Traces** writes `time_s`, one column per detector and, once an HMM has
 run, `HMM_State` to a CSV you name.
 
-Without a detector setup the tool offers **Routing Channel 0–7** check boxes,
-but it then bins **only the first ticked channel** (and shows nothing if that
-channel is not in the file). Define a setup for more than one trace.
+With **Setup → Routing channels** the selection lists the routing channels the
+file uses, and every ticked one is its own trace.
 
 ### Find the levels (HMM tab)
 
@@ -72,6 +75,9 @@ channel is not in the file). Define a setup for more than one trace.
 2. **Compute HMM** — fits a Gaussian HMM with full covariances to all ticked
    detectors jointly and decodes the most probable path (Viterbi). States are
    numbered from dimmest (0) to brightest.
+The results open in the **Results** dock beside the traces (tabs **BIC Elbow**,
+**Dwell Times**, **HMM Matrix**, **FRET Distributions**).
+
 3. **HMM Matrix** — the transition matrix per bin, *from* state on the x axis.
    Divide an off-diagonal element by $\Delta t$ for a rate; that holds only
    while it is small ({ref}`concept-hidden-markov-models`).
