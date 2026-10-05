@@ -25,21 +25,38 @@ settings and every `NUMBA_*` variable are gone.
 
 The open front, in order:
 
-1. **ProteinMC's potentials are 6-23x slower than numba was.** Measured warm on
-   a T4L-sized random chain (164 residues / 984 atoms), numba -> NumPy: MJ
-   15 -> 156 us, H-bond 42 -> 338 us, UNRES centroid 15 -> 145 us, Go
-   14 -> 275 us, clash 0.8 -> 5.3 ms, ASA 0.18 -> 4.2 ms, GB 1.5 -> 18.8 ms
-   (600 residues: clash 2.3x, GB 6x -- the cell-list neighbour search
-   `IMP.cgmol.sterics._kernels.neighbour_pairs` scales). Re-derive with the
-   oracle modules in imp-tricks `tests/numba_oracles/` against the ports on
-   `test_numba_parity._residues(n)`; a random-walk chain is *less* compact than
-   a folded protein, so GB/clash on a real structure (148L) will be slower
-   still. The residue-level kernels are pure per-element NumPy overhead; no
-   further NumPy trick closes it. **The home is IMP.bff C++ (coordinates)**,
-   not a JIT -- that is what blocks ProteinMC from being as fast as it was.
-   Tried and kept out: a padded fully-vectorised ASA (slower than the
-   per-residue loop, 6.6 vs 4.1 ms) and a lexsorted neighbour list (the sort
-   cost more than it saved).
+1. **ProteinMC's potentials are back in C++ (2026-10-06) -- one open item.**
+   imp.bff `4ba3c1210` + imp-tricks `9f088a6`. Each term has ONE C++ kernel
+   (imp.bff `include/internal/ContactKernels.h`) reached as an **IMP object**
+   (usable as a restraint) and as an **array function** (`ContactPotentials.h`,
+   what `IMP.cgmol` calls per MC step). Per potential -- IMP door / status:
+   - MJ: `MiyazawaJerniganPairScore` (IMP `score_functor::Statistical`, reused)
+     -- green, 0.88x numba (164 res) / 0.68x (600 res).
+   - UNRES centroid: `UNRESCentroidPairScore` (Statistical, reused) -- green,
+     0.93x / 0.59x.
+   - Go: `GoRestraint` on the shared kernel -- green, 0.58x / 0.29x.
+   - clash: new `SoftSphereOverlapPairScore` (with derivatives; IMP's
+     SoftSpherePairScore lacks the bonded-distance exclusion) -- green,
+     0.60x / 0.22x.
+   - ASA: new `SiteAccessibleAreaRestraint` -- green, 0.97x / 0.89x.
+   - GB: `GeneralizedBornRestraint` on the shared kernel (IMP has no GB) --
+     green, 0.28x / 0.20x.
+   - **H-bond: `HydrogenBondRestraint` on the shared kernel -- green but
+     1.69x / 1.61x numba.** The fix, a branch-free gated row scan
+     (`for_gated_upper_pairs`, `MatrixGate` overload), is in the imp.bff working
+     tree **uncommitted, not built, not tested** (the session ended before the
+     build). Next: build under `/tmp/imp-bff-build.lock`, run imp.bff
+     `test/potentials/test_contact_potentials.py test_potentials.py` (30) and
+     imp-tricks `tests/test_numba_parity.py tests/cgmol` (103), rerun the bench;
+     commit only if green.
+   Parity everywhere: restraint in `RestraintsScoringFunction` = array function
+   = numba oracle at 1e-10 on 148L, counts exact. Bench: warm, best of five,
+   imp-tricks `test_numba_parity._residues(n)` against the oracles and the
+   pre-change NumPy kernels taken from git (`git show 9f088a6~1:...`); full
+   table and the gate trap (array gates use the legacy C-alpha matrix
+   convention, restraints measure their particles) in imp.bff
+   `okf/contact-potentials.md`. Open beyond H-bond: derivatives for GB/Go;
+   phi/psi stays NumPy (not in the slow set).
 2. **quest's residue-contact post-processing**: contact stats 23 -> 363 ms,
    frame attribution 2.8 -> 201 ms (200k frames x 60 centres, against
    *parallel* numba). Runs once per simulation, small beside the trajectory;
