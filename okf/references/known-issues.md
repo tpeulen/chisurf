@@ -1,14 +1,14 @@
-## Calculator hub: FCS diffusion child fails under the hermetic test env (2026-10-05)
+## FCS diffusion calculator vs the hermetic MMFDB test env (2026-10-05)
 
-`calculator/hub/test/test_emtk_hub_parity.py` — two tests (`…every_one_builds_and_draws…`,
-`…clicking_each_list_entry…[fcs_calculator]`) fail with *"configured MMFDB reference database is
-absent"*. The hub's hermetic fixture points `MMFDB_DATABASE_PATH` at a temp file that does not
-exist; `chisurf/core/fluorescence/dyes.py::_entries_from_database` treats a configured-but-missing
-SQLite file as an error instead of falling back to the packaged `reference_diffusion.json`. Not
-caused by the hub-icon change (fails while building the child). Left alone because
-`fcs/fcs_calculator/` had another session's uncommitted edits; the fix is a decision for that
-lane: fall back (and warn) when the configured file is absent, or make the fixture not configure
-one.
+With `MMFDB_DATABASE_PATH` pointing at a file that does not exist (as hermetic
+test fixtures do), `chisurf/core/fluorescence/dyes.py::_entries_from_database`
+raises *"configured MMFDB reference database is absent"* instead of falling back to
+the packaged `reference_diffusion.json`. This first surfaced as two failing
+calculator-hub tests. Those passed after the regrouping because the Calculators hub
+no longer hosts the FCS calculator (it is in FCS only), but the behaviour itself is
+unchanged. It is left alone because `fcs/fcs_calculator/` carries another session's
+uncommitted edits. The decision belongs to that lane: fall back with a warning when the
+configured file is absent, or stop the fixture configuring one.
 
 ## Native TCSPC visual-test teardown/restart (2026-10-03)
 

@@ -21,6 +21,7 @@
 * [Tables (chitable)](gui-tables.md) - The shared model/view table family: sources, vectorised filtering, value colouring, column hiding and export.
 * [Porting a widget into chimol's chrome](chimol-ui-ports.md) - How the in-viewport control families were transcribed from Dear ImGui, ImGuiColorTextEdit and imgui_club, the scaffolder that makes the data half of the next port mechanical, and the Qt host that puts any of them in a form.
 * [Game engine (chigame)](chigame.md) - The shared 2-D game engine on WebGPU: scene, orthographic camera, instanced sprite/SDF batcher, a nine-action abstract controller, synthesised audio, and the AssetPack seam that makes the whole look and soundtrack swappable.
+* [Ribbon and hubs](ribbon.md) - How a plugin's manifest address becomes a ribbon tab, group and button, how hubs (meta tools) host other plugins, and the guards that keep every tool in exactly one place.
 * [Toolbar action vocabulary](gui-action-vocabulary.md) - One icon, colour, tooltip and position per semantic action, including the run/restart/pause/stop transport controls.
 * [Help buttons and guided tours](gui-help-and-guides.md) - The `?` and **Guide** pair every modern plugin carries, the one mixin that attaches them to any tool, and the shrinking allow-list that enforces it.
 * [The documentation browser](documentation-browser.md) - The in-application help window: a tree read from the documentation's own toctrees, ranked full-text search, and a renderer that typesets the formulas and resolves the cross-references instead of showing their markup.

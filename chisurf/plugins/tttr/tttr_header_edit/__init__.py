@@ -33,7 +33,7 @@ icon = "🏷️"
 
 name = "TTTR:Editor:TTTR Header editor"
 
-# Aggregated into the TTTR Tools toolbox (tttr_toolbox); hidden as a top-level
+# Aggregated into the File tools hub (filetools); hidden as a top-level
 # menu entry but still importable and standalone-launchable.
 menu_hidden = True
 

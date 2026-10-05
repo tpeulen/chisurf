@@ -35,14 +35,12 @@ Detectors and their cables do not have identical delays, so two channels of the
 same measurement can have their IRFs offset by hundreds of picoseconds. Left
 uncorrected that offset lands directly in any lifetime fitted across channels.
 
-**Header Editor** reads and edits the metadata tags. Useful when an acquisition
-recorded a wrong repetition rate or a missing dead time — values every later
-conversion trusts without checking.
+**Photon Table** shows the records themselves — routing channel, micro time and
+macro time, one row per photon, with a channel filter. When a histogram or a
+count rate looks wrong, this is where you see why.
 
-**Split / Convert** cuts long acquisitions into segments and moves between
-container formats. Splitting is the practical answer to a measurement that
-drifted: analyse the segments separately and compare, rather than averaging over
-a change you did not intend to include.
+Splitting files, converting containers and editing headers are file-level
+operations; they live in **File tools**.
 
 **Count Rate Analysis** reports per-detector rates across many files. This is the
 fastest possible sanity check on a dataset — a detector that died mid-session, a

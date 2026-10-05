@@ -32,7 +32,7 @@ max-tree and Bayesian Blocks — trade sensitivity against false positives.
 
 ### Open the tool
 
-**Spectroscopy → Burst Analysis → 2. Burst Selection**. The same panel opens on
+**Spectroscopy → Single-Molecule → Burst Analysis → 2. Burst Selection**. The same panel opens on
 its own as *Spectroscopy:Single-Molecule:Burst Selection*; in the workflow the
 files of step 1 carry over. Add files with 📂 (or drop them on the **Files**
 tab), pick a **Detector setup** on **Filter Settings**, then ▶ (*Process all

@@ -18,7 +18,7 @@ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
 else:
-    name = "Main:Tools:Calculators"
+    name = "Tools:Calculators:Calculators"
 
 
 if __name__ == "plugin":

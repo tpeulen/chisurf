@@ -33,7 +33,7 @@ populations the $E$–$S$ plot isolates.
 
 ### In the GUI: Accurate FRET
 
-**Spectroscopy → Burst Analysis → Accurate FRET** (on its own:
+**Spectroscopy → Single-Molecule → Burst Analysis → Accurate FRET** (on its own:
 *Spectroscopy:FRET:Accurate FRET*) finds all four factors from one burst table.
 Pick the **Burst table** (…), map the columns in **Channels** — **I_DD (donor)**,
 **I_DA (FRET)**, **I_AA (acceptor)** and optionally **Donor lifetime** — and press

@@ -2,7 +2,7 @@
 type: Guide
 title: 'FRET lines: static, dynamic and model lines for the E–lifetime plot'
 description: Building FRET lines with the FRET Line Generator — a static line with a linker width, the no-linker diagonal, a dynamic line between two states, worm-like-chain and mixture lines — overlaying several, saving them and sending them to ndX, plus the closed-form and headless routes.
-tags: [guides, fret, smfret, lifetime, bursts]
+tags: [guides, fret, tcspc, lifetime, headless]
 ---
 
 # FRET lines: static, dynamic and model lines for the E–lifetime plot
@@ -26,7 +26,7 @@ populations is covered in {doc}`28_selecting_fret_populations`.
 
 ## Open the tool
 
-**Main → Tools → Calculators**, then the **FRET line** entry. It needs no
+**Tools → Calculators**, then the **FRET line** entry. It needs no
 data. The window can also run on its own:
 `python -m chisurf.plugins.fret_line`.
 

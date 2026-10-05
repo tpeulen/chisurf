@@ -25,7 +25,7 @@ is terminated after 30 seconds (5 in a safe sweep) and reported as a failure.
 
 ## 1. Open the tool
 
-Plugin Check is under **Tools → Miscellaneous → Plugin-Check**. The window lists every discovered plugin, the ones that
+Plugin Check is under **File → Setup → Settings → Plugin Check**. The window lists every discovered plugin, the ones that
 ship with ChiSurf and the ones in your own plugin directory, with every row *pending* until a sweep reaches it.
 
 ```{figure} figures/plugin_check.png

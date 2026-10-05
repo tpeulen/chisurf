@@ -16,7 +16,7 @@ For why the method works and which threshold to quote, see
 
 ## Open the tool
 
-It lives in **Spectroscopy → Image Tools**, as the **Resolution** step after
+It lives in **Imaging → Image Tools**, as the **Resolution** step after
 *Drift*. That order is deliberate: drift blurs the summed image, and the FRC
 faithfully reports the blur, so an uncorrected stack measures the stage rather
 than the microscope. Image Tools is its only menu entry; you can drop a file

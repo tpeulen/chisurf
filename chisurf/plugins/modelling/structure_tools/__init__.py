@@ -5,7 +5,6 @@ structure-modelling tools as embedded panels:
 
 - FPS JSON Editor        (fps_json_editor)
 - FRET Docking & Screening (fret)
-- Kappa2 Distribution    (kappa2_dist)
 - (separator)
 - QuEst                  (quenching_estimator)
 - HydroPro               (hydropro)
@@ -24,7 +23,7 @@ _manifest_path = Path(__file__).parent / "manifest.json"
 _manifest = (
     json.loads(_manifest_path.read_text(encoding="utf-8")) if _manifest_path.exists() else {}
 )
-name = _manifest.get("display_name", "Structure:Structure Tools")
+name = _manifest.get("display_name", "Structure:Modelling:Structure Tools")
 
 
 def __getattr__(attr_name: str):

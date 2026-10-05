@@ -24,7 +24,7 @@ tells you the rate.
 
 ## Open the tool
 
-**Spectroscopy → Single-Molecule → Photon-by-photon kinetics**.
+**Spectroscopy → Single-Molecule → Burst Analysis → Kinetics (GS)**.
 
 ```{figure} figures/burst_gs_workspace.png
 :name: fig-burst-gs-workspace

@@ -1,10 +1,10 @@
 {
   "id": "globalview",
   "version": "2.0.0",
-  "display_name": "Main:Tools:Global View",
+  "display_name": "Tools:Views:Global View",
   "description": "Interactive network graph for visualizing and managing parameter relationships across fits in global analysis.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Main", "Tools"],
+  "categories": ["Tools", "Views"],
   "icon": "🌐",
   "state_namespace": "globalview",
   "statefulness": {

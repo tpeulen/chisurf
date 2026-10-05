@@ -39,8 +39,7 @@ context (`.bur` files, channel settings), not burst intervals, so run it from
 
 ## Prerequisites
 
-ndX must be linked to ChiSurf: either launched from ChiSurf (**Main → Tools →
-ndX** injects an in-process client exposing `pda.from_bursts`,
+ndX must be linked to ChiSurf: either launched from ChiSurf (**Tools → Views → ndX** injects an in-process client exposing `pda.from_bursts`,
 `tcspc.from_bursts`, `pch.from_bursts`, `burst_fcs.*`, `fit.*` and `dataset.*`),
 or standalone with `--chisurf-rpc host:port` against a running ChiSurf server.
 The burst table must carry `First File`, `Last File`, `First Photon` and

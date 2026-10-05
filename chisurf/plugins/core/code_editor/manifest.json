@@ -1,15 +1,12 @@
 {
   "id": "code_editor",
   "version": "2.1.0",
-  "display_name": "Tools:Miscellaneous:Code Editor",
+  "display_name": "Tools:System:Code Editor",
   "description": "Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Tools",
-    "Miscellaneous"
-  ],
+  "categories": ["Tools", "System"],
   "icon": "📝",
   "state_namespace": "code_editor",
   "state_schema": {

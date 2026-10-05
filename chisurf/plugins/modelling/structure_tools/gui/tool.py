@@ -5,12 +5,13 @@ Each panel embeds one of the existing structure tools **unchanged**:
 
     1. FPS JSON Editor          — FpsJsonEditorTool
     2. FRET Docking & Screening — FretDockingTool
-    3. Kappa2 Distribution      — Kappa2Dist
     ───────────────────────────  (separator)
-    4. QuEst                    — QuEstWindow
-    5. HydroPro                 — HydroGui
+    3. QuEst                    — QuEstWindow
+    4. HydroPro                 — HydroGui
     ───────────────────────────  (separator)
-    6. Trajectory Tools         — TrajectoryToolsTool
+    5. Trajectory Tools         — TrajectoryToolsTool
+
+The κ² distribution calculator lives in the Calculators hub.
 
 Panels are imported lazily inside their factory functions so the combined window
 opens fast and a sub-tool whose heavy dependencies are missing only breaks its own
@@ -53,12 +54,6 @@ def _docking(parent: StructureToolsTool) -> QtWidgets.QWidget:
     return FretDockingTool()
 
 
-def _kappa2(parent: StructureToolsTool) -> QtWidgets.QWidget:
-    from chisurf.plugins.calculator.kappa2_dist.gui.tool import Kappa2Dist
-
-    return Kappa2Dist()
-
-
 def _quest(parent: StructureToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.quenching_estimator import QuEstWindow
 
@@ -95,13 +90,6 @@ STRUCTURE_PANELS: list[dict] = [
         "description": "FRET-restrained rigid-body docking, refinement and structure-library screening (IMP + IMP.bff).",
         "factory": _docking,
         "role": "docking",
-    },
-    {
-        "name": "3. Kappa2 Distribution",
-        "icon": "📐",
-        "description": "Calculate and visualise the κ² orientation-factor distribution for FRET.",
-        "factory": _kappa2,
-        "role": "kappa2",
     },
     {
         "name": "────────",

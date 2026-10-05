@@ -1,10 +1,10 @@
 {
   "id": "pch",
   "version": "2.0.0",
-  "display_name": "Spectroscopy:Single-Molecule:PCH",
+  "display_name": "Spectroscopy:Correlation:PCH",
   "description": "Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Single-Molecule"],
+  "categories": ["Spectroscopy", "Correlation"],
   "icon": "📊",
   "state_namespace": "pch",
   "statefulness": {

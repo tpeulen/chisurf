@@ -22,8 +22,7 @@ browser is {doc}`24_scan_images`.
 
 ## 1. Open the tool
 
-**Imaging → Tools → Image Browser** opens it on its own; inside **Imaging
-Tools** it is the **Browser** step, and **Next → Intensity** hands the picked
+It is the **Browser** step of **Imaging → Image Tools**, and **Next → Intensity** hands the picked
 image to the Intensity step. The window has two tabs: **Image browser** (the page it
 opens on) and **Detector setup**.
 

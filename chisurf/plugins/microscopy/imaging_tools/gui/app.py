@@ -122,6 +122,12 @@ PANELS = (
         'PSF Determination',
         '3D Gaussian PSF fitting and bead detection.',
     ),
+    (
+        'clsm_generator',
+        'microscopy/clsm_generator',
+        'CLSM Generator',
+        'Generate a synthetic CLSM photon image from an intensity image and per-detector lifetime maps: a known answer to check the imaging pipeline against.',
+    ),
 )
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).parent

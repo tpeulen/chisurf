@@ -10,9 +10,9 @@ from pathlib import Path
 from qtpy import QtWidgets
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import QAction
 
 import chisurf as cs
+from chisurf.gui.widgets.ribbon.ribbon_file import FILE_ACTIONS
 
 
 def _plugin_icon_from_metadata(
@@ -135,13 +135,15 @@ class CategoryMethodsMixin:
                     else:
                         small_actions.append(action)
 
-            # Add remaining toolbar actions that weren't categorized yet
+            # The toolbar's window actions; the ones the File tab already shows stay there.
             remaining_actions = [
-                action for action in toolbar_actions if action and not action.isSeparator()
+                action
+                for action in toolbar_actions
+                if action and not action.isSeparator() and action.objectName() not in FILE_ACTIONS
             ]
 
             if remaining_actions:
-                panel_other = category.addPanel("Other Tools", showPanelOptionButton=False)
+                panel_other = category.addPanel("Window", showPanelOptionButton=False)
                 for action in remaining_actions[:8]:  # Limit to 8 actions
                     # Use small action for text below icon layout
                     btn = panel_other.addSmallButton(
@@ -155,7 +157,7 @@ class CategoryMethodsMixin:
                     if action.icon():
                         btn.setMaximumIconSize(14)
                     self.logger.info(
-                        f"Added remaining action '{action.text()}' to Other Tools panel"
+                        f"Added remaining action '{action.text()}' to Window panel"
                     )
 
         else:
@@ -593,155 +595,3 @@ class CategoryMethodsMixin:
                     slot=action.trigger,
                     alignment=Qt.AlignLeft | Qt.AlignTop,
                 )
-
-    def _create_edit_category(self):
-        """Create Edit category with editing operations"""
-        category = self.ribbon_bar.addCategory("Edit")
-
-        # Basic operations panel
-        panel = category.addPanel("Basic", showPanelOptionButton=False)
-
-        # Undo action
-        if hasattr(self.main_window, "actionUndo"):
-            action = self.main_window.actionUndo
-            # Add undo icon
-            try:
-                action.setIcon(QIcon.fromTheme("edit-undo"))
-            except Exception:
-                pass
-            panel.addLargeButton(
-                action.text(),
-                icon=action.icon() if action.icon() else None,
-                slot=action.trigger,
-                alignment=Qt.AlignLeft | Qt.AlignTop,
-            )
-
-        # Redo action
-        if hasattr(self.main_window, "actionRedo"):
-            action = self.main_window.actionRedo
-            # Add redo icon (rotate arrow)
-            try:
-                action.setIcon(QIcon.fromTheme("edit-redo"))
-            except Exception:
-                pass
-            panel.addLargeButton(
-                action.text(),
-                icon=action.icon() if action.icon() else None,
-                slot=action.trigger,
-                alignment=Qt.AlignLeft | Qt.AlignTop,
-            )
-
-        # Clipboard panel
-        panel = category.addPanel("Clipboard", showPanelOptionButton=False)
-
-        # Copy action
-        if hasattr(self.main_window, "actionCopy"):
-            action = self.main_window.actionCopy
-            panel.addMediumButton(
-                action.text(),
-                icon=action.icon() if action.icon() else None,
-                slot=action.trigger,
-                alignment=Qt.AlignLeft | Qt.AlignTop,
-            )
-
-        # Paste action
-        if hasattr(self.main_window, "actionPaste"):
-            action = self.main_window.actionPaste
-            panel.addMediumButton(
-                action.text(),
-                icon=action.icon() if action.icon() else None,
-                slot=action.trigger,
-                alignment=Qt.AlignLeft | Qt.AlignTop,
-            )
-
-        return category
-
-    def _create_analysis_category(self):
-        """Create Analysis category with ChiSurf-specific analysis tools"""
-        category = self.ribbon_bar.addCategory("Analysis")
-
-        # Check if we're in experimental mode
-        cs.core.settings.cs_settings.get("enable_experimental", False)
-
-        # Discover plugins
-        panel = category.addPanel("Model", showPanelOptionButton=False)
-        if hasattr(self.main_window, "comboBox_modelSelect"):
-            action = QAction("Select Model", self.main_window)
-            action.setStatusTip("Change fitting model")
-            # Add settings icon
-            try:
-                action.setIcon(QIcon.fromTheme("configure"))
-            except Exception:
-                pass
-            panel.addMediumButton(
-                action.text(),
-                icon=action.icon() if action.icon() else None,
-                slot=action.trigger,
-                alignment=Qt.AlignLeft | Qt.AlignTop,
-            )
-
-        # Fitting panel
-        panel = category.addPanel("Fitting", showPanelOptionButton=False)
-
-        # Start fit action
-        if hasattr(self.main_window, "actionStart_Fit"):
-            action = self.main_window.actionStart_Fit
-            # Add play/start icon
-            try:
-                action.setIcon(QIcon.fromTheme("media-playback-start"))
-            except Exception:
-                pass
-            panel.addLargeButton(
-                action.text(),
-                icon=action.icon() if action.icon() else None,
-                slot=action.trigger,
-                alignment=Qt.AlignLeft | Qt.AlignTop,
-            )
-
-        # Stop fit action
-        if hasattr(self.main_window, "actionStop_Fit"):
-            action = self.main_window.actionStop_Fit
-            panel.addLargeButton(
-                action.text(),
-                icon=action.icon() if action.icon() else None,
-                slot=action.trigger,
-                alignment=Qt.AlignLeft | Qt.AlignTop,
-            )
-
-        return category
-
-    def _create_tools_category(self):
-        """Create Tools category with utility functions"""
-        category = self.ribbon_bar.addCategory("Tools")
-
-        # Utilities panel
-        panel = category.addPanel("Utilities", showPanelOptionButton=False)
-
-        # Settings action
-        if hasattr(self.main_window, "actionSettings"):
-            action = self.main_window.actionSettings
-            # Add settings icon
-            try:
-                action.setIcon(QIcon.fromTheme("configure"))
-            except Exception:
-                pass
-            panel.addMediumButton(
-                action.text(),
-                icon=action.icon() if action.icon() else None,
-                slot=action.trigger,
-                alignment=Qt.AlignLeft | Qt.AlignTop,
-            )
-
-        menu_tools = getattr(self.main_window, "menuTools", None)
-        if menu_tools is not None:
-            for action in menu_tools.actions():
-                if action is None or action.isSeparator() or not action.isEnabled():
-                    continue
-                panel.addMediumButton(
-                    action.text(),
-                    icon=action.icon() if action.icon() else None,
-                    slot=action.trigger,
-                    alignment=Qt.AlignLeft | Qt.AlignTop,
-                )
-
-        return category

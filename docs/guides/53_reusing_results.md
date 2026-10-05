@@ -49,7 +49,7 @@ Unchanged — kept the previous BVA result (🔁 Restart recomputes it)
 :name: fig-53-bva-unchanged
 :width: 100%
 
-**Spectroscopy → Burst Analysis → 4. Burst BVA** on four files of the BH SPC-132 DNA
+**Spectroscopy → Single-Molecule → Burst Analysis → 4. Burst BVA** on four files of the BH SPC-132 DNA
 measurement (934 of 1133 bursts plotted). The step had written its `bv4/` files;
 pressing **Run** again with nothing changed kept them: the status bar says so and
 **🔁 Restart** (third toolbar button) is outlined. **⏩** sits between **◀ Back**

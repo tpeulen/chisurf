@@ -29,7 +29,7 @@ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
 else:
-    name = "Tools:Miscellaneous:Code Editor"
+    name = "Tools:System:Code Editor"
 icon = "📝"  # Memo/notepad emoji for editor
 
 

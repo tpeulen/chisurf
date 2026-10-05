@@ -28,7 +28,7 @@ to 512, fit window channels 55–480) and its donor–acceptor partner
 
 ### Open the tool
 
-**Main → Tools → Wizards**, entry **Batch analysis** (the hub embeds this wizard).
+**Tools → Calculators → Wizards**, entry **Batch analysis** (the hub embeds this wizard).
 The manifest name `Main:Tools:Batch-Analysis` is hidden from the menu. Before
 opening it, load a representative dataset, create the fit you intend to use, and
 **optimise it by hand**: its parameter values — and which parameters are fixed —

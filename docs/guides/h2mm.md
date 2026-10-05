@@ -135,8 +135,8 @@ against simulated data with a known answer in
 
 ### GUI
 
-Open **Spectroscopy → Single-Molecule → H2MM** (or step 7 of **Burst
-Analysis**), pick the burst folder with the folder button (or drop it on the
+Open step 7 of **Burst Analysis** (**Spectroscopy → Single-Molecule → Burst
+Analysis → 7. Burst segmentation (H2MM)**), pick the burst folder with the folder button (or drop it on the
 path field), assign the donor, acceptor and optional acceptor-excitation
 (*Aex*) detectors under **Channel Definitions**, choose the state range,
 criterion, engine and decoder under **H2MM Settings**, then **▶ Run**. The GUI

@@ -1,15 +1,12 @@
 {
   "id": "lifetime_analysis",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Decay Analysis",
-  "description": "Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and VV/VH G-factor calibration.",
+  "display_name": "Spectroscopy:Decay:Decay Analysis",
+  "description": "Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, VV/VH G-factor calibration, the VV/VH anisotropy decay, and a synthetic decay generator.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Spectroscopy",
-    "Fluorescence decay"
-  ],
+  "categories": ["Spectroscopy", "Decay", "Fluorescence decay"],
   "state_namespace": "lifetime_analysis",
   "statefulness": {
     "enabled": true,
@@ -27,7 +24,9 @@
     "lltf": "*",
     "maxent_decay": "*",
     "microtime_histogram": "*",
-    "vv_vh_g_factor": "*"
+    "vv_vh_g_factor": "*",
+    "vv_vh_anisotropy": "*",
+    "synthetic_decay": "*"
   },
   "experimental": true,
   "experimental_message": "Decay Analysis is experimental and not yet validated",

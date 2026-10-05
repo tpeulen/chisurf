@@ -27,7 +27,7 @@ if _manifest is not None:
     name = _manifest.display_name
     cli_entrypoint = _manifest.entrypoints.cli or ""
 else:
-    name = "Spectroscopy:Single-Molecule:PCH"
+    name = "Spectroscopy:Correlation:PCH"
     cli_entrypoint = "pch=chisurf.plugins.pch.cli:cli"
 
 __all__ = ["PCHApp"]

@@ -1,14 +1,12 @@
 {
   "id": "filetools",
   "version": "1.1.0",
-  "display_name": "Tools:File tools",
+  "display_name": "File:Data:File tools",
   "description": "Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID\u2192Analysis, and the TTTR header editor.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Tools"
-  ],
+  "categories": ["File", "Data"],
   "icon": "\ud83d\uddc2\ufe0f",
   "statefulness": {
     "enabled": true,
@@ -23,6 +21,7 @@
   },
   "optional_requires": {
     "bid_to_analysis": "*",
+    "mfd_prepare": "*",
     "pto_inspector": "*",
     "tttr_header_edit": "*",
     "tttr_splitter": "*",

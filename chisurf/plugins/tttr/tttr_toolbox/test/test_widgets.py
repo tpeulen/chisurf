@@ -16,7 +16,7 @@ def test_tttr_tools_uses_shared_navigation_shell(qapp, qtbot):
     assert w.nav_list.count() == len(TTTR_PANELS)
     names = [w.nav_list.item(i).text() for i in range(w.nav_list.count())]
     assert any("ALEX Creator" in n for n in names)
-    assert any("Split / Convert" in n for n in names)
+    assert any("Photon Table" in n for n in names)
     assert any("Count Rate Analysis" in n for n in names)
 
     # panels load lazily: only the first + the (possibly persisted) current panel
@@ -46,14 +46,14 @@ def test_toolbox_remembers_window_and_selection(qapp, qtbot, tmp_path):
     assert w._settings_key == "tttr_toolbox"
     w._settings = _settings
     w.resize(1180, 760)
-    w.nav_list.setCurrentRow(7)  # Count Rate Analysis
+    w.nav_list.setCurrentRow(4)  # Count Rate Analysis
     w._save_window_state()
 
     w2 = TttrToolboxTool()
     qtbot.addWidget(w2)
     w2._settings = _settings
     w2._restore_window_state()
-    assert w2.nav_list.currentRow() == 7
+    assert w2.nav_list.currentRow() == 4
 
 
 def test_panels_are_data_driven_from_json():
@@ -83,8 +83,7 @@ def test_included_plugins_are_menu_hidden():
     for mod in (
         "chisurf.plugins.tttr.ptu_alex_creator",
         "chisurf.plugins.tttr.tttr_microtime_shifter",
-        "chisurf.plugins.tttr.tttr_header_edit",
-        "chisurf.plugins.tttr.tttr_splitter",
+        "chisurf.plugins.tttr.photon_table",
         "chisurf.plugins.tttr.tttr_count_rate_analysis",
         "chisurf.plugins.tttr.audifier",
     ):

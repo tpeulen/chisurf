@@ -63,16 +63,6 @@ def default_calculators() -> list[CalculatorEntry]:
             icon="📈",
         ),
         CalculatorEntry(
-            id="fcs_calculator",
-            label="FCS diffusion",
-            description=(
-                "Confocal-FCS diffusion/volume calculator — solve τ, D, rₕ, V_eff "
-                "and concentration from one constraint."
-            ),
-            widget="chisurf.plugins.fcs.fcs_calculator.wizard:ConfocalCalcWidget",
-            icon="🌀",
-        ),
-        CalculatorEntry(
             id="rics_precision",
             label="RICS precision",
             description=(

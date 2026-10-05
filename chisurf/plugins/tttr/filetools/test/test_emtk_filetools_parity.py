@@ -63,7 +63,7 @@ def test_the_tools_are_the_qt_hubs_and_each_opens_natively(qt):
     app = FileToolsApp()
     try:
         names = [p["name"] for p in app.panels]
-        assert len(qt["rows"]) == len(names) == 6
+        assert len(qt["rows"]) == len(names) == 7
         for qt_row, name in zip(qt["rows"], names):
             assert name in qt_row                                     # the Qt row is icon + name
         for panel in app.panels:

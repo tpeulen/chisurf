@@ -10,7 +10,6 @@
     "TTTR header": "TTTR-Kopfzeilen",
     "TTTR → Time Windows": "TTTR → Zeitfenster",
     "BID → Analysis": "BID → Analyse",
-    "Read the file-tools help and the workflows of all six tools.": "Hilfe und Arbeitsabläufe aller sechs Dateiwerkzeuge lesen.",
     "Walk through choosing a converter, inspecting a container and correcting metadata.": "Konvertieren, Container prüfen und Metadaten korrigieren: geführter Rundgang.",
     "Filter tools by name or description.": "Werkzeuge nach Name oder Beschreibung filtern.",
     "Check the child manifest again after the native port or dependency becomes available.": "Nach der Portierung oder Installation einer Abhängigkeit das native Werkzeug erneut prüfen.",
@@ -20,7 +19,10 @@
     "Read a .pto back: every object in it, the payload as a table or a curve, the settings that are the recipe, and the provenance drawn as a graph. Opens the tool that performs a step.": "Alle Objekte, Tabellen, Kurven, Einstellungen und den Herkunftsgraphen eines .pto-Containers prüfen. Das Werkzeug zu einem Verarbeitungsschritt öffnen.",
     "View and edit the header tags of any TTTR file tttrlib can read — correcting metadata a vendor wrote, and adding tags of your own.": "TTTR-Kopfzeilen anzeigen und bearbeiten, fehlerhafte Metadaten korrigieren und eigene Tags hinzufügen.",
     "Split TTTR files into fixed-duration time-window BID (.bst) files.": "TTTR-Dateien in Zeitfenster fester Dauer teilen und als BID-Dateien (.bst) speichern.",
-    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "BID-Dateien in einen Ordner für die burstweise Analyse neben den TTTR-Daten konvertieren."
+    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "BID-Dateien in einen Ordner für die burstweise Analyse neben den TTTR-Daten konvertieren.",
+    "MFD Prepare": "MFD-Vorbereitung",
+    "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report.": "Einen Burst-Ordner für die Multiparameter-Fluoreszenzanalyse (MFD) vorbereiten: Photonenquellen auflösen, Kanalzählungen prüfen, mittlere Mikrozeiten berechnen und den Vorbereitungsbericht ansehen.",
+    "Read the file-tools help and the workflow of every tool.": "Hilfe und Arbeitsablauf jedes Dateiwerkzeugs lesen."
   },
   "fr": {
     "File tools": "Outils de fichiers",
@@ -33,7 +35,6 @@
     "TTTR header": "En-tête TTTR",
     "TTTR → Time Windows": "TTTR → Fenêtres temporelles",
     "BID → Analysis": "BID → Analyse",
-    "Read the file-tools help and the workflows of all six tools.": "Lire l’aide et les procédures des six outils de fichiers.",
     "Walk through choosing a converter, inspecting a container and correcting metadata.": "Visite guidée : choisir un convertisseur, inspecter un conteneur et corriger les métadonnées.",
     "Filter tools by name or description.": "Filtrer les outils par nom ou description.",
     "Check the child manifest again after the native port or dependency becomes available.": "Vérifier de nouveau le manifeste après le portage ou l’installation de la dépendance.",
@@ -43,7 +44,10 @@
     "Read a .pto back: every object in it, the payload as a table or a curve, the settings that are the recipe, and the provenance drawn as a graph. Opens the tool that performs a step.": "Inspecter les objets, tables, courbes, réglages et le graphe de provenance d’un .pto. Ouvrir l’outil associé à une étape.",
     "View and edit the header tags of any TTTR file tttrlib can read — correcting metadata a vendor wrote, and adding tags of your own.": "Afficher et modifier les en-têtes TTTR, corriger les métadonnées et ajouter des étiquettes.",
     "Split TTTR files into fixed-duration time-window BID (.bst) files.": "Diviser les fichiers TTTR en fenêtres de durée fixe et enregistrer des fichiers BID (.bst).",
-    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "Convertir les fichiers BID en un dossier d’analyse par salve à côté des données TTTR."
+    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "Convertir les fichiers BID en un dossier d’analyse par salve à côté des données TTTR.",
+    "MFD Prepare": "Préparation MFD",
+    "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report.": "Préparer un dossier de bursts pour l’analyse de fluorescence multiparamètre (MFD) : résoudre les sources de photons, vérifier les comptages par canal, calculer les microtemps moyens et consulter le rapport de préparation.",
+    "Read the file-tools help and the workflow of every tool.": "Lire l’aide des outils de fichiers et le flux de travail de chaque outil."
   },
   "es": {
     "File tools": "Herramientas de archivos",
@@ -56,7 +60,6 @@
     "TTTR header": "Cabecera TTTR",
     "TTTR → Time Windows": "TTTR → Ventanas temporales",
     "BID → Analysis": "BID → Análisis",
-    "Read the file-tools help and the workflows of all six tools.": "Leer la ayuda y los flujos de trabajo de las seis herramientas.",
     "Walk through choosing a converter, inspecting a container and correcting metadata.": "Recorrido para elegir un conversor, inspeccionar un contenedor y corregir los metadatos.",
     "Filter tools by name or description.": "Filtrar herramientas por nombre o descripción.",
     "Check the child manifest again after the native port or dependency becomes available.": "Comprobar el manifiesto tras la adaptación nativa o la instalación de la dependencia.",
@@ -66,7 +69,10 @@
     "Read a .pto back: every object in it, the payload as a table or a curve, the settings that are the recipe, and the provenance drawn as a graph. Opens the tool that performs a step.": "Inspeccionar objetos, tablas, curvas, ajustes y el grafo de procedencia de .pto. Abrir la herramienta de un paso.",
     "View and edit the header tags of any TTTR file tttrlib can read — correcting metadata a vendor wrote, and adding tags of your own.": "Ver y editar cabeceras TTTR, corregir metadatos y añadir etiquetas.",
     "Split TTTR files into fixed-duration time-window BID (.bst) files.": "Dividir archivos TTTR en ventanas de duración fija y guardar archivos BID (.bst).",
-    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "Convertir archivos BID en una carpeta de análisis de ráfagas junto a los datos TTTR."
+    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "Convertir archivos BID en una carpeta de análisis de ráfagas junto a los datos TTTR.",
+    "MFD Prepare": "Preparación MFD",
+    "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report.": "Preparar una carpeta de bursts para el análisis de fluorescencia multiparamétrica (MFD): resolver las fuentes de fotones, verificar los recuentos por canal, calcular los microtiempos medios y revisar el informe de preparación.",
+    "Read the file-tools help and the workflow of every tool.": "Leer la ayuda de las herramientas de archivos y el flujo de trabajo de cada herramienta."
   },
   "pt": {
     "File tools": "Ferramentas de arquivos",
@@ -79,7 +85,6 @@
     "TTTR header": "Cabeçalho TTTR",
     "TTTR → Time Windows": "TTTR → Janelas temporais",
     "BID → Analysis": "BID → Análise",
-    "Read the file-tools help and the workflows of all six tools.": "Ler a ajuda e os fluxos de trabalho das seis ferramentas.",
     "Walk through choosing a converter, inspecting a container and correcting metadata.": "Visita guiada: escolher um conversor, inspecionar um contêiner e corrigir metadados.",
     "Filter tools by name or description.": "Filtrar ferramentas por nome ou descrição.",
     "Check the child manifest again after the native port or dependency becomes available.": "Verificar novamente o manifesto após a adaptação nativa ou instalação da dependência.",
@@ -89,7 +94,10 @@
     "Read a .pto back: every object in it, the payload as a table or a curve, the settings that are the recipe, and the provenance drawn as a graph. Opens the tool that performs a step.": "Inspecionar objetos, tabelas, curvas, configurações e o grafo de proveniência de .pto. Abrir a ferramenta de uma etapa.",
     "View and edit the header tags of any TTTR file tttrlib can read — correcting metadata a vendor wrote, and adding tags of your own.": "Ver e editar cabeçalhos TTTR, corrigir metadados e adicionar etiquetas.",
     "Split TTTR files into fixed-duration time-window BID (.bst) files.": "Dividir arquivos TTTR em janelas de duração fixa e salvar arquivos BID (.bst).",
-    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "Converter arquivos BID em uma pasta de análise de rajadas junto aos dados TTTR."
+    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "Converter arquivos BID em uma pasta de análise de rajadas junto aos dados TTTR.",
+    "MFD Prepare": "Preparação MFD",
+    "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report.": "Preparar uma pasta de bursts para a análise de fluorescência multiparamétrica (MFD): resolver as fontes de fótons, verificar as contagens por canal, calcular os microtempos médios e consultar o relatório de preparação.",
+    "Read the file-tools help and the workflow of every tool.": "Ler a ajuda das ferramentas de arquivos e o fluxo de trabalho de cada ferramenta."
   },
   "ru": {
     "File tools": "Инструменты файлов",
@@ -102,7 +110,6 @@
     "TTTR header": "Заголовок TTTR",
     "TTTR → Time Windows": "TTTR → Временные окна",
     "BID → Analysis": "BID → Анализ",
-    "Read the file-tools help and the workflows of all six tools.": "Открыть справку и описание рабочих процессов всех шести инструментов.",
     "Walk through choosing a converter, inspecting a container and correcting metadata.": "Обзор выбора преобразователя, проверки контейнера и исправления метаданных.",
     "Filter tools by name or description.": "Фильтровать инструменты по названию или описанию.",
     "Check the child manifest again after the native port or dependency becomes available.": "Повторно проверить манифест после переноса инструмента или установки зависимости.",
@@ -112,6 +119,9 @@
     "Read a .pto back: every object in it, the payload as a table or a curve, the settings that are the recipe, and the provenance drawn as a graph. Opens the tool that performs a step.": "Проверить объекты, таблицы, кривые, настройки и граф происхождения .pto. Открыть инструмент соответствующего этапа.",
     "View and edit the header tags of any TTTR file tttrlib can read — correcting metadata a vendor wrote, and adding tags of your own.": "Просмотреть и изменить заголовки TTTR, исправить метаданные и добавить теги.",
     "Split TTTR files into fixed-duration time-window BID (.bst) files.": "Разделить файлы TTTR на окна фиксированной длительности и сохранить BID-файлы (.bst).",
-    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "Преобразовать BID-файлы в папку анализа всплесков рядом с данными TTTR."
+    "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data.": "Преобразовать BID-файлы в папку анализа всплесков рядом с данными TTTR.",
+    "MFD Prepare": "Подготовка MFD",
+    "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report.": "Подготовить папку вспышек к многопараметрическому флуоресцентному анализу (MFD): определить источники фотонов, проверить число отсчётов по каналам, вычислить средние микровремена и просмотреть отчёт о подготовке.",
+    "Read the file-tools help and the workflow of every tool.": "Читать справку по файловым инструментам и порядок работы с каждым из них."
   }
 }

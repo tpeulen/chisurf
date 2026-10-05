@@ -2,7 +2,7 @@
 type: Guide
 title: 'The PSF calculator: the focus your objective actually makes'
 description: Computing the three-dimensional point-spread function of an objective (vectorial Richards–Wolf, scalar Airy or Gaussian) with the pupil polarization, reading its widths against the textbook formula, and exporting it for deconvolution or simulation.
-tags: [guides, imaging, optics, resolution]
+tags: [guides, simulation, calculator]
 ---
 
 # The PSF calculator: the focus your objective actually makes
@@ -18,7 +18,7 @@ does to it), see {ref}`concept-point-spread-function`.
 
 ## Open the tool
 
-It lives in **Main → Tools → Calculators**, as the **🔬 PSF calculator** entry
+It lives in **Tools → Calculators**, as the **🔬 PSF calculator** entry
 in the calculator list. It has no menu entry of its own. Like the other
 calculators it opens no file and produces no dataset: it turns the optical
 parameters into a volume.

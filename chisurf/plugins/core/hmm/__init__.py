@@ -20,7 +20,7 @@ from __future__ import annotations
 import json as _json
 from pathlib import Path as _Path
 
-name = "Analysis:Kinetics:Hidden Markov model"
+name = "Spectroscopy:Kinetics:Hidden Markov model"
 cli_entrypoint = "hmm=chisurf.plugins.core.hmm.cli.main:cli"
 
 _manifest_path = _Path(__file__).parent / "manifest.json"

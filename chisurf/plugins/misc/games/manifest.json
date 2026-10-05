@@ -1,15 +1,12 @@
 {
   "id": "games",
   "version": "1.0.0",
-  "display_name": "Tools:Miscellaneous:Games",
+  "display_name": "Tools:System:Games",
   "description": "A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout.",
   "authors": [
     "ChiSurf contributors"
   ],
-  "categories": [
-    "Tools",
-    "Miscellaneous"
-  ],
+  "categories": ["Tools", "System"],
   "entrypoints": {
     "gui": "chisurf.plugins.misc.games.gui.tool:GamesWidget",
     "emtk": "chisurf.plugins.misc.games.gui.app:make_app"

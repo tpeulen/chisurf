@@ -53,7 +53,7 @@ is one burst; each numeric column is a selectable axis.
 (guide-ndx-in-chisurf)=
 ### ndX in ChiSurf
 
-In ChiSurf, **Main › Tools › ndX** (the ribbon button) opens the same emtk
+In ChiSurf, **Tools › Views › ndX** (the ribbon button) opens the same emtk
 application in a ChiSurf window. So do the tools that hand ndX a table: the
 trace browser's one-click ndX, the MMFDB admin's *Open in ndX*, the imaging
 tools' pixel table, H2MM's dwell table, the burst-selection output and the

@@ -1,6 +1,13 @@
+---
+type: Guide
+title: 'Games: a break between fits'
+description: 'Tool: Tools → System → Games (games), a hub that hosts the five games number_quest, minesweeper, tetris, pong and breakout.'
+tags: [guides, games]
+---
+
 # Games: a break between fits
 
-**Tool:** *Tools → Miscellaneous → Games* (`games`), a hub that hosts the five games `number_quest`, `minesweeper`,
+**Tool:** *Tools → System → Games* (`games`), a hub that hosts the five games `number_quest`, `minesweeper`,
 `tetris`, `pong` and `breakout`. Each game is built from the physics and statistics of fluorescence (a lifetime
 dial, a hot-pixel field, a spectral wall of bricks), but nothing here analyses data.
 

@@ -15,7 +15,7 @@ one — see {ref}`concept-drift-correction`.
 
 ## Open the tool
 
-It lives in **Spectroscopy → Image Tools**, as the **Drift** step between
+It lives in **Imaging → Image Tools**, as the **Drift** step between
 *Browser* and *1. Intensity* — deliberately, because every per-pixel map in the
 numbered pipeline below it is built from frames that must already be aligned.
 Correct the drift first, then walk the pipeline with **Next ▶**.

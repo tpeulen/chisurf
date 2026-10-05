@@ -23,22 +23,22 @@ import chisurf.plugins
 
 #: The top-level menu segments a menu-visible manifest may declare.
 #:
-#: ``Main``/``Edit``/``Analysis``/``Tools`` are built statically by
-#: ``ribbon_categories.py`` and reused when a plugin names them; ``Setup`` and
-#: ``Help`` are pulled out of the plugin loop and rendered by their own hosts;
-#: ``Spectroscopy``/``Structure``/``Imaging`` are the domain tabs the plugins
-#: themselves create. Adding a tab is a deliberate act — extend this set.
+#: ``File``/``Main`` are built by the ribbon itself (``ribbon_file.py``,
+#: ``ribbon_categories.py``) and reused when a plugin names them; ``Setup`` and
+#: ``Help`` are pulled out of the plugin loop and rendered into those two;
+#: ``Spectroscopy``/``Imaging``/``Structure``/``Tools`` are the domain tabs the
+#: plugins create (their order is ``chisurf.gui.widgets.ribbon.layout.TAB_ORDER``).
+#: Adding a tab is a deliberate act — extend this set and ``TAB_ORDER``.
 ALLOWED_TOP_LEVEL = frozenset(
     {
+        "File",
         "Main",
-        "Edit",
-        "Analysis",
-        "Tools",
         "Setup",
         "Help",
         "Spectroscopy",
-        "Structure",
         "Imaging",
+        "Structure",
+        "Tools",
     }
 )
 
@@ -82,13 +82,14 @@ def _reaches_the_ribbon(manifest: dict) -> bool:
     -------
     bool
         ``True`` when the plugin is neither ``menu_hidden`` nor CLI-only.
-        ``cli_only`` is derived as "declares no GUI entrypoint"
+        ``cli_only`` is derived as "declares no gui, emtk or script entrypoint"
         (:func:`chisurf.plugins._read_manifest_metadata`), and the ribbon hides
         those outside experimental mode — so neither kind opens a tab.
     """
     if manifest.get("menu_hidden"):
         return False
-    return bool((manifest.get("entrypoints") or {}).get("gui"))
+    entrypoints = manifest.get("entrypoints") or {}
+    return any(entrypoints.get(kind) for kind in ("gui", "emtk", "script"))
 
 
 def test_manifests_exist():
@@ -118,7 +119,7 @@ def test_every_allowed_tab_is_one_the_ribbon_really_builds():
     plugin declares it — otherwise the set would drift into a wish list and
     stop catching the next accidental tab.
     """
-    static = {"Main", "Edit", "Analysis", "Tools"}  # ribbon_categories.py
+    static = {"File", "Main"}  # ribbon_file.py, ribbon_categories.py
     hosted = {"Setup", "Help"}  # rendered outside the plugin loop
     declared = {
         (data.get("display_name") or "").split(":")[0].strip()

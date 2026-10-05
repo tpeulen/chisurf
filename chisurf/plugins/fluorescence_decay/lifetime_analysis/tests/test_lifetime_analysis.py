@@ -22,6 +22,8 @@ def test_lifetime_panel_order() -> None:
         "⏱️ 3. Lazy Lifetime Analysis",
         "📊 4. Histogram-Microtime",
         "⚖️ 5. VV/VH G-Factor",
+        "🎏 6. VV/VH Anisotropy",
+        "🧪 Synthetic Decay",
     ]
 
 
@@ -103,9 +105,8 @@ def test_lifetime_analysis_menu_metadata() -> None:
     root = Path(__file__).resolve().parents[1]
     visible = load_manifest(root / "manifest.json")
     assert visible is not None
-    # The ribbon regrouping (22cef2ebe) flattened the decay tools into one
-    # ``Spectroscopy`` group; this expectation had been stale ever since.
-    assert visible.display_name == "Spectroscopy:Decay Analysis"
+    # The Spectroscopy tab groups by method; decay analysis is the Decay group.
+    assert visible.display_name == "Spectroscopy:Decay:Decay Analysis"
     assert visible.experimental is True
     assert "experimental" in visible.experimental_message.lower()
     assert visible.menu_hidden is False

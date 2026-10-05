@@ -233,6 +233,14 @@ def _clsm_draw(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     return widget
 
 
+def _clsm_generator(parent: ImagingToolsTool) -> QtWidgets.QWidget:
+    from chisurf.plugins.microscopy.clsm_generator.gui.tool import ClsmGeneratorTool
+
+    widget = ClsmGeneratorTool(parent=parent, embedded=True)
+    parent._register_panel("clsm_generator", widget)
+    return widget
+
+
 def _psf(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.psf_determination.gui.tool import PsfDeterminationTool
 
@@ -398,6 +406,13 @@ IMAGING_PANELS: list[dict] = [
         "description": "3D Gaussian PSF fitting and bead detection.",
         "factory": _psf,
         "role": "psf",
+    },
+    {
+        "name": "CLSM Generator",
+        "icon": "🧪",
+        "description": "Generate a synthetic CLSM photon image from an intensity image and per-detector lifetime maps: a known answer to check the imaging pipeline against.",
+        "factory": _clsm_generator,
+        "role": "clsm_generator",
     },
 ]
 

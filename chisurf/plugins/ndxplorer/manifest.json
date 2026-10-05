@@ -1,15 +1,12 @@
 {
   "id": "ndxplorer",
   "version": "1.0.0",
-  "display_name": "Main:Tools:ndX",
+  "display_name": "Tools:Views:ndX",
   "description": "Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Main",
-    "Tools"
-  ],
+  "categories": ["Tools", "Views"],
   "icon": "\ud83d\udd2d",
   "state_namespace": "ndxplorer",
   "entrypoints": {

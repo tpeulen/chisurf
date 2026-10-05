@@ -2,7 +2,7 @@
 type: Guide
 title: 'The phasor calculator: where a lifetime lands before you measure it'
 description: Placing reference lifetimes, a FRET trajectory, a two-component mixing line and a gating cursor on the universal semicircle at a chosen frequency and harmonic, reading the reference table, and reproducing every overlay and a measured, IRF-corrected phasor headlessly.
-tags: [guides, imaging, flim, phasor, lifetime]
+tags: [guides, phasor, tcspc, lifetime, fret]
 ---
 
 # The phasor calculator: where a lifetime lands before you measure it
@@ -19,7 +19,7 @@ phasor of a real image is {doc}`24_scan_images`.
 
 ## Open the tool
 
-**Main → Tools → Calculators**, entry **◐ Phasor plot**. The manifest name
+**Tools → Calculators**, entry **◐ Phasor plot**. The manifest name
 `Main:Tools:Phasor-Calculator` is hidden from the menu; the Calculators hub is
 the only way in. The window has three docks: **Controls**, **Reference
 lifetimes** and **Phasor plot**. The plot follows every edit at once. **Guide**

@@ -30,7 +30,7 @@ try:
     assert app.selected=='lltf'
     app.restore_settings(settings)
     assert app.selected==PANELS[-1][0]
-    assert len(app.children)==5
+    assert len(app.children)==len(PANELS)
     app.search='lazy'
     app.draw(RecordingPainter(),0,0,1400,900)
     assert 'Lazy Lifetime' in app.item_rects

@@ -51,6 +51,22 @@ def _vv_vh_g_factor(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
+def _vv_vh_anisotropy(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the VV/VH anisotropy-decay panel."""
+    from chisurf.plugins.vv_vh_anisotropy import VvVhAnisotropyCalculator
+
+    widget = VvVhAnisotropyCalculator()
+    widget.setParent(parent)
+    return widget
+
+
+def _synthetic_decay(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the synthetic decay generator panel."""
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool import SyntheticDecayTool
+
+    return SyntheticDecayTool(parent=parent)
+
+
 #: The panels of this shell. Maturity flags are not written here: a panel names
 #: its tool's ``manifest`` and the flags are read from it, so a tool declares its
 #: maturity once instead of once per host that embeds it.
@@ -91,6 +107,20 @@ LIFETIME_PANELS = apply_manifest_flags(
             "description": "Calculate detector G-factors from VV/VH decays.",
             "factory": _vv_vh_g_factor,
             "role": "vv_vh_g_factor",
+        },
+        {
+            "name": "6. VV/VH Anisotropy",
+            "icon": "🎏",
+            "description": "Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift.",
+            "factory": _vv_vh_anisotropy,
+            "role": "vv_vh_anisotropy",
+        },
+        {
+            "name": "Synthetic Decay",
+            "icon": "🧪",
+            "description": "Generate synthetic TCSPC decays from lifetimes, with optional IRF convolution and Poisson shot noise.",
+            "factory": _synthetic_decay,
+            "role": "synthetic_decay",
         },
     ]
 )

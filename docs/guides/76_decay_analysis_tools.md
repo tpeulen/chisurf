@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: Decay Analysis window, Lazy Lifetime Analysis and synthetic decays
-description: The Spectroscopy:Decay Analysis window and its five panels; the Lazy Lifetime Analysis fit (automatic range, background, IRF shift and component count) and what its component-count scan really tests; and the Synthetic Decay Generator for decays whose answer is known.
+description: The Spectroscopy:Decay:Decay Analysis window and its seven panels; the Lazy Lifetime Analysis fit (automatic range, background, IRF shift and component count) and what its component-count scan really tests; and the Synthetic Decay Generator for decays whose answer is known.
 tags: [guides, tcspc, decay, lifetime, fitting, corrections]
 ---
 
@@ -28,9 +28,9 @@ data (Neyman $\chi^2$), which LLTF uses, is discussed in
 
 | Tool | How to open it |
 |---|---|
-| Decay Analysis | **Spectroscopy → Decay Analysis** (marked experimental) |
+| Decay Analysis | **Spectroscopy → Decay → Decay Analysis** (marked experimental) |
 | Lazy Lifetime Analysis | panel **3. Lazy Lifetime Analysis** of Decay Analysis; it has no menu entry of its own. Headless: `csc lltf fit` |
-| Synthetic Decay Generator | no menu entry and no hub. From the console, `SyntheticDecayTool().show()` (`chisurf.plugins.fluorescence_decay.synthetic_decay.gui.tool`); headless `csc synth-decay`, or the `synthetic_decay.compute*` RPC methods |
+| Synthetic Decay Generator | panel **Synthetic Decay** of Decay Analysis; headless `csc synth-decay`, or the `synthetic_decay.compute*` RPC methods |
 
 The same generator also drives the synthetic components of the FCS Filter
 Calculator ({doc}`17_filtered_fcs`) and the decay dialog of the simulated TCSPC
@@ -42,8 +42,8 @@ acquisition device, through a separate editor.
 :name: fig-decay-analysis-hub
 :width: 100%
 
-**Spectroscopy → Decay Analysis**, here on panel 5 with a fast dye and a slow protein loaded.
-The list on the left holds the five tools in the order they depend on each other (a `*` marks
+**Spectroscopy → Decay → Decay Analysis**, here on panel 5 with a fast dye and a slow protein loaded.
+The list on the left holds the tools in the order they depend on each other (a `*` marks
 the experimental one, whose banner appears above the tool); **Back** and **Next** walk it, the
 search box filters it by name or purpose, **Help** and **Guide** belong to the window.
 ```
@@ -55,6 +55,8 @@ search box filters it by name or purpose, **Help** and **Guide** belong to the w
 | 3. Lazy Lifetime Analysis | discrete multi-exponential fit of one decay file (below) | this page |
 | 4. Histogram-Microtime | builds the decay from a TTTR photon file | {doc}`73_tttr_decay_and_correlation` |
 | 5. VV/VH G-Factor | $G$ from a pair of polarized decays | {doc}`10_lifetime_anisotropy_fitting` |
+| 6. VV/VH Anisotropy | the anisotropy decay $r(t)$ of one VV/VH file, with $G$, backgrounds and a VH shift | {doc}`10_lifetime_anisotropy_fitting` |
+| Synthetic Decay | decays whose lifetimes you chose, for checking a fit against a known answer | [below](#synthetic-decay-generator) |
 
 Each panel is the standalone tool embedded unchanged; the mouse, the wheel, the keyboard and
 dropped files go to the selected tool, and a panel keeps its state while you move along the list. Nothing is passed from one panel to the next: an

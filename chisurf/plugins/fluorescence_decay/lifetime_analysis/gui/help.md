@@ -35,6 +35,13 @@ from an already-binned decay.
 Anisotropy is a *ratio* of two detectors, so their unequal efficiency enters it
 directly. Without *G*, an anisotropy is an instrument reading.
 
+**6. VV/VH anisotropy** applies that *G* (plus backgrounds and a fractional VH
+shift) to one VV/VH file and plots the anisotropy decay r(t).
+
+**Synthetic Decay** generates decays whose lifetimes you chose — with an IRF
+and Poisson noise if you want them — so a fit can be checked against a known
+answer before it is trusted on data.
+
 ## The three things that decide the answer
 
 **The IRF, and its timing.** A shift of a single TCSPC channel between the IRF

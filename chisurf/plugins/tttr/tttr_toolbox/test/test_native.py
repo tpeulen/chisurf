@@ -16,7 +16,7 @@ from emtk.testing import RecordingPainter
 from chisurf.plugins.tttr.tttr_toolbox.gui.app import make_app
 from chisurf.emtk.i18n import SUPPORTED_LOCALES, set_locale
 app = make_app()
-assert len(app.tools) == 7
+assert len(app.tools) == 5
 for panel in app.tools:
     child = app.select(panel['role'])
     assert child is not None, app.errors
@@ -103,7 +103,7 @@ def test_route_errors_stay_visible_and_retry():
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 800, 600)
     assert any("no native EMTK" in text for text in painter.strings)
-    assert len(app.tools) == 7
+    assert len(app.tools) == 5
     app.select(role, retry=True)
     assert app.errors[role] == "broken child dependency"
     assert app.select(role, retry=True)

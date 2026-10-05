@@ -1,16 +1,12 @@
 {
   "id": "mmfdb_admin",
   "version": "1.1.0",
-  "display_name": "Tools:MMFDB Admin",
+  "display_name": "Tools:System:MMFDB Admin",
   "description": "Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Tools",
-    "Fluorescence",
-    "Database"
-  ],
+  "categories": ["Tools", "System", "Fluorescence", "Database"],
   "icon": "🗃️",
   "state_namespace": "mmfdb_admin",
   "statefulness": {

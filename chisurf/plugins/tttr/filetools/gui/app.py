@@ -156,7 +156,7 @@ class FileToolsApp(TourTarget, ImApp):
             im.same_line()
             if im.button(tr("Help")):
                 self.help.show()
-            im.set_item_tooltip(tr("Read the file-tools help and the workflows of all six tools."))
+            im.set_item_tooltip(tr("Read the file-tools help and the workflow of every tool."))
             self.remember("help")
             im.set_next_item_width(-1)
             _, self.filter = im.input_text("##File tool search", self.filter, hint=tr("Filter tools…"))

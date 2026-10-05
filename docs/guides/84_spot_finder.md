@@ -20,7 +20,7 @@ a centroid's precision are in {ref}`concept-particle-tracking`
 
 ## 1. Open the tool
 
-**Spectroscopy → Image Tools**, then **Spot Finder** in the left list, between
+**Imaging → Image Tools**, then **Spot Finder** in the left list, between
 *CLSM Draw* and *Region MLE*. The Spot Finder has no menu entry of its own
 (its manifest is `menu_hidden`); the Image Tools hub is the only way in from
 the menu bar.

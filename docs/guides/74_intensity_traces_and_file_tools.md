@@ -1,8 +1,8 @@
 ---
 type: Guide
-title: 'Intensity traces and file tools'
+title: Intensity traces and file tools
 description: Binning a TTTR file into per-detector intensity traces, decoding them with a hidden Markov model, and the File tools hub that splits, converts, packs, inspects and windows the same files.
-tags: [guides, photons, tttr, kinetics, hmm]
+tags: [guides, file-formats, tttr, photons]
 ---
 
 # Intensity traces and file tools
@@ -127,7 +127,7 @@ with a mean dwell of 12 ms — about one transit through the focus.
 
 ### Open the hub
 
-**Tools → File tools**. A list on the left, one panel per tool on the right;
+**File → Data → File tools**. A list on the left, one panel per tool on the right;
 panels load when first selected, so a tool whose dependencies are missing shows
 an error panel and the rest still work. **Guide** walks through the hub.
 
@@ -278,4 +278,4 @@ many short traces, ebFRET ({doc}`20_ebfret_binned_hmm`).
 - Tools: **Intensity trace** (`chisurf/plugins/tttr/intensity_trace/`);
   **File tools** (`chisurf/plugins/tttr/filetools/`) hosting
   `tttr_splitter`, `tttr_to_pto`, `pto_inspector`, `tttr_header_edit`,
-  `tttr_time_windows` and `bid_to_analysis`.
+  `tttr_time_windows`, `bid_to_analysis` and `mfd_prepare`.

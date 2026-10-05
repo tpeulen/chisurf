@@ -20,7 +20,7 @@ the averaging regime), see {ref}`concept-structure-trajectories`.
 
 ## Open the tools
 
-**Structure → Structure → Structure Tools**, then **🎞️ Trajectory Tools** in the
+**Structure → Modelling → Structure Tools**, then **🎞️ Trajectory Tools** in the
 left list. The workspace lists the eight tools on the left: *Align*, *Convert*,
 *Energy Calc*, *FRET*, *Join*, *Remove Clashed*, *Rot Translate*, *Save Topol*.
 Click one to open it on the right (or use the arrow keys); each tool keeps its

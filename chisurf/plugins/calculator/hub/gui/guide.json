@@ -2,7 +2,7 @@
   "steps": [
     {
       "title": "The calculators",
-      "text": "The list on the left holds every calculator ChiSurf bundles: FRET and homoFRET, FRET lines, FCS diffusion, RICS precision, phasor plot, the kappa-squared distribution, the F-test, FCS saturation and the PSF calculator. Hover an entry for what it does.",
+      "text": "The list on the left holds every calculator ChiSurf bundles: FRET and homoFRET, FRET lines, RICS precision, phasor plot, the kappa-squared distribution, the F-test, FCS saturation and the PSF calculator. Hover an entry for what it does.",
       "target": {"name": "calculators_list"}
     },
     {

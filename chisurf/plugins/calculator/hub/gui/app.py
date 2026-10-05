@@ -24,7 +24,6 @@ HERE = Path(__file__).parent
 FACTORIES = {
     "fret_calculator": "chisurf.plugins.calculator.fret_calculator.gui.app:make_app",
     "fret_line": "chisurf.plugins.fret_line.gui.app:make_app",
-    "fcs_calculator": "chisurf.plugins.fcs.fcs_calculator.gui.app:make_app",
     "rics_precision": "chisurf.plugins.calculator.rics_precision.gui.app:make_app",
     "phasor": "chisurf.plugins.calculator.phasor_calculator.gui.app:make_app",
     "kappa2_dist": "chisurf.plugins.calculator.kappa2_dist.gui.app:make_app",

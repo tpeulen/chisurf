@@ -22,7 +22,7 @@ fluorescence decays and correlation curves is essential for data quality assessm
 and experimental optimization.
 """
 
-name = "Main:Tools:Acquisition"
+name = "Tools:Views:Acquisition"
 
 import logging as _py_logging
 import os

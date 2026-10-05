@@ -2,7 +2,7 @@
 type: Concept
 title: 'The photon container: one measurement, one file'
 description: A measurement used to be a folder of files related to each other only by being named alike. ChiSurf writes it as one .pto instead — the recording kept verbatim, every result beside it, and every relationship stated rather than implied.
-tags: [concepts, data, provenance, container, pto]
+tags: [concepts, photons, file-formats]
 anchor: concept-photon-container
 ---
 
@@ -169,7 +169,7 @@ tests assert over a real container rather than a synthesised one.
 ## Looking inside one
 
 Everything above is recorded whether or not anyone reads it. The **PTO
-Inspector** (*Tools → File tools → PTO Inspector*) is the window that does: the objects in the
+Inspector** (*File → Data → File tools → PTO Inspector*) is the window that does: the objects in the
 file, the payload as a table or a curve, the settings, and the provenance drawn
 as a **graph** rather than a list.
 

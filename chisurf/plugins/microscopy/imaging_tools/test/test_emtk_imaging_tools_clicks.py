@@ -96,9 +96,9 @@ def test_back_and_next_buttons_walk_the_list_and_are_greyed_at_its_ends(drv):
     click_entry(drv, "setup")
     drv.click("previous")
     assert app.selected == "setup"  # greyed at the top
-    click_entry(drv, "psf")
+    click_entry(drv, "clsm_generator")
     drv.click("next")
-    assert app.selected == "psf"  # greyed at the bottom
+    assert app.selected == "clsm_generator"  # greyed at the bottom
     click_entry(drv, "pixel_mle")
     drv.click("next")
     assert app.selected == "clsm_draw" and roles.index("clsm_draw") == roles.index("pixel_mle") + 1
@@ -276,9 +276,9 @@ def test_the_arrow_keys_step_the_list_selection_like_the_qt_list_unless_the_tool
     assert app.selected == "setup"
     drv.key(keys.KEY_UP)
     assert app.selected == "setup"  # the top of the list
-    click_entry(drv, "psf")
+    click_entry(drv, "clsm_generator")
     drv.key(keys.KEY_DOWN)
-    assert app.selected == "psf"  # the bottom of the list
+    assert app.selected == "clsm_generator"  # the bottom of the list
 
     class Takes(Child):
         def key(self, key, text="", modifiers=0):

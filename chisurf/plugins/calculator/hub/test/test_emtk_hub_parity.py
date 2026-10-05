@@ -109,7 +109,7 @@ def qt_hub():
 def test_the_list_header_and_selection_equal_the_qt_hub_entry_by_entry(app, qt_hub):
     from qtpy import QtCore
 
-    assert qt_hub._list.count() == len(app.entries) == 9
+    assert qt_hub._list.count() == len(app.entries) == 8
     for row, entry in enumerate(app.entries):
         item = qt_hub._list.item(row)
         assert item.data(QtCore.Qt.UserRole) == entry.id

@@ -52,8 +52,7 @@ The same run from the shell is `h2mm compute <folder> --file-type SPC-130
 facade it is `bursts.h2mm(states=(1, 2, 3))`, which returns the same
 `H2mmAnalysis` as `.analysis`.
 
-The GUI (**Spectroscopy → Single-Molecule → H2MM**, or step 7 of Burst
-Analysis) runs the fit off the UI thread and redraws the model-selection and
+The GUI (step 7 of **Spectroscopy → Single-Molecule → Burst Analysis**) runs the fit off the UI thread and redraws the model-selection and
 FRET plots after each state count.
 
 ## The results dashboard

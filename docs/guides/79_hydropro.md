@@ -27,7 +27,7 @@ on a Mac HydroPro can prepare the input but cannot run it (see
 
 ## Open the tool
 
-**Structure → Structure Tools**, then **🌊 HydroPro** in the left list. The
+**Structure → Modelling → Structure Tools**, then **🌊 HydroPro** in the left list. The
 entry sits below the separator, next to QuEst. It has no ribbon button of its
 own.
 

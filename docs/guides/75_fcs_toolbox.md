@@ -2,7 +2,7 @@
 type: Guide
 title: 'FCS toolbox: from photon stream to a curve worth fitting'
 description: Correlating TTTR photon streams in the Spectroscopy:FCS tool — channel definitions, photon filtering, chunked multi-tau correlation, merging repeats with error bars — and converting correlation files between formats.
-tags: [guides, fcs, correlation, tttr]
+tags: [guides, fcs, photons, fitting, tttr, correlation, uncertainty, file-formats]
 ---
 
 # FCS toolbox: from photon stream to a curve worth fitting
@@ -19,7 +19,7 @@ For what the curve means and how its error bars are estimated, see
 
 ## Open the tool
 
-**Spectroscopy → FCS**. The window is a left rail with two groups:
+**Spectroscopy → Correlation → FCS**. The window is a left rail with two groups:
 
 * **Correlator** — the five-step workflow this guide walks through:
   *Channel Definitions → Files & Steps → Photon / Burst Filter → Correlator →

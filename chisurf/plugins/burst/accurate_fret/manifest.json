@@ -33,5 +33,5 @@
     "lightpath_simulator": "*",
     "ndxplorer": "*"
   },
-  "menu_hidden": false
+  "menu_hidden": true
 }

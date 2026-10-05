@@ -1,15 +1,12 @@
 {
  "id": "chimol",
  "version": "0.2.0",
- "display_name": "Structure:Structure:ChiMOL",
+ "display_name": "Structure:Modelling:ChiMOL",
  "description": "Molecular structure viewer and protein analysis plugin for ChiSurf.",
  "authors": [
   "Thomas-Otavio Peulen"
  ],
- "categories": [
-  "Structure",
-  "Molecular Viewer"
- ],
+ "categories": ["Structure", "Modelling", "Molecular Viewer"],
  "icon": "\ud83e\uddec",
  "state_namespace": "chimol",
  "statefulness": {

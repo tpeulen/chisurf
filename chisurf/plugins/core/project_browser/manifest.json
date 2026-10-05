@@ -62,5 +62,6 @@
   ],
   "requires": {
     "mmfdb_admin": "*"
-  }
+  },
+  "menu_hidden": true
 }

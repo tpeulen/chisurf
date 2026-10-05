@@ -74,7 +74,7 @@ user does not have to guess what the thing can do.
 ## Using it in the GUI
 
 The assistant lives in the **AI Assistant** panel of the code editor
-(`Tools → Miscellaneous → Code Editor`, then the robot button). The selector
+(`Tools → System → Code Editor`, then the robot button). The selector
 in its header decides how much it may touch:
 
 | Mode | What it can do |

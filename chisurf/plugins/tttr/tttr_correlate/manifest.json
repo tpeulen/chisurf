@@ -11,5 +11,6 @@
   ],
   "entrypoints": {
     "script": "__init__.py"
-  }
+  },
+  "menu_hidden": true
 }

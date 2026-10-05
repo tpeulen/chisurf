@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: 'Accurate FRET: automatic correction factors'
-description: The Spectroscopy → FRET → Accurate FRET tool (accurate_fret) takes a per-burst table and determines the Hellenkamp correction factors — leakage $alpha$, direct excitation $delta$, detection $gamma$ and excitation-flux ratio $beta$…
+description: The Spectroscopy → Single-Molecule → Burst Analysis → Accurate FRET tool (accurate_fret) takes a per-burst table and determines the Hellenkamp correction factors — leakage $alpha$, direct excitation $delta$, detection $gamma$ and excitation-flux ratio $beta$…
 tags: [guides, fret, corrections, bursts]
 ---
 
@@ -16,7 +16,7 @@ distances are explained in the concept page {ref}`concept-accurate-fret`.
 
 ## What it does
 
-The **Spectroscopy → FRET → Accurate FRET** tool (`accurate_fret`) takes a
+The **Spectroscopy → Single-Molecule → Burst Analysis → Accurate FRET** tool (`accurate_fret`) takes a
 per-burst table and determines the Hellenkamp correction factors — leakage
 $\alpha$, direct excitation $\delta$, detection $\gamma$ and excitation-flux
 ratio $\beta$ — **from the measurement itself**, without hand-drawn population

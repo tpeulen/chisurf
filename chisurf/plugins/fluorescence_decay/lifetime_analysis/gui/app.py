@@ -20,6 +20,20 @@ PANELS = [
     ("lltf", "3. Lazy Lifetime Analysis", "", "Analyze TCSPC decays with the LLTF workflow.", "Lazy Lifetime"),
     ("microtime_histogram", "4. Histogram-Microtime", "", "Build TTTR microtime histograms.", "Histogram-Microtime"),
     ("vv_vh_g_factor", "5. VV/VH G-Factor", "", "Calculate detector G-factors from VV/VH decays.", "G-Factor"),
+    (
+        "vv_vh_anisotropy",
+        "6. VV/VH Anisotropy",
+        "",
+        "Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift.",
+        "VV/VH Anisotropy",
+    ),
+    (
+        "synthetic_decay",
+        "Synthetic Decay",
+        "",
+        "Generate synthetic TCSPC decays from lifetimes, with optional IRF convolution and Poisson shot noise.",
+        "Synthetic Decay",
+    ),
 ]
 LIST_MAX_W = 300.0
 EXPERIMENTAL_COLOUR = (230, 80, 80, 255)

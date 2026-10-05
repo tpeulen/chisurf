@@ -2,7 +2,7 @@
 type: Guide
 title: Notebooks that run inside ChiSurf
 description: Open and run an .ipynb in the code editor against the application's own interpreter, so the cells see the fits and datasets the GUI is showing.
-tags: [guides, tooling, notebooks, console]
+tags: [guides, gui, notebooks]
 ---
 
 # Notebooks that run inside ChiSurf
@@ -12,7 +12,7 @@ tags: [guides, tooling, notebooks, console]
 drawing — with figures embedded under the cell that drew them, and a saved file
 any Jupyter reader can open.
 
-**What you need:** the Code Editor tool (`Tools → Miscellaneous → Code Editor`)
+**What you need:** the Code Editor tool (`Tools → System → Code Editor`)
 and a notebook. `File → Open Notebook` lists the ones ChiSurf ships under
 `examples/notebooks`.
 

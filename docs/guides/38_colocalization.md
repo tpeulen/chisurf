@@ -16,7 +16,7 @@ registration check are explained in the concept page {ref}`concept-colocalizatio
 
 ## What it does
 
-The **Colocalization** tool (`img_coloc`, **Spectroscopy → Image Tools →
+The **Colocalization** tool (`img_coloc`, **Imaging → Image Tools →
 Colocalization**, after *Drift* — a channel registration error reads as
 anti-correlation) takes one image with at least
 two channels and reports the standard colocalization coefficient set for a chosen

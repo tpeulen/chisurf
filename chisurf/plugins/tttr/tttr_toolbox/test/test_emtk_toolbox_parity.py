@@ -118,7 +118,7 @@ def test_the_navigation_list_equals_the_qt_tools_panels(ui, qapp, qtbot):
 
 
 def test_the_search_matches_what_the_qt_search_does(ui):
-    for query, role in (("count", "count_rate"), ("PIE", "alex_creator"), ("segments", "split_convert"), ("audio", "audifier")):
+    for query, role in (("count", "count_rate"), ("PIE", "alex_creator"), ("routing channel", "photon_table"), ("audio", "audifier")):
         ui.app.filter = query
         assert role in {p["role"] for p in ui.app.matching_panels()}, query
     ui.app.filter = "no-such-tool"

@@ -23,5 +23,6 @@
     }
   ],
   "dependencies": {},
-  "deprecated": false
+  "deprecated": false,
+  "menu_hidden": true
 }

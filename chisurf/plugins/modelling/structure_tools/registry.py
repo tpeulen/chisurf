@@ -23,12 +23,6 @@ STRUCTURE_TOOL_PANELS: list[dict] = [
         "emtk": "chisurf.plugins.modelling.structure_tools.cards.docking:make_app",
     },
     {
-        "name": "Kappa2 Distribution",
-        "group": 0,
-        "description": "Calculate and visualise the κ² orientation-factor distribution for FRET.",
-        "emtk": "chisurf.plugins.calculator.kappa2_dist.gui.app:make_app",
-    },
-    {
         "name": "QuEst",
         "group": 1,
         "description": "Quenching estimator — dye-diffusion simulation of fluorescence quenching and decays.",

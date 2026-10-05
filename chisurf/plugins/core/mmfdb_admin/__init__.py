@@ -11,7 +11,7 @@ _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
 else:
-    name = "Tools:mmfdb-admin"
+    name = "Tools:System:MMFDB Admin"
 
 # Headless fluorophore curation CLI (`csc fluorophore`), migrated here from the
 # standalone fluorophore_db plugin (PRD-06).

@@ -12,7 +12,7 @@ if _manifest is not None:
     icon = _manifest.icon
     cli_entrypoint = _manifest.entrypoints.cli or ""
 else:
-    name = "Spectroscopy:Light Path Simulator"
+    name = "Tools:Calculators:Light Path Simulator"
     icon = "🔦"
     cli_entrypoint = "lightpath-simulator=chisurf.plugins.core.lightpath_simulator.cli:cli"
 

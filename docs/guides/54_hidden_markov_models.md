@@ -31,7 +31,7 @@ have many short FRET traces that are individually too short to fit,
 
 ## Open the tool
 
-**Analysis → Kinetics → Hidden Markov model**.
+**Spectroscopy → Kinetics → Hidden Markov model**.
 
 The window has three panels: **Model** (the settings), **Trace** (the data and
 what the model made of it) and **States** (the numbers).

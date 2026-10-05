@@ -12,7 +12,7 @@ Behavior:
 icon = "📸"
 
 # Display name used by the Plugins menu (category: name)
-name = "Main:Tools:Screenshot"
+name = "Tools:System:Screenshot"
 
 import chisurf as cs
 from chisurf.gui import QtWidgets

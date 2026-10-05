@@ -82,7 +82,7 @@ def test_each_entry_is_clicked_builds_its_tool_and_shows_its_description(ui):
         assert ui.app.selected == ident and ui.app.child is ui.app.children[ident]
         strings = [t[5] for t in ui.draw().texts]
         assert label in strings and description in strings
-    assert len(ui.app.children) == 5
+    assert len(ui.app.children) == len(PANELS)
 
 
 def test_a_selected_tool_is_kept_alive_and_not_rebuilt(ui):

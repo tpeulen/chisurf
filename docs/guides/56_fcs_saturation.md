@@ -19,7 +19,7 @@ tool.
 ## 1. Open the calculator and pick a scheme
 
 Open **Calculators → FCS Saturation** (also on the ribbon as **Spectroscopy →
-Fluorescence Correlation Spectroscopy → FCS Saturation**). The **Photophysics** panel on the left
+Fluorescence Correlation Spectroscopy → Correlation → FCS Saturation**). The **Photophysics** panel on the left
 holds everything about the molecule and the optics; the other panels are output.
 
 Start from a shipped scheme in the **Scheme** dropdown:

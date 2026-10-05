@@ -31,7 +31,7 @@ line.
 
 The engine is the `tttrlib.BVA` burst feature (parallel over bursts); the
 `burst_bva` plugin wraps it. Open it as step **4. Burst BVA** of
-**Spectroscopy → Burst Analysis** — the burst folder and detector setup of step
+**Spectroscopy → Single-Molecule → Burst Analysis** — the burst folder and detector setup of step
 2 carry over — or on its own as *Spectroscopy:Single-Molecule:BVA*.
 
 Point the plugin at a burst-analysis folder either with the 📂 toolbar button or

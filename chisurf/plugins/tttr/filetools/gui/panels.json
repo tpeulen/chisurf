@@ -46,6 +46,14 @@
       "role": "bid_to_analysis",
       "entrypoint": "chisurf.plugins.burst.bid_to_analysis:BidToAnalysisGUI",
       "description": "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data."
+    },
+    {
+      "name": "MFD Prepare",
+      "icon": "📊",
+      "role": "mfd_prepare",
+      "entrypoint": "chisurf.plugins.burst.mfd_prepare.gui.tool:MfdPrepareTool",
+      "embed": true,
+      "description": "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report."
     }
   ]
 }

@@ -27,7 +27,7 @@ _manifest_path = Path(__file__).parent / "manifest.json"
 _manifest = (
     json.loads(_manifest_path.read_text(encoding="utf-8")) if _manifest_path.exists() else {}
 )
-name = _manifest.get("display_name", "Tools:File tools")
+name = _manifest.get("display_name", "File:Data:File tools")
 
 
 def __getattr__(attr_name: str):

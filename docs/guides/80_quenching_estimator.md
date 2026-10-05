@@ -31,7 +31,7 @@ result is shown, because none could be computed. See [Known defects](#known-defe
 
 ## Open the tool
 
-**Structure → Structure Tools**, then **💡 QuEst** in the left list. It has no
+**Structure → Modelling → Structure Tools**, then **💡 QuEst** in the left list. It has no
 ribbon button of its own. In the current state the panel shows the form, and Simulate
 ends in the failure described below:
 

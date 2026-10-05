@@ -2,7 +2,7 @@
 type: Guide
 title: 'Inspecting a container: what is in a .pto, and how it got there'
 description: Open a measurement and read it back — every object, the payload as a table or a curve, the settings that are the recipe, and the provenance drawn as the graph it actually is.
-tags: [guides, pto, provenance, container, data]
+tags: [guides, settings, provenance]
 ---
 
 # Inspecting a container: what is in a `.pto`, and how it got there
@@ -15,7 +15,7 @@ settings that produced it (see
 All of that is recorded whether or not anyone reads it. This guide is about
 reading it.
 
-Open **Tools → File tools → PTO Inspector**, or drop a `.pto` on the window.
+Open **File → Data → File tools → PTO Inspector**, or drop a `.pto` on the window.
 Nothing here writes to the file.
 
 ## What is in it

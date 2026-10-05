@@ -96,6 +96,7 @@ def test_included_plugins_are_menu_hidden():
         "chisurf.plugins.tttr.tttr_time_windows",
         "chisurf.plugins.core.tttr_to_pto",
         "chisurf.plugins.core.pto_inspector",
+        "chisurf.plugins.burst.mfd_prepare",
     ):
         m = importlib.import_module(mod)
         manifest = json.loads(

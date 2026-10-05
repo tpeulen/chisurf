@@ -324,7 +324,7 @@ they sit on is reviewed.
 | 302 | 2. Link | Parameter, Attribute, Type, Default, Range / options, Meaning | [docs/reference/plugins/img_tracking.md](/reference/plugins/img_tracking.md) |
 | 303 | 3. Transport | Parameter, Attribute, Type, Default, Range / options, Meaning | [docs/reference/plugins/img_tracking.md](/reference/plugins/img_tracking.md) |
 | 304 | JSON-RPC methods | Method, Long-running, Summary | [docs/reference/plugins/img_tracking.md](/reference/plugins/img_tracking.md) |
-| 305 | Analysis → Kinetics | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
+| 305 | Spectroscopy → Kinetics | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
 | 306 | Core | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
 | 307 | Help | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
 | 308 | Imaging | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
@@ -348,7 +348,7 @@ they sit on is reviewed.
 | 326 | Tools | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
 | 327 | Tools → Converter | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
 | 328 | Tools → Miscellaneous | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
-| 329 | Tools → Miscellaneous → Games | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
+| 329 | Tools → System → Games | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
 | 330 | Tools → TTTR | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
 | 331 | {{ cookiecutter.plugin_category }} | Plugin, Summary | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
 | 332 | Identity | Field, Value | [docs/reference/plugins/intensity_trace.md](/reference/plugins/intensity_trace.md) |

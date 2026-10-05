@@ -34,7 +34,7 @@ from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
     FluorophoreDatabase,
 )
 
-name = "Spectroscopy:Spectra Downloader"
+name = "Tools:Calculators:Spectra Downloader"
 cli_entrypoint = "spectra-download=chisurf.plugins.spectra_downloader.cli:cli"
 
 

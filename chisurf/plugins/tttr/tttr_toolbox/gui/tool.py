@@ -5,9 +5,12 @@ Each panel embeds one of the existing TTTR tools **unchanged**:
 
     1. ALEX Creator         — AlexPTUCreator
     2. Micro-time Shifter   — MicrotimeShifterTool
-    3. TTTR Header Editor   — TagsEditor
+    3. Photon Table         — PhotonTableTool
     ───────────────────────  (separator)
-    4. Split / Convert      — PTUSplitter
+    4. Count Rate Analysis  — CountRateAnalyzer
+    5. Audifier             — TTTRAudifierWidget
+
+File-level operations (split/convert, header editing) live in File tools.
 
 Panels are imported lazily inside their factory functions so the combined window
 opens fast and a sub-tool whose heavy dependencies are missing only breaks its own

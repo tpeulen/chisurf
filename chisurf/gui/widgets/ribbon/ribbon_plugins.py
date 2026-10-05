@@ -13,6 +13,7 @@ from qtpy.QtGui import QIcon
 
 import chisurf as cs
 from chisurf.gui.widgets.navigation import maturity_markers, maturity_warnings
+from chisurf.gui.widgets.ribbon.layout import group_records
 
 # Import enhanced icon utilities for emoji support
 try:
@@ -111,92 +112,68 @@ class PluginMethodsMixin:
 
         return structure
 
-    def _create_hierarchical_menu_structure(self, structure, parent_category=None, parent_path=""):
-        """
-        Create hierarchical menu structure from nested plugin data.
+    def _create_plugin_tabs(self, plugins):
+        """Create one ribbon tab per address tab and one panel per group.
 
-        Since ribbon doesn't support true nested subcategories, this implementation
-        uses the first hierarchy level as the main category and organizes remaining
-        levels within panels and subpanels.
+        The grouping rules live in :mod:`chisurf.gui.widgets.ribbon.layout`, which
+        the layout test reads too: ``"Tab:Name"`` lands in a group named after its
+        tab, ``"Tab:A:B:Name"`` in the group ``"A › B"`` at any depth. A group with
+        more buttons than fit one panel continues in ``"Group 2"``, ``"Group 3"``.
 
         Parameters
         ----------
-        structure : dict
-            Nested plugin structure from _build_nested_plugin_structure
-        parent_category : RibbonCategory, optional
-            Parent ribbon category for nesting (not used in current implementation)
-        parent_path : str, optional
-            Path of the parent for logging
+        plugins : list of dict
+            Listed plugin records in ribbon order, each with ``plugin_name``,
+            ``label``, ``icon``, ``callback``, ``enabled`` and ``description``.
 
         Returns
         -------
         list
-            List of created categories
+            The ribbon categories that received buttons.
         """
-        created_categories = []
-        successful_plugins = 0
-        failed_plugins = 0
-        skipped_categories = 0
-
-        # Sort categories to ensure 'Dev' is always last
-        sorted_categories = sorted(
-            [
-                (category_name, category_data)
-                for category_name, category_data in structure.items()
-                if not category_name.startswith("_")
-            ],
-            key=lambda x: (1 if x[0] == "Dev" else 0, x[0]),
-        )
-
-        for category_name, category_data in sorted_categories:
-            # Check if category already exists and use it, or create a new one
-            if category_name in self.categories:
-                category = self.categories[category_name]
-                self.logger.debug(
-                    f"Using existing category '{category_name}' for hierarchical plugins"
-                )
-                skipped_categories += 1
-            else:
+        per_panel = 8
+        created = []
+        for tab, groups in group_records(plugins).items():
+            category = self.categories.get(tab)
+            if category is None:
                 try:
-                    category = self.ribbon_bar.addCategory(category_name)
-                    self.categories[category_name] = category
-                    self.logger.debug(
-                        f"Created new category '{category_name}' for hierarchical plugins"
-                    )
+                    category = self.ribbon_bar.addCategory(tab)
                 except Exception as e:
-                    self.logger.error(f"Failed to create category '{category_name}': {e}")
-                    failed_plugins += len(category_data.get("_plugins", []))
+                    self.logger.error(f"Failed to create category '{tab}': {e}")
                     continue
-
-            created_categories.append(category)
-
-            # Add plugins directly in this category
-            plugins = category_data.get("_plugins", [])
-            if plugins:
-                added_count = self._add_plugins_to_category(category, plugins, category_name)
-                successful_plugins += added_count
-                failed_plugins += len(plugins) - added_count
-
-            # Handle subcategories by organizing them into panels
-            subcategories = category_data.get("_subcategories", {})
-            if subcategories:
-                added_count, sub_failed = self._add_subcategories_as_panels(
-                    category, subcategories, category_name
-                )
-                successful_plugins += added_count
-                failed_plugins += sub_failed
-
-        # Log summary instead of individual plugin details
-        total_plugins = successful_plugins + failed_plugins
-        if total_plugins > 0:
-            self.logger.info(
-                f"Hierarchical menu summary: {successful_plugins} plugins created successfully, {failed_plugins} failed, {skipped_categories} categories reused"
-            )
-
-        # Ensure Dev category is always the last tab
+                self.categories[tab] = category
+            created.append(category)
+            for group, records in groups.items():
+                for start in range(0, len(records), per_panel):
+                    chunk = records[start : start + per_panel]
+                    number = start // per_panel + 1
+                    panel_name = group if number == 1 else f"{group} {number}"
+                    try:
+                        panel = category.addPanel(panel_name, showPanelOptionButton=False)
+                    except Exception as e:
+                        self.logger.error(f"Failed to create panel '{tab} > {panel_name}': {e}")
+                        continue
+                    for plugin_info in chunk:
+                        try:
+                            btn = panel.addSmallButton(
+                                plugin_info["label"],
+                                icon=plugin_info["icon"],
+                                showText=True,
+                                slot=plugin_info["callback"],
+                                alignment=Qt.AlignLeft | Qt.AlignTop,
+                            )
+                            btn.setEnabled(plugin_info["enabled"])
+                            btn.setToolTip(plugin_info["description"])
+                            if plugin_info["icon"]:
+                                btn.setMaximumIconSize(14)
+                        except Exception as e:
+                            self.logger.error(
+                                f"Failed to add plugin '{plugin_info.get('label', 'Unknown')}' "
+                                f"to {tab} > {panel_name}: {e}"
+                            )
+                    self._fix_panel_alignment(panel)
         self._move_dev_category_to_end()
-
-        return created_categories
+        return created
 
     def _move_dev_category_to_end(self):
         """Move the Dev category to be the last tab in the ribbon."""
@@ -301,194 +278,6 @@ class PluginMethodsMixin:
 
         except Exception as e:
             self.logger.warning(f"Failed to apply global alignment fix: {e}")
-
-    def _add_subcategories_as_panels(self, category, subcategories, category_path):
-        """
-        Add subcategories as galleries within panels in the given category.
-
-        Parameters
-        ----------
-        category : RibbonCategory
-            Ribbon category to add galleries to
-        subcategories : dict
-            Dictionary of subcategories to add as galleries
-        category_path : str
-            Path of the parent category for logging
-
-        Returns
-        -------
-        tuple
-            (successful_count, failed_count) of plugins added
-        """
-        successful_count = 0
-        failed_count = 0
-
-        for subcat_name, subcat_data in subcategories.items():
-            if subcat_name.startswith("_"):  # Skip metadata keys
-                continue
-
-            # Add plugins in this subcategory
-            plugins = subcat_data.get("_plugins", [])
-            if plugins:
-                try:
-                    # Create a panel for this subcategory
-                    panel_name = subcat_name
-                    panel = category.addPanel(panel_name, showPanelOptionButton=False)
-
-                    # Add plugins directly as small buttons for better size control
-                    for plugin_info in plugins:
-                        try:
-                            # Use the display label (should already be just the final name)
-                            display_label = plugin_info["label"]
-
-                            # Add as small button with text below icon for compact display
-                            btn = panel.addSmallButton(
-                                display_label,
-                                icon=plugin_info["icon"],
-                                showText=True,
-                                slot=plugin_info["callback"],
-                                alignment=Qt.AlignLeft | Qt.AlignTop,
-                            )
-                            btn.setEnabled(plugin_info["enabled"])
-                            btn.setToolTip(plugin_info["description"])
-
-                            # Make icon smaller if it exists
-                            if plugin_info["icon"]:
-                                btn.setMaximumIconSize(14)
-
-                            successful_count += 1
-                        except Exception as e:
-                            self.logger.error(
-                                f"Failed to add plugin '{plugin_info.get('label', 'Unknown')}' to {category_path} > {panel_name} panel: {e}"
-                            )
-                            failed_count += 1
-
-                    # Fix panel alignment after adding all plugins
-                    self._fix_panel_alignment(panel)
-
-                except Exception as e:
-                    self.logger.error(
-                        f"Failed to create panel '{subcat_name}' in category '{category_path}': {e}"
-                    )
-                    failed_count += len(plugins)
-
-            # Recursively handle deeper nesting
-            deeper_subcats = subcat_data.get("_subcategories", {})
-            if deeper_subcats:
-                # For deeper levels, create panel names that include the hierarchy
-                for deeper_name, deeper_data in deeper_subcats.items():
-                    if deeper_name.startswith("_"):
-                        continue
-
-                    deeper_plugins = deeper_data.get("_plugins", [])
-                    if deeper_plugins:
-                        try:
-                            # Create descriptive panel name
-                            panel_name = f"{subcat_name} > {deeper_name}"
-                            panel = category.addPanel(panel_name, showPanelOptionButton=False)
-
-                            # Add plugins directly as small buttons for better size control
-                            for plugin_info in deeper_plugins:
-                                try:
-                                    display_label = plugin_info["label"]
-
-                                    # Add as small button with text below icon for compact display
-                                    btn = panel.addSmallButton(
-                                        display_label,
-                                        icon=plugin_info["icon"],
-                                        showText=True,
-                                        slot=plugin_info["callback"],
-                                        alignment=Qt.AlignLeft | Qt.AlignTop,
-                                    )
-                                    btn.setEnabled(plugin_info["enabled"])
-                                    btn.setToolTip(plugin_info["description"])
-
-                                    # Make icon smaller if it exists
-                                    if plugin_info["icon"]:
-                                        btn.setMaximumIconSize(14)
-
-                                    successful_count += 1
-                                except Exception as e:
-                                    self.logger.error(
-                                        f"Failed to add plugin '{plugin_info.get('label', 'Unknown')}' to {category_path} > {panel_name} panel: {e}"
-                                    )
-                                    failed_count += 1
-
-                            # Fix panel alignment after adding all plugins
-                            self._fix_panel_alignment(panel)
-
-                        except Exception as e:
-                            self.logger.error(
-                                f"Failed to create panel '{panel_name}' in category '{category_path}': {e}"
-                            )
-                            failed_count += len(deeper_plugins)
-
-        return successful_count, failed_count
-
-    def _add_plugins_to_category(self, category, plugins, category_path):
-        """
-        Add plugins to a ribbon category using galleries within panels for better organization.
-
-        Parameters
-        ----------
-        category : RibbonCategory
-            Ribbon category to add plugins to
-        plugins : list
-            List of plugin dictionaries
-        category_path : str
-            Path of the category for logging
-
-        Returns
-        -------
-        int
-            Number of successfully added plugins
-        """
-        if not plugins:
-            return 0
-
-        successful_count = 0
-
-        # Group plugins into galleries of ~8 items each (smaller for better fit with 32px icons)
-        gallery_size = 8
-        for i in range(0, len(plugins), gallery_size):
-            gallery_plugins = plugins[i : i + gallery_size]
-            gallery_number = i // gallery_size + 1
-            panel_name = f"Gallery {gallery_number}" if len(plugins) > gallery_size else "Plugins"
-
-            # Create panel first
-            panel = category.addPanel(panel_name, showPanelOptionButton=False)
-
-            # Add plugins directly as small buttons for better size control
-            for plugin_info in gallery_plugins:
-                try:
-                    # Use the label (which should already be the display name)
-                    display_label = plugin_info["label"]
-
-                    # Add as small button with text below icon for compact display
-                    btn = panel.addSmallButton(
-                        display_label,
-                        icon=plugin_info["icon"],
-                        showText=True,
-                        slot=plugin_info["callback"],
-                        alignment=Qt.AlignLeft | Qt.AlignTop,
-                    )
-                    btn.setEnabled(plugin_info["enabled"])
-                    btn.setToolTip(plugin_info["description"])
-
-                    # Make icon smaller if it exists
-                    if plugin_info["icon"]:
-                        btn.setMaximumIconSize(14)
-
-                    successful_count += 1
-                except Exception as e:
-                    self.logger.error(
-                        f"Failed to add plugin '{plugin_info.get('label', 'Unknown')}' to {category_path} -> {panel_name}: {e}"
-                    )
-
-            # Fix panel alignment after adding all plugins to this gallery
-            self._fix_panel_alignment(panel)
-
-        return successful_count
 
     def _create_plugins_category(self):
         """Create dedicated Plugins category with hierarchical submenu support"""
@@ -689,11 +478,7 @@ class PluginMethodsMixin:
 
             # Build hierarchical structure and create menu
             if all_plugins:
-                # Build nested structure
-                plugin_structure = self._build_nested_plugin_structure(all_plugins)
-
-                # Create hierarchical menu structure
-                created_categories = self._create_hierarchical_menu_structure(plugin_structure)
+                created_categories = self._create_plugin_tabs(all_plugins)
 
                 self.logger.info(
                     f"Created hierarchical plugins menu with {len(all_plugins)} plugins in {len(created_categories)} categories"

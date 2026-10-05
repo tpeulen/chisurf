@@ -79,13 +79,14 @@ def test_pathless_names_fall_back(display_name):
     assert leaf == display_name.strip()
 
 
-def test_spectra_downloader_is_reachable_under_spectroscopy():
+def test_spectra_downloader_keeps_a_full_menu_path():
     """The one manifest that had dropped its path keeps it.
 
-    Its module-level ``name`` declared ``Spectroscopy:Spectra Downloader`` all
-    along; the manifest added later omitted the path, and the manifest wins.
+    The manifest added later omitted the path its module-level ``name`` had
+    declared, and the manifest wins. It now sits with the other calculators on
+    the Tools tab; the module ``name`` mirrors the manifest.
     """
     root = pathlib.Path(chisurf.plugins.__file__).parent
     data = json.loads((root / "spectra_downloader" / "manifest.json").read_text())
-    assert data["display_name"] == "Spectroscopy:Spectra Downloader"
-    assert data["categories"][0] == "Spectroscopy"
+    assert data["display_name"] == "Tools:Calculators:Spectra Downloader"
+    assert data["categories"][0] == "Tools"

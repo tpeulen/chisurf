@@ -24,7 +24,7 @@ so the number of states is chosen by the minimum of AIC or BIC. See {ref}`concep
 
 ## 1. Open the tool and load a trace
 
-*Analysis → Kinetics → Hidden Markov model*. A trace file has one row per time bin and one column per
+*Spectroscopy → Kinetics → Hidden Markov model*. A trace file has one row per time bin and one column per
 detection channel (`.csv`, `.txt`, `.dat` or `.npy`). Press **Add files...** and click one or more files in
 the dialog, or drop them on the window; several files are fitted jointly as separate sequences.
 **Demo trace** loads a generated three-state trace with known means and dwell times, to try the tool.

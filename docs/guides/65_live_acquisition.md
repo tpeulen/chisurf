@@ -2,12 +2,12 @@
 type: Guide
 title: 'Live acquisition: watching a measurement while it happens'
 description: Run a measurement from a TCSPC card or the built-in photon simulator, read the five live windows, and drive the same pipeline from Python without a GUI.
-tags: [guides, acquisition, tcspc, streaming, simulation, fcs]
+tags: [guides, tcspc, photons, python, gui]
 ---
 
 # Live acquisition: watching a measurement while it happens
 
-**Main → Tools → Acquisition** streams photons from a TCSPC card — Becker &
+**Tools → Views → Acquisition** streams photons from a TCSPC card — Becker &
 Hickl SPC-130/150/160/180, PicoQuant, BrickMic — or from the built-in photon
 simulator, and analyses them *while they arrive*: a decay per detector, an FCS
 correlation, count rates, an MCS trace and inter-photon times, all updated per

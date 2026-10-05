@@ -12,7 +12,7 @@ opens on the right, and the hub keeps what they share, so you define the detecto
 
 ## 1. Open the hub
 
-**Spectroscopy → Image Tools**. The window opens on **Browser**. It needs no data to open.
+**Imaging → Image Tools**. The window opens on **Browser**. It needs no data to open.
 
 ```{figure} figures/imaging_tools.png
 :name: fig-imaging-tools
@@ -30,7 +30,7 @@ and **HDF5**. Below: the tool itself, here the Intensity step.
 | Start | **Setup** (detector channels and PIE windows), **Browser** (choose the photon image) |
 | Motion, resolution and channels | **Drift**, **Resolution** (FRC), **Flow**, **Tracking**, **Colocalization** |
 | The numbered per-pixel steps | **1. Intensity**, **2. Number & Brightness**, **3. Mean Micro-Time**, **4. IRF & BG** (optional), **5. Phasor-FLIM**, **6. Pixel-wise MLE** |
-| Below the rule | **CLSM Draw**, **Spot Finder**, **Region MLE**, **PSF Determination** |
+| Below the rule | **CLSM Draw**, **Spot Finder**, **Region MLE**, **PSF Determination**, **CLSM Generator** (a synthetic photon image whose answer is known) |
 
 Type in **Search** to keep the tools whose name or description contains the text. Hover over a tool for what it does;
 the same text is the description under the tool's name. A tool marked *pending* has no native version yet and says so

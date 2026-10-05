@@ -191,6 +191,9 @@ class TestRibbonMarksAMenuLaunchedTool:
             def onRunMacro(self, *args, **kwargs):
                 """Stand in for the main window's macro executor."""
 
+            def load_and_show_plugin(self, *args, **kwargs):
+                """Stand in for the main window's plugin launcher the ribbon calls."""
+
         class _Host(PluginMethodsMixin):
             def __init__(self, bar):
                 self.ribbon_bar = bar

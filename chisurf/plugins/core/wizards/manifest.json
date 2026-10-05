@@ -1,15 +1,12 @@
 {
   "id": "wizards",
   "version": "1.0.0",
-  "display_name": "Main:Tools:Wizards",
+  "display_name": "Tools:Calculators:Wizards",
   "description": "Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Main",
-    "Tools"
-  ],
+  "categories": ["Tools", "Calculators"],
   "state_namespace": "wizards",
   "statefulness": {
     "enabled": true,

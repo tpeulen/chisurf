@@ -34,17 +34,10 @@
       }
     },
     {
-      "title": "The header is trusted without being checked",
-      "text": "Repetition rate, dead time, resolution — every later conversion reads these and believes them. An acquisition that recorded a wrong repetition rate produces micro times that are wrong by a constant factor, and no analysis downstream will notice.",
+      "title": "Look at the photons before trusting a summary",
+      "text": "Every histogram and count rate here is a summary of individual records. When a summary looks wrong, the <b>Photon Table</b> shows the records themselves: routing channel, micro time and macro time, one row per photon, filtered by channel.<br/><br/>Splitting files and editing headers are file-level operations; they live in <b>File tools</b>.",
       "target": {
-        "panel": "Header Editor"
-      }
-    },
-    {
-      "title": "Splitting is how you handle a drift",
-      "text": "A long measurement that changed partway is not one measurement. Cutting it into segments and comparing them is honest; averaging across the change is not — and an average hides exactly the thing you would want to see.<br/><br/>The same tool moves between container formats.",
-      "target": {
-        "panel": "Split"
+        "panel": "Photon Table"
       }
     },
     {

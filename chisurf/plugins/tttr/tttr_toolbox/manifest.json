@@ -1,15 +1,12 @@
 {
   "id": "tttr_toolbox",
   "version": "1.0.0",
-  "display_name": "Tools:TTTR Tools",
-  "description": "Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor, Photon Table, Split/Convert, Count Rate Analysis and Audifier.",
+  "display_name": "Tools:Photon data:TTTR Tools",
+  "description": "Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File tools.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Tools",
-    "TTTR"
-  ],
+  "categories": ["Tools", "Photon data", "TTTR"],
   "icon": "🧰",
   "statefulness": {
     "enabled": true,
@@ -27,8 +24,6 @@
     "photon_table": "*",
     "ptu_alex_creator": "*",
     "tttr_audifier": "*",
-    "tttr_count_rate_analysis": "*",
-    "tttr_header_edit": "*",
-    "tttr_splitter": "*"
+    "tttr_count_rate_analysis": "*"
   }
 }

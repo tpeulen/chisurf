@@ -438,8 +438,8 @@ plugins:
     - Spectroscopy:Fluorescence Correlation Spectroscopy:Correlator
     - Spectroscopy:Single-Molecule:Burst Selection
     - Spectroscopy:Single-Molecule:Burst MLE
-    - Main:Tools:ndX
-    - Main:Tools:Screenshot
+    - Tools:Views:ndX
+    - Tools:System:Screenshot
     - Main:Tools:F-Test
   updater:
     ignore_updates_on_startup: false

@@ -49,5 +49,5 @@
   "optional_requires": {
     "burst_h2mm": "*"
   },
-  "menu_hidden": false
+  "menu_hidden": true
 }

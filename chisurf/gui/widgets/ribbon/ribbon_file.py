@@ -12,6 +12,32 @@ from chisurf import logging
 
 from .separator import RibbonSeparator
 
+#: The File tab's main-window actions, by panel, with their standard icons. Other tabs
+#: skip these so an action has one place in the ribbon.
+FILE_ACTION_GROUPS = {
+    "Project": [
+        ("actionProject_Browser", QStyle.SP_DialogOpenButton),
+        ("actionSave_Project", QStyle.SP_DialogSaveButton),
+        ("actionExport_Project", QStyle.SP_DriveHDIcon),
+        ("actionImport_Project", QStyle.SP_FileDialogListView),
+        ("actionClose_Project", QStyle.SP_DialogCloseButton),
+    ],
+    "Fits": [
+        ("actionLoad_Fit", QStyle.SP_DialogOpenButton),
+        ("actionSaveCurrentFit", QStyle.SP_DialogSaveButton),
+        ("actionSaveAllFits", QStyle.SP_DialogSaveButton),
+        ("actionClose_Fit", QStyle.SP_DialogCloseButton),
+        ("actionClose_all_fits", QStyle.SP_DialogCloseButton),
+    ],
+    "Application": [
+        ("actionExit_2", QStyle.SP_DialogCloseButton),
+        ("actionReinitialize", QStyle.SP_BrowserReload),
+    ],
+}
+
+#: Object names of the actions the File tab shows.
+FILE_ACTIONS = frozenset(name for group in FILE_ACTION_GROUPS.values() for name, _icon in group)
+
 
 class FileCategoryMixin:
     """Mixin class containing File category creation methods for ChiSurfRibbonIntegration."""
@@ -38,30 +64,9 @@ class FileCategoryMixin:
             except Exception:
                 pass
 
-        # Define action groups with their standard icons
-        action_groups = {
-            "Project": [
-                ("actionProject_Browser", QStyle.SP_DialogOpenButton),
-                ("actionSave_Project", QStyle.SP_DialogSaveButton),
-                ("actionExport_Project", QStyle.SP_DriveHDIcon),
-                ("actionImport_Project", QStyle.SP_FileDialogListView),
-                ("actionClose_Project", QStyle.SP_DialogCloseButton),
-            ],
-            "Fits": [
-                ("actionLoad_Fit", QStyle.SP_DialogOpenButton),
-                ("actionSaveCurrentFit", QStyle.SP_DialogSaveButton),
-                ("actionSaveAllFits", QStyle.SP_DialogSaveButton),
-                ("actionClose_Fit", QStyle.SP_DialogCloseButton),
-                ("actionClose_all_fits", QStyle.SP_DialogCloseButton),
-            ],
-            "Application": [
-                ("actionExit_2", QStyle.SP_DialogCloseButton),
-                ("actionReinitialize", QStyle.SP_BrowserReload),
-            ],
-        }
 
         # Create panels and add buttons iteratively
-        for panel_name, actions in action_groups.items():
+        for panel_name, actions in FILE_ACTION_GROUPS.items():
             panel = category.addPanel(panel_name, showPanelOptionButton=False)
 
             for action_name, standard_icon in actions:

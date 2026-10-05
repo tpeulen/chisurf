@@ -1,14 +1,12 @@
 {
   "id": "lightpath_simulator",
   "version": "1.0.0",
-  "display_name": "Spectroscopy:Light Path Simulator",
+  "display_name": "Tools:Calculators:Light Path Simulator",
   "description": "Optical light path simulator to calculate crosstalk and R0 overlap integrals.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Spectroscopy"
-  ],
+  "categories": ["Tools", "Calculators"],
   "icon": "\ud83d\udd26",
   "state_namespace": "lightpath_simulator",
   "statefulness": {

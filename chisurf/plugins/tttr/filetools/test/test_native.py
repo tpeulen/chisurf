@@ -60,7 +60,7 @@ def test_settings_roundtrip_preserves_child_and_selection():
 def test_panels_retained_and_manifest_declares_native():
     manifest = json.loads(Path(__file__).parents[1].joinpath("manifest.json").read_text())
     assert manifest["entrypoints"]["emtk"].endswith(":make_app")
-    assert len(SPEC["panels"]) == 6
+    assert len(SPEC["panels"]) == 7
     assert all(p.get("description") and p.get("entrypoint") for p in SPEC["panels"])
 
 
@@ -111,8 +111,14 @@ def test_drop_dispatches_to_selected_child_and_pointer_is_local(monkeypatch):
     try:
         child = app.select("tttr_to_pto")
         received = []
-        hook = "files_dropped" if callable(getattr(child, "files_dropped", None)) else "on_paths_dropped"
-        monkeypatch.setattr(child, hook, lambda paths: received.append(paths))   # the hook the hub prefers
+        hook = (
+            "files_dropped"
+            if callable(getattr(child, "files_dropped", None))
+            else "on_paths_dropped"
+        )
+        monkeypatch.setattr(
+            child, hook, lambda paths: received.append(paths)
+        )  # the hook the hub prefers
         assert app.files_dropped(["/private/tmp/input.ptu"])
         assert received == [["/private/tmp/input.ptu"]]
         presses = []

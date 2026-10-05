@@ -1,8 +1,8 @@
 ---
 type: Guide
-title: 'Spectra, overlap integrals and R₀'
+title: Spectra, overlap integrals and R₀
 description: Downloading dye, protein and filter spectra into a staging database with the Spectra Downloader, pushing them into the MMFDB, and computing the spectral overlap J and the Förster radius R₀ of a donor–acceptor pair from them.
-tags: [guides, fret, spectra, fluorophores]
+tags: [guides, spectra, database, mmfdb, fret]
 ---
 
 # Spectra, overlap integrals and R₀
@@ -35,7 +35,7 @@ $$
 
 ## 1. Open the Spectra Downloader
 
-**Spectroscopy → Spectra Downloader**. It is marked experimental: everything
+**Tools → Calculators → Spectra Downloader**. It is marked experimental: everything
 it fetches is stored as `unverified`.
 
 ```{note}
