@@ -141,3 +141,37 @@ def test_gui_imports_service_binds_modules_setup_ipython_needs():
         [sys.executable, "-c", code], capture_output=True, text=True, env=env, timeout=300
     )
     assert proc.returncode == 0, proc.stderr[-4000:]
+
+
+def test_post_show_services_reach_the_window_without_declaring_it(monkeypatch):
+    """A post-show service gets the main window it never declared a dependency on.
+
+    The post-show runner passes only declared dependencies, and no post-show
+    service declares ``startup_interface``. ``_get_window`` used to read only
+    that, so post-show services received ``None`` and silently did nothing.
+    """
+    import chisurf as cs
+    from chisurf.startup import gui_services
+    from chisurf.startup.services import AppStartupContext
+
+    calls = []
+
+    class _Window:
+        def populate(self):
+            calls.append("registered")
+            return 0
+
+    window = _Window()
+
+    def _svc(context):
+        w = gui_services._get_window(context)
+        if w is not None:
+            w.populate()
+
+    _svc(AppStartupContext(main_window=window))
+    assert calls == ["registered"]
+
+    monkeypatch.setattr(cs, "cs", window, raising=False)
+    _svc(AppStartupContext())
+    assert calls == ["registered", "registered"]
+

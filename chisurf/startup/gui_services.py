@@ -46,8 +46,24 @@ def _import_all(names) -> None:
 
 
 def _get_window(context):
-    """Return the main window from context dependencies."""
-    return context.dependencies.get("startup_interface")
+    """Return the main window for a startup service.
+
+    The splash phase receives the window as the ``startup_interface``
+    dependency. The ``post_gui_show`` runner only passes the dependencies a
+    service declares, and none of those services declared it -- so
+    ``populate_plugins`` got ``None`` and returned without doing anything. The window
+    exists by then: the runner passes it as ``context.main_window``, and
+    ``chisurf.cs`` is the last resort. A missing window is logged rather than
+    silently skipped.
+    """
+    window = (
+        context.dependencies.get("startup_interface")
+        or getattr(context, "main_window", None)
+        or getattr(cs, "cs", None)
+    )
+    if window is None:
+        cs.logging.error("Startup service has no main window; it did nothing.")
+    return window
 
 
 def gui_imports(context) -> None:

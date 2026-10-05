@@ -83,6 +83,7 @@ class BackgroundStartupRunner(QtCore.QObject):
             dependencies=dependencies,
             surface=spec.surface,
             phase=spec.phase,
+            main_window=self._window,
         )
 
         try:
