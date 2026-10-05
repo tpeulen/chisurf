@@ -18,10 +18,6 @@ in order:
    before-PNG is taken with the matplotlib code: render the result with
    realistic data, `savefig`, port, re-render, compare the control inventory
    (see "How a figure port is proven" below).
-   - `plugins/tttr/trace_browser/gui/model.py`:
-     carries another lane's uncommitted edits (none in the plot code);
-     port your hunks only (temp index + `git merge-file` against the saved
-     foreign diff), as H2MM's `save_plot` was.
    - ndXplorer `export/publication_figure.py` -- **blocked on a vector
      backend**: it exports PDF and SVG (`EXPORT_FORMATS`), and `emtk.figure`
      rasterises. Porting it now would drop the vector export, a lost feature.
@@ -186,3 +182,5 @@ labels sit a fixed 10 px above the bar.
   colour-bar label typo ("log₁₁" -> ln(1 + counts)) and the multi-channel
   colour bar overlapping the panels (one bar per panel, shared levels). A
   heatmap panel now fills its frame (emtk `fdaafdd`). 9 -> 8.
+- 2026-10-05 trace browser's DOCX trace picture (`_render_trace_png`), at
+  parity on BH_SPC132. 8 -> 7.
