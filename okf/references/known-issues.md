@@ -25,8 +25,9 @@ dock layout, every plot's and controller's state, and on-screen panel ranges
 including a mouse zoom -- all equal. Out of scope by the owner's decision
 (2026-10-05, "omitting plugins is fine", "no need to restore all"): open
 tool/plugin windows and scroll positions inside the Analysis dock editors.
-Separately (live app too, not a restore defect): the Fit page's data panel of the
-simulated TCSPC session autoscales its y-axis to ~1.4e16 when first shown.
+The Fit page's ~1.4e16 counts axis (an IRF tail underflowed to 1e-313 on a log
+axis) is fixed in chiplot (`LOG_AUTOSCALE_DECADES`, 12); the IRF tail still fills
+the lower part of that panel -- a tighter cap is a judgment call, not a defect.
 
 ## Native TCSPC visual-test teardown/restart (2026-10-03)
 

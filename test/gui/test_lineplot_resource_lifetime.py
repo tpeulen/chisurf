@@ -225,19 +225,15 @@ def test_tcspc_replacement_rollback_and_retired_callbacks(qapp, qtbot, tmp_path,
         assert len(cs_gui.fit_windows) == 1
         replacement = cs_gui.fit_windows[0]
         assert replacement is not original
-        timer = QtCore.QTimer(main)
-        timer.setSingleShot(True)
-        timer.timeout.connect(plot.update)
-        delivered = []
-        timer.timeout.connect(lambda: delivered.append(True))
-        timer.start(0)
-        controller.deleteLater()
-        qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+        # A successful load retires the replaced view at once: window, plot and
+        # its controller are deleted, not left for a later deleteLater -- and the
+        # event loop that would deliver anything still queued for them runs clean.
+        assert is_deleted(original)
+        assert is_deleted(plot)
         assert is_deleted(controller.checkBox)
-        qtbot.waitUntil(lambda: bool(delivered))
-        assert plot.plot_controller is None
-        original.deleteLater()
         qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+        qtbot.wait(30)
+        assert cs_gui.fit_windows == [replacement]
         _capture(main, f"plot-lifetime-after-{attempt}.png", tmp_path)
         fit = restored
         original = replacement

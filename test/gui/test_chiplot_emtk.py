@@ -138,8 +138,15 @@ def test_a_log_autoscale_is_not_stretched_by_an_underflowed_tail(plot):
     _, (y0, y1) = plot.get_range()
     assert 3000.0 <= y1 < 3000.0 * 10.0
     assert y0 >= 3000.0 * 1e-13
-    # Data inside the cap is still shown in full.
-    plot.line(x, np.array([0.5, 1.0, 10.0, 100.0, 1000.0, 3000.0]), name="tail")
+
+
+def test_a_log_autoscale_still_shows_data_inside_the_cap(plot):
+    """The cap only cuts negligible tails: five decades of counts are all shown."""
+    x = np.linspace(0.0, 10.0, 6)
+    plot.line(x, np.array([0.5, 1.0, 10.0, 100.0, 1000.0, 3000.0]), name="counts")
+    plot.set_log(y=True)
+    _, (y0, y1) = plot.get_range()
+    assert y0 <= 0.5 and y1 >= 3000.0
 
 
 def test_the_panel_paints(plot, qapp):
