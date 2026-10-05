@@ -11,33 +11,22 @@ timestamp: '2026-10-05T00:00:00Z'
 
 ## Where to pick this up
 
-0. **Bump the emtk pin.** This surface needs emtk `bb4cce6` (`im.host_control`),
-   `4bfdadf` (`PaneStack`) and `10de583` (tooltips), committed locally on
-   2026-10-05 and not pushed. `pixi.lock` pins emtk by its pushed GitHub
-   revision, so a clean environment (CI) installs an emtk without them and every
-   fit window fails to draw. After emtk is pushed: `pixi update emtk` (or edit
-   the five `emtk.git?branch=main#...` lines) and commit the lock, as
-   `70c055272` did.
-1. **emtk history needs a decision** (2026-10-05): emtk `689f9d9` took the
-   selectable-icon work out of `im_widgets.py`/`__init__.py`, believing
-   `10de583` had swept it in uncommitted; its lane had in fact committed it in
-   `601d02d`, so emtk HEAD is red on `tests/test_selectable_icon.py` (3). The
-   restore (a commit putting `601d02d`'s two files back, or `git revert
-   689f9d9`) was refused by the permission classifier and is the owner's call.
-   Also uncommitted in emtk: `qt_painter.py` + `tests/test_painter_triangle.py`
-   -- a translucent `fill_triangle` no longer strokes its seam hairline (a
-   1 px alpha-20 line drew at 71).
-2. **Port `ProteinMCStructurePlot`** (ProteinMC). Its `Viewer` is a 3-D OpenGL
+Done 2026-10-05: emtk pushed at `d8caa62` and `pixi.lock` pinned to it
+(chisurf `91a18474d`). On the way: emtk `689f9d9` had wrongly taken back
+another lane's committed selectable-icon work (reverted in `649d47b`), and its
+atlas guard was red since `601d02d` (fixed in `d8caa62`).
+
+1. **Port `ProteinMCStructurePlot`** (ProteinMC). Its `Viewer` is a 3-D OpenGL
    widget, also an island today. Offscreen grabs of it are black, before and
    after this change, so judge it on a display or port it to chimol's emtk
    viewer first.
-3. **Remaining Qt inside a plot page object.** Pages are still built as
+2. **Remaining Qt inside a plot page object.** Pages are still built as
    `plotbase.Plot` `QWidget`s whose chiplot panels sit in hidden Qt layouts.
    The surface reads that composition (`chisurf/gui/plots/emtk_page.py`), so
    a page needs no code to appear. The next step is Qt-free page objects that
    declare their panels directly. Measure with the sweep: every page's
    `missing` list is `[]` except the two islands.
-4. **Plot controllers** (the "Plot settings" dock: `LinePlotControl` `.ui`,
+3. **Plot controllers** (the "Plot settings" dock: `LinePlotControl` `.ui`,
    `ParameterScanWidget`, `DistributionPlotControl`, the FitInfo Analysis/
    Metadata/External/Export tabs) live in the main window's options panel,
    *outside* the fit window, and are still Qt. They were out of this change's
