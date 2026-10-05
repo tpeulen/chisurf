@@ -74,6 +74,12 @@ from .adapter import (
     proximity_ratio_from_frame,
 )
 from .client import BurstSelectionClient
+from .diagnostics import as_count_rate_hz as _as_count_rate_hz
+from .diagnostics import gate_mismatch_warning as _gate_mismatch_warning
+from .diagnostics import histogram_data_from_frame
+from .diagnostics import normalize_filetype as _normalize_filetype
+from .diagnostics import setup_summary as _setup_summary
+from .diagnostics import trace_rate_hz as _trace_rate_hz
 from .gmm_settings_dialog import DEFAULT_GMM_SETTINGS, GMMSettingsDialog
 
 # Curated common keys shown first; then all PDBx keys are appended.
@@ -137,22 +143,6 @@ HISTOGRAM_FEATURES = [*UI_COLUMNS, PROXIMITY_RATIO_COLUMN]
 _SELECTED_PEN_WIDTH = 1
 
 
-def _normalize_filetype(filetype: str | None) -> str | None:
-    """Normalize the detector setup file type for ``tttrlib``."""
-    if not filetype or str(filetype).strip().lower() == "auto":
-        return None
-    return str(filetype).strip()
-
-
-def _setup_summary(setup_name: str | None, filetype: str | None) -> str:
-    """Return a compact detector setup summary for the status text."""
-    if not setup_name:
-        return "Detector setup: custom/default"
-    if filetype:
-        return f"Detector setup: {setup_name} (file type: {filetype})"
-    return f"Detector setup: {setup_name} (file type: auto)"
-
-
 def default_analysis_settings() -> AnalysisSettings:
     """Return default analysis settings matching the legacy Burst Selection GUI."""
     return AnalysisSettings(
@@ -181,16 +171,6 @@ def default_analysis_settings() -> AnalysisSettings:
             time_window=DEFAULT_TIME_WINDOW_MS / 1000.0,
         ),
     )
-
-
-def histogram_data_from_frame(frame, feature: str) -> np.ndarray:
-    """Return numeric histogram data excluding Margarita zero separator rows."""
-    if feature == PROXIMITY_RATIO_COLUMN:
-        data = proximity_ratio_from_frame(burst_rows_for_display(frame))
-        if data is not None:
-            return data[np.isfinite(data)]
-    data = numeric_column(burst_rows_for_display(frame), feature)
-    return data[np.isfinite(data)]
 
 
 class MetadataDialog(QtWidgets.QDialog):
@@ -357,87 +337,6 @@ class BatchProcessingDialog(QtWidgets.QDialog):
             for item_index in range(self.list_widget.count())
             for item in [self.list_widget.item(item_index)]
         ]
-
-
-def _trace_rate_hz(tttr_slice, bin_width_s: float, bin_width_ms: float, offset_s: float):
-    """A photon slice as ``(time_s, rate_hz)``, without the empty run in front.
-
-    ``get_intensity_trace`` bins from macro time **zero of the file**, not from
-    the first photon it is given. So a ten-second window taken at 65 s comes
-    back as a *75-second* trace whose first 260 000 bins are empty — drawn as a
-    flat line from 0 to 65 s that looks like an acquisition problem, and worse,
-    spending the whole decimation budget on zeros so the ten seconds anyone
-    wanted are drawn from what is left.
-
-    The leading bins are dropped and the time axis is shifted by exactly as
-    many, so the trace still sits where it belongs on the file's clock.
-
-    Parameters
-    ----------
-    tttr_slice : tttrlib.TTTR
-        The photons to draw.
-    bin_width_s, bin_width_ms : float
-        One bin, in seconds (what the trace call takes) and in milliseconds
-        (what the rate conversion takes).
-    offset_s : float
-        Where this file starts on the shared timeline.
-
-    Returns
-    -------
-    tuple of numpy.ndarray
-        ``(time_s, rate_hz)``, both empty when the slice holds no photons.
-    """
-    trace = np.asarray(tttr_slice.get_intensity_trace(time_window_length=bin_width_s), dtype=float)
-    macro_times = np.asarray(getattr(tttr_slice, "macro_times", []))
-    skip = 0
-    if macro_times.size and trace.size:
-        try:
-            resolution_s = float(tttr_slice.header.macro_time_resolution)
-        except Exception:
-            resolution_s = 0.0
-        if resolution_s > 0.0 and bin_width_s > 0.0:
-            skip = int(float(macro_times[0]) * resolution_s / bin_width_s)
-            skip = max(0, min(skip, trace.size))
-            trace = trace[skip:]
-    time_s = (np.arange(trace.size) + skip) * bin_width_s + offset_s
-    return time_s, _as_count_rate_hz(trace, bin_width_ms)
-
-
-def _as_count_rate_hz(counts, bin_width_ms: float):
-    """Photons per bin as a **count rate in Hz**.
-
-    The MCS trace is filled as counts per bin, and the y axis was labelled
-    "Intensity" with no unit under a plot titled "Count rate display" — two
-    different claims about the same numbers, neither of them checkable. Counts
-    per bin is also not comparable to anything: halve the bin width and every
-    peak halves, so a burst that looks like 80 at 0.25 ms looks like 40 at
-    0.125 ms and the threshold that separated it moves with the setting.
-
-    A rate does not move. It is also the unit the burst search itself works in,
-    and the unit the background estimate reports, so the trace, the threshold
-    and the background can finally be read against one another.
-
-    Returned in Hz rather than kHz on purpose: the axis carries ``units="Hz"``
-    and pyqtgraph applies the SI prefix itself, so the label reads kHz or MHz as
-    the data requires instead of being fixed to one decade.
-
-    Parameters
-    ----------
-    counts : array_like
-        Photons per bin.
-    bin_width_ms : float
-        Width of one bin, in milliseconds.
-
-    Returns
-    -------
-    numpy.ndarray
-        Count rate in Hz, or the counts unchanged if the bin width is not
-        usable (a zero width would otherwise fill the trace with infinities).
-    """
-    values = np.asarray(counts, dtype=float)
-    if not np.isfinite(bin_width_ms) or bin_width_ms <= 0.0:
-        return values
-    return values * 1000.0 / float(bin_width_ms)
 
 
 class BurstSelectionTool(ChisurfDockTool):
@@ -3333,44 +3232,8 @@ class BurstSelectionTool(ChisurfDockTool):
 
     @staticmethod
     def _gate_mismatch_warning(tttr, detectors) -> str | None:
-        """Warn when the detector gates cannot match the photons at all.
-
-        A micro-second ALEX measurement carries the laser alternation in the
-        **macro** time; its micro time is empty until the alternation is folded
-        into it. So a setup whose detectors gate on a micro-time range — which
-        is what the ALEX step writes — selects *nothing* on an unconverted file:
-        every per-detector count is zero, and every quantity derived from them
-        (the proximity ratio first) has nothing to be computed from.
-
-        Nothing fails while this happens. The burst search still finds bursts,
-        the table still has its columns, and the histogram of a ratio that was
-        never computable used to show a single hard spike. This is the sentence
-        that says why.
-        """
-        if not detectors:
-            return None
-        gated = [
-            name
-            for name, info in detectors.items()
-            if any(int(hi) > int(lo) for lo, hi in (info or {}).get("micro_time_ranges", []) or [])
-        ]
-        if not gated:
-            return None
-        try:
-            micro_times = np.asarray(tttr.micro_times)
-        except Exception:
-            return None
-        if micro_times.size == 0 or int(micro_times.max()) > 0:
-            return None
-        return (
-            "This measurement has no micro-time — every photon reads 0 — but "
-            f"the detector setup gates {', '.join(sorted(gated))} on a "
-            "micro-time range, so those detectors select no photons and every "
-            "per-detector count is zero.\n\n"
-            "That is what an unconverted \u00b5s-ALEX file looks like: the laser "
-            "alternation is still in the macro time. Run the Alternation step "
-            "(and press its convert button) before searching bursts."
-        )
+        """Warn when the detector gates cannot match the photons at all (see ``diagnostics``)."""
+        return _gate_mismatch_warning(tttr, detectors)
 
     def _show_preview_frames(self, diagnostics) -> None:
         """Fill the burst table and summary from the *visible window*.
