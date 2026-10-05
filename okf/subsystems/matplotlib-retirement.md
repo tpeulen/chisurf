@@ -18,10 +18,10 @@ in order:
    before-PNG is taken with the matplotlib code: render the result with
    realistic data, `savefig`, port, re-render, compare the control inventory
    (see "How a figure port is proven" below).
-   - `plugins/burst/burst_h2mm/gui/native.py`, `plugins/tttr/audifier/lifetime_analysis.py`,
-     `plugins/tttr/trace_browser/gui/model.py`: all three carried another
-     lane's uncommitted edits on 2026-10-05, so they were left; port your
-     hunks only (temp index + `git merge-file`), or wait for those lanes.
+   - `plugins/tttr/audifier/lifetime_analysis.py`, `plugins/tttr/trace_browser/gui/model.py`:
+     both carry another lane's uncommitted edits (none in the plot code);
+     port your hunks only (temp index + `git merge-file` against the saved
+     foreign diff), as H2MM's `save_plot` was.
    - ndXplorer `export/publication_figure.py` -- **blocked on a vector
      backend**: it exports PDF and SVG (`EXPORT_FORMATS`), and `emtk.figure`
      rasterises. Porting it now would drop the vector export, a lost feature.
@@ -175,3 +175,7 @@ labels sit a fixed 10 px above the bar.
   `plot(filename)` writes the PNG. The decay panel's y range now follows the
   data -- the IRF's Gaussian tails used to flatten the decay at the top of a
   1e-300 axis. The fit-information box became the panel title. 11 -> 10.
+- 2026-10-05 H2MM native app's `save_plot` (2x2 result PNG), rendered through
+  its click test before/after; a name without `.png` gets the suffix. Fit
+  padding fixed in emtk (`6df5352`): implot pads by a fraction of *half* the
+  range, so 0.1 is matplotlib's 5% a side. 10 -> 9.

@@ -34,7 +34,6 @@
 # --- colormap --- (done 2026-10-05: emtk.colormaps)
 
 # --- figure ---
-chisurf/plugins/burst/burst_h2mm/gui/native.py
 chisurf/plugins/tttr/audifier/lifetime_analysis.py
 chisurf/plugins/tttr/trace_browser/gui/model.py
 modules/ndxplorer/ndxplorer/export/publication_figure.py

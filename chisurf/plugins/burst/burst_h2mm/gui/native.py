@@ -198,39 +198,43 @@ class H2mmNativeApp(TourTarget, ImApp):
 
     def save_plot(self, path: str) -> None:
         """Write the result plots (dwell FRET, TDP, model selection, dwell times) of the shown fit as one PNG."""
-        import matplotlib
-
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
+        from emtk.figure import Figure
 
         from . import result_view
 
         ana = self.model.analysis
         if ana is None:
             raise ValueError("Run a fit first.")
-        fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+        fig = Figure(2, 2, size=(1200, 960))
+        ax = fig.ax(0, 0)
         info = result_view.dwell_fret(ana)
         for state, counts in info.counts.items():
-            axes[0, 0].plot(info.centers, counts, label=f"S{state}")
-        axes[0, 0].set(xlabel="Apparent FRET E", ylabel="Dwells", title="Dwell FRET states")
-        axes[0, 0].legend()
+            ax.line(info.centers, counts, label=f"S{state}")
+        ax.set_labels(x="Apparent FRET E", y="Dwells").set_title("Dwell FRET states").legend()
+        ax = fig.ax(0, 1)
         points = result_view.transition_points(ana)
         if points is not None:
-            axes[0, 1].scatter(points[0], points[1], s=6)
-        axes[0, 1].set(xlabel="E before", ylabel="E after", title="Transition density", xlim=(0, 1), ylim=(0, 1))
+            ax.scatter(points[0], points[1], size=2.0)
+        ax.set_labels(x="E before", y="E after").set_title("Transition density")
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax = fig.ax(1, 0)
         sel = result_view.model_selection(ana)
         if sel is not None:
-            axes[1, 0].plot(sel[0], sel[1], "o-", label="BIC")
-            axes[1, 0].plot(sel[0], sel[2], "s-", label="ICL")
-            axes[1, 0].legend()
-        axes[1, 0].set(xlabel="States", ylabel="Criterion", title="Model selection")
+            ax.line(sel[0], sel[1], marker="o", label="BIC")
+            ax.line(sel[0], sel[2], marker="s", label="ICL")
+            ax.legend()
+        ax.set_labels(x="States", y="Criterion").set_title("Model selection")
+        ax = fig.ax(1, 1)
         hist, _ = result_view.dwell_histograms(ana)
         for h in hist:
-            axes[1, 1].plot(h.centers_ms, h.counts, label=f"S{h.state}")
-        axes[1, 1].set(xlabel="Dwell time (ms)", ylabel="Counts", title="Dwell times")
-        fig.tight_layout()
-        fig.savefig(path, dpi=120)
-        plt.close(fig)
+            ax.line(h.centers_ms, h.counts, label=f"S{h.state}")
+        ax.set_labels(x="Dwell time (ms)", y="Counts").set_title("Dwell times")
+        if hist:
+            ax.legend()
+        if not str(path).lower().endswith(".png"):
+            path = f"{path}.png"
+        fig.save(path)
 
     # -- drawing ------------------------------------------------------------------------------------------- #
     def _fields(self):
