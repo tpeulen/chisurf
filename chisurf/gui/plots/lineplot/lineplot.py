@@ -877,22 +877,17 @@ class LinePlot(plotbase.Plot):
         # weighted, so data : (a.corr + w.res) stays the golden ratio through
         # every resize until the user drags a bar, and collapsible, so a strip
         # can be folded away and dragged back.
-        p1 = cp.Plot()
-        p2 = cp.Plot()
-        p3 = cp.Plot()
+        p1 = cp.Panel()
+        p2 = cp.Panel()
+        p3 = cp.Panel()
         p1.link_x(p3)
         p2.link_x(p3)
 
         plots = {"top_left_plot": p1, "top_right_plot": p2, "main_plot": p3}
         plots["top_left_plot"].set_axis_visible(bottom=False)
         plots["top_right_plot"].set_axis_visible(bottom=False)
+        # Panels, not widgets: the fit window's surface draws their canvases.
         self._panels = (p2, p1, p3)  # A.corr. residuals, residuals, data
-        # Owned by the page, never shown: the fit window's surface draws their
-        # canvases. Left parentless they were top-level widgets, destroyed in
-        # whatever order the interpreter reached them at exit -- a crash.
-        for panel in self._panels:
-            panel.setParent(self)
-            panel.hide()
         self.plot_stack = None
 
         # Labels - draggable text box for the fit-quality metrics overlay: light
@@ -1013,7 +1008,7 @@ class LinePlot(plotbase.Plot):
 
             from chisurf.gui.plots.emtk_page import PanelItem
 
-            self.panel_items = [PanelItem(panel, panel._canvas) for panel in self._panels]
+            self.panel_items = [PanelItem(panel, panel.control()) for panel in self._panels]
             self.plot_stack = PaneStack(
                 self.panel_items, self.golden_weights(), axis=Axis.Y, collapsible=True
             )

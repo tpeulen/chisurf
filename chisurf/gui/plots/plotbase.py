@@ -27,6 +27,23 @@ class Plot(View):
         else:
             self.plot_controller = plot_controller
         self.widgets = list()
+        #: ``(chiplot.Panel, stretch)`` in order: what the fit window's emtk
+        #: surface draws for this page, stacked top to bottom (see add_panel).
+        self.emtk_panels: list = []
+
+    def add_panel(self, panel=None, stretch: float = 1.0):
+        """Declare a chiplot panel of this page, below the ones before it.
+
+        A :class:`chisurf.gui.chiplot.Panel` is not a widget: the fit window
+        draws its canvas on its emtk surface, sharing the height by *stretch*.
+        Called without a panel, a new one is made. Returns the panel.
+        """
+        if panel is None:
+            from chisurf.gui import chiplot as cp
+
+            panel = cp.Panel()
+        self.emtk_panels.append((panel, float(stretch)))
+        return panel
 
     def update(self, *args, **kwargs) -> None:
         super().update(*args, **kwargs)

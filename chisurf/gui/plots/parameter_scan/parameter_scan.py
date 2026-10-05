@@ -246,8 +246,7 @@ class ParameterScanPlot(plotbase.Plot):
         self.plot_controller = ParameterScanWidget(model=fit.model, parent=self)
 
         # One panel; its title is what the single-tab dock around it used to say.
-        p2 = cp.Plot(title="Chi2-Surface")
-        self.layout.addWidget(p2)
+        p2 = self.add_panel(cp.Panel(title="Chi2-Surface"))
 
         self.distribution_plot = p2
         self.distribution_curve = p2.line(

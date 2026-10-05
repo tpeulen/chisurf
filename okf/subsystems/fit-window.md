@@ -30,12 +30,22 @@ through `chisurf.emtk.chimol_view.ChimolView` (`emtk_draw`), built with
 The island mechanism stays as the safety net for a page that still holds a
 Qt widget (it is laid over the page, not lost), and the slow sweep fails on it.
 
-1. **Remaining Qt inside a plot page object.** Pages are still built as
-   `plotbase.Plot` `QWidget`s whose chiplot panels sit in hidden Qt layouts.
-   The surface reads that composition (`chisurf/gui/plots/emtk_page.py`), so
-   a page needs no code to appear. The next step is Qt-free page objects that
-   declare their panels directly. Measure with the sweep: every page's
-   `missing` list is `[]` except the two islands.
+1. **Remaining Qt inside a plot page object.** Done 2026-10-05 for the plot
+   panels: chiplot now has `cp.Panel`, a Qt-free panel (same `PlotAPI` as
+   `cp.Plot`, no `QWidget`, its `EmtkCanvas` builds a widget only if someone
+   asks), and pages declare them with `plotbase.Plot.add_panel(panel=None,
+   stretch=1.0)` instead of `layout.addWidget(cp.Plot())`. Ported: DEER P(r),
+   L-curve, WR plot, distribution, parameter scan, MFD map, MFD 2-D,
+   ProteinMC (both pages) and LinePlot. **Measure** with the scratchpad-style
+   count of `findChildren(QWidget)` under `FitPlotsArea` on a TCSPC fit: 25
+   before, 13 after. Still Qt inside pages: the page objects themselves
+   (`plotbase.Plot` is a `QWidget`, `plot_controller` a `QWidget`), and the
+   tabbed pages that build `QTabWidget`/`QLabel`/`QSplitter` (sampling
+   diagnostics, posterior graph, conditional scan, global fit). Those render
+   through the translator, so they work; they are the next ones to declare.
+   Trap: `cp.Panel` must be exported from `chisurf/gui/chiplot/__init__.py`
+   (a module `__getattr__` turns the missing name into an `AttributeError` deep
+   inside a paint, which aborted the GUI suite).
 2. **Plot controllers** (the "Plot settings" dock: `LinePlotControl` `.ui`,
    `ParameterScanWidget`, `DistributionPlotControl`, the FitInfo Analysis/
    Metadata/External/Export tabs) live in the main window's options panel,
@@ -105,6 +115,7 @@ control, reading the page's existing composition:
 | `QGridLayout`, chiplot `Grid` | rows of side-by-side panes, weighted by the grid's stretch factors |
 | `EmtkTextView` | its `TextEditor` |
 | any emtk `ControlHost` | the control it hosts (e.g. `FitTablePlotEmtk`) |
+| `add_panel(...)` (`emtk_panels`) | a `PaneStack` of the declared `cp.Panel`s weighted by stretch -- no Qt layout read |
 | `emtk_body()` | the page's own control (LinePlot: a golden-ratio `PaneStack`, split saved in the project) |
 | `emtk_draw(box)` | the page draws itself in immediate mode (MFD map: channel/colormap combos over the panel) |
 | anything else | reported in `missing`; the page becomes an island |

@@ -34,8 +34,7 @@ class ResidualPlot(plotbase.Plot):
         curves = list()
         lw = chisurf.core.settings.gui["plot"]["line_width"]
 
-        p = cp.Plot()
-        self.layout.addWidget(p)
+        p = self.add_panel()
 
         try:
             p.set_labels(left="w.res.")

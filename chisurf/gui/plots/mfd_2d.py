@@ -72,11 +72,8 @@ class MfdMarginalPlot(plotbase.Plot):
         """
         super().__init__(fit, parent=parent, **kwargs)
 
-        self.grid = cp.Grid()
-        self.layout.addWidget(self.grid)
-
-        self.ratio_plot = self.grid.add_plot(row=0, col=0)
-        self.micro_plot = self.grid.add_plot(row=1, col=0)
+        self.ratio_plot = self.add_panel()
+        self.micro_plot = self.add_panel()
         self.ratio_plot.set_title("proximity ratio")
         self.micro_plot.set_title("mean micro time")
         self.ratio_plot.set_labels(bottom="N_R / (N_G + N_R)", left="bursts")

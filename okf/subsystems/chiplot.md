@@ -15,7 +15,7 @@ at runtime and can be swapped without touching a single call site.
 
 | Module | Holds |
 |--------|-------|
-| `canvas.py` | the widgets: `Plot`, `Grid` (of `PanelPlot`s, with colour bars), `ImageView` |
+| `canvas.py` | `PlotAPI` (the toolkit-free API), the widgets `Plot`, `Grid` (of `PanelPlot`s, with colour bars), `ImageView`, and `Panel` -- the same API with no `QWidget`, for surfaces that draw emtk directly (fit-window pages declare them with `plotbase.Plot.add_panel`) |
 | `handles.py` | the drawn-object protocols — `Curve`, `Scatter`, `Bars`, `ErrorBars`, `Image`, `ColorBar`, `Region`, `Marker`, `Roi`, `Arrow`, `Text` — plus the `Symbol` and `Orientation` enums |
 | `style.py` | `Color`, `Pen`, `Brush`, `Colormap`, `LineStyle` and the coercers `to_color` / `to_pen` / `to_brush` / `colormap` / `to_colormap` / `int_color` |
 | `backends/base.py` | the abstract `Canvas`/`Backend` contract a renderer must satisfy |

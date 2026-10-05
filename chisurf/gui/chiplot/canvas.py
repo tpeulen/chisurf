@@ -32,55 +32,14 @@ from chisurf.gui.chiplot.backends import get_backend
 _UNSET = object()
 
 
-class Plot(QtWidgets.QWidget):
-    """A single plot panel with a verb-first drawing API.
+class PlotAPI:
+    """The drawing, axis and export API of a chiplot panel, toolkit-free.
 
-    Parameters
-    ----------
-    parent : QWidget, optional
-        Qt parent.
-    title : str, optional
-        Panel title.
-    background : color-like, optional
-        Background color of the whole panel widget (data rectangle *and* axis
-        margins). An explicit ``None`` means transparent.
-    **backend_opts
-        Passed through to the backend canvas factory.
-
-    Signals
-    -------
-    clicked(float, float)
-        Emitted with the ``(x, y)`` data coordinates of a left click.
-    mouse_moved(float, float)
-        Emitted with the ``(x, y)`` data coordinates under the pointer.
+    Everything here talks to the backend canvas (``self._canvas``) only. It is
+    shared by :class:`Plot` -- a ``QWidget`` that hosts the canvas in a Qt
+    layout -- and :class:`Panel`, which is the canvas alone, for a surface
+    that draws it as a control (the fit window's emtk surface).
     """
-
-    clicked = QtCore.Signal(float, float)
-    mouse_moved = QtCore.Signal(float, float)
-
-    def __init__(self, parent=None, *, title: str | None = None, background=_UNSET, **backend_opts):
-        super().__init__(parent)
-        self._canvas = get_backend().create_canvas(**backend_opts)
-        # (name, handle) of exportable x/y series, for the CSV context action.
-        self._series: list = []
-        self._extra_menu_actions: list = []
-        self._context_menu_enabled = True
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        layout.addWidget(self._canvas.widget())
-        if title is not None:
-            self._canvas.set_title(title)
-        if background is not _UNSET:
-            self._canvas.set_background(None if background is None else S.to_color(background))
-        self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)
-        self._canvas.on_mouse_move(lambda x, y: self.mouse_moved.emit(x, y))
-        # If the backend already ships a rich menu (pyqtgraph: Export/CSV/image),
-        # keep it for parity and inject custom actions into it; otherwise chiplot
-        # builds its own menu via contextMenuEvent.
-        self._native_menu = self._canvas.provides_native_menu()
-        if self._native_menu:
-            self._install_native_export_actions()
 
     # -- drawing --------------------------------------------------------
     def line(
@@ -697,30 +656,10 @@ class Plot(QtWidgets.QWidget):
         if not self._canvas.export_image(path, width=width):
             self._canvas.widget().grab().save(path)
 
-    def contextMenuEvent(self, event):  # noqa: N802 (Qt override)
-        """Show chiplot's right-click menu (export data/image, auto-range).
-
-        Skipped when the backend already shows its own rich menu (pyqtgraph),
-        so the two never double up.
-        """
-        if not self._context_menu_enabled or getattr(self, "_native_menu", False):
-            event.ignore()
-            return
-        menu = QtWidgets.QMenu(self)
-        menu.addAction("Export data as CSV…", self._on_export_csv)
-        menu.addAction("Export image…", self._on_export_image)
-        menu.addSeparator()
-        menu.addAction("Auto-range", lambda: self.autoscale())
-        if self._extra_menu_actions:
-            menu.addSeparator()
-            for label, cb in self._extra_menu_actions:
-                menu.addAction(label, cb)
-        menu.exec_(event.globalPos())
-
     def _on_export_csv(self):
         """File-dialog + write for the CSV export menu action."""
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export data as CSV", "", "CSV files (*.csv)"
+            None, "Export data as CSV", "", "CSV files (*.csv)"
         )
         if path:
             self.export_csv(path)
@@ -728,7 +667,7 @@ class Plot(QtWidgets.QWidget):
     def _on_export_image(self):
         """File-dialog + write for the image export menu action."""
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export image", "", "Images (*.png *.svg *.jpg)"
+            None, "Export image", "", "Images (*.png *.svg *.jpg)"
         )
         if path:
             self.export_image(path)
@@ -985,11 +924,141 @@ class Plot(QtWidgets.QWidget):
             raise AttributeError(name)
         from chisurf.gui.chiplot._passthrough import record_and_warn
 
-        for target in (self._canvas.native, self._canvas.widget()):
+        widget = self._canvas.existing_widget() if hasattr(self._canvas, "existing_widget") else self._canvas.widget()
+        for target in (self._canvas.native, widget):
             if hasattr(target, name):
                 record_and_warn("Plot", name)
                 return getattr(target, name)
         raise AttributeError(name)
+
+
+class Plot(PlotAPI, QtWidgets.QWidget):
+    """A single plot panel with a verb-first drawing API.
+
+    Parameters
+    ----------
+    parent : QWidget, optional
+        Qt parent.
+    title : str, optional
+        Panel title.
+    background : color-like, optional
+        Background color of the whole panel widget (data rectangle *and* axis
+        margins). An explicit ``None`` means transparent.
+    **backend_opts
+        Passed through to the backend canvas factory.
+
+    Signals
+    -------
+    clicked(float, float)
+        Emitted with the ``(x, y)`` data coordinates of a left click.
+    mouse_moved(float, float)
+        Emitted with the ``(x, y)`` data coordinates under the pointer.
+    """
+
+    clicked = QtCore.Signal(float, float)
+    mouse_moved = QtCore.Signal(float, float)
+
+    def __init__(self, parent=None, *, title: str | None = None, background=_UNSET, **backend_opts):
+        super().__init__(parent)
+        self._canvas = get_backend().create_canvas(**backend_opts)
+        # (name, handle) of exportable x/y series, for the CSV context action.
+        self._series: list = []
+        self._extra_menu_actions: list = []
+        self._context_menu_enabled = True
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self._canvas.widget())
+        if title is not None:
+            self._canvas.set_title(title)
+        if background is not _UNSET:
+            self._canvas.set_background(None if background is None else S.to_color(background))
+        self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)
+        self._canvas.on_mouse_move(lambda x, y: self.mouse_moved.emit(x, y))
+        # If the backend already ships a rich menu (pyqtgraph: Export/CSV/image),
+        # keep it for parity and inject custom actions into it; otherwise chiplot
+        # builds its own menu via contextMenuEvent.
+        self._native_menu = self._canvas.provides_native_menu()
+        if self._native_menu:
+            self._install_native_export_actions()
+
+    def contextMenuEvent(self, event):  # noqa: N802 (Qt override)
+        """Show chiplot's right-click menu (export data/image, auto-range).
+
+        Skipped when the backend already shows its own rich menu (pyqtgraph),
+        so the two never double up.
+        """
+        if not self._context_menu_enabled or getattr(self, "_native_menu", False):
+            event.ignore()
+            return
+        menu = QtWidgets.QMenu(self)
+        menu.addAction("Export data as CSV…", self._on_export_csv)
+        menu.addAction("Export image…", self._on_export_image)
+        menu.addSeparator()
+        menu.addAction("Auto-range", lambda: self.autoscale())
+        if self._extra_menu_actions:
+            menu.addSeparator()
+            for label, cb in self._extra_menu_actions:
+                menu.addAction(label, cb)
+        menu.exec_(event.globalPos())
+
+
+
+class _Hook:
+    """``connect``/``disconnect``/``emit`` for a :class:`Panel` (no QObject behind it)."""
+
+    def __init__(self) -> None:
+        self._slots: list = []
+
+    def connect(self, slot) -> None:
+        self._slots.append(slot)
+
+    def disconnect(self, slot=None) -> None:
+        self._slots = [] if slot is None else [s for s in self._slots if s is not slot]
+
+    def emit(self, *args) -> None:
+        for slot in list(self._slots):
+            slot(*args)
+
+
+class Panel(PlotAPI):
+    """A chiplot panel that is not a widget: the emtk canvas and the plot API.
+
+    For a surface that draws panels as emtk controls (a fit window page): the
+    same ``line``/``set_labels``/``region``/... calls as :class:`Plot`, no
+    ``QWidget`` and no ``ControlHost`` behind it. ``clicked`` and
+    ``mouse_moved`` connect like Qt signals. :meth:`control` is what to draw.
+
+    Parameters
+    ----------
+    title : str, optional
+        Panel title.
+    background : color-like, optional
+        Panel background; an explicit ``None`` is transparent.
+    **backend_opts
+        Passed to the emtk canvas.
+    """
+
+    def __init__(self, *, title: str | None = None, background=_UNSET, **backend_opts):
+        from chisurf.gui.chiplot.backends.emtk_backend import EmtkCanvas
+
+        self._canvas = EmtkCanvas(**backend_opts)
+        self._series: list = []
+        self._extra_menu_actions: list = []
+        self._context_menu_enabled = True
+        self._native_menu = False
+        self.clicked = _Hook()
+        self.mouse_moved = _Hook()
+        if title is not None:
+            self._canvas.set_title(title)
+        if background is not _UNSET:
+            self._canvas.set_background(None if background is None else S.to_color(background))
+        self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)
+        self._canvas.on_mouse_move(lambda x, y: self.mouse_moved.emit(x, y))
+
+    def control(self):
+        """The emtk control that draws this panel (its canvas)."""
+        return self._canvas
 
 
 class Grid(QtWidgets.QWidget):

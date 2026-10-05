@@ -118,6 +118,10 @@ def page_body(page: QtWidgets.QWidget) -> PageBody:
         _collect_refreshables(page, body)
         body.panels.extend(getattr(page, "panel_items", None) or [])
         return body
+    declared = getattr(page, "emtk_panels", None)
+    if declared and not callable(getattr(page, "emtk_body", None)):
+        body.control = _declared_stack(page, declared, body)
+        return body
     custom = getattr(page, "emtk_body", None)
     if callable(custom):
         body.control = custom()
@@ -134,15 +138,48 @@ def page_body(page: QtWidgets.QWidget) -> PageBody:
     return body
 
 
+def _declared_stack(page, declared: list, body: PageBody) -> Any:
+    """The page's declared panels (``add_panel``), stacked by stretch, built once.
+
+    Kept on the page, so a bar the user dragged stays where it was.
+    """
+    items = []
+    for panel, _stretch in declared:
+        canvas = panel.control()
+        item = PanelItem(panel, canvas)
+        items.append(item)
+        if callable(getattr(canvas, "set_refresh_target", None)):
+            body.refreshables.append(canvas)
+    cached = getattr(page, "_emtk_declared", None)
+    key = tuple(id(panel) for panel, _ in declared)
+    if cached is not None and cached[0] == key:
+        stack, kept = cached[1], cached[2]
+        body.panels.extend(kept)
+        return stack
+    body.panels.extend(items)
+    if len(items) == 1:
+        stack = items[0]
+    else:
+        from emtk.flags import Axis
+        from emtk.widgets.pane_stack import PaneStack
+
+        stack = PaneStack(items, [max(s, 0.01) for _, s in declared], axis=Axis.Y)
+    page._emtk_declared = (key, stack, items)
+    return stack
+
+
 def _collect_refreshables(page: QtWidgets.QWidget, body: PageBody) -> None:
     """Gather every repaintable inside *page* (for a page that built its own body)."""
     if callable(getattr(page, "set_refresh_target", None)):
         body.refreshables.append(page)
     from chisurf.gui.chiplot.canvas import Plot as ChiPlot
 
-    for plot in getattr(page, "_panels", None) or page.findChildren(ChiPlot):
+    plots = list(getattr(page, "_panels", None) or page.findChildren(ChiPlot))
+    plots += [item.plot for item in getattr(page, "panel_items", None) or [] if item.plot is not None]
+    plots += [panel for panel, _ in getattr(page, "emtk_panels", None) or []]
+    for plot in plots:
         canvas = getattr(plot, "_canvas", None)
-        if callable(getattr(canvas, "set_refresh_target", None)):
+        if callable(getattr(canvas, "set_refresh_target", None)) and canvas not in body.refreshables:
             body.refreshables.append(canvas)
     from chisurf.gui.plots.emtk_text_view import EmtkTextView
 

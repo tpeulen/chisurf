@@ -23,8 +23,7 @@ class LCurvePlot(plotbase.Plot):
     def __init__(self, fit, **kwargs):
         """Build the log-log L-curve plot with a highlighted corner marker."""
         super().__init__(fit=fit, **kwargs)
-        self._pw = cp.Plot()
-        self.layout.addWidget(self._pw)
+        self._pw = self.add_panel()
         self._pw.set_log(x=True, y=True)
         self._pw.grid(x=True, y=True, alpha=0.3)
         self._pw.set_labels(bottom="residual ||K P - F||", left="roughness ||L P||")

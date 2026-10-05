@@ -22,8 +22,7 @@ class DeerPrCIPlot(plotbase.Plot):
         """Build the P(r) plot with a fill-between confidence band."""
         super().__init__(fit=fit, **kwargs)
         self._n_boot = int(n_boot)
-        self._pw = cp.Plot()
-        self.layout.addWidget(self._pw)
+        self._pw = self.add_panel()
         self._pw.set_labels(bottom="r (Å)", left="P(r)")
         self._pw.grid(x=True, y=True, alpha=0.3)
         self._lo = self._pw.line([], [], pen=(47, 128, 237, 90))

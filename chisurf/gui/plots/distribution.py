@@ -180,20 +180,16 @@ class DistributionPlot(plotbase.Plot):
         )
 
         if self._with_residual_panel:
-            p_res = cp.Plot()
-            p_main = cp.Plot()
+            # The residuals panel takes ~1/3 of the height, the histogram ~2/3.
+            p_res = self.add_panel(stretch=1)
+            p_main = self.add_panel(stretch=2)
             p_res.link_x(p_main)
-            # Give the residuals panel ~1/3 of the total height and the main
-            # histogram ~2/3 using stretch factors 1 and 2.
-            self.layout.addWidget(p_res, 1)
-            self.layout.addWidget(p_main, 2)
             self.residual_plot = p_res
             self.distribution_plot = p_main
             self.residual_plot.set_axis_visible(bottom=False)
             self.residual_plot.set_labels(left="w.res.")
         else:
-            p = cp.Plot()
-            self.layout.addWidget(p)
+            p = self.add_panel()
             self.distribution_plot = p
 
         # Match LinePlot's grid settings where applicable: show a grid on the

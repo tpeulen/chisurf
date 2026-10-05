@@ -113,31 +113,10 @@ class ProteinMCPlot(Plot):
         self.trajectory = fit.model
         self.source = fit.model
 
-        # The base Plot.__init__ already created self.layout as a QVBoxLayout
-        # on this widget. Build a 2x2 grid of pyqtgraph plots inside it so
-        # each trajectory series is shown in its own subplot. (Using a
-        # pyqtgraph DockArea here proved fragile in the embedded tab layout.)
-        grid = QtWidgets.QGridLayout()
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setSpacing(2)
-
-        p1 = cp.Plot()
-        p2 = cp.Plot()
-        p3 = cp.Plot()
-        p4 = cp.Plot()
-        for w in (p1, p2, p3, p4):
-            w.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-
-        grid.addWidget(p1, 0, 0)
-        grid.addWidget(p2, 0, 1)
-        grid.addWidget(p3, 1, 0)
-        grid.addWidget(p4, 1, 1)
-        for row in range(2):
-            grid.setRowStretch(row, 1)
-        for col in range(2):
-            grid.setColumnStretch(col, 1)
-
-        self.layout.addLayout(grid, stretch=1)
+        # One panel per trajectory series, two by two (emtk_body).
+        p1, p2, p3, p4 = (cp.Panel() for _ in range(4))
+        self._grid_panels = ((p1, p2), (p3, p4))
+        self._grid_body = None
 
         # RMSD - Curves (chiplot Plot exposes drawing directly; no getPlotItem)
         self.rmsd_plot = p1
@@ -182,6 +161,19 @@ class ProteinMCPlot(Plot):
         except Exception:
             pass
 
+
+    def emtk_body(self):
+        """The four series panels as two rows of two, built once."""
+        if self._grid_body is None:
+            from emtk.flags import Axis
+            from emtk.widgets.pane_stack import PaneStack
+
+            from chisurf.gui.plots.emtk_page import PanelItem
+
+            self.panel_items = [PanelItem(p, p.control()) for row in self._grid_panels for p in row]
+            rows = [PaneStack(self.panel_items[k:k + 2], axis=Axis.X) for k in (0, 2)]
+            self._grid_body = PaneStack(rows, axis=Axis.Y)
+        return self._grid_body
     def update_all(self, *args, **kwargs):
 
         try:
@@ -591,11 +583,10 @@ class ProteinMCDistanceNetworkPlot(Plot):
         self._network_static_items = []
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(2)
-        self.plot_widget = cp.Plot(self)
+        self.plot_widget = self.add_panel()
         self.plot_widget.set_aspect_locked(True)
         self.plot_widget.set_background((20, 20, 20))
         self.plot_widget.set_axis_visible(left=False, bottom=False)
-        self.layout.addWidget(self.plot_widget, stretch=1)
         self.plot_controller = ProteinMCDistanceNetworkControl(self, plot=self)
         self.update_all()
 

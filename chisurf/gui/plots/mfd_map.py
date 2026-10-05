@@ -54,11 +54,10 @@ class MfdMapPlot(plotbase.Plot):
         default = str(options.get("default_colormap", "inferno"))
         self.colormaps = list(COLORMAPS) if default in COLORMAPS else [default, *COLORMAPS]
         self.colormap = self._read_attr(options.get("colormap_attr"), default)
-        self.panel = cp.Plot()
+        self.panel = cp.Panel()
         self.panel.set_labels(
             bottom=options.get("x_label", "x"), left=options.get("y_label", "y")
         )
-        self.layout.addWidget(self.panel)
         from chisurf.gui.plots.emtk_page import PanelItem
 
         self.panel_items = [PanelItem(self.panel, self.panel._canvas)]

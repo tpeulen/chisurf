@@ -550,7 +550,9 @@ class EmtkCanvas(base.Canvas):
         self._click_callbacks: list[Callable] = []
         self._move_callbacks: list[Callable] = []
         self._range_callbacks: list[Callable] = []
-        self._widget = self._build_widget()
+        #: The Qt host, built when :meth:`widget` is first asked for. A panel
+        #: drawn as a control by an emtk surface never needs one.
+        self._widget = None
 
     # -- the Qt side ---------------------------------------------------
     def _build_widget(self) -> QtWidgets.QWidget:
@@ -560,7 +562,13 @@ class EmtkCanvas(base.Canvas):
         return ControlHost(self, background=self._background)
 
     def widget(self) -> QtWidgets.QWidget:
-        """Return the embeddable Qt widget for this panel."""
+        """Return the embeddable Qt widget for this panel, building it on first use."""
+        if self._widget is None:
+            self._widget = self._build_widget()
+        return self._widget
+
+    def existing_widget(self) -> QtWidgets.QWidget | None:
+        """The Qt host if one was built, else ``None`` (without building it)."""
         return self._widget
 
     def set_refresh_target(self, callback: Callable[[], None] | None) -> None:
@@ -595,6 +603,7 @@ class EmtkCanvas(base.Canvas):
         """
         from emtk.widgets.plot import Plot as EmtkPlot
 
+        self._last_box = (x, y, w, h)
         row = float(painter.line_height())
         left_axis, bottom_axis = self._axis_visible["left"], self._axis_visible["bottom"]
         gutter_left = (row + 2.0 + _Y_TICK_WIDTH + 6.0) if left_axis else 4.0
@@ -1653,19 +1662,32 @@ class EmtkCanvas(base.Canvas):
             self._interactive = bool(mouse)
 
     def export_image(self, path, *, width=None) -> bool:
-        """Render the panel to an image file; ``True`` when it was written."""
+        """Render the panel to an image file; ``True`` when it was written.
+
+        Drawn straight into an image at the size it was last shown (or its
+        host's), so a panel without a Qt host exports the same picture.
+        """
+        from emtk.qt_painter import QtPainter
         from qtpy import QtGui
 
-        widget = self._widget
-        size = widget.size()
-        if width:
-            scale = float(width) / max(size.width(), 1)
-            size.setWidth(int(width))
-            size.setHeight(int(size.height() * scale))
-        pixmap = QtGui.QPixmap(size)
-        pixmap.fill()
-        widget.render(pixmap)
-        return bool(pixmap.save(str(path)))
+        box = getattr(self, "_last_box", None)
+        if self._widget is not None:
+            w, h = self._widget.width(), self._widget.height()
+        elif box is not None:
+            w, h = int(box[2]), int(box[3])
+        else:
+            w, h = 800, 500
+        scale = float(width) / max(w, 1) if width else 1.0
+        image = QtGui.QImage(max(int(w * scale), 1), max(int(h * scale), 1),
+                             QtGui.QImage.Format_ARGB32)
+        image.fill(QtGui.QColor(*self._background))
+        painter = QtGui.QPainter(image)
+        try:
+            painter.scale(scale, scale)
+            self.draw(QtPainter(painter), 0.0, 0.0, float(w), float(h))
+        finally:
+            painter.end()
+        return bool(image.save(str(path)))
 
     def native(self) -> Any:
         """The display list; emtk keeps no plot object between frames."""
