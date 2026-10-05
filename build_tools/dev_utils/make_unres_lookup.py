@@ -1,4 +1,17 @@
-import matplotlib.pyplot as plt
+"""Regenerate ``unres.npy``, the UNRES side-chain pair-potential lookup table.
+
+Developer tool, not shipped behaviour (it used to sit inside the package and
+ran -- plot window and file write included -- whenever it was imported)::
+
+    python -m build_tools.dev_utils.make_unres_lookup
+
+Writes ``chisurf/core/structure/potential/database/unres.npy``: shape
+``(20, 20, 400)``, distances 0..20 Å in 0.05 Å steps, each curve shifted to
+zero at the cut-off.
+"""
+
+import pathlib
+
 import numpy as np
 
 aa_names = [
@@ -557,6 +570,10 @@ for i in range(n_aa):
         v -= v[-1]
         print(f"name: {name} energy", eij)
         V_ij_r[i, j, :] = v
-        plt.plot(r_ij[30:], v[30:])
-plt.show()
-np.save("unres.npy", V_ij_r)
+
+TARGET = (
+    pathlib.Path(__file__).resolve().parents[2]
+    / "chisurf/core/structure/potential/database/unres.npy"
+)
+np.save(TARGET, V_ij_r)
+print(f"wrote {TARGET}")

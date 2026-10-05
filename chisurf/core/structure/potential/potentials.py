@@ -67,7 +67,7 @@ def centroid2(
             of 10 whereas the actual distance is dependent on the range in
             which the potential was actually calculated. The potential can be
             calculated with the small program located in:
-            mfm.structure.potential.database.make_unres_lookup.py
+            build_tools/dev_utils/make_unres_lookup.py
     min_dist : double
             The minimum distance for which the parameter `potential` was
             calculated. This parameter has to be supplied and depends on the

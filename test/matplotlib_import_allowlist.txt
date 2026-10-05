@@ -53,4 +53,3 @@ chisurf/plugins/core/help/api/mathtext.py
 chisurf/plugins/core/help/gui/help_app.py
 
 # --- delete ---
-chisurf/core/structure/potential/database/make_unres_lookup.py

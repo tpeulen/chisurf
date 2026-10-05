@@ -40,10 +40,7 @@ in order:
    missing is layout. Do it as an emtk module with golden tests against
    matplotlib's renders, then route the five callers. Until then those five
    stay on the list.
-4. **delete route.** `core/structure/potential/database/make_unres_lookup.py`
-   is a developer script with a module-scope pyplot inside the package --
-   move it to `build_tools/` or delete it.
-5. **Manifests.** When the list is empty: drop `matplotlib-base` from
+4. **Manifests.** When the list is empty: drop `matplotlib-base` from
    `pixi.toml` `[dependencies]` (keep it in the `test` and `docs` features --
    `docs/guides/make_figures.py` draws the guide figures with it), drop
    `matplotlib` from `rattler-recipe/recipe.yaml` `run:` and from
@@ -157,3 +154,6 @@ labels sit a fixed 10 px above the bar.
   thumbnail; needed `line(..., right=True)`, emtk `figure: lines on a right-hand
   y-axis`). Text is relatively larger at 240 px than matplotlib's 6 pt ticks;
   legible, inventory at parity. 15 -> 14.
+- 2026-10-05 `make_unres_lookup.py` moved to `build_tools/dev_utils/` (it ran a
+  plot window and wrote `unres.npy` into the CWD on import); preview plot
+  dropped; regenerates the shipped table bit-identically. 14 -> 13.
