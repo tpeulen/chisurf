@@ -298,6 +298,10 @@ class Canvas(abc.ABC):
         """Return the current ``((x0, x1), (y0, y1))`` visible range, in data units."""
 
     @abc.abstractmethod
+    def is_auto_range(self) -> tuple[bool, bool]:
+        """Return whether x and y still follow the data (``False`` once set or zoomed)."""
+
+    @abc.abstractmethod
     def auto_range(self) -> None:
         """Fit the view to its contents once."""
 

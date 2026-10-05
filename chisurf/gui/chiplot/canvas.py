@@ -804,6 +804,14 @@ class Plot(QtWidgets.QWidget):
         """Return the current visible ``((x0, x1), (y0, y1))``."""
         return self._canvas.get_range()
 
+    def is_auto_range(self) -> tuple[bool, bool]:
+        """Return whether x and y still follow the data.
+
+        ``False`` for an axis whose range was set or that the user zoomed or
+        panned; a saved view restores exactly those axes.
+        """
+        return self._canvas.is_auto_range()
+
     def autoscale(self, *, x=True, y=True, continuous=False) -> Plot:
         """Fit the view to its contents. Returns ``self``.
 

@@ -1148,6 +1148,11 @@ class _PgCanvas(base.Canvas):
         log_x, log_y = self._log_modes()
         return (self._from_axis_units((x0, x1), log_x), self._from_axis_units((y0, y1), log_y))
 
+    def is_auto_range(self) -> tuple[bool, bool]:
+        """Whether x and y follow the data (pyqtgraph's per-axis auto-range flags)."""
+        x, y = self._pi.getViewBox().autoRangeEnabled()
+        return (bool(x), bool(y))
+
     def auto_range(self) -> None:
         """Fit the view to its contents once."""
         self._pi.getViewBox().autoRange()

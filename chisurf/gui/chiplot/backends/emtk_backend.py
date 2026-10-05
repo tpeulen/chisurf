@@ -1558,6 +1558,10 @@ class EmtkCanvas(base.Canvas):
         high = max(end for _, end in spans)
         return (low, high) if high > low else (low, low + 1.0)
 
+    def is_auto_range(self) -> tuple[bool, bool]:
+        """Whether x and y follow the data: a set or zoomed axis stores its range."""
+        return (self._range.get("x") is None, self._range.get("y") is None)
+
     def auto_range(self) -> None:
         """Fit the view to its contents."""
         for member in self._x_group:

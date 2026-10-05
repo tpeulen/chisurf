@@ -1020,19 +1020,56 @@ class LinePlot(plotbase.Plot):
         return self.plot_stack
 
     def get_state(self) -> dict:
-        """The panel split, once the user has chosen one (project persistence)."""
+        """The panel split and any zoomed view, once the user chose them (project persistence).
+
+        ``views`` holds one ``{"x": [lo, hi] | None, "y": ...}`` per panel, in
+        :attr:`_panels` order; ``None`` is an axis still following its data, so a
+        restored plot zooms exactly where the user had zoomed and autoscales
+        everywhere else.
+        """
+        state: dict = {}
         stack = self.plot_stack
-        if stack is None or not stack.user_sized:
-            return {}
-        return {"split": [round(float(w), 6) for w in stack.weights]}
+        if stack is not None and stack.user_sized:
+            state["split"] = [round(float(w), 6) for w in stack.weights]
+        views = []
+        for panel in self._panels:
+            try:
+                auto_x, auto_y = panel.is_auto_range()
+                (x0, x1), (y0, y1) = panel.get_range()
+            except Exception:
+                views.append({"x": None, "y": None})
+                continue
+            views.append(
+                {
+                    "x": None if auto_x else [float(x0), float(x1)],
+                    "y": None if auto_y else [float(y0), float(y1)],
+                }
+            )
+        if any(view["x"] is not None or view["y"] is not None for view in views):
+            state["views"] = views
+        return state
 
     def set_state(self, state: dict) -> None:
-        """Restore a split saved by :meth:`get_state`."""
-        split = state.get("split") if isinstance(state, dict) else None
+        """Restore a split and zoomed views saved by :meth:`get_state`."""
+        if not isinstance(state, dict):
+            return
+        split = state.get("split")
         if isinstance(split, (list, tuple)) and len(split) == len(self._panels):
             stack = self.emtk_body()
             stack.set_weights([float(w) for w in split])
             stack.user_sized = True
+        views = state.get("views")
+        if isinstance(views, (list, tuple)) and len(views) == len(self._panels):
+            for panel, view in zip(self._panels, views):
+                if not isinstance(view, dict):
+                    continue
+                x, y = view.get("x"), view.get("y")
+                if x is not None or y is not None:
+                    panel.set_range(
+                        x=tuple(float(v) for v in x) if x is not None else None,
+                        y=tuple(float(v) for v in y) if y is not None else None,
+                        padding=0.0,
+                    )
 
     def _auto_enable_display_group_if_grouped(self) -> None:
         """Enable "display group" by default for multi-fit FitGroups.
