@@ -1,0 +1,26 @@
+{
+  "_comment": "Guided tour of step 1 (Data Selection) of the native Burst Analysis workflow. Targets are item_rects keys of BurstDataSelectionApp; the action steps wait for the control.",
+  "steps": [
+    {
+      "title": "The raw data of the whole workflow",
+      "text": "Every later step reads the files listed here: the burst search, the IRF and background, the burst-wise FCS. Add them once.",
+      "target": {}
+    },
+    {
+      "title": "Add the measurements",
+      "text": "Choose TTTR files (or a folder of them, or drop them on the window). Each new local file is stored in MMFDB and registered as raw data.",
+      "target": {"name": "add_files"},
+      "await": {"hint": "Press <b>Add files</b> and choose one or more TTTR files."}
+    },
+    {
+      "title": "Check what was registered",
+      "text": "Select a file to see its size, date and MMFDB record. A failed registration says why and can be repeated with <b>Import again</b>.",
+      "target": {"name": "files"}
+    },
+    {
+      "title": "Go on",
+      "text": "The burst search (step 2) gets these files and the detector setup of step 0.",
+      "target": {"name": "proceed"}
+    }
+  ]
+}

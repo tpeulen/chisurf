@@ -1,0 +1,32 @@
+{
+  "_comment": "Guided tour of step 0 (Setup Selection) of the native Burst Analysis workflow: the shared detector-setup editor. Targets are item_rects names of ChannelDefinitionWidget and of BurstSetupSelectionApp.",
+  "steps": [
+    {
+      "title": "The definition every later number inherits",
+      "text": "The detector setup says which routing channel is donor and which acceptor, which PIE window each belongs to, and how the file is read. Every later step of the workflow takes it from here.<br/><br/>Get donor and acceptor backwards and you still get a complete, plausible analysis with <i>E</i> reflected about one half; nothing downstream reports it.",
+      "target": {}
+    },
+    {
+      "title": "Choose a saved setup",
+      "text": "The <b>Setup</b> choice lists the saved detector setups; the last one used opens by itself.",
+      "target": {"name": "setup_choice"},
+      "await": {"hint": "Pick a setup, or skip this step if none is saved yet."}
+    },
+    {
+      "title": "Check detectors and windows",
+      "text": "<b>Detectors</b> holds the routing channels (parallel then perpendicular) and gates; <b>PIE Windows</b> the micro-time ranges of each excitation. Double-click a cell to edit it.",
+      "target": {"name": "section_detectors"}
+    },
+    {
+      "title": "Save it under a name",
+      "text": "<b>Save</b> stores the definition; the burst search and the later steps select it by that name.",
+      "target": {"name": "save"}
+    },
+    {
+      "title": "Go on",
+      "text": "With the setup chosen, add the raw measurements in step 1.",
+      "target": {"name": "proceed"},
+      "await": {"hint": "Press <b>Proceed to Data Selection</b>, or Next at the bottom."}
+    }
+  ]
+}

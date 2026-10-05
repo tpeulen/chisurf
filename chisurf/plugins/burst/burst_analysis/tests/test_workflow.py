@@ -898,11 +898,10 @@ def test_registered_storage_mode_is_a_term_mmfdb_accepts() -> None:
 
     from mmfdb.models import STORAGE_MODES
 
-    from chisurf.plugins.burst.burst_analysis.gui.tool import (
-        BurstDataSelectionWidget,
-    )
+    # The Qt widget and the native step both register through this one function.
+    from chisurf.plugins.burst.burst_analysis.gui.data_selection_app import import_raw_file
 
-    src = inspect.getsource(BurstDataSelectionWidget._import_path_to_mmfdb)
+    src = inspect.getsource(import_raw_file)
     modes = [
         node.value
         for node in ast.walk(ast.parse(textwrap.dedent(src)))

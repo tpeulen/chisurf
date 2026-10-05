@@ -1,0 +1,30 @@
+{
+  "_comment": "Step 1 of the burst workflow (Data Selection), emtk app: the raw TTTR files as a data_table over BurstDataSelectionApp.file_rows. Every column carries a tooltip.",
+  "sections": [
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "",
+      "description": "The raw TTTR files every later step reads, in order. Click a row to select it (its details appear on the right); Delete removes it. Dropping files or a folder on the window adds them.",
+      "options": {
+        "source": "file_rows",
+        "row_key": "path",
+        "selected_call": "select_file",
+        "delete_call": "remove_file_row",
+        "editable": false,
+        "height": 260,
+        "expand": true,
+        "fit_columns": true,
+        "min_column_width": 50,
+        "tooltip_key": "path",
+        "columns": [
+          {"key": "number", "title": "#", "width": 36, "tooltip": "Position of the file in the workflow."},
+          {"key": "file", "title": "File", "width": 200, "tooltip": "The file name; hover a row for the full path."},
+          {"key": "size", "title": "Size", "width": 70, "tooltip": "Size on disk."},
+          {"key": "format", "title": "Format", "width": 60, "tooltip": "The file extension (the reader is chosen by the detector setup's file type)."},
+          {"key": "status", "title": "MMFDB", "width": 110, "tooltip": "Whether the file is stored in the MMFDB object store and registered as raw TTTR data."}
+        ]
+      }
+    }
+  ]
+}

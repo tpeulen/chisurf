@@ -126,10 +126,13 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
 
         from .data_selection_app import WINDOW_BG, BurstDataSelectionApp
 
+        # The native step drawn over this widget: it speaks the same source methods
+        # (paths, add_paths, remove_index, clear, mmfdb_payload, import_path).
         self.app = BurstDataSelectionApp(
             self,
             on_guide=self._start_guide,
             on_help=self._show_help,
+            on_proceed=self._proceed,
         )
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])
         layout.addWidget(self.host, 1)
@@ -164,6 +167,11 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         btn = HelpButton(None, resource="help.md", title="Data Selection — help")
         btn.show_help()
 
+    def _proceed(self) -> None:
+        show_panel = getattr(self.parent(), "show_panel_by_role", None)
+        if callable(show_panel):
+            show_panel("selection")
+
     # -- external API kept stable for the workflow ----------------------------
 
     def paths(self) -> list[Path]:
@@ -177,11 +185,21 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
             "selections": self._mmfdb_selections,
         }
 
-    def add_paths(self, paths: list[Path]) -> None:
+    def add_paths(self, paths: list[Path]) -> int:
         """Add files/folders (folders expanded + de-duplicated by the widget)."""
+        before = len(self._paths)
         self.file_list.add_paths([str(Path(p)) for p in paths])
         if hasattr(self, "host"):
             self.host.update()
+        return len(self._paths) - before
+
+    def remove_index(self, index: int) -> None:
+        """Remove the file at *index* (the native step's name for it)."""
+        self._remove_index(index)
+
+    def import_path(self, path: Path) -> None:
+        """Register *path* in MMFDB now (the native step's name for it)."""
+        self._import_path_to_mmfdb(Path(path))
 
     def clear(self) -> None:
         """Clear selected data files."""
@@ -233,51 +251,14 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
 
     def _import_path_to_mmfdb(self, path: Path) -> None:
         """Import a local file into MMFDB object store and raw-data registry."""
-        try:
-            import base64
+        from .data_selection_app import import_raw_file
 
+        try:
             client = self._client()
-            # The RPC object store cannot read the client's filesystem, so send
-            # the file's bytes as base64 rather than a server-side path.
-            encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-            object_result = (
-                client.call(
-                    "mmfdb.objects.put",
-                    {
-                        "data": encoded,
-                        "filename": path.name,
-                        "metadata": {"source": "burst_analysis.data_selection"},
-                    },
-                )
-                or {}
-            )
-            payload: dict[str, Any] = {"object_result": object_result}
-            try:
-                raw_result = (
-                    client.call(
-                        "raw_data.register",
-                        {
-                            "raw_data": {
-                                "file_path": str(path),
-                                "data_type": "TTTR",
-                                # One of MMFDB's storage_mode vocabulary terms; "file"
-                                # is not one, and every registration was rejected.
-                                "storage_mode": "local_file",
-                                "header_metadata": {
-                                    "mmfdb_object": object_result.get("object", {}),
-                                    "source": "burst_analysis.data_selection",
-                                },
-                            }
-                        },
-                    )
-                    or {}
-                )
-                payload["raw_data_result"] = raw_result
-            except Exception as raw_exc:
-                payload["raw_data_error"] = str(raw_exc)
-            self._mmfdb_imports[str(path)] = payload
         except Exception as exc:
             self._mmfdb_imports[str(path)] = {"error": str(exc)}
+            return
+        self._mmfdb_imports[str(path)] = import_raw_file(client, path)
 
     def _client(self) -> Any:
         """Return the shared, process-global MMFDB client for import and selection."""
@@ -298,7 +279,13 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
 
 
 class BurstSetupSelectionWidget(QtWidgets.QWidget):
-    """Workflow-local detector setup and channel configuration selector (Step 0)."""
+    """Workflow-local detector setup and channel configuration selector (Step 0).
+
+    Hosts the native step (:class:`.setup_selection_app.BurstSetupSelectionApp`, the
+    shared detector-setup editor) and answers the wizard-page contract the
+    workflows speak: ``selected_setup_name``, ``selected_setup_data``,
+    ``apply_setup``, ``get_settings``, ``load_data_into_tables``.
+    """
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -310,19 +297,30 @@ class BurstSetupSelectionWidget(QtWidgets.QWidget):
 
         from .setup_selection_app import WINDOW_BG, BurstSetupSelectionApp
 
-        self.app = BurstSetupSelectionApp(self)
+        self.app = BurstSetupSelectionApp(
+            on_changed=self._on_setup_changed, on_proceed=self._proceed
+        )
         self.host = ControlHost(self.app, background=WINDOW_BG[:3])
         layout.addWidget(self.host, 1)
 
+    def _on_setup_changed(self, _settings: dict[str, Any]) -> None:
+        sync = getattr(self.tool, "_sync_setup_context", None)
+        if callable(sync):
+            sync()
+
+    def _proceed(self) -> None:
+        show_panel = getattr(self.tool, "show_panel_by_role", None)
+        if callable(show_panel):
+            show_panel("data")
+
     def selected_setup_name(self) -> str:
-        return getattr(self.app.setup_gui, "selected_setup_name", "")
+        return self.app.selected_setup_name()
 
     def selected_setup_data(self) -> dict[str, Any]:
-        return getattr(self.app.setup_gui, "selected_setup_data", {})
+        return self.app.selected_setup_data()
 
     def apply_setup(self, name: str) -> None:
-        if hasattr(self.app.setup_gui, "select_setup"):
-            self.app.setup_gui.select_setup(name)
+        self.app.select_setup(name)
 
     # ── the wizard-page contract other workflows still speak ─────────────
 
@@ -334,20 +332,12 @@ class BurstSetupSelectionWidget(QtWidgets.QWidget):
         return data
 
     def load_data_into_tables(self, settings: dict[str, Any]) -> None:
-        """Show the workflow's setup here (select it; edit via the wizard).
+        """Show the workflow's setup here (select it by name, else show it).
 
         The ALEX Suite hands its context's setup to this step the way it did to
-        the ``DetectorWizardPage``: match by name and select it. Editing stays
-        behind the panel's wizard button.
+        the ``DetectorWizardPage``.
         """
-        gui = getattr(self.app, "setup_gui", None)
-        if gui is None:
-            return
-        name = str((settings or {}).get("setup_name") or "")
-        if not name or name == gui.selected_setup_name:
-            return
-        gui.refresh_setups()
-        gui.select_setup(name, sync=False)
+        self.app.load_data_into_tables(settings)
 
 
 def _setup_selection(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
