@@ -67,7 +67,7 @@ def optimize_synthetic_scatter_pattern(
     constant afterpulse basis). The returned IRF is normalized; its fitted
     amplitude remains the responsibility of the caller's unmix/filter step.
     """
-    from scipy.optimize import lsq_linear
+    from chisurf.core.math.numerics import lsq_linear
 
     from chisurf.core.fluorescence.tcspc.irf import detect_rising_edge, synthetic_irf
 

@@ -241,7 +241,7 @@ def phasor_unmix(
         One fraction map per component, each with the shape of ``g``. ``NaN`` pixels
         (in ``g`` or ``s``) yield ``NaN`` fractions.
     """
-    from scipy.optimize import nnls
+    from chisurf.core.math.numerics import nnls
 
     comps = np.asarray(components, dtype=np.float64)
     if comps.ndim != 2 or comps.shape[1] != 2:

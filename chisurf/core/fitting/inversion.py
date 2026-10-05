@@ -284,7 +284,7 @@ def tikhonov_nnls(
         If ``weight`` is negative, the shapes disagree, or ``convention`` is
         not a :class:`SmoothnessWeight`.
     """
-    from scipy.optimize import nnls
+    from chisurf.core.math.numerics import nnls
 
     A = np.asarray(A, dtype=float)
     b = np.asarray(b, dtype=float).ravel()

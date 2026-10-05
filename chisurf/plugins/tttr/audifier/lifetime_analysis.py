@@ -102,51 +102,11 @@ def lifetime_spectrum_ilt(
     K_aug = np.vstack([K, np.sqrt(lam) * L])
     y_aug = np.concatenate([y, np.zeros(n - 2)])
 
-    # Non-negative least squares using scipy if available, otherwise simple iterative method
-    try:
-        from scipy.optimize import nnls
+    from chisurf.core.math.numerics import nnls
 
-        a, _ = nnls(K_aug, y_aug)
-    except ImportError:
-        # Simple projected gradient descent for NNLS
-        a = _nnls_simple(K_aug, y_aug, max_iter=1000, tol=1e-6)
+    a, _ = nnls(K_aug, y_aug)
 
     return tau, a
-
-
-def _nnls_simple(
-    A: np.ndarray, b: np.ndarray, max_iter: int = 1000, tol: float = 1e-6
-) -> np.ndarray:
-    """
-    Simple non-negative least squares solver using projected gradient descent.
-    Fallback when scipy.optimize.nnls is not available.
-    """
-    m, n = A.shape
-    x = np.zeros(n, dtype=np.float64)
-
-    # Compute gradient step size (1/Lipschitz constant)
-    # L = largest eigenvalue of A.T @ A
-    AtA = A.T @ A
-    L = np.max(np.linalg.eigvals(AtA).real) + 1e-12
-    step_size = 1.0 / L
-
-    for iteration in range(max_iter):
-        # Gradient: A.T @ (A @ x - b)
-        grad = A.T @ (A @ x - b)
-
-        # Gradient descent step
-        x_new = x - step_size * grad
-
-        # Project onto non-negative orthant
-        x_new = np.maximum(x_new, 0.0)
-
-        # Check convergence
-        if np.linalg.norm(x_new - x) < tol:
-            break
-
-        x = x_new
-
-    return x
 
 
 def compute_lifetime_waterfall(

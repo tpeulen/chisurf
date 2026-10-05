@@ -63,7 +63,7 @@ def _basis(
 
 
 def _nnls_amplitudes(basis: np.ndarray, decay: np.ndarray, sigma: np.ndarray) -> np.ndarray:
-    from scipy.optimize import nnls
+    from chisurf.core.math.numerics import nnls
 
     a_mat = basis / sigma[:, None]
     b_vec = decay / sigma

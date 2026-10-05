@@ -78,7 +78,7 @@ def unmix_decay(
     one mixed histogram is only identifiable after the component shapes (for
     example synthetic lifetimes or measured references) have been specified.
     """
-    from scipy.optimize import lsq_linear
+    from chisurf.core.math.numerics import lsq_linear
 
     total = np.asarray(total_decay, dtype=float)
     if total.ndim != 1 or total.size == 0:

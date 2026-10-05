@@ -579,9 +579,9 @@ def et2pRDA(ts, et, t_matrix=None, r_DA=None, **kwargs):
     """
     if t_matrix is None or r_DA is None:
         t_matrix, r_DA = calc_transfer_matrix(ts, 5, 200, 200, **kwargs)
-    import scipy.optimize
+    from chisurf.core.math.numerics import nnls
 
-    p_rDA = scipy.optimize.nnls(t_matrix.T, et)[0]
+    p_rDA = nnls(t_matrix.T, et)[0]
     return r_DA, p_rDA
 
 

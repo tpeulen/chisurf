@@ -282,7 +282,7 @@ def _solve_amplitudes(design: np.ndarray, histograms: np.ndarray) -> np.ndarray:
     goes negative the "fraction" the isotherm is read from stops being a
     fraction.
     """
-    from scipy.optimize import nnls
+    from chisurf.core.math.numerics import nnls
 
     out = np.empty((histograms.shape[0], design.shape[1]))
     for i, row in enumerate(histograms):
