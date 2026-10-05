@@ -728,25 +728,28 @@ def plot_waterfall(
     micro_centers: np.ndarray,
     title: str = "Microtime waterfall",
     log_scale: bool = True,
-) -> None:
+):
+    """Render the waterfall as an image (time down the y-axis, microtime across).
+
+    Returns
+    -------
+    emtk.figure.Axes
+        The panel; ``.figure.save("waterfall.png")`` writes it, a notebook
+        shows it inline.
     """
-    Render waterfall as an image (time on y-axis, microtime on x-axis).
-    """
+    from emtk.figure import Figure
+
     M = W.copy()
     if log_scale:
         M = np.log1p(M)
 
-    import matplotlib.pyplot as plt
-
-    plt.figure()
-    # y-axis is macro bin index; label with seconds at edges
-    extent = [micro_centers[0], micro_centers[-1], macro_t_s[-1], macro_t_s[0]]
-    plt.imshow(M, aspect="auto", extent=extent)
-    plt.xlabel("Microtime (bins or scaled units)")
-    plt.ylabel("Macrotime (s)")
-    plt.title(title)
-    plt.tight_layout()
-    plt.show()
+    ax = Figure(size=(640, 480)).ax()
+    # (left, right, bottom, top): time runs downwards, first bin at the top.
+    extent = (micro_centers[0], micro_centers[-1], macro_t_s[-1], macro_t_s[0])
+    ax.heatmap(M, colormap="viridis", extent=extent)
+    ax.set_labels(x="Microtime (bins or scaled units)", y="Macrotime (s)")
+    ax.set_title(title)
+    return ax
 
 
 # -----------------------------

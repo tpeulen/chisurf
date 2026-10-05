@@ -18,7 +18,7 @@ in order:
    `emtk.figure` once a before-PNG is taken with the matplotlib code: render
    the result with realistic data, `savefig`, port, re-render, compare the
    control inventory (see "How a figure port is proven" below). Files:
-   `plugins/burst/burst_h2mm/gui/native.py`, `plugins/tttr/audifier/{core,lifetime_analysis}.py`,
+   `plugins/burst/burst_h2mm/gui/native.py`, `plugins/tttr/audifier/lifetime_analysis.py`,
    `plugins/tttr/trace_browser/gui/model.py`, ndXplorer
    `export/{publication_figure,report}.py`. ndXplorer's publication figure
    uses `LogNorm`/`Normalize` and figure-level layout -- check `emtk.figure`
@@ -157,3 +157,6 @@ labels sit a fixed 10 px above the bar.
 - 2026-10-05 `make_unres_lookup.py` moved to `build_tools/dev_utils/` (it ran a
   plot window and wrote `unres.npy` into the CWD on import); preview plot
   dropped; regenerates the shipped table bit-identically. 14 -> 13.
+- 2026-10-05 audifier `plot_waterfall` (returned None after `plt.show()`; now
+  returns the panel). Grid lines show through heatmap cells, unlike an
+  `imshow` -- cosmetic, noted. 13 -> 12.
