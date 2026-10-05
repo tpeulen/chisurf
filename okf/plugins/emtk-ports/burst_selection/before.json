@@ -1,0 +1,252 @@
+{
+  "size": [
+    1200,
+    800
+  ],
+  "controls": [
+    "(2files,71bursts)",
+    "0",
+    "0.1500",
+    "1.0000",
+    "1.0ms",
+    "10",
+    "100000",
+    "120000",
+    "140000",
+    "15",
+    "160000",
+    "1dfeaturehistogram",
+    "20",
+    "20000",
+    "25",
+    "2dfeaturescatter",
+    "2dfeaturescatterwithgating",
+    "3",
+    "30",
+    "35",
+    "40",
+    "40000",
+    "45",
+    "5",
+    "50",
+    "50.0",
+    "50.0khz",
+    "60",
+    "60000",
+    "80000",
+    "addfiles",
+    "addfolder",
+    "algorithm",
+    "all",
+    "allphotons",
+    "bin(ms)",
+    "burstduration",
+    "burstphotons",
+    "bursts(71)",
+    "burststable",
+    "countrate(khz)",
+    "countrate(mcs)",
+    "detectorchannel",
+    "displaylayers",
+    "fileschannels",
+    "filtersettings",
+    "findbursts",
+    "firstphoton",
+    "guide",
+    "help",
+    "helpreference",
+    "inter-photondelay(dt)",
+    "lastphoton",
+    "m000.spc",
+    "macrotime(s)",
+    "macrotimeinterval(dmt)",
+    "mcsintensitytrace",
+    "mergegap",
+    "microtimedecay(tcspc)",
+    "microtimerangefulldecay(unfiltered)",
+    "microtimewindow",
+    "minphotons(l)",
+    "ms",
+    "photons/window(m)",
+    "ratecutoff(khz)",
+    "recompute",
+    "routingchannelsall(unfiltered)",
+    "savebursts",
+    "selectedbursts",
+    "slidingwindow",
+    "slidingwindowparameters",
+    "staticfretline",
+    "subtractbackground",
+    "summarymetrics",
+    "threshold50.0khz",
+    "thresholdbackground",
+    "tondx",
+    "usemaxdmt",
+    "usemindmt",
+    "windowdur(tms)",
+    "x_max0.80",
+    "x_min0.20",
+    "xfeature",
+    "yfeature"
+  ],
+  "interactive": [
+    {
+      "kind": "button",
+      "label": "Find Bursts",
+      "id": "Find Bursts",
+      "tooltip": "Run the selected burst-detection algorithm over all included TTTR files."
+    },
+    {
+      "kind": "button",
+      "label": "Recompute",
+      "id": "Recompute",
+      "tooltip": "Force a fresh burst search, ignoring cached results."
+    },
+    {
+      "kind": "button",
+      "label": "Save Bursts",
+      "id": "Save Bursts",
+      "tooltip": "Save the detected bursts to .bur files next to the source data."
+    },
+    {
+      "kind": "button",
+      "label": "Add Files",
+      "id": "Add Files",
+      "tooltip": "Open a dialog to add TTTR measurement files."
+    },
+    {
+      "kind": "button",
+      "label": "Add Folder",
+      "id": "Add Folder",
+      "tooltip": "Open a dialog to add a folder of TTTR files."
+    },
+    {
+      "kind": "button",
+      "label": "to ndX",
+      "id": "to ndX",
+      "tooltip": "Send the current burst selection to ndXplorer."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "Start a step-by-step guided tour of burst selection."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Open the help window with reference documentation."
+    },
+    {
+      "kind": "combo",
+      "label": "filter_alg",
+      "id": "##filter_alg",
+      "tooltip": "Burst-detection algorithm: sliding window, CUSUM/SPRT, Kalman, BOCPD, coincident, max-tree, or Bayesian Blocks."
+    },
+    {
+      "kind": "combo",
+      "label": "ch_sel",
+      "id": "##ch_sel",
+      "tooltip": "Detector channel (or All) whose photons are used for the burst search."
+    },
+    {
+      "kind": "combo",
+      "label": "win_sel",
+      "id": "##win_sel",
+      "tooltip": "PIE/micro-time window (or All) whose photons are used for the burst search."
+    },
+    {
+      "kind": "input_int",
+      "label": "min_photons",
+      "id": "##min_photons",
+      "tooltip": "Minimum photons a burst must have; the size cut is applied after the search."
+    },
+    {
+      "kind": "input_int",
+      "label": "photon_window",
+      "id": "##photon_window",
+      "tooltip": "Consecutive photons m required inside the time window to call a burst."
+    },
+    {
+      "kind": "input_float",
+      "label": "time_window",
+      "id": "##time_window",
+      "tooltip": "Sliding window duration T in milliseconds."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Use min dMT",
+      "id": "Use min dMT##chk",
+      "tooltip": "Reject photon pairs with a macro-time interval Δt below the minimum."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Use max dMT",
+      "id": "Use max dMT##chk",
+      "tooltip": "Reject photon pairs with a macro-time interval Δt above the maximum."
+    },
+    {
+      "kind": "input_float",
+      "label": "ms",
+      "id": "ms##dmax",
+      "tooltip": "Maximum Δt between photons in milliseconds."
+    },
+    {
+      "kind": "input_int",
+      "label": "merge_gap",
+      "id": "##merge_gap",
+      "tooltip": "Merge bursts separated by fewer than this many photons."
+    },
+    {
+      "kind": "input_float",
+      "label": "threshold_khz",
+      "id": "##threshold_khz",
+      "tooltip": "Count-rate cutoff in kHz used to separate bursts from background."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Subtract Background",
+      "id": "Subtract Background",
+      "tooltip": "Subtract the background count rate from the burst photon counts."
+    },
+    {
+      "kind": "checkbox",
+      "label": "All Photons",
+      "id": "All Photons",
+      "tooltip": "Show all photons in the diagnostic plots."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Selected Bursts",
+      "id": "Selected Bursts",
+      "tooltip": "Show only photons inside detected bursts in the diagnostic plots."
+    },
+    {
+      "kind": "slider_float",
+      "label": "Bin (ms)",
+      "id": "Bin (ms)",
+      "tooltip": "Bin width of the macro-time count-rate trace in milliseconds."
+    },
+    {
+      "kind": "combo",
+      "label": "X Feature",
+      "id": "X Feature",
+      "tooltip": "Burst feature plotted on the X axis of the 2D scatter."
+    },
+    {
+      "kind": "combo",
+      "label": "Y Feature",
+      "id": "Y Feature",
+      "tooltip": "Burst feature plotted on the Y axis of the 2D scatter."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Static FRET Line",
+      "id": "Static FRET Line",
+      "tooltip": "Overlay the static FRET line at S = 0.5 on the E–S scatter."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "entrypoint": "chisurf.plugins.burst.burst_selection.gui.tool:BurstSelectionTool (hosted BurstSelectionApp, populated: m000+m001, 198 bursts)"
+}

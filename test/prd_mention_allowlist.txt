@@ -61,7 +61,6 @@ chisurf/plugins/burst/burst_selection/api/mmfdb.py
 chisurf/plugins/burst/burst_selection/api/replay.py
 chisurf/plugins/burst/burst_selection/api/transformer.py
 chisurf/plugins/burst/burst_selection/docs/REFERENCE_IMPLEMENTATION.md
-chisurf/plugins/burst/burst_selection/gui/gmm_settings_dialog.py
 chisurf/plugins/burst/burst_selection/gui/tool.py
 chisurf/plugins/burst/burst_selection/tests/test_api_mmfdb.py
 chisurf/plugins/burst/burst_selection/tests/test_construction_smoke.py

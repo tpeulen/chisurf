@@ -1,3 +1,28 @@
+## Burst Selection Qt tool records wrong values beside a correct search (2026-10-05)
+
+Found while measuring the Qt baseline for the native port (198 bursts on copies of
+`burst_selection/tests/data/bh_spc132_sm_dna/m000.spc,m001.spc`, setup green 0,1 / red 8,9,
+SPC-130). The registry search reads none of these fields, so **the bursts are right**; the
+values written beside them are not:
+
+- `BurstSelectionTool._settings_from_controls` sets `burst_detection.time_window` to
+  `min_photons / 1000` (it reads the "Max/Min #Ph" spin box and divides by 1000): 0.06 s for
+  60 photons. It lands in the run's output manifest through `_manifest_settings`.
+- `_legacy_parameters` (→ the `Info` file) reports `dT_min` from the dT plot's region
+  selector (1e-4, not the 0.001 in force) and `use_gap_fill` from the hidden `checkBox_5`
+  (False while gap filling is on).
+- `WizardTTTRPhotonFilter` reads the CUSUM / Kalman / BOCPD fields from the wrong places:
+  `kalman_q` returns `filter_settings.beta`, `kalman_merge_gap` the shared `merge_gap`, and the
+  CUSUM setters write spin boxes the getters never read, so `AnalysisSettings` carries
+  q 20, alpha 0.45, beta 20, background 1.
+
+Status: **fixed in the native path** — `burst_selection/gui/model.py` writes the macro-time
+cut (`dT_max / 1000` s), this run's own parameters and the dataclass defaults, and its
+parity test (`tests/test_emtk_native_model.py::test_same_bursts_as_the_qt_tool`) pins both
+the identical tables and the corrected values. The Qt tool and the shared wizard are legacy
+(both import pyqtgraph directly, so touching them obliges a chiplot port); they keep the
+defects until they are retired with the Qt Burst Selection.
+
 ## FCS diffusion calculator vs the hermetic MMFDB test env (2026-10-05)
 
 With `MMFDB_DATABASE_PATH` pointing at a file that does not exist (as hermetic

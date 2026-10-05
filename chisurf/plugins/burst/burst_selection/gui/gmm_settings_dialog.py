@@ -3,7 +3,7 @@
 Provides a dialog for adjusting Gaussian Mixture Model (GMM) settings used in the
 BrickMicWizard for histogram fitting. The form is declared once as a
 ``dataspec`` ``ModelView`` and rendered by :class:`AutoForm`, instead of
-hand-building one widget per field (PRD-40).
+hand-building one widget per field.
 """
 
 from types import SimpleNamespace
@@ -13,15 +13,7 @@ from qtpy import QtWidgets
 from chisurf.core import dataspec as ds
 from chisurf.gui.autoform import AutoForm
 
-DEFAULT_GMM_SETTINGS = {
-    "covariance_type": "full",
-    "random_state": 42,
-    "max_iter": 300,
-    "n_init": 10,
-    "tol": 1e-3,
-    "max_components": 10,
-    "reg_covar": 1e-6,
-}
+from .model import DEFAULT_GMM_SETTINGS  # noqa: E402 - one definition, shared with the native app
 
 
 def _gmm_view_spec() -> ds.ModelView:
