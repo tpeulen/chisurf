@@ -9,8 +9,8 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
-The tracker is `test/matplotlib_import_allowlist.txt` (33 files at the start,
-2026-10-05); the guard is `test/test_matplotlib_seam.py` (no new importer, no
+The tracker is `test/matplotlib_import_allowlist.txt` (31 files at the start,
+2026-10-05; the two console files are optional integrations, not entries); the guard is `test/test_matplotlib_seam.py` (no new importer, no
 stale entry, console integrations import only inside functions). Open front,
 in order:
 
@@ -18,8 +18,6 @@ in order:
    `emtk.figure` once a before-PNG is taken with the matplotlib code: render
    the result with realistic data, `savefig`, port, re-render, compare the
    control inventory (see "How a figure port is proven" below). Files:
-   `core/agent/tools/decay.py`, `core/fluorescence/tcspc/irf_estimation.py`
-   (debug plots), `core/models/fcs/maxent.py` (`plot_fcs_maxent`),
    `gui/widgets/wizard/tttr_channeldefinition/lut_thumbnail.py`,
    `plugins/burst/burst_h2mm/gui/native.py`, `plugins/tttr/audifier/{core,lifetime_analysis}.py`,
    `plugins/tttr/trace_browser/gui/model.py`, ndXplorer
@@ -129,7 +127,30 @@ differences -- transition-matrix tick labels are horizontal (implot does not
 rotate tick text) and its colour bar now has a "1/s" label; state-population
 labels sit a fixed 10 px above the bar.
 
+# Found on the way (not matplotlib's fault, all pre-existing)
+
+- **Two of the plots had never drawn.** `plot_fcs_maxent_result` used
+  `r"$\\tau$"` labels -- a literal double backslash, which mathtext rejects
+  with a `ParseException`; nothing called it, so nobody saw. The IRF guide's
+  diagnostics example called `run()` and then plotted: `run()` hands the whole
+  estimate to the photon library's engine and keeps none of the step
+  pipeline's intermediates, so `plot_raw_and_fit` raised "Run
+  generate_data_fit() first". The guide now shows the step pipeline the plots
+  need. Whether `run()` should expose `t0/t1/params/kernel` from the engine is
+  open (it would let the diagnostics follow `run()` again).
+- **chitable's value colouring had silently lost its colormap.** Both of
+  `resolve_lut`'s paths were dead -- pyqtgraph's `colormap.get` and
+  matplotlib's `cm.get_cmap` (removed in 3.9) -- so every name fell back to
+  the HSV ramp. It now gets the real table from `emtk.colormaps`.
+- **`fcs_maxent` fits `G(tau)` with `G(inf) = 1`**: a curve normalised to
+  decay to 0 gives a flat fit and a near-zero `P(tau_D)` with no warning.
+
 # Done
 
 - 2026-10-05 seam (33 files), colormap route (12 files), burst workflow
-  figures (`plugins/burst/burst_analysis/api/workflow.py`). 33 -> 20.
+  figures (`plugins/burst/burst_analysis/api/workflow.py`). 31 -> 18 (the
+  first commit's message says 33 -> 20: it counted the two console files).
+- 2026-10-05 `core/models/fcs/maxent.py`, `core/fluorescence/tcspc/irf_estimation.py`,
+  `core/agent/tools/decay.py` (`plot_fit`; now refuses a non-PNG path instead of
+  guessing a format). `emtk.figure` gained hidden cells, row/column ratios and
+  aligned panels (emtk `85bf146`) for them. 18 -> 15.

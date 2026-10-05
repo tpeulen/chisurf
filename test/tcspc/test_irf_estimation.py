@@ -206,3 +206,28 @@ if __name__ == "__main__":
     print("✓ Error handling test passed")
 
     print("\nAll tests passed!")
+
+
+def test_the_diagnostic_plots_draw_one_panel_per_channel(tmp_path):
+    """Both diagnostics draw with emtk.figure: a grid, shared limits, a spare cell hidden."""
+    from chisurf.core.fluorescence.tcspc import IRFEstimator
+
+    rng = np.random.default_rng(2)
+    t = np.arange(256) * 0.1
+    channels = []
+    for k, tau in enumerate((1.5, 2.5, 4.0)):
+        irf = np.exp(-0.5 * ((t - 3.0 - 0.2 * k) / 0.15) ** 2)
+        decay = np.convolve(irf, np.exp(-t / tau))[: t.size]
+        channels.append(rng.poisson(5000 * decay / decay.max() + 20).astype(float))
+    est = IRFEstimator(np.column_stack(channels), dt=0.1)
+    est.find_t0_t1(window_length=11, polyorder=3)
+    est.fit_exponential()
+    est.generate_data_fit()
+    est.generate_kernel()
+    est.richardson_lucy_deconvolution(iterations=50, regularization=3)
+    for method in (est.plot_raw_and_fit, est.plot_forward_model):
+        fig, ax = method()
+        assert (fig.rows, fig.cols) == (2, 2) and len(ax) == 4
+        assert ax[3].hidden and not any(a.hidden for a in ax[:3])
+        assert len({a.ylim for a in ax[:3]}) == 1
+        assert fig.save(tmp_path / f"{method.__name__}.png").read_bytes()[:4] == b"\x89PNG"

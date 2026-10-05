@@ -657,22 +657,54 @@ class IRFEstimator:
         self.irf = irf.reshape(self.data.shape)
         return self.irf
 
+    def _channel_panels(self, ax, series):
+        """The figure and one panel per channel, on shared axes.
+
+        ``ax`` is a sequence of :mod:`emtk.figure` panels to draw into, or
+        ``None`` for a new near-square grid (unused cells left empty).
+        ``series`` are the arrays the panels show; their common range is the
+        shared y-axis, as the time axis is shared.
+        """
+        from emtk.figure import Figure
+
+        if ax is None:
+            nrows = int(np.ceil(np.sqrt(self.num_channels)))
+            ncols = int(np.ceil(self.num_channels / nrows))
+            figure = Figure(nrows, ncols, size=(400 * ncols, 300 * nrows))
+            panels = figure.axes
+        else:
+            panels = list(ax) if isinstance(ax, (list, tuple, np.ndarray)) else [ax]
+            figure = panels[0].figure
+        low = min(float(np.nanmin(a)) for a in series)
+        high = max(float(np.nanmax(a)) for a in series)
+        pad = 0.05 * ((high - low) or 1.0)
+        span = float(self.time[-1] - self.time[0]) or 1.0
+        for c, panel in enumerate(panels):
+            if c >= self.num_channels:
+                panel.hide()
+                continue
+            panel.set_xlim(float(self.time[0]) - 0.02 * span, float(self.time[-1]) + 0.02 * span)
+            panel.set_ylim(low - pad, high + pad)
+            panel.set_title(f"Channel {c}")
+            panel.set_labels(x="Time (ns)", y="Intensity")
+        return figure, panels
+
     def plot_raw_and_fit(self, ax=None):
         """
-        Plot raw data points and fitted exponential curves for each channel.
-        Also draws vertical dashed lines at t0 and t1 for each channel.
+        Plot raw data, fitted truncated exponential curves, and t0/t1 markers
+        for each channel.
 
         Parameters
         ----------
-        ax : matplotlib.axes.Axes or array of Axes, optional
-            Axes to plot on. If None, new figure and axes are created
+        ax : sequence of emtk.figure.Axes, optional
+            Panels to draw into (one per channel). If None, a new figure is drawn.
 
         Returns
         -------
-        fig : matplotlib.figure.Figure
-            Figure object
-        ax : np.ndarray of matplotlib.axes.Axes
-            Array of axes objects
+        fig : emtk.figure.Figure
+            The figure (``fig.save("raw_and_fit.png")``; shown inline in Jupyter).
+        ax : list of emtk.figure.Axes
+            One panel per grid cell.
 
         Raises
         ------
@@ -682,43 +714,17 @@ class IRFEstimator:
         if self.data_fit is None:
             raise RuntimeError("Run generate_data_fit() first.")
 
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            nrows = int(np.ceil(np.sqrt(self.num_channels)))
-            ncols = int(np.ceil(self.num_channels / nrows))
-            fig, ax = plt.subplots(
-                nrows, ncols, figsize=(4 * ncols, 3 * nrows), sharex=True, sharey=True
-            )
-            ax = np.array(ax).reshape(-1)
-        else:
-            fig = ax[0].figure if isinstance(ax, np.ndarray) else ax.figure
-            ax = np.array(ax).reshape(-1)
-
+        fig, ax = self._channel_panels(ax, (self.data, self.data_fit))
         for c in range(self.num_channels):
-            ax[c].plot(self.time, self.data[:, c], "k.", label="Raw", markersize=2)
-            ax[c].plot(self.time, self.data_fit[:, c], "r-", label="Fit")
-            ax[c].axvline(
-                self.time[int(self.t0[c])],
-                color="grey",
-                linestyle="--",
-                alpha=0.5,
-                label="Fitting interval",
-            )
-            ax[c].axvline(self.time[int(self.t1[c])], color="grey", linestyle="--", alpha=0.5)
-            ax[c].set_title(f"Channel {c}")
-            ax[c].set_xlabel("Time (ns)")
-            ax[c].set_ylabel("Intensity")
-
-        # Hide unused subplots
-        for c in range(self.num_channels, len(ax)):
-            ax[c].axis("off")
-
-        fig.legend(
-            ["Raw", "Fit", "Fitting interval"], loc="upper right", bbox_to_anchor=(0.98, 0.95)
-        )
-        fig.tight_layout()
-
+            first = c == 0
+            ax[c].scatter(self.time, self.data[:, c], color="k", size=1.5,
+                          label="Raw" if first else None)
+            ax[c].line(self.time, self.data_fit[:, c], color="r",
+                       label="Fit" if first else None)
+            ax[c].vline(float(self.time[int(self.t0[c])]), color=(0.5, 0.5, 0.5, 0.5), dash="--",
+                        label="Fitting interval" if first else None)
+            ax[c].vline(float(self.time[int(self.t1[c])]), color=(0.5, 0.5, 0.5, 0.5), dash="--")
+        ax[0].legend()
         return fig, ax
 
     def plot_forward_model(self, ax=None):
@@ -728,15 +734,15 @@ class IRFEstimator:
 
         Parameters
         ----------
-        ax : matplotlib.axes.Axes or array of Axes, optional
-            Axes to plot on. If None, new figure and axes are created
+        ax : sequence of emtk.figure.Axes, optional
+            Panels to draw into (one per channel). If None, a new figure is drawn.
 
         Returns
         -------
-        fig : matplotlib.figure.Figure
-            Figure object
-        ax : np.ndarray of matplotlib.axes.Axes
-            Array of axes objects
+        fig : emtk.figure.Figure
+            The figure (``fig.save("forward_model.png")``; shown inline in Jupyter).
+        ax : list of emtk.figure.Axes
+            One panel per grid cell.
 
         Raises
         ------
@@ -746,34 +752,14 @@ class IRFEstimator:
         if self.irf is None:
             raise RuntimeError("Run richardson_lucy_deconvolution() first.")
 
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            nrows = int(np.ceil(np.sqrt(self.num_channels)))
-            ncols = int(np.ceil(self.num_channels / nrows))
-            fig, ax = plt.subplots(
-                nrows, ncols, figsize=(4 * ncols, 3 * nrows), sharex=True, sharey=True
-            )
-            ax = np.array(ax).reshape(-1)
-        else:
-            fig = ax[0].figure if isinstance(ax, np.ndarray) else ax.figure
-            ax = np.array(ax).reshape(-1)
-
         forward = partial_convolution_fft(self.irf, self.kernel, axis=0)
         forward += self.params["C"].reshape(1, -1)
 
+        fig, ax = self._channel_panels(ax, (self.data, forward))
         for c in range(self.num_channels):
-            ax[c].plot(self.time, self.data[:, c], "k.", label="Measured", markersize=2)
-            ax[c].plot(self.time, forward[:, c], "g-", label="IRF ⊗ Exp")
-            ax[c].set_title(f"Channel {c}")
-            ax[c].set_xlabel("Time (ns)")
-            ax[c].set_ylabel("Intensity")
-
-        # Hide unused subplots
-        for c in range(self.num_channels, len(ax)):
-            ax[c].axis("off")
-
-        fig.legend(["Measured", "IRF ⊗ Exp"], loc="upper right", bbox_to_anchor=(0.95, 0.95))
-        fig.tight_layout()
-
+            first = c == 0
+            ax[c].scatter(self.time, self.data[:, c], color="k", size=1.5,
+                          label="Measured" if first else None)
+            ax[c].line(self.time, forward[:, c], color="g", label="IRF ⊗ Exp" if first else None)
+        ax[0].legend()
         return fig, ax

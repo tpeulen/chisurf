@@ -34,9 +34,6 @@
 # --- colormap --- (done 2026-10-05: emtk.colormaps)
 
 # --- figure ---
-chisurf/core/agent/tools/decay.py
-chisurf/core/fluorescence/tcspc/irf_estimation.py
-chisurf/core/models/fcs/maxent.py
 chisurf/gui/widgets/wizard/tttr_channeldefinition/lut_thumbnail.py
 chisurf/plugins/burst/burst_h2mm/gui/native.py
 chisurf/plugins/tttr/audifier/core.py

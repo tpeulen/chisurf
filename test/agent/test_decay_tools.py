@@ -275,6 +275,11 @@ def test_plot_fit_writes_a_png(decay_fit, tmp_path):
     assert target.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
 
 
+def test_plot_fit_refuses_a_path_that_is_not_png(decay_fit, tmp_path):
+    with pytest.raises(ToolError, match=r"\.png"):
+        decay_tools.plot_fit(decay_fit, path=str(tmp_path / "fit.svg"), fit=0)
+
+
 def test_plot_fit_reports_a_missing_fit(context):
     with pytest.raises(ToolError, match="create_fit"):
         decay_tools.plot_fit(context, path="nope.png")

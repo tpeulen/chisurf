@@ -160,15 +160,21 @@ irf = estimator.run()
 
 ### Visualization
 
+The two diagnostic plots show the step pipeline's intermediates (the boundary
+markers, the fitted exponential, the kernel), so they follow the step-by-step
+calls above. `run()` hands the whole estimate to the photon library's engine in
+one call and keeps none of them.
+
 ```python
-# Plot raw data and exponential fit
-fig1, ax1 = estimator.plot_raw_and_fit()
+estimator.find_t0_t1(window_length=11, polyorder=3)
+estimator.fit_exponential()
+estimator.generate_data_fit()
+estimator.generate_kernel()
+estimator.richardson_lucy_deconvolution(iterations=200, regularization=3)
 
-# Plot forward model validation
-fig2, ax2 = estimator.plot_forward_model()
-
-import matplotlib.pyplot as plt
-plt.show()
+fig1, ax1 = estimator.plot_raw_and_fit()      # raw data, fit, fitting interval
+fig2, ax2 = estimator.plot_forward_model()    # IRF ⊗ exp vs measured data
+fig1.save("raw_and_fit.png")                  # in a notebook the figure shows inline
 ```
 
 ## API Reference
@@ -240,15 +246,18 @@ and the deconvolution count is `rl_iterations` (not `iterations`).
 
 ##### `plot_raw_and_fit(ax=None)`
 
-Plot raw data and fitted exponential curves.
+Plot raw data and fitted exponential curves, one panel per channel on shared
+axes. Needs `generate_data_fit()` first.
 
-**Returns:** (fig, ax) tuple
+**Returns:** `(fig, ax)` -- an `emtk.figure.Figure` (`fig.save(path)` writes a
+PNG; no GUI toolkit needed) and its panels.
 
 ##### `plot_forward_model(ax=None)`
 
-Plot forward model (IRF ⊗ exponential) vs measured data.
+Plot forward model (IRF ⊗ exponential) vs measured data. Needs
+`richardson_lucy_deconvolution()` first.
 
-**Returns:** (fig, ax) tuple
+**Returns:** `(fig, ax)`, as above.
 
 #### Attributes
 
@@ -323,7 +332,7 @@ For GUI-based IRF estimation inside ChiSurf, see the *IRF Estimator Plugin* docu
 |--------|---------------|
 | Backend | NumPy/SciPy |
 | GPU Support | No (CPU only) |
-| Dependencies | numpy, scipy, matplotlib (optional) |
+| Dependencies | numpy, scipy; plots: emtk |
 | Data Format | NumPy arrays |
 | Performance | CPU-optimized with FFT-based convolution |
 

@@ -808,11 +808,8 @@ def plot_fit(
     title: str | None = None,
 ) -> dict[str, Any]:
     """Render a fit and its residuals to a PNG file."""
-    import matplotlib
-
-    matplotlib.use("Agg", force=False)
-    import matplotlib.pyplot as plt
     import numpy as np
+    from emtk.figure import Figure
 
     fit_object, fit_index = context.resolve_fit(fit)
     data = getattr(fit_object, "data", None)
@@ -832,55 +829,60 @@ def plot_fit(
     except Exception:
         start, stop = 0, x.size - 1
 
-    figure, (upper, lower) = plt.subplots(
-        2, 1, sharex=True, figsize=(7.0, 5.0), height_ratios=[3, 1]
-    )
-    upper.semilogy(x, np.clip(y, 1e-9, None), color="#666666", lw=0.8, label="data")
+    figure = Figure(2, 1, size=(910, 650), height_ratios=(3, 1))
+    upper, lower = figure.ax(0, 0), figure.ax(1, 0)
+    upper.line(x, np.clip(y, 1e-9, None), color="#666666", width=0.8, label="data")
     if model_y.size:
-        upper.semilogy(
+        upper.line(
             model_x if model_x.size == model_y.size else x[: model_y.size],
             np.clip(model_y, 1e-9, None),
             color="#c0392b",
-            lw=1.2,
+            width=1.2,
             label="fit",
         )
-    upper.axvspan(
+    upper.vspan(
         x[max(0, min(start, x.size - 1))],
         x[max(0, min(stop, x.size - 1))],
         color="#3498db",
         alpha=0.07,
         label="fit range",
     )
+    upper.set_log(y=True)
     # Clipping keeps zeros plottable on a log axis, but the limit must follow
     # the data — otherwise the decay is squeezed into the top decade.
     positive = y[y > 0]
     if positive.size:
-        upper.set_ylim(bottom=max(float(positive.min()) * 0.5, float(y.max()) * 1e-6))
-    upper.set_ylabel("counts")
-    upper.legend(loc="upper right", fontsize=8)
+        top = max(float(y.max()), float(np.max(model_y)) if model_y.size else 0.0)
+        upper.set_ylim(max(float(positive.min()) * 0.5, float(y.max()) * 1e-6), top * 1.5)
+    upper.set_labels(y="counts")
+    upper.legend("ne")
     reduced = chi2r(fit_object)
     upper.set_title(
         title
         or f"{getattr(fit_object, 'name', 'fit')}"
         + (f"  (chi2r = {reduced:.3f})" if reduced is not None else "")
     )
+    # One time axis for both panels, as the residuals are read against the decay.
+    span = float(x[-1] - x[0]) or 1.0
+    for panel in (upper, lower):
+        panel.set_xlim(float(x[0]) - 0.02 * span, float(x[-1]) + 0.02 * span)
 
     try:
         residuals_curve = fit_object.weighted_residuals
         residual_x = np.asarray(residuals_curve.x, dtype=float)
         residual_y = np.asarray(residuals_curve.y, dtype=float)
-        lower.plot(residual_x, residual_y, color="#2c3e50", lw=0.6)
-        lower.axhline(0.0, color="#c0392b", lw=0.8)
-        lower.set_ylabel("w. res.")
+        lower.line(residual_x, residual_y, color="#2c3e50", width=0.6)
+        lower.hline(0.0, color="#c0392b", width=0.8)
+        lower.set_labels(y="w. res.")
     except Exception:
         logger.debug("residuals unavailable for plotting", exc_info=True)
-    lower.set_xlabel(str(getattr(data, "x_label", "") or "channel / time"))
+    lower.set_labels(x=str(getattr(data, "x_label", "") or "channel / time"))
 
     target = context.resolve_path(path)
+    if target.suffix.lower() != ".png":
+        raise ToolError(f"plot_fit writes a PNG; give a path ending in .png, not {target.name!r}")
     target.parent.mkdir(parents=True, exist_ok=True)
-    figure.tight_layout()
-    figure.savefig(target, dpi=130)
-    plt.close(figure)
+    figure.save(target)
 
     return {
         "ok": True,

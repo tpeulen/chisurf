@@ -1270,7 +1270,6 @@ def plot_fcs_maxent_result(
     result: dict,
     ax_corr=None,
     ax_dist=None,
-    show: bool = True,
     log_tau: bool = True,
     log_td: bool = True,
 ):
@@ -1280,13 +1279,16 @@ def plot_fcs_maxent_result(
     ----------
     result : dict
         Output of :func:`fcs_maxent`.
-    ax_corr, ax_dist : matplotlib Axes, optional
-        Axes to plot the correlation curve and the distribution. If None,
-        new figures/axes are created.
-    show : bool, optional
-        If True, call ``plt.show()`` at the end (when axes are created here).
+    ax_corr, ax_dist : emtk.figure.Axes, optional
+        Panels for the correlation curve and the distribution. If either is
+        None, a new two-panel figure is drawn.
     log_tau, log_td : bool, optional
         If True, use log10 x-axis for tau and td_grid, respectively.
+
+    Returns
+    -------
+    emtk.figure.Figure
+        The figure drawn into (``.save("maxent.png")``; shown inline in Jupyter).
     """
     tau = np.asarray(result["tau"])
     g = np.asarray(result["g"])
@@ -1294,30 +1296,21 @@ def plot_fcs_maxent_result(
     td_grid = np.asarray(result["td_grid"])
     p = np.asarray(result["p"])
 
-    import matplotlib.pyplot as plt
-
-    created_fig = False
     if ax_corr is None or ax_dist is None:
-        fig, (ax_corr, ax_dist) = plt.subplots(1, 2, figsize=(10, 4))
-        created_fig = True
+        from emtk.figure import Figure
+
+        figure = Figure(1, 2, size=(1000, 400))
+        ax_corr, ax_dist = figure.ax(0, 0), figure.ax(0, 1)
 
     # Correlation curve: data vs MaxEnt reconstruction
-    ax_corr.plot(tau, g, "o", ms=4, label="data")
-    ax_corr.plot(tau, g_fit, "-", lw=1.5, label="MaxEnt fit")
-    if log_tau:
-        ax_corr.set_xscale("log")
-    # Use valid mathtext labels for tau
-    ax_corr.set_xlabel(r"$\\tau$")
-    ax_corr.set_ylabel(r"$G(\\tau)$")
-    ax_corr.legend(loc="best")
+    ax_corr.scatter(tau, g, size=3.0, label="data")
+    ax_corr.line(tau, g_fit, width=1.5, label="MaxEnt fit")
+    ax_corr.set_log(x=log_tau)
+    ax_corr.set_labels(x="τ", y="G(τ)")
+    ax_corr.legend()
 
     # Distribution in diffusion times
-    ax_dist.plot(td_grid, p, "-", lw=1.5)
-    if log_td:
-        ax_dist.set_xscale("log")
-    ax_dist.set_xlabel(r"$\\tau_D$")
-    ax_dist.set_ylabel(r"$P(\\tau_D)$")
-
-    if created_fig and show:
-        plt.tight_layout()
-        plt.show()
+    ax_dist.line(td_grid, p, width=1.5)
+    ax_dist.set_log(x=log_td)
+    ax_dist.set_labels(x="τ_D", y="P(τ_D)")
+    return ax_corr.figure

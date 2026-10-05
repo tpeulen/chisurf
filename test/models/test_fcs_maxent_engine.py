@@ -172,3 +172,20 @@ def test_a_real_prior_pulls_the_distribution_where_the_data_are_silent():
         return float(np.sum(w * np.log10(grid)))
 
     assert mean_logtd(p_prior, td2) > mean_logtd(p_uniform, td)
+
+
+def test_the_result_plot_draws_both_panels(tmp_path):
+    """The plot helper had never drawn: its axis labels were invalid mathtext.
+
+    It now draws with emtk.figure -- the curve with its fit, and P(tau_D).
+    """
+    from chisurf.core.models.fcs.maxent import fcs_maxent, plot_fcs_maxent_result
+
+    tau = np.logspace(-3, 3, 60)
+    s = 3.5
+    g = 1.0 + 1.0 / ((1 + tau / 0.5) * np.sqrt(1 + tau / (s * s * 0.5)))
+    figure = plot_fcs_maxent_result(fcs_maxent(tau, g, s=s, reg=0.05))
+    corr, dist = figure.axes
+    assert [k for k, _ in corr._items] == ["scatter", "line"] and corr.xlog
+    assert [k for k, _ in dist._items] == ["line"] and dist.xlog
+    assert figure.save(tmp_path / "maxent.png").read_bytes()[:4] == b"\x89PNG"
