@@ -164,39 +164,36 @@ def test_find_objects_id_fallback():
 from chisurf.core.project.project import Project
 
 
-def test_project_default_version_is_4():
+def test_project_default_version_is_5():
     p = Project()
-    assert p.project_format_version == 4
+    assert p.project_format_version == 5
 
 
-def test_project_to_dict_uses_version_4():
+def test_project_to_dict_uses_version_5():
     p = Project()
     d = p.to_dict()
-    assert d["project_format_version"] == 4
+    assert d["project_format_version"] == 5
 
 
-def test_project_load_v3_raises():
-    data = {
-        "project_format_version": 3,
-        "meta": {},
-    }
-    with pytest.raises(ValueError, match="v4"):
+@pytest.mark.parametrize("version", [3, 4])
+def test_project_load_of_an_older_format_raises(version):
+    """No backwards compatibility: the canonical snapshot is v5 only."""
+    data = {"project_format_version": version, "meta": {}}
+    with pytest.raises(ValueError, match="requires v5"):
         Project.from_dict(data)
 
 
-def test_project_load_v4_ok():
-    str(uuid.uuid4())
+def test_project_load_v5_ok():
     data = {
-        "project_format_version": 4,
+        "project_format_version": 5,
         "meta": {"name": "test"},
         "datasets": {},
         "experiments": {},
         "fits": [],
-        "links": [],
         "ui": {},
     }
     p = Project.from_dict(data)
-    assert p.project_format_version == 4
+    assert p.project_format_version == 5
     assert p.name == "test"
 
 
