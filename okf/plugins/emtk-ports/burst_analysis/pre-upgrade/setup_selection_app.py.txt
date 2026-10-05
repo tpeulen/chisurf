@@ -1,0 +1,2178 @@
+"""EMTK immediate-mode UI for Setup Selection (Step 0) in Burst Analysis.
+
+100% pure EMTK implementation matching the Detector Configuration Wizard
+(Detectors and PIE-window definition) with zero external Qt windows.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable
+
+import emtk.im as im
+import numpy as np
+import tttrlib
+from emtk.app import ImApp
+from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, META_MODIFIER, SHIFT_MODIFIER
+from emtk.widgets.text_editor import Language, TextEditor
+
+from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.gui.widgets.wizard.tttr_channeldefinition.setup_client import (
+    DetectorSetupClient,
+)
+from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
+    DETECTOR_SETUPS_FILE,
+    load_detector_setups,
+    save_detector_setups,
+)
+
+if TYPE_CHECKING:
+    from .tool import BurstSetupSelectionWidget
+
+logger = logging.getLogger(__name__)
+
+WINDOW_BG = (35, 37, 43, 255)
+
+HELP_TEXT = """Detectors and PIE-window definition Guide:
+
+You can select an existing detector Pulsed-Interleaved Excitation (PIE) window
+definition using the Setup dropdown, or define your own PIE and detector settings
+by editing the tables below.
+
+• TTTR Reading Routine:
+  Specify the file type and time resolution parameters used when reading TTTR files.
+  Clicking "Read" inspects a data file and automatically extracts resolutions and
+  populates the micro-time decay preview.
+
+• Micro-time Units:
+  PIE windows (Start / End) and detector Micro Time Ranges are given in RAW micro-time
+  channels of the TTTR file (typically 0 … a few thousand), i.e. the SAME units as the
+  loaded data. They are NOT divided by the micro-time binning.
+
+• PIE Windows:
+  Defines time windows separating prompt excitation from delayed (interleaved) excitation
+  pulses (e.g. prompt vs delayed laser pulses).
+
+• Detectors:
+  Maps physical detector channels (SPADs/APDs) to logical names (green, red, yellow, etc.),
+  assigns micro-time filter intervals, and applies polarization / detection efficiency
+  corrections (G-factor, l1, l2).
+
+• Polarization Resolved:
+  When enabled, detectors split parallel and perpendicular channels (VV / VH) for anisotropy.
+  When disabled, channels are combined without polarization splitting.
+
+• TAC Linearization (LUT):
+  Applies non-linearity look-up tables to calibrate TAC/TDC channels (e.g. for SPC-130).
+
+• Saving:
+  Click "Save" to persist changes to the detector setups repository.
+  Click "Proceed to 1. Data Selection ➔" (or Finish) to commit settings to the workflow.
+"""
+
+# Standard template setups provided as fallbacks if the database has no entries
+_DEFAULT_FALLBACK_SETUPS: dict[str, dict[str, Any]] = {
+    "ALEX Suite (auto)": {
+        "setup_name": "ALEX Suite (auto)",
+        "detectors": {
+            "green": {
+                "chs": [1],
+                "micro_time_ranges": [[16, 3784]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+            "red": {
+                "chs": [0],
+                "micro_time_ranges": [[16, 3784]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+            "yellow": {
+                "chs": [0],
+                "micro_time_ranges": [[78, 7762]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+        },
+        "windows": {"prompt": [16, 3784], "delayed": [78, 7762]},
+        "tttr_reading": {
+            "file_type": "PTO",
+            "macro_time_resolution": 50.0,
+            "micro_time_resolution": 50.0,
+            "micro_time_binning": 1,
+            "excitation_period": 13.6,
+        },
+        "polarization_resolved": True,
+        "apply_lut": False,
+        "channel_luts": {},
+        "channel_shifts": {},
+    },
+    "PIE-MFD": {
+        "setup_name": "PIE-MFD",
+        "detectors": {
+            "green_parallel": {
+                "chs": [0],
+                "micro_time_ranges": [[500, 3500]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+            "green_perpendicular": {
+                "chs": [1],
+                "micro_time_ranges": [[500, 3500]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+            "red_parallel": {
+                "chs": [2],
+                "micro_time_ranges": [[500, 3500]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+            "red_perpendicular": {
+                "chs": [3],
+                "micro_time_ranges": [[500, 3500]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+            "yellow": {
+                "chs": [2, 3],
+                "micro_time_ranges": [[4200, 7500]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+        },
+        "windows": {"prompt": [500, 3500], "delayed": [4200, 7500]},
+        "tttr_reading": {
+            "file_type": "PTO",
+            "macro_time_resolution": 50.0,
+            "micro_time_resolution": 50.0,
+            "micro_time_binning": 1,
+            "excitation_period": 12.5,
+        },
+        "polarization_resolved": True,
+        "apply_lut": False,
+        "channel_luts": {},
+        "channel_shifts": {},
+    },
+    "smFRET (2-Color)": {
+        "setup_name": "smFRET (2-Color)",
+        "detectors": {
+            "donor": {
+                "chs": [0],
+                "micro_time_ranges": [[0, 4095]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+            "acceptor": {
+                "chs": [1],
+                "micro_time_ranges": [[0, 4095]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            },
+        },
+        "windows": {"all": [0, 4095]},
+        "tttr_reading": {
+            "file_type": "PTO",
+            "macro_time_resolution": 50.0,
+            "micro_time_resolution": 50.0,
+            "micro_time_binning": 1,
+            "excitation_period": 25.0,
+        },
+        "polarization_resolved": False,
+        "apply_lut": False,
+        "channel_luts": {},
+        "channel_shifts": {},
+    },
+}
+
+SUPPORTED_FILE_TYPES = [
+    "PTO",
+    "SPC-130",
+    "SPC-600 256",
+    "SPC-600 4096",
+    "PicoHarp",
+    "HydraHarp",
+    "HydraHarp T2",
+    "HydraHarp T3",
+    "TimeHarp 260",
+    "PQ-PTU",
+    "PQ-HT3",
+    "Becker&Hickl",
+    "Auto",
+]
+
+BINNING_OPTIONS = ["1", "2", "4", "8", "16", "32", "64", "128"]
+
+
+class BurstSetupSelectionGui:
+    """EMTK GUI providing pure immediate-mode Detector Configuration Wizard for Step 0."""
+
+    def __init__(
+        self,
+        widget: BurstSetupSelectionWidget,
+        on_guide: Callable[[], None] | None = None,
+        on_help: Callable[[], None] | None = None,
+    ) -> None:
+        self.widget = widget
+        self.on_guide = on_guide
+        self.on_help = on_help
+
+        self.setup_client = DetectorSetupClient()
+        self.available_setups: dict[str, dict[str, Any]] = {}
+        self.setup_names: list[str] = []
+        self.selected_setup_name: str = ""
+        self.selected_setup_data: dict[str, Any] = {}
+
+        # Collapsible header open states
+        self.sections_open = {
+            "tttr": True,
+            "windows": False,
+            "detectors": True,
+            "lut": False,
+        }
+
+        # Plot toggle and micro-time decay preview data
+        self.plot_visible = False
+        self.microtime_counts: np.ndarray | None = None
+        self.microtime_file_path: str = ""
+
+        # Scrolling and scrollbar state
+        self.scroll_y = 0.0
+        self.total_content_height = 600.0
+        self.scrollbar_held = False
+
+        # Sticky JSON editor window state
+        self.json_window_open = False
+        self.json_editor_focused = False
+        self.json_editor: TextEditor | None = None
+        self.json_error_message = ""
+
+        # Sticky Region selector window state
+        self.region_window_open = False
+        self.region_target_type = "pie"  # "pie" or "detector"
+        self.region_target_name = "prompt"
+        self.region_target_range_idx = 0
+        self.region_drag_handle: str | None = None  # None, "start", "end", "center"
+        self.region_drag_start_px: float = 0.0
+        self.region_drag_orig_start: int = 0
+        self.region_drag_orig_end: int = 0
+
+        # Modals / Popups state
+        self.modal_save_as_open = False
+        self.modal_save_name_input = ""
+        self.modal_rename_open = False
+        self.modal_rename_input = ""
+        self.modal_delete_open = False
+        self.modal_json_open = False
+        self.modal_json_text = ""
+        self.modal_json_error = ""
+        self.modal_help_open = False
+        self.modal_read_open = False
+        self.modal_read_path = ""
+        self.modal_optical_open = False
+        self.modal_calc_gf_open = False
+        self.calc_gf_target_det = ""
+        self.calc_gf_val = "1.000"
+
+        # Tour & Help overlays
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        self.on_used: Callable[[str], None] | None = None
+
+        help_resource = Path(__file__).parent / "help.md"
+        guide_resource = Path(__file__).parent / "guide.json"
+        self.help_window = EmTkHelpWindow(
+            title="Setup Selection — Help & Reference",
+            resource=help_resource,
+            owner=self.widget,
+            on_start_guide=self.start_guide,
+            size=(720.0, 540.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self.widget,
+        )
+
+        # Load available setups from client & store
+        self.refresh_setups()
+
+    def refresh_setups(self) -> None:
+        """Reload setups from the canonical database, RPC service, and fallbacks."""
+        setups: dict[str, dict[str, Any]] = {}
+        last_used = ""
+
+        try:
+            loaded = load_detector_setups()
+            if isinstance(loaded, dict):
+                setups.update(loaded.get("setups", {}))
+                last_used = loaded.get("last_used", "") or last_used
+        except Exception as exc:
+            logger.debug(f"load_detector_setups failed: {exc}")
+
+        try:
+            client_list = self.setup_client.list_setups()
+            if isinstance(client_list, dict):
+                last_used = client_list.get("last_used") or last_used
+                for name in client_list.get("setups", []):
+                    if name not in setups:
+                        s_data = self.setup_client.get_setup(name)
+                        if s_data:
+                            setups[name] = s_data
+        except Exception as exc:
+            logger.debug(f"client.list_setups failed: {exc}")
+
+        # Seed with fallback templates if still empty
+        for name, data in _DEFAULT_FALLBACK_SETUPS.items():
+            if name not in setups:
+                setups[name] = data
+
+        self.available_setups = setups
+        self.setup_names = sorted(list(setups.keys()))
+
+        # Determine currently selected setup
+        current = ""
+        tool = getattr(self.widget, "tool", None)
+        if tool is not None and getattr(tool, "workflow_context", None):
+            current = tool.workflow_context.setup_name
+
+        if not current:
+            current = (
+                last_used
+                if last_used in setups
+                else (self.setup_names[0] if self.setup_names else "")
+            )
+
+        if current and current in setups:
+            self.select_setup(current, sync=False)
+        elif self.setup_names:
+            self.select_setup(self.setup_names[0], sync=False)
+
+    def select_setup(self, name: str, sync: bool = True) -> None:
+        """Select a setup by name and update state."""
+        if not name or name not in self.available_setups:
+            return
+        self.selected_setup_name = name
+        self.selected_setup_data = json.loads(json.dumps(self.available_setups[name]))
+
+        # Restore decay if stored
+        decay = self.selected_setup_data.get("_microtime_decay")
+        if isinstance(decay, dict) and "counts" in decay:
+            try:
+                self.microtime_counts = np.asarray(decay["counts"], dtype=float).ravel()
+                self.microtime_file_path = decay.get("file_path", "")
+            except Exception:
+                self.microtime_counts = None
+        else:
+            self.microtime_counts = None
+
+        if sync:
+            self.sync_to_tool()
+
+    def sync_to_tool(self) -> None:
+        """Propagate current setup to BurstAnalysisTool workflow context."""
+        tool = getattr(self.widget, "tool", None)
+        if tool is None:
+            return
+
+        if hasattr(tool, "workflow_context"):
+            tool.workflow_context.setup_name = self.selected_setup_name
+            tool.workflow_context.channel_settings = dict(self.selected_setup_data)
+
+        try:
+            self.setup_client.set_current(self.selected_setup_data)
+        except Exception as exc:
+            logger.debug(f"setup_client.set_current failed: {exc}")
+
+        if hasattr(tool, "_apply_context_to_downstream"):
+            tool._apply_context_to_downstream()
+
+        if hasattr(tool, "host"):
+            tool.host.update()
+
+    def save_current_setup(self, name: str | None = None) -> None:
+        """Save setup data to the detector setups repository."""
+        target_name = name or self.selected_setup_name or "Custom Setup"
+        self.selected_setup_name = target_name
+        self.selected_setup_data["setup_name"] = target_name
+
+        self.available_setups[target_name] = dict(self.selected_setup_data)
+        if target_name not in self.setup_names:
+            self.setup_names = sorted(list(self.available_setups.keys()))
+
+        try:
+            payload = {
+                "setups": self.available_setups,
+                "last_used": target_name,
+            }
+            save_detector_setups(payload)
+            logger.info(f"Saved detector setup '{target_name}' successfully.")
+        except Exception as exc:
+            logger.error(f"Failed to save detector setups: {exc}")
+
+        self.sync_to_tool()
+
+    def start_guide(self) -> None:
+        self.tour.start()
+
+    def show_help(self) -> None:
+        self.modal_help_open = True
+
+    def open_region_selector(
+        self, target_type: str = "pie", target_name: str = "", range_idx: int = 0
+    ) -> None:
+        """Open the interactive region selection modal window."""
+        self.region_window_open = True
+        self.region_target_type = target_type
+        self.region_target_range_idx = range_idx
+
+        windows = self.selected_setup_data.get("windows", {})
+        detectors = self.selected_setup_data.get("detectors", {})
+        if target_type == "pie":
+            if not target_name or target_name not in windows:
+                target_name = next(iter(windows.keys())) if windows else ""
+        else:
+            if not target_name or target_name not in detectors:
+                target_name = next(iter(detectors.keys())) if detectors else ""
+
+        self.region_target_name = target_name
+        self.region_drag_handle = None
+
+    def draw(self, w: float = 0.0, h: float = 0.0) -> None:
+        """Render the complete Detector Configuration Wizard."""
+        vp = im.get_main_viewport()
+        vw, vh = vp.size
+        width = float(w or vw or 900.0)
+        height = float(h or vh or 700.0)
+
+        # Draw main window container
+        im.set_next_window_pos((0.0, 0.0))
+        im.set_next_window_size((width, height))
+        window_flags = (
+            im.WindowFlags.NO_TITLE_BAR
+            | im.WindowFlags.NO_RESIZE
+            | im.WindowFlags.NO_MOVE
+            | im.WindowFlags.NO_COLLAPSE
+        )
+        if self.json_window_open or self.region_window_open:
+            window_flags |= im.WindowFlags.NO_MOUSE_INPUTS
+
+        im.begin("DetectorConfigurationWizard", (0.0, 0.0, width, height), window_flags)
+
+        ctx = im.get_current_context()
+        io = ctx.io
+
+        # Handle mouse wheel scrolling for the wizard window
+        max_scroll = max(0.0, self.total_content_height - height + 25.0)
+        if not self.json_window_open and not self.region_window_open and not self._any_popup_open():
+            if io.mouse_wheel != 0.0 and max_scroll > 0.0:
+                self.scroll_y = max(0.0, min(self.scroll_y - io.mouse_wheel * 36.0, max_scroll))
+
+        if max_scroll <= 0.0:
+            self.scroll_y = 0.0
+        else:
+            self.scroll_y = max(0.0, min(self.scroll_y, max_scroll))
+
+        start_y = 10.0 - self.scroll_y
+        im.set_cursor_screen_pos((10.0, start_y))
+        im.push_clip_rect((0.0, 0.0), (width, height))
+
+        # ── 1. Header Title ─────────────────────────────────────────────────
+        im.spacing()
+        im.text_colored("Detectors and PIE-window definition", (1.0, 1.0, 1.0, 1.0))
+        im.spacing()
+
+        # ── 2. Setup Selection Toolbar Row ──────────────────────────────────
+        self._draw_setup_toolbar(width)
+
+        im.spacing()
+        im.separator()
+        im.spacing()
+
+        # ── 3. Foldable Section 1: TTTR Reading Routine ─────────────────────
+        self._draw_tttr_reading_section(width)
+
+        im.spacing()
+
+        # ── 4. Foldable Section 2: PIE Windows ──────────────────────────────
+        self._draw_pie_windows_section(width)
+
+        im.spacing()
+
+        # ── 5. Foldable Section 3: Detectors ────────────────────────────────
+        self._draw_detectors_section(width)
+
+        im.spacing()
+
+        # ── 6. Foldable Section 4: LUT Handling ─────────────────────────────
+        self._draw_lut_handling_section(width)
+
+        im.spacing()
+
+        # ── 7. Micro-time Preview Plot ──────────────────────────────────────
+        if self.plot_visible:
+            self._draw_microtime_plot(width)
+            im.spacing()
+
+        im.separator()
+        im.spacing()
+
+        # ── 8. Bottom Action & Navigation Bars ──────────────────────────────
+        self._draw_bottom_bars(width)
+
+        # Measure content height and finish clip
+        end_cursor_y = ctx.layout.cursor[1]
+        self.total_content_height = max(height, end_cursor_y + self.scroll_y + 20.0)
+        im.pop_clip_rect()
+
+        # ── Vertical Scrollbar ──────────────────────────────────────────────
+        if self.total_content_height > height:
+            self._draw_scrollbar(ctx, width, height, max_scroll)
+
+        # ── 9. Modal Dialogs ────────────────────────────────────────────────
+        self._render_modals()
+
+        im.end()
+
+        # Sticky JSON editor window
+        if self.json_window_open:
+            self._draw_json_editor_window(width, height)
+
+        # Sticky Region selector window
+        if self.region_window_open:
+            self._draw_region_selector_window(width, height)
+
+        # Overlays
+        if self.help_window.open:
+            self.help_window.draw((0.0, 0.0, width, height))
+
+        if self.tour.active:
+            self.tour.draw(width, height)
+
+    def update(self) -> None:
+        self.draw()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sub-sections
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _draw_setup_toolbar(self, width: float) -> None:
+        """Render top setup dropdown, Save, Rename, Delete, Public, Calibration, Help."""
+        im.align_text_to_frame_padding()
+        im.text("Setup:")
+        im.same_line()
+
+        idx = (
+            self.setup_names.index(self.selected_setup_name)
+            if self.selected_setup_name in self.setup_names
+            else 0
+        )
+        combo_w = min(200.0, max(140.0, width * 0.22))
+        im.set_next_item_width(combo_w)
+        changed, new_idx = im.combo("##SetupSelector", idx, self.setup_names)
+        im.set_item_tooltip(
+            "Pick a saved detector/PIE setup; changing it loads its detectors, PIE windows and TTTR reading settings."
+        )
+        if changed and 0 <= new_idx < len(self.setup_names):
+            self.select_setup(self.setup_names[new_idx], sync=True)
+
+        im.same_line()
+        if im.button("💾 Save"):
+            self.save_current_setup()
+        im.set_item_tooltip("Persist the current detector setup to the setups repository.")
+
+        im.same_line()
+        if im.button("✏️ Rename"):
+            self.modal_rename_input = self.selected_setup_name
+            self.modal_rename_open = True
+            im.open_popup("Rename Setup")
+        im.set_item_tooltip("Rename the currently selected detector setup.")
+
+        im.same_line()
+        if im.button("🗑️ Delete"):
+            self.modal_delete_open = True
+            im.open_popup("Delete Setup")
+        im.set_item_tooltip("Delete the currently selected detector setup.")
+
+        im.same_line()
+        is_pub = bool(self.selected_setup_data.get("_is_public", False))
+        changed, new_pub = im.checkbox("Public", is_pub)
+        im.set_item_tooltip("Mark this setup as public so it can be shared with other users.")
+        if changed:
+            self.selected_setup_data["_is_public"] = new_pub
+
+        im.same_line()
+        im.text("Calibration:")
+        im.same_line()
+        im.set_next_item_width(90.0)
+        im.combo("##CalibrationCombo", 0, ["Latest"])
+        im.set_item_tooltip(
+            "Choose which instrument calibration to apply (currently only the latest)."
+        )
+
+        im.same_line()
+        im.push_style_color(im.Col.BUTTON, (0.75, 0.15, 0.15, 1.0))
+        im.push_style_color(im.Col.BUTTON_HOVERED, (0.88, 0.25, 0.25, 1.0))
+        im.push_style_color(im.Col.TEXT, (1.0, 1.0, 1.0, 1.0))
+        if im.button("?", (24.0, 24.0)):
+            self.modal_help_open = True
+            im.open_popup("Help — Detector Setup")
+        im.set_item_tooltip("Open the guide text for detector and PIE-window setup.")
+        im.pop_style_color(3)
+
+    def _draw_collapsible_header(self, label: str, section_key: str, default: bool = True) -> bool:
+        """Render a collapsible section header with dark charcoal bar and arrow."""
+        if section_key not in self.sections_open:
+            self.sections_open[section_key] = default
+        is_open = self.sections_open[section_key]
+
+        arrow = "▼" if is_open else "►"
+        header_text = f" {arrow} {label}"
+        im.push_style_color(im.Col.BUTTON, (0.24, 0.25, 0.28, 1.0))
+        im.push_style_color(im.Col.BUTTON_HOVERED, (0.32, 0.34, 0.38, 1.0))
+        im.push_style_color(im.Col.BUTTON_ACTIVE, (0.20, 0.21, 0.24, 1.0))
+        im.push_style_color(im.Col.TEXT, (0.92, 0.94, 0.96, 1.0))
+        if im.button(header_text, (-1.0, 26.0)):
+            self.sections_open[section_key] = not is_open
+        im.set_item_tooltip(f"Show or hide the {label} section.")
+        im.pop_style_color(4)
+        return self.sections_open[section_key]
+
+    def _draw_tttr_reading_section(self, width: float) -> None:
+        """Section 1: TTTR Reading routine."""
+        is_open = self._draw_collapsible_header("TTTR Reading routine", "tttr", default=True)
+        if not is_open:
+            return
+
+        im.spacing()
+        im.text_colored("TTTR Reading Routine:", (0.85, 0.85, 0.85, 1.0))
+        im.spacing()
+
+        reading = self.selected_setup_data.setdefault("tttr_reading", {})
+
+        # Row 1: File Type & Read button
+        im.align_text_to_frame_padding()
+        im.text("File Type:")
+        im.same_line(160.0)
+
+        current_ftype = str(reading.get("file_type", "PTO"))
+        f_idx = (
+            SUPPORTED_FILE_TYPES.index(current_ftype)
+            if current_ftype in SUPPORTED_FILE_TYPES
+            else 0
+        )
+        combo_w = min(380.0, max(200.0, width - 290.0))
+        im.set_next_item_width(combo_w)
+        changed, new_f_idx = im.combo("##FileTypeCombo", f_idx, SUPPORTED_FILE_TYPES)
+        im.set_item_tooltip("TTTR reading routine used for the source files (e.g. PTO, SPC-130).")
+        if changed and 0 <= new_f_idx < len(SUPPORTED_FILE_TYPES):
+            reading["file_type"] = SUPPORTED_FILE_TYPES[new_f_idx]
+
+        im.same_line()
+        if im.button("📂 Read"):
+            self.modal_read_open = True
+            im.open_popup("Read TTTR File")
+        im.set_item_tooltip(
+            "Inspect a TTTR file to auto-detect the time resolutions and load the micro-time decay."
+        )
+
+        # Row 2: Macrotime & Microtime resolutions
+        im.align_text_to_frame_padding()
+        im.text("Macrotime res. (ns):")
+        im.same_line(160.0)
+        macro_res = float(reading.get("macro_time_resolution", 50.0))
+        im.set_next_item_width(180.0)
+        m_changed, m_val = im.input_text("##MacroRes", f"{macro_res:.1f}")
+        im.set_item_tooltip("Macro-time bin resolution in ns (one entry per laser pulse period).")
+        if m_changed:
+            try:
+                reading["macro_time_resolution"] = float(m_val)
+            except ValueError:
+                pass
+
+        im.same_line(360.0)
+        im.text("Microtime res. (ps):")
+        im.same_line(510.0)
+        micro_res = float(reading.get("micro_time_resolution", 50.0))
+        im.set_next_item_width(180.0)
+        u_changed, u_val = im.input_text("##MicroRes", f"{micro_res:.1f}")
+        im.set_item_tooltip("Micro-time (TAC) resolution in picoseconds.")
+        if u_changed:
+            try:
+                reading["micro_time_resolution"] = float(u_val)
+            except ValueError:
+                pass
+
+        # Row 3: Microtime binning & Eff. microtime
+        im.align_text_to_frame_padding()
+        im.text("Microtime binning:")
+        im.same_line(160.0)
+        current_bin = str(reading.get("micro_time_binning", 1))
+        b_idx = BINNING_OPTIONS.index(current_bin) if current_bin in BINNING_OPTIONS else 0
+        im.set_next_item_width(180.0)
+        b_changed, new_b_idx = im.combo("##MicroBinCombo", b_idx, BINNING_OPTIONS)
+        im.set_item_tooltip("Micro-time binning factor applied when reading the TTTR file.")
+        if b_changed and 0 <= new_b_idx < len(BINNING_OPTIONS):
+            reading["micro_time_binning"] = int(BINNING_OPTIONS[new_b_idx])
+
+        im.same_line(360.0)
+        im.text("Eff. microtime (ps):")
+        im.same_line(510.0)
+        eff_res = float(reading.get("micro_time_resolution", 50.0)) * int(
+            reading.get("micro_time_binning", 1)
+        )
+        im.set_next_item_width(180.0)
+        im.input_text("##EffMicroRes", f"{eff_res:.6f}", flags=im.InputTextFlags.READ_ONLY)
+        im.set_item_tooltip("Effective micro-time resolution in ps after binning (read-only).")
+
+        # Row 4: Plot toggle button
+        im.spacing()
+        btn_label = "📊 Plot (Active)" if self.plot_visible else "📊 Plot"
+        if im.button(btn_label):
+            self.plot_visible = not self.plot_visible
+        im.set_item_tooltip("Show or hide the micro-time decay preview plot below.")
+
+    def _draw_pie_windows_section(self, width: float) -> None:
+        """Section 2: PIE Windows."""
+        is_open = self._draw_collapsible_header("PIE Windows", "windows", default=False)
+        if not is_open:
+            return
+
+        im.spacing()
+        im.align_text_to_frame_padding()
+        im.text("PIE Windows")
+        im.same_line()
+        if im.button("➕ Add Window"):
+            windows = self.selected_setup_data.setdefault("windows", {})
+            name = f"Window {len(windows) + 1}"
+            windows[name] = [0, 4095]
+        im.set_item_tooltip(
+            "Add a new PIE window covering the full micro-time range (0–4095 channels)."
+        )
+
+        im.same_line()
+        if im.button("📐 Region Selector…##pie_hdr"):
+            self.open_region_selector("pie")
+        im.set_item_tooltip("Open the interactive micro-time region selector for a PIE window.")
+
+        windows = self.selected_setup_data.setdefault("windows", {})
+        table_flags = (
+            im.TableFlags.BORDERS
+            | im.TableFlags.ROW_BG
+            | im.TableFlags.RESIZABLE
+            | im.TableFlags.SIZING_FIXED_FIT
+        )
+        table_h = min(160.0, max(75.0, len(windows) * 28.0 + 32.0))
+
+        to_delete = None
+        to_rename = None
+
+        if im.begin_table("pie_windows_table", 5, table_flags, (0, table_h)):
+            im.table_setup_column("Window Name", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_setup_column("Start", im.TableColumnFlags.WIDTH_FIXED, 120.0)
+            im.table_setup_column("End", im.TableColumnFlags.WIDTH_FIXED, 120.0)
+            im.table_setup_column("", im.TableColumnFlags.WIDTH_FIXED, 36.0)
+            im.table_setup_column("", im.TableColumnFlags.WIDTH_FIXED, 36.0)
+            im.table_headers_row()
+
+            for i, (win_name, bounds) in enumerate(list(windows.items())):
+                im.table_next_row()
+
+                # Column 0: Window Name
+                im.table_set_column_index(0)
+                im.set_next_item_width(-1)
+                w_chg, new_wname = im.input_text(f"##win_name_{i}", win_name)
+                im.set_item_tooltip("Name of this PIE window (e.g. prompt or delayed).")
+                if w_chg and new_wname and new_wname != win_name:
+                    to_rename = (win_name, new_wname)
+
+                # Column 1: Start
+                im.table_set_column_index(1)
+                start_val = bounds[0] if len(bounds) > 0 else 0
+                im.set_next_item_width(-1)
+                s_chg, new_s = im.input_text(f"##win_start_{i}", str(start_val))
+                im.set_item_tooltip("Start of the PIE window in raw micro-time channels.")
+                if s_chg:
+                    try:
+                        bounds[0] = int(new_s)
+                    except ValueError:
+                        pass
+
+                # Column 2: End
+                im.table_set_column_index(2)
+                end_val = bounds[1] if len(bounds) > 1 else 4095
+                im.set_next_item_width(-1)
+                e_chg, new_e = im.input_text(f"##win_end_{i}", str(end_val))
+                im.set_item_tooltip("End of the PIE window in raw micro-time channels.")
+                if e_chg:
+                    try:
+                        bounds[1] = int(new_e)
+                    except ValueError:
+                        pass
+
+                # Column 3: Region Selector
+                im.table_set_column_index(3)
+                if im.button(f"📐##win_reg_{i}"):
+                    self.open_region_selector("pie", win_name)
+                im.set_item_tooltip("Open the region selector to set this window graphically.")
+
+                # Column 4: Delete
+                im.table_set_column_index(4)
+                if im.button(f"🗑️##win_del_{i}"):
+                    to_delete = win_name
+                im.set_item_tooltip("Delete this PIE window.")
+
+            im.end_table()
+
+        if to_rename:
+            old_n, new_n = to_rename
+            val = windows.pop(old_n)
+            windows[new_n] = val
+
+        if to_delete and to_delete in windows:
+            del windows[to_delete]
+
+    def _draw_detectors_section(self, width: float) -> None:
+        """Section 3: Detectors table with Polarization resolved checkbox."""
+        # Detectors header bar with right-aligned checkbox
+        is_open = self.sections_open.get("detectors", True)
+        arrow = "▼" if is_open else "►"
+
+        im.push_style_color(im.Col.BUTTON, (0.24, 0.25, 0.28, 1.0))
+        im.push_style_color(im.Col.BUTTON_HOVERED, (0.32, 0.34, 0.38, 1.0))
+        im.push_style_color(im.Col.BUTTON_ACTIVE, (0.20, 0.21, 0.24, 1.0))
+        im.push_style_color(im.Col.TEXT, (0.92, 0.94, 0.96, 1.0))
+        btn_w = max(200.0, width - 210.0)
+        if im.button(f" {arrow} Detectors", (btn_w, 26.0)):
+            self.sections_open["detectors"] = not is_open
+        im.set_item_tooltip("Show or hide the detector configuration table.")
+        im.pop_style_color(4)
+
+        im.same_line()
+        pol_resolved = bool(self.selected_setup_data.get("polarization_resolved", True))
+        pol_chg, new_pol = im.checkbox("Polarization resolved", pol_resolved)
+        im.set_item_tooltip(
+            "Split detectors into parallel/perpendicular (VV/VH) channels for anisotropy;"
+            " when off, channels are combined without polarization splitting."
+        )
+        if pol_chg:
+            self.selected_setup_data["polarization_resolved"] = new_pol
+
+        if not self.sections_open.get("detectors", True):
+            return
+
+        im.spacing()
+
+        # Detectors label and wide reddish + Add button
+        im.align_text_to_frame_padding()
+        im.text("Detectors")
+        im.same_line(100.0)
+
+        im.push_style_color(im.Col.BUTTON, (0.45, 0.18, 0.22, 1.0))
+        im.push_style_color(im.Col.BUTTON_HOVERED, (0.58, 0.24, 0.28, 1.0))
+        if im.button("➕ Add", (120.0, 24.0)):
+            detectors = self.selected_setup_data.setdefault("detectors", {})
+            name = f"detector_{len(detectors) + 1}"
+            detectors[name] = {
+                "chs": [0],
+                "micro_time_ranges": [[0, 4095]],
+                "g_factor": 1.0,
+                "l1": 0.0,
+                "l2": 0.0,
+                "g_factor_channels": "",
+            }
+        im.set_item_tooltip("Add a new detector row with default channels and micro-time range.")
+        im.pop_style_color(2)
+
+        im.same_line()
+        if im.button("📐 Region Selector…##det_hdr", (160.0, 24.0)):
+            self.open_region_selector("detector")
+        im.set_item_tooltip("Open the interactive region selector for a detector micro-time range.")
+
+        detectors = self.selected_setup_data.setdefault("detectors", {})
+        table_flags = (
+            im.TableFlags.BORDERS
+            | im.TableFlags.ROW_BG
+            | im.TableFlags.RESIZABLE
+            | im.TableFlags.SIZING_FIXED_FIT
+        )
+        table_h = min(220.0, max(95.0, len(detectors) * 30.0 + 34.0))
+
+        to_delete = None
+        to_rename = None
+
+        if im.begin_table("detectors_config_table", 10, table_flags, (0, table_h)):
+            im.table_setup_column("Detector Name", im.TableColumnFlags.WIDTH_FIXED, 120.0)
+            im.table_setup_column("Channels", im.TableColumnFlags.WIDTH_FIXED, 85.0)
+            im.table_setup_column("Micro Time Range", im.TableColumnFlags.WIDTH_FIXED, 140.0)
+            im.table_setup_column("G-Factor", im.TableColumnFlags.WIDTH_FIXED, 80.0)
+            im.table_setup_column("l1", im.TableColumnFlags.WIDTH_FIXED, 65.0)
+            im.table_setup_column("l2", im.TableColumnFlags.WIDTH_FIXED, 65.0)
+            im.table_setup_column("Factor Chan", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_setup_column("", im.TableColumnFlags.WIDTH_FIXED, 36.0)
+            im.table_setup_column("", im.TableColumnFlags.WIDTH_FIXED, 36.0)
+            im.table_setup_column("", im.TableColumnFlags.WIDTH_FIXED, 36.0)
+            im.table_headers_row()
+
+            for i, (det_name, info) in enumerate(list(detectors.items())):
+                im.table_next_row()
+
+                # Column 0: Detector Name
+                im.table_set_column_index(0)
+                im.set_next_item_width(-1)
+                d_chg, new_dname = im.input_text(f"##det_name_{i}", det_name)
+                im.set_item_tooltip("Logical detector name (e.g. green, red, green_parallel).")
+                if d_chg and new_dname and new_dname != det_name:
+                    to_rename = (det_name, new_dname)
+
+                # Column 1: Channels
+                im.table_set_column_index(1)
+                chs = info.get("chs", [])
+                chs_str = ", ".join(map(str, chs)) if isinstance(chs, list) else str(chs)
+                im.set_next_item_width(-1)
+                c_chg, new_chs = im.input_text(f"##det_chs_{i}", chs_str)
+                im.set_item_tooltip(
+                    "Comma-separated TTTR routing channels assigned to this detector (e.g. 0, 2)."
+                )
+                if c_chg:
+                    try:
+                        parsed = [
+                            int(x.strip())
+                            for x in new_chs.replace(";", ",").split(",")
+                            if x.strip().isdigit()
+                        ]
+                        info["chs"] = parsed
+                    except Exception:
+                        pass
+
+                # Column 2: Micro Time Range
+                im.table_set_column_index(2)
+                mtr = info.get("micro_time_ranges", [])
+                if mtr and isinstance(mtr, list):
+                    mtr_str = ", ".join(
+                        f"{r[0]}:{r[1]}"
+                        for r in mtr
+                        if isinstance(r, (list, tuple)) and len(r) >= 2
+                    )
+                else:
+                    mtr_str = "0:4095"
+                im.set_next_item_width(-1)
+                r_chg, new_mtr = im.input_text(f"##det_mtr_{i}", mtr_str)
+                im.set_item_tooltip(
+                    "Micro-time filter ranges in raw channels as start:end; separate multiple ranges with commas."
+                )
+                if r_chg:
+                    try:
+                        ranges = []
+                        for part in new_mtr.replace(";", ",").split(","):
+                            if ":" in part:
+                                a, b = part.split(":", 1)
+                                ranges.append([int(a.strip()), int(b.strip())])
+                        if ranges:
+                            info["micro_time_ranges"] = ranges
+                    except Exception:
+                        pass
+
+                # Column 3: G-Factor
+                im.table_set_column_index(3)
+                gf = float(info.get("g_factor", 1.0))
+                im.set_next_item_width(-1)
+                gf_chg, new_gf = im.input_text(f"##det_gf_{i}", f"{gf:.3f}")
+                im.set_item_tooltip(
+                    "G-factor: relative parallel/perpendicular detection efficiency of this detector."
+                )
+                if gf_chg:
+                    try:
+                        info["g_factor"] = float(new_gf)
+                    except ValueError:
+                        pass
+
+                # Column 4: l1
+                im.table_set_column_index(4)
+                l1 = float(info.get("l1", 0.0))
+                im.set_next_item_width(-1)
+                l1_chg, new_l1 = im.input_text(f"##det_l1_{i}", f"{l1:.2f}")
+                im.set_item_tooltip("l1 mixing coefficient of the polarization correction.")
+                if l1_chg:
+                    try:
+                        info["l1"] = float(new_l1)
+                    except ValueError:
+                        pass
+
+                # Column 5: l2
+                im.table_set_column_index(5)
+                l2 = float(info.get("l2", 0.0))
+                im.set_next_item_width(-1)
+                l2_chg, new_l2 = im.input_text(f"##det_l2_{i}", f"{l2:.2f}")
+                im.set_item_tooltip("l2 mixing coefficient of the polarization correction.")
+                if l2_chg:
+                    try:
+                        info["l2"] = float(new_l2)
+                    except ValueError:
+                        pass
+
+                # Column 6: Factor Chan
+                im.table_set_column_index(6)
+                gfc = str(info.get("g_factor_channels", ""))
+                im.set_next_item_width(-1)
+                gfc_chg, new_gfc = im.input_text(f"##det_gfc_{i}", gfc)
+                im.set_item_tooltip(
+                    "Routing channels the G-factor applies to; empty means all channels of this detector."
+                )
+                if gfc_chg:
+                    info["g_factor_channels"] = new_gfc
+
+                # Column 7: Region Selector
+                im.table_set_column_index(7)
+                if im.button(f"📐##det_reg_{i}"):
+                    self.open_region_selector("detector", det_name)
+                im.set_item_tooltip(
+                    "Open the region selector to edit this detector's micro-time range graphically."
+                )
+
+                # Column 8: Calculator
+                im.table_set_column_index(8)
+                if im.button(f"🧮##det_calc_{i}"):
+                    self.calc_gf_target_det = det_name
+                    self.calc_gf_val = f"{gf:.3f}"
+                    self.modal_calc_gf_open = True
+                    im.open_popup("G-Factor Calculator")
+                im.set_item_tooltip("Open the G-factor calculator (G = I_VV / I_VH).")
+
+                # Column 9: Delete
+                im.table_set_column_index(9)
+                if im.button(f"🗑️##det_del_{i}"):
+                    to_delete = det_name
+                im.set_item_tooltip("Delete this detector.")
+
+            im.end_table()
+
+        if to_rename:
+            old_d, new_d = to_rename
+            val = detectors.pop(old_d)
+            detectors[new_d] = val
+
+        if to_delete and to_delete in detectors:
+            del detectors[to_delete]
+
+    def _draw_lut_handling_section(self, width: float) -> None:
+        """Section 4: LUT handling (TAC linearization)."""
+        is_open = self._draw_collapsible_header(
+            "LUT handling (TAC linearization)", "lut", default=False
+        )
+        if not is_open:
+            return
+
+        im.spacing()
+        apply_lut = bool(self.selected_setup_data.get("apply_lut", False))
+        lut_chg, new_apply = im.checkbox("Apply TAC linearization (LUT) when reading", apply_lut)
+        im.set_item_tooltip(
+            "Apply non-linearity look-up tables to calibrate the TAC/TDC channels when reading files."
+        )
+        if lut_chg:
+            self.selected_setup_data["apply_lut"] = new_apply
+
+        im.spacing()
+
+        # Collect used routing channels
+        chans = set()
+        for det_info in self.selected_setup_data.get("detectors", {}).values():
+            for c in det_info.get("chs", []):
+                try:
+                    chans.add(int(c))
+                except ValueError:
+                    pass
+        if not chans:
+            chans = {0, 1}
+        sorted_chans = sorted(chans)
+
+        table_flags = im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.SIZING_FIXED_FIT
+        table_h = min(140.0, max(70.0, len(sorted_chans) * 28.0 + 30.0))
+
+        shifts = self.selected_setup_data.setdefault("channel_shifts", {})
+
+        if im.begin_table("lut_table", 3, table_flags, (0, table_h)):
+            im.table_setup_column("Channel", im.TableColumnFlags.WIDTH_FIXED, 90.0)
+            im.table_setup_column("LUT", im.TableColumnFlags.WIDTH_STRETCH)
+            im.table_setup_column("Shift", im.TableColumnFlags.WIDTH_FIXED, 120.0)
+            im.table_headers_row()
+
+            for ch in sorted_chans:
+                im.table_next_row()
+
+                # Channel
+                im.table_set_column_index(0)
+                im.text(f"Channel {ch}")
+
+                # LUT
+                im.table_set_column_index(1)
+                lut_src = self.selected_setup_data.get("channel_lut_sources", {}).get(ch)
+                im.text_disabled(str(lut_src) if lut_src else "— none —")
+
+                # Shift
+                im.table_set_column_index(2)
+                curr_shift = int(shifts.get(str(ch), shifts.get(ch, 0)))
+                im.set_next_item_width(-1)
+                s_chg, new_s = im.input_text(f"##shift_{ch}", str(curr_shift))
+                im.set_item_tooltip("Micro-time shift in channels applied to this routing channel.")
+                if s_chg:
+                    try:
+                        shifts[str(ch)] = int(new_s)
+                    except ValueError:
+                        pass
+
+            im.end_table()
+
+        im.spacing()
+        if im.button("📥 Assign LUT…"):
+            self.modal_read_open = True
+            im.open_popup("Read TTTR File")
+        im.set_item_tooltip("Load a LUT file and assign it to the routing channels.")
+
+        im.same_line()
+        if im.button("Configure LUTs…"):
+            pass
+        im.set_item_tooltip("Configure the LUT assignments per routing channel.")
+
+        im.same_line()
+        if im.button("Adjust shifts…"):
+            pass
+        im.set_item_tooltip("Adjust the per-channel micro-time shifts.")
+
+    def _draw_microtime_plot(self, width: float) -> None:
+        """Render micro-time decay preview with PIE windows and detector overlays."""
+        im.align_text_to_frame_padding()
+        im.text_colored("Micro-time Decay Preview", (0.35, 0.75, 1.0, 1.0))
+        im.same_line()
+        if im.button("📐 Open Region Selector…##plt_hdr"):
+            self.open_region_selector()
+        im.set_item_tooltip(
+            "Open the interactive region selector for the current micro-time regions."
+        )
+
+        im.spacing()
+
+        plot_w = max(300.0, width - 35.0)
+        plot_h = 160.0
+
+        ctx = im.get_current_context()
+        box = ctx.layout.row(height=plot_h, width=plot_w)
+        ctx.item_add(box)
+
+        # Plot background
+        bx0, by0 = box[0], box[1]
+        bx1, by1 = bx0 + box[2], by0 + box[3]
+        ctx.draw.add_rect_filled((bx0, by0), (bx1, by1), (18, 20, 24, 255), 4.0)
+        ctx.draw.add_rect((bx0, by0), (bx1, by1), (50, 56, 68, 255), 4.0)
+
+        # Handle click on plot canvas to open Region Selector
+        io = ctx.io
+        px, py = io.mouse_pos
+        on_plot = (bx0 <= px <= bx1) and (by0 <= py <= by1)
+        if (
+            io.mouse_clicked[0]
+            and on_plot
+            and not self.region_window_open
+            and not self.json_window_open
+        ):
+            self.open_region_selector()
+
+        # Channel resolution
+        counts = self.microtime_counts
+        has_data = counts is not None and counts.size >= 10
+        n_chan = counts.size if has_data else 4096
+
+        # Draw subtle vertical grid lines
+        for grid_ch in range(512, n_chan, 512):
+            gx = bx0 + (grid_ch / float(n_chan)) * (bx1 - bx0)
+            ctx.draw.add_line((gx, by0), (gx, by1), (30, 34, 42, 160), 1.0)
+
+        # Draw PIE Window shaded vertical bands
+        windows = self.selected_setup_data.get("windows", {})
+        for w_name, bounds in windows.items():
+            s = min(bounds[0], bounds[1])
+            e = max(bounds[0], bounds[1])
+            rx0 = bx0 + (s / float(n_chan)) * (bx1 - bx0)
+            rx1 = bx0 + (e / float(n_chan)) * (bx1 - bx0)
+            ctx.draw.add_rect_filled((rx0, by0), (rx1, by1), (70, 130, 220, 35), 0.0)
+            ctx.draw.add_text((rx0 + 4.0, by0 + 4.0), (140, 180, 255, 200), f"PIE: {w_name}")
+
+        # Draw Detector ranges
+        detectors = self.selected_setup_data.get("detectors", {})
+        det_palette = [
+            (0, 200, 0, 45),
+            (220, 40, 40, 45),
+            (220, 200, 0, 45),
+            (60, 120, 230, 45),
+        ]
+        for d_idx, (d_name, d_info) in enumerate(detectors.items()):
+            color = det_palette[d_idx % len(det_palette)]
+            for rng in d_info.get("micro_time_ranges", []):
+                s = min(rng[0], rng[1])
+                e = max(rng[0], rng[1])
+                rx0 = bx0 + (s / float(n_chan)) * (bx1 - bx0)
+                rx1 = bx0 + (e / float(n_chan)) * (bx1 - bx0)
+                ctx.draw.add_rect_filled((rx0, by0), (rx1, by1), color, 0.0)
+
+        if has_data:
+            # Plot real decay polyline (log10 scale)
+            log_counts = np.log10(np.clip(counts, 1.0, None))
+            max_log = max(log_counts.max(), 1.0)
+            min_log = max(0.0, log_counts.min())
+            span_log = max_log - min_log or 1.0
+
+            n_pts = len(counts)
+            step_x = (bx1 - bx0) / max(1, n_pts - 1)
+            pts = []
+            for i, val in enumerate(log_counts):
+                px_val = bx0 + i * step_x
+                py_val = by1 - ((val - min_log) / span_log) * (by1 - by0 - 15.0) - 5.0
+                pts.append((px_val, py_val))
+
+            if len(pts) >= 2:
+                ctx.draw.add_polyline(pts, (220, 225, 235, 255), 0, 1.2)
+
+            ctx.draw.add_text(
+                (bx0 + 6.0, by0 + 4.0),
+                (160, 160, 160, 255),
+                f"Counts (log10 max: {max_log:.1f})",
+            )
+        else:
+            # Empty plot message (no moving / fake random data!)
+            ctx.draw.add_text(
+                (bx0 + 20.0, by0 + plot_h / 2.0 - 8.0),
+                (130, 138, 150, 220),
+                "No TTTR decay data loaded — use 'Read' in TTTR Reading routine to inspect a data file",
+            )
+
+        # Plot legend / axes text
+        ctx.draw.add_text((bx0 + 6.0, by1 - 16.0), (160, 160, 160, 255), "Micro-time channel: 0")
+        ctx.draw.add_text((bx1 - 80.0, by1 - 16.0), (160, 160, 160, 255), f"Max: {n_chan}")
+
+    def _draw_bottom_bars(self, width: float) -> None:
+        """Render action buttons (Edit JSON, Save, Optical Setup) and Wizard Navigation."""
+        # Row 1: Right-aligned action buttons
+        col_x = max(20.0, width - 380.0)
+        im.set_cursor_pos_x(col_x)
+
+        if im.button("📝 Edit JSON"):
+            self.json_editor = TextEditor(
+                json.dumps(self.selected_setup_data, indent=2),
+                language=Language.json(),
+            )
+            self.json_window_open = True
+            self.json_editor_focused = True
+            self.json_error_message = ""
+        im.set_item_tooltip("Edit the raw setup JSON directly; Apply commits the changes.")
+
+        im.same_line()
+        if im.button("💾 Save"):
+            self.save_current_setup()
+        im.set_item_tooltip("Persist the current detector setup to the setups repository.")
+
+        im.same_line()
+        if im.button("Optical Setup…"):
+            self.modal_optical_open = True
+            im.open_popup("Optical Setup")
+        im.set_item_tooltip(
+            "Show the optical configuration (lasers, fluorophores, detection filters)."
+        )
+
+        im.spacing()
+        im.spacing()
+
+        # Row 2: Bottom wizard navigation buttons
+        nav_x = max(20.0, width - 380.0)
+        im.set_cursor_pos_x(nav_x)
+
+        im.begin_disabled(True)
+        im.button("< Back")
+        im.set_item_tooltip("Return to the previous step (there is none before the setup).")
+        im.end_disabled()
+
+        im.same_line()
+        im.push_style_color(im.Col.BUTTON, (0.18, 0.45, 0.82, 1.0))
+        im.push_style_color(im.Col.BUTTON_HOVERED, (0.24, 0.55, 0.95, 1.0))
+        if im.button("Finish"):
+            self.save_current_setup()
+            tool = getattr(self.widget, "tool", None)
+            if tool is not None and hasattr(tool, "show_panel_by_role"):
+                tool.show_panel_by_role("data")
+        im.set_item_tooltip("Save the setup and continue to the data-selection step.")
+        im.pop_style_color(2)
+
+        im.same_line()
+        if im.button("Cancel"):
+            self.refresh_setups()
+        im.set_item_tooltip("Discard the changes and reload the setups from the repository.")
+
+    def _any_popup_open(self) -> bool:
+        """Check if any popup or modal is currently active."""
+        return any(
+            [
+                self.region_window_open,
+                self.modal_save_as_open,
+                self.modal_rename_open,
+                self.modal_delete_open,
+                self.modal_help_open,
+                self.modal_read_open,
+                self.modal_optical_open,
+                self.modal_calc_gf_open,
+                getattr(self, "help_window", None) and self.help_window.open,
+                getattr(self, "tour", None) and self.tour.active,
+            ]
+        )
+
+    def _draw_scrollbar(self, ctx: Any, width: float, height: float, max_scroll: float) -> None:
+        """Render an interactive vertical scrollbar down the right edge."""
+        if max_scroll <= 0.0:
+            return
+
+        sb_w = 9.0
+        sb_x = width - sb_w - 2.0
+        sb_y = 4.0
+        sb_h = height - 8.0
+
+        # Calculate thumb size and position
+        thumb_h = max(32.0, sb_h * (height / self.total_content_height))
+        travel = sb_h - thumb_h
+        thumb_y = sb_y + (self.scroll_y / max_scroll) * travel
+
+        # Mouse interactions
+        io = ctx.io
+        px, py = io.mouse_pos
+        on_track = (sb_x - 3.0 <= px <= width) and (sb_y <= py <= sb_y + sb_h)
+        on_thumb = on_track and (thumb_y <= py <= thumb_y + thumb_h)
+
+        if not self.json_window_open and not self.region_window_open and not self._any_popup_open():
+            if io.mouse_clicked[0] and on_track:
+                self.scrollbar_held = True
+                new_scroll = ((py - sb_y - thumb_h / 2.0) / max(1.0, travel)) * max_scroll
+                self.scroll_y = max(0.0, min(new_scroll, max_scroll))
+            elif io.mouse_down[0] and self.scrollbar_held:
+                new_scroll = ((py - sb_y - thumb_h / 2.0) / max(1.0, travel)) * max_scroll
+                self.scroll_y = max(0.0, min(new_scroll, max_scroll))
+
+        if io.mouse_released[0]:
+            self.scrollbar_held = False
+
+        # Draw track
+        ctx.draw.add_rect_filled((sb_x, sb_y), (sb_x + sb_w, sb_y + sb_h), (25, 27, 33, 160), 4.0)
+
+        # Choose thumb color based on state
+        if self.scrollbar_held:
+            thumb_col = (135, 145, 170, 240)
+        elif on_thumb:
+            thumb_col = (105, 115, 135, 210)
+        else:
+            thumb_col = (72, 78, 92, 170)
+
+        thumb_y = sb_y + (self.scroll_y / max_scroll) * travel
+        ctx.draw.add_rect_filled(
+            (sb_x + 1.0, thumb_y),
+            (sb_x + sb_w - 1.0, thumb_y + thumb_h),
+            thumb_col,
+            3.5,
+        )
+
+    def _draw_json_editor_window(self, width: float, height: float) -> None:
+        """Render sticky, centered EMTK window with TextEditor for editing raw setup JSON."""
+        ctx = im.get_current_context()
+        io = ctx.io
+
+        win_w = min(780.0, max(520.0, width - 40.0))
+        win_h = min(560.0, max(380.0, height - 40.0))
+        win_x = max(10.0, (width - win_w) / 2.0)
+        win_y = max(10.0, (height - win_h) / 2.0)
+
+        # 1. Dim backdrop
+        ctx.draw.add_rect_filled((0.0, 0.0), (width, height), (0, 0, 0, 160), 0.0)
+
+        # 2. Window container
+        im.set_next_window_pos((win_x, win_y))
+        im.set_next_window_size((win_w, win_h))
+        modal_flags = (
+            im.WindowFlags.NO_TITLE_BAR
+            | im.WindowFlags.NO_RESIZE
+            | im.WindowFlags.NO_MOVE
+            | im.WindowFlags.NO_COLLAPSE
+        )
+        im.begin("JSONConfigurationEditor", (win_x, win_y, win_w, win_h), modal_flags)
+
+        # Window styling
+        ctx.draw.add_rect_filled(
+            (win_x, win_y), (win_x + win_w, win_y + win_h), (28, 30, 36, 255), 8.0
+        )
+        ctx.draw.add_rect(
+            (win_x, win_y), (win_x + win_w, win_y + win_h), (60, 68, 85, 255), 8.0, 0, 1.5
+        )
+
+        # Header bar
+        hdr_h = 36.0
+        ctx.draw.add_rect_filled(
+            (win_x, win_y), (win_x + win_w, win_y + hdr_h), (36, 39, 48, 255), 8.0
+        )
+        title_text = f"Edit Raw Setup JSON — {self.selected_setup_name}"
+        ctx.draw.add_text((win_x + 14.0, win_y + 10.0), (225, 230, 240, 255), title_text)
+
+        # Close button in header
+        close_x = win_x + win_w - 32.0
+        close_y = win_y + 6.0
+        im.set_cursor_screen_pos((close_x, close_y))
+        if im.button("✖##close_json"):
+            self.json_window_open = False
+        im.set_item_tooltip("Close the JSON editor without applying changes.")
+
+        # Text Editor area
+        ed_x = win_x + 12.0
+        ed_y = win_y + hdr_h + 8.0
+        ed_w = win_w - 24.0
+        ed_h = win_h - hdr_h - 58.0
+        box = (ed_x, ed_y, ed_w, ed_h)
+
+        if self.json_editor is None:
+            self.json_editor = TextEditor(
+                json.dumps(self.selected_setup_data, indent=2),
+                language=Language.json(),
+            )
+
+        # Mouse & keyboard event handling for the editor
+        px, py = io.mouse_pos
+        ed_hovered = (ed_x <= px <= ed_x + ed_w) and (ed_y <= py <= ed_y + ed_h)
+
+        if io.mouse_clicked[0]:
+            if ed_hovered:
+                self.json_editor_focused = True
+                clicks = 2 if io.mouse_double_clicked[0] else 1
+                self.json_editor.press(px, py, *box, 0, clicks)
+            else:
+                self.json_editor_focused = False
+
+        if ed_hovered and io.mouse_wheel != 0.0:
+            self.json_editor.scroll(-3 if io.mouse_wheel > 0 else 3)
+
+        if io.mouse_down[0] and self.json_editor_focused:
+            self.json_editor.drag(px, py, *box)
+
+        if io.mouse_released[0]:
+            self.json_editor.release()
+
+        if self.json_editor_focused and (io.key or io.text):
+            modifiers = (
+                (SHIFT_MODIFIER if io.key_shift else 0)
+                | (CONTROL_MODIFIER if io.key_ctrl else 0)
+                | (ALT_MODIFIER if io.key_alt else 0)
+                | (META_MODIFIER if io.key_super else 0)
+            )
+            self.json_editor.key(int(io.key), io.text, modifiers)
+
+        # Draw the editor
+        self.json_editor.draw(ctx.p, *box)
+
+        # Bottom divider & Action Buttons
+        btn_y = win_y + win_h - 40.0
+        ctx.draw.add_line(
+            (win_x, btn_y - 6.0), (win_x + win_w, btn_y - 6.0), (45, 50, 62, 255), 1.0
+        )
+
+        # Display error message if any
+        if self.json_error_message:
+            ctx.draw.add_text(
+                (win_x + 14.0, btn_y + 4.0),
+                (240, 90, 90, 255),
+                f"⚠ {self.json_error_message}"[:60],
+            )
+
+        # Buttons aligned to the right
+        btn_start_x = win_x + win_w - 380.0
+        im.set_cursor_screen_pos((btn_start_x, btn_y))
+
+        im.push_style_color(im.Col.BUTTON, (0.18, 0.45, 0.82, 1.0))
+        im.push_style_color(im.Col.BUTTON_HOVERED, (0.24, 0.55, 0.95, 1.0))
+        if im.button("💾 Apply & Close##json"):
+            try:
+                parsed = json.loads(self.json_editor.text)
+                if isinstance(parsed, dict):
+                    self.selected_setup_data = parsed
+                    self.available_setups[self.selected_setup_name] = dict(parsed)
+                    self.sync_to_tool()
+                    self.json_window_open = False
+                    self.json_error_message = ""
+                else:
+                    self.json_error_message = "Root JSON must be an object."
+            except Exception as exc:
+                self.json_error_message = str(exc)
+        im.set_item_tooltip("Validate the JSON and apply it to the current setup.")
+        im.pop_style_color(2)
+
+        im.same_line()
+        if im.button("📋 Format##json"):
+            try:
+                parsed = json.loads(self.json_editor.text)
+                self.json_editor.set_text(json.dumps(parsed, indent=2))
+                self.json_error_message = ""
+            except Exception as exc:
+                self.json_error_message = f"Invalid JSON: {exc}"
+        im.set_item_tooltip("Re-format the JSON text with indentation.")
+
+        im.same_line()
+        if im.button("🔄 Revert##json"):
+            self.json_editor.set_text(json.dumps(self.selected_setup_data, indent=2))
+            self.json_error_message = ""
+        im.set_item_tooltip("Revert the editor text to the current setup.")
+
+        im.same_line()
+        if im.button("Cancel##json"):
+            self.json_window_open = False
+            self.json_error_message = ""
+        im.set_item_tooltip("Close the editor without applying changes.")
+
+        im.end()
+
+    def _draw_region_selector_window(self, width: float, height: float) -> None:
+        """Render interactive, sticky EMTK Region Selection modal window with draggable handles."""
+        ctx = im.get_current_context()
+        io = ctx.io
+
+        win_w = min(880.0, max(560.0, width - 30.0))
+        win_h = min(620.0, max(460.0, height - 30.0))
+        win_x = max(10.0, (width - win_w) / 2.0)
+        win_y = max(10.0, (height - win_h) / 2.0)
+
+        # 1. Dim backdrop
+        ctx.draw.add_rect_filled((0.0, 0.0), (width, height), (0, 0, 0, 160), 0.0)
+
+        # 2. Window container
+        im.set_next_window_pos((win_x, win_y))
+        im.set_next_window_size((win_w, win_h))
+        modal_flags = (
+            im.WindowFlags.NO_TITLE_BAR
+            | im.WindowFlags.NO_RESIZE
+            | im.WindowFlags.NO_MOVE
+            | im.WindowFlags.NO_COLLAPSE
+        )
+        im.begin("RegionSelectionEditor", (win_x, win_y, win_w, win_h), modal_flags)
+
+        # Window styling
+        ctx.draw.add_rect_filled(
+            (win_x, win_y), (win_x + win_w, win_y + win_h), (28, 30, 36, 255), 8.0
+        )
+        ctx.draw.add_rect(
+            (win_x, win_y), (win_x + win_w, win_y + win_h), (60, 68, 85, 255), 8.0, 0, 1.5
+        )
+
+        # Header bar
+        hdr_h = 36.0
+        ctx.draw.add_rect_filled(
+            (win_x, win_y), (win_x + win_w, win_y + hdr_h), (36, 39, 48, 255), 8.0
+        )
+        title_text = f"📐 Micro-time Region Selection — {self.selected_setup_name}"
+        ctx.draw.add_text((win_x + 14.0, win_y + 10.0), (225, 230, 240, 255), title_text)
+
+        # Close button in header
+        im.set_cursor_screen_pos((win_x + win_w - 32.0, win_y + 6.0))
+        if im.button("✖##close_reg_win"):
+            self.sync_to_tool()
+            self.region_window_open = False
+        im.set_item_tooltip("Close the region selector and apply the region edits.")
+
+        # Target selection row
+        im.set_cursor_screen_pos((win_x + 16.0, win_y + hdr_h + 10.0))
+        im.align_text_to_frame_padding()
+        im.text("Select Region to Edit:")
+        im.same_line()
+
+        windows = self.selected_setup_data.setdefault("windows", {})
+        detectors = self.selected_setup_data.setdefault("detectors", {})
+
+        target_keys = []
+        target_labels = []
+
+        for w_name in windows.keys():
+            target_keys.append(("pie", w_name, 0))
+            target_labels.append(f"PIE: {w_name}")
+
+        for d_name, d_info in detectors.items():
+            ranges = d_info.get("micro_time_ranges", [])
+            if not ranges:
+                d_info["micro_time_ranges"] = [[0, 4095]]
+                ranges = d_info["micro_time_ranges"]
+            for ri in range(len(ranges)):
+                suffix = f" #{ri + 1}" if len(ranges) > 1 else ""
+                target_keys.append(("detector", d_name, ri))
+                target_labels.append(f"Det: {d_name}{suffix}")
+
+        if not target_keys:
+            # Fallback target if empty
+            windows["prompt"] = [600, 3800]
+            target_keys.append(("pie", "prompt", 0))
+            target_labels.append("PIE: prompt")
+
+        cur_idx = 0
+        for idx, (tt, tn, tri) in enumerate(target_keys):
+            if (
+                tt == self.region_target_type
+                and tn == self.region_target_name
+                and tri == self.region_target_range_idx
+            ):
+                cur_idx = idx
+                break
+
+        im.set_next_item_width(220.0)
+        chg, new_idx = im.combo("##RegionTargetCombo", cur_idx, target_labels)
+        im.set_item_tooltip("Choose which PIE window or detector micro-time range to edit.")
+        if chg and 0 <= new_idx < len(target_keys):
+            self.region_target_type, self.region_target_name, self.region_target_range_idx = (
+                target_keys[new_idx]
+            )
+            cur_idx = new_idx
+
+        active_tt, active_tn, active_ri = target_keys[cur_idx]
+
+        # Fetch active target bounds reference
+        if active_tt == "pie":
+            bounds = windows.setdefault(active_tn, [0, 4095])
+            if len(bounds) < 2:
+                bounds.extend([0, 4095][len(bounds) :])
+            cur_start = int(bounds[0])
+            cur_end = int(bounds[1])
+        else:
+            d_info = detectors.setdefault(active_tn, {"chs": [0], "micro_time_ranges": [[0, 4095]]})
+            ranges = d_info.setdefault("micro_time_ranges", [[0, 4095]])
+            if active_ri >= len(ranges):
+                ranges.append([0, 4095])
+            bounds = ranges[active_ri]
+            if len(bounds) < 2:
+                bounds.extend([0, 4095][len(bounds) :])
+            cur_start = int(bounds[0])
+            cur_end = int(bounds[1])
+
+        if cur_end < cur_start:
+            cur_start, cur_end = cur_end, cur_start
+            bounds[0], bounds[1] = cur_start, cur_end
+
+        # Plot Canvas
+        plot_x = win_x + 16.0
+        plot_y = win_y + hdr_h + 46.0
+        plot_w = win_w - 32.0
+        plot_h = 240.0
+        bx0, by0 = plot_x, plot_y
+        bx1, by1 = bx0 + plot_w, by0 + plot_h
+
+        ctx.draw.add_rect_filled((bx0, by0), (bx1, by1), (18, 20, 24, 255), 4.0)
+        ctx.draw.add_rect((bx0, by0), (bx1, by1), (50, 56, 68, 255), 4.0)
+
+        counts = self.microtime_counts
+        has_data = counts is not None and counts.size >= 10
+        n_chan = counts.size if has_data else 4096
+
+        # Draw grid lines every 512 channels
+        for grid_ch in range(512, n_chan, 512):
+            gx = bx0 + (grid_ch / float(n_chan)) * plot_w
+            ctx.draw.add_line((gx, by0), (gx, by1), (32, 36, 45, 180), 1.0)
+            ctx.draw.add_text((gx - 12.0, by1 - 15.0), (90, 95, 105, 200), str(grid_ch))
+
+        # Real decay data (log10 scale)
+        if has_data:
+            log_counts = np.log10(np.clip(counts, 1.0, None))
+            max_log = max(log_counts.max(), 1.0)
+            min_log = max(0.0, log_counts.min())
+            span_log = max_log - min_log or 1.0
+
+            n_pts = len(counts)
+            step_x = plot_w / max(1, n_pts - 1)
+            pts = []
+            for i, val in enumerate(log_counts):
+                px_val = bx0 + i * step_x
+                py_val = by1 - ((val - min_log) / span_log) * (plot_h - 25.0) - 10.0
+                pts.append((px_val, py_val))
+            if len(pts) >= 2:
+                ctx.draw.add_polyline(pts, (210, 220, 235, 255), 0, 1.3)
+        else:
+            # Empty plot notification
+            ctx.draw.add_text(
+                (bx0 + 20.0, by0 + plot_h / 2.0 - 8.0),
+                (120, 128, 140, 220),
+                "No TTTR decay data loaded — drag the region boundary handles below across channel range",
+            )
+
+        # Draw inactive regions dimmed
+        for w_name, b in windows.items():
+            if active_tt == "pie" and active_tn == w_name:
+                continue
+            s = min(b[0], b[1])
+            e = max(b[0], b[1])
+            rx0 = bx0 + (s / float(n_chan)) * plot_w
+            rx1 = bx0 + (e / float(n_chan)) * plot_w
+            ctx.draw.add_rect_filled((rx0, by0), (rx1, by1), (70, 100, 160, 25), 0.0)
+            ctx.draw.add_text((rx0 + 4.0, by0 + 4.0), (120, 140, 180, 150), f"PIE: {w_name}")
+
+        for d_name, d_info in detectors.items():
+            for ri, rng in enumerate(d_info.get("micro_time_ranges", [])):
+                if active_tt == "detector" and active_tn == d_name and active_ri == ri:
+                    continue
+                s = min(rng[0], rng[1])
+                e = max(rng[0], rng[1])
+                rx0 = bx0 + (s / float(n_chan)) * plot_w
+                rx1 = bx0 + (e / float(n_chan)) * plot_w
+                ctx.draw.add_rect_filled((rx0, by0), (rx1, by1), (50, 140, 90, 20), 0.0)
+
+        # Active Region geometry
+        sx0 = bx0 + (cur_start / float(n_chan)) * plot_w
+        sx1 = bx0 + (cur_end / float(n_chan)) * plot_w
+
+        # Shaded band for active target
+        band_col = (40, 140, 240, 55) if active_tt == "pie" else (40, 220, 120, 55)
+        ctx.draw.add_rect_filled((sx0, by0), (sx1, by1), band_col, 0.0)
+        ctx.draw.add_rect(
+            (sx0, by0),
+            (sx1, by1),
+            (70, 170, 255, 120) if active_tt == "pie" else (60, 230, 140, 120),
+            0.0,
+            0,
+            1.0,
+        )
+
+        # Interactive Draggable Handles
+        px, py = io.mouse_pos
+        handle_line_col = (80, 190, 255, 255) if active_tt == "pie" else (70, 240, 150, 255)
+        handle_hover_col = (255, 255, 255, 255)
+
+        near_start = (abs(px - sx0) <= 7.0 and by0 <= py <= by1) or (
+            (sx0 - 24.0 <= px <= sx0 + 24.0) and (by0 - 18.0 <= py <= by0)
+        )
+        near_end = (abs(px - sx1) <= 7.0 and by0 <= py <= by1) or (
+            (sx1 - 24.0 <= px <= sx1 + 24.0) and (by0 - 18.0 <= py <= by0)
+        )
+        in_center = (sx0 + 7.0 < px < sx1 - 7.0) and (by0 <= py <= by1)
+
+        # Start handle
+        col_start = (
+            handle_hover_col
+            if (near_start or self.region_drag_handle == "start")
+            else handle_line_col
+        )
+        ctx.draw.add_line((sx0, by0), (sx0, by1), col_start, 2.5)
+        ctx.draw.add_rect_filled(
+            (sx0 - 24.0, by0 - 18.0), (sx0 + 24.0, by0), (32, 45, 60, 240), 3.0
+        )
+        ctx.draw.add_rect((sx0 - 24.0, by0 - 18.0), (sx0 + 24.0, by0), col_start, 3.0, 0, 1.0)
+        ctx.draw.add_text((sx0 - 20.0, by0 - 15.0), col_start, f"S: {cur_start}")
+
+        # End handle
+        col_end = (
+            handle_hover_col if (near_end or self.region_drag_handle == "end") else handle_line_col
+        )
+        ctx.draw.add_line((sx1, by0), (sx1, by1), col_end, 2.5)
+        ctx.draw.add_rect_filled(
+            (sx1 - 24.0, by0 - 18.0), (sx1 + 24.0, by0), (32, 45, 60, 240), 3.0
+        )
+        ctx.draw.add_rect((sx1 - 24.0, by0 - 18.0), (sx1 + 24.0, by0), col_end, 3.0, 0, 1.0)
+        ctx.draw.add_text((sx1 - 20.0, by0 - 15.0), col_end, f"E: {cur_end}")
+
+        # Center drag badge
+        if sx1 - sx0 > 70.0:
+            mid_x = (sx0 + sx1) / 2.0
+            col_mid = (
+                handle_hover_col
+                if (in_center or self.region_drag_handle == "center")
+                else (150, 160, 180, 200)
+            )
+            ctx.draw.add_rect_filled(
+                (mid_x - 30.0, by0 + 8.0), (mid_x + 30.0, by0 + 24.0), (25, 28, 35, 200), 3.0
+            )
+            ctx.draw.add_text((mid_x - 24.0, by0 + 10.0), col_mid, f"⇄ {cur_end - cur_start} ch")
+
+        # Mouse Dragging logic
+        if io.mouse_clicked[0]:
+            if near_start:
+                self.region_drag_handle = "start"
+            elif near_end:
+                self.region_drag_handle = "end"
+            elif in_center:
+                self.region_drag_handle = "center"
+                self.region_drag_start_px = px
+                self.region_drag_orig_start = cur_start
+                self.region_drag_orig_end = cur_end
+
+        if io.mouse_down[0] and self.region_drag_handle:
+            if self.region_drag_handle == "start":
+                ch = int(round(np.clip((px - bx0) / plot_w * n_chan, 0, cur_end - 1)))
+                bounds[0] = ch
+                cur_start = ch
+            elif self.region_drag_handle == "end":
+                ch = int(round(np.clip((px - bx0) / plot_w * n_chan, cur_start + 1, n_chan)))
+                bounds[1] = ch
+                cur_end = ch
+            elif self.region_drag_handle == "center":
+                delta_ch = int(round((px - self.region_drag_start_px) / plot_w * n_chan))
+                span = self.region_drag_orig_end - self.region_drag_orig_start
+                new_s = int(np.clip(self.region_drag_orig_start + delta_ch, 0, n_chan - span))
+                new_e = new_s + span
+                bounds[0] = new_s
+                bounds[1] = new_e
+                cur_start = new_s
+                cur_end = new_e
+
+        if io.mouse_released[0]:
+            self.region_drag_handle = None
+
+        # Sliders & Controls below plot
+        ctrl_y = by1 + 16.0
+        im.set_cursor_screen_pos((win_x + 16.0, ctrl_y))
+
+        # Row 1: Start Slider & step buttons
+        im.align_text_to_frame_padding()
+        im.text("Start Channel:")
+        im.same_line(130.0)
+
+        im.set_next_item_width(win_w - 420.0)
+        s_changed, new_s_slider = im.slider_int("##StartSlider", cur_start, 0, n_chan - 1)
+        im.set_item_tooltip("Drag to set the start channel of the region.")
+        if s_changed:
+            bounds[0] = min(new_s_slider, cur_end - 1)
+            cur_start = bounds[0]
+
+        im.same_line()
+        if im.button("-100##s"):
+            bounds[0] = max(0, cur_start - 100)
+            cur_start = bounds[0]
+        im.set_item_tooltip("Decrease the start channel by 100.")
+        im.same_line()
+        if im.button("-10##s"):
+            bounds[0] = max(0, cur_start - 10)
+            cur_start = bounds[0]
+        im.set_item_tooltip("Decrease the start channel by 10.")
+        im.same_line()
+        if im.button("+10##s"):
+            bounds[0] = min(cur_end - 1, cur_start + 10)
+            cur_start = bounds[0]
+        im.set_item_tooltip("Increase the start channel by 10.")
+        im.same_line()
+        if im.button("+100##s"):
+            bounds[0] = min(cur_end - 1, cur_start + 100)
+            cur_start = bounds[0]
+        im.set_item_tooltip("Increase the start channel by 100.")
+
+        im.same_line()
+        im.set_next_item_width(70.0)
+        s_text_chg, new_s_text = im.input_text("##StartText", str(cur_start))
+        im.set_item_tooltip("Type the start channel of the region.")
+        if s_text_chg:
+            try:
+                val = int(new_s_text)
+                bounds[0] = max(0, min(val, cur_end - 1))
+                cur_start = bounds[0]
+            except ValueError:
+                pass
+
+        im.spacing()
+
+        # Row 2: End Slider & step buttons
+        im.align_text_to_frame_padding()
+        im.text("End Channel:")
+        im.same_line(130.0)
+
+        im.set_next_item_width(win_w - 420.0)
+        e_changed, new_e_slider = im.slider_int("##EndSlider", cur_end, cur_start + 1, n_chan)
+        im.set_item_tooltip("Drag to set the end channel of the region.")
+        if e_changed:
+            bounds[1] = max(new_e_slider, cur_start + 1)
+            cur_end = bounds[1]
+
+        im.same_line()
+        if im.button("-100##e"):
+            bounds[1] = max(cur_start + 1, cur_end - 100)
+            cur_end = bounds[1]
+        im.set_item_tooltip("Decrease the end channel by 100.")
+        im.same_line()
+        if im.button("-10##e"):
+            bounds[1] = max(cur_start + 1, cur_end - 10)
+            cur_end = bounds[1]
+        im.set_item_tooltip("Decrease the end channel by 10.")
+        im.same_line()
+        if im.button("+10##e"):
+            bounds[1] = min(n_chan, cur_end + 10)
+            cur_end = bounds[1]
+        im.set_item_tooltip("Increase the end channel by 10.")
+        im.same_line()
+        if im.button("+100##e"):
+            bounds[1] = min(n_chan, cur_end + 100)
+            cur_end = bounds[1]
+        im.set_item_tooltip("Increase the end channel by 100.")
+
+        im.same_line()
+        im.set_next_item_width(70.0)
+        e_text_chg, new_e_text = im.input_text("##EndText", str(cur_end))
+        im.set_item_tooltip("Type the end channel of the region.")
+        if e_text_chg:
+            try:
+                val = int(new_e_text)
+                bounds[1] = max(cur_start + 1, min(val, n_chan))
+                cur_end = bounds[1]
+            except ValueError:
+                pass
+
+        im.spacing()
+
+        # Row 3: Presets & Info
+        im.align_text_to_frame_padding()
+        im.text(f"Range Width: {cur_end - cur_start} channels")
+        im.same_line(220.0)
+
+        if im.button("Reset Full Range (0 - 4095)"):
+            bounds[0] = 0
+            bounds[1] = 4095
+            cur_start = 0
+            cur_end = 4095
+        im.set_item_tooltip("Reset the region to the full micro-time range.")
+
+        if active_tt == "detector":
+            p_bounds = windows.get("prompt")
+            if p_bounds:
+                im.same_line()
+                if im.button("Match Prompt PIE"):
+                    bounds[0] = int(p_bounds[0])
+                    bounds[1] = int(p_bounds[1])
+                    cur_start = bounds[0]
+                    cur_end = bounds[1]
+                im.set_item_tooltip("Copy the bounds of the prompt PIE window to this region.")
+            d_bounds = windows.get("delayed")
+            if d_bounds:
+                im.same_line()
+                if im.button("Match Delayed PIE"):
+                    bounds[0] = int(d_bounds[0])
+                    bounds[1] = int(d_bounds[1])
+                    cur_start = bounds[0]
+                    cur_end = bounds[1]
+                im.set_item_tooltip("Copy the bounds of the delayed PIE window to this region.")
+
+        # Bottom Action Buttons
+        bot_y = win_y + win_h - 40.0
+        ctx.draw.add_line(
+            (win_x, bot_y - 6.0), (win_x + win_w, bot_y - 6.0), (45, 50, 62, 255), 1.0
+        )
+
+        im.set_cursor_screen_pos((win_x + win_w - 220.0, bot_y))
+        im.push_style_color(im.Col.BUTTON, (0.18, 0.45, 0.82, 1.0))
+        im.push_style_color(im.Col.BUTTON_HOVERED, (0.24, 0.55, 0.95, 1.0))
+        if im.button("💾 Apply & Close##reg"):
+            self.sync_to_tool()
+            self.region_window_open = False
+        im.set_item_tooltip("Apply the region bounds to the setup and close this window.")
+        im.pop_style_color(2)
+
+        im.same_line()
+        if im.button("Close##reg"):
+            self.sync_to_tool()
+            self.region_window_open = False
+        im.set_item_tooltip("Close the region selector and apply the edits.")
+
+        im.end()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Modals / Popups in pure EMTK
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _render_modals(self) -> None:
+        """Draw active modal dialogs."""
+        # Modal 1: Rename Setup
+        if im.begin_popup_modal("Rename Setup"):
+            im.text(f"Rename setup '{self.selected_setup_name}':")
+            im.spacing()
+            im.set_next_item_width(280.0)
+            r_chg, self.modal_rename_input = im.input_text("##NewName", self.modal_rename_input)
+            im.set_item_tooltip("Type the new name for this setup.")
+            im.spacing()
+            if im.button("Rename"):
+                new_n = self.modal_rename_input.strip()
+                if new_n and new_n != self.selected_setup_name:
+                    old_n = self.selected_setup_name
+                    data = self.available_setups.pop(old_n, self.selected_setup_data)
+                    data["setup_name"] = new_n
+                    self.available_setups[new_n] = data
+                    self.setup_names = sorted(list(self.available_setups.keys()))
+                    self.selected_setup_name = new_n
+                    self.selected_setup_data = data
+                    self.save_current_setup(new_n)
+                im.close_current_popup()
+            im.set_item_tooltip("Rename the setup to the entered name.")
+            im.same_line()
+            if im.button("Cancel"):
+                im.close_current_popup()
+            im.set_item_tooltip("Close without renaming.")
+            im.end_popup()
+
+        # Modal 2: Delete Setup
+        if im.begin_popup_modal("Delete Setup"):
+            im.text_colored(
+                f"Are you sure you want to delete setup '{self.selected_setup_name}'?",
+                (0.95, 0.45, 0.45, 1.0),
+            )
+            im.spacing()
+            im.text_wrapped("This action will remove the configuration from your setups.")
+            im.spacing()
+            if im.button("🗑️ Delete"):
+                del_n = self.selected_setup_name
+                if del_n in self.available_setups and len(self.available_setups) > 1:
+                    self.available_setups.pop(del_n, None)
+                    self.setup_names = sorted(list(self.available_setups.keys()))
+                    next_n = self.setup_names[0] if self.setup_names else ""
+                    self.select_setup(next_n, sync=True)
+                    try:
+                        save_detector_setups({"setups": self.available_setups, "last_used": next_n})
+                    except Exception:
+                        pass
+                im.close_current_popup()
+            im.set_item_tooltip("Permanently delete this setup from the repository.")
+            im.same_line()
+            if im.button("Cancel"):
+                im.close_current_popup()
+            im.set_item_tooltip("Close without deleting.")
+            im.end_popup()
+
+        # Modal 4: Read TTTR File
+        if im.begin_popup_modal("Read TTTR File"):
+            im.text("Inspect TTTR Data File:")
+            im.spacing()
+            im.text_wrapped("Enter TTTR file path to auto-detect resolutions and decay:")
+            im.set_next_item_width(450.0)
+            p_chg, self.modal_read_path = im.input_text("##TttrPath", self.modal_read_path)
+            im.set_item_tooltip(
+                "Path to a TTTR file to inspect; resolutions and the micro-time decay are auto-detected."
+            )
+            im.spacing()
+
+            if im.button("Load & Inspect"):
+                fpath = Path(self.modal_read_path.strip())
+                if fpath.is_file():
+                    try:
+                        tttr = tttrlib.TTTR(str(fpath))
+                        hdr = tttr.get_header()
+                        m_res = hdr.macro_time_resolution * 1e9
+                        u_res = hdr.micro_time_resolution * 1e12
+
+                        reading = self.selected_setup_data.setdefault("tttr_reading", {})
+                        reading["macro_time_resolution"] = float(m_res)
+                        reading["micro_time_resolution"] = float(u_res)
+
+                        hist, _ = tttr.get_microtime_histogram(1)
+                        self.microtime_counts = np.asarray(hist, dtype=float)
+                        self.microtime_file_path = str(fpath)
+                        self.plot_visible = True
+                    except Exception as exc:
+                        logger.error(f"Failed to read TTTR file: {exc}")
+                im.close_current_popup()
+            im.set_item_tooltip(
+                "Read the file header, fill in the resolutions and load the decay histogram."
+            )
+
+            im.same_line()
+            if im.button("Cancel"):
+                im.close_current_popup()
+            im.set_item_tooltip("Close without reading a file.")
+            im.end_popup()
+
+        # Modal 5: G-Factor Calculator
+        if im.begin_popup_modal("G-Factor Calculator"):
+            im.text(f"Calculate G-Factor for detector '{self.calc_gf_target_det}':")
+            im.spacing()
+            im.text("G-Factor = I_VV / I_VH")
+            im.set_next_item_width(180.0)
+            gf_chg, self.calc_gf_val = im.input_text("##CalcGfInput", self.calc_gf_val)
+            im.set_item_tooltip("Enter G = I_VV / I_VH; Apply writes it to the detector.")
+            im.spacing()
+            if im.button("Apply"):
+                try:
+                    val = float(self.calc_gf_val)
+                    dets = self.selected_setup_data.get("detectors", {})
+                    if self.calc_gf_target_det in dets:
+                        dets[self.calc_gf_target_det]["g_factor"] = val
+                except ValueError:
+                    pass
+                im.close_current_popup()
+            im.set_item_tooltip("Apply the calculated G-factor to the detector.")
+            im.same_line()
+            if im.button("Cancel"):
+                im.close_current_popup()
+            im.set_item_tooltip("Close without applying.")
+            im.end_popup()
+
+        # Modal 6: Optical Setup
+        if im.begin_popup_modal("Optical Setup"):
+            im.text_colored("Optical Configuration & Fluorophores", (0.35, 0.75, 1.0, 1.0))
+            im.spacing()
+            im.text("Laser Excitation Lines: 485 nm (Prompt), 640 nm (Delayed)")
+            im.text("Fluorophore Pair: Alexa 488 / Alexa 647")
+            im.text("Detection Filters: 520/35 (Donor), 675/50 (Acceptor)")
+            im.spacing()
+            if im.button("Close"):
+                im.close_current_popup()
+            im.set_item_tooltip("Close this window.")
+            im.end_popup()
+
+        # Modal 7: Help Reference
+        if im.begin_popup_modal("Help — Detector Setup"):
+            im.text_colored("Help — Detector & PIE-Window Setup", (0.35, 0.75, 1.0, 1.0))
+            im.spacing()
+            im.text_wrapped(HELP_TEXT)
+            im.spacing()
+            if im.button("Close"):
+                im.close_current_popup()
+            im.set_item_tooltip("Close this window.")
+            im.end_popup()
+
+
+class BurstSetupSelectionApp(ImApp):
+    """The EMTK ImApp for TTTR Detector Setup Selection."""
+
+    def __init__(self, widget: BurstSetupSelectionWidget) -> None:
+        self.widget = widget
+        self.setup_gui = BurstSetupSelectionGui(
+            widget=widget,
+            on_guide=self.start_guide,
+            on_help=self.show_help,
+        )
+        super().__init__(gui=self._render, continuous=False)
+
+    @property
+    def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
+        return self.setup_gui.item_rects
+
+    @property
+    def on_used(self) -> Callable[[str], None] | None:
+        return self.setup_gui.on_used
+
+    @on_used.setter
+    def on_used(self, cb: Callable[[str], None] | None) -> None:
+        self.setup_gui.on_used = cb
+
+    def start_guide(self) -> None:
+        self.setup_gui.start_guide()
+
+    def show_help(self) -> None:
+        self.setup_gui.show_help()
+
+    def _render(self) -> None:
+        self.setup_gui.draw()

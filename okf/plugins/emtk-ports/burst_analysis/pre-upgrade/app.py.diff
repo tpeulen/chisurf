@@ -1,0 +1,136 @@
+diff --git a/chisurf/plugins/burst/burst_analysis/gui/app.py b/chisurf/plugins/burst/burst_analysis/gui/app.py
+index 057b73bb8..119429929 100644
+--- a/chisurf/plugins/burst/burst_analysis/gui/app.py
++++ b/chisurf/plugins/burst/burst_analysis/gui/app.py
+@@ -24,7 +24,7 @@ from emtk.app import ImApp
+ from emtk.im_core import Col
+ from qtpy import QtCore
+ 
+-from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow
++from chisurf.gui.widgets.tools.emtk_help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+ 
+ if TYPE_CHECKING:
+     from .tool import BurstAnalysisTool
+@@ -88,6 +88,11 @@ class BurstAnalysisGui:
+             owner=self.tool,
+         )
+ 
++    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
++        r = rect if rect is not None else im.get_item_rect()
++        if r is not None:
++            self.item_rects[name] = tuple(r)
++
+     def start_guide(self) -> None:
+         """Start the in-EMTK guided tour."""
+         self.tour.start()
+@@ -96,12 +101,6 @@ class BurstAnalysisGui:
+         """Show the in-EMTK help window."""
+         self.help_window.show()
+ 
+-    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+-        """Store the item's screen rectangle for tour targeting."""
+-        r = rect if rect is not None else im.get_item_rect()
+-        if r is not None:
+-            self.item_rects[name] = tuple(r)
+-
+     def track(self, name: str) -> None:
+         """Record usage of a named control."""
+         if callable(self.on_used):
+@@ -180,6 +179,7 @@ class BurstAnalysisGui:
+                 im.push_style_color(Col.TEXT, (0.5, 0.5, 0.5, 1.0))
+             if im.button("◀ Back") and can_prev:
+                 self.tool.goto_prev_step()
++            im.set_item_tooltip("Go back to the previous workflow step.")
+             self.remember("back_step")
+             if not can_prev:
+                 im.pop_style_color(1)
+@@ -192,6 +192,7 @@ class BurstAnalysisGui:
+                 im.push_style_color(Col.BUTTON, ACCENT_BLUE)
+             if im.button("Next ▶") and can_next:
+                 self.tool.goto_next_step()
++            im.set_item_tooltip("Advance to the next workflow step.")
+             self.remember("next_step")
+             if not can_next:
+                 im.pop_style_color(1)
+@@ -206,6 +207,7 @@ class BurstAnalysisGui:
+             if im.button("⏩ Run"):
+                 self.track("fast_forward")
+                 self.tool.fast_forward()
++            im.set_item_tooltip("Fast-forward: run the remaining pipeline steps automatically.")
+             self.remember("fast_forward")
+ 
+             im.same_line()
+@@ -215,11 +217,13 @@ class BurstAnalysisGui:
+             # In-EMTK Guide & Help
+             if im.button("Guide"):
+                 self.start_guide()
++            im.set_item_tooltip("Start a step-by-step guided tour of the workflow.")
+             self.remember("guide")
+ 
+             im.same_line()
+             if im.button("? Help"):
+                 self.show_help()
++            im.set_item_tooltip("Open the help window with reference documentation.")
+             self.remember("help")
+ 
+             im.end()
+@@ -244,8 +248,9 @@ class BurstAnalysisGui:
+                 im.spacing()
+                 im.push_item_width(width - 50.0)
+                 changed, new_text = im.input_text_with_hint(
+-                    "##nav_search", "Search steps...", self.search_filter
++                    "##nav_search", self.search_filter, "Search steps..."
+                 )
++                im.set_item_tooltip("Filter the workflow steps and side tools by name.")
+                 if changed:
+                     self.search_filter = new_text
+                 im.pop_item_width()
+@@ -253,6 +258,7 @@ class BurstAnalysisGui:
+                 im.same_line()
+                 if im.button("◀##collapse", (26.0, 22.0)):
+                     self.sidebar_collapsed = True
++                im.set_item_tooltip("Collapse the navigation rail to icons only.")
+                 self.remember("sidebar_toggle")
+ 
+                 im.spacing()
+@@ -262,6 +268,7 @@ class BurstAnalysisGui:
+                 im.spacing()
+                 if im.button("▶##expand", (width - 16.0, 24.0)):
+                     self.sidebar_collapsed = False
++                im.set_item_tooltip("Expand the navigation rail to show the step names.")
+                 self.remember("sidebar_toggle")
+                 im.spacing()
+                 im.separator()
+@@ -440,11 +447,13 @@ class BurstAnalysisGui:
+                 max_val = getattr(self.tool, "_status_progress_maximum", 100)
+                 fraction = float(val) / float(max_val) if max_val > 0 else 0.0
+                 im.progress_bar(fraction, (180.0, 16.0), f"{int(fraction * 100)}%")
++                im.set_item_tooltip("Progress of the running background task.")
+ 
+                 if getattr(self.tool, "_status_cancel_visible", False):
+                     im.same_line()
+                     if im.button("Cancel##task_cancel"):
+                         active_task.cancel()
++                    im.set_item_tooltip("Cancel the running background task.")
+ 
+             # Right: summary chips
+             ctx = self.tool.workflow_context
+@@ -459,11 +468,15 @@ class BurstAnalysisGui:
+ 
+             if chips:
+                 chip_str = " | ".join(chips)
+-                avail_w = im.get_content_region_avail()[0]
+                 text_w = len(chip_str) * 7.5 + 20.0
+-                if avail_w > text_w:
++                # Room on the row comes from get_line_avail(): after an item
++                # the cursor is back at the row start, so GetContentRegionAvail
++                # here always reads the full bar width and pushed the chips off
++                # the right edge, clipped.
++                line_w = im.get_line_avail()
++                if 0.0 < line_w and line_w > text_w:
+                     im.same_line()
+-                    im.dummy((avail_w - text_w, 1.0))
++                    im.dummy((line_w - text_w, 1.0))
+                     im.same_line()
+                     im.text_disabled(f"{chip_str}  ")
+ 
