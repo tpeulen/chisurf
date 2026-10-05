@@ -42,7 +42,6 @@ VISIBLE_CHILDREN = {
 
 #: Hidden plugins with a GUI that no hub hosts, with the reason.
 UNHOSTED = {
-    "traj_energy": "a second manifest for the Energy Calculator app Trajectory Tools hosts.",
     "project_browser": "File › Project › Project Browser opens it.",
 }
 

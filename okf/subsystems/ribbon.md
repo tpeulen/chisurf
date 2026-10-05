@@ -67,7 +67,7 @@ Hub scopes that decide where a new tool goes:
 
 ## Where to pick this up
 
-1. **Burst Analysis and ALEX Suite are Qt-only hubs.** The membership test reads their
+1. **Burst Analysis and ALEX Suite are Qt-only hubs** (open item on the agent board: T-20261005-QTLEFT, with the full list of what still opens Qt). The membership test reads their
    children from imports in `gui/tool.py`, which works but is the weakest declaration.
    An emtk port (or even a plain `PANELS` table) would make them data like the rest.
    Burst Analysis also hosts Accurate FRET and Photon-by-photon kinetics, whose ribbon
@@ -78,13 +78,9 @@ Hub scopes that decide where a new tool goes:
    (File tools for the converter, Structure Tools for ProteinMC).
 3. **`TTTR:Correlate` and `TTTR:Generate Decay`** are broken script plugins, disabled
    by default and now `menu_hidden`. When they gain apps they belong in TTTR Tools.
-4. **`traj_energy`** is a second manifest for the Energy Calculator app that
-   Trajectory Tools hosts (as `traj_energy_calculator`). One of the two manifests
-   should go. Deleting a plugin directory is a decision for the owner, so it is
-   allow-listed for now.
-5. **Panel titles are clipped** at the ribbon's default height in offscreen grabs
+4. **Panel titles are clipped** at the ribbon's default height in offscreen grabs
    (the group caption's descenders). This was already true before the regrouping.
-6. **Group order inside a tab** is the order of first appearance, which is
+5. **Group order inside a tab** is the order of first appearance, which is
    alphabetical by address (Calculators, Photon data, System, Views). If an order
    should be authored, add a per-tab group order beside `TAB_ORDER` and pin it in
    the layout test.

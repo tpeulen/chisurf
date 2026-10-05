@@ -22,7 +22,6 @@ the [modelling plugins](/plugins/modelling.md) plus the
 | `traj_save_topology` | Structure:Trajectory:Save Topol | Saves topology or first-frame structure files. |
 | `traj_remove_clashes` | Structure:Trajectory:Remove Clashed | Removes frames with steric clashes. |
 | `potential_energy` | Structure:Trajectory:Energy Calculator | Computes potential-energy components for structures and trajectories. |
-| `traj_energy` | Structure:Trajectory:Trajectory Energy | Calculates and analyzes trajectory energy time series. |
 | `fret_trajectory` | Structure:Trajectory:FRET | Calculates FRET observables from molecular-dynamics trajectories. |
 
 Most entries are thin Qt widgets with manifests; `traj_tools` is the

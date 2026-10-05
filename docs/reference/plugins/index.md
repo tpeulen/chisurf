@@ -217,7 +217,6 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [Remove Clashed](traj_remove_clashes.md) *(hidden)* | Remove frames containing steric clashes from trajectories. |
 | [Rotate/Translate](traj_rotate_translate.md) *(hidden)* | Apply rigid-body rotation and translation to trajectories. |
 | [Save Topol](traj_save_topology.md) *(hidden)* | Save topology or first-frame structure files from trajectories. |
-| [Trajectory Energy](traj_energy.md) *(hidden)* | Calculate and analyze trajectory energy time series. |
 
 ## TTTR
 

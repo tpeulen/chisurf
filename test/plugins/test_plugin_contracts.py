@@ -171,7 +171,6 @@ def test_trajectory_manifests_drive_plugin_discovery():
         "traj_align": "Structure:Trajectory:Align",
         "traj_convert": "Structure:Trajectory:Convert",
         "traj_energy_calculator": "Structure:Trajectory:Energy Calculator",
-        "traj_energy": "Structure:Trajectory:Trajectory Energy",
         "traj_fret": "Structure:Trajectory:FRET",
         "traj_join": "Structure:Trajectory:Join",
         "traj_remove_clashes": "Structure:Trajectory:Remove Clashed",
