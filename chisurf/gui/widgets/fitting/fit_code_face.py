@@ -321,55 +321,61 @@ class FitCodeFace:
             return doc.path
         return f"{doc.path}   Ln {line + 1}, Col {column + 1}"
 
+    #: Toolbar columns: 🤖, ←, →, "File:", the file list (stretch 2), "Jump to:",
+    #: the definitions (stretch 1), Save/Apply. 0 fits its content.
+    TOOLBAR_COLUMNS = (0, 0, 0, 0, 2, 0, 1, 0)
+
     def _draw_toolbar(self) -> None:
         from emtk import im
 
+        if not im.begin_grid("##code-toolbar", self.TOOLBAR_COLUMNS):
+            return
         if im.small_button(("● " if self.agent_open else "") + "🤖"):
             self.toggle_agent()
         im.set_item_tooltip("Show or hide the coding assistant beside the editor.")
         self._remember("agent")
-        im.same_line()
+        im.next_cell()
         im.begin_disabled(not self.can_go_back())
         if im.small_button("←"):
             self.back()
         im.end_disabled()
         im.set_item_tooltip("Back to where the caret was before the last jump.")
         self._remember("back")
-        im.same_line()
+        im.next_cell()
         im.begin_disabled(not self.can_go_forward())
         if im.small_button("→"):
             self.forward()
         im.end_disabled()
         im.set_item_tooltip("Forward again, after going back.")
         self._remember("forward")
-        im.same_line()
+        im.next_cell()
+        im.align_text_to_frame_padding()
         im.text("File:")
-        im.same_line()
+        im.next_cell()
         names = [pathlib.Path(p).name for p in self.files]
         doc = self.active_doc
         current = self.files.index(doc.path) if doc is not None and doc.path in self.files else -1
-        im.set_next_item_width(max(140.0, im.get_content_region_avail()[0] * 0.30))
         changed, picked = im.combo("##code-file", current, names or ["(no files)"])
         im.set_item_tooltip("The model's source files and view.json specs; pick one to open it.")
         self._remember("file")
         if changed and 0 <= picked < len(self.files):
             self.open_file(self.files[picked])
-        im.same_line()
+        im.next_cell()
+        im.align_text_to_frame_padding()
         im.text("Jump to:")
-        im.same_line()
+        im.next_cell()
         labels = ["Select..."] + [
             ("  " if getattr(s, "kind", "") == "method" else "")
             + str(getattr(s, "display_name", getattr(s, "name", "")))
             for s in self.symbols
         ]
-        im.set_next_item_width(max(140.0, im.get_content_region_avail()[0] - 110.0))
         changed, picked = im.combo("##code-jump", 0, labels)
         im.set_item_tooltip("The classes and functions in the open file; pick one to go to it.")
         self._remember("jump")
         if changed and picked > 0:
             symbol = self.symbols[picked - 1]
             self.goto_line(max(0, int(getattr(symbol, "line", 1)) - 1))
-        im.same_line()
+        im.next_cell()
         if im.small_button("Save/Apply"):
             self.apply()
         im.set_item_tooltip(
@@ -377,26 +383,32 @@ class FitCodeFace:
             "uses the edited code. A read-only installation saves a copy in the settings folder."
         )
         self._remember("apply")
+        im.end_grid()
 
     def _draw_find_bar(self) -> None:
         from emtk import im
 
+        if not im.begin_grid("##code-find-bar", (0, 1, 0, 0)):
+            return
+        im.align_text_to_frame_padding()
         im.text("Find:")
-        im.same_line()
-        im.set_next_item_width(220.0)
+        im.next_cell()
         changed, value = im.input_text("##code-find", self.find_text)
         doc = self.active_doc
         if changed:
             self.find_text = value
             if doc is not None:
                 doc.editor.set_find_text(value)
-        im.same_line()
+        im.next_cell()
         if im.small_button("Next") and doc is not None:
             doc.editor.set_find_text(self.find_text)
             doc.editor.find_next()
-        im.same_line()
+        im.set_item_tooltip("Go to the next match in the open file.")
+        im.next_cell()
         if im.small_button("×##close-find"):
             self.find_open = False
+        im.set_item_tooltip("Close the find bar (Escape).")
+        im.end_grid()
 
     def _draw_documents(self) -> None:
         from emtk import im
