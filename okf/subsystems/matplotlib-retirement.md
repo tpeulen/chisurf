@@ -18,8 +18,8 @@ in order:
    before-PNG is taken with the matplotlib code: render the result with
    realistic data, `savefig`, port, re-render, compare the control inventory
    (see "How a figure port is proven" below).
-   - `plugins/tttr/audifier/lifetime_analysis.py`, `plugins/tttr/trace_browser/gui/model.py`:
-     both carry another lane's uncommitted edits (none in the plot code);
+   - `plugins/tttr/trace_browser/gui/model.py`:
+     carries another lane's uncommitted edits (none in the plot code);
      port your hunks only (temp index + `git merge-file` against the saved
      foreign diff), as H2MM's `save_plot` was.
    - ndXplorer `export/publication_figure.py` -- **blocked on a vector
@@ -179,3 +179,10 @@ labels sit a fixed 10 px above the bar.
   its click test before/after; a name without `.png` gets the suffix. Fit
   padding fixed in emtk (`6df5352`): implot pads by a fraction of *half* the
   range, so 0.1 is matplotlib's 5% a side. 10 -> 9.
+- 2026-10-05 audifier lifetime waterfalls (single and multi-channel). **Both
+  had drawn lifetimes in the wrong place**: the log-spaced tau grid was spread
+  linearly by `imshow` and then given a log axis, so a 1 ns peak showed near
+  30 ns. Now columns are uniform in log10 tau with decade ticks. Also fixed: the
+  colour-bar label typo ("log₁₁" -> ln(1 + counts)) and the multi-channel
+  colour bar overlapping the panels (one bar per panel, shared levels). A
+  heatmap panel now fills its frame (emtk `fdaafdd`). 9 -> 8.

@@ -274,6 +274,24 @@ def compute_lifetime_waterfall(
     return A, macro_centers, tau
 
 
+def _waterfall_panel(ax, A, macro_t_s, tau, *, log_tau, levels=None, colorbar=None):
+    """Draw one waterfall: macro time downwards, lifetime across.
+
+    On a log lifetime axis the columns are placed uniformly in ``log10(tau)``
+    -- the grid :func:`compute_lifetime_waterfall` builds is log-spaced -- and
+    the ticks name the decades. (An image spread linearly over ``tau`` and then
+    given a log axis puts every column in the wrong place.)
+    """
+    tau = np.asarray(tau, dtype=float)
+    x0, x1 = (np.log10(tau[0]), np.log10(tau[-1])) if log_tau else (tau[0], tau[-1])
+    # (left, right, bottom, top): the first macro-time bin at the top.
+    ax.heatmap(A, colormap="viridis", extent=(x0, x1, macro_t_s[-1], macro_t_s[0]),
+               levels=levels, colorbar=colorbar)
+    if log_tau:
+        decades = np.arange(np.ceil(x0), np.floor(x1) + 1)
+        ax.set_xticks(decades, [f"1e{int(d)}" for d in decades])
+
+
 def plot_lifetime_waterfall(
     A: np.ndarray,
     macro_t_s: np.ndarray,
@@ -282,7 +300,7 @@ def plot_lifetime_waterfall(
     log_tau: bool = True,
     log_amplitude: bool = True,
     title: str = "Lifetime Waterfall",
-) -> None:
+):
     """
     Plot a lifetime waterfall with explicit axis semantics.
 
@@ -300,6 +318,11 @@ def plot_lifetime_waterfall(
         Use logarithmic scaling for amplitudes
     title : str, default "Lifetime Waterfall"
         Plot title
+
+    Returns
+    -------
+    emtk.figure.Axes
+        The panel; ``.figure.save("waterfall.png")`` writes it.
     """
     # Validate inputs
     A = np.asarray(A, dtype=np.float64)
@@ -321,36 +344,14 @@ def plot_lifetime_waterfall(
         # Use log1p for better handling of zeros
         plot_data = np.log1p(plot_data)
 
-    # Create the plot
-    import matplotlib.pyplot as plt
+    from emtk.figure import Figure
 
-    plt.figure(figsize=(10, 6))
-
-    # Set extent for imshow: [left, right, bottom, top]
-    # x-axis: lifetime (tau), y-axis: macro time
-    extent = [tau[0], tau[-1], macro_t_s[-1], macro_t_s[0]]
-
-    # Use a perceptually uniform colormap
-    im = plt.imshow(plot_data, aspect="auto", extent=extent, cmap="viridis", origin="upper")
-
-    # Set axis labels with units
-    plt.xlabel("Lifetime τ (s)")
-    plt.ylabel("Macro time (s)")
-    plt.title(title)
-
-    # Use log scale for lifetime axis if requested
-    if log_tau:
-        plt.xscale("log")
-
-    # Add colorbar with label
-    cbar = plt.colorbar(im)
-    if log_amplitude:
-        cbar.set_label("Log amplitude (log₁₁(counts))")
-    else:
-        cbar.set_label("Amplitude (counts)")
-
-    plt.tight_layout()
-    plt.show()
+    ax = Figure(size=(1000, 600)).ax()
+    label = "ln(1 + counts)" if log_amplitude else "Amplitude (counts)"
+    _waterfall_panel(ax, plot_data, macro_t_s, tau, log_tau=log_tau, colorbar=label)
+    ax.set_labels(x="Lifetime τ (s)", y="Macro time (s)")
+    ax.set_title(title)
+    return ax
 
 
 def plot_lifetime_waterfall_multichannel(
@@ -363,9 +364,11 @@ def plot_lifetime_waterfall_multichannel(
     tau_max: float,
     n_tau: int = 200,
     lam: float = 1e-2,
-) -> None:
+):
     """
     Plot lifetime waterfalls for multiple routing channels as separate panels.
+
+    Returns the :class:`emtk.figure.Figure` (``.save("waterfalls.png")``).
 
     Parameters
     ----------
@@ -406,12 +409,6 @@ def plot_lifetime_waterfall_multichannel(
 
     # Create subplots (stacked vertically)
     n_channels = len(channels)
-    import matplotlib.pyplot as plt
-
-    fig, axes = plt.subplots(n_channels, 1, figsize=(10, 3 * n_channels), sharex=True, sharey=True)
-
-    if n_channels == 1:
-        axes = [axes]  # Ensure axes is always a list
 
     # Process each channel
     all_tau = None
@@ -448,65 +445,25 @@ def plot_lifetime_waterfall_multichannel(
     if all_tau is None:
         raise ValueError("No channels could be processed successfully")
 
-    # Create shared colorbar
-    fig.subplots_adjust(right=0.85)
-    cbar_ax = fig.add_axes([0.87, 0.15, 0.02, 0.7])
+    from emtk.figure import Figure
 
+    fig = Figure(n_channels, 1, size=(1000, 300 * n_channels))
+    fig.title = "Lifetime Waterfall - Multi-Channel"
     for i, ch in enumerate(channels):
-        ax = axes[i]
+        ax = fig.ax(i, 0)
         data_tuple = channel_data[i]
-
         if data_tuple is None:
-            ax.text(
-                0.5,
-                0.5,
-                f"Channel {ch}\n(processing failed)",
-                ha="center",
-                va="center",
-                transform=ax.transAxes,
-            )
-            ax.set_ylabel("Macro time (s)")
+            ax.set_title(f"Channel {ch} (processing failed)")
+            ax.set_labels(y="Macro time (s)")
             continue
-
         A, macro_t_s, tau = data_tuple
-        plot_data = np.log1p(A)
-
-        # Plot with shared extent
-        extent = [tau[0], tau[-1], macro_t_s[-1], macro_t_s[0]]
-        im = ax.imshow(
-            plot_data,
-            aspect="auto",
-            extent=extent,
-            cmap="viridis",
-            origin="upper",
-            vmin=0,
-            vmax=vmax,
-        )
-
-        ax.set_ylabel(f"Channel {ch}\nMacro time (s)")
-        ax.set_xscale("log")
-
-        # Add channel label
-        ax.text(
-            0.02,
-            0.98,
-            f"Ch {ch}",
-            transform=ax.transAxes,
-            va="top",
-            ha="left",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-        )
-
-    # Set common x-axis label
-    axes[-1].set_xlabel("Lifetime τ (s)")
-
-    # Add colorbar
-    cbar = fig.colorbar(im, cax=cbar_ax)
-    cbar.set_label("Log amplitude (log₁₁(counts))")
-
-    plt.suptitle("Lifetime Waterfall - Multi-Channel", fontsize=14)
-    plt.tight_layout()
-    plt.show()
+        # One shared colour scale, its bar beside every panel (all identical).
+        _waterfall_panel(ax, np.log1p(A), macro_t_s, tau, log_tau=True, levels=(0.0, vmax),
+                         colorbar="ln(1 + counts)")
+        ax.set_title(f"Ch {ch}")
+        ax.set_labels(y="Macro time (s)")
+    fig.ax(n_channels - 1, 0).set_labels(x="Lifetime τ (s)")
+    return fig
 
 
 # Import math for ceil function
