@@ -4,8 +4,8 @@ import json
 from collections import OrderedDict
 from pathlib import Path
 
-import matplotlib.colors
 import numpy as np
+from emtk.colormaps import to_rgb
 
 import chisurf as cs
 import chisurf.core.data
@@ -911,7 +911,7 @@ class LinePlot(plotbase.Plot):
 
         # Fitting-region selector
         if cs.core.settings.gui["plot"]["enable_region_selector"]:
-            ca = list(matplotlib.colors.hex2color(colors["region_selector"]))
+            ca = list(to_rgb(colors["region_selector"]))
             co = [ca[0] * 255, ca[1] * 255, ca[2] * 255, colors["region_selector_alpha"]]
             region = plots["main_plot"].region((0.0, 1.0), brush=co)
             self.region = region

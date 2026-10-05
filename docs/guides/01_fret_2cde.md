@@ -84,7 +84,7 @@ From the guided burst workflow:
 bursts = workflow.select_bursts(...)
 res = bursts.two_cde(donor="green", acceptor="red", tau=100e-6, variant="fret")
 res.dynamic_fraction(threshold=12.0)   # fraction of bursts flagged dynamic
-res.plot()
+res.plot().figure.save("2cde.png")     # or just res.plot() in a notebook
 ```
 
 ## Result

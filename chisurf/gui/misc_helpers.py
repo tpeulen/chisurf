@@ -64,7 +64,6 @@ def warmup_imports():
         _cp.get_backend()  # warms the plotting backend (pyqtgraph today)
         import scipy.linalg as _sl  # noqa: F401
         import scipy.stats as _sstats  # noqa: F401
-        from matplotlib import colors as _mcolors  # noqa: F401
 
         import chisurf.gui.widgets.fitting as _fitwidgets  # noqa: F401
 

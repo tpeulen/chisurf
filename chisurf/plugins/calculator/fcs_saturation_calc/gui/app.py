@@ -47,7 +47,7 @@ PLOT_TABS = {
 
 def _colour(value) -> tuple:
     """A series colour (a name or ``#rrggbb``) as the 0..1 RGBA the plot takes."""
-    from matplotlib.colors import to_rgba
+    from emtk.colormaps import to_rgba
 
     return tuple(float(c) for c in to_rgba(value))
 

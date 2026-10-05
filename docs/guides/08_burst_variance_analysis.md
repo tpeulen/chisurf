@@ -95,7 +95,9 @@ deviation 0.161; the static line at $p = 0.5$, $n = 5$ is 0.2236
 
 From the guided workflow: `bursts.bva("green", "red", photons_per_slice=5)`
 returns a `Bva` result with `.dynamic_fraction` and `.plot()` (0.416 for
-`m000`–`m002.spc` searched with `min_photons=20`).
+`m000`–`m002.spc` searched with `min_photons=20`). `.plot()` returns a figure
+panel that needs no GUI: `bursts.bva(...).plot().figure.save("bva.png")` writes
+the PNG, and a notebook shows it inline.
 
 ## Result
 

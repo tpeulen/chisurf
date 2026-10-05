@@ -309,20 +309,12 @@ def is_clsm_compatible(tttr_obj: Any, file_path=None) -> bool:
 
 
 def get_magma_lut(n: int = 256) -> np.ndarray | None:
-    """Load the Magma colormap lookup table."""
+    """Load the Magma colormap lookup table, ``(n, 3)`` uint8."""
     try:
-        import matplotlib
+        from emtk import colormaps
 
-        # ``matplotlib.cm.get_cmap`` is gone in matplotlib 3.9; the registry exists since 3.5.
-        registry = getattr(matplotlib, "colormaps", None)
-        if registry is not None:
-            m = registry["magma"]
-        else:  # pragma: no cover - matplotlib older than 3.5
-            import matplotlib.cm as cm
-
-            m = cm.get_cmap("magma")
-        arr = (m(np.linspace(0, 1, max(2, int(n))))[:, :3] * 255).astype(np.uint8)
-        return arr
+        m = colormaps.get("magma")
+        return m(np.linspace(0, 1, max(2, int(n))), bytes=True)[:, :3]
     except Exception:
         _log.warning("The magma colormap is not available", exc_info=True)
         return None

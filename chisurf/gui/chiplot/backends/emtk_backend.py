@@ -172,18 +172,17 @@ def _whiskers(xs, height=None, top=None, bottom=None) -> tuple[np.ndarray, np.nd
 def _lut(colormap, size: int = 256) -> np.ndarray:
     """Return ``colormap`` as an ``(size, 4)`` uint8 RGBA lookup table.
 
-    matplotlib when it is installed, a grey ramp when it is not: a heatmap in
-    the wrong colours still shows the data, and refusing to draw one because a
-    plotting nicety is missing would not.
+    The tables are emtk's (:mod:`emtk.colormaps`); an unknown name draws a
+    grey ramp: a heatmap in the wrong colours still shows the data, and
+    refusing to draw one over a colormap name would not.
     """
-    name = getattr(colormap, "name", colormap)
-    table = np.linspace(0.0, 1.0, size)
-    try:
-        import matplotlib
+    from emtk import colormaps
 
-        colours = matplotlib.colormaps[str(name)](table)
-        return (np.asarray(colours) * 255.0).astype(np.uint8)
-    except Exception:
+    name = getattr(colormap, "name", colormap)
+    try:
+        return np.asarray(colormaps.lookup_table(str(name), size), dtype=np.uint8)
+    except KeyError:
+        table = np.linspace(0.0, 1.0, size)
         grey = (table * 255.0).astype(np.uint8)
         return np.stack([grey, grey, grey, np.full(size, 255, np.uint8)], axis=1)
 

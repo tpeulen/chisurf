@@ -54,6 +54,19 @@ from chisurf.core.datastore import (
 # Full micro-time acceptance when a stream declares no window (SPC is 12-bit).
 _FULL_MICROTIME = (0, 4095)
 
+
+def _panel(ax: Any, size: tuple[int, int]) -> Any:
+    """The panel to draw into: *ax*, or the only panel of a new figure.
+
+    Figures are :mod:`emtk.figure` -- written to PNG with ``ax.figure.save(path)``
+    and shown inline by Jupyter -- so the workflow draws with no GUI toolkit.
+    """
+    if ax is not None:
+        return ax
+    from emtk.figure import Figure
+
+    return Figure(size=size).ax()
+
 # Burst-search method name -> (BurstFilterMode value, filter_active).
 _SEARCH_METHODS = {
     "burst": ("burst", True),  # Seidel sliding-window search (honours min_photons)
@@ -227,28 +240,27 @@ class Bva:
         return float(np.mean(stds[valid] > expected[valid]))
 
     def plot(self, ax: Any = None) -> Any:
-        """Draw the BVA scatter with the shot-noise static line."""
-        import matplotlib.pyplot as plt
+        """Draw the BVA scatter with the shot-noise static line.
 
+        Returns the :mod:`emtk.figure` panel; ``.figure.save("bva.png")`` writes it.
+        """
         from chisurf.plugins.burst.burst_bva.core.computation import (
             compute_static_bva_line,
         )
 
-        if ax is None:
-            _, ax = plt.subplots(figsize=(6, 5))
+        ax = _panel(ax, (600, 500))
         ax.scatter(
-            self.table["Proximity Ratio Mean"],
-            self.table["Proximity Ratio Std"],
-            s=8,
-            alpha=0.25,
+            numeric_column(self.table, "Proximity Ratio Mean"),
+            numeric_column(self.table, "Proximity Ratio Std"),
+            size=2.5,
+            alpha=0.35,
             color="#1f77b4",
             label="bursts",
         )
         grid = np.linspace(0.01, 0.99, 100)
         static_mean, static_std = compute_static_bva_line(grid, self.photons_per_slice)
-        ax.plot(static_mean, static_std, color="crimson", lw=2, label="shot-noise limit")
-        ax.set_xlabel("Proximity ratio (apparent FRET)")
-        ax.set_ylabel("Proximity ratio (std)")
+        ax.line(static_mean, static_std, color="crimson", width=2, label="shot-noise limit")
+        ax.set_labels(x="Proximity ratio (apparent FRET)", y="Proximity ratio (std)")
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 0.6)
         ax.set_title("Burst Variance Analysis")
@@ -295,26 +307,21 @@ class TwoCde:
 
     def plot(self, ax: Any = None) -> Any:
         """Draw the 2CDE histogram (and E-vs-2CDE scatter when E is available)."""
-        import matplotlib.pyplot as plt
-
         vals = numeric_column(self.table, self.column)
         finite = np.isfinite(vals)
         e_col = next(
             (c for c in ("Proximity Ratio Mean", "E", "Efficiency") if c in self.table), None
         )
-        if ax is None:
-            _, ax = plt.subplots(figsize=(6, 5))
+        ax = _panel(ax, (600, 500))
         if e_col is not None:
             e = numeric_column(self.table, e_col)
             m = finite & np.isfinite(e)
-            ax.scatter(e[m], vals[m], s=8, alpha=0.25, color="#1f77b4")
-            ax.set_xlabel("Proximity ratio (apparent FRET)")
-            ax.set_ylabel(self.column)
+            ax.scatter(e[m], vals[m], size=2.5, alpha=0.35, color="#1f77b4")
+            ax.set_labels(x="Proximity ratio (apparent FRET)", y=self.column)
             ax.set_xlim(0, 1)
         else:
             ax.hist(vals[finite], bins=40, color="#1f77b4", alpha=0.8)
-            ax.set_xlabel(self.column)
-            ax.set_ylabel("bursts")
+            ax.set_labels(x=self.column, y="bursts")
         ax.set_title(self.column)
         return ax
 
@@ -388,14 +395,11 @@ class Recurrence:
         ax: Any = None,
     ) -> Any:
         """Overlay the recurrence FRET histogram on the overall histogram."""
-        import matplotlib.pyplot as plt
-
         centers, rec, overall = self.histogram(e_range, dt_range_s)
-        if ax is None:
-            _, ax = plt.subplots(figsize=(6, 5))
+        ax = _panel(ax, (600, 500))
         w = centers[1] - centers[0] if centers.size > 1 else 0.02
-        ax.bar(centers, overall, width=w, color="0.8", label="all bursts")
-        ax.bar(
+        ax.bars(centers, overall, width=w, color="0.8", label="all bursts")
+        ax.bars(
             centers,
             rec,
             width=w,
@@ -403,9 +407,8 @@ class Recurrence:
             alpha=0.7,
             label=f"recurrence E∈[{e_range[0]:g}, {e_range[1]:g}]",
         )
-        ax.axvspan(e_range[0], e_range[1], color="crimson", alpha=0.08)
-        ax.set_xlabel("FRET efficiency (proximity ratio)")
-        ax.set_ylabel("probability density")
+        ax.vspan(e_range[0], e_range[1], color="crimson", alpha=0.08)
+        ax.set_labels(x="FRET efficiency (proximity ratio)", y="probability density")
         ax.set_title("Recurrence analysis (RASP)")
         ax.legend()
         return ax
@@ -464,44 +467,32 @@ class H2mm:
 
     def plot_states(self, ax: Any = None) -> Any:
         """Draw per-state FRET efficiency, labelled with photon populations."""
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=(5, 4))
+        ax = _panel(ax, (500, 400))
         order = np.argsort(self.fret)
-        bars = ax.bar(range(len(order)), self.fret[order], color="#2ca02c", width=0.6)
-        for rect, pop in zip(bars, self.populations[order]):
-            ax.text(
-                rect.get_x() + rect.get_width() / 2,
-                rect.get_height() + 0.02,
-                f"{pop:.0%}",
-                ha="center",
-                va="bottom",
-            )
-        ax.set_xticks(range(len(order)))
-        ax.set_xticklabels([f"state {i}" for i in range(len(order))])
-        ax.set_ylabel("Apparent FRET efficiency E")
+        positions = np.arange(len(order))
+        ax.bars(positions, self.fret[order], color="#2ca02c", width=0.6)
+        for x, height, pop in zip(positions, self.fret[order], self.populations[order]):
+            ax.text(float(x), float(height), f"{pop:.0%}", offset=(0.0, -10.0))
+        ax.set_xticks(positions, [f"state {i}" for i in range(len(order))])
+        ax.set_xlim(-0.6, len(order) - 0.4)
+        ax.set_labels(y="Apparent FRET efficiency E")
         ax.set_ylim(0, 1)
         ax.set_title("FRET states")
         return ax
 
     def plot_model_selection(self, ax: Any = None) -> Any:
         """Draw BIC and ICL versus the number of states (model selection)."""
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=(5, 4))
+        ax = _panel(ax, (500, 400))
         scan = self.scan
         n_states = numeric_column(scan, "n_states")
         order = np.argsort(n_states)
         n_states = n_states[order]
         bic = numeric_column(scan, "bic")[order]
         icl = numeric_column(scan, "icl")[order]
-        ax.plot(n_states, bic, "o-", label="BIC", color="#1f77b4")
-        ax.plot(n_states, icl, "s--", label="ICL", color="#ff7f0e")
-        ax.axvline(self.n_states, color="grey", ls=":", label=f"chosen ({self.n_states})")
-        ax.set_xlabel("number of states")
-        ax.set_ylabel("information criterion")
+        ax.line(n_states, bic, marker="o", label="BIC", color="#1f77b4")
+        ax.line(n_states, icl, marker="s", dash="--", label="ICL", color="#ff7f0e")
+        ax.vline(self.n_states, color="grey", dash=":", label=f"chosen ({self.n_states})")
+        ax.set_labels(x="number of states", y="information criterion")
         ax.set_title("Model selection")
         ax.set_xticks(n_states.tolist())
         ax.legend()
@@ -509,71 +500,57 @@ class H2mm:
 
     def plot_transitions(self, ax: Any = None) -> Any:
         """Draw the state-to-state transition-rate matrix (1/s)."""
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=(5, 4))
+        ax = _panel(ax, (500, 400))
         order = np.argsort(self.fret)
         rates = self.analysis.trans_rates[np.ix_(order, order)]
-        im = ax.imshow(rates, cmap="magma", origin="upper")
+        ax.heatmap(rates, colormap="magma", colorbar="1/s")
         labels = [f"E={self.fret[i]:.2f}" for i in order]
-        ax.set_xticks(range(len(order)))
-        ax.set_yticks(range(len(order)))
-        ax.set_xticklabels(labels, rotation=45, ha="right")
-        ax.set_yticklabels(labels)
-        ax.set_xlabel("to state")
-        ax.set_ylabel("from state")
+        ax.set_xticks(range(len(order)), labels)
+        ax.set_yticks(range(len(order)), labels)
+        ax.set_labels(x="to state", y="from state")
         ax.set_title("Transition rates (1/s)")
+        # The diagonal is the stay rate, not a transition: left unlabelled.
         for r in range(len(order)):
             for c in range(len(order)):
                 if r != c:
-                    ax.text(
-                        c,
-                        r,
-                        f"{rates[r, c]:.0f}",
-                        ha="center",
-                        va="center",
-                        color="white",
-                        fontsize=8,
-                    )
-        ax.figure.colorbar(im, ax=ax, fraction=0.046)
+                    ax.text(c, r, f"{rates[r, c]:.0f}", color="white")
         return ax
 
     def plot_dwell_times(self, ax: Any = None) -> Any:
         """Draw per-state dwell-time distributions (milliseconds)."""
-        import matplotlib.pyplot as plt
+        from emtk import colormaps
 
-        if ax is None:
-            _, ax = plt.subplots(figsize=(5, 4))
+        ax = _panel(ax, (500, 400))
         base_ms = self.analysis.base_time_s * 1e3
         order = np.argsort(self.fret)
-        colors = plt.cm.viridis(np.linspace(0, 0.85, len(order)))
+        colors = colormaps.get("viridis")(np.linspace(0, 0.85, len(order)))
         for color, i in zip(colors, order):
             durations = np.asarray(self.analysis.dwell_times.get(i, [])) * base_ms
             durations = durations[durations > 0]
             if durations.size:
                 ax.hist(
-                    durations, bins=25, histtype="step", color=color, label=f"E={self.fret[i]:.2f}"
+                    durations, bins=25, step=True, color=tuple(color), label=f"E={self.fret[i]:.2f}"
                 )
-        ax.set_xlabel("dwell time (ms)")
-        ax.set_ylabel("count")
+        ax.set_labels(x="dwell time (ms)", y="count")
         ax.set_title("Dwell-time distributions")
         ax.legend()
         return ax
 
-    def plot(self, axes: Any = None) -> Any:
-        """Draw a 2x2 H2MM dashboard: states, selection, transitions, dwells."""
-        import matplotlib.pyplot as plt
+    def plot(self, figure: Any = None) -> Any:
+        """Draw a 2x2 H2MM dashboard: states, selection, transitions, dwells.
 
-        if axes is None:
-            _, axes = plt.subplots(2, 2, figsize=(11, 8))
-        flat = np.asarray(axes).ravel()
-        self.plot_states(flat[0])
-        self.plot_model_selection(flat[1])
-        self.plot_transitions(flat[2])
-        self.plot_dwell_times(flat[3])
-        flat[0].figure.tight_layout()
-        return axes
+        Returns the :class:`emtk.figure.Figure` (``.save("h2mm.png")``); a 2x2
+        figure may be passed in to draw into.
+        """
+        if figure is None:
+            from emtk.figure import Figure
+
+            figure = Figure(2, 2, size=(1100, 800))
+        self.plot_states(figure.ax(0, 0))
+        self.plot_model_selection(figure.ax(0, 1))
+        self.plot_transitions(figure.ax(1, 0))
+        self.plot_dwell_times(figure.ax(1, 1))
+        return figure
 
 
 @dataclass
@@ -627,15 +604,11 @@ class IrfBackground:
 
     def plot(self, ax: Any = None) -> Any:
         """Draw the scatter-derived IRF of every detector on a shared time axis."""
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            _, ax = plt.subplots(figsize=(6, 4))
+        ax = _panel(ax, (600, 400))
         for d in self.per_detector.values():
             if d.irf.sum() > 0:
-                ax.plot(d.time_ns, d.irf, lw=1.5, label=f"{d.name} (bg {d.background_khz:.2f} kHz)")
-        ax.set_xlabel("Micro time (ns)")
-        ax.set_ylabel("IRF (normalised)")
+                ax.line(d.time_ns, d.irf, width=1.5, label=f"{d.name} (bg {d.background_khz:.2f} kHz)")
+        ax.set_labels(x="Micro time (ns)", y="IRF (normalised)")
         ax.set_title("Non-burst IRF & background")
         ax.legend()
         return ax

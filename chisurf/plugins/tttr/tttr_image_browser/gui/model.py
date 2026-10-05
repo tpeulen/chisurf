@@ -488,7 +488,7 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
 
     def do_export_docx(self, path: str) -> None:
         """Write the DOCX report of the listed files (name, rating, annotation, mosaic) to *path*."""
-        from matplotlib import colormaps
+        from emtk import colormaps
         from PIL import Image
 
         from ..core.image import get_magma_lut
@@ -501,7 +501,7 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         document = Document()
         document.add_heading("TTTR Image Browser Export", level=1)
         skipped = 0
-        cmap = colormaps[self.colormap] if self.colormap in colormaps else None
+        cmap = colormaps.get(self.colormap) if colormaps.has(self.colormap) else None
         for entry in entries:
             source = entry["id"]
             document.add_heading(pathlib.Path(source).name, level=2)

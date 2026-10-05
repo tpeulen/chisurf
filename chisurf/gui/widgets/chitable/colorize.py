@@ -80,10 +80,9 @@ def _lut_color(lut: np.ndarray, fraction: float, alpha: float) -> QtGui.QColor:
 def resolve_lut(name: str) -> np.ndarray | None:
     """Resolve a colormap name to an ``(N, 3)`` ``uint8`` lookup table.
 
-    Tries the chiplot colormap registry first (so a table honours whatever
-    backend the plots use), then matplotlib. Returns ``None`` when neither can
-    supply the map, in which case the caller falls back to the built-in HSV
-    ramp — a table must never drag a plotting backend in just to paint a cell.
+    The tables are emtk's (:mod:`emtk.colormaps`), which need no plotting
+    backend. Returns ``None`` for an unknown name, in which case the caller
+    falls back to the built-in HSV ramp.
 
     Parameters
     ----------
@@ -96,24 +95,13 @@ def resolve_lut(name: str) -> np.ndarray | None:
     """
     if not name:
         return None
-    try:
-        from chisurf.gui.chiplot.style import colormap
+    from emtk import colormaps
 
-        cmap = colormap.get(name)
-        lut = cmap.getLookupTable(nPts=256)
-        arr = np.asarray(lut, dtype=np.uint8)
-        if arr.ndim == 2 and arr.shape[1] >= 3:
-            return arr[:, :3]
-    except Exception:
-        pass
     try:
-        import matplotlib.cm as mpl_cm
-
-        cmap = mpl_cm.get_cmap(name, 256)
-        arr = (np.asarray([cmap(i / 255.0) for i in range(256)])[:, :3] * 255).astype(np.uint8)
-        return arr
-    except Exception:
+        table = colormaps.lookup_table(name, 256)
+    except KeyError:
         return None
+    return np.asarray(table, dtype=np.uint8)[:, :3]
 
 
 @dataclass

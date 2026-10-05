@@ -1,5 +1,5 @@
-import matplotlib
 import numpy as np
+from emtk.colormaps import to_rgb
 import pyqtgraph as pg
 
 from chisurf.gui import QtCore, QtGui
@@ -71,7 +71,7 @@ def create_plots(page, colors):
         _item.setDownsampling(auto=True, mode="peak")
         _item.setClipToView(True)
 
-    ca = list(matplotlib.colors.hex2color(colors["region_selector"]))
+    ca = list(to_rgb(colors["region_selector"]))
     co = [ca[0] * 255, ca[1] * 255, ca[2] * 255, colors["region_selector_alpha"]]
     page.region_selector = pg.LinearRegionItem(
         brush=co, orientation="horizontal", values=(np.log10(page._dT_min), np.log10(page._dT_max))

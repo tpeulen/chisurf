@@ -124,7 +124,16 @@ def enable(shell: typing.Any, gui: str | None = None) -> tuple[str, str]:
     tuple of str
         ``(requested, backend)``.
     """
-    import matplotlib
+    try:
+        import matplotlib
+    except ImportError:
+        # ChiSurf itself does not use matplotlib; this magic serves the user's
+        # own plotting code, so its absence is a message, not a traceback.
+        shell.write_err(
+            "matplotlib is not installed; install it into this environment to "
+            "plot from the console (ChiSurf's own plots do not need it)\n"
+        )
+        return (gui or "").strip().lower().lstrip("-"), ""
 
     if gui is None:
         return "", matplotlib.get_backend()

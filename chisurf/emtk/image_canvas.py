@@ -73,9 +73,9 @@ class ImageCanvas:
                 0.0,
                 1.0,
             ) ** (1.0 / self.gamma)
-            from matplotlib import colormaps
+            from emtk import colormaps
 
-            rgba = (colormaps[self.colormap](scaled) * 255).astype(np.uint8)
+            rgba = colormaps.get(self.colormap)(scaled, bytes=True)
             self._texture = Texture(
                 plane.shape[1], plane.shape[0], rgba.tobytes(), filter="nearest"
             )

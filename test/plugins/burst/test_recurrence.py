@@ -106,3 +106,15 @@ def test_bursts_recurrence_workflow_handle():
     assert 0.0 <= r.recurrence_time() or np.isnan(r.recurrence_time())
     centers, rec_h, all_h = r.histogram(e_range=(0.0, 0.4), dt_range_s=(1e-3, 0.1))
     assert centers.size == 50
+
+
+def test_recurrence_plot_is_a_png_with_the_recurrence_window_shaded(tmp_path):
+    from chisurf.plugins.burst.burst_analysis.api.workflow import Recurrence
+
+    rng = np.random.default_rng(4)
+    times = np.sort(rng.uniform(0.0, 300.0, 2000))
+    efficiency = np.clip(rng.normal(0.3, 0.1, 2000), 0.0, 1.0)
+    ax = Recurrence(times_s=times, efficiency=efficiency).plot(e_range=(0.1, 0.4))
+    kinds = [kind for kind, _ in ax._items]
+    assert kinds.count("bars") == 2 and "vspan" in kinds
+    assert ax.figure.save(tmp_path / "rasp.png").read_bytes()[:4] == b"\x89PNG"

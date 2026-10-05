@@ -158,9 +158,9 @@ class PSFApp(TourTarget, ImApp):
             stride = max(1, (len(x) + MAX_VOXELS - 1) // MAX_VOXELS)
             x, y, z = x[::stride], y[::stride], z[::stride]
             intensity = (volume[z, y, x] / peak) ** model.gamma
-            from matplotlib import colormaps
+            from emtk import colormaps
 
-            cmap = colormaps[model.colormap]
+            cmap = colormaps.get(model.colormap)
             for k in range(12):
                 mask = (intensity >= k / 12) & (intensity < (k + 1) / 12 if k < 11 else intensity <= 1)
                 if mask.any():
@@ -184,9 +184,9 @@ class PSFApp(TourTarget, ImApp):
 
     def _slice_colours(self) -> list:
         """The Display colormap, sampled for the slice heatmap (the volume uses it too)."""
-        from matplotlib import colormaps
+        from emtk import colormaps
 
-        cmap = colormaps[self.model.colormap]
+        cmap = colormaps.get(self.model.colormap)
         return [tuple(int(round(255 * c)) for c in cmap(i / 10)[:3]) for i in range(11)]
 
     def _draw_slice(self, box) -> None:

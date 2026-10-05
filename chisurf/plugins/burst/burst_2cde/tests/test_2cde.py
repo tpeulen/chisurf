@@ -154,6 +154,9 @@ def test_result_dataclass_and_plot(tmp_path):
     assert res.column == "FRET-2CDE"
     assert np.isfinite(res.mean_2cde)
     assert 0.0 <= res.dynamic_fraction(threshold=12.0) <= 1.0
+    ax = res.plot()
+    assert ax.title == "FRET-2CDE"
+    assert ax.figure.save(tmp_path / "2cde.png").read_bytes()[:4] == b"\x89PNG"
 
 
 def test_read_burst_analysis_skips_json_sidecar_and_isolates_bi4_bur(tmp_path, monkeypatch):

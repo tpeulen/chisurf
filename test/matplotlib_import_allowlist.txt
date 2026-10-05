@@ -1,0 +1,60 @@
+# Files that still import matplotlib. This list only SHRINKS.
+#
+# matplotlib is being retired from the shipped package's runtime dependencies
+# (owner, 2026-10-05: "try to get also rid of matplotlib, do not understand
+# what for it is needed"). Never add yourself here to make
+# test/test_matplotlib_seam.py pass -- route the call and strike the line. The
+# end state is an empty list, after which matplotlib leaves pixi.toml,
+# rattler-recipe run: and modules/ndxplorer/pyproject.toml.
+#
+# Test files are exempt: matplotlib stays a test dependency and is the oracle
+# for colormap parity tests. ChiMOL is excluded (it has its own port). The
+# console's inline-plot support is NOT on this list: it serves the user's own
+# matplotlib code typed into the console, is an optional integration behind a
+# guarded import, and is listed in _OPTIONAL_INTEGRATIONS in the guard instead.
+#
+# Each entry carries its route:
+#
+#   colormap -- colour tables and colour parsing. emtk.colormaps (the one home
+#               for colormap LUTs + to_rgba, shared by chiplot, emtk apps and
+#               ndXplorer).
+#   figure   -- a static figure written to a file (PNG for a report, a
+#               workflow step, an agent tool). chiplot.figure: Qt-free, drawn
+#               by emtk implot on the CPU rasteriser (emtk.export).
+#   plot     -- an interactive plot inside a GUI. chiplot.Plot.
+#   math     -- LaTeX formula rendered to an image. Needs a math typesetter in
+#               emtk (emtk.mathtext still delegates to matplotlib); see
+#               okf/subsystems/matplotlib-retirement.md "math".
+#   delete   -- dead code or a developer script that does not belong in the
+#               shipped package.
+#
+# See okf/subsystems/matplotlib-retirement.md for the routing and where to pick
+# the work up.
+
+# --- colormap --- (done 2026-10-05: emtk.colormaps)
+
+# --- figure ---
+chisurf/core/agent/tools/decay.py
+chisurf/core/fluorescence/tcspc/irf_estimation.py
+chisurf/core/models/fcs/maxent.py
+chisurf/gui/widgets/wizard/tttr_channeldefinition/lut_thumbnail.py
+chisurf/plugins/burst/burst_h2mm/gui/native.py
+chisurf/plugins/tttr/audifier/core.py
+chisurf/plugins/tttr/audifier/lifetime_analysis.py
+chisurf/plugins/tttr/trace_browser/gui/model.py
+modules/ndxplorer/ndxplorer/export/publication_figure.py
+modules/ndxplorer/ndxplorer/export/report.py
+
+# --- plot ---
+chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
+chisurf/plugins/fluorescence_decay/lltf/lltf_gui.py
+
+# --- math ---
+chisurf/gui/widgets/equation_editor.py
+chisurf/gui/widgets/expression_input.py
+chisurf/gui/widgets/general.py
+chisurf/plugins/core/help/api/mathtext.py
+chisurf/plugins/core/help/gui/help_app.py
+
+# --- delete ---
+chisurf/core/structure/potential/database/make_unres_lookup.py

@@ -11,11 +11,8 @@ The same flow is walked interactively in
 
 from __future__ import annotations
 
-import matplotlib
 import numpy as np
 import pytest
-
-matplotlib.use("Agg")
 
 # The workflow needs the compiled TTTR reader (with the 0.27 simulator) and MMFDB.
 tttrlib = pytest.importorskip("tttrlib")
@@ -77,8 +74,8 @@ def test_analysis_modes_agree(analyzed):
         assert np.allclose(fret, GROUND_TRUTH, atol=0.07)
 
 
-def test_plot_methods_return_axes(analyzed):
-    """Every H2MM plot helper draws onto and returns an Axes."""
+def test_plot_methods_return_axes(analyzed, tmp_path):
+    """Every H2MM plot helper returns a panel whose figure is written as a PNG."""
     _, _, _, h2mm = analyzed
     for method in (
         h2mm.plot_states,
@@ -87,4 +84,8 @@ def test_plot_methods_return_axes(analyzed):
         h2mm.plot_dwell_times,
     ):
         ax = method()
-        assert ax is not None
+        path = ax.figure.save(tmp_path / f"{method.__name__}.png")
+        assert path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+    dashboard = h2mm.plot()
+    assert len(dashboard.axes) == 4
+    assert dashboard.save(tmp_path / "dashboard.png").stat().st_size > 0

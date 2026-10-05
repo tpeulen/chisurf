@@ -61,6 +61,17 @@ item means by "angle". A convention that leaks to the call site is a silent bug:
 a mirrored rate arrow between two states reads as the opposite transition, and
 nothing raises.
 
+## Static figures are `emtk.figure`, not chiplot
+
+A picture an application *writes* -- a workflow diagnostic, a report page, a
+figure an agent tool saves -- is drawn by `emtk.figure` (a Qt-free
+`Figure`/`Axes` recorder rendered by implot on the CPU), not by a chiplot
+`Plot`. chiplot cannot serve it: importing `chisurf.gui` imports Qt, and the
+callers include the Qt-free server and `api/` modules. chiplot remains the API
+for every plot *inside* a GUI. Colour tables for both come from
+`emtk.colormaps` (the emtk backend's `_lut` reads them). Context:
+[Retiring matplotlib](matplotlib-retirement.md).
+
 # Adding to the contract
 
 An abstract method added to `backends/base.py` **must** land with its backend

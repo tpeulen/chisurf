@@ -3,8 +3,8 @@ from __future__ import annotations
 import textwrap
 import typing
 
-import matplotlib.colors as mcolors
 import numpy as np
+from emtk.colormaps import to_hex, to_rgb
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
@@ -2297,23 +2297,21 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
                 error_threshold_small = parameter_settings.get("error_threshold_small", 20)
                 error_threshold_large = parameter_settings.get("error_threshold_large", 100)
 
-                cmap = mcolors.LinearSegmentedColormap.from_list(
-                    "error_color_gradient", [(0, error_color_small), (1, error_color_large)]
-                )
 
                 # Normalize error value: error_threshold_small -> error_color_small, error_threshold_large -> error_color_large
                 error_range = error_threshold_large - error_threshold_small
                 norm_error = min(1.0, max(0.0, (rel_error - error_threshold_small) / error_range))
 
-                # Get RGB color from colormap
-                rgb_color = cmap(norm_error)
+                # Blend linearly from the small-error to the large-error colour.
+                low, high = to_rgb(error_color_small), to_rgb(error_color_large)
+                rgb_color = tuple(a + (b - a) * norm_error for a, b in zip(low, high))
 
                 # Convert RGB to hex for stylesheet
                 if scan_result is not None:
-                    bg_color = mcolors.rgb2hex(tuple(c * 0.65 for c in rgb_color[:3]))
+                    bg_color = to_hex(tuple(c * 0.65 for c in rgb_color[:3]))
                     self.lineEdit.setStyleSheet(f"background-color: {bg_color}; color: white;")
                 else:
-                    text_color = mcolors.rgb2hex(rgb_color)
+                    text_color = to_hex(rgb_color)
                     self.lineEdit.setStyleSheet(f"background-color: #d0d0d0; color: {text_color};")
 
         try:
