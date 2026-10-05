@@ -29,16 +29,15 @@ SETTINGS = pathlib.Path(chisurf.__file__).parent / "core" / "settings" / "settin
 #: tab → group → button labels, in ribbon order.
 EXPECTED = {
     "File": {
-        "Data": ["File tools"],
         "Setup": ["Menu Switch", "Settings", "Switch User"],
+        "Data": ["File tools"],
     },
     "Main": {
         "Help": ["About ChiSurf", "Documentation"],
     },
     "Spectroscopy": {
-        "Correlation": ["FCS", "PCH"],
         "Decay": ["Decay Analysis"],
-        "Kinetics": ["Hidden Markov model"],
+        "Correlation": ["FCS", "PCH"],
         "Single-Molecule": [
             "ALEX Suite",
             "Burst Analysis",
@@ -46,6 +45,7 @@ EXPECTED = {
             "Trace Browser",
             "ebFRET",
         ],
+        "Kinetics": ["Hidden Markov model"],
     },
     "Imaging": {
         "Imaging": ["Image Tools"],
@@ -54,10 +54,10 @@ EXPECTED = {
         "Modelling": ["ChiMOL", "Structure Tools"],
     },
     "Tools": {
-        "Calculators": ["Calculators", "Light Path Simulator", "Spectra Downloader", "Wizards"],
         "Photon data": ["TTTR Tools"],
-        "System": ["Code Editor", "Games", "MMFDB Admin", "Screenshot"],
+        "Calculators": ["Calculators", "Light Path Simulator", "Spectra Downloader", "Wizards"],
         "Views": ["Acquisition", "Global View", "ndX"],
+        "System": ["Code Editor", "Games", "MMFDB Admin", "Screenshot"],
     },
 }
 
@@ -68,13 +68,30 @@ def shipped_layout() -> dict[str, dict[str, list[str]]]:
     built_in = [i for i in chisurf.plugins.iter_plugins() if i.get("source") == "built-in"]
     layout = plugin_layout(built_in, settings.get("plugins", {}), experimental=False)
     return {
-        tab: {group: [split_address(r["plugin_name"])[2] for r in records] for group, records in groups.items()}
+        tab: {
+            group: [split_address(r["plugin_name"])[2] for r in records]
+            for group, records in groups.items()
+        }
         for tab, groups in layout.items()
     }
 
 
 def test_the_shipped_ribbon_is_the_reviewed_one():
-    assert shipped_layout() == EXPECTED
+    layout = shipped_layout()
+    assert layout == EXPECTED
+    # Dict equality ignores order; the order of tabs and groups is part of the layout.
+    assert [(t, list(g)) for t, g in layout.items()] == [(t, list(g)) for t, g in EXPECTED.items()]
+
+
+def test_authored_group_order_wins_and_unknown_groups_follow():
+    layout = group_records(
+        [
+            {"plugin_name": "Tools:Zeta:z"},
+            {"plugin_name": "Tools:System:s"},
+            {"plugin_name": "Tools:Photon data:p"},
+        ]
+    )
+    assert list(layout["Tools"]) == ["Photon data", "System", "Zeta"]
 
 
 def test_tabs_appear_in_the_declared_order():

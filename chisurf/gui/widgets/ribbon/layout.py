@@ -21,6 +21,7 @@ __all__ = [
     "plugin_layout",
     "GROUP_SEPARATOR",
     "TAB_ORDER",
+    "GROUP_ORDER",
 ]
 
 #: Joins the middle segments of a deep address into one group title.
@@ -29,6 +30,14 @@ GROUP_SEPARATOR = " › "
 #: The domain tabs, left to right. A tab not named here follows them alphabetically,
 #: and ``Dev`` is always last.
 TAB_ORDER = ("File", "Main", "Spectroscopy", "Imaging", "Structure", "Tools")
+
+#: Groups inside a tab, left to right: the order work happens in, not the alphabet.
+#: A group not named here follows the named ones in order of first appearance.
+GROUP_ORDER = {
+    "File": ("Setup", "Data"),
+    "Spectroscopy": ("Decay", "Correlation", "Single-Molecule", "Kinetics"),
+    "Tools": ("Photon data", "Calculators", "Views", "System"),
+}
 
 #: Tabs the ribbon builds itself; their ``Setup:`` and ``Help:`` plugins land in groups
 #: of those tabs rather than in tabs of their own.
@@ -83,8 +92,9 @@ def ordered_tabs(tabs: Iterable[str]) -> list[str]:
 def group_records(records: Iterable[Mapping]) -> dict[str, dict[str, list[Mapping]]]:
     """``{tab: {group: [record, ...]}}`` of already-listed, already-ordered records.
 
-    Tabs come in :func:`ordered_tabs` order. Groups appear in the order of their
-    first record, except that the group named after its tab comes first.
+    Tabs come in :func:`ordered_tabs` order. Groups follow :data:`GROUP_ORDER`
+    where the tab has one; the group named after its tab comes first, and any
+    other group follows in the order of its first record.
     ``Setup:`` and ``Help:`` plugins are placed in the ``File`` and ``Main`` tabs
     under a group of that name.
     """
@@ -99,8 +109,9 @@ def group_records(records: Iterable[Mapping]) -> dict[str, dict[str, list[Mappin
     ordered = {}
     for tab in ordered_tabs(layout):
         groups = layout[tab]
-        first = {tab: groups[tab]} if tab in groups else {}
-        ordered[tab] = {**first, **{g: r for g, r in groups.items() if g != tab}}
+        authored = [tab, *GROUP_ORDER.get(tab, ())]
+        names = [g for g in authored if g in groups] + [g for g in groups if g not in authored]
+        ordered[tab] = {g: groups[g] for g in names}
     return ordered
 
 

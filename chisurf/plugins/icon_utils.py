@@ -230,8 +230,11 @@ def create_plugin_icon_with_fallback(
     size : int
         Icon size
     manifest : PluginManifest, optional
-        Plugin manifest. If present, its icon field is preferred over legacy
-        module attributes because it is user-editable metadata.
+        Plugin manifest. Its icon field is preferred over legacy module
+        attributes because it is user-editable metadata. When omitted, the
+        ``manifest.json`` in *package_dir* is read: a caller that forgot to pass
+        it otherwise got a letter placeholder for every plugin whose emoji lives
+        only in its manifest, and paid for importing the plugin to find out.
 
     Returns
     -------
@@ -257,6 +260,13 @@ def create_plugin_icon_with_fallback(
             return module
 
     # 1. Prefer manifest icon metadata when available.
+    if manifest is None and (package_dir / "manifest.json").is_file():
+        try:
+            from chisurf.core.plugin.manifest import load_manifest
+
+            manifest = load_manifest(package_dir / "manifest.json")
+        except Exception:
+            manifest = None
     if manifest is not None and getattr(manifest, "icon", None):
         try:
             return resolve_plugin_icon(manifest.icon, size=size, base_dir=package_dir)

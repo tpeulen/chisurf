@@ -102,10 +102,10 @@ def test_route_errors_stay_visible_and_retry():
     assert app.select(role) is None
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 800, 600)
-    assert any("no native EMTK" in text for text in painter.strings)
+    assert any("no native emtk app" in text for text in painter.strings)
     assert len(app.tools) == 5
     app.select(role, retry=True)
-    assert app.errors[role] == "broken child dependency"
+    assert app.errors[role] == "RuntimeError: broken child dependency"
     assert app.select(role, retry=True)
     assert role not in app.errors
     assert len(attempts) == 3
@@ -206,7 +206,7 @@ def test_tooltips_drop_and_native_locales(monkeypatch):
     monkeypatch.setattr(im, "set_item_tooltip", record)
     app.draw(RecordingPainter(), 0, 0, 1200, 750)
     assert all(p["description"] in tips for p in app.tools)
-    assert "test:child" in tips
+    # (the old header showed the native route as a tooltip; the shared hub does not — a developer aid, not a control)
     assert any("Find tools" in tip for tip in tips)
     try:
         for locale in SUPPORTED_LOCALES:

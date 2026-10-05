@@ -9,6 +9,11 @@ no longer hosts the FCS calculator (it is in FCS only), but the behaviour itself
 unchanged. It is left alone because `fcs/fcs_calculator/` carries another session's
 uncommitted edits. The decision belongs to that lane: fall back with a warning when the
 configured file is absent, or stop the fixture configuring one.
+**Finding (later the same day):** the raise is deliberate. `dyes.py`'s docstring
+says an explicitly configured database's errors propagate, and
+`chisurf/core/models/fcs/dye_shape.py` already catches `ReferenceSourceUnavailable`
+and falls back. So the fix is the same catch in the FCS calculator's model, not a
+change to `dyes.py`.
 
 ## Project restore: what "reopens 1:1" covers (2026-10-05)
 

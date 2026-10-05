@@ -67,23 +67,34 @@ Hub scopes that decide where a new tool goes:
 
 ## Where to pick this up
 
-1. **Burst Analysis and ALEX Suite are Qt-only hubs** (open item on the agent board: T-20261005-QTLEFT, with the full list of what still opens Qt). The membership test reads their
-   children from imports in `gui/tool.py`, which works but is the weakest declaration.
-   An emtk port (or even a plain `PANELS` table) would make them data like the rest.
-   Burst Analysis also hosts Accurate FRET and Photon-by-photon kinetics, whose ribbon
-   buttons were removed, so in a pure-emtk session those two are reachable only through
-   this Qt window.
-2. **CLI-only tools have no GUI home:** `fcs_convert`, `proteinmc`. That is correct
-   until they gain an app, at which point the membership test will ask for a hub
-   (File tools for the converter, Structure Tools for ProteinMC).
-3. **`TTTR:Correlate` and `TTTR:Generate Decay`** are broken script plugins, disabled
-   by default and now `menu_hidden`. When they gain apps they belong in TTTR Tools.
-4. **Panel titles are clipped** at the ribbon's default height in offscreen grabs
-   (the group caption's descenders). This was already true before the regrouping.
-5. **Group order inside a tab** is the order of first appearance, which is
-   alphabetical by address (Calculators, Photon data, System, Views). If an order
-   should be authored, add a per-tab group order beside `TAB_ORDER` and pin it in
-   the layout test.
+1. **Native Burst Analysis is blocked on Burst Selection.** Burst Selection's emtk
+   view (`burst/burst_selection/gui/app.py`) and the hub's setup and data steps
+   (`burst/burst_analysis/gui/{setup_selection_app,data_selection_app,app}.py`) are
+   still driven by the Qt `BurstSelectionTool`/`BurstAnalysisTool`. A ToolHubApp
+   over them would only rehost Qt. Those four files carry another lane's
+   uncommitted work from 2026-10-03 (+2078 lines in the setup step), so the port
+   starts by finding that work's owner. Until then, Accurate FRET and
+   Photon-by-photon kinetics, which are panels of the hub, are reachable only
+   through the Qt window. Agent board: T-20261005-QTLEFT.
+2. **Ribbon buttons that still open Qt:** Burst Analysis, MMFDB Admin, Screenshot
+   (it grabs Qt windows, so it is Qt by nature until the main window is), and
+   Intensity trace (being ported by the emtk-port lane).
+3. **`TTTR:Correlate` and `TTTR:Generate Decay`** duplicate the FCS correlator and
+   Histogram-Microtime, are switched off by default (`disabled_plugins`) and are
+   `menu_hidden`, but they still have guide 73 and three GUI tests. Removing them
+   is the owner's call: retire them and rewrite guide 73 onto the hosted tools, or
+   keep them.
+4. **CLI-only tools have no GUI home:** `fcs_convert`, `proteinmc`. That is correct
+   until they gain an app; `test_hub_membership` will then ask for a hub.
+5. **Panel captions are clipped** at the ribbon's default height in offscreen grabs
+   (descenders). This predates the regroup.
+
+Done 2026-10-05, second pass: TTTR Tools runs on `chisurf/emtk/tool_hub.py`. Groups
+follow `GROUP_ORDER`. Ribbon icons were letter placeholders for every plugin whose
+emoji lives only in its manifest, because the plugin-tab builder and the toolbar
+did not pass the manifest to `create_plugin_icon_with_fallback`. That function now
+reads `package_dir/manifest.json` itself (guard:
+`test/plugins/test_plugin_icon_manifest.py`).
 
 # Traps
 

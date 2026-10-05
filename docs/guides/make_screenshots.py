@@ -1891,6 +1891,48 @@ def _pump(seconds):
         time.sleep(0.02)
 
 
+def _grab_decay_analysis_hub():
+    """The native Decay Analysis hub on its VV/VH G-factor panel, a fast dye and a slow protein loaded.
+
+    Synthetic VV/VH pairs whose answer is known (G = 1.2, rho 0.2 ns and 16 ns,
+    tau 4 ns), generated as the G-factor parity test does.
+    """
+    import numpy as np
+    from emtk.pil_painter import PilPainter
+
+    from chisurf.core.fio import write_vv_vh
+    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app import make_app
+
+    folder = pathlib.Path(tempfile.mkdtemp(prefix="gfactor_"))
+    rng = np.random.default_rng(5)
+    n, dt = 512, 0.05
+    t = np.arange(n) * dt
+    irf = np.exp(-0.5 * ((t - 5.0) / 0.1) ** 2)
+    files = {}
+    for name, rho in (("fast", 0.2), ("slow", 16.0)):
+        r = 0.38 * np.exp(-t / rho)
+        decay = np.convolve(irf, np.exp(-t / 4.0))[:n]
+        vv = rng.poisson(decay * (1 + 2 * r) * 2000 + 3.0).astype(float)
+        vh = rng.poisson(decay * (1 - r) / 1.2 * 2000 + 3.0).astype(float)
+        files[name] = folder / f"{name}.dat"
+        write_vv_vh(files[name], vv=vv, vh=vh, metadata={"dt": dt})
+
+    app = make_app()
+    child = app.select("vv_vh_g_factor")
+    model = child.model
+    model.fp_dt_ns = dt
+    model.load(str(files["fast"]))
+    model.load(str(files["slow"]), slow=True)
+    model.background = True
+    model.compute()
+    for _ in range(4):
+        painter = PilPainter(1200, 800)
+        app.draw(painter, 0, 0, 1200, 800)
+    painter.frame.save(FIG / "decay_analysis_hub.png")
+    app.close()
+    print("wrote decay_analysis_hub.png")
+
+
 def _grab_lltf():
     """Grab the Decay Analysis hub on its Lazy Lifetime Analysis panel.
 
@@ -1909,7 +1951,6 @@ def _grab_lltf():
     hub.resize(1280, 900)
     hub.show()
     _pump(0.3)
-    _grab(hub, "decay_analysis_hub.png")
 
     hub.resize(1280, 1350)
     hub.nav_list.setCurrentRow(2)  # 3. Lazy Lifetime Analysis
@@ -2410,6 +2451,7 @@ def main():
         _grab_ndx_overlay_axes,
         _grab_ask_the_documentation,
         _grab_maxent_decay,
+        _grab_decay_analysis_hub,
         _grab_global_view,
         _grab_ebfret_tool,
         _grab_pto_inspector,
