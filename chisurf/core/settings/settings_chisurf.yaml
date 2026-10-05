@@ -236,7 +236,7 @@ env_override_existing: true
 # NDxplorer stability and crash mitigation
 #
 # The following thread/runtime options are applied very early at ChiSurf startup,
-# before heavy numeric libraries (NumPy, Numba, UMAP, MKL/BLAS) are imported.
+# before heavy numeric libraries (NumPy, UMAP, MKL/BLAS) are imported.
 # These defaults reduce the chance of deadlocks or driver-specific crashes on
 # some systems by limiting parallelism and selecting a conservative backend.
 #
@@ -246,17 +246,10 @@ env_override_existing: true
 #   environment variables are already defined in your OS/user profile.
 # - If you still encounter freezes/crashes when opening NDxplorer, try:
 #     * Setting `mkl_threading_layer: SEQUENTIAL`
-#     * Reducing `numba_num_threads` and/or `omp_num_threads` to "1"
+#     * Reducing `omp_num_threads` to "1"
 #     * Leaving values empty to inherit system defaults (not recommended for NDxplorer)
 #
 threads:
-  # Number of threads used by Numba's parallel backend (as a string).
-  # "auto" (recommended) uses (CPU cores - 1) so Numba's parallel=True kernels
-  # (e.g. the H2MM engine) actually use the CPU; set "1" to force single-thread
-  # if you hit instability. MKL/OMP stay at "1" so Numba does not oversubscribe.
-  numba_num_threads: "auto"
-  # Numba threading implementation; "workqueue" is stable across platforms
-  numba_threading_layer: workqueue
   # Maximum threads used by Intel MKL (BLAS/LAPACK)
   mkl_num_threads: "1"
   # OpenMP thread count seen by libraries using OMP (NumPy, SciPy, etc.)

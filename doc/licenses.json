@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-16",
+  "generated": "2026-10-05",
   "project_license": "GPL-3.0-or-later AND CC-BY-SA-4.0",
   "binding_class": 4,
   "binding_class_name": "Strong copyleft (GPL)",
@@ -47,16 +47,6 @@
       "url": "https://github.com/pyqtgraph/pyqtgraph",
       "source": "metadata",
       "version": "0.14.0",
-      "class": 1
-    },
-    {
-      "name": "numba",
-      "group": "runtime",
-      "requirement": "numba",
-      "license": "BSD License",
-      "url": "https://numba.pydata.org",
-      "source": "metadata",
-      "version": "0.66.0",
       "class": 1
     },
     {

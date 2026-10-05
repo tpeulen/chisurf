@@ -68,7 +68,6 @@ python -m chisurf.plugins.chimol
 - Optional:
   - `mdtraj` for trajectory loading and DSSP comparison tests.
   - `PyOpenGL` for explicit GL entry points (QtGL renderer).
-  - `numba` to speed up secondary-structure assignment (falls back to NumPy).
   - `IMP` (via `chisurf.fio.structure.coordinates`) for structure IO when available.
 
 ## Configuration

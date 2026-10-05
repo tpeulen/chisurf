@@ -191,12 +191,9 @@ def build_system_info_text() -> str:
 
     # Thread-related environment variables used for heavy libs
     thread_parts: list[str] = []
-    numba_threads = os.getenv("NUMBA_NUM_THREADS")
     mkl_threads = os.getenv("MKL_NUM_THREADS")
     omp_threads = os.getenv("OMP_NUM_THREADS")
     mkl_layer = os.getenv("MKL_THREADING_LAYER")
-    if numba_threads:
-        thread_parts.append(f"NUMBA={numba_threads}")
     if mkl_threads:
         thread_parts.append(f"MKL={mkl_threads}")
     if omp_threads:

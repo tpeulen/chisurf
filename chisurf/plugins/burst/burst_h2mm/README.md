@@ -6,8 +6,8 @@ times and colours *within* bursts, resolving sub-burst conformational dynamics
 on the microsecond timescale that burst-averaged methods (FRET histograms, BVA)
 cannot see.
 
-The numerical core is a self-contained **Numba** re-implementation of the
-algorithm of Pirchi *et al.* (J. Phys. Chem. B 2016, 120, 13065) and the
+The numerical core is the photon library's compiled engine (`tttrlib.HMM`),
+an implementation of the algorithm of Pirchi *et al.* (J. Phys. Chem. B 2016, 120, 13065) and the
 reference `H2MM_C` library by P. D. Harris.
 
 ## What it does
@@ -37,8 +37,8 @@ reference `H2MM_C` library by P. D. Harris.
 
 ```
 core/        Qt-free numeric core
-  h2mm.py        Numba engine: A^Δt + ρ caches, scaled forward-backward,
-                 Baum-Welch EM, Viterbi, BIC, model factory, simulator
+  h2mm.py        model types, CSR photon packing, random start model
+                 (the EM/Viterbi compute is tttrlib.HMM, via engines.py)
   photons.py     .bur + tttrlib → per-burst (macro_time, stream) arrays
   analysis.py    state scan, BIC/ICL selection, dwell/transition diagnostics
 api/         models.py (H2mmSettings/H2mmResult), contract.py, serialization.py
@@ -101,7 +101,7 @@ result = client.compute(analysis_folder="…", settings={"max_states": 4})
 
 ## Validation
 
-The Numba port is verified **numerically equivalent to the reference `H2MM_C`**
+The engine is verified **numerically equivalent to the reference `H2MM_C`**
 library by A/B tests (`tests/test_ab_vs_h2mm_c.py`) on data that is simulated,
 carried through a real `tttrlib.TTTR` object, and extracted with the plugin's
 own pipeline. On identical `(indexes, times)` inputs the two implementations
@@ -121,13 +121,11 @@ is additionally validated standalone against simulated ground truth
 
 ## Performance
 
-The E-step parallelises over bursts with `numba.prange`; each thread
-accumulates its Baum-Welch statistics into thread-local arrays (no false
-sharing) and the `A^Δt`/`ρ` caches are computed once per unique `Δt`. On an
-8-core machine this is on par with the multithreaded C reference `H2MM_C`
-(≈1× per EM iteration for the common 2-state case; ~0.8× for 3 states, where
-the reference's hand-tuned `O(nstate⁴)` transition contraction still leads).
-Both implementations scale ~linearly with cores.
+The EM runs in the photon library's compiled engine (`tttrlib.HMM`): 6.8 ms
+for a 50-map EM where the deleted in-tree numba port, run interpreted after
+numba was retired, took 302.3 ms (measurement in `core/h2mm.py`). The figures
+this section used to quote against `H2MM_C` were the numba port's and are not
+re-measured for the compiled engine.
 
 ## Status
 

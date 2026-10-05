@@ -156,7 +156,6 @@ def test_view_spec_loads():
 
 
 def test_below_min_distance_kernel():
-    pytest.importorskip("numba")
     from chisurf.plugins.traj.traj_remove_clashes.view_model import below_min_distance
 
     # frame 0: atoms 1 nm apart (no clash); frame 1: atoms 0.01 nm apart (clash).

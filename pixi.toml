@@ -59,7 +59,9 @@ pillow = "*"
 # storage model everywhere in the tree now, and nothing shipped imports
 # pandas any more (PRD-82).
 scipy = "*"
-numba = "*"
+# numba was dropped: nothing in chisurf, ndxplorer, imp-tricks or quest imports
+# it (2026-10-05); kernels are vectorised NumPy, and compiled speed lives in
+# tttrlib (photons, curves) or IMP.bff (coordinates).
 # boost-cpp was dropped: nothing links it. The C++ that used to want Boost --
 # the burbulator library and the Cython extensions -- is retired, tttrlib
 # builds against the C++17 standard library instead, and no built extension

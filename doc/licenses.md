@@ -1,6 +1,6 @@
 # ChiSurf dependency licenses
 
-*Generated 2026-09-16 by `build_tools/license_tracker.py`. Regenerate after adding a dependency; do not edit by hand.*
+*Generated 2026-10-05 by `build_tools/license_tracker.py`. Regenerate after adding a dependency; do not edit by hand.*
 
 ## Compatibility
 
@@ -38,7 +38,6 @@ The binding dependencies are GPL, so the project as a whole cannot be more permi
 | mmfdb | runtime | 0.1.0 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/tpeulen/mmfdb |
 | msgpack | runtime | 1.2.1 | Apache-2.0 | Permissive (MIT/BSD/Apache/PSF/...) | https://msgpack.org/ |
 | nbformat | runtime | 5.11.0 | BSD License | Permissive (MIT/BSD/Apache/PSF/...) | https://jupyter.org |
-| numba | runtime | 0.66.0 | BSD License | Permissive (MIT/BSD/Apache/PSF/...) | https://numba.pydata.org |
 | numpy | runtime | 2.4.6 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | Permissive (MIT/BSD/Apache/PSF/...) | https://numpy.org |
 | packaging | runtime | 26.3 | Apache-2.0 OR BSD-2-Clause | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/pypa/packaging |
 | Pillow | runtime | 12.3.0 | MIT-CMU | Permissive (MIT/BSD/Apache/PSF/...) | https://python-pillow.github.io |

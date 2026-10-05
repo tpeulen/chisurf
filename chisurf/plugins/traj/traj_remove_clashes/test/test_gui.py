@@ -4,7 +4,6 @@ from qtpy import QtWidgets
 
 def test_remove_clashes_creation(qapp, qtbot):
     pytest.importorskip("mdtraj")
-    pytest.importorskip("numba")
     from chisurf.plugins.traj.traj_remove_clashes.widget import RemoveClashedFrames
 
     widget = RemoveClashedFrames()
@@ -18,7 +17,6 @@ def test_remove_clashes_creation(qapp, qtbot):
 
 def test_widget_properties_delegate_to_model(qapp, qtbot):
     pytest.importorskip("mdtraj")
-    pytest.importorskip("numba")
     from chisurf.plugins.traj.traj_remove_clashes.widget import RemoveClashedFrames
 
     widget = RemoveClashedFrames()
@@ -36,7 +34,6 @@ def test_widget_properties_delegate_to_model(qapp, qtbot):
 
 def test_form_renders_with_live_log(qapp, qtbot):
     pytest.importorskip("mdtraj")
-    pytest.importorskip("numba")
     from chisurf.plugins.traj.traj_remove_clashes.widget import RemoveClashedFrames
 
     widget = RemoveClashedFrames()

@@ -9,6 +9,11 @@ timestamp: '2026-08-11T00:00:00Z'
 
 # Where numba was
 
+> **2026-10-05:** numba has left the stack entirely, including the sibling
+> checkouts imp-tricks and quest that kept it in the environment. Their kernels,
+> parity suites and measured costs are in
+> [numba-retirement](../subsystems/numba-retirement.md) "Where to pick this up".
+
 numba was removed from `chisurf/` in `f1290e84b` — 47 decorators, 11 imports,
 every `prange`, across 13 files. This is the list of what carried a decorator,
 so the slow paths can be found without reading the diff.

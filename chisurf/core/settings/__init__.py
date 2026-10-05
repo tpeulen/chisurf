@@ -22,8 +22,7 @@ from .settings_utils import (
 # Define Chisurf cache path inside user settings folder
 _chisurf_user_cache_dir = get_path("settings") / "cache"
 
-# Set environment variables for Numba and Python bytecode cache
-os.environ["NUMBA_CACHE_DIR"] = str(_chisurf_user_cache_dir)
+# Python bytecode cache
 os.environ["PYTHONPYCACHEPREFIX"] = str(_chisurf_user_cache_dir)
 
 # Ensure the cache directory exists

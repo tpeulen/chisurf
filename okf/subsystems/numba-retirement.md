@@ -2,12 +2,66 @@
 type: Subsystem
 title: Retiring numba from the shipped package
 description: Why numba is leaving chisurf/, the five routes a kernel can take out of it, the measurements that decide which, and the shrinking allow-list that tracks it.
-resource: test/numba_import_allowlist.txt
+resource: test/test_no_retired_dependency_imports.py
 tags: [core, dependencies, performance, numba, seam]
-timestamp: '2026-08-10T00:00:00Z'
+timestamp: '2026-10-05T00:00:00Z'
+status: done
 ---
 
 # Where to pick this up
+
+**Done 2026-10-05: numba has left the stack.** chisurf imported it nowhere
+already (the allow-list was empty); the last users were the two sibling
+checkouts installed `--no-deps` on top -- imp-tricks (69 kernels: cgmol
+potentials + speciation, commit `3918f1d` there) and quest (3 kernels, `148b891`
+there) -- and both are vectorised NumPy now, each with a numba-oracle parity
+suite (`tests/test_numba_parity.py`, originals verbatim in
+`tests/numba_oracles/`) and a `tests/test_no_numba.py` guard. numba left
+`pixi.toml`, `pyproject.toml`, the rattler recipe, `setup_runtime.sh` and
+`test/settings/test_py314.toml`, and joined `RETIRED` in
+`test/test_no_retired_dependency_imports.py`, which superseded
+`test/test_numba_seam.py` + its allow-list (deleted). The `threads.numba_*`
+settings and every `NUMBA_*` variable are gone.
+
+The open front, in order:
+
+1. **ProteinMC's potentials are 6-23x slower than numba was.** Measured warm on
+   a T4L-sized random chain (164 residues / 984 atoms), numba -> NumPy: MJ
+   15 -> 156 us, H-bond 42 -> 338 us, UNRES centroid 15 -> 145 us, Go
+   14 -> 275 us, clash 0.8 -> 5.3 ms, ASA 0.18 -> 4.2 ms, GB 1.5 -> 18.8 ms
+   (600 residues: clash 2.3x, GB 6x -- the cell-list neighbour search
+   `IMP.cgmol.sterics._kernels.neighbour_pairs` scales). Re-derive with the
+   oracle modules in imp-tricks `tests/numba_oracles/` against the ports on
+   `test_numba_parity._residues(n)`; a random-walk chain is *less* compact than
+   a folded protein, so GB/clash on a real structure (148L) will be slower
+   still. The residue-level kernels are pure per-element NumPy overhead; no
+   further NumPy trick closes it. **The home is IMP.bff C++ (coordinates)**,
+   not a JIT -- that is what blocks ProteinMC from being as fast as it was.
+   Tried and kept out: a padded fully-vectorised ASA (slower than the
+   per-residue loop, 6.6 vs 4.1 ms) and a lexsorted neighbour list (the sort
+   cost more than it saved).
+2. **quest's residue-contact post-processing**: contact stats 23 -> 363 ms,
+   frame attribution 2.8 -> 201 ms (200k frames x 60 centres, against
+   *parallel* numba). Runs once per simulation, small beside the trajectory;
+   goes to IMP.bff beside `simulate_traj` only if a profile says it matters.
+3. **`OMP_NUM_THREADS=1` / `MKL_NUM_THREADS=1` default lost its reason.** It was
+   set so numba's pool would not oversubscribe against nested BLAS; it now only
+   pins tttrlib's and IMP.bff's OpenMP kernels to one thread. Kept unchanged in
+   `env_bootstrap.py` because changing it is a behaviour change -- measure a
+   tttrlib-heavy path (correlation, TCSPC histogramming) with 1 vs N first.
+4. **Lock files still carry numba.** chisurf's `pixi.lock` is co-edited by other
+   lanes and quest's re-lock re-solved ~250 unrelated packages, so neither was
+   re-solved here; run `pixi lock` in each as its own change.
+5. Two fixes the ports surfaced, both landed: imp-tricks
+   `mix_multiple_solutions` started its temperature sum at 298.15 (1 L at
+   298 K mixed to 596 K), and the H-bond test fixture indexed 12 atoms of a
+   2-atom array -- numba has no bounds checks and read past it silently.
+6. Adjacent, not done: `traj_remove_clashes`' GUI tests still
+   `importorskip("mdtraj")` (retired) and so always skip; its
+   `view_model.py` docstring still calls `below_min_distance` a numba kernel
+   (file owned by another lane at the time).
+
+# How it got here (the 2026-08 ticket set)
 
 **The remaining work is issued as tickets, not as prose here.** Seven on the
 shared board (`okf/agent-board.md`), each carrying its **interface** and its

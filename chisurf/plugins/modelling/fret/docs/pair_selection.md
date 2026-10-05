@@ -20,7 +20,6 @@ The core idea is:
 
 - `mdtraj` (trajectory loading, RMSD, distances)
 - `numpy`
-- `numba` (speeds up the greedy selector)
 - `PyQt5` / `qtpy` / `pyqtgraph` (GUI)
 
 ## Inputs

@@ -246,8 +246,6 @@ def _apply_thread_env_from_settings() -> None:
 
     Reads the user's settings YAML (settings_chisurf.yaml) and respects the
     `threads` section with the following keys:
-      - numba_num_threads (maps to NUMBA_NUM_THREADS)
-      - numba_threading_layer (maps to NUMBA_THREADING_LAYER)
       - mkl_num_threads (maps to MKL_NUM_THREADS)
       - omp_num_threads (maps to OMP_NUM_THREADS)
       - mkl_threading_layer (maps to MKL_THREADING_LAYER)
@@ -293,43 +291,26 @@ def _apply_thread_env_from_settings() -> None:
         if isinstance(json_threads, dict):
             threads.update(json_threads)
 
-        # Let numba use the CPU cores (its parallel=True kernels — e.g. the H2MM
-        # engine — are otherwise pinned to a single thread and run ~n_cores
-        # slower). BLAS/MKL/OMP stay single-threaded so numba's own threadpool
-        # does not oversubscribe against nested BLAS calls.
-        _ncpu = _os.cpu_count() or 2
-        _numba_multi = str(max(1, _ncpu - 1))
+        # BLAS/MKL/OMP default to one thread. That default was set so numba's
+        # thread pool would not oversubscribe against nested BLAS calls; numba
+        # is retired (2026-10-05) and the default is kept as-is until measured,
+        # but note it also pins tttrlib's and IMP.bff's OpenMP kernels.
         defaults = {
-            "numba_num_threads": _numba_multi,
-            "numba_threading_layer": "workqueue",
             "mkl_num_threads": "1",
             "omp_num_threads": "1",
             "mkl_threading_layer": "SEQUENTIAL",
         }
         override = bool(threads.get("override_existing_env", False))
 
-        # Resolve the "auto"/"0"/empty sentinel for numba threads to (cores - 1).
-        _nn = str(threads.get("numba_num_threads", _numba_multi)).strip().lower()
-        if _nn in ("", "auto", "0"):
-            threads = dict(threads)
-            threads["numba_num_threads"] = _numba_multi
-
         def _set_env(var_name: str, value: str):
             if override or var_name not in _os.environ or _os.environ.get(var_name, "") == "":
                 _os.environ[var_name] = str(value)
 
-        heavy_loaded = any(m in _sys.modules for m in ("numpy", "numba", "umap"))
+        heavy_loaded = any(m in _sys.modules for m in ("numpy", "umap"))
         if heavy_loaded:
             # Changing env vars may not take effect if modules already imported
             log.debug("Thread env applied after heavy modules import; might not take full effect.")
 
-        _set_env(
-            "NUMBA_NUM_THREADS", threads.get("numba_num_threads", defaults["numba_num_threads"])
-        )
-        _set_env(
-            "NUMBA_THREADING_LAYER",
-            threads.get("numba_threading_layer", defaults["numba_threading_layer"]),
-        )
         _set_env("MKL_NUM_THREADS", threads.get("mkl_num_threads", defaults["mkl_num_threads"]))
         _set_env("OMP_NUM_THREADS", threads.get("omp_num_threads", defaults["omp_num_threads"]))
         _set_env(

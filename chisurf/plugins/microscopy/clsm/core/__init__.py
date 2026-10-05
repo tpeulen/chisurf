@@ -1,6 +1,6 @@
 """Qt-free computation layer for the CLSM plugin.
 
-Everything in this package is pure NumPy/SciPy/Numba plus ``tttrlib`` (imported
+Everything in this package is pure NumPy/SciPy plus ``tttrlib`` (imported
 lazily at call time).  No Qt, no chisurf-GUI imports — safe to call from the
 CLI, the RPC services, and headless tests.
 """

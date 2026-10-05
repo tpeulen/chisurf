@@ -40,7 +40,6 @@ DEPS=(
     "pandas"
     "matplotlib"
     "pyqt"
-    "numba"
     "typing-extensions"
     "pyyaml"
     "markdown"

@@ -10,7 +10,7 @@ pch/
 ├── __init__.py             # Bootstrap — loads manifest, exports PCHApp
 ├── api/
 │   ├── models.py           # PchSettings, PchResult, FitResult dataclasses
-│   └── algorithms.py       # Pure PCH math (numba-accelerated)
+│   └── algorithms.py       # Pure PCH math (NumPy)
 ├── backend/
 │   └── services.py         # RPC handlers: pch.load_tttr, pch.compute, pch.fit
 ├── gui/
@@ -50,7 +50,7 @@ python -m chisurf pch refit results.npz --components 3 --json
 ## Dependencies
 
 - ttrolib (TTTR file I/O)
-- numpy, scipy, numba (computation)
+- numpy, scipy (computation)
 - emtk (GUI); qtpy, pyqtgraph only for the legacy Qt tool
 - click (CLI)
 

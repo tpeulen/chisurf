@@ -57,7 +57,12 @@ RETIRED = {
     ),
     "numexpr": (
         "numexpr",
-        "write a numba kernel; NUMBA_NUM_THREADS already comes from settings",
+        "write the expression in NumPy; compiled kernels belong in tttrlib / IMP.bff",
+    ),
+    "numba": (
+        "numba",
+        "vectorised NumPy; a kernel that needs compiled speed goes to tttrlib "
+        "(photons, curves) or IMP.bff (coordinates)",
     ),
     "tables": (
         "pytables",

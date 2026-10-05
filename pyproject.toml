@@ -47,7 +47,6 @@ dependencies = [
     "qtpy",
     "sip",
     "pyqtgraph",
-    "numba",
     "numpy",
     # Mandatory: structure I/O, AV backend and kappa-squared correction import
     # IMP.bff unguarded. Bare `imp` (the full IMP suite) is no longer needed --
