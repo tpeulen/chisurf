@@ -176,6 +176,13 @@ if stage == "A":
         st[bk[0]] = not st[bk[0]]
         plot.plot_controller.set_state(st)
     main.mdiarea.setActiveSubWindow(w1)
+    variant = os.environ.get("CHISURF_RESTORE_VARIANT", "")
+    if variant == "maximized":
+        w2.showMaximized()
+        main.mdiarea.setActiveSubWindow(w2)
+    elif variant == "tabbed":
+        main.mdiarea.setViewMode(QtWidgets.QMdiArea.TabbedView)
+        main.mdiarea.setActiveSubWindow(w2)
     before = measure()
     (out / "A.json").write_text(json.dumps(before, indent=1, default=str))
     main.grab().save(str(out / "A.png"))

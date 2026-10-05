@@ -17,12 +17,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 PROBE = Path(__file__).with_name("restore_probe") / "session_probe.py"
 
 
-def _run(stage: str, out: Path) -> None:
+def _run(stage: str, out: Path, variant: str = "") -> None:
     env = os.environ.copy()
+    env["CHISURF_RESTORE_VARIANT"] = variant
     env.update(
         QT_QPA_PLATFORM="offscreen", MPLBACKEND="Agg", CHISURF_SETTINGS_DIR=str(out / "settings")
     )
@@ -37,9 +40,11 @@ def _run(stage: str, out: Path) -> None:
     assert result.returncode == 0, result.stdout[-3000:] + result.stderr[-3000:]
 
 
-def test_a_saved_session_reopens_exactly_as_it_was(tmp_path):
-    _run("A", tmp_path)
-    _run("B", tmp_path)
+@pytest.mark.parametrize("variant", ["", "maximized", "tabbed"])
+def test_a_saved_session_reopens_exactly_as_it_was(tmp_path, variant):
+    """Plain, one window maximized, and the window area in tabbed mode."""
+    _run("A", tmp_path, variant)
+    _run("B", tmp_path, variant)
     before = json.loads((tmp_path / "A.json").read_text())
     after = json.loads((tmp_path / "B.json").read_text())
     zoomed = [

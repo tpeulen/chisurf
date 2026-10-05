@@ -10,6 +10,19 @@ unchanged. It is left alone because `fcs/fcs_calculator/` carries another sessio
 uncommitted edits. The decision belongs to that lane: fall back with a warning when the
 configured file is absent, or stop the fixture configuring one.
 
+## Project restore: what "reopens 1:1" covers (2026-10-05)
+
+Measured by `test/gui/test_project_window_restore.py` (save in one process, open in
+a fresh one, compare widget-level facts; plain, one window maximized, and tabbed
+view mode): main geometry and docks, MDI view mode, active window and stacking,
+each fit window's geometry, maximized/minimized state, plot tab, code view, plot
+dock layout, every plot's and controller's state, and on-screen panel ranges
+including a mouse zoom -- all equal. Out of scope by the owner's decision
+(2026-10-05, "omitting plugins is fine", "no need to restore all"): open
+tool/plugin windows and scroll positions inside the Analysis dock editors.
+Separately (live app too, not a restore defect): the Fit page's data panel of the
+simulated TCSPC session autoscales its y-axis to ~1.4e16 when first shown.
+
 ## Native TCSPC visual-test teardown/restart (2026-10-03)
 
 The standalone FitWindow visual round-trip followed by Main construction in the
