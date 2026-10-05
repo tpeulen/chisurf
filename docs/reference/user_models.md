@@ -183,26 +183,41 @@ neither raises a dialog.
 ---
 
 (user-models-override)=
-## 5. In-place model code editing (Front Face / Back Face)
+## 5. In-place model code editing (the Code face)
 
 This is the second mechanism: instead of adding a class, it **replaces the code
 of an existing module** at startup.
 
 ### 5.1 Using the code view
 
-Inside any **Fit Window** there is a **View Model Code** toggle above the plots
-(the "Front Face"). It flips the view to the "Back Face" — a Python editor
-holding the source of the active model.
+**Code** in a fit window's title bar turns the window over: instead of the plots
+it shows the source of the fit's model, with the model's `view.json` open in a
+second tab. **Plots** turns it back. The face is drawn by emtk, like the plots:
+
+| Control | What it does |
+|---|---|
+| 🤖 | Shows or hides the coding assistant beside the editor; it reads and edits the open files. |
+| ← / → | Back to where the caret was before the last jump, and forward again. |
+| **File:** | The model's source files and `*.view.json` specs in its folder; picking one opens it in a tab. |
+| **Jump to:** | The classes and functions of the open Python file; picking one moves the caret there. |
+| **Save/Apply** | Writes the file and applies it (below). Ctrl+S does the same. |
+
+Ctrl+F opens a find bar; Ctrl/Cmd-click on a name, or F12 with the caret on it,
+goes to its definition — in the open file, else in a module the file imports.
 
 ### 5.2 Saving and applying changes
 
-**Save and Apply Model** handles the change according to your permissions:
+**Save/Apply** handles the change according to your permissions:
 
 1. **Writable installations** — with write access to the original source file
    (e.g. an editable install), the change is written back to that file.
-2. **Versioned user overrides** — in all cases a copy is written to
-   `~/.chisurf/models/`, named for the fully-qualified module plus a timestamp,
-   e.g. `chisurf.core.models.tcspc.fret__override__20260609_120000.py`.
+2. **Read-only installations** — the change goes to `~/.chisurf/models/` as a
+   versioned user override named for the fully-qualified module plus a
+   timestamp, e.g. `chisurf.core.models.tcspc.fret__override__20260609_120000.py`,
+   which is applied again at every start (5.3). A `view.json` is saved there as
+   a timestamped copy and is not applied.
+
+The status line under the editor says which file was written.
 
 ### 5.3 Instant application and startup injection
 
@@ -243,6 +258,6 @@ file in that folder is ignored.
 
 **Changing a built-in model**
 
-- [ ] Open the fit, toggle **View Model Code**, edit, **Save and Apply Model**.
+- [ ] Open the fit, click **Code** in its title bar, edit, **Save/Apply**.
 - [ ] Confirm an `__override__` file appeared in `~/.chisurf/models/`.
 - [ ] To revert, delete that file and restart.

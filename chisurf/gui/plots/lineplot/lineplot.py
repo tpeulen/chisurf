@@ -21,7 +21,6 @@ from chisurf import typing
 from chisurf.gui import QtCore, QtWidgets
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
-from chisurf.gui.widgets.dock_area.dock_area import DockSplitter
 
 colors = cs.core.settings.gui["plot"]["colors"]
 
@@ -872,10 +871,12 @@ class LinePlot(plotbase.Plot):
             self._auto_enable_display_group_if_grouped()
         except Exception:
             pass
-        # chiplot panels (renderer-neutral): each cp.Plot is a QWidget wrapping
-        # the active backend's canvas, so it drops straight into the DockSplitter
-        # where a pg.PlotWidget used to go. The residual panels share the data
-        # panel's x-axis via link_x.
+        # chiplot panels, stacked a.corr. residuals / residuals / data with a
+        # shared x-axis. The fit window draws its pages on one emtk surface, so
+        # the stack is an emtk PaneStack of the panels' canvases (emtk_body):
+        # weighted, so data : (a.corr + w.res) stays the golden ratio through
+        # every resize until the user drags a bar, and collapsible, so a strip
+        # can be folded away and dragged back.
         p1 = cp.Plot()
         p2 = cp.Plot()
         p3 = cp.Plot()
@@ -885,29 +886,8 @@ class LinePlot(plotbase.Plot):
         plots = {"top_left_plot": p1, "top_right_plot": p2, "main_plot": p3}
         plots["top_left_plot"].set_axis_visible(bottom=False)
         plots["top_right_plot"].set_axis_visible(bottom=False)
-
-        # Vertical stack (chisurf dock impl): A.corr. residuals, residuals, data
-        # — matching the former pyqtgraph DockArea arrangement. Titles are hidden
-        # by default (settings gui.plot.hideTitle), so a plain DockSplitter is a
-        # faithful replacement; the panels' x-axes are linked above.
-        area = DockSplitter(QtCore.Qt.Vertical)
-        # Collapsible, so a panel can be folded away by dragging its handle
-        # onto the next one. DockSplitter turns this off for docks, where a
-        # pane that vanishes is a pane the user cannot get back; here the
-        # handle stays on screen and the drag reverses.
-        area.setChildrenCollapsible(True)
-        area.addWidget(p2)  # A.corr. residuals
-        area.addWidget(p1)  # Residuals
-        area.addWidget(p3)  # Data
-        self.plot_splitter = area
-        self._apply_golden_split()
-        # Absolute sizes do not survive a resize — the splitter rescales them
-        # and the proportion drifts — so re-apply the ratio on every resize
-        # until the user drags a handle, after which their split is the answer.
-        self._split_is_users = False
-        area.splitterMoved.connect(self._on_splitter_moved)
-        area.installEventFilter(self)
-        self.layout.addWidget(area)
+        self._panels = (p2, p1, p3)  # A.corr. residuals, residuals, data
+        self.plot_stack = None
 
         # Labels - draggable text box for the fit-quality metrics overlay: light
         # text on a dark translucent box with a quiet border, pinned to the top
@@ -1014,29 +994,39 @@ class LinePlot(plotbase.Plot):
     #: so data : (a.corr + w.res) is the golden ratio.
     GOLDEN_DATA_FRACTION = 0.6180339887498949
 
-    def _apply_golden_split(self) -> None:
-        """Size the stacked panels so the data panel takes the golden share."""
-        splitter = getattr(self, "plot_splitter", None)
-        if splitter is None or splitter.count() != 3:
-            return
-        total = max(splitter.height() - splitter.handleWidth() * 2, 3)
-        data = int(round(total * self.GOLDEN_DATA_FRACTION))
-        strip = max((total - data) // 2, 1)
-        splitter.setSizes([strip, strip, max(total - 2 * strip, 1)])
+    def golden_weights(self) -> tuple[float, float, float]:
+        """The panels' shares: data takes the golden fraction, the strips halve the rest."""
+        strip = (1.0 - self.GOLDEN_DATA_FRACTION) / 2.0
+        return (strip, strip, self.GOLDEN_DATA_FRACTION)
 
-    def _on_splitter_moved(self, *_) -> None:
-        """Stop re-applying the ratio once the user has chosen a split."""
-        self._split_is_users = True
+    def emtk_body(self):
+        """The panel stack as one emtk control (built once, then kept)."""
+        if self.plot_stack is None:
+            from emtk.flags import Axis
+            from emtk.widgets.pane_stack import PaneStack
 
-    def eventFilter(self, obj, event):
-        """Re-apply the golden split while the user has not overridden it."""
-        if (
-            obj is getattr(self, "plot_splitter", None)
-            and event.type() == QtCore.QEvent.Resize
-            and not getattr(self, "_split_is_users", False)
-        ):
-            self._apply_golden_split()
-        return super().eventFilter(obj, event)
+            from chisurf.gui.plots.emtk_page import PanelItem
+
+            self.panel_items = [PanelItem(panel, panel._canvas) for panel in self._panels]
+            self.plot_stack = PaneStack(
+                self.panel_items, self.golden_weights(), axis=Axis.Y, collapsible=True
+            )
+        return self.plot_stack
+
+    def get_state(self) -> dict:
+        """The panel split, once the user has chosen one (project persistence)."""
+        stack = self.plot_stack
+        if stack is None or not stack.user_sized:
+            return {}
+        return {"split": [round(float(w), 6) for w in stack.weights]}
+
+    def set_state(self, state: dict) -> None:
+        """Restore a split saved by :meth:`get_state`."""
+        split = state.get("split") if isinstance(state, dict) else None
+        if isinstance(split, (list, tuple)) and len(split) == len(self._panels):
+            stack = self.emtk_body()
+            stack.set_weights([float(w) for w in split])
+            stack.user_sized = True
 
     def _auto_enable_display_group_if_grouped(self) -> None:
         """Enable "display group" by default for multi-fit FitGroups.

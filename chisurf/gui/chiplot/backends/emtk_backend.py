@@ -558,8 +558,23 @@ class EmtkCanvas(base.Canvas):
         """Return the embeddable Qt widget for this panel."""
         return self._widget
 
+    def set_refresh_target(self, callback: Callable[[], None] | None) -> None:
+        """Send repaint requests to *callback* instead of this panel's own widget.
+
+        A panel drawn as a control inside a larger emtk surface (a fit window's
+        page) is not shown in its own host widget, so repainting that widget
+        shows nothing: a new curve would wait for the next mouse move. The
+        surface that draws the panel installs its frame request here.
+        ``None`` restores the panel's own widget.
+        """
+        self._refresh_target = callback
+
     def refresh(self) -> None:
-        """Ask the host widget to repaint."""
+        """Ask whatever shows this panel to repaint."""
+        target = getattr(self, "_refresh_target", None)
+        if target is not None:
+            target()
+            return
         update = getattr(self._widget, "update", None)
         if callable(update):
             update()

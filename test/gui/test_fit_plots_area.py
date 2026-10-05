@@ -1,22 +1,14 @@
-"""Tests for EMTK-based FitPlotsArea and FitSubWindow tabbed plot surface."""
+"""FitPlotsArea: the fit window's one emtk surface behind the plot_tab_widget calls."""
 
 from __future__ import annotations
 
-import numpy as np
-import pytest
-from emtk.qt_painter import QtPainter
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtWidgets
 
-import chisurf as cs
-from chisurf.core.data import DataCurve, DataCurveGroup
-from chisurf.core.fitting.fit import FitGroup
-from chisurf.core.models.description import tcspc_polarized
-from chisurf.gui.widgets.fitting.fit_plots_area import FitPlotsArea, FitTabBarControl
-from chisurf.gui.widgets.fitting.fit_subwindow import FitSubWindow
+from chisurf.gui.widgets.fitting.fit_plots_area import LAYOUT_TYPE, FitPlotsArea
 
 
 def test_fit_plots_area_tab_management(qapp, qtbot):
-    """FitPlotsArea manages tabs, switches pages, and emits signals."""
+    """Pages are added, named, chosen and reported like tabs."""
     area = FitPlotsArea()
     qtbot.addWidget(area)
 
@@ -24,7 +16,7 @@ def test_fit_plots_area_tab_management(qapp, qtbot):
     w2 = QtWidgets.QLabel("Plot 2")
 
     signals = []
-    area.currentChanged.connect(lambda idx: signals.append(idx))
+    area.currentChanged.connect(signals.append)
 
     area.addTab(w1, "Fit")
     area.addTab(w2, "Residuals")
@@ -39,173 +31,74 @@ def test_fit_plots_area_tab_management(qapp, qtbot):
     area.setCurrentIndex(1)
     assert area.currentIndex() == 1
     assert area.currentWidget() is w2
-    assert 1 in signals
+    assert signals == [1]
 
     area.setTabText(1, "Weighted Residuals")
     assert area.tabText(1) == "Weighted Residuals"
+    assert area.surface.docks.window("1:Residuals").title == "Weighted Residuals"
 
 
-def test_fit_tab_bar_control_draw_and_interaction(qapp, qtbot):
-    """FitTabBarControl renders via EMTK painter and handles click/hover."""
-    changes = []
-    control = FitTabBarControl(on_change=lambda idx: changes.append(idx))
-    control.set_tabs(["Fit", "Data table", "Info"])
+def test_pages_are_built_when_first_asked_for(qapp, qtbot):
+    """A page's provider runs once, the first time its plot is needed."""
+    area = FitPlotsArea()
+    qtbot.addWidget(area)
+    built = []
 
-    pixmap = QtGui.QPixmap(300, 28)
-    pixmap.fill(QtCore.Qt.black)
-    painter = QtGui.QPainter(pixmap)
-    try:
-        surface = QtPainter(painter)
-        control.draw(surface, 0.0, 0.0, 300.0, 28.0)
-    finally:
-        painter.end()
+    def provider():
+        built.append(1)
+        return QtWidgets.QLabel("late")
 
-    assert len(control._tab_rects) == 3
-    fit_rx, fit_ry, fit_rw, fit_rh = control._tab_rects[0]
-    dt_rx, dt_ry, dt_rw, dt_rh = control._tab_rects[1]
+    area.add_page("Late", provider)
+    assert built == []
+    page = area.widget(0)
+    assert isinstance(page, QtWidgets.QLabel)
+    assert area.widget(0) is page
+    assert built == [1]
 
-    # Test click on second tab
-    control.press(dt_rx + dt_rw / 2.0, dt_ry + dt_rh / 2.0)
-    assert control.current_index == 1
-    assert changes == [1]
 
-    # Test hover
-    control.hover(fit_rx + fit_rw / 2.0, fit_ry + fit_rh / 2.0)
-    assert control.hovered_index == 0
+def test_page_widgets_are_hidden_and_only_the_host_shows(qapp, qtbot):
+    """What a page widget holds is drawn by the surface; the widget itself never shows."""
+    area = FitPlotsArea()
+    qtbot.addWidget(area)
+    area.addTab(QtWidgets.QLabel("one"), "One")
+    area.show()
+    qapp.processEvents()
+    shown = [w for w in area.findChildren(QtWidgets.QWidget) if w.isVisible()]
+    assert shown == [area.host]
 
 
 def test_fit_plots_area_layout_state_roundtrip(qapp, qtbot):
-    """Layout state round-trips stably across serialization."""
+    """Layout state round-trips: regions, docked pages and the current page."""
     area = FitPlotsArea()
     qtbot.addWidget(area)
+    for title in ("Fit", "Residuals", "Parameters"):
+        area.addTab(QtWidgets.QLabel(title), title)
+    right = area.surface.docks.split_region("center", "right")
+    area.surface.docks.dock("1:Residuals", right)
+    area.setCurrentIndex(2)
 
-    w1 = QtWidgets.QLabel("P1")
-    w2 = QtWidgets.QLabel("P2")
-    w1.setProperty("key", "plot_fit")
-    w2.setProperty("key", "plot_res")
-
-    area.addTab(w1, "Fit")
-    area.addTab(w2, "Residuals")
-    area.setCurrentIndex(1)
-
-    state = area.get_layout_state(key_func=lambda w: w.property("key"))
-    assert state["current_index"] == 1
-    assert "root" in state
+    state = area.get_layout_state()
+    assert state["type"] == LAYOUT_TYPE
+    assert state["current_index"] == 2
 
     restored = FitPlotsArea()
     qtbot.addWidget(restored)
-    restored.addTab(w1, "Fit")
-    restored.addTab(w2, "Residuals")
-
+    for title in ("Fit", "Residuals", "Parameters"):
+        restored.addTab(QtWidgets.QLabel(title), title)
     assert restored.set_layout_state(state, emit_change=False)
-    assert restored.currentIndex() == 1
+    assert restored.surface.docks.region_of("1:Residuals") == right
+    assert restored.currentIndex() == 2
 
 
-def test_fit_plots_area_rearrange_and_split_docks(qapp, qtbot):
-    """FitPlotsArea allows splitting and rearranging docks into different regions."""
+def test_a_layout_from_the_qt_dock_area_is_ignored(qapp, qtbot):
+    """The old Qt layout format is not this surface's: nothing changes."""
     area = FitPlotsArea()
     qtbot.addWidget(area)
-
-    w1 = QtWidgets.QLabel("Fit Plot")
-    w2 = QtWidgets.QLabel("Residuals Plot")
-    w3 = QtWidgets.QLabel("Parameters")
-    w1.setProperty("key", "plot_fit")
-    w2.setProperty("key", "plot_res")
-    w3.setProperty("key", "plot_param")
-
-    area.addTab(w1, "Fit")
-    area.addTab(w2, "Residuals")
-    area.addTab(w3, "Parameters")
-
-    main_tw = area.find_main_tab_widget()
-    assert main_tw is not None
-    assert len(area._find_tab_widgets()) == 1
-
-    # Split: create a new tab widget on the right with the residuals tab
-    new_tw = area._create_tab_widget()
-    # Move widget w2 to new_tw
-    main_tw.removeTab(1)
-    new_tw.addTab(w2, "Residuals")
-    area.split_tab_widget(main_tw, new_tw, "right")
-
-    tab_widgets = area._find_tab_widgets()
-    assert len(tab_widgets) == 2
-    assert area.count() == 3
-
-    # State serialization of split layout
-    state = area.get_layout_state(key_func=lambda w: w.property("key"))
-    assert state["root"]["type"] == "splitter"
-    assert len(state["root"]["children"]) == 2
-
-    # Roundtrip restore into fresh area
-    restored = FitPlotsArea()
-    qtbot.addWidget(restored)
-    restored.addTab(w1, "Fit")
-    restored.addTab(w2, "Residuals")
-    restored.addTab(w3, "Parameters")
-    assert restored.set_layout_state(state, key_func=lambda w: w.property("key"), emit_change=False)
-    active_tw = [tw for tw in restored._find_tab_widgets() if tw.count() > 0]
-    assert len(active_tw) == 2
-
-
-def test_fit_plots_area_tab_overflow_navigation(qapp, qtbot):
-    """DockTabBar in FitPlotsArea uses scroll buttons and ElideNone for tab overflow."""
-    area = FitPlotsArea()
-    qtbot.addWidget(area)
-
-    tabs = ["Fit", "Data table", "Info", "Parameter scan", "Distribution", "Residuals"]
-    for t in tabs:
-        area.addTab(QtWidgets.QLabel(t), t)
-
-    main_tw = area.find_main_tab_widget()
-    tab_bar = main_tw.tabBar()
-    assert tab_bar.usesScrollButtons() is True
-    assert tab_bar.elideMode() == QtCore.Qt.ElideNone
-
-    # Resize to narrow width
-    area.resize(250, 200)
-    area.show()
-    qapp.processEvents()
-
-    # Tool buttons (◀ and ▶) exist on QTabBar when content overflows
-    tool_buttons = tab_bar.findChildren(QtWidgets.QToolButton)
-    assert len(tool_buttons) >= 2
-
-
-def test_fit_tab_bar_control_overflow_scroll_buttons(qapp, qtbot):
-    """FitTabBarControl renders ◀ and ▶ buttons when tabs exceed available width."""
-    control = FitTabBarControl()
-    control.set_tabs(["Fit", "Data table", "Info", "Parameter scan", "Distribution", "Residuals"])
-
-    # Wide render: no scroll buttons needed
-    pix_wide = QtGui.QPixmap(800, 28)
-    pix_wide.fill(QtCore.Qt.black)
-    p_wide = QtGui.QPainter(pix_wide)
-    try:
-        control.draw(QtPainter(p_wide), 0.0, 0.0, 800.0, 28.0)
-    finally:
-        p_wide.end()
-    assert control._left_arrow_rect is None
-    assert control._right_arrow_rect is None
-
-    # Narrow render (250px): scroll buttons appear
-    pix_narrow = QtGui.QPixmap(250, 28)
-    pix_narrow.fill(QtCore.Qt.black)
-    p_narrow = QtGui.QPainter(pix_narrow)
-    try:
-        control.draw(QtPainter(p_narrow), 0.0, 0.0, 250.0, 28.0)
-    finally:
-        p_narrow.end()
-    assert control._left_arrow_rect is not None
-    assert control._right_arrow_rect is not None
-    assert control._can_scroll_right is True
-
-    # Click right arrow scrolls offset
-    rx, ry, rw, rh = control._right_arrow_rect
-    prev_offset = control.scroll_offset
-    control.press(rx + rw / 2.0, ry + rh / 2.0)
-    assert control.scroll_offset > prev_offset
-
+    area.addTab(QtWidgets.QLabel("Fit"), "Fit")
+    old = {"type": "emtk_fit_plots_area", "version": 1, "root": {"type": "tab", "tabs": []},
+           "current_index": 0}
+    assert not area.set_layout_state(old)
+    assert area.count() == 1
 
 
 def test_fit_subwindow_uses_fit_plots_area(tmp_path):

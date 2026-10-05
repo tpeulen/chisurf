@@ -16,7 +16,6 @@ import chisurf.gui.decorators
 from chisurf import typing
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
-from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
 plot_settings = cs.core.settings.gui["plot"]
@@ -246,13 +245,9 @@ class ParameterScanPlot(plotbase.Plot):
 
         self.plot_controller = ParameterScanWidget(model=fit.model, parent=self)
 
-        area = DockArea()
-        self.layout.addWidget(area)
-
-        self.p1 = QtWidgets.QPlainTextEdit()
-        p2 = cp.Plot()
-
-        area.addTab(p2, "Chi2-Surface")
+        # One panel; its title is what the single-tab dock around it used to say.
+        p2 = cp.Plot(title="Chi2-Surface")
+        self.layout.addWidget(p2)
 
         self.distribution_plot = p2
         self.distribution_curve = p2.line(

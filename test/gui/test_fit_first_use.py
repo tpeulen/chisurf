@@ -53,44 +53,41 @@ def run_fresh(source, tmp_path):
 
 
 def test_native_window_leaves_code_unbuilt(tmp_path):
-    """A fresh native window must leave the hidden editor and plugin unloaded."""
+    """A fresh window leaves the Code face, and the editor modules, unbuilt."""
     run_fresh(
         NATIVE_SETUP
         + """
 import sys
-assert getattr(window, 'code_editor', None) is None
+assert window.code_face is None
+assert 'chisurf.gui.widgets.fitting.fit_code_face' not in sys.modules
 assert 'chisurf.plugins.core.code_editor' not in sys.modules
-assert window.stack.count() == 2
+assert not window.plot_tab_widget.code_shown()
 """,
         tmp_path,
     )
 
 
-def test_real_code_button_reuses_editor(tmp_path):
-    """Qt clicks build the real editor once and keep its navigation toolbar."""
+def test_real_code_button_reuses_the_code_face(tmp_path):
+    """Qt clicks on the title bar build the emtk Code face once and turn back to plots."""
     run_fresh(
         NATIVE_SETUP
         + """
 from qtpy.QtTest import QTest
 window.show()
 app.processEvents()
-assert getattr(window, 'code_editor', None) is None
+assert window.code_face is None
 QTest.mouseClick(window.flip_to_code_btn, QtCore.Qt.LeftButton)
 app.processEvents()
-from chisurf.plugins.core.code_editor import CodeEditor
-assert isinstance(window.code_editor, CodeEditor)
-assert window.stack.currentIndex() == 1
-assert window.file_combo.count() > 0
-assert window.func_combo.count() > 1
-editor = window.code_editor
-connections = editor.receivers(editor.symbolsChanged)
+face = window.code_face
+assert face is not None
+assert window.plot_tab_widget.code_shown()
+assert len(face.files) > 0
+assert len(face.symbols) > 1
 QTest.mouseClick(window.flip_to_code_btn, QtCore.Qt.LeftButton)
-assert window.stack.currentIndex() == 0
+assert not window.plot_tab_widget.code_shown()
 QTest.mouseClick(window.flip_to_code_btn, QtCore.Qt.LeftButton)
-assert window.code_editor is editor
-assert editor.receivers(editor.symbolsChanged) == connections
-assert window.stack.count() == 2
-assert window._get_current_text_editor().external_definition_callback == window._open_external_definition
+assert window.code_face is face
+assert len(face.documents) == len({d.path for d in face.documents})
 """,
         tmp_path,
     )
@@ -101,10 +98,10 @@ def test_project_code_face_builds_editor(tmp_path):
     run_fresh(
         NATIVE_SETUP
         + """
-assert getattr(window, 'code_editor', None) is None
+assert window.code_face is None
 assert window.set_project_plot_state({'stack_index': 1})
-assert window.code_editor is not None
-assert window.stack.currentIndex() == 1
+assert window.code_face is not None
+assert window.plot_tab_widget.code_shown()
 assert window.flip_to_code_btn.isChecked()
 assert window.flip_to_code_btn.text() == 'Plots'
 """,
@@ -333,51 +330,53 @@ assert fitting.fitting_client is fitting_client
 
 
 def test_code_file_navigation_and_save(tmp_path):
-    """Direct code access retains real symbols, cursor navigation, and saving."""
+    """The Code face opens files at a line, jumps to definitions, goes back, and saves."""
     run_fresh(
         NATIVE_SETUP
         + r"""
 from pathlib import Path
 import os
-from qtpy.QtTest import QTest
-path = Path(os.environ['CHISURF_SETTINGS_DIR']) / 'first_use_code.py'
-path.write_text('def first():\n    return 1\n\ndef second():\n    return 2\n')
-assert window.code_editor is None
-window.load_code_file(str(path), line_number=3)
-text_editor = window._get_current_text_editor()
-assert text_editor.textCursor().blockNumber() == 3
-assert text_editor.file_load_callback == window.load_code_file
-assert window.func_combo.count() == 3
-other_path = path.with_name('other_code.py')
-other_path.write_text('def other():\n    return 4\n')
-window.file_combo.addItem(path.name, str(path))
-window.file_combo.addItem(other_path.name, str(other_path))
-window.file_combo.setCurrentIndex(1)
-assert window._get_current_text_editor().current_file == str(other_path)
-window.file_combo.setCurrentIndex(0)
-assert window._get_current_text_editor() is text_editor
-assert window.original_source_file == str(path)
-window.func_combo.setCurrentIndex(1)
-assert text_editor.textCursor().blockNumber() == 0
-window.func_combo.setCurrentIndex(2)
-assert text_editor.textCursor().blockNumber() == 3
-window._open_external_definition(str(path), 2)
-assert text_editor.textCursor().blockNumber() == 1
-text_editor.push_nav_history(str(path), 0)
-text_editor.push_nav_history(str(path), 3)
-window._code_nav_back()
-assert text_editor.textCursor().blockNumber() == 0
-window._code_nav_forward()
-assert text_editor.textCursor().blockNumber() == 3
-text_editor.setText('def saved():\n    return 3\n')
 from unittest.mock import patch
-window.updateStatusBar('Headless code status')
+path = Path(os.environ['CHISURF_SETTINGS_DIR']) / 'first_use_code.py'
+path.write_text('def first():\n    return 1\n\ndef second():\n    return first()\n')
+assert window.code_face is None
+window.load_code_file(str(path), line_number=3)
+face = window.code_face
+editor = face.active_doc.editor
+assert editor.cursors.main.end.line == 3
+assert [s.name for s in face.symbols] == ['first', 'second']
+other_path = path.with_name('other_code.py')
+other_path.write_text('import json\ndef other():\n    return json.dumps(4)\n')
+face.set_files([str(path), str(other_path)])
+face.open_file(str(other_path))
+assert face.active_doc.path == str(other_path)
+face.open_file(str(path))
+assert face.active_doc.editor is editor
+assert len(face.documents) == 2
+face.goto_line(0)
+assert editor.cursors.main.end.line == 0
+# go to definition: in this file, then in an imported module
+from emtk.widgets.text_editor import Pos
+editor.set_cursor(Pos(4, 12))
+assert face.word_at_caret() == 'first'
+assert face.jump_to_definition('first')
+assert editor.cursors.main.end.line == 0
+face.open_file(str(other_path))
+assert face.jump_to_definition('dumps')
+assert face.active_doc.path.endswith('json/__init__.py')
+face.back()
+assert face.active_doc.path == str(other_path)
+face.forward()
+assert face.active_doc.path.endswith('json/__init__.py')
+face.open_file(str(path))
+editor.set_text('def saved():\n    return 3\n')
 cs.cs = QtWidgets.QMainWindow()
 with patch('chisurf.gui.widgets.fitting.fit_subwindow.dialogs.warning') as warning:
-    QTest.mouseClick(window.save_code_btn, QtCore.Qt.LeftButton)
+    face.apply()
     warning.assert_not_called()
 assert cs.cs.statusBar().currentMessage() == 'Saved to ' + str(path)
 assert path.read_text() == 'def saved():\n    return 3\n'
+assert face.status == 'Saved ' + str(path)
 """,
         tmp_path,
     )
@@ -389,12 +388,13 @@ def test_project_front_face_restores_code_button(tmp_path):
         NATIVE_SETUP
         + """
 window.show_code_view()
-editor = window.code_editor
+face = window.code_face
 assert window.set_project_plot_state({'stack_index': 0})
-assert window.stack.currentIndex() == 0
+assert not window.plot_tab_widget.code_shown()
 assert not window.flip_to_code_btn.isChecked()
 assert window.flip_to_code_btn.text() == 'Code'
-assert window.code_editor is editor
+assert window.code_face is face
+assert window.get_project_plot_state()['stack_index'] == 0
 """,
         tmp_path,
     )
@@ -421,7 +421,7 @@ for name in plots.__all__:
 
 
 def test_real_editor_applies_model_code(tmp_path):
-    """Save/Apply still executes model code from the real current editor."""
+    """Save/Apply executes the model code the Code face holds."""
     run_fresh(
         NATIVE_SETUP
         + r"""
@@ -437,15 +437,16 @@ model_class = resolve_compute_model_class(fit.model) or fit.model.__class__
 module = sys.modules[model_class.__module__]
 module._first_use_original_class = model_class
 code = model_class.__name__ + ' = _first_use_original_class\n_first_use_applied = True\n'
-window._get_current_text_editor().setText(code)
+window.code_face.active_doc.editor.set_text(code)
 cs.cs = QtWidgets.QMainWindow()
 before = np.asarray(fit.model.y).copy()
 with patch('inspect.getsourcefile', return_value=str(path)), patch(
         'chisurf.gui.widgets.fitting.fit_subwindow.get_fitting_client', return_value=None):
-    window.save_model_code()
+    window.code_face.apply()
 assert path.read_text() == code
 assert module._first_use_applied is True
 assert cs.cs.statusBar().currentMessage() == 'Model code applied successfully.'
+assert window.code_face.status.endswith('model code applied.')
 np.testing.assert_array_equal(before, fit.model.y)
 """,
         tmp_path,

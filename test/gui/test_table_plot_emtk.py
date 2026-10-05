@@ -3,11 +3,9 @@
 The fit window's "Data table" page was the last plot page whose whole content
 was a classic Qt widget stack (``ChiTableWidget`` plus Qt tool buttons). The
 emtk port renders the table, the toolbar and the status line through emtk's
-``DataTable``/``Button`` widgets, keeps every routing behaviour (x/data and
-mask edits reach the fit and the fitting client), and stays off the default
-until it is accepted: ``gui.plot.fit_table: emtk`` or
-``CHISURF_FIT_TABLE_BACKEND=emtk`` selects it; ``qt`` (the default) keeps the
-retained page.
+``DataTable``/``Button`` widgets and keeps every routing behaviour (x/data and
+mask edits reach the fit and the fitting client). The fit window is one emtk
+surface, so this is the only Data-table page it can show.
 """
 
 from __future__ import annotations
@@ -182,17 +180,8 @@ def test_filter_narrows_visible_rows(emtk_plot):
     assert len(table.order()) == 1
 
 
-def test_registry_selects_qt_by_default_and_emtk_on_request(qapp, monkeypatch):
+def test_the_registry_gives_the_emtk_page(qapp):
     from chisurf.gui.autoform.sections.registry import get_plot_class
-
-    monkeypatch.delenv("CHISURF_FIT_TABLE_BACKEND", raising=False)
-    monkeypatch.setattr("chisurf.gui.autoform.sections.builtin._fit_table_setting", lambda: "qt")
-    assert get_plot_class("fit_table") is not None
-    from chisurf.gui.plots.table_plot import FitTablePlot
-
-    assert get_plot_class("fit_table") is FitTablePlot
-
-    monkeypatch.setattr("chisurf.gui.autoform.sections.builtin._fit_table_setting", lambda: "emtk")
     from chisurf.gui.plots.table_plot_emtk import FitTablePlotEmtk
 
     assert get_plot_class("fit_table") is FitTablePlotEmtk
@@ -204,3 +193,61 @@ def test_offscreen_render_is_emtk_dark(emtk_plot, qapp):
     png = os.path.join(os.environ.get("CHISURF_EVIDENCE_DIR", "/tmp"), "fit_table_emtk.png")
     plot.grab().save(png)
     assert os.path.exists(png)
+
+
+def _press_button(plot, button):
+    x, y, w, h = plot._btn_boxes[id(button)]
+    plot.press(x + w / 2, y + h / 2)
+    plot.release()
+    _draw_once(plot)
+
+
+def test_the_qt_pages_table_tools_are_all_here(emtk_plot):
+    """Columns, Hide empty, Shade, its scope and Export: the Qt page had all five."""
+    plot, _ = emtk_plot
+    _draw_once(plot)
+    for button in (plot.btn_columns, plot.btn_empty, plot.btn_shade, plot.btn_scope,
+                   plot.btn_export):
+        assert id(button) in plot._btn_boxes
+        x, y, w, h = plot._btn_boxes[id(button)]
+        assert plot.tooltip_at(x + 2, y + 2), f"{button.label} has no tooltip"
+
+
+def test_columns_asks_the_table_for_its_column_list(emtk_plot):
+    plot, _ = emtk_plot
+    _draw_once(plot)
+    _press_button(plot, plot.btn_columns)
+    assert plot.table.picker_at is not None
+
+
+def test_shade_and_its_scope(emtk_plot):
+    plot, _ = emtk_plot
+    _draw_once(plot)
+    assert plot.table.colour_values is None
+    _press_button(plot, plot.btn_shade)
+    assert plot.table.colour_values == "column"
+    _press_button(plot, plot.btn_scope)
+    assert plot.table.colour_values == "table"
+    _press_button(plot, plot.btn_shade)
+    assert plot.table.colour_values is None
+
+
+def test_hide_empty_hides_only_columns_without_values(emtk_plot):
+    plot, _ = emtk_plot
+    _draw_once(plot)
+    key = plot.table.columns[-1].key
+    plot.table.arrays[key] = np.full(len(plot.table.arrays[key]), np.nan)
+    _press_button(plot, plot.btn_empty)
+    assert key in plot.table.hidden
+    assert len(plot.table.hidden) == 1
+    _press_button(plot, plot.btn_empty)
+    assert key not in plot.table.hidden
+
+
+def test_export_writes_the_visible_table(emtk_plot, tmp_path):
+    plot, _ = emtk_plot
+    _draw_once(plot)
+    path = plot.export_csv(str(tmp_path / "table.csv"))
+    lines = (tmp_path / "table.csv").read_text().splitlines()
+    assert path and lines[0].split(",") == [c.key for c in plot.table.visible_columns()]
+    assert len(lines) == plot.table.row_count() + 1

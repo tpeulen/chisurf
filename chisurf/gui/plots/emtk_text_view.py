@@ -70,8 +70,16 @@ class EmtkTextView(QtWidgets.QWidget):
             return self._plain.toPlainText()
         return ""
 
+    def set_refresh_target(self, callback) -> None:
+        """Send repaint requests to *callback* (the surface that draws the editor)."""
+        self._refresh_target = callback
+
     def _request_repaint(self) -> None:
-        """Schedule a Qt repaint; the host draws the editor's current state."""
+        """Schedule a repaint; whoever draws the editor shows its current state."""
+        target = getattr(self, "_refresh_target", None)
+        if target is not None:
+            target()
+            return
         host = self._host
         if host is not None:
             update = getattr(host, "update", None)

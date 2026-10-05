@@ -352,51 +352,33 @@ def test_apply_presets_to_mode_list_conversion():
     assert updated.y_padding == 0.05
 
 
-def test_the_stacked_panels_can_be_folded():
-    """Dragging a splitter handle onto a panel collapses it.
+def test_the_data_panel_takes_the_golden_share():
+    """Split the stack so data : (a.corr + w.res) is the golden ratio, at any size.
 
-    ``DockSplitter`` turns collapsing off for docks, where a pane that vanishes
-    is a pane the user cannot get back. Here the handle stays on screen and the
-    drag reverses, so a residual strip can be folded away when the data panel
-    needs the room.
+    The stack divides by weight, so the proportion holds through every resize
+    without being re-applied -- the bug a pixel-sized splitter had.
     """
-    src = _lineplot_source()
-    assert "area.setChildrenCollapsible(True)" in src
+    from emtk.testing import RecordingPainter
+    from emtk.widgets.pane_stack import PaneStack
 
+    class _Pane:
+        def draw(self, *a):
+            pass
 
-def test_the_data_panel_takes_the_golden_share(qtbot):
-    """Split the stack so data : (a.corr + w.res) is the golden ratio.
-
-    Absolute sizes do not survive a resize -- the splitter rescales them and the
-    proportion drifts -- so the ratio is re-applied on every resize until the
-    user drags a handle. Exercised on a bare splitter because the arithmetic,
-    not the plot, is what can go wrong.
-    """
-    splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-    for _ in range(3):
-        pane = QtWidgets.QWidget()
-        pane.setMinimumHeight(1)
-        splitter.addWidget(pane)
-    splitter.setChildrenCollapsible(True)
-    qtbot.addWidget(splitter)
-
-    class _Stub:
-        GOLDEN_DATA_FRACTION = LinePlot.GOLDEN_DATA_FRACTION
-        plot_splitter = splitter
-
+    weights = LinePlot.golden_weights(LinePlot.__new__(LinePlot))
+    stack = PaneStack([_Pane(), _Pane(), _Pane()], weights, thickness=0.0)
     for height in (600, 400, 260):
-        splitter.resize(400, height)
-        LinePlot._apply_golden_split(_Stub())
-        acorr, wres, data = splitter.sizes()
-        assert data / (acorr + wres) == pytest.approx(1.618, abs=0.05)
-        assert acorr == pytest.approx(wres, abs=1)
+        stack.draw(RecordingPainter(), 0, 0, 400, height)
+        acorr, wres, data = (box[3] for box in stack._pane_boxes)
+        assert data / (acorr + wres) == pytest.approx(1.618, abs=0.01)
+        assert acorr == pytest.approx(wres, abs=1e-6)
 
 
-def test_a_dragged_split_is_not_overwritten():
-    """Once the user chooses a split, resizing keeps it."""
+def test_the_panel_stack_is_collapsible_and_remembers_a_dragged_split():
+    """A strip can be folded away, and a split the user dragged is saved."""
     src = _lineplot_source()
-    assert "splitterMoved.connect(self._on_splitter_moved)" in src
-    assert "_split_is_users" in src
+    assert "collapsible=True" in src
+    assert "stack.user_sized" in src
 
 
 def test_the_legend_is_shown_when_the_setting_asks_for_it():
