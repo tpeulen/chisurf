@@ -91,12 +91,23 @@ def _close_plots_this_test_created():
         ViewBox.NamedViews.pop(name, None)
 
 
+#: The session's QApplication, held for the life of the process. Held only by
+#: the fixture, it was destroyed when pytest dropped the last test's arguments
+#: -- while that test's widgets still existed, which Qt does not allow: sip then
+#: visits every remaining wrapper from QApplication's destructor and reads
+#: freed memory (a SIGSEGV/SIGBUS after the last test of a file had passed).
+#: pytest-qt holds its application the same way.
+_QAPP = None
+
+
 @pytest.fixture(scope="session")
 def qapp():
     """Session-scoped QApplication fixture for widget tests."""
+    global _QAPP
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
+    _QAPP = app
     yield app
 
 

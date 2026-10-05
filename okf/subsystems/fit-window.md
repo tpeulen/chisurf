@@ -16,17 +16,13 @@ Done 2026-10-05: emtk pushed at `d8caa62` and `pixi.lock` pinned to it
 another lane's committed selectable-icon work (reverted in `649d47b`), and its
 atlas guard was red since `601d02d` (fixed in `d8caa62`).
 
-0. **Exit crash of `test/gui/test_fit_window_emtk.py`** (all tests pass, then
-   SIGSEGV/SIGBUS at interpreter exit). Native backtrace (lldb):
-   `dealloc_QApplication -> sip_api_visit_wrappers -> cleanup_qobject` reading
-   freed memory: some Qt wrapper outlives a Python object it needs at session
-   teardown. Intermittent on a clean HEAD worktree (1 in 2 at `09673456f`),
-   every run with other lanes' uncommitted work in the tree. Not from the grid
-   toolbar (A/B), not the top-level guard test (excluded, still crashes).
-   **Tried and reverted:** flushing `DeferredDelete` in the fixture teardown --
-   made it worse (2 errors + crash). Next: run under lldb with
-   `PYTHONMALLOC=debug`, find which wrapper's type is freed (the runtime-built
-   `ControlHost` class from `emtk.qt_host.host_class()` is the suspect).
+Resolved 2026-10-05: the "exit crash" after `test_fit_window_emtk.py` (and
+`test_fit_presentation_contract.py`) was the session `QApplication` being
+destroyed when pytest dropped the last test's fixture arguments
+(`runner.py` `item.funcargs = None`) while widgets were alive; sip then read
+freed memory from its destructor. `test/gui/conftest.py` now holds the
+application for the life of the process, as pytest-qt does.
+
 1. **Port `ProteinMCStructurePlot`** (ProteinMC). Its `Viewer` is a 3-D OpenGL
    widget, also an island today. Offscreen grabs of it are black, before and
    after this change, so judge it on a display or port it to chimol's emtk
