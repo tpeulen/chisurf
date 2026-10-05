@@ -31,10 +31,25 @@ proven by the actual-Main probe (`test/gui/test_all_model_document_gui.py` drivi
 3. **SPEC acceptance gaps** (unchanged): ProteinMC disk-load assertions omit model type /
    sampling controls / fit-range; file-load actions don't prove success-only identity publication
    after transactional failure; failed-save tests don't prove injected save-fault reachability.
-4. **Commit.** The arc's work is uncommitted (handover discipline: no git-changing operations).
-   `proteinmc_model.py` hunks interleave several sessions' persistence work — commit as one
-   persistence change, not per hunk.
-
+4. ✅ **Committed and pushed** (`tpeulen/mcts-native-baseline`): persistence `d577d93c1`,
+   with mmfdb `69818f9`/`75b8fba`, emtk `61c27c5`, ndxplorer `04fd5f8` pushed alongside.
+5. ✅ **Window restore 1:1** — `test/gui/test_project_window_restore.py` saves a real Main in
+   one process and opens it in a fresh one (plain / one window maximized / tabbed): geometry,
+   docks, active window and stacking, tabs, code view, plot layout, plot+controller state and
+   zoom all equal (`216174a8a`, `4c794b170` toolkit-neutral layout, `7badd0143`). Out of scope
+   by the owner's decision: plugin tool windows, editor scroll positions.
+6. ✅ **Undo/Redo one press per edit** (`b9fe7081c`): `fit.update` is `derived`; the browser
+   stops only at `OperationHistory.is_step_end`. Verified through the real menu actions, also
+   after reopening the saved project. Open: that save → reopen → undo check exists only as a
+   scratch probe, not as a test — add it beside `test_project_window_restore.py`.
+7. **CI cannot collect tests** (not persistence): committed code of other lanes imports their
+   *uncommitted* files (imaging `clsm_intensity_counts`, plugin-system `build_plugin_widget`,
+   installer, code_editor/tttr_splitter modules, ribbon, dispatcher, games hub). A validated
+   provider set waits in the private worktree `~/dev/chisurf-fix-wt` (commit `5eed46f9f` +
+   copied lane files). Owner decision pending: commit all real uncommitted edits per lane, or
+   lanes commit their own. Trap: ~465 tree files differ from HEAD only by `ruff format`
+   (this session's lint pass, also pending a keep/discard decision) — separate real edits with
+   `ruff format(HEAD blob) == working`, never by `git diff`. Lint at HEAD: 357 ruff errors.
 
 ## Latest verified checkpoint and where to pick this up — October 4, 2026
 

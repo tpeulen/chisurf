@@ -41039,3 +41039,8 @@ side of the line.
   top-level Qt bytes (they are an optional `backend.qt` hint; old projects read as such); window_arrangement (from the
   persistence session) moved behind the adapter; tab titles saved beside indices. Two-process restore proof green.
   [project-persistence](subsystems/project-persistence.md) "UI state is toolkit-neutral".
+- 2026-10-05 · Persistence, follow-ups: window restore proven 1:1 in a fresh process
+  (active window/stacking, maximized, tabbed, plot zoom via chiplot `is_auto_range`); Undo/Redo
+  revert/reapply an edit in one press (`fit.update` is `derived`, history stops at step ends).
+  CI still blocked at collection by other lanes' uncommitted files — see project-persistence
+  "Where to pick this up" item 7.
