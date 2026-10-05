@@ -28,9 +28,12 @@ proven by the actual-Main probe (`test/gui/test_all_model_document_gui.py` drivi
 2. **Visual review** of before/edited pairs for rows that went green late (DEER, DyeShape, …).
    Trap: Qt `grab()` cannot capture chimol's GPU surface — every "Structure" tab PNG is black;
    judge 3D tabs with the viewer's `renderer.grab_image(chrome=False)`.
-3. **SPEC acceptance gaps** (unchanged): ProteinMC disk-load assertions omit model type /
-   sampling controls / fit-range; file-load actions don't prove success-only identity publication
-   after transactional failure; failed-save tests don't prove injected save-fault reachability.
+3. ✅ **SPEC acceptance gaps closed** (`52ad05f4a`): ProteinMC disk reload asserts model type,
+   every sampling control and fit range; a file load failing after identity staging publishes
+   no identity (two layers -- late adoption, snapshot rollback; the test fails only when both
+   break, checked by mutation); failed-save tests assert their injected fault is reached.
+   `test/gui/test_project_review_regressions.py` had errored at setup in every test (hand-built
+   history events) and now runs (18 passed).
 4. ✅ **Committed and pushed** (`tpeulen/mcts-native-baseline`): persistence `d577d93c1`,
    with mmfdb `69818f9`/`75b8fba`, emtk `61c27c5`, ndxplorer `04fd5f8` pushed alongside.
 5. ✅ **Window restore 1:1** — `test/gui/test_project_window_restore.py` saves a real Main in
@@ -40,8 +43,7 @@ proven by the actual-Main probe (`test/gui/test_all_model_document_gui.py` drivi
    by the owner's decision: plugin tool windows, editor scroll positions.
 6. ✅ **Undo/Redo one press per edit** (`b9fe7081c`): `fit.update` is `derived`; the browser
    stops only at `OperationHistory.is_step_end`. Verified through the real menu actions, also
-   after reopening the saved project. Open: that save → reopen → undo check exists only as a
-   scratch probe, not as a test — add it beside `test_project_window_restore.py`.
+   after reopening the saved project: `test/gui/test_project_history_restore.py` (`4e580e917`).
 7. **CI cannot collect tests** (not persistence): committed code of other lanes imports their
    *uncommitted* files (imaging `clsm_intensity_counts`, plugin-system `build_plugin_widget`,
    installer, code_editor/tttr_splitter modules, ribbon, dispatcher, games hub). A validated
