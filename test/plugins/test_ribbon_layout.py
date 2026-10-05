@@ -57,7 +57,7 @@ EXPECTED = {
         "Photon data": ["TTTR Tools"],
         "Calculators": ["Calculators", "Light Path Simulator", "Spectra Downloader", "Wizards"],
         "Views": ["Acquisition", "Global View", "ndX"],
-        "System": ["Code Editor", "Games", "MMFDB Admin", "Screenshot"],
+        "System": ["Code Editor", "Games", "MMFDB Admin"],
     },
 }
 

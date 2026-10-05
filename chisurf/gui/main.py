@@ -1497,6 +1497,9 @@ class Main(
         self.actionTab_windows.triggered.connect(self.onTabWindows)
         self.actionCascade.triggered.connect(self.onCascadeWindows)
         self.actionReset_layout.triggered.connect(self.onResetWindowLayout)
+        from chisurf.gui.screenshot_action import add_screenshot_action
+
+        add_screenshot_action(self, after=self.actionReset_layout)
         self.mdiarea.subWindowActivated.connect(self.subWindowActivated)
         self.dockWidgetPlot.visibilityChanged.connect(self.onDockWidgetPlotVisibilityChanged)
 

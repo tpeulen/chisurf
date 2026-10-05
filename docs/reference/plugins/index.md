@@ -90,7 +90,6 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [Global View](globalview.md) | Interactive network graph for visualizing and managing parameter relationships across fits in global analysis. |
 | [Phasor-Calculator](phasor_calculator.md) *(hidden)* | Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line. Declarative AutoForm view. |
 | [RICS-Precision](rics_precision.md) | Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent. |
-| [Screenshot](screenshot.md) | Screenshot  A minimal plugin that captures a screenshot of the ChiSurf main window and copies it to the clipboard.  Behavior: - It captures the current main window and copies the image to the clipboard. - It displays a temporary message box confirming the action. |
 | [Wizards](wizards.md) | Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view. |
 | [ndX](ndxplorer.md) | Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data. |
 

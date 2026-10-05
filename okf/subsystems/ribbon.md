@@ -39,7 +39,7 @@ Domain tabs, left to right (`TAB_ORDER`):
 | Spectroscopy | **Correlation**: FCS, PCH · **Decay**: Decay Analysis · **Kinetics**: Hidden Markov model · **Single-Molecule**: ALEX Suite, Burst Analysis, Intensity trace, Trace Browser, ebFRET |
 | Imaging | Image Tools |
 | Structure | **Modelling**: ChiMOL, Structure Tools |
-| Tools | **Calculators**: Calculators, Light Path Simulator, Spectra Downloader, Wizards · **Photon data**: TTTR Tools · **System**: Code Editor, Games, MMFDB Admin, Screenshot · **Views**: Acquisition, Global View, ndX |
+| Tools | **Calculators**: Calculators, Light Path Simulator, Spectra Downloader, Wizards · **Photon data**: TTTR Tools · **System**: Code Editor, Games, MMFDB Admin · **Views**: Acquisition, Global View, ndX |
 
 Hub scopes that decide where a new tool goes:
 
@@ -77,9 +77,9 @@ Hub scopes that decide where a new tool goes:
    and the traps is in [burst-survey.md](../plugins/emtk-ports/burst-survey.md).
    Until then Accurate FRET and Photon-by-photon kinetics are reachable only through
    the Qt window.
-2. **Ribbon buttons that still open Qt:** Burst Analysis, MMFDB Admin, Screenshot
-   (it grabs Qt windows, so it is Qt by nature until the main window is), and
-   Intensity trace (being ported by the emtk-port lane).
+2. **Ribbon buttons that still open Qt:** Burst Analysis, MMFDB Admin. (Intensity
+   trace landed as emtk; Screenshot is no longer a plugin but the main window's
+   *Screenshot* action, `chisurf/gui/screenshot_action.py`, shown in Main › Window.)
 
 4. **CLI-only tools have no GUI home:** `fcs_convert`, `proteinmc`. That is correct
    until they gain an app; `test_hub_membership` will then ask for a hub.

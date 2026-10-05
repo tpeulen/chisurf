@@ -439,7 +439,6 @@ plugins:
     - Spectroscopy:Single-Molecule:Burst Selection
     - Spectroscopy:Single-Molecule:Burst MLE
     - Tools:Views:ndX
-    - Tools:System:Screenshot
     - Main:Tools:F-Test
   updater:
     ignore_updates_on_startup: false
