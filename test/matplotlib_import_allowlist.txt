@@ -38,10 +38,8 @@ chisurf/plugins/burst/burst_h2mm/gui/native.py
 chisurf/plugins/tttr/audifier/lifetime_analysis.py
 chisurf/plugins/tttr/trace_browser/gui/model.py
 modules/ndxplorer/ndxplorer/export/publication_figure.py
-modules/ndxplorer/ndxplorer/export/report.py
 
 # --- plot ---
-chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
 chisurf/plugins/fluorescence_decay/lltf/lltf_gui.py
 
 # --- math ---

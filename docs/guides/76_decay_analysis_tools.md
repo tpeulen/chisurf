@@ -166,7 +166,7 @@ dropped on the window loads as the configuration.
 | `lifetime_fit_parameter.randomize_initial_values.min_lifetime`, `max_lifetime` | 0.2, 5.0 ns | starting lifetimes of the scan, spaced evenly between these |
 | `…randomize_initial_values.enabled` | false | a fixed-$n$ fit starts from these too; off, it starts from 1, 3, 5, … ns (the scan always uses them) |
 | `…amplitude_variation` | 0.5 | random spread of starting amplitudes |
-| `…plot_probabilities`, `…plot_weighted_residuals` | true | extra Matplotlib figures during an interactive scan from Python; the CLI (and so the panel) switches them off and writes `<decay>_fit.png` instead |
+| `…plot_probabilities`, `…plot_weighted_residuals` | true | extra figures from a scan run in Python, kept on `decay.figures` (`"probabilities"`, `"weighted_residuals"`, `"decay_curve"`; `.save(path)`, inline in a notebook); the CLI (and so the panel) switches them off and writes `<decay>_fit.png` instead |
 | `pile_up_correction.enabled`, `rep_rate` (MHz), `dead_time` (ns), `measurement_time` (s) | off, 80, 85, 60 | Coates-type pile-up applied to the model |
 
 The file's `lifetime_fit_parameter` block also holds `find_optimal`,

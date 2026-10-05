@@ -10,7 +10,6 @@ import json
 import random
 import typing
 
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 
@@ -156,6 +155,10 @@ class Decay:
 
         # Model decay
         self.model_decay = None
+
+        # Figures of the last scan, by name (emtk.figure: ``.save(path)``,
+        # inline in a notebook). Filled when the scan is asked to plot.
+        self.figures: dict = {}
 
         # Fit results
         self.fit_result = None
@@ -554,9 +557,12 @@ class Decay:
         verbose : bool
             Whether to print verbose output
         plot_probabilities : bool
-            Whether to plot the probabilities
+            Whether to draw the model-selection probabilities
+            (``self.figures["probabilities"]``)
         plot_weighted_residuals : bool
-            Whether to plot the weighted residuals
+            Whether to draw the weighted residuals of every model tried
+            (``self.figures["weighted_residuals"]``); either flag also draws the
+            selected fit (``self.figures["decay_curve"]``)
         min_lifetime : float
             Minimum lifetime value in nanoseconds
         max_lifetime : float
@@ -693,29 +699,26 @@ class Decay:
                     f"Lifetime {i + 1}: {self.lifetime_spectrum[2 * i + 1]:.3f} ns, Amplitude: {self.lifetime_spectrum[2 * i]:.3f}"
                 )
 
-        # Plot probabilities if requested
+        # Draw probabilities if requested
         if plot_probabilities:
-            plt.figure(figsize=(10, 6))
-            plt.bar(n_lifetimes_tried, probs, alpha=0.7)
-            plt.axhline(
-                y=prob_threshold, color="r", linestyle="--", label=f"Threshold ({prob_threshold})"
-            )
-            plt.axvline(
-                x=best_n_lifetimes,
-                color="g",
-                linestyle="--",
-                label=f"Selected ({best_n_lifetimes})",
-            )
-            plt.xlabel("Number of Lifetimes")
-            plt.ylabel("Probability")
-            plt.grid(True)
-            plt.legend()
-            plt.tight_layout()
-            plt.show()
+            from emtk.figure import Figure
 
-        # Plot weighted residuals if requested
+            figure = Figure(size=(800, 480))
+            ax = figure.ax()
+            ax.bars(n_lifetimes_tried, probs, color="C0", alpha=0.7)
+            ax.hline(prob_threshold, color="r", dash="--", label=f"Threshold ({prob_threshold})")
+            ax.vline(best_n_lifetimes, color="g", dash="--", label=f"Selected ({best_n_lifetimes})")
+            ax.set_xticks(n_lifetimes_tried)
+            ax.set_labels(x="Number of Lifetimes", y="Probability")
+            ax.legend()
+            self.figures["probabilities"] = figure
+
+        # Draw weighted residuals if requested
         if plot_weighted_residuals:
-            plt.figure(figsize=(12, 8))
+            from emtk.figure import Figure
+
+            figure = Figure(len(n_lifetimes_tried), 1, size=(960, 220 * len(n_lifetimes_tried)))
+            figure.title = "Weighted Residuals"
             for i, n in enumerate(n_lifetimes_tried):
                 # Set parameters
                 self.lifetime_spectrum = best_params[i]["lifetime_spectrum"]
@@ -733,21 +736,14 @@ class Decay:
                 weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
                 weighted_residuals = residuals * weights
 
-                # Plot
-                plt.subplot(len(n_lifetimes_tried), 1, i + 1)
-                plt.plot(self.time_axis[self.start : self.stop], weighted_residuals)
-                plt.ylabel(f"n={n}")
-                plt.grid(True)
-                if i == 0:
-                    plt.title("Weighted Residuals")
+                ax = figure.ax(i, 0)
+                ax.line(self.time_axis[self.start : self.stop], weighted_residuals, color="C0")
+                ax.set_labels(y=f"n={n}")
                 if i == len(n_lifetimes_tried) - 1:
-                    plt.xlabel("Time (ns)")
+                    ax.set_labels(x="Time (ns)")
+            self.figures["weighted_residuals"] = figure
 
-            plt.tight_layout()
-            plt.show()
-
-        # Generate decay curve plot for the selected fit -- on screen, so only when the screen
-        # figures were asked for (it ended in plt.show() even with both switched off)
+        # Draw the selected fit too -- only when figures were asked for
         if plot_probabilities or plot_weighted_residuals:
             self.plot_decay_curve(best_n_lifetimes)
 
@@ -1070,155 +1066,111 @@ class Decay:
 
         return self.fit_result
 
+    def _decay_panel(self, ax) -> None:
+        """Data, fit and scaled IRF on a log axis, with the analysis range marked."""
+        sl = slice(self.start, self.stop)
+        ax.line(self.time_axis, np.clip(self.decay, 1e-9, None), color="b", label="Data")
+        if self.model_decay is not None:
+            ax.line(self.time_axis[sl], np.clip(self.model_decay[sl], 1e-9, None), color="r",
+                    label="Fit")
+        if self.irf is not None:
+            # Scaled to the maximum of the decay data in the fit range
+            scaled = self.irf * np.max(self.decay[sl]) / np.max(self.irf)
+            ax.line(self.time_axis, np.clip(scaled, 1e-9, None), color="g", label="IRF")
+        for edge in (self.start, self.stop - 1):
+            ax.vline(float(self.time_axis[edge]), color=(0, 0, 0, 0.5), dash="--")
+        ax.set_log(y=True)
+        # The range follows the data: an IRF's far tails (1e-300 for a Gaussian)
+        # would otherwise squeeze the decay into a flat line at the top.
+        positive = self.decay[self.decay > 0]
+        if positive.size:
+            ax.set_ylim(float(positive.min()) * 0.5, float(self.decay.max()) * 2.0)
+        ax.set_labels(x="Time (ns)", y="Counts")
+        ax.legend()
+
+    def _weighted_residuals(self) -> np.ndarray:
+        sl = slice(self.start, self.stop)
+        residuals = self.decay[sl] - self.model_decay[sl]
+        return residuals / np.sqrt(np.maximum(self.decay[sl], 1.0))
+
     def plot(self, filename: str = None):
         """
-        Plot the decay data and fit.
+        Plot the decay data and fit, and write the figure to a PNG file.
 
         Parameters
         ----------
         filename : str
-            Filename to save the plot to. If None, the plot will not be created.
+            PNG file to write. If None, nothing is drawn.
+
+        Returns
+        -------
+        emtk.figure.Figure or None
+            The figure written.
         """
         if self.decay is None or filename is None:
-            return
+            return None
+        from emtk.figure import Figure
 
-        plt.figure(figsize=(10, 8))
-
-        # Plot decay and model
-        plt.subplot(211)
-        # Plot full data for context
-        plt.semilogy(self.time_axis, self.decay, "b-", label="Data")
-
+        rows = 2 if self.model_decay is not None else 1
+        figure = Figure(rows, 1, size=(1000, 800), height_ratios=(1, 1)[:rows])
+        self._decay_panel(figure.ax(0, 0))
         if self.model_decay is not None:
-            # Plot model only for fit range
-            plt.semilogy(
-                self.time_axis[self.start : self.stop],
-                self.model_decay[self.start : self.stop],
-                "r-",
-                label="Fit",
-            )
-
-        if self.irf is not None:
-            # Scale IRF to the maximum of the decay data in the fit range
-            max_decay_in_range = np.max(self.decay[self.start : self.stop])
-            max_irf = np.max(self.irf)
-            plt.semilogy(self.time_axis, self.irf * max_decay_in_range / max_irf, "g-", label="IRF")
-
-        # Add vertical lines for analysis range
-        plt.axvline(x=self.time_axis[self.start], color="k", linestyle="--", alpha=0.5)
-        plt.axvline(x=self.time_axis[self.stop - 1], color="k", linestyle="--", alpha=0.5)
-
-        plt.xlabel("Time (ns)")
-        plt.ylabel("Counts")
-        plt.legend()
-        plt.grid(True)
-
-        # Plot residuals
-        if self.model_decay is not None:
-            plt.subplot(212)
-            # Calculate residuals only for fit range
-            residuals = (
-                self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
-            )
-            weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
-            weighted_residuals = residuals * weights
-
-            # Plot residuals only for fit range
-            plt.plot(self.time_axis[self.start : self.stop], weighted_residuals, "b-")
-            plt.axhline(y=0, color="k", linestyle="-", alpha=0.5)
-
-            # Add vertical lines for analysis range
-            plt.axvline(x=self.time_axis[self.start], color="k", linestyle="--", alpha=0.5)
-            plt.axvline(x=self.time_axis[self.stop - 1], color="k", linestyle="--", alpha=0.5)
-
-            plt.xlabel("Time (ns)")
-            plt.ylabel("Weighted Residuals")
-            plt.grid(True)
-
-        plt.tight_layout()
-
-        # Save to file
-        plt.savefig(filename, dpi=300, bbox_inches="tight")
-        plt.close()
+            ax = figure.ax(1, 0)
+            ax.line(self.time_axis[self.start : self.stop], self._weighted_residuals(), color="b")
+            ax.hline(0.0, color=(0, 0, 0, 0.5))
+            for edge in (self.start, self.stop - 1):
+                ax.vline(float(self.time_axis[edge]), color=(0, 0, 0, 0.5), dash="--")
+            ax.set_labels(x="Time (ns)", y="Weighted Residuals")
+        figure.save(filename)
+        return figure
 
     def plot_decay_curve(self, n_lifetimes: int = None):
         """
-        Plot the decay curve for the selected fit, similar to ucfret's approach.
+        Draw the decay curve for the selected fit, similar to ucfret's approach.
 
         Parameters
         ----------
         n_lifetimes : int
             Number of lifetimes in the fit. If None, uses the number from fit_result.
+
+        Returns
+        -------
+        emtk.figure.Figure or None
+            The figure, also kept as ``self.figures["decay_curve"]``.
         """
         if self.decay is None or self.model_decay is None:
-            return
+            return None
+        from emtk.figure import Figure
 
         if n_lifetimes is None and self.fit_result is not None:
             n_lifetimes = self.fit_result.get("n_lifetimes", 1)
 
-        # Create figure with two subplots
-        fig, ax = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+        figure = Figure(2, 1, size=(960, 640))
+        weighted_residuals = self._weighted_residuals()
+        top = figure.ax(0, 0)
+        top.line(self.time_axis[self.start : self.stop], weighted_residuals, color="b")
+        top.hline(0.0, color=(0, 0, 0, 0.5))
+        top.set_labels(y="Weighted Residuals")
 
-        # Plot weighted residuals in the top subplot
-        residuals = self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
-        weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
-        weighted_residuals = residuals * weights
-
-        ax[0].plot(self.time_axis[self.start : self.stop], weighted_residuals, "b-")
-        ax[0].axhline(y=0, color="k", linestyle="-", alpha=0.5)
-        ax[0].set_ylabel("Weighted Residuals")
-        ax[0].grid(True)
-
-        # Calculate chi-square
+        # Reduced chi-square and the lifetimes, as the panel's title
         chi_square = np.sum(weighted_residuals**2)
         dof = len(weighted_residuals) - (2 * n_lifetimes + 3)  # Degrees of freedom
         reduced_chi_square = chi_square / max(1, dof)
+        parts = [f"Chi² = {reduced_chi_square:.3f}"] + [
+            f"τ{i + 1} = {self.lifetime_spectrum[2 * i + 1]:.3f} ns, "
+            f"A{i + 1} = {self.lifetime_spectrum[2 * i]:.3f}"
+            for i in range(n_lifetimes)
+        ]
+        top.set_title("   ".join(parts))
 
-        # Add chi-square information to the plot
-        info_text = f"Chi² = {reduced_chi_square:.3f}\n"
-        for i in range(n_lifetimes):
-            info_text += f"τ{i + 1} = {self.lifetime_spectrum[2 * i + 1]:.3f} ns, A{i + 1} = {self.lifetime_spectrum[2 * i]:.3f}\n"
-
-        # Add text box with fit information
-        props = dict(boxstyle="round", facecolor="white", alpha=0.7)
-        ax[0].text(
-            0.02,
-            0.98,
-            info_text,
-            transform=ax[0].transAxes,
-            verticalalignment="top",
-            bbox=props,
-            fontsize=9,
-        )
-
-        # Plot decay data, model, and IRF in the bottom subplot (log scale)
-        ax[1].semilogy(self.time_axis, self.decay, "b-", label="Data")
-        ax[1].semilogy(
-            self.time_axis[self.start : self.stop],
-            self.model_decay[self.start : self.stop],
-            "r-",
-            label="Fit",
-        )
-
-        # Scale IRF to the maximum of the decay data in the fit range
-        if self.irf is not None:
-            max_decay_in_range = np.max(self.decay[self.start : self.stop])
-            max_irf = np.max(self.irf)
-            ax[1].semilogy(
-                self.time_axis, self.irf * max_decay_in_range / max_irf, "g-", label="IRF"
-            )
-
-        # Add vertical lines for analysis range
-        ax[1].axvline(x=self.time_axis[self.start], color="k", linestyle="--", alpha=0.5)
-        ax[1].axvline(x=self.time_axis[self.stop - 1], color="k", linestyle="--", alpha=0.5)
-
-        ax[1].set_xlabel("Time (ns)")
-        ax[1].set_ylabel("Counts")
-        ax[1].legend()
-        ax[1].grid(True)
-
-        plt.tight_layout()
-        plt.show()
+        self._decay_panel(figure.ax(1, 0))
+        # The residuals are read against the decay: one time axis for both.
+        span = float(self.time_axis[-1] - self.time_axis[0]) or 1.0
+        for panel in figure.axes:
+            panel.set_xlim(float(self.time_axis[0]) - 0.02 * span,
+                           float(self.time_axis[-1]) + 0.02 * span)
+        self.figures["decay_curve"] = figure
+        return figure
 
     def to_json(self, filename: str = None) -> str:
         """

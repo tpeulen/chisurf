@@ -4,13 +4,9 @@ from __future__ import annotations
 
 import random
 
-import matplotlib
 import numpy as np
 import pytest
 
-matplotlib.use("Agg")
-
-from chisurf.plugins.fluorescence_decay.lltf.core import fitter as lltf_fitter
 from chisurf.plugins.fluorescence_decay.lltf.core.convolve import (
     convolve_lifetime_spectrum,
 )
@@ -83,10 +79,8 @@ def test_upper_mode_returns_the_largest_significant_model():
 
 
 @pytest.mark.parametrize("selection_mode", ["lower", "upper"])
-def test_scan_recovers_two_lifetimes(monkeypatch, selection_mode):
+def test_scan_recovers_two_lifetimes(selection_mode):
     """The scan over a bi-exponential decay must return two lifetimes."""
-    monkeypatch.setattr(lltf_fitter.plt, "show", lambda *args, **kwargs: None)
-
     decay_counts, irf, time_axis = _bi_exponential_decay()
     decay = Decay(decay=decay_counts, irf=irf, time_axis=time_axis)
     decay.set_analysis_range(20, 900)
@@ -101,9 +95,28 @@ def test_scan_recovers_two_lifetimes(monkeypatch, selection_mode):
         max_lifetime=6.0,
         selection_mode=selection_mode,
     )
-    lltf_fitter.plt.close("all")
+    assert decay.figures == {}, "no figures were asked for"
 
     scores = result["scores"]
     assert scores[1] < scores[0], "the two-lifetime fit must beat the mono-exponential one"
     assert result["best_number_of_lifetimes"] == 2
     assert result["best_idx"] == 1
+
+
+def test_the_scan_figures_are_kept_and_the_fit_plot_is_written(tmp_path):
+    """Asked for, the scan draws its three figures (emtk.figure) instead of popping windows."""
+    decay_counts, irf, time_axis = _bi_exponential_decay()
+    decay = Decay(decay=decay_counts, irf=irf, time_axis=time_axis)
+    decay.set_analysis_range(20, 900)
+    random.seed(0)
+    decay.find_optimal_lifetime_spectrum(
+        maximum_number_of_lifetimes=2,
+        save_intermediate_results=False,
+        min_lifetime=0.2,
+        max_lifetime=6.0,
+    )
+    assert set(decay.figures) == {"probabilities", "weighted_residuals", "decay_curve"}
+    assert decay.figures["weighted_residuals"].rows == 2
+    assert decay.figures["decay_curve"].ax(0, 0).title.startswith("Chi² = ")
+    written = decay.plot(str(tmp_path / "fit.png"))
+    assert written.axes[0].ylog and (tmp_path / "fit.png").read_bytes()[:4] == b"\x89PNG"

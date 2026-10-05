@@ -14,19 +14,25 @@ The tracker is `test/matplotlib_import_allowlist.txt` (31 files at the start,
 stale entry, console integrations import only inside functions). Open front,
 in order:
 
-1. **figure route, remaining files.** Each is a mechanical port to
-   `emtk.figure` once a before-PNG is taken with the matplotlib code: render
-   the result with realistic data, `savefig`, port, re-render, compare the
-   control inventory (see "How a figure port is proven" below). Files:
-   `plugins/burst/burst_h2mm/gui/native.py`, `plugins/tttr/audifier/lifetime_analysis.py`,
-   `plugins/tttr/trace_browser/gui/model.py`, ndXplorer
-   `export/{publication_figure,report}.py`. ndXplorer's publication figure
-   uses `LogNorm`/`Normalize` and figure-level layout -- check `emtk.figure`
-   covers it (log colour scale on `heatmap` is not there yet) before porting.
-2. **plot route.** `plugins/fluorescence_decay/lltf/{core/fitter.py,lltf_gui.py}`:
-   a Qt `FigureCanvasQTAgg` inside a legacy Qt tool and a module-scope pyplot
-   in the fitter. The GUI half goes to `chiplot.Plot`; the fitter's plotting
-   belongs out of the fitter.
+1. **figure route, remaining files.** Each is a port to `emtk.figure` once a
+   before-PNG is taken with the matplotlib code: render the result with
+   realistic data, `savefig`, port, re-render, compare the control inventory
+   (see "How a figure port is proven" below).
+   - `plugins/burst/burst_h2mm/gui/native.py`, `plugins/tttr/audifier/lifetime_analysis.py`,
+     `plugins/tttr/trace_browser/gui/model.py`: all three carried another
+     lane's uncommitted edits on 2026-10-05, so they were left; port your
+     hunks only (temp index + `git merge-file`), or wait for those lanes.
+   - ndXplorer `export/publication_figure.py` -- **blocked on a vector
+     backend**: it exports PDF and SVG (`EXPORT_FORMATS`), and `emtk.figure`
+     rasterises. Porting it now would drop the vector export, a lost feature.
+     What unblocks it: an SVG painter in emtk implementing the painter
+     contract (rects, polylines, triangles, text as `<text>`), with PDF from
+     the same drawing calls; plus a log colour scale on `heatmap` (it uses
+     `LogNorm`). Design it in emtk with golden tests, then port.
+2. **plot route.** `plugins/fluorescence_decay/lltf/lltf_gui.py`: a Qt
+   `FigureCanvasQTAgg` in the legacy Qt LLTF wizard. Another lane is building
+   the emtk LLTF app (`lltf/gui/app.py`, uncommitted 2026-10-05); when that
+   replaces the wizard, the Qt file goes with it. Do not port it in parallel.
 3. **math route -- the hard one, needs a design, not a port.** Five files
    render LaTeX to an image with matplotlib's mathtext:
    `gui/widgets/{equation_editor,expression_input,general}.py`,
@@ -160,3 +166,12 @@ labels sit a fixed 10 px above the bar.
 - 2026-10-05 audifier `plot_waterfall` (returned None after `plt.show()`; now
   returns the panel). Grid lines show through heatmap cells, unlike an
   `imshow` -- cosmetic, noted. 13 -> 12.
+- 2026-10-05 ndXplorer folder reports (`export/report.py`): 1-D, 2-D and
+  2-D-with-marginals renderers at parity. **Its commit is ndXplorer `ea40470`,
+  whose message is another session's** (a concurrent commit raced on the
+  message file; the content is only `report.py`). 12 -> 11.
+- 2026-10-05 lltf fitter (`core/fitter.py`): its module-scope pyplot import is
+  gone; the scan's figures land on `decay.figures` instead of blocking windows;
+  `plot(filename)` writes the PNG. The decay panel's y range now follows the
+  data -- the IRF's Gaussian tails used to flatten the decay at the top of a
+  1e-300 axis. The fit-information box became the panel title. 11 -> 10.
