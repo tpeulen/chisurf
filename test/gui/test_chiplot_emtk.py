@@ -124,6 +124,24 @@ def test_a_log_axis_drops_what_it_cannot_show(plot):
     assert np.all(np.isfinite(drawn_y))
 
 
+def test_a_log_autoscale_is_not_stretched_by_an_underflowed_tail(plot):
+    """A decay whose tail underflowed to 1e-313 still shows its counts.
+
+    Every value is positive and finite, so a log axis can place it -- and a
+    simulated IRF's Gaussian tail spread the y range over 316 decades, its 4 %
+    padding pushing the top to 1e16 while the data stopped at 3e3.
+    """
+    x = np.linspace(0.0, 10.0, 6)
+    y = np.array([1e-313, 1e-200, 1.0, 10.0, 1000.0, 3000.0])
+    plot.line(x, y, name="tail")
+    plot.set_log(y=True)
+    _, (y0, y1) = plot.get_range()
+    assert 3000.0 <= y1 < 3000.0 * 10.0
+    assert y0 >= 3000.0 * 1e-13
+    # Data inside the cap is still shown in full.
+    plot.line(x, np.array([0.5, 1.0, 10.0, 100.0, 1000.0, 3000.0]), name="tail")
+
+
 def test_the_panel_paints(plot, qapp):
     """Through Qt, not just into the display list."""
     x, y = _decay()

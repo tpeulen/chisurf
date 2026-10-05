@@ -219,6 +219,12 @@ def _texture(data: np.ndarray, colormap, levels) -> tuple[Any, int, int]:
     return Texture(columns, rows, rgba.tobytes()), rows, columns
 
 
+#: How far below the largest drawn value a log axis autoscales, in decades.
+#: Wider than any counting experiment (a TCSPC decay spans ~5); narrower than the
+#: denormal tails numerical curves underflow to.
+LOG_AUTOSCALE_DECADES = 12.0
+
+
 class _Entry:
     """One item in a canvas's display list, and the handle the caller holds."""
 
@@ -738,6 +744,11 @@ class EmtkCanvas(base.Canvas):
             elif entry.kind == "region" and axis == 0:
                 a, b = entry.bounds
                 exact_low, exact_high = min(exact_low, a), max(exact_high, b)
+        if high >= low and self._log["x" if axis == 0 else "y"]:
+            # Positive and finite is not the same as meaningful: an underflowed
+            # tail (a Gaussian IRF reaches 1e-313) would stretch the axis over
+            # hundreds of decades and its padding far above the data.
+            low = max(low, high - LOG_AUTOSCALE_DECADES)
         return (
             (low, high) if high >= low else None,
             (exact_low, exact_high) if exact_high >= exact_low else None,
@@ -1538,8 +1549,16 @@ class EmtkCanvas(base.Canvas):
         """The extent of the drawn data along *axis*, or ``(0, 1)`` when empty.
 
         An image counts as data: its rect is where it sits, so a panel holding
-        only a heatmap fits the heatmap rather than the unit square.
+        only a heatmap fits the heatmap rather than the unit square. On a log axis
+        it is the range drawing would use (positive samples, capped at
+        :data:`LOG_AUTOSCALE_DECADES`), so a panel not drawn yet reports the same.
         """
+        name = "x" if axis == 0 else "y"
+        if self._log[name]:
+            fitted = self._group_x_extent() if axis == 0 else self._fitted(1, 0.04)
+            in_data = self._from_axis(name, fitted) if fitted is not None else None
+            if in_data is not None:
+                return in_data
         spans: list[tuple[float, float]] = []
         for entry in self._entries:
             if not entry.visible:
