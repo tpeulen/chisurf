@@ -377,7 +377,6 @@ def test_guide_walks_the_first_steps_with_the_real_fields(drv):
     assert not tour.awaiting
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the tour card does not block what is under it, so its Next button is dead over the 3-D plot")
 def test_the_tour_next_button_works_where_the_card_lies_over_the_3d_view(drv):
     drv.click("guide")
     drv.click_text("Next ►")

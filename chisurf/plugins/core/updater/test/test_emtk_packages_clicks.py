@@ -372,7 +372,6 @@ def test_help_and_guide(ui):
     ui.app.tour.stop()
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the tour card does not block what lies under it; the full-width table takes the press on Next (repro in REPORT.md)")
 def test_the_tour_cards_next_button_answers_over_the_table(ui):
     ui.click("guide")
     ui.press_text("Next \u25ba")

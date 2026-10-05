@@ -59,9 +59,6 @@ def test_guide_and_help_buttons_are_pressed():
     check_guide_and_help_buttons(make_app, size=SIZE, prev_step=5, close_step=5)
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the tour card does not block what is under it; its buttons lie "
-                                       "over input fields or the log on some steps and lose the press (repro in the "
-                                       "report): Close Tour on steps 2, 3, 4, 5 and 7, Prev on steps 2, 3, 4 and 5")
 def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(make_app, SIZE) == []
 

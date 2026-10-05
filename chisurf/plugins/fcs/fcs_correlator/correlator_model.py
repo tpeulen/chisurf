@@ -64,6 +64,10 @@ def parse_channels(s: str) -> list[int]:
     return [int(x) for x in s.replace(",", " ").split()]
 
 
+#: The correlation algorithms tttrlib offers, in the order the form lists them.
+METHODS = ("laurence", "wahl", "felekyan")
+
+
 class CorrelatorSettingsModel:
     def __init__(self):
         self.n_bins = int(cs.core.settings.cs_settings.get("correlator", {}).get("B", 3))
@@ -72,6 +76,10 @@ class CorrelatorSettingsModel:
         )
         self.n_splits = int(cs.core.settings.cs_settings.get("correlator", {}).get("split", 1))
         self.make_fine = bool(cs.core.settings.cs_settings.get("correlator", {}).get("fine", False))
+        #: The tttrlib correlation algorithm. ``laurence`` (symmetric, Schätzel normalization) is
+        #: the default: it normalizes each lag by the count rate in the overlapping sub-intervals,
+        #: which removes the long-lag upturn near the chunk duration.
+        self.method = str(cs.core.settings.cs_settings.get("correlator", {}).get("method", "laurence"))
         self.microtime_binning = int(
             cs.core.settings.cs_settings.get("correlator", {}).get("microtime_binning", 1)
         )
@@ -337,13 +345,9 @@ class CorrelatorSettingsModel:
         dur = (t_end - t_start) * dT
 
         correlator = tttrlib.Correlator(**settings)
-        # Symmetric (Schätzel) normalization — normalizes each lag by the count
-        # rate in the overlapping sub-intervals instead of the global mean count
-        # rate, removing the long-lag upturn artifact near the chunk duration.
-        try:
-            correlator.method = "laurence"
-        except Exception:
-            pass
+        if self.method not in METHODS:
+            raise ValueError(f"Unknown correlation method {self.method!r}; choose one of {', '.join(METHODS)}.")
+        correlator.method = self.method
         correlator.set_macrotimes(t, t)
         correlator.set_weights(w1, w2)
         if self.make_fine:
@@ -370,7 +374,7 @@ class CorrelatorSettingsModel:
         return {
             "x": x.tolist(),
             "y": y.tolist(),
-            "correlation_settings": settings,
+            "correlation_settings": {**settings, "method": self.method},
             "chunk": idx,
             "duration": dur / 1000.0,
             "channel_a": {
@@ -453,6 +457,8 @@ class CorrelatorSettingsModel:
             self.make_fine = bool(corr["make_fine"])
         if "microtime_binning" in corr:
             self.microtime_binning = int(corr["microtime_binning"])
+        if corr.get("method") in METHODS:
+            self.method = str(corr["method"])
         return True
 
 

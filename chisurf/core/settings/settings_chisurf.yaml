@@ -1,6 +1,8 @@
 correlator:
   B: 9
   fine: 0
+  # laurence (symmetric normalization), wahl or felekyan; the FCS correlator's Method.
+  method: laurence
   microtime_binning: 1
   number_of_cascades: 20
   split: 6
@@ -417,9 +419,7 @@ plugins:
   disabled_models:
     - Et-Model free
     - Dye-diffusion
-  disabled_plugins:
-    - TTTR:Correlate
-    - TTTR:Generate Decay
+  disabled_plugins: []
   hide_disabled_plugins: true
   icons_enabled: true
   plugin_order: {}

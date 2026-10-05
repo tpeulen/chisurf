@@ -468,9 +468,6 @@ def test_qt_free():
     assert qt_free("microtime_shifter")
 
 
-@pytest.mark.xfail(strict=True, reason="shared gap (chisurf/emtk/help_guide.py): the tour card does not block what lies under "
-                                       "it, so Close Tour is dead on a step whose card sits over a field "
-                                       "(okf/plugins/emtk-ports/scripts/emtk_gaps_repro.py)")
 def test_no_tour_card_button_is_dead_on_any_step():
     from chisurf.plugins.traj.traj_save_topology.test.real_input import dead_tour_buttons
 

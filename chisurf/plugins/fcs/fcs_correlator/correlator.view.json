@@ -100,6 +100,13 @@
                   "description": "Number of chunks to split data into for block averaging."
                 },
                 {
+                  "type": "choice",
+                  "attr": "method",
+                  "label": "Method",
+                  "options": ["laurence", "wahl", "felekyan"],
+                  "description": "Correlation algorithm (tttrlib). laurence: pair counting with symmetric normalization, no long-lag upturn when the intensity drifts (the default). wahl: multiple-tau on the time tags. felekyan: the Felekyan variant with its own lag axis."
+                },
+                {
                   "type": "toggle",
                   "attr": "make_fine",
                   "label": "Fine",

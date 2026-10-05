@@ -80,15 +80,16 @@ Hub scopes that decide where a new tool goes:
 2. **Ribbon buttons that still open Qt:** Burst Analysis, MMFDB Admin, Screenshot
    (it grabs Qt windows, so it is Qt by nature until the main window is), and
    Intensity trace (being ported by the emtk-port lane).
-3. **`TTTR:Correlate` and `TTTR:Generate Decay`** duplicate the FCS correlator and
-   Histogram-Microtime, are switched off by default (`disabled_plugins`) and are
-   `menu_hidden`, but they still have guide 73 and three GUI tests. Removing them
-   is the owner's call: retire them and rewrite guide 73 onto the hosted tools, or
-   keep them.
+
 4. **CLI-only tools have no GUI home:** `fcs_convert`, `proteinmc`. That is correct
    until they gain an app; `test_hub_membership` will then ask for a hub.
 5. **Panel captions are clipped** at the ribbon's default height in offscreen grabs
    (descenders). This predates the regroup.
+
+Done 2026-10-05, third pass: the TTTR script tools are retired after their gaps were
+closed in the hosted tools. Histogram-Microtime has the inter-photon filter
+(`gap_selection`) and the FCS correlator has a Method choice. Guide 73 now
+describes those two tools.
 
 Done 2026-10-05, second pass: TTTR Tools runs on `chisurf/emtk/tool_hub.py`. Groups
 follow `GROUP_ORDER`. Ribbon icons were letter placeholders for every plugin whose

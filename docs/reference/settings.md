@@ -27,7 +27,7 @@ here.
 ### 1.1 `correlator` (TTTR-based FCS correlation)
 
 Used by:
-- `chisurf.plugins.tttr.tttr_correlate.gui.CorrelatorWidget` / `Correlator`
+- `chisurf.plugins.fcs.fcs_correlator.correlator_model.CorrelatorSettingsModel` (the FCS correlator)
 - `chisurf.gui.widgets.wizard.tttr_correlator.WizardTTTRCorrelator`
 - `chisurf.plugins.burst.burst_fcs_correlator`
 
@@ -48,6 +48,11 @@ Keys:
 - **`split`**  
   Number of chunks the photon stream is split into for separate correlations.
   Used to compute multiple partial correlations that are then averaged.
+
+- **`method`**  
+  The tttrlib correlation algorithm: `laurence` (default; symmetric
+  normalization, no long-lag upturn when the intensity drifts), `wahl`
+  (multiple-tau on the time tags) or `felekyan`. An unknown name is refused.
 
 - **`fine`**  
   Boolean flag to enable "fine" correlation (micro-time–resolved / higher

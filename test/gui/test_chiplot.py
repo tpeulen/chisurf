@@ -308,7 +308,7 @@ def test_legend_idempotent_refresh_loop(qapp):
     """A clear -> legend -> redraw refresh loop must not stack legends.
 
     Regression guard for PRD-64 Batch 9: the curve-viewer tools
-    (tttr_histogram / tttr_correlate / microtime_histogram / fcs merger) call
+    (microtime_histogram / fcs merger) call
     ``legend()`` on every refresh, so it must remove the prior legend rather
     than orphan a new box each time.
     """
@@ -514,8 +514,6 @@ def test_migrated_modules_import(qapp):
     import importlib
 
     for name in (
-        "chisurf.plugins.tttr.tttr_histogram.gui",
-        "chisurf.plugins.tttr.tttr_correlate.gui",
         "chisurf.plugins.tttr.microtime_histogram.wizard",
         "chisurf.plugins.fcs.fcs_correlator.correlator_panel",
         "chisurf.plugins.fcs.fcs_correlator.filter_panel",

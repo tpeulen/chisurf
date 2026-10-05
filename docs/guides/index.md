@@ -260,7 +260,7 @@ irf_estimation
 | [IRF estimation](irf_estimation.md) | `irf_estimation`, TCSPC nuisances |
 | [Photon-by-photon HMM (H2MM)](h2mm.md) | `burst_h2mm` plugin |
 | [The PSF calculator: the focus your objective actually makes](72_psf_calculator.md) | `psf_calculator` calculator (Calculators hub), `PSFModel`, `tttrlib.CLSMSuperRes.psf_volume` |
-| [Decays and correlation curves straight from a photon file](73_tttr_decay_and_correlation.md) | `tttr_histogram` + `tttr_correlate` plugins, `tttrlib.Correlator` |
+| [Decays and correlation curves straight from a photon file](73_tttr_decay_and_correlation.md) | `microtime_histogram` (inter-photon filter) + `fcs_correlator` (method, splits), `tttrlib.Correlator` |
 | [Intensity traces and file tools](74_intensity_traces_and_file_tools.md) | `intensity_trace` plugin, `filetools` hub (`tttr_splitter`, `tttr_to_pto`, `pto_inspector`, `tttr_header_edit`, `tttr_time_windows`, `bid_to_analysis`), `csc tttr-time-windows` |
 | [FCS toolbox: correlate, merge, convert](75_fcs_toolbox.md) | `fcs_toolbox` (channel definitions, filter, correlator, merger), `fcs_convert`, `fcs.merge` |
 | [Decay Analysis, Lazy Lifetime Analysis and synthetic decays](76_decay_analysis_tools.md) | `lifetime_analysis`, `lltf`, `synthetic_decay` plugins, `csc lltf`, `csc synth-decay` |

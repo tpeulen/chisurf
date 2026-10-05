@@ -1597,63 +1597,57 @@ def _grab_alex_suite_titration():
     _grab(tool, "alex_suite_titration.png")
 
 
-def _grab_tttr_generate_decay():
-    """Grab **TTTR: Generate Decay** with two decays histogrammed from a real SPC file.
+def _native_shot(app, name, frames=4, size=(1200, 800)):
+    """Draw a native emtk app a few frames and save the last into ``figures/``."""
+    from emtk.pil_painter import PilPainter
 
-    Two curves (detectors 0 and 8) at TAC div 1: at larger divisors the tool
-    draws the decay on a wrong time axis (okf/references/known-issues.md).
+    for _ in range(frames):
+        painter = PilPainter(*size)
+        app.draw(painter, 0, 0, *size)
+    painter.frame.save(FIG / name)
+    print("wrote", name)
+
+
+def _grab_decay_gap_filter():
+    """Histogram-Microtime with the inter-photon filter on: the burst photons of a single-molecule file.
+
+    BH SPC-132 single-molecule DNA measurement (detectors 0/8 = green parallel/perpendicular),
+    max gap 20000 ticks (0.27 ms at the 13.5 ns clock).
     """
-    from qtpy.QtCore import Qt
-    from qtpy.QtTest import QTest
+    import time
 
-    from chisurf.plugins.tttr.tttr_histogram.gui import HistogramTTTR
+    from emtk.pil_painter import PilPainter
 
-    tool = HistogramTTTR()
-    setup = tool.tcspc_setup_widget
-    setup.spcFileWidget.onLoadSample(None, filenames=[str(_SPC_FILE)], file_type="bh132")
-    # the File widget's Load action also fires onLoadFile; a programmatic load does not
-    setup.onLoadFile()
-    setup.lineEdit.setText("(ROUT==0)")
-    setup.comboBox.setCurrentIndex(setup.comboBox.findText("1"))
-    setup.checkBox.setChecked(False)
-    QTest.mouseClick(setup.pushButton, Qt.LeftButton)
-    setup.lineEdit.setText("(ROUT==8)")
-    QTest.mouseClick(setup.pushButton, Qt.LeftButton)
-    # add_curve refreshes the list and the plot *before* it appends the new
-    # curve, so the view lags one click behind; refresh once more.
-    tool.curve_selector.update()
-    tool.plot_curves()
-    for c in tool._curves:
-        print(c.name, "photons", int(c.y.sum()), "bins", c.y.size, "dt[ns]", c.x[1] - c.x[0])
-    tool.resize(1280, 760)
-    tool.splitter.setSizes([560, 720])
-    _grab(tool, "tttr_generate_decay.png")
-    return tool
+    from chisurf.plugins.tttr.microtime_histogram.gui.app import create_app
+
+    spc = pathlib.Path("chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/m000.spc")
+    app = create_app()
+    app.add_files([spc])
+    model = app.model
+    model.filetype, model.auto_save = "SPC-130", False
+    model.polarized, model.parallel, model.perpendicular = True, [0], [8]
+    model.gap_filter, model.gap_ticks, model.gap_invert = True, 20000, False
+    app.compute()
+    end = time.time() + 120
+    while (app.job.running or app.model.cumulative_parallel is None) and time.time() < end:
+        app.draw(PilPainter(1200, 800), 0, 0, 1200, 800)  # the job publishes its model on a frame
+        time.sleep(0.05)
+    _native_shot(app, "decay_gap_filter.png")
+    app.close()
 
 
-def _grab_tttr_correlate():
-    """Grab **TTTR: Correlate** after a real cross-correlation of channels 0 and 8."""
-    from chisurf.plugins.tttr.tttr_correlate.gui import CorrelateTTTR
+def _grab_fcs_correlator_step():
+    """The FCS hub's Correlator step on its simulated example: 3 splits, laurence."""
+    from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app
 
-    tool = CorrelateTTTR()
-    tool.fileWidget.onLoadSample(None, filenames=[str(_SPC_FILE)], file_type="bh132")
-    corr = tool.correlator
-    corr.ch1, corr.ch2 = "0", "8"
-    corr.correlator_thread.run()  # synchronous: the thread's body
-    tool.add_curve()
-    c = tool._curves[0]
-    print("tau[ms]", c.x[:3], "...", c.x[-1], "G", c.y[:3], "...", c.y[-3:], "ey", c.ey[:3], c.ey[-3:])
-    corr.progressBar.setValue(100)
-    if os.environ.get("PROBE_FINE"):
-        corr.fine = True
-        corr.correlator_thread.run()
-        f = corr.data
-        print("FINE tau[ms]", f.x[:3], "...", f.x[-1], "G", f.y[-3:])
-        corr.fine = False
-    tool.resize(1280, 760)
-    tool.splitter.setSizes([560, 720])
-    _grab(tool, "tttr_correlate.png")
-    return tool
+    hub = make_app()
+    hub.select("files").add_example()
+    corr = hub.select("correlator")
+    corr.model.channel_a, corr.model.channel_b, corr.model.n_splits = "0", "1", 3
+    corr.model.method = "laurence"
+    corr.correlate(wait=True)
+    _native_shot(hub, "fcs_correlator_step.png", frames=6)
+    hub.close()
 
 
 def _grab_intensity_trace():
@@ -2462,8 +2456,8 @@ def main():
         _grab_burst_export_table,
         _grab_alex_suite_alternation,
         _grab_alex_suite_titration,
-        _grab_tttr_generate_decay,
-        _grab_tttr_correlate,
+        _grab_decay_gap_filter,
+        _grab_fcs_correlator_step,
         _grab_intensity_trace,
         _grab_file_tools,
         _grab_fcs_toolbox,

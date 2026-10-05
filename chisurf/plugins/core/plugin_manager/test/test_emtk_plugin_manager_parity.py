@@ -229,7 +229,7 @@ def test_rows_columns_and_status_match_the_qt_widget(qapp, qtbot, trio):
     from chisurf.plugins.core.plugin_manager.gui.tool import PluginManagerWidget
     from chisurf.plugins.core.plugin_manager.gui.view_model import PluginManagerViewModel
 
-    settings = {"disabled_plugins": ["tttr_correlate", "tttr_histogram"],
+    settings = {"disabled_plugins": ["tttr_audifier", "photon_table"],
                 "toolbar_plugins": ["alpha"]}
     qt_widget = PluginManagerWidget(view_model=PluginManagerViewModel(settings_block=dict(settings)))
     qtbot.addWidget(qt_widget)

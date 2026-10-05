@@ -109,6 +109,26 @@
             32
           ],
           "description": "Group this many adjacent micro-time bins."
+        },
+        {
+          "type": "toggle",
+          "attr": "gap_filter",
+          "label": "Inter-photon filter",
+          "description": "Keep only photons whose next selected photon follows within the gap below: the photons of bursts. With Invert, keep the isolated photons between them instead: a background decay from the same measurement."
+        },
+        {
+          "type": "value",
+          "attr": "gap_ticks",
+          "label": "Max gap [ticks]",
+          "kind": "int",
+          "minimum": 1,
+          "description": "Largest gap to the next selected photon, in macro-time ticks (200000 ticks is 2.7 ms at a 13.5 ns clock)."
+        },
+        {
+          "type": "toggle",
+          "attr": "gap_invert",
+          "label": "Invert (isolated photons)",
+          "description": "Keep the photons whose next selected photon is at least the gap away: the background between bursts."
         }
       ]
     },

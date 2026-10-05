@@ -71,6 +71,40 @@ def shift_histogram(values, offset):
     return out
 
 
+
+def gap_selection(selected, macro_times, gap_ticks, invert=False):
+    """Narrow *selected* to the photons whose next selected photon follows within *gap_ticks*.
+
+    The inter-photon filter of a decay: the photons of bright stretches (single-molecule
+    bursts) when not inverted, the isolated photons between them (a background decay from
+    the same measurement) when inverted. The last selected photon is dropped either way,
+    because it has no successor to test.
+
+    Parameters
+    ----------
+    selected : numpy.ndarray of bool
+        Photons chosen by the detector, window and burst masks.
+    macro_times : numpy.ndarray of int
+        Macro time of every photon, in ticks.
+    gap_ticks : int
+        Largest gap to the next selected photon that keeps a photon.
+    invert : bool, optional
+        Keep the photons whose next selected photon is at least *gap_ticks* away instead.
+
+    Returns
+    -------
+    numpy.ndarray of bool
+        The narrowed selection, same length as *selected*.
+    """
+    index = np.flatnonzero(selected)
+    out = np.zeros(len(selected), dtype=bool)
+    if len(index) < 2:
+        return out
+    gaps = np.diff(macro_times[index])
+    keep = gaps >= int(gap_ticks) if invert else gaps <= int(gap_ticks)
+    out[index[:-1][keep]] = True
+    return out
+
 class HistogramModel:
     def __init__(self):
         self.files = []
@@ -85,6 +119,12 @@ class HistogramModel:
         self.window = "All windows"
         self.filetype = "Auto"
         self.binning = 1
+        #: Inter-photon filter: keep a photon only when the next selected photon follows within
+        #: ``gap_ticks`` macro-time ticks (the photons of bright stretches, such as bursts), or with
+        #: ``gap_invert`` only when it does not (the isolated photons between them: a background decay).
+        self.gap_filter = False
+        self.gap_ticks = 200000
+        self.gap_invert = False
         self.dt_ns = 0.016
         self.dt_manual = False
         self.g_factor = 1.0
@@ -231,6 +271,7 @@ class HistogramModel:
             )
             micro = np.asarray(stream.micro_times, dtype=np.int64)
             routing = np.asarray(stream.routing_channels)
+            macro = np.asarray(stream.macro_times, dtype=np.int64) if self.gap_filter else None
             mask = np.ones(len(micro), dtype=bool)
             if bursts:
                 key = next(
@@ -266,11 +307,10 @@ class HistogramModel:
                 else list(dict.fromkeys(self.parallel + self.perpendicular))
             )
             for channels in (vv_channels, self.perpendicular if self.polarized else []):
-                indices = (
-                    binned[mask & np.isin(routing, channels)]
-                    if channels
-                    else np.array([], dtype=int)
-                )
+                selected = mask & np.isin(routing, channels) if channels else np.zeros(len(micro), bool)
+                if macro is not None:
+                    selected = gap_selection(selected, macro, self.gap_ticks, self.gap_invert)
+                indices = binned[selected]
                 y.append(np.bincount(indices, minlength=bins))
             histograms[str(path)] = {"parallel": y[0], "perpendicular": y[1]}
             timing = self.setup.get("tttr_reading") or {}
@@ -356,6 +396,9 @@ class HistogramModel:
                 "window",
                 "filetype",
                 "binning",
+                "gap_filter",
+                "gap_ticks",
+                "gap_invert",
                 "dt_ns",
                 "dt_manual",
                 "g_factor",
