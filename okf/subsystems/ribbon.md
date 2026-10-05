@@ -67,15 +67,16 @@ Hub scopes that decide where a new tool goes:
 
 ## Where to pick this up
 
-1. **Native Burst Analysis is blocked on Burst Selection.** Burst Selection's emtk
-   view (`burst/burst_selection/gui/app.py`) and the hub's setup and data steps
-   (`burst/burst_analysis/gui/{setup_selection_app,data_selection_app,app}.py`) are
-   still driven by the Qt `BurstSelectionTool`/`BurstAnalysisTool`. A ToolHubApp
-   over them would only rehost Qt. Those four files carry another lane's
-   uncommitted work from 2026-10-03 (+2078 lines in the setup step), so the port
-   starts by finding that work's owner. Until then, Accurate FRET and
-   Photon-by-photon kinetics, which are panels of the hub, are reachable only
-   through the Qt window. Agent board: T-20261005-QTLEFT.
+1. **Native Burst Analysis: in progress (T-20261005-BURSTEMTK).** The owner of the
+   2026-10-03 files said yes; they are snapshotted (`21920bc3a`). The setup step now
+   runs on the shared detector editor and the data step on a Qt-free model with an
+   emtk app (`966163d53`); Burst Selection's diagnostics helpers are Qt-free
+   (`ee14af4bd`). Still open: the Burst Selection model and native app, MLE split by
+   H2MM state in the native engine, and the `ToolHubApp` hub with its manifest entry
+   and the hub-membership extractor. The ordered list with the measured Qt baseline
+   and the traps is in [burst-survey.md](../plugins/emtk-ports/burst-survey.md).
+   Until then Accurate FRET and Photon-by-photon kinetics are reachable only through
+   the Qt window.
 2. **Ribbon buttons that still open Qt:** Burst Analysis, MMFDB Admin, Screenshot
    (it grabs Qt windows, so it is Qt by nature until the main window is), and
    Intensity trace (being ported by the emtk-port lane).
