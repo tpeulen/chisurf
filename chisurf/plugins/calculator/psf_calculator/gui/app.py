@@ -164,8 +164,11 @@ class PSFApp(TourTarget, ImApp):
             for k in range(12):
                 mask = (intensity >= k / 12) & (intensity < (k + 1) / 12 if k < 11 else intensity <= 1)
                 if mask.any():
-                    spec = implot3d.Spec(marker_size=2, marker_fill_color=cmap((k + 0.5) / 12))
-                    implot3d.plot_scatter(f"Intensity {k}##psf", (x[mask] - (nx - 1) / 2) * model.pixel_size_nm,
+                    # Outline and fill both: a 2 px marker is mostly outline, which would
+                    # otherwise take the item's automatic colour, one blue for all.
+                    band = cmap((k + 0.5) / 12)
+                    spec = implot3d.Spec(marker_size=2, marker_fill_color=band, marker_line_color=band)
+                    implot3d.plot_scatter(f"Intensity {k}##psf{k}", (x[mask] - (nx - 1) / 2) * model.pixel_size_nm,
                                           (y[mask] - (ny - 1) / 2) * model.pixel_size_nm, (z[mask] - (nz - 1) / 2) * model.z_step_nm, spec=spec)
             if model.show_polarization and model.model == "vectorial":
                 segments = model.polarization_segments()
@@ -178,6 +181,13 @@ class PSFApp(TourTarget, ImApp):
             im.set_item_tooltip("Drag to rotate the physical PSF volume. Threshold hides dim voxels; gamma changes their brightness. "
                                 "The view draws up to 6,000 voxels; the export keeps every voxel.")
         self.remember("volume", tuple(box))
+
+    def _slice_colours(self) -> list:
+        """The Display colormap, sampled for the slice heatmap (the volume uses it too)."""
+        from matplotlib import colormaps
+
+        cmap = colormaps[self.model.colormap]
+        return [tuple(int(round(255 * c)) for c in cmap(i / 10)[:3]) for i in range(11)]
 
     def _draw_slice(self, box) -> None:
         self._form("slice", SPEC["slice"])
@@ -195,12 +205,16 @@ class PSFApp(TourTarget, ImApp):
             plane, (u, v), labels = volume[:, :, nx // 2], (ny * px, nz * dz), ("y [nm]", "z [nm]")
         plane = np.asarray(plane)[::-1]  # the heatmap puts row 0 on top: flip so y and z grow upwards
         if implot.begin_plot(f"Central PSF slice##{axis}", (-1, -1), implot.FLAGS_EQUAL):
+            implot.push_colormap(self._slice_colours())
             implot.setup_axes(*labels)
-            implot.setup_axes_limits(-u / 2, u / 2, -v / 2, v / 2, implot.COND_ONCE)  # frame the section once per plane
+            # No limits: the first frame of each plane's plot fits the heatmap, and equal
+            # axes then keep that y range and widen x (ImPlot's rule), so the whole
+            # section shows. Asking for its width cropped its height to a band.
             implot.setup_legend(0, implot.LEGEND_FLAGS_NO_BUTTONS if hasattr(implot, "LEGEND_FLAGS_NO_BUTTONS") else 0)
             implot.plot_heatmap("Intensity##slice", plane.ravel(), *plane.shape, 0.0, float(volume.max()), label_fmt="",
                                 bounds_min=(-u / 2, -v / 2), bounds_max=(u / 2, v / 2),
                                 spec=implot.PlotSpec(flags=implot.ITEM_FLAGS_NO_LEGEND))
+            implot.pop_colormap()
             implot.end_plot()
             im.set_item_tooltip("The central section of the full computed volume, without voxel subsampling.")
         self.remember("slice", tuple(box))
