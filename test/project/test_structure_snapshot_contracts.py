@@ -263,6 +263,15 @@ restored = restore_session(project)
 fit = restored.fits[0]
 model = fit.model
 assert type(fit.data).__name__ == "Structure"
+assert type(model).__name__ == "ProteinMCModel"
+# Every sampling control the user set comes back from the file alone.
+assert (model.n_iter, model.n_out, model.n_written, model.n_runs) == (4, 2, 2, 3)
+assert (model.kt, model.scale) == (2.25, .001)
+assert model.score_set == "selected"
+assert model.use_flexfit is True and model.flexfit_set == "mobile"
+first_term = model.potential_settings()[0]
+assert first_term["weight"] == 3.5 and first_term["eval_interval"] == 2, first_term
+assert (fit.xmin, fit.xmax) == (0, 0)
 assert len(fit.data.atoms) > 1000
 assert fit.data.atoms.dtype.names and "xyz" in fit.data.atoms.dtype.names
 assert not Path(model.structure_file).exists()

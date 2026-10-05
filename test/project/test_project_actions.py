@@ -219,3 +219,73 @@ def test_save_action_retargets_document_to_saved_file(monkeypatch, isolated_sess
     assert document.project_id is None
     assert main._current_project_path == target
     assert main._current_project_id is None
+
+
+def test_load_action_failure_after_identity_staging_publishes_no_identity(
+    monkeypatch, isolated_session, tmp_path
+):
+    """Identity is staged first but adopted only when the whole load succeeded.
+
+    The file and its identity validate; the restore then fails while presenting
+    the restored fits. The document must still be the database project it was,
+    the legacy identity fields untouched, and the live science unchanged.
+
+    Two layers give this: the staged identity is adopted only after presentation,
+    and a failure restores a snapshot of the document and GUI identity. Either
+    alone keeps the contract; the test fails only when both are broken (checked
+    by mutating replace_project).
+    """
+    from chisurf.core.project.lifecycle import ProjectDocument
+    from chisurf.macros import core_fit
+
+    loaded_curve = DataCurve(x=np.arange(3.0), y=np.arange(3.0) + 9, name="loaded")
+    loaded_curve.ex = np.ones(3)
+    loaded_curve.ey = np.ones(3)
+    project = capture_session([loaded_curve], [], name="file-b")
+    document = ProjectDocument()
+    document.record_database_save(
+        capture_session([isolated_session], [], name="db-a"),
+        {"ok": True, "project_id": "p1", "version_id": "v1"},
+    )
+    main = SimpleNamespace(
+        _guard_project_transition=lambda: True,
+        _get_project_document=lambda: document,
+        _current_project_path=None,
+        _current_project_id="p1",
+        _current_project_version_id="v1",
+        _current_project_name="db-a",
+    )
+    monkeypatch.setattr(cs, "cs", main)
+    monkeypatch.setattr(cs, "_project_gui", main, raising=False)
+    monkeypatch.setattr(storage, "load_file", lambda path: project)
+    staged = []
+    original_stage = document.stage_file_save
+    monkeypatch.setattr(
+        document,
+        "stage_file_save",
+        lambda *args: staged.append(args) or original_stage(*args),
+    )
+
+    presented = []
+
+    def failing_presentation(*args, **kwargs):
+        presented.append(True)
+        raise RuntimeError("presentation failed after science was staged")
+
+    monkeypatch.setattr(core_fit, "restore_gui_from_fits", failing_presentation)
+
+    try:
+        result = project_actions.load_project._action_spec.handler(str(tmp_path / "b.cs.pto"))
+    except RuntimeError as exc:
+        assert "presentation failed" in str(exc)
+    else:
+        assert result.get("ok") is not True, result
+
+    assert staged, "the failure must happen after identity staging to test publication"
+    assert presented, "the restore must reach presentation for the failure to be real"
+    assert document.path is None
+    assert (document.project_id, document.version_id) == ("p1", "v1")
+    assert main._current_project_path is None
+    assert (main._current_project_id, main._current_project_version_id) == ("p1", "v1")
+    assert main._current_project_name == "db-a"
+    assert cs.imported_datasets == [isolated_session]

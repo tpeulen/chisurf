@@ -293,12 +293,22 @@ def test_reset_failed_save_keeps_live_session(reset_session, monkeypatch):
     """A real Save boundary failure leaves science, history and windows alive."""
     monkeypatch.setattr(reset_session.host, "_save_decision", lambda: SaveDecision.SAVE)
 
+    writes = []
+
     def fail_write(*args):
         """Inject the file-system failure at the real save boundary."""
+        writes.append(args)
         raise OSError("unwritable destination")
 
+    warnings = []
     monkeypatch.setattr("chisurf.core.project.storage.save_file", fail_write)
+    monkeypatch.setattr(
+        "chisurf.gui.main_helper.dialogs.warning", lambda *args: warnings.append(args[-1])
+    )
     assert reset_session.host.reinitialize(False, False) is False
+    # The refusal must come from the injected write, and the user is told why.
+    assert len(writes) == 1
+    assert warnings and "unwritable destination" in warnings[-1]
     _assert_retained(reset_session)
 
 

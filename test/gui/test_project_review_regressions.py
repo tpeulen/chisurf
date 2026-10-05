@@ -146,7 +146,8 @@ def active_session(monkeypatch):
     curve = DataCurve(x=[0.0, 1.0, 2.0], y=[5.0, 3.0, 1.0], name="old curve")
     fit = FitGroup(data=[curve], model_class=tcspc_lifetime)
     history = OperationHistory()
-    history.load_events([{"action_type": "old", "payload": {"value": 7}}])
+    # A real recorded event: hand-built dicts are refused by history validation.
+    history.record("old", "old", {"value": 7}, persist=False)
     document = ProjectDocument(project_id="old", version_id="old-v", backend="mmfdb", name="old")
     context = SimpleNamespace(
         _project_document=document,
@@ -171,6 +172,15 @@ def active_session(monkeypatch):
     return curve, fit, history, context
 
 
+def _recorded_events(action_type):
+    """Valid history events, as a saved project carries them."""
+    from chisurf.history.core import OperationHistory
+
+    history = OperationHistory()
+    history.record(action_type, action_type, {}, persist=False)
+    return history.list_events()
+
+
 def _throwing_restorer(payload):
     """Reject window construction after the incoming science was installed."""
     raise RuntimeError("window reconstruction failed")
@@ -183,7 +193,7 @@ def test_browser_window_failure_restores_local_history_and_selection(active_sess
     curve, fit, history, context = active_session
     old_events = history.list_events()
     project = capture_session([], [], name="incoming")
-    project.extra["history_events"] = [{"action_type": "incoming"}]
+    project.extra["history_events"] = _recorded_events("incoming")
     model = ProjectBrowserModel(context=context, window_restorer=_throwing_restorer)
     result = {
         "ok": True,
@@ -234,7 +244,7 @@ def test_browser_window_failure_restores_actual_server_owner(active_session, mon
     assert isinstance(old_proxies[0], ProxyDatasetList)
     assert isinstance(old_proxies[1], ProxyFitList)
     project = capture_session([], [], name="incoming")
-    project.extra["history_events"] = [{"action_type": "incoming"}]
+    project.extra["history_events"] = _recorded_events("incoming")
     model = ProjectBrowserModel(context=context, window_restorer=_throwing_restorer)
     result = {
         "ok": True,
@@ -248,7 +258,9 @@ def test_browser_window_failure_restores_actual_server_owner(active_session, mon
     assert state.datasets == [curve]
     assert state.fits == [fit]
     assert state.current_fit_uid == fit.unique_identifier
-    assert state.history.list_events() == [{"action_type": "old", "payload": {"value": 7}}]
+    assert [(e["action_type"], e["payload"]) for e in state.history.list_events()] == [
+        ("old", {"value": 7})
+    ]
     assert state.project_metadata == {"origin": "old"}
     assert state.project_path == "/old.cs.pto"
     assert context._project_document.project_id == context._current_project_id == "old"
@@ -275,7 +287,9 @@ def test_open_file_window_failure_rolls_back_before_recents(active_session, monk
     assert cs.fits == [fit]
     assert cs.current_fit is fit
     assert cs.current_fit_idx == 0
-    assert history.list_events() == [{"action_type": "old", "payload": {"value": 7}}]
+    assert [(e["action_type"], e["payload"]) for e in history.list_events()] == [
+        ("old", {"value": 7})
+    ]
     assert context._project_document.project_id == context._current_project_id == "old"
 
 
@@ -437,6 +451,9 @@ def test_save_failed_identity_publication_keeps_previous_document(
     document.adopt = fail_once
     monkeypatch.setattr("chisurf.gui.main_helper.dialogs.warning", lambda *args: None)
     assert ProjectMixin._save_project_snapshot(context, save_as=tmp_path / "new.cs.pto") is False
+    # The injected fault fired on publishing the new file's identity; the rollback
+    # then re-adopted the previous (database) identity, which has no path.
+    assert attempts == [tmp_path / "new.cs.pto", None]
     assert cs.imported_datasets == [curve]
     assert cs.fits == [fit]
     assert cs.current_fit is fit
@@ -497,5 +514,7 @@ def test_real_database_browser_restore_failure_keeps_active_science(
     assert cs.imported_datasets == [curve]
     assert cs.fits == [fit]
     assert cs.current_fit is fit
-    assert history.list_events() == [{"action_type": "old", "payload": {"value": 7}}]
+    assert [(e["action_type"], e["payload"]) for e in history.list_events()] == [
+        ("old", {"value": 7})
+    ]
     assert context._project_document.project_id == context._current_project_id == "old"
