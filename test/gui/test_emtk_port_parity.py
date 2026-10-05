@@ -113,9 +113,11 @@ def test_entry_overrides_the_manifest_so_a_partial_port_can_be_checked(tmp_path)
     assert epp.qt_free("no_such_plugin_id_needed", entry)["ok"]
 
 
-def test_a_missing_entry_is_a_clear_error():
+def test_a_missing_entry_is_a_clear_error(monkeypatch):
+    # A synthetic Qt-only manifest: a real plugin id stops being Qt-only the day it is ported.
+    monkeypatch.setattr(epp, "manifest_of", lambda _id: {"entrypoints": {"gui": "m:Tool"}})
     with pytest.raises(ValueError, match="--entry"):
-        epp.build_emtk_app("acq")      # a plugin with no entrypoints.emtk (not planned for a port)
+        epp.build_emtk_app("qt_only")
 
 
 def test_a_numeric_input_is_one_control_with_its_tooltip():

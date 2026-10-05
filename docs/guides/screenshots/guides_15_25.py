@@ -465,44 +465,47 @@ def _grab_22_trace_browser():
 
 # ---------------------------------------------------------------- guide 23
 def _grab_23_fps_editor():
-    """FPS JSON Editor with the HIV-RT labelling project loaded (every tab probed)."""
-    from chisurf.plugins.modelling.fps_json_editor.gui.tool import FpsJsonEditorTool
+    """FPS JSON Editor (the emtk app) with the HIV-RT labelling project loaded and every AV computed."""
+    import json
+    import time
+
+    from emtk.testing import PixelPainter, RecordingPainter, png_encode
+
+    from chisurf.plugins.modelling.fps_json_editor.gui.app import make_app
 
     src = pathlib.Path("chisurf/plugins/modelling/fret/examples/fps_hiv_rt")
     work = pathlib.Path(tempfile.mkdtemp()) / "fps_hiv_rt"
     shutil.copytree(src, work, ignore=shutil.ignore_patterns("dock_out"))
-    tool = FpsJsonEditorTool()
-    tool.resize(1400, 860)
-    tool.show()
-    _settle()
     # The shipped project names no structure; point each labelling site at its
     # body (protein body 0 = 1R0A, DNA body 1) so the AVs are computed.
-    import json
-    import time
-
     cfg = json.loads((work / "hiv_rt.fps.json").read_text())
     for pos in cfg["Positions"].values():
         pdb = "protein_1R0A.pdb" if int(pos.get("body_id", 0)) == 0 else "dna.pdb"
         pos["pdb_path"] = str((work / pdb).resolve())
     (work / "hiv_rt.fps.json").write_text(json.dumps(cfg, indent=2))
-    tool.editor.onLoadJSON(str(work / "hiv_rt.fps.json"))
-    panel = tool.editor.position_panel
-    deadline = time.time() + 120
-    app = QApplication.instance()
-    while time.time() < deadline:
-        app.processEvents()
-        if not getattr(panel, "_active_workers", {}):
-            break
+    app = make_app()
+    app.load_path(str(work / "hiv_rt.fps.json"))
+    app.editor.compute_all()
+    deadline = time.time() + 300
+    while app.editor.busy and time.time() < deadline:
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
         time.sleep(0.05)
-    _settle(40)
-    print("AV status:", panel.av_preview_label.text(), "cached:", len(getattr(panel, "_av_cache", {})))
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(tool, "23")
-    _raise_tab(tool, "Positions")
-    _grab(tool, "23_fps_editor.png")
-    _raise_tab(tool, "Distances")
-    _grab(tool, "23_fps_editor_distances.png")
-    return tool
+    for _ in range(3):
+        app.draw(RecordingPainter(), 0, 0, 1200, 800)
+    first = app.editor.rows_pos[0]["row"]
+    app.editor.selected_pos = first
+    app.editor.selected_dist = app.editor.rows_dist[0]["row"]
+    for tab, name in (("Positions", "23_fps_editor.png"), ("Distances", "23_fps_editor_distances.png"),
+                      ("3D View", "23_fps_editor_3d.png")):
+        app.tab = tab
+        painter = PixelPainter(1200, 800)
+        for _ in range(3):
+            painter = PixelPainter(1200, 800)
+            app.draw(painter, 0, 0, 1200, 800)
+        (FIG / name).write_bytes(png_encode(painter.width, painter.height, painter.px))
+        print("wrote", name)
+    print("AV:", app.editor.av_message)
+    app.close()
 
 
 # ---------------------------------------------------------------- guide 24

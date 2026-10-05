@@ -22,10 +22,10 @@ def test_native_select_routes_children_and_preserves_state():
     app.select("HydroPro")
     hydro = app.children.get("HydroPro")
     assert hydro is not None
-    hydro.exe_path = "/opt/hydro.exe"
+    hydro.model.exe_path = "/opt/hydro.exe"
     app.select("HydroPro")
     assert app.children["HydroPro"] is hydro
-    assert hydro.exe_path == "/opt/hydro.exe"
+    assert hydro.model.exe_path == "/opt/hydro.exe"
 
 
 def test_native_unknown_tool_raises():
@@ -49,14 +49,14 @@ def test_every_hub_tool_has_a_native_app_and_no_pending_stub():
 def test_native_state_roundtrip():
     app = StructureToolsHubApp()
     app.select("HydroPro")
-    app.children["HydroPro"].exe_path = "/opt/hydro.exe"
+    app.children["HydroPro"].model.exe_path = "/opt/hydro.exe"
     app.selected = "HydroPro"
     state = app.export_settings()
 
     fresh = StructureToolsHubApp()
     fresh.restore_settings(state)
     assert fresh.selected == "HydroPro"
-    assert fresh.children["HydroPro"].exe_path == "/opt/hydro.exe"
+    assert fresh.children["HydroPro"].model.exe_path == "/opt/hydro.exe"
 
 
 def test_native_renders_hub_and_children():

@@ -2,7 +2,24 @@
 
 Measured 2026-10-01: 123 plugins declare a GUI, 109 declare `entrypoints.emtk`, 14 are Qt-only. A declared emtk entry is not a swap: the readiness
 gate (`chisurf/core/plugin/emtk_preview.json`) keeps the Qt tool the default until the four checks pass (looks good, parity, works, tested).
-Preview list now: `setup`, `setup_channel_definition`, `switch_user`.
+Preview list now (2026-10-05): `code_editor` only.
+
+## Where to pick this up (2026-10-05)
+
+1. **`code_editor`**, the last id on the preview list. `code_editor/REPORT.md` + `REPORT_input.md`: 29 Qt controls
+   lost (Back/Fwd, Def/Hint, Symbols and Kernel panels, project-tree columns and context menu, LSP status, view toggles,
+   shipped notebooks). Re-measure with `emtk_port_parity before|after|compare` against `window:CodeEditorWindow`
+   (`code_editor/scripts/qt_before_entry.py`): the manifest's `gui` is a Qt host around the emtk app, so a plain
+   `before` measures emtk against emtk. Several modules carry another stream's edits; settle ownership first.
+2. **Shared structure viewport**: the FPS 3D View and the `fret_docking` Structure tab draw `implot3d` point/line traces,
+   where Qt embedded the molecular viewer (cartoon, AV surfaces). This is the one visual delta both reports accept
+   (`fps_json_editor/REPORT.md`). Embedding the chimol renderer as an emtk surface closes it for both cards at once.
+3. **Re-audit every accepted port for the scroll defect class.** Until emtk `052b22a`, any dock window with an `expand`
+   table (or plot) above more content had an unreachable bottom and an unbounded scroll. The single-frame
+   `audit_emtk_overflow` cannot see it: it shows only with populated data, open folded panels, and the window wheeled
+   to its end. Method: `fps_json_editor/scripts/capture_emtk.py` (open the panels, wheel *over the form, not the
+   table*, then assert the last field's rect is inside the window).
+4. Tracks C-F below are unchanged.
 
 ## Track A: finish the swaps (settings and small plugins)
 1. `switch_user` (agent running), then `setup_channel_definition` (blocked on shared-editor gaps, see Track C), then the hub `setup` (adopts accepted panels).

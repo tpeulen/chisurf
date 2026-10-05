@@ -185,11 +185,15 @@ class CardShell(TourTarget, ImApp):
         pressed = self.modal_window.begin(box)
         im.text_wrapped(modal["text"])
         done = None
+        entered = False
         if modal["kind"] == "prompt":
             im.set_next_item_width(-1)
-            changed, value = im.input_text(f"##{self.card_key}-prompt", modal["value"])
-            if changed:
-                modal["value"] = value
+            if not modal.get("focused"):  # typed into at once, as Qt's input dialog is
+                im.set_keyboard_focus_here()
+                modal["focused"] = True
+            entered, value = im.input_text(f"##{self.card_key}-prompt", modal["value"],
+                                           flags=im.InputTextFlags.ENTER_RETURNS_TRUE)
+            modal["value"] = value
             self.remember("prompt", im.get_item_rect())
             im.set_item_tooltip("The name; press OK or Enter.")
             if modal.get("error"):
@@ -204,6 +208,8 @@ class CardShell(TourTarget, ImApp):
         }[modal["kind"]]
         choice = button_row(buttons, remember=lambda name: self.remember(f"modal_{name}"))
         self.modal_window.end()
+        if modal["kind"] == "prompt" and entered:
+            choice = "yes"
         if pressed == "close":
             choice = "no"
         if choice == "yes":

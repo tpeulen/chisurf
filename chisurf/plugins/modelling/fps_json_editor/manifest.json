@@ -42,6 +42,7 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.modelling.fps_json_editor.gui.tool:FpsJsonEditorTool",
+    "emtk": "chisurf.plugins.modelling.fps_json_editor.gui.app:make_app",
     "cli": "fps-json-editor=chisurf.plugins.modelling.fps_json_editor.cli.cli:cli",
     "services": "chisurf.plugins.modelling.fps_json_editor.rpc.services:register_services"
   },

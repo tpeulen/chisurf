@@ -40973,3 +40973,13 @@ side of the line.
   links. Also removed 18 dangling hand-added `arm64/lib/libhdf5*.320` links into the same cache
   (conda owns hdf5 1.14 there; nothing linked .320). Guard:
   `test/test_build_tttrlib_sibling_envs.py`; docs: `okf/workflows/build-and-env.md`.
+- 2026-10-05 · emtk ports: **`fps_json_editor` accepted**, removed from `emtk_preview.json` (only `code_editor`
+  remains). Driving the populated window at 800x600 found three emtk root causes, each fixed in emtk with tests:
+  `begin_child` laid a scrolled child out `box + scroll` tall, so an `expand` table grew by the scroll every frame
+  and the form under it was unreachable (`052b22a`); a dock window's scroll was keyed by its screen position and
+  reset when the box moved (`664fff7`); `TextEditor` doubled typed closers (`f08ae47`). Structure Tools prompts now
+  take focus and accept on Enter (`cards/shell.py`). New real-input suite `fps_json_editor/test/test_emtk_real_input.py`
+  (12 tests); parity `lost: []` with 11 deliberate differences; guide 23 rewritten with emtk figures. Also fixed two
+  stale tests (HydroPro `.model.exe_path`; the parity tool's "Qt-only" test used `acq`). Evidence:
+  [fps_json_editor/REPORT](plugins/emtk-ports/fps_json_editor/REPORT.md); resume:
+  [emtk-ports roadmap](plugins/emtk-ports/roadmap.md) "Where to pick this up".

@@ -62,19 +62,32 @@ $\langle R_{DA}\rangle_E = 42.2$ Å ($R_0 = 52$ Å).
 
 **Structure ▸ FRET ▸ FPS JSON Editor.** The toolbar loads/saves a
 `*.fps.json` labelling project, **Update** pushes hand edits of the *JSON* tab
-back into the tables, **Clear** empties it. Tabs:
+back into the tables, **Clear** empties it (asks first); **Guide** walks through
+the tool and **Help** explains it. Tabs:
 
-- **Positions** — one row per labelling site: **Show**, **Name**, **PDB
-  (File/ID)** (a path or a PDB ID), **Chain**, **Res**, **Atom**, **Dye Preset**,
-  **Dye Model** (AV1/AV3/…), linker and radii under **Details…**, a **Color**
-  and delete. **Compute AVs** computes every populated row (a row also
-  recomputes when its site changes); **Save AV MRC** writes the selected AVs as
-  density maps. The status line reports each AV's volume and grid points.
+- **Positions** — one row per labelling site: **Show**, **Name**, **Structure**
+  (the file name; the path, or a PDB ID, is the **PDB file or ID** field),
+  **Chain**, **Res**, **Atom**, **Dye Preset**, **Dye Model** (AV1/AV0/AV3/ROTAMER),
+  **Color** and the computed **AV** volume. Selecting a row opens its form under
+  the table: attachment lists read from the structure, dye preset and model,
+  colour, the dye dimensions (linker length and width, three radii), and the
+  folded **Simulation** and **Advanced** panels. Every number is typed and kept
+  in the same range as the fps.json format allows (the contact-volume trapped
+  fraction takes −1, "not used"). **Add Row**, **Delete Row** (asks; the
+  distances that use the position go with it), **Browse PDB...** for the
+  selected row, **Compute AVs** (every named row; a row also recomputes when
+  its site changes) and **Save AV MRC** (the selected AV, else all of them, as
+  density maps). The line above the table reports each AV's volume and grid
+  points.
 - **Distances** — donor/acceptor pairs (**Label 1**, **Label 2**), the distance
-  **Type** (`dRDAE` = $\langle R_{DA}\rangle_E$, `dRDA`, `dRmp`, …), the
-  measured value and errors under **Details…**, and a **Score set** grouping.
-- **FlexFit**, **JSON** (the raw file), **3D View** (the structure with AV
-  clouds; OpenGL, not captured offscreen).
+  **Type** (`dRDAE` = $\langle R_{DA}\rangle_E$, `dRDA`, `dRMP`, `pRDA`), the
+  Förster radius, the measured value and errors in the form of the selected
+  restraint, a **Score set**, the scoring-group filter with **Add / Remove
+  Scoring Group**, and **Load DA Distribution...** for a `pRDA` restraint.
+- **FlexFit** (sets of flexible residues and bonds), **JSON** (the raw file)
+  and **3D View** (the accessible volumes as point clouds, their mean
+  positions, the distance lines, and the backbone trace of the selected row's
+  structure).
 
 ```{figure} figures/23_fps_editor.png
 :name: fig-23-fps-editor
@@ -85,15 +98,24 @@ back into the tables, **Clear** empties it. Tabs:
 AV1 sites on the p66/p51 subunits of 1R0A and three AV3 sites on the DNA. The
 shipped file names no structure; for the figure each site was pointed at
 `protein_1R0A.pdb` (body 0) or `dna.pdb` (body 1), and all 11 AVs were
-computed (last: p51_E194C, 16 530.8 Å³, 4898 grid points).
+computed (last: p_19bp, 19 936.1 Å³, 5907 grid points). The selected row's
+form is under the table.
 ```
 
 ```{figure} figures/23_fps_editor_distances.png
 :name: fig-23-fps-editor-distances
 :width: 100%
 
-**Distances** of the same project: 20 protein–DNA pairs of type `dRDAE`
-(the last row is the empty row for adding one).
+**Distances** of the same project: 20 protein–DNA pairs of type `dRDAE`, the
+first one selected.
+```
+
+```{figure} figures/23_fps_editor_3d.png
+:name: fig-23-fps-editor-3d
+:width: 100%
+
+**3D View** of the same project: the 11 accessible volumes, the distance
+lines, and the CA/P trace of the selected position's structure (1R0A).
 ```
 
 Besides **Load** in the toolbar, the editor window accepts a dropped

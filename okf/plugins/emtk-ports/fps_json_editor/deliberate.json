@@ -1,0 +1,13 @@
+{
+  "AV0": "Option of the Dye Model combo (AV1/AV0/AV3/ROTAMER); the native `Dye model` choice of the selected position lists the same four (picked by real input in test_choice_fields_dye_model_preset_and_distance_type). Closed combos do not draw their options.",
+  "ROTAMER": "Option of the Dye Model combo; present in the native `Dye model` choice (see AV0).",
+  "D1-Alexa488": "Option of the Dye Preset combo; the native `Dye preset` choice lists the same dye definitions plus Custom (D1-Alexa488 picked by real input in the choice test).",
+  "D3-Alexa488": "Option of the Dye Preset combo; present in the native `Dye preset` choice (see D1-Alexa488).",
+  "dRDA": "Option of the distance Type combo (dRDA/dRDAE/dRMP/pRDA); the native `Type` choice of the selected restraint lists the same four.",
+  "dRMP": "Option of the distance Type combo; present in the native `Type` choice (see dRDA).",
+  "pRDA": "Option of the distance Type combo; present in the native `Type` choice, and choosing it shows `Load DA Distribution...` as in Qt (tested).",
+  "JSON · Line 1, Col 1 · 5 lines": "Status line under Qt's JSON text box. The native JSON tab is emtk's code editor with a line-number gutter and JSON colouring; the caret line/column read-out is not drawn.",
+  "PDB (File/ID)": "Renamed: the table column is `Structure` (file name, full path in the tooltip) and the editable field of the selected position is `PDB file or ID`; Qt's per-row `...` browse button is the toolbar `Browse PDB...` for the selected row.",
+  "Remove selected": "Qt had two `Remove selected` buttons (residues, bonds); the native FlexFit toolbar names them `Remove selected residue` and `Remove selected bond`.",
+  "Settings": "Qt's `Settings` column held a `Details...` button per row opening the Labeling Site Details dialog (Dye Dimensions, Simulation Settings, Advanced Settings). The native editor shows those fields inline under the table for the selected position (`Dye dimensions`, `Simulation`, `Advanced` panels, same fields and the same Qt ranges, typed)."
+}
