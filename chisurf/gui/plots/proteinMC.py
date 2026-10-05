@@ -5,14 +5,9 @@ from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.core.settings
+from chisurf.emtk.chimol_view import ChimolView
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots.plotbase import Plot
-
-try:
-    # chimol renamed the widget: Viewer (was MolView, chimol 0cdbf4c).
-    from chimol.core.viewer import Viewer as ChimolView
-except Exception:  # pragma: no cover - optional GUI backend
-    ChimolView = None
 
 colors = cs.core.settings.gui["plot"]["colors"]
 color_scheme = cs.core.settings.colors
@@ -232,10 +227,14 @@ class ProteinMCStructureControl(QtWidgets.QWidget):
 
     frameChanged = QtCore.Signal(int)
 
+    @property
+    def _viewer(self):
+        """The plot's chimol viewer, read when used: it starts with the plot's first frame."""
+        return getattr(self._plot, "viewer", None) if self._plot is not None else None
+
     def __init__(self, parent=None, plot: "Plot" = None, **kwargs):
         super().__init__(parent)
         self._plot = plot
-        self._viewer = getattr(plot, "viewer", None) if plot is not None else None
         self._play_timer = QtCore.QTimer(self)
         self._play_timer.setInterval(120)
         self._play_timer.timeout.connect(self._goto_next)
@@ -487,29 +486,36 @@ class ProteinMCStructurePlot(Plot):
         super().__init__(fit=fit, *args, **kwargs)
         self.model = fit.model
         self.object_id = None
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        # The base Plot.__init__ already created self.layout as a QVBoxLayout
-        # on this widget. Reuse it so the viewer fills the tab.
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(0)
-        if ChimolView is None:
-            self.viewer = None
-            placeholder = QtWidgets.QLabel("Chimol viewer unavailable", self)
-            placeholder.setAlignment(QtCore.Qt.AlignCenter)
-            self.layout.addWidget(placeholder, stretch=1)
-        else:
-            # ChiSurf structure coordinates are in Angstrom; Chimol's default
-            # scale factor of 10 assumes nanometer input. Use 1.0 so the
-            # displayed size matches the RMF file and external viewers.
-            self.viewer = ChimolView(parent=self, representation_mode="atoms", scale_factor=1.0)
-            self.viewer.setSizePolicy(
-                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-            )
-            self.viewer.setMinimumSize(320, 240)
-            self.layout.addWidget(self.viewer, stretch=1)
+        # chimol's offscreen renderer, drawn on the fit window's emtk surface
+        # (emtk_draw). Started when first asked for; ``viewer`` is None where it
+        # cannot run (no WebGPU adapter). ChiSurf coordinates are in Angstrom;
+        # chimol's default scale of 10 assumes nanometres, so 1.0.
+        self.chimol = ChimolView(
+            viewer_options={"representation_mode": "atoms", "scale_factor": 1.0}
+        )
         # Build the controller after the viewer exists so it can drive it.
         self.plot_controller = ProteinMCStructureControl(self, plot=self)
         self.update_all()
+
+    @property
+    def viewer(self):
+        """chimol's viewer, or ``None`` when chimol cannot run here."""
+        return self.chimol.viewer
+
+    def emtk_draw(self, box) -> None:
+        """The molecular view, filling the page (inside the surface's emtk frame)."""
+        from emtk import im
+
+        if not self.chimol.draw():
+            im.text_wrapped(
+                f"The molecular viewer could not start here ({self.chimol.error}). The "
+                "trajectory and distance plots are on the other tabs."
+            )
+
+    def close(self):
+        """Stop chimol with the page."""
+        self.chimol.close()
+        return super().close()
 
     def update_all(self, *args, **kwargs):
         """Refresh the structure display from the ProteinMC model widget."""
@@ -539,6 +545,7 @@ class ProteinMCStructurePlot(Plot):
                 self.viewer.set_representation("atoms", object_id=self.object_id)
             except Exception:
                 pass
+            self.chimol.sync_panel()
         if frames:
             arr = np.asarray(frames, dtype=float)
             active_frame = min(

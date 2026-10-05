@@ -46,10 +46,14 @@ class ChimolView:
     min_size : tuple of int, optional
         The smallest size chimol renders at; a smaller region shows the frame scaled down. chimol lays out its sequence
         strip and panels for a desktop-size canvas and overprints below about 760x420.
+    viewer_options : dict, optional
+        Keyword options for chimol's Viewer, as a Qt host would construct it with.
     """
 
-    def __init__(self, min_size: tuple[int, int] = (760, 420)) -> None:
+    def __init__(self, min_size: tuple[int, int] = (760, 420), viewer_options: dict | None = None) -> None:
         self.min_size = min_size
+        #: Passed to chimol's Viewer when it starts (``scale_factor=1.0`` for Angstrom coordinates, ...).
+        self.viewer_options = dict(viewer_options or {})
         self.app: Any = None
         #: Why chimol could not start (no WebGPU adapter, ...); empty while it works.
         self.error = ""
@@ -72,7 +76,7 @@ class ChimolView:
             os.environ.setdefault("CHIMOL_TOOLKIT", "none")
             from chimol.hosts.native.app import ChimolApp
 
-            self.app = ChimolApp(size=self.min_size, backend="offscreen")
+            self.app = ChimolApp(size=self.min_size, backend="offscreen", **self.viewer_options)
         except Exception as exc:  # noqa: BLE001 - shown in place of the view
             self.error = f"{type(exc).__name__}: {exc}"
             logger.warning("chimol view unavailable: %s", self.error)

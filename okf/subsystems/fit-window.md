@@ -23,17 +23,20 @@ destroyed when pytest dropped the last test's fixture arguments
 freed memory from its destructor. `test/gui/conftest.py` now holds the
 application for the life of the process, as pytest-qt does.
 
-1. **Port `ProteinMCStructurePlot`** (ProteinMC). Its `Viewer` is a 3-D OpenGL
-   widget, also an island today. Offscreen grabs of it are black, before and
-   after this change, so judge it on a display or port it to chimol's emtk
-   viewer first.
-2. **Remaining Qt inside a plot page object.** Pages are still built as
+Done 2026-10-05: `ProteinMCStructurePlot` draws chimol's offscreen renderer
+through `chisurf.emtk.chimol_view.ChimolView` (`emtk_draw`), built with
+`scale_factor=1.0` (Angstrom; chimol `9425146` passes viewer options through
+`ChimolApp`). With it no catalogued page needs a Qt island: `QT_PAGES` is empty.
+The island mechanism stays as the safety net for a page that still holds a
+Qt widget (it is laid over the page, not lost), and the slow sweep fails on it.
+
+1. **Remaining Qt inside a plot page object.** Pages are still built as
    `plotbase.Plot` `QWidget`s whose chiplot panels sit in hidden Qt layouts.
    The surface reads that composition (`chisurf/gui/plots/emtk_page.py`), so
    a page needs no code to appear. The next step is Qt-free page objects that
    declare their panels directly. Measure with the sweep: every page's
    `missing` list is `[]` except the two islands.
-3. **Plot controllers** (the "Plot settings" dock: `LinePlotControl` `.ui`,
+2. **Plot controllers** (the "Plot settings" dock: `LinePlotControl` `.ui`,
    `ParameterScanWidget`, `DistributionPlotControl`, the FitInfo Analysis/
    Metadata/External/Export tabs) live in the main window's options panel,
    *outside* the fit window, and are still Qt. They were out of this change's
@@ -43,8 +46,8 @@ application for the life of the process, as pytest-qt does.
 (about 12 min) opens the real science of all 42 catalogued models in a real
 `Main`, visits every page, and fails on any page not drawn in emtk unless its
 plot class is in `QT_PAGES`. On 2026-10-05: 236 pages, 15 plot classes, every
-page drawn by emtk except `ProteinMCStructurePlot` (1 model).
-`StateSchemePlot` was ported the same day (below). Trap: a page that never becomes current is never
+page drawn by emtk (`StateSchemePlot` and `ProteinMCStructurePlot` were ported
+the same day). Trap: a page that never becomes current is never
 built; the probe visits each tab, which is why it is slow.
 
 **Tried and reverted** -- the earlier attempt (`FitPlotsArea(DockArea)`,

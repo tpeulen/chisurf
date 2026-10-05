@@ -43,10 +43,7 @@ def test_structure_view_shows_starting_structure_and_follows_reloads(
 
     events = []
 
-    class RecordingView(QtWidgets.QWidget):
-        def __init__(self, *args, **kwargs):
-            super().__init__(args[0] if args else kwargs.get("parent"))
-
+    class RecordingViewer:
         def add_structure(self, structure, *, name=None, source_path=None):
             events.append(("add", structure))
             return f"obj{len(events)}"
@@ -59,6 +56,18 @@ def test_structure_view_shows_starting_structure_and_follows_reloads(
             pass
 
         def set_frames(self, frames, *, object_id=None, active_frame=None):
+            pass
+
+    class RecordingView:
+        """The emtk chimol view: its viewer records what the page asks of it."""
+
+        def __init__(self, *args, **kwargs):
+            self.viewer = RecordingViewer()
+
+        def sync_panel(self):
+            pass
+
+        def close(self):
             pass
 
     monkeypatch.setattr(proteinMC_module, "ChimolView", RecordingView)

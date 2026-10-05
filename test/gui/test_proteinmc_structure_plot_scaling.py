@@ -18,11 +18,7 @@ def test_structure_plot_uses_angstrom_scale_factor(qapp, qtbot, monkeypatch):
 
     calls = []
 
-    class CapturingChimolView(QtWidgets.QWidget):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args[:1] if args else [])
-            calls.append(kwargs)
-
+    class CapturingViewer:
         def add_structure(self, structure, *, name=None, source_path=None):
             return "obj1"
 
@@ -30,6 +26,19 @@ def test_structure_plot_uses_angstrom_scale_factor(qapp, qtbot, monkeypatch):
             pass
 
         def set_frames(self, frames, *, object_id=None, active_frame=None):
+            pass
+
+    class CapturingChimolView:
+        """The emtk chimol view: records the options its Viewer is built with."""
+
+        def __init__(self, *args, viewer_options=None, **kwargs):
+            calls.append(dict(viewer_options or {}))
+            self.viewer = CapturingViewer()
+
+        def sync_panel(self):
+            pass
+
+        def close(self):
             pass
 
     monkeypatch.setattr(proteinMC_module, "ChimolView", CapturingChimolView)
@@ -52,6 +61,7 @@ def test_structure_plot_uses_angstrom_scale_factor(qapp, qtbot, monkeypatch):
 
     plot = ProteinMCStructurePlot(fit=fit)
     qtbot.addWidget(plot)
+    plot.viewer  # chimol starts when its viewer is first asked for
 
     assert len(calls) == 1, f"Expected one ChimolView construction, got {calls}"
     assert calls[0].get("scale_factor") == 1.0, (

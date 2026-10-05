@@ -24,10 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOGUE = json.loads((ROOT / "test/project/fixtures/scientific_model_catalogue.json").read_text())
 
 #: Plot pages still drawn by a Qt widget over the surface, and why. Shrinks only.
-QT_PAGES = {
-    # The structure viewer is a 3-D OpenGL widget.
-    "ProteinMCStructurePlot",
-}
+QT_PAGES: set[str] = set()
 
 
 def _run(command, environment, timeout):
