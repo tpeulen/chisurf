@@ -84,3 +84,16 @@ python -m test.gui.emtk_port_parity compare fps_json_editor --out $O
 
 Trap: run `capture_emtk.py` **after** `after`, because `after` writes the single-frame inventory, which undercounts. A
 wheel over the table scrolls the table, not the window, so wheel over the form.
+
+## HEAD caveat (checked in a clean `git archive HEAD` tree, 2026-10-05)
+
+The committed tree passes everything here except three tests, and each depends on another stream's **uncommitted** work:
+
+- `test_guide_and_help_buttons[*]` (2) needs the tour-topmost fix in `chisurf/emtk/help_guide.py` (the tour card gets
+  its own window so its Prev / Close answer). That fix was made in the `fret_docking` acceptance (2026-10-04, not
+  committed). With that one file added to the clean tree, both pass.
+- `structure_tools/test/test_native.py::test_structure_ribbon_entries_resolve_native` needs
+  `registry.select_gui_entrypoint`, part of the owner's uncommitted emtk-entrypoint migration (see
+  [settings-audit](../settings-audit.md)). This failure predates this change.
+
+Whoever commits those two lands them with their tests; nothing here needs changing.
