@@ -6430,3 +6430,24 @@ reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json
   files are written before it.
 - **Guide 10** names "Spectroscopy -> Fluorescence decay -> Anisotropy-Wizard"; the
   plugin is `menu_hidden`, reached via Tools -> Calculators -> Wizards -> Anisotropy.
+
+## 2026-10-07: QuEst legacy surface clips controls and imports retired ChiMOL paths
+
+**Open, owner W6d/W9 plugin migration.** A scratch offscreen construction of
+`quenching_estimator` succeeds after the owning Quest numerical dependency fix,
+but its 1200×760 PNG shows the left settings panel split into three columns
+too narrow for the Structure file/Attachment/Simulation labels and controls.
+The parent inspected the image, rather than accepting the construction test.
+The owning `modules/quest/quest/gui/chimol_widget.py` also imports removed
+`chisurf.plugins.chimol.chimol.app.sequence_dock`, `renderer.view` and
+`io.structure` paths; its caught errors leave the sequence and 3D tabs as
+placeholders. Current ChiMOL uses its own standalone package and native
+surfaces, so replacing a prefix alone cannot restore these old Qt interfaces.
+
+This blocks visual and molecular-selection parity for Qt retirement. Capture
+the real loaded-148L baseline before replacing the QuEst surface, reuse the
+current ChiMOL viewer/sequence APIs in the owning Quest framework, and render
+every tab with the same data. Do not count the W7 factory-only PNG as a complete
+migration baseline. Numerical provider readiness is separate: the immutable
+IMP.bff core wheel supplies F arrays and residual callbacks with scientific
+oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).

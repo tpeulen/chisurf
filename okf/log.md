@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W7: pin immutable IMP.bff e6137af4f and SCM0.15.0a2.dev215+ge6137af4f after coherent canonical-Git installation. 32 owning provider/science tests and15 ChiSurf provider/legacy trace tests pass; both old dwell-label failures are repaired at their native root. F-test/QuEst factories render with PNGs inspected; QuEst legacy clipping/import gaps remain explicitly W6d/W9. [Receipt](validation/release-readiness-w7/provider-installed.json).
+
 - PRD-154 W7: native Intensity Trace now offers cooperative HMM/BIC cancellation; 47 focused regressions pass and captured EM/SQUAREM parameters, states, likelihood and BIC are identical. Real demo before/busy/cancelled PNGs inspected; partial exports prevented and close cleanup bounded. Provider-dependent dwell checks continue against the rebuilt owning IMP.bff provider. [Evidence](validation/release-readiness-w7/hmm-equivalence.json).
 
 - **2026-10-07 · W7 runtime roots:** Driver handles undrawn canvases; PTO picker rendering, Global View toggle callbacks and optional Structure Tools key release use their real contracts.17focused cases pass; three actual plugin workers pass with inspected PNGs. [Native contracts](subsystems/gui-autoform.md).
