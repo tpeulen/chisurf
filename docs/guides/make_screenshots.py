@@ -194,7 +194,7 @@ def _grab_parameter_link_menu():
 def _grab_pda_editor():
     """Grab the PDA (Gaussian-distance) model editor for the PDA guide."""
     import numpy as np
-    from scipy import stats
+    from chisurf.core.math import special as stats
 
     import chisurf.core.fitting.fit as fit_mod
     import chisurf.core.fluorescence.tcspc as tcspc

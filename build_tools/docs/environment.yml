@@ -21,7 +21,6 @@ dependencies:
 
   # Runtime (needed by autodoc for importing chisurf modules)
   - numpy<2.0
-  - scipy
   - pyyaml
   - click
   - pyzmq>=25.0

@@ -139,7 +139,7 @@ def fig_fida():
     k = np.arange(0, 41)
     p1 = fida.fida_pch(40, [(3.0, 2.0)])
     p2 = fida.fida_pch(40, [(1.0, 4.0), (6.0, 0.3)])
-    from scipy.stats import poisson
+    from chisurf.core.math.special import poisson
     pois = poisson.pmf(k, (np.arange(p1.size) * p1).sum())
 
     fig, ax = plt.subplots(figsize=(5.2, 4.0))
@@ -335,7 +335,7 @@ def fig_pda():
     pda.background_ch2 = 0.0
     # Poisson-distributed burst sizes.
     pf = np.zeros(61); mu = 25.0
-    from scipy.stats import poisson
+    from chisurf.core.math.special import poisson
     pf[:] = poisson.pmf(np.arange(61), mu)
     pda.setPF(pf)
 
@@ -657,7 +657,7 @@ def fig_e_hist_fit():
     e = E[(S > 0.25) & (S < 0.75)]                 # FRET bursts only
     gm = GaussianMixture(n_components=3, random_state=0).fit(e.reshape(-1, 1))
     x = np.linspace(-0.1, 1.1, 400)
-    from scipy.stats import norm
+    from chisurf.core.math.special import norm
     comps = [w * norm.pdf(x, m[0], np.sqrt(c[0, 0]))
              for w, m, c in zip(gm.weights_, gm.means_, gm.covariances_)]
 
@@ -1238,7 +1238,7 @@ def fig_ndxplorer():
     if ndx not in sys.path:
         sys.path.insert(0, ndx)
     from ndxplorer.analysis.curve_fit import bin_centers, fit_equation_to_marginal
-    from scipy.optimize import curve_fit
+    from chisurf.core.math.numerics import curve_fit
 
     rng = np.random.default_rng(3)
     tau0 = 4.0                       # donor-only lifetime (ns)
@@ -1310,7 +1310,7 @@ def _cellular_flow_stack(n=96, n_frames=400, amplitude=0.8, n_molecules=1600,
     Frames are rendered by depositing molecules into a histogram and blurring it
     with the focus, which costs the same whatever the concentration.
     """
-    from scipy.ndimage import gaussian_filter
+    from tttrlib.ndimage import gaussian_filter
 
     rng = np.random.default_rng(seed)
     position = rng.uniform(0, n, size=(n_molecules, 2))
@@ -1509,7 +1509,7 @@ def fig_regions():
     Runs the real ``chisurf.core.roi`` segmentation and measurement on a
     synthetic frame — the same functions the guide describes.
     """
-    import scipy.ndimage as ndi
+    import tttrlib.ndimage as ndi
 
     from chisurf.core.roi import (
         MaskROI,
