@@ -14,6 +14,18 @@ from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.session_sources import sources
 
 
+def _is_container_run(path) -> bool:
+    """Whether *path* names a burst run inside a ``.pto`` container (``m000.pto/sliding_window_All 0.1500#60``).
+
+    A burst search over a container keeps its bursts there and writes no ``.bur``; such a run is not a file on disk
+    but every burst reader opens it.
+    """
+    from chisurf.core.fio.fluorescence import burst_tree
+
+    path = Path(path)
+    return path.suffix.lower() != burst_tree.SUFFIX and burst_tree.is_container_path(path)
+
+
 class AccurateFretController:
     def __init__(self, model, ndx_source=None, setup_model=None, db_path=None):
         self.model = model
@@ -84,7 +96,7 @@ class AccurateFretController:
     def load(self, path):
         if self.running:
             return
-        if not Path(path).is_file():
+        if not Path(path).is_file() and not _is_container_run(path):
             self.status = f"Burst table does not exist: {path}"
             return
         self._start("load", self._snapshot(), str(path))

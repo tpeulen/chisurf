@@ -22,7 +22,7 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.burst.alex_suite.gui.tool:AlexSuiteTool",
-    "emtk": "chisurf.plugins.burst.alex_suite.gui.app:make_app",
+    "emtk": "chisurf.plugins.burst.alex_suite.gui.native:make_app",
     "cli": "alex-suite=chisurf.plugins.burst.alex_suite.cli.main:cli"
   },
   "requires": {

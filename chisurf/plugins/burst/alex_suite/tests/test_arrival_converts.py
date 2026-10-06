@@ -68,3 +68,16 @@ def test_arrival_converts_alex_and_leaves_pie_alone(monkeypatch):
     pie.set_files(["/data/b.spc"])
     assert started == [True] and pie.decision == "pie"
     assert "already has a micro-time" in pie.status_text
+
+
+def test_the_step_is_still_optional_but_self_running():
+    """Optional in the hub's sense, yet it must not need Next to act.
+
+    If this ever stops being optional, Next would run it on PIE data too; if the arrival conversion is ever removed
+    while it stays optional, the conversion is skipped again. Both halves are load-bearing together.
+    """
+    from chisurf.plugins.burst.alex_suite.gui.native import STEPS
+
+    step = next(p for p in STEPS if p.get("role") == "alternation")
+    assert step.get("optional") is True
+    assert hasattr(AlexAlternationModel, "set_files")

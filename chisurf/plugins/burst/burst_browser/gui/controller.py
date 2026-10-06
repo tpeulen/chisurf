@@ -7,6 +7,8 @@ from threading import Event
 
 import numpy as np
 
+from chisurf.core.fio.fluorescence import burst_tree
+
 
 class BurstBrowserController:
     def __init__(self, model):
@@ -32,7 +34,8 @@ class BurstBrowserController:
         if self.running:
             return
         path = Path(path)
-        if not path.exists():
+        # A burst run inside a .pto container is not a file on disk, but the model opens it.
+        if not path.exists() and not burst_tree.is_container_path(path):
             self.status = f"Input does not exist: {path}"
             return
         self._cancel.clear()

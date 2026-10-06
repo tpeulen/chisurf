@@ -1,19 +1,37 @@
 # ALEX Suite — the same workflow, in ChiSurf
 
-If you used **ALEX-Suite**, this window is your program's workflow. Same order,
-same vocabulary, mostly the same buttons — but each step is one of ChiSurf's own
-tools underneath, so the result is a normal ChiSurf burst analysis that every
-other tool can read.
+If you used **ALEX-Suite**, this window is your program's workflow, as one
+pipeline you walk with **Next**. Same order, same vocabulary — but each step is
+one of ChiSurf's own tools underneath, so the result is a normal ChiSurf burst
+analysis that every other tool can read.
 
-Press **Guide** for the walk-through.
+## The simple workflow
+
+1. **Setup** — PIE / ns-ALEX: pick your detector setup. µs-ALEX: leave it.
+2. **Files** — drop your measurements, or press **Load demo data** for a
+   simulated µs-ALEX measurement whose answer is known.
+3. **Alternation (optional)** — µs-ALEX data is converted *on arrival*: the
+   period, the laser gates and the channel assignment are measured, the file is
+   folded into one `.pto` container and the setup **ALEX Suite (auto)** is
+   written and handed on. PIE data is left alone.
+4. **Burst search** — **Next** runs the search and waits for it.
+5. **Background** — estimated on arrival.
+6. **Accurate FRET** — **Next** calibrates α, β, γ, δ from your bursts and
+   stores them in the measurement.
+7. **E–S histogram** — ndX opens your bursts with E against S.
+
+Each step hands its result to the next one, so from files to an E–S histogram
+is Next presses only (**>>** walks all remaining steps). The status line at the
+bottom says what the open step needs. Steps marked *(optional)* are never run by
+Next. **Guide** walks the pipeline on the demo data, pointing at the buttons.
 
 ## Where everything went
 
 | ALEX-Suite | here |
 |---|---|
 | the channel table inside *Burst Search Settings* | **1. Setup** — the detector setup, chosen or edited |
-| *Select Directory* + file list | **2. Files** — drop files or folders; also reads MMFDB |
-| *Burst Search Settings → Microscope* (period, shift, 4 laser edges, flip) | **3. Alternation** — one button, all of it measured from the data |
+| *Select Directory* + file list | **2. Files** — drop files or folders; also reads MMFDB; **Load demo data** |
+| *Burst Search Settings → Microscope* (period, shift, 4 laser edges, flip) | **3. Alternation (optional)** — measured from the data on arrival |
 | *Burst Search → APBS / DCBS* | **4. Burst search** |
 | the `bkg_DD` / `bkg_DA` / `bkg_AA` fields | **5. Background** — measured, not typed |
 | *Accurate FRET* (`E_donly`, `S_aonly`, γ, β) | **6. Accurate FRET** — α, δ, γ, β found from your own populations |

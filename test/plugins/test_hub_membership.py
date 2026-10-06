@@ -34,6 +34,11 @@ SHARED = {
     "fcs_channel_preset": "Settings edits FCS definitions; the FCS correlator workflow picks one.",
     "burst_fcs_correlator": "Burst-wise FCS is both a burst-analysis step and an FCS method.",
 }
+#: The ALEX Suite is the burst workflow in the old ALEX-Suite program's order: these steps are Burst Analysis's own
+#: native apps, opened from the same plugin entry (one implementation, two rails), not copies.
+_ALEX_REUSES = "The ALEX Suite walks the burst pipeline in ALEX-Suite's order with Burst Analysis's own step app."
+SHARED.update({pid: _ALEX_REUSES for pid in ("burst_selection", "burst_background", "accurate_fret",
+                                              "burst_browser", "burst_bva")})
 
 #: Hosted plugins that keep their own ribbon button, with the reason.
 VISIBLE_CHILDREN = {
@@ -92,6 +97,7 @@ def _panels_json(rel: str) -> list[str]:
 
 def _declared_children() -> dict[str, list[str]]:
     """``{hub id: [child refs]}``, read from each hub's declaration."""
+    from chisurf.plugins.burst.alex_suite.gui.native import STEPS as ALEX
     from chisurf.plugins.burst.burst_analysis.gui.native import STEPS as BURST
     from chisurf.plugins.calculator.hub.core.registry import default_calculators
     from chisurf.plugins.core.setup.gui.model import PANELS as SETUP
@@ -116,8 +122,8 @@ def _declared_children() -> dict[str, list[str]]:
         "traj_tools": [p["emtk"] for p in TOOL_PANELS],
         "lifetime_analysis": [row[0] for row in DECAY],
         "burst_analysis": [p["plugin"] for p in BURST if p.get("plugin")],
+        "alex_suite": [p["plugin"] for p in ALEX if p.get("plugin")],
         # Qt-only hubs: their panel factories import the hosted tools.
-        "alex_suite": _module_refs(ROOT / "burst/alex_suite/gui/tool.py"),
         "fcs_toolbox": _module_refs(ROOT / "fcs/fcs_toolbox/tool.py", ROOT / "fcs/fcs_toolbox/gui/app.py"),
         "fcs_correlator": _module_refs(ROOT / "fcs/fcs_correlator/tool.py", ROOT / "fcs/fcs_correlator/gui/app.py"),
     }
