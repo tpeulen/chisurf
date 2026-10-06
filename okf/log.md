@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W7: restore the fitting source's tracked executable mode after private-index staging normalized it unintentionally. The blob and scientific behavior are unchanged; future staging must read each existing mode from HEAD instead of hard-coding100644.
+
 - PRD-154 W7: graph-completed fits publish exact owner/member notifications without another model evaluation, Main refreshes UID-matched windows, and Parse link menus filter additive active-structure metadata while preserving134 catalogue ports.23 focused regressions pass; inspected real A488 before/after receipts confirm unchanged science and six active targets. Global chi2r0.9999763241843488 legitimately rounds to1.0000; no formula correction was needed. [Evidence](validation/release-readiness-w7.md).
 
 - PRD-154 W7: correct the committed IMP.bff pin over HEADf42c30fb1; the working-tree starting pin8d8e46083 was an existing foreign lock hunk and cannot be used as the staging baseline. All21 provider references and the exact SCM version now name verified e6137af4f; all other lock edits remain uncommitted and untouched.
