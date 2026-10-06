@@ -33,15 +33,17 @@ spatial, clustering, signal, splines, MAT-files -> tttrlib. Left:
    matplotlib-base in `docs`); numba/llvmlite are gone everywhere.
 2. A ParseModel expression may call only `special.ELEMENTWISE` names as
    `scipy.special.<name>` (item 2 below).
-3. **Sibling repos, audited 2026-10-06:** quest is scipy-free; imp-tricks'
-   PHREEQC backend moved to `np.linalg.solve` (imp-tricks, same day). The
-   last scipy user in the stack is **`IMP.finite`** (`solver.py`,
-   `jax_solver.py`, `imp_finite.py`: `scipy.sparse` + `sparse.linalg`, a
-   finite-element diffusion solver). chisurf never reaches it (the blocked-
-   import proof covers chisurf's paths), but the installer adds imp-tricks
-   with `--no-deps`, so in a shipped app `import IMP.finite` now fails. Port
-   target by the placement rule: IMP.bff (coordinates/fields), sparse CSR +
-   CG/LU in C++; until then scipy stays in imp-tricks' own pyproject.
+3. **Sibling repos -- scipy-free 2026-10-06.** quest never used it;
+   imp-tricks' PHREEQC backend moved to `np.linalg.solve` (`3406d3b`) and
+   `IMP.finite` (the last scipy user in the stack) to a NumPy sparse layer
+   (`IMP/finite/_sparse.py`) solving with IMP.bff's `SparseLU` (imp.bff
+   `6bfd3520d`, Eigen SparseLU + COLAMD; imp-tricks `3b951db`). All four FV
+   solves match the scipy path to 1e-10; time per step at 96x96 dropped
+   (solve_transient 208 -> 129 ms, diffuse_steady 168 -> 88 ms). scipy left
+   imp-tricks' pyproject dependencies (kept in its `test` extra) and recipe;
+   guard `tests/test_no_scipy.py`. Trap kept for whoever touches the FV
+   solvers: fixed boundary values are written back after every solve,
+   steady included -- an LU returns an identity row only to round-off.
 
 History of the routes (kept for the traps):
 
