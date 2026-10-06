@@ -116,3 +116,20 @@ def test_allowlist_has_no_stale_entries():
         "Allow-list entries no longer import scipy -- strike them from "
         "test/scipy_import_allowlist.txt:\n  " + "\n  ".join(stale)
     )
+
+
+def test_settings_yaml_never_embeds_scipy():
+    """Models defined in YAML (parameter transforms, curve equations) run code
+    the ``.py`` scan above never sees -- the one place scipy could return
+    unseen. Comments mentioning the name are fine; code is not."""
+    import re
+
+    pattern = re.compile(r"^(?!\s*#).*(import\s+scipy\b|from\s+scipy\b|\bscipy\.)", re.MULTILINE)
+    offenders = []
+    for path in (_ROOT / "chisurf").rglob("*.y*ml"):
+        relative = path.relative_to(_ROOT).as_posix()
+        if relative.startswith(_EXCLUDED_PREFIXES) or "/test" in relative:
+            continue
+        if pattern.search(path.read_text(encoding="utf-8", errors="ignore")):
+            offenders.append(relative)
+    assert not offenders, f"scipy embedded in YAML: {offenders}"

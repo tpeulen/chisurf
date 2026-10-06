@@ -151,7 +151,7 @@ deer:
       controller_params:
         name: DEER (BES3T/CSV)
   models:
-    # Native DEER models (self-contained, numpy/scipy only); AutoForm-rendered.
+    # Native DEER models (self-contained, NumPy only); AutoForm-rendered.
     - chisurf.core.models.deer.deer.DeerGaussianModel
     - chisurf.core.models.deer.deer.DeerRiceModel
     - chisurf.core.models.deer.deer.DeerTikhonovModel
