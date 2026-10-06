@@ -217,6 +217,7 @@ addopts = ""
 norecursedirs = ["build_tools", "modules", "conda-bld", ".pixi", "dist", "rattler-recipe", "repro", "manual", "benchmarks", "renders"]
 testpaths = ["test", "chisurf/plugins/burst/burst_selection/tests"]
 markers = [
+    "e2e: opens every plugin headlessly",
     "slow: marks tests as slow (reader-heavy) and excluded from default runs",
     "live_llm: hits a real LLM provider; skipped unless an API key is configured",
     "gui: marks tests that require or drive the graphical user interface",

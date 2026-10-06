@@ -2,6 +2,8 @@
 
 ## 2026-10-06
 
+- **2026-10-06 · W7 schema foundation:** native reader vocabulary exported (emtk `37872c3`, ndX `86d6d5c`); schema guards now 647/647, retaining consumed table/curve/layout/tour fields and rejecting real typos. Pinned schema/workflow/triage checks: 677 passed. [Protocol](workflows/testing.md).
+
 - **2026-10-06 · W5 final handoff verified:** source lint/import ordering and 13 checks against the pinned pixi package passed; the local emtk Git cache is primed, with remote publication still owner-controlled. Board releases/resolution are committed in tttrlib `ea6660689` / `be66c62a2`. [Resume](validation/release-readiness-w5.md).
 
 - **2026-10-06 · W5 release-readiness native roots landed:** Driver shipped first (`5de4c87`), final emtk `a1398e0`; keyboard/zoom/frame/grid/host roots and ChiSurf state/font/game-key follow-ups verified (327 emtk, 88 ChiSurf targeted passes; final Driver/frame 21). Fixed the sibling-build prefix bug; preserved viewport sizing after AST measurement. [Evidence and W7 handoff](validation/release-readiness-w5.md).

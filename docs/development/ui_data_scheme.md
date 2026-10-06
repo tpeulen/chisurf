@@ -160,3 +160,24 @@ Two top-level keys exist for that reader and are ignored by AutoForm: `title`
 (the window's name) and `model` (which object the spec edits — ChiMOL
 understands `settings` and `viewer`). They are in the scheme because a key one
 reader honours and another ignores is still part of the format.
+
+## Native reader contracts (release-readiness update)
+
+The shared schema combines the legacy dataclass fields with emtk's exported
+`COMMON_KEYS`, `SECTION_KEYS`, `TABLE_KEYS` and `VIEW_KEYS`. Native declarations
+stay dictionaries, preserving docking/layout metadata and native-only containers.
+The owning ndX preprocessor declares parameter-table and curve-kind tags; it
+expands table declarations before the form renderer sees them. Dynamic table
+columns and array-map results remain supported.
+
+Some apps store named forms (toolbar, files, results) or nested form maps rather
+than a single section list. Their values are validated recursively; unknown
+scalar keys, empty unknown objects and misspelled section fields still fail.
+Native tour string targets and tab/page/window routing are also part of the
+shared guide dialect. The guard tests exercise the appropriate native loader
+and preprocessing contract, rather than rejecting native controls through
+the legacy Qt dataclass parser.
+
+Run the focused guard with `pixi run -e test python -m pytest
+test/test_ui_schemas.py -q`; regenerate schema artifacts using
+`pixi run -e test python -m chisurf.core.dataspec.schema`.

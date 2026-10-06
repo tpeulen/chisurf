@@ -259,3 +259,18 @@ eye skims past; the inventory diff catches the semantic loss.
 # Citations
 
 [1] [Project instructions (CLAUDE.md)](/references/claude-md.md)
+
+## Release-readiness schema and e2e foundation
+
+The native view vocabulary is exported by emtk's readers, with extension keys
+owned by the relevant preprocessor. `test/test_ui_schemas.py` now covers native
+form maps/templates and tour routing as well as the legacy loader. Rejection
+cases stay green; accepting a native dictionary is not permission to drop its
+fields into a Qt dataclass. Source integration was 649 targeted passes; the
+pinned package plus workflow/triage guards passed 677.
+
+`build_tools/dev_utils/triage_failures.py --junit <file> [--write <report>]` groups
+JUnit failures and errors by owning workstream without importing the GUI. CI
+runs a separate e2e job with always-uploaded render artifacts, checks smoke
+before packaging, and fails explicitly if the private chimol deploy key is
+missing. The click-all harness is being verified one isolated plugin at a time.

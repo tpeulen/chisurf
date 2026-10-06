@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://chisurf.org/schemas/view.schema.json",
   "title": "ChiSurf view spec",
-  "description": "Declarative layout for an AutoForm panel. Generated from chisurf.core.dataspec's section dataclasses by chisurf.core.dataspec.schema -- edit those, not this.",
+  "description": "Declarative layout for legacy AutoForm and native emtk panels. Generated from section dataclasses and owning reader key contracts by chisurf.core.dataspec.schema -- edit those, not this.",
   "type": "object",
   "properties": {
     "_comment": {
@@ -19,6 +19,16 @@
         "$ref": "#/$defs/section"
       }
     },
+    "section": {
+      "$ref": "#/$defs/section"
+    },
+    "window": {
+      "type": "object"
+    },
+    "n_col": {
+      "type": "integer",
+      "minimum": 1
+    },
     "plots": {
       "type": "array",
       "items": {
@@ -32,27 +42,204 @@
     "model": {
       "type": "string",
       "description": "Which object the spec edits, for readers that must choose one. chimol understands 'settings' and 'viewer'."
+    },
+    "description": {},
+    "dock": {},
+    "hidden_when": {},
+    "name": {},
+    "page": {},
+    "panels": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/native_group"
+      }
+    },
+    "tab": {},
+    "visible": {},
+    "_columns": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "entity_actions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "patternProperties": {
+    "^(?!(?:\\$schema|_columns|_comment|description|dock|entity_actions|hidden_when|model|n_col|name|page|panels|plots|section|sections|tab|title|visible|window)$)[A-Za-z][A-Za-z0-9_]*$": {
+      "$ref": "#/$defs/native_group"
     }
   },
   "additionalProperties": false,
   "$defs": {
+    "native_group": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/section"
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "_comment": {
+              "type": "string",
+              "description": "What this file is and what reads it."
+            },
+            "$schema": {
+              "type": "string",
+              "description": "JSON Schema URI for editor validation. Map the pattern in .vscode/settings.json or set this to the schema's $id."
+            },
+            "sections": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/section"
+              }
+            },
+            "section": {
+              "$ref": "#/$defs/section"
+            },
+            "window": {
+              "type": "object"
+            },
+            "n_col": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "plots": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/plot"
+              }
+            },
+            "title": {
+              "type": "string",
+              "description": "Window title; read by chimol's painted forms."
+            },
+            "model": {
+              "type": "string",
+              "description": "Which object the spec edits, for readers that must choose one. chimol understands 'settings' and 'viewer'."
+            },
+            "description": {},
+            "dock": {},
+            "hidden_when": {},
+            "name": {},
+            "page": {},
+            "tab": {},
+            "visible": {}
+          },
+          "required": [
+            "sections"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/section"
+            },
+            {
+              "required": [
+                "type"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "label": {},
+            "editable": {},
+            "width": {},
+            "activated_call": {},
+            "columns_source": {},
+            "hidden_when": {},
+            "expand": {},
+            "selected_call": {},
+            "target": {},
+            "_comment": {},
+            "edited_call": {},
+            "source": {},
+            "status": {},
+            "height": {},
+            "title": {},
+            "key": {},
+            "description": {},
+            "delete_call": {},
+            "column_picker": {},
+            "sort": {},
+            "expanded_attr": {},
+            "elide": {},
+            "attr": {},
+            "wrap_indent": {},
+            "columns": {},
+            "reserve": {},
+            "visible": {},
+            "muted_key": {},
+            "activated_cell_call": {},
+            "tree_key": {},
+            "colour_source": {},
+            "row_key": {},
+            "selected_attr": {},
+            "weight": {},
+            "editable_call": {},
+            "min_width": {},
+            "fit_columns": {},
+            "tooltip_key": {},
+            "context_call": {},
+            "min_column_width": {},
+            "filter": {},
+            "wrap_before": {},
+            "min_chars": {},
+            "type": {}
+          },
+          "required": [
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/native_group"
+          }
+        }
+      ]
+    },
     "section": {
       "type": "object",
       "properties": {
         "type": {
           "enum": [
+            "box",
             "button_row",
             "choice",
+            "column",
             "curve_input",
             "custom",
             "dock_area",
             "dynamic_group",
+            "group",
             "info",
             "panel",
             "parameter_group",
             "parameter_group_table",
+            "parameter_table",
             "plot",
+            "progress",
+            "row",
+            "tab",
             "table",
+            "tabs",
             "toggle",
             "toggle_row",
             "value",
@@ -62,6 +249,75 @@
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "box"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "box"
+              },
+              "_comment": {
+                "type": "string"
+              },
+              "attr": {},
+              "collapsed": {},
+              "collapsible": {},
+              "description": {},
+              "dock": {},
+              "elide": {},
+              "hidden_when": {},
+              "key": {},
+              "label": {},
+              "min_chars": {},
+              "min_width": {},
+              "n_col": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/section"
+                }
+              },
+              "tab": {},
+              "target": {},
+              "title": {},
+              "visible": {},
+              "weight": {},
+              "width": {},
+              "window": {},
+              "wrap_before": {},
+              "wrap_indent": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
         {
           "if": {
             "properties": {
@@ -165,6 +421,30 @@
               },
               "menu": {
                 "type": "string"
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -321,6 +601,99 @@
               },
               "rebuild_on_change": {
                 "type": "boolean"
+              },
+              "choices": {},
+              "descriptions": {},
+              "dock": {},
+              "key": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "column"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "column"
+              },
+              "_comment": {
+                "type": "string"
+              },
+              "attr": {},
+              "collapsed": {},
+              "collapsible": {},
+              "description": {},
+              "dock": {},
+              "elide": {},
+              "hidden_when": {},
+              "key": {},
+              "label": {},
+              "min_chars": {},
+              "min_width": {},
+              "n_col": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/section"
+                }
+              },
+              "tab": {},
+              "target": {},
+              "title": {},
+              "visible": {},
+              "weight": {},
+              "width": {},
+              "window": {},
+              "wrap_before": {},
+              "wrap_indent": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -447,6 +820,29 @@
               },
               "action_fixed": {
                 "type": "object"
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -553,7 +949,67 @@
               "key": {
                 "type": "string"
               },
-              "options": {}
+              "options": {},
+              "attr": {},
+              "dock": {},
+              "height": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "read_only": {},
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              },
+              "y_label": {},
+              "editable": {},
+              "columns": {},
+              "reserve": {},
+              "activated_call": {},
+              "columns_source": {
+                "type": "string"
+              },
+              "muted_key": {},
+              "activated_cell_call": {},
+              "tree_key": {},
+              "colour_source": {},
+              "log_x": {},
+              "row_key": {},
+              "expand": {},
+              "selected_attr": {},
+              "editable_call": {},
+              "edited_call": {},
+              "status": {},
+              "fit_columns": {},
+              "tooltip_key": {},
+              "context_call": {},
+              "min_column_width": {},
+              "x_label": {},
+              "delete_call": {},
+              "column_picker": {},
+              "sort": {},
+              "expanded_attr": {},
+              "selected_call": {}
             },
             "additionalProperties": false,
             "allOf": [
@@ -712,10 +1168,14 @@
                     "options": {
                       "type": "object",
                       "properties": {
+                        "add": {},
                         "add_folders": {},
+                        "add_tip": {},
                         "allow_duplicates": {},
                         "checkable": {},
+                        "database": {},
                         "dialog_filter": {},
+                        "empty": {},
                         "extensions": {},
                         "folder_expander": {},
                         "guards": {},
@@ -726,6 +1186,8 @@
                         "path_filter": {},
                         "replace_on_drop": {},
                         "select_first": {},
+                        "single": {},
+                        "target": {},
                         "title": {}
                       },
                       "additionalProperties": false
@@ -910,6 +1372,30 @@
               },
               "persist": {
                 "type": "string"
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1066,6 +1552,99 @@
               },
               "remote": {
                 "type": "boolean"
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "group"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "group"
+              },
+              "_comment": {
+                "type": "string"
+              },
+              "attr": {},
+              "collapsed": {},
+              "collapsible": {},
+              "description": {},
+              "dock": {},
+              "elide": {},
+              "hidden_when": {},
+              "key": {},
+              "label": {},
+              "min_chars": {},
+              "min_width": {},
+              "n_col": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/section"
+                }
+              },
+              "tab": {},
+              "target": {},
+              "title": {},
+              "visible": {},
+              "weight": {},
+              "width": {},
+              "window": {},
+              "wrap_before": {},
+              "wrap_indent": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1173,7 +1752,10 @@
                 "type": "string"
               },
               "source": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "is_markdown": {
                 "type": "boolean"
@@ -1183,6 +1765,31 @@
               },
               "max_height": {
                 "type": "integer"
+              },
+              "attr": {},
+              "dock": {},
+              "is_html": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1306,6 +1913,33 @@
                 "items": {
                   "$ref": "#/$defs/section"
                 }
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              },
+              "include": {
+                "type": "string"
               }
             },
             "additionalProperties": false
@@ -1432,6 +2066,30 @@
               },
               "priors": {
                 "type": "object"
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1573,9 +2231,132 @@
                   "string",
                   "null"
                 ]
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "parameter_table"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "parameter_table"
+              },
+              "_comment": {
+                "type": "string"
+              },
+              "activated_call": {},
+              "activated_cell_call": {},
+              "attr": {},
+              "colour_source": {},
+              "column_picker": {},
+              "columns": {},
+              "columns_source": {
+                "type": "string"
+              },
+              "context_call": {},
+              "data": {
+                "type": "boolean"
+              },
+              "delete_call": {},
+              "description": {},
+              "dock": {},
+              "editable": {},
+              "editable_call": {},
+              "edited_call": {},
+              "elide": {},
+              "equation": {
+                "type": "boolean"
+              },
+              "expand": {},
+              "expanded_attr": {},
+              "filter": {},
+              "fit_columns": {},
+              "function": {
+                "type": "boolean"
+              },
+              "height": {},
+              "hidden_when": {},
+              "key": {},
+              "label": {},
+              "min_chars": {},
+              "min_column_width": {},
+              "min_width": {},
+              "muted_key": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "parametric": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "reserve": {},
+              "row_key": {},
+              "selected_attr": {},
+              "selected_call": {},
+              "sort": {},
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {},
+              "tab": {},
+              "table": {},
+              "target": {},
+              "title": {},
+              "tooltip_key": {},
+              "tree_key": {},
+              "visible": {},
+              "visible_when": {},
+              "weight": {},
+              "width": {},
+              "window": {},
+              "wrap_before": {},
+              "wrap_indent": {}
+            },
+            "additionalProperties": false,
+            "required": [
+              "table"
+            ]
           }
         },
         {
@@ -1677,7 +2458,10 @@
                 ]
               },
               "source": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "x_label": {
                 "type": "string"
@@ -1711,6 +2495,229 @@
               },
               "invert_y": {
                 "type": "boolean"
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "progress"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "progress"
+              },
+              "_comment": {
+                "type": "string"
+              },
+              "attr": {},
+              "description": {},
+              "dock": {},
+              "elide": {},
+              "hidden_when": {},
+              "key": {},
+              "label": {},
+              "min_chars": {},
+              "min_width": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "target": {},
+              "text_source": {},
+              "title": {},
+              "visible": {},
+              "weight": {},
+              "width": {},
+              "window": {},
+              "wrap_before": {},
+              "wrap_indent": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "row"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "row"
+              },
+              "_comment": {
+                "type": "string"
+              },
+              "attr": {},
+              "collapsed": {},
+              "collapsible": {},
+              "description": {},
+              "dock": {},
+              "elide": {},
+              "hidden_when": {},
+              "key": {},
+              "label": {},
+              "min_chars": {},
+              "min_width": {},
+              "n_col": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/section"
+                }
+              },
+              "tab": {},
+              "target": {},
+              "title": {},
+              "visible": {},
+              "weight": {},
+              "width": {},
+              "window": {},
+              "wrap_before": {},
+              "wrap_indent": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "tab"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "tab"
+              },
+              "_comment": {
+                "type": "string"
+              },
+              "attr": {},
+              "collapsed": {},
+              "collapsible": {},
+              "description": {},
+              "dock": {},
+              "elide": {},
+              "hidden_when": {},
+              "key": {},
+              "label": {},
+              "min_chars": {},
+              "min_width": {},
+              "n_col": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/section"
+                }
+              },
+              "tab": {},
+              "target": {},
+              "title": {},
+              "visible": {},
+              "weight": {},
+              "width": {},
+              "window": {},
+              "wrap_before": {},
+              "wrap_indent": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1815,7 +2822,10 @@
                 ]
               },
               "source": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "columns": {
                 "type": "array"
@@ -1840,6 +2850,119 @@
               },
               "update_call": {
                 "type": "string"
+              },
+              "activated_cell_call": {},
+              "attr": {},
+              "colour_source": {},
+              "column_picker": {},
+              "columns_source": {
+                "type": "string"
+              },
+              "context_call": {},
+              "delete_call": {},
+              "dock": {},
+              "editable_call": {},
+              "edited_call": {},
+              "expanded_attr": {},
+              "fit_columns": {},
+              "key": {},
+              "label": {},
+              "min_column_width": {},
+              "muted_key": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "reserve": {},
+              "row_key": {},
+              "sort": {},
+              "status": {},
+              "tab": {},
+              "tooltip_key": {},
+              "tree_key": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "tabs"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "tabs"
+              },
+              "_comment": {
+                "type": "string"
+              },
+              "attr": {},
+              "collapsed": {},
+              "collapsible": {},
+              "description": {},
+              "dock": {},
+              "elide": {},
+              "hidden_when": {},
+              "key": {},
+              "label": {},
+              "min_chars": {},
+              "min_width": {},
+              "n_col": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/section"
+                }
+              },
+              "tab": {},
+              "target": {},
+              "title": {},
+              "visible": {},
+              "weight": {},
+              "width": {},
+              "window": {},
+              "wrap_before": {},
+              "wrap_indent": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1963,6 +3086,28 @@
               },
               "value_key": {
                 "type": "string"
+              },
+              "dock": {},
+              "key": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -2068,6 +3213,30 @@
               },
               "items": {
                 "type": "array"
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -2185,7 +3354,9 @@
                   "password",
                   "secret",
                   "file",
-                  "directory"
+                  "directory",
+                  "color",
+                  "colour"
                 ]
               },
               "attr": {
@@ -2244,6 +3415,31 @@
               },
               "scale": {
                 "type": "string"
+              },
+              "dock": {},
+              "key": {},
+              "lines": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "special_text": {},
+              "spin": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -2361,6 +3557,30 @@
               },
               "persist": {
                 "type": "string"
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -2481,6 +3701,30 @@
               },
               "complete_when": {
                 "type": "object"
+              },
+              "attr": {},
+              "dock": {},
+              "key": {},
+              "label": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "tab": {},
+              "window": {},
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -2500,6 +3744,47 @@
               "_comment": {
                 "type": "string"
               },
+              "attr": {},
+              "collapsed": {},
+              "collapsible": {},
+              "description": {
+                "type": "string"
+              },
+              "dock": {},
+              "elide": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "hidden_when": {
+                "type": "object"
+              },
+              "key": {},
+              "label": {},
+              "min_chars": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "min_width": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "n_col": {},
+              "name": {},
+              "page": {},
+              "panels": {},
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/section"
+                }
+              },
+              "tab": {},
               "target": {
                 "type": [
                   "string",
@@ -2515,17 +3800,11 @@
               "visible": {
                 "type": "boolean"
               },
-              "description": {
-                "type": "string"
-              },
-              "dock_group": {
-                "type": "string"
-              },
-              "start_hidden": {
-                "type": "boolean"
-              },
-              "hidden_when": {
-                "type": "object"
+              "weight": {
+                "type": [
+                  "number",
+                  "null"
+                ]
               },
               "width": {
                 "type": [
@@ -2533,24 +3812,7 @@
                   "null"
                 ]
               },
-              "weight": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "min_width": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "min_chars": {
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              },
+              "window": {},
               "wrap_before": {
                 "type": "boolean"
               },
@@ -2560,11 +3822,26 @@
                   "null"
                 ]
               },
-              "elide": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+              "function": {
+                "type": "boolean"
+              },
+              "points": {
+                "type": "boolean"
+              },
+              "parametric": {
+                "type": "boolean"
+              },
+              "data": {
+                "type": "boolean"
+              },
+              "equation": {
+                "type": "boolean"
+              },
+              "dock_group": {
+                "type": "string"
+              },
+              "start_hidden": {
+                "type": "boolean"
               },
               "field": {
                 "type": [
@@ -2583,15 +3860,6 @@
               },
               "menu": {
                 "type": "string"
-              },
-              "label": {
-                "type": "string"
-              },
-              "attr": {
-                "type": [
-                  "string",
-                  "null"
-                ]
               },
               "options": {},
               "labels": {
@@ -2636,6 +3904,8 @@
               "rebuild_on_change": {
                 "type": "boolean"
               },
+              "choices": {},
+              "descriptions": {},
               "select_action": {
                 "type": "string"
               },
@@ -2654,17 +3924,61 @@
                   "null"
                 ]
               },
-              "key": {
-                "type": "string"
-              },
-              "sections": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/section"
-                }
-              },
               "height": {
                 "type": "integer"
+              },
+              "read_only": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "y_label": {
+                "type": "string"
+              },
+              "columns": {
+                "type": "array"
+              },
+              "reserve": {},
+              "activated_call": {
+                "type": "string"
+              },
+              "columns_source": {
+                "type": "string"
+              },
+              "muted_key": {},
+              "activated_cell_call": {},
+              "tree_key": {},
+              "colour_source": {},
+              "log_x": {
+                "type": "boolean"
+              },
+              "row_key": {},
+              "expand": {
+                "type": "boolean"
+              },
+              "selected_attr": {
+                "type": "string"
+              },
+              "editable_call": {},
+              "edited_call": {},
+              "status": {},
+              "fit_columns": {},
+              "tooltip_key": {},
+              "context_call": {},
+              "min_column_width": {},
+              "x_label": {
+                "type": "string"
+              },
+              "delete_call": {},
+              "column_picker": {},
+              "sort": {},
+              "expanded_attr": {},
+              "selected_call": {
+                "type": "string"
               },
               "split": {
                 "type": "string"
@@ -2696,12 +4010,6 @@
                   "null"
                 ]
               },
-              "collapsible": {
-                "type": "boolean"
-              },
-              "collapsed": {
-                "type": "boolean"
-              },
               "collapsed_when": {
                 "type": "object"
               },
@@ -2710,9 +4018,6 @@
                   "string",
                   "null"
                 ]
-              },
-              "columns": {
-                "type": "array"
               },
               "slot_labels": {
                 "type": "array"
@@ -2723,20 +4028,15 @@
               "text": {
                 "type": "string"
               },
-              "source": {
-                "type": "string"
-              },
               "is_markdown": {
                 "type": "boolean"
               },
               "max_height": {
                 "type": "integer"
               },
-              "n_col": {
-                "type": [
-                  "integer",
-                  "null"
-                ]
+              "is_html": {},
+              "include": {
+                "type": "string"
               },
               "exclude_source": {
                 "type": [
@@ -2762,17 +4062,10 @@
                   "null"
                 ]
               },
-              "x_label": {
-                "type": "string"
-              },
-              "y_label": {
-                "type": "string"
-              },
+              "table": {},
+              "visible_when": {},
               "axes_source": {
                 "type": "string"
-              },
-              "log_x": {
-                "type": "boolean"
               },
               "log_y": {
                 "type": "boolean"
@@ -2792,18 +4085,7 @@
               "invert_y": {
                 "type": "boolean"
               },
-              "activated_call": {
-                "type": "string"
-              },
-              "selected_attr": {
-                "type": "string"
-              },
-              "selected_call": {
-                "type": "string"
-              },
-              "expand": {
-                "type": "boolean"
-              },
+              "text_source": {},
               "update_call": {
                 "type": "string"
               },
@@ -2821,7 +4103,9 @@
                   "password",
                   "secret",
                   "file",
-                  "directory"
+                  "directory",
+                  "color",
+                  "colour"
                 ]
               },
               "minimum": {
@@ -2851,12 +4135,12 @@
               "placeholder": {
                 "type": "string"
               },
-              "read_only": {
-                "type": "boolean"
-              },
               "scale": {
                 "type": "string"
               },
+              "lines": {},
+              "special_text": {},
+              "spin": {},
               "steps": {
                 "type": "array",
                 "items": {

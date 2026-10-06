@@ -28,71 +28,88 @@
               "description": "Rich text; <b> and <i> are honoured by the Qt tour."
             },
             "target": {
-              "type": "object",
-              "description": "Which control the step points at. An empty object centres the bubble.",
-              "properties": {
-                "panel": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "description": "Which control the step points at. An empty object centres the bubble.",
+                  "properties": {
+                    "panel": {
+                      "type": "string",
+                      "description": "A navigation-panel row, by substring."
+                    },
+                    "tab": {
+                      "type": "string",
+                      "description": "A dock or tab label, by substring."
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "A widget objectName, exact or by suffix."
+                    },
+                    "action": {
+                      "type": "string",
+                      "description": "A toolbar action's text, or a button's text or tooltip."
+                    },
+                    "attr": {
+                      "type": "string",
+                      "description": "The model attribute a view-spec field is bound to."
+                    },
+                    "key": {
+                      "type": "string",
+                      "description": "A custom section's key."
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "A section title, exactly."
+                    },
+                    "command": {
+                      "type": "boolean",
+                      "description": "The command prompt (chimol's painted tours)."
+                    },
+                    "menu": {
+                      "type": "string",
+                      "description": "A menu-bar title (chimol's painted tours)."
+                    },
+                    "toolbar": {
+                      "type": "string",
+                      "description": "A toolbar button's label (chimol)."
+                    },
+                    "object": {
+                      "type": "string",
+                      "description": "An object-list row, by name (chimol)."
+                    },
+                    "window": {
+                      "type": "string",
+                      "description": "A window drawn in the viewport, by key -- density, objects, mouse, history (chimol). Resolves only while it is open, so the step should open it first."
+                    },
+                    "movie": {
+                      "type": "boolean",
+                      "description": "The playback transport (chimol)."
+                    },
+                    "sequence": {
+                      "type": "boolean",
+                      "description": "The sequence strip (chimol)."
+                    },
+                    "wizard": {
+                      "type": "boolean",
+                      "description": "The running wizard's panel (chimol). Resolves only while a wizard is running, so the step should start it first."
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
                   "type": "string",
-                  "description": "A navigation-panel row, by substring."
-                },
-                "tab": {
-                  "type": "string",
-                  "description": "A dock or tab label, by substring."
-                },
-                "name": {
-                  "type": "string",
-                  "description": "A widget objectName, exact or by suffix."
-                },
-                "action": {
-                  "type": "string",
-                  "description": "A toolbar action's text, or a button's text or tooltip."
-                },
-                "attr": {
-                  "type": "string",
-                  "description": "The model attribute a view-spec field is bound to."
-                },
-                "key": {
-                  "type": "string",
-                  "description": "A custom section's key."
-                },
-                "title": {
-                  "type": "string",
-                  "description": "A section title, exactly."
-                },
-                "command": {
-                  "type": "boolean",
-                  "description": "The command prompt (chimol's painted tours)."
-                },
-                "menu": {
-                  "type": "string",
-                  "description": "A menu-bar title (chimol's painted tours)."
-                },
-                "toolbar": {
-                  "type": "string",
-                  "description": "A toolbar button's label (chimol)."
-                },
-                "object": {
-                  "type": "string",
-                  "description": "An object-list row, by name (chimol)."
-                },
-                "window": {
-                  "type": "string",
-                  "description": "A window drawn in the viewport, by key -- density, objects, mouse, history (chimol). Resolves only while it is open, so the step should open it first."
-                },
-                "movie": {
-                  "type": "boolean",
-                  "description": "The playback transport (chimol)."
-                },
-                "sequence": {
-                  "type": "boolean",
-                  "description": "The sequence strip (chimol)."
-                },
-                "wizard": {
-                  "type": "boolean",
-                  "description": "The running wizard's panel (chimol). Resolves only while a wizard is running, so the step should start it first."
+                  "minLength": 1
                 }
-              },
-              "additionalProperties": false
+              ]
+            },
+            "tab": {
+              "type": "string"
+            },
+            "page": {
+              "type": "string"
+            },
+            "window": {
+              "type": "string"
             },
             "await": {
               "description": "Wait for the user to use the highlighted control. true auto-detects the signal; an object names it and the hint.",
@@ -195,71 +212,88 @@
                   "description": "Rich text; <b> and <i> are honoured by the Qt tour."
                 },
                 "target": {
-                  "type": "object",
-                  "description": "Which control the step points at. An empty object centres the bubble.",
-                  "properties": {
-                    "panel": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "description": "Which control the step points at. An empty object centres the bubble.",
+                      "properties": {
+                        "panel": {
+                          "type": "string",
+                          "description": "A navigation-panel row, by substring."
+                        },
+                        "tab": {
+                          "type": "string",
+                          "description": "A dock or tab label, by substring."
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "A widget objectName, exact or by suffix."
+                        },
+                        "action": {
+                          "type": "string",
+                          "description": "A toolbar action's text, or a button's text or tooltip."
+                        },
+                        "attr": {
+                          "type": "string",
+                          "description": "The model attribute a view-spec field is bound to."
+                        },
+                        "key": {
+                          "type": "string",
+                          "description": "A custom section's key."
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "A section title, exactly."
+                        },
+                        "command": {
+                          "type": "boolean",
+                          "description": "The command prompt (chimol's painted tours)."
+                        },
+                        "menu": {
+                          "type": "string",
+                          "description": "A menu-bar title (chimol's painted tours)."
+                        },
+                        "toolbar": {
+                          "type": "string",
+                          "description": "A toolbar button's label (chimol)."
+                        },
+                        "object": {
+                          "type": "string",
+                          "description": "An object-list row, by name (chimol)."
+                        },
+                        "window": {
+                          "type": "string",
+                          "description": "A window drawn in the viewport, by key -- density, objects, mouse, history (chimol). Resolves only while it is open, so the step should open it first."
+                        },
+                        "movie": {
+                          "type": "boolean",
+                          "description": "The playback transport (chimol)."
+                        },
+                        "sequence": {
+                          "type": "boolean",
+                          "description": "The sequence strip (chimol)."
+                        },
+                        "wizard": {
+                          "type": "boolean",
+                          "description": "The running wizard's panel (chimol). Resolves only while a wizard is running, so the step should start it first."
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
                       "type": "string",
-                      "description": "A navigation-panel row, by substring."
-                    },
-                    "tab": {
-                      "type": "string",
-                      "description": "A dock or tab label, by substring."
-                    },
-                    "name": {
-                      "type": "string",
-                      "description": "A widget objectName, exact or by suffix."
-                    },
-                    "action": {
-                      "type": "string",
-                      "description": "A toolbar action's text, or a button's text or tooltip."
-                    },
-                    "attr": {
-                      "type": "string",
-                      "description": "The model attribute a view-spec field is bound to."
-                    },
-                    "key": {
-                      "type": "string",
-                      "description": "A custom section's key."
-                    },
-                    "title": {
-                      "type": "string",
-                      "description": "A section title, exactly."
-                    },
-                    "command": {
-                      "type": "boolean",
-                      "description": "The command prompt (chimol's painted tours)."
-                    },
-                    "menu": {
-                      "type": "string",
-                      "description": "A menu-bar title (chimol's painted tours)."
-                    },
-                    "toolbar": {
-                      "type": "string",
-                      "description": "A toolbar button's label (chimol)."
-                    },
-                    "object": {
-                      "type": "string",
-                      "description": "An object-list row, by name (chimol)."
-                    },
-                    "window": {
-                      "type": "string",
-                      "description": "A window drawn in the viewport, by key -- density, objects, mouse, history (chimol). Resolves only while it is open, so the step should open it first."
-                    },
-                    "movie": {
-                      "type": "boolean",
-                      "description": "The playback transport (chimol)."
-                    },
-                    "sequence": {
-                      "type": "boolean",
-                      "description": "The sequence strip (chimol)."
-                    },
-                    "wizard": {
-                      "type": "boolean",
-                      "description": "The running wizard's panel (chimol). Resolves only while a wizard is running, so the step should start it first."
+                      "minLength": 1
                     }
-                  },
-                  "additionalProperties": false
+                  ]
+                },
+                "tab": {
+                  "type": "string"
+                },
+                "page": {
+                  "type": "string"
+                },
+                "window": {
+                  "type": "string"
                 },
                 "await": {
                   "description": "Wait for the user to use the highlighted control. true auto-detects the signal; an object names it and the hint.",
@@ -351,71 +385,88 @@
           "description": "Rich text; <b> and <i> are honoured by the Qt tour."
         },
         "target": {
-          "type": "object",
-          "description": "Which control the step points at. An empty object centres the bubble.",
-          "properties": {
-            "panel": {
+          "oneOf": [
+            {
+              "type": "object",
+              "description": "Which control the step points at. An empty object centres the bubble.",
+              "properties": {
+                "panel": {
+                  "type": "string",
+                  "description": "A navigation-panel row, by substring."
+                },
+                "tab": {
+                  "type": "string",
+                  "description": "A dock or tab label, by substring."
+                },
+                "name": {
+                  "type": "string",
+                  "description": "A widget objectName, exact or by suffix."
+                },
+                "action": {
+                  "type": "string",
+                  "description": "A toolbar action's text, or a button's text or tooltip."
+                },
+                "attr": {
+                  "type": "string",
+                  "description": "The model attribute a view-spec field is bound to."
+                },
+                "key": {
+                  "type": "string",
+                  "description": "A custom section's key."
+                },
+                "title": {
+                  "type": "string",
+                  "description": "A section title, exactly."
+                },
+                "command": {
+                  "type": "boolean",
+                  "description": "The command prompt (chimol's painted tours)."
+                },
+                "menu": {
+                  "type": "string",
+                  "description": "A menu-bar title (chimol's painted tours)."
+                },
+                "toolbar": {
+                  "type": "string",
+                  "description": "A toolbar button's label (chimol)."
+                },
+                "object": {
+                  "type": "string",
+                  "description": "An object-list row, by name (chimol)."
+                },
+                "window": {
+                  "type": "string",
+                  "description": "A window drawn in the viewport, by key -- density, objects, mouse, history (chimol). Resolves only while it is open, so the step should open it first."
+                },
+                "movie": {
+                  "type": "boolean",
+                  "description": "The playback transport (chimol)."
+                },
+                "sequence": {
+                  "type": "boolean",
+                  "description": "The sequence strip (chimol)."
+                },
+                "wizard": {
+                  "type": "boolean",
+                  "description": "The running wizard's panel (chimol). Resolves only while a wizard is running, so the step should start it first."
+                }
+              },
+              "additionalProperties": false
+            },
+            {
               "type": "string",
-              "description": "A navigation-panel row, by substring."
-            },
-            "tab": {
-              "type": "string",
-              "description": "A dock or tab label, by substring."
-            },
-            "name": {
-              "type": "string",
-              "description": "A widget objectName, exact or by suffix."
-            },
-            "action": {
-              "type": "string",
-              "description": "A toolbar action's text, or a button's text or tooltip."
-            },
-            "attr": {
-              "type": "string",
-              "description": "The model attribute a view-spec field is bound to."
-            },
-            "key": {
-              "type": "string",
-              "description": "A custom section's key."
-            },
-            "title": {
-              "type": "string",
-              "description": "A section title, exactly."
-            },
-            "command": {
-              "type": "boolean",
-              "description": "The command prompt (chimol's painted tours)."
-            },
-            "menu": {
-              "type": "string",
-              "description": "A menu-bar title (chimol's painted tours)."
-            },
-            "toolbar": {
-              "type": "string",
-              "description": "A toolbar button's label (chimol)."
-            },
-            "object": {
-              "type": "string",
-              "description": "An object-list row, by name (chimol)."
-            },
-            "window": {
-              "type": "string",
-              "description": "A window drawn in the viewport, by key -- density, objects, mouse, history (chimol). Resolves only while it is open, so the step should open it first."
-            },
-            "movie": {
-              "type": "boolean",
-              "description": "The playback transport (chimol)."
-            },
-            "sequence": {
-              "type": "boolean",
-              "description": "The sequence strip (chimol)."
-            },
-            "wizard": {
-              "type": "boolean",
-              "description": "The running wizard's panel (chimol). Resolves only while a wizard is running, so the step should start it first."
+              "minLength": 1
             }
-          },
-          "additionalProperties": false
+          ]
+        },
+        "tab": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "window": {
+          "type": "string"
         },
         "await": {
           "description": "Wait for the user to use the highlighted control. true auto-detects the signal; an object names it and the hint.",

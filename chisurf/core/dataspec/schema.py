@@ -17,8 +17,8 @@ The survey that prompted this found real instances across the shipped tree:
 nine tour steps using ``target.widget`` where the loader reads ``target.name``
 -- nine steps that resolve to nothing and render as a centred bubble.
 
-So the scheme is **generated from the loader's own dataclasses** rather than
-transcribed. A transcription is a second source of truth that drifts; this one
+The scheme combines the legacy loader's dataclasses with the native dialect
+declared beside emtk's readers and the owning extension preprocessors. A transcription is a second source of truth that drifts; this one
 cannot, and :func:`build_view_schema` is re-derived on every call. The written
 ``schemas/*.schema.json`` files are the artifact editors and CI consume, and a
 test asserts they still match what this produces.
@@ -27,14 +27,16 @@ Strictness
 ----------
 ``additionalProperties`` is **false** everywhere, which is the entire point:
 permitting unknown keys would validate exactly the files that are broken. Two
-deliberate exceptions are carved out and named:
+deliberate extension envelopes are carved out and named:
 
 ``_comment``
     Allowed at any level. It is the established convention for saying what a
     file is and what reads it -- 99 of the 129 view specs carry one.
 ``options`` on a ``custom`` section
-    Free-form by design: it is forwarded verbatim to a registered factory,
-    whose signature is Python, not JSON.
+    Forwarded to registered factories; bounded known option sets remain strict.
+``native_group``
+    Apps name their form regions dynamically. Named values must be section
+    lists, declared forms/tables, or nested maps of those declarations.
 """
 
 from __future__ import annotations
@@ -42,6 +44,8 @@ from __future__ import annotations
 import dataclasses
 import json
 import pathlib
+import re
+from typing import Any
 
 __all__ = [
     "GUIDE_SCHEMA_PATH",
@@ -76,6 +80,9 @@ _VIEW_TOP_LEVEL = {
         ),
     },
     "sections": {"type": "array", "items": {"$ref": "#/$defs/section"}},
+    "section": {"$ref": "#/$defs/section"},
+    "window": {"type": "object"},
+    "n_col": {"type": "integer", "minimum": 1},
     "plots": {"type": "array", "items": {"$ref": "#/$defs/plot"}},
     "title": {"type": "string", "description": "Window title; read by chimol's painted forms."},
     "model": {
@@ -102,6 +109,8 @@ VALUE_KINDS = (
     "secret",
     "file",
     "directory",
+    "color",
+    "colour",
 )
 
 #: Free-form section keys whose contents are forwarded to Python.
@@ -160,6 +169,7 @@ _CUSTOM_OPTION_KEYS: dict[str, set[str]] = {
         "guards",
         "max_height",
         "title",
+        "target", "empty", "single", "add_tip", "add", "database",
     },
     "lcurve": {
         "compute_action",
@@ -199,27 +209,52 @@ def _json_type(annotation) -> dict:
 
 
 def build_view_schema() -> dict:
-    """The view-spec scheme, derived from the loader's section dataclasses.
+    """Build the schema from legacy data fields and native reader declarations.
 
-    Every registered section type contributes one branch, whose properties are
-    exactly the fields its dataclass declares -- so a field added to the loader
-    is legal here the moment it exists, and a key the loader would drop is not.
+    Native controls retain their raw dictionaries. Type-specific properties
+    remain scoped; application region maps validate their contents recursively.
     """
+    from emtk.view_form import COMMON_KEYS, SECTION_KEYS, VIEW_KEYS
+    from ndxplorer.app.parameter_table import CURVE_SECTION_KEYS, PARAMETER_TABLE_KEYS
+
+    from chisurf.plugins.emtk_layout import APP_SECTION_KEYS, LAYOUT_KEYS
+
     from . import _SECTION_TYPES  # noqa: PLC0415 - avoids an import cycle
 
-    branches = {}
-    for name, cls in sorted(_SECTION_TYPES.items()):
+    dialect = dict(SECTION_KEYS)
+    dialect["parameter_table"] = PARAMETER_TABLE_KEYS
+    branches: dict[str, dict[str, Any]] = {}
+    for name in sorted(set(_SECTION_TYPES) | set(dialect)):
+        cls = _SECTION_TYPES.get(name)
         properties: dict = {
             "type": {"const": name},
             "_comment": {"type": "string"},
         }
-        for field in dataclasses.fields(cls):
+        for field in dataclasses.fields(cls) if cls is not None else ():
             if field.name == "type":
                 continue
             fragment = _json_type(field.type)
             if (name, field.name) in _OPAQUE:
                 fragment = {}
             properties[field.name] = fragment
+
+        # Native controls are declared by their readers, not copied into Qt
+        # dataclasses just to make the editor schema accept their declarations.
+        for key in sorted(COMMON_KEYS | dialect.get(name, frozenset()) | LAYOUT_KEYS
+                          | APP_SECTION_KEYS.get(name, frozenset())):
+            properties.setdefault(key, {})
+        for key in CURVE_SECTION_KEYS:
+            properties[key] = {"type": "boolean"}
+        if name == "custom":
+            from emtk.view_form import TABLE_KEYS
+            for key in TABLE_KEYS | {"x_label", "y_label", "log_x"}:
+                properties.setdefault(key, {})
+        if name == "panel":
+            properties["include"] = {"type": "string"}
+        if "source" in properties:
+            properties["source"] = {"type": ["string", "null"]}
+        if "columns_source" in properties:
+            properties["columns_source"] = {"type": "string"}
 
         # A nested section list is the same shape as the top-level one.
         for key in ("sections", "steps"):
@@ -233,6 +268,8 @@ def build_view_schema() -> dict:
             "properties": properties,
             "additionalProperties": False,
         }
+        if name == "parameter_table":
+            branches[name]["required"] = ["table"]
 
     # Per-key option validation for documented custom-section factories.
     # The eight core keys above have bounded option sets; a typo in one of
@@ -261,19 +298,52 @@ def build_view_schema() -> dict:
             existing = branches["custom"].get("allOf", [])
             branches["custom"]["allOf"] = existing + conditions
 
+    from emtk.view_form import TABLE_KEYS
+
+    top_level = dict(_VIEW_TOP_LEVEL)
+    for key in sorted(VIEW_KEYS | LAYOUT_KEYS | {"description"}):
+        top_level.setdefault(key, {})
+    top_level["_columns"] = {"type": "array", "items": {"type": "object"}}
+    top_level["entity_actions"] = {
+        "type": "object", "additionalProperties": {
+            "type": "array", "items": {"type": "object"},
+        },
+    }
+    # Applications name their form regions (toolbar, files, results, ...).
+    # Their names are dynamic; their values still obey the declared form/table
+    # shapes. This does not make scalar typos or empty unknown objects valid.
+    group_properties = {key: value for key, value in top_level.items()
+                        if key not in {"panels", "_columns", "entity_actions"}}
+    table_properties: dict[str, dict[str, Any]] = {key: {} for key in COMMON_KEYS | TABLE_KEYS}
+    group = {"anyOf": [
+        {"type": "array", "items": {"$ref": "#/$defs/section"}},
+        {"type": "object", "properties": group_properties, "required": ["sections"],
+         "additionalProperties": False},
+        {"allOf": [{"$ref": "#/$defs/section"}, {"required": ["type"]}]},
+        {"type": "object", "properties": table_properties, "required": ["source"],
+         "additionalProperties": False},
+        {"type": "object", "minProperties": 1,
+         "additionalProperties": {"$ref": "#/$defs/native_group"}},
+    ]}
+    top_level["panels"] = {"type": "object", "additionalProperties": {"$ref": "#/$defs/native_group"}}
+    reserved = "|".join(re.escape(key) for key in sorted(top_level))
+    named_regions = {rf"^(?!(?:{reserved})$)[A-Za-z][A-Za-z0-9_]*$": {
+        "$ref": "#/$defs/native_group"}}
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "https://chisurf.org/schemas/view.schema.json",
         "title": "ChiSurf view spec",
         "description": (
-            "Declarative layout for an AutoForm panel. Generated from "
-            "chisurf.core.dataspec's section dataclasses by "
-            "chisurf.core.dataspec.schema -- edit those, not this."
+            "Declarative layout for legacy AutoForm and native emtk panels. "
+            "Generated from section dataclasses and owning reader key contracts "
+            "by chisurf.core.dataspec.schema -- edit those, not this."
         ),
         "type": "object",
-        "properties": _VIEW_TOP_LEVEL,
+        "properties": top_level,
+        "patternProperties": named_regions,
         "additionalProperties": False,
         "$defs": {
+            "native_group": group,
             # Dispatched on `type` rather than expressed as a `oneOf` over the
             # branches. Both accept the same documents; only this one produces
             # a readable error. A `oneOf` failure reports that the object
@@ -389,7 +459,10 @@ def build_guide_schema() -> dict:
                 "type": "string",
                 "description": "Rich text; <b> and <i> are honoured by the Qt tour.",
             },
-            "target": target,
+            "target": {"oneOf": [target, {"type": "string", "minLength": 1}]},
+            "tab": {"type": "string"},
+            "page": {"type": "string"},
+            "window": {"type": "string"},
             "await": {
                 "description": (
                     "Wait for the user to use the highlighted control. true "

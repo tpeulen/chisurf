@@ -111,15 +111,51 @@ def test_a_guide_follows_the_scheme(path):
 
 @pytest.mark.parametrize("path", VIEW_SPECS, ids=_label)
 def test_a_view_spec_still_loads(path):
-    """Validating is not enough: the loader has to accept it too.
+    """Use the declaration's actual reader and retain its native metadata.
 
-    The scheme is derived from the loader, so these should never disagree --
-    which is exactly why it is worth asserting. A scheme that passed files the
-    loader rejects would be worse than none.
+    Native containers and parameter-table templates are not Qt dataclass
+    controls. Loading those through the Qt parser rejected valid declarations
+    even though their native readers already rendered them.
     """
-    from chisurf.core.dataspec import load_view_spec
+    import dataclasses
 
-    load_view_spec(path)
+    from emtk.widgets.view_spec import load_view_spec as load_native
+    from ndxplorer.app.parameter_table import expand
+
+    from chisurf.core.dataspec import _SECTION_TYPES, load_view_spec
+
+    original = json.loads(path.read_text(encoding="utf-8"))
+    native = load_native(path)
+    assert native == original
+    sections = native.get("sections", ())
+    if "section" in native:
+        sections = [native["section"]]
+        assert not validate_view_spec({"sections": sections})
+
+    def needs_native(items):
+        for section in items:
+            cls = _SECTION_TYPES.get(section.get("type", "parameter_group"))
+            if cls is None:
+                return True
+            fields = {field.name for field in dataclasses.fields(cls)} | {"type", "_comment"}
+            if set(section) - fields:
+                return True
+            if needs_native(section.get("sections", ())):
+                return True
+        return False
+
+    if not needs_native(sections) and "section" not in native:
+        load_view_spec(path)
+    if any(section.get("type") == "parameter_table" for section in _walk_sections(sections)):
+        expanded = expand({"sections": list(sections)})
+        assert not validate_view_spec(expanded)
+
+
+def _walk_sections(sections):
+    """Yield native declarations, including nested containers."""
+    for section in sections:
+        yield section
+        yield from _walk_sections(section.get("sections", ()))
 
 
 # ------------------------------------------------------------------- scheme
@@ -151,9 +187,10 @@ def test_every_section_type_is_in_the_scheme():
 
     schema = build_view_schema()
     described = set(schema["$defs"]["section"]["properties"]["type"]["enum"])
-    assert described == set(_SECTION_TYPES), (
-        f"scheme and loader disagree: {described ^ set(_SECTION_TYPES)}"
-    )
+    from emtk.view_form import SECTION_KEYS
+
+    expected = set(_SECTION_TYPES) | set(SECTION_KEYS) | {"parameter_table"}
+    assert described == expected, f"scheme and readers disagree: {described ^ expected}"
 
 
 def test_every_declared_field_is_in_the_scheme():
@@ -169,13 +206,32 @@ def test_every_declared_field_is_in_the_scheme():
         and "type" in branch["then"]["properties"]
         and "const" in branch["then"]["properties"]["type"]
     }
-    for name, cls in _SECTION_TYPES.items():
-        fields = {f.name for f in dataclasses.fields(cls)}
-        # `type` is the discriminator, present in both, and `_comment` is the
-        # annotation carve-out the scheme allows everywhere.
+    from emtk.view_form import COMMON_KEYS, SECTION_KEYS
+    from ndxplorer.app.parameter_table import CURVE_SECTION_KEYS, PARAMETER_TABLE_KEYS
+
+    from chisurf.plugins.emtk_layout import APP_SECTION_KEYS, LAYOUT_KEYS
+
+    dialect = dict(SECTION_KEYS, parameter_table=PARAMETER_TABLE_KEYS)
+    for name in set(_SECTION_TYPES) | set(dialect):
+        cls = _SECTION_TYPES.get(name)
+        fields = {field.name for field in dataclasses.fields(cls)} if cls else set()
+        expected = (
+            fields
+            | {"type"}
+            | COMMON_KEYS
+            | dialect.get(name, frozenset())
+            | LAYOUT_KEYS
+            | APP_SECTION_KEYS.get(name, frozenset())
+        ) - {"_comment"}
+        expected |= CURVE_SECTION_KEYS
+        if name == "custom":
+            from emtk.view_form import TABLE_KEYS
+
+            expected |= TABLE_KEYS | {"x_label", "y_label", "log_x"}
+        if name == "panel":
+            expected |= {"include"}
         described = set(branches[name]["properties"]) - {"_comment"}
-        fields = fields | {"type"}
-        assert described == fields, f"{name}: scheme and dataclass disagree on {described ^ fields}"
+        assert described == expected, f"{name}: scheme and reader differ: {described ^ expected}"
 
 
 # ------------------------------------------------- the scheme must say no
@@ -335,3 +391,38 @@ def test_starter_view_spec_has_one_table_per_group():
     targets = [s["target"] for s in spec["sections"]]
     assert targets == ["generic", "lifetimes"]
     assert all(s["type"] == "parameter_group_table" for s in spec["sections"])
+
+
+def test_native_extensions_remain_scoped_and_template_preprocessing_preserves_them():
+    """Legitimate curve/table metadata is accepted while similar typos fail."""
+    native = {
+        "sections": [
+            {"type": "parameter_table", "table": "fit_table", "height": 170, "parametric": True}
+        ]
+    }
+    assert not validate_view_spec(native)
+    for typo in ("paramter_table", "paramteric"):
+        bad = (
+            {"sections": [{"type": typo}]}
+            if typo.endswith("table")
+            else {"sections": [{"type": "value", "attr": "x", typo: True}]}
+        )
+        assert validate_view_spec(bad)
+    assert validate_view_spec({"sections": [{"type": "info", "paramteric": True}]})
+    assert validate_view_spec({"sections": [{"type": "table", "source": {"x": [1]}}]})
+
+
+def test_named_native_regions_validate_their_content_without_allowing_scalar_typos():
+    """Application-defined form names are dynamic, their declarations are strict."""
+    assert not validate_view_spec(
+        {"toolbar": {"sections": [{"type": "button_row", "buttons": []}]}}
+    )
+    assert not validate_view_spec(
+        {"panels": {"inputs": {"sections": [{"type": "value", "attr": "x"}]}}}
+    )
+    for bad in (
+        {"nonsense": 1},
+        {"nonsense": {}},
+        {"toolbar": {"sections": [{"type": "value", "attr": "x", "minumum": 0}]}},
+    ):
+        assert validate_view_spec(bad)

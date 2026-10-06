@@ -15,6 +15,16 @@ window and starts each group's fields at its own x. The helpers here work on the
 
 from __future__ import annotations
 
+#: Routing read by imaging app_base/pixel_app and TTTRImageBrowserApp: these
+#: fields describe native host regions, not toolkit form controls.
+LAYOUT_KEYS = frozenset({"name", "dock", "tab", "window", "page", "panels"})
+#: Native plotting apps read their raw plot declarations before drawing them.
+#: FCS saturation (_plot_sections/_plot) and FLC2D (_draw_series) share these.
+APP_SECTION_KEYS = {
+    "plot": frozenset({"source", "title", "description", "x_label", "y_label",
+                       "log_x", "log_y", "legend"}),
+}
+
 from typing import Any, Callable, Iterator, Sequence
 
 from emtk import im
