@@ -67,17 +67,15 @@ Hub scopes that decide where a new tool goes:
 
 ## Where to pick this up
 
-1. **Native Burst Analysis: in progress (T-20261005-BURSTEMTK).** The owner of the
-   2026-10-03 files said yes; they are snapshotted (`21920bc3a`). The setup step now
-   runs on the shared detector editor and the data step on a Qt-free model with an
-   emtk app (`966163d53`); Burst Selection's diagnostics helpers are Qt-free
-   (`ee14af4bd`). Still open: the Burst Selection model and native app, MLE split by
-   H2MM state in the native engine, and the `ToolHubApp` hub with its manifest entry
-   and the hub-membership extractor. The ordered list with the measured Qt baseline
-   and the traps is in [burst-survey.md](../plugins/emtk-ports/burst-survey.md).
-   Until then Accurate FRET and Photon-by-photon kinetics are reachable only through
-   the Qt window.
-2. **Ribbon buttons that still open Qt:** Burst Analysis, MMFDB Admin. (Intensity
+1. **Native Burst Analysis: done 2026-10-06 (T-20261005-BURSTEMTK).** The ribbon's
+   Burst Analysis opens `burst_analysis/gui/native.py` on `chisurf/emtk/tool_hub.py`
+   (`entrypoints.emtk`): the legacy steps in order, each the native app of its plugin
+   (Burst Selection's included), with the workflow hand-off of the Qt shell. Accurate
+   FRET and Photon-by-photon kinetics are reachable natively as its side tools. Left:
+   the ALEX Suite still subclasses the Qt shell (card AS4) and the hub inherits two
+   ToolHubApp limits (fixed rail, header badge); the ordered list is in
+   [burst-survey.md](../plugins/emtk-ports/burst-survey.md).
+2. **Ribbon buttons that still open Qt:** MMFDB Admin. (Intensity
    trace landed as emtk; Screenshot is no longer a plugin but the main window's
    *Screenshot* action, `chisurf/gui/screenshot_action.py`, shown in Main › Window.)
 

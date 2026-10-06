@@ -1,56 +1,45 @@
 # Burst and large-tool survey (card S, second pass 2026-10-02)
 
-## Where to pick this up (T-20261005-BURSTEMTK, stopped 2026-10-05 on a usage limit)
+## Where to pick this up (T-20261005-BURSTEMTK, done 2026-10-06)
 
-Done and committed: snapshot of the 2026-10-03 uncommitted gui files (`21920bc3a`, `burst_analysis/pre-upgrade/`,
-`burst_selection/pre-upgrade/`); **BA4** setup step on the shared `ChannelDefinitionWidget` and **BA3** data step
-(Qt-free `BurstDataSelectionModel` + emtk app, `import_raw_file` shared with the Qt widget) in `966163d53`; **BS0
-first part**: Qt-free `burst_selection/gui/diagnostics.py`, the Qt tool imports it (`ee14af4bd`). Blocker B3 is
-resolved (owner's yes, snapshot taken). The Qt `BurstAnalysisTool` hosts the new step apps; its 43 workflow tests pass.
+**Burst Analysis and Burst Selection are native.** Card status: **BS0-BS6 done** (`9c39340c4`, `ee14af4bd`, `ddd07e123`),
+**MLE split by H2MM state done** (`a5981e47c`, test `burst_mle_analysis/tests/test_engine_state_split.py`), **BA3/BA4 done**
+(`966163d53`), **BA0-BA2 done**: `burst_analysis/gui/native.py` on `chisurf/emtk/tool_hub.py`, manifest `entrypoints.emtk`,
+hub-membership extractor on the native `STEPS` (`77337cfd6`, `f6a98f22d`, `6eca22141`, docs `351987e61`). Report text:
+the T-20261005-BURSTEMTK final message (the subagent environment refused writing `burst_analysis/REPORT.md`; evidence
+PNGs, `after.json`, `compare.json` (exit 0) and `deliberate.json` are in `burst_analysis/`).
+
+Measured, and how to re-derive it: on copies of `burst_selection/tests/data/bh_spc132_sm_dna/m000.spc,m001.spc` with the
+stored setup `probe` (green 0,1 / red 8,9, SPC-130) the hub's Next runs Burst Selection to **198 bursts** (the Qt tool's
+number), folder `sliding_window_All 0.1500#60`, and every later step receives its input
+(`burst_analysis/tests/test_emtk_native_hub.py::test_the_workflow_hands_every_step_its_input`). On all ten files: 1130
+bursts, 71 in `m000.spc` (guide 27's figure). **Trap:** the search writes beside the source and into a `.pto`; always copy
+the fixture first (the untracked `burstwise_All 0.1000#15/{bh4,h2mm}/` folders in the tree are such run outputs: leave
+them, do not commit them).
 
 Open, in order:
 
-1. **BS0 rest: `burst_selection/gui/model.py`** (`BurstSelectionModel`). Measured Qt baseline to match, on copies of
-   `tests/data/bh_spc132_sm_dna/m000.spc,m001.spc` with a saved setup `{green: chs [0,1], red: chs [8,9], windows {},
-   file_type SPC-130}`: algorithm `sliding_window` `{L:20, m:10, T:0.0005}`, `burst_detection.min_photons` 60,
-   `photon_window` 5, dT max 0.15 active / min 0.001 inactive, `use_gap_fill` True `max_gap` 3, filter_active True,
-   invert False, channels [] / microtime_ranges [] (detector and window "All"), output `["bur"]` → **198 bursts**
-   (`dataframes` rows 143 + 255, zero-interleaved), folder `sliding_window_All 0.1500#60`. Probe script recipe:
-   build `BurstSelectionTool(embedded=True)`, `_apply_detector_setup`, `_add_paths`, `_settings_from_controls()`, then
-   `tool._client.analyze_files(paths, settings=asdict(s), windows=..., detectors=..., filetype=..., legacy_output=True,
-   selected_setup=..., legacy_parameters=tool._legacy_parameters(), mmfdb=None)`. **Trap:** the run writes beside the
-   source (and into a `.pto`), so always copy the fixture to a temp dir. Only these settings are read by the registry
-   search: channels, microtime_ranges, filter_active, invert_filter, tttrlib_search, delta_macro_time_filter,
-   use_gap_fill/max_gap, burst_detection.min_photons — compare those plus the full tables; the Qt tool fills the
-   unused kalman/cusum/bocpd fields from mismatched widgets (q 20, alpha 0.45, beta 20) and sets
-   `burst_detection.time_window = min_photons/1000` (a defect; it lands in the output manifest via
-   `_manifest_settings`) and reports stale `legacy_parameters` (dT_min 1e-4, use_gap_fill False). The model should
-   write correct values and REPORT.md list these as deliberate. The search parameters form is generated from
-   `tttrlib_search.algorithms()[alg]["params_schema"]` (emtk view_form binds `attr` on the model only — use a small
-   attribute proxy over the parameter dict). Defaults to copy from Qt: `DEFAULT_GMM_SETTINGS` (gmm_settings_dialog.py),
-   display defaults in `diagnostics.py`, visible window 10 s (sections.py). No `chisurf.gui` import allowed (setups via
-   `chisurf.core.setup_channel_definition`, not `tttr_detector_setups`).
-2. **BS1-BS6 `burst_selection/gui/native.py`** + `native.view.json` + native `guide.json`, manifest `entrypoints.emtk`.
-   Pattern: `burst_mle_analysis/gui/native.py` (TourTarget+ImApp, DockManager, `button_row`, FileDialog, SnapshotJob).
-   Control inventory of the Qt tool is in sections 3 and the tool's `_setup_toolbar`/`_setup_menu`/`_build_docks`.
-   Known deliberate gaps: no emtk drop guard (the `tttr_to_pto` offer on drop); ndX opens only when a Qt host is
-   running (lazy `mmfdb_launcher.send_path_to_ndxplorer`, as burst_h2mm native does); diagnostics for the active file
-   instead of the concatenated selection.
-3. **MLE split by H2MM state in the native engine** (needed by step 8 "Burst segment MLE"): the wizard's
-   `_load_state_arrays`, `_pool_state_decays`, `_fit_pooled_state_decays`, `_state_lifetime_rows`,
-   `write_state_lifetimes` → engine functions, wizard delegates. **Trap:** `engine.py` and `wizard.py` carry another
-   lane's uncommitted ruff format — replay edits onto `git show HEAD:path` and onto the worktree separately.
-4. **BA0-BA2 native hub** `burst_analysis/gui/native.py` on `chisurf/emtk/tool_hub.py` (`ToolHubApp`), panels in
-   `BURST_PANELS` order/names (setup and data as factories using the two new step apps, MLE twice as factory),
-   `on_select` hand-off copied from the Qt `_apply_context_to_*` (fusion `set_folder`/`set_channel_settings`, bva
-   `controller.set_folder`, 2cde `controller.adopt_folder`, h2mm `model.apply_workflow_context`, mle
-   `model.set_setup`+`add_files`, browser `load_folder`, burst_fcs `controller.add_files`, gs `controller.add_files`,
-   accurate_fret `controller.apply_setup`+`load`, background/irf_bg `controller.add_files`+`channel_definition`,
-   irf_bg `mle_receiver`). Then manifest `entrypoints.emtk`, change the `burst_analysis` extractor in
-   `test/plugins/test_hub_membership.py`, guide.json/help, docs (`docs/guides/13_burst_identification.md` and the
-   guides naming "Burst Analysis"), REPORT.md per `_TEMPLATE.md`, and close ribbon.md resume item 1.
-5. `burst_analysis/gui/app.py` (Qt tool's shell) still carries the 2026-10-03 cosmetic edits (B2, snapshotted);
-   left uncommitted — commit or drop with whoever owns them, or delete once the Qt tool is retired.
+1. **`alex_suite` shell (AS4).** `AlexSuiteTool` still subclasses the Qt shell (`burst_analysis/gui/tool.py`), and its
+   native app is a separate three-tab app that hosts none of the burst tools, so `test_hub_membership.py` keeps reading
+   its children from `alex_suite/gui/tool.py`. The way forward is an `AlexHubApp(BurstAnalysisHubApp)` with ALEX's own
+   `STEPS` (channels, data, alternation, selection, background, accurate FRET, E-S, browser, titration, BVA, legacy
+   export) and `_to_<role>` for the four ALEX-only roles (`alex_suite/gui/tool.py::_apply_context_to_panel`); the hand-off
+   plumbing (`workflow_context.py`, `_apply_downstream`, `_changed`) is reusable as is.
+2. **ToolHubApp limits** the hub inherits (fixed rail, clips `7. Burst segmentation (H2MM)` at 800 px; the header repeats
+   the rail badge): an additive option in `chisurf/emtk/tool_hub.py` (collapsible rail, header display name). Recorded in
+   `okf/references/known-issues.md`.
+3. **Five red click tests at HEAD** in `burst_gs` (wheel zoom, two tour walks) and `burst_fcs_correlator` (guide/help,
+   tour walk), shown on a worktree of HEAD; their files carry other lanes' edits. known-issues has the list.
+4. **Retire the Qt shells** once AS4 lands: `burst_analysis/gui/{tool.py,app.py}` (app.py still holds the 2026-10-03 B2
+   tooltip edits, snapshotted in `burst_analysis/pre-upgrade/`, never committed) and the Qt Burst Selection with its three
+   recorded defects (known-issues, top Burst Selection entry).
+
+Deliberate differences of the hub (from `deliberate.json` and the report): no rail collapse; `[opt]` badge dropped (the name
+says optional); `Next ▶` / `⏩ Run` / `? Help` → `Next` / `>>` / `Help` + `Tool help`; the status line is a live
+summary; the setup is not published to the `detector_setups.*` RPC store (the native editors read the setups store);
+2CDE, Burst FCS and GS now get the setup's channels (the Qt shell handed only folders, so they ran on 0,8 / 1,9
+defaults); accurate FRET's column hints prefer `Number of Photons (<detector>)` (both hosts mapped `First Photon (green)`
+before).
 
 Script trap: a probe run from the scratchpad cannot `import test.gui...` (stdlib `test` wins) — put the repo first on
 `sys.path` and `sys.modules.pop("test")` before importing.

@@ -1,3 +1,24 @@
+## Burst tools: five click tests red at HEAD, and the native hub's rail limits (2026-10-06)
+
+Found while running the burst suites for the native Burst Analysis hub (T-20261005-BURSTEMTK). Shown red on a
+throwaway `git worktree` of HEAD `77ffe8b95` (so not from uncommitted edits), arm64 env, offscreen:
+
+- `burst_gs/test/test_emtk_gs_clicks.py`: `test_the_wheel_zooms_the_rates_plot` (`assert 1 == 0`, line 653),
+  `test_guide_click_starts_the_tour_whose_close_prev_and_next_buttons_are_clicked`,
+  `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`
+  (`['use_simulation'] == ['use_simulation', 'Fit']`, line 698: the tour never reaches the Fit step).
+- `burst_fcs_correlator/test/test_emtk_burst_fcs_clicks.py`: `test_guide_and_help_buttons`,
+  `test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control`.
+
+Not fixed here: both test files carry other lanes' uncommitted edits. Re-derive with
+`pytest <file> -q -p no:cacheprovider --tb=line` in a worktree of HEAD.
+
+The native hub (`burst_analysis/gui/native.py`) inherits two limits of `chisurf/emtk/tool_hub.py`, which the port
+was asked not to change: the rail has a fixed width (26 % of the window, at most 230 px) and cannot collapse, so at
+800 px `7. Burst segmentation (H2MM)` is clipped (its tooltip carries the description); and the header shows the rail
+name, so the step badge (`2. Burst Selection (2)`) appears there too. Both want an additive ToolHubApp option
+(a collapsible rail, a separate display name for the header).
+
 ## Burst Selection Qt tool records wrong values beside a correct search (2026-10-05)
 
 Found while measuring the Qt baseline for the native port (198 bursts on copies of
@@ -22,6 +43,8 @@ parity test (`tests/test_emtk_native_model.py::test_same_bursts_as_the_qt_tool`)
 the identical tables and the corrected values. The Qt tool and the shared wizard are legacy
 (both import pyqtgraph directly, so touching them obliges a chiplot port); they keep the
 defects until they are retired with the Qt Burst Selection.
+
+Since 2026-10-06 the Burst Analysis window is the native hub, whose step 2 is the native Burst Selection, so these defects are reachable only by opening the Qt tool explicitly (GUI mode `qt`).
 
 ## FCS diffusion calculator vs the hermetic MMFDB test env (2026-10-05)
 
