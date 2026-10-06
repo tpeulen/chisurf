@@ -7,10 +7,8 @@ import numpy as np
 import chisurf.core.fitting
 import chisurf.core.fluorescence
 import chisurf.core.math.datatools
-from chisurf.gui import QtWidgets
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
-from chisurf.gui.widgets.parameter_editor import ParameterEditor
 
 
 def _symbol(s):
@@ -83,89 +81,191 @@ distribution_options = {
 }
 
 
-class DistributionPlotControl(QtWidgets.QWidget):
-    @property
-    def distribution_type(self):
-        return str(self.selector.currentText())
+def _normalize_none(obj):
+    """Recursively map the string ``"None"`` to Python ``None``.
 
-    @property
-    def show_gaussians(self) -> bool:
-        """Return whether individual Gaussian component curves should be shown.
+    The option dicts spell "nothing" as the string ``"None"`` in places
+    (pyqtgraph's idiom); consumers expect a real ``None``. Dicts and lists are
+    copied; every other value (numbers, bools, callables, ...) is returned by
+    reference.
+    """
+    if isinstance(obj, str):
+        return None if obj == "None" else obj
+    if isinstance(obj, dict):
+        return {k: _normalize_none(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_normalize_none(v) for v in obj]
+    return obj
 
-        For non-Gaussian PDA models this has no effect, but for
-        Pda2cGaussianDistanceModel the extra component curves are drawn only
-        when this checkbox is enabled.
-        """
-        try:
-            return bool(self.gauss_checkbox.isChecked())
-        except AttributeError:
-            return True
 
-    def add_distribution_choices(self, options: dict = None) -> None:
-        if options is None:
-            options = distribution_options
+class OptionsForm:
+    """One distribution's option dict, as a model emtk's view form can edit.
 
-        model = self.parent.fit.model
-        items = list()
+    The dict is nested (``curve_options`` holds ``stepMode``, ``connect``, ...)
+    and its keys depend on the distribution, so its form is generated, not
+    authored: :meth:`spec` returns view-spec sections whose ``attr`` is the
+    dotted path of a leaf (``"curve_options.stepMode"``), and attribute access
+    on this object resolves such paths into the dict. Each editable leaf has a
+    ↩ button (action ``"reset:<path>"``) back to the value it started with. A
+    list is a choice whose pick moves the item to the front, as the old
+    parameter tree did; callables and other values are shown read-only.
 
-        for distribution_type in options.keys():
-            d = options[distribution_type]
-            # ``getattr``, not ``__getattribute__``: a described model serves
-            # its distributions from ``__getattr__``, which ``__getattribute__``
-            # never reaches -- every lifetime fit's Distribution tab found no
-            # distribution and failed with ``KeyError: ''``.
-            try:
-                getattr(model, d["attribute"])
-                items.append(distribution_type)
-            except AttributeError:
-                pass
-        self.selector.addItems(items)
+    Parameters
+    ----------
+    data : dict
+        The option dict, edited in place.
+    on_change : callable
+        Called after every edit.
+    """
 
-    def update_parameter(self):
-        self.parameter_editor._dict = self.parent.distribution_options[self.distribution_type]
-        self.parameter_editor.update()
-        self.parent.update()
+    def __init__(self, data: dict, on_change) -> None:
+        object.__setattr__(self, "_data", data)
+        object.__setattr__(self, "_defaults", copy.deepcopy(_plain(data)))
+        object.__setattr__(self, "_on_change", on_change)
 
-    def __init__(
-        self, *args, parent: QtWidgets.QWidget = None, distribution_options: dict = None, **kwargs
-    ):
-        super().__init__(*args, **kwargs)
-        self.parent = parent
-        self.layout = QtWidgets.QVBoxLayout()
-        self.setLayout(self.layout)
-        self.selector = QtWidgets.QComboBox(None)
-        self.selector.blockSignals(True)
-        self.layout.addWidget(self.selector)
-        self.add_distribution_choices(distribution_options)
-        self.selector.currentIndexChanged[int].connect(self.update_parameter)
-        self.selector.blockSignals(False)
-        d = copy.deepcopy(parent.distribution_options[self.distribution_type])
-        self.parameter_editor = ParameterEditor(json_file="", target=d, callback=parent.update)
-        self.layout.addWidget(self.parameter_editor)
+    # -- dotted-path access ------------------------------------------------
+    def _lookup(self, path: str):
+        node = self._data
+        for key in path.split("."):
+            if not isinstance(node, dict) or key not in node:
+                raise AttributeError(path)
+            node = node[key]
+        return node
 
-        # Optional checkbox to show/hide individual component curves in
-        # distribution plots (e.g., Gaussian components in PDA
-        # Gaussian-distance models). For other models this has no effect but
-        # is harmless.
-        self.gauss_checkbox = QtWidgets.QCheckBox("Show components")
-        self.gauss_checkbox.setChecked(True)
-        self.gauss_checkbox.stateChanged.connect(parent.update)
-        self.layout.addWidget(self.gauss_checkbox)
+    def _store(self, path: str, value) -> None:
+        *parents, leaf = path.split(".")
+        node = self._data
+        for key in parents:
+            node = node[key]
+        node[leaf] = value
+        self._on_change()
+
+    def __getattr__(self, name: str):
+        if name.startswith("reset:"):
+            return lambda: self._reset(name[len("reset:"):])
+        if name.startswith("options:"):
+            return lambda: [str(v) for v in self._lookup(name[len("options:"):])]
+        if name.startswith("first:"):
+            values = self._lookup(name[len("first:"):])
+            return str(values[0]) if values else ""
+        return self._lookup(name)
+
+    def __setattr__(self, name: str, value) -> None:
+        if name.startswith("first:"):
+            path = name[len("first:"):]
+            values = list(self._lookup(path))
+            chosen = next((v for v in values if str(v) == str(value)), None)
+            if chosen is not None:
+                values.remove(chosen)
+                self._store(path, [chosen] + values)
+            return
+        self._store(name, value)
+
+    def _reset(self, path: str) -> None:
+        node = self._defaults
+        for key in path.split("."):
+            node = node[key]
+        self._store(path, copy.deepcopy(node))
+
+    # -- the form ----------------------------------------------------------
+    def spec(self, needle: str = "") -> list:
+        """Sections for every leaf whose path contains *needle* (lower case)."""
+        return self._sections(self._data, "", needle.strip().lower())
+
+    def _sections(self, data: dict, prefix: str, needle: str) -> list:
+        """One aligned grid per run of leaves (field, ↩), a fold per nested dict."""
+        sections: list = []
+        leaves: list = []
+
+        def flush() -> None:
+            if leaves:
+                sections.append({"type": "panel", "collapsible": False, "n_col": 2,
+                                 "sections": list(leaves)})
+                leaves.clear()
+
+        for key, value in data.items():
+            path = f"{prefix}{key}"
+            if isinstance(value, dict):
+                children = self._sections(value, path + ".", needle)
+                if children:
+                    flush()
+                    sections.append({"type": "panel", "title": str(key), "collapsible": True,
+                                     "sections": children})
+                continue
+            if needle and needle not in path.lower():
+                continue
+            leaves.extend(self._leaf(path, str(key), value))
+        flush()
+        return sections
+
+    @staticmethod
+    def _leaf(path: str, label: str, value) -> list:
+        """The field of one leaf and its ↩ (a blank cell for a read-only one)."""
+        reset = {"type": "button_row", "width": 30, "buttons": [
+            {"action": f"reset:{path}", "label": "↩", "description": "Reset to the starting value."}
+        ]}
+        description = f"{path} of the distribution options."
+        if isinstance(value, bool):
+            field = {"type": "toggle", "attr": path, "label": label, "description": description}
+        elif isinstance(value, int):
+            field = {"type": "value", "attr": path, "label": label, "kind": "int",
+                     "description": description}
+        elif isinstance(value, float):
+            field = {"type": "value", "attr": path, "label": label, "kind": "float",
+                     "decimals": 6, "description": description}
+        elif isinstance(value, str):
+            field = {"type": "value", "attr": path, "label": label, "kind": "str",
+                     "description": description}
+        elif isinstance(value, (list, tuple)) and value:
+            field = {"type": "choice", "attr": f"first:{path}", "label": label,
+                     "options_source": f"options:{path}",
+                     "description": description + " The chosen entry is moved to the front."}
+        else:
+            field = {"type": "value", "attr": path, "label": label, "kind": "str",
+                     "read_only": True, "description": description + " (not editable here)"}
+            reset = {"type": "info", "text": "", "width": 30}
+        return [field, reset]
+
+
+def _plain(data):
+    """A deep copy of the plain values of *data* (callables are kept by reference)."""
+    if isinstance(data, dict):
+        return {k: _plain(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_plain(v) for v in data]
+    return data
 
 
 class DistributionPlot(plotbase.Plot):
+    """A distribution the model serves (distance, rate, lifetime, PDA histogram).
+
+    The settings (``distribution.settings.view.json``) choose the distribution,
+    edit how it is read and drawn (its option dict, as a generated form with a
+    filter -- :class:`OptionsForm`), and toggle the component curves.
+    """
+
     name = "Distribution"
+    settings_view = "distribution.settings.view.json"
 
     def __init__(
         self,
         fit: chisurf.core.fitting.fit.FitGroup,
-        parent: QtWidgets.QWidget = None,
+        parent=None,
         distribution_options: dict = None,
         **kwargs,
     ):
         super().__init__(fit=fit, parent=parent)
         self.data_x, self.data_y = None, None
+        if distribution_options is None:
+            distribution_options = globals()["distribution_options"]
         self.distribution_options = distribution_options
+        #: The edited copy of each distribution's options, made on first choice.
+        self._edited: dict = {}
+        self._forms: dict = {}
+        self._filter = ""
+        self._show_gaussians = True
+        types = self.distribution_types()
+        self._distribution_type = types[0] if types else ""
 
         # Optional axis scaling and an optional residual panel (for PDA 1D
         # histograms), where weighted residuals are shown on a separate top
@@ -174,10 +274,6 @@ class DistributionPlot(plotbase.Plot):
         self._scale_y = kwargs.pop("scale_y", "lin")
         self._with_residual_panel = kwargs.pop("with_residual_panel", False)
         self.residual_plot = None
-
-        self.plot_controller = DistributionPlotControl(
-            self, parent=self, distribution_options=distribution_options
-        )
 
         if self._with_residual_panel:
             # The residuals panel takes ~1/3 of the height, the histogram ~2/3.
@@ -227,8 +323,98 @@ class DistributionPlot(plotbase.Plot):
         except Exception:
             self._quality_text = None
 
+    # -- settings -----------------------------------------------------------
+
+    def distribution_types(self) -> list[str]:
+        """The distributions the model actually serves."""
+        model = self.fit.model
+        items = []
+        for distribution_type, d in self.distribution_options.items():
+            # ``getattr``, not ``__getattribute__``: a described model serves
+            # its distributions from ``__getattr__``, which ``__getattribute__``
+            # never reaches -- every lifetime fit's Distribution tab found no
+            # distribution and failed with ``KeyError: ''``.
+            try:
+                getattr(model, d["attribute"])
+                items.append(distribution_type)
+            except AttributeError:
+                pass
+        return items
+
+    @property
+    def distribution_type(self) -> str:
+        """The distribution drawn."""
+        return self._distribution_type
+
+    @distribution_type.setter
+    def distribution_type(self, value: str) -> None:
+        self._distribution_type = str(value)
+        self.update()
+
+    @property
+    def show_gaussians(self) -> bool:
+        """Whether individual component curves (e.g. PDA Gaussians) are drawn."""
+        return self._show_gaussians
+
+    @show_gaussians.setter
+    def show_gaussians(self, value: bool) -> None:
+        self._show_gaussians = bool(value)
+        self.update()
+
+    def _options_form(self) -> OptionsForm:
+        """The form over the current distribution's (edited) options."""
+        key = self._distribution_type
+        if key not in self._forms:
+            self._edited[key] = copy.deepcopy(self.distribution_options[key])
+            self._forms[key] = OptionsForm(self._edited[key], self.update)
+        return self._forms[key]
+
+    @property
+    def options(self) -> dict:
+        """The current distribution's options as drawn (``"None"`` read as ``None``)."""
+        return _normalize_none(self._options_form()._data)
+
+    def register_settings_sections(self, form) -> None:
+        """Register the generated options form (``custom`` key ``distribution_options``)."""
+        form.custom["distribution_options"] = self._draw_options
+
+    def _draw_options(self, section, model, state, width) -> None:
+        """A filter field over the generated form of the option dict."""
+        from emtk import im
+        from emtk.view_form import draw_sections
+
+        if not self._distribution_type:
+            return
+        im.set_next_item_width(-1.0)
+        changed, text = im.input_text_with_hint("##distribution-filter",
+                                                "Filter parameters…", self._filter)
+        im.set_item_tooltip("Show only the options whose name contains this text.")
+        if changed:
+            self._filter = text
+        form = self._options_form()
+        draw_sections(form.spec(self._filter), form, state)
+
+    def get_settings_state(self) -> dict:
+        """The settings, for the project file."""
+        return {"distribution_type": self._distribution_type,
+                "show_components": bool(self.show_gaussians)}
+
+    def set_settings_state(self, state: dict) -> None:
+        """Restore :meth:`get_settings_state`."""
+        if not isinstance(state, dict):
+            return
+        if state.get("distribution_type") in self.distribution_types():
+            self._distribution_type = state["distribution_type"]
+        if "show_components" in state:
+            self._show_gaussians = bool(state["show_components"])
+        self.update()
+
+    # -- drawing ------------------------------------------------------------
+
     def update(self, *args, **kwargs) -> None:
         super().update(*args, **kwargs)
+        if not self._distribution_type:
+            return
         # Clear curves and recreate plots. The screen-pinned statistics box is
         # parented to the plot item (not an addItem'd handle), so it survives
         # clear() and stays visible, mirroring the TCSPC LinePlot.
@@ -237,7 +423,7 @@ class DistributionPlot(plotbase.Plot):
             self.residual_plot.clear()
 
         # Get distribution
-        ds = self.plot_controller.parameter_editor.dict
+        ds = self.options
 
         # Update x-axis label to reflect the currently used histogram axis /
         # function. Prefer an explicit axis label or kw_hist['_axis_type']
@@ -254,10 +440,7 @@ class DistributionPlot(plotbase.Plot):
             except Exception:
                 axis_label = None
         if not axis_label:
-            try:
-                axis_label = str(self.plot_controller.distribution_type)
-            except Exception:
-                axis_label = ""
+            axis_label = self._distribution_type
         if axis_label:
             self.distribution_plot.set_labels(bottom=axis_label)
 
@@ -424,11 +607,8 @@ class DistributionPlot(plotbase.Plot):
                 # Allow the plot controller to hide individual component
                 # curves (indices >= 3 in PDA Gaussian-distance plots) while
                 # keeping data, model and residuals visible.
-                try:
-                    if i >= 3 and not self.plot_controller.show_gaussians:
-                        continue
-                except Exception:
-                    pass
+                if i >= 3 and not self.show_gaussians:
+                    continue
 
                 # For discrete PDA histograms (PDA-discrete), we want data,
                 # model, and residuals as vertical lines (sticks) when the

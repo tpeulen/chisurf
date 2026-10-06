@@ -1,0 +1,34 @@
+{
+ "ProteinMCStructurePlot": {
+  "case": "39",
+  "fields": [
+   "frame",
+   "frame.stepper",
+   "goto_first",
+   "goto_last",
+   "goto_next",
+   "goto_prev",
+   "pause",
+   "play",
+   "representation",
+   "step",
+   "step.stepper",
+   "stop"
+  ]
+ },
+ "ProteinMCDistanceNetworkPlot": {
+  "case": "39",
+  "fields": [
+   "frame",
+   "frame.stepper",
+   "goto_first",
+   "goto_last",
+   "goto_next",
+   "goto_prev",
+   "play",
+   "step",
+   "step.stepper",
+   "stop"
+  ]
+ }
+}

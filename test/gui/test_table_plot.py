@@ -1,9 +1,9 @@
-"""Offscreen-Qt tests for the Data-table plot.
+"""The Data-table page's plumbing, without drawing it.
 
-Exercises the plot without a live fit by driving the pieces that used to depend
-on the retired third-party editor: the column layout the fit produces, the
-parameter frame the "Show model" dialog edits, and the write-back that pushes an
-accepted frame through the fitting client.
+The column layout the fit produces, the parameter frame the *Model* editor
+edits, the write-back that pushes an accepted frame through the fitting client,
+and the residuals placed inside the fit range. The drawn page is
+``test_table_plot_emtk.py``.
 """
 
 from __future__ import annotations
@@ -16,25 +16,24 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from chisurf.core.datastore import column_names, numeric_column, store_from_rows  # noqa: E402
-from chisurf.gui.plots.table_plot import (  # noqa: E402
+from chisurf.gui.plots.table_plot_emtk import (  # noqa: E402
     _BASE_COLUMNS,
     _EDITABLE_COLUMNS,
-    FitTablePlot,
-    _fit_column_specs,
     _parse_bool,
+    column_specs,
 )
+from chisurf.gui.plots.table_plot_emtk import FitTablePlotEmtk as FitTablePlot  # noqa: E402
 
 
 def test_column_specs_mark_only_the_editable_columns():
-    specs = _fit_column_specs(_BASE_COLUMNS + ("support",))
+    specs = column_specs(_BASE_COLUMNS + ("support",))
     editable = {s.key for s in specs if s.editable}
     assert editable == set(_EDITABLE_COLUMNS)
     assert [s.key for s in specs][:5] == list(_BASE_COLUMNS)
-    assert all(s.kind == "float" for s in specs)
 
 
 def test_mask_column_is_documented():
-    mask = next(s for s in _fit_column_specs(_BASE_COLUMNS) if s.key == "mask")
+    mask = next(s for s in column_specs(_BASE_COLUMNS) if s.key == "mask")
     assert "excludes" in mask.tooltip
 
 
@@ -117,7 +116,7 @@ class _FakeClient:
 
 def test_apply_parameter_frame_pushes_edits(monkeypatch):
     client = _FakeClient()
-    monkeypatch.setattr("chisurf.gui.plots.table_plot.get_fitting_client", lambda: client)
+    monkeypatch.setattr("chisurf.gui.plots.table_plot_emtk.get_fitting_client", lambda: client)
 
     plot = FitTablePlot.__new__(FitTablePlot)
     plot.fit = type("_Fit", (), {"unique_identifier": "uid", "fit_idx": 0})()
@@ -163,7 +162,7 @@ def test_apply_parameter_frame_pushes_edits(monkeypatch):
 
 def test_apply_parameter_frame_skips_unknown_parameters(monkeypatch):
     client = _FakeClient()
-    monkeypatch.setattr("chisurf.gui.plots.table_plot.get_fitting_client", lambda: client)
+    monkeypatch.setattr("chisurf.gui.plots.table_plot_emtk.get_fitting_client", lambda: client)
     plot = FitTablePlot.__new__(FitTablePlot)
     plot.fit = type("_Fit", (), {"unique_identifier": "uid", "fit_idx": 0})()
     plot._refresh_arrays_into_model = lambda: None
@@ -173,131 +172,31 @@ def test_apply_parameter_frame_skips_unknown_parameters(monkeypatch):
     assert [c[0] for c in client.calls] == ["update_fit", "model_finalize"]
 
 
-def test_plot_module_does_not_import_guidata():
-    import chisurf.gui.plots.table_plot as mod
+def test_plot_module_is_qt_free():
+    import chisurf.gui.plots.table_plot_emtk as mod
 
-    assert "guidata" not in mod.__doc__.lower()
+    source = open(mod.__file__, encoding="utf-8").read()
+    assert "qtpy" not in source and "QtWidgets" not in source
     assert not hasattr(mod, "DataFrameEditor")
 
 
-# ── end-to-end against a duck-typed fit ──────────────────────────────────
+def test_residuals_sit_inside_the_fit_range_only():
+    from types import SimpleNamespace
+
+    n = 8
+    x = np.arange(n, dtype=float)
+    curve = lambda y: SimpleNamespace(x=x, y=np.asarray(y, dtype=float))  # noqa: E731
+    fit = SimpleNamespace(
+        data=curve(x * 2.0),
+        model=curve(x * 2.0 + 0.1),
+        weighted_residuals=curve(np.full(n, 0.5)),
+        fit_range=(1, n - 2),
+        mask=np.ones(n),
+        get_curves=lambda copy_curves=False: {},
+    )
+    plot = FitTablePlot.__new__(FitTablePlot)
+    plot.fit = fit
+    _x, _y, _ym, wres, _mask, _support = plot._get_arrays()
+    assert np.isnan(wres[0]) and wres[1] == 0.5
 
 
-class _Curve:
-    """Minimal x/y curve."""
-
-    def __init__(self, x, y):
-        self.x = np.asarray(x, dtype=float)
-        self.y = np.asarray(y, dtype=float)
-        self.ex = np.ones_like(self.x)
-        self.ey = np.ones_like(self.y)
-
-    def set_data(self, x, y, ex=None, ey=None):
-        self.x = np.asarray(x, dtype=float)
-        self.y = np.asarray(y, dtype=float)
-        if ex is not None:
-            self.ex = np.asarray(ex, dtype=float)
-        if ey is not None:
-            self.ey = np.asarray(ey, dtype=float)
-
-
-class _FakeFit:
-    """Duck-typed fit exposing exactly what the table plot reads."""
-
-    unique_identifier = "test-uid"
-    fit_idx = 0
-    name = "test fit"
-    chi2r = 1.25
-
-    def __init__(self, n=8):
-        x = np.arange(n, dtype=float)
-        self.data = _Curve(x, x * 2.0)
-        self.model = _Curve(x, x * 2.0 + 0.1)
-        self.weighted_residuals = _Curve(x, np.full(n, 0.5))
-        self.fit_range = (1, n - 2)
-        self.mask = np.ones(n, dtype=float)
-
-    def get_curves(self, copy_curves=False):
-        return {"data": self.data, "model": self.model, "irf": self.model}
-
-
-@pytest.fixture
-def fit_plot(qapp, monkeypatch):
-    """Return a shown :class:`FitTablePlot` over a fake fit plus its client.
-
-    Returns
-    -------
-    tuple of (FitTablePlot, _FakeClient)
-    """
-    client = _FakeClient()
-    monkeypatch.setattr("chisurf.gui.plots.table_plot.get_fitting_client", lambda: client)
-    plot = FitTablePlot(_FakeFit())
-    plot.show()
-    plot._refresh_arrays_into_model()
-    yield plot, client
-    plot.close()
-    plot.deleteLater()
-
-
-def test_plot_builds_and_lists_every_column(fit_plot):
-    plot, _ = fit_plot
-    model = plot.table.table_model
-    assert model.rowCount() == 8
-    headers = [s.key for s in model.specs]
-    assert headers[:5] == list(_BASE_COLUMNS)
-    assert "irf" in headers  # support curves become extra columns
-    assert "data" not in headers[5:]  # ...but the dedicated ones are not repeated
-
-
-def test_plot_shows_residuals_inside_the_fit_range_only(fit_plot):
-    plot, _ = fit_plot
-    model = plot.table.table_model
-    col = model.column_index("w. res.")
-    first = model.data(model.index(0, col), __import__("qtpy").QtCore.Qt.DisplayRole)
-    inside = model.data(model.index(1, col), __import__("qtpy").QtCore.Qt.DisplayRole)
-    assert first == ""  # outside the fit range
-    assert inside == "0.5"
-
-
-def test_plot_mask_edit_reaches_the_client(fit_plot):
-    from qtpy import QtCore
-
-    plot, client = fit_plot
-    model = plot.table.table_model
-    col = model.column_index("mask")
-    assert model.setData(model.index(3, col), "0", QtCore.Qt.EditRole)
-    masks = [c for c in client.calls if c[0] == "set_fit_mask"]
-    assert masks, "editing the mask column must push a new mask"
-
-
-def test_plot_data_edit_writes_back_to_the_curve(fit_plot):
-    from qtpy import QtCore
-
-    plot, client = fit_plot
-    model = plot.table.table_model
-    col = model.column_index("data")
-    assert model.setData(model.index(2, col), "99", QtCore.Qt.EditRole)
-    assert plot.fit.data.y[2] == 99.0
-    assert any(c[0] == "update_fit" for c in client.calls)
-
-
-def test_plot_copy_includes_headers(fit_plot):
-    plot, _ = fit_plot
-    plot.on_copy_table_to_clipboard()
-    from qtpy import QtWidgets
-
-    text = QtWidgets.QApplication.clipboard().text()
-    lines = text.splitlines()
-    assert lines[0].split("\t")[:5] == list(_BASE_COLUMNS)
-    assert len(lines) == 9  # header + 8 rows
-
-
-def test_plot_filter_narrows_the_table(fit_plot):
-    from chisurf.gui.widgets.chitable import ColumnFilter, FilterSpec
-
-    plot, _ = fit_plot
-    model = plot.table.table_model
-    col = model.column_index("x")
-    plot.table.set_filter(FilterSpec(columns=(ColumnFilter(column=col, op="ge", value=4),)))
-    assert plot.table.visible_row_count() == 4
-    assert plot.table.total_row_count() == 8

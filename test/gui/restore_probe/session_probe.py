@@ -100,8 +100,8 @@ def measure():
             if p is None:
                 continue
             entry = {}
-            for k, obj in (("plot", p), ("controller", getattr(p, "plot_controller", None))):
-                f = getattr(obj, "get_state", None)
+            for k, f in (("plot", getattr(p, "get_state", None)),
+                         ("controller", getattr(p, "get_settings_state", None))):
                 if callable(f):
                     try:
                         entry[k] = f()
@@ -170,11 +170,11 @@ if stage == "A":
     data_panel = plot._panels[2]
     (x0, x1), (y0, y1) = data_panel.get_range()
     data_panel.set_range(x=(x0 + 0.2 * (x1 - x0), x0 + 0.6 * (x1 - x0)), padding=0.0)
-    st = plot.plot_controller.get_state()
+    st = plot.get_settings_state()
     bk = [k for k, v in st.items() if type(v) is bool]
     if bk:
         st[bk[0]] = not st[bk[0]]
-        plot.plot_controller.set_state(st)
+        plot.set_settings_state(st)
     main.mdiarea.setActiveSubWindow(w1)
     variant = os.environ.get("CHISURF_RESTORE_VARIANT", "")
     if variant == "maximized":

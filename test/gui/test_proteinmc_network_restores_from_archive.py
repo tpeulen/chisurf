@@ -29,7 +29,6 @@ def test_network_draws_restored_unsampled_model_without_source_files(qapp, qtbot
 
     restored = _restored_without_sources(tmp_path)
     plot = ProteinMCDistanceNetworkPlot(fit=SimpleNamespace(model=restored, name="fit"))
-    qtbot.addWidget(plot)
     assert [edge["p1"] + "-" + edge["p2"] for edge in plot._network_edges] == ["47-86"]
 
 
@@ -73,7 +72,6 @@ def test_structure_view_shows_starting_structure_and_follows_reloads(
     monkeypatch.setattr(proteinMC_module, "ChimolView", RecordingView)
     restored = _restored_without_sources(tmp_path)
     plot = proteinMC_module.ProteinMCStructurePlot(fit=SimpleNamespace(model=restored, name="fit"))
-    qtbot.addWidget(plot)
     assert events == [("add", restored.structure)]
 
     restored.load_starting_structure(str(_shifted_pdb(tmp_path, restored)))

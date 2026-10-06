@@ -134,8 +134,9 @@ def test_clicking_a_tab_shows_its_page_and_its_controls(window, qapp):
     assert seen and seen[-1] == 1
     table_page = window._plots_all[1]
     assert table_page is not None
-    assert window.current_plot_controller is table_page.plot_controller
-    assert not window._plots_all[0].plot_controller.isVisibleTo(window._plots_all[0])
+    # its settings are what the one emtk Plot settings dock shows
+    assert window.current_page is table_page
+    assert window.plot_settings.page is table_page
 
 
 def test_the_wheel_zooms_the_decay_panel(window, qapp):

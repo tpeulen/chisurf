@@ -1,0 +1,151 @@
+{
+ "ProteinMCStructurePlot": {
+  "case": "39",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/ProteinMCStructurePlot_0.png"
+  ],
+  "inventory": {
+   "controls": [
+    "/0",
+    "<",
+    ">",
+    ">|",
+    "representation",
+    "stepsize",
+    "trajectoryplayback",
+    "|<",
+    "\u2171",
+    "\u25a0"
+   ],
+   "labels": [
+    "/ 0",
+    "Representation",
+    "Step size",
+    "Trajectory playback"
+   ],
+   "buttons": [
+    "<",
+    ">",
+    ">|",
+    "|<",
+    "\u2161",
+    "\u25a0",
+    "\u25b6"
+   ],
+   "line_edits": 2,
+   "combos": 1,
+   "spin_boxes": 2,
+   "tables": 0
+  }
+ },
+ "ProteinMCDistanceNetworkPlot": {
+  "case": "39",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/ProteinMCDistanceNetworkPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [
+    "/0",
+    "<",
+    ">",
+    ">|",
+    "distancenetwork",
+    "stepsize",
+    "|<",
+    "\u25a0"
+   ],
+   "labels": [
+    "/ 0",
+    "Distance network",
+    "Step size"
+   ],
+   "buttons": [
+    "<",
+    ">",
+    ">|",
+    "|<",
+    "\u25a0",
+    "\u25b6"
+   ],
+   "line_edits": 2,
+   "combos": 0,
+   "spin_boxes": 2,
+   "tables": 0
+  }
+ },
+ "ProteinMCPlot": {
+  "case": "39",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/ProteinMCPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [
+    "auto-scale",
+    "drmsd",
+    "energy",
+    "labeling(fret)",
+    "rmsd",
+    "trajectorycurves"
+   ],
+   "labels": [
+    "Trajectory curves"
+   ],
+   "buttons": [
+    "Auto-scale",
+    "Energy",
+    "Labeling (FRET)",
+    "RMSD",
+    "dRMSD"
+   ],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "PosteriorGraphPlot": {
+  "case": "39",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/PosteriorGraphPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "SamplingDiagnosticsPlot": {
+  "case": "39",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/SamplingDiagnosticsPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "ConditionalScanPlot": {
+  "case": "39",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/ConditionalScanPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ }
+}

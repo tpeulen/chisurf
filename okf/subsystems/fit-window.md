@@ -11,73 +11,52 @@ timestamp: '2026-10-05T00:00:00Z'
 
 ## Where to pick this up
 
-Done 2026-10-05: emtk pushed at `d8caa62` and `pixi.lock` pinned to it
-(chisurf `91a18474d`). On the way: emtk `689f9d9` had wrongly taken back
-another lane's committed selectable-icon work (reverted in `649d47b`), and its
-atlas guard was red since `601d02d` (fixed in `d8caa62`).
+State 2026-10-06: **no Qt below the fit window's frame and the options dock's
+frame.** A page (`plotbase.Plot`) is a plain object -- not a `QWidget` -- that
+declares what the surface draws (`emtk_draw` / `add_panel` / `emtk_body`); its
+*Plot settings* are an AutoForm spec (`settings_view`) over a plain model, drawn
+by `emtk.view_form.draw_form` in the one emtk surface of the main window's
+**Plot settings** dock (`chisurf/gui/plots/emtk_settings.py`,
+`PlotSettingsHost`, one per options layout via `host_in`). Qt controllers per
+page, the hidden widget holder, the island overlay and the Qt-layout
+translator in `emtk_page.py` are gone. Dead `MolView`, `GlobalEt`,
+`_qwt_compat`, the Qt `FitTablePlot` and `table_plot.py` were deleted.
+Migration evidence (control inventory before/after, PNGs, both capture
+scripts): `okf/validation/fit-window-settings/`.
 
-Resolved 2026-10-05: the "exit crash" after `test_fit_window_emtk.py` (and
-`test_fit_presentation_contract.py`) was the session `QApplication` being
-destroyed when pytest dropped the last test's fixture arguments
-(`runner.py` `item.funcargs = None`) while widgets were alive; sip then read
-freed memory from its destructor. `test/gui/conftest.py` now holds the
-application for the life of the process, as pytest-qt does.
+Open, in order:
 
-Done 2026-10-05: `ProteinMCStructurePlot` draws chimol's offscreen renderer
-through `chisurf.emtk.chimol_view.ChimolView` (`emtk_draw`), built with
-`scale_factor=1.0` (Angstrom; chimol `9425146` passes viewer options through
-`ChimolApp`). With it no catalogued page needs a Qt island: `QT_PAGES` is empty.
-The island mechanism stays as the safety net for a page that still holds a
-Qt widget (it is laid over the page, not lost), and the slow sweep fails on it.
-
-1. **Remaining Qt inside a plot page object.** Done 2026-10-05 for the plot
-   panels: chiplot now has `cp.Panel`, a Qt-free panel (same `PlotAPI` as
-   `cp.Plot`, no `QWidget`, its `EmtkCanvas` builds a widget only if someone
-   asks), and pages declare them with `plotbase.Plot.add_panel(panel=None,
-   stretch=1.0)` instead of `layout.addWidget(cp.Plot())`. Ported: DEER P(r),
-   L-curve, WR plot, distribution, parameter scan, MFD map, MFD 2-D,
-   ProteinMC (both pages) and LinePlot. **Measure** with the scratchpad-style
-   count of `findChildren(QWidget)` under `FitPlotsArea` on a TCSPC fit: 25
-   before, 13 after. Still Qt inside pages: the page objects themselves
-   (`plotbase.Plot` is a `QWidget`, `plot_controller` a `QWidget`). Those are
-   the next step: a page that is not a widget at all.
-   Done 2026-10-06: **Posterior graph**, **Chain diagnostics** and **What-if**
-   (`posterior_graph.py`, `sampling_diagnostics.py`, `conditional_scan.py`)
-   draw in emtk (`emtk_draw`): tabs are `emtk_notes.Tabs` (page state,
-   `tabs.select(i)`), the notes under a plot are data (`emtk_notes.Line` /
-   `Table`, read in tests with `as_text`), the What-if bar is an `im.begin_grid`.
-   Parity (legacy grab vs surface grab, guide-39 fit): every control present;
-   the slider now prints its position (`+0.00 sd`). Re-derive with
-   `docs/guides/screenshots/guides_39_53.py _grab_39_posterior_plots`.
-   **They had been unreachable** since the model/UI split (`e3a0a6a5e`): the
-   old model base class attached them to every fit, the spec registry never
-   registered them, and guide 39 kept describing them. They are now plot keys
-   (`posterior_graph`, `sampling_diagnostics`, `conditional_scan`) that
-   `model_plot_specs` appends after the model's pages
-   (`model_editor.FIT_PLOT_KEYS`). Appending changed every window's page keys,
-   so `FitPlotsArea.set_layout_state` now restores a layout whose keys are a
-   *prefix* of the current ones (new pages dock home) instead of refusing it --
-   otherwise every saved layout would have been dropped once.
-   `GlobalFitPlot` (`global_fit.py`) had no user at all and was deleted.
-   Open: `docs/images/posterior_graph_structure.png` and
-   `whatif_non_gaussian.png` are hand-made Qt-era grabs with no generator (a
-   four-dataset global fit; a weak second component with the re-fit check).
-   Trap: `cp.Panel` must be exported from `chisurf/gui/chiplot/__init__.py`
-   (a module `__getattr__` turns the missing name into an `AttributeError` deep
-   inside a paint, which aborted the GUI suite).
-2. **Plot controllers** (the "Plot settings" dock: `LinePlotControl` `.ui`,
-   `ParameterScanWidget`, `DistributionPlotControl`, the FitInfo Analysis/
-   Metadata/External/Export tabs) live in the main window's options panel,
-   *outside* the fit window, and are still Qt. They were out of this change's
-   scope ("plots in fit windows"); they are the next GUI surface to move.
+1. **Saved state compatibility is by key, not tested on old projects.** Every
+   page's `get_settings_state` keeps its old controller's keys (stored under
+   `"controller"`), so a project saved before 2026-10-06 should restore; only
+   the LinePlot and ProteinMC round-trips are tested. Re-derive: load an old
+   `.cs.pto` with plot state through `test/gui/restore_probe/session_probe.py`.
+2. **`test/test_ui_schemas.py` was red before this change (71 failures at
+   `3b4f8b6db`).** The scheme is generated from the Qt loader's dataclasses and
+   lagged emtk's dialect. This change taught it emtk's documented layout keys
+   (`_EMTK_LAYOUT_KEYS` in `chisurf/core/dataspec/schema.py`: width, weight,
+   min_width, min_chars, wrap_before, wrap_indent, elide, field, hidden_when,
+   filter); every plot spec passes. Still rejected across other specs: `name`
+   (127), `dock` (91), unknown section types (61), `tab`, `window`, `page`,
+   `panels` -- emtk's docking/window dialect, which needs a decision on how it
+   enters the scheme rather than more keys.
+3. **Figure 24 of `docs/manual/reference_curves.md`** is still the Qt-era grab
+   showing a "Use reference" checkbox; the text now names the **Reference**
+   selector. A faithful figure needs a FRET fit with a donor-only reference
+   dataset in `docs/guides/screenshots/fit_window_emtk.py`.
+4. **emtk view_form: a `weight: 0` `info` leaf inside an `n_col` panel
+   collapses to zero width** (seen on the ProteinMC network settings, worked
+   around with `width: 70`). Fix belongs in emtk with a test.
+5. **FitInfo drops only local files**: the emtk host passes local paths, so a
+   dropped URL (the Qt table took text drops) is not taken.
 
 **Measure** -- `pytest test/gui/test_fit_window_pages_all_models.py --run-slow`
-(about 12 min) opens the real science of all 42 catalogued models in a real
-`Main`, visits every page, and fails on any page not drawn in emtk unless its
-plot class is in `QT_PAGES`. On 2026-10-05: 236 pages, 15 plot classes, every
-page drawn by emtk (`StateSchemePlot` and `ProteinMCStructurePlot` were ported
-the same day). Trap: a page that never becomes current is never
-built; the probe visits each tab, which is why it is slow.
+(about 17 min) opens the real science of all 42 catalogued models in a real
+`Main`, visits every page and fails on a page object that is a `QWidget`, a
+page that declares nothing to draw, or settings that raise while drawn
+(`PlotSettingsHost.surface.last_error`); it writes a PNG of every page and of
+its settings. Trap: a page that never becomes current is never built; the
+probe visits each tab, which is why it is slow.
 
 **Tried and reverted** -- the earlier attempt (`FitPlotsArea(DockArea)`,
 2026-10-04) kept the Qt `DockArea` of `QTabWidget`s and Qt containers and
@@ -124,20 +103,29 @@ noisy decays at 2x, round joins 605 ms) -- keep plot pens out of it.
 
 ## Page bodies
 
-`chisurf.gui.plots.emtk_page.page_body(page)` turns a plot page into one emtk
-control, reading the page's existing composition:
+`chisurf.gui.plots.emtk_page.page_body(page)` reads what a page declares:
 
-| In the page | On the surface |
+| The page declares | On the surface |
 |---|---|
-| chiplot `Plot` (emtk backend) | its `EmtkCanvas`, wrapped in `PanelItem` (box + owning plot for the menu; fills the panel background its host used to) |
-| `QBoxLayout` / `QSplitter` | `emtk.widgets.PaneStack` (emtk `4bfdadf`) weighted by stretch / sizes |
-| `QGridLayout`, chiplot `Grid` | rows of side-by-side panes, weighted by the grid's stretch factors |
-| `EmtkTextView` | its `TextEditor` |
-| any emtk `ControlHost` | the control it hosts (e.g. `FitTablePlotEmtk`) |
-| `add_panel(...)` (`emtk_panels`) | a `PaneStack` of the declared `cp.Panel`s weighted by stretch -- no Qt layout read |
-| `emtk_body()` | the page's own control (LinePlot: a golden-ratio `PaneStack`, split saved in the project) |
-| `emtk_draw(box)` | the page draws itself in immediate mode (MFD map: channel/colormap combos over the panel) |
-| anything else | reported in `missing`; the page becomes an island |
+| `emtk_draw(box)` | the page draws itself in immediate mode (MFD map, posterior pages, What-if, Data table) |
+| `add_panel(...)` (`emtk_panels`) | a `PaneStack` of the declared `cp.Panel`s weighted by stretch; each canvas wrapped in `PanelItem` (box + owning panel for the right-click menu) |
+| `emtk_body()` | the page's own control (LinePlot: a golden-ratio `PaneStack`, split saved in the project; FitInfo: the report's `TextEditor`) |
+| nothing | reported in `missing`; the surface says so in red and the sweep fails |
+
+## Plot settings
+
+The main window's **Plot settings** dock holds one `PlotSettingsHost`: Qt hosts
+an emtk `ImApp` that draws `page.draw_settings()` for the current page -- by
+default `draw_form(settings_spec(), settings_model(), settings_form)`.
+`FitSubWindow.on_change_plot` and the main window's sub-window activation call
+`show_plot_settings()`; a closed window releases the dock. A page's settings
+spec lives beside its module (`lineplot/lineplot_settings.view.json`,
+`fitinfo_settings.view.json`, ...); what a spec cannot say is a `custom`
+section the page registers (`register_settings_sections`): LinePlot's
+reference-transform parameters, Distribution's option tree. Files dropped on
+the dock go to the page's `on_paths_dropped` (FitInfo's External data).
+A value that changes under the form (playback frame) calls
+`request_settings_redraw()`.
 
 Repaints: chiplot canvases, text views and the table page take
 `set_refresh_target(callback)`; the surface installs its `request_frame`, so a

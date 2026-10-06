@@ -111,6 +111,48 @@
               },
               "menu": {
                 "type": "string"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -213,6 +255,48 @@
               },
               "rebuild_on_change": {
                 "type": "boolean"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -285,6 +369,48 @@
               },
               "action_fixed": {
                 "type": "object"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -337,7 +463,49 @@
               "key": {
                 "type": "string"
               },
-              "options": {}
+              "options": {},
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
+              }
             },
             "additionalProperties": false,
             "allOf": [
@@ -640,6 +808,48 @@
               },
               "persist": {
                 "type": "string"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -742,6 +952,48 @@
               },
               "remote": {
                 "type": "boolean"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -805,6 +1057,48 @@
               },
               "max_height": {
                 "type": "integer"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -877,6 +1171,45 @@
                 "items": {
                   "$ref": "#/$defs/section"
                 }
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -949,6 +1282,48 @@
               },
               "priors": {
                 "type": "object"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -1036,6 +1411,48 @@
                   "string",
                   "null"
                 ]
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -1120,6 +1537,48 @@
               },
               "invert_y": {
                 "type": "boolean"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -1195,6 +1654,48 @@
               },
               "update_call": {
                 "type": "string"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -1264,6 +1765,48 @@
               },
               "value_key": {
                 "type": "string"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -1315,6 +1858,48 @@
               },
               "items": {
                 "type": "array"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -1437,6 +2022,48 @@
               },
               "scale": {
                 "type": "string"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -1500,6 +2127,48 @@
               },
               "persist": {
                 "type": "string"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -1566,6 +2235,48 @@
               },
               "complete_when": {
                 "type": "object"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               }
             },
             "additionalProperties": false
@@ -1614,6 +2325,48 @@
               },
               "menu": {
                 "type": "string"
+              },
+              "width": {
+                "type": "number",
+                "description": "emtk: the control's fixed width in pixels."
+              },
+              "weight": {
+                "type": "number",
+                "description": "emtk: share of a line's spare width (0: natural)."
+              },
+              "min_width": {
+                "type": "number",
+                "description": "emtk: never narrower than this many pixels."
+              },
+              "min_chars": {
+                "type": "integer",
+                "description": "emtk: never narrower than this many characters."
+              },
+              "wrap_before": {
+                "type": "boolean",
+                "description": "emtk: a crowded line wraps before this leaf."
+              },
+              "wrap_indent": {
+                "type": "boolean",
+                "description": "emtk: a wrapped line starts under the first control."
+              },
+              "elide": {
+                "enum": [
+                  "start",
+                  "end"
+                ],
+                "description": "emtk: which end of a long text is shortened."
+              },
+              "field": {
+                "type": "boolean",
+                "description": "emtk: false draws a slider without its value field."
+              },
+              "hidden_when": {
+                "description": "emtk/AutoForm: hide the section while this condition holds."
+              },
+              "filter": {
+                "type": "boolean",
+                "description": "emtk: a choice's list gets a filter field."
               },
               "label": {
                 "type": "string"
@@ -1762,9 +2515,6 @@
               },
               "max_height": {
                 "type": "integer"
-              },
-              "hidden_when": {
-                "type": "object"
               },
               "n_col": {
                 "type": [

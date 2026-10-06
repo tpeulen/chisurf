@@ -1,83 +1,236 @@
+"""The fit window's *Info* page: the fit's report, and its analysis record.
+
+The page shows the fit's report (an emtk read-only text view). Its settings --
+what the main window's *Plot settings* dock shows while the page is current --
+are the analysis record, in four tabs: *Analysis* (id, type, sample and
+conditions), *Metadata* (key / value rows), *External data* (where the raw data
+is) and *Export* (the flrCIF preview, copy and save). They are declared in
+``fitinfo_settings.view.json`` and drawn by emtk; the rows of the two tables
+are the Qt-free models :class:`MetadataRows` and :class:`ExternalRows`.
+"""
+
 from __future__ import annotations
 
+import html
 import io
 import json
+import re
 import uuid
 from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
-from qtpy import QtGui, QtWidgets
-from qtpy.QtCore import Qt
 
 import chisurf.core.fitting
 from chisurf.core.registry.file_formats import FILE_FORMATS as _FILE_FORMATS
-from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui.plots import plotbase
+from chisurf.gui.plots import emtk_notes, plotbase
 from chisurf.gui.plots.emtk_text_view import EmtkTextView
-from chisurf.gui.widgets.metadata_editor import MetadataEditor
 
 
-def _configure_fill_table(table: QtWidgets.QTableWidget) -> None:
-    """Configure a table to fill the available tab space."""
-    table.setSizePolicy(
-        QtWidgets.QSizePolicy.Expanding,
-        QtWidgets.QSizePolicy.Expanding,
-    )
-    table.setMinimumSize(0, 0)
-    table.setMaximumSize(16777215, 16777215)
-    table.setWordWrap(False)
-    table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+def _format_for_path(path: str) -> str:
+    """The format column's guess for a dropped or typed path."""
+    suffix = Path(path).suffix.lower()
+    if suffix in {".ptu", ".bin", ".t3r", ".t3z", ".t3x"}:
+        return "ptu"
+    if suffix in {".tttr", ".hdf5", ".h5"}:
+        return "tttr"
+    if suffix in {".csv", ".txt"}:
+        return suffix.lstrip(".")
+    return ""
 
 
-class DropTable(QtWidgets.QTableWidget):
-    """QTableWidget that accepts file/URL drops as new rows."""
+def _html_to_text(markup: str) -> str:
+    """Flatten a model's ``summary_html`` to the report's plain text."""
+    text = re.sub(r"(?i)<\s*(br|/p|/div|/li|/tr|/h[1-6])\s*/?>", "\n", markup)
+    text = re.sub(r"<[^>]+>", "", text)
+    lines = [" ".join(line.split()) for line in html.unescape(text).splitlines()]
+    return "\n".join(line for line in lines if line).strip()
 
-    def __init__(self, columns: int, parent=None):
-        super().__init__(0, columns, parent)
-        self.setAcceptDrops(True)
 
-    def _format_for_path(self, path: str) -> str:
-        suffix = Path(path).suffix.lower()
-        if suffix in {".ptu", ".bin", ".t3r", ".t3z", ".t3x"}:
-            return "ptu"
-        if suffix in {".tttr", ".hdf5", ".h5"}:
-            return "tttr"
-        if suffix in {".csv", ".txt"}:
-            return suffix.lstrip(".")
-        return ""
+class _Rows:
+    """Editable table rows with a picked row: the base of the two tab models."""
 
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls() or event.mimeData().hasText():
-            event.acceptProposedAction()
+    def __init__(self, on_changed: Callable[[], None]) -> None:
+        self.rows: list[dict] = []
+        self.selected_row = ""
+        self._next = 0
+        self._on_changed = on_changed
 
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls() or event.mimeData().hasText():
-            event.acceptProposedAction()
+    def _add(self, **fields: str) -> dict:
+        self._next += 1
+        row = {"_row": str(self._next), **{k: str(v) for k, v in fields.items()}}
+        self.rows.append(row)
+        return row
 
-    def dropEvent(self, event):
-        mime = event.mimeData()
+    def _selected(self) -> dict | None:
+        return next((r for r in self.rows if r["_row"] == self.selected_row), None)
+
+    def select_row(self, record: dict | None) -> None:
+        """The table's selection changed."""
+        if record is not None:
+            self.selected_row = str(record.get("_row", ""))
+
+    def edited(self, record: dict, key: str, value: Any) -> None:
+        """A cell was typed into."""
+        record[key] = str(value).strip()
+        self._on_changed()
+
+    def enabled(self, name: str) -> bool:
+        """Removing needs a picked row."""
+        if name == "delete_row":
+            return self._selected() is not None
+        return True
+
+    def delete_row(self) -> None:
+        """Remove the picked row."""
+        row = self._selected()
+        if row is not None:
+            self.rows.remove(row)
+            self.selected_row = ""
+            self._on_changed()
+
+
+class MetadataRows(_Rows):
+    """The *Metadata* tab: key / value rows, keys from the mmCIF catalogue."""
+
+    def __init__(self, on_changed: Callable[[], None]) -> None:
+        super().__init__(on_changed)
+        self._catalogue: list[str] | None = None
+
+    # -- the data (the vocabulary the page speaks) ----------------------------
+    def set_data(self, data: list[dict[str, str]]) -> None:
+        """Replace every row with *data* (``{"key", "value"}`` dicts).
+
+        Rows that already say the same are kept as they are -- with the picked
+        row and any row still being filled in -- because every edit writes the
+        metadata and the page then reloads it.
+        """
+        wanted = {
+            str(d.get("key", "")).strip(): str(d.get("value", "")).strip()
+            for d in data
+            if str(d.get("key", "")).strip()
+        }
+        if wanted == self.as_dict():
+            return
+        self.rows, self.selected_row = [], ""
+        for item in data:
+            self._add(key=item.get("key", ""), value=item.get("value", ""))
+
+    def get_data(self) -> list[dict[str, str]]:
+        """The rows with a key, as ``{"key", "value"}`` dicts."""
+        return [
+            {"key": r["key"].strip(), "value": r["value"].strip()}
+            for r in self.rows
+            if r["key"].strip()
+        ]
+
+    def as_dict(self) -> dict[str, str]:
+        """The metadata as a flat key -> value dict."""
+        return {d["key"]: d["value"] for d in self.get_data()}
+
+    def metadata_rows(self) -> list[dict]:
+        """The table's source."""
+        return self.rows
+
+    # -- the key catalogue ----------------------------------------------------
+    def catalogue(self) -> list[str]:
+        """Every key offered: the rows' own keys first, then the mmCIF catalogue."""
+        if self._catalogue is None:
+            from chisurf.core.fio.mmcif.metadata_keys import all_metadata_keys
+
+            self._catalogue = list(all_metadata_keys())
+        extra = [r["key"] for r in self.rows if r["key"] and r["key"] not in self._catalogue]
+        return [""] + list(dict.fromkeys(extra)) + self._catalogue
+
+    def key_options(self) -> list[tuple[str, str]]:
+        """The *Key* choice's options."""
+        return [(k, k or "(pick a key from the catalogue)") for k in self.catalogue()]
+
+    @property
+    def detail_key(self) -> str:
+        """The picked row's key."""
+        row = self._selected()
+        return row["key"] if row is not None else ""
+
+    @detail_key.setter
+    def detail_key(self, key: str) -> None:
+        row = self._selected()
+        if row is None:
+            row = self._add(key="", value="")
+            self.selected_row = row["_row"]
+        row["key"] = str(key or "").strip()
+        self._on_changed()
+
+    def key_help(self) -> str:
+        """What the picked key means."""
+        from chisurf.core.fio.mmcif.metadata_keys import key_description
+
+        key = self.detail_key
+        if not key:
+            return "Pick a row, then its key from the mmCIF catalogue (type to filter)."
+        return f"{key}: {key_description(key) or 'no description in the dictionary.'}"
+
+    def add_row(self) -> None:
+        """Add an empty row and pick it."""
+        row = self._add(key="", value="")
+        self.selected_row = row["_row"]
+
+
+class ExternalRows(_Rows):
+    """The *External data* tab: file path / URL and format of each raw data file."""
+
+    def set_streams(self, streams: list[dict]) -> None:
+        """Replace every row with the analysis's photon streams (unless they say the same)."""
+        wanted = [
+            (str(s.get("file_path") or "").strip(), str(s.get("file_format") or "").strip())
+            for s in streams
+            if str(s.get("file_path") or "").strip()
+        ]
+        if wanted == self.streams():
+            return
+        self.rows, self.selected_row = [], ""
+        for stream in streams:
+            self._add(
+                file_path=stream.get("file_path") or "",
+                file_format=stream.get("file_format") or "",
+            )
+
+    def external_rows(self) -> list[dict]:
+        """The table's source."""
+        return self.rows
+
+    def streams(self) -> list[tuple[str, str]]:
+        """``(path, format)`` of every row with a path."""
+        return [
+            (r["file_path"].strip(), r["file_format"].strip())
+            for r in self.rows
+            if r["file_path"].strip()
+        ]
+
+    def add_paths(self, paths: list[str]) -> int:
+        """Add a row per path (a drop); return how many were added."""
         added = 0
-        if mime.hasUrls():
-            for url in mime.urls():
-                path = url.toLocalFile() or url.toString()
-                if path:
-                    row = self.rowCount()
-                    self.insertRow(row)
-                    self.setItem(row, 0, QtWidgets.QTableWidgetItem(path))
-                    self.setItem(row, 1, QtWidgets.QTableWidgetItem(self._format_for_path(path)))
-                    added += 1
-        if added == 0 and mime.hasText():
-            text = mime.text().strip()
-            if text:
-                row = self.rowCount()
-                self.insertRow(row)
-                self.setItem(row, 0, QtWidgets.QTableWidgetItem(text))
-                self.setItem(row, 1, QtWidgets.QTableWidgetItem(self._format_for_path(text)))
+        for path in paths:
+            path = str(path or "").strip()
+            if path:
+                self._add(file_path=path, file_format=_format_for_path(path))
                 added += 1
         if added:
-            event.acceptProposedAction()
+            self._on_changed()
+        return added
+
+    def add_row(self) -> None:
+        """Add an empty row to type a path into, and pick it."""
+        row = self._add(file_path="", file_format="")
+        self.selected_row = row["_row"]
+
+    def drop_hint(self) -> str:
+        """How rows get here."""
+        return (
+            "Drag & drop files onto this panel to add external data references "
+            "(PTU/TTTR/CSV). Detector / channel info goes in the Metadata tab."
+        )
 
 
 class _ReadOnlyBridge:
@@ -127,20 +280,6 @@ class _SampleComboBridge:
     def currentText(self) -> str:  # noqa: N802 - Qt's spelling
         return self._combo.text
 
-    def blockSignals(self, _on: bool):  # noqa: N802 - Qt's spelling
-        return self
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc) -> None:
-        return None
-
-    def clear(self) -> None:
-        self._combo.set_options([])
-
-    def addItem(self, _label: str, _data=None) -> None:  # noqa: N802 - Qt's spelling
-        return None
 
 
 class _UuidLabelBridge:
@@ -170,37 +309,107 @@ class _DetailBridge:
 
 
 class FitInfo(plotbase.Plot):
-    name = "Info"
+    """The *Info* page: the fit's report; its settings are the analysis record."""
 
-    def __init__(
-        self, fit: chisurf.core.fitting.fit.FitGroup, parent: QtWidgets.QWidget = None, **kwargs
-    ):
+    name = "Info"
+    settings_view = "fitinfo_settings.view.json"
+    #: The four tabs of the settings, in order (panel titles of the spec).
+    TABS = ("Analysis", "Metadata", "External data", "Export")
+
+    def __init__(self, fit: chisurf.core.fitting.fit.FitGroup, parent=None, **kwargs):
         super().__init__(fit, parent=parent, **kwargs)
         self.analysis_id = getattr(fit, "name", None) or str(getattr(fit, "fit_idx", "analysis_1"))
         self.db = self._find_flr_database()
         self._memory_metadata = getattr(fit, "flr_metadata", {})
         self._memory_streams = getattr(fit, "flr_photon_streams", [])
 
+        #: The report, the page's body.
         self.textedit = EmtkTextView()
-        self.layout.addWidget(self.textedit)
-
-        self.plot_controller = QtWidgets.QTabWidget(self)
-        self.plot_controller.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Expanding,
-        )
-        self.plot_controller.setMinimumSize(0, 0)
-        self.plot_controller.setDocumentMode(True)
-        self.plot_controller.setToolTip("FLR metadata editor and flrCIF export")
-        self.plot_controller.currentChanged.connect(self._on_tab_changed)
-        self._suppress_change = False
+        #: The Export tab's mmCIF preview.
+        self.cif_preview = EmtkTextView()
+        self.tabs = emtk_notes.Tabs(self.TABS)
+        self._shown_tab: int | None = None
+        self._save_dialog = None
+        self._suppress_change = True
+        self.metadata_editor = MetadataRows(on_changed=self._on_changed)
+        self.external = ExternalRows(on_changed=self._on_external_table_changed)
         self._build_analysis_tab()
-        self._build_metadata_tab()
-        self._build_external_tab()
-        self._build_export_tab()
-        self.layout.addWidget(self.plot_controller, stretch=3)
-        self._refresh()
+        self._populate_sample_combo()
+        self._suppress_change = False
+        self._reload_record()
         self._update_cif_preview(full=False)
+
+    # -- body and settings --------------------------------------------------
+    def emtk_body(self):
+        """The report fills the page."""
+        return self.textedit.editor
+
+    def refreshables(self) -> list:
+        """The report repaints when its text changes."""
+        return [self.textedit]
+
+    def set_settings_refresh(self, callback: Callable[[], None] | None) -> None:
+        """What redraws the *Plot settings* dock; the mmCIF preview redraws it too."""
+        super().set_settings_refresh(callback)
+        self.cif_preview.set_refresh_target(callback)
+
+    def register_settings_sections(self, form) -> None:
+        """The analysis form and the mmCIF preview are drawn by the page."""
+        form.custom["analysis_form"] = self._draw_analysis_form
+        form.custom["cif_preview"] = self._draw_cif_preview
+
+    def draw_settings(self) -> None:
+        """The four tabs of the analysis record."""
+        from emtk.view_form import draw_form, find_section
+
+        spec = self.settings_spec()
+        models = (self, self.metadata_editor, self.external, self)
+
+        def body(index: int) -> None:
+            if index != self._shown_tab:
+                self._shown_tab = index
+                if self.TABS[index] == "Export":
+                    self._update_cif_preview(full=False)
+            panel = find_section(spec, self.TABS[index])
+            draw_form(panel, models[index], self.settings_form, titles=False)
+
+        self.tabs.draw("fitinfo-tabs", body)
+
+    def get_settings_state(self) -> dict:
+        """The tab shown in the settings."""
+        return {"tab": self.TABS[self.tabs.current]}
+
+    def set_settings_state(self, state: dict) -> None:
+        """Show the tab :meth:`get_settings_state` saved."""
+        tab = (state or {}).get("tab")
+        if tab in self.TABS:
+            self.tabs.select(self.TABS.index(tab))
+
+    def on_paths_dropped(self, paths: list[str]) -> None:
+        """Files dropped on the settings become external data references."""
+        self.tabs.select(self.TABS.index("External data"))
+        self.external.add_paths(list(paths))
+
+    def _draw_analysis_form(self, section, model, state, width: float) -> None:
+        from emtk import im
+
+        im.host_control("##fitinfo-analysis", self.analysis_form, (width, 0.0))
+        if section.get("description"):
+            im.set_item_tooltip(str(section["description"]))
+
+    def _draw_cif_preview(self, section, model, state, width: float) -> None:
+        from emtk import im
+
+        dialog = self._save_dialog
+        if dialog is not None:
+            result = dialog.draw()
+            if result:
+                self._write_cif(result[0])
+                self._save_dialog = None
+            elif result is False:
+                self._save_dialog = None
+            return
+        im.host_control("##fitinfo-cif", self.cif_preview.editor, (width, 0.0))
 
     def _find_flr_database(self):
         for obj in (self.fit, getattr(self.fit, "model", None)):
@@ -266,132 +475,39 @@ class FitInfo(plotbase.Plot):
     # ── Analysis tab ───────────────────────────────────────────────
 
     def _build_analysis_tab(self):
-        try:
-            from emtk.qt_host import ControlHost
+        from .emtk_analysis_form import EmtkAnalysisForm
 
-            from .emtk_analysis_form import EmtkAnalysisForm
-
-            # The emtk fields report changes as they are filled (the Qt ones
-            # only after their signals get connected), so the construction
-            # prefill must not persist anything: the metadata editor below
-            # does not exist yet.
-            was_suppressed = getattr(self, "_suppress_change", True)
-            self._suppress_change = True
-            try:
-                self.analysis_form = EmtkAnalysisForm(
-                    on_generate_uuid=self._generate_sample_uuid,
-                    on_changed=self._on_changed,
-                )
-                self.analysis_host = ControlHost(self.analysis_form)
-                self.analysis_host.setToolTip("FLR analysis details")
-                tab = QtWidgets.QWidget()
-                tab_layout = QtWidgets.QVBoxLayout(tab)
-                tab_layout.setContentsMargins(0, 0, 0, 0)
-                tab_layout.addWidget(self.analysis_host, 1)
-                # Bridges: every existing reader/writer keeps its vocabulary.
-                self.analysis_id_edit = _ReadOnlyBridge(self.analysis_form, "analysis_id")
-                self.method_edit = _LineBridge(
-                    self.analysis_form, "method", self.analysis_form.method_value
-                )
-                self.sample_combo = _SampleComboBridge(self)
-                self.sample_uuid_label = _UuidLabelBridge(self.analysis_form)
-                self.sample_details_edit = _DetailBridge(self.analysis_form.sample_details)
-                self.condition_details_edit = _DetailBridge(self.analysis_form.condition_details)
-                # The model-hint prefill the Qt branch does before connecting.
-                model = getattr(self.fit, "model", None)
-                if model is not None:
-                    hint = type(model).__name__
-                    if hint and hint != "object":
-                        self.analysis_form.set_method(hint)
-            finally:
-                self._suppress_change = was_suppressed
-        except ImportError:
-            tab = QtWidgets.QWidget()
-            layout = QtWidgets.QFormLayout(tab)
-            layout.setSpacing(4)
-            layout.setContentsMargins(6, 6, 6, 6)
-
-            self.analysis_id_edit = QtWidgets.QLineEdit()
-            self.analysis_id_edit.setReadOnly(True)
-
-            self.method_edit = QtWidgets.QLineEdit()
-            self.method_edit.setPlaceholderText("auto-detected or type here")
-            # Prefill from model / method name
-            model = getattr(self.fit, "model", None)
-            if model is not None:
-                hint = type(model).__name__
-                if hint and hint != "object":
-                    self.method_edit.setText(hint)
-            self.method_edit.textChanged.connect(self._on_changed)
-
-            # Sample id: editable combo with autocomplete from DB
-            self.sample_combo = QtWidgets.QComboBox()
-            self.sample_combo.setEditable(True)
-            self.sample_combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
-            self.sample_combo.setPlaceholderText("type sample id or select existing")
-            self.sample_combo.currentTextChanged.connect(self._update_sample_uuid_display)
-            self.sample_combo.currentTextChanged.connect(self._on_changed)
-
-            completer = self.sample_combo.completer()
-            if completer is not None:
-                completer.setFilterMode(Qt.MatchContains)
-                completer.setCaseSensitivity(Qt.CaseInsensitive)
-            self._populate_sample_combo()
-
-            # UUID button next to sample combo — small toolbutton
-            uuid_row = QtWidgets.QHBoxLayout()
-            uuid_row.setSpacing(2)
-            gen_uuid_btn = QtWidgets.QToolButton()
-            gen_uuid_btn.setText(Glyphs.REFRESH)
-            gen_uuid_btn.setToolTip("Generate new UUID")
-            gen_uuid_btn.setFixedSize(24, 24)
-            gen_uuid_btn.clicked.connect(self._generate_sample_uuid)
-            uuid_row.addWidget(self.sample_combo, stretch=1)
-            uuid_row.addWidget(gen_uuid_btn, stretch=0)
-
-            self.sample_uuid_label = QtWidgets.QLabel("")
-            self.sample_uuid_label.setStyleSheet("color: gray; font-size: 10px;")
-
-            self.sample_details_edit = QtWidgets.QPlainTextEdit()
-            self.sample_details_edit.setPlaceholderText("sample description and free-form details")
-            self.sample_details_edit.setMaximumHeight(60)
-            self.sample_details_edit.textChanged.connect(self._on_changed)
-
-            self.condition_details_edit = QtWidgets.QPlainTextEdit()
-            self.condition_details_edit.setPlaceholderText(
-                "pH=7.4; temperature=293.15 K; buffer=..."
-            )
-            self.condition_details_edit.setMaximumHeight(60)
-            self.condition_details_edit.textChanged.connect(self._on_changed)
-
-            layout.addRow("Analysis id", self.analysis_id_edit)
-            layout.addRow("Analysis type", self.method_edit)
-            layout.addRow("Sample", uuid_row)
-            layout.addRow("Sample UUID", self.sample_uuid_label)
-            layout.addRow("Sample details", self.sample_details_edit)
-            layout.addRow("Condition details", self.condition_details_edit)
-        self.plot_controller.addTab(tab, "Analysis")
+        # The emtk fields report changes as they are filled, so the
+        # construction prefill must not persist anything (_suppress_change).
+        self.analysis_form = EmtkAnalysisForm(
+            on_generate_uuid=self._generate_sample_uuid,
+            on_changed=self._on_changed,
+        )
+        # Bridges: every existing reader/writer keeps its vocabulary.
+        self.analysis_id_edit = _ReadOnlyBridge(self.analysis_form, "analysis_id")
+        self.method_edit = _LineBridge(self.analysis_form, "method", self.analysis_form.method_value)
+        self.sample_combo = _SampleComboBridge(self)
+        self.sample_uuid_label = _UuidLabelBridge(self.analysis_form)
+        self.sample_details_edit = _DetailBridge(self.analysis_form.sample_details)
+        self.condition_details_edit = _DetailBridge(self.analysis_form.condition_details)
+        # The model hint prefills the analysis type.
+        model = getattr(self.fit, "model", None)
+        if model is not None:
+            hint = type(model).__name__
+            if hint and hint != "object":
+                self.analysis_form.set_method(hint)
 
     def _populate_sample_combo(self):
-        self.sample_combo.blockSignals(True)
-        self.sample_combo.clear()
+        """Offer the database's samples in the *Sample* combo."""
+        ids = []
         if self.db is not None:
-            samples = self.db.list_samples()
-            for s in samples:
-                sid = s["sample_id"]
-                suuid = s.get("sample_uuid") or ""
-                display = f"{sid}  [{suuid[:8]}...]" if suuid else sid
-                self.sample_combo.addItem(display, (sid, suuid))
-        self.sample_combo.blockSignals(False)
+            ids = [str(s["sample_id"]) for s in self.db.list_samples() if s.get("sample_id")]
+        self.analysis_form.set_samples(ids)
 
     def _generate_sample_uuid(self):
         new_uuid = str(uuid.uuid4())
         self.sample_uuid_label.setText(new_uuid)
         self._on_changed()
-
-    def _on_tab_changed(self, index):
-        if self.plot_controller.tabText(index) == "Export":
-            self._update_cif_preview(full=False)
 
     # -- the Analysis tab's typed-input surface (tests and helpers) ----- #
     def sample_type(self, text: str) -> None:
@@ -549,74 +665,18 @@ class FitInfo(plotbase.Plot):
         arr = np.asarray(values, dtype=np.float64).ravel()
         return " ".join(f"{float(v):.8g}" for v in arr)
 
-    # ── Metadata tab ──────────────────────────────────────────────
-
-    def _build_metadata_tab(self):
-        self.metadata_editor = MetadataEditor(columns=2)
-        self.metadata_editor.changed.connect(self._on_changed)
-        self.plot_controller.addTab(self.metadata_editor, "Metadata")
-
-    # ── External data tab (simplified: path + format only) ────────
-
-    def _build_external_tab(self):
-        tab = QtWidgets.QWidget()
-        tab.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Expanding,
-        )
-        tab.setMinimumSize(0, 0)
-        layout = QtWidgets.QVBoxLayout(tab)
-        layout.setSpacing(2)
-        layout.setContentsMargins(4, 4, 4, 4)
-        self.external_table = DropTable(2)
-        self.external_table.setHorizontalHeaderLabels(["file path / URL", "format"])
-        self.external_table.horizontalHeader().setStretchLastSection(True)
-        self.external_table.horizontalHeader().setSectionResizeMode(
-            1, QtWidgets.QHeaderView.ResizeToContents
-        )
-        self.external_table.setColumnWidth(1, 90)
-        self.external_table.setToolTip("Drag & drop files or URLs here")
-        _configure_fill_table(self.external_table)
-        self.external_table.itemChanged.connect(self._on_external_table_changed)
-        layout.addWidget(self.external_table, stretch=1)
-
-        note = QtWidgets.QLabel(
-            "Drag & drop files or URLs to add external data references (PTU/TTTR/CSV).\n"
-            "Detector/ channel info goes in the Metadata tab."
-        )
-        note.setWordWrap(True)
-        layout.addWidget(note)
-        self.plot_controller.addTab(tab, "External data")
-
-    def _add_photon_stream(self):
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select photon stream")
-        if not path:
-            return
-        stream_id = f"stream_{self.external_table.rowCount() + 1}"
-        if self.db is not None:
-            self.db.add_photon_stream(self.analysis_id, path, stream_id=stream_id)
-        else:
-            self._memory_streams.append(
-                {"stream_id": stream_id, "file_path": path, "file_format": ""}
-            )
-            self.fit.flr_photon_streams = self._memory_streams
-        self._refresh()
+    # ── External data tab ─────────────────────────────────────
 
     def _on_external_table_changed(self):
-        if not hasattr(self, "_suppress_change") or self._suppress_change:
+        if self._suppress_change:
             return
+        streams = self.external.streams()
         if self.db is not None:
             # Clear existing photon streams for this analysis, then re-add from table.
             self.db.conn.execute(
                 "DELETE FROM flr_photon_stream WHERE analysis_id = ?", (self.analysis_id,)
             )
-            for row in range(self.external_table.rowCount()):
-                path_item = self.external_table.item(row, 0)
-                format_item = self.external_table.item(row, 1)
-                if path_item is None or not path_item.text().strip():
-                    continue
-                path = path_item.text().strip()
-                file_format = format_item.text().strip() if format_item is not None else ""
+            for row, (path, file_format) in enumerate(streams):
                 self.db.add_photon_stream(
                     self.analysis_id,
                     path,
@@ -624,59 +684,46 @@ class FitInfo(plotbase.Plot):
                     file_format=file_format or None,
                 )
         else:
-            self._memory_streams = []
-            for row in range(self.external_table.rowCount()):
-                path_item = self.external_table.item(row, 0)
-                format_item = self.external_table.item(row, 1)
-                if path_item is None or not path_item.text().strip():
-                    continue
-                path = path_item.text().strip()
-                file_format = format_item.text().strip() if format_item is not None else ""
-                self._memory_streams.append(
-                    {
-                        "stream_id": f"stream_{row + 1}",
-                        "file_path": path,
-                        "file_format": file_format,
-                    }
-                )
+            self._memory_streams = [
+                {"stream_id": f"stream_{row + 1}", "file_path": path, "file_format": file_format}
+                for row, (path, file_format) in enumerate(streams)
+            ]
             self.fit.flr_photon_streams = self._memory_streams
         self._update_cif_preview(full=False)
 
     def add_external_data(self, path: str, file_format: str | None = None) -> None:
         """Add an external data reference to the external data table."""
-        self._suppress_change = True
-        row = self.external_table.rowCount()
-        self.external_table.insertRow(row)
-        self.external_table.setItem(row, 0, QtWidgets.QTableWidgetItem(path))
-        self.external_table.setItem(row, 1, QtWidgets.QTableWidgetItem(file_format or ""))
-        self._suppress_change = False
+        self.external._add(file_path=str(path), file_format=file_format or "")
         self._on_external_table_changed()
 
-    # ── Export tab: live preview + copy / save tool btns ──────────
+    # ── Export tab ────────────────────────────────────────────────
 
-    def _build_export_tab(self):
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(tab)
+    def export_full_preview(self) -> None:
+        """Compute the full mmCIF, with the fit's curves embedded."""
+        self._update_cif_preview(full=True)
 
-        toolbar = QtWidgets.QToolBar()
-        refresh_btn = QtWidgets.QToolButton()
-        refresh_btn.setText(Glyphs.REFRESH)
-        refresh_btn.setToolTip("Compute full mmCIF preview")
-        refresh_btn.setFixedSize(24, 24)
-        refresh_btn.clicked.connect(lambda: self._update_cif_preview(full=True))
-        toolbar.addWidget(refresh_btn)
-        copy_btn = QtWidgets.QAction("Copy to clipboard", self)
-        copy_btn.triggered.connect(self._copy_cif)
-        toolbar.addAction(copy_btn)
-        save_btn = QtWidgets.QAction("Save to file...", self)
-        save_btn.triggered.connect(self._save_cif)
-        toolbar.addAction(save_btn)
-        layout.addWidget(toolbar)
+    def export_copy(self) -> None:
+        """Copy the preview to the clipboard."""
+        from emtk import clipboard
 
-        self.cif_preview = EmtkTextView()
-        layout.addWidget(self.cif_preview, 1)
+        clipboard.copy(self.cif_preview.toPlainText())
 
-        self.plot_controller.addTab(tab, "Export")
+    def export_save(self) -> None:
+        """Ask where to save the preview (an emtk file dialog in the Export tab)."""
+        from emtk.file_dialog import FileDialog
+
+        self._save_dialog = FileDialog(
+            "Save mmCIF",
+            mode="save",
+            filters="mmCIF files (*.cif *.mmcif);;All files (*)",
+            filename=f"{self.analysis_id}.cif",
+        )
+
+    def _write_cif(self, path: str) -> None:
+        try:
+            Path(path).write_text(self.cif_preview.toPlainText())
+        except Exception as exc:
+            self.cif_preview.setPlainText(f"(save failed: {exc})")
 
     def _get_tttr_entries_from_data_curve(self) -> dict[str, str]:
         """Parse TTTR header JSON from the first TTTR-sourced data curve.
@@ -824,26 +871,9 @@ class FitInfo(plotbase.Plot):
         except Exception as exc:
             self.cif_preview.setPlainText(f"(preview failed: {exc})")
 
-    def _copy_cif(self):
-        QtWidgets.QApplication.clipboard().setText(self.cif_preview.toPlainText())
-
-    def _save_cif(self):
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self,
-            "Save mmCIF",
-            f"{self.analysis_id}.cif",
-            "mmCIF files (*.cif *.mmcif);;All files (*)",
-        )
-        if not path:
-            return
-        try:
-            Path(path).write_text(self.cif_preview.toPlainText())
-        except Exception as exc:
-            dialogs.warning(self, "Save failed", str(exc))
-
     # ── Refresh ──────────────────────────────────────────────────
 
-    def _refresh(self):
+    def _reload_record(self):
         self._suppress_change = True
         self.analysis_id_edit.setText(self.analysis_id)
         if self.db is not None:
@@ -867,27 +897,10 @@ class FitInfo(plotbase.Plot):
             [{"key": str(k), "value": str(v)} for k, v in sorted(metadata.items())]
         )
         # External table
-        self.external_table.setRowCount(0)
         if self.db is not None:
-            for row in self.db.get_photon_streams(self.analysis_id):
-                idx = self.external_table.rowCount()
-                self.external_table.insertRow(idx)
-                self.external_table.setItem(
-                    idx, 0, QtWidgets.QTableWidgetItem(str(row.get("file_path") or ""))
-                )
-                self.external_table.setItem(
-                    idx, 1, QtWidgets.QTableWidgetItem(str(row.get("file_format") or ""))
-                )
+            self.external.set_streams(self.db.get_photon_streams(self.analysis_id))
         else:
-            for row in getattr(self.fit, "flr_photon_streams", self._memory_streams):
-                idx = self.external_table.rowCount()
-                self.external_table.insertRow(idx)
-                self.external_table.setItem(
-                    idx, 0, QtWidgets.QTableWidgetItem(str(row.get("file_path", "")))
-                )
-                self.external_table.setItem(
-                    idx, 1, QtWidgets.QTableWidgetItem(str(row.get("file_format", "")))
-                )
+            self.external.set_streams(getattr(self.fit, "flr_photon_streams", self._memory_streams))
         self._suppress_change = False
 
     def _on_changed(self):
@@ -944,9 +957,7 @@ class FitInfo(plotbase.Plot):
         source = getattr(model, "summary_html", None)
         if callable(source):
             try:
-                document = QtGui.QTextDocument()
-                document.setHtml(str(source() or ""))
-                return document.toPlainText().strip()
+                return _html_to_text(str(source() or ""))
             except Exception as exc:
                 return f"(summary unavailable: {exc})"
         return ""
@@ -990,5 +1001,5 @@ class FitInfo(plotbase.Plot):
                 fp = s.get("file_path") or ""
                 lines.append(f"  path={fp}")
         self.textedit.setPlainText("\n".join(lines))
-        self._refresh()
+        self._reload_record()
         self._update_cif_preview(full=False)

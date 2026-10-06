@@ -11,11 +11,10 @@ _EXPORTS = {
     "ConditionalScanPlot": "conditional_scan",
     "DeerPrCIPlot": "deer_pr",
     "DistributionPlot": "distribution",
-    "DropTable": "fitinfo",
     "FitInfo": "fitinfo",
     "LCurvePlot": "lcurve",
     "LinePlot": "lineplot",
-    "LinePlotControl": "lineplot",
+    "LinePlotSettings": "lineplot",
     "Mfd2DPlot": "mfd_2d",
     "MfdMarginalPlot": "mfd_2d",
     "MfdMapPlot": "mfd_map",
@@ -24,15 +23,10 @@ _EXPORTS = {
     "PosteriorGraphPlot": "posterior_graph",
     "Residual2DPlot": "residual_image",
     "SamplingDiagnosticsPlot": "sampling_diagnostics",
-    "FitTablePlot": "table_plot",
     "FitTablePlotEmtk": "table_plot_emtk",
     "ResidualPlot": "wr_plot",
 }
-_MODULES = frozenset(_EXPORTS.values()) | {
-    "global_tcspc",
-    "molview",
-    "proteinMC",
-}
+_MODULES = frozenset(_EXPORTS.values()) | {"proteinMC"}
 __all__ = list(_EXPORTS)
 
 

@@ -36,16 +36,16 @@ def test_table_plot_avoids_resize_to_contents_and_hidden_refresh_contract():
     needs a refresh instead of performing one, so a hidden tab costs nothing
     while a fit iterates.
     """
-    plot = (ROOT / "chisurf" / "gui" / "plots" / "table_plot.py").read_text(encoding="utf-8")
+    plot = (ROOT / "chisurf" / "gui" / "plots" / "table_plot_emtk.py").read_text(encoding="utf-8")
     view = (ROOT / "chisurf" / "gui" / "widgets" / "chitable" / "view.py").read_text(
         encoding="utf-8"
     )
 
-    for name, src in (("table_plot.py", plot), ("chitable/view.py", view)):
+    for name, src in (("table_plot_emtk.py", plot), ("chitable/view.py", view)):
         assert "ResizeToContents" not in src, (
             f"{name} sets an O(rows) header resize policy; keep the interactive default"
         )
 
     assert "copy_curves=False" in plot  # do not duplicate the fit's arrays
-    assert "if not self.isVisible():" in plot  # hidden plots do not refresh
-    assert "self._refresh_pending = True" in plot
+    assert "if self._stale:" in plot  # hidden plots do not refresh
+    assert "self._stale = True" in plot

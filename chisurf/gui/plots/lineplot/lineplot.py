@@ -16,9 +16,7 @@ import chisurf.core.math.statistics
 import chisurf.core.plotting.transforms as plot_transforms
 import chisurf.core.settings
 import chisurf.core.support.decorators
-import chisurf.gui.decorators
 from chisurf import typing
-from chisurf.gui import QtCore, QtWidgets
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
 
@@ -71,7 +69,33 @@ def _load_reference_presets() -> dict:
     return merged
 
 
-class LinePlotControl(QtWidgets.QWidget):
+def _fmt_metric(value, nd: int = 3) -> str:
+    """A fit metric for the overlay: fixed-point when ordinary, scientific when not.
+
+    An unfitted start can have a χ² of 1e180; printed fixed-point it is a line of
+    digits that runs off the panel and hides the curves under it.
+    """
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return "?"
+    if not np.isfinite(v):
+        return str(v)
+    if v == 0.0 or 1e-3 <= abs(v) < 1e5:
+        return f"{v:.{int(nd)}f}"
+    return f"{v:.{int(nd)}e}"
+
+
+class LinePlotSettings:
+    """The *Plot settings* of a :class:`LinePlot`: plain state, drawn by emtk.
+
+    Drawn from ``lineplot_settings.view.json``; what the spec cannot say -- the
+    parameters of the selected reference transform, which change with the mode
+    -- is the ``reference_parameters`` custom section (:meth:`draw_reference_parameters`).
+    The attribute names the drawing code reads (``data_logy``, ``xmin`` as
+    ``None`` while unticked, ``getCheckState``) are kept.
+    """
+
     director = {
         "data": {
             "lw": 1.0,
@@ -135,22 +159,6 @@ class LinePlotControl(QtWidgets.QWidget):
         },
     }
 
-    def getCheckState(self, name):
-        for i in range(self.treeWidget.topLevelItemCount()):
-            item = self.treeWidget.topLevelItem(i)
-            if item.text(2) == name:
-                return item.checkState(1)
-        return True
-
-    def fill_line_widget(self):
-        self.treeWidget.blockSignals(True)
-        for nbr, key in enumerate(self.parent.lines):
-            item = QtWidgets.QTreeWidgetItem(self.treeWidget, [str(nbr), "", key])
-            item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-            item.setCheckState(1, QtCore.Qt.Checked)
-        self.treeWidget.blockSignals(False)
-
-    @cs.gui.decorators.init_with_ui("linePlotWidget.ui")
     def __init__(
         self,
         parent=None,
@@ -161,673 +169,333 @@ class LinePlotControl(QtWidgets.QWidget):
         ymin: float = 1.0,
     ):
         self.parent = parent
+        self.log_x = scale_x not in ("lin", "linear")
+        self.log_y = d_scaley not in ("lin", "linear")
+        self.res_logy = r_scaley
+        self.is_density = False
+        self.display_group = False
+        self.plot_ftt = False
+        self.xmin_enabled = self.xmax_enabled = False
+        self.ymin_enabled = self.ymax_enabled = False
+        self.xmin_value, self.xmax_value = float(xmin), 0.0
+        self.ymin_value, self.ymax_value = float(ymin), 0.0
+        self.x_shift = 0.0
+        self.y_shift = 0.0
+        #: Curve name -> drawn, in plot order.
+        self.curve_visibility: typing.OrderedDict[str, bool] = OrderedDict()
         self._reference_modes: typing.OrderedDict[str, plot_transforms.PlotReferenceMode] = (
             OrderedDict()
         )
-        self._reference_parameter_widgets: typing.Dict[str, QtWidgets.QWidget] = {}
-        self._reference_parameter_specs: typing.Dict[
-            str, plot_transforms.PlotReferenceParameter
-        ] = {}
-        self._pending_reference_mode: str | None = None
-        self._pending_reference_parameters: typing.Dict[str, typing.Any] = {}
-        self._install_reference_controls()
+        self._reference_mode = "raw"
+        #: Reference-parameter values by parameter key (all modes share keys by name).
+        self._reference_values: typing.Dict[str, typing.Any] = {}
 
-        self.data_logy = d_scaley
-        self.scale_x = scale_x
-        self.res_logy = r_scaley
-        self.xmin = xmin
-        self.ymin = ymin
+    # -- what the drawing code reads -------------------------------------------
 
-        self.actionUpdate_Plot.triggered.connect(parent.update)
-        self.checkBox.stateChanged.connect(self.SetLog)
-        self.checkBox_2.stateChanged.connect(self.SetLog)
-        self.checkBox_3.stateChanged.connect(self.SetDensity)
-        self.checkBox_4.stateChanged.connect(self.SetLog)
-        self.comboBox_reference.currentIndexChanged.connect(self.SetReference)
-        self.toolButton_reference_reset.clicked.connect(self.reset_reference_parameters)
-        self.checkBox_9.stateChanged.connect(self.SetDisplayGroup)
+    @property
+    def data_logy(self) -> str:
+        """``"log"`` while the data are plotted logarithmically, else ``"linear"``."""
+        return "log" if self.log_y else "linear"
 
-    def _install_reference_controls(self) -> None:
-        """Install the reference-mode selector and dynamic parameter area."""
-        try:
-            placeholder = getattr(self, "referencePlaceholder", None)
-            if placeholder is not None:
-                self.gridLayout_2.removeWidget(placeholder)
-                placeholder.hide()
-        except Exception:
-            pass
+    @data_logy.setter
+    def data_logy(self, v: str) -> None:
+        self.log_y = v not in ("lin", "linear")
 
-        ref_row = QtWidgets.QWidget(self)
-        ref_layout = QtWidgets.QHBoxLayout(ref_row)
-        ref_layout.setContentsMargins(0, 0, 0, 0)
-        ref_layout.setSpacing(2)
-        ref_layout.addWidget(QtWidgets.QLabel("Reference", ref_row))
+    @property
+    def scale_x(self) -> str:
+        """``"log"`` while x is plotted logarithmically, else ``"linear"``."""
+        return "log" if self.log_x else "linear"
 
-        self.comboBox_reference = QtWidgets.QComboBox(ref_row)
-        self.comboBox_reference.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
-        ref_layout.addWidget(self.comboBox_reference, 1)
+    @scale_x.setter
+    def scale_x(self, v: str) -> None:
+        self.log_x = v not in ("lin", "linear")
 
-        self.toolButton_reference_reset = QtWidgets.QToolButton(ref_row)
-        self.toolButton_reference_reset.setText("\U0001f504")
-        self.toolButton_reference_reset.setToolTip("Reset reference-mode parameters")
-        ref_layout.addWidget(self.toolButton_reference_reset)
+    @property
+    def data_is_log_x(self) -> bool:
+        """Whether x is logarithmic."""
+        return bool(self.log_x)
 
-        self.toolButton_reference_save = QtWidgets.QToolButton(ref_row)
-        self.toolButton_reference_save.setText("\U0001f4be")
-        self.toolButton_reference_save.setToolTip(
-            "Save current axis range as default preset for this reference mode"
-        )
-        self.toolButton_reference_save.clicked.connect(self._save_current_presets)
-        ref_layout.addWidget(self.toolButton_reference_save)
+    @property
+    def data_is_log_y(self) -> bool:
+        """Whether the data are logarithmic."""
+        return bool(self.log_y)
 
-        self.gridLayout_2.addWidget(ref_row, 2, 1)
+    @property
+    def xmin(self) -> float | None:
+        """The fixed lower x limit, ``None`` while it follows the data."""
+        return self.xmin_value if self.xmin_enabled else None
 
-        self.reference_parameter_widget = QtWidgets.QWidget(self)
-        self.reference_parameter_layout = QtWidgets.QGridLayout(self.reference_parameter_widget)
-        self.reference_parameter_layout.setContentsMargins(0, 0, 0, 0)
-        self.reference_parameter_layout.setHorizontalSpacing(4)
-        self.reference_parameter_layout.setVerticalSpacing(1)
-        self.reference_parameter_widget.hide()
-        self.verticalLayout.insertWidget(1, self.reference_parameter_widget)
+    @xmin.setter
+    def xmin(self, v: float) -> None:
+        self.xmin_value = float(v)
 
-        self.set_reference_modes([])
+    @property
+    def xmax(self) -> float | None:
+        """The fixed upper x limit, ``None`` while it follows the data."""
+        return self.xmax_value if self.xmax_enabled else None
+
+    @xmax.setter
+    def xmax(self, v: float) -> None:
+        self.xmax_value = float(v)
+
+    @property
+    def ymin(self) -> float | None:
+        """The fixed lower y limit, ``None`` while it follows the data."""
+        return self.ymin_value if self.ymin_enabled else None
+
+    @ymin.setter
+    def ymin(self, v: float) -> None:
+        self.ymin_value = float(v)
+
+    @property
+    def ymax(self) -> float | None:
+        """The fixed upper y limit, ``None`` while it follows the data."""
+        return self.ymax_value if self.ymax_enabled else None
+
+    @ymax.setter
+    def ymax(self, v: float) -> None:
+        self.ymax_value = float(v)
+
+    def getCheckState(self, name: str) -> bool:  # noqa: N802 - the drawing code's spelling
+        """Whether the curve *name* is drawn."""
+        return bool(self.curve_visibility.get(name, True))
+
+    def fill_line_widget(self) -> None:
+        """List the parent plot's curves, all drawn."""
+        for key in getattr(self.parent, "lines", {}) or {}:
+            self.curve_visibility.setdefault(key, True)
+
+    # -- the form ------------------------------------------------------------
+
+    def changed(self, *_args) -> None:
+        """A setting changed: redraw the plot."""
+        if self.parent is not None:
+            self.parent.update()
+
+    def curve_rows(self) -> list[dict]:
+        """The curve table's rows."""
+        return [
+            {"index": index, "shown": bool(shown), "name": name}
+            for index, (name, shown) in enumerate(self.curve_visibility.items())
+        ]
+
+    def curve_edited(self, record: dict, key: str, value) -> None:
+        """A curve's E box was flipped."""
+        if key == "shown":
+            self.curve_visibility[str(record["name"])] = bool(value)
+            self.changed()
+
+    # -- reference transform -------------------------------------------------
+
+    def reference_mode_options(self) -> list[tuple[str, str]]:
+        """``(key, label)`` of every reference mode, ``Raw`` first."""
+        return [("raw", "Raw")] + [(key, str(mode.label)) for key, mode in self._reference_modes.items()]
 
     @property
     def reference_mode(self) -> str:
-        """Current reference mode key.
-
-        Returns
-        -------
-        str
-            Selected mode key or ``"raw"``.
-        """
-        data = self.comboBox_reference.currentData()
-        return str(data) if data else "raw"
+        """The selected reference mode key (``"raw"``: none)."""
+        return self._reference_mode if self._reference_mode in self._reference_modes else "raw"
 
     @reference_mode.setter
     def reference_mode(self, key: str) -> None:
-        """Select a reference mode by key.
+        # Kept even while the mode is not offered yet: a project restores the
+        # mode before the plot has asked the model which modes it has.
+        self._reference_mode = str(key or "raw")
 
-        Parameters
-        ----------
-        key : str
-            Mode key.
-        """
-        key = str(key or "raw")
-        idx = self.comboBox_reference.findData(key)
-        if idx < 0:
-            self._pending_reference_mode = key
-            idx = self.comboBox_reference.findData("raw")
-        if idx >= 0:
-            self.comboBox_reference.setCurrentIndex(idx)
-            self._rebuild_reference_parameter_controls(self._pending_reference_parameters)
-
-    @property
-    def reference_parameters(self) -> typing.Dict[str, typing.Any]:
-        """Return current reference-mode parameter values.
-
-        Returns
-        -------
-        dict
-            Parameter values keyed by parameter id.
-        """
-        values = {}
-        for key, widget in self._reference_parameter_widgets.items():
-            spec = self._reference_parameter_specs.get(key)
-            if spec is None:
-                continue
-            values[key] = self._reference_widget_value(widget, spec)
-        return values
-
-    @reference_parameters.setter
-    def reference_parameters(self, values: typing.Mapping[str, typing.Any]) -> None:
-        """Set reference parameter widgets from a mapping.
-
-        Parameters
-        ----------
-        values : mapping
-            Parameter values keyed by parameter id.
-        """
-        if not isinstance(values, dict):
-            return
-        if not self._reference_parameter_widgets:
-            self._pending_reference_parameters = dict(values)
-            return
-        for key, value in values.items():
-            widget = self._reference_parameter_widgets.get(key)
-            spec = self._reference_parameter_specs.get(key)
-            if widget is not None and spec is not None:
-                self._set_reference_widget_value(widget, spec, value)
+    def reference_changed(self, *_args) -> None:
+        """The reference mode changed: redraw."""
+        self.changed()
 
     def selected_reference_mode(self) -> plot_transforms.PlotReferenceMode | None:
-        """Return the selected reference mode object.
-
-        Returns
-        -------
-        PlotReferenceMode or None
-            Selected mode, or None for raw plotting.
-        """
-        key = self.reference_mode
-        return self._reference_modes.get(key)
+        """The selected reference mode, ``None`` for raw plotting."""
+        return self._reference_modes.get(self.reference_mode)
 
     def set_reference_modes(
         self, modes: typing.Iterable[plot_transforms.PlotReferenceMode]
     ) -> None:
-        """Populate the reference-mode selector.
-
-        Parameters
-        ----------
-        modes : iterable
-            Available reference modes.
-        """
-        old_mode = self._pending_reference_mode or self.reference_mode
-        old_parameters = dict(self._pending_reference_parameters)
-        old_parameters.update(self.reference_parameters)
-
-        valid_modes = OrderedDict()
-        for mode in modes or []:
-            if isinstance(mode, plot_transforms.PlotReferenceMode):
-                valid_modes[str(mode.key)] = mode
-
-        signature = tuple(
-            (key, mode.label, tuple((p.key, p.label, p.kind, p.default) for p in mode.parameters))
-            for key, mode in valid_modes.items()
+        """Offer *modes* (the model's) in the reference selector."""
+        self._reference_modes = OrderedDict(
+            (str(mode.key), mode)
+            for mode in modes or []
+            if isinstance(mode, plot_transforms.PlotReferenceMode)
         )
-        if getattr(self, "_reference_mode_signature", None) == signature:
-            self._rebuild_reference_parameter_controls(old_parameters)
-            return
 
-        self._reference_mode_signature = signature
-        self._reference_modes = valid_modes
-
-        self.comboBox_reference.blockSignals(True)
-        try:
-            self.comboBox_reference.clear()
-            self.comboBox_reference.addItem("Raw", "raw")
-            for key, mode in valid_modes.items():
-                self.comboBox_reference.addItem(str(mode.label), key)
-            idx = self.comboBox_reference.findData(old_mode)
-            if idx < 0:
-                idx = self.comboBox_reference.findData("raw")
-            self.comboBox_reference.setCurrentIndex(max(0, idx))
-        finally:
-            self.comboBox_reference.blockSignals(False)
-
-        self._rebuild_reference_parameter_controls(old_parameters)
-
-    def _clear_reference_parameter_controls(self) -> None:
-        """Remove all dynamic reference parameter controls."""
-        while self.reference_parameter_layout.count():
-            item = self.reference_parameter_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-        self._reference_parameter_widgets = {}
-        self._reference_parameter_specs = {}
-
-    def _rebuild_reference_parameter_controls(
-        self, values: typing.Mapping[str, typing.Any] | None = None
-    ) -> None:
-        """Recreate controls for the selected mode's parameter specs.
-
-        Parameters
-        ----------
-        values : mapping, optional
-            Values to preserve where possible.
-        """
-        values = dict(values or {})
-        self._clear_reference_parameter_controls()
+    @property
+    def reference_parameters(self) -> typing.Dict[str, typing.Any]:
+        """The selected mode's parameter values, defaults where unset."""
         mode = self.selected_reference_mode()
-        if mode is None or not mode.parameters:
-            self.reference_parameter_widget.hide()
-            return
+        if mode is None:
+            return {}
+        return {spec.key: self._reference_values.get(spec.key, spec.default) for spec in mode.parameters}
 
-        for row, spec in enumerate(mode.parameters):
-            label = QtWidgets.QLabel(str(spec.label), self.reference_parameter_widget)
-            widget = self._make_reference_parameter_widget(spec)
-            self.reference_parameter_layout.addWidget(label, row, 0)
-            self.reference_parameter_layout.addWidget(widget, row, 1)
-            self._reference_parameter_widgets[spec.key] = widget
-            self._reference_parameter_specs[spec.key] = spec
-            self._set_reference_widget_value(widget, spec, values.get(spec.key, spec.default))
+    @reference_parameters.setter
+    def reference_parameters(self, values: typing.Mapping[str, typing.Any]) -> None:
+        if isinstance(values, dict):
+            self._reference_values.update(values)
 
-        self.reference_parameter_widget.show()
-        self._pending_reference_mode = None
-        self._pending_reference_parameters = {}
-
-    def _make_reference_parameter_widget(
-        self, spec: plot_transforms.PlotReferenceParameter
-    ) -> QtWidgets.QWidget:
-        """Create a Qt widget for a reference parameter.
-
-        Parameters
-        ----------
-        spec : PlotReferenceParameter
-            Parameter declaration.
-
-        Returns
-        -------
-        QWidget
-            New editor widget.
-        """
-        kind = str(spec.kind).lower()
-        if kind == "bool":
-            widget = QtWidgets.QCheckBox(self.reference_parameter_widget)
-            widget.stateChanged.connect(self.SetReference)
-            return widget
-        if kind == "int":
-            widget = QtWidgets.QSpinBox(self.reference_parameter_widget)
-            widget.setRange(
-                int(spec.minimum if spec.minimum is not None else -999999999),
-                int(spec.maximum if spec.maximum is not None else 999999999),
-            )
-            widget.setSingleStep(int(spec.step if spec.step is not None else 1))
-            widget.valueChanged.connect(self.SetReference)
-            return widget
-        if kind == "choice":
-            widget = QtWidgets.QComboBox(self.reference_parameter_widget)
-            for choice in spec.choices:
-                if isinstance(choice, (tuple, list)) and len(choice) >= 2:
-                    widget.addItem(str(choice[1]), choice[0])
-                else:
-                    widget.addItem(str(choice), choice)
-            widget.currentIndexChanged.connect(self.SetReference)
-            return widget
-
-        widget = QtWidgets.QDoubleSpinBox(self.reference_parameter_widget)
-        widget.setRange(
-            float(spec.minimum if spec.minimum is not None else -999999999.0),
-            float(spec.maximum if spec.maximum is not None else 999999999.0),
-        )
-        widget.setDecimals(6)
-        widget.setSingleStep(float(spec.step if spec.step is not None else 0.1))
-        widget.valueChanged.connect(self.SetReference)
-        return widget
-
-    def _reference_widget_value(
-        self, widget: QtWidgets.QWidget, spec: plot_transforms.PlotReferenceParameter
-    ) -> typing.Any:
-        """Return a reference parameter value from a widget.
-
-        Parameters
-        ----------
-        widget : QWidget
-            Editor widget.
-        spec : PlotReferenceParameter
-            Parameter declaration.
-
-        Returns
-        -------
-        object
-            Current widget value.
-        """
-        kind = str(spec.kind).lower()
-        if kind == "bool":
-            return bool(widget.isChecked())
-        if kind == "choice":
-            return widget.currentData()
-        if kind == "int":
-            return int(widget.value())
-        return float(widget.value())
-
-    def _set_reference_widget_value(
-        self,
-        widget: QtWidgets.QWidget,
-        spec: plot_transforms.PlotReferenceParameter,
-        value: typing.Any,
-    ) -> None:
-        """Set a reference parameter widget value.
-
-        Parameters
-        ----------
-        widget : QWidget
-            Editor widget.
-        spec : PlotReferenceParameter
-            Parameter declaration.
-        value : object
-            New value.
-        """
-        widget.blockSignals(True)
-        try:
-            kind = str(spec.kind).lower()
-            if kind == "bool":
-                widget.setChecked(bool(value))
-            elif kind == "choice":
-                idx = widget.findData(value)
-                if idx < 0:
-                    idx = widget.findText(str(value))
-                if idx >= 0:
-                    widget.setCurrentIndex(idx)
-            elif kind == "int":
-                widget.setValue(int(value))
-            else:
-                widget.setValue(float(value))
-        except Exception:
-            pass
-        finally:
-            widget.blockSignals(False)
-
-    def reset_reference_parameters(self) -> None:
-        """Reset selected reference-mode parameters to their defaults."""
+    def reset_reference_parameters(self, *_args) -> None:
+        """Reset the selected mode's parameters to their defaults."""
         mode = self.selected_reference_mode()
         if mode is None:
             return
         for spec in mode.parameters:
-            widget = self._reference_parameter_widgets.get(spec.key)
-            if widget is not None:
-                self._set_reference_widget_value(widget, spec, spec.default)
-        self.SetReference()
+            self._reference_values[spec.key] = spec.default
+        self.changed()
 
-    def _save_current_presets(self) -> None:
-        """Save current axis range as user preset for the active reference mode."""
+    def draw_reference_parameters(self, section, model, state, width: float) -> None:
+        """The ``reference_parameters`` custom section: one row per parameter."""
+        from emtk import im
+
+        mode = self.selected_reference_mode()
+        if mode is None or not mode.parameters:
+            return
+        values = self.reference_parameters
+        if not im.begin_grid("##reference-parameters", (0, 1)):
+            return
+        for row, spec in enumerate(mode.parameters):
+            if row:
+                im.next_row()
+            im.text(str(spec.label))
+            im.next_cell()
+            kind = str(spec.kind).lower()
+            value = values.get(spec.key, spec.default)
+            label = f"##reference-{spec.key}"
+            if kind == "bool":
+                changed, value = im.checkbox(label, bool(value))
+            elif kind == "int":
+                step = int(spec.step if spec.step is not None else 1)
+                changed, value = im.input_int(label, int(value), step)
+            elif kind == "choice":
+                keys = [c[0] if isinstance(c, (tuple, list)) and len(c) >= 2 else c for c in spec.choices]
+                names = [str(c[1]) if isinstance(c, (tuple, list)) and len(c) >= 2 else str(c)
+                         for c in spec.choices]
+                current = next((i for i, k in enumerate(keys) if str(k) == str(value)), 0)
+                changed, picked = im.combo(label, current, names)
+                value = keys[picked] if keys else value
+            else:
+                step = float(spec.step if spec.step is not None else 0.1)
+                changed, value = im.input_float(label, float(value), step, step * 10, "%.6g")
+            if changed:
+                if kind in ("int", "float") or kind not in ("bool", "choice"):
+                    low, high = spec.minimum, spec.maximum
+                    if low is not None:
+                        value = max(value, type(value)(low))
+                    if high is not None:
+                        value = min(value, type(value)(high))
+                self._reference_values[spec.key] = value
+                self.changed()
+        im.end_grid()
+
+    def save_current_presets(self, *_args) -> None:
+        """Save the current axis range as the user preset of the active reference mode."""
         mode = self.selected_reference_mode()
         if mode is None:
             return
-        # Gather current axis values
         entry: dict = {}
-        if self.checkBox_7.isChecked():
+        if self.ymin_enabled or self.ymax_enabled:
             entry["y_range"] = [
-                self.doubleSpinBox_2.value(),
-                self.doubleSpinBox_4.value() if self.checkBox_8.isChecked() else 1.0,
+                self.ymin_value if self.ymin_enabled else 0.0,
+                self.ymax_value if self.ymax_enabled else 1.0,
             ]
-        if self.checkBox_8.isChecked():
-            ymin = self.doubleSpinBox_2.value() if self.checkBox_7.isChecked() else 0.0
-            entry["y_range"] = [ymin, self.doubleSpinBox_4.value()]
-        if self.checkBox_4.isChecked():
+        if self.xmin_enabled or self.xmax_enabled:
             entry["x_range"] = [
-                self.doubleSpinBox.value(),
-                self.doubleSpinBox_3.value() if self.checkBox_6.isChecked() else 1.0,
+                self.xmin_value if self.xmin_enabled else 0.0,
+                self.xmax_value if self.xmax_enabled else 1.0,
             ]
-        if self.checkBox_6.isChecked():
-            xmin = self.doubleSpinBox.value() if self.checkBox_4.isChecked() else 0.0
-            entry["x_range"] = [xmin, self.doubleSpinBox_3.value()]
-        # Load existing user presets, update this mode, save
         user_path = cs.core.settings.get_path("settings") / "reference_presets.json"
         presets: dict = {}
         try:
             if user_path.exists():
-                with open(str(user_path)) as fh:
-                    raw = json.load(fh)
-                    if isinstance(raw, dict):
-                        presets = raw
+                raw = json.loads(user_path.read_text())
+                if isinstance(raw, dict):
+                    presets = raw
         except Exception:
             pass
         presets[str(mode.key)] = entry
         try:
-            with open(str(user_path), "w") as fh:
-                json.dump(presets, fh, indent=2)
-            # Invalidate cache so the new presets are picked up
-            self.parent.__class__._invalidate_presets_cache()
-            # Refresh the plot to apply new presets
-            try:
-                self.parent.update()
-            except Exception:
-                pass
+            user_path.write_text(json.dumps(presets, indent=2))
         except Exception as exc:
             cs.logging.warning("Could not save reference presets: %s", exc)
-
-    @property
-    def plot_ftt(self) -> bool:
-        widget = getattr(self, "checkBox_plot_ftt", None)
-        return bool(widget.isChecked()) if widget is not None else False
-
-    @plot_ftt.setter
-    def plot_ftt(self, v: bool) -> None:
-        widget = getattr(self, "checkBox_plot_ftt", None)
-        if widget is None:
             return
-        if v:
-            widget.setCheckState(2)
-        else:
-            widget.setCheckState(0)
+        type(self.parent)._invalidate_presets_cache()
+        self.changed()
 
-    @property
-    def data_logy(self) -> str:
-        """
-        y-data is plotted logarithmically
-        """
-        return "log" if self.checkBox.isChecked() else "linear"
-
-    @data_logy.setter
-    def data_logy(self, v: str):
-        if v in ("lin", "linear"):
-            self.checkBox.setCheckState(0)
-        else:
-            self.checkBox.setCheckState(2)
-
-    @property
-    def scale_x(self) -> str:
-        return "log" if self.checkBox_2.isChecked() else "linear"
-
-    @scale_x.setter
-    def scale_x(self, v: str):
-        if v in ("lin", "linear"):
-            self.checkBox_2.setCheckState(0)
-        else:
-            self.checkBox_2.setCheckState(2)
-
-    @property
-    def data_is_log_x(self) -> bool:
-        return self.scale_x == "log"
-
-    @property
-    def data_is_log_y(self) -> bool:
-        return self.data_logy == "log"
-
-    @property
-    def ymin(self) -> float:
-        if self.checkBox_7.isChecked():
-            return self.doubleSpinBox_2.value()
-        else:
-            return None
-
-    @ymin.setter
-    def ymin(self, v: float):
-        self.doubleSpinBox_2.setValue(v)
-
-    @property
-    def ymax(self) -> float:
-        if self.checkBox_8.isChecked():
-            return self.doubleSpinBox_4.value()
-        else:
-            return None
-
-    @ymax.setter
-    def ymax(self, v: float):
-        self.doubleSpinBox_4.setValue(v)
-
-    @property
-    def xmin(self) -> float:
-        if self.checkBox_4.isChecked():
-            return self.doubleSpinBox.value()
-        else:
-            return None
-
-    @xmin.setter
-    def xmin(self, v: float):
-        self.doubleSpinBox.setValue(v)
-
-    @property
-    def xmax(self) -> float:
-        if self.checkBox_6.isChecked():
-            return self.doubleSpinBox_3.value()
-        else:
-            return None
-
-    @xmax.setter
-    def xmax(self, v: float):
-        self.doubleSpinBox_3.setValue(v)
-
-    @property
-    def x_shift(self) -> float:
-        return self.doubleSpinBox_6.value()
-
-    @x_shift.setter
-    def x_shift(self, v: float):
-        self.doubleSpinBox_6.setValue(v)
-
-    @property
-    def y_shift(self) -> float:
-        return self.doubleSpinBox_5.value()
-
-    @y_shift.setter
-    def y_shift(self, v: float):
-        self.doubleSpinBox_5.setValue(v)
-
-    @property
-    def is_density(self) -> bool:
-        return bool(self.checkBox_3.isChecked())
-
-    @is_density.setter
-    def is_density(self, v: bool):
-        if v is True:
-            self.checkBox_3.setCheckState(2)
-        else:
-            self.checkBox_3.setCheckState(0)
-
-    @property
-    def display_group(self) -> bool:
-        """
-        If true, display all fits in the group with current fit highlighted
-        """
-        return bool(self.checkBox_9.isChecked())
-
-    @display_group.setter
-    def display_group(self, v: bool):
-        if v is True:
-            self.checkBox_9.setCheckState(2)
-        else:
-            self.checkBox_9.setCheckState(0)
+    # -- project state -------------------------------------------------------
 
     def get_state(self) -> dict:
-        """Return project-serializable line plot controller state.
-
-        Returns
-        -------
-        dict
-            State of the visible plot controls and curve checkboxes.
-        """
-        curve_visibility = {}
-        for i in range(self.treeWidget.topLevelItemCount()):
-            item = self.treeWidget.topLevelItem(i)
-            curve_visibility[item.text(2)] = bool(item.checkState(1))
+        """The settings, for the project file (the old controller's keys)."""
         return {
             "data_logy": self.data_logy,
             "scale_x": self.scale_x,
             "res_logy": self.res_logy,
             "reference_mode": self.reference_mode,
             "reference_parameters": self.reference_parameters,
-            "is_density": self.is_density,
-            "display_group": self.display_group,
-            "plot_ftt": self.plot_ftt,
-            "xmin_enabled": bool(self.checkBox_4.isChecked()),
-            "xmax_enabled": bool(self.checkBox_6.isChecked()),
-            "ymin_enabled": bool(self.checkBox_7.isChecked()),
-            "ymax_enabled": bool(self.checkBox_8.isChecked()),
-            "xmin": float(self.doubleSpinBox.value()),
-            "xmax": float(self.doubleSpinBox_3.value()),
-            "ymin": float(self.doubleSpinBox_2.value()),
-            "ymax": float(self.doubleSpinBox_4.value()),
+            "is_density": bool(self.is_density),
+            "display_group": bool(self.display_group),
+            "plot_ftt": bool(self.plot_ftt),
+            "xmin_enabled": bool(self.xmin_enabled),
+            "xmax_enabled": bool(self.xmax_enabled),
+            "ymin_enabled": bool(self.ymin_enabled),
+            "ymax_enabled": bool(self.ymax_enabled),
+            "xmin": float(self.xmin_value),
+            "xmax": float(self.xmax_value),
+            "ymin": float(self.ymin_value),
+            "ymax": float(self.ymax_value),
             "x_shift": float(self.x_shift),
             "y_shift": float(self.y_shift),
-            "curve_visibility": curve_visibility,
+            "curve_visibility": {k: bool(v) for k, v in self.curve_visibility.items()},
         }
 
     def set_state(self, state: dict) -> None:
-        """Restore line plot controller state from a project.
-
-        Parameters
-        ----------
-        state : dict
-            State produced by :meth:`get_state`.
-        """
+        """Restore :meth:`get_state` and redraw."""
         if not isinstance(state, dict):
             return
-        self.treeWidget.blockSignals(True)
-        try:
-            if "data_logy" in state:
-                self.data_logy = str(state["data_logy"])
-            if "scale_x" in state:
-                self.scale_x = str(state["scale_x"])
-            if "res_logy" in state:
-                self.res_logy = str(state["res_logy"])
-            for key, widget in (
-                ("xmin_enabled", self.checkBox_4),
-                ("xmax_enabled", self.checkBox_6),
-                ("ymin_enabled", self.checkBox_7),
-                ("ymax_enabled", self.checkBox_8),
-            ):
-                if key in state:
-                    widget.setChecked(bool(state[key]))
-            for key, widget in (
-                ("xmin", self.doubleSpinBox),
-                ("xmax", self.doubleSpinBox_3),
-                ("ymin", self.doubleSpinBox_2),
-                ("ymax", self.doubleSpinBox_4),
-                ("x_shift", self.doubleSpinBox_6),
-                ("y_shift", self.doubleSpinBox_5),
-            ):
-                if key in state:
-                    try:
-                        widget.setValue(float(state[key]))
-                    except Exception:
-                        pass
-            if "reference_mode" in state:
-                self.reference_mode = str(state["reference_mode"])
-            if "reference_parameters" in state:
-                self.reference_parameters = state.get("reference_parameters", {})
-            if "is_density" in state:
-                self.is_density = bool(state["is_density"])
-            if "display_group" in state:
-                self.display_group = bool(state["display_group"])
-            if "plot_ftt" in state:
-                self.plot_ftt = bool(state["plot_ftt"])
-            visibility = state.get("curve_visibility")
-            if isinstance(visibility, dict):
-                for i in range(self.treeWidget.topLevelItemCount()):
-                    item = self.treeWidget.topLevelItem(i)
-                    key = item.text(2)
-                    if key in visibility:
-                        item.setCheckState(
-                            1, QtCore.Qt.Checked if visibility[key] else QtCore.Qt.Unchecked
-                        )
-        finally:
-            self.treeWidget.blockSignals(False)
-        try:
-            self.parent.update()
-        except Exception:
-            pass
-
-    def SetReference(self):
-        self.parent.update()
-
-    def SetLog(self):
-        self.parent.update()
-
-    def SetDensity(self):
-        self.parent.update()
-
-    def SetDisplayGroup(self):
-        self.parent.update()
+        if "data_logy" in state:
+            self.data_logy = str(state["data_logy"])
+        if "scale_x" in state:
+            self.scale_x = str(state["scale_x"])
+        if "res_logy" in state:
+            self.res_logy = str(state["res_logy"])
+        for key in ("xmin_enabled", "xmax_enabled", "ymin_enabled", "ymax_enabled",
+                    "is_density", "display_group", "plot_ftt"):
+            if key in state:
+                setattr(self, key, bool(state[key]))
+        for key, attr in (("xmin", "xmin_value"), ("xmax", "xmax_value"), ("ymin", "ymin_value"),
+                          ("ymax", "ymax_value"), ("x_shift", "x_shift"), ("y_shift", "y_shift")):
+            if key in state:
+                try:
+                    setattr(self, attr, float(state[key]))
+                except (TypeError, ValueError):
+                    pass
+        if "reference_mode" in state:
+            self.reference_mode = str(state["reference_mode"])
+        if "reference_parameters" in state:
+            self.reference_parameters = state.get("reference_parameters") or {}
+        visibility = state.get("curve_visibility")
+        if isinstance(visibility, dict):
+            for key, shown in visibility.items():
+                if key in self.curve_visibility:
+                    self.curve_visibility[key] = bool(shown)
+        self.changed()
 
 
 class LinePlot(plotbase.Plot):
     name = "Fit"
-    regionChanged = QtCore.Signal(int, int)
+    settings_view = "lineplot_settings.view.json"
 
     def get_bounds(
         self, fit: cs.core.fitting.fit.Fit, region_selector: cp.handles.Region
     ) -> typing.Tuple[int, int]:
         lb, ub = region_selector.bounds
 
-        x_shift = self.plot_controller.x_shift
+        x_shift = self.settings.x_shift
         lb -= x_shift
         ub -= x_shift
 
         data_x = fit.data.x
         x_len = len(data_x) - 1
 
-        if self.plot_controller.data_is_log_x:
+        if self.settings.data_is_log_x:
             lb, ub = 10.0**lb, 10.0**ub
 
         lb_i: int = np.searchsorted(data_x, lb, side="right")
@@ -855,13 +523,12 @@ class LinePlot(plotbase.Plot):
 
         kwargs["fit"] = fit
         super().__init__(**kwargs)
-        self.plot_controller = LinePlotControl(
+        #: The *Plot settings*: plain state the settings dock draws (emtk).
+        self.settings = LinePlotSettings(
             parent=self, scale_x=scale_x, d_scaley=d_scaley, r_scaley=r_scaley
         )
-        # Fit windows host controls in a separate layout. That host can be
-        # destroyed before this plot and its window-owned deferred callbacks.
-        # Hiding/reparenting is reversible; actual destruction retires the plot.
-        self.plot_controller.destroyed.connect(self._on_controller_destroyed)
+        #: ``(lb_i, ub_i)`` after the fit range was dragged on the plot.
+        self.regionChanged = plotbase.Hook()
 
         # If the plot is associated with a FitGroup containing multiple local fits,
         # default to displaying the full group. Do this once and avoid overriding
@@ -912,8 +579,6 @@ class LinePlot(plotbase.Plot):
             self.region = region
 
             def onRegionUpdate(*_):
-                if self.plot_controller is None:
-                    return
                 # Get the currently selected fit for region update
                 if hasattr(fit, "selected_fit"):
                     current_fit = fit.selected_fit
@@ -922,10 +587,10 @@ class LinePlot(plotbase.Plot):
 
                 self.lb_i, self.ub_i = self.get_bounds(current_fit, region)
                 lb, ub = current_fit.data.x[self.lb_i], current_fit.data.x[self.ub_i]
-                x_shift = self.plot_controller.x_shift
+                x_shift = self.settings.x_shift
                 lb += x_shift
                 ub += x_shift
-                if self.plot_controller.data_is_log_x:
+                if self.settings.data_is_log_x:
                     lb = np.log10(lb)
                     ub = np.log10(ub)
                 self.region.set_bounds(lb, ub)
@@ -984,12 +649,23 @@ class LinePlot(plotbase.Plot):
             )
         self.lines = lines
         self.plots = plots
-        self.plot_controller.fill_line_widget()
+        self.settings.fill_line_widget()
 
-    @QtCore.Slot()
-    def _on_controller_destroyed(self) -> None:
-        """Retire callbacks when the separately hosted controls are destroyed."""
-        self.plot_controller = None
+    def settings_model(self):
+        """The settings spec edits :attr:`settings`."""
+        return self.settings
+
+    def register_settings_sections(self, form) -> None:
+        """The reference transform's parameters are drawn by the settings object."""
+        form.custom["reference_parameters"] = self.settings.draw_reference_parameters
+
+    def get_settings_state(self) -> dict:
+        """The settings, for the project file."""
+        return self.settings.get_state()
+
+    def set_settings_state(self, state: dict) -> None:
+        """Restore :meth:`get_settings_state`."""
+        self.settings.set_state(state)
 
     #: The data panel's share of the stack. The residual strips split the rest,
     #: so data : (a.corr + w.res) is the golden ratio.
@@ -1079,21 +755,7 @@ class LinePlot(plotbase.Plot):
             return
         if len(grouped_fits) <= 1:
             return
-        if self.plot_controller.display_group:
-            self._auto_display_group_applied = True
-            return
-
-        cb = getattr(self.plot_controller, "checkBox_9", None)
-        try:
-            if cb is not None:
-                cb.blockSignals(True)
-            self.plot_controller.display_group = True
-        finally:
-            try:
-                if cb is not None:
-                    cb.blockSignals(False)
-            except Exception:
-                pass
+        self.settings.display_group = True
         self._auto_display_group_applied = True
 
     @staticmethod
@@ -1133,7 +795,7 @@ class LinePlot(plotbase.Plot):
         pen_color = cs.core.settings.colors[color_idx]["hex"]
         lw = cs.core.settings.gui["plot"]["line_width"]
 
-        director = self.plot_controller.director
+        director = self.settings.director
 
         if curve_key in director.keys():
             for ik in director.keys():
@@ -1293,7 +955,7 @@ class LinePlot(plotbase.Plot):
         """
         model = getattr(current_fit, "model", None)
         modes = self._reference_modes_for_model(model)
-        self.plot_controller.set_reference_modes(modes)
+        self.settings.set_reference_modes(modes)
 
     def _metrics_text_alive(self) -> bool:
         """Return True when the overlay text handle can still be drawn to.
@@ -1321,7 +983,7 @@ class LinePlot(plotbase.Plot):
         """
         grouped_fits = getattr(self.fit, "grouped_fits", None)
         show_group = (
-            bool(self.plot_controller.display_group)
+            bool(self.settings.display_group)
             and isinstance(grouped_fits, (list, tuple))
             and len(grouped_fits) > 1
         )
@@ -1332,12 +994,6 @@ class LinePlot(plotbase.Plot):
             except Exception:
                 current_idx = 0
 
-        def _fmt_float(v, nd=3):
-            try:
-                return f"{float(v):.{int(nd)}f}"
-            except Exception:
-                return "?"
-
         header = f"range {int(getattr(current_fit, 'xmin', 0))}\u2013{int(getattr(current_fit, 'xmax', 0))}"
         if show_group:
             # One self-describing line per dataset. A tab-separated table
@@ -1346,16 +1002,16 @@ class LinePlot(plotbase.Plot):
             lines = [header]
             for idx, f in enumerate(grouped_fits):
                 marker = "\u25b8" if idx == current_idx else "  "
-                chi2r = _fmt_float(getattr(f, "chi2r", None))
-                dw = _fmt_float(getattr(f, "durbin_watson", None))
+                chi2r = _fmt_metric(getattr(f, "chi2r", None))
+                dw = _fmt_metric(getattr(f, "durbin_watson", None))
                 lines.append(f"{marker} {idx + 1}  \u03c7\u00b2\u1d63 {chi2r}   DW {dw}")
             return "\n".join(lines)
 
         return "\n".join(
             [
                 header,
-                f"\u03c7\u00b2\u1d63 {_fmt_float(getattr(current_fit, 'chi2r', None))}"
-                f"   DW {_fmt_float(getattr(current_fit, 'durbin_watson', None))}",
+                f"\u03c7\u00b2\u1d63 {_fmt_metric(getattr(current_fit, 'chi2r', None))}"
+                f"   DW {_fmt_metric(getattr(current_fit, 'durbin_watson', None))}",
             ]
         )
 
@@ -1387,11 +1043,8 @@ class LinePlot(plotbase.Plot):
             return None
         return [a_min, a_max]
 
-    @QtCore.Slot()
     def update(self, only_fit_range: bool = False, *args, **kwargs) -> None:
-        """Refresh an active plot; retired controls end its update lifetime."""
-        if self.plot_controller is None:
-            return
+        """Redraw the curves from the current fit."""
         super().update(*args, **kwargs)
 
         # Auto-enable group display once for multi-fit groups (do not override
@@ -1402,15 +1055,15 @@ class LinePlot(plotbase.Plot):
             pass
 
         fit = self.fit
-        data_log_y = self.plot_controller.data_is_log_y
-        data_log_x = self.plot_controller.data_is_log_x
-        director = self.plot_controller.director
+        data_log_y = self.settings.data_is_log_y
+        data_log_x = self.settings.data_is_log_x
+        director = self.settings.director
 
         curves = fit.get_curves()
         data = curves["data"]
 
-        y_shift = self.plot_controller.y_shift
-        x_shift = self.plot_controller.x_shift
+        y_shift = self.settings.y_shift
+        x_shift = self.settings.x_shift
 
         # update region selector (set_limits/set_bounds each block the region's
         # signals internally, so no manual blockSignals dance is needed)
@@ -1447,7 +1100,7 @@ class LinePlot(plotbase.Plot):
         self.region.set_bounds(lb, ub)
 
         # Handle group display mode
-        if self.plot_controller.display_group and hasattr(self.fit, "grouped_fits"):
+        if self.settings.display_group and hasattr(self.fit, "grouped_fits"):
             # Display all fits in the group
             self._plot_group_curves(fit, data_log_x, data_log_y, director, x_shift, y_shift)
         elif hasattr(self.fit, "grouped_fits"):
@@ -1469,14 +1122,14 @@ class LinePlot(plotbase.Plot):
 
         # Set manual scale
         xRange = self._axis_range(
-            self.plot_controller.xmin,
-            self.plot_controller.xmax,
+            self.settings.xmin,
+            self.settings.xmax,
             data.x,
             data_log_x,
         )
         yRange = self._axis_range(
-            self.plot_controller.ymin,
-            self.plot_controller.ymax,
+            self.settings.ymin,
+            self.settings.ymax,
             data.y,
             data_log_y,
         )
@@ -1488,8 +1141,8 @@ class LinePlot(plotbase.Plot):
                 # Y-axis preset
                 if (
                     ref_mode.y_range is not None
-                    and not self.plot_controller.checkBox_7.isChecked()
-                    and not self.plot_controller.checkBox_8.isChecked()
+                    and not self.settings.ymin_enabled
+                    and not self.settings.ymax_enabled
                 ):
                     y_lo, y_hi = ref_mode.y_range
                     span = y_hi - y_lo
@@ -1499,8 +1152,8 @@ class LinePlot(plotbase.Plot):
                 # X-axis preset
                 if (
                     ref_mode.x_range is not None
-                    and not self.plot_controller.checkBox_4.isChecked()
-                    and not self.plot_controller.checkBox_6.isChecked()
+                    and not self.settings.xmin_enabled
+                    and not self.settings.xmax_enabled
                 ):
                     x_lo, x_hi = ref_mode.x_range
                     span = x_hi - x_lo
@@ -1539,7 +1192,7 @@ class LinePlot(plotbase.Plot):
         # Determine whether this is a multi-fit group display.
         grouped_fits = getattr(self.fit, "grouped_fits", None)
         show_group = (
-            bool(self.plot_controller.display_group)
+            bool(self.settings.display_group)
             and isinstance(grouped_fits, (list, tuple))
             and len(grouped_fits) > 1
         )
@@ -1550,17 +1203,11 @@ class LinePlot(plotbase.Plot):
             except Exception:
                 current_idx = 0
 
-        def _fmt_float(v, nd=4):
-            try:
-                return f"{float(v):.{int(nd)}f}"
-            except Exception:
-                return "?"
-
         if show_group:
             rows = []
             for idx, f in enumerate(grouped_fits):
-                chi2r = _fmt_float(getattr(f, "chi2r", None), nd=4)
-                dw = _fmt_float(getattr(f, "durbin_watson", None), nd=4)
+                chi2r = _fmt_metric(getattr(f, "chi2r", None), nd=4)
+                dw = _fmt_metric(getattr(f, "durbin_watson", None), nd=4)
                 if idx == current_idx:
                     row_style = "font-weight: 700; background-color: #2a2a2a;"
                 else:
@@ -1591,8 +1238,8 @@ class LinePlot(plotbase.Plot):
             "<div style='name-align: center'>"
             f"<span style='color: #FF0; font-size: {font_pt}pt;'>"
             f"Range {int(getattr(current_fit, 'xmin', 0))}, {int(getattr(current_fit, 'xmax', 0))}<br/>"
-            f"&Chi;<sup>2</sup>={_fmt_float(getattr(current_fit, 'chi2r', None), nd=4)}<br/>"
-            f"DW={_fmt_float(getattr(current_fit, 'durbin_watson', None), nd=4)}"
+            f"&Chi;<sup>2</sup>={_fmt_metric(getattr(current_fit, 'chi2r', None), nd=4)}<br/>"
+            f"DW={_fmt_metric(getattr(current_fit, 'durbin_watson', None), nd=4)}"
             "</span></div>"
         )
 
@@ -1609,7 +1256,7 @@ class LinePlot(plotbase.Plot):
         PlotReferenceMode or None
             Selected mode for this model, or None for raw plotting.
         """
-        key = self.plot_controller.reference_mode
+        key = self.settings.reference_mode
         if key == "raw":
             return None
         for mode in self._reference_modes_for_model(model):
@@ -1671,7 +1318,7 @@ class LinePlot(plotbase.Plot):
             group_fits=tuple(group_fits or ()),
             group_index=group_index,
             selected_group_index=selected_group_index,
-            parameters=self.plot_controller.reference_parameters,
+            parameters=self.settings.reference_parameters,
         )
         if not mode.applies(context):
             return plot_transforms.PlotReferenceResult(x=x, y=y)
@@ -1742,7 +1389,7 @@ class LinePlot(plotbase.Plot):
                 y += y_shift
                 x += x_shift
 
-            if self.plot_controller.is_density and curve_settings["allow_density"]:
+            if self.settings.is_density and curve_settings["allow_density"]:
                 y[1:] = y[1:] / np.diff(x)
 
             # Base data for plotting: either full curve or fit-range only
@@ -1754,7 +1401,7 @@ class LinePlot(plotbase.Plot):
                 y_plot = y
 
             line.set_data(x_plot, y_plot)
-            if not self.plot_controller.getCheckState(curve_key):
+            if not self.settings.getCheckState(curve_key):
                 line.hide()
             else:
                 line.show()
@@ -1817,7 +1464,7 @@ class LinePlot(plotbase.Plot):
                 y += y_shift
                 x += x_shift
 
-            if self.plot_controller.is_density and curve_settings["allow_density"]:
+            if self.settings.is_density and curve_settings["allow_density"]:
                 y[1:] = y[1:] / np.diff(x)
 
             # In grouped display mode, vertically separate weighted residuals so
@@ -1886,7 +1533,7 @@ class LinePlot(plotbase.Plot):
             line.set_data(x_plot, y_plot)
 
             # Show/hide based on checkbox state
-            if not self.plot_controller.getCheckState(curve_key):
+            if not self.settings.getCheckState(curve_key):
                 line.hide()
             else:
                 line.show()

@@ -635,14 +635,20 @@ class StateSchemeWidget(QtWidgets.QWidget):
         painter.end()
 
 
-class StateSchemePlot(QtWidgets.QWidget):
+def _plot_base():
+    from chisurf.gui.plots.plotbase import Plot
+
+    return Plot
+
+
+class StateSchemePlot(_plot_base()):
     """The fit window's "State Scheme" page, drawn by emtk.
 
-    The page object is a hidden ``QWidget`` only because fit-window pages are;
-    what it shows is :meth:`emtk_draw`: the preset bar (when the model has
-    presets or a scheme file) and a
-    :class:`~chisurf.gui.plots.state_scheme_emtk.SchemeCanvas`, with the rate
-    field a double-clicked badge opens.
+    A Qt-free page (:class:`~chisurf.gui.plots.plotbase.Plot`); what it shows is
+    :meth:`emtk_draw`: the preset bar (when the model has presets or a scheme
+    file) and a :class:`~chisurf.gui.plots.state_scheme_emtk.SchemeCanvas`,
+    with the rate field a double-clicked badge opens. *Load*/*Save* open
+    emtk's file dialog in place of the diagram. It has no plot settings.
     """
 
     name = "State Scheme"
@@ -655,11 +661,12 @@ class StateSchemePlot(QtWidgets.QWidget):
         labels_attr: str = "state_names",
         **options,
     ):
-        super().__init__()
+        super().__init__(fit)
         from chisurf.gui.plots.state_scheme_emtk import SchemeBinding, SchemeCanvas
 
-        self.fit = fit
-        self.plot_controller = QtWidgets.QWidget()
+        #: The open emtk file dialog and whether it saves, or ``None``.
+        self._dialog = None
+        self._dialog_saves = False
         model = getattr(fit, "model", None) if fit is not None else None
         self.binding = SchemeBinding(
             model,
@@ -691,6 +698,7 @@ class StateSchemePlot(QtWidgets.QWidget):
 
     def set_refresh_target(self, callback) -> None:
         """Repaint requests go to the surface drawing this page."""
+        super().set_refresh_target(callback)
         self.canvas.set_refresh_target(callback)
 
     def update_plot(self, *args, **kwargs):
@@ -701,22 +709,44 @@ class StateSchemePlot(QtWidgets.QWidget):
         super().update(*args, **kwargs)
         self.canvas.refresh()
 
-    def _ask_path(self, save: bool) -> str:
+    def open_dialog(self, save: bool) -> None:
+        """Open emtk's file dialog to load (or save) a kinetics scheme."""
+        from emtk.file_dialog import FileDialog
+
         if save:
-            path, _ = QtWidgets.QFileDialog.getSaveFileName(
-                None, "Save kinetics scheme", "custom_scheme.json", "JSON files (*.json)"
-            )
+            self._dialog = FileDialog("Save kinetics scheme", mode="save",
+                                      filename="custom_scheme.json",
+                                      filters="JSON files (*.json)")
         else:
-            path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                None, "Load kinetics scheme", "", "JSON files (*.json);;All files (*)"
-            )
-        return path or ""
+            self._dialog = FileDialog("Load kinetics scheme", mode="open",
+                                      filters="JSON files (*.json);;All files (*)")
+        self._dialog_saves = bool(save)
+        self.request_redraw()
+
+    def _draw_dialog(self) -> None:
+        """The open file dialog, in place of the diagram; a choice loads or saves."""
+        from emtk import im
+
+        im.text(self._dialog.title)
+        result = self._dialog.draw()
+        if result:
+            path, saves = result[0], self._dialog_saves
+            self._dialog = None
+            if saves:
+                self.binding.save(path)
+            else:
+                self.binding.load(path)
+        elif result is False:
+            self._dialog = None
 
     def emtk_draw(self, box) -> None:
         """Preset bar, the diagram, and the rate field while one is typed."""
         from emtk import im
 
         binding = self.binding
+        if self._dialog is not None:
+            self._draw_dialog()
+            return
         if self.show_toolbar:
             names = binding.preset_names() or ["Custom"]
             current = names.index(binding.preset()) if binding.preset() in names else 0
@@ -728,16 +758,12 @@ class StateSchemePlot(QtWidgets.QWidget):
             if binding.can_load():
                 im.same_line()
                 if im.small_button("📂 Load"):
-                    path = self._ask_path(save=False)
-                    if path:
-                        binding.load(path)
+                    self.open_dialog(save=False)
                 im.set_item_tooltip("Load a kinetics scheme from a JSON file.")
             if binding.can_save():
                 im.same_line()
                 if im.small_button("💾 Save"):
-                    path = self._ask_path(save=True)
-                    if path:
-                        binding.save(path)
+                    self.open_dialog(save=True)
                 im.set_item_tooltip("Save this kinetics scheme to a JSON file.")
             im.same_line()
         if im.small_button("Reset view"):

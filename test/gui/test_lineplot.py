@@ -3,12 +3,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from qtpy import QtCore, QtWidgets
 
 import chisurf.core.plotting.transforms as plot_transforms
 from chisurf.gui.plots.lineplot.lineplot import (
     LinePlot,
-    LinePlotControl,
+    LinePlotSettings,
     _load_reference_presets,
 )
 
@@ -51,35 +50,28 @@ def test_group_display_uses_selected_fit_when_available():
     )
 
 
-def test_lineplot_without_reference_modes_uses_raw(qtbot):
-    """LinePlotControl should expose raw mode when no modes are registered."""
-    parent = QtWidgets.QWidget()
-    qtbot.addWidget(parent)
-    controller = LinePlotControl(parent=parent)
-    qtbot.addWidget(controller)
+def test_lineplot_without_reference_modes_uses_raw():
+    """The settings offer only raw mode when no modes are registered."""
+    controller = LinePlotSettings()
 
     controller.set_reference_modes([])
 
     assert controller.reference_mode == "raw"
-    assert controller.comboBox_reference.count() == 1
+    assert controller.reference_mode_options() == [("raw", "Raw")]
 
 
-def test_lineplot_controller_state_roundtrip(qtbot):
-    """LinePlot controller state should be project-serializable."""
-    parent = QtWidgets.QWidget()
-    qtbot.addWidget(parent)
-    source = LinePlotControl(parent=parent)
-    target = LinePlotControl(parent=parent)
-    qtbot.addWidget(source)
-    qtbot.addWidget(target)
+def test_lineplot_controller_state_roundtrip():
+    """LinePlot settings should be project-serializable."""
+    source = LinePlotSettings()
+    target = LinePlotSettings()
 
     source.scale_x = "log"
     source.data_logy = "log"
     source.x_shift = 1.25
     source.y_shift = -0.5
     source.display_group = True
-    source.checkBox_4.setChecked(True)
-    source.doubleSpinBox.setValue(2.0)
+    source.xmin_enabled = True
+    source.xmin_value = 2.0
     mode = plot_transforms.PlotReferenceMode(
         key="scale",
         label="Scale",
@@ -105,18 +97,16 @@ def test_lineplot_controller_state_roundtrip(qtbot):
     assert target.x_shift == 1.25
     assert target.y_shift == -0.5
     assert target.display_group is True
-    assert target.checkBox_4.isChecked() is True
-    assert target.doubleSpinBox.value() == 2.0
+    assert target.xmin_enabled is True
+    assert target.xmin == 2.0
     assert target.reference_mode == "scale"
     assert target.reference_parameters["factor"] == 3.5
 
 
-def test_reference_mode_callback_receives_parameters(qtbot):
+def test_reference_mode_callback_receives_parameters():
     """LinePlot should pass GUI parameter values into selected callbacks."""
     plot = LinePlot.__new__(LinePlot)
-    parent = QtWidgets.QWidget()
-    qtbot.addWidget(parent)
-    plot.plot_controller = LinePlotControl(parent=parent)
+    plot.settings = LinePlotSettings()
     plot._reference_y_label_override = None
     x = np.array([1.0, 2.0])
     y = np.array([5.0, 9.0])
@@ -146,9 +136,9 @@ def test_reference_mode_callback_receives_parameters(qtbot):
             ]
 
     model = MockModel()
-    plot.plot_controller.set_reference_modes(model.get_plot_reference_modes())
-    plot.plot_controller.reference_mode = "scale"
-    plot.plot_controller.reference_parameters = {"factor": 3.0}
+    plot.settings.set_reference_modes(model.get_plot_reference_modes())
+    plot.settings.reference_mode = "scale"
+    plot.settings.reference_parameters = {"factor": 3.0}
 
     result = plot._apply_reference_mode_to_curve(
         fit=None,
@@ -161,12 +151,10 @@ def test_reference_mode_callback_receives_parameters(qtbot):
     np.testing.assert_allclose(result.y, y * 3.0)
 
 
-def test_reference_mode_hidden_result(qtbot):
+def test_reference_mode_hidden_result():
     """LinePlot reference modes may hide non-applicable curves."""
     plot = LinePlot.__new__(LinePlot)
-    parent = QtWidgets.QWidget()
-    qtbot.addWidget(parent)
-    plot.plot_controller = LinePlotControl(parent=parent)
+    plot.settings = LinePlotSettings()
     plot._reference_y_label_override = None
     x = np.array([1.0, 2.0])
     y = np.array([6.0, 10.0])
@@ -187,8 +175,8 @@ def test_reference_mode_hidden_result(qtbot):
             ]
 
     model = MockModel()
-    plot.plot_controller.set_reference_modes(model.get_plot_reference_modes())
-    plot.plot_controller.reference_mode = "hide"
+    plot.settings.set_reference_modes(model.get_plot_reference_modes())
+    plot.settings.reference_mode = "hide"
 
     result = plot._apply_reference_mode_to_curve(
         fit=None,
@@ -392,3 +380,14 @@ def test_the_legend_is_shown_when_the_setting_asks_for_it():
     src = _lineplot_source()
     assert "show_legend" in src
     assert 'plots["main_plot"].legend(' in src
+
+
+def test_a_huge_chi2_is_printed_short():
+    """An unfitted χ² of 1e180 must not become a line of digits across the plot."""
+    from chisurf.gui.plots.lineplot.lineplot import _fmt_metric
+
+    assert _fmt_metric(2.9131708e180) == "2.913e+180"
+    assert _fmt_metric(1.2345) == "1.234" or _fmt_metric(1.2345) == "1.235"
+    assert _fmt_metric(0.0) == "0.000"
+    assert _fmt_metric(None) == "?"
+    assert len(_fmt_metric(123456789.0, nd=4)) <= 12

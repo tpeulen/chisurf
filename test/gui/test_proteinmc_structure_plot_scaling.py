@@ -60,7 +60,6 @@ def test_structure_plot_uses_angstrom_scale_factor(qapp, qtbot, monkeypatch):
     fit = SimpleNamespace(model=model, name="fit")
 
     plot = ProteinMCStructurePlot(fit=fit)
-    qtbot.addWidget(plot)
     plot.viewer  # chimol starts when its viewer is first asked for
 
     assert len(calls) == 1, f"Expected one ChimolView construction, got {calls}"

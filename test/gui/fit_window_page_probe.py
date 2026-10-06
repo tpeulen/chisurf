@@ -4,9 +4,10 @@ Child process of ``test_fit_window_pages_all_models.py``::
 
     python -m test.gui.fit_window_page_probe <case dir> <out dir> <case>
 
-Writes ``<out dir>/<case>.json`` with, per page, the plot class, what the page
-translator could not draw in emtk (``missing``) and which pages the surface laid
-over itself as Qt widgets (``islands``), and a PNG of every page.
+Writes ``<out dir>/<case>.json`` with, per page, the plot class, whether the
+page object is a Qt widget (``is_widget``; it must not be), whether it declares
+nothing the surface can draw (``missing``), whether its *Plot settings* drew
+(``settings_error``), and a PNG of every page and of its settings.
 """
 
 from __future__ import annotations
@@ -76,6 +77,8 @@ def main() -> None:
     directory, out, case = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
     report = {"case": case, "pages": [], "errors": []}
     try:
+        from qtpy import QtWidgets
+
         from chisurf.gui.widgets.fitting.fit_subwindow import FitSubWindow
 
         app, main_window, result = _open_main(directory)
@@ -95,14 +98,22 @@ def main() -> None:
                     sub.refresh_current_plot()
                     _frames(app, area)
                     body = area.surface.page_body(index)
-                    record["plot_class"] = type(area.widget(index)).__name__
+                    page = area.widget(index)
+                    record["plot_class"] = type(page).__name__
+                    record["is_widget"] = isinstance(page, QtWidgets.QWidget)
                     record["missing"] = sorted(set(body.missing)) if body else ["<no body>"]
                     _frames(app, area, 3)
-                    record["islands"] = area.island_indices()
                     name = title.replace(" ", "_").replace("/", "_")
                     png = out / f"{case}_w{number}_p{index}_{name}.png"
                     sub.grab().save(str(png))
                     record["png"] = str(png)
+                    sub.show_plot_settings()
+                    host = sub.plot_settings
+                    host.resize(440, 640)
+                    host.host.repaint()
+                    error = host.surface.last_error
+                    record["settings_error"] = None if error is None else repr(error)
+                    host.grab().save(str(out / f"{case}_w{number}_p{index}_{name}_settings.png"))
                 except Exception:
                     record["error"] = traceback.format_exc()[-1500:]
                 report["pages"].append(record)

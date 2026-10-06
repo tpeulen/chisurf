@@ -105,11 +105,12 @@ class FitSubWindow(CustomMdiSubWindow):
         rect = self.plot_tab_widget.geometry()
         self.setGeometry(rect)
 
-        self.current_plot_controller = QtWidgets.QWidget(self)
-        self.current_plot_controller.hide()
+        #: The page whose tab is current; its settings are what the main
+        #: window's *Plot settings* dock shows (one emtk surface for all pages).
+        self.current_page = None
+        self._control_layout = control_layout
 
         # Lazy plot instantiation: create lightweight tab containers now, build plots on demand
-        self._control_layout = control_layout
         from chisurf.gui.widgets.models.model_editor import model_plot_specs
 
         self._plot_specs = model_plot_specs(fit.model)
@@ -184,11 +185,7 @@ class FitSubWindow(CustomMdiSubWindow):
         for idx, plot in enumerate(getattr(self, "_plots_all", []) or []):
             if plot is None:
                 continue
-            controller = getattr(plot, "plot_controller", None)
-            controller_state = {}
-            get_controller_state = getattr(controller, "get_state", None)
-            if callable(get_controller_state):
-                controller_state = get_controller_state()
+            controller_state = plot.get_settings_state()
             plot_state = {}
             get_plot_state = getattr(plot, "get_state", None)
             if callable(get_plot_state):
@@ -273,10 +270,8 @@ class FitSubWindow(CustomMdiSubWindow):
                     set_plot_state(plot_state)
                     applied = True
                 controller_state = rec.get("controller")
-                controller = getattr(plot, "plot_controller", None)
-                set_controller_state = getattr(controller, "set_state", None)
-                if isinstance(controller_state, dict) and callable(set_controller_state):
-                    set_controller_state(controller_state)
+                if isinstance(controller_state, dict):
+                    plot.set_settings_state(controller_state)
                     applied = True
 
         dock_state = state.get("dock_layout")
@@ -407,10 +402,6 @@ class FitSubWindow(CustomMdiSubWindow):
             return self._plots_all[idx]
         plot_class, kwargs = self._plot_specs[idx]
         plot = plot_class(self.fit, **kwargs)
-        # The surface draws the plot; its controls go to the options panel.
-        plot.plot_controller.hide()
-        self.plot_tab_widget.adopt(plot)
-        self._control_layout.addWidget(plot.plot_controller)
         # Track in storage lists
         self._plots_all[idx] = plot
         self._created_plots.append(plot)
@@ -461,18 +452,13 @@ class FitSubWindow(CustomMdiSubWindow):
         idx = self.plot_tab_widget.currentIndex()
         # Ensure the selected tab's plot exists
         plot = self.ensure_plot_created(idx)
-        # Toggle controllers
-        try:
-            self.current_plot_controller.hide()
-        except Exception:
-            pass
-        if plot is None or not hasattr(plot, "plot_controller"):
+        self.current_page = plot
+        if plot is None:
             return
-        self.current_plot_controller = plot.plot_controller
-        try:
-            self.current_plot_controller.show()
-        except Exception:
-            pass
+        host = self.plot_settings
+        if host is not None and (host.owner is self or host.owner_gone()
+                                 or self.isActiveWindow()):
+            self.show_plot_settings()
         # Ensure the newly visible plot refreshes its content; we defer the
         # heavy update to the next event-loop turn to avoid deep re-entrancy
         # during fit creation.
@@ -495,6 +481,32 @@ class FitSubWindow(CustomMdiSubWindow):
             status_bar().showMessage(msg)
         else:
             cs.logging.info(msg)
+
+    @property
+    def plot_settings(self):
+        """The main window's *Plot settings* host, or ``None`` without a main window."""
+        if self._control_layout is None:
+            return None
+        from chisurf.gui.plots.emtk_settings import host_in
+
+        return host_in(self._control_layout)
+
+    @property
+    def current_plot_controller(self):
+        """What the options dock shows for this window: the settings host."""
+        return self.plot_settings
+
+    def _settings_shows_me(self) -> bool:
+        """Whether the settings dock shows one of this window's pages."""
+        host = self.plot_settings
+        return host is not None and host.owner is self
+
+    def show_plot_settings(self) -> None:
+        """Show the current page's settings in the *Plot settings* dock."""
+        host = self.plot_settings
+        if host is not None:
+            host.show_page(self.current_page, owner=self)
+            host.show()
 
     def closeEvent(self, event: QtCore.QEvent):
         self.save_fit_dock_layout_state()
@@ -523,6 +535,8 @@ class FitSubWindow(CustomMdiSubWindow):
                 event.ignore()
         else:
             event.accept()
+        if event.isAccepted() and self._settings_shows_me():
+            self.plot_settings.show_page(None)
 
     def ensure_code_created(self):
         """Build the Code face once, when it is first shown."""

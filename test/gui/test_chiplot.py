@@ -556,8 +556,6 @@ def test_migrated_modules_import(qapp):
         # Batch 26
         "chisurf.gui.plots.proteinMC",
         # Batch 27
-        "chisurf.gui.plots._qwt_compat",
-        "chisurf.gui.plots.global_tcspc.global_tcspc",
         # NB: surfaceplot was deleted with the orphan sweep (Batch 31) — the
         # module is gone, so it cannot be checked for import cleanliness here.
         # Batch 28

@@ -261,9 +261,7 @@ def test_acceptor_density_distribution_tab_binds_its_declared_donor_spectrum(qap
 
     plot = DistributionPlot(fit, **options)
     try:
-        plot.show()
-        qapp.processEvents()
-        assert plot.plot_controller.selector.currentText() == "Donor lifetimes"
+        assert plot.distribution_type == "Donor lifetimes"
         option = options["distribution_options"]["Donor lifetimes"]
         assert option["attribute"] == "donor_lifetime_spectrum"
         assert np.asarray(getattr(model, option["attribute"])).size >= 2

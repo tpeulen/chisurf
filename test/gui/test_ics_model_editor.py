@@ -212,10 +212,9 @@ def test_residual_2d_plot_draws_and_maps_the_roi(qapp):
     assert image is not None, "no image drawn"
     assert np.array_equal(image.get_image(), plot._image)
     for name in ("RdBu", "bwr", "viridis"):
-        plot.plot_controller.cb_cmap.setCurrentText(name)  # recolours without raising
-    plot.plot_controller.sb_vmin.setValue(-2.0)
-    plot.plot_controller.sb_vmax.setValue(3.0)
-    plot.apply_levels_from_controller()
+        plot.colormap = name  # recolours without raising, as the settings form writes it
+    plot.vmin = -2.0
+    plot.vmax = 3.0
     assert image.get_levels() == pytest.approx((-2.0, 3.0))
     seen = []
     plot.regionChanged.connect(lambda lo, hi: seen.append((lo, hi)))

@@ -1,0 +1,217 @@
+{
+ "LinePlot": {
+  "case": "30",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/LinePlot_0.png"
+  ],
+  "inventory": {
+   "controls": [
+    "#",
+    "0",
+    "1",
+    "2",
+    "3",
+    "autocorrelation",
+    "data",
+    "density",
+    "displaygroup",
+    "e",
+    "logx",
+    "logy(fit)",
+    "model",
+    "name",
+    "raw",
+    "reference",
+    "weightedresiduals",
+    "x-shift",
+    "xmax",
+    "xmin",
+    "y-shift",
+    "ymax",
+    "ymin",
+    "\ud83d\udcbe",
+    "\ud83d\udd04"
+   ],
+   "labels": [
+    "Reference",
+    "x-shift",
+    "y-shift"
+   ],
+   "buttons": [
+    "Density",
+    "display group",
+    "logX",
+    "logY(fit)",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin",
+    "\ud83d\udcbe",
+    "\ud83d\udd04"
+   ],
+   "line_edits": 6,
+   "combos": 1,
+   "spin_boxes": 6,
+   "tables": 3
+  }
+ },
+ "StateSchemePlot": {
+  "case": "30",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/StateSchemePlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "FitTablePlotEmtk": {
+  "case": "30",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/FitTablePlotEmtk_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "FitInfo": {
+  "case": "30",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/FitInfo_0.png",
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/FitInfo_1.png",
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/FitInfo_2.png",
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/FitInfo_3.png"
+  ],
+  "inventory": {
+   "controls": [
+    "+",
+    "copytoclipboard",
+    "drag&dropfilesorurlstoaddexternaldatareferences(ptu/tttr/csv).detector/channelinfogoesinthemetadatatab.",
+    "filepath/url",
+    "format",
+    "key",
+    "savetofile",
+    "value",
+    "\u2212",
+    "\ud83d\udd04"
+   ],
+   "labels": [
+    "Drag & drop files or URLs to add external data references (PTU/TTTR/CSV).\nDetector/ channel info goes in the Metadata tab."
+   ],
+   "buttons": [
+    "+",
+    "Copy to clipboard",
+    "Save to file",
+    "\u2212",
+    "\ud83d\udd04"
+   ],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 6
+  }
+ },
+ "ParameterScanPlot": {
+  "case": "30",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/ParameterScanPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [
+    "boundrange",
+    "parameter",
+    "pvalue",
+    "scan",
+    "scanrange",
+    "smartscan",
+    "update"
+   ],
+   "labels": [
+    "Parameter",
+    "Scan range",
+    "p value"
+   ],
+   "buttons": [
+    "Bound range",
+    "Smart scan",
+    "scan",
+    "update"
+   ],
+   "line_edits": 4,
+   "combos": 1,
+   "spin_boxes": 3,
+   "tables": 0
+  }
+ },
+ "ResidualPlot": {
+  "case": "30",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/ResidualPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "PosteriorGraphPlot": {
+  "case": "30",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/PosteriorGraphPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "SamplingDiagnosticsPlot": {
+  "case": "30",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/SamplingDiagnosticsPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "ConditionalScanPlot": {
+  "case": "30",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/ConditionalScanPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ }
+}

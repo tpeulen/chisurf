@@ -82,7 +82,7 @@ for i, (plot_class, options) in enumerate(specs):
     app.processEvents()
     key = declared[i].key if i < len(declared) else None  # then the fit-level pages
     if key == "distribution":
-        config = plot.plot_controller.parameter_editor.dict
+        config = plot.options
         expected = config["accessor"](group, **config.get("accessor_kwargs", {}))
         traces = plot.distribution_plot.series()
         assert len(traces) >= 2
@@ -94,14 +94,17 @@ for i, (plot_class, options) in enumerate(specs):
     if key == "fit_info":
         editor = plot.metadata_editor
         assert editor.as_dict() == metadata
-        combo = editor.table.cellWidget(0, 0)
-        assert combo.findText("_unregistered.lab_key") >= 0
-        combo.setCurrentText("_unregistered.edited_key")
-        editor.table.item(0, 1).setText("edited stored value")
+        # The stored, unregistered key is offered by the key catalogue.
+        assert "_unregistered.lab_key" in editor.catalogue()
+        row = editor.metadata_rows()[0]
+        editor.select_row(row)
+        editor.detail_key = "_unregistered.edited_key"
+        editor.edited(row, "value", "edited stored value")
         edited = {"_unregistered.edited_key": "edited stored value", "pH": "7.4"}
         assert editor.as_dict() == edited
         assert group.flr_metadata == edited
-        plot.plot_controller.setCurrentWidget(editor)
+        plot.tabs.select(plot.TABS.index("Metadata"))
+        window.show_plot_settings()
         app.processEvents()
     for size in ((1200, 800), (800, 600)):
         host.resize(*size)

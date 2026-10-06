@@ -4,8 +4,9 @@ The fit window's "Data table" page was the last plot page whose whole content
 was a classic Qt widget stack (``ChiTableWidget`` plus Qt tool buttons). The
 emtk port renders the table, the toolbar and the status line through emtk's
 ``DataTable``/``Button`` widgets and keeps every routing behaviour (x/data and
-mask edits reach the fit and the fitting client). The fit window is one emtk
-surface, so this is the only Data-table page it can show.
+mask edits reach the fit and the fitting client). The page is no widget at all:
+the fit window's emtk surface draws it, and the parameter editor and the CSV
+chooser that were Qt dialogs are drawn in its place.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from chisurf.gui.plots.table_plot import _BASE_COLUMNS  # noqa: E402
+from chisurf.gui.plots.table_plot_emtk import _BASE_COLUMNS  # noqa: E402
 
 
 class _Curve:
@@ -66,30 +67,19 @@ class _FakeClient:
         return _record
 
 
+WIDTH, HEIGHT = 760.0, 420.0
+
+
 @pytest.fixture
-def emtk_plot(qapp, monkeypatch):
-    """A shown emtk Data-table plot over a fake fit, plus the recorded client."""
+def emtk_plot(monkeypatch):
+    """An emtk Data-table page over a fake fit, plus the recorded client."""
     from chisurf.gui.plots.table_plot_emtk import FitTablePlotEmtk
 
     client = _FakeClient()
-    monkeypatch.setattr("chisurf.gui.plots.table_plot.get_fitting_client", lambda: client)
+    monkeypatch.setattr("chisurf.gui.plots.table_plot_emtk.get_fitting_client", lambda: client)
     plot = FitTablePlotEmtk(_FakeFit())
-    plot.resize(760, 420)
-    plot.show()
     yield plot, client
-    # Tear down while the interpreter is alive: a host whose control wrapper
-    # dies at shutdown raises inside focusOutEvent and aborts the process.
-    try:
-        plot._host.clearFocus()
-        plot.table.cancel_edit()
-    except RuntimeError:
-        pass
-    plot.close()
-    plot.deleteLater()
-    from qtpy import QtCore
-
-    QtCore.QTimer.singleShot(0, lambda: None)
-    qapp.processEvents()
+    plot.table.cancel_edit()
 
 
 def _draw_once(plot):
@@ -97,7 +87,7 @@ def _draw_once(plot):
     from emtk.testing import RecordingPainter
 
     painter = RecordingPainter()
-    plot.draw_content(painter, 0.0, 0.0, float(plot.width()), float(plot.height()))
+    plot.draw_content(painter, 0.0, 0.0, WIDTH, HEIGHT)
     return painter
 
 
@@ -113,12 +103,15 @@ def test_plot_is_emtk_drawn(emtk_plot):
     from emtk.widgets.buttons import SmallButton
     from emtk.widgets.data_table import DataTable
 
+    from chisurf.gui.plots.emtk_page import page_body
+
     plot, _ = emtk_plot
     assert getattr(plot, "emtk", False) is True
     assert isinstance(plot.table, DataTable)
     assert not hasattr(plot.table, "table_model")  # no ChiTableWidget inside
     assert isinstance(plot.btn_copy, SmallButton)
-    assert plot._host is not None
+    body = page_body(plot)
+    assert body.draw is not None and body.missing == []
 
 
 def test_plot_lists_every_column(emtk_plot):
@@ -138,7 +131,7 @@ def test_data_edit_via_real_input_reaches_the_fit(emtk_plot):
     _draw_once(plot)
     table = plot.table
     x, y = _cell(table, 2, "data")
-    assert table.press(x, y, 0.0, 0.0, 760.0, 420.0, 0, 2), "double click opens the cell"
+    assert table.press(x, y, 0.0, 0.0, WIDTH, HEIGHT, 0, 2), "double click opens the cell"
     assert table.editing is not None
     for _ in range(10):
         assert table.key(KEY_BACKSPACE, "", 0)  # clear the current value
@@ -154,7 +147,7 @@ def test_mask_click_flips_and_routes(emtk_plot):
     _draw_once(plot)
     table = plot.table
     x, y = _cell(table, 3, "mask")
-    assert table.press(x, y, 0.0, 0.0, 760.0, 420.0, 0, 1)
+    assert table.press(x, y, 0.0, 0.0, WIDTH, HEIGHT, 0, 1)
     masks = [c for c in client.calls if c[0] == "set_fit_mask"]
     assert masks, "clicking a mask checkbox must push a new mask"
     pushed = np.asarray(masks[-1][2]["mask"], dtype=float)
@@ -162,12 +155,14 @@ def test_mask_click_flips_and_routes(emtk_plot):
     assert pushed.sum() == 7.0
 
 
-def test_copy_includes_headers(emtk_plot):
-    plot, _ = emtk_plot
-    from qtpy import QtWidgets
+def test_copy_includes_headers(emtk_plot, monkeypatch):
+    from emtk import clipboard
 
+    plot, _ = emtk_plot
+    copied = []
+    monkeypatch.setattr(clipboard, "_hook", copied.append)  # keep the system clipboard
     plot.on_copy_table_to_clipboard()
-    lines = QtWidgets.QApplication.clipboard().text().splitlines()
+    lines = copied[-1].splitlines()
     assert lines[0].split("\t")[:5] == list(_BASE_COLUMNS)
     assert len(lines) == 9
 
@@ -187,12 +182,54 @@ def test_the_registry_gives_the_emtk_page(qapp):
     assert get_plot_class("fit_table") is FitTablePlotEmtk
 
 
-def test_offscreen_render_is_emtk_dark(emtk_plot, qapp):
+def test_offscreen_render_on_the_fit_window_surface(emtk_plot, qapp, tmp_path):
+    from chisurf.gui.widgets.fitting.fit_plots_area import FitPlotsArea
+
     plot, _ = emtk_plot
-    _draw_once(plot)
-    png = os.path.join(os.environ.get("CHISURF_EVIDENCE_DIR", "/tmp"), "fit_table_emtk.png")
-    plot.grab().save(png)
+    area = FitPlotsArea()
+    area.add_page("Data table", lambda: plot)
+    area.resize(int(WIDTH), int(HEIGHT))
+    area.show()
+    for _ in range(3):
+        qapp.processEvents()
+        area.host.repaint()
+    png = os.path.join(os.environ.get("CHISURF_EVIDENCE_DIR", str(tmp_path)), "fit_table_emtk.png")
+    area.host.grab().save(png)
     assert os.path.exists(png)
+    assert plot.table.row_count() == 8
+    area.close()
+
+
+def test_a_hidden_page_reads_the_fit_only_when_drawn(emtk_plot, monkeypatch):
+    """An update marks the page stale; the read happens on the frame that shows it."""
+    plot, _ = emtk_plot
+    reads = []
+    original = plot._get_arrays
+    monkeypatch.setattr(plot, "_get_arrays", lambda: reads.append(1) or original())
+    plot.update()
+    plot.update()
+    assert reads == []
+    from emtk.testing import RecordingPainter
+
+    plot.draw(RecordingPainter(), 0.0, 0.0, WIDTH, HEIGHT)
+    assert reads == [1]
+
+
+def test_the_model_editor_writes_the_parameters(emtk_plot):
+    """Model opens an emtk parameter table in the page's place; Apply pushes it."""
+    from types import SimpleNamespace
+
+    plot, client = emtk_plot
+    param = SimpleNamespace(name="a", value=1.0, fixed=False, bounds=(0.0, 2.0),
+                            bounds_on=False, is_linked=False, link=None)
+    plot.fit.model.parameters_all_dict = {"a": param}
+    plot.on_show_model()
+    records, _params, table, message = plot.parameter_editor
+    assert message == "" and table.row_count() == 1
+    records[0]["value"] = 1.5
+    plot.apply_parameter_editor()
+    assert plot.parameter_editor is None
+    assert ("set_parameter_value", ("a", 1.5), {"fit_uid": "test-uid", "fit_index": 0}) in client.calls
 
 
 def _press_button(plot, button):
@@ -242,6 +279,12 @@ def test_hide_empty_hides_only_columns_without_values(emtk_plot):
     assert len(plot.table.hidden) == 1
     _press_button(plot, plot.btn_empty)
     assert key not in plot.table.hidden
+
+
+def test_export_without_a_path_opens_the_emtk_chooser(emtk_plot):
+    plot, _ = emtk_plot
+    assert plot.export_csv() is None
+    assert plot._csv_dialog is not None and plot._csv_dialog.mode == "save"
 
 
 def test_export_writes_the_visible_table(emtk_plot, tmp_path):

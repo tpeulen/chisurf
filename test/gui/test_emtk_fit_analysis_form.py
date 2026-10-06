@@ -3,10 +3,10 @@
 The report and the mmCIF preview already render through emtk
 (`test_emtk_fit_info_view`). The Analysis tab beneath them was still a
 ``QFormLayout`` of ``QLineEdit``/``QComboBox``/``QPlainTextEdit`` -- the last
-classic Qt controls on the page. This pins the emtk port: one emtk
-:class:`~emtk.qt_host.ControlHost` hosting an emtk form (editable sample
-combo, two single-line fields, two multi-line detail editors), writing
-through the same ``_on_changed`` contract the Qt widgets fed.
+classic Qt controls on the page. This pins the emtk port: one emtk form
+(editable sample combo, two single-line fields, two multi-line detail
+editors) drawn in the *Plot settings* dock's Analysis tab, writing through
+the same ``_on_changed`` contract the Qt widgets fed.
 """
 
 from __future__ import annotations
@@ -34,17 +34,15 @@ def info(qapp):
         model_class=chisurf.core.models.parse.ParseModel,
         data=chisurf.core.data.DataCurve(x=x, y=x**2, ey=np.ones_like(x)),
     )
-    page = FitInfo(fit)
-    yield page
-    page.deleteLater()
+    yield FitInfo(fit)
 
 
-def test_analysis_tab_is_an_emtk_host(info):
-    from emtk.qt_host import host_class
+def test_analysis_tab_is_an_emtk_form(info):
+    from chisurf.gui.plots.emtk_analysis_form import EmtkAnalysisForm
 
-    host_class()  # materialise the class before issubclass
-    assert isinstance(info.analysis_host, host_class())
-    assert info.analysis_host.is_emtk
+    assert isinstance(info.analysis_form, EmtkAnalysisForm)
+    assert "analysis_form" in info.settings_form.custom
+    assert info.tabs.titles[0] == "Analysis"
 
 
 def test_sample_typing_updates_the_uuid_line(info, qapp):

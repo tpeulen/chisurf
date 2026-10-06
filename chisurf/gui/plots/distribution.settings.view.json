@@ -1,0 +1,10 @@
+{
+  "sections": [
+    {"type": "choice", "attr": "distribution_type", "label": "Distribution", "options_source": "distribution_types",
+     "description": "Which of the model's distributions is drawn (distance, FRET-rate, lifetime, a PDA histogram, ...)."},
+    {"type": "custom", "key": "distribution_options",
+     "description": "How the chosen distribution is read from the model and drawn; every value can be reset with ↩."},
+    {"type": "toggle", "attr": "show_gaussians", "label": "Show components",
+     "description": "Draw the individual component curves (e.g. the Gaussians of a PDA Gaussian-distance model) besides data and model."}
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "title": "Structure settings",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Trajectory playback",
+      "sections": [
+        {"type": "button_row", "buttons": [
+          {"action": "goto_first", "label": "|<", "description": "First frame."},
+          {"action": "goto_prev", "label": "<", "description": "Back by the step size."},
+          {"action": "play", "label": "▶", "description": "Play the trajectory, a step every 120 ms."},
+          {"action": "pause", "label": "Ⅱ", "description": "Pause playback at the current frame."},
+          {"action": "stop", "label": "■", "description": "Stop playback and return to the first frame."},
+          {"action": "goto_next", "label": ">", "description": "Forward by the step size; wraps to the first frame."},
+          {"action": "goto_last", "label": ">|", "description": "Last frame."}
+        ]},
+        {
+          "type": "panel",
+          "n_col": 2,
+          "sections": [
+            {"type": "value", "attr": "frame", "kind": "int", "style": "spin", "label": "Frame",
+             "minimum": 0, "description": "The frame shown in the structure view and on the other ProteinMC pages."},
+            {"type": "info", "source": "frame_total_text", "width": 70}
+          ]
+        },
+        {"type": "value", "attr": "step", "kind": "int", "style": "spin", "label": "Step size",
+         "minimum": 1, "maximum": 1000000, "description": "Number of frames to jump per playback step."}
+      ]
+    },
+    {"type": "choice", "attr": "representation", "label": "Representation",
+     "options": ["cartoon", "ca_trace", "atoms"],
+     "description": "How the structure is drawn: cartoon, C-alpha trace or every atom."}
+  ]
+}

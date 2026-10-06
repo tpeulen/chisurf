@@ -451,7 +451,6 @@ def test_the_plot_draws_with_nothing_falling_through_the_chiplot_seam(fit, qapp)
 
     cp.reset_gaps()
     plot = Mfd2DPlot(fit)
-    plot.resize(1100, 700)
     plot.update_all()
     qapp.processEvents()
     assert sorted(cp.passthrough_gaps()) == []
@@ -467,7 +466,6 @@ def test_the_marginal_plot_spans_the_axes_the_histogram_was_binned_on(fit, qapp)
     from chisurf.gui.plots.mfd_2d import MfdMarginalPlot
 
     plot = MfdMarginalPlot(fit)
-    plot.resize(900, 620)
     plot.update_all()
     qapp.processEvents()
 
@@ -498,7 +496,6 @@ def test_the_2d_residual_is_placed_in_axis_coordinates(fit, qapp):
         if plot_class.__name__ != "Residual2DPlot":
             continue
         plot = plot_class(fit, **options)
-        plot.resize(700, 500)
         plot.update()
         qapp.processEvents()
         assert plot._image is not None, "the accessor produced no image"
@@ -621,7 +618,6 @@ def test_the_map_is_a_plot_not_a_form_section(fit, qapp):
         if plot_class.__name__ != "MfdMapPlot":
             continue
         plot = plot_class(fit, **options)
-        plot.resize(760, 560)
         plot.update()
         qapp.processEvents()
         assert plot._image is not None
@@ -644,8 +640,6 @@ def test_every_map_channel_stays_on_the_real_axes(fit, qapp):
         if plot_class.__name__ != "MfdMapPlot":
             continue
         plot = plot_class(fit, **options)
-        plot.resize(760, 560)
-        plot.show()
         plot.update()
         qapp.processEvents()
         for channel in fit.model.mfd_image_channels():

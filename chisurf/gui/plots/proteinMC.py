@@ -1,7 +1,16 @@
+"""The ProteinMC pages of a fit window: trajectory curves, structure, distance network.
+
+Pages are Qt-free (:class:`~chisurf.gui.plots.plotbase.Plot`): the fit window's
+emtk surface draws them, and their settings are AutoForm specs beside this
+module (``proteinmc_*_settings.view.json``) drawn in the *Plot settings* dock.
+Playback is driven by the frames that draw the page or its settings
+(:meth:`_FramePlayback.tick`), not by a timer.
+"""
+
 import json
+import time
 
 import numpy as np
-from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.core.settings
@@ -15,114 +24,33 @@ color_scheme = cs.core.settings.colors
 
 _REPRESENTATIONS = ("cartoon", "ca_trace", "atoms")
 
-
-class ProteinMCPlotControl(QtWidgets.QWidget):
-    """Control panel for the ProteinMC trajectory plot."""
-
-    def __init__(self, parent=None, plot: "Plot" = None, **kwargs):
-        super().__init__(parent)
-        self._plot = plot
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(4)
-        layout.addWidget(QtWidgets.QLabel("Trajectory curves"))
-
-        self.show_rmsd = QtWidgets.QCheckBox("RMSD")
-        self.show_drmsd = QtWidgets.QCheckBox("dRMSD")
-        self.show_energy_box = QtWidgets.QCheckBox("Energy")
-        self.show_fret_box = QtWidgets.QCheckBox("Labeling (FRET)")
-
-        for cb, default in (
-            (self.show_rmsd, True),
-            (self.show_drmsd, True),
-            (self.show_energy_box, True),
-            (self.show_fret_box, True),
-        ):
-            cb.setChecked(default)
-            layout.addWidget(cb)
-
-        self.autoscale_btn = QtWidgets.QPushButton("Auto-scale")
-        layout.addWidget(self.autoscale_btn)
-
-        layout.addStretch(1)
-
-        if plot is not None:
-            self.show_rmsd.toggled.connect(self._toggle_rmsd)
-            self.show_drmsd.toggled.connect(self._toggle_drmsd)
-            self.show_energy_box.toggled.connect(self._toggle_energy)
-            self.show_fret_box.toggled.connect(self._toggle_fret)
-            self.autoscale_btn.clicked.connect(self._autoscale)
-
-    def _toggle_rmsd(self, checked: bool) -> None:
-        if self._plot is not None and getattr(self._plot, "rmsd_plot", None) is not None:
-            self._plot.rmsd_plot.setVisible(checked)
-
-    def _toggle_drmsd(self, checked: bool) -> None:
-        if self._plot is not None and getattr(self._plot, "drmsd_plot", None) is not None:
-            self._plot.drmsd_plot.setVisible(checked)
-
-    def _toggle_energy(self, checked: bool) -> None:
-        if self._plot is not None and getattr(self._plot, "energy_plot", None) is not None:
-            self._plot.energy_plot.setVisible(checked)
-
-    def _toggle_fret(self, checked: bool) -> None:
-        if self._plot is not None and getattr(self._plot, "fret_plot", None) is not None:
-            self._plot.fret_plot.setVisible(checked)
-
-    def _autoscale(self) -> None:
-        if self._plot is None:
-            return
-        for plot in (
-            getattr(self._plot, attr, None)
-            for attr in ("rmsd_plot", "drmsd_plot", "energy_plot", "fret_plot")
-        ):
-            if plot is not None:
-                try:
-                    plot.getViewBox().autoRange()
-                except Exception:
-                    pass
-
-    def get_state(self) -> dict:
-        """Return project-serializable trajectory plot controller state."""
-        return {
-            "show_rmsd": bool(self.show_rmsd.isChecked()),
-            "show_drmsd": bool(self.show_drmsd.isChecked()),
-            "show_energy": bool(self.show_energy_box.isChecked()),
-            "show_fret": bool(self.show_fret_box.isChecked()),
-        }
-
-    def set_state(self, state: dict) -> None:
-        """Restore trajectory plot controller state from a project."""
-        if not isinstance(state, dict):
-            return
-        for key, widget in (
-            ("show_rmsd", self.show_rmsd),
-            ("show_drmsd", self.show_drmsd),
-            ("show_energy", self.show_energy_box),
-            ("show_fret", self.show_fret_box),
-        ):
-            if key in state:
-                widget.setChecked(bool(state[key]))
+#: Seconds between two playback steps.
+PLAY_INTERVAL = 0.12
 
 
 class ProteinMCPlot(Plot):
+    """RMSD, dRMSD, energy and labeling chi2r of a ProteinMC trajectory, two by two."""
+
     name = "Trajectory-Plot"
+    settings_view = "proteinmc_traces_settings.view.json"
 
     def __init__(self, fit, *args, **kwargs):
         super().__init__(fit=fit, *args, **kwargs)
         self.trajectory = fit.model
         self.source = fit.model
 
-        # One panel per trajectory series, two by two (emtk_body).
         p1, p2, p3, p4 = (cp.Panel() for _ in range(4))
-        self._grid_panels = ((p1, p2), (p3, p4))
-        self._grid_body = None
-
-        # RMSD - Curves (chiplot Plot exposes drawing directly; no getPlotItem)
         self.rmsd_plot = p1
         self.drmsd_plot = p2
         self.energy_plot = p3
         self.fret_plot = p4
+        #: Panel -> shown, in grid order (the settings' toggles).
+        self._shown = {id(p): True for p in (p1, p2, p3, p4)}
+        self._grid_key = None
+        self._grid_body = None
+        from chisurf.gui.plots.emtk_page import PanelItem
+
+        self.panel_items = [PanelItem(p, p.control()) for p in (p1, p2, p3, p4)]
 
         self.rmsd_plot.set_title("RMSD")
         self.drmsd_plot.set_title("dRMSD")
@@ -148,10 +76,6 @@ class ProteinMCPlot(Plot):
             line = plot_item.vline(0, movable=False, pen=cp.to_pen((255, 255, 0, 180), width=1))
             self.frame_lines.append(line)
 
-        # Build the controller now that the plot items exist so it can wire
-        # to them.
-        self.plot_controller = ProteinMCPlotControl(self, plot=self)
-
         try:
             cs.logging.info(
                 "ProteinMCPlot: initialized for fit '%s' with model '%s'",
@@ -161,19 +85,84 @@ class ProteinMCPlot(Plot):
         except Exception:
             pass
 
+    # -- settings: which curves are shown ---------------------------------
+    def _is_shown(self, panel) -> bool:
+        return bool(self._shown.get(id(panel), True))
 
-    def emtk_body(self):
-        """The four series panels as two rows of two, built once."""
-        if self._grid_body is None:
-            from emtk.flags import Axis
-            from emtk.widgets.pane_stack import PaneStack
+    def _set_shown(self, panel, shown: bool) -> None:
+        self._shown[id(panel)] = bool(shown)
+        self.request_redraw()
 
-            from chisurf.gui.plots.emtk_page import PanelItem
+    show_rmsd = property(lambda self: self._is_shown(self.rmsd_plot),
+                         lambda self, v: self._set_shown(self.rmsd_plot, v),
+                         doc="Whether the RMSD panel is shown.")
+    show_drmsd = property(lambda self: self._is_shown(self.drmsd_plot),
+                          lambda self, v: self._set_shown(self.drmsd_plot, v),
+                          doc="Whether the dRMSD panel is shown.")
+    show_energy = property(lambda self: self._is_shown(self.energy_plot),
+                           lambda self, v: self._set_shown(self.energy_plot, v),
+                           doc="Whether the energy panel is shown.")
+    show_fret = property(lambda self: self._is_shown(self.fret_plot),
+                         lambda self, v: self._set_shown(self.fret_plot, v),
+                         doc="Whether the labeling (FRET) panel is shown.")
 
-            self.panel_items = [PanelItem(p, p.control()) for row in self._grid_panels for p in row]
-            rows = [PaneStack(self.panel_items[k:k + 2], axis=Axis.X) for k in (0, 2)]
-            self._grid_body = PaneStack(rows, axis=Axis.Y)
+    def autoscale(self) -> None:
+        """Fit every panel's axes to its curve."""
+        for panel in (self.rmsd_plot, self.drmsd_plot, self.energy_plot, self.fret_plot):
+            try:
+                panel.autoscale()
+            except Exception:
+                pass
+        self.request_redraw()
+
+    def get_settings_state(self) -> dict:
+        """The shown curves, for the project file (the old controller's keys)."""
+        return {
+            "show_rmsd": self.show_rmsd,
+            "show_drmsd": self.show_drmsd,
+            "show_energy": self.show_energy,
+            "show_fret": self.show_fret,
+        }
+
+    def set_settings_state(self, state: dict) -> None:
+        """Restore :meth:`get_settings_state`."""
+        if not isinstance(state, dict):
+            return
+        for key in ("show_rmsd", "show_drmsd", "show_energy", "show_fret"):
+            if key in state:
+                setattr(self, key, bool(state[key]))
+
+    # -- page --------------------------------------------------------------
+    def _grid(self):
+        """The shown series panels, two to a row; rebuilt when the shown set changes."""
+        shown = [item for item in self.panel_items if self._is_shown(item.plot)]
+        for item in self.panel_items:
+            if item not in shown:
+                item.box = None  # a hidden panel must not answer a right click
+        key = tuple(id(item) for item in shown)
+        if key != self._grid_key:
+            self._grid_key = key
+            self._grid_body = None
+            if shown:
+                from emtk.flags import Axis
+                from emtk.widgets.pane_stack import PaneStack
+
+                rows = [shown[k:k + 2] for k in range(0, len(shown), 2)]
+                stacks = [r[0] if len(r) == 1 else PaneStack(r, axis=Axis.X) for r in rows]
+                self._grid_body = stacks[0] if len(stacks) == 1 else PaneStack(stacks, axis=Axis.Y)
         return self._grid_body
+
+    def emtk_draw(self, box) -> None:
+        """The shown series panels filling the page, or a line saying none is shown."""
+        from emtk import im
+
+        grid = self._grid()
+        if grid is None:
+            im.text_disabled("No trajectory curve is shown; tick one in Plot settings.")
+            return
+        width, height = im.get_content_region_avail()
+        im.host_control("##proteinmc-traces", grid, (width, height))
+
     def update_all(self, *args, **kwargs):
 
         try:
@@ -208,276 +197,154 @@ class ProteinMCPlot(Plot):
         self.update_all(*args, **kwargs)
 
 
-class ProteinMCStructureControl(QtWidgets.QWidget):
-    """Control panel for the ProteinMC structure viewer.
+class _FramePlayback:
+    """Frame navigation and playback over the ProteinMC model's shared frame.
 
-    Provides frame navigation (first / prev / current / next / last) and
-    representation switching (cartoon / ca_trace / atoms). The control
-    operates on a parent :class:`ProteinMCStructurePlot` and reflects
-    changes in the live Chimol viewer.
+    The frame is the model's (``current_frame_index``, ``set_current_frame``,
+    ``frame_count``), shared by every ProteinMC page. Playback is a flag and a
+    clock: each frame that draws the page or its settings calls :meth:`tick`,
+    which steps once :data:`PLAY_INTERVAL` has passed and asks for the next
+    frame while playing.
     """
 
-    frameChanged = QtCore.Signal(int)
+    model = None
+    playing = False
+    _step = 1
+    _last_tick = 0.0
+    _local_frame = 0
+
+    # -- the frame ---------------------------------------------------------
+    def frame_count(self) -> int:
+        """How many frames the trajectory has."""
+        return int(getattr(self.model, "frame_count", 0) or 0) if self.model is not None else 0
 
     @property
-    def _viewer(self):
-        """The plot's chimol viewer, read when used: it starts with the plot's first frame."""
-        return getattr(self._plot, "viewer", None) if self._plot is not None else None
+    def frame(self) -> int:
+        """The shared current frame."""
+        model = self.model
+        if model is not None and hasattr(model, "current_frame_index"):
+            return int(getattr(model, "current_frame_index", 0) or 0)
+        return int(self._local_frame)
 
-    def __init__(self, parent=None, plot: "Plot" = None, **kwargs):
-        super().__init__(parent)
-        self._plot = plot
-        self._play_timer = QtCore.QTimer(self)
-        self._play_timer.setInterval(120)
-        self._play_timer.timeout.connect(self._goto_next)
-
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(4)
-        layout.addWidget(QtWidgets.QLabel("Trajectory playback"))
-
-        # Frame navigation
-        nav_row = QtWidgets.QHBoxLayout()
-        nav_row.setSpacing(3)
-        self.first_btn = QtWidgets.QPushButton("|<")
-        self.prev_btn = QtWidgets.QPushButton("<")
-        self.play_btn = QtWidgets.QPushButton("▶")
-        self.pause_btn = QtWidgets.QPushButton("Ⅱ")
-        self.stop_btn = QtWidgets.QPushButton("■")
-        self.frame_spin = QtWidgets.QSpinBox()
-        self.frame_spin.setRange(0, 0)
-        self.frame_spin.setValue(0)
-        self.frame_label = QtWidgets.QLabel("/ 0")
-        self.next_btn = QtWidgets.QPushButton(">")
-        self.last_btn = QtWidgets.QPushButton(">|")
-        for w in (
-            self.first_btn,
-            self.prev_btn,
-            self.play_btn,
-            self.pause_btn,
-            self.stop_btn,
-            self.frame_spin,
-            self.frame_label,
-            self.next_btn,
-            self.last_btn,
-        ):
-            if isinstance(w, QtWidgets.QPushButton):
-                w.setMaximumWidth(48)
-            nav_row.addWidget(w)
-        layout.addLayout(nav_row)
-
-        step_row = QtWidgets.QHBoxLayout()
-        step_row.setSpacing(3)
-        step_row.addWidget(QtWidgets.QLabel("Step size"))
-        self.step_spin = QtWidgets.QSpinBox()
-        self.step_spin.setRange(1, 1000000)
-        self.step_spin.setValue(1)
-        self.step_spin.setToolTip("Number of frames to jump per playback step.")
-        step_row.addWidget(self.step_spin)
-        layout.addLayout(step_row)
-
-        # Representation selector
-        layout.addWidget(QtWidgets.QLabel("Representation"))
-        self.representation_combo = QtWidgets.QComboBox()
-        self.representation_combo.addItems(list(_REPRESENTATIONS))
-        self.representation_combo.setCurrentText("atoms")
-        layout.addWidget(self.representation_combo)
-
-        layout.addStretch(1)
-
-        if self._viewer is not None:
-            self.first_btn.clicked.connect(self._goto_first)
-            self.prev_btn.clicked.connect(self._goto_prev)
-            self.play_btn.clicked.connect(self._play)
-            self.pause_btn.clicked.connect(self._pause)
-            self.stop_btn.clicked.connect(self._stop)
-            self.next_btn.clicked.connect(self._goto_next)
-            self.last_btn.clicked.connect(self._goto_last)
-            self.frame_spin.valueChanged.connect(self._on_spin)
-            self.representation_combo.currentTextChanged.connect(self._on_representation)
-
-    def _object_id(self):
-        """Return the Chimol object controlled by this panel."""
-        return getattr(self._plot, "object_id", None)
-
-    def _on_spin(self, value: int) -> None:
-        model = getattr(self._plot, "model", None)
+    @frame.setter
+    def frame(self, value: int) -> None:
+        last = max(0, self.frame_count() - 1)
+        value = max(0, min(int(value), last))
+        model = self.model
         if model is not None and hasattr(model, "set_current_frame"):
-            model.set_current_frame(int(value))
-        if self._viewer is not None:
-            try:
-                self._viewer.set_active_frame(int(value), object_id=self._object_id())
-            except Exception:
-                try:
-                    self._viewer.set_current_frame(int(value))
-                except Exception:
-                    pass
+            model.set_current_frame(value)
+        else:
+            self._local_frame = value
+        self._frame_changed(value)
+        self.request_redraw()
 
-    def _goto_first(self) -> None:
-        if self._viewer is None:
+    def _frame_changed(self, value: int) -> None:
+        """Follow a new frame (pages override)."""
+
+    @property
+    def step(self) -> int:
+        """Frames per playback step."""
+        return int(self._step)
+
+    @step.setter
+    def step(self, value: int) -> None:
+        self._step = max(1, int(value))
+
+    def bounds(self, name: str):
+        """The frame spin runs over the trajectory (the form asks for it)."""
+        if name == "frame":
+            return (0, max(0, self.frame_count() - 1))
+        return None
+
+    def frame_total_text(self) -> str:
+        """The ``/ N`` beside the frame field: the last frame index."""
+        return f"/ {max(0, self.frame_count() - 1)}"
+
+    # -- actions (the settings' buttons) ------------------------------------
+    def goto_first(self) -> None:
+        """Go to the first frame."""
+        self.frame = 0
+
+    def goto_prev(self) -> None:
+        """Back by the step size."""
+        self.frame = max(0, self.frame - self.step)
+
+    def goto_next(self) -> None:
+        """Forward by the step size, wrapping past the last frame."""
+        total = self.frame_count()
+        if total <= 1:
+            self.frame = 0
             return
-        self.frame_spin.setValue(0)
+        self.frame = (self.frame + self.step) % total
 
-    def _play(self) -> None:
-        """Start local trajectory playback."""
-        if self._viewer is None:
-            return
-        if not self._play_timer.isActive():
-            self._play_timer.start()
+    def goto_last(self) -> None:
+        """Go to the last frame."""
+        self.frame = max(0, self.frame_count() - 1)
 
-    def _pause(self) -> None:
-        """Pause local trajectory playback at the current frame."""
-        self._play_timer.stop()
+    def play(self) -> None:
+        """Start playback."""
+        self.playing = True
+        self._last_tick = time.monotonic()
+        self.request_redraw()
 
-    def _stop(self) -> None:
+    def pause(self) -> None:
+        """Pause playback at the current frame."""
+        self.playing = False
+
+    def stop(self) -> None:
         """Stop playback and return to the first frame."""
-        self._play_timer.stop()
-        self._goto_first()
+        self.playing = False
+        self.goto_first()
 
-    def _goto_prev(self) -> None:
-        model = getattr(self._plot, "model", None)
-        if model is not None:
-            current = int(getattr(model, "current_frame_index", 0))
-        else:
-            if self._viewer is None:
-                return
-            try:
-                current = int(self._viewer.get_active_frame_index(self._object_id()))
-            except Exception:
-                try:
-                    current = int(self._viewer.get_current_frame())
-                except Exception:
-                    current = 0
-        step = max(1, int(self.step_spin.value()))
-        self.frame_spin.setValue(max(0, current - step))
-
-    def _goto_next(self) -> None:
-        model = getattr(self._plot, "model", None)
-        if model is not None:
-            current = int(getattr(model, "current_frame_index", 0))
-            total = int(getattr(model, "frame_count", 0))
-        else:
-            if self._viewer is None:
-                return
-            try:
-                current = int(self._viewer.get_active_frame_index(self._object_id()))
-            except Exception:
-                try:
-                    current = int(self._viewer.get_current_frame())
-                except Exception:
-                    current = 0
-            try:
-                total = int(self._viewer.get_frame_count(self._object_id()))
-            except Exception:
-                try:
-                    total = int(self._viewer.get_total_frames())
-                except Exception:
-                    total = 0
-        step = max(1, int(self.step_spin.value()))
-        if total > 0 and current + step > total - 1:
-            self.frame_spin.setValue(0)
-        else:
-            self.frame_spin.setValue(current + step)
-
-    def _goto_last(self) -> None:
-        model = getattr(self._plot, "model", None)
-        if model is not None:
-            total = int(getattr(model, "frame_count", 0))
-        else:
-            if self._viewer is None:
-                return
-            try:
-                total = int(self._viewer.get_frame_count(self._object_id()))
-            except Exception:
-                try:
-                    total = int(self._viewer.get_total_frames())
-                except Exception:
-                    total = 0
-        self.frame_spin.setValue(max(0, total - 1))
-
-    def _on_representation(self, mode: str) -> None:
-        if self._viewer is None:
+    def tick(self, now: float | None = None) -> None:
+        """Step the playback if its interval has passed; keep frames coming while playing."""
+        if not self.playing:
             return
-        try:
-            self._viewer.set_representation(mode, object_id=self._object_id())
-        except Exception:
-            try:
-                self._viewer.set_representation(mode)
-            except Exception:
-                pass
+        now = time.monotonic() if now is None else now
+        if now - self._last_tick >= PLAY_INTERVAL:
+            self._last_tick = now
+            self.goto_next()
+        self.request_redraw()
 
-    def refresh_from_viewer(self) -> None:
-        """Sync the spin box and label to the current viewer state."""
-        if self._viewer is None:
-            return
-        try:
-            model = getattr(self._plot, "model", None)
-            total = (
-                int(getattr(model, "frame_count", 0))
-                if model is not None
-                else int(self._viewer.get_frame_count(self._object_id()))
-            )
-            current = (
-                int(getattr(model, "current_frame_index", 0))
-                if model is not None
-                else int(self._viewer.get_active_frame_index(self._object_id()))
-            )
-        except Exception:
-            try:
-                total = int(self._viewer.get_total_frames())
-                current = int(self._viewer.get_current_frame())
-            except Exception:
-                return
-        self.frame_spin.blockSignals(True)
-        try:
-            self.frame_spin.setRange(0, max(0, total - 1))
-            self.frame_spin.setValue(max(0, current))
-        finally:
-            self.frame_spin.blockSignals(False)
-        self.frame_label.setText(f"/ {max(0, total - 1)}")
+    def request_redraw(self) -> None:
+        """Playback moves the page and the frame field in the settings dock."""
+        Plot.request_redraw(self)
+        self.request_settings_redraw()
 
-    def get_state(self) -> dict:
-        """Return project-serializable structure plot controller state."""
-        return {
-            "frame": int(self.frame_spin.value()),
-            "step": int(self.step_spin.value()),
-            "representation": self.representation_combo.currentText(),
-            "playing": bool(self._play_timer.isActive()),
-        }
+    def draw_settings(self) -> None:
+        self.tick()
+        Plot.draw_settings(self)
 
-    def set_state(self, state: dict) -> None:
-        """Restore structure plot controller state from a project."""
-        if not isinstance(state, dict):
-            return
+    def _playback_state(self) -> dict:
+        return {"frame": int(self.frame), "step": int(self.step), "playing": bool(self.playing)}
+
+    def _restore_playback(self, state: dict) -> None:
         if "step" in state:
             try:
-                self.step_spin.setValue(max(1, int(state["step"])))
-            except Exception:
+                self.step = int(state["step"])
+            except (TypeError, ValueError):
                 pass
-        representation = state.get("representation")
-        if isinstance(representation, str) and representation:
-            idx = self.representation_combo.findText(representation)
-            if idx >= 0:
-                self.representation_combo.setCurrentIndex(idx)
         if "frame" in state:
             try:
-                self.frame_spin.setValue(int(state["frame"]))
-            except Exception:
+                self.frame = int(state["frame"])
+            except (TypeError, ValueError):
                 pass
         if state.get("playing"):
-            self._play()
+            self.play()
 
 
-class ProteinMCStructurePlot(Plot):
+class ProteinMCStructurePlot(_FramePlayback, Plot):
     """Chimol structure plot for live ProteinMC trajectories."""
 
     name = "Structure"
+    settings_view = "proteinmc_structure_settings.view.json"
 
     def __init__(self, fit, *args, **kwargs):
         """Create a Chimol-backed ProteinMC structure plot."""
         super().__init__(fit=fit, *args, **kwargs)
         self.model = fit.model
         self.object_id = None
+        self._representation = "atoms"
         # chimol's offscreen renderer, drawn on the fit window's emtk surface
         # (emtk_draw). Started when first asked for; ``viewer`` is None where it
         # cannot run (no WebGPU adapter). ChiSurf coordinates are in Angstrom;
@@ -485,8 +352,6 @@ class ProteinMCStructurePlot(Plot):
         self.chimol = ChimolView(
             viewer_options={"representation_mode": "atoms", "scale_factor": 1.0}
         )
-        # Build the controller after the viewer exists so it can drive it.
-        self.plot_controller = ProteinMCStructureControl(self, plot=self)
         self.update_all()
 
     @property
@@ -494,10 +359,73 @@ class ProteinMCStructurePlot(Plot):
         """chimol's viewer, or ``None`` when chimol cannot run here."""
         return self.chimol.viewer
 
+    def frame_count(self) -> int:
+        """Frames of the model, else of the viewer's object."""
+        total = super().frame_count()
+        if total or self.model is not None and hasattr(self.model, "frame_count"):
+            return total
+        viewer = self.viewer
+        if viewer is None:
+            return 0
+        try:
+            return int(viewer.get_frame_count(self.object_id))
+        except Exception:
+            return 0
+
+    def _frame_changed(self, value: int) -> None:
+        viewer = self.viewer
+        if viewer is None:
+            return
+        try:
+            viewer.set_active_frame(int(value), object_id=self.object_id)
+        except Exception:
+            try:
+                viewer.set_current_frame(int(value))
+            except Exception:
+                pass
+
+    @property
+    def representation(self) -> str:
+        """How the structure is drawn: one of ``cartoon``, ``ca_trace``, ``atoms``."""
+        return self._representation
+
+    @representation.setter
+    def representation(self, mode: str) -> None:
+        if mode in _REPRESENTATIONS:
+            self._representation = str(mode)
+            self._apply_representation()
+            self.request_redraw()
+
+    def _apply_representation(self) -> None:
+        viewer = self.viewer
+        if viewer is None or self.object_id is None:
+            return
+        try:
+            viewer.set_representation(self._representation, object_id=self.object_id)
+        except Exception:
+            try:
+                viewer.set_representation(self._representation)
+            except Exception:
+                pass
+
+    def get_settings_state(self) -> dict:
+        """Frame, step, representation and playback (the old controller's keys)."""
+        return dict(self._playback_state(), representation=self.representation)
+
+    def set_settings_state(self, state: dict) -> None:
+        """Restore :meth:`get_settings_state`."""
+        if not isinstance(state, dict):
+            return
+        representation = state.get("representation")
+        if isinstance(representation, str) and representation:
+            self.representation = representation
+        self._restore_playback(state)
+
     def emtk_draw(self, box) -> None:
         """The molecular view, filling the page (inside the surface's emtk frame)."""
         from emtk import im
 
+        self.tick()
         if not self.chimol.draw():
             im.text_wrapped(
                 f"The molecular viewer could not start here ({self.chimol.error}). The "
@@ -506,6 +434,7 @@ class ProteinMCStructurePlot(Plot):
 
     def close(self):
         """Stop chimol with the page."""
+        self.playing = False
         self.chimol.close()
         return super().close()
 
@@ -533,10 +462,6 @@ class ProteinMCStructurePlot(Plot):
                 self.object_id = self.viewer.add_coordinates(
                     np.asarray(frames[0], dtype=float), name="ProteinMC"
                 )
-            try:
-                self.viewer.set_representation("atoms", object_id=self.object_id)
-            except Exception:
-                pass
             self.chimol.sync_panel()
         if frames:
             arr = np.asarray(frames, dtype=float)
@@ -554,12 +479,7 @@ class ProteinMCStructurePlot(Plot):
                 set_active_frame = getattr(self.viewer, "set_active_frame", None)
                 if set_active_frame is not None:
                     set_active_frame(active_frame, object_id=self.object_id)
-            try:
-                self.viewer.set_representation("atoms", object_id=self.object_id)
-            except Exception:
-                pass
-        if getattr(self, "plot_controller", None) is not None:
-            self.plot_controller.refresh_from_viewer()
+        self._apply_representation()
 
     def update(self, *args, **kwargs):
         """Refresh the Chimol structure plot."""
@@ -567,34 +487,54 @@ class ProteinMCStructurePlot(Plot):
         self.update_all(*args, **kwargs)
 
 
-class ProteinMCDistanceNetworkPlot(Plot):
+
+
+class ProteinMCDistanceNetworkPlot(_FramePlayback, Plot):
     """Circular FPS distance-network plot for the selected ProteinMC frame."""
 
     name = "Distance Network"
+    settings_view = "proteinmc_network_settings.view.json"
 
     def __init__(self, fit, *args, **kwargs):
         """Create a circular distance-agreement plot."""
         super().__init__(fit=fit, *args, **kwargs)
+        from chisurf.gui.plots.emtk_page import PanelItem
+
         self.model = fit.model
         self._network_cache_key = None
         self._network_edges = []
         self._network_edge_items = []
         self._network_node_positions = {}
         self._network_static_items = []
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(2)
-        self.plot_widget = self.add_panel()
+        self.plot_widget = cp.Panel()
         self.plot_widget.set_aspect_locked(True)
         self.plot_widget.set_background((20, 20, 20))
         self.plot_widget.set_axis_visible(left=False, bottom=False)
-        self.plot_controller = ProteinMCDistanceNetworkControl(self, plot=self)
+        self.panel_items = [PanelItem(self.plot_widget, self.plot_widget.control())]
         self.update_all()
+
+    def _frame_changed(self, value: int) -> None:
+        self.update_all()
+
+    def get_settings_state(self) -> dict:
+        """Frame, step and playback (the old controller's keys)."""
+        return self._playback_state()
+
+    def set_settings_state(self, state: dict) -> None:
+        """Restore :meth:`get_settings_state`."""
+        if isinstance(state, dict):
+            self._restore_playback(state)
+
+    def emtk_draw(self, box) -> None:
+        """The network panel, filling the page; playback steps here too."""
+        from emtk import im
+
+        self.tick()
+        width, height = im.get_content_region_avail()
+        im.host_control("##proteinmc-network", self.panel_items[0], (width, height))
 
     def update_all(self, *args, **kwargs):
         """Redraw network agreement for the shared current frame."""
-        controller = getattr(self, "plot_controller", None)
-        if controller is not None and hasattr(controller, "refresh_from_model"):
-            controller.refresh_from_model()
         # Before any sampling (e.g. a freshly restored project) the network is
         # drawn on the starting structure.
         structure = getattr(self.model, "proteinmc_structure", None)
@@ -718,146 +658,6 @@ class ProteinMCDistanceNetworkPlot(Plot):
         self.update_all(*args, **kwargs)
 
 
-class ProteinMCDistanceNetworkControl(QtWidgets.QWidget):
-    """Plot-controller panel for the circular ProteinMC distance network."""
-
-    def __init__(self, parent=None, plot: ProteinMCDistanceNetworkPlot = None, **kwargs):
-        """Create frame playback controls for the distance-network plot."""
-        super().__init__(parent)
-        self._plot = plot
-        self._play_timer = QtCore.QTimer(self)
-        self._play_timer.setInterval(120)
-        self._play_timer.timeout.connect(self._next_frame)
-
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(4)
-        layout.addWidget(QtWidgets.QLabel("Distance network"))
-
-        nav = QtWidgets.QHBoxLayout()
-        nav.setSpacing(3)
-        self.start_btn = QtWidgets.QPushButton("|<", self)
-        self.prev_btn = QtWidgets.QPushButton("<", self)
-        self.play_btn = QtWidgets.QPushButton("▶", self)
-        self.stop_btn = QtWidgets.QPushButton("■", self)
-        self.frame_spin = QtWidgets.QSpinBox(self)
-        self.frame_spin.setRange(0, 0)
-        self.frame_label = QtWidgets.QLabel("/ 0", self)
-        self.next_btn = QtWidgets.QPushButton(">", self)
-        self.last_btn = QtWidgets.QPushButton(">|", self)
-        for widget in (
-            self.start_btn,
-            self.prev_btn,
-            self.play_btn,
-            self.stop_btn,
-            self.frame_spin,
-            self.frame_label,
-            self.next_btn,
-            self.last_btn,
-        ):
-            if isinstance(widget, QtWidgets.QPushButton):
-                widget.setMaximumWidth(48)
-            nav.addWidget(widget)
-        layout.addLayout(nav)
-
-        step_row = QtWidgets.QHBoxLayout()
-        step_row.addWidget(QtWidgets.QLabel("Step size", self))
-        self.step_spin = QtWidgets.QSpinBox(self)
-        self.step_spin.setRange(1, 1000000)
-        self.step_spin.setValue(1)
-        self.step_spin.setToolTip("Number of frames to jump per Play/Next step.")
-        step_row.addWidget(self.step_spin)
-        layout.addLayout(step_row)
-
-        layout.addStretch(1)
-
-        self.start_btn.clicked.connect(self._start)
-        self.play_btn.clicked.connect(self._play)
-        self.stop_btn.clicked.connect(self._stop)
-        self.prev_btn.clicked.connect(self._prev_frame)
-        self.next_btn.clicked.connect(self._next_frame)
-        self.last_btn.clicked.connect(lambda: self.frame_spin.setValue(self.frame_spin.maximum()))
-        self.frame_spin.valueChanged.connect(self._set_frame)
-        self.refresh_from_model()
-
-    def _model(self):
-        """Return the ProteinMC model backing this controller."""
-        return getattr(self._plot, "model", None)
-
-    def _set_frame(self, value: int) -> None:
-        """Set the shared ProteinMC frame from this controller."""
-        model = self._model()
-        if model is not None and hasattr(model, "set_current_frame"):
-            model.set_current_frame(int(value))
-
-    def _start(self) -> None:
-        """Jump to the first frame."""
-        self._play_timer.stop()
-        self.frame_spin.setValue(0)
-
-    def _play(self) -> None:
-        """Play through frames until stopped."""
-        if not self._play_timer.isActive():
-            self._play_timer.start()
-
-    def _stop(self) -> None:
-        """Stop playback and return to the first frame."""
-        self._play_timer.stop()
-        self.frame_spin.setValue(0)
-
-    def _prev_frame(self) -> None:
-        """Move one frame backward."""
-        step = max(1, int(self.step_spin.value()))
-        self.frame_spin.setValue(max(0, self.frame_spin.value() - step))
-
-    def _next_frame(self) -> None:
-        """Move one frame forward, wrapping at the end."""
-        current = self.frame_spin.value()
-        maximum = self.frame_spin.maximum()
-        step = max(1, int(self.step_spin.value()))
-        if maximum <= 0:
-            self.frame_spin.setValue(0)
-            return
-        self.frame_spin.setValue((current + step) % (maximum + 1))
-
-    def refresh_from_model(self) -> None:
-        """Sync the frame selector to the shared ProteinMC frame state."""
-        model = self._model()
-        total = int(getattr(model, "frame_count", 0)) if model is not None else 0
-        current = int(getattr(model, "current_frame_index", 0)) if model is not None else 0
-        maximum = max(0, total - 1)
-        self.frame_spin.blockSignals(True)
-        try:
-            self.frame_spin.setRange(0, maximum)
-            self.frame_spin.setValue(max(0, min(current, maximum)))
-        finally:
-            self.frame_spin.blockSignals(False)
-        self.frame_label.setText(f"/ {maximum}")
-
-    def get_state(self) -> dict:
-        """Return project-serializable distance-network controller state."""
-        return {
-            "frame": int(self.frame_spin.value()),
-            "step": int(self.step_spin.value()),
-            "playing": bool(self._play_timer.isActive()),
-        }
-
-    def set_state(self, state: dict) -> None:
-        """Restore distance-network controller state from a project."""
-        if not isinstance(state, dict):
-            return
-        if "step" in state:
-            try:
-                self.step_spin.setValue(max(1, int(state["step"])))
-            except Exception:
-                pass
-        if "frame" in state:
-            try:
-                self.frame_spin.setValue(int(state["frame"]))
-            except Exception:
-                pass
-        if state.get("playing"):
-            self._play()
 
 
 def _load_labeling_payload(filename: str) -> dict:
@@ -955,91 +755,3 @@ def _as_text(value) -> str:
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="ignore").strip()
     return str(value).strip()
-
-
-# class ProteinMCPlot_Old(Plot):
-#
-#     name = "Trajectory-Plot"
-#
-#     def __init__(self, fit):
-#         Plot.__init__(self, fit)
-#         self.layout = QtGui.QVBoxLayout(self)
-#
-#         self.trajectory = fit.models
-#         self.source = fit.models
-#
-#         # RMSD - Curves
-#         top_left = QtGui.QFrame(self)
-#         top_left.setFrameShape(QtGui.QFrame.StyledPanel)
-#         l = QtGui.QVBoxLayout(top_left)
-#
-#         top_right = QtGui.QFrame(self)
-#         top_right.setFrameShape(QtGui.QFrame.StyledPanel)
-#         r = QtGui.QVBoxLayout(top_right)
-#
-#         splitter = QtGui.QSplitter(QtCore.Qt.Horizontal)
-#         splitter.addWidget(top_left)
-#         splitter.addWidget(top_right)
-#
-#         self.layout.addWidget(splitter)
-#
-#         win = CurveDialog()
-#         self.rmsd_plot = win.get_plot()
-#         self.rmsd_plot.set_titles(ylabel='RMSD')
-#         self.rmsd_curve = make.curve([],  [], color="m", linewidth=1)
-#         self.rmsd_plot.add_item(self.rmsd_curve)
-#         l.addWidget(self.rmsd_plot)
-#
-#         win = CurveDialog()
-#         self.drmsd_plot = win.get_plot()
-#         self.drmsd_plot.set_titles(ylabel='dRMSD')
-#         self.drmsd_curve = make.curve([],  [], color="r", linewidth=1)
-#         self.drmsd_plot.add_item(self.drmsd_curve)
-#         r.addWidget(self.drmsd_plot)
-#
-#         # Energy - Curves
-#         top_left = QtGui.QFrame(self)
-#         top_left.setFrameShape(QtGui.QFrame.StyledPanel)
-#         l = QtGui.QVBoxLayout(top_left)
-#
-#         top_right = QtGui.QFrame(self)
-#         top_right.setFrameShape(QtGui.QFrame.StyledPanel)
-#         r = QtGui.QVBoxLayout(top_right)
-#
-#         splitter = QtGui.QSplitter(QtCore.Qt.Horizontal)
-#         splitter.addWidget(top_left)
-#         splitter.addWidget(top_right)
-#
-#         self.layout.addWidget(splitter)
-#
-#         win = CurveDialog()
-#         self.fret_plot = win.get_plot()
-#         self.fret_plot.set_titles(ylabel='FRET-Energy')
-#         self.fret_curve = make.curve([],  [], color="m", linewidth=1)
-#         self.fret_plot.add_item(self.fret_curve)
-#         l.addWidget(self.fret_plot)
-#
-#         win = CurveDialog()
-#         self.energy_plot = win.get_plot()
-#         self.energy_plot.set_titles(ylabel='System-Energy')
-#         self.energy_curve = make.curve([],  [], color="g", linewidth=1)
-#         self.energy_plot.add_item(self.energy_curve)
-#         r.addWidget(self.energy_plot)
-#
-#     def update_all(self, *args, **kwargs):
-#
-#         rmsd = np.array(self.trajectory.rmsd)
-#         drmsd = np.array(self.trajectory.drmsd)
-#         energy = np.array(self.trajectory.energy)
-#         energy_fret = np.array(self.trajectory.chi2r)
-#         x = list(range(len(rmsd)))
-#
-#         self.rmsd_curve.set_data(x, rmsd)
-#         self.drmsd_curve.set_data(x, drmsd)
-#         self.energy_curve.set_data(x, energy)
-#         self.fret_curve.set_data(x, energy_fret)
-#
-#         self.energy_plot.do_autoscale()
-#         self.fret_plot.do_autoscale()
-#         self.rmsd_plot.do_autoscale()
-#         self.drmsd_plot.do_autoscale()

@@ -486,7 +486,7 @@ class Main(
                 # Show only the selected member's editor for this group.
                 self._show_only_selected_member_editor(self.current_fit)
                 self.current_fit_widget.show()
-                sub_window.current_plot_controller.show()
+                sub_window.show_plot_settings()
             # Handle plugin windows with plot controllers (like sm_acquisition)
             elif (
                 hasattr(sub_window, "current_plot_controller")
@@ -1420,6 +1420,11 @@ class Main(
 
         self.modelLayout.setAlignment(QtCore.Qt.AlignTop)
         self.plotOptionsLayout.setAlignment(QtCore.Qt.AlignTop)
+        # The Plot settings surface fills the dock; the spacer under the layout
+        # only keeps a plugin's own Qt controller at the top.
+        outer = self.plotOptionsLayout.parent()
+        if isinstance(outer, QtWidgets.QBoxLayout):
+            outer.setStretchFactor(self.plotOptionsLayout, 1)
         self.dockWidgetReadData.raise_()
 
         self._install_dev_mode_code_badges()

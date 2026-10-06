@@ -81,10 +81,6 @@ def _surface_class():
                                      snapping=True, name="fitwin")
             self.code_face = None
             self.show_code = False
-            #: Page index -> the box its Qt widget covers this frame (unported pages).
-            self.islands: dict[int, tuple] = {}
-            #: Called after every frame with :attr:`islands` (the Qt side places them).
-            self.after_frame = None
             self._menu_panel = None
             self._suppress_layout_signal = False
             super().__init__(gui=self._render, continuous=False)
@@ -173,9 +169,8 @@ def _surface_class():
                 self._draw_panel_menu(page)
                 return
             if body is not None and body.missing:
-                # Not yet drawable on the surface: its Qt widget is laid over
-                # this box until the page is ported (the guard test lists them).
-                self.islands[index] = tuple(float(v) for v in box)
+                im.text_colored((220, 90, 90),
+                                f"{page.title}: {', '.join(body.missing)} declares nothing to draw.")
                 return
             if body is None or body.control is None:
                 im.text_disabled(f"{page.title}: nothing to show yet.")
@@ -212,13 +207,10 @@ def _surface_class():
         def _render(self) -> None:
             vp = im.get_main_viewport()
             box = (0.0, 0.0, float(vp.size[0]), float(vp.size[1]))
-            self.islands = {}
             if self.show_code and self.code_face is not None:
                 self.code_face.draw(box)
             else:
                 self.docks.draw(box)
-            if self.after_frame is not None:
-                self.after_frame(dict(self.islands))
 
         # -- host hooks ---------------------------------------------------- #
         def key(self, key, text="", modifiers=0):
@@ -268,14 +260,6 @@ class FitPlotsArea(QtWidgets.QWidget):
         layout.setSpacing(0)
         self.host = ControlHost(self.surface, background=BACKGROUND, parent=self)
         layout.addWidget(self.host, 1)
-        # Page widgets are built as before but never shown: the surface draws
-        # what they hold. A hidden holder keeps them alive and out of sight.
-        self._holder = QtWidgets.QWidget(self)
-        self._holder.hide()
-        #: Page index -> its Qt widget while it is laid over the surface.
-        self._islands: dict[int, QtWidgets.QWidget] = {}
-        self._pending_islands: dict | None = None
-        self.surface.after_frame = self._islands_drawn
 
     # -- pages ------------------------------------------------------------ #
     def add_page(self, title: str, provider: Callable[[], Any], key: str | None = None) -> int:
@@ -285,17 +269,9 @@ class FitPlotsArea(QtWidgets.QWidget):
         self.host.update()
         return index
 
-    def addTab(self, widget: QtWidgets.QWidget, title: str) -> int:  # noqa: N802 - Qt's spelling
-        """Add *widget* as a page (the Qt tab-widget spelling)."""
-        widget.setParent(self._holder)
-        return self.add_page(title, lambda w=widget: w)
-
-    def adopt(self, widget: QtWidgets.QWidget) -> None:
-        """Keep a page's plot widget alive, hidden, for the surface to draw."""
-        # QWidget.parentWidget, not widget.parent(): plot pages assign a
-        # ``parent`` attribute that shadows the Qt method.
-        if widget is not None and QtWidgets.QWidget.parentWidget(widget) is not self._holder:
-            widget.setParent(self._holder)
+    def addTab(self, page: Any, title: str) -> int:  # noqa: N802 - Qt's spelling
+        """Add a built *page* (the Qt tab-widget spelling)."""
+        return self.add_page(title, lambda p=page: p)
 
     def count(self) -> int:
         return len(self.surface.pages)
@@ -344,41 +320,6 @@ class FitPlotsArea(QtWidgets.QWidget):
     def setNewTabButtonVisible(self, visible: bool) -> None:  # noqa: N802
         """Kept for callers of the Qt dock area; the surface has no new-tab button."""
 
-    # -- pages not yet drawn by emtk ------------------------------------- #
-    def _islands_drawn(self, islands: dict) -> None:
-        """Note where unported pages go; placed after the paint, not inside it."""
-        current = {i: tuple(round(v) for v in box) for i, box in islands.items()}
-        placed = {i: tuple(w.geometry().getRect()) for i, w in self._islands.items()}
-        if current == placed:
-            return
-        first = self._pending_islands is None
-        self._pending_islands = current
-        if first:
-            QtCore.QTimer.singleShot(0, self._place_islands)
-
-    def _place_islands(self) -> None:
-        """Lay each unported page's Qt widget over its dock box; hide the rest."""
-        wanted, self._pending_islands = self._pending_islands or {}, None
-        for index in list(self._islands):
-            if index not in wanted:
-                widget = self._islands.pop(index)
-                widget.hide()
-                widget.setParent(self._holder)
-        for index, (x, y, w, h) in wanted.items():
-            widget = self.surface.pages[index].widget
-            if widget is None:
-                continue
-            if self._islands.get(index) is not widget:
-                widget.setParent(self)
-                self._islands[index] = widget
-            widget.setGeometry(int(x), int(y), max(int(w), 1), max(int(h), 1))
-            widget.show()
-            widget.raise_()
-
-    def island_indices(self) -> list[int]:
-        """Pages shown as Qt widgets over the surface (not yet drawn by emtk)."""
-        return sorted(self._islands)
-
     # -- the Code face ---------------------------------------------------- #
     def set_code_face(self, face) -> None:
         self.surface.code_face = face
@@ -387,9 +328,6 @@ class FitPlotsArea(QtWidgets.QWidget):
     def show_code(self, shown: bool) -> None:
         """Show the Code face (``True``) or the plots."""
         self.surface.show_code = bool(shown)
-        if shown:
-            self._pending_islands = {}
-            self._place_islands()
         self.surface.request_frame()
         self.host.update()
 

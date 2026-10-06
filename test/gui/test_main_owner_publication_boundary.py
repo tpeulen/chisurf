@@ -172,14 +172,14 @@ def test_actual_main_owner_publication(request, tmp_path, monkeypatch, scenario)
     window = main.mdiarea.subWindowList()[0]
     original_plot_state = window.get_project_plot_state()
     plot = next(p for p in window._created_plots if isinstance(p, LinePlot))
-    controller = plot.plot_controller
+    controller = window.plot_settings
     old_controls = [
         layout.itemAt(i).widget()
         for layout in (main.modelLayout, main.analysisHeaderLayout, main.plotOptionsLayout)
         for i in range(layout.count())
         if layout.itemAt(i).widget() is not None
     ]
-    timer = QtCore.QTimer(plot)
+    timer = QtCore.QTimer(window)
     timer.start(10000)
     api = ChiSurfAPI(mode="local")
     api._state.current_fit_uid = fit.unique_identifier
@@ -240,10 +240,15 @@ def test_actual_main_owner_publication(request, tmp_path, monkeypatch, scenario)
         app.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
         app.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
         assert sip.isdeleted(window)
-        assert sip.isdeleted(plot)
         assert sip.isdeleted(timer)
-        assert sip.isdeleted(controller)
-        assert all(sip.isdeleted(widget) for widget in old_controls)
+        replacement = main.mdiarea.subWindowList()[0]
+        assert plot not in replacement._created_plots
+        # the Plot settings surface is the main window's: it survives and shows
+        # the replacement; every other control of the old view is retired
+        app.processEvents()  # the replacement builds its first page on the next turn
+        assert not sip.isdeleted(controller)
+        assert controller.owner is replacement
+        assert all(sip.isdeleted(widget) for widget in old_controls if widget is not controller)
         assert len(api._state.fits) == 1
     app.processEvents()
     assert main.grab().save(str(tmp_path / "after.png"))

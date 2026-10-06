@@ -1,0 +1,172 @@
+{
+  "_comment": "The fit's analysis record: what was measured on which sample, its metadata, the raw data it came from, and the flrCIF export.",
+  "title": "Info",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Analysis",
+      "description": "What this analysis is: its id, type, sample and conditions.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "analysis_form",
+          "description": "Analysis id (read-only), analysis type, the sample (pick a stored one or type a new id; the button makes a new UUID) and free-text sample and condition details."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Metadata",
+      "description": "Key / value metadata of this analysis, keys from the mmCIF catalogue or your own.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per key. Double-click a cell to type in it; pick a row to choose its key from the catalogue below.",
+          "options": {
+            "source": "metadata_rows",
+            "row_key": "_row",
+            "selected_call": "select_row",
+            "edited_call": "edited",
+            "editable": true,
+            "expand": true,
+            "reserve": 130,
+            "fit_columns": true,
+            "columns": [
+              {
+                "key": "key",
+                "title": "key",
+                "tooltip": "The metadata key (an mmCIF item or your own)."
+              },
+              {
+                "key": "value",
+                "title": "value",
+                "tooltip": "Its value."
+              }
+            ]
+          }
+        },
+        {
+          "type": "choice",
+          "attr": "detail_key",
+          "label": "Key",
+          "options_source": "key_options",
+          "filter": true,
+          "description": "The picked row's key, from the mmCIF catalogue (type to filter it)."
+        },
+        {
+          "type": "info",
+          "source": "key_help",
+          "description": "What the picked key means (from the dictionary)."
+        },
+        {
+          "type": "button_row",
+          "description": "Add or remove metadata rows.",
+          "buttons": [
+            {
+              "action": "add_row",
+              "label": "+",
+              "description": "Add an empty metadata row."
+            },
+            {
+              "action": "delete_row",
+              "label": "−",
+              "description": "Remove the picked metadata row."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "External data",
+      "description": "References to the raw data this analysis came from (photon streams).",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "title": "",
+          "description": "One row per external file. Double-click a cell to type a path / URL or its format.",
+          "options": {
+            "source": "external_rows",
+            "row_key": "_row",
+            "selected_call": "select_row",
+            "edited_call": "edited",
+            "editable": true,
+            "expand": true,
+            "reserve": 90,
+            "columns": [
+              {
+                "key": "file_path",
+                "title": "file path / URL",
+                "tooltip": "Where the raw data is: a local path or a URL."
+              },
+              {
+                "key": "file_format",
+                "title": "format",
+                "width": 90,
+                "tooltip": "The file format (ptu, tttr, csv, ...)."
+              }
+            ]
+          }
+        },
+        {
+          "type": "button_row",
+          "description": "Add or remove external data references.",
+          "buttons": [
+            {
+              "action": "add_row",
+              "label": "+",
+              "description": "Add an empty row to type a path or URL into."
+            },
+            {
+              "action": "delete_row",
+              "label": "−",
+              "description": "Remove the picked reference."
+            }
+          ]
+        },
+        {
+          "type": "info",
+          "source": "drop_hint",
+          "description": "How to add references, and where detector / channel information goes."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Export",
+      "description": "The analysis as flrCIF (mmCIF): preview, copy or save.",
+      "sections": [
+        {
+          "type": "button_row",
+          "weight": 0,
+          "description": "Compute, copy or save the mmCIF.",
+          "buttons": [
+            {
+              "action": "export_full_preview",
+              "label": "🔄",
+              "description": "Compute the full mmCIF preview, with the fit's curves embedded."
+            },
+            {
+              "action": "export_copy",
+              "label": "Copy to clipboard",
+              "description": "Copy the preview's text to the clipboard."
+            },
+            {
+              "action": "export_save",
+              "label": "Save to file…",
+              "description": "Save the preview's text as an .cif file."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "cif_preview",
+          "description": "The mmCIF that would be exported (read-only; select and copy as in an editor)."
+        }
+      ]
+    }
+  ]
+}

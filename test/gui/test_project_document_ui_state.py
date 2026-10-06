@@ -97,13 +97,12 @@ def test_actual_main_ordinary_save_preserves_plot_context(request, tmp_path, mon
     window.setGeometry(70, 60, 840, 610)
     # Visit the plot that owns the actual retained controller.
     plot = next(p for p in window._created_plots if isinstance(p, LinePlot))
-    control = plot.plot_controller
-    state = control.get_state()
+    state = plot.get_settings_state()
     # Exercise real saved controller options, rather than inventing option names.
     boolean_keys = [key for key, value in state.items() if type(value) is bool]
     assert boolean_keys, state
     state[boolean_keys[0]] = not state[boolean_keys[0]]
-    control.set_state(state)
+    plot.set_settings_state(state)
     app.processEvents()
     expected = get_ui_state(main)["fit_windows"][fit.unique_identifier]
     before_ranges = [(member.xmin, member.xmax) for member in fit.grouped_fits]

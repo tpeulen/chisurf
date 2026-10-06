@@ -40,7 +40,7 @@ class MfdMapPlot(plotbase.Plot):
         ----------
         fit : chisurf.core.fitting.fit.Fit
             The fit whose model supplies the map.
-        parent : QtWidgets.QWidget, optional
+        parent : object, optional
             Parent widget.
         target : str
             Model method returning the 2D array, rows along y.

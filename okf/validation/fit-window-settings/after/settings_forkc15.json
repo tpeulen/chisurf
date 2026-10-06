@@ -1,0 +1,39 @@
+{
+ "DistributionPlot": {
+  "case": "forkc15",
+  "fields": [
+   "accessor",
+   "accessor_kwargs.fold",
+   "accessor_kwargs.kw_hist.histogram",
+   "accessor_kwargs.kw_hist.log_x",
+   "accessor_kwargs.kw_hist.n_bins",
+   "accessor_kwargs.kw_hist.n_min",
+   "accessor_kwargs.kw_hist.x_max",
+   "accessor_kwargs.kw_hist.x_min",
+   "attribute",
+   "curve_options.connect",
+   "curve_options.fold",
+   "curve_options.multi_curve",
+   "curve_options.stepMode",
+   "distribution_type",
+   "first:curve_options.pen",
+   "first:curve_options.symbol",
+   "kw_hist.fold",
+   "reset:accessor_kwargs.kw_hist.histogram",
+   "reset:accessor_kwargs.kw_hist.log_x",
+   "reset:accessor_kwargs.kw_hist.n_bins",
+   "reset:accessor_kwargs.kw_hist.n_min",
+   "reset:accessor_kwargs.kw_hist.x_max",
+   "reset:accessor_kwargs.kw_hist.x_min",
+   "reset:attribute",
+   "reset:curve_options.connect",
+   "reset:curve_options.multi_curve",
+   "reset:curve_options.pen",
+   "reset:curve_options.stepMode",
+   "reset:curve_options.symbol",
+   "reset:scale_x",
+   "scale_x",
+   "show_gaussians"
+  ]
+ }
+}

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
+import pathlib
+
 import numpy as np
-from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.core.fitting
@@ -9,248 +11,8 @@ from chisurf.core.roi import RectangleROI
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
 
-
-class Residual2DPlotControl(QtWidgets.QWidget):
-    def __init__(self, parent: Residual2DPlot | None = None) -> None:
-        super().__init__(parent)
-        self._plot = parent
-
-        form = QtWidgets.QFormLayout(self)
-        # Compact controller layout: remove margins and extra spacing so
-        # multiple plot controllers can sit closely without wasting space.
-        form.setContentsMargins(0, 0, 0, 0)
-        form.setSpacing(0)
-
-        self.sb_vmin = QtWidgets.QDoubleSpinBox(self)
-        self.sb_vmax = QtWidgets.QDoubleSpinBox(self)
-        for sb in (self.sb_vmin, self.sb_vmax):
-            sb.setDecimals(6)
-            sb.setRange(-1e12, 1e12)
-
-        # Single compact row for vmin / vmax and the Auto contrast toolbutton.
-        v_row = QtWidgets.QGridLayout()
-        v_row.setContentsMargins(0, 0, 0, 0)
-        v_row.setSpacing(0)
-        v_row.addWidget(QtWidgets.QLabel("vmin"), 0, 0)
-        v_row.addWidget(self.sb_vmin, 0, 1)
-        v_row.addWidget(QtWidgets.QLabel("vmax"), 0, 2)
-        v_row.addWidget(self.sb_vmax, 0, 3)
-
-        # Optional helper to restore reasonable contrast based on the
-        # underlying image data. This is especially handy after manual edits
-        # of vmin/vmax or when switching image sources.
-        self.btn_auto = QtWidgets.QToolButton(self)
-        self.btn_auto.setText("Auto contrast")
-        v_row.addWidget(self.btn_auto, 0, 4)
-
-        form.addRow(v_row)
-
-        self.sb_xmin = QtWidgets.QSpinBox(self)
-        self.sb_xmax = QtWidgets.QSpinBox(self)
-        self.sb_ymin = QtWidgets.QSpinBox(self)
-        self.sb_ymax = QtWidgets.QSpinBox(self)
-        for sb in (self.sb_xmin, self.sb_xmax, self.sb_ymin, self.sb_ymax):
-            sb.setRange(-int(1e9), int(1e9))
-        xy_row = QtWidgets.QGridLayout()
-        xy_row.setContentsMargins(0, 0, 0, 0)
-        xy_row.setSpacing(0)
-        xy_row.addWidget(QtWidgets.QLabel("x min"), 0, 0)
-        xy_row.addWidget(self.sb_xmin, 0, 1)
-        xy_row.addWidget(QtWidgets.QLabel("x max"), 0, 2)
-        xy_row.addWidget(self.sb_xmax, 0, 3)
-        xy_row.addWidget(QtWidgets.QLabel("y min"), 1, 0)
-        xy_row.addWidget(self.sb_ymin, 1, 1)
-        xy_row.addWidget(QtWidgets.QLabel("y max"), 1, 2)
-        xy_row.addWidget(self.sb_ymax, 1, 3)
-        form.addRow(xy_row)
-
-        self.cb_cmap = QtWidgets.QComboBox(self)
-        # Prefer a diverging colormap as default for signed residuals
-        self.cb_cmap.addItems(["RdBu", "bwr", "viridis", "plasma", "inferno", "magma", "cividis"])
-        form.addRow("Colormap", self.cb_cmap)
-
-        # Optional image source selector (e.g. residual, data, model, intensity).
-        # Hidden by default and only populated when the parent plot provides
-        # multiple sources. When unused, both the label and the combo box are
-        # hidden to avoid clutter.
-        self.cb_source = QtWidgets.QComboBox(self)
-        self.cb_source.setVisible(False)
-        try:
-            self._lbl_source = QtWidgets.QLabel("Image source", self)
-        except Exception:
-            self._lbl_source = None
-        if self._lbl_source is not None:
-            self._lbl_source.setVisible(False)
-            form.addRow(self._lbl_source, self.cb_source)
-        else:
-            form.addRow("Image source", self.cb_source)
-
-        # Optional frame index selector for image stacks. Hidden by default
-        # and enabled only when the parent configures a frame range. When not
-        # used, hide its label as well.
-        self.sb_frame = QtWidgets.QSpinBox(self)
-        self.sb_frame.setRange(0, 0)
-        self.sb_frame.setVisible(False)
-        try:
-            self._lbl_frame = QtWidgets.QLabel("Frame index", self)
-        except Exception:
-            self._lbl_frame = None
-        if self._lbl_frame is not None:
-            self._lbl_frame.setVisible(False)
-            form.addRow(self._lbl_frame, self.sb_frame)
-        else:
-            form.addRow("Frame index", self.sb_frame)
-
-        self.sb_vmin.editingFinished.connect(self._on_levels_changed)
-        self.sb_vmax.editingFinished.connect(self._on_levels_changed)
-        self.sb_xmin.editingFinished.connect(self._on_ranges_changed)
-        self.sb_xmax.editingFinished.connect(self._on_ranges_changed)
-        self.sb_ymin.editingFinished.connect(self._on_ranges_changed)
-        self.sb_ymax.editingFinished.connect(self._on_ranges_changed)
-        self.cb_cmap.currentTextChanged.connect(self._on_cmap_changed)
-        self.cb_source.currentIndexChanged.connect(self._on_source_changed)
-        self.sb_frame.valueChanged.connect(self._on_frame_changed)
-        self.btn_auto.clicked.connect(self._on_auto_clicked)
-
-    def set_initial_ranges(self, x: np.ndarray, y: np.ndarray, vmin: float, vmax: float) -> None:
-        try:
-            self.blockSignals(True)
-            if x is not None and x.size > 0:
-                x_min = int(np.nanmin(x))
-                x_max = int(np.nanmax(x))
-                if x_max < x_min:
-                    x_min, x_max = x_max, x_min
-                self.sb_xmin.setRange(x_min, x_max)
-                self.sb_xmax.setRange(x_min, x_max)
-                self.sb_xmin.setValue(x_min)
-                self.sb_xmax.setValue(x_max)
-            if y is not None and y.size > 0:
-                y_min = int(np.nanmin(y))
-                y_max = int(np.nanmax(y))
-                if y_max < y_min:
-                    y_min, y_max = y_max, y_min
-                self.sb_ymin.setRange(y_min, y_max)
-                self.sb_ymax.setRange(y_min, y_max)
-                self.sb_ymin.setValue(y_min)
-                self.sb_ymax.setValue(y_max)
-            self.sb_vmin.setValue(float(vmin))
-            self.sb_vmax.setValue(float(vmax))
-        finally:
-            self.blockSignals(False)
-
-    def levels(self) -> tuple[float, float]:
-        return float(self.sb_vmin.value()), float(self.sb_vmax.value())
-
-    def ranges(self) -> tuple[int, int, int, int]:
-        return (
-            int(self.sb_xmin.value()),
-            int(self.sb_xmax.value()),
-            int(self.sb_ymin.value()),
-            int(self.sb_ymax.value()),
-        )
-
-    def cmap_name(self) -> str:
-        return str(self.cb_cmap.currentText())
-
-    # --- Optional multi-source / stack controls ---------------------------------
-
-    def set_sources(self, names: list[str]) -> None:
-        """Populate the image-source selector.
-
-        When *names* is empty the selector is hidden and the plot behaves like
-        a single-source residual view (backwards compatible behaviour).
-        """
-        try:
-            self.cb_source.blockSignals(True)
-            self.cb_source.clear()
-            for name in names:
-                self.cb_source.addItem(str(name))
-            has_sources = bool(names)
-            self.cb_source.setVisible(has_sources)
-            lbl = getattr(self, "_lbl_source", None)
-            if lbl is not None:
-                lbl.setVisible(has_sources)
-        finally:
-            self.cb_source.blockSignals(False)
-
-    def current_source_name(self) -> str:
-        return str(self.cb_source.currentText())
-
-    def set_frame_range(self, n_frames: int) -> None:
-        """Configure the frame slider range for image stacks.
-
-        If ``n_frames <= 1`` the slider is hidden and effectively disabled.
-        """
-        try:
-            self.sb_frame.blockSignals(True)
-            has_frames = not (n_frames is None or n_frames <= 1)
-            if not has_frames:
-                self.sb_frame.setVisible(False)
-                self.sb_frame.setRange(0, 0)
-                self.sb_frame.setValue(0)
-            else:
-                n = int(n_frames)
-                if n < 1:
-                    n = 1
-                self.sb_frame.setVisible(True)
-                self.sb_frame.setRange(0, n - 1)
-                # Clamp current value into range
-                v = self.sb_frame.value()
-                if v < 0:
-                    v = 0
-                if v > n - 1:
-                    v = n - 1
-                self.sb_frame.setValue(v)
-            lbl = getattr(self, "_lbl_frame", None)
-            if lbl is not None:
-                lbl.setVisible(has_frames)
-        finally:
-            self.sb_frame.blockSignals(False)
-
-    def frame_index(self) -> int:
-        return int(self.sb_frame.value())
-
-    def set_frame_label(self, text: str) -> None:
-        """Rename the stack slider.
-
-        Image stacks index frames, but a correlation carpet indexes frame lags,
-        so the caller names the axis (e.g. ``"Frame lag Δ"``).
-
-        Parameters
-        ----------
-        text : str
-            Label shown next to the slider.
-        """
-        lbl = getattr(self, "_lbl_frame", None)
-        if lbl is not None:
-            lbl.setText(str(text))
-
-    def _on_levels_changed(self) -> None:
-        if self._plot is not None:
-            self._plot.apply_levels_from_controller()
-
-    def _on_ranges_changed(self) -> None:
-        if self._plot is not None:
-            self._plot.apply_ranges_from_controller()
-
-    def _on_cmap_changed(self, _text: str) -> None:
-        if self._plot is not None:
-            self._plot.apply_cmap_from_controller()
-
-    def _on_auto_clicked(self) -> None:
-        if self._plot is not None and hasattr(self._plot, "auto_contrast"):
-            try:
-                self._plot.auto_contrast()
-            except Exception:
-                pass
-
-    def _on_source_changed(self, _idx: int) -> None:
-        if self._plot is not None:
-            self._plot.on_source_changed()
-
-    def _on_frame_changed(self, _val: int) -> None:
-        if self._plot is not None:
-            self._plot.on_frame_changed()
+#: Colormaps offered for the image; a diverging map first, for signed residuals.
+COLORMAPS = ("RdBu", "bwr", "viridis", "plasma", "inferno", "magma", "cividis")
 
 
 def _resolve_accessor(accessor):
@@ -302,11 +64,7 @@ class Residual2DPlot(plotbase.Plot):
     """
 
     name = "Residuals 2D"
-    # Optional signal used by some fit widgets (e.g. RICS) to synchronize
-    # the 1D fit range with a 2D selection. FitSubWindow already connects
-    # LinePlot.regionChanged to the fit controller; by exposing the same
-    # signal here we can reuse that wiring for 2D ROI-based range updates.
-    regionChanged = QtCore.Signal(int, int)
+    settings_view = "residual_image.settings.view.json"
 
     def __init__(
         self,
@@ -321,6 +79,19 @@ class Residual2DPlot(plotbase.Plot):
         **kwargs,
     ) -> None:
         super().__init__(fit=fit, *args, **kwargs)
+        # Used by some fit widgets (e.g. RICS) to synchronize the 1D fit range
+        # with a 2D selection: FitSubWindow connects ``regionChanged`` of any
+        # page to the fit controller, as it does for LinePlot.
+        self.regionChanged = plotbase.Hook()
+
+        # The settings (the *Plot settings* dock draws them from the spec).
+        self._vmin, self._vmax = -1.0, 1.0
+        self._xmin = self._xmax = self._ymin = self._ymax = 0
+        self._x_bounds: tuple[int, int] = (-int(1e9), int(1e9))
+        self._y_bounds: tuple[int, int] = (-int(1e9), int(1e9))
+        self._colormap = COLORMAPS[0]
+        self._frame_index = 0
+        self._n_frames = 0
 
         self._accessor = accessor
         self._accessor_kwargs = {} if accessor_kwargs is None else dict(accessor_kwargs)
@@ -363,8 +134,7 @@ class Residual2DPlot(plotbase.Plot):
         self._x: np.ndarray | None = None
         self._y: np.ndarray | None = None
 
-        self._plot_widget = cp.Plot()
-        self.layout.addWidget(self._plot_widget)
+        self._plot_widget = self.add_panel()
         self._plot_widget.set_aspect_locked(False)
 
         # The image handle is created on the first computed frame: chiplot's
@@ -394,30 +164,156 @@ class Residual2DPlot(plotbase.Plot):
         self._roi_sync_in_progress = False
         self._roi_initialized = False
 
-        self.plot_controller = Residual2DPlotControl(self)
-        self.widgets.append(self.plot_controller)
-
-        # Expose optional multi-source selector and frame slider in the
-        # controller if configured.
-        if self._sources is not None:
-            try:
-                self.plot_controller.set_sources(list(self._sources.keys()))
-            except Exception:
-                pass
+        # The frame axis may be named by the caller: an image stack indexes
+        # frames, a correlation carpet frame lags ("Frame lag Δ").
+        spec = json.loads(
+            pathlib.Path(__file__).with_name(self.settings_view).read_text(encoding="utf-8")
+        )
         if frame_label:
-            try:
-                self.plot_controller.set_frame_label(frame_label)
-            except Exception:
-                pass
+            for section in spec["sections"]:
+                for child in section.get("sections", ()):
+                    if child.get("attr") == "frame_index":
+                        child["label"] = str(frame_label)
+        self._settings_spec = spec
+
         if self._max_frames_accessor is not None:
             try:
                 n_frames = int(self._max_frames_accessor(self.fit))
             except Exception:
                 n_frames = 0
-            try:
-                self.plot_controller.set_frame_range(n_frames)
-            except Exception:
-                pass
+            self.set_frame_range(n_frames)
+
+    # ------------------------------------------------------------------
+    # Settings (drawn in the *Plot settings* dock from the view spec)
+    # ------------------------------------------------------------------
+
+    @property
+    def vmin(self) -> float:
+        """Value at the low end of the colormap."""
+        return self._vmin
+
+    @vmin.setter
+    def vmin(self, value: float) -> None:
+        self._vmin = float(value)
+        self.apply_levels_from_controller()
+
+    @property
+    def vmax(self) -> float:
+        """Value at the high end of the colormap."""
+        return self._vmax
+
+    @vmax.setter
+    def vmax(self, value: float) -> None:
+        self._vmax = float(value)
+        self.apply_levels_from_controller()
+
+    def _range_setter(name):  # noqa: N805 - a property factory, not a method
+        def getter(self) -> int:
+            return getattr(self, "_" + name)
+
+        def setter(self, value: int) -> None:
+            setattr(self, "_" + name, int(value))
+            self.apply_ranges_from_controller()
+
+        return property(getter, setter, doc=f"The shown range's {name} (axis units).")
+
+    xmin = _range_setter("xmin")
+    xmax = _range_setter("xmax")
+    ymin = _range_setter("ymin")
+    ymax = _range_setter("ymax")
+    del _range_setter
+
+    def bounds(self, name: str):
+        """Run-time limits of a settings field (emtk's form asks its model)."""
+        if name in ("xmin", "xmax"):
+            return self._x_bounds
+        if name in ("ymin", "ymax"):
+            return self._y_bounds
+        if name == "frame_index":
+            return (0, max(self._n_frames - 1, 0))
+        return None
+
+    def colormaps(self) -> list[str]:
+        """The colormaps offered."""
+        return list(COLORMAPS)
+
+    @property
+    def colormap(self) -> str:
+        """The image's colormap."""
+        return self._colormap
+
+    @colormap.setter
+    def colormap(self, value: str) -> None:
+        self._colormap = str(value)
+        self.apply_cmap_from_controller()
+
+    @property
+    def has_sources(self) -> bool:
+        """Whether the model offers more than one image (a source selector)."""
+        return bool(self._sources)
+
+    def source_names(self) -> list[str]:
+        """The image sources the model offers."""
+        return list(self._sources or ())
+
+    @property
+    def image_source(self) -> str:
+        """The shown image source."""
+        return self._current_source_key or ""
+
+    @image_source.setter
+    def image_source(self, value: str) -> None:
+        if self._sources is None or str(value) not in self._sources:
+            return
+        self._current_source_key = str(value)
+        self.update()
+
+    @property
+    def has_frames(self) -> bool:
+        """Whether the image is a stack (a frame selector)."""
+        return self._n_frames > 1
+
+    def set_frame_range(self, n_frames: int | None) -> None:
+        """Set how many frames the stack has; the index is clamped into it."""
+        self._n_frames = 0 if n_frames is None or n_frames <= 1 else int(n_frames)
+        self._frame_index = min(max(self._frame_index, 0), max(self._n_frames - 1, 0))
+
+    @property
+    def frame_index(self) -> int:
+        """The shown frame of an image stack."""
+        return self._frame_index
+
+    @frame_index.setter
+    def frame_index(self, value: int) -> None:
+        self._frame_index = min(max(int(value), 0), max(self._n_frames - 1, 0))
+        if self._frame_kw is not None:
+            self.update()
+
+    def get_settings_state(self) -> dict:
+        """The settings, for the project file."""
+        return {
+            "vmin": self._vmin,
+            "vmax": self._vmax,
+            "xmin": self._xmin,
+            "xmax": self._xmax,
+            "ymin": self._ymin,
+            "ymax": self._ymax,
+            "colormap": self._colormap,
+            "image_source": self.image_source,
+            "frame_index": self._frame_index,
+        }
+
+    def set_settings_state(self, state: dict) -> None:
+        """Restore :meth:`get_settings_state`."""
+        if not isinstance(state, dict):
+            return
+        for key in ("vmin", "vmax", "colormap", "xmin", "xmax", "ymin", "ymax"):
+            if key in state:
+                setattr(self, "_" + key, state[key])
+        if state.get("frame_index") is not None:
+            self._frame_index = int(state["frame_index"])
+        if state.get("image_source"):
+            self.image_source = state["image_source"]
 
     def _compute_image(self) -> None:
         if self._accessor is None:
@@ -434,11 +330,7 @@ class Residual2DPlot(plotbase.Plot):
             and isinstance(self._accessor_kwargs, dict)
             and self._frame_kw in self._accessor_kwargs
         ):
-            try:
-                frame_idx = int(self.plot_controller.frame_index())
-                self._accessor_kwargs[self._frame_kw] = frame_idx
-            except Exception:
-                pass
+            self._accessor_kwargs[self._frame_kw] = int(self._frame_index)
 
         # Update frame range dynamically from the accessor if configured.
         if self._max_frames_accessor is not None:
@@ -446,10 +338,7 @@ class Residual2DPlot(plotbase.Plot):
                 n_frames = int(self._max_frames_accessor(self.fit))
             except Exception:
                 n_frames = 0
-            try:
-                self.plot_controller.set_frame_range(n_frames)
-            except Exception:
-                pass
+            self.set_frame_range(n_frames)
 
         accessor = _resolve_accessor(self._accessor)
         if accessor is None:
@@ -554,7 +443,7 @@ class Residual2DPlot(plotbase.Plot):
         else:
             vmin, vmax = -1.0, 1.0
 
-        self.plot_controller.set_initial_ranges(self._x, self._y, vmin, vmax)
+        self._set_initial_ranges(vmin, vmax)
         self.apply_levels_from_controller()
         self.apply_ranges_from_controller()
         self.apply_cmap_from_controller()
@@ -591,28 +480,17 @@ class Residual2DPlot(plotbase.Plot):
         except Exception:
             pass
 
-    # ------------------------------------------------------------------
-    # Hooks used by Residual2DPlotControl
-    # ------------------------------------------------------------------
-
-    def on_source_changed(self) -> None:
-        """Switch to a different image source and recompute the plot."""
-        if self._sources is None:
-            return
-        try:
-            key = self.plot_controller.current_source_name()
-        except Exception:
-            key = None
-        if not key or key not in self._sources:
-            return
-        self._current_source_key = key
-        self.update()
-
-    def on_frame_changed(self) -> None:
-        """Recompute the image for the newly selected frame index."""
-        if self._frame_kw is None:
-            return
-        self.update()
+    def _set_initial_ranges(self, vmin: float, vmax: float) -> None:
+        """This frame's data-driven levels and the full axis ranges (and their limits)."""
+        if self._x is not None and self._x.size > 0:
+            x_min, x_max = sorted((int(np.nanmin(self._x)), int(np.nanmax(self._x))))
+            self._x_bounds = (x_min, x_max)
+            self._xmin, self._xmax = x_min, x_max
+        if self._y is not None and self._y.size > 0:
+            y_min, y_max = sorted((int(np.nanmin(self._y)), int(np.nanmax(self._y))))
+            self._y_bounds = (y_min, y_max)
+            self._ymin, self._ymax = y_min, y_max
+        self._vmin, self._vmax = float(vmin), float(vmax)
 
     def auto_contrast(self) -> None:
         """Reset vmin/vmax to data-driven levels and apply them.
@@ -656,26 +534,13 @@ class Residual2DPlot(plotbase.Plot):
             if not (np.isfinite(vmin) and np.isfinite(vmax)) or vmax <= vmin:
                 return
 
-        # Update the controller spin boxes without emitting change signals
-        try:
-            self.plot_controller.blockSignals(True)
-            self.plot_controller.sb_vmin.setValue(vmin)
-            self.plot_controller.sb_vmax.setValue(vmax)
-        except Exception:
-            pass
-        finally:
-            try:
-                self.plot_controller.blockSignals(False)
-            except Exception:
-                pass
-
-        # Apply the new levels to the image item
+        self._vmin, self._vmax = vmin, vmax
         self.apply_levels_from_controller()
 
     def apply_levels_from_controller(self) -> None:
         if self._image is None or self._image_item is None:
             return
-        vmin, vmax = self.plot_controller.levels()
+        vmin, vmax = self._vmin, self._vmax
         if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
             finite = np.isfinite(self._image)
             if not np.any(finite):
@@ -687,7 +552,7 @@ class Residual2DPlot(plotbase.Plot):
     def apply_ranges_from_controller(self) -> None:
         if self._x is None or self._y is None:
             return
-        xmin, xmax, ymin, ymax = self.plot_controller.ranges()
+        xmin, xmax, ymin, ymax = self._xmin, self._xmax, self._ymin, self._ymax
         if xmax <= xmin:
             xmin, xmax = float(self._x.min()), float(self._x.max())
         if ymax <= ymin:
@@ -700,7 +565,7 @@ class Residual2DPlot(plotbase.Plot):
             return
         # An unresolvable name yields no lookup table, which is the grayscale
         # ramp the plot fell back to before.
-        self._image_item.set_colormap(self.plot_controller.cmap_name())
+        self._image_item.set_colormap(self._colormap)
 
     # ------------------------------------------------------------------
     # ROI → 1D fit-range mapping

@@ -332,18 +332,81 @@ def test_distance_network_plot_constructs(qapp, qtbot, tmp_path):
     )
     model.set_current_frame = lambda value: setattr(model, "current_frame_index", int(value))
     plot = ProteinMCDistanceNetworkPlot(SimpleNamespace(model=model))
-    qtbot.addWidget(plot)
 
     plot.update_all()
 
-    assert plot.plot_controller.frame_spin.maximum() == 2
-    assert plot.plot_controller.start_btn.text() == "|<"
-    assert plot.plot_controller.play_btn.text() == "▶"
-    assert plot.plot_controller.stop_btn.text() == "■"
-    plot.plot_controller.step_spin.setValue(2)
-    plot.plot_controller._next_frame()
+    # The playback is the page's settings: a spec over the page's own actions.
+    assert plot.bounds("frame") == (0, 2)
+    assert plot.frame_total_text() == "/ 2"
+    buttons = [
+        b["label"]
+        for section in plot.settings_spec()["sections"][0]["sections"]
+        if section.get("type") == "button_row"
+        for b in section["buttons"]
+    ]
+    assert buttons == ["|<", "<", "▶", "■", ">", ">|"]
+    plot.step = 2
+    plot.goto_next()
     assert model.current_frame_index == 2
     assert _agreement_color(-3.0) == _agreement_color(3.0)
+
+
+def test_network_playback_steps_on_drawn_frames_and_round_trips(qapp, tmp_path):
+    """No timer: a playing page steps when a frame draws it, and the project keeps it."""
+    from chisurf.gui.plots.proteinMC import PLAY_INTERVAL, ProteinMCDistanceNetworkPlot
+
+    structure = _two_ca_structure()
+    xyz = structure.atoms["xyz"]
+    model = SimpleNamespace(
+        proteinmc_structure=structure,
+        trajectory_frames=[xyz, xyz + 1.0, xyz + 2.0],
+        current_frame_index=0,
+        frame_count=3,
+        labeling_file=str(_labeling_file(tmp_path)),
+    )
+    model.set_current_frame = lambda value: setattr(model, "current_frame_index", int(value))
+    plot = ProteinMCDistanceNetworkPlot(SimpleNamespace(model=model))
+    asked = []
+    plot.set_refresh_target(lambda: asked.append(1))
+
+    plot.play()
+    start = plot._last_tick
+    plot.tick(start + PLAY_INTERVAL / 2)
+    assert model.current_frame_index == 0, "stepped before the interval"
+    plot.tick(start + 1.01 * PLAY_INTERVAL)
+    assert model.current_frame_index == 1
+    assert asked, "a playing page must ask for the next frame"
+    plot.tick(start + 2.02 * PLAY_INTERVAL)
+    plot.tick(start + 3.03 * PLAY_INTERVAL)
+    assert model.current_frame_index == 0, "playback wraps past the last frame"
+
+    plot.step = 2
+    state = plot.get_settings_state()
+    assert state == {"frame": 0, "step": 2, "playing": True}
+    plot.stop()
+    assert not plot.playing
+    plot.set_settings_state({"frame": 2, "step": 1, "playing": False})
+    assert (model.current_frame_index, plot.step, plot.playing) == (2, 1, False)
+
+
+def test_trajectory_settings_hide_panels_and_keep_the_old_keys(qapp):
+    """The four curve toggles choose the panels drawn; their state uses the old keys."""
+    from chisurf.gui.plots.proteinMC import ProteinMCPlot
+
+    model = SimpleNamespace(rmsd=[1.0, 2.0], drmsd=[0.5, 0.4], energy=[3.0, 2.0],
+                            chi2r=[1.0, 0.9], current_frame_index=1)
+    plot = ProteinMCPlot(SimpleNamespace(model=model, name="fit"))
+    plot.update()
+    assert plot._grid() is not None and len(plot._grid_key) == 4
+    plot.show_energy = False
+    plot.show_fret = False
+    assert plot._grid() is not None and plot._grid_key == (
+        id(plot.panel_items[0]), id(plot.panel_items[1]))
+    assert plot.get_settings_state() == {
+        "show_rmsd": True, "show_drmsd": True, "show_energy": False, "show_fret": False}
+    plot.set_settings_state({"show_rmsd": False, "show_drmsd": False})
+    assert plot._grid() is None
+    plot.autoscale()
 
 
 def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):

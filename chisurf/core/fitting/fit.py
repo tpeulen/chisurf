@@ -818,7 +818,11 @@ class Fit(cs.core.base.Base):
         str
             String containing chi²r, range, and a parameter table.
         """
-        s = f"chi2r={self.chi2r:.4f}  range={self.xmin}..{self.xmax}\n\n"
+        chi2r = float(self.chi2r)
+        # fixed-point for an ordinary value; an unfitted start can be 1e180,
+        # which fixed-point prints as a 180-digit line
+        shown = f"{chi2r:.4f}" if chi2r == 0 or 1e-3 <= abs(chi2r) < 1e5 else f"{chi2r:.4e}"
+        s = f"chi2r={shown}  range={self.xmin}..{self.xmax}\n\n"
         s += f"  {'Name':<12s}  {'Value':<11s}  {'Error':<13s}  {'Source'}  {'Link'}\n"
         pd = self.model.parameters_all_dict
         for k in sorted(pd.keys()):

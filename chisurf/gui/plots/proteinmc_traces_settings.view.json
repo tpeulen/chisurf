@@ -1,0 +1,23 @@
+{
+  "title": "Trajectory-Plot settings",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Trajectory curves",
+      "sections": [
+        {"type": "toggle", "attr": "show_rmsd", "label": "RMSD",
+         "description": "Show the RMSD of each frame to the starting structure."},
+        {"type": "toggle", "attr": "show_drmsd", "label": "dRMSD",
+         "description": "Show the distance RMSD of each frame to the starting structure."},
+        {"type": "toggle", "attr": "show_energy", "label": "Energy",
+         "description": "Show the total sampling energy of each frame."},
+        {"type": "toggle", "attr": "show_fret", "label": "Labeling (FRET)",
+         "description": "Show the labeling (FRET restraint) chi2r of each frame."},
+        {"type": "button_row", "buttons": [
+          {"action": "autoscale", "label": "Auto-scale",
+           "description": "Fit every shown panel's axes to its curve."}
+        ]}
+      ]
+    }
+  ]
+}

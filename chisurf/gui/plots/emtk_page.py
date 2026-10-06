@@ -1,34 +1,23 @@
-"""A fit-window plot page as one emtk control.
+"""A fit-window page as what the fit window's emtk surface draws.
 
-A fit window draws all of its pages on one emtk surface. The pages themselves
-are still built the way they always were: a :class:`~chisurf.gui.plots.plotbase.Plot`
-stacks chiplot panels, emtk text views and emtk-hosted controls in a box layout
-or a splitter. Those Qt containers are never shown any more; what each one
-*holds* already draws through emtk, so this module reads the composition once
-and returns the same arrangement as emtk controls:
+A page (:class:`~chisurf.gui.plots.plotbase.Plot`) is not a widget. It says
+what to draw in one of three ways, checked in this order:
 
-* a chiplot panel on the emtk backend is its canvas, a control already;
-* an :class:`~chisurf.gui.plots.emtk_text_view.EmtkTextView` is its ``TextEditor``;
-* any emtk ``ControlHost`` is the control it hosts;
-* a box layout or a splitter becomes an :class:`emtk.widgets.pane_stack.PaneStack`
-  weighted by the layout's stretch factors or the splitter's sizes;
-* a hidden widget is skipped, as Qt skips it.
+* ``emtk_draw(box)`` -- it draws itself in immediate mode inside the surface's
+  emtk frame (selectors from :mod:`emtk.im` above a panel, say);
+* ``emtk_panels`` (:meth:`~chisurf.gui.plots.plotbase.Plot.add_panel`) --
+  chiplot panels stacked top to bottom, weighted by their stretch;
+* ``emtk_body()`` -- one retained emtk control.
 
-A page that wants a different arrangement says so with ``emtk_body()`` (a
-control), or draws itself with ``emtk_draw(box)`` inside the surface's emtk frame
-(selectors from :mod:`emtk.im` above a panel, say). Anything
-else -- a classic Qt widget the page shows -- cannot be drawn on the surface and
-is *reported*, by class name, rather than silently dropped: :func:`page_body`
-returns it in ``missing`` and the fit window shows the page as not yet ported.
-``test/gui/test_fit_window_emtk.py`` holds the list of pages still in that state.
+A page that does none of these has nothing the surface can draw; it is
+*reported*, by class name, in :attr:`PageBody.missing` rather than drawn blank,
+and ``test/gui/test_fit_window_pages_all_models.py`` fails on it.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Callable
-
-from qtpy import QtCore, QtWidgets
 
 __all__ = ["PageBody", "PanelItem", "page_body", "install_refresh"]
 
@@ -40,17 +29,21 @@ class PageBody:
     Attributes
     ----------
     control : object or None
-        The page as one emtk control; ``None`` when nothing could be drawn.
+        The page as one emtk control (``emtk_panels``/``emtk_body``).
+    draw : callable or None
+        ``draw(box)``: a page that draws itself in immediate mode.
     missing : list of str
-        Class names of shown widgets with no emtk drawing.
+        The page's class name when it declares nothing drawable.
     refreshables : list
         Objects that repaint through ``set_refresh_target`` (chiplot canvases,
-        text views): the surface drawing the page installs its frame request
-        on each, so a changed curve shows without waiting for input.
+        text editors, the page itself): the surface drawing the page installs
+        its frame request on each, so a changed curve shows without waiting
+        for input.
+    panels : list of PanelItem
+        The chiplot panels, for the right-click menu.
     """
 
     control: Any = None
-    #: ``draw(box)`` -- a page that draws itself in immediate mode (``emtk_draw``).
     draw: Any = None
     missing: list[str] = field(default_factory=list)
     refreshables: list[Any] = field(default_factory=list)
@@ -99,13 +92,13 @@ class PanelItem:
         return getattr(self.canvas, name)
 
 
-def page_body(page: QtWidgets.QWidget) -> PageBody:
-    """Return *page* as one emtk control, with what could not be translated.
+def page_body(page: Any) -> PageBody:
+    """Return what the surface draws for *page*.
 
     Parameters
     ----------
-    page : QWidget
-        A fit-window plot page.
+    page : Plot
+        A fit-window page.
 
     Returns
     -------
@@ -113,28 +106,21 @@ def page_body(page: QtWidgets.QWidget) -> PageBody:
     """
     body = PageBody()
     immediate = getattr(page, "emtk_draw", None)
+    declared = getattr(page, "emtk_panels", None)
+    custom = getattr(page, "emtk_body", None)
     if callable(immediate):
         body.draw = immediate
-        _collect_refreshables(page, body)
-        body.panels.extend(getattr(page, "panel_items", None) or [])
-        return body
-    declared = getattr(page, "emtk_panels", None)
-    if declared and not callable(getattr(page, "emtk_body", None)):
+    elif declared and not callable(custom):
         body.control = _declared_stack(page, declared, body)
-        return body
-    custom = getattr(page, "emtk_body", None)
-    if callable(custom):
+    elif callable(custom):
         body.control = custom()
-        _collect_refreshables(page, body)
-        body.panels.extend(getattr(page, "panel_items", None) or [])
-        return body
-    layout = page.layout() if callable(getattr(page, "layout", None)) else getattr(page, "layout", None)
-    if not isinstance(layout, QtWidgets.QLayout):
-        layout = getattr(page, "layout", None)
-    if isinstance(layout, QtWidgets.QLayout):
-        body.control = _from_layout(layout, body)
     else:
         body.missing.append(type(page).__name__)
+        return body
+    _collect_refreshables(page, body)
+    for item in getattr(page, "panel_items", None) or []:
+        if item not in body.panels:
+            body.panels.append(item)
     return body
 
 
@@ -143,19 +129,12 @@ def _declared_stack(page, declared: list, body: PageBody) -> Any:
 
     Kept on the page, so a bar the user dragged stays where it was.
     """
-    items = []
-    for panel, _stretch in declared:
-        canvas = panel.control()
-        item = PanelItem(panel, canvas)
-        items.append(item)
-        if callable(getattr(canvas, "set_refresh_target", None)):
-            body.refreshables.append(canvas)
-    cached = getattr(page, "_emtk_declared", None)
     key = tuple(id(panel) for panel, _ in declared)
+    cached = getattr(page, "_emtk_declared", None)
     if cached is not None and cached[0] == key:
-        stack, kept = cached[1], cached[2]
-        body.panels.extend(kept)
-        return stack
+        body.panels.extend(cached[2])
+        return cached[1]
+    items = [PanelItem(panel, panel.control()) for panel, _stretch in declared]
     body.panels.extend(items)
     if len(items) == 1:
         stack = items[0]
@@ -168,137 +147,19 @@ def _declared_stack(page, declared: list, body: PageBody) -> Any:
     return stack
 
 
-def _collect_refreshables(page: QtWidgets.QWidget, body: PageBody) -> None:
-    """Gather every repaintable inside *page* (for a page that built its own body)."""
-    if callable(getattr(page, "set_refresh_target", None)):
-        body.refreshables.append(page)
-    from chisurf.gui.chiplot.canvas import Plot as ChiPlot
-
-    plots = list(getattr(page, "_panels", None) or page.findChildren(ChiPlot))
-    plots += [item.plot for item in getattr(page, "panel_items", None) or [] if item.plot is not None]
-    plots += [panel for panel, _ in getattr(page, "emtk_panels", None) or []]
-    for plot in plots:
-        canvas = getattr(plot, "_canvas", None)
-        if callable(getattr(canvas, "set_refresh_target", None)) and canvas not in body.refreshables:
-            body.refreshables.append(canvas)
-    from chisurf.gui.plots.emtk_text_view import EmtkTextView
-
-    body.refreshables.extend(page.findChildren(EmtkTextView))
-
-
-def _stack(parts: list[tuple[Any, float]], vertical: bool) -> Any:
-    """One control for *parts*: the part itself, or a weighted pane stack."""
-    parts = [(control, weight) for control, weight in parts if control is not None]
-    if not parts:
-        return None
-    if len(parts) == 1:
-        return parts[0][0]
-    from emtk.flags import Axis
-    from emtk.widgets.pane_stack import PaneStack
-
-    weights = [weight if weight > 0 else 1.0 for _, weight in parts]
-    return PaneStack([c for c, _ in parts], weights, axis=Axis.Y if vertical else Axis.X)
-
-
-def _from_grid(layout: QtWidgets.QGridLayout, body: PageBody) -> Any:
-    """A grid as rows of side-by-side panes, weighted by the grid's stretch factors."""
-    rows: dict[int, list[tuple[int, Any, float]]] = {}
-    for index in range(layout.count()):
-        item = layout.itemAt(index)
-        row, column, _rowspan, colspan = layout.getItemPosition(index)
-        widget = item.widget()
-        if widget is not None:
-            if widget.isHidden():
-                continue
-            control = _from_widget(widget, body)
-        elif item.layout() is not None:
-            control = _from_layout(item.layout(), body)
-        else:
-            continue
-        stretch = sum(layout.columnStretch(c) for c in range(column, column + colspan))
-        rows.setdefault(row, []).append((column, control, float(stretch or colspan)))
-    parts = []
-    for row in sorted(rows):
-        cells = [(control, weight) for _, control, weight in sorted(rows[row], key=lambda c: c[0])]
-        parts.append((_stack(cells, vertical=False), float(layout.rowStretch(row) or 1)))
-    return _stack(parts, vertical=True)
-
-
-def _from_layout(layout: QtWidgets.QLayout, body: PageBody) -> Any:
-    if isinstance(layout, QtWidgets.QGridLayout):
-        return _from_grid(layout, body)
-    vertical = not (
-        isinstance(layout, QtWidgets.QBoxLayout)
-        and layout.direction() in (QtWidgets.QBoxLayout.LeftToRight, QtWidgets.QBoxLayout.RightToLeft)
-    )
-    parts: list[tuple[Any, float]] = []
-    for index in range(layout.count()):
-        item = layout.itemAt(index)
-        stretch = float(layout.stretch(index)) if isinstance(layout, QtWidgets.QBoxLayout) else 0.0
-        widget = item.widget()
-        if widget is not None:
-            if widget.isHidden():
-                continue
-            parts.append((_from_widget(widget, body), stretch))
-        elif item.layout() is not None:
-            parts.append((_from_layout(item.layout(), body), stretch))
-    return _stack(parts, vertical)
-
-
-def _from_widget(widget: QtWidgets.QWidget, body: PageBody) -> Any:
-    from chisurf.gui.chiplot.canvas import Plot as ChiPlot
-    from chisurf.gui.plots.emtk_text_view import EmtkTextView
-
-    if isinstance(widget, ChiPlot):
-        canvas = getattr(widget, "_canvas", None)
-        if canvas is not None and callable(getattr(canvas, "draw", None)):
-            if callable(getattr(canvas, "set_refresh_target", None)):
-                body.refreshables.append(canvas)
-            item = PanelItem(widget, canvas)
-            body.panels.append(item)
-            return item
-        body.missing.append(f"{type(widget).__name__}({type(canvas).__name__})")
-        return None
-    if isinstance(widget, EmtkTextView):
-        editor = getattr(widget, "_editor", None)
-        if editor is None:
-            body.missing.append("EmtkTextView(Qt fallback)")
-            return None
-        body.refreshables.append(widget)
-        return editor
-    if getattr(widget, "is_emtk", False) and getattr(widget, "control", None) is not None:
-        control = widget.control
-        if callable(getattr(control, "set_refresh_target", None)):
-            body.refreshables.append(control)
-        if hasattr(control, "_entries") and hasattr(control, "_background"):
-            # A chiplot canvas met without its Plot wrapper (a grid's panel).
-            item = PanelItem(None, control)
-            body.panels.append(item)
-            return item
-        return control
-    from chisurf.gui.chiplot.canvas import Grid as ChiGrid
-
-    if isinstance(widget, ChiGrid):
-        return _from_layout(widget.layout(), body)
-    if isinstance(widget, QtWidgets.QSplitter):
-        vertical = widget.orientation() == QtCore.Qt.Vertical
-        sizes = list(widget.sizes())
-        parts = []
-        for index in range(widget.count()):
-            child = widget.widget(index)
-            if child is None or child.isHidden():
-                continue
-            weight = float(sizes[index]) if index < len(sizes) else 1.0
-            parts.append((_from_widget(child, body), weight))
-        return _stack(parts, vertical)
-    custom = getattr(widget, "emtk_body", None)
-    if callable(custom):
-        return custom()
-    # A plain container: what it lays out is what counts.
-    if type(widget) is QtWidgets.QWidget and isinstance(widget.layout(), QtWidgets.QLayout):
-        return _from_layout(widget.layout(), body)
-    body.missing.append(type(widget).__name__)
-    return None
+def _collect_refreshables(page: Any, body: PageBody) -> None:
+    """Gather everything of *page* that repaints through ``set_refresh_target``."""
+    candidates: list[Any] = [page]
+    candidates += [getattr(item, "canvas", None) for item in getattr(page, "panel_items", None) or []]
+    candidates += [panel.control() for panel, _ in getattr(page, "emtk_panels", None) or []]
+    candidates += list(getattr(page, "refreshables", lambda: [])())
+    for target in candidates:
+        if (
+            target is not None
+            and callable(getattr(target, "set_refresh_target", None))
+            and target not in body.refreshables
+        ):
+            body.refreshables.append(target)
 
 
 def install_refresh(body: PageBody, request: Callable[[], None] | None) -> None:

@@ -1,0 +1,54 @@
+{
+  "sections": [
+    {
+      "type": "panel",
+      "collapsible": false,
+      "n_col": 3,
+      "sections": [
+        {"type": "value", "attr": "vmin", "label": "vmin", "kind": "float", "decimals": 6,
+         "description": "Value drawn at the low end of the colormap; lower values are clipped to it."},
+        {"type": "value", "attr": "vmax", "label": "vmax", "kind": "float", "decimals": 6,
+         "description": "Value drawn at the high end of the colormap; higher values are clipped to it."},
+        {"type": "button_row", "buttons": [
+          {"action": "auto_contrast", "label": "Auto contrast",
+           "description": "Reset vmin/vmax from the image: symmetric around zero (99th percentile of |value|) for residuals, the full range otherwise."}
+        ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "collapsible": false,
+      "n_col": 2,
+      "sections": [
+        {"type": "value", "attr": "xmin", "label": "x min", "kind": "int",
+         "description": "Left edge of the shown x range, in axis units."},
+        {"type": "value", "attr": "xmax", "label": "x max", "kind": "int",
+         "description": "Right edge of the shown x range, in axis units."},
+        {"type": "value", "attr": "ymin", "label": "y min", "kind": "int",
+         "description": "Bottom edge of the shown y range, in axis units."},
+        {"type": "value", "attr": "ymax", "label": "y max", "kind": "int",
+         "description": "Top edge of the shown y range, in axis units."}
+      ]
+    },
+    {"type": "choice", "attr": "colormap", "label": "Colormap", "options_source": "colormaps",
+     "description": "Colour scale of the image; a diverging map (RdBu, bwr) shows the sign of a residual."},
+    {
+      "type": "panel",
+      "collapsible": false,
+      "hidden_when": {"attr": "has_sources", "equals": false},
+      "sections": [
+        {"type": "choice", "attr": "image_source", "label": "Image source", "options_source": "source_names",
+         "description": "Which image the model provides is shown: residuals, data, model, intensity, ..."}
+      ]
+    },
+    {
+      "type": "panel",
+      "collapsible": false,
+      "hidden_when": {"attr": "has_frames", "equals": false},
+      "sections": [
+        {"type": "value", "attr": "frame_index", "label": "Frame index", "kind": "int", "style": "spin",
+         "description": "Frame of the image stack shown (for a correlation carpet: the frame lag)."}
+      ]
+    }
+  ]
+}

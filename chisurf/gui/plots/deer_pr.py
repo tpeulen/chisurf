@@ -36,14 +36,31 @@ class DeerPrCIPlot(plotbase.Plot):
         return getattr(fit, "model", None)
 
     def update(self, *args, **kwargs) -> None:
-        """Recompute the bootstrap band and redraw (only while the tab is shown).
+        """Mark the band stale; it is recomputed when the page is next drawn.
 
-        The bootstrap is expensive, so it is skipped when this tab is not
-        visible — otherwise it would re-run on every fit iteration and stall the
-        fit. Switching to the tab triggers a fresh computation.
+        The bootstrap is expensive, so it must not re-run on every fit iteration
+        while this tab is out of view and stall the fit. A page that is drawn is
+        in view, so drawing is where the band is brought up to date.
         """
-        if not self.isVisible():
-            return
+        self._stale = True
+        self.request_redraw()
+
+    def emtk_draw(self, box) -> None:
+        """Bring the band up to date if the fit changed, then draw the panel."""
+        from emtk import im
+
+        from chisurf.gui.plots.emtk_page import PanelItem
+
+        if getattr(self, "_stale", True):
+            self.recompute()
+        if not getattr(self, "panel_items", None):
+            self.panel_items = [PanelItem(self._pw, self._pw.control())]
+        width, height = im.get_content_region_avail()
+        im.host_control("##deer-pr-ci", self.panel_items[0], (width, height))
+
+    def recompute(self) -> None:
+        """Run the bootstrap and set the band."""
+        self._stale = False
         model = self._model()
         fn = getattr(model, "compute_uncertainty", None)
         if not callable(fn):

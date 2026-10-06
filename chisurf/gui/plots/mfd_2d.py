@@ -65,7 +65,7 @@ class MfdMarginalPlot(plotbase.Plot):
         ----------
         fit : chisurf.core.fitting.fit.Fit
             The fit whose data and model are shown.
-        parent : QtWidgets.QWidget, optional
+        parent : object, optional
             Parent widget.
         **kwargs
             Ignored; present for the plot-spec signature.

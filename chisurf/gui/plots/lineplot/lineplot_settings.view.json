@@ -1,0 +1,212 @@
+{
+  "title": "Fit plot",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Display",
+      "n_col": 2,
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "log_x",
+          "label": "logX",
+          "call": "changed",
+          "description": "Plot the x axis (time, lag, distance) logarithmically."
+        },
+        {
+          "type": "toggle",
+          "attr": "log_y",
+          "label": "logY(fit)",
+          "call": "changed",
+          "description": "Plot the data and the model logarithmically; the residual strips stay linear."
+        },
+        {
+          "type": "toggle",
+          "attr": "is_density",
+          "label": "Density",
+          "call": "changed",
+          "description": "Divide the data and the model by the bin width, so curves with different binnings compare."
+        },
+        {
+          "type": "toggle",
+          "attr": "display_group",
+          "label": "display group",
+          "call": "changed",
+          "description": "Display all fits in the group. The current fit is highlighted, the others are transparent."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "reference_mode",
+          "label": "Reference",
+          "options_source": "reference_mode_options",
+          "call": "reference_changed",
+          "description": "What the curves are drawn relative to: the raw counts, or a transform the model offers (normalised, divided by a reference decay, ...)."
+        },
+        {
+          "type": "custom",
+          "key": "reference_parameters",
+          "title": "",
+          "description": "The parameters of the selected reference transform."
+        },
+        {
+          "type": "button_row",
+          "weight": 0,
+          "buttons": [
+            {
+              "label": "🔄",
+              "action": "reset_reference_parameters",
+              "description": "Reset the reference transform's parameters to their defaults."
+            },
+            {
+              "label": "💾",
+              "action": "save_current_presets",
+              "description": "Save the current axis range as the default preset for this reference mode."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Range",
+      "n_col": 4,
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "xmin_enabled",
+          "label": "",
+          "width": 22,
+          "call": "changed",
+          "description": "Fix the lower end of the x axis to the value beside it; off, the axis follows the data."
+        },
+        {
+          "type": "value",
+          "kind": "float",
+          "attr": "xmin_value",
+          "label": "xmin",
+          "decimals": 2,
+          "call": "changed",
+          "description": "Lower end of the x axis, used while xmin is ticked."
+        },
+        {
+          "type": "toggle",
+          "attr": "ymin_enabled",
+          "label": "",
+          "width": 22,
+          "call": "changed",
+          "description": "Fix the lower end of the y axis to the value beside it; off, the axis follows the data."
+        },
+        {
+          "type": "value",
+          "kind": "float",
+          "attr": "ymin_value",
+          "label": "ymin",
+          "decimals": 2,
+          "call": "changed",
+          "description": "Lower end of the y axis, used while ymin is ticked."
+        },
+        {
+          "type": "toggle",
+          "attr": "xmax_enabled",
+          "label": "",
+          "width": 22,
+          "call": "changed",
+          "description": "Fix the upper end of the x axis to the value beside it; off, the axis follows the data."
+        },
+        {
+          "type": "value",
+          "kind": "float",
+          "attr": "xmax_value",
+          "label": "xmax",
+          "decimals": 2,
+          "call": "changed",
+          "description": "Upper end of the x axis, used while xmax is ticked."
+        },
+        {
+          "type": "toggle",
+          "attr": "ymax_enabled",
+          "label": "",
+          "width": 22,
+          "call": "changed",
+          "description": "Fix the upper end of the y axis to the value beside it; off, the axis follows the data."
+        },
+        {
+          "type": "value",
+          "kind": "float",
+          "attr": "ymax_value",
+          "label": "ymax",
+          "decimals": 2,
+          "call": "changed",
+          "description": "Upper end of the y axis, used while ymax is ticked."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Shift",
+      "n_col": 2,
+      "sections": [
+        {
+          "type": "value",
+          "kind": "float",
+          "attr": "x_shift",
+          "label": "x-shift",
+          "decimals": 2,
+          "call": "changed",
+          "description": "Shift every curve along x by this much (display only; the fit is unchanged)."
+        },
+        {
+          "type": "value",
+          "kind": "float",
+          "attr": "y_shift",
+          "label": "y-shift",
+          "decimals": 2,
+          "call": "changed",
+          "description": "Shift every curve along y by this much (display only; the fit is unchanged)."
+        }
+      ]
+    },
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "",
+      "description": "The curves of the plot. Untick E to hide a curve; the fit is unchanged.",
+      "options": {
+        "source": "curve_rows",
+        "row_key": "name",
+        "edited_call": "curve_edited",
+        "expand": true,
+        "height": 6,
+        "fit_columns": true,
+        "columns": [
+          {
+            "key": "index",
+            "title": "#",
+            "width": 30,
+            "shade": false,
+            "tooltip": "The curve's position in the plot."
+          },
+          {
+            "key": "shown",
+            "title": "E",
+            "width": 30,
+            "editable": true,
+            "tooltip": "Whether the curve is drawn."
+          },
+          {
+            "key": "name",
+            "title": "Name",
+            "tooltip": "The curve."
+          }
+        ]
+      }
+    }
+  ]
+}

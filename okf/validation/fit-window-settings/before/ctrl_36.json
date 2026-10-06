@@ -1,0 +1,199 @@
+{
+ "MfdMapPlot": {
+  "case": "36",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/MfdMapPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "MfdMarginalPlot": {
+  "case": "36",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/MfdMarginalPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "StateSchemePlot": {
+  "case": "36",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/StateSchemePlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "FitInfo": {
+  "case": "36",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/FitInfo_0.png",
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/FitInfo_1.png",
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/FitInfo_2.png",
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/FitInfo_3.png"
+  ],
+  "inventory": {
+   "controls": [
+    "+",
+    "copytoclipboard",
+    "drag&dropfilesorurlstoaddexternaldatareferences(ptu/tttr/csv).detector/channelinfogoesinthemetadatatab.",
+    "filepath/url",
+    "format",
+    "key",
+    "savetofile",
+    "value",
+    "\u2212",
+    "\ud83d\udd04"
+   ],
+   "labels": [
+    "Drag & drop files or URLs to add external data references (PTU/TTTR/CSV).\nDetector/ channel info goes in the Metadata tab."
+   ],
+   "buttons": [
+    "+",
+    "Copy to clipboard",
+    "Save to file",
+    "\u2212",
+    "\ud83d\udd04"
+   ],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 6
+  }
+ },
+ "Residual2DPlot": {
+  "case": "36",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/Residual2DPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [
+    "autocontrast",
+    "colormap",
+    "frameindex",
+    "imagesource",
+    "vmax",
+    "vmin",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+   ],
+   "labels": [
+    "Colormap",
+    "Frame index",
+    "Image source",
+    "vmax",
+    "vmin",
+    "x max",
+    "x min",
+    "y max",
+    "y min"
+   ],
+   "buttons": [
+    "Auto contrast"
+   ],
+   "line_edits": 7,
+   "combos": 2,
+   "spin_boxes": 7,
+   "tables": 0
+  }
+ },
+ "ParameterScanPlot": {
+  "case": "36",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/ParameterScanPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [
+    "boundrange",
+    "parameter",
+    "pvalue",
+    "scan",
+    "scanrange",
+    "smartscan",
+    "update"
+   ],
+   "labels": [
+    "Parameter",
+    "Scan range",
+    "p value"
+   ],
+   "buttons": [
+    "Bound range",
+    "Smart scan",
+    "scan",
+    "update"
+   ],
+   "line_edits": 4,
+   "combos": 1,
+   "spin_boxes": 3,
+   "tables": 0
+  }
+ },
+ "PosteriorGraphPlot": {
+  "case": "36",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/PosteriorGraphPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "SamplingDiagnosticsPlot": {
+  "case": "36",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/SamplingDiagnosticsPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ },
+ "ConditionalScanPlot": {
+  "case": "36",
+  "pngs": [
+   "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/222ccb12-aa69-4581-93df-7099d92e52f8/scratchpad/ctrl_before/png/ConditionalScanPlot_0.png"
+  ],
+  "inventory": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  }
+ }
+}

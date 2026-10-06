@@ -1,11 +1,10 @@
-"""Every fit-window page of every catalogued model draws in emtk -- or is listed here.
+"""Every fit-window page of every catalogued model is emtk, and so are its settings.
 
-A fit window is one emtk surface. A page whose content still contains a classic
-Qt widget cannot be drawn on it; the surface then lays that widget over the
-page's dock box so nothing is lost while it waits to be ported. This sweep opens
-the real science of all 42 catalogued models in a real Main, visits every page,
-and fails on any page that is not drawn by emtk *unless* its plot class is in
-:data:`QT_PAGES` -- a list that only shrinks: port a page, strike it.
+A fit window is one emtk surface and its pages are not widgets; the main
+window's *Plot settings* dock is one emtk surface showing the current page's
+settings. This sweep opens the real science of all 42 catalogued models in a
+real Main, visits every page, and fails on a page object that is a Qt widget, a
+page that declares nothing to draw, or settings that raise while drawn.
 
 Slow (a producer and a GUI child per model): runs with ``--run-slow``.
 """
@@ -22,10 +21,6 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOGUE = json.loads((ROOT / "test/project/fixtures/scientific_model_catalogue.json").read_text())
-
-#: Plot pages still drawn by a Qt widget over the surface, and why. Shrinks only.
-QT_PAGES: set[str] = set()
-
 
 def _run(command, environment, timeout):
     return subprocess.run(command, cwd=ROOT, env=environment, capture_output=True, text=True,
@@ -50,7 +45,6 @@ def test_every_page_draws_in_emtk(case, tmp_path):
     assert report["pages"], "no fit-window pages were opened"
     for page in report["pages"]:
         assert "error" not in page, page["error"]
-        if page["plot_class"] in QT_PAGES:
-            continue
+        assert not page["is_widget"], f"{page['title']} ({page['plot_class']}) is a Qt widget"
+        assert page["settings_error"] is None, f"{page['title']}: {page['settings_error']}"
         assert page["missing"] == [], f"{page['title']} ({page['plot_class']}): {page['missing']}"
-        assert page["index"] not in page["islands"]

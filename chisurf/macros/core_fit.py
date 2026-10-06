@@ -2161,12 +2161,16 @@ def restore_gui_from_fits(
             "plotOptionsLayout",
         )
     ]
+    # A widget that says it outlives fit windows (the Plot settings surface,
+    # which shows whichever window is current) belongs to the main window: the
+    # transaction neither snapshots, discards nor retires it.
     old_controls = [
         (layout, index, widget, widget.isVisible())
         for layout in layouts
         if layout is not None
         for index in range(layout.count())
         if (widget := layout.itemAt(index).widget()) is not None
+        and not getattr(widget, "outlives_fit_windows", False)
     ]
     old_widgets = {widget for _layout, _index, widget, _visible in old_controls}
     previous_fit = getattr(main_window, "current_fit", None)
@@ -2237,7 +2241,11 @@ def restore_gui_from_fits(
                 continue
             for index in reversed(range(layout.count())):
                 widget = layout.itemAt(index).widget()
-                if widget is not None and widget not in old_widgets:
+                if (
+                    widget is not None
+                    and widget not in old_widgets
+                    and not getattr(widget, "outlives_fit_windows", False)
+                ):
                     layout.removeWidget(widget)
                     widget.hide()
                     widget.deleteLater()

@@ -125,7 +125,7 @@ def test_controller_state_capture_failure_is_explicit(presentation, monkeypatch)
         """Simulate a failing real controller capture hook."""
         raise RuntimeError("capture controller failed")
 
-    monkeypatch.setattr(plot.plot_controller, "get_state", reject)
+    monkeypatch.setattr(plot, "get_settings_state", reject)
     with pytest.raises(RuntimeError, match="capture controller failed"):
         window.get_project_plot_state()
 
@@ -141,7 +141,7 @@ def test_controller_state_apply_failure_is_explicit(presentation, monkeypatch):
         """Simulate a failing real controller publication hook."""
         raise RuntimeError("apply controller failed")
 
-    monkeypatch.setattr(plot.plot_controller, "set_state", reject)
+    monkeypatch.setattr(plot, "set_settings_state", reject)
     with pytest.raises(RuntimeError, match="apply controller failed"):
         window.set_project_plot_state(state)
 

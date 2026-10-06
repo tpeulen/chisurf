@@ -1,8 +1,8 @@
 """Item delegates and header views shared by every ChiSurf table.
 
 These used to live in :mod:`chisurf.gui.autoform.sections.parameter_table`, with a
-second, drifting copy of the checkbox delegate in
-:mod:`chisurf.gui.plots.table_plot`. They are table furniture, not parameter
+second, drifting copy of the checkbox delegate in the Qt data-table page (since
+replaced by the emtk one). They are table furniture, not parameter
 furniture, so they belong here; ``parameter_table`` re-exports them under their
 historic underscore-prefixed names.
 

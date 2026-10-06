@@ -1,0 +1,7 @@
+{
+ "StateSchemePlot": {
+  "case": "30",
+  "fields": []
+ },
+ "__error__": "Traceback (most recent call last):\n  File \"/Users/tpeulen/dev/chisurf/okf/validation/fit-window-settings/capture_settings.py\", line 36, in <module>\n    plot = sub.ensure_plot_created(index)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/tpeulen/dev/chisurf/chisurf/gui/widgets/fitting/fit_subwindow.py\", line 404, in ensure_plot_created\n    plot = plot_class(self.fit, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/tpeulen/dev/chisurf/chisurf/gui/plots/table_plot_emtk.py\", line 79, in __init__\n    self.layout.addWidget(self._host, 1)\n    ^^^^^^^^^^^\nAttributeError: 'FitTablePlotEmtk' object has no attribute 'layout'\n"
+}

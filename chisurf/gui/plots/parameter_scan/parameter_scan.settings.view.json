@@ -1,0 +1,43 @@
+{
+  "sections": [
+    {
+      "type": "panel",
+      "collapsible": false,
+      "n_col": 2,
+      "sections": [
+        {"type": "choice", "attr": "parameter_name", "label": "Parameter", "options_source": "parameter_names",
+         "description": "The fit parameter whose χ² surface is scanned."},
+        {"type": "button_row", "buttons": [
+          {"action": "refresh_parameters", "label": "update",
+           "description": "Re-read the model's parameter list (after parameters were added or renamed)."}
+        ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "collapsible": false,
+      "n_col": 3,
+      "sections": [
+        {"type": "value", "attr": "scan_lower", "label": "Scan range", "kind": "float", "decimals": 2,
+         "minimum": 0.0, "maximum": 100.0, "step": 0.05,
+         "description": "Relative difference of the lower bound compared to the fitted value (0.1 = 10 % below)."},
+        {"type": "value", "attr": "scan_upper", "label": "", "kind": "float", "decimals": 2,
+         "minimum": 0.0, "maximum": 100.0, "step": 0.05,
+         "description": "Relative difference of the upper bound compared to the fitted value (0.1 = 10 % above)."},
+        {"type": "value", "attr": "scan_steps", "label": "", "kind": "int", "minimum": 2, "maximum": 100000,
+         "style": "spin",
+         "description": "Number of steps between lower and upper bound (smart scan: the most points per side)."}
+      ]
+    },
+    {"type": "value", "attr": "p_values", "label": "p value", "kind": "str",
+     "description": "Comma-separated F-test p-value thresholds drawn as levels on the χ² surface, e.g. 0.68, 0.95, 0.99."},
+    {"type": "toggle", "attr": "bound_range", "label": "Bound range",
+     "description": "Smart scan: stay inside the scan range above instead of walking out until the highest p value is crossed."},
+    {"type": "button_row", "buttons": [
+      {"action": "scan_parameter", "label": "scan",
+       "description": "Re-fit the other parameters at each step of the scan range and plot χ² against the held value."},
+      {"action": "smart_scan_parameter", "label": "Smart scan",
+       "description": "Walk out from the optimum until each p value threshold is crossed, placing points adaptively, and mark the confidence intervals."}
+    ]}
+  ]
+}

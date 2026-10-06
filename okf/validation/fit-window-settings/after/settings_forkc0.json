@@ -1,0 +1,39 @@
+{
+ "ParameterScanPlot": {
+  "case": "forkc0",
+  "fields": [
+   "bound_range",
+   "p_values",
+   "parameter_name",
+   "refresh_parameters",
+   "scan_lower",
+   "scan_parameter",
+   "scan_steps",
+   "scan_steps.stepper",
+   "scan_upper",
+   "smart_scan_parameter"
+  ]
+ },
+ "DistributionPlot": {
+  "case": "forkc0",
+  "fields": [
+   "accessor",
+   "accessor_kwargs.fold",
+   "accessor_kwargs.sort",
+   "attribute",
+   "curve_options.bar_mode",
+   "curve_options.connect",
+   "curve_options.fold",
+   "curve_options.stepMode",
+   "curve_options.symbol",
+   "distribution_type",
+   "reset:accessor_kwargs.sort",
+   "reset:attribute",
+   "reset:curve_options.bar_mode",
+   "reset:curve_options.connect",
+   "reset:curve_options.stepMode",
+   "reset:curve_options.symbol",
+   "show_gaussians"
+  ]
+ }
+}

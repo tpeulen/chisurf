@@ -1,11 +1,19 @@
-"""Real Qt callback lifetimes across externally hosted plot-control disposal."""
+"""A fit window replaced by a project load, and the one *Plot settings* dock.
+
+Plot settings used to be one Qt controller widget per plot, hosted in the main
+window's options dock, and these tests guarded those widgets' lifetimes. The
+settings are now one emtk surface the dock keeps (``PlotSettingsHost``) showing
+the current page; what can still go wrong is that dock going on drawing a page
+whose window a project load retired -- or losing the original's page when the
+load is rolled back.
+"""
 
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore
 
 from chisurf.gui.plots.lineplot.lineplot import LinePlot
 from chisurf.gui.qt_lifetime import is_deleted
@@ -41,95 +49,6 @@ def _native_process(node, tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     assert (tmp_path / "native.xml").is_file(), result.stdout + result.stderr
     return True
-
-
-def test_control_host_destruction_retires_pending_plot_update(qapp, qtbot, tmp_path):
-    """An external controls host can die before a window-owned update fires."""
-    if _native_process("test_control_host_destruction_retires_pending_plot_update", tmp_path):
-        return
-    fit = _simulated_fit()
-    plot = LinePlot(fit)
-    qtbot.addWidget(plot)
-    host = QtWidgets.QWidget()
-    layout = QtWidgets.QVBoxLayout(host)
-    layout.addWidget(plot.plot_controller)
-    plot.update()
-    checkbox = plot.plot_controller.checkBox
-    timer = QtCore.QTimer(plot)
-    timer.setSingleShot(True)
-    timer.timeout.connect(plot.update)
-    delivered = []
-    timer.timeout.connect(lambda: delivered.append(True))
-    timer.start(0)
-
-    host.deleteLater()
-    qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-    assert is_deleted(checkbox)
-    assert not is_deleted(plot)
-    qtbot.waitUntil(lambda: bool(delivered))
-
-
-def test_plot_destruction_disposes_externally_hosted_controls(qapp, qtbot, tmp_path):
-    """Controls reparented out of a plot must not survive their logical owner."""
-    if _native_process("test_plot_destruction_disposes_externally_hosted_controls", tmp_path):
-        return
-    plot = LinePlot(_simulated_fit())
-    host = QtWidgets.QWidget()
-    qtbot.addWidget(host)
-    layout = QtWidgets.QVBoxLayout(host)
-    controller = plot.plot_controller
-    layout.addWidget(controller)
-    timer = QtCore.QTimer(host)
-    timer.setSingleShot(True)
-    timer.timeout.connect(plot.update)
-    delivered = []
-    timer.timeout.connect(lambda: delivered.append(True))
-    timer.start(0)
-    plot.deleteLater()
-    qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-    assert is_deleted(plot)
-    qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-    assert is_deleted(controller)
-    qtbot.waitUntil(lambda: bool(delivered))
-
-
-def test_detached_controls_remain_live_for_rollback(qapp, qtbot, tmp_path, monkeypatch):
-    """Temporary removal/hiding must not retire the original plot or its controls."""
-    if _native_process("test_detached_controls_remain_live_for_rollback", tmp_path):
-        return
-    plot = LinePlot(_simulated_fit())
-    host = QtWidgets.QWidget()
-    layout = QtWidgets.QVBoxLayout(host)
-    controller = plot.plot_controller
-    layout.addWidget(controller)
-    controller.hide()
-    layout.removeWidget(controller)
-    controller.setParent(None)
-    timer = QtCore.QTimer(plot)
-    timer.setSingleShot(True)
-    timer.timeout.connect(plot.update)
-    timer.start(0)
-    qtbot.wait(20)
-    assert plot.plot_controller is controller
-    assert not is_deleted(controller.checkBox)
-    layout.addWidget(controller)
-    controller.show()
-    controller.checkBox.setChecked(True)
-    assert plot.plot_controller.data_is_log_y
-
-    def broken_curves():
-        """Represent a genuine scientific failure in an otherwise live plot."""
-        raise ValueError("live curve failure")
-
-    import pytest
-
-    monkeypatch.setattr(plot.fit, "get_curves", broken_curves)
-    with pytest.raises(ValueError, match="live curve failure"):
-        plot.update()
-    plot.deleteLater()
-    host.deleteLater()
-    qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-    qapp.processEvents()
 
 
 def test_tcspc_replacement_rollback_and_retired_callbacks(qapp, qtbot, tmp_path, monkeypatch):
@@ -189,7 +108,7 @@ def test_tcspc_replacement_rollback_and_retired_callbacks(qapp, qtbot, tmp_path,
     qapp.processEvents()
     original = cs_gui.fit_windows[0]
     plot = next(p for p in original._created_plots if isinstance(p, LinePlot))
-    controller = plot.plot_controller
+    settings = original.plot_settings
     expected_data = fit.grouped_fits[0].data.y.copy()
     expected_model = fit.grouped_fits[0].model.y.copy()
     project_path = save_project(str(tmp_path), "plot-lifetime-roundtrip")
@@ -209,8 +128,8 @@ def test_tcspc_replacement_rollback_and_retired_callbacks(qapp, qtbot, tmp_path,
         qtbot.wait(30)
         assert cs.fits[0] is fit
         assert cs_gui.fit_windows == [original]
-        assert plot.plot_controller is controller
-        assert not is_deleted(controller.checkBox)
+        assert not is_deleted(settings)
+        assert settings.page is None or settings.page in original._created_plots
         plot.update()
         _capture(main, f"plot-lifetime-rollback-{attempt}.png", tmp_path)
 
@@ -225,12 +144,12 @@ def test_tcspc_replacement_rollback_and_retired_callbacks(qapp, qtbot, tmp_path,
         assert len(cs_gui.fit_windows) == 1
         replacement = cs_gui.fit_windows[0]
         assert replacement is not original
-        # A successful load retires the replaced view at once: window, plot and
-        # its controller are deleted, not left for a later deleteLater -- and the
-        # event loop that would deliver anything still queued for them runs clean.
+        # A successful load retires the replaced window at once, and the dock no
+        # longer draws its page; the event loop that would deliver anything still
+        # queued for them runs clean.
         assert is_deleted(original)
-        assert is_deleted(plot)
-        assert is_deleted(controller.checkBox)
+        assert settings.owner is replacement
+        assert settings.page in replacement._created_plots
         qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
         qtbot.wait(30)
         assert cs_gui.fit_windows == [replacement]
@@ -238,7 +157,8 @@ def test_tcspc_replacement_rollback_and_retired_callbacks(qapp, qtbot, tmp_path,
         fit = restored
         original = replacement
         plot = next(p for p in original._created_plots if isinstance(p, LinePlot))
-        controller = plot.plot_controller
+        # the dock is the main window's: the same surface, now on the new window
+        assert not is_deleted(settings) and original.plot_settings is settings
     main.hide()
     main.deleteLater()
     qapp.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
