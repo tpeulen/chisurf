@@ -137,8 +137,7 @@ def test_setup_built_from_the_gates_uses_the_names_every_reader_knows():
     table's stream columns matched nothing and the E-S step came up empty with
     the burst files loaded.
     """
-    pytest.importorskip("qtpy")
-    from chisurf.plugins.burst.alex_suite.gui.alternation import build_setup
+    from chisurf.plugins.burst.alex_suite.gui.alternation_model import build_setup
 
     setup = build_setup({"green": (300.0, 3700.0), "red": (4300.0, 7700.0)}, [0], [1], PERIOD)
     assert setup["windows"] == {"prompt": [300, 3700], "delayed": [4300, 7700]}
