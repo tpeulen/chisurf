@@ -57,6 +57,10 @@ _MYST_FIGURE = re.compile(
     re.M,
 )
 _MD_IMAGE = re.compile(r"^!\[(?P<alt>[^\]]*)\]\((?P<src>[^)\s]+)")
+_MYST_IMAGE = re.compile(
+    r"^```\{image\}\s*(?P<src>\S+)\s*\n(?P<options>(?::\w[\w-]*:.*\n)*)```",
+    re.M,
+)
 _RST_IMAGE = re.compile(r"^\s*\.\.\s+(?:image|figure)::\s*(?P<src>\S+)", re.M)
 _HEADING = re.compile(r"^(#{1,6})\s+(?P<title>.+?)\s*(?:\{#[-\w]+\})?$")
 _RST_TITLE = re.compile(r"^([!-/:-@\[-`{-~])\1{1,}\s*$")
@@ -132,6 +136,18 @@ def collect_figures() -> list[dict]:
                     "src": _resolve_image(page, match.group("src")),
                     "caption": match.group("alt"),
                     "name": "",
+                }
+            )
+        for match in _MYST_IMAGE.finditer(text):
+            options = dict(
+                re.findall(r":(\w[\w-]*):\s*(.*)", match.group("options") or "")
+            )
+            figures.append(
+                {
+                    "page": _relative(page),
+                    "src": _resolve_image(page, match.group("src")),
+                    "caption": options.get("alt", ""),
+                    "name": options.get("name", ""),
                 }
             )
         for match in _RST_IMAGE.finditer(text):

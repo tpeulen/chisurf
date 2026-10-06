@@ -289,9 +289,11 @@ It also records where ChiSurf is internally inconsistent: the Förster prefactor
 **The tree is the documentation's own table of contents.** It is parsed from the
 `toctree` directives that build the published HTML, not from a directory walk.
 That is what makes *one* fix serve both surfaces, and it is why the manual's
-chapters live in `docs/manual/index.rst`: `build_tools/docs/convert_manual.py`
-writes `index.generated.rst` beside it and never over it, because the chapter
-structure exists nowhere in the source document.
+chapters live in `docs/manual/index.md` (hand-maintained; since 2026-10-06 every
+page of `docs/` is MyST Markdown except the autodoc `development/api.rst`). The
+retired `build_tools/docs/convert_manual.py` wrote `index.generated.rst` beside
+it and never over it, because the chapter structure exists nowhere in the
+source document.
 
 **And so are the sections.** The top level was a hard-coded tuple long after
 the levels below it were being read from the source, which is exactly how

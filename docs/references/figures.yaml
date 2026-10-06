@@ -799,847 +799,833 @@ manual/_images/image_rId10.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/overview.rst
+  - docs/manual/overview.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId101.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst
+  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId103.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst
+  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId104.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.rst
+  - docs/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId108.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_input_and_file_format.rst
+  - docs/manual/data_input_and_file_format.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId109.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_input_and_file_format.rst
+  - docs/manual/data_input_and_file_format.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId11.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/overview.rst
+  - docs/manual/overview.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId110.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_input_and_file_format.rst
+  - docs/manual/data_input_and_file_format.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId111.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_input_and_file_format.rst
+  - docs/manual/data_input_and_file_format.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId112.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_input_and_file_format.rst
+  - docs/manual/data_input_and_file_format.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId113.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_input_and_file_format.rst
+  - docs/manual/data_input_and_file_format.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId114.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_input_and_file_format.rst
+  - docs/manual/data_input_and_file_format.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId115.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_input_and_file_format.rst
+  - docs/manual/data_input_and_file_format.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId116.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/two_single_files.rst
+  - docs/manual/two_single_files.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId117.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/vv_vh_format.rst
+  - docs/manual/vv_vh_format.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId118.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId119.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId12.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/overview.rst
+  - docs/manual/overview.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId120.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId121.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId122.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId123.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId124.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId125.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId126.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId127.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId128.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId129.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId13.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_import.rst
+  - docs/manual/data_import.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId130.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/step_1_approximating_gfactor_with_small_fluorophore.rst
+  - docs/manual/step_1_approximating_gfactor_with_small_fluorophore.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId131.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst
+  - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId132.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst
+  - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId133.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst
+  - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId134.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading_and_setting_up_the_egfp_data_set.rst
+  - docs/manual/loading_and_setting_up_the_egfp_data_set.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId135.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId136.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId137.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId138.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId139.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId14.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_import.rst
+  - docs/manual/data_import.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId140.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId141.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/saving__exporting_the_results.rst
+  - docs/manual/saving__exporting_the_results.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId142.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst
+  - docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId143.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst
+  - docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId15.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_import.rst
+  - docs/manual/data_import.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId16.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/data_import.rst
+  - docs/manual/data_import.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId17.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/creating_fits.rst
+  - docs/manual/creating_fits.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId18.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/analysis_dock.rst
+  - docs/manual/analysis_dock.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId19.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/parameters.rst
+  - docs/manual/parameters.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId20.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_interface.rst
+  - docs/manual/fit_interface.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId21.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/model_scoring_range.rst
+  - docs/manual/model_scoring_range.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId22.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/parameter_optimization.rst
+  - docs/manual/parameter_optimization.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId23.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/parameter_sampling.rst
+  - docs/manual/parameter_sampling.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId24.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/multiple_document_interface.rst
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
-manual/_images/image_rId25.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
-  pages:
-  - docs/manual/fit_plots.rst
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
-manual/_images/image_rId26.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
-  pages:
-  - docs/manual/parameter_scan.rst
+  - docs/manual/multiple_document_interface.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId27.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/nuisances.rst
+  - docs/manual/nuisances.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId28.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/nuisances.rst
+  - docs/manual/nuisances.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId29.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/nuisances.rst
+  - docs/manual/nuisances.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId30.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/equation_parsing.rst
+  - docs/manual/equation_parsing.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId31.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/reference_curves.rst
+  - docs/manual/reference_curves.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId32.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fcalculator.rst
+  - docs/manual/fcalculator.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId33.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/anisotropy_wizard.rst
+  - docs/manual/anisotropy_wizard.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId34.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/anisotropy_wizard.rst
+  - docs/manual/anisotropy_wizard.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId35.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/anisotropy_wizard.rst
+  - docs/manual/anisotropy_wizard.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId36.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/anisotropy_wizard.rst
+  - docs/manual/anisotropy_wizard.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId37.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/anisotropy_wizard.rst
+  - docs/manual/anisotropy_wizard.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId38.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/overview_2.rst
+  - docs/manual/overview_2.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId40.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/loading__plotting_data.rst
+  - docs/manual/loading__plotting_data.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId41.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/correlator.rst
+  - docs/manual/correlator.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId42.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/correlation_merging.rst
+  - docs/manual/correlation_merging.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId43.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/overview_3.rst
+  - docs/manual/overview_3.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId44.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/overview_3.rst
+  - docs/manual/overview_3.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId45.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/changing_visualizations.rst
+  - docs/manual/changing_visualizations.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId46.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/changing_visualizations.rst
+  - docs/manual/changing_visualizations.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId47.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/saving_and_loading_networks.rst
+  - docs/manual/saving_and_loading_networks.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId48.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/saving_and_loading_networks.rst
+  - docs/manual/saving_and_loading_networks.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId49.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/saving_and_loading_networks.rst
+  - docs/manual/saving_and_loading_networks.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId50.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/saving_and_loading_networks.rst
+  - docs/manual/saving_and_loading_networks.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId51.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/linking_parameters.rst
+  - docs/manual/linking_parameters.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId53.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId54.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId55.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId56.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId57.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId58.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId59.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId60.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId61.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId63.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId64.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId65.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId66.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId67.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId68.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId69.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId70.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId71.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_a_fcs_curve.rst
+  - docs/manual/fit_of_a_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId72.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/estimation_of_the_fluorophore_concentration.rst
+  - docs/manual/estimation_of_the_fluorophore_concentration.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId73.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/estimation_of_the_fluorophore_concentration.rst
+  - docs/manual/estimation_of_the_fluorophore_concentration.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId74.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_fcs_curve.rst
+  - docs/manual/fit_of_fcs_curve.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId75.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/calculations.rst
+  - docs/manual/calculations.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId76.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/calculations.rst
+  - docs/manual/calculations.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId77.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.rst
+  - docs/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId79.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/determination_of_molecular_brightness.rst
+  - docs/manual/determination_of_molecular_brightness.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId80.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/determination_of_molecular_brightness.rst
+  - docs/manual/determination_of_molecular_brightness.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId81.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/global_fit_of_fcs_curves.rst
+  - docs/manual/global_fit_of_fcs_curves.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId82.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/calculations_2.rst
+  - docs/manual/calculations_2.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId83.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/adding_the_membranediffusion_models.rst
+  - docs/manual/adding_the_membranediffusion_models.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId84.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/adding_the_membranediffusion_models.rst
+  - docs/manual/adding_the_membranediffusion_models.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId85.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_autocorrelation_curves.rst
+  - docs/manual/fit_of_autocorrelation_curves.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId86.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_autocorrelation_curves.rst
+  - docs/manual/fit_of_autocorrelation_curves.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId87.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/crosstalkinduced_correlations.rst
+  - docs/manual/crosstalkinduced_correlations.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId89.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/crosstalkinduced_correlations.rst
+  - docs/manual/crosstalkinduced_correlations.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId91.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/fit_of_auto_and_crosscorrelation_curves.rst
+  - docs/manual/fit_of_auto_and_crosscorrelation_curves.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId92.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/calculation_of_codiffusing_molecules.rst
+  - docs/manual/calculation_of_codiffusing_molecules.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId94.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/global_fit_of_auto_and_crosscorrelation_curves.rst
+  - docs/manual/global_fit_of_auto_and_crosscorrelation_curves.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId95.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/influence_of_fret_efficiency.rst
+  - docs/manual/influence_of_fret_efficiency.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId96.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/influence_of_triplet_blinking.rst
+  - docs/manual/influence_of_triplet_blinking.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId97.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst
+  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId99.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
   pages:
-  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst
+  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.md
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 guides/figures/jablonski.png:
@@ -2032,3 +2018,39 @@ guides/figures/burst_export_table.png:
     reader takes either and pandas is not the storage model. The alternating `Dominant State`
     column is the check that the fit converged; constant zeros would mean it collapsed.
     Width 1460: the tenth column is clipped at 1250.'
+manual/figures/fit_window_plot_settings.png:
+  caption: "A lifetime fit of the IBH sample decay in its fit window (Fit plot) beside the Plot settings dock showing that plot's settings."
+  kind: screenshot
+  origin: docs/guides/screenshots/fit_window_emtk.py::main
+  pages:
+  - docs/manual/fit_plots.md
+  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0, then python docs/guides/screenshots/fit_window_emtk.py
+    /tmp/case0. A real Main (offscreen, 1500x900) with a two-lifetime fit of test/data/tcspc/ibh_sample (Decay_577D + Prompt,
+    range 522-3793, fitted), Plot settings dock raised. State: Fit plot, default settings.'
+manual/figures/fit_window_reference_settings.png:
+  caption: 'The same fit with logX ticked in the Plot settings.'
+  kind: screenshot
+  origin: docs/guides/screenshots/fit_window_emtk.py::main
+  pages:
+  - docs/manual/fit_plots.md
+  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0, then python docs/guides/screenshots/fit_window_emtk.py
+    /tmp/case0. A real Main (offscreen, 1500x900) with a two-lifetime fit of test/data/tcspc/ibh_sample (Decay_577D + Prompt,
+    range 522-3793, fitted), Plot settings dock raised. State: Fit plot, logX on.'
+manual/figures/fit_window_info_settings.png:
+  caption: 'The Info plot (fit report) and its settings tabs Analysis, Metadata, External data, Export.'
+  kind: screenshot
+  origin: docs/guides/screenshots/fit_window_emtk.py::main
+  pages:
+  - docs/manual/fit_plots.md
+  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0, then python docs/guides/screenshots/fit_window_emtk.py
+    /tmp/case0. A real Main (offscreen, 1500x900) with a two-lifetime fit of test/data/tcspc/ibh_sample (Decay_577D + Prompt,
+    range 522-3793, fitted), Plot settings dock raised. State: Info plot, Analysis tab.'
+manual/figures/fit_window_parameter_scan.png:
+  caption: 'Parameter scan of the lifetime t0 of the IBH sample fit and its settings.'
+  kind: screenshot
+  origin: docs/guides/screenshots/fit_window_emtk.py::main
+  pages:
+  - docs/manual/parameter_scan.md
+  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0, then python docs/guides/screenshots/fit_window_emtk.py
+    /tmp/case0. A real Main (offscreen, 1500x900) with a two-lifetime fit of test/data/tcspc/ibh_sample (Decay_577D + Prompt,
+    range 522-3793, fitted), Plot settings dock raised. State: Parameter scan plot after scanning the first free parameter (t0) over its default range in 30 steps.'
