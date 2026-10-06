@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from emtk.i18n import tr
+
 from chisurf.emtk.tool_hub import ToolHubApp
 
 from ..correlator_model import CorrelatorSettingsModel
@@ -48,7 +50,7 @@ class FcsHubApp(ToolHubApp):
         ]
         panels = steps + ([{"name": "Tools", "separator": True}, *tools] if tools else [])
         super().__init__(title, panels, help_resource=help_resource or PLUGIN / "help.md",
-                         guide=guide or PLUGIN / "guide.json", initial="files")
+                         guide=guide or PLUGIN / "guide.json", initial="files", steps=True)
 
     # step factories (the steps the workflow owns the models of)
     def _make_files(self):
@@ -94,6 +96,9 @@ class FcsHubApp(ToolHubApp):
         if role == "merger":
             return bool(files is None or files.use_merger)
         return True
+
+    def disabled_reason(self, role: str) -> str:
+        return tr("(switched off in Files & Steps)")
 
     def on_select(self, role: str, child) -> None:
         if role == "filter_calc":

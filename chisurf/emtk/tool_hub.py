@@ -49,6 +49,15 @@ MATURITY = {
 }
 
 
+def _with_icon(panel: dict) -> dict:
+    """A plugin panel without an icon of its own takes its manifest / package icon, as every hub list does."""
+    if not panel.get("icon") and panel.get("plugin"):
+        from chisurf.emtk.plugin_icons import entry_icon
+
+        panel["icon"] = entry_icon(panel, panel["plugin"]) or None
+    return panel
+
+
 def _with_maturity(panel: dict) -> dict:
     """Copy the ``experimental`` / ``deprecated`` flags (and messages) of a panel's plugin manifest onto it, as the Qt
     ``apply_manifest_flags`` does: the flag lives in the manifest, not in every host that embeds the tool."""
@@ -81,9 +90,12 @@ class ToolHubApp(ImApp):
         guide: Path | None = None,
         resolver: Callable[[dict], tuple[Any, str]] = plugin_factory,
         initial: str | None = None,
+        steps: bool = False,
     ) -> None:
         self.title = title
-        self.panels = [_with_maturity(dict(p)) for p in panels]
+        #: A hub of steps (Next runs a step): it shows the fast-forward button; a hub of tools does not.
+        self.steps = steps
+        self.panels = [_with_icon(_with_maturity(dict(p))) for p in panels]
         self.tools = [p for p in self.panels if not p.get("separator")]
         self.selected = initial or (self.tools[0]["role"] if self.tools else None)
         self.children: dict[str, Any] = {}
@@ -116,6 +128,10 @@ class ToolHubApp(ImApp):
     def panel_enabled(self, role: str) -> bool:
         """Whether a tool can be opened (a switched-off workflow step cannot)."""
         return True
+
+    def disabled_reason(self, role: str) -> str:
+        """Why a tool cannot be opened, appended to its rail tooltip (a workflow hub names where it is switched)."""
+        return tr("(switched off)")
 
     def on_select(self, role: str, child: Any) -> None:
         """Called each time a tool is opened, after its child exists (hand it the earlier steps' results)."""
@@ -376,7 +392,7 @@ class ToolHubApp(ImApp):
                     + [panel[flag + "_message"] for flag in MATURITY if panel.get(flag)]
                 )
                 if not enabled:
-                    tip += " " + tr("(switched off in Files & Steps)")
+                    tip += " " + self.disabled_reason(panel["role"])
                 im.set_item_tooltip(tip)
                 self.item_rects["nav." + panel["role"]] = im.get_item_rect()
             if not matching:
@@ -419,13 +435,13 @@ class ToolHubApp(ImApp):
             im.set_item_tooltip(tr("Go to the previous step or tool."))
             im.end_disabled()
             im.same_line()
-            im.same_line()
-            if im.button(tr("Stop") if self.fast_forwarding else ">>"):
-                self.fast_forward()
-            self.item_rects["fast_forward"] = im.get_item_rect()
-            im.set_item_tooltip(tr("Fast-forward: run every remaining step of this group in order, waiting for each "
-                                   "to finish. Press again to stop after the current step."))
-            im.same_line()
+            if self.steps:
+                if im.button(tr("Stop") if self.fast_forwarding else ">>"):
+                    self.fast_forward()
+                self.item_rects["fast_forward"] = im.get_item_rect()
+                im.set_item_tooltip(tr("Fast-forward: run every remaining step of this group in order, waiting for "
+                                       "each to finish. Press again to stop after the current step."))
+                im.same_line()
             im.begin_disabled(not self._neighbour(1))
             if im.button(tr("Next")):
                 self.next_step()
