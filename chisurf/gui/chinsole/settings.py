@@ -11,6 +11,7 @@ its head-less tests can read it. Only :func:`editor_font` touches Qt.
 
 from __future__ import annotations
 
+import re
 import typing
 
 __all__ = [
@@ -82,13 +83,44 @@ def console_init_source() -> str:
     which ChiSurf never overwrites. chinsole therefore implements all three
     rather than asking anyone to edit their settings: see
     :mod:`chisurf.gui.chinsole.magics_builtin` and ``Shell.cache_size``.
+
+    matplotlib is no longer a ChiSurf dependency, but older settings files
+    still start the console with ``%matplotlib inline`` and ``import pylab as
+    p``. Without matplotlib installed those lines only print a traceback into
+    a fresh console, so they are dropped then; with it installed they run as
+    written.
     """
     try:
         import chisurf.core.settings
 
-        return str(chisurf.core.settings.gui.get("console_init") or "")
+        source = str(chisurf.core.settings.gui.get("console_init") or "")
     except Exception:
         return ""
+    return _without_absent_matplotlib(source)
+
+
+def _without_absent_matplotlib(source: str) -> str:
+    """``source`` minus its matplotlib lines when matplotlib is not installed.
+
+    Parameters
+    ----------
+    source : str
+        A console start-up snippet.
+
+    Returns
+    -------
+    str
+        ``source`` unchanged if matplotlib is importable.
+    """
+    import importlib.util
+
+    try:
+        if importlib.util.find_spec("matplotlib") is not None:
+            return source
+    except (ImportError, ValueError):
+        pass
+    pattern = re.compile(r"^\s*(%matplotlib\b|%pylab\b|import\s+(pylab|matplotlib)\b|from\s+(pylab|matplotlib)\b)")
+    return "\n".join(line for line in source.splitlines() if not pattern.match(line))
 
 
 def editor_font(settings: dict | None = None):

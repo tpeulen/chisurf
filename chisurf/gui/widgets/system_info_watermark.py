@@ -120,8 +120,6 @@ def build_system_info_text() -> str:
         return "?"
 
     numpy_ver = _safe_version("numpy")
-    scipy_ver = _safe_version("scipy")
-    pandas_ver = _safe_version("pandas")
     tttrlib_ver = _safe_version("tttrlib")
 
     try:
@@ -150,10 +148,6 @@ def build_system_info_text() -> str:
 
     if numpy_ver is not None:
         lines.append(f"numpy: {numpy_ver}")
-    if scipy_ver is not None:
-        lines.append(f"scipy: {scipy_ver}")
-    if pandas_ver is not None:
-        lines.append(f"pandas: {pandas_ver}")
     if tttrlib_ver is not None:
         lines.append(f"tttrlib: {tttrlib_ver}")
 
