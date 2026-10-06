@@ -398,9 +398,29 @@ class AlexHubApp(BurstAnalysisHubApp):
             return "•" if ctx.burst_folder else ""
         return super().badge(role)
 
+    def need(self, role: str) -> str:
+        """What the open step needs now (the step's state moves it on: done steps say so)."""
+        ctx, child = self.context, self.children.get(role)
+        if role == "setup" and ctx.setup_name:
+            return "Setup chosen; Next."
+        if role == "data" and ctx.raw_files:
+            return "Files chosen; Next opens 3. Alternation."
+        if role == "alternation" and child is not None:
+            if child.model.running:
+                return "Converting the µs-ALEX alternation..."
+            if child.model.converted:
+                return "Converted; Next opens the burst search."
+            if child.model.decision == "pie":
+                return "Nothing to convert (PIE); Next."
+        if role == "selection" and ctx.burst_folder is not None:
+            return "Bursts found; Next (Restart searches again)."
+        if role == "accurate_fret" and getattr(getattr(child, "model", None), "result", None) is not None:
+            return "Calibrated; Next opens the E–S map."
+        return NEEDS.get(role, "")
+
     def summary(self, width: float = 1200.0) -> str:
         """What the open step needs; on a wide window also the setup, the files and the bursts."""
-        need = NEEDS.get(self.selected or "", "")
+        need = self.need(self.selected or "")
         if width < 1000:
             return _fit(need or super().summary(width), width)
         context = super().summary(width)

@@ -146,10 +146,13 @@ class LegacyExportGui(TourTarget):
                 im.text_colored("No bursts yet — run the burst search first.", (0.9, 0.6, 0.3, 1.0))
 
             im.spacing()
+            # Leave room for the labels on the right (a full-width field pushed "Buffer" past the edge).
+            im.set_next_item_width(-80.0)
             ch, self.sample_text = im.input_text_with_hint(
                 "Sample", self.sample_text, "e.g. dsDNA 15 bp, Cy3B/ATTO647N"
             )
             im.set_item_tooltip("Sample description written into the CSV metadata.")
+            im.set_next_item_width(-80.0)
             ch, self.buffer_text = im.input_text_with_hint(
                 "Buffer", self.buffer_text, "e.g. TE + 100 mM NaCl"
             )

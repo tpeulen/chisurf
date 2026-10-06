@@ -14,7 +14,7 @@
     },
     {
       "title": "Next walks the pipeline",
-      "text": "<b>Next</b> runs the open step where it has something to run, waits for it, and opens the next one. <b>&gt;&gt;</b> does that for every remaining step. Steps marked <i>(optional)</i> are never run by Next.",
+      "text": "<b>Next</b> runs the open step where it has something to run, waits for it, and opens the next one. <b>>></b> does that for every remaining step. Steps marked <i>(optional)</i> are never run by Next.",
       "target": {"key": "next"},
       "await": {"hint": "Press <b>Next</b> (bottom right) to go to 2. Files."}
     },

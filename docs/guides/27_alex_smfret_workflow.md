@@ -14,6 +14,14 @@ and the leakage/direct-excitation/$\gamma$/$\beta$ corrections — is in the
 concept page {ref}`concept-smfret-bursts`.
 :::
 
+:::{admonition} In the GUI
+:class: tip
+**ALEX Suite** walks the same steps as a pipeline you press **Next** through —
+setup, files, µs-ALEX alternation (converted on arrival), burst search,
+background, accurate FRET, E–S histogram — with a simulated demo measurement to
+try it on: [Coming from ALEX-Suite](66_alex_suite.md#the-simple-workflow).
+:::
+
 This tutorial walks the full end-to-end pipeline for freely-diffusing
 single-molecule FRET with alternating-laser excitation (µs-ALEX), the way a
 typical analysis notebook is structured — but using ChiSurf's guided

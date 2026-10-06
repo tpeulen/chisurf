@@ -24,6 +24,37 @@ analysis started here can be continued in **Burst Analysis** (2CDE, per-burst
 lifetimes, H2MM segmentation, burst fusion) and brought back, with nothing to
 convert.
 
+## The simple workflow
+
+The left rail is a numbered pipeline you walk with **Next**; each step hands its
+result to the next one, so from your files to an E–S histogram is Next presses
+only. **>>** walks every remaining step, the status line at the bottom says what
+the open step needs, and **Guide** walks it with you on a simulated measurement.
+
+1. **Setup** — PIE / ns-ALEX: pick your setup. µs-ALEX: leave it (step 3 writes one).
+2. **Files** — drop the measurements, or **Load demo data**: a simulated µs-ALEX
+   stream (100 µs alternation, donor on channel 0, acceptor on channel 1;
+   low-FRET, high-FRET, donor-only and acceptor-only molecules) whose answer is known.
+3. **Alternation (optional)** — µs-ALEX data is detected and converted *on
+   arrival*; PIE data is left alone. Next never runs an optional step.
+4. **Burst search** — Next runs the search and waits for it.
+5. **Background** — estimated on arrival.
+6. **Accurate FRET** — Next calibrates α, β, γ, δ from your bursts and stores them
+   in the measurement.
+7. **E–S histogram** — ndX opens the bursts with E against S.
+
+```{figure} figures/alex_suite_hub.png
+:name: fig-alex-suite-hub
+:width: 95%
+
+The ALEX Suite after seven Next presses on the demo measurement: the E–S
+histogram shows the low- and high-FRET populations at S ≈ 0.5. The rail marks the
+steps that are done (✓) and the ones that have bursts to work on (•).
+```
+
+The side tools below the line — burst properties, titration, BVA and the CSV
+export — read the same bursts and are not part of the Next walk.
+
 ## Where each window went
 
 | ALEX-Suite | here |
@@ -70,9 +101,11 @@ file. The conversion this workflow needs is step 3's.
 ## 3 — Alternation, measured rather than typed
 
 This replaces the microscope dialog: alternation period, phase shift, four laser
-on/off edges, channel flip. Press **Detect alternation and convert** and look at
-the plot; the channel fields say `auto` and fill themselves in, and the detected
-setup lands in step 1.
+on/off edges, channel flip. Arriving here with µs-ALEX data (an empty micro-time)
+detects and converts it straight away; look at the plot. The channel fields say
+`auto` and fill themselves in, and the detected setup lands in step 1.
+**Detect alternation and convert** runs it again after you changed a field;
+**Detect only** measures without writing anything.
 
 ```{figure} figures/alex_suite_alternation.png
 :name: fig-alex-suite-alternation
