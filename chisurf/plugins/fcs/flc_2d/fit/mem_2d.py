@@ -81,7 +81,7 @@ def solve_mem_2d(
         ``"tikhonov"`` warm-starts from a fast Tikhonov solve (recommended); ``"flat"``
         starts from a uniform prior.
     """
-    from scipy.optimize import minimize
+    from chisurf.core.math.numerics import minimize
 
     M = np.asarray(matrix, dtype=float)
     E = np.asarray(basis, dtype=float)

@@ -103,7 +103,7 @@ def solve_global_mem_2d(
     max_iter
         Maximum L-BFGS-B iterations.
     """
-    from scipy.optimize import minimize
+    from chisurf.core.math.numerics import minimize
 
     E = np.asarray(basis, dtype=float)
     n_data, n_comp = E.shape

@@ -9,7 +9,7 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
-**Route 3 (bff) status, 2026-10-06 (T-20261005-BFFNUM).** This route struck 5 files (69 -> 64); with route 4 the allowlist stands at 51.
+**Route 3 (bff) status, 2026-10-06 (T-20261005-BFFNUM).** This route struck 5 + 6 files (69 -> 64, then minimize -6).
 1. **Landed:** `bff.nnls` / `bff.bvls` (imp.bff `b0882780d`,
    `include/LinearLeastSquares.h`; incremental thin QR, parity with scipy 1.18 to
    round-off on 300 problems incl. rank-deficient and cond~1e8; 1-2x scipy speed).
@@ -17,14 +17,9 @@ timestamp: '2026-10-05T00:00:00Z'
    (BVLS, scipy result fields), and every nnls/lsq_linear caller is routed
    (inversion, decay, decay_fit, general, titration, fcs_filter_calculator,
    audifier lifetime_analysis, img_pixel_phasor). Test: `test/core/test_numerics_shim.py`.
-2. **Built and green, NOT committed in imp.bff:** `FitResidualFunction` +
-   `FitMinimizer::set_residual_function` (include/FitMinimizer.h,
-   src/FitMinimizer.cpp, the `directorout` typemap + director lines in
-   pyext/include/IMP_bff.core.i, test/minimizer/test_residual_function.py).
-   Blocker: imp.bff's *shared index* is stale against HEAD (it would revert the
-   contact-potentials commit), so neither a plain commit nor a temp-index commit
-   with an index re-sync was safe. Commit those four paths' hunks (core.i: only
-   the FitResidualFunction/directorout lines) once the index is re-synced.
+2. **Landed:** `FitResidualFunction` + `FitMinimizer::set_residual_function`
+   (imp.bff `9d862174e`; the `directorout` typemap reads the residual ndarray
+   through its buffer).
    The chisurf shim's `least_squares` / `curve_fit` already use it (parity with
    scipy: x 1e-4 rel, pcov 2%); **no call site is routed to them yet** -- that is
    the next step (~25 files: roi/picking, ics precision/calibration, pch,
@@ -34,14 +29,31 @@ timestamp: '2026-10-05T00:00:00Z'
 3. **Known difference:** with a parameter pinned at its bound, the relative ftol
    stop fires while free parameters are still ~1e-5 off (MINPACK + leastsqbound
    transform, as chisurf's own fitter always behaved; scipy's trf lands exactly).
-4. **Pending (route 3):** bounded scalar `minimize` (L-BFGS-B; callers:
-   gopich_szabo, irf_estimation, burst background, flc_2d global_mem/mem_1d/
-   mem_2d (Nelder-Mead)/minimize_q (jac=True)); `leastsq`/`_minpack` for
-   leastsqbound (cov_x + ier); special functions + distributions -- **Boost.Math
-   is already a header-only bff dependency** (SpecialFunctions.cpp uses it), so
-   digamma/polygamma/lgamma/gamma_p/q/erf/ibeta(+inv)/fisher_f/chi_squared/
-   students_t/beta/binomial/poisson are thin vectorised wrappers, not ports;
-   expm, pinvh.
+4. **Landed 2026-10-06 (T-20261006-BFFOPT): bounded scalar `minimize`.**
+   imp.bff `e64ba81b5`: `bff.minimize_lbfgsb` runs SciPy's own C translation
+   of L-BFGS-B 3.0 (`src/internal/Lbfgsb.cpp`, BSD, BLAS/LAPACK subset
+   in-file) driven as `_lbfgsb_py` drives it; `bff.minimize_nelder_mead` is
+   `_minimize_neldermead` step for step. The shim's `minimize` adds scipy's
+   argument forms (bounds pairs with None / `Bounds`, `tol`, jac bool or
+   callable) and its fixed-variable removal (only when differencing -- scipy
+   has made `jac=True` a callable by then). All seven callers routed
+   (burst background, gopich_szabo, irf_estimation, flc_2d minimize_q /
+   global_mem / mem_1d / mem_2d); six left the allow-list. Parity: Nelder-Mead
+   bit-identical to scipy (x, simplex, nit, nfev); L-BFGS-B identical counts
+   and x to 1e-10 with a gradient or active bounds -- unbounded with a
+   difference gradient scipy's BLAS dot-product order drifts the path an ulp
+   and both land equally close. A/B over the callers' own suites (every call
+   run through both): gopich_szabo identical; background / irf 1e-6 in x, bff
+   equal-or-lower f, fewer evaluations, faster (7 vs 22 ms, 26 vs 44 ms).
+   **Trap -- do not read a flc_2d global/2D-MEM difference as a defect:**
+   those callers stop at `maxiter` far from convergence, and scipy itself
+   moves 440 -> 568 in f when x0 is nudged by one ulp (recorded in
+   known-issues). Tests: imp.bff `test/numerics/test_minimize.py` (21),
+   chisurf `test/core/test_numerics_minimize.py` (9).
+   **Pending (route 3):** `leastsq`/`_minpack` (leastsqbound) and `odeint`
+   (reaction/continuous) -- T-20261006-BFFOPT; special functions +
+   distributions, expm, pinvh -- the special-functions lane. **Boost.Math is
+   already a header-only bff dependency** (SpecialFunctions.cpp uses it).
 5. Trap: imp.bff builds share `cmake-build-arm64` with other agents -- wrap
    every ninja in `until mkdir /tmp/imp-bff-build.lock ...; rmdir` and re-run
    `cmake $B` after adding a header/.i (the build tree symlinks them at configure).

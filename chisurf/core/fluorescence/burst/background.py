@@ -109,9 +109,9 @@ def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts, ta
     # a NaN gradient, and an early stop reported as failure. The fallback then
     # returns the inverse mean tail interval instead of the fitted rate, which is
     # a different (and biased) estimator arriving with no error at all.
-    # Imported here: scipy.optimize costs ~0.4 s, and this module is reached
-    # from the burst RPC registration every server start-up runs.
-    from scipy.optimize import minimize
+    # Imported here: IMP.bff loads behind it on first use, and this module is
+    # reached from the burst RPC registration every server start-up runs.
+    from chisurf.core.math.numerics import minimize
 
     result = minimize(
         neg_log_likelihood,

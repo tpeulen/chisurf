@@ -185,7 +185,7 @@ def solve_mem_1d(
     initial
         Optional initial distribution (default flat).
     """
-    from scipy.optimize import minimize
+    from chisurf.core.math.numerics import minimize
 
     y = np.asarray(decay, dtype=float)
     E = np.asarray(basis, dtype=float)

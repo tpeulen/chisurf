@@ -6345,3 +6345,23 @@ or serialised); guardrail `quest/tests/test_pet_chemistry_source.py`. *Not fixed
 simulate_quenched_decay}`. Re-derive: `python -c "import quest.core.av as a; a._compute_av"` / run `quest/tests/test_core_api.py` (5 failures import the removed
 helpers). Blocks every numeric check of QuEst here (no baseline run exists on this machine; `okf/plugins/emtk-ports/quenching_estimator/` records the
 failure as the baseline). Porting `quest.core` to the C++ API against a pre-move simulation is the task; the emtk card and the Qt tool both stop at the same place.
+
+## flc_2d global / 2D MEM stop at `maxiter` far from convergence (found 2026-10-06)
+
+**Measured** while routing `minimize` off scipy (A/B, every call through both
+scipy 1.18 and bff): `global_mem.solve_global_mem_2d` (40 parameters,
+`maxiter=800`, `ftol=1e-10`, `gtol=1e-8`) ends every test run with
+`STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT`, and the result is a function of
+rounding, not of the data: scipy's own L-BFGS-B gives f = 567.8 from x0,
+517.1 from x0 + 1 ulp and 439.6 from x0 - 1 ulp. Run to 20000 iterations both
+engines reach ~317-331 (bff 317.2, scipy 330.7) and still stop on the
+evaluation limit. `mem_2d.solve_mem_2d` (576 parameters, `maxiter=500`) also
+stops at the limit, with f differing in the fourth digit between engines in
+either direction. **What it blocks:** nothing crashes, but a reported MEM
+spectrum is one arbitrary point along an unfinished descent -- two runs on
+two machines (or two BLAS builds) need not agree. **Fix belongs to the
+plugin:** a convergence criterion the user sees (report `res.status` /
+`res.message`, raise the limit or warm-start the outer schedule), not a
+different optimiser. Re-derive with the A/B wrapper idea: wrap
+`chisurf.core.math.numerics.minimize` to also call `scipy.optimize.minimize`
+and run `chisurf/plugins/fcs/flc_2d/test/test_2d_fdc.py`.

@@ -294,7 +294,7 @@ def minimize_q(
     max_evaluations
         Function evaluations per trial (the reference's ``MaxFunEvals``).
     """
-    from scipy.optimize import minimize
+    from chisurf.core.math.numerics import minimize
 
     D = _as_stack(data)
     C = D if cor is None else _as_stack(cor)

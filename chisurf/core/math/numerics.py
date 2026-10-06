@@ -426,3 +426,308 @@ def curve_fit(
         infodict = {"nfev": res.nfev, "fvec": res.fun}
         return popt, pcov, infodict, res.message, res.status
     return popt, pcov
+
+
+# --------------------------------------------------------------------------
+# Bounded scalar minimisation: ``scipy.optimize.minimize`` for the two
+# methods chisurf uses, L-BFGS-B and Nelder-Mead (bff.minimize_lbfgsb /
+# bff.minimize_nelder_mead). Other methods raise rather than silently
+# substituting a different algorithm.
+
+__all__ += ["minimize"]
+
+_LBFGSB_OPTIONS = {"maxcor", "ftol", "gtol", "eps", "maxfun", "maxiter", "maxls"}
+_NELDER_MEAD_OPTIONS = {"maxiter", "maxfev", "xatol", "fatol", "adaptive", "initial_simplex"}
+_IGNORED_OPTIONS = {"disp", "iprint"}
+
+
+class _LbfgsInvHess:
+    """The L-BFGS inverse-Hessian approximation, as ``hess_inv`` in scipy."""
+
+    def __init__(self, sk: np.ndarray, yk: np.ndarray):
+        self.sk = sk
+        self.yk = yk
+        self.n_corrs = sk.shape[0]
+        self.shape = (sk.shape[1], sk.shape[1])
+        self.rho = 1.0 / np.einsum("ij,ij->i", sk, yk) if self.n_corrs else np.empty(0)
+
+    def matvec(self, x) -> np.ndarray:
+        """Return ``H x`` by the two-loop recursion."""
+        q = np.array(x, dtype=float, copy=True).reshape(-1)
+        alpha = np.empty(self.n_corrs)
+        for i in range(self.n_corrs - 1, -1, -1):
+            alpha[i] = self.rho[i] * np.dot(self.sk[i], q)
+            q = q - alpha[i] * self.yk[i]
+        for i in range(self.n_corrs):
+            beta = self.rho[i] * np.dot(self.yk[i], q)
+            q = q + self.sk[i] * (alpha[i] - beta)
+        return q
+
+    def __matmul__(self, x):
+        x = np.asarray(x, dtype=float)
+        if x.ndim == 1:
+            return self.matvec(x)
+        return np.column_stack([self.matvec(c) for c in x.T])
+
+    def todense(self) -> np.ndarray:
+        """Return ``H`` as a dense array."""
+        return self @ np.eye(self.shape[0])
+
+
+def _bounds_arrays(bounds, n: int):
+    """``(lb, ub)`` float arrays (``-inf``/``inf`` for open sides), or ``None``."""
+    if bounds is None:
+        return None
+    if hasattr(bounds, "lb") and hasattr(bounds, "ub"):
+        lb = np.broadcast_to(np.asarray(bounds.lb, dtype=float), (n,)).copy()
+        ub = np.broadcast_to(np.asarray(bounds.ub, dtype=float), (n,)).copy()
+        return lb, ub
+    bounds = list(bounds)
+    if len(bounds) != n:
+        raise ValueError("length of x0 != length of bounds")
+    lb = np.array([-np.inf if b[0] is None else float(b[0]) for b in bounds])
+    ub = np.array([np.inf if b[1] is None else float(b[1]) for b in bounds])
+    return lb, ub
+
+
+def _objective(fun, args, jac):
+    """A bff.MinimizeObjective calling ``fun`` (and ``jac``) on ndarrays."""
+    bff = _bff()
+
+    class _Objective(bff.MinimizeObjective):
+        def evaluate(self, x):
+            value = fun(np.asarray(x, dtype=float), *args)
+            if jac is True:
+                value = value[0]
+            return float(np.asarray(value).item())
+
+        def evaluate_with_gradient(self, x):
+            x = np.asarray(x, dtype=float)
+            if jac is True:
+                value, grad = fun(x, *args)
+            else:
+                value, grad = fun(x, *args), jac(x, *args)
+            grad = np.asarray(grad, dtype=float).ravel()
+            out = np.empty(grad.size + 1)
+            out[0] = float(np.asarray(value).item())
+            out[1:] = grad
+            return out
+
+    return _Objective()
+
+
+def _restricted(fun, jac, i_fixed: np.ndarray, x_fixed: np.ndarray):
+    """``fun``/``jac`` over the free variables only (scipy's _Remove_From_Func)."""
+
+    def expand(x_free, *args):
+        x = np.empty(i_fixed.size)
+        x[i_fixed] = x_fixed
+        x[~i_fixed] = x_free
+        return x
+
+    if jac is True:
+
+        def fun_free(x_free, *args):
+            value, grad = fun(expand(x_free), *args)
+            return value, np.asarray(grad, dtype=float)[~i_fixed]
+
+        return fun_free, True
+
+    def fun_free(x_free, *args):
+        return fun(expand(x_free), *args)
+
+    if callable(jac):
+
+        def jac_free(x_free, *args):
+            return np.asarray(jac(expand(x_free), *args), dtype=float)[~i_fixed]
+
+        return fun_free, jac_free
+    return fun_free, jac
+
+
+def minimize(
+    fun,
+    x0,
+    args=(),
+    method=None,
+    jac=None,
+    bounds=None,
+    tol=None,
+    callback=None,
+    options=None,
+) -> OptimizeResult:
+    """Minimise a scalar function -- ``scipy.optimize.minimize`` for L-BFGS-B
+    and Nelder-Mead, on IMP.bff.
+
+    Parameters
+    ----------
+    fun : callable
+        ``fun(x, *args) -> float``; with ``jac=True`` it returns
+        ``(f, gradient)``.
+    x0 : array_like
+        Start, shape ``(n,)``.
+    args : tuple, optional
+        Extra arguments to ``fun`` (and ``jac``).
+    method : {"L-BFGS-B", "Nelder-Mead"}, optional
+        ``None`` means L-BFGS-B when ``bounds`` are given, as in scipy. scipy's
+        other methods are not provided and raise ``NotImplementedError``.
+    jac : bool, callable or "2-point", optional
+        ``True``: ``fun`` returns the gradient too; a callable computes it;
+        ``None``/``False``/``"2-point"``: forward differences (L-BFGS-B).
+    bounds : sequence of ``(min, max)`` or ``Bounds``, optional
+        ``None`` on either side leaves it open.
+    tol : float, optional
+        L-BFGS-B: ``ftol`` and ``gtol``; Nelder-Mead: ``xatol`` and ``fatol``.
+    callback : None
+        Not supported; raises if given.
+    options : dict, optional
+        The method's scipy options (L-BFGS-B: maxcor, ftol, gtol, eps, maxfun,
+        maxiter, maxls; Nelder-Mead: maxiter, maxfev, xatol, fatol, adaptive,
+        initial_simplex). ``disp``/``iprint`` are accepted and ignored.
+
+    Returns
+    -------
+    OptimizeResult
+        ``x``, ``fun``, ``nit``, ``nfev``, ``status``, ``success``,
+        ``message``; L-BFGS-B adds ``jac``, ``njev`` and ``hess_inv``,
+        Nelder-Mead ``final_simplex``.
+    """
+    if callback is not None:
+        raise NotImplementedError("callback is not supported by chisurf's minimize")
+    x0 = np.atleast_1d(np.asarray(x0, dtype=float))
+    if x0.ndim != 1:
+        raise ValueError("'x0' must only have one dimension.")
+    n = x0.size
+    if method is None:
+        if bounds is None:
+            raise NotImplementedError(
+                "method=None without bounds is BFGS in scipy, which is not provided; "
+                "pass method='L-BFGS-B'"
+            )
+        method = "L-BFGS-B"
+    meth = str(method).lower()
+    options = dict(options or {})
+    for key in _IGNORED_OPTIONS:
+        options.pop(key, None)
+    box = _bounds_arrays(bounds, n)
+    if box is not None and np.any(box[0] > box[1]):
+        raise ValueError("An upper bound is less than the corresponding lower bound.")
+
+    if meth == "nelder-mead":
+        if tol is not None:
+            options.setdefault("xatol", tol)
+            options.setdefault("fatol", tol)
+        unknown = set(options) - _NELDER_MEAD_OPTIONS
+        if unknown:
+            raise TypeError(f"unsupported Nelder-Mead options: {sorted(unknown)}")
+        simplex = options.get("initial_simplex")
+        r = _bff().minimize_nelder_mead(
+            _objective(fun, args, None),
+            x0.tolist(),
+            [] if box is None else box[0].tolist(),
+            [] if box is None else box[1].tolist(),
+            int(options.get("maxiter") or 0),
+            int(options.get("maxfev") or 0),
+            float(options.get("xatol", 1e-4)),
+            float(options.get("fatol", 1e-4)),
+            bool(options.get("adaptive", False)),
+            [] if simplex is None else np.asarray(simplex, dtype=float).ravel().tolist(),
+        )
+        sim = np.asarray(r.final_simplex, dtype=float).reshape(n + 1, n)
+        return OptimizeResult(
+            x=np.asarray(r.x, dtype=float),
+            fun=float(r.fun),
+            nit=int(r.nit),
+            nfev=int(r.nfev),
+            status=int(r.status),
+            success=bool(r.success),
+            message=str(r.message),
+            final_simplex=(sim, np.asarray(r.final_simplex_values, dtype=float)),
+        )
+
+    if meth != "l-bfgs-b":
+        raise NotImplementedError(
+            f"minimize(method={method!r}) is not provided; chisurf supports "
+            "'L-BFGS-B' and 'Nelder-Mead'"
+        )
+    if jac is False or jac == "2-point":
+        jac = None
+    if isinstance(jac, str):
+        raise NotImplementedError(f"jac={jac!r} is not provided; use '2-point'")
+    if tol is not None:
+        options.setdefault("ftol", tol)
+        options.setdefault("gtol", tol)
+    unknown = set(options) - _LBFGSB_OPTIONS
+    if unknown:
+        raise TypeError(f"unsupported L-BFGS-B options: {sorted(unknown)}")
+
+    # scipy answers outright when the bounds fix every variable, and removes
+    # the fixed ones before L-BFGS-B sees them -- but only when the gradient
+    # is differenced: it has already turned ``jac=True`` into a callable by
+    # then, and with a gradient L-BFGS-B keeps ``lb == ub`` variables itself.
+    i_fixed = None
+    if box is not None:
+        fixed = box[0] == box[1]
+        if np.all(fixed):
+            x = box[0].copy()
+            value = fun(x, *args)
+            if jac is True:
+                value = value[0]
+            return OptimizeResult(
+                x=x,
+                fun=float(np.asarray(value).item()),
+                success=True,
+                message="All independent variables were fixed by bounds.",
+                nfev=1,
+                njev=0,
+                nhev=0,
+            )
+        if np.any(fixed) and jac is None:
+            i_fixed = fixed
+            x_fixed = box[0][fixed]
+            fun, jac = _restricted(fun, jac, i_fixed, x_fixed)
+            x0 = x0[~fixed]
+            box = (box[0][~fixed], box[1][~fixed])
+
+    use_gradient = jac is True or callable(jac)
+    r = _bff().minimize_lbfgsb(
+        _objective(fun, args, jac if use_gradient else None),
+        x0.tolist(),
+        [] if box is None else box[0].tolist(),
+        [] if box is None else box[1].tolist(),
+        use_gradient,
+        int(options.get("maxcor", 10)),
+        float(options.get("ftol", 2.2204460492503131e-09)),
+        float(options.get("gtol", 1e-5)),
+        float(options.get("eps", 1e-8)),
+        int(options.get("maxfun", 15000)),
+        int(options.get("maxiter", 15000)),
+        int(options.get("maxls", 20)),
+    )
+    x = np.asarray(r.x, dtype=float)
+    g = np.asarray(r.jac, dtype=float)
+    k = int(r.n_corrections)
+    m = x.size
+    hess_inv = _LbfgsInvHess(
+        np.asarray(r.correction_s, dtype=float).reshape(k, m),
+        np.asarray(r.correction_y, dtype=float).reshape(k, m),
+    )
+    if i_fixed is not None:
+        x_full = np.empty(i_fixed.size)
+        x_full[i_fixed] = x_fixed
+        x_full[~i_fixed] = x
+        g_full = np.full(i_fixed.size, np.nan)
+        g_full[~i_fixed] = g
+        x, g = x_full, g_full
+    return OptimizeResult(
+        x=x,
+        fun=float(r.fun),
+        jac=g,
+        nit=int(r.nit),
+        nfev=int(r.nfev),
+        njev=int(r.njev),
+        status=int(r.status),
+        success=bool(r.success),
+        message=str(r.message),
+        hess_inv=hess_inv,
+    )

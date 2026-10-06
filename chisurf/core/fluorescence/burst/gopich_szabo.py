@@ -802,7 +802,7 @@ def fit(
     ValueError
         If the photons are not two-coloured or *n_states* is below two.
     """
-    from scipy.optimize import minimize
+    from chisurf.core.math.numerics import minimize
 
     n_states = int(n_states)
     if n_states < 2:

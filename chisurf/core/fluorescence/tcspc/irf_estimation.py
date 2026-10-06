@@ -27,9 +27,10 @@ References
 from __future__ import annotations
 
 import numpy as np
-from scipy.optimize import minimize
 from scipy.signal import savgol_filter
 from tttrlib.ndimage import median_filter as nd_median_filter
+
+from chisurf.core.math.numerics import minimize
 
 
 def pad_array(
@@ -396,7 +397,7 @@ class IRFEstimator:
         offset : int, optional
             Shift applied to t0 when selecting data for fitting (default: 0)
         method : str, optional
-            Optimization method for scipy.optimize.minimize (default: 'L-BFGS-B')
+            'L-BFGS-B' (default) or 'Nelder-Mead'; see :func:`chisurf.core.math.numerics.minimize`
         max_iter : int, optional
             Maximum number of optimization iterations (default: 1000)
 

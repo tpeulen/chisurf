@@ -68,8 +68,6 @@ chisurf/plugins/fluorescence_decay/lltf/core/optimization/leastsqbound.py
 chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
 # nnls -> bff
 chisurf/core/fluorescence/decay_fit.py
-chisurf/core/fluorescence/burst/background.py
-chisurf/core/fluorescence/burst/gopich_szabo.py
 # minimize -> bff; savgol -> local (median_filter -> tttrlib.ndimage done)
 chisurf/core/fluorescence/tcspc/irf_estimation.py
 # curve_fit -> bff; erf -> local
@@ -85,10 +83,6 @@ chisurf/plugins/burst/alex_suite/api/titration.py
 chisurf/plugins/fcs/flc_2d/fit/dynamics.py
 chisurf/plugins/fcs/flc_2d/fit/gaussian.py
 chisurf/plugins/fcs/flc_2d/fit/kinetics.py
-chisurf/plugins/fcs/flc_2d/fit/minimize_q.py
-chisurf/plugins/fcs/flc_2d/fit/global_mem.py
-chisurf/plugins/fcs/flc_2d/fit/mem_1d.py
-chisurf/plugins/fcs/flc_2d/fit/mem_2d.py
 # least_squares -> bff (ndimage -> tttrlib.ndimage done)
 chisurf/plugins/microscopy/psf_determination/api/psf.py
 chisurf/plugins/pch/backend/services.py
