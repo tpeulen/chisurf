@@ -1839,7 +1839,18 @@ the same shape as the one `pyarrow` needed: a test that fails when a
 module-level *or* in-function `pd.to_hdf`/`pd.read_hdf`/`pd.HDFStore` exists
 without `pytables` declared.
 
-## `test/server` — three real defects fixed, 43 tests still red
+## Resolved: shared-server lifecycle contracts and the stale 43-case record
+
+
+**Resolved measurement, 2026-10-07:** the complete targeted lifecycle file now
+passes 75 cases in 9.93s under isolated settings/MMFDB/object/cache paths and
+owned ephemeral server ports. The watchdog was inactive and the process
+exited 0; no shared-state failure, startup timeout or hang reproduced. Current
+committed tests already use Lifetime, real 64-point decays, RemoteError and
+scientific .cs.pto persistence contracts (`a67d359b2`, `4c21a578b`,
+`d577d93c1`). No new fixture change is justified by this stale baseline.
+[JUnit receipt](../validation/release-readiness-w7/server-lifecycle.xml).
+The following paragraphs are retained history, not an outstanding failure.
 
 **The RPC server could not build a fit at all.** ``fit_create`` resolves a model
 by walking ``Model.__subclasses__()``, which only sees *imported* classes, and
@@ -2162,7 +2173,18 @@ Fixed in passing, since they were unambiguous and one line each: the
 asked to skip, a missing `Path` import, and three stale
 `serialize_reader_state` mocks.
 
-## test/server: the shared-server integration file errors and then hangs
+## Resolved: shared-server integration startup and hang record
+
+
+**Resolved measurement, 2026-10-07:** the complete targeted lifecycle file now
+passes 75 cases in 9.93s under isolated settings/MMFDB/object/cache paths and
+owned ephemeral server ports. The watchdog was inactive and the process
+exited 0; no shared-state failure, startup timeout or hang reproduced. Current
+committed tests already use Lifetime, real 64-point decays, RemoteError and
+scientific .cs.pto persistence contracts (`a67d359b2`, `4c21a578b`,
+`d577d93c1`). No new fixture change is justified by this stale baseline.
+[JUnit receipt](../validation/release-readiness-w7/server-lifecycle.xml).
+The following paragraphs are retained history, not an outstanding failure.
 
 **Found 2026-07-28**, while test-gating an unrelated proxy fix (RF-722).
 `pytest test/server` never finishes: `test_integration_lifecycle.py` runs its
