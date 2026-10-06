@@ -57,6 +57,7 @@ _SECTION_MODULES = {
     "waterfall": "waterfall_section",
 }
 _PLOT_MODULES = {
+    "conditional_scan": "builtin",
     "distribution": "builtin",
     "fit_info": "builtin",
     "fit_table": "builtin",
@@ -66,12 +67,14 @@ _PLOT_MODULES = {
     "mfd_map": "builtin",
     "mfd_marginals": "builtin",
     "parameter_scan": "builtin",
+    "posterior_graph": "builtin",
     "pr_ci": "builtin",
     "proteinmc_network": "builtin",
     "proteinmc_structure": "builtin",
     "proteinmc_traces": "builtin",
     "residual": "builtin",
     "residual2d": "builtin",
+    "sampling_diagnostics": "builtin",
     "state_scheme": "state_scheme_section",
 }
 

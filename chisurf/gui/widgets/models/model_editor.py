@@ -102,12 +102,19 @@ def hide_model_editor(model) -> None:
         widget.hide()
 
 
+#: Pages every fit window carries after the model's own: they read the fit's
+#: posterior (sampling result, factor graph), not the model, so no model declares
+#: them. Appended, so the indices a saved layout holds for the model's pages stay.
+FIT_PLOT_KEYS = ("posterior_graph", "sampling_diagnostics", "conditional_scan")
+
+
 def model_plot_specs(model):
     """Return ``[(plot_class, options), ...]`` for the fit subwindow.
 
     Resolved from the model's ``view_spec().plots``: each entry names a plot by
     registry key, and the accessors its options carry are resolved here because
-    JSON cannot hold a callable.
+    JSON cannot hold a callable. The fit-level pages (:data:`FIT_PLOT_KEYS`)
+    follow the model's.
 
     Returns an empty list when the model declares no plots — a fit window with no
     plot tabs is a visible, fixable state; silently substituting some other
@@ -152,8 +159,20 @@ def model_plot_specs(model):
                     if isinstance(opts.get("max_frames_accessor"), str):
                         opts["max_frames_accessor"] = _resolve_accessor(opts["max_frames_accessor"])
                     resolved.append((cls, opts))
-                return resolved
+                return resolved + _fit_plot_specs({cls for cls, _ in resolved})
         except Exception as exc:  # pragma: no cover - defensive
             logging.error(f"model_plot_specs: could not resolve plots: {exc}")
 
     return []
+
+
+def _fit_plot_specs(present: set) -> list:
+    """The fit-level pages (:data:`FIT_PLOT_KEYS`) a model did not declare itself."""
+    from chisurf.gui.autoform.sections.registry import get_plot_class
+
+    specs = []
+    for key in FIT_PLOT_KEYS:
+        cls = get_plot_class(key)
+        if cls is not None and cls not in present:
+            specs.append((cls, {}))
+    return specs

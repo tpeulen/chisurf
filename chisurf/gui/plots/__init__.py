@@ -29,7 +29,6 @@ _EXPORTS = {
     "ResidualPlot": "wr_plot",
 }
 _MODULES = frozenset(_EXPORTS.values()) | {
-    "global_fit",
     "global_tcspc",
     "molview",
     "proteinMC",

@@ -362,7 +362,8 @@ Ensemble-sampler chains stored in HDF5 (`mcmc/chain`) open the same way through
 
 ## 11. Looking at the posterior instead of reading about it
 
-Two plots are attached to every fit.
+Every fit window carries three pages after the model's own: **Posterior graph**,
+**What-if** and **Chain diagnostics**.
 
 **Posterior graph** shows the structure — which datasets constrain which
 parameters, whether the fit separates, and which parameters are really one

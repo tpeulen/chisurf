@@ -86,7 +86,7 @@ def test_proteinmc_declares_structure_and_trajectory_plots(qapp):
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
 
     names = [plot_class.name for plot_class, _ in model_plot_specs(_model())]
-    assert names == ["Structure", "Distance Network", "Trajectory-Plot"]
+    assert names[:3] == ["Structure", "Distance Network", "Trajectory-Plot"]
 
 
 def test_progress_payload_fills_the_traces_and_the_trajectory():

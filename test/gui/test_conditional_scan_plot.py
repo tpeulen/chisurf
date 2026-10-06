@@ -2,7 +2,8 @@
 
 ``ConditionalScanPlot.update`` cleared its parameter combo *outside* the
 ``blockSignals`` pair, so the ``clear()`` emitted ``currentIndexChanged`` and
-re-entered ``_rebuild`` while the previous update's engine and parameter list
+re-entered ``_rebuild`` (the page is drawn by emtk now; the selection is page
+state, and the same rule holds for it) while the previous update's engine and parameter list
 were still in place. Fixing parameters until fewer than two were free therefore
 left the earlier sweep on screen -- title, curves and a table quoting means and
 correlations for parameters that were no longer free -- with the "needs a
@@ -17,7 +18,6 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-pytest.importorskip("pyqtgraph")
 from qtpy import QtWidgets  # noqa: E402
 
 import chisurf.core.data  # noqa: E402
@@ -62,7 +62,7 @@ def test_what_if_plot_answers_the_current_fit(app, quadratic_fit):
     widget = ConditionalScanPlot(quadratic_fit)
     widget.update()
 
-    assert widget.parameter_box.count() == 3
+    assert len(widget.parameters) == 3
     assert widget._scan is not None
     assert len(widget._full_names) == 3
 
@@ -82,15 +82,17 @@ def test_what_if_plot_drops_the_stale_scan_when_it_degrades(app, quadratic_fit):
     _fix(quadratic_fit, "a", "b")
     widget.update()
 
-    assert widget.parameter_box.count() == 0
+    from chisurf.gui.plots import emtk_notes as N
+
+    assert widget.parameters == []
     assert widget._scan is None
     assert widget._engine is None
     assert widget._full_names == []
-    assert widget.held_label.text() == ""
-    assert "at least two free parameters" in widget.readout.text()
+    assert widget.held_text == ""
+    assert "at least two free parameters" in N.as_text(widget.readout)
     # The stale table is what gave the dead posterior away: no parameter names,
     # no correlations, no "narrower" column may be left in the readout.
-    assert "<table" not in widget.readout.text()
+    assert not any(isinstance(note, N.Table) for note in widget.readout)
 
 
 def test_what_if_plot_ignores_the_combo_once_it_has_degraded(app, quadratic_fit):
@@ -102,7 +104,22 @@ def test_what_if_plot_ignores_the_combo_once_it_has_degraded(app, quadratic_fit)
     _fix(quadratic_fit, "a", "b")
     widget.update()
 
-    widget.parameter_box.addItem("c")  # as a stale repopulation would
-    widget._rebuild()
+    widget.set_parameter(0)  # as a stale selection would
 
     assert widget._scan is None, "no sweep may come out of a dropped engine"
+
+
+def test_what_if_readout_reads_the_held_value(app, quadratic_fit):
+    """Moving the held value moves the 'would be' column, not the 'free' one."""
+    from chisurf.gui.plots import emtk_notes as N
+    from chisurf.gui.plots.conditional_scan import ConditionalScanPlot
+
+    widget = ConditionalScanPlot(quadratic_fit)
+    widget.update()
+    table = [n for n in widget.readout if isinstance(n, N.Table)][0]
+    at_optimum = [row[1:3] for row in table.rows]
+    widget.set_held(1.5)
+    table = [n for n in widget.readout if isinstance(n, N.Table)][0]
+    assert [row[2] for row in table.rows] == [free for _, free in at_optimum]
+    assert [row[1] for row in table.rows] != [would for would, _ in at_optimum]
+    assert widget.held_text.startswith(widget.parameters[widget.parameter] + " = ")

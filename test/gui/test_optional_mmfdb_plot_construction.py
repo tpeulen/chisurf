@@ -58,7 +58,8 @@ assert [spec.key for spec in declared] == [
     "distribution", "residual", "residual2d", "fit_info", "parameter_scan"
 ]
 specs = model_plot_specs(member.model)
-assert len(specs) == len(declared), (len(specs), len(declared))
+from chisurf.gui.widgets.models.model_editor import FIT_PLOT_KEYS
+assert len(specs) == len(declared) + len(FIT_PLOT_KEYS), (len(specs), len(declared))
 
 controls = QtWidgets.QWidget()
 control_layout = QtWidgets.QVBoxLayout(controls)
@@ -71,7 +72,7 @@ layout.addWidget(controls, 2)
 host.resize(1200, 800)
 host.show()
 app.processEvents()
-assert len(window._plot_specs) == len(declared)
+assert len(window._plot_specs) == len(declared) + len(FIT_PLOT_KEYS)
 for i, (plot_class, options) in enumerate(specs):
     plot = window.ensure_plot_created(i)
     assert type(plot) is plot_class, (i, type(plot), plot_class)
@@ -79,7 +80,8 @@ for i, (plot_class, options) in enumerate(specs):
     window.plot_tab_widget.setCurrentIndex(i)
     plot.update()
     app.processEvents()
-    if declared[i].key == "distribution":
+    key = declared[i].key if i < len(declared) else None  # then the fit-level pages
+    if key == "distribution":
         config = plot.plot_controller.parameter_editor.dict
         expected = config["accessor"](group, **config.get("accessor_kwargs", {}))
         traces = plot.distribution_plot.series()
@@ -89,7 +91,7 @@ for i, (plot_class, options) in enumerate(specs):
             np.testing.assert_array_equal(actual_x, x)
             np.testing.assert_array_equal(actual_y, y)
             assert np.isfinite(actual_y).all() and np.any(actual_y != 0)
-    if declared[i].key == "fit_info":
+    if key == "fit_info":
         editor = plot.metadata_editor
         assert editor.as_dict() == metadata
         combo = editor.table.cellWidget(0, 0)
@@ -104,14 +106,14 @@ for i, (plot_class, options) in enumerate(specs):
     for size in ((1200, 800), (800, 600)):
         host.resize(*size)
         app.processEvents()
-        path = Path(captures) / f"{catalog}-pda-{declared[i].key}-{size[0]}x{size[1]}.png"
+        path = Path(captures) / f"{catalog}-pda-{key or type(plot).__name__}-{size[0]}x{size[1]}.png"
         assert host.grab().save(str(path))
         print("capture", path, flush=True)
 
 np.testing.assert_array_equal(member.model.y, before_y)
 np.testing.assert_array_equal(member.data.y, before_data)
 assert member.model.get_state() == before_state, (before_state, member.model.get_state())
-assert len(window._created_plots) == len(declared)
+assert len(window._created_plots) == len(declared) + len(FIT_PLOT_KEYS)
 if catalog != "normal":
     assert not any(n == "mmfdb" or n.startswith("mmfdb.") for n in sys.modules)
 print("all five real PDA plots opened; exact model, data and traces preserved", catalog)

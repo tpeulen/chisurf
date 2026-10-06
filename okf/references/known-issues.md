@@ -1774,6 +1774,12 @@ QT_QPA_PLATFORM=offscreen python -m pytest -q chisurf/plugins/traj/fret_trajecto
   is why bisecting to one test id finds nothing.
 - **Order matters.** `test_view_model.py` then `test_gui.py` passes; the
   alphabetical order pytest actually uses is the crashing one.
+- **2026-10-06: `test/gui/test_fit_presentation_contract.py` shows it too.**
+  12 passed, then `Fatal Python error: Bus error`/`Segmentation fault` with
+  `<no Python frame>`, 2/2 for the whole file, 0/3 for every subset tried
+  (halves, and each 5-test combination by `-k`), and the same on a clean
+  worktree at `3b4f8b6db`. Same class: it accumulates, it does not bisect.
+
 
 **Tried and reverted.** The Qt-free view model and the Qt atom-pair section hold
 each other (`section._model` / `model.atom_pair_section`), a strong QWidget↔object

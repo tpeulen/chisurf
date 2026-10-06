@@ -148,7 +148,8 @@ def test_registered_auto_lifetime_model_wires_live(qapp):
     editor = build_model_editor(fit.model)
     assert isinstance(editor, AutoModelWidget)
     specs = model_plot_specs(fit.model)
-    assert len(specs) == 6  # line, fit_table, fit_info, parameter_scan, distribution, residual
+    # line, fit_table, fit_info, parameter_scan, distribution, residual + 3 fit-level
+    assert len(specs) == 9
 
 
 def test_code_view_resolves_model_view_json(qapp, lifetime_model):
@@ -403,9 +404,14 @@ def test_plots_come_only_from_the_view_spec(qapp):
     assert not isinstance(model, QtWidgets.QWidget)
 
     declared = {plot.key for plot in model.view_spec().plots}
+    from chisurf.gui.widgets.models.model_editor import FIT_PLOT_KEYS
+
     resolved = model_plot_specs(model)
     assert resolved, "the lifetime model declares plots but none resolved"
-    assert len(resolved) <= len(declared)
+    # the model's own, then only the fit-level pages every fit window carries
+    assert len(resolved) <= len(declared) + len(FIT_PLOT_KEYS)
+    fit_level = [cls.__name__ for cls, _ in resolved[len(declared):]]
+    assert fit_level == ["PosteriorGraphPlot", "SamplingDiagnosticsPlot", "ConditionalScanPlot"]
     assert not hasattr(model, "plot_classes")
 
 

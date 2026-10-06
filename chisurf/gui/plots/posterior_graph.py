@@ -19,12 +19,11 @@ from __future__ import annotations
 
 import math
 
-from qtpy import QtWidgets
-
 import chisurf.core.fitting
 from chisurf.core.fitting import graphview as gv
-from chisurf.gui.chiplot import Plot as ChiPlot
+from chisurf.gui import chiplot as cp
 from chisurf.gui.chiplot import style as S
+from chisurf.gui.plots import emtk_notes as N
 from chisurf.gui.plots.plotbase import Plot
 
 #: Node fill by kind. Parameters are shaded by uncertainty on top of this, so
@@ -64,55 +63,54 @@ class PosteriorGraphPlot(Plot):
     name = "Posterior graph"
 
     def __init__(self, fit: chisurf.core.fitting.fit.Fit, **kwargs):
-        """Build the tabs; the plots are filled on :meth:`update`."""
+        """One panel and its notes per tab; they are filled on :meth:`update`."""
+        from chisurf.gui.plots.emtk_page import PanelItem
+
         super().__init__(fit)
         self.fit = fit
-        # ``Plot`` already installs the layout; adding another silently detaches
-        # every child.
-        self.tabs = QtWidgets.QTabWidget()
-        self.layout.addWidget(self.tabs)
-
-        self._views = []
-        for title in ("Structure", "Dependence", "Junction tree"):
-            page = QtWidgets.QWidget()
-            page_layout = QtWidgets.QVBoxLayout(page)
-            page_layout.setContentsMargins(4, 4, 4, 4)
-            plot = ChiPlot()
-            plot.set_aspect_locked(False)
-            plot.set_axis_visible(left=False, bottom=False)
-            plot.set_interactive(menu=True)
-            page_layout.addWidget(plot.canvas.widget(), 1)
-            notes = QtWidgets.QLabel("")
-            notes.setWordWrap(True)
-            notes.setTextFormat(1)  # Qt::RichText
-            page_layout.addWidget(notes, 0)
-            self.tabs.addTab(page, title)
-            self._views.append((plot, notes))
+        self.tabs = N.Tabs(("Structure", "Dependence", "Junction tree"))
+        self.panels = []
+        self.notes = []
+        for _title in self.tabs.titles:
+            panel = cp.Panel()
+            panel.set_aspect_locked(False)
+            panel.set_axis_visible(left=False, bottom=False)
+            panel.set_interactive(menu=True)
+            self.panels.append(panel)
+            self.notes.append([])
+        self.panel_items = [PanelItem(panel, panel.control()) for panel in self.panels]
 
     def update(self, *args, **kwargs) -> None:
         """Rebuild all three views from the current fit."""
         super().update(*args, **kwargs)
         builders = (gv.structure_view, gv.correlation_view, gv.junction_tree_view)
-        for (plot, notes), build in zip(self._views, builders):
+        for index, build in enumerate(builders):
             try:
                 view = build(self.fit)
             except Exception as e:
-                plot.clear()
-                notes.setText(f"<i>could not build this view: {e}</i>")
+                self.panels[index].clear()
+                self.notes[index] = [N.Line(f"could not build this view: {e}", N.MUTED)]
                 continue
-            self._draw(plot, view)
-            self._write_notes(notes, view)
+            self._draw(self.panels[index], view)
+            self.notes[index] = self._notes(view)
+
+    def emtk_draw(self, box) -> None:
+        """The tab bar, then the current view over its legend and findings."""
+        for item in self.panel_items:
+            item.box = None  # a hidden tab's panel must not answer a right click
+
+        def body(index: int) -> None:
+            N.panel_and_notes(f"posterior-{index}", self.panel_items[index], self.notes[index])
+
+        self.tabs.draw("posterior-tabs", body)
 
     @staticmethod
-    def _write_notes(label: QtWidgets.QLabel, view: gv.GraphView) -> None:
-        """Put the legend and any findings under the plot."""
-        parts = [f"<span style='color:#888'>{view.legend}</span>"]
-        for note in view.notes:
-            parts.append(f"<b>&#9888;</b> {note}")
-        label.setText("<br>".join(parts))
+    def _notes(view: gv.GraphView) -> list:
+        """The legend and any findings, to go under the plot."""
+        return [N.Line(view.legend, N.MUTED)] + [N.Line(f"\u26a0 {note}") for note in view.notes]
 
     @staticmethod
-    def _draw(plot: ChiPlot, view: gv.GraphView) -> None:
+    def _draw(plot, view: gv.GraphView) -> None:
         """Paint one :class:`~chisurf.core.fitting.graphview.GraphView`."""
         plot.clear()
         plot.set_title(view.title)

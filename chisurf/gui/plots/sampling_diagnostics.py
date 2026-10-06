@@ -16,12 +16,12 @@ that show *how* a chain failed, which a threshold cannot.
 from __future__ import annotations
 
 import numpy as np
-from qtpy import QtWidgets
 
 import chisurf.core.fitting
 from chisurf.core.fitting import diagnostics as dg
-from chisurf.gui.chiplot import Plot as ChiPlot
+from chisurf.gui import chiplot as cp
 from chisurf.gui.chiplot import style as S
+from chisurf.gui.plots import emtk_notes as N
 from chisurf.gui.plots.plotbase import Plot
 
 #: One colour per chain, distinguishable and stable across both tabs.
@@ -54,47 +54,61 @@ class SamplingDiagnosticsPlot(Plot):
     name = "Chain diagnostics"
 
     def __init__(self, fit: chisurf.core.fitting.fit.Fit, **kwargs):
-        """Build the tabs and the parameter selector."""
+        """The rank and ESS panels with their notes, and the parameter choice."""
+        from chisurf.gui.plots.emtk_page import PanelItem
+
         super().__init__(fit)
         self.fit = fit
+        self.tabs = N.Tabs(("Rank", "ESS growth"))
+        #: Index into :attr:`parameters` of the parameter the rank tab shows.
+        self.parameter = 0
 
-        self.tabs = QtWidgets.QTabWidget()
-        self.layout.addWidget(self.tabs)
-
-        # -- rank tab, one parameter at a time -------------------------------
-        rank_page = QtWidgets.QWidget()
-        rank_layout = QtWidgets.QVBoxLayout(rank_page)
-        rank_layout.setContentsMargins(4, 4, 4, 4)
-        chooser = QtWidgets.QHBoxLayout()
-        chooser.addWidget(QtWidgets.QLabel("Parameter"))
-        self.parameter_box = QtWidgets.QComboBox()
-        self.parameter_box.currentIndexChanged.connect(self._draw_rank)
-        chooser.addWidget(self.parameter_box, 1)
-        rank_layout.addLayout(chooser)
-        self.rank_plot = ChiPlot()
+        self.rank_plot = cp.Panel()
         self.rank_plot.set_labels(bottom="rank (pooled over chains)", left="draws")
-        rank_layout.addWidget(self.rank_plot.canvas.widget(), 1)
-        self.rank_notes = QtWidgets.QLabel("")
-        self.rank_notes.setWordWrap(True)
-        self.rank_notes.setTextFormat(1)
-        rank_layout.addWidget(self.rank_notes, 0)
-        self.tabs.addTab(rank_page, "Rank")
-
-        # -- ESS tab ---------------------------------------------------------
-        ess_page = QtWidgets.QWidget()
-        ess_layout = QtWidgets.QVBoxLayout(ess_page)
-        ess_layout.setContentsMargins(4, 4, 4, 4)
-        self.ess_plot = ChiPlot()
+        self.rank_notes = []
+        self.ess_plot = cp.Panel()
         self.ess_plot.set_labels(bottom="draws per chain", left="effective sample size")
-        ess_layout.addWidget(self.ess_plot.canvas.widget(), 1)
-        self.ess_notes = QtWidgets.QLabel("")
-        self.ess_notes.setWordWrap(True)
-        self.ess_notes.setTextFormat(1)
-        ess_layout.addWidget(self.ess_notes, 0)
-        self.tabs.addTab(ess_page, "ESS growth")
+        self.ess_notes = []
+        self.panel_items = [
+            PanelItem(self.rank_plot, self.rank_plot.control()),
+            PanelItem(self.ess_plot, self.ess_plot.control()),
+        ]
 
         self._chains = None
         self._names = []
+
+    @property
+    def parameters(self) -> list:
+        """The parameter names the rank tab offers."""
+        return list(self._names)
+
+    def set_parameter(self, index: int) -> None:
+        """Show parameter *index* on the rank tab."""
+        self.parameter = int(index)
+        self._draw_rank()
+
+    def emtk_draw(self, box) -> None:
+        """The tab bar; the rank tab carries the parameter choice above its plot."""
+        from emtk import im
+
+        for item in self.panel_items:
+            item.box = None  # a hidden tab's panel must not answer a right click
+
+        def body(index: int) -> None:
+            if index == 0:
+                if self._names:
+                    im.text("Parameter")
+                    im.same_line()
+                    im.set_next_item_width(-1.0)
+                    changed, picked = im.combo("##chain-parameter", self.parameter, self._names)
+                    im.set_item_tooltip("The parameter whose per-chain ranks are drawn.")
+                    if changed:
+                        self.set_parameter(picked)
+                N.panel_and_notes("chain-rank", self.panel_items[0], self.rank_notes)
+            else:
+                N.panel_and_notes("chain-ess", self.panel_items[1], self.ess_notes)
+
+        self.tabs.draw("chain-tabs", body)
 
     # -- data ---------------------------------------------------------------
 
@@ -117,25 +131,23 @@ class SamplingDiagnosticsPlot(Plot):
     def update(self, *args, **kwargs) -> None:
         """Reload the chain and redraw both tabs."""
         super().update(*args, **kwargs)
+        previous = self._names[self.parameter] if self.parameter < len(self._names) else None
         if not self._load():
-            for plot, notes in ((self.rank_plot, self.rank_notes), (self.ess_plot, self.ess_notes)):
-                plot.clear()
-                notes.setText(
-                    "<i>no chain stored for this fit — run a sampling job "
-                    "(<b>Chain diagnostics</b> describes what it produced, it "
-                    "does not sample)</i>"
+            message = [
+                N.Line(
+                    "no chain stored for this fit — run a sampling job (Chain "
+                    "diagnostics describes what it produced, it does not sample)",
+                    N.MUTED,
                 )
-            self.parameter_box.clear()
+            ]
+            for plot in (self.rank_plot, self.ess_plot):
+                plot.clear()
+            self.rank_notes, self.ess_notes = list(message), list(message)
+            self.parameter = 0
             return
 
-        current = self.parameter_box.currentText()
-        self.parameter_box.blockSignals(True)
-        self.parameter_box.clear()
-        self.parameter_box.addItems(self._names)
-        if current in self._names:
-            self.parameter_box.setCurrentIndex(self._names.index(current))
-        self.parameter_box.blockSignals(False)
-
+        # The same parameter stays selected when the chain is reloaded.
+        self.parameter = self._names.index(previous) if previous in self._names else 0
         self._draw_rank()
         self._draw_ess()
 
@@ -145,7 +157,7 @@ class SamplingDiagnosticsPlot(Plot):
         """Draw per-chain rank histograms for the selected parameter."""
         if self._chains is None:
             return
-        index = max(0, self.parameter_box.currentIndex())
+        index = max(0, self.parameter)
         counts, edges, expected = dg.rank_histogram(self._chains, bins=20)
         if index >= counts.shape[0]:
             return
@@ -209,12 +221,13 @@ class SamplingDiagnosticsPlot(Plot):
             if ratio < 2.5
             else "far beyond noise — the chains are not sampling the same distribution"
         )
-        self.rank_notes.setText(
-            "<span style='color:#888'>each chain's share of the pooled ranks; "
-            "flat = converged</span><br>"
-            f"worst bin {z_max:.1f}&sigma; from flat, against {z_null:.1f}&sigma; "
-            f"expected by chance at &tau;={tau:.0f} — {verdict}"
-        )
+        self.rank_notes = [
+            N.Line("each chain's share of the pooled ranks; flat = converged", N.MUTED),
+            N.Line(
+                f"worst bin {z_max:.1f}σ from flat, against {z_null:.1f}σ "
+                f"expected by chance at τ={tau:.0f} — {verdict}"
+            ),
+        ]
 
     def _draw_ess(self) -> None:
         """Draw effective sample size against draws, for every parameter."""
@@ -228,7 +241,7 @@ class SamplingDiagnosticsPlot(Plot):
         # created empty and the parameters cannot be told apart.
         plot.legend()
         if draws.size == 0:
-            self.ess_notes.setText("<i>too few draws to estimate</i>")
+            self.ess_notes = [N.Line("too few draws to estimate", N.MUTED)]
             return
 
         for k in range(ess.shape[1]):
@@ -250,15 +263,20 @@ class SamplingDiagnosticsPlot(Plot):
 
         worst = float(np.nanmin(ess[-1]))
         ratio = worst / float(draws[-1] * self._chains.shape[0])
-        self.ess_notes.setText(
-            "<span style='color:#888'>a converged sampler's ESS grows linearly; "
-            "flattening means the extra draws add nothing</span><br>"
-            f"lowest ESS {worst:.0f} from "
-            f"{draws[-1] * self._chains.shape[0]} draws ({ratio:.1%} efficiency)"
-            + (
-                ""
-                if worst >= dg.ESS_THRESHOLD
-                else f" — below the usual {dg.ESS_THRESHOLD:.0f} needed to quote a "
-                f"credible interval"
-            )
-        )
+        self.ess_notes = [
+            N.Line(
+                "a converged sampler's ESS grows linearly; flattening means the extra "
+                "draws add nothing",
+                N.MUTED,
+            ),
+            N.Line(
+                f"lowest ESS {worst:.0f} from "
+                f"{draws[-1] * self._chains.shape[0]} draws ({ratio:.1%} efficiency)"
+                + (
+                    ""
+                    if worst >= dg.ESS_THRESHOLD
+                    else f" — below the usual {dg.ESS_THRESHOLD:.0f} needed to quote a "
+                    f"credible interval"
+                )
+            ),
+        ]

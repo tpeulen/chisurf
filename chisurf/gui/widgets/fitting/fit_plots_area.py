@@ -411,12 +411,15 @@ class FitPlotsArea(QtWidgets.QWidget):
         """Restore a layout from :meth:`get_layout_state`.
 
         Returns False, changing nothing, for any other layout -- a Qt dock
-        area's, or one saved for a different set of pages.
+        area's, or one saved for a different set of pages. A layout saved before
+        pages were *appended* (its keys are a prefix of these) is restored, and
+        the new pages dock home.
         """
         if not isinstance(state, dict) or state.get("type") != LAYOUT_TYPE:
             return False
         keys = [page.key for page in self.surface.pages]
-        if list(state.get("keys") or []) != keys or not isinstance(state.get("docks"), dict):
+        saved = list(state.get("keys") or [])
+        if not saved or saved != keys[: len(saved)] or not isinstance(state.get("docks"), dict):
             return False
         surface = self.surface
         surface._suppress_layout_signal = True

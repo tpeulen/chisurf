@@ -118,7 +118,7 @@ import chisurf.gui.plots as plots
 line = plots.LinePlot
 assert plots.LinePlot is line
 for name in ('fitinfo', 'mfd_2d', 'mfd_map', 'residual_image',
-             'sampling_diagnostics', 'posterior_graph', 'global_fit', 'global_tcspc'):
+             'sampling_diagnostics', 'posterior_graph', 'global_tcspc'):
     assert 'chisurf.gui.plots.' + name not in sys.modules, name
 assert 'chisurf.gui.widgets.metadata_editor' not in sys.modules
 """,
@@ -147,9 +147,9 @@ for name, module in exports.items():
     assert getattr(plots, name) is expected, name
     assert getattr(plots, name) is plots.__dict__[name]
     assert name in dir(plots)
-for name in ('global_fit', 'global_tcspc', 'molview', 'proteinMC', 'plotbase', 'lineplot'):
+for name in ('global_tcspc', 'molview', 'proteinMC', 'plotbase', 'lineplot'):
     assert getattr(plots, name) is importlib.import_module('chisurf.gui.plots.' + name)
-from chisurf.gui.plots import LinePlot, FitInfo, global_fit, global_tcspc, molview, proteinMC
+from chisurf.gui.plots import LinePlot, FitInfo, global_tcspc, molview, proteinMC
 assert LinePlot is plots.LinePlot
 try:
     plots.nonexistent_plot

@@ -39,10 +39,29 @@ Qt widget (it is laid over the page, not lost), and the slow sweep fails on it.
    ProteinMC (both pages) and LinePlot. **Measure** with the scratchpad-style
    count of `findChildren(QWidget)` under `FitPlotsArea` on a TCSPC fit: 25
    before, 13 after. Still Qt inside pages: the page objects themselves
-   (`plotbase.Plot` is a `QWidget`, `plot_controller` a `QWidget`), and the
-   tabbed pages that build `QTabWidget`/`QLabel`/`QSplitter` (sampling
-   diagnostics, posterior graph, conditional scan, global fit). Those render
-   through the translator, so they work; they are the next ones to declare.
+   (`plotbase.Plot` is a `QWidget`, `plot_controller` a `QWidget`). Those are
+   the next step: a page that is not a widget at all.
+   Done 2026-10-06: **Posterior graph**, **Chain diagnostics** and **What-if**
+   (`posterior_graph.py`, `sampling_diagnostics.py`, `conditional_scan.py`)
+   draw in emtk (`emtk_draw`): tabs are `emtk_notes.Tabs` (page state,
+   `tabs.select(i)`), the notes under a plot are data (`emtk_notes.Line` /
+   `Table`, read in tests with `as_text`), the What-if bar is an `im.begin_grid`.
+   Parity (legacy grab vs surface grab, guide-39 fit): every control present;
+   the slider now prints its position (`+0.00 sd`). Re-derive with
+   `docs/guides/screenshots/guides_39_53.py _grab_39_posterior_plots`.
+   **They had been unreachable** since the model/UI split (`e3a0a6a5e`): the
+   old model base class attached them to every fit, the spec registry never
+   registered them, and guide 39 kept describing them. They are now plot keys
+   (`posterior_graph`, `sampling_diagnostics`, `conditional_scan`) that
+   `model_plot_specs` appends after the model's pages
+   (`model_editor.FIT_PLOT_KEYS`). Appending changed every window's page keys,
+   so `FitPlotsArea.set_layout_state` now restores a layout whose keys are a
+   *prefix* of the current ones (new pages dock home) instead of refusing it --
+   otherwise every saved layout would have been dropped once.
+   `GlobalFitPlot` (`global_fit.py`) had no user at all and was deleted.
+   Open: `docs/images/posterior_graph_structure.png` and
+   `whatif_non_gaussian.png` are hand-made Qt-era grabs with no generator (a
+   four-dataset global fit; a weak second component with the re-fit check).
    Trap: `cp.Panel` must be exported from `chisurf/gui/chiplot/__init__.py`
    (a module `__getattr__` turns the missing name into an `AttributeError` deep
    inside a paint, which aborted the GUI suite).

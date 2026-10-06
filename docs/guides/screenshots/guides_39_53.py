@@ -82,6 +82,21 @@ def _grab_39_sampling_controls():
     _grab(host, "39_sampling_controls.png")
 
 
+def _page_host(page, width=900, height=620):
+    """*page* on a fit-window surface, as the fit window draws it (emtk)."""
+    from emtk.qt_host import ControlHost
+
+    from chisurf.gui.widgets.fitting.fit_plots_area import make_surface
+
+    surface = make_surface()
+    surface.add_page("0:" + type(page).name, type(page).name, lambda: page)
+    host = ControlHost(surface)
+    host.resize(width, height)
+    host._keep = (surface, page)
+    host.show()
+    return host
+
+
 def _grab_39_posterior_plots():
     """Dependence tab of the posterior graph and the rank tab of chain diagnostics, after sampling."""
     from qtpy import QtWidgets
@@ -92,16 +107,20 @@ def _grab_39_posterior_plots():
     fit = _quadratic_fit_39(sample=True)
     graph = PosteriorGraphPlot(fit)
     graph.update()
-    graph.tabs.setCurrentIndex(1)  # Dependence
-    graph.resize(900, 620)
-    _grab(graph, "39_posterior_dependence.png")
+    graph.tabs.select(1)  # Dependence
+    host = _page_host(graph)
+    _pump(0.3)
+    _grab(host, "39_posterior_dependence.png")
 
     diag = SamplingDiagnosticsPlot(fit)
     diag.update()
-    diag.resize(900, 620)
-    _grab(diag, "39_chain_diagnostics.png")
-    diag.tabs.setCurrentIndex(1)
-    _grab(diag, "39_chain_ess.png")
+    host = _page_host(diag)
+    _pump(0.3)
+    _grab(host, "39_chain_diagnostics.png")
+    diag.tabs.select(1)
+    host.repaint()
+    _pump(0.3)
+    _grab(host, "39_chain_ess.png")
     QtWidgets.QApplication.instance().processEvents()
 
 

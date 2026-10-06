@@ -52,6 +52,9 @@ register_plot("mfd_marginals", lambda: _plots().MfdMarginalPlot)
 register_plot("mfd_map", lambda: _plots().MfdMapPlot)
 register_plot("lcurve", lambda: _plots().LCurvePlot)
 register_plot("pr_ci", lambda: _plots().DeerPrCIPlot)
+register_plot("posterior_graph", lambda: _plots().PosteriorGraphPlot)
+register_plot("sampling_diagnostics", lambda: _plots().SamplingDiagnosticsPlot)
+register_plot("conditional_scan", lambda: _plots().ConditionalScanPlot)
 
 
 def _proteinmc_plots():

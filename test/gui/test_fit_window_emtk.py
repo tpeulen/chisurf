@@ -26,7 +26,9 @@ from chisurf.gui.widgets.fitting.fit_plots_area import LAYOUT_TYPE, FitPlotsArea
 from chisurf.gui.widgets.fitting.fit_subwindow import FitSubWindow  # noqa: E402
 
 #: Pages of the TCSPC fit window, all of which must draw entirely in emtk.
-TCSPC_PAGES = ["Fit", "Data table", "Info", "Parameter scan", "Distribution", "Residuals"]
+#: The model's pages, then the fit-level ones every fit window carries.
+TCSPC_PAGES = ["Fit", "Data table", "Info", "Parameter scan", "Distribution", "Residuals",
+               "Posterior graph", "Chain diagnostics", "What-if"]
 
 
 def _decay_fit():
@@ -119,7 +121,7 @@ def test_every_tcspc_page_draws_entirely_in_emtk(window, qapp):
         area.setCurrentIndex(index)
         _frames(qapp, window)
         body = area.surface.page_body(index)
-        assert body is not None and body.control is not None, title
+        assert body is not None and (body.control is not None or body.draw is not None), title
         assert body.missing == [], f"{title}: not drawn in emtk: {body.missing}"
 
 
@@ -243,8 +245,26 @@ def test_the_layout_roundtrips_and_a_foreign_one_is_refused(window, qapp, qtbot)
     assert other.currentIndex() == 2
     # The Qt dock area's format, and a layout for other pages, change nothing.
     assert not other.set_layout_state({"version": 1, "root": {"type": "tab", "tabs": []}})
-    wrong = dict(state, keys=state["keys"][:-1])
+    wrong = dict(state, keys=["0:Fit", "1:Something else"])
     assert not other.set_layout_state(wrong)
+
+
+def test_a_layout_saved_before_pages_were_added_still_restores(window, qapp, qtbot):
+    """Appending fit-level pages must not throw away every saved layout."""
+    area = window.plot_tab_widget
+    docks = area.surface.docks
+    right = docks.split_region("center", "right")
+    docks.dock("5:Residuals", right)
+    state = area.get_layout_state()
+    older = dict(state, keys=state["keys"][:6])
+
+    other = FitPlotsArea()
+    qtbot.addWidget(other)
+    for index, title in enumerate(TCSPC_PAGES):
+        other.add_page(title, lambda: None, key=f"{index}:{title}")
+    assert other.set_layout_state(older, emit_change=False)
+    assert other.surface.docks.region_of("5:Residuals") == right
+    assert other.surface.docks.region_of("8:What-if") is not None
 
 
 def test_the_layout_persists_per_model_class(window, qapp, qtbot, tmp_path):
