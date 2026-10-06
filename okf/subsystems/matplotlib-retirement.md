@@ -70,23 +70,21 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 5. **Static exports go through emtk.figure, not chiplot**: `chisurf.gui`
    imports Qt, and callers include Qt-free api/server/agent code. chiplot
    stays the API for plots *inside* GUIs.
-6. **Manifests -- DONE 2026-10-06.** The list is empty. `matplotlib-base` left
-   `pixi.toml` `[dependencies]` and is declared under `[feature.test]` (the
-   colormap oracle) and `[feature.docs]` (`docs/guides/make_figures.py`);
-   `matplotlib` left the recipe `run:`, the root `pyproject.toml` and
-   `build_installer.TEST_PKGS`. **Not done -- `RETIRED` entry:** adding
-   matplotlib to `test/test_no_retired_dependency_imports.py` fails its
-   packaging check, which reads every `pixi.toml` table alike (so the test/docs
-   features count) and also scans `test/settings/test_py314.toml` and
-   `build_tools/setup_runtime.sh`, both still listing matplotlib. Next: drop it
-   from those two files, teach `_declared_dependencies` to skip
-   `[feature.test*]`/`[feature.docs*]` tables (or exempt them per package),
-   then add `RETIRED["matplotlib"]` with `_ALLOWED_PREFIXES` for
-   `core/console/{mpl_inline,shell}.py` and the four test oracles
-   (`tttr_image_browser/test/`, `psf_calculator/tests/`, `chimol/test/`,
-   `modules/ndxplorer/ndxplorer/tests/`, `test/repro/`). Also not done:
-   `pixi.lock` was not re-solved (other lanes co-edit it) -- the next
-   `pixi install` drops matplotlib from the default env.
+6. **Manifests and guard -- DONE 2026-10-06** (chisurf `106b25521`,
+   `2b9ea8d3d`). The list is empty; `matplotlib-base` is declared only under
+   `[feature.test]` (colormap oracle) and `[feature.docs]`
+   (`docs/guides/make_figures.py`); it left the recipe `run:`, `pyproject`,
+   `TEST_PKGS`, `test/settings/test_py314.toml` and `build_tools/setup_runtime.sh`.
+   `RETIRED["matplotlib"]` is in `test/test_no_retired_dependency_imports.py`
+   through a `_TEST_ORACLE` rule shared with scipy: test files (a `test`/`tests`
+   directory) may import it, pixi's `[feature.test*]`/`[feature.docs*]` tables
+   may declare it, every runtime table still counts; the console's
+   `mpl_inline.py`/`shell.py` are `_ALLOWED_PREFIXES`. The shipped
+   `console_init` no longer runs `%matplotlib inline` / `import pylab as p`, and
+   `chinsole.settings.console_init_source` drops those lines from old settings
+   files when matplotlib is absent (it printed a traceback into every new
+   console). **Left:** `pixi.lock` is not re-solved (other lanes co-edit it) --
+   the next `pixi install` drops matplotlib from the default env.
 
 Trap when committing here: the tree is shared and most of these files carry
 other lanes' edits. Save `git diff <file>` before editing, stage via a temp

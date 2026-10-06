@@ -9,6 +9,40 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
+**DONE 2026-10-06: scipy is out of chisurf's runtime** (chisurf `106b25521`).
+`test/scipy_import_allowlist.txt` is empty and closed; scipy left pixi
+`[dependencies]` (kept under `[feature.test]` as the parity oracle), the recipe
+`run:`, `pyproject`, `TEST_PKGS` and the two stale runtime lists, and is in
+`RETIRED` (`_TEST_ORACLE` rule: tests may import it, pixi test/docs features may
+declare it). chimol is scipy-free too (chimol `7202bb0`: NumPy cell index for the
+crystal-mate search, the map's own FFT Gaussian for streamed volumes, guard
+`tests/test_no_scipy.py`). **Proof, re-run it the same way:** insert a
+`sys.meta_path` finder that raises `ModuleNotFoundError` for `scipy`/`matplotlib`
+(not plain `ImportError` -- the console's guards catch the former), then import
+the routed modules, construct `ChiSurfServer`, and start the GUI via
+`chisurf.gui.get_win` + `show()`; 2026-10-06: all imports fine, server 0.79 s,
+GUI 3.0 s with every model registered, console clean.
+
+Where each family went: optimisers, root finding, special functions,
+distributions, `expm`/`pinvh`, LSODA -> IMP.bff (via
+`chisurf/core/math/numerics.py`, `chisurf/core/math/special.py`); ndimage,
+spatial, clustering, signal, splines, MAT-files -> tttrlib. Left:
+1. `pixi.lock` not re-solved (co-edited by other lanes): the next
+   `pixi install` drops scipy from the default env.
+2. A ParseModel expression may call only `special.ELEMENTWISE` names as
+   `scipy.special.<name>` (item 2 below).
+3. **Sibling repos, audited 2026-10-06:** quest is scipy-free; imp-tricks'
+   PHREEQC backend moved to `np.linalg.solve` (imp-tricks, same day). The
+   last scipy user in the stack is **`IMP.finite`** (`solver.py`,
+   `jax_solver.py`, `imp_finite.py`: `scipy.sparse` + `sparse.linalg`, a
+   finite-element diffusion solver). chisurf never reaches it (the blocked-
+   import proof covers chisurf's paths), but the installer adds imp-tricks
+   with `--no-deps`, so in a shipped app `import IMP.finite` now fails. Port
+   target by the placement rule: IMP.bff (coordinates/fields), sparse CSR +
+   CG/LU in C++; until then scipy stays in imp-tricks' own pyproject.
+
+History of the routes (kept for the traps):
+
 **Special functions / distributions / expm / pinvh landed 2026-10-06
 (T-20261006-BFFSPEC).** imp.bff `f804209a1` (`include/Numerics.h`):
 `gammaln, erf, erfc, digamma, i0e, j0, j1, ndtr, gammainc(c), zeta(s,q),
@@ -105,25 +139,7 @@ Tests: imp.bff `test/numerics/test_special_functions.py` (21), chisurf
    duplicate) were deleted and `OptimizationCancelled` moved into
    `chisurf/core/math/optimization/__init__.py`, its three importers
    unchanged. Nothing needed `leastsq` full_output semantics.
-   **odeint landed 2026-10-06:** imp.bff `48cb33681` ports SciPy's C LSODA
-   (`src/internal/Lsoda.cpp`) and drives it as `_odepackmodule.c` does;
-   `chisurf.core.math.numerics.odeint` takes scipy's signature (Dfun /
-   banded refused), and `core/math/reaction/continuous.py` -- the
-   stopped-flow kinetics -- is routed and off the allow-list. **Decided by
-   measurement:** stiff schemes (fast pre-equilibrium) take LSODA ~450
-   evaluations and an explicit RK45 >200000, so a local RK was never an
-   option. Parity: solutions far inside tolerance, same Adams->BDF switch;
-   step counts part at LU rounding on Robertson (670 vs 724).
-   **Route 3 left:** special functions + distributions, expm, pinvh (the
-   special-functions lane), and the least_squares/curve_fit call sites (the
-   curve-fit lane). T-20261006-BFFOPT (minimize, leastsqbound, odeint) is
-   done.
-   **Trap:** HEAD's `test/test_scipy_seam.py` is red until the route-1
-   numpy-sweep code edits (hmm, deer trio, rand, pixelwise, geometry,
-   forster dialog, misc_helpers) are committed -- their allow-list strikes
-   landed in `b55729944` but the code changes are still uncommitted in the
-   shared tree. Commit them with the scipy-retirement lane, do not re-add
-   the lines. special functions +
+   **Pending (route 3):** `odeint` (reaction/continuous) -- T-20261006-BFFOPT; special functions +
    distributions, expm, pinvh -- the special-functions lane. **Boost.Math is
    already a header-only bff dependency** (SpecialFunctions.cpp uses it).
 5. Trap: imp.bff builds share `cmake-build-arm64` with other agents -- wrap
