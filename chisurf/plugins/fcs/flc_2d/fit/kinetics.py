@@ -120,7 +120,7 @@ def fit_rate_matrix(
     rate_bounds
         Lower/upper bounds (1/s) for the fitted relaxation rates.
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     lag = np.asarray(lag_s, dtype=float)
     sel = np.isfinite(lag) & (lag > t_min) & (lag < t_max)

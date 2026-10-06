@@ -31,7 +31,7 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from scipy.optimize import curve_fit
+from chisurf.core.math.numerics import curve_fit
 
 # Logging
 from chisurf import logging

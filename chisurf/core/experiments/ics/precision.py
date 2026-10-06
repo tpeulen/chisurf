@@ -591,7 +591,7 @@ def rics_precision(
         :class:`UnrealisableScan`: no acquisition satisfies it, so a caller
         sweeping acquisitions has to be told rather than shown a gap.
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     # Every one of these divides somewhere below. Rejecting them here keeps the
     # failure a ValueError callers can treat as "this setting is unrealisable"

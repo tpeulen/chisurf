@@ -7,7 +7,7 @@ discrete lifetime components (peak position ``x0``, width ``dx``, amplitude ``A`
     f(x) = y0 + sum_k  A_k * exp(-((x - x0_k) / dx_k)^2)
 
 The MATLAB code optimizes with repeated ``fminsearch``; here it is a single bounded
-least-squares (``scipy.optimize.least_squares``), which is faster and more robust, with the
+least-squares (``chisurf.core.math.numerics.least_squares``), which is faster and more robust, with the
 same parameter layout (``y0`` then ``A, x0, dx`` per component). Components can be seeded
 automatically from the largest peaks of the distribution.
 """
@@ -100,7 +100,7 @@ def fit_gaussian_multi(
         Fit the baseline ``y0`` (otherwise held at 0, matching the MATLAB default
         ``Fix1orNot0(1) == 1``).
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)

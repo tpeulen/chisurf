@@ -137,7 +137,7 @@ def gaussian_prompt(prompt: np.ndarray, shape: float = 0.0) -> np.ndarray:
 
     g = None
     try:
-        from scipy.optimize import curve_fit
+        from chisurf.core.math.numerics import curve_fit
 
         if shape != 0.0:
             popt, _ = curve_fit(

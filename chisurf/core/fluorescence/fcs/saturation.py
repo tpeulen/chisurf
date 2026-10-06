@@ -994,7 +994,7 @@ def fit_single_component(
         fitted shape is normalised to 1 at the first lag. On failure the
         starting guess is returned with an infinite residual.
     """
-    from scipy.optimize import curve_fit
+    from chisurf.core.math.numerics import curve_fit
 
     tau_s = np.asarray(tau_s, dtype=float)
     y = np.asarray(g_shape, dtype=float)
@@ -1055,7 +1055,7 @@ def fit_two_components(
         ``fraction_fast`` is the amplitude of the shorter component. On failure
         the residual is infinite and the times are NaN.
     """
-    from scipy.optimize import curve_fit
+    from chisurf.core.math.numerics import curve_fit
 
     tau_s = np.asarray(tau_s, dtype=float)
     y = np.asarray(g_shape, dtype=float)

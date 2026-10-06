@@ -842,7 +842,7 @@ def fit_msd(
     ValueError
         If no track is long enough to fit.
     """
-    from scipy.optimize import curve_fit
+    from chisurf.core.math.numerics import curve_fit
 
     kept = tracks.filter_by_length(int(min_length))
     identifiers = kept.ids()

@@ -138,3 +138,87 @@ def test_curve_fit_p0_from_signature_and_bounds():
     np.testing.assert_allclose(popt, [2.0, 1.0], atol=1e-6)
     popt, _ = numerics.curve_fit(lambda x, a, b: a * x + b, x, 2 * x + 1, bounds=([0, 0], [1.5, 5]))
     assert popt[0] == pytest.approx(1.5, abs=1e-6)
+
+
+# The call shapes the routed least_squares / curve_fit callers use, each against
+# scipy: method="lm" without bounds (pch fida), max_nfev / maxfev budgets (decay
+# fit, flc_2d, tracking), diff_step (ndXplorer curve fit), and a start at the
+# midpoint of a two-sided box (decay fit's log-midpoint tau start).
+
+
+def test_least_squares_lm_unbounded_matches_scipy():
+    for seed in range(10):
+        t, y = _exp_problem(seed)
+
+        def fun(p):
+            return p[0] * np.exp(-t / p[1]) + p[2] - y
+
+        r = numerics.least_squares(fun, [1.0, 1.0, 0.1], method="lm")
+        s = so.least_squares(fun, [1.0, 1.0, 0.1], method="lm")
+        assert r.success
+        np.testing.assert_allclose(r.x, s.x, rtol=1e-4, atol=1e-6)
+
+
+def test_least_squares_max_nfev_is_a_budget():
+    t, y = _exp_problem(0)
+
+    def fun(p):
+        return p[0] * np.exp(-t / p[1]) + p[2] - y
+
+    bounds = ([0, 0.05, 0], [10, 10, 1])
+    # trf counts main-loop evaluations only; MINPACK also counts the n per
+    # Jacobian, so the shim's own count may reach max_nfev * (n + 1) -- plus
+    # one sweep, since MINPACK checks its budget after a Jacobian.
+    r = numerics.least_squares(fun, [1.0, 1.0, 0.1], bounds=bounds, max_nfev=3)
+    assert r.nfev <= 3 * (3 + 1) + 3 + 1
+    assert not r.success and r.status == 0
+    # The budget a scipy caller sized for trf is enough here too.
+    s = so.least_squares(fun, [1.0, 1.0, 0.1], bounds=bounds)
+    r = numerics.least_squares(fun, [1.0, 1.0, 0.1], bounds=bounds, max_nfev=s.nfev)
+    assert r.success
+
+
+def test_least_squares_diff_step_matches_scipy():
+    t, y = _exp_problem(3)
+
+    def fun(p):
+        return p[0] * np.exp(-t / p[1]) + p[2] - y
+
+    bounds = ([0.0, 0.05, 0.0], [10.0, 10.0, 1.0])
+    r = numerics.least_squares(fun, [1.0, 1.0, 0.1], bounds=bounds, diff_step=1e-6)
+    s = so.least_squares(fun, [1.0, 1.0, 0.1], bounds=bounds, diff_step=1e-6)
+    np.testing.assert_allclose(r.x, s.x, rtol=1e-4, atol=1e-6)
+
+
+def test_least_squares_start_at_box_midpoint_moves():
+    """A start at a box's midpoint is fitted, as scipy fits it.
+
+    Through the bounds transform the midpoint is internal ~2e-16, and both the
+    forward-difference step and LM's first trust region scaled with it: the
+    fit stopped at its start after two evaluations (decay_fit's tau0 =
+    sqrt(lo * hi) start, four decay-fit tests). Fixed in IMP.bff FitMinimizer.
+    """
+    t = np.linspace(0.0, 5.0, 512)
+    y = 2.0 * np.exp(-t / 3.0)
+
+    def fun(p):
+        return 2.0 * np.exp(-t / np.exp(p[0])) - y
+
+    lo, hi = np.log(0.5), np.log(6.0)
+    x0 = [0.5 * (lo + hi)]
+    r = numerics.least_squares(fun, x0, bounds=([lo], [hi]))
+    s = so.least_squares(fun, x0, bounds=([lo], [hi]))
+    np.testing.assert_allclose(r.x, s.x, rtol=1e-5)
+    assert r.x[0] == pytest.approx(np.log(3.0), rel=1e-6)
+
+
+def test_curve_fit_maxfev_exhaustion_raises_like_scipy():
+    t, y = _exp_problem(1)
+
+    def f(x, a, tau, c):
+        return a * np.exp(-x / tau) + c
+
+    with pytest.raises(RuntimeError):
+        so.curve_fit(f, t, y, p0=[1, 1, 0.1], maxfev=2)
+    with pytest.raises(RuntimeError):
+        numerics.curve_fit(f, t, y, p0=[1, 1, 0.1], maxfev=2)

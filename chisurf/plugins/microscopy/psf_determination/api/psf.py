@@ -10,7 +10,7 @@ import math
 from typing import TYPE_CHECKING
 
 import numpy as np
-from scipy.optimize import least_squares
+from chisurf.core.math.numerics import least_squares
 
 if TYPE_CHECKING:
     pass

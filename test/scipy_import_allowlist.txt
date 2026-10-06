@@ -48,35 +48,17 @@ chisurf/core/fluorescence/fcs/__init__.py
 # ── bff: performance-relevant numerics into IMP.bff C++ ─────────────────────
 chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
 # nnls -> bff
-chisurf/core/fluorescence/decay_fit.py
 # minimize -> bff; savgol -> local (median_filter -> tttrlib.ndimage done)
 chisurf/core/fluorescence/tcspc/irf_estimation.py
 # curve_fit -> bff; erf -> local
-chisurf/core/fluorescence/burst/irf_bg.py
 # curve_fit -> bff; j0 -> local
-chisurf/core/fluorescence/fcs/saturation.py
-chisurf/core/experiments/ics/calibration.py
-chisurf/core/experiments/ics/precision.py
-chisurf/core/models/pch/fida.py
-chisurf/core/roi/picking.py
 chisurf/core/math/reaction/continuous.py
-chisurf/plugins/burst/alex_suite/api/titration.py
-chisurf/plugins/fcs/flc_2d/fit/dynamics.py
-chisurf/plugins/fcs/flc_2d/fit/gaussian.py
-chisurf/plugins/fcs/flc_2d/fit/kinetics.py
 # least_squares -> bff (ndimage -> tttrlib.ndimage done)
-chisurf/plugins/microscopy/psf_determination/api/psf.py
-chisurf/plugins/pch/backend/services.py
-chisurf/plugins/tttr/intensity_trace/model.py
-chisurf/plugins/tttr/intensity_trace/qt_tool.py
 # digamma/polygamma/gammaln: VB-MCMC hot loops, vectorized C++
-modules/ndxplorer/ndxplorer/analysis/curve_fit.py
 
 # ── tttrlib: image + spatial + clustering kernels ────────────────────────────
 # curve_fit -> bff (ndimage/cKDTree/linear_sum_assignment -> tttrlib done)
-chisurf/core/fluorescence/imaging/tracking.py
 # erf -> local; least_squares -> bff (median_filter -> tttrlib.ndimage done)
-chisurf/core/fluorescence/imaging/frap.py
 # scipy.stats.norm.cdf (brush kernel) -> local erf; filed under tttrlib by mistake
 
 # ── legacy-io: DONE 2026-10-06 -- MAT-files read/written by tttrlib.matfile ─

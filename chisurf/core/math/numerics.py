@@ -240,7 +240,12 @@ def least_squares(
     diff_step : float, optional
         Relative finite-difference step; MINPACK's ``epsfcn`` is its square.
     max_nfev : int, optional
-        Residual-evaluation budget; ``200 * (n + 1)`` when omitted.
+        Evaluation budget in scipy's units. ``trf``/``dogbox`` count only
+        the main-loop evaluations (default ``100 * n``), not the ``n`` per
+        iteration the forward-difference Jacobian costs; MINPACK counts
+        every one, so the budget handed to it is ``max_nfev * (n + 1)``.
+        ``lm`` counts like MINPACK already (default ``100 * n * (n + 1)``).
+        ``nfev`` in the result is MINPACK's count, Jacobian included.
 
     Returns
     -------
@@ -283,8 +288,11 @@ def least_squares(
     minimizer.set_ftol(float(ftol))
     minimizer.set_xtol(float(xtol))
     minimizer.set_gtol(float(gtol) if gtol else 0.0)
-    if max_nfev:
-        minimizer.set_maxfev(int(max_nfev))
+    if method == "lm":
+        budget = int(max_nfev) if max_nfev else 100 * n * (n + 1)
+    else:
+        budget = (int(max_nfev) if max_nfev else 100 * n) * (n + 1)
+    minimizer.set_maxfev(budget)
     if diff_step is not None:
         minimizer.set_epsfcn(float(diff_step) ** 2)
     info = minimizer.run()
@@ -357,7 +365,9 @@ def curve_fit(
     bounds : tuple, optional
         ``(lb, ub)`` as in :func:`least_squares`.
     maxfev : int, optional
-        Evaluation budget (``max_nfev`` is accepted too).
+        Evaluation budget (``max_nfev`` is accepted too), in scipy's units:
+        every evaluation without bounds (MINPACK, default ``200 * (n + 1)``),
+        main-loop evaluations with bounds (trf, see :func:`least_squares`).
 
     Returns
     -------
@@ -400,11 +410,19 @@ def curve_fit(
         return r.ravel()
 
     max_nfev = maxfev if maxfev is not None else kwargs.pop("max_nfev", None)
+    lb0, ub0 = bounds
+    bounded = bool(np.any(np.isfinite(lb0)) or np.any(np.isfinite(ub0)))
+    # scipy's choice and its budget units: without bounds curve_fit runs
+    # MINPACK through leastsq (every evaluation counted, default
+    # 200 * (n + 1)); with bounds it runs trf, where maxfev is max_nfev.
+    fit_method = "trf" if bounded else "lm"
+    if not bounded and max_nfev is None:
+        max_nfev = 200 * (p0.size + 1)
     lb, ub = bounds
     lb_arr = np.broadcast_to(np.asarray(lb, dtype=float), p0.shape)
     ub_arr = np.broadcast_to(np.asarray(ub, dtype=float), p0.shape)
     p0 = np.clip(p0, lb_arr, ub_arr)
-    res = least_squares(residuals, p0, bounds=bounds, max_nfev=max_nfev)
+    res = least_squares(residuals, p0, bounds=bounds, max_nfev=max_nfev, method=fit_method)
     if not res.success:
         raise RuntimeError("Optimal parameters not found: " + res.message)
     popt = res.x

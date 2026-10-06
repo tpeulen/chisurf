@@ -65,7 +65,7 @@ def compute_dwell_times(state_sequence, time_step=1.0):
 
 def dwell_histograms(dwell: dict, lo_ms: float, hi_ms: float, n_bins: int, normalize: bool = False) -> dict:
     """Per state ``(centres_ms, counts, (A, tau_ms) or None)``: the histogram and its single-exponential fit."""
-    from scipy.optimize import curve_fit
+    from chisurf.core.math.numerics import curve_fit
 
     out = {}
     if hi_ms <= lo_ms:

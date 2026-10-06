@@ -115,7 +115,7 @@ def fit_gaussian_spot(
         With ``success`` false and a ``reason`` when the fit did not converge,
         wandered off, or returned a width the image cannot support.
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     image = np.asarray(image, dtype=float)
     if image.ndim != 2:

@@ -330,7 +330,7 @@ def fit_shared_gaussians(
         If ``n_components`` is not positive, or a fixed starting value has the
         wrong length.
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     if n_components < 1:
         raise ValueError("n_components must be >= 1")
@@ -466,7 +466,7 @@ def fit_binding(
     ValueError
         For an unknown model or fewer than three points.
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     if model not in BINDING_MODELS:
         raise ValueError(f"model must be one of {BINDING_MODELS}, got {model!r}")

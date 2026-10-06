@@ -163,7 +163,7 @@ def fit_fida(
         ``{"species": [(q, N), ...], "background": float, "chi2r": float,
         "model": P(k), "success": bool}``.
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     counts = np.asarray(counts, dtype=float)
     k_max = counts.size - 1

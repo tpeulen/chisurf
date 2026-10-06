@@ -144,7 +144,7 @@ def fit_relaxation(
     ``offset`` and the fit-window-restricted ``r2``. ``A`` may be negative (anti-correlated
     cross terms); the magnitude of ``rate`` is what encodes the interconversion.
     """
-    from scipy.optimize import curve_fit
+    from chisurf.core.math.numerics import curve_fit
 
     lag_s = np.asarray(lag_s, dtype=float)
     g = np.asarray(g, dtype=float)

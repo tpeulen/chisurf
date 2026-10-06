@@ -350,7 +350,7 @@ def fit_rfrap(
     ValueError
         If the stack and time axis disagree, or the rectangle is degenerate.
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     stack = np.asarray(images, dtype=float)
     t = np.asarray(times, dtype=float)

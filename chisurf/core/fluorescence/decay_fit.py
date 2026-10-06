@@ -155,7 +155,7 @@ def fit_lifetime_components(
     parameters or ``None``; the nuisance fractions are shares of the total fitted
     amplitude).
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     decay = np.asarray(decay, dtype=float).ravel()
     n_bins = decay.size

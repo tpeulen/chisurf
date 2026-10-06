@@ -180,7 +180,7 @@ def calibrate_waist(
         If no usable reference ``D`` can be determined, or the carpet lacks the
         timing needed to convert lags into lag times.
     """
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     if diffusion_coefficient is None:
         if not dye:

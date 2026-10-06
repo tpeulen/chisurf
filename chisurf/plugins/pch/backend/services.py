@@ -134,7 +134,7 @@ def _fit_handler(
                 ),
             }
     try:
-        from scipy.optimize import least_squares
+        from chisurf.core.math.numerics import least_squares
 
         from ..api.algorithms import pch_mixture
 
