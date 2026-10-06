@@ -6402,3 +6402,25 @@ plugin:** a convergence criterion the user sees (report `res.status` /
 different optimiser. Re-derive with the A/B wrapper idea: wrap
 `chisurf.core.math.numerics.minimize` to also call `scipy.optimize.minimize`
 and run `chisurf/plugins/fcs/flc_2d/test/test_2d_fdc.py`.
+
+## 2026-10-06: defects found while retaking the manual's screenshots
+
+Fixed at once (`1182fe7ea`): the global-fit editor's Add/Remove/Add-global-parameter
+actions, its always-empty Local fits table, the silent `append_global_parameter`
+macro, unnamed background / Lin. table copies. Still open -- details and
+reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json`:
+
+- **Global fit after a run:** the member fit windows do not redraw, and the global
+  fit's Info reports exactly chi2r = 1.0000 -- check that the global fit evaluates
+  the same fit objects the windows show.
+- **Link menu of a Parse-Model fit** lists ~150 parameters (every catalogue
+  equation's), not the active formula's six.
+- **FCS hub:** the Correlator labels lag time in ms, the Merger in s, for the same curves.
+- **Confocor3 reader** loads every file as AC1/AC2/CC12/CC21 together; no single-channel option.
+- **Global View Load** needs the fitting server: on fits it does not know it reports
+  "the fitting server did not answer" and restores no links.
+- **Saving a fit in the `arm64` env** stops at the report step: python-docx is
+  declared (pixi, pyproject) but missing from that env; `.fit.json`, CSV and info
+  files are written before it.
+- **Guide 10** names "Spectroscopy -> Fluorescence decay -> Anisotropy-Wizard"; the
+  plugin is `menu_hidden`, reached via Tools -> Calculators -> Wizards -> Anisotropy.
