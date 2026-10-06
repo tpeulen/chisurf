@@ -41,20 +41,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Shift VV (∥, ch) | `sel_shift_vv` | float |  | -100000.0 … 100000.0 (step 1.0) | Circular (wrap-around) shift of the VV IRF, in micro-time channels. |
 | Shift VH (⊥, ch) | `sel_shift_vh` | float |  | -100000.0 … 100000.0 (step 1.0) | Circular (wrap-around) shift of the VH IRF, in micro-time channels. |
 
-## Native window (emtk)
-
-The default window is drawn with emtk (`gui/app.py`; the fields come from the same `gui/calibration.view.json` as the Qt tool).
-
-| Area | Controls |
-| --- | --- |
-| Toolbar | **Guide**, **Help**, **Open TTTR…**, **Refresh** |
-| IRF files | **Files…** (multi-select), **Database…**, **Remove**, **Clear**, drop files on the window |
-| Windows and backgrounds | *Conv start/stop*, *IRF start/stop*, *Background VV/VH*, *Shift VV/VH*; the boundaries are also dragged on the plot |
-| Publish | **Apply →**; **Next ▶** inside Imaging Tools |
-
 ## Theory and workflow
 
-- **Guide** — [IRF and background calibration](/guides/99_img_calibration.md)
 - **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
 
 ## Source

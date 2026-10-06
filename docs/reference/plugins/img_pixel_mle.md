@@ -21,7 +21,7 @@ Pixel-wise MLE lifetime analysis for TTTR imaging data.
 | Menu path | Imaging → Lifetime → **Pixel-wise MLE** |
 | Categories | Imaging, Lifetime |
 | Version | 2.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `img_pixel_mle` |
 
 ## Parameters
@@ -72,6 +72,38 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Engine | `engine` | choice |  | choices: auto, fast, loop | Histogram extraction: fast = vectorised C++, loop = exact bincount, auto = fast with bincount fallback on saturation. |
 | Threads | `n_workers` | int |  | 0 … 256 | Fit worker threads. 0 = auto (cpu − 1); 1 = serial. |
 
+### Settings
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Fit model | `fit_model` | choice |  | choices: fit23, fit24, fit25 | Per-pixel fit2x estimator. fit23 = one lifetime + anisotropy; fit24 = bi-exponential; fit25 = pick the best of four fixed lifetimes. The tau map is x[0] for every model. |
+
+### Fit parameters (fit23)
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| τ (ns) | `p0_value` | float |  | 0.0 … 100.0 | Initial value of tau. |
+| fix | `p0_fix` | bool |  |  | Hold tau fixed during the fit. |
+| γ | `p1_value` | float |  | 0.0 … 1.0 | Initial value of gamma. |
+| fix | `p1_fix` | bool |  |  | Hold gamma fixed during the fit. |
+| r0 | `p2_value` | float |  | 0.0 … 0.4 | Initial value of r0. |
+| fix | `p2_fix` | bool |  |  | Hold r0 fixed during the fit. |
+| ρ (ns) | `p3_value` | float |  | 0.0 … 1000.0 | Initial value of rho. |
+| fix | `p3_fix` | bool |  |  | Hold rho fixed during the fit. |
+
+### Fit parameters (fit24)
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| offset | `p4_value` | float |  | 0.0 … 1000000.0 | Initial value of offset. |
+| fix | `p4_fix` | bool |  |  | Hold offset fixed during the fit. |
+
+### Lifetime map
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Result | `current_result_name` | choice |  | choices: `result_file_names` | The analysed file whose lifetime map is shown. |
+
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
@@ -89,3 +121,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_mle/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_pixel_mle/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_pixel_mle/gui/pixel_mle.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_pixel_mle/gui/pixel_mle_emtk.view.json`

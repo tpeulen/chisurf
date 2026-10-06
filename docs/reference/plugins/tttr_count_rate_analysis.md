@@ -21,7 +21,7 @@ Count rates per detector channel across many TTTR files, with mean/std and a per
 | Menu path | Tools → TTTR → **Count Rate Analysis** |
 | Categories | Tools, TTTR, Analysis |
 | Version | 2.0.0 |
-| Surfaces | cli, gui |
+| Surfaces | cli, emtk, gui |
 
 ## Parameters
 

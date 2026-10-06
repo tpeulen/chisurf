@@ -21,12 +21,12 @@ Split TTTR files into fixed-duration time-window BID (.bst) files.
 | Menu path | Tools → Converter → **TTTR→Time-Window BIDs** |
 | Categories | Tools, Converter |
 | Version | 2.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `tttr_time_windows` |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
 ## JSON-RPC methods
 

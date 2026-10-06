@@ -21,17 +21,17 @@ Inspect burstwise analysis tables and plots.
 | Menu path | Spectroscopy → Single-Molecule → **Burst Browser** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 | State namespace | `burst_browser` |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
 ## Theory and workflow
 
 - **Theory** — [Accurate FRET: correction factors, FRET lines, and where they come from](/concepts/accurate_fret.md), [Single-molecule FRET: burst analysis (E, S, corrections)](/concepts/smfret_bursts.md)
-- **Workflow** — [Multi-parameter E–S histograms and correction factors](/guides/14_multiparameter_es.md), [Sending a gated burst population to FCS, TCSPC, PDA or PCH](/guides/52_send_bursts_to_analysis.md)
+- **Workflow** — [Multi-parameter E–S histograms and correction factors](/guides/14_multiparameter_es.md)
 
 ## Source
 

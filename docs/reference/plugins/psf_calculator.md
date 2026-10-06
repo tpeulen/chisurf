@@ -21,7 +21,7 @@ Compute and view a 3-D point-spread function: scalar, Airy or vectorial Richards
 | Menu path | Microscopy → **PSF Calculator** |
 | Categories | Microscopy, Optics |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 | State namespace | `psf_calculator` |
 
 ## Parameters
@@ -46,7 +46,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Polarization | `polarization` | choice |  | choices: circular, x, y, linear, left, unpolarized, radial, azimuthal | State of the light entering the pupil. Linear elongates the focus along its own axis; radial focuses tighter; azimuthal is a doughnut with a zero on axis. |
+| Polarization | `polarization` | choice |  | choices: circular, x, y, linear, left, unpolarized, radial, azimuthal | State of the light entering the pupil. Linear elongates the focus along its own axis; radial has a strong longitudinal core (tighter than linear only with an annular aperture); azimuthal is a doughnut with a zero on axis. |
 | Angle (°) | `angle_deg` | float |  | 0.0 … 180.0 (step 5.0) | Orientation of the linear state, measured from the x axis. Used only when Polarization is 'Linear at angle'. |
 
 ### Sampling
@@ -68,8 +68,20 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Colormap | `colormap` | choice |  | choices: magma, inferno, viridis, gray | Colormap of the rendered volume. |
 | Polarization vectors | `show_polarization` | bool |  |  | Draw the pupil polarization state as strokes on a ring above the focus. Vectorial model only, since the scalar models ignore polarization. |
 
+### General
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Slice plane | `slice_plane` | choice |  | choices: XY, XZ, YZ | The central section of the volume to show: XY lateral, XZ or YZ axial. |
+
+## Theory and workflow
+
+- **Theory** — [The point-spread function: what a focused lens actually makes](/concepts/point_spread_function.md)
+- **Workflow** — [The PSF calculator: the focus your objective actually makes](/guides/72_psf_calculator.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/psf_calculator/`
 - Manifest: {src}`chisurf/plugins/calculator/psf_calculator/manifest.json`
+- UI spec: {src}`chisurf/plugins/calculator/psf_calculator/gui/psf_emtk.view.json`
 - UI spec: {src}`chisurf/plugins/calculator/psf_calculator/psf_calculator.view.json`

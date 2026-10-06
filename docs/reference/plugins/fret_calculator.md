@@ -21,7 +21,7 @@ Combined heteroFRET and homoFRET parameter calculator.
 | Menu path | Main → Tools → **FRET-Calculator** |
 | Categories | Main, Tools |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `fret_calculator` |
 
 ## Parameters
@@ -36,11 +36,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Lifetime DA | `tau` | float |  | 0.0 … 9999.0 | Donor lifetime in the presence of acceptor (D in DA). Editable input that back-computes the distance. |
 | Efficiency | `E` | float |  | 0.0 … 1.0 | FRET efficiency. Editable input that back-computes the distance. |
 | kFRET | `kFRET` | float |  | 0.0 … 9999.0 | FRET rate constant. Editable input that back-computes the distance. |
-| Sigma | `sigma` | float |  | 0.1 … 999.0 | Width of the donor-acceptor distance distribution. |
-| chi distribution | `use_chi` | bool |  |  | Use a 3D non-central chi distance distribution instead of a Gaussian. Distances are never Gaussian: a Gaussian assigns weight to negative / near-zero distances, while the chi distribution is non-negative and vanishes at contact (R=0). |
+| σ | `sigma` | float |  | 0.1 … 999.0 | Width of the donor-acceptor distance distribution. |
+| χ distribution | `use_chi` | bool |  |  | Use a 3D non-central chi distance distribution instead of a Gaussian. Distances are never Gaussian: a Gaussian assigns weight to negative / near-zero distances, while the chi distribution is non-negative and vanishes at contact (R=0). |
 | t_RM | `t_RM` | float |  | 0.001 … 9999.0 | Anisotropy decay (energy-migration) time t_RM. |
-| rho | `rho` | float |  | 0.001 … 9999.0 | Rotational correlation time rho. |
-| k_homo | `k_homo` | float |  | 0.0 … 9999.0 | Homo-FRET (energy-migration) rate constant (derived from t_RM / rho). |
+| ρ | `rho` | float |  | 0.001 … 9999.0 | Rotational correlation time rho. |
+| k_homo | `k_homo` | float |  | 0.0 … 9999.0 | Homo-FRET (energy-migration) rate constant (derived from t_RM / rho). A computed output, not an input. |
 | R_DA | `R_DA` | float |  | 0.0 … 9999.0 | Donor-acceptor distance implied by the homo-FRET rate. Editable input that back-maps to the anisotropy relaxation time. |
 
 ## JSON-RPC methods

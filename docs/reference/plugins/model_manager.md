@@ -21,7 +21,7 @@ Model Manager for ChiSurf
 | Menu path | Setup → **Models** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 
 ## Parameters
 
@@ -44,3 +44,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/core/model_manager/`
 - Manifest: {src}`chisurf/plugins/core/model_manager/manifest.json`
 - UI spec: {src}`chisurf/plugins/core/model_manager/gui/models.view.json`
+- UI spec: {src}`chisurf/plugins/core/model_manager/gui/models_emtk.view.json`

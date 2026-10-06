@@ -21,7 +21,7 @@ ebFRET, ported from its MATLAB GUI: empirical-Bayes hidden Markov analysis of bi
 | Menu path | Spectroscopy → Single-Molecule → **ebFRET** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 0.2.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `burst_ebfret` |
 
 ## Parameters

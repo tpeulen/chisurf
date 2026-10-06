@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Calculators
 description: Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view.
 resource: chisurf/plugins/calculator/hub/
-tags: [reference, plugins, calculators, main, tools]
+tags: [reference, plugins, calculators, tools]
 anchor: plugin-calculators
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,15 +18,15 @@ Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculat
 | Field | Value |
 | --- | --- |
 | Plugin id | `calculators` |
-| Menu path | Main → Tools → **Calculators** |
-| Categories | Main, Tools |
+| Menu path | Tools → Calculators → **Calculators** |
+| Categories | Tools, Calculators |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 | State namespace | `calculators` |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
 ## Source
 

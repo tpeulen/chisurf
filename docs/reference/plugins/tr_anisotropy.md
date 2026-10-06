@@ -28,6 +28,8 @@ Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polaris
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
 
+### General
+
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | IRF VV | `irf_vv_path` | file |  |  | Vertical-excitation, vertical-emission IRF file. |
@@ -38,17 +40,30 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | l1 | `l1` | float |  |  | Channel-mixing correction factor l1. |
 | l2 | `l2` | float |  |  | Channel-mixing correction factor l2. |
 
-## Native window (emtk)
+### Reader settings
 
-The default window is drawn with emtk (`gui/app.py`, form `gui/anisotropy_emtk.view.json`); the AutoForm wizard above is the Qt fallback.
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Two stacked VV/VH files | `stacked_files` | bool |  |  | Each IRF/data file holds both polarization channels (one IRF file, one data file); otherwise choose four separate files. |
+| First column is time (ns) | `first_column_is_time` | bool |  |  | Keep a measured time axis unchanged; otherwise the first column is treated as channel indices. Not used with stacked files. |
+| Use file header | `use_header` | bool |  |  | Read available channel/calibration information from the file header. |
+| Bin width (ns) | `bin_width` | float |  | 1e-06 … 100.0 (step 0.01) | Time per histogram channel for channel-index or stacked files; a time-axis column is preserved. |
+| Repetition rate (MHz) | `rep_rate` | float |  | 0.001 … 10000.0 (step 1.0) | Excitation repetition rate used to initialize the lifetime fits. |
+| Header rows | `skiprows` | int |  | 0 … 100000 (step 1) | Number of header rows to skip while reading text decays. |
 
-| Step | Controls |
-| --- | --- |
-| Data | four path fields with **Browse** and found/missing marks, *Two stacked VV/VH files*, *First column is time (ns)*, *Use file header*, *Bin width (ns)*, *Repetition rate (MHz)*, *Header rows*; file drops fill the next empty path |
-| Normalize IRF | **Load / reload data**, **Export corrected IRFs**, *Background from* / *Background to*, IRF plot with a draggable background box (wheel zooms) |
-| Corrections | *g-factor*, *l1*, *l2* |
-| Components | lifetime and rotation tables (double-click to edit, Delete removes), *Amplitude* and time fields with **Add component** / **Remove selected**, **Save spectra**, **Load spectra** |
-| Finish | **Create fits** (VV, VH and the linked global fit) |
+### Background region
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Background from | `region_lb` | int |  | 0 … 1000000 (step 1) | First background channel, inclusive; choose a signal-free region. |
+| Background to | `region_ub` | int |  | 0 … 1000000 (step 1) | Last background channel boundary, exclusive. |
+
+### Lifetime spectrum
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Amplitude | `new_amplitude` | float |  | 0.0 … 1000000.0 (step 0.1) | Amplitude of the component to add. |
+| Lifetime (ns) | `new_value` | float |  | 0.001 … 1000000.0 (step 0.1) | Lifetime of the component to add, in nanoseconds. |
 
 ## Theory and workflow
 
@@ -60,3 +75,4 @@ The default window is drawn with emtk (`gui/app.py`, form `gui/anisotropy_emtk.v
 - Plugin package: `chisurf/plugins/fluorescence_decay/tr_anisotropy/`
 - Manifest: {src}`chisurf/plugins/fluorescence_decay/tr_anisotropy/manifest.json`
 - UI spec: {src}`chisurf/plugins/fluorescence_decay/tr_anisotropy/anisotropy.view.json`
+- UI spec: {src}`chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/anisotropy_emtk.view.json`

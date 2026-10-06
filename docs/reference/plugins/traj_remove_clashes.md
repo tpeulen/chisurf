@@ -21,7 +21,7 @@ Remove frames containing steric clashes from trajectories.
 | Menu path | Structure → Trajectory → **Remove Clashed** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 | State namespace | `traj_remove_clashes` |
 
 ## Parameters

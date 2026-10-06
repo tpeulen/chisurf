@@ -3,7 +3,7 @@ type: Plugin Reference
 title: MMFDB Admin
 description: 'Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives.'
 resource: chisurf/plugins/core/mmfdb_admin/
-tags: [reference, plugins, mmfdb-admin, tools, fluorescence, database]
+tags: [reference, plugins, mmfdb-admin, tools, system, fluorescence, database]
 anchor: plugin-mmfdb_admin
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,21 +18,194 @@ Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, 
 | Field | Value |
 | --- | --- |
 | Plugin id | `mmfdb_admin` |
-| Menu path | Tools → **MMFDB Admin** |
-| Categories | Tools, Fluorescence, Database |
+| Menu path | Tools → System → **MMFDB Admin** |
+| Categories | Tools, System, Fluorescence, Database |
 | Version | 1.1.0 |
-| Surfaces | gui, services |
+| Surfaces | emtk, gui, services |
 | State namespace | `mmfdb_admin` |
 
 ## Parameters
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
 
+### Connection
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Host | `host` | str |  |  | The MMFDB server: the host of the embedded server, or the base URL of a standalone one. Login connects here. |
+| Port | `port` | int |  | 1 … 65535 | The server's command port (its publish port is the next one). |
+| User | `user` | str |  |  | The MMFDB user to sign in as. |
+| Password | `password` | password |  |  | The password. Not needed when this ChiSurf session is already signed in, or the account may sign in without one. Never stored. |
+
+### Choose
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Value | `value` | choice |  | choices: `option_list` | The value to apply. |
+
+### Change password
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| New password | `password_new` | password |  |  | The new password; shown as dots. |
+| Confirm password | `password_confirm` | password |  |  | Type the new password again; it must match. |
+
+### Jump to branch
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Operation ID | `operation_id` | str |  |  | The recorded operation the new branch starts at (required). |
+| Branch name | `branch_name` | str |  |  | A name for the branch (optional; the server picks one when empty). |
+| Description | `description` | str |  |  | What the branch is for (optional). |
+
+### Overview
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| text | `text` | text |  |  | The connection (mode, endpoint, database, object store), the database's counts, and samples that lack a description. |
+
+### All items
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Type | `type_filter` | choice |  | choices: `type_options` | Show one record type, or all. |
+| search | `search` | str |  |  | Keep the rows that contain this text in any column. |
+
+### Measurements
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Kind | `kind` | choice |  | choices: `kind_options` | Show one kind of record, or all. |
+
+### Sample Metadata
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Sample | `sample_id` | choice |  | choices: `sample_options` | The sample whose metadata is edited. |
+
+### Detail
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Key | `detail_key` | choice |  | choices: `key_options` | The key, from the mmCIF catalogue (type to filter it). |
+| Value | `detail_value` | str |  |  | The value. |
+| Known values | `suggested_value` | choice |  | choices: `value_options` | Values already stored for this key in any sample; picking one fills Value. |
+| Details | `detail_details` | str |  |  | Notes about the value. |
+
+### Spectra
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Component Type | `component` | choice |  | choices: `component_options` | Which kind of optical component to list. |
+| Status | `status_filter` | choice |  | choices: `status_options` | List only the components with this curation status. |
+
+### Provenance Graph
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Seed Type | `seed_type` | choice |  | choices: `seed_options` | The kind of record to start from. |
+| Seed ID | `seed_id` | str |  |  | The record's id (a raw-data, processing-run, processed-data, analysis-run or parameter id). |
+| details | `details` | text |  |  | The record of the picked edge or node. |
+
+### Import / Export
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| File | `path` | str |  |  | The PDBx / PDB-IHM / FLR CIF file Import file reads (empty: it asks). |
+| preview | `preview` | text |  |  | The import summary or the CIF preview. |
+
+### eLabFTW connection
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Endpoint | `endpoint` | str |  |  | The eLabFTW server's URL. |
+| API key | `api_key` | password |  |  | Your eLabFTW API key. Kept in memory only and cleared when a connection attempt starts. |
+| Timeout | `timeout` | float |  | 0.1 … 120.0 | Seconds to wait for the server. |
+| Verify TLS certificates | `verify_tls` | bool |  |  | Check the server's certificate (leave on). |
+| Allow plain HTTP (unsafe) | `allow_http` | bool |  |  | Only enable for an isolated trusted network. API keys are plaintext over HTTP. |
+
+### eLabFTW
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| query | `query` | str |  |  | Search the remote experiments. |
+
+### Import into MMFDB
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Existing | `conflict` | choice |  | choices: skip, update, error | What to do with an experiment that was imported before. |
+
+### Export from MMFDB
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Experiment | `local_experiment` | choice |  | choices: `local_options` | The MMFDB experiment to export. |
+| Mode | `export_mode` | choice |  | choices: create, update | Create a new remote entry, or update an existing one. |
+| Remote ID | `remote_id` | int |  | 1 … 2147483647 | The remote entry to update (only for update). |
+
+### Studies
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Scope | `scope` | choice |  | choices: `scope_options` | All studies, yours, or the public ones. |
+| new_name | `new_name` | str |  |  | The name of the study to create. |
+| member_type | `member_type` | choice |  | choices: `member_type_options` | A sample or an artifact. |
+| member_id | `member_id` | str |  |  | The id of the sample or artifact. |
+| field_key | `field_key` | str |  |  | The field to set. |
+| field_value | `field_value` | str |  |  | Its value. |
+
+### Protocols
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| new_category | `new_category` | choice |  | choices: `category_options` | measurement, processing or analysis. |
+| new_operation_type | `new_operation_type` | str |  |  | The operation type whose parameters it records (optional). |
+
+### Lifecycle
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Entity type | `entity_type` | choice |  | choices: `type_options` | The kind of entity (each has its own states). |
+| Entity ID | `entity_id` | str |  |  | Its id. |
+| Transition to | `to_state` | choice |  | choices: `to_options` | The states the entity may move to from its current one. |
+| Reason | `reason` | str |  |  | Why (recorded in the history). |
+
+### Register calibration value
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Type | `new_type` | choice |  | choices: `type_options` | What is calibrated. |
+| Value | `new_value` | str |  |  | The value (a number). |
+| Notes | `new_notes` | str |  |  | Where it comes from. |
+
+### Reagent Lots
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Kind | `kind_filter` | choice |  | choices: `filter_options` | Show one kind of reagent, or all. |
+| Show expired | `show_expired` | bool |  |  | Also list lots past their expiry date. |
+
+### Add lot
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Kind | `new_kind` | choice |  | choices: `kind_options` | The reagent kind. |
+| Lot # | `new_lot_number` | str |  |  | The vendor's lot number. |
+| Vendor | `new_vendor` | str |  |  | Who sold it. |
+| Expiry | `new_expiry` | str |  |  | When it expires. |
+
+### Advanced — user & connection
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Command port | `cmd_port` | int |  | 1 … 65535 | ZMQ command port. |
+| Publish port | `pub_port` | int |  | 1 … 65535 | ZMQ publish port. |
+
 ### General
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Password | `password` | password |  |  | MMFDB password for the user below. Blank attempts a passwordless login. |
 | Probe ID | `probe_id` | str |  |  | MMFDB probe identifier. |
 | Name | `chromophore_name` | str |  |  | Detector name / model. |
 | Category | `category` | str |  |  | Probe category (detector). |
@@ -42,7 +215,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Source ref | `source_ref` | str |  |  | Source reference / URL. |
 | Verified by | `verified_by` | str |  |  | User who approved/rejected this detector. |
 | Verified at | `verified_at` | str |  |  | Timestamp of the verification decision. |
-| Description | `description` | str |  |  | Free-text description. |
 | Cut-On (nm) | `cut_on` | str |  |  | Cut-on wavelength. |
 | Cut-Off (nm) | `cut_off` | str |  |  | Cut-off wavelength. |
 | Center Wavelength (nm) | `center_wavelength` | str |  |  | Center wavelength. |
@@ -55,15 +227,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Lifetime | `lifetime` | str |  |  | Fluorescence lifetime (ns). |
 | D₂₅ | `d25` | str |  |  | Translational diffusion coefficient in water at 25 °C (µm²/s); used by the FCS diffusion/volume calculator. |
 | Quality | `quality` | str |  |  | Quality grade: unknown / low / medium / high. |
-
-### Advanced — user & connection
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| User | `user` | str |  |  | MMFDB user id to authenticate as. |
-| Host | `host` | str |  |  | MMFDB server host. Change to connect to a different server. |
-| Command port | `cmd_port` | int |  | 1 … 65535 | ZMQ command port. |
-| Publish port | `pub_port` | int |  | 1 … 65535 | ZMQ publish port. |
 
 ## JSON-RPC methods
 
@@ -268,6 +431,18 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `mmfdb.processing.list` | no |  |
 | `mmfdb.projects.get` | no |  |
 | `mmfdb.projects.list` | no |  |
+| `project_browser.list` | no |  |
+| `project_browser.save` | no |  |
+| `project_browser.restore` | no |  |
+| `project_browser.export_csp` | no |  |
+| `project_browser.import_preview` | no |  |
+| `project_browser.import_csp` | no |  |
+| `project_browser.delete_version` | no |  |
+| `project_browser.create_branch` | no |  |
+| `project_browser.list_branches` | no |  |
+| `project_browser.version_graph` | no |  |
+| `project_browser.artifacts` | no |  |
+| `project_browser.parameters` | no |  |
 | `mmfdb.protocols.create` | no |  |
 | `mmfdb.protocols.for_operation` | no |  |
 | `mmfdb.protocols.get` | no |  |
@@ -296,6 +471,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 - Plugin package: `chisurf/plugins/core/mmfdb_admin/`
 - Manifest: {src}`chisurf/plugins/core/mmfdb_admin/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/admin.view.json`
+- UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/admin_panels.view.json`
 - UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/connection_auth.view.json`
 - UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/detector.view.json`
 - UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/dichroic.view.json`

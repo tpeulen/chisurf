@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Hidden Markov model
 description: 'Gaussian hidden Markov model for binned time traces: fits states and transitions by Baum-Welch, decodes the state path, and reports emissions, dwell times, transition rates and an AIC/BIC state-count scan. The shared HMM seam of ChiSurf — the same analysis is reachable from the GUI, the CLI and over RPC, and other plugins call its Qt-free core instead of fitting their own.'
 resource: chisurf/plugins/core/hmm/
-tags: [reference, plugins, hmm, analysis, kinetics]
+tags: [reference, plugins, hmm, spectroscopy, kinetics]
 anchor: plugin-hmm
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ Gaussian hidden Markov model for binned time traces: fits states and transitions
 | Field | Value |
 | --- | --- |
 | Plugin id | `hmm` |
-| Menu path | Analysis → Kinetics → **Hidden Markov model** |
-| Categories | Analysis, Kinetics |
+| Menu path | Spectroscopy → Kinetics → **Hidden Markov model** |
+| Categories | Spectroscopy, Kinetics |
 | Version | 0.1.0 |
 | Surfaces | cli, emtk, gui, services |
 | State namespace | `hmm` |
@@ -54,17 +54,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | From | `min_states` | int |  | 1 … 32 | Smallest state count to score. |
 | To | `max_states` | int |  | 1 … 32 | Largest state count to score. |
 
-## Native window (emtk)
-
-The default window is drawn with emtk (`gui/app.py`, forms `gui/hmm_emtk.view.json`).
-
-| Area | Controls |
-| --- | --- |
-| Actions | **Fit**, **Scan states**, **Demo trace**, **Save fit...**, **Help**, **Guide** |
-| Traces | file table, **Add files...** (or drops), **Remove**, **Clear**; `set_traces` for traces handed over in memory |
-| Model | *States*, *Covariance*, *Bin width (s)*; sections **Fitting** (*Max EM maps*, *Tolerance*, *Decoder*, *Seed*, *Accelerate*) and **State scan range** (*From*, *To*) |
-| Results | trace with decoded state path, fitted-states table, transition table (probabilities and rates), tabs for the intensity histogram, dwell times and the AIC/BIC scan |
-
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
@@ -74,8 +63,7 @@ The default window is drawn with emtk (`gui/app.py`, forms `gui/hmm_emtk.view.js
 
 ## Theory and workflow
 
-- **Guide** — [States and rates from a binned trace](/guides/92_hmm_binned_traces.md)
-- **Theory** — [Hidden Markov models of binned traces](/concepts/hidden_markov_models.md)
+- **Theory** — [Hidden Markov models of binned traces](/concepts/hidden_markov_models.md), [Intensity traces: counting photons in time bins](/concepts/intensity_traces.md)
 - **Workflow** — [Hidden Markov models of binned traces](/guides/54_hidden_markov_models.md)
 
 ## Source
@@ -83,3 +71,4 @@ The default window is drawn with emtk (`gui/app.py`, forms `gui/hmm_emtk.view.js
 - Plugin package: `chisurf/plugins/core/hmm/`
 - Manifest: {src}`chisurf/plugins/core/hmm/manifest.json`
 - UI spec: {src}`chisurf/plugins/core/hmm/gui/hmm.view.json`
+- UI spec: {src}`chisurf/plugins/core/hmm/gui/hmm_emtk.view.json`

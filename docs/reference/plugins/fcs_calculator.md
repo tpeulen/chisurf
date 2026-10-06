@@ -21,7 +21,7 @@ FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration).
 | Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **Diffusion/Volume Calculator** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `fcs_calculator` |
 
 ## Parameters
@@ -49,6 +49,27 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | N | `num_mols` | float |  | 0.0 … 1000000000000.0 (step 0.1) | Average number of molecules in Veff. |
 | Conc (nM) | `conc_nM` | float |  | 0.0 … 1000000000.0 (step 0.01) | Concentration; N = 0.602214 × c_nM × Veff_fL. |
 
+### Constraint (choose one)
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| constraint | `constraint` | choice |  | choices: ['D', 'Fix D'], ['rh', 'Fix rₕ'], ['V', 'Fix Veff'] | Fix D, rₕ or Veff: that field is the input, the other two are computed and read-only. |
+
+### Reference dye (D @ 25 °C, water)
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| dye | `dye` | choice |  | choices: `dye_names` | Reference species from MMFDB carrying a diffusion coefficient D(25 °C, water); curate them in the MMFDB admin tool. |
+| scale_dref | `scale_dref` | choice |  | choices: [True, 'Apply with Temp/η scaling'], [False, 'Apply at 25 °C (no scaling)'] | Scale the reference D from 25 °C water to the current temperature and viscosity (Stokes-Einstein), or use it as tabulated. |
+
+### Molecular shape
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Type | `shape_type` | choice |  | choices: Sphere, Ellipsoid, Cylinder | Sphere (Stokes-Einstein), prolate ellipsoid (Perrin friction factor) or cylinder (Hansen approximation). |
+| Size (nm) | `shape_size_nm` | float |  | 0.1 … 1000000000.0 | Sphere diameter, ellipsoid minor-axis diameter or cylinder diameter, in nanometres. |
+| Aspect | `shape_aspect` | float |  | 0.1 … 1000.0 | Ellipsoid major/minor axis ratio or cylinder length/diameter (not used for a sphere). |
+
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
@@ -67,3 +88,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/fcs/fcs_calculator/`
 - Manifest: {src}`chisurf/plugins/fcs/fcs_calculator/manifest.json`
 - UI spec: {src}`chisurf/plugins/fcs/fcs_calculator/fcs_calculator.view.json`
+- UI spec: {src}`chisurf/plugins/fcs/fcs_calculator/gui/fcs_calculator_emtk.view.json`

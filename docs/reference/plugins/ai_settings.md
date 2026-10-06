@@ -21,7 +21,7 @@ AI Settings plugin for configuring API providers and backends.
 | Menu path | Tools → **AI Settings** |
 | Categories | Tools |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 
 ## Parameters
 
@@ -34,6 +34,9 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Provider | `provider` | choice |  | choices: `available_providers` | Which AI provider to use. The list comes from the provider table in chisurf.core.settings.ai_settings, so it always matches what the rest of the app supports. |
 | Base URL | `base_url` | str |  |  | OpenAI-compatible API base URL for the selected provider. |
 | API Key | `api_key` | secret |  |  | Bearer token for the endpoint. Pasting a key auto-saves it and tests the connection. Not needed for most local servers. |
+| Show key | `show_key` | bool |  |  | Show the API key in clear text instead of stars. For this session only: a provider switch hides it again, and the setting is never saved. |
+| ACP command | `command` | str |  |  | Executable and arguments of the stdio ACP agent; quoted paths are supported. |
+| In-tree server API | `acp_backend_provider` | choice |  | choices: `acp_backend_options` | HTTP provider the in-tree ACP server uses; an external agent manages its own provider. |
 
 ### Models
 
@@ -41,6 +44,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Text model | `text_model` | choice |  | choices: `available_text_models` | Used for chat, code editing, explanations, and other text tasks. Type a model id or pick from fetched models. |
 | Image model | `image_model` | choice |  | choices: `available_image_models` | Used only for plugin icon and other image-generation tasks. |
+| Fetched text models | `text_model_pick` | choice |  | choices: `text_model_choices` | The text-capable models the endpoint listed. Picking one sets the text model. |
+| Fetched image models | `image_model_pick` | choice |  | choices: `image_model_choices` | The image-capable models the endpoint listed. Picking one sets the image model. |
 
 ### Generation Settings
 
@@ -55,3 +60,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/ai_settings/`
 - Manifest: {src}`chisurf/plugins/ai_settings/manifest.json`
 - UI spec: {src}`chisurf/plugins/ai_settings/gui/ai_settings.view.json`
+- UI spec: {src}`chisurf/plugins/ai_settings/gui/ai_settings_emtk.view.json`

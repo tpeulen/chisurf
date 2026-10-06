@@ -21,7 +21,7 @@ FCS channel definition plugin per detector setup
 | Menu path | Setup → **FCS Definitions** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 
 ## Parameters
 
@@ -31,6 +31,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Detector setup | `current_setup` | choice |  | choices: `setup_names` | Detector setup whose logical channels are paired for correlation. Detector setups are managed in the channel-definition wizard. |
 | Public | `is_public` | bool |  |  | When checked, this setup is visible to all users in the MMFDB. Only the owner can change this setting. |
+
+## Theory and workflow
+
+- **Workflow** — [FCS toolbox: from photon stream to a curve worth fitting](/guides/75_fcs_toolbox.md)
 
 ## Source
 

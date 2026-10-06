@@ -21,16 +21,24 @@ Per-pixel intensity map; creates the standard imaging HDF5 (with source back-ref
 | Menu path | Imaging → **Intensity** |
 | Categories | Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, gui |
+| Surfaces | cli, emtk, gui |
 | State namespace | `img_pixel_intensity` |
 
 ## Parameters
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
 
+### Controls
+
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | TTTR file | `filename` | file |  |  | PTU/HT3 imaging file (or drop one onto the window); CLSM markers auto-detected. |
+
+### Settings
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Detector window | `display_window` | choice |  | choices: `window_names` | The detector window shown in the maps. Every window is computed and written; this only chooses which one is displayed. The windows come from the Detectors tab (or the Imaging Tools setup step); without any, the channel-0 window is used. |
 
 ## Theory and workflow
 
@@ -41,3 +49,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_intensity/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_pixel_intensity/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_pixel_intensity/gui/intensity.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_pixel_intensity/gui/intensity_emtk.view.json`

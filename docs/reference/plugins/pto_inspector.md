@@ -21,7 +21,7 @@ Inspect a .pto photon container: every object in it, the provenance graph that s
 | Menu path | TTTR → **PTO Inspector** |
 | Categories | TTTR |
 | Version | 1.0.0 |
-| Surfaces | cli, gui |
+| Surfaces | cli, emtk, gui |
 | State namespace | `pto_inspector` |
 
 ## Parameters

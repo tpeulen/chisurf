@@ -21,7 +21,7 @@ Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.
 | Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **Burst-wise FCS** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `burst_fcs_correlator` |
 
 ## Parameters
@@ -69,4 +69,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/burst/burst_fcs_correlator/`
 - Manifest: {src}`chisurf/plugins/burst/burst_fcs_correlator/manifest.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs.view.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs_emtk.view.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs_plots.view.json`

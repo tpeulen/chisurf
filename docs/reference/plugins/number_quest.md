@@ -21,11 +21,11 @@ A small number-guessing game contained in the Games hub.
 | Menu path | Tools → Miscellaneous → Games → **Number Quest** |
 | Categories | Tools, Miscellaneous, Games |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
 ## Source
 

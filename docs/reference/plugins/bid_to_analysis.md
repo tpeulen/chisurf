@@ -21,11 +21,11 @@ BID → Analysis Converter  This plugin reads burst ID (BID) files containing st
 | Menu path | Tools → Converter → **BID→Analysis** |
 | Categories | Tools, Converter |
 | Version | 1.0.0 |
-| Surfaces | script |
+| Surfaces | emtk, script |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
 ## Theory and workflow
 

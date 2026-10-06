@@ -21,7 +21,7 @@ TTTR Split / Convert plugin.  This plugin provides functionality for splitting l
 | Menu path | TTTR → Editor → **Split/Convert** |
 | Categories | TTTR, Editor |
 | Version | 1.0.0 |
-| Surfaces | script |
+| Surfaces | emtk, script |
 
 ## Parameters
 

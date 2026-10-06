@@ -21,7 +21,7 @@ Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (o
 | Menu path | Spectroscopy → Fluorescence decay → **Synthetic Decay Generator** |
 | Categories | Spectroscopy, Fluorescence decay |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `synthetic_decay` |
 
 ## Parameters
@@ -71,6 +71,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [TCSPC: fluorescence-lifetime fitting](/concepts/tcspc_lifetime.md)
+- **Workflow** — [Decay Analysis window, Lazy Lifetime Analysis and synthetic decays](/guides/76_decay_analysis_tools.md)
 
 ## Source
 

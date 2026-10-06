@@ -21,17 +21,25 @@ Per-pixel mean micro-time (arrival time) maps from TTTR imaging data.
 | Menu path | Imaging → **Mean Micro-Time** |
 | Categories | Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, gui |
+| Surfaces | cli, emtk, gui |
 | State namespace | `img_pixel_micro_time` |
 
 ## Parameters
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
 
+### Controls
+
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | TTTR file | `filename` | file |  |  | PTU/HT3 imaging file; CLSM markers are auto-detected from the header. |
 | Min. photons | `n_ph_min` | int |  |  | Pixels with fewer photons than this are discriminated (set to 0); press Run to apply. |
+
+### Settings
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Detector window | `display_window` | choice |  | choices: `window_names` | The detector window shown in the maps. Every window is computed and written; this only chooses which one is displayed. The windows come from the Detectors tab (or the Imaging Tools setup step); without any, the channel-0 window is used. |
 
 ## Theory and workflow
 
@@ -43,3 +51,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_micro_time/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_pixel_micro_time/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_pixel_micro_time/gui/micro_time.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_pixel_micro_time/gui/micro_time_emtk.view.json`

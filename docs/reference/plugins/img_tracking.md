@@ -21,7 +21,7 @@ Single-particle tracking: detect diffraction-limited particles in every frame, l
 | Menu path | Imaging → **Particle Tracking** |
 | Categories | Imaging, Tracking |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `img_tracking` |
 
 ## Parameters
@@ -93,3 +93,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/img_tracking/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_tracking/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_tracking/gui/tracking.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_tracking/gui/tracking_emtk.view.json`

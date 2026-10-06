@@ -21,7 +21,7 @@ Extract a per-detector IRF and background rate from the non-burst photons of a s
 | Menu path | Spectroscopy → Single-Molecule → **Burst IRF & Background** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 | State namespace | `burst_irf_bg` |
 
 ## Parameters
@@ -46,3 +46,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/burst/burst_irf_bg/`
 - Manifest: {src}`chisurf/plugins/burst/burst_irf_bg/manifest.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_irf_bg/gui/irf_bg.view.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_irf_bg/gui/irf_bg_results_emtk.view.json`

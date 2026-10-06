@@ -21,7 +21,7 @@ Plugin Manager for ChiSurf
 | Menu path | Setup → **Plugins** |
 | Categories | Setup |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 
 ## Parameters
 
@@ -41,9 +41,26 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Show in main toolbar | `selected_in_toolbar` | bool |  |  | Pin this plugin to the main window toolbar. |
 | Remember window state | `selected_statefulness` | choice |  | choices: `selected_statefulness_labels` | Whether this one plugin's window reopens where you left it. 'Plugin default' defers to its manifest and the global setting below. |
 | Window state (all plugins) | `statefulness_mode` | choice |  | choices: `statefulness_mode_labels` | Whether plugin windows remember their size and position. 'Plugin default' lets each manifest decide. |
+| GUI runtime | `gui_runtime` | choice |  | choices: `gui_mode_labels` | Which interface plugins open in: the emtk version, the Qt version, or whichever the plugin prefers (Automatic). |
+
+### Plugin Manager
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Menu name | `dialog_input` | str |  |  | The new leaf name of the plugin's menu entry; the menu path is kept. |
+
+### Icon
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Image | `icon_path_text` | str |  |  | Path to an image to use as this plugin's icon. PNG is copied as is; other formats are rendered onto a square canvas. |
+| Provider | `icon_provider_label` | choice |  | choices: `icon_provider_labels` | Which image provider to ask. The API key is taken from AI Settings. |
+| Endpoint | `icon_endpoint` | str |  |  | Base URL of the provider's API. |
+| Image model | `icon_model` | str |  |  | Image model to request. |
 
 ## Source
 
 - Plugin package: `chisurf/plugins/core/plugin_manager/`
 - Manifest: {src}`chisurf/plugins/core/plugin_manager/manifest.json`
 - UI spec: {src}`chisurf/plugins/core/plugin_manager/gui/plugins.view.json`
+- UI spec: {src}`chisurf/plugins/core/plugin_manager/gui/plugins_emtk.view.json`

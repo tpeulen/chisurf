@@ -21,7 +21,7 @@ Region MLE lifetime analysis from TTTR imaging data (PTU).
 | Menu path | Imaging → Lifetime → **Region MLE** |
 | Categories | Imaging, Lifetime |
 | Version | 2.1.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `region_mle` |
 
 ## Parameters
@@ -81,3 +81,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/region_mle/`
 - Manifest: {src}`chisurf/plugins/microscopy/region_mle/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/region_mle/gui/region_mle.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/region_mle/gui/region_mle_emtk.view.json`

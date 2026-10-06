@@ -21,7 +21,7 @@ FCS Correlator  This plugin provides a two-pane navigation-based correlator tool
 | Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **Correlator** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
-| Surfaces | script |
+| Surfaces | emtk, gui, script |
 
 ## Parameters
 
@@ -43,6 +43,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Bins | `n_bins` | int |  | 1 … 65535 | Number of linear correlation bins per cascade. |
 | Cascades | `n_casc` | int |  | 1 … 64 | Number of multi-tau cascades. |
 | Splits | `n_splits` | int |  | 1 … 128 | Number of chunks to split data into for block averaging. |
+| Method | `method` | choice |  | choices: laurence, wahl, felekyan | Correlation algorithm (tttrlib). laurence: pair counting with symmetric normalization, no long-lag upturn when the intensity drifts (the default). wahl: multiple-tau on the time tags. felekyan: the Felekyan variant with its own lag axis. |
 | Fine | `make_fine` | bool |  |  | Use the micro-time-resolved correlation grid. |
 | µt bin | `microtime_binning` | choice |  | choices: 1, 2, 4, 8, 16 | Micro-time binning factor for fine correlation. |
 
@@ -109,7 +110,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [FCS: the correlation curve and its models](/concepts/fcs_correlation.md)
-- **Workflow** — [Diffusion FCS](/guides/09_diffusion_fcs.md)
+- **Workflow** — [Diffusion FCS](/guides/09_diffusion_fcs.md), [Decays and correlation curves straight from a photon file](/guides/73_tttr_decay_and_correlation.md), [FCS toolbox: from photon stream to a curve worth fitting](/guides/75_fcs_toolbox.md)
 
 ## Source
 

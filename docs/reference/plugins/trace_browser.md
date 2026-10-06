@@ -21,12 +21,22 @@ Browse PTU/TTTR intensity traces from a folder, rate and annotate files, preview
 | Menu path | Spectroscopy → Single-Molecule → **Trace Browser** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 2.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `trace_browser` |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Precompute after scan | `precompute_after_scan` | bool |  |  | Run the precompute automatically after every scan of a folder, as the Qt browser did. Switch it off for big folders if you only look at a few files. |
+| Folder | `folder_text` | str |  |  | The folder whose files are listed. Use Open, or drop a folder on the window. |
+| Include subfolders | `include_subfolders` | bool |  |  | Also list the files in the sub-folders of the opened folder (the .trash folder is never listed). Switching it rescans the folder. |
+| Filter | `rating_filter` | choice |  | choices: `filter_label_list` | Show only the files whose rating passes: all, at least 1, 2 or 3 stars, or only unrated files. |
+| Bin window [ms] | `window_ms` | float |  | 0.001 … 10000.0 (step 0.1) | Width of the time bins of the intensity trace in milliseconds. Changing it loads the trace of the selected file again. |
+| Y min | `y_min` | float |  | -1000000000.0 … 1000000000000.0 (step 100.0) | Lower limit of the trace plot's y axis (counts per bin). Entered the wrong way round with Y max, the two are swapped. |
+| Y max | `y_max` | float |  | -1000000000.0 … 1000000000000.0 (step 100.0) | Upper limit of the trace plot's y axis (counts per bin). |
 
 ## JSON-RPC methods
 
@@ -47,3 +57,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 
 - Plugin package: `chisurf/plugins/tttr/trace_browser/`
 - Manifest: {src}`chisurf/plugins/tttr/trace_browser/manifest.json`
+- UI spec: {src}`chisurf/plugins/tttr/trace_browser/gui/trace_browser_emtk.view.json`

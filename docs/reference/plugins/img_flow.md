@@ -21,7 +21,7 @@ Map the velocity field of a sample from its own correlations — one arrow per t
 | Menu path | Imaging → **Flow Maps** |
 | Categories | Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `img_flow` |
 
 ## Parameters
@@ -76,3 +76,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/img_flow/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_flow/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_flow/gui/flow.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_flow/gui/flow_emtk.view.json`

@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Spectra Downloader
 description: Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources)
 resource: chisurf/plugins/spectra_downloader/
-tags: [reference, plugins, spectra-downloader, spectroscopy, spectra]
+tags: [reference, plugins, spectra-downloader, tools, calculators, spectra]
 anchor: plugin-spectra_downloader
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,10 +18,10 @@ Download, browse and push optical-component spectra (fluorophores, filters, dich
 | Field | Value |
 | --- | --- |
 | Plugin id | `spectra_downloader` |
-| Menu path | Spectroscopy → **Spectra Downloader** |
-| Categories | Spectroscopy, Spectra |
+| Menu path | Tools → Calculators → **Spectra Downloader** |
+| Categories | Tools, Calculators, Spectra |
 | Version | 0.2.0 |
-| Surfaces | cli, gui, emtk |
+| Surfaces | cli, emtk, gui |
 
 ## Parameters
 
@@ -42,6 +42,13 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Dichroics | `dichroics` | str |  |  | Dichroic beamsplitters / mirrors. |
 | Detectors | `detectors` | str |  |  | Cameras / SPADs / PMTs (quantum-efficiency curves). |
 | Light sources | `light_sources` | str |  |  | Lamps / LEDs / lasers. |
+| Filter | `search` | str |  |  | Keep the components whose name contains this text. |
+| Source | `source_filter` | choice |  | choices: `source_options` | Keep the components from one source (All shows every source). |
+| Category | `category_filter` | choice |  | choices: `category_options` | Keep one category of component (All shows every category). |
+| metadata_json | `metadata_json` | code_editor |  |  | The probe row, its properties and a spectrum summary as JSON. |
+| Available sources | `scraper_label` | choice |  | choices: `scraper_labels` | The scraper to run into the staging database. |
+| log | `log` | code_editor |  |  | The scraper's output. |
+| mmfdb_log | `mmfdb_log` | code_editor |  |  | What the import did. |
 
 ### Advanced — connection & authentication
 
@@ -56,6 +63,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Förster resonance energy transfer (FRET)](/concepts/fret.md)
+- **Workflow** — [Spectra, overlap integrals and R₀](/guides/83_spectra_and_r0.md)
 
 ## Source
 
@@ -63,3 +71,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Manifest: {src}`chisurf/plugins/spectra_downloader/manifest.json`
 - UI spec: {src}`chisurf/plugins/spectra_downloader/gui/endpoint_auth.view.json`
 - UI spec: {src}`chisurf/plugins/spectra_downloader/gui/overview.view.json`
+- UI spec: {src}`chisurf/plugins/spectra_downloader/gui/spectra_emtk.view.json`

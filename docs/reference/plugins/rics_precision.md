@@ -21,7 +21,7 @@ Predict how precisely a raster scan (RICS) will measure a diffusion coefficient,
 | Menu path | Main → Tools → **RICS-Precision** |
 | Categories | Main, Tools |
 | Version | 1.0.0 |
-| Surfaces | cli, gui |
+| Surfaces | cli, emtk, gui |
 | State namespace | `rics_precision` |
 
 ## Parameters
@@ -73,3 +73,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/calculator/rics_precision/`
 - Manifest: {src}`chisurf/plugins/calculator/rics_precision/manifest.json`
 - UI spec: {src}`chisurf/plugins/calculator/rics_precision/gui/precision.view.json`
+- UI spec: {src}`chisurf/plugins/calculator/rics_precision/gui/precision_emtk.view.json`

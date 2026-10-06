@@ -52,6 +52,7 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Theory and workflow
 
 - **Theory** — [Molecular surfaces and solvent accessibility](/concepts/molecular_surfaces.md)
+- **Workflow** — [QuEst: predicting dye quenching at a labelling site](/guides/80_quenching_estimator.md)
 
 ## Source
 

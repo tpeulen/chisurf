@@ -21,7 +21,7 @@ Calculate potential energy components for structures and trajectories.
 | Menu path | Structure → Trajectory → **Energy Calculator** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 | State namespace | `potential_energy` |
 
 ## Parameters

@@ -21,12 +21,14 @@ Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data.
 | Menu path | Imaging → **Phasor-FLIM** |
 | Categories | Imaging, Phasor-FLIM |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `img_pixel_phasor` |
 
 ## Parameters
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
+
+### Controls
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
@@ -34,6 +36,20 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Min photons | `n_ph_min` | int |  | 1 … 10000 | Minimum photons per pixel for a valid phasor. |
 | Frequency (MHz, -1=auto) | `frequency` | float |  | -1.0 … 1000.0 (step 1.0) | Modulation frequency; -1 auto-derives from the TTTR header. |
 | Phasor cursors | `cursors` | region_list |  |  | Cursors on the (g, s) plane. Draw an ellipse round a lifetime cluster, a polygon round one that is neither round nor elliptical, or several combined; ~ selects everything outside. The Selected dock shows the pixels they pick out. |
+
+### Settings
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| View | `view_tab` | choice |  | choices: `tab_titles` | Bring any map or plot tab forward, also when the row of tabs is wider than the window. |
+| Detector window | `display_window` | choice |  | choices: `window_names` | The detector window shown in the maps. Every window is computed and written; this only chooses which one is drawn. The windows come from the Detectors tab (or the Imaging Tools setup step); without any, the channel-0 window is used. |
+
+### IRF reference
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Window | `irf_window` | choice |  | choices: `irf_window_choices` | The detector window whose IRF is edited. |
+| IRF file | `irf_path` | str |  |  | Photon file of the instrument response of this window. Empty: the uncalibrated phasor. Press Enter to adopt a typed path. |
 
 ## JSON-RPC methods
 
@@ -51,10 +67,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [FLIM and the phasor approach](/concepts/imaging_flim_phasor.md)
-- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md), [The phasor calculator: where a lifetime lands before you measure it](/guides/77_phasor_calculator.md)
 
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_phasor/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_pixel_phasor/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_pixel_phasor/gui/phasor.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_pixel_phasor/gui/phasor_emtk.view.json`

@@ -21,7 +21,7 @@ Create CLSM-TTTR image representations, select pixels interactively, and export 
 | Menu path | Imaging → **CLSM-Draw** |
 | Categories | Imaging, Lifetime |
 | Version | 2.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `clsm_draw` |
 
 ## Parameters
@@ -42,27 +42,27 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| TTTR type | `tttr_type` | str |  |  |  |
-| Routine | `routine` | str |  |  |  |
+| TTTR type | `tttr_type` | str |  |  | The photon file container type, if the file does not name it. |
+| Routine | `routine` | str |  |  | The reading routine of the setup preset. |
 | Frame markers | `frame_marker_text` | str |  |  | Frame marker numbers, comma separated. |
-| Line start | `line_start_marker` | int |  |  |  |
-| Line stop | `line_stop_marker` | int |  |  |  |
-| Event marker | `event_type_marker` | int |  |  |  |
+| Line start | `line_start_marker` | int |  |  | Routing marker of the start of a line. |
+| Line stop | `line_stop_marker` | int |  |  | Routing marker of the end of a line. |
+| Event marker | `event_type_marker` | int |  |  | Event type that carries the scanner markers. |
 | Pixel/line | `pixel_per_line` | int |  |  | Pixels per line. 0 makes it equal to the number of lines. |
 
 ### Brush & Decay
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Brush size | `size` | int |  | 1 … 99 |  |
-| Brush width | `width` | float |  | 0.1 … 50.0 |  |
-| Brush | `mode` | choice |  | choices: select, deselect |  |
+| Brush size | `size` | int |  | 1 … 99 | Edge length of the brush in pixels (1 to 99). |
+| Brush width | `width` | float |  | 0.1 … 50.0 | Width (sigma) of the brush kernel in pixels; a smaller value gives a harder edge. |
+| Brush | `mode` | choice |  | choices: select, deselect | select paints pixels into the selection; deselect erases them. |
 | Live update | `live_update` | bool |  |  | Recompute the decay while brushing. |
-| Image type | `image_type` | choice |  | choices: Intensity, Mean micro time, Intensity, Mean micro time |  |
+| Image type | `image_type` | choice |  | choices: Intensity, Mean micro time, Intensity, Mean micro time | Which representation Add representation computes: intensity, mean micro-time or both. |
 | Min #Ph | `n_ph_min` | int |  | 0 … | Minimum photons per pixel for the mean micro time. |
 | Coarsen | `tac_coarsening` | choice |  | choices: 1, 2, 4, 8, 16 | Micro-time (TAC) binning factor. |
-| Frames | `frame_mode` | choice |  | choices: sum, mean, frame |  |
-| Frame | `frame_idx` | int |  | 0 … |  |
+| Frames | `frame_mode` | choice |  | choices: sum, mean, frame | How the frames of the scan are combined: sum, mean, or one frame. |
+| Frame | `frame_idx` | int |  | 0 … | The frame used when Frames is set to frame. |
 
 ### General
 

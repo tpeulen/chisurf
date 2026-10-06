@@ -21,7 +21,7 @@ TTTR Header Editor plugin.  This plugin provides a tool for viewing and editing 
 | Menu path | TTTR → Editor → **TTTR Header editor** |
 | Categories | TTTR, Editor |
 | Version | 1.0.0 |
-| Surfaces | script |
+| Surfaces | emtk, script |
 
 ## Parameters
 

@@ -21,7 +21,7 @@ F-test calculator: compare two nested model fits (confidence <-> chi2 threshold)
 | Menu path | Main → Tools → **F-Test** |
 | Categories | Main, Tools, Statistics |
 | Version | 2.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 | State namespace | `f_test` |
 
 ## Parameters
@@ -51,6 +51,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Parameter uncertainty: priors, posteriors and sampling](/concepts/parameter_uncertainty.md)
+- **Workflow** — [Decay Analysis window, Lazy Lifetime Analysis and synthetic decays](/guides/76_decay_analysis_tools.md), [Model comparison and batch fits](/guides/78_model_comparison_and_batch.md)
 
 ## Source
 

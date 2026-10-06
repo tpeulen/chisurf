@@ -21,7 +21,7 @@ Measure the resolution an image actually achieved by Fourier ring correlation â€
 | Menu path | Imaging â†’ **FRC Resolution** |
 | Categories | Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `img_frc` |
 
 ## Parameters
@@ -66,3 +66,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/img_frc/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_frc/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_frc/gui/frc.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_frc/gui/frc_emtk.view.json`

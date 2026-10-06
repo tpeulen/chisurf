@@ -21,7 +21,7 @@ Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecu
 | Menu path | Imaging → **Number & Brightness** |
 | Categories | Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, gui |
+| Surfaces | cli, emtk, gui |
 | State namespace | `img_pixel_nb` |
 
 ## Parameters
@@ -33,6 +33,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | TTTR file | `filename` | file |  |  | Confocal photon-stream file (PTU/HT3/…) with line and frame markers; N&B needs many frames of the same field. The step-0 detector setup decides which windows are analysed. |
+| View | `view_tab` | choice |  | choices: `tab_titles` | Bring any map or plot tab forward, also when the row of tabs is wider than the window. |
+| Detector window | `display_window` | choice |  | choices: `window_names` | The detector window shown in the maps. Every window is computed and written; this only chooses which one is drawn. The windows come from the Detectors tab (or the Imaging Tools setup step); without any, the channel-0 window is used. |
 
 ### Stack corrections
 
@@ -89,3 +91,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_nb/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_pixel_nb/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_pixel_nb/gui/nb.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_pixel_nb/gui/nb_emtk.view.json`

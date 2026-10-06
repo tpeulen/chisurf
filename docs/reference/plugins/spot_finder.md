@@ -21,7 +21,7 @@ Detect spots and regions in imaging data and persist them, with their pixels, in
 | Menu path | Imaging → **Spot Finder** |
 | Categories | Imaging, Detection |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `spot_finder` |
 
 ## Parameters

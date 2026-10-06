@@ -25,14 +25,9 @@ Detector Channel and PIE-window definition wizard
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
 ## Source
 
 - Plugin package: `chisurf/plugins/core/setup_channel_definition/`
 - Manifest: {src}`chisurf/plugins/core/setup_channel_definition/manifest.json`
-
-## Theory and workflow
-
-- **Workflow** — [Detector setup: channels, PIE windows, timing and LUTs](/guides/87_channel_definition.md)
-- **Workflow** — [TTTR micro-time LUT](/guides/37_tttr_microtime_lut.md)

@@ -21,7 +21,7 @@ Compute TTTR microtime LUTs and create channel LUT settings in one dockable work
 | Menu path | Tools → TTTR → **LUT Tools** |
 | Categories | Tools, TTTR, Microtime, LUT |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `tttr_lut_tools` |
 
 ## Parameters
@@ -55,6 +55,21 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Mitigate wrap spike (floor + ε) | `mitigate_wrap` | bool |  |  | Use floor rounding + a small ε to avoid a spike at the wrap boundary. |
 | ε (wrap) | `eps` | float |  | 0.0 … 0.01 | Epsilon used when 'Mitigate wrap spike' is on. |
 
+### LUT flow
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| stage_name | `stage_name` | choice |  | choices: Compute LUT, settings.tttr.json (optional) | Compute LUT: MAKE a per-routing-channel LUT from a flat / uniform-illumination measurement (the main tool). settings.tttr.json: OPTIONAL, save or load a portable settings file, or assign LUT files to channels by hand. |
+
+### settings.tttr.json
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Reading routine | `reading_name` | choice |  | choices: `reading_options` | Select the TTTR container format; Auto detects it from the file. |
+| Show LUT panel | `show_lut` | bool |  |  | Inspect the active channel's cumulative LUT and bin increments. |
+| Log counts | `log_y` | bool |  |  | Use a logarithmic histogram count axis. |
+| Shift | `shift` | int |  | -1000000 … 1000000 | Photon-level shift of the active channel after LUT correction. |
+
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
@@ -74,3 +89,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/tttr/tttr_lut_tools/`
 - Manifest: {src}`chisurf/plugins/tttr/tttr_lut_tools/manifest.json`
 - UI spec: {src}`chisurf/plugins/tttr/tttr_lut_tools/gui/lut_compute.view.json`
+- UI spec: {src}`chisurf/plugins/tttr/tttr_lut_tools/gui/lut_tools_emtk.view.json`

@@ -21,7 +21,7 @@ Fuse bursts the same molecule produced, using the recurrence same-molecule proba
 | Menu path | Spectroscopy → Single-Molecule → **Burst Fusion** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `burst_fusion` |
 
 ## Parameters
@@ -60,7 +60,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Burst fusion: putting one molecule's bursts back together](/concepts/burst_fusion.md)
-- **Workflow** — [Fusing bursts the same molecule produced](/guides/58_burst_fusion.md)
+- **Workflow** — [Recurrence analysis of single particles (RASP)](/guides/02_recurrence_rasp.md), [Fusing bursts the same molecule produced](/guides/58_burst_fusion.md)
 
 ## Source
 

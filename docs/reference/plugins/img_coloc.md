@@ -21,7 +21,7 @@ Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and
 | Menu path | Imaging → **Colocalization** |
 | Categories | Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, gui |
+| Surfaces | cli, emtk, gui |
 | State namespace | `img_coloc` |
 
 ## Parameters
@@ -38,6 +38,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Channel B | `channel_b` | choice |  | choices: `channel_names` | Second channel of the pair. Manders M1 answers 'how much of A sits with B', M2 the mirror question, so the A/B order matters for those two coefficients. |
 | Frame | `frame` | int |  | -1 … 100000 (step 1) | Which frame of the stack to analyse. -1 (default) sums every frame, which maximises the signal-to-noise of the coefficients; pick a single frame to follow a time series. |
 | Axis order | `channel_axis_mode` | choice |  | choices: auto, first axis | Only for images whose axes are unlabelled. 'auto' treats a short leading axis (≤ 4 planes) as the channels and anything longer as frames; 'first axis' forces the leading axis to be the channels. TIFFs written with ImageJ/OME metadata are read exactly as labelled and ignore this. |
+| View | `view_tab` | choice |  | choices: `tab_titles` | Bring any result view forward, also when the row of tabs is wider than the window. |
 
 ### Background / thresholds
 
@@ -61,12 +62,15 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | B min | `gate_b_min` | float |  |  | Lower channel-B intensity of the gate rectangle. |
 | B max | `gate_b_max` | float |  |  | Upper channel-B intensity of the gate rectangle. |
 | Gate regions | `gates` | region_list |  |  | Every gate on the intensity scatter in one list: the typed box, a painted population, an ellipse or polygon drawn on the plane. Tick to include, ~ for everything outside, and pick how they combine — a cloud AND a threshold, not one overriding the other. |
+| Paint gate | `paint_gate` | bool |  |  | Paint a population on the intensity scatter with the brush; it combines with the typed box and the drawn regions. Right-drag pans while painting. |
 
 ### Region of interest
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Brush (px) | `brush_size` | int |  | 1 … 64 | Edge length of the square brush used to paint the region of interest on the Channel A map. Painting restricts every coefficient — thresholds, the null model and the profiles — to that region, the way a hand-drawn cell outline should. |
+| Paint ROI | `paint_roi` | bool |  |  | Paint an analysis region on the Channel A map with the brush; releasing the pointer recomputes with that region. (The Qt tool painted with a modifier key.) |
+| Erase | `erase` | bool |  |  | Erase painted pixels (region or scatter gate) with the same brush instead of adding. |
 
 ### Objects (punctate signal)
 
@@ -101,3 +105,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/img_coloc/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_coloc/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_coloc/gui/coloc_emtk.view.json`

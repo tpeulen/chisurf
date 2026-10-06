@@ -419,6 +419,10 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
                     "| --- | --- | --- | --- | --- | --- |"]
             out += ["| " + " | ".join(c) + " |" for c in cells_list]
             out.append("")
+    elif (manifest.get("entrypoints") or {}).get("emtk"):
+        out += ["This plugin's window is an EMTK app: its controls and tables are described in the "
+                "plugin's guide, and the fit/model parameters it edits are defined in the "
+                "[parameter glossary](../parameters.md).", ""]
     else:
         out += ["This plugin builds its interface from custom Qt widgets (no "
                 "declarative `*.view.json` parameter sections were found). Its "

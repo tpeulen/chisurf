@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **133 plugins**, **65** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **130 plugins**, **90** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,19 +19,19 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 *
 ```
 
-**133 plugins** across 29 categories.
-
-## Analysis → Kinetics
-
-| Plugin | Summary |
-| --- | --- |
-| [Hidden Markov model](hmm.md) | Gaussian hidden Markov model for binned time traces: fits states and transitions by Baum-Welch, decodes the state path, and reports emissions, dwell times, transition rates and an AIC/BIC state-count scan. The shared HMM seam of ChiSurf — the same analysis is reachable from the GUI, the CLI and over RPC, and other plugins call its Qt-free core instead of fitting their own. |
+**130 plugins** across 36 categories.
 
 ## Core
 
 | Plugin | Summary |
 | --- | --- |
 | [Database Connector](database_connector.md) *(hidden)* | Core database connector services for source/user database resolution, migration, backup, reset, repository access, and FLR CIF import/export. |
+
+## File → Data
+
+| Plugin | Summary |
+| --- | --- |
+| [File tools](filetools.md) | Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header editor. |
 
 ## Help
 
@@ -51,6 +51,7 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [FRC Resolution](img_frc.md) *(hidden)* | Measure the resolution an image actually achieved by Fourier ring correlation — of a TIFF stack or a photon stream — and read it against the 1/7, ½-bit or 2σ criterion. |
 | [Flow Maps](img_flow.md) *(hidden)* | Map the velocity field of a sample from its own correlations — one arrow per tile, over the image. No model and no fit: the velocity is read off where a correlation peak is. Ships a simulated demo whose flow profile is known, so the arrows can be checked. |
 | [IRF & BG](img_calibration.md) *(hidden)* | Per-detector IRF file and background (kHz) calibration; transferred to phasor and pixel-wise MLE. Optional (skippable) pipeline step. |
+| [Image Tools](imaging_tools.md) | Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination, CLSM Generator. |
 | [Intensity](img_pixel_intensity.md) *(hidden)* | Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference) that N&B / phasor / MLE enrich. |
 | [Mean Micro-Time](img_pixel_micro_time.md) *(hidden)* | Per-pixel mean micro-time (arrival time) maps from TTTR imaging data. |
 | [Number & Brightness](img_pixel_nb.md) *(hidden)* | Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecular brightness and number, cross N&B, analog-detector calibration, bleaching detrending, and gating a brightness population back onto the image. |
@@ -82,16 +83,11 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Acquisition](acq.md) | Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics). |
 | [Batch-Analysis](batch_analysis.md) *(hidden)* | Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP). |
-| [Calculators](calculators.md) | Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view. |
 | [F-Test](f_test.md) *(hidden)* | F-test calculator: compare two nested model fits (confidence <-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits. |
 | [FRET-Calculator](fret_calculator.md) *(hidden)* | Combined heteroFRET and homoFRET parameter calculator. |
-| [Global View](globalview.md) | Interactive network graph for visualizing and managing parameter relationships across fits in global analysis. |
 | [Phasor-Calculator](phasor_calculator.md) *(hidden)* | Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line. Declarative AutoForm view. |
-| [RICS-Precision](rics_precision.md) | Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent. |
-| [Wizards](wizards.md) | Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view. |
-| [ndX](ndxplorer.md) | Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data. |
+| [RICS-Precision](rics_precision.md) *(hidden)* | Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent. |
 
 ## Microscopy
 
@@ -115,22 +111,24 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [Updates & Packages](updater.md) *(hidden)* | Update checker/installer and conda package manager. Surfaced as panels inside the unified Settings dialog. |
 | [User Editor](user_editor.md) *(hidden)* | User editor plugin for Chisurf to manage users registered in the MMFDB. |
 
-## Spectroscopy
+## Spectroscopy → Correlation
 
 | Plugin | Summary |
 | --- | --- |
-| [Burst Analysis](burst_analysis.md) | Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation. |
-| [Decay Analysis](lifetime_analysis.md) | Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and VV/VH G-factor calibration. |
 | [FCS](fcs_toolbox.md) | Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.  Merges the FCS *Correlator* workflow (detector → files → filter → correlate → merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, diffusion/volume calculator, fFCS filter calculator, correlation-channel presets) into a single left-navigation tool. Built on the reusable ``NavigationPanelTool`` shell. The ribbon execs this file with ``__name__ == "plugin"``. |
-| [Image Tools](imaging_tools.md) | Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination. |
-| [Light Path Simulator](lightpath_simulator.md) | Optical light path simulator to calculate crosstalk and R0 overlap integrals. |
-| [Spectra Downloader](spectra_downloader.md) | Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources) |
+| [PCH](pch.md) | Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy. |
+
+## Spectroscopy → Decay
+
+| Plugin | Summary |
+| --- | --- |
+| [Decay Analysis](lifetime_analysis.md) | Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, VV/VH G-factor calibration, the VV/VH anisotropy decay, and a synthetic decay generator. |
 
 ## Spectroscopy → FRET
 
 | Plugin | Summary |
 | --- | --- |
-| [Accurate FRET](accurate_fret.md) | Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst populations, the optics prior of a saved light path and the static FRET line, with E-S and E-lifetime views. |
+| [Accurate FRET](accurate_fret.md) *(hidden)* | Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst populations, the optics prior of a saved light path and the static FRET line, with E-S and E-lifetime views. |
 | [FRET Line Generator](fret_line.md) *(hidden)* | Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndX. |
 
 ## Spectroscopy → Fluorescence Correlation Spectroscopy
@@ -143,7 +141,7 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [Diffusion/Volume Calculator](fcs_calculator.md) *(hidden)* | FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration). |
 | [FCS Converter](fcs_convert.md) *(hidden)* | FCS conversion plugin.  Convert fluorescence correlation spectroscopy files between supported formats directly from the ChiSurf CLI. |
 | [FCS Filter Calculator](fcs_filter_calculator.md) *(hidden)* | Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns. |
-| [FCS Saturation](fcs_saturation.md) | FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5). |
+| [FCS Saturation](fcs_saturation.md) *(hidden)* | FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5). |
 | [FCS-Merger](fcs_merger.md) *(hidden)* | Merge / average multiple FCS correlation curves to improve signal-to-noise. |
 | [Lifetime-FCS Simulator](fcs-lfcs-sim.md) *(hidden)* | Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation. |
 
@@ -160,6 +158,12 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [VV/VH Anisotropy Decay](vv_vh_anisotropy.md) *(hidden)* | Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift. |
 | [VV/VH G-Factor Calculator](vv_vh_g_factor.md) *(hidden)* | Calculate detector G-factors using tail-matching on VV/VH format files. |
 
+## Spectroscopy → Kinetics
+
+| Plugin | Summary |
+| --- | --- |
+| [Hidden Markov model](hmm.md) | Gaussian hidden Markov model for binned time traces: fits states and transitions by Baum-Welch, decodes the state path, and reports emissions, dwell times, transition rates and an AIC/BIC state-count scan. The shared HMM seam of ChiSurf — the same analysis is reachable from the GUI, the CLI and over RPC, and other plugins call its Qt-free core instead of fitting their own. |
+
 ## Spectroscopy → Single-Molecule
 
 | Plugin | Summary |
@@ -167,6 +171,7 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [2CDE](burst_2cde.md) *(hidden)* | FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012). |
 | [ALEX Suite](alex_suite.md) | The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis and the ALEX-Suite CSV export. Writes the same .pto container and burst companions as the PIE burst workflow. |
 | [BVA](burst_bva.md) *(hidden)* | Burst Variance Analysis for single-molecule FRET experiments. |
+| [Burst Analysis](burst_analysis.md) | Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation. |
 | [Burst Background Estimation](burst_background.md) *(hidden)* | Estimate detector background rates from TTTR burst data. |
 | [Burst Browser](burst_browser.md) *(hidden)* | Inspect burstwise analysis tables and plots. |
 | [Burst Fusion](burst_fusion.md) *(hidden)* | Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst folder. |
@@ -175,8 +180,7 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [Burst Selection](burst_selection.md) *(hidden)* | Burst selection and FRET analysis for single-molecule fluorescence data. |
 | [H2MM](burst_h2mm.md) *(hidden)* | Photon-by-photon Hidden Markov Model (H2MM) analysis of single-molecule FRET burst data, with BIC/ICL state selection and Viterbi dwell/transition analysis. |
 | [Intensity trace](intensity_trace.md) | Intensity Trace Analysis for Single-Molecule Data  This plugin provides tools for analyzing fluorescence intensity time traces from  single-molecule experiments. It enables researchers to extract dynamic information  from photon counting data, particularly for studying conformational changes,  molecular interactions, and reaction kinetics at the single-molecule level.  Features: - Loading and displaying Time-Tagged Time-Resolved (TTTR) data as intensity traces - Histogram analysis of photon counts with customizable binning - Hidden Markov Model (HMM) analysis for state detection and classification - Bayesian Information Criterion (BIC) calculation for optimal state number determination - Dwell time analysis for extracting kinetic information and rate constants - FRET efficiency calculation and state-specific distribution analysis - Transition probability matrix visualization and analysis - Exponential fitting of dwell time distributions - Interactive visualization with adjustable parameters - Support for multi-channel data analysis (donor/acceptor channels)  The plugin implements a comprehensive workflow for single-molecule state analysis: 1. Load TTTR data and convert to binned intensity traces 2. Visualize traces and photon count distributions 3. Apply HMM to identify discrete states in noisy data 4. Analyze state transitions and dwell times to extract kinetic information 5. For FRET data, calculate efficiency distributions for each state  Ideal for analyzing single-molecule FRET, protein folding/unfolding, enzyme dynamics, ligand binding, blinking behavior, or any other dynamic processes that can be  observed in fluorescence intensity traces. The HMM approach is particularly powerful for detecting states in noisy data with overlapping distributions. |
-| [PCH](pch.md) | Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy. |
-| [Photon-by-photon kinetics](burst_gs.md) | Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants and per-state FRET efficiencies fitted directly to photon arrival times and colours, for two- and three-colour data, with a transition-time scan and an H2MM cross-check. |
+| [Photon-by-photon kinetics](burst_gs.md) *(hidden)* | Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants and per-state FRET efficiencies fitted directly to photon arrival times and colours, for two- and three-colour data, with a transition-time scan and an H2MM cross-check. |
 | [Trace Browser](trace_browser.md) | Browse PTU/TTTR intensity traces from a folder, rate and annotate files, preview traces, and export selected traces. |
 | [ebFRET](burst_ebfret.md) | ebFRET, ported from its MATLAB GUI: empirical-Bayes hidden Markov analysis of binned donor/acceptor smFRET time series. The same window -- time series with the Viterbi path, the ensemble histograms and parameter distributions, series/crop/state controls -- the same menus (load/save session, raw/SF-Tracer/SMD import, photobleaching and outlier removal, priors, summary/trace/SMD export) and the same analysis loop, run on the backend. Ships a simulated four-state demo. |
 
@@ -196,12 +200,17 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [FPS JSON Editor](fps_json_editor.md) *(hidden)* | Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID. |
 | [Kappa2 Distribution](kappa2_dist.md) *(hidden)* | Calculate and visualise the k² orientation-factor distribution for FRET using WIC, DWT, or isotropic models. |
 
-## Structure → Structure
+## Structure → Modelling
 
 | Plugin | Summary |
 | --- | --- |
 | [ChiMOL](chimol.md) | Molecular structure viewer and protein analysis plugin for ChiSurf. |
-| [Structure Tools](structure_tools.md) | Unified structure toolbox: FPS JSON Editor, FRET Docking & Screening, Kappa2 Distribution, QuEst, HydroPro and Trajectory Tools. |
+| [Structure Tools](structure_tools.md) | Unified structure toolbox: FPS JSON Editor, FRET Docking & Screening, QuEst, HydroPro and Trajectory Tools. |
+
+## Structure → Structure
+
+| Plugin | Summary |
+| --- | --- |
 | [Traj Tools](traj_tools.md) *(hidden)* | Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools. |
 
 ## Structure → Trajectory
@@ -236,16 +245,22 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [AI Settings](ai_settings.md) *(hidden)* | AI Settings plugin for configuring API providers and backends. |
-| [File tools](filetools.md) | Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header editor. |
-| [MMFDB Admin](mmfdb_admin.md) | Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives. |
-| [Open Project](project_browser.md) | Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control. |
-| [TTTR Tools](tttr_toolbox.md) | Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor, Photon Table, Split/Convert, Count Rate Analysis and Audifier. |
+| [Open Project](project_browser.md) *(hidden)* | Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control. |
 
 ## Tools → Burst
 
 | Plugin | Summary |
 | --- | --- |
 | [MFD Prepare](mfd_prepare.md) *(hidden)* | Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report. |
+
+## Tools → Calculators
+
+| Plugin | Summary |
+| --- | --- |
+| [Calculators](calculators.md) | Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view. |
+| [Light Path Simulator](lightpath_simulator.md) | Optical light path simulator to calculate crosstalk and R0 overlap integrals. |
+| [Spectra Downloader](spectra_downloader.md) | Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources) |
+| [Wizards](wizards.md) | Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view. |
 
 ## Tools → Converter
 
@@ -259,8 +274,6 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Code Editor](code_editor.md) | Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration. |
-| [Games](games.md) | A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout. |
 | [Plugin-Check](plugin_check.md) *(hidden)* | Tests all ChiSurf plugins for startup errors and reports successes, failures, and skipped checks. |
 
 ## Tools → Miscellaneous → Games
@@ -271,7 +284,21 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [Minesweeper](minesweeper.md) *(hidden)* | A Minesweeper game with selectable playfield size and mine count, contained in the Games hub. |
 | [Number Quest](number_quest.md) *(hidden)* | A small number-guessing game contained in the Games hub. |
 | [Pong](pong.md) *(hidden)* | Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub. |
-| [Tetris](tetris.md) *(hidden)* | Classic Tetris game with line clearing, score tracking, and next-piece preview; contained in the Games hub. |
+| [Tetris](tetris.md) *(hidden)* | Spectral Tetris with line clearing, score tracking, pause and restart; contained in the Games hub. |
+
+## Tools → Photon data
+
+| Plugin | Summary |
+| --- | --- |
+| [TTTR Tools](tttr_toolbox.md) | Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File tools. |
+
+## Tools → System
+
+| Plugin | Summary |
+| --- | --- |
+| [Code Editor](code_editor.md) | Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration. |
+| [Games](games.md) | A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout. |
+| [MMFDB Admin](mmfdb_admin.md) | Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives. |
 
 ## Tools → TTTR
 
@@ -282,6 +309,14 @@ Of the **133 plugins**, **65** build their interface from declarative AutoForm s
 | [LUT Tools](tttr_lut_tools.md) *(hidden)* | Compute TTTR microtime LUTs and create channel LUT settings in one dockable workspace. |
 | [Microtime Shifter](microtime_shifter.md) *(hidden)* | Apply global and per-channel micro-time shifts to TTTR files. |
 | [Photon Table](photon_table.md) *(hidden)* | Inspect the photons of a TTTR file in a table: routing channel, micro-time and macro-time, one row per photon, with navigation and a channel filter. |
+
+## Tools → Views
+
+| Plugin | Summary |
+| --- | --- |
+| [Acquisition](acq.md) | Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics). |
+| [Global View](globalview.md) | Interactive network graph for visualizing and managing parameter relationships across fits in global analysis. |
+| [ndX](ndxplorer.md) | Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data. |
 
 ## Uncategorized
 

@@ -21,12 +21,17 @@ Merge / average multiple FCS correlation curves to improve signal-to-noise.
 | Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **FCS-Merger** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `fcs_merger` |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Folder | `folder` | str |  |  | The folder whose curves are listed; type a path and press Enter, or drop a folder. |
+| Target | `output` | str |  |  | The merged curve's file (Kristine .cor: lag, G, duration and count rate, standard error); the folder's name beside the folder by default. |
 
 ## JSON-RPC methods
 
@@ -39,9 +44,10 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Theory and workflow
 
 - **Theory** — [FCS: the correlation curve and its models](/concepts/fcs_correlation.md)
-- **Workflow** — [Combining measurements / technical repeats](/guides/35_combining_repeats.md)
+- **Workflow** — [Combining measurements / technical repeats](/guides/35_combining_repeats.md), [FCS toolbox: from photon stream to a curve worth fitting](/guides/75_fcs_toolbox.md)
 
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_merger/`
 - Manifest: {src}`chisurf/plugins/fcs/fcs_merger/manifest.json`
+- UI spec: {src}`chisurf/plugins/fcs/fcs_merger/gui/fcs_merger_emtk.view.json`

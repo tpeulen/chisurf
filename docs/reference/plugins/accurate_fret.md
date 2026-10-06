@@ -21,7 +21,7 @@ Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst popu
 | Menu path | Spectroscopy → FRET → **Accurate FRET** |
 | Categories | Spectroscopy, FRET, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `accurate_fret` |
 
 ## Parameters
@@ -94,7 +94,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Accurate FRET: correction factors, FRET lines, and where they come from](/concepts/accurate_fret.md)
-- **Workflow** — [RCM detection calibration from dye solutions](/guides/07_rcm_calibration.md), [RCM from FRET-labelled samples (PIE/ALEX)](/guides/25_rcm_from_fret_samples.md), [Accurate FRET: automatic correction factors](/guides/41_accurate_fret.md)
+- **Workflow** — [RCM detection calibration from dye solutions](/guides/07_rcm_calibration.md), [Multi-parameter E–S histograms and correction factors](/guides/14_multiparameter_es.md), [RCM from FRET-labelled samples (PIE/ALEX)](/guides/25_rcm_from_fret_samples.md), [Accurate FRET: automatic correction factors](/guides/41_accurate_fret.md)
 
 ## Source
 

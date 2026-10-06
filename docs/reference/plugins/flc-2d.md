@@ -21,7 +21,7 @@ Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 
 | Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **2D-FLCS** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
 | Version | 1.1.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `flc_2d` |
 
 ## Parameters
@@ -113,3 +113,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/fcs/flc_2d/`
 - Manifest: {src}`chisurf/plugins/fcs/flc_2d/manifest.json`
 - UI spec: {src}`chisurf/plugins/fcs/flc_2d/gui/flc_2d.view.json`
+- UI spec: {src}`chisurf/plugins/fcs/flc_2d/gui/flc_2d_emtk.view.json`

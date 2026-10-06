@@ -21,7 +21,7 @@ Measure and remove inter-frame sample drift in TIFF stacks and photon-stream ima
 | Menu path | Imaging → **Drift Correction** |
 | Categories | Imaging |
 | Version | 1.0.0 |
-| Surfaces | cli, gui |
+| Surfaces | cli, emtk, gui |
 | State namespace | `img_drift` |
 
 ## Parameters
@@ -54,3 +54,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Plugin package: `chisurf/plugins/microscopy/img_drift/`
 - Manifest: {src}`chisurf/plugins/microscopy/img_drift/manifest.json`
 - UI spec: {src}`chisurf/plugins/microscopy/img_drift/gui/drift.view.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_drift/gui/drift_emtk.view.json`

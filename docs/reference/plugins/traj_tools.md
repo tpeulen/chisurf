@@ -26,18 +26,11 @@ Combined dockable workspace for trajectory alignment, conversion, energy calcula
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
-## Native window (emtk)
+## Theory and workflow
 
-The default window is drawn with emtk (`app.py`, on the shared hub base of the calculator hub; the catalogue is `registry.py`).
-
-| Area | Controls |
-| --- | --- |
-| List | the eight tools (*Align*, *Convert*, *Energy Calc*, *FRET*, *Join*, *Remove Clashed*, *Rot Translate*, *Save Topol*), tooltip with the description, arrow keys, **Guide**, **Help** |
-| Header | the tool's name and description |
-| Tool | the selected tool's own native window, built on first use and kept |
-| Status line | `Active tool: X`, what became of a dropped file |
+- **Workflow** — [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](/guides/81_trajectory_tools.md)
 
 ## Source
 

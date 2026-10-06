@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Light Path Simulator
 description: Optical light path simulator to calculate crosstalk and R0 overlap integrals.
 resource: chisurf/plugins/core/lightpath_simulator/
-tags: [reference, plugins, lightpath-simulator, spectroscopy]
+tags: [reference, plugins, lightpath-simulator, tools, calculators]
 anchor: plugin-lightpath_simulator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,15 +18,42 @@ Optical light path simulator to calculate crosstalk and R0 overlap integrals.
 | Field | Value |
 | --- | --- |
 | Plugin id | `lightpath_simulator` |
-| Menu path | Spectroscopy → **Light Path Simulator** |
-| Categories | Spectroscopy |
+| Menu path | Tools → Calculators → **Light Path Simulator** |
+| Categories | Tools, Calculators |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `lightpath_simulator` |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
+
+### Graph view
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Show minimap | `show_minimap` | bool |  |  | Show a small overview of the graph for navigating a large optical network. |
+
+### Backend
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Spectra database | `db_path` | str |  |  | Path of the MMFDB spectra database; empty uses the configured database. |
+
+### MMFDB
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Name | `operation_name` | str |  |  | Name stored with the simulation and its MMFDB artifacts when you press Save to MMFDB. |
+
+### Connections
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| From | `source_node` | choice |  | choices: `node_options` | The node producing the optical spectrum or scalar parameter. |
+| Out port | `source_port` | int |  | 0 … 99 | Zero-based output-port index on the source node. |
+| To | `target_node` | choice |  | choices: `node_options` | The node that consumes the selected source output. |
+| In port | `target_port` | int |  | 0 … 99 | Zero-based input-port index on the target node. |
 
 ## JSON-RPC methods
 
@@ -47,3 +74,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 
 - Plugin package: `chisurf/plugins/core/lightpath_simulator/`
 - Manifest: {src}`chisurf/plugins/core/lightpath_simulator/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/lightpath_simulator/gui/lightpath.view.json`

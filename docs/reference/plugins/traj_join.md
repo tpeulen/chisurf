@@ -21,7 +21,7 @@ Join or stack molecular dynamics trajectories.
 | Menu path | Structure → Trajectory → **Join** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
-| Surfaces | gui |
+| Surfaces | emtk, gui |
 | State namespace | `traj_join` |
 
 ## Parameters
@@ -31,9 +31,9 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Join mode | `join_mode` | choice |  | choices: time, atoms | By time joins the trajectories along the frame axis (same topology, frames appended). By atoms stacks the trajectories along the atom axis (same number of frames, topologies merged). |
-| Reverse trajectory 1 | `reverse_traj_1` | bool |  |  | Reverse each read chunk of trajectory 1 in time before joining. |
-| Reverse trajectory 2 | `reverse_traj_2` | bool |  |  | Reverse each read chunk of trajectory 2 in time before joining. |
-| Chunk size | `chunk_size` | int |  | 1 … 9999999 | Trajectories are read piecewise to save memory; the chunk size sets the number of frames per read. |
+| Reverse trajectory 1 | `reverse_traj_1` | bool |  |  | Reverse trajectory 1 in time (last frame first) before joining. |
+| Reverse trajectory 2 | `reverse_traj_2` | bool |  |  | Reverse trajectory 2 in time (last frame first) before joining. |
+| Chunk size | `chunk_size` | int |  | 1 … 9999999 | Frames written per block. The inputs are read whole; the block bounds the copy the join makes. |
 
 ## Source
 

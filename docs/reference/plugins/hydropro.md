@@ -21,7 +21,7 @@ Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic p
 | Menu path | Structure → Computation → **HydroPro** |
 | Categories | Structure, Computation |
 | Version | 1.0.0 |
-| Surfaces | cli, gui, services |
+| Surfaces | cli, emtk, gui, services |
 | State namespace | `hydropro` |
 
 ## Parameters
@@ -81,10 +81,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [Molecular surfaces and solvent accessibility](/concepts/molecular_surfaces.md)
+- **Theory** — [Hydrodynamics of rigid macromolecules: how fast a structure diffuses and tumbles](/concepts/hydrodynamics.md), [Molecular surfaces and solvent accessibility](/concepts/molecular_surfaces.md)
+- **Workflow** — [HydroPro: diffusion coefficients from a structure](/guides/79_hydropro.md)
 
 ## Source
 
 - Plugin package: `chisurf/plugins/modelling/hydropro/`
 - Manifest: {src}`chisurf/plugins/modelling/hydropro/manifest.json`
 - UI spec: {src}`chisurf/plugins/modelling/hydropro/gui/hydropro.view.json`
+- UI spec: {src}`chisurf/plugins/modelling/hydropro/gui/hydropro_emtk.view.json`
