@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W7 handoff2026-10-07: frozen9a harness completes all124 workers,30 pass/94 explicit integration or coverage failures,0 ordinary runtime exceptions; durable ledger separates missing demos/tours/tooltips, delivery/reveal and three timeouts. Available guards+harness991pass/17 expected skips. W7 source units are locally committed; final integration gate stays open. Continue W1 orphan-source recovery first, then the owner-ordered programme without stopping. [Resume](prds/prd-154.md), [ledger](validation/release-readiness-w7/final-9a.json).
+
 - PRD-154 W7: remeasure the entire targeted server lifecycle file in isolated settings/MMFDB/object/cache and owned ephemeral ports:75 passed in9.93s, exit0, no watchdog or hang. Current committed contracts supersede two stale failure records; reconcile them with durable JUnit/log receipts rather than changing unbroken source. [Evidence](validation/release-readiness-w7/server-lifecycle.xml).
 
 - PRD-154 W7: commit isolated native/Qt plugin workers and36 tested harness regressions. Real click delivery, effective clipping/scrolling, AutoForm folds, translated/scaled context IDs, actual awaited tours and stale PNG rejection were independently reviewed; source frozen9a104495. Whole plugin acceptance remains gated by W1 orphan-source and W6 tour/demo/layout integration. [Workflow](workflows/testing.md).
