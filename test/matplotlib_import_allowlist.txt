@@ -33,8 +33,7 @@
 
 # --- colormap --- (done 2026-10-05: emtk.colormaps)
 
-# --- figure ---
-modules/ndxplorer/ndxplorer/export/publication_figure.py
+# --- figure --- (done 2026-10-06: emtk.figure, vector via emtk's SVG/PDF painters)
 
 # --- plot ---
 chisurf/plugins/fluorescence_decay/lltf/lltf_gui.py

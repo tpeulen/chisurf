@@ -9,7 +9,7 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
-Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 7** (2026-10-05/06),
+Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 6** (2026-10-05/06),
 guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 `emtk.colormaps`), **delete** (1), **figure** (all but the two below, via
 `emtk.figure`). Open, in order:
@@ -23,11 +23,19 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
    (3/3). Before/after picture on BH_SPC132 (ALEX): same title, labels,
    legend, channels. **Rule for any off-thread emtk drawing: it goes through
    `frame()`/`emtk.figure`, never a hand-made Context.**
-2. **ndXplorer `export/publication_figure.py`** -- blocked on a vector
-   backend: it exports PDF/SVG (`EXPORT_FORMATS`); `emtk.figure` rasterises.
-   Needs an SVG (and PDF) painter in emtk implementing the painter contract,
-   plus a log colour scale on `heatmap` (`LogNorm`). Porting before that
-   would drop vector export.
+2. **ndXplorer publication figure -- DONE 2026-10-06** (ndxplorer `88318a6`,
+   emtk `0797f09`). emtk gained `SvgPainter`/`PdfPainter`
+   (`emtk/vector_painter.py`: text laid out with the atlas exactly as
+   PixelPainter does; SVG pins `textLength`, PDF uses base-14 Courier +
+   Symbol, nothing embedded), `ScaledPainter` for `png_bytes(dpi=)`,
+   `Axes.mesh` (pcolormesh over arbitrary edges, LogNorm) and log colour bars.
+   Grid rows now align **per column** -- one alignment group across the grid
+   had squeezed a y-marginal and its colour bar to negative width on the kept
+   frame. Before/after inventory: all controls present; the colour bar moved
+   into the right marginal's cell. ndXplorer no longer declares matplotlib nor
+   ships it to Pyodide. Known gap: `transparent=True` is accepted but the
+   figure is drawn on white paper. Checking a vector file by eye: `rsvg-convert`
+   (SVG) and `sips` (PDF) render them independently of emtk.
 3. **plot route**: `plugins/fluorescence_decay/lltf/lltf_gui.py`, legacy Qt
    `FigureCanvasQTAgg`. Another lane is building the emtk LLTF app
    (`lltf/gui/app.py`); the Qt wizard goes with it. Do not port in parallel.
