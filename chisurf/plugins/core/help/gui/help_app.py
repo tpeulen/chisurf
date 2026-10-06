@@ -18,8 +18,8 @@ from typing import Callable
 
 from emtk import im
 from emtk.app import ImApp
-from emtk.i18n import tr
 from emtk.docking import DockManager, Region, Split
+from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.texture import Texture
 from emtk.widgets.chat import ChatHistory, draw_chat_input_bar, draw_chat_transcript
@@ -28,7 +28,7 @@ from emtk.widgets.text_editor import TextEditor
 from chisurf.plugins.core.help.api import io as help_io
 from chisurf.plugins.core.help.api import review as help_review
 from chisurf.plugins.core.help.api import toc as help_toc
-from chisurf.plugins.core.help.api.mathtext import html_math, normalise_latex, _unicode_fallback
+from chisurf.plugins.core.help.api.mathtext import _unicode_fallback, html_math, normalise_latex
 from chisurf.plugins.core.help.api.xref import document_reference, resolve_document, resolve_ref
 
 _LOGGER = logging.getLogger(__name__)

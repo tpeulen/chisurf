@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 from emtk import i18n, im
 from emtk.app import ImApp
+from emtk.keys import KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.misc.games.gui.keys import blocked
-from emtk.keys import KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_UP
 
 from .drawing import pixel_text, text_width
 from .model import BOARD_H, BOARD_W, SHAPE_NM, SHAPES, TetrisModel

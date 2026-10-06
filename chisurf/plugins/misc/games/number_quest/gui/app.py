@@ -5,9 +5,9 @@ import math
 
 from emtk import i18n, im
 from emtk.app import ImApp
+from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT
 
 from chisurf.plugins.misc.games.gui.keys import blocked
-from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT
 
 from ..core.game import GuessStatus, NumberQuestGame
 from .translations import install_translations

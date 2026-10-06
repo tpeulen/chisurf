@@ -11,9 +11,9 @@ from pathlib import Path
 
 from emtk import i18n, im
 from emtk.app import ImApp
+from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from chisurf.plugins.misc.games.gui.keys import blocked
-from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from ..core.game import DIFFICULTIES, GameStatus, MinesweeperGame
 from .translations import install_translations
