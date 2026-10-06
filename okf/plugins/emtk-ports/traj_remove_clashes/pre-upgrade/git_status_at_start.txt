@@ -1,5 +1,0 @@
- M chisurf/plugins/traj/traj_remove_clashes/__init__.py
- M chisurf/plugins/traj/traj_remove_clashes/manifest.json
- M chisurf/plugins/traj/traj_remove_clashes/view_model.py
-?? chisurf/plugins/traj/traj_remove_clashes/app.py
-?? chisurf/plugins/traj/traj_remove_clashes/strings.py

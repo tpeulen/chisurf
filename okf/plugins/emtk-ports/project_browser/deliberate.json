@@ -1,7 +1,0 @@
-{
-  "project/version": "the header of the sorted column is drawn with its sort arrow, 'Project / Version ▾' (emtk's table marks the sort column; the Qt header showed the arrow as a graphic)",
-  "2026-10-01223147": "a cell of the scratch database the Qt baseline was captured on (this pass's scratch database has other ids, owner 'guest' and another time), not a control; the rows are compared cell by cell in test_the_list_shows_what_the_qt_tree_shows",
-  "proj_e0c811fea22a": "a cell of the scratch database the Qt baseline was captured on (this pass's scratch database has other ids, owner 'guest' and another time), not a control; the rows are compared cell by cell in test_the_list_shows_what_the_qt_tree_shows",
-  "proj_efe156ad2c5e": "a cell of the scratch database the Qt baseline was captured on (this pass's scratch database has other ids, owner 'guest' and another time), not a control; the rows are compared cell by cell in test_the_list_shows_what_the_qt_tree_shows",
-  "user_default": "a cell of the scratch database the Qt baseline was captured on (this pass's scratch database has other ids, owner 'guest' and another time), not a control; the rows are compared cell by cell in test_the_list_shows_what_the_qt_tree_shows"
-}

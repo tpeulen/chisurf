@@ -1,3 +1,0 @@
- M chisurf/plugins/ndxplorer/manifest.json
-?? chisurf/plugins/ndxplorer/gui/
-?? chisurf/plugins/ndxplorer/test/
