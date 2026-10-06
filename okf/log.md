@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W7: commit isolated native/Qt plugin workers and36 tested harness regressions. Real click delivery, effective clipping/scrolling, AutoForm folds, translated/scaled context IDs, actual awaited tours and stale PNG rejection were independently reviewed; source frozen9a104495. Whole plugin acceptance remains gated by W1 orphan-source and W6 tour/demo/layout integration. [Workflow](workflows/testing.md).
+
 - PRD-154 W7 resume: canonical provider15, owning science32, fit notification/menu23 and related DTO/service/graph89 checks pass; available guards plus reviewed harness987/17 expected skips. Additional35 harness cases expose child-coordinate/context/tour-selection requirements before a fresh matrix. Splitter duplicate browse IDs depend on W1 orphan-source landing; FCS timeout remains profiling. Independent staging audit confirms pin/modes and foreign edits preserved. Programme continues, no acceptance claim for old matrices. [Resume](prds/prd-154.md).
 
 - PRD-154 W7: restore the fitting source's tracked executable mode after private-index staging normalized it unintentionally. The blob and scientific behavior are unchanged; future staging must read each existing mode from HEAD instead of hard-coding100644.

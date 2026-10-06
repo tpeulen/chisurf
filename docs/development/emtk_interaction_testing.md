@@ -70,3 +70,30 @@ image canvas before data loads. Driver excludes it from `ids()` and raises
 `LookupError` rather than inventing a click location. Composite hosts forward
 optional key-release hooks only when a child implements them. Form callbacks
 receive the committed field value.
+
+
+## Isolated plugin interaction gate
+
+`test/e2e/test_click_all_plugins.py` discovers native entrypoints and the
+remaining Qt-only factories. Each plugin runs in its own process with scratch
+settings, metadata, object storage and cache. Worker JSON/log/PNG artifacts
+live in `renders/e2e`; their harness_sha256 must match the tested source.
+Timeouts, native crashes, missing tours/tooltips and unreachable controls are
+explicit failures. A failed factory cannot retain an older PNG as evidence.
+
+Native clicks require a visible effective clip and real engine delivery to
+the intended context. The recorder maps translated/scaled child painters to
+global coordinates, distinguishes independent engines with identical IDs,
+opens actual AutoForm folds and scrolls reachable controls. Tour checks walk
+introductions and operate the first real awaited target; duplicate labels
+resolve through authoritative geometry/context, and ambiguity fails.
+Field text retained for interaction is private to the worker, not serialized.
+OS dialogs cancel; service/network and external-process actions remain
+guarded. Slow local computations must expose a working Cancel/Stop control.
+
+Re-derive the harness regressions with
+`pixi run -e test python -m pytest test/e2e/test_click_all_harness.py -q`
+(36 passed), and select real plugin cases with `-k <plugin_id>` on the click-all
+file. A complete plugin matrix remains a programme gate after the owning
+workstreams supply tours, demos, reachable layouts and source prerequisites.
+The C27 matrix and intermediate hash runs are diagnostic, not acceptance.
