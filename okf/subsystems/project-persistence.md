@@ -53,6 +53,28 @@ proven by the actual-Main probe (`test/gui/test_all_model_document_gui.py` drivi
    (this session's lint pass, also pending a keep/discard decision) — separate real edits with
    `ruff format(HEAD blob) == working`, never by `git diff`. Lint at HEAD: 357 ruff errors.
 
+8. **Lint/format commit — built and verified for ownership, NOT committed** (handover
+   2026-10-06). Owner: "commit your stuff, do not break other agents code". Candidate commit
+   `refs/handover/lint-candidate` (`1b9166c24`, parent `c1a7b80d3`): 591 files, each proven
+   to be only this session's changes on top of that HEAD -- 460 `ruff format`-only, 109
+   `ruff check --fix` + format only, 13 fixture→`conftest.py` test modules + 12 new
+   `conftest.py`. File list, test targets and the A/B runner: `~/dev/chisurf-lint-check/.handover/`
+   (`committed.txt`, `lint-testtargets.txt`, `run-lint-ab.sh`). Verified: all 591 pass
+   `ruff@0.15.20 format --check`; whole-tree `--collect-only` identical at base and candidate.
+   **Remaining step:** run `bash ~/dev/chisurf-lint-check/.handover/run-lint-ab.sh` (A/B over the
+   114 touched test dirs, `--continue-on-collection-errors` because of the CI blocker; ~1 h),
+   require *no failure new in the candidate*, then commit. If HEAD moved past `c1a7b80d3`,
+   rebuild: for each path in `committed.txt`, re-check `working == ruff format(HEAD:f)` (or
+   `check --fix`+format) against the new HEAD and stage only those, build the tree from a temp
+   `GIT_INDEX_FILE` read from the new HEAD, and move the branch with
+   `git update-ref refs/heads/mcts-native-baseline <new> <expected-old>` (guards against a
+   concurrent commit -- one happened mid-build here), then `git reset -q HEAD -- <paths>`.
+   Traps: never build from an index read before HEAD moved (it reverts others' commits);
+   zsh `$VAR:path` is a modifier -- write `${VAR}:path`; `os._exit` probes need `flush=True`.
+9. **Other lanes' uncommitted providers** that block CI collection (`clsm_intensity_counts`
+   etc.) are validated in `refs/handover/ci-providers` (`5eed46f9f`) + `~/dev/chisurf-fix-wt`;
+   the owner chose that this session commits only its own work, so they stay for their lanes.
+
 ## Latest verified checkpoint and where to pick this up — October 4, 2026
 
 Optional-plot worker `proc_23f80cb91464` is complete and independently accepted **only for its optional-catalogue/plot scope**. Parent ordinary-import six-file rerun `chisurf-parent-optional-verified.xml`: **59 unique passed / zero failures/errors/skips**, 70.767 seconds, with all 15 compared source/test hashes unchanged. Scope: lazy optional MMFDB dictionary facade, narrow named-package absence, installed dictionary error propagation/sole authority, defensive copies, real five-plot PDA construction and editable unknown metadata with exact science/state/traces. Scoped Ruff/whitespace passed. Fresh read-only independent **SPEC PASS then quality APPROVED** were parsed, with current owned hashes still exact. Receipt: `/Users/tpeulen/.hermes/cache/scratch/chisurf-parent-optional-plots-evidence.json`.
