@@ -2,13 +2,6 @@
 
 Found while building the native ALEX Suite (T-20261006-ALEXHUB, `alex_suite/gui/native.py`):
 
-- **`chisurf/emtk/tool_hub.py`: a status text wider than its room covers the status bar's buttons.** The status is
-  drawn as one item; when it is wider than the space left of Back / >> / Next, it is the hovered item over them and
-  none of the three takes a click (measured: a 854 px status at 1200 px, `hovered_id` = the text's box on every frame
-  of the click). Burst Analysis's hub sets such statuses itself (`Bursts for the later steps: <full path>`).
-  Worked around in `AlexHubApp` (`_fit` cuts every status to the room; guard
-  `alex_suite/tests/test_emtk_native_hub.py::test_a_long_status_does_not_cover_back_and_next`); the fix belongs in
-  ToolHubApp (clip or wrap the status before the buttons), owned by the emtk-port session.
 - **Retire the legacy ALEX shells with the typed-field lane**: `alex_suite/gui/tool.py` and its Qt panels, and the
   three-tab `AlexSuiteApp` in `alex_suite/gui/app.py` (superseded by the hub; `tests/test_emtk_typed_fields.py`,
   untracked, still drives it, and `app.py` carries that lane's uncommitted edits).

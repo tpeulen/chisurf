@@ -406,9 +406,12 @@ class ToolHubApp(ImApp):
         im.set_next_window_pos((left, height - BAR), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, BAR), im.Cond.ALWAYS)
         if im.begin(f"{self.title} status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
-            im.text_unformatted(tr(self.status))
+            buttons_x = max(120.0, width - left - 230.0)
+            # The status keeps to the room left of Back / >> / Next (cut, whole text as tooltip):
+            # it must not run under the buttons, however long a step's message is.
+            im.text_ellipsis(tr(self.status), buttons_x - 2.0 * im.get_style().item_spacing[0])
             self.item_rects["status"] = im.get_item_rect()
-            im.same_line(max(120.0, width - left - 230.0))
+            im.same_line(buttons_x)
             im.begin_disabled(not self._neighbour(-1))
             if im.button(tr("Back")):
                 self.step(-1)

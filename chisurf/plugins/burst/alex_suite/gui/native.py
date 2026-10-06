@@ -427,40 +427,16 @@ class AlexHubApp(BurstAnalysisHubApp):
         """What the open step needs; on a wide window also the setup, the files and the bursts."""
         need = self.need(self.selected or "")
         if width < 1000:
-            return _fit(need or super().summary(width), width)
+            return need or super().summary(width)
         context = super().summary(width)
-        return _fit(f"{need} · {context}" if need else context, width)
+        return f"{need} · {context}" if need else context
 
     def render(self):
-        # A status line wider than the space left of Back / >> / Next is one hovered item that covers the buttons
-        # (they stop taking clicks), so every status is cut to that space; the summary already is.
-        from emtk import im
-
-        width = float(im.get_main_viewport().size[0])
-        if self.status not in ("Ready", getattr(self, "_summary_shown", None)):
-            self.status = _fit(self.status, width)
         es = self.children.get("es")
         if es is not None and self._es_axes_pending and getattr(es.model, "has_data", False):
             self._es_axes_pending = False
             self._es_axes(es)
         super().render()
-
-
-def _fit(text: str, width: float) -> str:
-    """*text* cut (with an ellipsis) to the status bar's room left of the Back / >> / Next buttons."""
-    room = max(80.0, width - min(230.0, width * 0.26) - 250.0)
-    try:
-        from emtk.im_widgets import calc_text_size
-
-        measure = lambda t: float(calc_text_size(t)[0])  # noqa: E731
-        measure("x")
-    except Exception:  # noqa: BLE001 - no frame: estimate
-        measure = lambda t: 7.0 * len(t)  # noqa: E731
-    if measure(text) <= room:
-        return text
-    while text and measure(text + "…") > room:
-        text = text[:-1]
-    return text.rstrip(" ·") + "…"
 
 
 def create_app(**kwargs) -> AlexHubApp:
