@@ -36,9 +36,18 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
    ships it to Pyodide. Known gap: `transparent=True` is accepted but the
    figure is drawn on white paper. Checking a vector file by eye: `rsvg-convert`
    (SVG) and `sips` (PDF) render them independently of emtk.
-3. **plot route**: `plugins/fluorescence_decay/lltf/lltf_gui.py`, legacy Qt
-   `FigureCanvasQTAgg`. Another lane is building the emtk LLTF app
-   (`lltf/gui/app.py`); the Qt wizard goes with it. Do not port in parallel.
+3. **plot route -- the last entry (checked 2026-10-06).**
+   `plugins/fluorescence_decay/lltf/lltf_gui.py` (legacy Qt `LLTFGUIWizard`,
+   `FigureCanvasQTAgg`). The emtk LLTF app *has* landed (`lltf/gui/app.py`,
+   manifest `entrypoints.emtk`), but the Qt wizard is still reached from: the
+   manifest's `gui` entrypoint, the Qt `lifetime_analysis` tool
+   (`gui/tool.py::_lazy_lifetime`), `lltf/__init__.py`, `test/test_widgets.py`,
+   and `test/test_emtk_lltf_parity.py` (its reference). No lane holds it on the
+   board. Next step, in order: point `lifetime_analysis`'s panel and the
+   manifest `gui` entry at the emtk app (hosted), keep the parity test's
+   reference as a frozen capture, then delete the wizard -- that empties the
+   list. Do **not** port its canvas to chiplot first: it is a legacy surface on
+   its way out, not one to extend.
 4. **math route -- DONE 2026-10-06.** emtk `e1e04d5` (+ `11d64c4`, sans)
    adds `emtk/tex.py`, a TeX box-layout typesetter (scripts, fractions, roots,
    grown delimiters, big operators with limits, accents on ink, font commands,
@@ -57,7 +66,7 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 5. **Static exports go through emtk.figure, not chiplot**: `chisurf.gui`
    imports Qt, and callers include Qt-free api/server/agent code. chiplot
    stays the API for plots *inside* GUIs.
-6. **Manifests** once the list is empty: drop `matplotlib-base` from
+6. **Manifests** once the list is empty (one entry left, item 3): drop `matplotlib-base` from
    `pixi.toml` `[dependencies]` (keep it for `test`/`docs` --
    `docs/guides/make_figures.py`), `matplotlib` from the recipe `run:` and
    `modules/ndxplorer/pyproject.toml`; add it to `RETIRED` in
