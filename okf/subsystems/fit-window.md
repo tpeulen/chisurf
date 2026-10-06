@@ -49,6 +49,14 @@ Open, in order:
    around with `width: 70`). Fix belongs in emtk with a test.
 5. **FitInfo drops only local files**: the emtk host passes local paths, so a
    dropped URL (the Qt table took text drops) is not taken.
+6. **Order-dependent GUI failures, not from this change.** Run together, the
+   44 page/fit-window test files fail `test_project_reset_and_ranges` (16
+   setup errors), two `test_classic_tcspc_editor` tests and two
+   `test_fit_window_emtk` tests (fit-range drag, read-only source) -- the same
+   set on a clean worktree at `3b4f8b6db`, and every one passes in its own
+   file (a deleted `Main` left in `cs.cs` by an earlier test). Only on this
+   tree, once, `test_project_ui_capture_contract[inprocess-proxies]` failed in
+   the combined run; it passes alone -- re-check it first if it recurs.
 
 **Measure** -- `pytest test/gui/test_fit_window_pages_all_models.py --run-slow`
 (about 17 min) opens the real science of all 42 catalogued models in a real
