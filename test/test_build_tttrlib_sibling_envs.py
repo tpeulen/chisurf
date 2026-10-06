@@ -55,3 +55,19 @@ def test_dangling_links_from_the_old_scheme_are_cleared(tmp_path):
     (sp / "numpy").mkdir()
     build_tttrlib._clear_tttrlib(sp)
     assert sorted(p.name for p in sp.iterdir()) == ["numpy"]
+
+
+def test_sibling_build_uses_target_environment_not_callers_prefix(tmp_path, monkeypatch):
+    """CMake must see the HDF5 owner as the active environment."""
+    prefix = _fake_env(tmp_path)
+    monkeypatch.setenv('CONDA_PREFIX', str(tmp_path / 'pixi'))
+    monkeypatch.setenv('PATH', '/usr/bin')
+    monkeypatch.setattr(build_tttrlib, '_BUILD_DIR', tmp_path / 'build' / 'tttrlib')
+    observed = []
+    def call(command, *, env):
+        observed.append((command, env))
+        return 1  # Stop before staging/installation; inspect the build launch.
+    monkeypatch.setattr(build_tttrlib.subprocess, 'call', call)
+    assert not build_tttrlib._build_into(prefix)
+    assert observed[0][1]['CONDA_PREFIX'] == str(prefix)
+    assert observed[0][1]['PATH'].split(build_tttrlib.os.pathsep)[0] == str(prefix / 'bin')

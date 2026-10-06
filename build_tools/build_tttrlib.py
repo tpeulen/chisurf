@@ -269,6 +269,9 @@ def _build_into(prefix: Path) -> bool:
     staging.mkdir(parents=True, exist_ok=True)
 
     env = dict(os.environ)
+    # A sibling build belongs to its own prefix, including CMake's HDF5 guard.
+    env["CONDA_PREFIX"] = str(prefix)
+    env["PATH"] = str(prefix / "bin") + os.pathsep + env.get("PATH", "")
     if "CMAKE_BUILD_PARALLEL_LEVEL" not in env:
         env["CMAKE_BUILD_PARALLEL_LEVEL"] = str(os.cpu_count() or 2)
     env["CMAKE_ARGS"] = _cmake_args(prefix)
