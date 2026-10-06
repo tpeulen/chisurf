@@ -417,11 +417,18 @@ class BurstAnalysisHubApp(ToolHubApp):
             child.load_folder(folder)
 
     def _to_burst_fcs(self, child) -> None:
+        settings = self._setup_payload()
+        if settings.get("detectors") and self._changed("burst_fcs", "setup", settings):
+            child.setup.load_definition(settings)
+            child.controller.adopt_setup(self.context.setup_name, settings["detectors"])
         folder = self.context.burst_folder
         if folder is not None and not child.controller.checked_files():
             child.controller.add_files([str(folder)])
 
     def _to_burst_gs(self, child) -> None:
+        settings = self.context.channel_settings
+        if settings and self._changed("burst_gs", "setup", settings):
+            child.model.apply_channel_settings(settings)
         if self.context.bur_files and child.controller is not None and not child.model.bur_files:
             child.controller.add_files([str(p) for p in self.context.bur_files])
 
@@ -472,18 +479,21 @@ class BurstAnalysisHubApp(ToolHubApp):
             return "•" if ctx.burst_folder else ""
         return ""
 
-    def summary(self) -> str:
-        """The status line: the setup, the files and the bursts the later steps read."""
+    def summary(self, width: float = 1200.0) -> str:
+        """The status line: the setup, the files and the bursts the later steps read (shorter when narrow, so it
+        stays clear of Back / Next)."""
         ctx = self.context
         parts = [f"Setup: {ctx.setup_name or '(unsaved)' if ctx.channel_settings else 'none'}"]
         parts.append(f"{len(ctx.raw_files)} TTTR file(s)")
         if ctx.burst_folder is not None:
-            parts.append(f"bursts: {ctx.burst_folder.name}")
+            parts.append(f"bursts: {ctx.burst_folder.name}" if width >= 1000 else "bursts ready")
         return " · ".join(parts)
 
     def render(self):
         if self.status == getattr(self, "_summary_shown", None) or self.status == "Ready":
-            self.status = self._summary_shown = self.summary()
+            from emtk import im
+
+            self.status = self._summary_shown = self.summary(float(im.get_main_viewport().size[0]))
         for panel in self.tools:
             base = self._base_names.get(panel["role"], panel["name"])
             badge = self.badge(panel["role"])

@@ -102,6 +102,20 @@ class BurstGsViewModel:
         """TTTR container types offered in the form."""
         return ["auto", "SPC-130", "SPC-600_256", "PTU", "HT3", "HDF"]
 
+    def apply_channel_settings(self, settings: dict) -> None:
+        """Take a workflow's detector definition: the donor (green) and acceptor (red) channels and the file
+        type (the burst workflow hands its setup over this way)."""
+        from chisurf.core.fluorescence.burst.table import fret_detectors
+
+        found = fret_detectors(settings)
+        for role in ("donor", "acceptor"):
+            if role in found:
+                setattr(self, f"{role}_channels", ", ".join(str(c) for c in found[role].get("chs", [])))
+        file_type = ((settings or {}).get("tttr_reading") or {}).get("file_type")
+        if file_type in self.file_type_options:
+            self.file_type = file_type
+        self.notify("changed")
+
     # ── results ──
     @property
     def analysis(self) -> _core.GsAnalysis | None:

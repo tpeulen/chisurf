@@ -296,7 +296,9 @@ class AccurateFretViewModel:
             low = str(window).strip().lower()
             for role, words in keywords.items():
                 if any(word in low for word in words):
-                    hints.setdefault(role, []).append(low)
+                    # The photon count of that detector first: the bare name also matches
+                    # "First Photon (green)", the burst's first photon index, which is no intensity.
+                    hints.setdefault(role, []).extend([f"number of photons ({low})", low])
                     break
         return hints
 

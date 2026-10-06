@@ -142,8 +142,15 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     assert c["browser"].model.table is not None
     assert Path(c["accurate_fret"].model.filename).name == "m000.bur"
     assert c["accurate_fret"].model.setup_name == "probe"
+    # the setup's detector names pick the photon counts, not "First Photon (green)"
+    assert (c["accurate_fret"].model.column_i_dd, c["accurate_fret"].model.column_i_da) == (
+        "Number of Photons (green)",
+        "Number of Photons (red)",
+    )
     assert c["burst_fcs"].controller.files == [str(ctx.burst_folder)]
+    assert [p["pair_name"] for p in c["burst_fcs"].controller._pair_presets] == ["green_ACF", "red_ACF"]
     assert [Path(p).name for p in c["burst_gs"].model.bur_files] == ["m000.bur", "m001.bur"]
+    assert (c["burst_gs"].model.donor_channels, c["burst_gs"].model.acceptor_channels) == ("0, 1", "8, 9")
     assert [Path(p).name for p in c["background"].model.files] == ["m000.spc", "m001.spc"]
     assert c["background"].model.diagnostics  # estimated on arrival, as the Qt step does
     assert [Path(p).name for p in c["irf_bg"].model.files] == ["m000.spc", "m001.spc"]
