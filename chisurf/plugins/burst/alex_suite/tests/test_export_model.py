@@ -50,3 +50,15 @@ def test_a_container_run_exports_beside_the_container(tmp_path):
     run = tmp_path / "m000.pto" / "sliding_window_All 0.1500#60"
     assert _export_stem(run) == tmp_path / "m000_sliding_window_All_0.1500_60"
     assert _export_stem(tmp_path / "x.bur") == tmp_path / "x"
+
+
+def test_the_native_step_write_button_writes(tmp_path):
+    from chisurf.plugins.burst.alex_suite.gui.step_apps import ExportStepApp
+
+    table = _table(tmp_path / "sample.bur")
+    app = ExportStepApp()
+    app.set_burst_files([table])
+    drv = Driver(app, (900, 600))
+    drv.draw(2)
+    drv.click(app.item_rects["run"])
+    assert len(app.model.written) == 4 and all(p.is_file() for p in app.model.written), app.model.status_text

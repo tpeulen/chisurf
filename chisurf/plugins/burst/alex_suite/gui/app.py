@@ -383,8 +383,10 @@ class TitrationGui(TourTarget):
                 "Keep the peak positions fixed across concentrations while fitting."
             )
 
-        if im.collapsing_header("Burst filters", 0):
-            im.set_item_tooltip("Configure photon and stoichiometry filters.")
+        # The tooltip follows the header whether it is open or not (inside the branch a closed header had none).
+        filters_open = im.collapsing_header("Burst filters", 0)
+        im.set_item_tooltip("Configure photon and stoichiometry filters.")
+        if filters_open:
             _, v = im.input_int("Min. photons", model.min_photons, step=10)
             im.set_item_tooltip("Minimum photons per burst included in the histograms.")
             model.min_photons = max(0, v)

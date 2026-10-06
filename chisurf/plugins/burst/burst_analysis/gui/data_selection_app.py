@@ -268,6 +268,9 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         "add_files": ("Add TTTR files", "open"),
         "add_folder": ("Add a folder of TTTR files", "folder"),
     }
+    #: The Summary dock's proceed button and its tooltip (a workflow whose next step is another one renames it).
+    PROCEED_LABEL = "Proceed to Burst Selection"
+    PROCEED_TIP = "Go on to 2. Burst Selection with these files."
 
     def __init__(
         self,
@@ -542,14 +545,16 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         im.bullet_text(f"In MMFDB: {registered} of {len(paths)}")
         im.separator()
         im.begin_disabled(not paths or not callable(self.on_proceed))
-        if im.button("Proceed to Burst Selection"):
+        if im.button(self.PROCEED_LABEL):
             self.track("proceed")
             self.on_proceed()
         im.end_disabled()
-        im.set_item_tooltip(
-            "Go on to 2. Burst Selection with these files." if paths else "Add TTTR files first."
-        )
+        im.set_item_tooltip(self.PROCEED_TIP if paths else "Add TTTR files first.")
         self.remember("proceed")
+        self._draw_summary_extra()
+
+    def _draw_summary_extra(self) -> None:
+        """Below the proceed button: nothing here; a workflow adds its own controls (the ALEX Suite's demo data)."""
 
     # -- frame ---------------------------------------------------------------------------------------------- #
     def _render(self) -> None:
