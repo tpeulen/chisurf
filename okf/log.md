@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: re-owned source-recovery scope and wrote cleanup plan;188 robustness/menu regressions pass. Fresh worktree comparison confirms47/51 identical and four newer main files. Git refuses the incoming-identical tracked export hunk; preserve it with a focused export-only commit before retrying orphan5eed46f9f. Five moved untracked copies restored byte-for-byte with archived manifest, no destructive Git. [Receipt](validation/release-readiness-w1/worktree-before.json).
+
 - PRD-154 W7 handoff2026-10-07: frozen9a harness completes all124 workers,30 pass/94 explicit integration or coverage failures,0 ordinary runtime exceptions; durable ledger separates missing demos/tours/tooltips, delivery/reveal and three timeouts. Available guards+harness991pass/17 expected skips. W7 source units are locally committed; final integration gate stays open. Continue W1 orphan-source recovery first, then the owner-ordered programme without stopping. [Resume](prds/prd-154.md), [ledger](validation/release-readiness-w7/final-9a.json).
 
 - PRD-154 W7: remeasure the entire targeted server lifecycle file in isolated settings/MMFDB/object/cache and owned ephemeral ports:75 passed in9.93s, exit0, no watchdog or hang. Current committed contracts supersede two stale failure records; reconcile them with durable JUnit/log receipts rather than changing unbroken source. [Evidence](validation/release-readiness-w7/server-lifecycle.xml).
