@@ -6,27 +6,26 @@ rich-text engine has no maths, so before this module the browser showed the
 source: a reader met ``\\frac{1}{\\tau_D}\\left(\\frac{R_0}{R}\\right)^6`` where
 the formula should be, on the pages that carry the most information.
 
-Formulas are rasterised with matplotlib's built-in *mathtext* engine, which
-needs no LaTeX installation, and embedded as ``data:`` URIs so the HTML stays
-self-contained. Two details matter for the result to look like part of the page
-rather than pasted into it:
+Formulas are typeset by emtk's own math typesetter (:mod:`emtk.tex`), which
+needs no LaTeX installation and no plotting library, and embedded as ``data:``
+URIs so the HTML stays self-contained. Two details matter for the result to
+look like part of the page rather than pasted into it:
 
 * it is rendered at twice the nominal size and displayed at half, so the glyphs
   stay sharp on a high-resolution screen;
 * it is rendered in the *text* colour of the current theme, so a formula on a
   dark page is not a white box.
 
-mathtext understands a large subset of LaTeX but not all of it, so
-:func:`normalise_latex` rewrites the constructs the documentation uses that it
-would reject (``\\text``, ``\\boxed``, ``\\bigl``, environments…). Anything that
-still fails falls back to the source in a monospace span — degraded, never a
-traceback and never a blank.
+The typesetter reads a subset of LaTeX, so :func:`normalise_latex` rewrites
+the constructs the documentation uses that it would reject (``\\text``,
+``\\boxed``, ``\\bigl``, environments…). Anything that still fails falls back
+to the source in a monospace span — degraded, never a traceback and never a
+blank.
 """
 
 from __future__ import annotations
 
 import base64
-import io
 import logging
 import re
 
@@ -90,7 +89,7 @@ _FALLBACK_SYMBOLS = {
     r"\equiv": "≡",
 }
 
-#: Environments that mathtext cannot parse; their rows are joined instead.
+#: Environments that the typesetter cannot parse; their rows are joined instead.
 _ENVIRONMENTS = re.compile(
     r"\\begin\{(?:align|align\*|aligned|equation|equation\*|split|gather|gather\*)\}"
     r"(.*?)"
@@ -100,7 +99,7 @@ _ENVIRONMENTS = re.compile(
 
 
 def normalise_latex(latex: str) -> str:
-    """Rewrite *latex* into the subset matplotlib's mathtext accepts.
+    """Rewrite *latex* into the subset the typesetter (:mod:`emtk.tex`) accepts.
 
     Parameters
     ----------
@@ -110,7 +109,7 @@ def normalise_latex(latex: str) -> str:
     Returns
     -------
     str
-        An equivalent formula mathtext can parse. The rewrite is lossy for
+        An equivalent formula the typesetter can parse. The rewrite is lossy for
         alignment only: multi-line environments become a single line.
 
     """
@@ -123,25 +122,25 @@ def normalise_latex(latex: str) -> str:
         return body
 
     text = _ENVIRONMENTS.sub(_flatten, text)
-    # Matrices before the row/column separators are thrown away: mathtext has
+    # Matrices before the row/column separators are thrown away: the typesetter has
     # no matrix environment, and a matrix whose separators were already deleted
     # reads as one run-on string ("[1α0γ]" for a 2x2).
     text = _flatten_matrices(text)
     text = text.replace(r"\\", " ")
     text = re.sub(r"(?<!\\)&", "", text)
-    # mathtext parses one line: a newline inside a formula is a parse error, not
+    # The typesetter parses one line: a newline inside a formula is a parse error, not
     # a line break, so the source's wrapping is folded away here. Display
     # mathematics is split into rows *before* this, by :func:`math_rows`.
     text = re.sub(r"\s+", " ", text)
 
-    # ``\text``/``\textrm``/``\mbox`` -> upright maths; mathtext has \mathrm.
+    # ``\text``/``\textrm``/``\mbox`` -> upright maths; the typesetter has \mathrm.
     text = re.sub(r"\\(?:text|textrm|mbox|textnormal)\s*\{", r"\\mathrm{", text)
     text = re.sub(r"\\(?:textbf)\s*\{", r"\\mathbf{", text)
     text = re.sub(r"\\(?:textit|emph)\s*\{", r"\\mathit{", text)
 
-    # ``\boxed{x}`` has no mathtext equivalent; the emphasis is lost, not the maths.
+    # ``\boxed{x}`` has no equivalent in the typesetter; the emphasis is lost, not the maths.
     text = re.sub(r"\\boxed\s*\{", "{", text)
-    # Manual delimiter sizing: mathtext sizes with \left/\right only, and a bare
+    # Manual delimiter sizing: the typesetter sizes with \left/\right only, and a bare
     # ``\big(`` is not a delimiter pair, so the modifier is dropped rather than
     # mapped -- mapping ``\big)`` to ``\left)`` produced unbalanced input.
     text = re.sub(
@@ -150,11 +149,11 @@ def normalise_latex(latex: str) -> str:
         "",
         text,
     )
-    # Font families mathtext does not carry.
+    # Font families the typesetter does not carry.
     text = re.sub(r"\\(?:mathsf|mathtt|mathfrak|mathscr)(?![A-Za-z])", r"\\mathrm", text)
     text = re.sub(r"\\boldsymbol(?![A-Za-z])\s*", r"\\mathbf", text)
     text = re.sub(r"\\pmb(?![A-Za-z])\s*", r"\\mathbf", text)
-    # A font command takes the next *token* in TeX; mathtext demands a group.
+    # A font command takes the next *token* in TeX; the typesetter demands a group.
     text = re.sub(
         r"\\(mathbf|mathrm|mathit|mathcal|mathbb|mathsf)\s*(\\[A-Za-z]+|[A-Za-z0-9])(?![A-Za-z])",
         r"\\\1{\2}",
@@ -184,14 +183,14 @@ def normalise_latex(latex: str) -> str:
         (r"\eqqcolon", "=:"),
     ):
         text = re.sub(re.escape(short) + r"(?![A-Za-z])", long.replace("\\", "\\\\"), text)
-    # ``\frac12`` -- TeX takes the next two tokens; mathtext demands groups.
+    # ``\frac12`` -- TeX takes the next two tokens; the typesetter demands groups.
     text = re.sub(
         r"\\(frac|binom)\s*(\\[A-Za-z]+|[^{\\\s])\s*(\\[A-Za-z]+|[^{\\\s])",
         r"\\\1{\2}{\3}",
         text,
     )
     text = re.sub(r"\\sqrt\s*(\\[A-Za-z]+|[A-Za-z0-9])(?![A-Za-z])", r"\\sqrt{\1}", text)
-    # Braces/labels under a term: mathtext has \underset but no \underbrace, so
+    # Braces/labels under a term: the typesetter has \underset but no \underbrace, so
     # ``\underbrace{X}_{label}`` becomes ``\underset{label}{X}`` -- the label
     # stays *under* the term instead of turning into a subscript of it, which
     # read as part of the formula.
@@ -200,13 +199,13 @@ def normalise_latex(latex: str) -> str:
     text = re.sub(r"\\underbrace\s*\{", r"{", text)
     text = re.sub(r"\\overbrace\s*\{", r"{", text)
     text = re.sub(r"\\stackrel(?![A-Za-z])", r"\\overset", text)
-    # Spacing commands mathtext does not define.
+    # Spacing commands the typesetter does not define.
     text = re.sub(r"\\(?:!|>|medspace|thinspace|thickspace|negthinspace)", " ", text)
     text = text.replace(r"\nonumber", "").replace(r"\notag", "")
     text = re.sub(r"\\label\s*\{[^}]*\}", "", text)
     text = re.sub(r"\\(?:displaystyle|textstyle|scriptstyle|limits|nolimits)\b", "", text)
     text = re.sub(r"\\operatorname\s*\*?\s*\{", r"\\mathrm{", text)
-    # mathtext drops ordinary spaces in maths mode, so ``\mathrm{amplitude
+    # The typesetter drops ordinary spaces in maths mode, so ``\mathrm{amplitude
     # decay}`` -- a *label*, not a formula -- came out as "amplitudedecay".
     text = _space_text_groups(text)
     # ``\left.``/``\right.`` (invisible delimiters) are unsupported.
@@ -236,7 +235,7 @@ _MATRIX_BLOCK = re.compile(
 def _flatten_matrices(text: str) -> str:
     r"""Write a matrix as a bracketed list of rows.
 
-    mathtext has no matrix environment, so a matrix has to become something
+    the typesetter has no matrix environment, so a matrix has to become something
     one-dimensional. Deleting the ``&`` and ``\\`` separators — which is what
     the generic rewrite below does — turns a 2x2 into one run-on string; keeping
     them as ``,`` and ``;`` keeps the shape readable.
@@ -283,7 +282,7 @@ def _matched_group(text: str, start: int) -> tuple[str, int]:
 def _rewrite_brace(text: str, command: str, marker: str, replacement: str) -> str:
     r"""Rewrite ``\command{X}<marker>{Y}`` into ``\replacement{Y}{X}``.
 
-    mathtext has ``\underset``/``\overset`` but no braces, so this is how a
+    the typesetter has ``\underset``/``\overset`` but no braces, so this is how a
     label under a term survives — as a label under the term rather than as a
     subscript of it.
     """
@@ -342,7 +341,7 @@ def _space_text_groups(text: str) -> str:
 def math_rows(latex: str) -> list[str]:
     """Split display mathematics into the lines it was written as.
 
-    mathtext typesets a single line, so a multi-line derivation has to become
+    the typesetter typesets a single line, so a multi-line derivation has to become
     several images stacked in the page rather than one that fails to parse.
     Rows come from the ``\\\\`` separators of the source, inside an ``align``
     environment or not.
@@ -936,7 +935,7 @@ class MathRenderer:
     Parameters
     ----------
     colour : str, optional
-        Foreground colour of the glyphs, as a CSS/matplotlib colour.
+        Foreground colour of the glyphs, as a CSS colour (:func:`emtk.colormaps.to_rgba`).
     font_size : float, optional
         Nominal point size of inline mathematics; display mathematics is drawn
         slightly larger.
@@ -961,7 +960,7 @@ class MathRenderer:
     #: mathematics is real text in that font, so a serif maths face would make
     #: the same symbol look like two different symbols depending on whether it
     #: landed in a sentence or in a displayed equation.
-    _FONTSET = "stixsans"
+    _SANS = True
 
     #: Widest a displayed formula may be, in the same pixels the text column is
     #: measured in. A formula wider than the column is not merely ugly: Qt gives
@@ -1061,11 +1060,12 @@ class MathRenderer:
         if self._available is False:
             return None
         try:
-            from matplotlib.figure import Figure
-            from matplotlib.font_manager import FontProperties
-        except Exception:  # pragma: no cover - matplotlib always present in-app
+            from emtk.colormaps import to_rgba_bytes
+            from emtk.tex import TexError, render_rgba
+            from emtk.testing import png_encode
+        except Exception:  # pragma: no cover - emtk always present in-app
             self._available = False
-            logger.debug("matplotlib unavailable; help maths stays as text")
+            logger.debug("emtk.tex unavailable; help maths stays as text")
             return None
         self._available = True
 
@@ -1073,43 +1073,29 @@ class MathRenderer:
         if not source:
             return None
         size = self.font_size * (self._DISPLAY_SCALE if display else self._INLINE_SCALE)
-        prop = FontProperties(size=size * self._SCALE)
-        buffer = io.BytesIO()
         try:
-            import matplotlib
-
-            # Scoped: the glyph set is a property of *this* page, and setting
-            # it globally would restyle every plot the application draws.
-            with matplotlib.rc_context({"mathtext.fontset": self._FONTSET}):
-                # Drawn onto a transparent figure rather than through
-                # ``math_to_image``, which bakes in an opaque white background
-                # -- on a dark page every formula arrived as a bright card.
-                figure = Figure(figsize=(0.01, 0.01), dpi=100)
-                figure.patch.set_alpha(0.0)
-                figure.text(0, 0, f"${source}$", fontproperties=prop, color=self.colour)
-                figure.savefig(
-                    buffer,
-                    format="png",
-                    dpi=100,
-                    transparent=True,
-                    bbox_inches="tight",
-                    pad_inches=0.02,
-                )
+            # Points at the 100 dpi the page is measured in, supersampled.
+            width, height, rgba, _baseline = render_rgba(
+                source,
+                size * self._SCALE * 100.0 / 72.0,
+                colour=to_rgba_bytes(self.colour),
+                pad=max(1, round(0.02 * 100 * self._SCALE)),
+                display=display,
+                sans=self._SANS,
+            )
+        except TexError:
+            logger.debug("could not typeset %r", latex, exc_info=True)
+            return None
         except Exception:
             logger.debug("could not typeset %r", latex, exc_info=True)
             return None
 
-        data = buffer.getvalue()
-        if not data:
-            return None
-        width, height = _png_size(data)
+        data = png_encode(width, height, rgba)
         encoded = base64.b64encode(data).decode("ascii")
-        attrs = ""
-        if width and height:
-            attrs = (
-                f' width="{max(1, round(width / self._SCALE))}"'
-                f' height="{max(1, round(height / self._SCALE))}"'
-            )
+        attrs = (
+            f' width="{max(1, round(width / self._SCALE))}"'
+            f' height="{max(1, round(height / self._SCALE))}"'
+        )
         alt = source.replace('"', "&quot;")
         # A tall inline image bottom-aligned on the baseline shoves the line
         # apart and floats above the words; centring it on the line is the

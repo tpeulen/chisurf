@@ -7,8 +7,6 @@ dependencies.
 
 from __future__ import annotations
 
-import base64
-import io
 import getpass
 import logging
 import pathlib
@@ -18,7 +16,6 @@ from dataclasses import dataclass, field
 from queue import Empty, Queue
 from typing import Callable
 
-from PIL import Image
 from emtk import im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
@@ -26,8 +23,6 @@ from emtk.im_core import Col
 from emtk.texture import Texture
 from emtk.widgets.chat import ChatHistory, draw_chat_input_bar, draw_chat_transcript
 from emtk.widgets.text_editor import TextEditor
-from matplotlib.font_manager import FontProperties
-from matplotlib.mathtext import math_to_image
 
 from chisurf.plugins.core.help.api import io as help_io
 from chisurf.plugins.core.help.api import review as help_review
@@ -159,54 +154,19 @@ class HelpTextureManager:
         if cache_key in self._math_cache:
             return self._math_cache[cache_key]
 
+        # The help viewer's own rewrite first (environments, \\boxed, \\text...),
+        # then emtk's typesetter. A formula outside it returns None and the
+        # caller shows the Unicode approximation.
         try:
             from emtk import render_math_to_texture
 
-            tex = render_math_to_texture(raw, colour=colour, font_size=font_size)
-            if tex is not None:
-                self._math_cache[cache_key] = tex
-                return tex
+            tex = render_math_to_texture(normalise_latex(raw), colour=colour,
+                                         font_size=font_size)
         except Exception as e:
             _LOGGER.debug("emtk.render_math_to_texture failed for %r: %s", raw, e)
-
-        try:
-            from chisurf.plugins.core.help.api.mathtext import MathRenderer
-
-            renderer = MathRenderer(colour=colour, font_size=font_size)
-            html = renderer.to_html(raw, display=True)
-            m = re.search(r"data:image/png;base64,([^\"]+)", html)
-            if m:
-                png_bytes = base64.b64decode(m.group(1))
-                pil_img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
-                tex = Texture(pil_img.width, pil_img.height, pil_img.tobytes())
-                self._math_cache[cache_key] = tex
-                return tex
-        except Exception as e:
-            _LOGGER.debug("MathRenderer failed for %r: %s", raw, e)
-
-        # Fallback to math_to_image with transparent alpha mask
-        try:
-            buf = io.BytesIO()
-            prop = FontProperties(size=font_size)
-            norm = normalise_latex(raw)
-            math_to_image(norm, buf, prop=prop, dpi=120, format="png", color=colour)
-            buf.seek(0)
-            pil_img = Image.open(buf).convert("RGBA")
-            data = pil_img.getdata()
-            new_data = []
-            for item in data:
-                if item[0] > 235 and item[1] > 235 and item[2] > 235:
-                    new_data.append((item[0], item[1], item[2], 0))
-                else:
-                    new_data.append(item)
-            pil_img.putdata(new_data)
-            tex = Texture(pil_img.width, pil_img.height, pil_img.tobytes())
-            self._math_cache[cache_key] = tex
-            return tex
-        except Exception as e:
-            _LOGGER.debug("Failed to render math %r: %s", raw, e)
-            self._math_cache[cache_key] = None
-            return None
+            tex = None
+        self._math_cache[cache_key] = tex
+        return tex
 
 
 @dataclass

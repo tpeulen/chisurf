@@ -9,7 +9,7 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
-Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 6** (2026-10-05/06),
+Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 4** (2026-10-05/06),
 guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 `emtk.colormaps`), **delete** (1), **figure** (all but the two below, via
 `emtk.figure`). Open, in order:
@@ -39,15 +39,20 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 3. **plot route**: `plugins/fluorescence_decay/lltf/lltf_gui.py`, legacy Qt
    `FigureCanvasQTAgg`. Another lane is building the emtk LLTF app
    (`lltf/gui/app.py`); the Qt wizard goes with it. Do not port in parallel.
-4. **math route -- needs a design, not a port.** `gui/widgets/{equation_editor,
-   expression_input,general}.py`, `plugins/core/help/{api/mathtext.py,
-   gui/help_app.py}` render LaTeX via matplotlib mathtext, and
-   **emtk.mathtext is itself a matplotlib front end** (Unicode fallback only).
-   Plan: a small TeX box-layout typesetter in emtk (fractions, sub/super,
-   roots, big operators with limits, stretchy delimiters, accents, `\text`)
-   drawing glyphs from emtk's atlas (it already covers Greek and math symbols;
-   `covers()`), golden tests against matplotlib's renders, then route the five
-   callers and make `emtk.mathtext` use it.
+4. **math route -- engine DONE 2026-10-06; 3 callers left.** emtk `e1e04d5`
+   (+ `11d64c4`, sans) adds `emtk/tex.py`, a TeX box-layout typesetter
+   (scripts, fractions, roots, grown delimiters, big operators with limits,
+   accents on ink, font commands, math alphabets, under/overset) drawing
+   FreeType glyphs through Pillow; `emtk.mathtext.render_math_to_texture` uses
+   it, so emtk itself no longer needs matplotlib. Coverage measured: all 2005
+   formulas in `docs/` + help pages (after `normalise_latex`) typeset; 32 of
+   the most complex checked side by side against matplotlib's renders. The
+   help viewer (`help/api/mathtext.py` MathRenderer, `help/gui/help_app.py`)
+   is ported. **Left:** `gui/widgets/{equation_editor,expression_input,
+   general}.py` -- each builds a pyplot figure only to draw one formula; swap to
+   `emtk.tex.render_rgba` (white background) and screenshot the editor before
+   and after. Traps: Pillow's `getbbox` clamps an accent's ink bottom to the
+   baseline (use the mask, `tex._ink`); STIX Two Text has no bold face.
 5. **Static exports go through emtk.figure, not chiplot**: `chisurf.gui`
    imports Qt, and callers include Qt-free api/server/agent code. chiplot
    stays the API for plots *inside* GUIs.
