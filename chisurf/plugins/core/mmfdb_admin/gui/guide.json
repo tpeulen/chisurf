@@ -1,0 +1,64 @@
+{
+  "_comment": "Guided tour of the native MMFDB Admin. Every step points at a real emtk control ('name' is its rectangle in the app: an item of gui/app.py or a field / action / table of a view spec); steps with 'await' wait until the user has used that control.",
+  "steps": [
+    {
+      "title": "Where the database is",
+      "text": "The toolbar names the MMFDB server (<b>Host</b> and <b>Port</b>), the <b>User</b> and a <b>Password</b>. The dot says whether you are connected: green connected, yellow connecting, red not. A session this ChiSurf already holds is reused, so you usually need no password.",
+      "target": {"name": "status_dot"}
+    },
+    {
+      "title": "Administrators only",
+      "text": "MMFDB Admin is for MMFDB administrators. Signed in as anyone else, the panels stay empty and the status bar says why. <b>Logout</b> drops the session; <b>...</b> opens the login dialog with the server settings under <i>Advanced</i>.",
+      "target": {"name": "host"}
+    },
+    {
+      "title": "Pick a table",
+      "text": "The rail lists the panels, grouped as the database is. Open <b>Samples</b>.",
+      "target": {"name": "nav.sample"},
+      "await": {"hint": "Click <b>Samples</b> in the rail."}
+    },
+    {
+      "title": "Its records",
+      "text": "One row per sample. Click a header to sort, type in the filter box to keep matching rows, right-click a header to choose columns. Pick a row: its fields open in the form below.",
+      "target": {"name": "row_selected"},
+      "await": {"hint": "Click a row of the table."}
+    },
+    {
+      "title": "Edit in place",
+      "text": "The form's fields come from the mmCIF dictionary; a field's tooltip is its definition. <b>An edit is saved when you commit the field</b>: press Enter or click elsewhere. There is no Save button to forget.",
+      "target": {"name": "description"}
+    },
+    {
+      "title": "Linked records",
+      "text": "An <u>underlined</u> cell names another record, such as a sample's project or an experiment's setup. Double-click it to open that record in its own panel.",
+      "target": {"name": "table_rows"}
+    },
+    {
+      "title": "New and Delete",
+      "text": "<b>New</b> creates a record at once (an <i>untitled</i> id you then rename) and opens it. <b>Delete</b> deletes the <b>ticked</b> rows after asking.",
+      "target": {"name": "new_record"}
+    },
+    {
+      "title": "Where data came from",
+      "text": "Open <b>Raw Data</b>: the measured files the database knows.",
+      "target": {"name": "nav.raw_data"},
+      "await": {"hint": "Click <b>Raw Data</b> in the rail."}
+    },
+    {
+      "title": "Trace it",
+      "text": "Pick a row, then press <b>Use as provenance seed</b>: the Provenance Graph opens on it and loads everything it fed into.",
+      "target": {"name": "use_as_seed"},
+      "await": {"hint": "Pick a row, then press <b>Use as provenance seed</b>."}
+    },
+    {
+      "title": "The provenance graph",
+      "text": "Inputs on the left, products on the right; click a node to read its record. <b>Load upstream</b> / <b>downstream</b> narrow the trace, <b>Export JSON</b> / <b>ZIP</b> write it out.",
+      "target": {"name": "provenance_graph"}
+    },
+    {
+      "title": "More help",
+      "text": "<b>Help</b> explains every panel, the per-table actions, the workflow panels and the menus.",
+      "target": {"name": "help"}
+    }
+  ]
+}

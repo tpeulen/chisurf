@@ -1,0 +1,299 @@
+{
+  "_comment": "MMFDB Admin, native emtk window: the shell and the dialogs, drawn by emtk.view_form over gui/native/model.py (AdminModel) and gui/native/dialogs.py. 'toolbar' is the strip under the menu bar; 'entity' is the panel of every one of the 21 registry entities (its form sections are generated from the entity's dictionary fields, its extra actions are 'entity_actions'); the other panels are dialogs. The login dialog's fields are connection_auth.view.json, the spec the Qt login dialog renders. Everything a spec cannot draw (menu bar, rail, status bar, the plots and the provenance graph) is in gui/app.py.",
+  "title": "MMFDB Admin",
+  "entity_actions": {
+    "user": [
+      {"action": "change_password", "label": "Change password",
+       "description": "Set or clear the selected user's password (administrators need at least a medium-strength one and cannot be cleared)."},
+      {"action": "jump_to_branch", "label": "Jump to branch",
+       "description": "Create a branch that starts at a recorded operation and make it the selected user's active branch."}
+    ],
+    "branch": [
+      {"action": "set_head", "label": "Set head",
+       "description": "Move the selected branch's head to another operation (empty: none)."}
+    ],
+    "object": [
+      {"action": "copy_uuid", "label": "Copy UUID", "description": "Copy the selected object's UUID to the clipboard."},
+      {"action": "reveal", "label": "Reveal", "description": "Download a copy of the selected object and open it (the server's storage path is never shown)."},
+      {"action": "delete_object", "label": "Delete object", "description": "Delete the selected object, or drop one reference to it while others remain (asks first)."}
+    ],
+    "raw_data": [
+      {"action": "copy_id", "label": "Copy ID", "description": "Copy the selected raw-data artifact's ID."},
+      {"action": "reveal", "label": "Reveal", "description": "Open the selected raw-data file or URL."},
+      {"action": "use_as_seed", "label": "Use as provenance seed", "description": "Open the Provenance Graph on the selected raw-data artifact and load its graph."},
+      {"action": "validate", "label": "Validate", "description": "Set the validation status of the selected raw-data artifact."},
+      {"action": "delete_artifact", "label": "Delete", "description": "Soft-delete the selected raw-data artifact and its direct provenance links (asks first)."}
+    ],
+    "processed_product": [
+      {"action": "copy_id", "label": "Copy ID", "description": "Copy the selected processed-data artifact's ID."},
+      {"action": "reveal", "label": "Reveal", "description": "Open the selected processed-data file or URL."},
+      {"action": "use_as_seed", "label": "Use as provenance seed", "description": "Open the Provenance Graph on the selected processed-data artifact and load its graph."},
+      {"action": "validate", "label": "Validate", "description": "Set the validation status of the selected processed-data artifact."},
+      {"action": "delete_artifact", "label": "Delete", "description": "Soft-delete the selected processed-data artifact and its direct provenance links (asks first)."}
+    ],
+    "analysis": [
+      {"action": "copy_id", "label": "Copy ID", "description": "Copy the selected analysis run's ID."},
+      {"action": "details", "label": "Details", "description": "Show the selected analysis run's parameters and its input and output products."},
+      {"action": "use_as_seed", "label": "Use as provenance seed", "description": "Open the Provenance Graph on the selected analysis run and load its graph."}
+    ]
+  },
+  "sections": [
+    {
+      "type": "panel",
+      "name": "toolbar",
+      "title": "Connection",
+      "n_col": 5,
+      "wrap_indent": false,
+      "description": "Where the MMFDB server is, who you are, and the database actions.",
+      "sections": [
+        {"type": "value", "kind": "str", "attr": "host", "label": "Host", "min_chars": 12, "width": 150,
+         "description": "The MMFDB server: the host of the embedded server, or the base URL of a standalone one. Login connects here."},
+        {"type": "value", "kind": "int", "attr": "port", "label": "Port", "minimum": 1, "maximum": 65535, "width": 70,
+         "hidden_when": {"attr": "remote", "equals": true},
+         "description": "The server's command port (its publish port is the next one)."},
+        {"type": "value", "kind": "str", "attr": "user", "label": "User", "width": 110,
+         "description": "The MMFDB user to sign in as."},
+        {"type": "value", "kind": "password", "attr": "password", "label": "Password", "width": 110,
+         "placeholder": "(session)",
+         "description": "The password. Not needed when this ChiSurf session is already signed in, or the account may sign in without one. Never stored."},
+        {"type": "button_row", "weight": 0, "description": "Sign in or out.",
+         "buttons": [
+           {"action": "login", "label": "Login", "hidden_when": {"attr": "connected", "equals": true},
+            "description": "Connect to the host and port above and sign in."},
+           {"action": "more_options", "label": "...", "hidden_when": {"attr": "connected", "equals": true},
+            "description": "More connection and authentication options (the login dialog)."},
+           {"action": "logout", "label": "Logout", "hidden_when": {"attr": "signed_in", "equals": false},
+            "description": "Drop the current MMFDB session."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "database_actions",
+      "title": "Database",
+      "description": "Reload, import, back up or reset the active database.",
+      "sections": [
+        {"type": "button_row", "weight": 0, "description": "The database actions.",
+         "buttons": [
+           {"action": "refresh", "label": "Refresh", "description": "Reload the MMFDB status and the open panel."},
+           {"action": "import_file", "label": "Import", "description": "Import fluorescence, sample or project data (PDBx / PDB-IHM / FLR CIF) into the MMFDB."},
+           {"action": "backup_database", "label": "Backup", "description": "Create a backup copy of the active MMFDB database."},
+           {"action": "reset_database", "label": "Reset", "description": "Reset the active MMFDB database to the curated source. A backup is created first (asks first)."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "entity",
+      "title": "Entity",
+      "description": "One MMFDB entity: its records in a table, the selected record's fields below. A field is saved when you commit it (Enter, or a click elsewhere).",
+      "sections": [
+        {"type": "button_row", "name": "entity_toolbar", "weight": 0,
+         "description": "Create, delete and the entity's own actions.",
+         "buttons": [
+           {"action": "new_record", "label": "New", "description": "Create a new record at once (an untitled id, or one the server assigns) and open it in the form."},
+           {"action": "delete_checked", "label": "Delete", "description": "Delete the ticked rows (asks first)."}
+         ]},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "The records. Click a row to open it below; double-click an underlined cell to open the record it names; tick rows to delete several. Click a header to sort; type in the filter box to keep matching rows.",
+         "options": {
+           "source": "table_rows", "columns_source": "table_columns", "row_key": "_id",
+           "selected_call": "select_row", "activated_cell_call": "activate_cell", "edited_call": "edited",
+           "filter": true, "status": true, "column_picker": true, "fit_columns": true,
+           "min_column_width": 96, "expand": true
+         }}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "confirm",
+      "title": "Confirm",
+      "description": "Asks before something changes the database.",
+      "sections": [
+        {"type": "info", "source": "confirm_text", "description": "What will happen if you confirm."},
+        {"type": "button_row", "description": "Confirm or cancel.",
+         "buttons": [
+           {"action": "yes", "label_source": "yes_caption", "label": "Yes", "description": "Do it."},
+           {"action": "no", "label": "No", "description": "Leave everything as it is."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "message",
+      "title": "Message",
+      "description": "A result or a warning.",
+      "sections": [
+        {"type": "info", "source": "message_text", "description": "The message."},
+        {"type": "button_row", "description": "Close the message.",
+         "buttons": [{"action": "ok", "label": "OK", "description": "Close this message."}]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "choose",
+      "title": "Choose",
+      "description": "Pick one value.",
+      "sections": [
+        {"type": "info", "source": "prompt_text", "description": "What to pick."},
+        {"type": "choice", "attr": "value", "label": "Value", "options_source": "option_list",
+         "description": "The value to apply."},
+        {"type": "button_row", "description": "Apply or cancel.",
+         "buttons": [
+           {"action": "ok", "label": "OK", "description": "Apply the value."},
+           {"action": "cancel", "label": "Cancel", "description": "Change nothing."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "ask_text",
+      "title": "Enter a value",
+      "description": "Type one value.",
+      "sections": [
+        {"type": "info", "source": "prompt_text", "description": "What to type."},
+        {"type": "value", "kind": "str", "attr": "value", "label": "Value", "description": "The value to apply."},
+        {"type": "button_row", "description": "Apply or cancel.",
+         "buttons": [
+           {"action": "ok", "label": "OK", "description": "Apply the value."},
+           {"action": "cancel", "label": "Cancel", "description": "Change nothing."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "connection",
+      "title": "MMFDB login",
+      "description": "Sign in to an MMFDB server.",
+      "include": "connection_auth.view.json",
+      "sections": [
+        {"type": "info", "source": "error_text", "description": "Why the last attempt was refused (empty: nothing to report)."},
+        {"type": "button_row", "description": "Sign in or give up.",
+         "buttons": [
+           {"action": "ok", "label": "OK", "description": "Connect and sign in with these values."},
+           {"action": "cancel", "label": "Cancel", "description": "Close without signing in."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "password",
+      "title": "Change password",
+      "description": "Set or clear a user's password.",
+      "sections": [
+        {"type": "value", "kind": "password", "attr": "password_new", "label": "New password",
+         "placeholder": "Enter a password",
+         "description": "The new password; shown as dots."},
+        {"type": "value", "kind": "password", "attr": "password_confirm", "label": "Confirm password",
+         "description": "Type the new password again; it must match."},
+        {"type": "progress", "attr": "password_fraction", "text_source": "password_strength_text",
+         "description": "How strong the password is: length, lower case, upper case, a digit and a special character."},
+        {"type": "info", "source": "password_feedback", "description": "What the password still lacks, or why it was refused."},
+        {"type": "button_row", "description": "Save, clear or cancel.",
+         "buttons": [
+           {"action": "save", "label": "Save", "description": "Save the password."},
+           {"action": "clear", "label": "Clear", "description": "Remove the password: the user may then sign in without one (asks first; not for administrators)."},
+           {"action": "cancel", "label": "Cancel", "description": "Close and forget what was typed."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "jump_branch",
+      "title": "Jump to branch",
+      "description": "Start a user branch at a recorded operation.",
+      "sections": [
+        {"type": "info", "source": "jump_text", "description": "What this does."},
+        {"type": "value", "kind": "str", "attr": "operation_id", "label": "Operation ID",
+         "description": "The recorded operation the new branch starts at (required)."},
+        {"type": "value", "kind": "str", "attr": "branch_name", "label": "Branch name",
+         "description": "A name for the branch (optional; the server picks one when empty)."},
+        {"type": "value", "kind": "str", "attr": "description", "label": "Description",
+         "description": "What the branch is for (optional)."},
+        {"type": "info", "source": "error_text", "description": "Why the branch cannot be made yet."},
+        {"type": "button_row", "description": "Create or cancel.",
+         "buttons": [
+           {"action": "ok", "label": "Jump", "description": "Create the branch and make it the user's active branch."},
+           {"action": "cancel", "label": "Cancel", "description": "Change nothing."}
+         ]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "analysis_details",
+      "title": "Analysis details",
+      "description": "An analysis run's parameters and linked products.",
+      "sections": [
+        {"type": "info", "source": "summary_text", "description": "The run: id, type and convergence status."},
+        {"type": "panel", "title": "Parameters", "description": "The fitted parameters.",
+         "sections": [
+           {"type": "custom", "key": "data_table", "title": "", "description": "One row per parameter.",
+            "options": {"source": "parameter_rows", "row_key": "_row", "height": 110, "fit_columns": true,
+              "columns": [
+                {"key": "name", "title": "Parameter", "tooltip": "The parameter's name."},
+                {"key": "value", "title": "Value", "tooltip": "The fitted value."},
+                {"key": "standard_error", "title": "Std. error", "tooltip": "Its standard error."},
+                {"key": "units", "title": "Units", "tooltip": "Its unit."},
+                {"key": "parameter_type", "title": "Type", "tooltip": "free, fixed, linked, ..."}
+              ]}}
+         ]},
+        {"type": "panel", "title": "Input products", "description": "The processed data the run read.",
+         "sections": [
+           {"type": "custom", "key": "data_table", "title": "", "description": "One row per input product.",
+            "options": {"source": "input_rows", "row_key": "_row", "height": 80, "fit_columns": true,
+              "columns": [
+                {"key": "processed_data_id", "title": "Product ID", "tooltip": "The product's id."},
+                {"key": "product_type", "title": "Type", "tooltip": "What the product is."},
+                {"key": "storage_mode", "title": "Storage", "tooltip": "How it is stored."},
+                {"key": "validation_status", "title": "Status", "tooltip": "Its validation status."},
+                {"key": "file_path", "title": "Location", "tooltip": "Where it is."}
+              ]}}
+         ]},
+        {"type": "panel", "title": "Output products", "description": "The processed data the run wrote.",
+         "sections": [
+           {"type": "custom", "key": "data_table", "title": "", "description": "One row per output product.",
+            "options": {"source": "output_rows", "row_key": "_row", "height": 80, "fit_columns": true,
+              "columns": [
+                {"key": "processed_data_id", "title": "Product ID", "tooltip": "The product's id."},
+                {"key": "product_type", "title": "Type", "tooltip": "What the product is."},
+                {"key": "storage_mode", "title": "Storage", "tooltip": "How it is stored."},
+                {"key": "validation_status", "title": "Status", "tooltip": "Its validation status."},
+                {"key": "file_path", "title": "Location", "tooltip": "Where it is."}
+              ]}}
+         ]},
+        {"type": "button_row", "description": "Close the details.",
+         "buttons": [{"action": "close_dialog", "label": "Close", "description": "Close this window."}]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "duplicates",
+      "title": "Find and Merge Duplicates",
+      "description": "Probably-duplicate probes, grouped; merge each group into its primary.",
+      "sections": [
+        {"type": "info", "source": "info_text", "description": "How the groups were found and what merging does."},
+        {"type": "custom", "key": "duplicates_body", "title": "",
+         "description": "Left: the groups (tick a group to merge it, tick a probe to make it the primary). Right: the picked group's spectra and metadata."},
+        {"type": "button_row", "description": "Merge or close.",
+         "buttons": [
+           {"action": "merge_selected", "label": "Merge Selected Group", "description": "Merge the group of the picked row into its primary."},
+           {"action": "merge_checked", "label_source": "merge_caption", "label": "Merge Checked Groups", "description": "Merge every ticked group into its primary."},
+           {"action": "cancel_dialog", "label": "Cancel", "description": "Close without merging more."}
+         ]}
+      ]
+    }
+  ],
+  "duplicates_tree": {
+    "source": "tree_rows", "row_key": "_row", "tree_key": "_parent", "expanded_attr": "expanded",
+    "selected_call": "select_row", "edited_call": "edited", "expand": true, "fit_columns": true,
+    "columns": [
+      {"key": "primary", "title": "Primary", "editable": true, "width": 60,
+       "tooltip": "On a group: merge this group. On a probe: the probe the others merge into."},
+      {"key": "id", "title": "ID", "tooltip": "The probe id."},
+      {"key": "name", "title": "Name", "tooltip": "The probe's name (the group's name on a group row)."},
+      {"key": "category", "title": "Category", "tooltip": "The probe category."},
+      {"key": "source", "title": "Source", "tooltip": "Where the probe came from."},
+      {"key": "status", "title": "Status", "tooltip": "Its curation status."}
+    ]
+  }
+}

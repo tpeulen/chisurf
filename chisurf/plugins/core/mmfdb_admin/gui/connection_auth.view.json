@@ -11,6 +11,7 @@
     {
       "type": "panel",
       "title": "Advanced — user & connection",
+      "description": "Sign in as another user, or connect to a different MMFDB server.",
       "collapsible": true,
       "collapsed": true,
       "sections": [

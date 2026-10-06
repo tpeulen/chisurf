@@ -1,0 +1,535 @@
+{
+  "_comment": "MMFDB Admin, native emtk window: the panels that are not entity tables, one 'panel' per destination of the rail, each drawn by emtk.view_form over its model in gui/native/ (panels.py, spectra.py, provenance.py). A custom section names what gui/app.py draws itself: 'spectrum_plot' (the Spectra panel's plot), 'component_form' (the selected component's read-only form, the type's own optical_components/*.view.json) and 'provenance_graph' (the read-only node graph).",
+  "title": "MMFDB Admin panels",
+  "sections": [
+    {
+      "type": "panel", "name": "overview", "title": "Overview",
+      "description": "The connection and the database: its location, schema, counts and quality warnings.",
+      "sections": [
+        {"type": "button_row", "weight": 0, "description": "Reload the overview.",
+         "buttons": [{"action": "refresh_overview", "label": "Refresh overview", "description": "Reload the database overview."}]},
+        {"type": "value", "kind": "text", "attr": "text", "label": "", "read_only": true, "lines": 26,
+         "description": "The connection (mode, endpoint, database, object store), the database's counts, and samples that lack a description."}
+      ]
+    },
+    {
+      "type": "panel", "name": "all_items", "title": "All items",
+      "description": "Every record of every type in one table.",
+      "sections": [
+        {"type": "row", "n_col": 3, "wrap_indent": false, "description": "Narrow the table.",
+         "sections": [
+           {"type": "choice", "attr": "type_filter", "label": "Type", "options_source": "type_options",
+            "description": "Show one record type, or all."},
+           {"type": "value", "kind": "str", "attr": "search", "label": "", "placeholder": "Filter by id, label, or substring...",
+            "description": "Keep the rows that contain this text in any column."},
+           {"type": "button_row", "weight": 0, "description": "Reload every list.",
+            "buttons": [{"action": "refresh_items", "label": "Refresh", "description": "Reload all MMFDB items."}]}
+         ]},
+        {"type": "info", "source": "count_text", "description": "Rows shown / rows loaded."},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "One row per record. Double-click a row to open it in its own panel.",
+         "options": {"source": "visible_rows", "row_key": "_row", "activated_call": "open_item",
+           "expand": true, "reserve": 24, "fit_columns": true, "column_picker": true,
+           "columns": [
+             {"key": "type", "title": "type", "width": 110, "tooltip": "The record type."},
+             {"key": "id", "title": "id", "width": 160, "tooltip": "The record's id."},
+             {"key": "label", "title": "label", "width": 200, "tooltip": "Its name or description."},
+             {"key": "details", "title": "details", "tooltip": "A few of its fields."}
+           ]}},
+        {"type": "info", "text": "Double-click any row to jump to the matching panel and select the item.",
+         "description": "How to open a record."}
+      ]
+    },
+    {
+      "type": "panel", "name": "measurements", "title": "Measurements",
+      "description": "Raw data, processing runs and processed products together.",
+      "sections": [
+        {"type": "row", "n_col": 3, "wrap_indent": false, "description": "Narrow the table.",
+         "sections": [
+           {"type": "choice", "attr": "kind", "label": "Kind", "options_source": "kind_options",
+            "description": "Show one kind of record, or all."},
+           {"type": "value", "kind": "str", "attr": "search", "label": "", "placeholder": "Search...",
+            "description": "Keep rows whose kind, id, sample or project contains this text."},
+           {"type": "button_row", "weight": 0, "description": "Reload.",
+            "buttons": [{"action": "refresh_measurements", "label": "Refresh", "description": "Refresh the measurements list."}]}
+         ]},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "One row per raw-data file, processing run or processed product.",
+         "options": {"source": "visible_rows", "row_key": "_row", "expand": true, "fit_columns": true,
+           "column_picker": true, "status": true,
+           "columns": [
+             {"key": "kind", "title": "kind", "tooltip": "Raw, Processing or Processed."},
+             {"key": "id", "title": "id", "tooltip": "The record's id."},
+             {"key": "sample", "title": "sample", "tooltip": "The sample measured."},
+             {"key": "experiment", "title": "experiment", "tooltip": "The experiment it belongs to."},
+             {"key": "status", "title": "status", "tooltip": "Its status."},
+             {"key": "created", "title": "created", "tooltip": "When it was created or acquired."},
+             {"key": "location", "title": "location", "tooltip": "Its file, URL or folder."},
+             {"key": "project", "title": "project", "tooltip": "The project."},
+             {"key": "sample_qa", "title": "sample QA", "tooltip": "The sample's quality status."}
+           ]}}
+      ]
+    },
+    {
+      "type": "panel", "name": "metadata", "title": "Sample Metadata",
+      "description": "The metadata of one sample: key, value and details, with the mmCIF key catalogue.",
+      "sections": [
+        {"type": "row", "n_col": 2, "wrap_indent": false, "description": "Pick the sample.",
+         "sections": [
+           {"type": "choice", "attr": "sample_id", "label": "Sample", "options_source": "sample_options",
+            "call": "choose_sample", "filter": true, "description": "The sample whose metadata is edited."},
+           {"type": "button_row", "weight": 0, "description": "Reload.",
+            "buttons": [{"action": "refresh_samples", "label": "Refresh", "description": "Reload the sample list and the metadata."}]}
+         ]},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "One row per key. Double-click a cell to type in it; pick a row to edit it in the Detail form.",
+         "options": {"source": "metadata_rows", "row_key": "_row", "selected_call": "select_row",
+           "edited_call": "edited", "editable": true, "expand": true, "reserve": 200, "fit_columns": true,
+           "columns": [
+             {"key": "key", "title": "Key", "tooltip": "The metadata key (an mmCIF item or your own)."},
+             {"key": "value", "title": "Value", "tooltip": "Its value."},
+             {"key": "details", "title": "Details", "tooltip": "Notes about the value."}
+           ]}},
+        {"type": "panel", "title": "Detail", "description": "The picked row, with the catalogue of known keys and the values already used.",
+         "sections": [
+           {"type": "choice", "attr": "detail_key", "label": "Key", "options_source": "key_options", "filter": true,
+            "description": "The key, from the mmCIF catalogue (type to filter it)."},
+           {"type": "info", "source": "key_help", "description": "What the key means (from the dictionary)."},
+           {"type": "value", "kind": "str", "attr": "detail_value", "label": "Value", "placeholder": "Value (autocomplete from DB)",
+            "description": "The value."},
+           {"type": "choice", "attr": "suggested_value", "label": "Known values", "options_source": "value_options",
+            "description": "Values already stored for this key in any sample; picking one fills Value."},
+           {"type": "value", "kind": "str", "attr": "detail_details", "label": "Details", "placeholder": "Details / notes",
+            "description": "Notes about the value."},
+           {"type": "button_row", "description": "Write the detail into the table, or change the rows.",
+            "buttons": [
+              {"action": "apply_to_row", "label": "Apply to row", "description": "Update the picked row with the detail form's values."},
+              {"action": "save_all", "label": "Save all", "description": "Save every row of this sample to the database."},
+              {"action": "add_row", "label": "Add row", "description": "Add an empty row."},
+              {"action": "delete_row", "label": "Delete row", "description": "Remove the picked row (Save all writes the change)."}
+            ]}
+         ]},
+        {"type": "info", "source": "status_line", "description": "Which sample is open, how many keys it has, or what was saved."}
+      ]
+    },
+    {
+      "type": "panel", "name": "spectra", "title": "Spectra",
+      "description": "Optical components and their spectra: curate, approve, reject, merge duplicates.",
+      "sections": [
+        {"type": "button_row", "weight": 0, "description": "Curation actions.",
+         "buttons": [
+           {"action": "import_reference_set", "label": "Import ref. set", "description": "Import the bundled reference database; imported items are marked unverified (asks first)."},
+           {"action": "approve", "label": "Approve", "description": "Mark the selected item as approved."},
+           {"action": "reject", "label": "Reject", "description": "Mark the selected item as rejected."},
+           {"action": "toggle_review_queue", "label_source": "review_caption", "label": "Review queue", "description": "Show only the unverified items that need review (press again for all)."},
+           {"action": "ai_triage", "label": "AI triage", "description": "Run deterministic checks on the selected item and queue it for review."},
+           {"action": "find_duplicates", "label": "Find Duplicates", "description": "Find probably-duplicate components of this type and merge them."}
+         ]},
+        {"type": "choice", "attr": "component", "label": "Component Type", "style": "radio",
+         "options_source": "component_options", "call": "set_component",
+         "description": "Which kind of optical component to list."},
+        {"type": "row", "n_col": 2, "wrap_indent": false, "description": "Narrow the list.",
+         "sections": [
+           {"type": "value", "kind": "str", "attr": "search", "label": "Search", "placeholder": "Name...", "call": "set_search",
+            "description": "List the components whose name contains this (Enter or a click elsewhere searches)."},
+           {"type": "choice", "attr": "status_filter", "label": "Status", "options_source": "status_options", "call": "set_status_filter",
+            "description": "List only the components with this curation status."}
+         ]},
+        {"type": "button_row", "weight": 0, "description": "The ticked rows.",
+         "buttons": [
+           {"action": "copy_checked_ids", "label": "Copy checked IDs", "description": "Copy the ticked rows' ids, comma-separated."},
+           {"action": "check_all", "label": "Check all", "description": "Tick every row."},
+           {"action": "uncheck_all", "label": "Uncheck all", "description": "Untick every row."},
+           {"action": "invert_checks", "label": "Invert", "description": "Invert the ticks."},
+           {"action": "refresh_list", "label": "Refresh", "description": "Refresh the list."}
+         ]},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "The components. Click a row to see its spectra and fields; tick rows to overlay their spectra.",
+         "options": {"source": "component_rows", "columns_source": "table_columns", "row_key": "_row",
+           "selected_call": "select_row", "edited_call": "edited", "expand": true, "fit_columns": true,
+           "column_picker": true, "min_column_width": 40}},
+        {"type": "custom", "key": "spectrum_plot", "title": "",
+         "description": "The spectra, normalised to their maximum: the selected component's, or every ticked one's."},
+        {"type": "custom", "key": "component_form", "title": "",
+         "description": "The selected component's fields (read-only)."},
+        {"type": "info", "source": "items_text", "description": "How many items are listed (of how many)."}
+      ]
+    },
+    {
+      "type": "panel", "name": "provenance", "title": "Provenance Graph",
+      "description": "Trace an artifact's ancestors and descendants.",
+      "sections": [
+        {"type": "row", "n_col": 3, "wrap_indent": false, "description": "The seed of the graph.",
+         "sections": [
+           {"type": "choice", "attr": "seed_type", "label": "Seed Type", "options_source": "seed_options",
+            "description": "The kind of record to start from."},
+           {"type": "value", "kind": "str", "attr": "seed_id", "label": "Seed ID",
+            "description": "The record's id (a raw-data, processing-run, processed-data, analysis-run or parameter id)."},
+           {"type": "button_row", "weight": 0, "description": "Load the graph.",
+            "buttons": [
+              {"action": "load_upstream", "label": "Load upstream", "description": "Trace the ancestors of the seed."},
+              {"action": "load_downstream", "label": "Load downstream", "description": "Trace the descendants of the seed."},
+              {"action": "load_full", "label": "Load full graph", "description": "Load the full provenance graph of the seed."},
+              {"action": "export_json", "label": "Export JSON", "description": "Export the provenance graph as JSON."},
+              {"action": "export_zip", "label": "Export ZIP", "description": "Export the provenance graph as a ZIP archive."}
+            ]}
+         ]},
+        {"type": "info", "source": "hint_text", "description": "How to load a graph."},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "One row per provenance edge. Click a row to see its record on the right.",
+         "options": {"source": "edge_rows", "row_key": "_row", "selected_call": "select_edge",
+           "height": 150, "fit_columns": true,
+           "columns": [
+             {"key": "edge_id", "title": "edge id", "tooltip": "The edge's id."},
+             {"key": "source_node_type", "title": "source type", "tooltip": "What the edge starts from."},
+             {"key": "source_node_id", "title": "source id", "tooltip": "Its id."},
+             {"key": "relationship_type", "title": "relationship", "tooltip": "input_to, produced, parameter_of, derived_from."},
+             {"key": "target_node_type", "title": "target type", "tooltip": "What the edge points at."},
+             {"key": "target_node_id", "title": "target id", "tooltip": "Its id."},
+             {"key": "processing_id", "title": "processing id", "tooltip": "The processing run that made the edge."}
+           ]}},
+        {"type": "custom", "key": "provenance_graph", "title": "",
+         "description": "The graph, left to right from inputs to products. Click a node to see its record; wheel zooms, Alt-drag pans."},
+        {"type": "value", "kind": "text", "attr": "details", "label": "", "read_only": true, "lines": 6,
+         "description": "The record of the picked edge or node."}
+      ]
+    },
+    {
+      "type": "panel", "name": "import_export", "title": "Import / Export",
+      "description": "Import CIF files; export a sample or the sample table.",
+      "sections": [
+        {"type": "row", "n_col": 2, "wrap_indent": false, "description": "The file to import.",
+         "sections": [
+           {"type": "value", "kind": "str", "attr": "path", "label": "File", "elide": "start",
+            "description": "The PDBx / PDB-IHM / FLR CIF file Import file reads (empty: it asks)."},
+           {"type": "button_row", "weight": 0, "description": "Pick the file.",
+            "buttons": [{"action": "browse", "label": "Browse", "description": "Browse for the file."}]}
+         ]},
+        {"type": "button_row", "weight": 0, "description": "Import and export.",
+         "buttons": [
+           {"action": "import_file", "label": "Import file", "description": "Import the file into the database."},
+           {"action": "export_selected_sample", "label": "Export selected sample", "description": "Export the sample selected in Samples as FLR CIF (validated first)."},
+           {"action": "preview_cif", "label": "Preview CIF", "description": "Show the FLR CIF of the selected sample below."},
+           {"action": "export_table", "label": "Export table CSV/XLSX", "description": "Export the sample table."}
+         ]},
+        {"type": "value", "kind": "text", "attr": "preview", "label": "", "read_only": true, "lines": 24,
+         "description": "The import summary or the CIF preview."}
+      ]
+    },
+    {
+      "type": "panel", "name": "elabftw", "title": "eLabFTW",
+      "description": "Synchronise experiments with an eLabFTW notebook.",
+      "sections": [
+        {"type": "panel", "title": "eLabFTW connection", "n_col": 2, "description": "The notebook to connect to.",
+         "sections": [
+           {"type": "value", "kind": "str", "attr": "endpoint", "label": "Endpoint", "placeholder": "https://elab.example.org",
+            "description": "The eLabFTW server's URL."},
+           {"type": "value", "kind": "password", "attr": "api_key", "label": "API key", "placeholder": "API key (kept in memory only)",
+            "description": "Your eLabFTW API key. Kept in memory only and cleared when a connection attempt starts."},
+           {"type": "value", "kind": "float", "attr": "timeout", "label": "Timeout", "minimum": 0.1, "maximum": 120.0, "decimals": 1,
+            "description": "Seconds to wait for the server."},
+           {"type": "toggle", "attr": "verify_tls", "label": "Verify TLS certificates", "description": "Check the server's certificate (leave on)."},
+           {"type": "toggle", "attr": "allow_http", "label": "Allow plain HTTP (unsafe)",
+            "description": "Only enable for an isolated trusted network. API keys are plaintext over HTTP."},
+           {"type": "button_row", "description": "Connect or disconnect.",
+            "buttons": [
+              {"action": "connect_remote", "label": "Connect", "description": "Connect to eLabFTW."},
+              {"action": "disconnect_remote", "label": "Disconnect", "description": "Drop the eLabFTW connection."}
+            ]}
+         ]},
+        {"type": "row", "n_col": 2, "wrap_indent": false, "description": "Search the notebook.",
+         "sections": [
+           {"type": "value", "kind": "str", "attr": "query", "label": "", "placeholder": "Search remote experiments",
+            "description": "Search the remote experiments."},
+           {"type": "button_row", "weight": 0, "description": "List the experiments.",
+            "buttons": [{"action": "refresh_remote", "label": "Refresh", "description": "List the remote experiments."}]}
+         ]},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "The remote experiments. Tick the ones to import.",
+         "options": {"source": "remote_rows", "row_key": "_row", "edited_call": "edited", "height": 160, "fit_columns": true,
+           "columns": [
+             {"key": "checked", "title": "✓", "editable": true, "width": 30, "tooltip": "Tick to import."},
+             {"key": "id", "title": "Remote ID", "tooltip": "The experiment's id in eLabFTW."},
+             {"key": "title", "title": "Title", "tooltip": "Its title."},
+             {"key": "date", "title": "Date", "tooltip": "Its date."},
+             {"key": "status", "title": "Status", "tooltip": "Its status."},
+             {"key": "modified", "title": "Modified", "tooltip": "When it was last changed."},
+             {"key": "tags", "title": "Tags", "tooltip": "Its tags."}
+           ]}},
+        {"type": "panel", "title": "Import into MMFDB", "n_col": 3, "description": "Import the ticked experiments.",
+         "sections": [
+           {"type": "choice", "attr": "conflict", "label": "Existing", "options": ["skip", "update", "error"],
+            "description": "What to do with an experiment that was imported before."},
+           {"type": "value", "kind": "str", "attr": "sample_id", "label": "Sample", "placeholder": "Optional MMFDB sample ID",
+            "description": "Attach the imported experiments to this sample (optional)."},
+           {"type": "button_row", "description": "Import.",
+            "buttons": [{"action": "import_checked", "label": "Import checked", "description": "Import the ticked experiments."}]}
+         ]},
+        {"type": "panel", "title": "Export from MMFDB", "n_col": 4, "description": "Export one of our experiments.",
+         "sections": [
+           {"type": "choice", "attr": "local_experiment", "label": "Experiment", "options_source": "local_options",
+            "description": "The MMFDB experiment to export."},
+           {"type": "choice", "attr": "export_mode", "label": "Mode", "options": ["create", "update"],
+            "description": "Create a new remote entry, or update an existing one."},
+           {"type": "value", "kind": "int", "attr": "remote_id", "label": "Remote ID", "minimum": 1, "maximum": 2147483647,
+            "description": "The remote entry to update (only for update)."},
+           {"type": "button_row", "description": "Export.",
+            "buttons": [{"action": "export_selected", "label": "Export", "description": "Export the experiment to eLabFTW."}]}
+         ]},
+        {"type": "info", "source": "status_text", "description": "The connection and the last result."}
+      ]
+    },
+    {
+      "type": "panel", "name": "studies", "title": "Studies",
+      "description": "Studies, their members and their configurable fields.",
+      "sections": [
+        {"type": "choice", "attr": "scope", "label": "Scope", "options_source": "scope_options", "call": "set_scope",
+         "description": "All studies, yours, or the public ones."},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "The studies. Pick one to see its members and fields.",
+         "options": {"source": "study_rows", "row_key": "_row", "selected_call": "select_study", "height": 130, "fit_columns": true,
+           "columns": [
+             {"key": "name", "title": "Name", "tooltip": "The study's name."},
+             {"key": "public", "title": "Public", "tooltip": "Whether everyone can see it."},
+             {"key": "study_id", "title": "Study ID", "tooltip": "Its id."}
+           ]}},
+        {"type": "custom", "key": "data_table", "title": "Members:",
+         "description": "The samples and artifacts in the picked study.",
+         "options": {"source": "member_rows", "row_key": "_row", "height": 100, "fit_columns": true,
+           "columns": [
+             {"key": "member_type", "title": "Type", "tooltip": "sample or artifact."},
+             {"key": "member_id", "title": "ID", "tooltip": "The member's id."},
+             {"key": "role", "title": "Role", "tooltip": "Its role in the study."}
+           ]}},
+        {"type": "custom", "key": "data_table", "title": "Configurable fields:",
+         "description": "The picked study's own fields (grant, PI, ...).",
+         "options": {"source": "field_rows", "row_key": "_row", "height": 90, "fit_columns": true,
+           "columns": [
+             {"key": "key", "title": "Key", "tooltip": "The field."},
+             {"key": "value", "title": "Value", "tooltip": "Its value."}
+           ]}},
+        {"type": "row", "n_col": 2, "wrap_indent": false, "description": "A new study.",
+         "sections": [
+           {"type": "value", "kind": "str", "attr": "new_name", "label": "", "placeholder": "New study name",
+            "description": "The name of the study to create."},
+           {"type": "button_row", "weight": 0, "description": "Create it.",
+            "buttons": [{"action": "create_study", "label": "Create study", "description": "Create the study."}]}
+         ]},
+        {"type": "row", "n_col": 3, "wrap_indent": false, "description": "Add a member to the picked study.",
+         "sections": [
+           {"type": "choice", "attr": "member_type", "label": "", "options_source": "member_type_options",
+            "description": "A sample or an artifact."},
+           {"type": "value", "kind": "str", "attr": "member_id", "label": "", "placeholder": "member id (sample/artifact)",
+            "description": "The id of the sample or artifact."},
+           {"type": "button_row", "weight": 0, "description": "Add it.",
+            "buttons": [{"action": "add_member", "label": "Add member", "description": "Add the member to the picked study."}]}
+         ]},
+        {"type": "row", "n_col": 3, "wrap_indent": false, "description": "Set a field of the picked study.",
+         "sections": [
+           {"type": "value", "kind": "str", "attr": "field_key", "label": "", "placeholder": "field key",
+            "description": "The field to set."},
+           {"type": "value", "kind": "str", "attr": "field_value", "label": "", "placeholder": "value",
+            "description": "Its value."},
+           {"type": "button_row", "weight": 0, "description": "Set it.",
+            "buttons": [{"action": "set_field", "label": "Set field", "description": "Set the field of the picked study."}]}
+         ]},
+        {"type": "info", "source": "message_text", "description": "The last result."}
+      ]
+    },
+    {
+      "type": "panel", "name": "protocols", "title": "Protocols",
+      "description": "Versioned protocols with the parameter schema of their operation type.",
+      "sections": [
+        {"type": "choice", "attr": "scope", "label": "Scope", "options_source": "scope_options", "call": "set_scope",
+         "description": "All protocols, your own, or the public ones."},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "The protocols (latest versions). Pick one for its history and schema.",
+         "options": {"source": "protocol_rows", "row_key": "_row", "selected_call": "select_protocol", "height": 130, "fit_columns": true,
+           "columns": [
+             {"key": "name", "title": "Name", "tooltip": "The protocol."},
+             {"key": "version", "title": "Version", "tooltip": "Its latest version."},
+             {"key": "category", "title": "Category", "tooltip": "measurement, processing or analysis."},
+             {"key": "operation_type", "title": "Operation type", "tooltip": "The operation it describes."}
+           ]}},
+        {"type": "custom", "key": "data_table", "title": "Version history:",
+         "description": "Every version of the picked protocol.",
+         "options": {"source": "version_rows", "row_key": "_row", "height": 90, "fit_columns": true,
+           "columns": [
+             {"key": "version", "title": "Version", "tooltip": "The version."},
+             {"key": "description", "title": "Description", "tooltip": "What it says."},
+             {"key": "created_at", "title": "Created", "tooltip": "When it was made."}
+           ]}},
+        {"type": "custom", "key": "data_table", "title": "Parameter schema (from operation type):",
+         "description": "The parameters the protocol's operation type records.",
+         "options": {"source": "schema_rows", "row_key": "_row", "height": 90, "fit_columns": true,
+           "columns": [
+             {"key": "name", "title": "Name", "tooltip": "The parameter."},
+             {"key": "value_type", "title": "Type", "tooltip": "Its type."},
+             {"key": "required", "title": "Required", "tooltip": "Whether it must be given."},
+             {"key": "units", "title": "Units", "tooltip": "Its unit."}
+           ]}},
+        {"type": "row", "n_col": 4, "wrap_indent": false, "description": "A new protocol, or a new version of one.",
+         "sections": [
+           {"type": "value", "kind": "str", "attr": "new_name", "label": "", "placeholder": "New protocol name",
+            "description": "The protocol's name (an existing name makes a new version)."},
+           {"type": "choice", "attr": "new_category", "label": "", "options_source": "category_options",
+            "description": "measurement, processing or analysis."},
+           {"type": "value", "kind": "str", "attr": "new_operation_type", "label": "", "placeholder": "operation_type (optional)",
+            "description": "The operation type whose parameters it records (optional)."},
+           {"type": "button_row", "weight": 0, "description": "Create it.",
+            "buttons": [{"action": "create_protocol", "label": "Create / new version", "description": "Create the protocol, or a new version of it."}]}
+         ]},
+        {"type": "info", "source": "message_text", "description": "The last result."}
+      ]
+    },
+    {
+      "type": "panel", "name": "lifecycle", "title": "Lifecycle",
+      "description": "An entity's lifecycle state and history; an administrator's transition.",
+      "sections": [
+        {"type": "row", "n_col": 3, "wrap_indent": false, "description": "The entity.",
+         "sections": [
+           {"type": "choice", "attr": "entity_type", "label": "Entity type", "options_source": "type_options",
+            "description": "The kind of entity (each has its own states)."},
+           {"type": "value", "kind": "str", "attr": "entity_id", "label": "Entity ID", "description": "Its id."},
+           {"type": "button_row", "weight": 0, "description": "Load it.",
+            "buttons": [{"action": "load", "label": "Load", "description": "Load the entity's state and history."}]}
+         ]},
+        {"type": "info", "source": "state_text", "description": "The entity's current state."},
+        {"type": "row", "n_col": 3, "wrap_indent": false, "description": "Move it to another state.",
+         "sections": [
+           {"type": "choice", "attr": "to_state", "label": "Transition to", "options_source": "to_options",
+            "description": "The states the entity may move to from its current one."},
+           {"type": "value", "kind": "str", "attr": "reason", "label": "Reason", "description": "Why (recorded in the history)."},
+           {"type": "button_row", "weight": 0, "description": "Apply.",
+            "buttons": [{"action": "apply_transition", "label": "Apply transition", "description": "Move the entity to the chosen state."}]}
+         ]},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "Every transition the entity went through.",
+         "options": {"source": "history_rows", "row_key": "_row", "expand": true, "reserve": 26, "fit_columns": true,
+           "columns": [
+             {"key": "from_state", "title": "From", "tooltip": "The state before."},
+             {"key": "to_state", "title": "To", "tooltip": "The state after."},
+             {"key": "created_at", "title": "When", "tooltip": "When it happened."},
+             {"key": "reason", "title": "Reason", "tooltip": "Why."}
+           ]}},
+        {"type": "info", "source": "message_text", "description": "The last result."}
+      ]
+    },
+    {
+      "type": "panel", "name": "calibrations", "title": "Calibrations",
+      "description": "Calibration values and the uses that went stale.",
+      "sections": [
+        {"type": "custom", "key": "data_table", "title": "Calibrations:",
+         "description": "Every calibration value.",
+         "options": {"source": "calibration_rows", "row_key": "_row", "height": 170, "fit_columns": true,
+           "columns": [
+             {"key": "calibration_type", "title": "Type", "tooltip": "What is calibrated."},
+             {"key": "method", "title": "Method", "tooltip": "How it was obtained."},
+             {"key": "value", "title": "Value", "tooltip": "The value."},
+             {"key": "notes", "title": "Notes", "tooltip": "Notes, e.g. a citation."},
+             {"key": "artifact_id", "title": "Artifact ID", "tooltip": "The calibration's artifact."}
+           ]}},
+        {"type": "custom", "key": "data_table", "title": "Stale uses (calibration superseded):",
+         "description": "Results that used a calibration a newer one replaced.",
+         "options": {"source": "stale_rows", "row_key": "_row", "height": 110, "fit_columns": true,
+           "columns": [
+             {"key": "used_by_id", "title": "Used by", "tooltip": "The result that used it."},
+             {"key": "calibration_type", "title": "Type", "tooltip": "What is calibrated."},
+             {"key": "used_artifact_id", "title": "Used calibration", "tooltip": "The calibration it used."},
+             {"key": "latest_artifact_id", "title": "Latest calibration", "tooltip": "The one that replaced it."}
+           ]}},
+        {"type": "panel", "title": "Register calibration value", "description": "A value from the literature or your own measurement.",
+         "sections": [
+           {"type": "choice", "attr": "new_type", "label": "Type", "options_source": "type_options", "description": "What is calibrated."},
+           {"type": "value", "kind": "str", "attr": "new_value", "label": "Value", "placeholder": "e.g. 54.0", "description": "The value (a number)."},
+           {"type": "value", "kind": "str", "attr": "new_notes", "label": "Notes", "placeholder": "citation, e.g. Hellenkamp et al. 2018",
+            "description": "Where it comes from."},
+           {"type": "button_row", "description": "Register it.",
+            "buttons": [{"action": "register", "label": "Register (user-provided)", "description": "Register the value as user-provided."}]}
+         ]},
+        {"type": "info", "source": "message_text", "description": "The last result."}
+      ]
+    },
+    {
+      "type": "panel", "name": "reagents", "title": "Reagent Lots",
+      "description": "Reagent lots and their expiry.",
+      "sections": [
+        {"type": "row", "n_col": 2, "wrap_indent": false, "description": "Narrow the list.",
+         "sections": [
+           {"type": "choice", "attr": "kind_filter", "label": "Kind", "options_source": "filter_options", "call": "set_filter",
+            "description": "Show one kind of reagent, or all."},
+           {"type": "toggle", "attr": "show_expired", "label": "Show expired", "call": "set_filter",
+            "description": "Also list lots past their expiry date."}
+         ]},
+        {"type": "custom", "key": "data_table", "title": "",
+         "description": "The lots. Pick one to see its fields below.",
+         "options": {"source": "lot_rows", "row_key": "_row", "selected_call": "select_lot", "height": 160, "fit_columns": true,
+           "columns": [
+             {"key": "kind", "title": "Kind", "tooltip": "The reagent kind."},
+             {"key": "name", "title": "Name", "tooltip": "Its name."},
+             {"key": "lot_number", "title": "Lot #", "tooltip": "The vendor's lot number."},
+             {"key": "vendor", "title": "Vendor", "tooltip": "Who sold it."},
+             {"key": "expiry", "title": "Expiry", "tooltip": "When it expires."},
+             {"key": "lot_id", "title": "Lot ID", "tooltip": "Its id in the MMFDB."}
+           ]}},
+        {"type": "custom", "key": "data_table", "title": "Selected lot:",
+         "description": "The picked lot's fields.",
+         "options": {"source": "detail_rows", "row_key": "_row", "height": 100, "fit_columns": true,
+           "columns": [
+             {"key": "field", "title": "Field", "tooltip": "The field."},
+             {"key": "value", "title": "Value", "tooltip": "Its value."}
+           ]}},
+        {"type": "panel", "title": "Add lot", "description": "Register a new lot.",
+         "sections": [
+           {"type": "choice", "attr": "new_kind", "label": "Kind", "options_source": "kind_options", "description": "The reagent kind."},
+           {"type": "value", "kind": "str", "attr": "new_name", "label": "Name", "placeholder": "e.g. Alexa 488", "description": "Its name."},
+           {"type": "value", "kind": "str", "attr": "new_lot_number", "label": "Lot #", "placeholder": "e.g. A488-42", "description": "The vendor's lot number."},
+           {"type": "value", "kind": "str", "attr": "new_vendor", "label": "Vendor", "description": "Who sold it."},
+           {"type": "value", "kind": "str", "attr": "new_expiry", "label": "Expiry", "placeholder": "YYYY-MM-DD", "description": "When it expires."},
+           {"type": "button_row", "description": "Create it.",
+            "buttons": [{"action": "create_lot", "label": "Create lot", "description": "Create the lot."}]}
+         ]},
+        {"type": "info", "source": "message_text", "description": "The last result."}
+      ]
+    },
+    {
+      "type": "panel", "name": "pipelines", "title": "Pipelines",
+      "description": "Registered pipelines, their structure and their runs.",
+      "sections": [
+        {"type": "custom", "key": "data_table", "title": "Pipelines:",
+         "description": "The registered pipelines. Pick one for its nodes, wiring and runs.",
+         "options": {"source": "pipeline_rows", "row_key": "_row", "selected_call": "select_pipeline", "height": 120, "fit_columns": true,
+           "columns": [
+             {"key": "name", "title": "Name", "tooltip": "The pipeline."},
+             {"key": "version", "title": "Version", "tooltip": "Its version."},
+             {"key": "description", "title": "Description", "tooltip": "What it does."},
+             {"key": "pipeline_id", "title": "Pipeline ID", "tooltip": "Its id."}
+           ]}},
+        {"type": "custom", "key": "data_table", "title": "Nodes (transformer invocations):",
+         "description": "The steps of the picked pipeline.",
+         "options": {"source": "node_rows", "row_key": "_row", "height": 90, "fit_columns": true,
+           "columns": [
+             {"key": "name", "title": "Node", "tooltip": "The step."},
+             {"key": "operation_type", "title": "Operation type", "tooltip": "The operation it runs."}
+           ]}},
+        {"type": "custom", "key": "data_table", "title": "Wiring (typed edges):",
+         "description": "Which output feeds which input.",
+         "options": {"source": "edge_rows", "row_key": "_row", "height": 90, "fit_columns": true,
+           "columns": [
+             {"key": "from", "title": "From", "tooltip": "node.port the data comes from."},
+             {"key": "to", "title": "To", "tooltip": "node.port it goes to."}
+           ]}},
+        {"type": "custom", "key": "data_table", "title": "Runs (recorded operation chains):",
+         "description": "Every recorded run of the picked pipeline.",
+         "options": {"source": "run_rows", "row_key": "_row", "height": 90, "fit_columns": true,
+           "columns": [
+             {"key": "name", "title": "Run", "tooltip": "The run."},
+             {"key": "status", "title": "Status", "tooltip": "How it ended."},
+             {"key": "operation_count", "title": "Ops", "tooltip": "How many operations it recorded."},
+             {"key": "pipeline_run_id", "title": "Run ID", "tooltip": "Its id."}
+           ]}},
+        {"type": "info", "source": "message_text", "description": "The last result."}
+      ]
+    }
+  ]
+}

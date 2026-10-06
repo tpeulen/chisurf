@@ -17,8 +17,7 @@ from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.general import apply_compact_table_style
 
 from .entity_registry import EntitySpec
-from .entity_schema import FieldSpec, field_specs_for_category
-from .legacy_schemas import SCHEMAS
+from .entity_schema import FieldSpec, entity_columns, entity_field_specs
 
 
 class SchemaMixin:
@@ -47,68 +46,14 @@ class SchemaMixin:
     @property
     def field_specs(self) -> list[FieldSpec]:
         if self._field_specs is None:
-            # Try dictionary-driven first
-            if self._spec.schema_type and self._spec.schema_type in SCHEMAS:
-                self._field_specs = self._legacy_specs()
-            else:
-                self._field_specs = field_specs_for_category(
-                    self._dictionary,
-                    self._spec.category,
-                    schema_map=self._schema_map,
-                    registry=self._registry_dict,
-                    id_field=self._spec.id_field,
-                )
-                if not self._field_specs:
-                    self._field_specs = self._legacy_specs()
+            self._field_specs = entity_field_specs(
+                self._spec, self._dictionary, self._schema_map, self._registry_dict
+            )
         return self._field_specs
 
-    def _legacy_specs(self) -> list[FieldSpec]:
-        legacy = SCHEMAS.get(self._spec.schema_type, [])
-        result: list[FieldSpec] = []
-        for f in legacy:
-            result.append(
-                FieldSpec(
-                    name=f.get("name", ""),
-                    label=f.get("label", ""),
-                    widget=f.get("type", "str"),
-                    choices=f.get("choices", []),
-                    required=f.get("required", False),
-                    readonly=f.get("readonly", False),
-                    placeholder=f.get("placeholder", ""),
-                    fk_target=self._legacy_fk(f.get("name", "")),
-                )
-            )
-        return result
-
-    def _legacy_fk(self, name: str) -> str | None:
-        # Skip the entity's own primary key
-        if name == self._spec.id_field:
-            return None
-        if name.endswith("_id") and name not in ("id",):
-            base = name[:-3]
-            if base in self._registry_dict:
-                return base
-        return None
-
     def columns(self) -> list[tuple[str, str]]:
-        """Return (key, label) pairs for visible table columns.
-
-        The ID field is always first so that id_col=1 in the table is reliable.
-        Timestamp-only audit fields (created_at, updated_at) are hidden.
-        """
-        id_col: tuple[str, str] | None = None
-        rest: list[tuple[str, str]] = []
-        for fs in self.field_specs:
-            if fs.name in ("created_at", "updated_at"):
-                continue
-            pair = (fs.name, fs.label or fs.name)
-            if fs.name == self._spec.id_field:
-                id_col = pair
-            else:
-                rest.append(pair)
-        if id_col:
-            return [id_col] + rest
-        return rest
+        """Return (key, label) pairs for visible table columns (id first, audit times hidden)."""
+        return entity_columns(self._spec, self.field_specs)
 
     @property
     def id_field(self) -> str:

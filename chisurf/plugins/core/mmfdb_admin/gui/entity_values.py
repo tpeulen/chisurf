@@ -79,3 +79,35 @@ def coerce_out(fs: Any, raw: Any) -> Any:
         except Exception:
             return {}
     return val
+
+
+def view_section(fs: Any, fk_source: str = "", read_only: bool = False) -> dict:
+    """The ``view.json`` section of one entity field (the dialect AutoForm and emtk read).
+
+    *fk_source* names the model's options method of a foreign key (a choice of
+    ``(value, label)`` pairs); *read_only* forces a read-only field (an entity the
+    server does not let you write).
+    """
+    name = getattr(fs, "name", "")
+    label = getattr(fs, "label", "") or name
+    widget = getattr(fs, "widget", "str")
+    tip = getattr(fs, "tooltip", "") or label
+    locked = bool(read_only or getattr(fs, "readonly", False))
+    base = {"attr": name, "label": label, "description": tip}
+    if fk_source and not locked:
+        return {"type": "choice", "options_source": fk_source, "filter": True, **base}
+    if widget == "choice" and not locked and getattr(fs, "choices", None):
+        return {"type": "choice", "options_source": f"choices__{name}", **base}
+    # A dictionary ``code`` item without an enumeration is free text, not an empty choice.
+    if widget == "bool":
+        if locked:
+            return {"type": "value", "kind": "str", "read_only": True, **base}
+        return {"type": "toggle", **base}
+    kind = widget if widget in ("int", "float", "text") else "str"
+    section = {"type": "value", "kind": kind, "read_only": locked, **base}
+    if kind == "text":
+        section["lines"] = 3
+    placeholder = getattr(fs, "placeholder", "")
+    if placeholder:
+        section["placeholder"] = placeholder
+    return section

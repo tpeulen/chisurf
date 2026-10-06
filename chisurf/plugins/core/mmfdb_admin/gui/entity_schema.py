@@ -257,3 +257,79 @@ def _field_spec_from_item(
         fk_target=fk_target,
         placeholder=f"Enter {label.lower()}",
     )
+
+
+def legacy_field_specs(spec: Any, registry: dict[str, Any] | None = None) -> list[FieldSpec]:
+    """The :mod:`.legacy_schemas` field list of *spec* as FieldSpecs.
+
+    A ``*_id`` field (other than the entity's own key) whose stem names a
+    registered entity is a foreign key to it.
+    """
+    from .legacy_schemas import SCHEMAS
+
+    registry = registry or {}
+    result: list[FieldSpec] = []
+    for f in SCHEMAS.get(spec.schema_type, []):
+        name = f.get("name", "")
+        fk = None
+        if name != spec.id_field and name.endswith("_id") and name != "id":
+            base = name[:-3]
+            if base in registry:
+                fk = base
+        result.append(
+            FieldSpec(
+                name=name,
+                label=f.get("label", ""),
+                widget=f.get("type", "str"),
+                choices=f.get("choices", []),
+                required=f.get("required", False),
+                readonly=f.get("readonly", False),
+                placeholder=f.get("placeholder", ""),
+                fk_target=fk,
+            )
+        )
+    return result
+
+
+def entity_field_specs(
+    spec: Any,
+    dictionary: MmcifDictionary | None,
+    schema_map: DictionarySchemaMap | None = None,
+    registry: dict[str, Any] | None = None,
+) -> list[FieldSpec]:
+    """The form fields of an entity panel: legacy list if it has one, else the dictionary.
+
+    The one rule both renderers (the Qt ``EntityDock`` and the native admin) use: an
+    entity whose ``schema_type`` names a legacy list is described by it (its
+    dictionary category is sparse); every other entity is derived from its
+    dictionary category, falling back to the legacy list when that is empty.
+    """
+    from .legacy_schemas import SCHEMAS
+
+    if spec.schema_type and spec.schema_type in SCHEMAS:
+        return legacy_field_specs(spec, registry)
+    specs: list[FieldSpec] = []
+    if dictionary is not None:
+        specs = field_specs_for_category(
+            dictionary,
+            spec.category,
+            schema_map=schema_map,
+            registry=registry,
+            id_field=spec.id_field,
+        )
+    return specs or legacy_field_specs(spec, registry)
+
+
+def entity_columns(spec: Any, field_specs: list[FieldSpec]) -> list[tuple[str, str]]:
+    """``(key, label)`` of an entity table's columns: the id first, audit times hidden."""
+    id_col: tuple[str, str] | None = None
+    rest: list[tuple[str, str]] = []
+    for fs in field_specs:
+        if fs.name in ("created_at", "updated_at"):
+            continue
+        pair = (fs.name, fs.label or fs.name)
+        if fs.name == spec.id_field:
+            id_col = pair
+        else:
+            rest.append(pair)
+    return ([id_col] + rest) if id_col else rest
