@@ -1,0 +1,200 @@
+{
+ "added": {
+  "manual/figures/anisotropy_wizard_data_empty.png": {
+   "caption": "Data step of the Anisotropy wizard before files are chosen.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::wizard",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py wizard (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: emtk wizard (tr_anisotropy make_app) 1100x720, Data step, nothing entered.",
+   "pages": [
+    "docs/manual/anisotropy_wizard.md"
+   ]
+  },
+  "manual/figures/anisotropy_wizard_two_files.png": {
+   "caption": "Data step with four two-column (time, counts) files and First column is time ticked.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::wizard",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py wizard (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: the stacked recording written as four time/count files into /tmp/chisurf_anisotropy_example by split_into_two_column_files; stacked off, first column is time on, no header.",
+   "pages": [
+    "docs/manual/two_single_files.md"
+   ]
+  },
+  "manual/figures/anisotropy_wizard_stacked.png": {
+   "caption": "Data step with Two stacked VV/VH files: one IRF file, one data file, bin width 0.008 ns.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::wizard",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py wizard (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: stacked on, bin width 0.008 ns, no header.",
+   "pages": [
+    "docs/manual/vv_vh_format.md",
+    "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md"
+   ]
+  },
+  "manual/figures/anisotropy_wizard_normalize_irf.png": {
+   "caption": "Normalize IRF step after Load / reload data: raw and corrected VV/VH IRFs and the background region.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::wizard",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py wizard (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: stacked files loaded, default background region.",
+   "pages": [
+    "docs/manual/anisotropy_wizard.md",
+    "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md"
+   ]
+  },
+  "manual/figures/anisotropy_wizard_corrections.png": {
+   "caption": "Corrections step: g-factor, l1, l2.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::wizard",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py wizard (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: stored corrections g 1.16, l1 0.12, l2 0.44 (scratch settings).",
+   "pages": [
+    "docs/manual/anisotropy_wizard.md",
+    "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md"
+   ]
+  },
+  "manual/figures/anisotropy_wizard_components.png": {
+   "caption": "Components step: lifetime and rotation spectra tables.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::wizard",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py wizard (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: default spectra (0.3/1.8 ns, 0.7/4.1 ns; 0.28/0.15 ns, 0.1/10 ns).",
+   "pages": [
+    "docs/manual/anisotropy_wizard.md",
+    "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md"
+   ]
+  },
+  "manual/figures/anisotropy_wizard_components_reuse.png": {
+   "caption": "Components step with 0.7/2.6 ns, 0.3/1.6 ns and one rotation of 10 ns (0.38).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::wizard",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py wizard (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: spectra set to the manual's re-use values; corrections 1.01/0.0437/0.349.",
+   "pages": [
+    "docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md"
+   ]
+  },
+  "manual/figures/anisotropy_wizards_hub.png": {
+   "caption": "The Wizards hub (Tools -> Calculators -> Wizards) with Anisotropy selected.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::wizard",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py wizard (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: wizards hub emtk app 1200x760, Anisotropy entry clicked, wizard on its Welcome step.",
+   "pages": [
+    "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md"
+   ]
+  },
+  "manual/figures/anisotropy_ribbon_tools.png": {
+   "caption": "The ribbon's Tools tab; Wizards is in the Calculators group.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::main_window",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: isolated Main 1600x960 with load_tools() (ribbon), Tools tab current.",
+   "pages": [
+    "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md"
+   ]
+  },
+  "manual/figures/anisotropy_fit_windows.png": {
+   "caption": "VH, VV and global fit windows as Create fits builds them, tiled.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::main_window",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: wizard model with stacked files, corrections 1.16/0.12/0.44, rep rate 1000/(2048*bin) MHz, Create fits; windows opened as the Main's fit.added handler does; Tile Windows; not fitted.",
+   "pages": [
+    "docs/manual/anisotropy_wizard.md",
+    "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md"
+   ]
+  },
+  "manual/figures/anisotropy_analysis_vv.png": {
+   "caption": "Analysis dock for the VV fit (Fit bar, Convolution table).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::main_window",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: as anisotropy_fit_windows, VV window active, Analysis dock raised.",
+   "pages": [
+    "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md"
+   ]
+  },
+  "manual/figures/anisotropy_analysis_vh.png": {
+   "caption": "Analysis dock for the VH fit.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::main_window",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: as anisotropy_fit_windows, VH window active, Analysis dock raised.",
+   "pages": [
+    "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md"
+   ]
+  },
+  "manual/figures/anisotropy_step1_vv_fit.png": {
+   "caption": "VV and VH after their individual fits with the corrections fixed.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::main_window",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: after vv.run() and vh.run(); VV window active.",
+   "pages": [
+    "docs/manual/step_1_approximating_gfactor_with_small_fluorophore.md"
+   ]
+  },
+  "manual/figures/anisotropy_step2_corrections_free.png": {
+   "caption": "VV fit editor with g, l1, l2 unfixed (Anisotropy section).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::main_window",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: g, l1, l2 Fixed off on the VV fit; window resized to 1600x2600 for the grab, cropped to 1240 px.",
+   "pages": [
+    "docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md"
+   ]
+  },
+  "manual/figures/anisotropy_step2_global_fit.png": {
+   "caption": "After the joint fit of VV and VH with free corrections.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::main_window",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: global fit run (chi2r ~12); single-dye data, so g drifts to ~2.5.",
+   "pages": [
+    "docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md"
+   ]
+  },
+  "manual/figures/anisotropy_two_samples.png": {
+   "caption": "Six fit windows: the first sample fitted, the second (bundled 9 ps recording, standing in for eGFP) as created.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_anisotropy.py::main_window",
+   "recipe": "python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay; 2048 channels x 8 ps per polarisation). State: second wizard model with H2O_9-1 ps_2048 ch.dat / 02_18-577+7.5uM(577)UP_9ps.dat at 0.009 ns, Create fits, Tile Windows.",
+   "pages": [
+    "docs/manual/loading_and_setting_up_the_egfp_data_set.md"
+   ]
+  }
+ },
+ "removed": [
+  "manual/_images/image_rId116.png",
+  "manual/_images/image_rId117.png",
+  "manual/_images/image_rId118.png",
+  "manual/_images/image_rId119.png",
+  "manual/_images/image_rId120.png",
+  "manual/_images/image_rId121.png",
+  "manual/_images/image_rId122.png",
+  "manual/_images/image_rId123.png",
+  "manual/_images/image_rId124.png",
+  "manual/_images/image_rId125.png",
+  "manual/_images/image_rId126.png",
+  "manual/_images/image_rId128.png",
+  "manual/_images/image_rId129.png",
+  "manual/_images/image_rId33.png",
+  "manual/_images/image_rId34.png",
+  "manual/_images/image_rId35.png",
+  "manual/_images/image_rId36.png",
+  "manual/_images/image_rId37.png",
+  "manual/_images/image_rId130.png",
+  "manual/_images/image_rId131.png",
+  "manual/_images/image_rId132.png",
+  "manual/_images/image_rId134.png",
+  "manual/_images/image_rId142.png"
+ ],
+ "pages_edited": [
+  "docs/manual/two_single_files.md",
+  "docs/manual/vv_vh_format.md",
+  "docs/manual/anisotropy_wizard.md",
+  "docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md",
+  "docs/manual/step_1_approximating_gfactor_with_small_fluorophore.md",
+  "docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md",
+  "docs/manual/loading_and_setting_up_the_egfp_data_set.md",
+  "docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md"
+ ],
+ "not_replaced": {
+  "manual/_images/image_rId104.png": "scientific diagram (objective depolarization), not a GUI screenshot",
+  "manual/_images/image_rId127.png": "the Global fit editor's 'Local fits' table renders blank in the current GUI (globalfit.view.json table source 'fit_names' is a @property returning str, not a method returning records) -- a fresh grab would show the bug; fix first",
+  "manual/_images/image_rId133.png": "shows adding and linking a second lifetime in the editor; not reproduced (the wizard-built fits already carry two lifetimes)",
+  "manual/_images/image_rId135.png": "joint A488+eGFP fit page: bundled data lack the A488/eGFP pair; a joint fit of two recordings of one dye does not converge (chi2r ~1500), and the global-fit editor's member table renders blank",
+  "manual/_images/image_rId136.png": "same as rId135 (joint fit setup)",
+  "manual/_images/image_rId137.png": "same as rId135 (joint fit setup)",
+  "manual/_images/image_rId138.png": "same as rId135; also the 'Local fits' table bug",
+  "manual/_images/image_rId139.png": "same as rId135; also the 'Local fits' table bug",
+  "manual/_images/image_rId140.png": "same as rId135 (joint fit result)",
+  "manual/_images/image_rId143.png": "global fit of HEK293T eGFP cell data; that data is not bundled"
+ }
+}

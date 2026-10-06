@@ -7,11 +7,7 @@ tags: [manual, diffusion, installation, fcs, fitting]
 
 # Adding the membrane-diffusion models
 
-Upon installation, ChiSurf comes with a bunch of FCS fit models; however, your required fit model might not be among them. The FCS models are defined in a YAML file, `chisurf/core/models/fcs/models.yaml`, in the installation folder. (Earlier versions used a JSON file; the structure is the same.)
-
-```{image} _images/image_rId83.png
-:align: center
-```
+Upon installation, ChiSurf comes with a bunch of FCS fit models; however, your required fit model might not be among them. The FCS models are defined in a YAML file, `chisurf/core/models/fcs/models.yaml`, in the installation folder -- the formulas the **Model** selector of the FCS *Parse-Model* offers in the **Analysis** dock. (Earlier versions used a JSON file, `fcs.model.json` in a `settings` folder; the structure is the same.)
 
 Before modifying the file, (i) create a copy on a different place as a backup and (ii) make a second copy to work on as modifying / saving directly in the programs installation folder is usually not allowed.
 
@@ -35,10 +31,6 @@ Each model is one entry with three keys under its name:
 The key is the model name as it appears in the selector, `equation` is the correlation function in terms of the lag `x`, `initial` gives every parameter a starting value — a parameter exists because it appears here — and `description` is the tooltip.
 
 *It is vital to keep this notation and take care of proper punctuation and indentation!*
-
-```{image} _images/image_rId84.png
-:align: center
-```
 
 Add the two models below — bimodal membrane diffusion, with and without an additional relaxation / triplet term:
 

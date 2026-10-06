@@ -21,20 +21,21 @@ uncertainty is — and, unlike the curvature at the optimum, it shows the
 correlations between parameters and survives a posterior that is not a
 paraboloid.
 
-Sampling is started with the "Distribution" button beside "Fit" in the fitting
-and optimisation interface (**Fig.15**).
+Sampling is started with the **Sample** button beside **▶ Fit** in the Fit box
+of the Analysis dock (**Fig.15**); **⚙** beside it holds the sampler, the chain
+length and format.
 
-```{image} _images/image_rId23.png
+```{image} figures/manual_sampling.png
 :align: center
 ```
 
-**Fig.15 Sampling over variable model parameters, illustrated for
-time-resolved fluorescence analysis.** The data and model of the fit are shown
-below. Clicking the sampling button (highlighted in orange) samples the free
-model parameters and asks for an output folder. The chains are written there and
-can be opened in a multidimensional-histogram tool — nDXplorer, which ships with
-ChiSurf, or Margarita — to look at the distributions and their correlations
-(bottom right).
+**Fig.15 A sampled lifetime fit.** **Sample** (Fit box, left) samples the free
+parameters and writes the chains to an output folder. The fit window then shows
+them: here the *Chain diagnostics* page, whose rank plot of the lifetime `t0`
+compares the four runs (flat = converged) and says whether the chains cover the
+same distribution; *Posterior graph* and *What-if* show the correlations. The
+chains can also be opened in nDXplorer, which ships with ChiSurf, to look at the
+distributions and their correlations.
 
 Defaults for the number of steps, the number of independent runs and the chain
 format live in the `optimization.sampling` section of the settings file

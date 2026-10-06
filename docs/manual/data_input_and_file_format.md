@@ -13,38 +13,58 @@ In the first case, two files are required, one containing the parallel channel a
 
 In the second case, only a single file is required, in which the data from perpendicular and parallel channel are stacked on top of each other.
 
-Please note that in both format no header is used, however, it can be defined to skip header rows while file loading.
+A header is allowed in both formats: the number of rows to skip is set in the
+**Read data** dock (*Skiprows*).
 
-```{image} _images/image_rId108.png
-:align: center
+A two-column file, here the start of a decay of the bundled IBH sample
+(`test/data/tcspc/ibh_sample/Decay_577D.txt`): ten header rows, then channel and
+counts, tab separated (read with *Skiprows* 10):
+
+```text
+Item name: Decay
+
+Real time: 362.06
+Live time: 155.88
+
+Comment: 
+
+
+Chan	Data
+1	0
+2	0
+3	0
 ```
 
-```{image} _images/image_rId109.png
-:align: center
-```
+A single-column VV/VH file (`test/data/tcspc/Jordi/02_18-577+7.5uM(577)UP_8ps.dat`,
+4096 rows): rows 1–2048 are the parallel (VV) decay, rows 2049–4096 the
+perpendicular (VH) one, stacked without a separator. The time per channel is not
+in the file (here 8 ps); it is entered in the dock.
 
-```{image} _images/image_rId110.png
-:align: center
-```
-
-```{image} _images/image_rId111.png
-:align: center
+```text
+row  300:  698
+row  301:  774
+...
+row 2348:  119
+row 2349:  122
 ```
 
 I personally prefer the single-column VV/VH-format as it reduces the amount of files in my data export folders by 50%, however, I need of course to remember with which time resolution (here 20 ps) the TCSPC histograms were exported.
 
-```{image} _images/image_rId112.png
+ChiSurf is started from the project environment:
+
+```shell
+pixi run chisurf          # or, inside the activated environment: python -m chisurf
+```
+
+```{image} figures/main_read_data_vvvh.png
 :align: center
 ```
 
-```{image} _images/image_rId113.png
-:align: center
-```
-
-```{image} _images/image_rId114.png
-:align: center
-```
-
-```{image} _images/image_rId115.png
-:align: center
-```
+**Fig. Reading a VV/VH file.** The **Read data** dock with **Experiment** TCSPC and
+**File type** TXT/CSV. Under *Anisotropy (VV/VH)*, **stacked** is ticked and
+**pol.** set to **VV,VH**: the file's two halves are read as the parallel and the
+perpendicular decay (ticking *stacked* also drops the header row and scales dt by
+the rebin factor). *g-factor* is the detection-efficiency ratio of the two
+channels, *l1*/*l2* the mixing factors and *VH shift* a channel shift of VH
+relative to VV; the **g-factor** button opens the tool that adjusts shift and
+g-factor with a reference dye.

@@ -1,0 +1,153 @@
+{
+ "added": {
+  "manual/figures/manual_convolution.png": {
+   "caption": "The Convolution box of a fitted lifetime fit with the measured prompt loaded as IRF.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_convolution",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 convolution. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: lifetime fit of Decay_577D, fitted; Convolution box grabbed.",
+   "pages": [
+    "docs/manual/nuisances.md"
+   ]
+  },
+  "manual/figures/manual_generic.png": {
+   "caption": "The Generic box with a background pattern loaded (sc, bg, tBg, tMeas, #Ph_B, #Ph_F).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_generic",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 generic. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: fitted lifetime fit; Prompt.txt loaded as background through model.set_background_curve. The field reads 'DataCurve' (app defect: the macro stores an unnamed copy).",
+   "pages": [
+    "docs/manual/nuisances.md"
+   ]
+  },
+  "manual/figures/manual_corrections.png": {
+   "caption": "The Corrections box: Lin. table, Smoothing, Pile-up/DNL/Reverse, tDead and win-size.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_corrections",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 corrections. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: fitted lifetime fit; whitelight.txt loaded through set_linearization -- the field still shows its placeholder (app defect: no name_attr for Lin. table, unnamed copy).",
+   "pages": [
+    "docs/manual/nuisances.md"
+   ]
+  },
+  "manual/figures/manual_fit_controller.png": {
+   "caption": "The Fit box: Fit, MCTS, Sample, settings, auto range, attach dataset, Local first, Dataset, Result, First/Last.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_fit_controller",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 fit_controller. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: fitted lifetime fit; Fit box grabbed.",
+   "pages": [
+    "docs/manual/fit_interface.md"
+   ]
+  },
+  "manual/figures/manual_parameter_table.png": {
+   "caption": "(a) The Convolution parameter table, (b) the detail popup of ts (timeshift): Link…/Unlink, value, Fixed, Prior, bounds.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_parameter_table",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 parameter_table. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: fitted lifetime fit; popup opened by ParameterGroupTableWidget._open_details_popup on the timeshift row.",
+   "pages": [
+    "docs/manual/parameters.md"
+   ]
+  },
+  "manual/figures/manual_scoring_range.png": {
+   "caption": "The scoring range as First/Last in the Fit box and as the shaded region on the Fit plot.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_scoring_range",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 scoring_range. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: fitted lifetime fit; Convolution/Generic folded; Fit page current; whole Main grabbed.",
+   "pages": [
+    "docs/manual/model_scoring_range.md"
+   ]
+  },
+  "manual/figures/manual_fit_before_after.png": {
+   "caption": "A lifetime fit of the IBH sample before (a) and after (b) pressing Fit: Fit and Lifetimes boxes beside the Fit plot.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_fit_before_after",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 fit_before_after. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: unfitted lifetime fit (tau=1 ns start), grabbed; fit.run(); grabbed again. Fit window scaled to 760 px.",
+   "pages": [
+    "docs/manual/parameter_optimization.md"
+   ]
+  },
+  "manual/figures/manual_sampling.png": {
+   "caption": "A sampled lifetime fit: Sample in the Fit box, the rank plot of t0 on the Chain diagnostics page.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_sampling",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 sampling. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: fitted lifetime fit; sample_fit(method='blocked', steps=2000, thin=1, n_runs=4) into a temp directory; Chain diagnostics page current.",
+   "pages": [
+    "docs/manual/parameter_sampling.md"
+   ]
+  },
+  "manual/figures/manual_equation_parsing.png": {
+   "caption": "A parsed decay equation (Parse-Model, 2-Lifetimes) fitted to the IBH sample decay: Equation box, Equation parameters, Fit plot.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_equation_parsing",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 equation_parsing. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: ParseDecayModel on Decay_577D with the prompt as IRF, model_name '2-Lifetimes', start a1=a2=0.5, tau1=4, tau2=1, fitted; Convolution/Generic/Corrections folded.",
+   "pages": [
+    "docs/manual/equation_parsing.md"
+   ]
+  },
+  "manual/figures/manual_donor_reference.png": {
+   "caption": "A FRET (Gaussian) fit of the IBH donor-acceptor sample: raw (a), Plot settings with Reference = Donor reference (b), the curves divided by the donor reference (c).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_donor_reference",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 donor_reference. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: tcspc_fret_gaussian on Decay_577D+577A+GTPgS with the prompt as IRF, fitted; (c) reference_mode tcspc_donor_reference, logY off, IRF curve hidden. Fit windows scaled to 820 px.",
+   "pages": [
+    "docs/manual/reference_curves.md"
+   ]
+  },
+  "manual/figures/manual_calculators.png": {
+   "caption": "The calculators hub on F-test / chi2-max (a) and FRET / homoFRET (b).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_calculators",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 calculators. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: chisurf.plugins.calculator.hub.gui.app.make_app() in a ControlHost 1000x640, select('f_test') and select('fret_calculator'), default values.",
+   "pages": [
+    "docs/manual/fcalculator.md"
+   ]
+  },
+  "manual/figures/manual_parameter_link.png": {
+   "caption": "Two IBH lifetime fits with the second's t0 linked to the first's: (a) the Lifetimes table, (b) the detail popup (t0 -> t0, Unlink enabled).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_parameter_link",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 parameter_link. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: fit 1: Decay_577D fitted; fit 2: Decay_577D+577A+GTPgS unfitted, its t0.link = fit 1's t0.",
+   "pages": [
+    "docs/manual/linking_parameters.md"
+   ]
+  },
+  "manual/figures/manual_global_view.png": {
+   "caption": "The same two linked fits in Global View: fits, free parameters and the link arrow; the follower t0 selected.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fitting.py::shot_parameter_link",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the script's arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9 parameter_link. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793. State: after the link above: chisurf.plugins.core.globalview.gui.app.make_app(remember_layout=False) in a ControlHost 1200x760, follower record selected with model.select_parameter.",
+   "pages": [
+    "docs/manual/linking_parameters.md"
+   ]
+  }
+ },
+ "removed": [
+  "manual/_images/image_rId19.png",
+  "manual/_images/image_rId20.png",
+  "manual/_images/image_rId21.png",
+  "manual/_images/image_rId22.png",
+  "manual/_images/image_rId23.png",
+  "manual/_images/image_rId27.png",
+  "manual/_images/image_rId28.png",
+  "manual/_images/image_rId29.png",
+  "manual/_images/image_rId30.png",
+  "manual/_images/image_rId31.png",
+  "manual/_images/image_rId32.png",
+  "manual/_images/image_rId51.png"
+ ],
+ "pages_edited": [
+  "docs/manual/nuisances.md",
+  "docs/manual/parameters.md",
+  "docs/manual/fit_interface.md",
+  "docs/manual/model_scoring_range.md",
+  "docs/manual/parameter_optimization.md",
+  "docs/manual/parameter_sampling.md",
+  "docs/manual/equation_parsing.md",
+  "docs/manual/reference_curves.md",
+  "docs/manual/fcalculator.md",
+  "docs/manual/linking_parameters.md"
+ ],
+ "not_replaced": {},
+ "app_defects_seen": {
+  "background name": "chisurf/macros/model.py set_background_curve stores DataCurve(x=, y=) without the name, so the Generic box's Background field reads 'DataCurve' after loading a background (visible in manual_generic.png).",
+  "lin table name": "the Lin. table curve_input in the TCSPC view specs (e.g. chisurf/core/models/views/tcspc_lifetime.view.json) has no name_attr and set_linearization stores an unnamed copy, so a loaded linearisation table never shows in the field (manual_corrections.png shows the placeholder)."
+ },
+ "notes": "nuisances.md showed image_rId27 twice; one copy kept. linking_parameters.md now has Fig.36 (link popup) and a new Fig.37 (Global View, the successor of the old network tool)."
+}

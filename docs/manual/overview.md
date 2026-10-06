@@ -7,23 +7,23 @@ tags: [manual, fitting, global-analysis]
 
 # Overview
 
-ChiSurf is modular software for global analysis of fluorescence spectroscopic data. The graphical user interface of Chisurf can be separated into three regions (a) the data reading / analysis dock, (b) an interactive programming shell that accesses the currently running ChiSurf instance, and (c) the fitting region that gathers representations and plots of generated models / fits for diverse datasets, such as fluorescence correlation spectroscopy and fluorescence decay histograms (**Fig.1**).
+ChiSurf is modular software for global analysis of fluorescence spectroscopic data. The main window has three regions: (a) the docks on the left for reading data and setting up and running analyses, (b) the **Console** below, an interactive Python shell inside the running ChiSurf session, and (c) the multiple document interface on the right, where every fit has a window with its plots (**Fig.1**).
 
-```{image} _images/image_rId10.png
+```{image} figures/main_overview.png
 :align: center
 ```
 
-**Fig.1 Graphical user interface of ChiSurf.** The dock on the left (a) gathers user interfaces for reading data, creating data analysis, analyzing data, changing plots of created analysis, editing macros, and the history of the current program session. (b) The programming shell interacts with the running ChiSurf session for interactive analysis, programming, and development. (c) Interactive graphical representations of the data facilitate an explorative data analysis that allows for introducing dependencies among datasets of different types for a joint analysis.
+**Fig.1 The ChiSurf main window.** Two decays of the IBH sample (`test/data/tcspc/ibh_sample`) fitted with the *Lifetime* model against the measured prompt. (a) The docks on the left share one area, chosen by the tabs at its bottom: **Read data**, **Datasets**, **Analysis** (shown: the active fit's controls and parameters), **Plot settings** and **Logging**. (b) The **Console** below runs Python in the session; here it reads the first fit's name and its reduced χ². (c) The fit windows, tiled; each shows the data, the IRF and the model with the weighted residuals and their autocorrelation above.
 
 Integrated software modules for single-molecule spectroscopy, fluorescence correlation spectroscopy, and image spectroscopy (Fluorescence Lifetime Image Microscopy, FLIM) facilitate the joint analysis of imaging and single-molecule data, while the open Python programming interface allows other software to be integrated for more complex analysis (**Fig.2**).
 
 The accompanying software can be used independently of the main analysis software.
 
-```{image} _images/image_rId11.png
+```{image} figures/tools_montage.png
 :align: center
 ```
 
-**Fig.2 Accompanying software modules.** ChiSurf is accompanied by software for burst-wise single molecule spectroscopy (ndXplorer), fluorescence correlation spectroscopy (tttrlib), and time-resolved image spectroscopy (clsmview), and additional software for statistical analysis. Histograms over multiparameter fluorescence spectroscopy data and sampled parameters can be computed for sub-ensemble analysis (Burst-wise single molecule spectroscopy). Photon traces can be analyzed for fluorescence correlation spectroscopy, FCS. Data collected on a microscope equipped with time-resolved detection can be processed for FLIM and for pixel-grouped analysis (Fluorescence Lifetime Image Microscopy, FLIM).
+**Fig.2 Companion tools.** Four of the tools that open from the main window's menus, each in its own window: **ndXplorer** for burst-wise single-molecule data (here a FRET-efficiency histogram with Gaussian populations), the **FCS** hub that turns photon streams into correlation curves (Spectroscopy ▸ Correlation ▸ FCS), the **TTTR Image Browser** for time-resolved images (FLIM), and **Histogram-Microtime** for micro-time histograms of photon streams. Their guides describe each in detail.
 
 ```{image} _images/image_rId12.png
 :align: center

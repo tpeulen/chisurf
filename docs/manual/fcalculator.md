@@ -7,15 +7,19 @@ tags: [manual, fret, fcalculator]
 
 # F-Calculator
 
-```{image} _images/image_rId32.png
+```{image} figures/manual_calculators.png
 :align: center
 ```
 
-**Fig.25 F-Calculator.** Convert between the quantities of a FRET
-measurement, and compute the F-values used to put a confidence level on a
-{doc}`parameter scan <parameter_scan>`.
+**Fig.25 The calculators hub** (**Tools → Calculators → Calculators**). (**a**)
+*F-test / χ²-max*: compare two nested fits (χ²(1), n₁ against χ²(2), n₂ gives
+the confidence that the second is better) and compute the χ²-max upper limit of
+a single fit at a confidence level, used to put a confidence level on a
+{doc}`parameter scan <parameter_scan>`. (**b**) *FRET / homoFRET*: convert
+between the quantities of a FRET measurement, with the distance and rate-constant
+distributions they imply.
 
-The calculator is the **FRET / homoFRET** entry of the calculators hub
+The FRET calculator is the **FRET / homoFRET** entry of the calculators hub
 (**Tools → Calculators → Calculators**). It is a small
 set of coupled fields: change any one of them and the rest follow, which makes
 it the fastest way to answer "what distance does that efficiency correspond to"

@@ -1,0 +1,243 @@
+{
+ "added": {
+  "manual/figures/fcs_main_window.png": {
+   "caption": "The main window at start with Experiment FCS and File type Seidel Kristine in the Read data dock.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: no data loaded. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_datasets_added.png": {
+   "caption": "The Read data dock (Experiment FCS, File type Seidel Kristine, + Data, drop area) after loading the three A488 curves.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: three curves loaded. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_add_analysis.png": {
+   "caption": "The Datasets dock with the three A488 curves selected, Model Parse-Model and + Analysis.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: curves selected. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_fit_windows.png": {
+   "caption": "One Parse-Model fit window per curve, as they open.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: fits added. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_fit_windows_tabbed.png": {
+   "caption": "The fit windows shown as tabs (View/toolbar: tab windows).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: tabbed view. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_fit_windows_tiled.png": {
+   "caption": "The fit windows tiled over the working area.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: tiled view. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_model_3d_gauss_bunching.png": {
+   "caption": "Analysis dock with the formula 3D Gauss, 1 bunching chosen for curve 1, its rendered equation and description; the window maximised.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: formula chosen, not yet fitted. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_model_parameters.png": {
+   "caption": "The Analysis dock alone: Fit section, Equation (Model, formula, rendering) and the Equation parameters table (Value, Fixed, Lo, Hi, Bounds, Error).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: formula chosen, not yet fitted. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_first_fit.png": {
+   "caption": "Curve 1 fitted over the full range: the bunching term absorbs the afterpulsing of the first lag point (ba 0.97 at 75 ns, N 0.17).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: fit over points 0-199. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_fit_range.png": {
+   "caption": "Fit range set to points 1-134 (0.4 us to ~100 ms): First/Last in the Fit section and the shaded range in the plot.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: range set, before refit. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_second_fit.png": {
+   "caption": "Curve 1 refitted over points 1-134: N 4.86, td 25.6 us, s 7.26, ba 0.21, bt 0.90 us.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: refit. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_all_fitted.png": {
+   "caption": "All three curves fitted individually with 3D Gauss, 1 bunching over points 1-134, tiled.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: three local fits. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_link_menu.png": {
+   "caption": "Right-click menu of the td row of curve 2: Link td to -> the session's fits -> Parameters/All parameters, beside the Analysis dock.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: composite of the dock and the menu chain. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_linked_parameters.png": {
+   "caption": "Equation parameters of curve 3 with td, s and bt linked to curve 1: greyed, italic, showing curve 1's values.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: after linking through the row menus. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_add_global_fit.png": {
+   "caption": "Datasets dock with Global Dataset selected and Model Global fit, ready for + Analysis.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: before adding the global fit. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_file_menu.png": {
+   "caption": "File menu with its Fits submenu: Load Fit, Current Fit (Alt+Cmd+S), All Fits, Close Fit, Close all fits.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough",
+   "recipe": "Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded with dataset.add; three Parse-Model fits. State: composite of the two popups. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough",
+   "pages": [
+    "docs/manual/fit_of_a_fcs_curve.md"
+   ]
+  },
+  "manual/figures/fcs_correlator_step.png": {
+   "caption": "Step 4 Correlator of the FCS hub after correlating the simulated example into six subsets.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_correlator_steps",
+   "recipe": "FCS hub (Tools -> FCS, fcs_toolbox make_app) drawn with PilPainter 1200x800 on its simulated two-channel example (Files & Steps -> example, FCS merger on); correlator Ch A 0, Ch B 1, 6 splits, laurence. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_correlator_steps",
+   "pages": [
+    "docs/manual/correlator.md"
+   ]
+  },
+  "manual/figures/fcs_merger_step.png": {
+   "caption": "Step 5 FCS Merger: the six subsets with CR A, CR B, Duration and Use, their curves and the merge.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_fcs.py::grab_correlator_steps",
+   "recipe": "FCS hub (Tools -> FCS, fcs_toolbox make_app) drawn with PilPainter 1200x800 on its simulated two-channel example (Files & Steps -> example, FCS merger on); correlator Ch A 0, Ch B 1, 6 splits, laurence. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py grab_correlator_steps",
+   "pages": [
+    "docs/manual/correlation_merging.md"
+   ]
+  }
+ },
+ "removed": [
+  "manual/_images/image_rId41.png",
+  "manual/_images/image_rId42.png",
+  "manual/_images/image_rId53.png",
+  "manual/_images/image_rId54.png",
+  "manual/_images/image_rId55.png",
+  "manual/_images/image_rId56.png",
+  "manual/_images/image_rId57.png",
+  "manual/_images/image_rId58.png",
+  "manual/_images/image_rId59.png",
+  "manual/_images/image_rId60.png",
+  "manual/_images/image_rId61.png",
+  "manual/_images/image_rId63.png",
+  "manual/_images/image_rId64.png",
+  "manual/_images/image_rId65.png",
+  "manual/_images/image_rId66.png",
+  "manual/_images/image_rId67.png",
+  "manual/_images/image_rId68.png",
+  "manual/_images/image_rId69.png",
+  "manual/_images/image_rId70.png",
+  "manual/_images/image_rId71.png",
+  "manual/_images/image_rId83.png",
+  "manual/_images/image_rId84.png",
+  "manual/_images/image_rId53.emf",
+  "manual/_images/image_rId55.emf",
+  "manual/_images/image_rId57.emf",
+  "manual/_images/image_rId58.emf",
+  "manual/_images/image_rId59.emf",
+  "manual/_images/image_rId61.emf",
+  "manual/_images/image_rId63.emf",
+  "manual/_images/image_rId66.emf",
+  "manual/_images/image_rId68.emf",
+  "manual/_images/image_rId84.emf"
+ ],
+ "pages_edited": [
+  "docs/manual/fit_of_a_fcs_curve.md",
+  "docs/manual/correlator.md",
+  "docs/manual/correlation_merging.md",
+  "docs/manual/adding_the_membranediffusion_models.md"
+ ],
+ "not_replaced": {
+  "manual/_images/image_rId69.png": "not replaced: the current global-fit editor cannot be pictured working -- its ➕ Add/➖ Remove/➕ Add (global parameter) buttons raise (GlobalFitModel.add_selected_fit/remove_selected_local_fit/add_global_parameter call self.fit.<method>, which only the model has), its Local fits table does not refresh after an append, and the member windows do not redraw after a global fit; the old picture showed an obsolete editor, so it was removed and the text describes the current controls.",
+  "manual/_images/image_rId70.png": "not replaced: the current global-fit editor cannot be pictured working -- its ➕ Add/➖ Remove/➕ Add (global parameter) buttons raise (GlobalFitModel.add_selected_fit/remove_selected_local_fit/add_global_parameter call self.fit.<method>, which only the model has), its Local fits table does not refresh after an append, and the member windows do not redraw after a global fit; the old picture showed an obsolete editor, so it was removed and the text describes the current controls.",
+  "manual/_images/image_rId83.png": "removed, not replaced: Windows Explorer view of the old settings folder; the page names the YAML file instead.",
+  "manual/_images/image_rId84.png": "removed, not replaced: annotated old fcs.model.json; the page shows the current YAML entry as a code block with each key explained.",
+  "manual/_images/image_rId74.png": "not replaced: ChiSurf fit window(s) of the A568 calibration measurement (red excitation), which is not in the repository; the picture cannot be retaken without it.",
+  "manual/_images/image_rId81.png": "not replaced: ChiSurf fit window(s) of the double-labelled DNA measurements, which is not in the repository; the picture cannot be retaken without it.",
+  "manual/_images/image_rId85.png": "not replaced: ChiSurf fit window(s) of the live-cell beta2AR-eGFP / SNAP-beta2AR curves, which is not in the repository; the picture cannot be retaken without it.",
+  "manual/_images/image_rId91.png": "not replaced: ChiSurf fit window(s) of the live-cell auto/cross-correlation curves, which is not in the repository; the picture cannot be retaken without it.",
+  "manual/_images/image_rId94.png": "not replaced: ChiSurf fit window(s) of the simulated LF<->HF FRET-dynamics curves, which is not in the repository; the picture cannot be retaken without it.",
+  "manual/_images/image_rId95.png": "not replaced: ChiSurf fit window(s) of the simulated FRET-dynamics curves (E 0/0.95), which is not in the repository; the picture cannot be retaken without it.",
+  "manual/_images/image_rId96.png": "not replaced: ChiSurf fit window(s) of the simulated curves with added triplet, which is not in the repository; the picture cannot be retaken without it.",
+  "manual/_images/image_rId103.png": "not replaced: ChiSurf fit window(s) of the species-filtered FCS curves of the simulation, which is not in the repository; the picture cannot be retaken without it.",
+  "manual/_images/image_rId72.png": "not replaced: spreadsheet of the worked calculation, not a ChiSurf screen (would become a Markdown table, not a screenshot).",
+  "manual/_images/image_rId73.png": "not replaced: spreadsheet of the worked calculation, not a ChiSurf screen (would become a Markdown table, not a screenshot).",
+  "manual/_images/image_rId75.png": "not replaced: spreadsheet of the worked calculation, not a ChiSurf screen (would become a Markdown table, not a screenshot).",
+  "manual/_images/image_rId76.png": "not replaced: spreadsheet of the worked calculation, not a ChiSurf screen (would become a Markdown table, not a screenshot).",
+  "manual/_images/image_rId79.png": "not replaced: spreadsheet of the worked calculation, not a ChiSurf screen (would become a Markdown table, not a screenshot).",
+  "manual/_images/image_rId80.png": "not replaced: spreadsheet of the worked calculation, not a ChiSurf screen (would become a Markdown table, not a screenshot).",
+  "manual/_images/image_rId82.png": "not replaced: spreadsheet of the worked calculation, not a ChiSurf screen (would become a Markdown table, not a screenshot).",
+  "manual/_images/image_rId86.png": "not replaced: spreadsheet of the worked calculation, not a ChiSurf screen (would become a Markdown table, not a screenshot).",
+  "manual/_images/image_rId92.png": "not replaced: spreadsheet of the worked calculation, not a ChiSurf screen (would become a Markdown table, not a screenshot).",
+  "manual/_images/image_rId77.png": "not replaced: plot of external data (absorption/emission spectra with filter bands), not a ChiSurf screen; data not bundled.",
+  "manual/_images/image_rId87.png": "not replaced: plot of external data (crosstalk correlation curves (Origin plot)), not a ChiSurf screen; data not bundled.",
+  "manual/_images/image_rId89.png": "not replaced: plot of external data (crosstalk correlation curves (Origin plot)), not a ChiSurf screen; data not bundled.",
+  "manual/_images/image_rId97.png": "not replaced: plot of external data (IRF/LF/HF decay histograms), not a ChiSurf screen; data not bundled.",
+  "manual/_images/image_rId99.png": "not replaced: plot of external data (species decay patterns), not a ChiSurf screen; data not bundled.",
+  "manual/_images/image_rId101.png": "not replaced: plot of external data (species weights), not a ChiSurf screen; data not bundled."
+ },
+ "defects_found": [
+  "GlobalFitModel.add_selected_fit / remove_selected_local_fit / add_global_parameter call self.fit.append_fit / remove_local_fit / append_global_parameter, which exist only on the model: the global-fit editor's Add/Remove buttons raise AttributeError (chisurf/core/models/global_model/globalfit.py:127/137/145); add_global_parameter also passes a name where append_global_parameter expects a Parameter.",
+  "Global-fit editor: the Local fits table does not refresh after a fit is appended.",
+  "After a global fit the member fit windows keep their local-fit curves and chi2; the global fit's Info tab reports chi2r = 1.0000 exactly -- worth checking whether the global fit updates the same fit objects the windows show.",
+  "Parse-Model link menu: the Parameters / All parameters submenus list every parameter of every catalogue equation (~150 names), not the six of the active formula.",
+  "FCS hub: the Correlator plots lag as 'Correlation time (ms)' while the FCS Merger plots the same curves against 'Lag time (s)', both with the decay at 1 -- one unit label is wrong.",
+  "Confocor3 files load as one group of four curves (AC1, AC2, CC12, CC21) per file; the FCS reader has no option to load a single channel."
+ ]
+}

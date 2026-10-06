@@ -7,13 +7,17 @@ tags: [manual, model, scoring, range]
 
 # Model scoring range
 
-The value of the score depends on the data that is used for scoring. Often, the model is scored in a particular data range. In cases where the data are curves, the scoring range is defined by an upper and lower value (fit range). In the graphical user interface, the scoring range is adjusted either in the 'Data optimization & sampling interface' or directly in a plot of the data and the model (**Fig.12**).
+The value of the score depends on the data that is used for scoring. Often, the model is scored in a particular data range. In cases where the data are curves, the scoring range is defined by an upper and lower value (fit range). In the graphical user interface, the scoring range is adjusted either in the Fit box of the Analysis dock or directly in a plot of the data and the model (**Fig.12**).
 
-```{image} _images/image_rId21.png
+```{image} figures/manual_scoring_range.png
 :align: center
 ```
 
-**Fig.12 Adjusting the scoring range.** The scoring range can be adjusted using inputs for the lower and upper bound of the scoring range in the data optimization and sampling interface (top). Alternatively, the scoring range can be adjusted in plots of the data and the model (bottom).
+**Fig.12 Adjusting the scoring range.** The range is set by **First** and
+**Last** (channels) in the Fit box of the Analysis dock (left), or by dragging
+the edges of the shaded region on the *Fit* plot (right); the two follow each
+other, and the box in the plot reports the range and the resulting χ²ᵣ.
+**auto** in the Fit box picks the range from the data.
 
 In the programming shell the fit range of the current fit is adjusted using integers as lower and upper bounds that correspond the index of the data.
 

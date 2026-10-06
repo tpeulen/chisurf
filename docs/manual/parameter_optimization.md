@@ -23,11 +23,17 @@ fit.run(local_first=True)
 
 The effect of optimizing (fitting) variable model parameters to data for a fluorescence decay curve are displayed in **Fig.13**.
 
-```{image} _images/image_rId22.png
+```{image} figures/manual_fit_before_after.png
 :align: center
 ```
 
-**Fig.13 Optimizing variable parameters.** The Fit button (red box) optimizes the agreement between the model and the data. The middle panels display fixed and variable model parameters before and after fitting (clicking the 'Fit' button). The bottom displays the data and the model before and after fitting. The autocorrelation of the weighted deviations between the data and the model weighted by the data noise (weighted residuals) and the weighted residuals visually captures the similarity between the data and the model.
+**Fig.13 Optimizing variable parameters.** A lifetime fit of the IBH sample
+decay before (**a**) and after (**b**) pressing **▶ Fit** in the Fit box. The
+Lifetimes table shows the lifetime τ_L moving from its start value to the
+optimum, with its fitted *Error*; the *Fit* plot shows the data (orange), the
+IRF (blue) and the model (magenta), with the weighted residuals and their
+autocorrelation above. Before the fit both carry structure; after it the
+residuals scatter around zero and the box in the plot reports χ²ᵣ ≈ 1.6.
 
 ## Settings
 

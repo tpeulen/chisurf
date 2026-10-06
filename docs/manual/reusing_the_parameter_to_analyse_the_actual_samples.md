@@ -11,14 +11,17 @@ The obtained parameter can now be used to analyse the actual cell samples. Here,
 
 Firstly, verify that the reading parameter are still set correctly. Next, open the anisotropy wizard and load the cell data.
 
-In the correction factor window, enter the obtained values and press save. In the fluorescence lifetimes and rotational correlation times window, the following components are given:
+In the wizard's *Corrections* step, enter the obtained values (they are kept for the next session). In
+the *Components* step, the following components are given:
 
 1. Fluorescence Lifetime: 2.6 ns / 1.6 ns (0.7, 0.3)
 2. Rotational correlation times: 10 ns (0.38)
 
-```{image} _images/image_rId142.png
+```{image} figures/anisotropy_wizard_components_reuse.png
 :align: center
 ```
+
+The *Components* step with these two lifetimes and the single rotational correlation time.
 
 If the estimated parameter given in the fit setup are sufficiently close, one can directly proceed to the global fit window and press "Fit".
 

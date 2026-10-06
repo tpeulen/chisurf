@@ -9,10 +9,23 @@ tags: [manual, photons, correlation]
 
 The correlator uses the generated photon selection masks and the photon stream to compute correlation functions (**Fig.29**).
 
-```{image} _images/image_rId41.png
+```{image} figures/fcs_correlator_step.png
 :align: center
 ```
 
-**Fig.29 Interface of the correlation step in the correlation computation pipeline.** Correlation channels and selected micro time ranges for the correlation are defined in the "Correlation" channel group. The number of correlation bins and the splitting of the photon traces into subsets are defined in the "Correlation settings" group. The number of bins per "cascade" defines the number of correlation bins. The "fine" checkbox enables a full correlation that utilizes the macro and the micro time in the correlation computation. The "Correlate" button initiates the correlation computations. Computed correlations are displayed in the plot to the right. The computed correlations are stored in the output folder defined in the "Target" field.
+**Fig.29 The Correlator step of the FCS hub** (**Tools → FCS**, step *4.
+Correlator*), here on the hub's simulated two-channel example split into six
+subsets. *Correlation Channels* picks the two channels from the setup's channel
+definitions (**A**, **B**), or takes detector routing channels typed into
+**Ch A**/**Ch B**, each optionally restricted to micro-time windows (**µt A**,
+**µt B**, e.g. `0-100;200-300`). *Correlation Settings*: **Bins** linear bins per
+cascade and **Cascades** multi-tau cascades set the lag grid, **Splits** the
+number of subsets the photon stream is cut into, **Method** the tttrlib algorithm
+(*laurence* by default), **Fine** the micro-time-resolved grid with its **µt
+bin** factor. **Correlate** computes one curve per subset (right); **FCS
+Preset** and **Load filters…** take a saved channel preset and photon filters
+from the earlier steps. The curves are written into the `cr5` folder beside the
+data, where the next step, the merger, reads them.
 
-The correlation step computes correlation functions from the photons the mask selected. Those photons are split into subsets. For each subset a correlation curve is computed. The output of the correlation computation is stored for each subset in JSON files that refer to the photon filter and contain information on the correlation setting along with the corresponding correlation curves.
+The correlation step computes correlation functions from the photons the mask selected. Those photons are split into subsets. For each subset a correlation curve is computed. The output is one curve file per subset in the `cr5` folder, holding the
+correlation settings with the curve.

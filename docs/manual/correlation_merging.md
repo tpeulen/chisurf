@@ -9,10 +9,19 @@ tags: [manual, correlation, merging]
 
 Finally, the computed correlation curves can be merged (**Fig.30**). Before merging the correlation curves of the subsets into a joint correlation curve outliers (e.g. caused by aggregates) can be removed.
 
-```{image} _images/image_rId42.png
+```{image} figures/fcs_merger_step.png
 :align: center
 ```
 
-**Fig.30. Selecting and merging correlation curves.** The left side displays for every subset of the photon stream the count rate in the two correlation channels and the duration of the subset. Selecting a row in the left table selects the corresponding correlation curve displayed on the right-hand side. The merged correlation curve is displayed on the very right-hand side.
+**Fig.30 Selecting and merging correlation curves** (step *5. FCS Merger* of the
+FCS hub, on the six subsets of Fig.29). The table lists every subset's curve
+with the count rate of both correlation channels (**CR A**, **CR B**) and its
+**Duration**; **Use** decides whether it enters the merge. The curves are drawn
+top right, their merge (*Merge of 6*) below it.
 
-The curves of the subsets can be selected in the table on the left-hand side. A double click on the selected curve removes the curve from table and the merged correlation curve. The "Finish" button finalizes the pipeline. By default, the output of the pipeline is saved in the "cr5" folder.
+Untick **Use** -- or double-click a row -- to leave a subset out (an aggregate,
+a bleaching event); **Delete** removes it from the list. The merge is written
+to **Target** (by default the `cr5` folder's name, as a Seidel Kristine `.cor`
+file) with **💾 Save**; **🚀 Add to ChiSurf** saves it and loads it as an FCS
+dataset for fitting. **📂 Open folder…** merges any folder of correlation
+curves, not only the ones this pipeline just computed.

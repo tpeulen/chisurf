@@ -7,16 +7,16 @@ tags: [manual, changing, visualizations]
 
 # Changing visualizations
 
-The visualization of the graph is controlled by widgets in the visualization box (**Fig.33**).
+The drawing of the graph is set in the **View** tab on the right of the Global View (**Fig.33**).
 
-```{image} _images/image_rId45.png
+```{image} figures/globalview_view_tab.png
 :align: center
 ```
 
-```{image} _images/image_rId46.png
+```{image} figures/globalview_include_fixed.png
 :align: center
 ```
 
-**Fig.33.** The graph visualization is controlled by the group box highlighted in red (left). The node sizes and the graph scale are controlled by respective spin boxes. The connect fits checkbox introduces additional edges between fits. The include-fixed checkbox controls whether fixed parameters appear in the graph. The dropdown menu can be used to select a different algorithm for node placement.
+**Fig.33.** The **View** tab (top). **Show** chooses the *Parameter network* (fits, their parameters and links) or the *Factor graph* (each dataset's likelihood and the parameters it reads); **Layout** the algorithm that places the nodes (*kamada_kawai* and *spring* keep linked parameters together); **Node size** the radius of a parameter node in pixels; **Spread** pulls a crowded graph apart without changing its layout; **Connect base** draws a line between every pair of owners; **Include fixed** also shows parameters held fixed. Bottom: the same network with a node size of 9 and **Include fixed** ticked.
 
 The position of nodes can be controlled by dragging nodes of the graph.

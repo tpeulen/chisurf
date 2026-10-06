@@ -1,78 +1,83 @@
 ---
 type: Manual Page
 title: Loading the Alexa488 data into the anisotropy plugin
-description: 'After the reading parameter have been correctly set, the anisotropy wizard can be started from the "Plugins" tab:'
+description: 'The anisotropy wizard is opened from the ribbon (Tools → Calculators → Wizards, then Anisotropy) and walks from the VV/VH files to the fit windows.'
 tags: [manual, anisotropy, plugins]
 ---
 
 # Loading the Alexa488 data into the anisotropy plugin
 
-```{seealso}
-Theory — the anisotropy function, the G-factor, and the rotational-
-correlation-time model: {ref}`concept-anisotropy` (and
-{ref}`concept-tcspc-lifetime` for the intensity decay it couples to).
+The anisotropy wizard is opened from the ribbon: **Tools → Calculators → Wizards**, then the
+**Anisotropy** entry of the hub. (The wizard reads the files with its own reader settings, set in its
+*Data* step.)
 
-```
-
-After the reading parameter have been correctly set, the anisotropy wizard can be started from the "Plugins" tab:
-
-```{image} _images/image_rId118.png
+```{image} figures/anisotropy_ribbon_tools.png
 :align: center
 ```
 
-The anisotropy wizard opens in a new window and leads step-by-step through the joint fit setup.
+The *Tools* tab of the ribbon; **Wizards** is in the *Calculators* group.
 
-```{image} _images/image_rId119.png
+```{image} figures/anisotropy_wizards_hub.png
 :align: center
 ```
 
-Load the data by "drag'n'drop" the files into the respective boxes. In case the single-file format is used, the still the same file must be loaded twice (The software will automatically load either the parallel or perpendicular section of the data column).
+The wizards hub with **Anisotropy** selected: the wizard's steps on the left, the current step on the
+right, **Back** / **Next** at the bottom.
 
-```{image} _images/image_rId120.png
+Load the data in the *Data* step: type the paths, use **Browse**, or drop the files on the window. For
+a file that holds both polarisations (VV followed by VH), tick *Two stacked VV/VH files* -- one IRF file
+and one data file are then enough (see {doc}`vv_vh_format`); for separate files see
+{doc}`two_single_files`.
+
+```{image} figures/anisotropy_wizard_stacked.png
 :align: center
 ```
 
-Click "next" to proceed. IN the next step, the IRF background region is defined. Note: The number in the 2nd spin box must always be largr than in the 1st box, i.e. best is to first define the end (here: 100) and then the beginning (here:180)
+Click **Next** (or *Normalize IRF* in the list) to proceed, and **Load / reload data** to read the
+files. Here the IRF background region is defined: drag the edges of the green box in the plot, or type
+*Background from* and *Background to*. A region typed the wrong way round is swapped, not ignored.
 
-```{image} _images/image_rId121.png
+```{image} figures/anisotropy_wizard_normalize_irf.png
 :align: center
 ```
 
-```{image} _images/image_rId122.png
+Click **Next** to proceed. Here the *g-factor*, *l1* and *l2* can be given (if known) or estimates
+entered.
+
+```{image} figures/anisotropy_wizard_corrections.png
 :align: center
 ```
 
-Cleck "next" to proceed. Here, the *g-factor*, *l1* and *l2* can be given (in case known) or estimates can be added.
+Click **Next** to continue. In this step the fluorescence lifetimes and rotational correlation times
+are added. The spectra can be saved and loaded (**Save spectra** / **Load spectra**), e.g. if many
+similar cells need to be analysed (see also below).
 
-```{image} _images/image_rId123.png
+```{image} figures/anisotropy_wizard_components.png
 :align: center
 ```
 
-Click "next" to continue. IN this step, the fluorescence lifetimes and rotational correlation times can be added. In this step, settings can also be saved and loaded, e.g. if many similar cells need to be analysed (see also below).
+To add a fluorescence lifetime or a rotational component, set *Amplitude* and the *Lifetime (ns)* or
+*Correlation time (ns)* below the table and press **Add component**.
 
-```{image} _images/image_rId124.png
+Components are removed by selecting the row and pressing **Remove selected** (or Delete); a cell is
+edited by double-clicking it.
+
+Please note that the amplitude sum of the fluorescence lifetime components is normalized to 1, while
+for the anisotropy components the sum is the fundamental anisotropy r0 (at most 0.4; 0.38 for most
+fluorophores).
+
+In the *Finish* step press **Create fits** to generate the joint fits in the main ChiSurf window, and
+**Tile Windows** (*Main* tab of the ribbon) to distribute the windows.
+
+```{image} figures/anisotropy_fit_windows.png
 :align: center
 ```
 
-```{image} _images/image_rId125.png
-:align: center
-```
+In total, three fit windows are now open: "Global anisotropy" holds the two polarised fits and
+minimises them together, "Lifetime - Anisotropy VV" and "Lifetime - Anisotropy VH" are the individual
+fits.
 
-To add a fluorescence lifetime or a rotational component, adjust the values in the box below "Amplitude", "Fluorescence Lifetime" and "Rot. Corr. Time" and press "add".
-
-Components can be removed by double-clicking on the entry in the table.
-
-Please note that the amplitude sum of the fluorescence lifetime components is automatically normalized to 1, while for the anisotropy components the sum is normalized to 0.38, the fundamental anisotropy of most fluorophores.
-
-Click "finish" to generate the joint fits in the main ChiSurf window and press the "tile windows" to distribute the windows in ChiSurf's main window.
-
-```{image} _images/image_rId126.png
-:align: center
-```
-
-In total, three fit windows are now open. Here, the large window entitled "Global fit" hosts the connections/linking between the two individual fits open in the two smaller windows (here: top contains the perpendicular data, while bottom contains the parallel data).
-
-Next, switch to the "analysis" ta and inspect what is displayed for the three different windows:
+Next, switch to the **Analysis** dock and inspect what it shows for the three windows:
 
 1. Global-fit: In the top-part the fits, which are to be minimized jointly are listed, the bottom part could be used to manually link variables across different datasets listed above (not used here).
 2. Lifetime - _vh and Lifetime - _vv: Each of them have four different sections:
@@ -104,16 +109,22 @@ Next, switch to the "analysis" ta and inspect what is displayed for the three di
 :align: center
 ```
 
-```{image} _images/image_rId128.png
+```{image} figures/anisotropy_analysis_vh.png
 :align: center
 ```
 
-```{image} _images/image_rId129.png
+```{image} figures/anisotropy_analysis_vv.png
 :align: center
 ```
 
-Each of the number-based parameter has three checkboxes:
+The **Analysis** dock for the VH and the VV fit: the *Fit* bar (**Fit**, dataset, fit range *First* /
+*Last*), then the *Convolution*, *Generic*, *Corrections*, *Lifetimes* and *Anisotropy* sections.
 
-1. The left checkbox fixes the parameter, it will not be fit but kept constant.
-2. The middle checkbox is used to link parameter (via right-click -> link) and if it is filled or shown in read, this means that this parameter has been linked to another data set.
-3. The right checkbox can be used to define a range, in which the parameter can float, e.g. a fluorescence lifetime should not become negative.
+Each numeric parameter is a row of a table:
+
+1. *Fixed* keeps the parameter constant; it is not fit.
+2. *Lo*, *Hi* and *Bounds* define the range the parameter may take, e.g. a fluorescence lifetime
+   should not become negative.
+3. A parameter linked to one of another fit follows it; the fit's *Info* page marks it with an arrow
+   (e.g. `→g`). The wizard links the VH fit's amplitudes, lifetimes, rotations and corrections to the
+   VV fit.

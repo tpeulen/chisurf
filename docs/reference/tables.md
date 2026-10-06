@@ -177,7 +177,7 @@ they sit on is reviewed.
 | 155 | The editor with a BH SPC-132 measurement read: Setup row, TTTR Reading routine, Detectors (PIE Windows is folded), LUT handling and Optical Setup.... | **Read**, Take the macro and micro time from a measurement and the decay of every routing channel. | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
 | 156 | The editor with a BH SPC-132 measurement read: Setup row, TTTR Reading routine, Detectors (PIE Windows is folded), LUT handling and Optical Setup.... | **Macrotime res. (ns)**, **Microtime res. (ps)**, **Microtime binning**, **Eff. microtime (ps)**, Type numbers; the effective tick is read-only. | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
 | 157 | The editor with a BH SPC-132 measurement read: Setup row, TTTR Reading routine, Detectors (PIE Windows is folded), LUT handling and Optical Setup.... | LUT handling, **Apply TAC linearization (LUT) when reading**, Switch the linearization on for every read (adding a LUT switches it on). | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
-| 158 | accessible-volume message. | Tab, Controls | [docs/guides/88_structure_tools.md](/guides/88_structure_tools.md) |
+| 158 | the 3D View beside them with the selected position's accessible volume (red) in front and the others muted. | Tab, Controls | [docs/guides/88_structure_tools.md](/guides/88_structure_tools.md) |
 | 159 | 2. Mix | Window, Control, What it does | [docs/guides/94_tttr_audifier.md](/guides/94_tttr_audifier.md) |
 | 160 | 2. Keys and pointer | Game, Keys, Pointer | [docs/guides/95_games.md](/guides/95_games.md) |
 | 161 | 3. Read the table | Column, Means | [docs/guides/96_plugin_check.md](/guides/96_plugin_check.md) |

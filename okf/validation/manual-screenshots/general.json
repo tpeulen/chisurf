@@ -1,0 +1,231 @@
+{
+ "added": {
+  "manual/figures/main_overview.png": {
+   "caption": "The main window: docks, two fitted IBH decays tiled, the console after a few commands.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::overview",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. Analysis dock raised, windows tiled, console: fit = cs.fits[0]; fit.name; round(fit.chi2r, 3).",
+   "pages": [
+    "docs/manual/overview.md"
+   ]
+  },
+  "manual/figures/tools_montage.png": {
+   "caption": "Four companion tools: ndXplorer, the FCS hub, the TTTR Image Browser, Histogram-Microtime.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::tools_montage",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. PIL montage of docs/guides/figures/ndxplorer_gaussian_populations.png, manual/figures/fcs_hub_files.png, guides/figures/image_browser_setup.png, guides/figures/decay_gap_filter.png (regenerate those first).",
+   "pages": [
+    "docs/manual/overview.md"
+   ]
+  },
+  "manual/figures/main_read_data_dock.png": {
+   "caption": "The Read data dock: TCSPC, TXT/CSV and the reader's file parameters for the IBH sample.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::read_data_dock",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. Read data dock raised, before reading.",
+   "pages": [
+    "docs/manual/data_import.md"
+   ]
+  },
+  "manual/figures/main_datasets_loaded.png": {
+   "caption": "The data list after reading the four IBH files.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::datasets_loaded",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. Datasets dock raised, before the fits.",
+   "pages": [
+    "docs/manual/data_import.md"
+   ]
+  },
+  "manual/figures/main_datasets_context_menu.png": {
+   "caption": "The data list's context menu (Save, Load, Remove, Group, Ungroup, Refresh).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::datasets_context_menu",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. Row 1 selected; the menu built by ExperimentalDataSelector.contextMenuEvent is captured (QMenu.exec_ patched) and painted at the click point.",
+   "pages": [
+    "docs/manual/data_import.md"
+   ]
+  },
+  "manual/figures/main_datasets_grouped.png": {
+   "caption": "Datasets 0 and 1 grouped, unfolded; the console lists the group.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::datasets_grouped",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. chisurf.macros.group_datasets([0, 1]); console: [d.name for d in cs.imported_datasets]; [d.name for d in cs.imported_datasets[2]].",
+   "pages": [
+    "docs/manual/data_import.md"
+   ]
+  },
+  "manual/figures/main_read_data_vvvh.png": {
+   "caption": "The Read data dock set up for a stacked VV/VH file.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::read_data_vvvh",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. Last shot: reader.is_vv_vh=True, polarization='vv/vh' (this also switches header/dt scaling, so it runs after the files are read).",
+   "pages": [
+    "docs/manual/data_input_and_file_format.md"
+   ]
+  },
+  "manual/figures/main_datasets_fits.png": {
+   "caption": "The Datasets dock with two Lifetime fits; their windows tiled.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::datasets_with_fits",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. Datasets dock raised, windows tiled.",
+   "pages": [
+    "docs/manual/creating_fits.md"
+   ]
+  },
+  "manual/figures/main_analysis_dock.png": {
+   "caption": "The Analysis dock of the active fit beside the fit windows.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::analysis_dock",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. Analysis dock raised, first window active, tiled.",
+   "pages": [
+    "docs/manual/analysis_dock.md"
+   ]
+  },
+  "manual/figures/main_mdi_tiled.png": {
+   "caption": "Two fit windows tiled (toolbar: Tile Windows).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::mdi_tiled_and_tabbed",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. actionTile_windows triggered.",
+   "pages": [
+    "docs/manual/multiple_document_interface.md"
+   ]
+  },
+  "manual/figures/main_mdi_tabbed.png": {
+   "caption": "The same fit windows tabbed (toolbar: Tab Windows).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::mdi_tiled_and_tabbed",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. actionTab_windows triggered.",
+   "pages": [
+    "docs/manual/multiple_document_interface.md"
+   ]
+  },
+  "manual/figures/globalview_tool.png": {
+   "caption": "The Global View window on four fits whose lifetime t0 follows the donor-only fit.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::global_view",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. GraphWizard(fit_list=four tcspc_lifetime FitGroups on synthetic single-exponential decays tau 4.0/2.4/1.8/1.3 ns, t0 of the last three linked to the first), 1150x760, no fitting client, Selection tab.",
+   "pages": [
+    "docs/manual/overview_3.md"
+   ]
+  },
+  "manual/figures/globalview_view_tab.png": {
+   "caption": "The Global View's View tab (Show, Layout, Node size, Spread, Connect base, Include fixed).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::global_view",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. As globalview_tool.png, tool.surface.docks.focus('View').",
+   "pages": [
+    "docs/manual/changing_visualizations.md"
+   ]
+  },
+  "manual/figures/globalview_include_fixed.png": {
+   "caption": "The same network with node size 9 and Include fixed ticked.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::global_view",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. As globalview_view_tab.png, model.include_fixed=True, node_size=9.",
+   "pages": [
+    "docs/manual/overview_3.md",
+    "docs/manual/changing_visualizations.md"
+   ]
+  },
+  "manual/figures/globalview_before_load.png": {
+   "caption": "The two IBH fits after their t0 link was removed (0 linked).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::global_view_save_load",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample: Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows, 0.0141 ns/ch); 'Lifetime' fits of the two decays against Prompt, fit range 522-3793, fitted. Fit 1's t0 linked to fit 0's, network saved (Save…), link removed, GraphWizard on the Main's fits (the session's in-process fitting server applies loaded links).",
+   "pages": [
+    "docs/manual/saving_and_loading_networks.md"
+   ]
+  },
+  "manual/figures/globalview_after_load.png": {
+   "caption": "After Load… of the saved network: the link is restored (1 linked).",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::global_view_save_load",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. As globalview_before_load.png, then model.load_network(saved file).",
+   "pages": [
+    "docs/manual/saving_and_loading_networks.md"
+   ]
+  },
+  "manual/figures/fcs_hub_files.png": {
+   "caption": "The FCS hub: the step rail and 2. Files & Steps with the simulated example.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::fcs_hub",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. chisurf.plugins.fcs.fcs_toolbox.gui.app.make_app(); select('files').add_example(); use_filter=True; PilPainter 1200x800.",
+   "pages": [
+    "docs/manual/overview_2.md"
+   ]
+  },
+  "manual/figures/fcs_hub_filter.png": {
+   "caption": "3. Photon / Burst Filter on the example stream.",
+   "kind": "screenshot",
+   "origin": "docs/guides/screenshots/manual_general.py::fcs_hub",
+   "recipe": "python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py /tmp/case0 [shot ...]. As fcs_hub_files.png, then select('filter').",
+   "pages": [
+    "docs/manual/loading__plotting_data.md"
+   ]
+  }
+ },
+ "removed": [
+  "manual/_images/image_rId10.png",
+  "manual/_images/image_rId11.png",
+  "manual/_images/image_rId13.png",
+  "manual/_images/image_rId14.png",
+  "manual/_images/image_rId15.png",
+  "manual/_images/image_rId16.png",
+  "manual/_images/image_rId17.png",
+  "manual/_images/image_rId18.png",
+  "manual/_images/image_rId24.png",
+  "manual/_images/image_rId38.png",
+  "manual/_images/image_rId40.png",
+  "manual/_images/image_rId43.png",
+  "manual/_images/image_rId44.png",
+  "manual/_images/image_rId45.png",
+  "manual/_images/image_rId46.png",
+  "manual/_images/image_rId47.png",
+  "manual/_images/image_rId48.png",
+  "manual/_images/image_rId49.png",
+  "manual/_images/image_rId50.png",
+  "manual/_images/image_rId108.png",
+  "manual/_images/image_rId109.png",
+  "manual/_images/image_rId110.png",
+  "manual/_images/image_rId111.png",
+  "manual/_images/image_rId112.png",
+  "manual/_images/image_rId113.png",
+  "manual/_images/image_rId114.png",
+  "manual/_images/image_rId115.png",
+  "manual/_images/image_rId141.png"
+ ],
+ "replaced_by_text": {
+  "manual/_images/image_rId108.png": "text editor view of a two-column file -> code block with the head of test/data/tcspc/ibh_sample/Decay_577D.txt",
+  "manual/_images/image_rId109.png": "same (second channel file) -> covered by the two-column code block",
+  "manual/_images/image_rId110.png": "text editor view of a VV/VH file -> code block from test/data/tcspc/Jordi/02_18-577+7.5uM(577)UP_8ps.dat",
+  "manual/_images/image_rId111.png": "same (VV/VH boundary) -> rows 2348/2349 in that code block",
+  "manual/_images/image_rId112.png": "Windows cmd activating an env -> code block 'pixi run chisurf'",
+  "manual/_images/image_rId113.png": "splash screen of an old release -> dropped (not informative); launch command instead",
+  "manual/_images/image_rId114.png": "Windows console log of ndXplorer -> dropped",
+  "manual/_images/image_rId141.png": "Windows Explorer listing of saved files -> code block of the files save_fit writes (real naming)",
+  "manual/_images/image_rId47.png": "Qt Global View with Save highlighted -> Fig.32 (globalview_tool.png) shows the toolbar",
+  "manual/_images/image_rId48.png": "GraphML in a text editor -> xml code block of a real saved network"
+ },
+ "pages_edited": [
+  "docs/manual/overview.md",
+  "docs/manual/data_import.md",
+  "docs/manual/data_input_and_file_format.md",
+  "docs/manual/creating_fits.md",
+  "docs/manual/analysis_dock.md",
+  "docs/manual/multiple_document_interface.md",
+  "docs/manual/overview_2.md",
+  "docs/manual/loading__plotting_data.md",
+  "docs/manual/overview_3.md",
+  "docs/manual/changing_visualizations.md",
+  "docs/manual/saving_and_loading_networks.md",
+  "docs/manual/saving__exporting_the_results.md"
+ ],
+ "not_replaced": {
+  "manual/_images/image_rId12.png": "conceptual diagram of fits/models/parameters/global analysis (panels a-d drawn, panel e a small old network); not a screenshot of a window -- left as is"
+ },
+ "notes": [
+  "Saving a fit fails in the arm64 dev env: python-docx is declared in pixi.toml/pyproject but not installed there (ModuleNotFoundError at chisurf/macros/core_fit.py save_fit 'import docx'); the CSV/json/info files are written before it.",
+  "Menu paths verified in code: File > Fits > Current Fit (Ctrl+Alt+S), Tools > Views > Global View, Spectroscopy > Correlation > FCS; '+ Data' is Ctrl+N; the toolbar has Tile/Tab Windows (no cascade).",
+  "Global View Load applies links through the fitting server; on fits the server does not know (a standalone fixture with install_fitting_client(None)) it reports 'the fitting server did not answer' and restores nothing."
+ ]
+}

@@ -1,7 +1,7 @@
 ---
 type: Manual Page
 title: Fit of the green-excitation FCS curve
-description: Start ChiSurf. The first start can take a few seconds while the analysis plugins are discovered.
+description: Load three autocorrelation curves of a free green dye, fit them with a 3D Gaussian diffusion model with one bunching term, link the shared parameters and set up a global fit.
 tags: [manual, fitting, fcs, plugins]
 ---
 
@@ -17,180 +17,179 @@ Theory — the correlation function, diffusion models and derived quantities:
 Start ChiSurf. The first start can take a few seconds while the analysis
 plugins are discovered.
 
-The window has two panels:
+The window has two halves. Left, the docks: **Read data** (experiment and file
+type, **+ Data**), **Datasets**, **Analysis**, **Plot settings** and **Logging**,
+with the Python **Console** below. Right, the working area: every analysis opens
+in its own fit window.
 
-Left: data is loaded here and the analysis method / model is selected. The
-integrated Python console below it runs scripts against the running session.
-
-Right: each data set opens in its own window.
-
-```{image} _images/image_rId53.png
+```{image} figures/fcs_main_window.png
 :align: center
 ```
 
-Switch the experiment selector to **FCS** and load all the **A488_ACF_prompt.cor** files — autocorrelation curves of the green calibration fluorophore, correlated within the prompt time window — with "File" → "Add dataset", or simply drag and drop them into the data list.
+In **Read data**, set **Experiment** to **FCS** and **File type** to the format of
+your correlation files -- here **Seidel Kristine** (`.cor`). Load the files with
+**+ Data** or **File → Add dataset** (⌘N), or drop them on the dock. The pictures
+in this chapter use three repeated measurements of free Alexa 488
+(`A488_ACF_1.cor` … `A488_ACF_3.cor`: the detector-1 autocorrelation of the three
+Zeiss Confocor3 A488 measurements bundled in `test/data/fcs/confocor3`).
 
-```{image} _images/image_rId54.png
+```{image} figures/fcs_datasets_added.png
 :align: center
 ```
 
-Select your loaded dataset(s) and click on "Add fit":
+The curves are listed in the **Datasets** dock. Select them, choose
+**Parse-Model** under **Model** and press **+ Analysis**:
 
-```{image} _images/image_rId55.png
+```{image} figures/fcs_add_analysis.png
 :align: center
 ```
 
-Here, five new windows will open in the grey working panel:
+One fit window opens per curve:
 
-```{image} _images/image_rId56.png
+```{image} figures/fcs_fit_windows.png
 :align: center
 ```
 
-Caution! The individual windows may lie on top of each other!
+Caution! The windows may lie on top of each other. Maximise one to see one curve
+at a time, or show them as tabs -- **View** and the toolbar arrange the
+windows; with tabs, a click on a window's tab brings it to the front:
 
-Move the top-visible window aside and arrange the windows as you find it comfortable:
-
-You can maximize the windows to see only one curve at a time. Minimize the window to see the other data again.
-
-Alternatively, you can display each curve in full-size but in individual tabs. Then you can switch between the data by clicking on the respective tab and / or use the little arrows on the side to change between the tabs.
-
-```{image} _images/image_rId57.png
+```{image} figures/fcs_fit_windows_tabbed.png
 :align: center
 ```
 
-Or you can distribute all windows automatically to evenly cover the full working panel:
+Or tile them to cover the working area evenly:
 
-```{image} _images/image_rId58.png
+```{image} figures/fcs_fit_windows_tiled.png
 :align: center
 ```
 
-Now change to the analysis tab in the data panel and select the "3D Gauss 1 bunching" model from the drop-down menu for your first curve:
+Make the first window current and open the **Analysis** dock. Under
+**Equation**, choose the formula **3D Gauss, 1 bunching** in **Model**; the
+equation, its rendered form and a description appear beneath:
 
-```{image} _images/image_rId59.png
+```{image} figures/fcs_model_3d_gauss_bunching.png
 :align: center
 ```
 
-The model has six parameters: the correlation amplitude and thus the number of molecules in the focus (`N`), the diffusion time (`td`), the shape factor of the detection volume (`s`, the ratio of axial to lateral waist), the offset (`b`), and the amplitude and time constant of the bunching term (`ba` and `bt`). The "1 Bunching" term models the photophysical triplet blinking most fluorophores show in the µs range; the theory is in {ref}`concept-fcs-correlation`.
+The model has six parameters: the number of molecules in the focus (`N`), the
+diffusion time (`td`), the shape factor of the detection volume (`s`, the ratio
+of axial to lateral waist), the offset (`b`), and the amplitude and relaxation
+time of the bunching term (`ba`, `bt`). They are listed under **Equation
+parameters**, each with a **Fixed** box, optional bounds (**Lo**, **Hi**,
+**Bounds**) and, after a fit, its **Error**.
 
-Note: ChiSurf comes upon installation with a selection of pre-defined fit models, you can modify these fit models or add your own models easily.
+Note: ChiSurf comes with a catalogue of predefined equations; you can modify them
+or add your own models (see {doc}`adding_the_membranediffusion_models`).
 
-This will be shown later.
-
-```{image} _images/image_rId60.png
+```{image} figures/fcs_model_parameters.png
 :align: center
 ```
 
-Press "Fit" for fitting:
+Press **▶ Fit** (the **Fit** section of the dock):
 
-```{image} _images/image_rId61.png
+```{image} figures/fcs_first_fit.png
 :align: center
 ```
 
-We obtain a number of molecules in the focus N = 0.75, a diffusion time td = 0.073 ms (i.e. 73 µs) and triplet blinking time constant of 14.5 µs with an amplitude of 0.20. However, from the weighted residuals and the autocorrelation of the residuals, we can see a mismatch at long correlation times: This is because the absolute measurement time in this measurement was too short to reliable obtain these values.
+Fitted over the whole curve, the bunching term takes an amplitude of 0.97 at
+75 ns and `N` drops to 0.17: it is fitting the first point (0.2 µs), which
+carries the detector's afterpulsing, not the photophysics of the dye. A result
+like this -- a relaxation time at the first lag point, an amplitude near 1 -- is
+a sign that the fit range is wrong, not the model.
 
-Next to the fit results, also the *normalized relative of the Jacobian Matrix around the solution* can be seen. This is **NOT** reflecting the **uncertainty** of the fit result, but the values might give a first hint whether the uncertainty is rather large or small. What that matrix does and does not say about uncertainty — and what to do instead — is {ref}`concept-parameter-uncertainty`.
+The table also gives an **Error** for each parameter, from the curvature of χ²
+around the solution. It is **NOT** a reliable **uncertainty** of the fit result,
+but it gives a first hint whether the uncertainty is rather large or small. What
+it does and does not say -- and what to do instead -- is
+{ref}`concept-parameter-uncertainty`.
 
-For a more reliable estimate on the uncertainty of the fit parameter you have two options within ChiSurf to (i) sample the χ²-surface or (ii) to run a Markov-Chain Monte-Carlo simulation, which also allows you to obtain the mutual dependencies between the fit parameter. However, this uncertainty analysis is beyond the scope of this analysis of the calibration samples and will be shown in a different tutorial.
+For a more reliable estimate, ChiSurf can (i) scan the χ² surface (the
+**Parameter scan** tab) or (ii) **Sample** the posterior, which also shows the
+mutual dependencies between the parameters. That uncertainty analysis is beyond
+the scope of this calibration and is shown in {doc}`/guides/39_parameter_uncertainty`.
 
-Here, we take advantage of multiple measurements of the same sample and take these as additional restraints.
+Here, we take advantage of multiple measurements of the same sample and take these
+as additional restraints.
 
-Shorten the fit range to ~ 100 ms by grabbing the right yellow line and move it to the left:
+First set the fit range: start at the second point (**First** 1) to leave out
+the afterpulsing, and end at ~100 ms (**Last**), where the curve has reached its
+baseline and only noise follows. Type the indices in the **Fit** section, or drag
+the edges of the shaded range in the plot:
 
-```{image} _images/image_rId63.png
+```{image} figures/fcs_fit_range.png
 :align: center
 ```
 
-*Of note*: To reliably fit your diffusion time, the **baseline** (0 or 1, depends on correlation algorithm) **MUST** **be reached** in your correlation curve (or in the fit range, respectively)
+*Of note*: To reliably fit your diffusion time, the **baseline** (0 or 1, depends
+on the correlation algorithm) **MUST** **be reached** in your correlation curve
+(or in the fit range, respectively).
 
-Press "fit" and observe the changes:
+Press **▶ Fit** again and observe the changes:
 
-```{image} _images/image_rId64.png
+```{image} figures/fcs_second_fit.png
 :align: center
 ```
 
-The shape factor has risen to 9.76. That is high — for a well aligned confocal setup it should lie between about 3 and 7 — and on a single short measurement it is more likely to reflect the poorly determined long-lag tail than a real misalignment. The other values have changed only slightly.
+Now `N` = 4.86, `td` = 25.6 µs, `s` = 7.26, and a bunching term of 21 % at
+0.90 µs -- triplet blinking of the dye. The shape factor is at the upper end of
+what a well-aligned confocal setup gives (about 3 to 7); on a single short
+measurement it is poorly determined by the long-lag tail.
 
-Now let's add the other measurements into the play and see whether a global fit of all measurements stabilizes this value.
+Now let's add the other measurements into the play and see whether a joint fit
+stabilises this value.
 
-Go to the other fit windows, change the fit to "3D Gauss, 1 bunching", adjust the fit range and fit them as done for the first curve:
+Go to the other fit windows, choose **3D Gauss, 1 bunching**, set the same fit
+range and fit them as done for the first curve:
 
-```{image} _images/image_rId65.png
+```{image} figures/fcs_all_fitted.png
 :align: center
 ```
 
-Next, we will link the fits together such that the fit parameter are jointly minimized
+The third curve, fitted alone, gives `s` = 10 and a negative bunching amplitude
+-- more evidence that one measurement does not pin the volume down.
 
-For this, first decide for one "parent" dataset, to which all other datasets are pointing. Here, I will simply take curve #1.
+Next, we link the fits together so that shared parameters are minimised jointly.
+Decide on one "parent" curve to which all others point -- here curve 1 -- and
+make a "child" curve current.
 
-Now, switch to the first of your "child" or "dependent" dataset. We will now work with the three checkboxes located between each variable name and variable value:
+**Right-click a parameter row** in **Equation parameters**: the menu offers
+**🔗 Link *name* to**, listing every fit of the session, then that fit's
+**Parameters**; pick the parameter to link to (**Unlink** drops a link again):
 
-```{image} _images/image_rId66.png
+```{image} figures/fcs_link_menu.png
 :align: center
 ```
 
-Each tick box has a different function:
+For our joint fit, link (i) the diffusion time `td`, (ii) the shape factor `s`
+and (iii) the bunching time `bt` of curves 2 and 3 to curve 1. Linked
+parameters are shown greyed and in italics, with the value of the parameter they
+follow:
 
-Left: fixes the value of the parameter to its current value
-
-Right: Two new parameter fields open, in these ones the lower (left) and upper (right) boundaries for this parameter during the fitting can be defined. An example is to define the allowed fit range for a correlation amplitude to be positive and lie between 0 -1.
-
-Middle: By right-clicking into this tick box a list of all opened fit windows opens. Move your mouse towards the right, as soon as you approach the little arrow, new options appear, move further right on the height of "Parse Model" until the list of fit parameter appears.
-
-From this list of fit parameter select the appropriate one.
-
-For our global fit, we will now link (i) the diffusion time td, (ii) the shape parameter s and (iii) the triplet time constant bt to the first data set:
-
-```{image} _images/image_rId67.png
+```{image} figures/fcs_linked_parameters.png
 :align: center
 ```
 
-Linked parameter will appear greyed out.
+Then set up a global fit: in the **Datasets** dock select **Global Dataset**,
+choose **Global fit** under **Model** and press **+ Analysis**:
 
-After you are done with the linking, add a new global fit in the "load" tab:
-
-```{image} _images/image_rId68.png
+```{image} figures/fcs_add_global_fit.png
 :align: center
 ```
 
-It opens as empty / white window.
+The global fit opens as a fit window of its own. In its **Analysis** dock, pick
+each curve's fit in **Add** and press **➕ Add**, so that **Local fits** lists the
+three curves (**➖ Remove** and **🗑 Clear** take them out again; there is no need
+to keep the global fit out of its own list). Press **▶ Fit**: all curves are now
+fitted jointly, with the linked `td`, `s` and `bt` shared and `N` and `ba` free
+per curve. Read the joint values on the global fit's **Info** tab.
 
-Switch back to the analysis tab and add dataset which are to be jointly fitted by clicking firstly on "update" and then on "add".
+If you fit many and / or complicated models, a fit can take a while; a progress
+dialog shows how far it is.
 
-```{image} _images/image_rId69.png
-:align: center
-```
+Finally, save the fits with **File → Fits → Current Fit** (⌥⌘S) or **All Fits**:
 
-Now a list of all available fit windows appears.
-
-If you want to select which datasets to add, remove the tick behind "fits". Then you can choose from a drop-drown list which datasets are to be included in the global fit.
-
-We need to remove the "global fit" from list ("circular reference"). You do so by simply double-clicking on the item in the list.
-
-Now, press fit and observe what happens.
-
-If you fit many and / or complicated models, the program might take a few moments and display "not responding". This is nothing to worry about and wait until it responds.
-
-Now all datasets have fitted jointly and we obtain the following values:
-
-td = 85.7 µs
-
-s = 5.84
-
-bt = 21.0 µs
-
-ba varies between 0.255 – 0.270
-
-N varies between 0.748 - 0.766
-
-```{image} _images/image_rId70.png
-:align: center
-```
-
-Finally, let's save the fits by either selecting "File" → "Save Fit-results" → "current fit" or by pressing "Ctrl + S".
-
-Caution! Saving all fits may not work, if the filenames are (a) similar and (b) the whole file path is too long. (AutoSaving uses complete path as automatic save name currently).
-
-```{image} _images/image_rId71.png
+```{image} figures/fcs_file_menu.png
 :align: center
 ```
 
