@@ -11,9 +11,9 @@ import random
 import typing
 
 import numpy as np
-import scipy.optimize
 
 from chisurf.core.fitting.minimizer import minimize
+from chisurf.core.math.special import fdtr
 
 from .convolve import add_pile_up_to_model, convolve_lifetime_spectrum
 from .scaling import scale_model_to_data
@@ -674,7 +674,7 @@ class Decay:
             df2 = (self.stop - self.start) - (2 * n_lifetimes_tried[i] + 3)
 
             f_value = scores[i - 1] / scores[i]
-            p = scipy.stats.f.cdf(f_value, df1, df2)
+            p = float(fdtr(df1, df2, f_value))
             probs.append(p)
 
         # Find the best number of lifetimes using ucfret's approach
@@ -779,6 +779,7 @@ class Decay:
         selection_mode: str = "lower",
         save_intermediate_results: bool = True,
         intermediate_results_base_filename: str = None,
+        seed: int | None = 0,
     ) -> dict:
         """
         Fit the decay data.
@@ -799,6 +800,9 @@ class Decay:
             Maximum lifetime value in nanoseconds when randomizing
         amplitude_variation : float
             Factor controlling how much the amplitudes can vary from equal distribution (0-1)
+        seed : int or None
+            Seed for the randomized start amplitudes. The default makes a fit
+            reproducible; ``None`` draws a fresh start each call.
         find_optimal : bool
             Whether to find the optimal number of lifetimes automatically
         maximum_number_of_lifetimes : int
@@ -912,9 +916,13 @@ class Decay:
             # Randomize amplitudes with controlled variation
             base_amplitude = 1.0 / n_lifetimes
             amplitudes = []
+            # One stream per lifetime count, so the find-optimal sweep (which
+            # calls back in with the default seed) draws a different start
+            # for each count but the same one on every run.
+            rng = random.Random(None if seed is None else int(seed) * 1009 + n_lifetimes)
             for i in range(n_lifetimes):
                 # Vary amplitude around the base value
-                variation = random.uniform(1.0 - amplitude_variation, 1.0 + amplitude_variation)
+                variation = rng.uniform(1.0 - amplitude_variation, 1.0 + amplitude_variation)
                 amplitudes.append(base_amplitude * variation)
 
             # Normalize amplitudes to sum to 1

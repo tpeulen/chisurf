@@ -15,7 +15,15 @@ from __future__ import annotations
 
 import numpy as np
 
-__all__ = ["OptimizeResult", "curve_fit", "least_squares", "lsq_linear", "nnls"]
+__all__ = [
+    "OptimizeResult",
+    "RootResults",
+    "curve_fit",
+    "least_squares",
+    "lsq_linear",
+    "nnls",
+    "root_scalar",
+]
 
 
 class OptimizeResult(dict):
@@ -750,6 +758,7 @@ def minimize(
         hess_inv=hess_inv,
     )
 
+
 # --------------------------------------------------------------------------
 # ODE integration: ``scipy.integrate.odeint`` (LSODA) on bff.odeint.
 
@@ -888,3 +897,68 @@ def odeint(
         "message": r.message,
     }
     return y, info
+
+
+class RootResults(OptimizeResult):
+    """``scipy.optimize.RootResults``: ``root``, ``iterations``,
+    ``function_calls``, ``converged``, ``flag``, ``method``."""
+
+
+def root_scalar(f, args=(), method=None, bracket=None, xtol=None, rtol=None, maxiter=None):
+    """A root of the scalar ``f`` inside ``bracket``, as ``scipy.optimize.root_scalar``.
+
+    Only the bracketed form is served -- ``method`` ``None`` or ``"brentq"``,
+    which is what scipy picks for a bracket -- and it runs scipy's own Brent
+    loop ported into IMP.bff, so root, iterations and calls are scipy's.
+
+    Parameters
+    ----------
+    f : callable
+        ``f(x, *args) -> float``.
+    args : tuple, optional
+        Extra arguments for ``f``.
+    method : {None, "brentq"}, optional
+        The bracketed method.
+    bracket : sequence of two floats
+        ``[a, b]`` with ``f(a)`` and ``f(b)`` of opposite sign.
+    xtol, rtol : float, optional
+        Absolute and relative tolerance (scipy's defaults when omitted).
+    maxiter : int, optional
+        Iteration limit (scipy's default 100).
+
+    Returns
+    -------
+    RootResults
+
+    Raises
+    ------
+    ValueError
+        ``f(a)`` and ``f(b)`` have the same sign.
+    """
+    if method not in (None, "brentq"):
+        raise NotImplementedError(f"root_scalar: method {method!r} (only 'brentq')")
+    if bracket is None or len(bracket) != 2:
+        raise ValueError("root_scalar: a two-element bracket is required")
+    bff = _bff()
+    extra = tuple(args) if isinstance(args, (tuple, list)) else (args,)
+
+    class _Scalar(bff.MinimizeObjective):
+        def evaluate(self, x):
+            return float(f(float(x[0]), *extra))
+
+    kwargs = {}
+    if xtol is not None:
+        kwargs["xtol"] = float(xtol)
+    if rtol is not None:
+        kwargs["rtol"] = float(rtol)
+    if maxiter is not None:
+        kwargs["maxiter"] = int(maxiter)
+    r = bff.root_brentq(_Scalar(), float(bracket[0]), float(bracket[1]), **kwargs)
+    return RootResults(
+        root=r.root,
+        iterations=r.iterations,
+        function_calls=r.function_calls,
+        converged=bool(r.converged),
+        flag=r.flag,
+        method="brentq",
+    )

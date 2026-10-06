@@ -282,7 +282,7 @@ Accessible Volume (Gaussian approx) RDA -> dRmp, dRDAE, E:
         # Inverse transform: Find dRmp that yields the target RDA, then compute dRDAE and E
         import numpy as np
         from chisurf.core.math.special import ncx2
-        from scipy.optimize import root_scalar
+        from chisurf.core.math.numerics import root_scalar
         
         def _compute(dRmp):
             sigma = np.sqrt(sD**2 + sA**2)
@@ -337,7 +337,7 @@ Accessible Volume (Gaussian approx) dRDAE -> dRmp, RDA, E:
         # Inverse transform: Find dRmp that yields the target dRDAE, then compute RDA and E
         import numpy as np
         from chisurf.core.math.special import ncx2
-        from scipy.optimize import root_scalar
+        from chisurf.core.math.numerics import root_scalar
         
         def _compute(dRmp):
             sigma = np.sqrt(sD**2 + sA**2)
@@ -392,7 +392,7 @@ Accessible Volume (Gaussian approx) E -> dRmp, RDA, dRDAE:
         # Inverse transform: Find dRmp that yields the target E, then compute RDA and dRDAE
         import numpy as np
         from chisurf.core.math.special import ncx2
-        from scipy.optimize import root_scalar
+        from chisurf.core.math.numerics import root_scalar
         
         def _compute(dRmp):
             sigma = np.sqrt(sD**2 + sA**2)

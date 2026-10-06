@@ -222,3 +222,22 @@ def test_curve_fit_maxfev_exhaustion_raises_like_scipy():
         so.curve_fit(f, t, y, p0=[1, 1, 0.1], maxfev=2)
     with pytest.raises(RuntimeError):
         numerics.curve_fit(f, t, y, p0=[1, 1, 0.1], maxfev=2)
+
+
+def test_root_scalar_is_scipys_brentq():
+    """``root_scalar`` with a bracket: scipy's root, iterations and calls."""
+    import scipy.optimize as so
+
+    from chisurf.core.math.numerics import root_scalar
+
+    for fn, a, b in [(lambda x, k: x**3 - 2 * x - k, 2.0, 3.0), (lambda x, k: np.cos(x) - k * x, 0.0, 1.0)]:
+        r = root_scalar(fn, args=(5.0 if a == 2.0 else 1.0,), bracket=[a, b])
+        s = so.root_scalar(fn, args=(5.0 if a == 2.0 else 1.0,), bracket=[a, b])
+        assert (r.root, r.iterations, r.function_calls, r.converged) == (
+            s.root,
+            s.iterations,
+            s.function_calls,
+            s.converged,
+        )
+    with pytest.raises(ValueError):
+        root_scalar(lambda x: x * x + 1, bracket=[0.0, 1.0])

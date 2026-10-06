@@ -61,7 +61,9 @@ pillow = "*"
 # pandas was dropped: chisurf.core.datastore (tttrlib.DataStore) is the
 # storage model everywhere in the tree now, and nothing shipped imports
 # pandas any more (PRD-82).
-scipy = "*"
+# scipy was dropped: its numerics are IMP.bff's (optimisers, special
+# functions, distributions, ODEs) and tttrlib's (image, spatial, signal, MAT
+# files); nothing shipped imports it (okf/subsystems/scipy-retirement.md).
 # numba was dropped: nothing in chisurf, ndxplorer, imp-tricks or quest imports
 # it (2026-10-05); kernels are vectorised NumPy, and compiled speed lives in
 # tttrlib (photons, curves) or IMP.bff (coordinates).
@@ -193,6 +195,9 @@ pandas = "*"
 # Test-only: colormap parity tests compare emtk.colormaps against
 # matplotlib's tables. The shipped package imports it nowhere.
 matplotlib-base = "*"
+# Test-only: every parity test of the scipy retirement uses scipy as the
+# independent oracle. The shipped package imports it nowhere.
+scipy = "*"
 # Test-only notebook execution (test/plugins/burst/test_mmfdb_example_notebooks.py):
 # nbconvert + ipykernel were dragged in by the `notebook` runtime dependency,
 # removed in 2026-08; the slow example-notebook test still needs them.

@@ -350,12 +350,8 @@ def _apply_reverb(y: np.ndarray, sample_rate: int, mix: float = 0.25) -> np.ndar
     Simple Schroeder plate reverb using comb + allpass filters.
 
     Adds space and smooths out the granularity of bursty photon data.
-    Falls back to dry signal if scipy is not available.
     """
-    try:
-        from scipy.signal import lfilter
-    except ImportError:
-        return y
+    from tttrlib.signal import lfilter
 
     comb_delays_ms = [31, 37, 41, 47]
     comb_gain = 0.6

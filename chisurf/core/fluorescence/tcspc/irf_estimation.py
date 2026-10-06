@@ -27,8 +27,8 @@ References
 from __future__ import annotations
 
 import numpy as np
-from scipy.signal import savgol_filter
 from tttrlib.ndimage import median_filter as nd_median_filter
+from tttrlib.signal import savgol_filter
 
 from chisurf.core.math.numerics import minimize
 

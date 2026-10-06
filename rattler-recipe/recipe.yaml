@@ -151,7 +151,7 @@ requirements:
     # pandas removed: chisurf.core.datastore (tttrlib.DataStore) is the
     # storage model everywhere in the tree, and nothing shipped imports
     # pandas any more (PRD-82). Solved-closure delta: 256 -> 255 packages.
-    - scipy
+    # scipy removed: IMP.bff and tttrlib carry the numerics chisurf used it for.
     # boost-cpp removed: it was a build-time C++ library that outlived the build
     # it belonged to. Nothing in the tree or in the local modules links libboost
     # -- tttrlib builds against the C++17 standard library -- so shipping it in

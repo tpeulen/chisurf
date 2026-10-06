@@ -1,63 +1,12 @@
-# Files that still import scipy. This list only SHRINKS.
+# Files that still import scipy. This list only SHRINKS -- and it is empty.
 #
-# scipy is being retired from the shipped package's runtime dependencies.
-# Never add yourself here to make test/test_scipy_seam.py pass -- route the
-# call and strike the line. The end state is an empty list, after which scipy
-# leaves pyproject.toml / pixi.toml / rattler-recipe (keeping only test and
-# legacy-io extras) and joins RETIRED in test/test_no_retired_dependency_imports.py.
+# scipy left the shipped package's runtime dependencies on 2026-10-06: its
+# numerics live in IMP.bff (optimisers, root finding, special functions,
+# distributions, linear algebra, ODEs -- reached through
+# chisurf/core/math/numerics.py and chisurf/core/math/special.py) and in
+# tttrlib (ndimage, spatial, clustering, signal, splines, MAT-files).
+# Routing and parity evidence: okf/subsystems/scipy-retirement.md.
 #
-# Test files are exempt: scipy stays a test dependency and remains the
-# independent oracle for every parity test written during this retirement.
-#
-# Each entry carries the route it takes, decided 2026-10-05 (owner: tpeulen):
-#
-#   numpy     -- numpy 2.x already has it (trapezoid, normal, eig, interp);
-#                delete the import and rename. Zero new code.
-#   local     -- small, correctness-first reimplementation inside chisurf
-#                (chisurf/core/math/special.py + per-site helpers). Cold or
-#                once-per-fit paths only.
-#   bff       -- performance-relevant numerics go into IMP.bff's C++ core
-#                (optimizers around FitMinimizer, hot special functions,
-#                the ODE integrator) and are re-exposed through a thin
-#                Python shim in chisurf.
-#   tttrlib   -- image and spatial kernels go into tttrlib (filters next to
-#                the tested C++ rank_filters/fast-gaussian, clustering next
-#                to hdbscan/kmeans/kdtree, assignment next to kmeans).
-#                Everything landing there is browser-ready via PRD-041's
-#                wasm wheel.
-#   legacy-io -- scipy.io MAT-file readers/writers. Superseded 2026-10-06
-#                (owner: scipy leaves; curves I/O -> tttrlib): tttrlib.matfile
-#                reads/writes Level-5 MAT-files like scipy.io; none remain.
-#
-# Mixed files (one scipy call each to bff/tttrlib/local) carry a comment
-# naming the split. Two YAML files embed scipy calls in text and are NOT
-# scanned by this seam (see the traps in okf/subsystems/scipy-retirement.md):
-# chisurf/core/models/parameter_transform/models.yaml (ncx2, root_scalar)
-# and modules/ndxplorer/ndxplorer/settings/curve_equations.yaml.
-# See that doc for the full routing, what already ships, and where to pick
-# the work up.
-
-# ── numpy: delete-and-rename, no new code ────────────────────────────────────
-
-# ── local: chisurf/core/math/special.py + per-site reimplementations ────────
-chisurf/plugins/tttr/audifier/core.py
-# lazy scipy.interpolate (spline rebin) -> local np.interp/spline
-chisurf/core/fluorescence/fcs/__init__.py
-# rankdata/t.ppf -> local (cKDTree -> tttrlib.KDTree done 2026-10-05)
-
-# ── bff: performance-relevant numerics into IMP.bff C++ ─────────────────────
-chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
-# nnls -> bff
-# minimize -> bff; savgol -> local (median_filter -> tttrlib.ndimage done)
-chisurf/core/fluorescence/tcspc/irf_estimation.py
-# curve_fit -> bff; erf -> local
-# curve_fit -> bff; j0 -> local
-# least_squares -> bff (ndimage -> tttrlib.ndimage done)
-# digamma/polygamma/gammaln: VB-MCMC hot loops, vectorized C++
-
-# ── tttrlib: image + spatial + clustering kernels ────────────────────────────
-# curve_fit -> bff (ndimage/cKDTree/linear_sum_assignment -> tttrlib done)
-# erf -> local; least_squares -> bff (median_filter -> tttrlib.ndimage done)
-# scipy.stats.norm.cdf (brush kernel) -> local erf; filed under tttrlib by mistake
-
-# ── legacy-io: DONE 2026-10-06 -- MAT-files read/written by tttrlib.matfile ─
+# Never add a file here to make test/test_scipy_seam.py pass. Test files are
+# exempt: scipy stays a test dependency ([feature.test] in pixi.toml) and is
+# the independent oracle for every parity test written during the retirement.

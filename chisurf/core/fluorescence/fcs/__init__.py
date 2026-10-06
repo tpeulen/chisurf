@@ -385,10 +385,11 @@ def _spline_local_residual_std(
 
     The implementation is deliberately conservative:
 
-    - If SciPy is available, a cubic B-spline with ``knot_count`` interior
-      knots is used (``scipy.interpolate.splrep/splev``).
-    - If SciPy is not available or fitting fails, a simple moving-average
-      smoother is used instead.
+    - A cubic least-squares B-spline with ``knot_count`` interior knots
+      (``tttrlib.interpolate.splrep/splev``, FITPACK as scipy carries it).
+    - If the knots cannot be placed for the points (FITPACK's
+      Schoenberg-Whitney conditions), a simple moving-average smoother is
+      used instead.
     - Any non-finite or degenerate cases fall back to unit standard deviations.
     """
     t = np.asarray(times, dtype=float).ravel()
@@ -413,19 +414,17 @@ def _spline_local_residual_std(
 
     # Build a smooth approximation g_smooth(x).
     g_smooth = None
-    try:
-        try:
-            import scipy.interpolate as _spintp  # type: ignore[import]
-        except Exception:
-            _spintp = None  # type: ignore[assignment]
+    from tttrlib.interpolate import splev, splrep
 
-        if _spintp is not None:
-            # Interior knots between min/max of the log-time axis.
-            k = int(max(1, knot_count))
-            knots = np.linspace(x[1], x[-1], k + 2)[1:-1]
-            tck = _spintp.splrep(x, g_valid, s=0.0, k=3, t=knots)
-            g_smooth = _spintp.splev(x, tck, der=0)
-    except Exception:
+    try:
+        # Interior knots between min/max of the log-time axis.
+        k = int(max(1, knot_count))
+        knots = np.linspace(x[1], x[-1], k + 2)[1:-1]
+        tck = splrep(x, g_valid, s=0.0, k=3, t=knots)
+        g_smooth = splev(x, tck, der=0)
+    except ValueError:
+        # The knots fail FITPACK's Schoenberg-Whitney conditions for these
+        # points (too few points between two knots): fall back below.
         g_smooth = None
 
     if g_smooth is None:

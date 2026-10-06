@@ -26,6 +26,16 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 #: ``import name -> (packaging name, what to use instead)``.
 RETIRED = {
+    "scipy": (
+        "scipy",
+        "use chisurf.core.math.numerics / chisurf.core.math.special (IMP.bff) or "
+        "tttrlib's ndimage, spatial, signal, interpolate and matfile",
+    ),
+    "matplotlib": (
+        "matplotlib",
+        "plot through chiplot; static figures emtk.figure, colours emtk.colormaps, "
+        "formulas emtk.tex",
+    ),
     "deprecation": (
         "deprecation",
         "use chisurf.core.support.decorators.deprecated",
@@ -123,11 +133,25 @@ _ALSO_PACKAGED_AS = {
 #: the ``scrape`` extra, which the application never imports.
 _IMPORT_ONLY = {"requests"}
 
+#: Retired from the runtime, kept as the independent oracle of parity tests.
+#: For these the import check skips test files (a directory named ``test`` or
+#: ``tests`` -- the rule test_scipy_seam/test_matplotlib_seam use), and the
+#: packaging check ignores pixi's ``[feature.test*]`` and ``[feature.docs*]``
+#: tables, where they are declared on purpose. Every runtime table still counts.
+_TEST_ORACLE = {"scipy", "matplotlib"}
+
 #: Files whose only mention of the names is this test itself.
 _ALLOWED = {"test/test_no_retired_dependency_imports.py"}
 
 #: Paths exempt from one module's import check, with the reason.
 _ALLOWED_PREFIXES = {
+    # The console renders figures from the *user's own* matplotlib calls, if
+    # they have it installed; both import it inside a function only (pinned
+    # by test_matplotlib_seam).
+    "matplotlib": (
+        "chisurf/core/console/mpl_inline.py",
+        "chisurf/core/console/shell.py",
+    ),
     "requests": ("chisurf/plugins/spectra_downloader/download/",),
     # The parity suite compares chisurf.core.ml against scikit-learn *where it
     # happens to be installed* (`pytest.importorskip`), and the benchmark times
@@ -186,6 +210,36 @@ def _python_sources():
             yield from folder_path.rglob("*.py")
 
 
+def _is_test_file(path) -> bool:
+    """Whether ``path`` is a test (under a ``test``/``tests`` directory)."""
+    rel = path.relative_to(REPO_ROOT)
+    return any(part in ("test", "tests") for part in rel.parts[:-1])
+
+
+def _without_test_and_docs_tables(text: str) -> str:
+    """``pixi.toml`` with its ``[feature.test*]`` and ``[feature.docs*]`` tables cut out.
+
+    Parameters
+    ----------
+    text : str
+        Full ``pixi.toml`` text.
+
+    Returns
+    -------
+    str
+        The text of every other table.
+    """
+    kept, skipping = [], False
+    for line in text.splitlines():
+        header = re.match(r"^\s*\[([^\]]+)\]", line)
+        if header:
+            name = header.group(1).strip()
+            skipping = name.startswith(("feature.test", "feature.docs"))
+        if not skipping:
+            kept.append(line)
+    return "\n".join(kept)
+
+
 def _declared_dependencies(text: str) -> set[str]:
     """Return the requirement names declared in a manifest.
 
@@ -230,6 +284,8 @@ def test_no_module_imports_retired_package(module):
         rel = str(path.relative_to(REPO_ROOT))
         if rel in _ALLOWED or rel.startswith(exempt):
             continue
+        if module in _TEST_ORACLE and _is_test_file(path):
+            continue
         if pattern.search(path.read_text(encoding="utf-8", errors="ignore")):
             offenders.append(rel)
     assert not offenders, (
@@ -273,7 +329,10 @@ def test_packaging_does_not_declare_retired_package(module):
         path = REPO_ROOT / rel
         if not path.exists():
             continue
-        declared = _declared_dependencies(path.read_text(encoding="utf-8", errors="ignore"))
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        if module in _TEST_ORACLE and rel == "pixi.toml":
+            text = _without_test_and_docs_tables(text)
+        declared = _declared_dependencies(text)
         found = names & declared
         if found:
             offenders.append(f"{rel} ({', '.join(sorted(found))})")

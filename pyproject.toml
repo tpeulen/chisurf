@@ -52,7 +52,6 @@ dependencies = [
     # IMP.bff unguarded. Bare `imp` (the full IMP suite) is no longer needed --
     # see pixi.toml and okf/references/imp-ecosystem.md.
     "imp-bff",
-    "scipy",
     # Imported at module scope in shipped code and previously left out of this
     # list: PyOpenGL by the molecular view.
     # pandas, scikit-learn and scikit-image are deliberately NOT here:
