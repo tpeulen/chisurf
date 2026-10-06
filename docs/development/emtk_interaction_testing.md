@@ -64,3 +64,9 @@ prefix for both tools and HDF5 validation; they must not inherit pixi's
 `CONDA_PREFIX`. For migration review, capture the old control first, keep a
 before/after inventory, and inspect both PNGs. Tests that only construct a
 widget cannot establish layout or control parity.
+
+A recorded target without a rectangle is currently unavailable, for example an
+image canvas before data loads. Driver excludes it from `ids()` and raises
+`LookupError` rather than inventing a click location. Composite hosts forward
+optional key-release hooks only when a child implements them. Form callbacks
+receive the committed field value.

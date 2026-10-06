@@ -929,3 +929,14 @@ modifiers and owns Tab; native GLFW advertises position capability. Keyboard
 focus/activation, configurable frames, fonts and game modifier handling were
 driven and inspected headlessly. All 58 ALWAYS size calls in 27 files describe
 viewport regions; they are not initial host defaults to replace mechanically.
+
+## Native click-all callback roots (2026-10-07)
+
+The confirmed runtime failures were interface mismatches, not missing controls:
+PTO Inspector now calls DatasetPicker.render; Global View accepts the boolean
+delivered by its auto-refresh form while retaining direct zero-argument calls;
+Structure Tools forwards key release only when a child implements that optional
+hook. The toolkit Driver excludes None rectangles for unsubmitted canvases.
+Seventeen focused runtime/Driver cases pass; actual Global View, PTO Inspector
+and Spot Finder click-all workers pass and their PNGs were inspected. FRET
+Docking's optional-hook crash is fixed; its missing guided tour remains W6 work.

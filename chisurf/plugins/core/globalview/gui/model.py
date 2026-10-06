@@ -642,8 +642,10 @@ class GlobalViewModel:
         """A setting that moves nodes changed."""
         self.rebuild(force=True)
 
-    def auto_refresh_changed(self) -> None:
-        """Catch up at once when automatic refreshing comes back on."""
+    def auto_refresh_changed(self, value: bool | None = None) -> None:
+        """Apply a form toggle and catch up when automatic refreshing resumes."""
+        if value is not None:
+            self.auto_refresh = bool(value)
         if self.auto_refresh and self.stale:
             self.rebuild(force=True)
         self._update_status()

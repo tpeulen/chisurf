@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-07
+
+- **2026-10-07 · W7 runtime roots:** Driver handles undrawn canvases; PTO picker rendering, Global View toggle callbacks and optional Structure Tools key release use their real contracts.17focused cases pass; three actual plugin workers pass with inspected PNGs. [Native contracts](subsystems/gui-autoform.md).
+
 ## 2026-10-06
 
 - **2026-10-06 · W7 schema foundation:** native reader vocabulary exported (emtk `37872c3`, ndX `86d6d5c`); schema guards now 647/647, retaining consumed table/curve/layout/tour fields and rejecting real typos. Pinned schema/workflow/triage checks: 677 passed. [Protocol](workflows/testing.md).

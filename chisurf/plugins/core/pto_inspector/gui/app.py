@@ -374,7 +374,7 @@ class PtoInspectorApp(ImApp):
                 self.dialog = None
                 self.safe(lambda: self.on_paths_dropped(selected) if action == 'open' else self.pack_vendor_files(selected[0]) if action == 'pack' else self.export_payload(selected[0]))
         if self.picker:
-            self.picker.draw(box)
+            self.picker.render(box)
         self.help.draw(box)
         self.tour.draw(vp.size[0], vp.size[1])
 

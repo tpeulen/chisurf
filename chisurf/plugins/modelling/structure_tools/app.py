@@ -209,7 +209,8 @@ class StructureToolsHubApp(ImApp):
         return self.child.key(key, text, modifiers) if self.child else super().key(key, text, modifiers)
 
     def key_release(self, key, text="", modifiers=0):
-        return self.child.key_release(key, text, modifiers) if self.child else False
+        handler = getattr(self.child, "key_release", None)
+        return bool(handler(key, text, modifiers)) if callable(handler) else False
 
     # ── persistence ─────────────────────────────────────────────────────
     def export_settings(self) -> dict:
