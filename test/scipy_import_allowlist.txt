@@ -60,11 +60,6 @@ chisurf/core/fluorescence/fcs/__init__.py
 modules/ndxplorer/ndxplorer/analysis/projection_scores.py
 
 # ── bff: performance-relevant numerics into IMP.bff C++ ─────────────────────
-# leastsqbound: the module survives as the home of OptimizationCancelled (three
-# importers); the _minpack body is replaced by the bff FitMinimizer shim.
-chisurf/core/math/optimization/leastsqbound.py
-# near-duplicate of the core module; consolidates onto it
-chisurf/plugins/fluorescence_decay/lltf/core/optimization/leastsqbound.py
 chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
 # nnls -> bff
 chisurf/core/fluorescence/decay_fit.py

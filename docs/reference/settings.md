@@ -533,8 +533,8 @@ regularization, and sampling routines.
 Sub‑sections:
 
 - **`leastsq`** (used in local and global least‑squares)  
-  Passed into `chisurf.core.math.optimization.leastsqbound` and SciPy‑style
-  optimizers:
+  Passed into the bounded least-squares fitter (`chisurf.core.fitting.minimizer`,
+  IMP.bff's MINPACK `lmdif` port):
   - **`ftol`**, **`xtol`**, **`gtol`** – standard convergence tolerances
   - **`maxfev`** – max. number of function evaluations (0 = auto)
   - **`factor`**, **`epsfcn`** – step‑size and finite‑difference parameters

@@ -50,8 +50,14 @@ timestamp: '2026-10-05T00:00:00Z'
    moves 440 -> 568 in f when x0 is nudged by one ulp (recorded in
    known-issues). Tests: imp.bff `test/numerics/test_minimize.py` (21),
    chisurf `test/core/test_numerics_minimize.py` (9).
-   **Pending (route 3):** `leastsq`/`_minpack` (leastsqbound) and `odeint`
-   (reaction/continuous) -- T-20261006-BFFOPT; special functions +
+   **leastsqbound: removed, not ported (2026-10-06).** Neither copy had a
+   caller -- the fitter has run on bff's `FitMinimizer` since 2026-09-01 and
+   lltf's package re-exports `chisurf.core.fitting.minimizer.minimize` -- so
+   both `leastsqbound.py` files (the core one and lltf's resurrected
+   duplicate) were deleted and `OptimizationCancelled` moved into
+   `chisurf/core/math/optimization/__init__.py`, its three importers
+   unchanged. Nothing needed `leastsq` full_output semantics.
+   **Pending (route 3):** `odeint` (reaction/continuous) -- T-20261006-BFFOPT; special functions +
    distributions, expm, pinvh -- the special-functions lane. **Boost.Math is
    already a header-only bff dependency** (SpecialFunctions.cpp uses it).
 5. Trap: imp.bff builds share `cmake-build-arm64` with other agents -- wrap

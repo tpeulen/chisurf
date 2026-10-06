@@ -225,7 +225,7 @@ if _bff is not None:
 
         Reports ``(evaluated, total)`` with ``chi2``/``chi2r`` offered as
         keywords and falls back to the documented two-argument call, which is
-        what ``leastsqbound._report_progress`` does and why: a callback
+        what scipy-era ``leastsqbound._report_progress`` did and why: a callback
         written to the documented signature raises ``TypeError`` on the
         keywords, and swallowing that left the bar at zero for whole fits.
 
@@ -1364,7 +1364,7 @@ def minimize(
 ):
     """Minimise ``sum(func(x)**2)`` in C++, falling back to numpy.
 
-    A drop-in for :func:`leastsqbound` in the shape ``fit.run()`` calls it.
+    A drop-in for the retired ``leastsqbound`` in the shape ``fit.run()`` calls it.
 
     Parameters
     ----------
@@ -1387,12 +1387,12 @@ def minimize(
         whole objective in C++. Omitted, the director path is used.
     **options
         ``ftol``, ``xtol``, ``gtol``, ``maxfev``, ``epsfcn``, ``factor``,
-        ``diag`` -- the names and the defaults of :func:`leastsqbound`.
+        ``diag`` -- the names and the defaults of ``leastsqbound``.
 
     Returns
     -------
     (x, ier)
-        The solution and MINPACK's status, as :func:`leastsqbound` returns
+        The solution and MINPACK's status, as ``leastsqbound`` returned
         them without ``full_output``.
 
     Raises

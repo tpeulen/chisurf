@@ -1,8 +1,25 @@
-# leastsqbound = skf.math.optimize.leastsqbound.leastsqbound
-from chisurf.core.math.optimization.leastsqbound import (
-    OptimizationCancelled,
-    leastsqbound,
-)
+"""Optimisation support shared by the fitting stack.
+
+The bounded Levenberg-Marquardt itself is IMP.bff's ``FitMinimizer``, reached
+through :mod:`chisurf.core.fitting.minimizer`; scipy-shaped solvers are in
+:mod:`chisurf.core.math.numerics`. What is left here is the exception a
+progress callback raises to stop a fit.
+
+``leastsqbound`` (scipy's MINPACK ``_lmdif`` behind the MINUIT bounds
+transform) used to live in this package. It had no caller after the fitter
+moved onto bff on 2026-09-01 and was removed on 2026-10-06 with the rest of
+chisurf's private scipy imports.
+"""
+
+
+class OptimizationCancelled(Exception):
+    """Signal that an optimisation was cancelled by the caller.
+
+    Raised from a user-provided ``progress_callback`` (for example when a GUI
+    progress dialog's Cancel button is pressed). The minimiser propagates it
+    to the caller instead of swallowing it together with other callback
+    errors.
+    """
 
 # ``nnls.solve_nnls`` (an amplitude-Tikhonov wrapper around
 # ``scipy.optimize.nnls``, on the *normal* equations rather than the augmented
