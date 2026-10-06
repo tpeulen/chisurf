@@ -77,3 +77,13 @@ passes into the layout (item widths, plot sizes) by `nodes.content_scale()`.
 * [lightpath-emtk-editor](../handover/lightpath-emtk-editor.md) — the beam-path
   port, and the screenshot harness run it introduced.
 * [chimol-emtk](../plugins/chimol-emtk.md) — the toolkit underneath.
+
+## Where to pick this up — release-readiness zoom (2026-10-06)
+
+The emtk wheel root is fixed (`c429d3b`, included in `a1398e0`): the canvas
+child is not scrollable, exponential zoom factors are symmetric, and handled
+wheel input is consumed once. Equal opposite notches restore both scale and
+panning within 1e-12 even with overflow; idle redraws do not repeat zoom.
+65 targeted emtk/ChiSurf node tests passed.
+[Inspected zoom-in/out captures and programme handoff](/validation/release-readiness-w5.md).
+No graph work remains in W5; W7 is the next programme front.

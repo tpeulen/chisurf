@@ -911,3 +911,21 @@ scheduled phase; it is recorded so the declarative-UI choice keeps its rationale
 # Citations
 
 [1] [ChiSurf architecture doc](/references/architecture-doc.md)
+
+## Release-readiness native roots (W5, 2026-10-06)
+
+### Where to pick this up
+
+W5 roots are committed in emtk `a1398e0` (Driver first: `5de4c87`). Next is
+W7's authoritative schema exports and click-all; 102 schema failures remain,
+with every other existing Part A guard green.
+[Receipts, captures and measurement traps](/validation/release-readiness-w5.md).
+
+ViewSpecPanel now reuses the form grid rather than a SettingsEditor: column
+weights and wrapping work while group/search/table/numeric controls retain
+parity. Helpers with callers remain. Window state includes size, position and
+docks; host close persists it and closes workers once. Qt masks incidental
+modifiers and owns Tab; native GLFW advertises position capability. Keyboard
+focus/activation, configurable frames, fonts and game modifier handling were
+driven and inspected headlessly. All 58 ALWAYS size calls in 27 files describe
+viewport regions; they are not initial host defaults to replace mechanically.

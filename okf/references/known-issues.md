@@ -6286,6 +6286,8 @@ Which rendering is right (hetero spheres; residue 0) is chimol's call.
 
 ## emtk apps opened from ChiSurf's menu are never closed (found 2026-10-01)
 
+Status: resolved 2026-10-06 — emtk `67500cf`: ControlHost.closeEvent calls control.close() once; host/state tests and geometry captures verified.
+
 **Measured** with ndX (`okf/plugins/emtk-ports/ndxplorer/`): `chisurf.core.plugin.registry.build_plugin_widget` wraps an
 emtk factory's app in `emtk.qt_host.ControlHost(factory())` and returns the host; when that window closes,
 `ControlHost.closeEvent` only detaches the frame-request callback (`set_frame_request_callback(None)`) and nothing calls
@@ -6311,6 +6313,8 @@ only Qt-free player in the tree is `chisurf/plugins/tttr/audifier/native_playbac
 
 ## emtk implot: a first `COND_ONCE` axis-limits request on an existing plot is ignored (found 2026-10-01)
 
+Status: resolved 2026-10-06 — emtk `eb604b1`: a missing previous ONCE request is new; axes/interaction regressions and delayed-counts PNG verified.
+
 **Measured** in burst_fusion's fragments histogram: the plot is drawn empty, then data arrives and the app calls
 `implot.setup_axis_limits(AXIS_Y1, lo, hi, COND_ONCE)` for the first time. `emtk/implot.py:setup_axis_limits` applies a ONCE
 request only when the plot is not yet initialized or the request differs from an earlier ONCE request; with no earlier request it
@@ -6321,6 +6325,8 @@ burst_2cde is unaffected because its empty plot makes a ONCE request first. *Not
 the fix belongs in `setup_axis_limits` (treat "no earlier ONCE request" as new), with a regression test in emtk.
 
 ## emtk help window draws help.md as raw markdown, one source line per paragraph (found 2026-10-02)
+
+Status: resolved 2026-10-06 — existing fix `401af4ab9` verified: EmTkHelpWindow renders paragraphs with im.markdown and live links; native helper seam 12 passed.
 
 **Measured** in traj_save_topology's help (`okf/plugins/emtk-ports/traj_save_topology/after_help_1200x800.png`):
 `chisurf/emtk/help_guide.py:EmTkHelpWindow.draw` hands each stripped source line to `im.text_wrapped`, so `**bold**`,

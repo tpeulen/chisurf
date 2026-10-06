@@ -802,3 +802,12 @@ remains imported by real callers, each a deletion-path debt rather than a templa
 
 → When you touch any of them, port it to chimol's structure handling in the same change
 rather than adding another `Structure(...)` call site; a new call site violates the rule.
+
+## Release-readiness native roots — complete 2026-10-06
+
+| ID | Subsystem | Finding | Status |
+|---|---|---|---|
+| [W5](/prds/prd-154.md) | emtk/GUI | Input navigation, overflowing graph zoom, frames, grids, host lifecycle and geometry lacked shared root contracts | ✅ FIXED — [evidence](/validation/release-readiness-w5.md) |
+
+W7's 102 schema failures and W0's missing bundle guard remain open in the
+programme; this completed row does not mark those workstreams done.
