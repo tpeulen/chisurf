@@ -187,29 +187,39 @@ class MMFDBAdminApp(ImApp):
         im.begin("##mmfdb_top", (0.0, 0.0, width, self.top_h))
         if im.begin_main_menu_bar():
             if im.begin_menu("File"):
-                for label, action in (
-                    ("Import...", model.import_file),
-                    ("Export selected sample...", model.export_selected_sample),
-                    ("Backup database...", model.backup_database),
-                    ("Reset", model.reset_database),
+                for label, action, tip in (
+                    ("Import...", model.import_file,
+                     "Import a PDBx / PDB-IHM / FLR CIF file into the MMFDB."),
+                    ("Export selected sample...", model.export_selected_sample,
+                     "Export the sample selected in Samples as an FLR CIF file (validated first)."),
+                    ("Backup database...", model.backup_database,
+                     "Write a backup copy of the active MMFDB database."),
+                    ("Reset", model.reset_database,
+                     "Replace the user database with the curated source (asks first; a backup is written)."),
                 ):
                     if im.menu_item(label, enabled=model.connected):
                         action()
+                    im.set_item_tooltip(tip)
                 im.separator()
                 if im.menu_item("Close"):
                     self.request_close()
+                im.set_item_tooltip("Close the MMFDB Admin window.")
                 im.end_menu()
             if im.begin_menu("Settings"):
                 if im.menu_item("Reset window layout"):
                     self.reset_layout()
+                im.set_item_tooltip("Restore the default panel splits and open the Overview.")
                 im.end_menu()
             if im.begin_menu("Help"):
                 if im.menu_item("Help..."):
                     self.help_window.show()
+                im.set_item_tooltip("Read how MMFDB Admin works.")
                 if im.menu_item("Guide"):
                     self.tour.start()
+                im.set_item_tooltip("A step-by-step walk through signing in, picking a panel and editing a record.")
                 if im.menu_item("About mmfdb-admin"):
                     model.show_about()
+                im.set_item_tooltip("The version, the connection and the database in use.")
                 im.end_menu()
             im.end_main_menu_bar()
         draw_sections(self.shell["toolbar"]["sections"], model, self.form("toolbar"),
@@ -333,7 +343,9 @@ class MMFDBAdminApp(ImApp):
         im.begin("##mmfdb_panel", box)
         im.text_unformatted(model.panel_name(key))
         im.same_line()
-        im.text_disabled(model.panel_description(key))
+        description = model.panel_description(key)
+        im.text_disabled(self._fit(description, im.get_content_region_avail()[0] - 4.0))
+        im.set_item_tooltip(description)
         if not model.connected:
             im.text_wrapped(
                 "Not connected. Enter the server and your user above and press Login."

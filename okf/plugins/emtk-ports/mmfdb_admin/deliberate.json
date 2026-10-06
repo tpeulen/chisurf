@@ -1,0 +1,11 @@
+{
+  "combo with 9518 options": "Sample Metadata key catalogue: the native choice lists 9519 keys (the catalogue plus the free-text entry); same catalogue, filterable by typing. Parity.",
+  "current state —": "Lifecycle before Load: the native capture loads sample_gui first, so it records 'Current state: measured'; the same info line shows '—' before a load. Parity (state-dependent text).",
+  "double-click any row to jump to the matching dock and select the item.": "All items hint: renamed 'Double-click any row to jump to the matching panel and select the item.' (the native app has panels, not docks).",
+  "embedded | user db /var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/mmfdb_admin_qt_kqh76pbg/mmfdb.db | schema 50 | samples 5 | experiments 5": "Status-bar database line: the native status bar shows the same line (model.database_summary) when the open panel has none; the text differs only by the temporary database path of the run.",
+  "metadata id 10 - donor-gui": "Find Duplicates metadata pane: the native pane prints 'ID 10 - Donor-GUI' with the category / maxima / QY lines under it (the 'Metadata' heading is not repeated per probe). Same data.",
+  "metadata id 8 - donorgui": "As above: 'ID 8 - Donor GUI'.",
+  "next ▶": "Status bar: 'Next' (the arrow glyph is dropped; 'Back' likewise). Parity.",
+  "potential duplicates identified by name similarity. select the primary probe for each group in the tree below. use the panel on the right to compare spectra for the selected group. when you merge, the primary probe keeps its spectra and missing ones are filled from duplicates. overlaps are ignored.": "Find Duplicates explanation: the same sentence, wrapped over three lines by the native info section, so it is recorded as three strings. Parity.",
+  "setup_gui — gui setup": "Setup channel panels (Detector Channels, PIE Windows, FCS Pairs): the registry marks these entities read-only (writable=False); Qt nevertheless drew an editable FK combo labelled 'setup_gui — GUI Setup' whose edits the server refused. Native shows the field read-only ('setup_gui') and the table cell as a link that opens the setup (double-click). Deliberate fix."
+}

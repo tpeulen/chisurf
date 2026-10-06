@@ -17,18 +17,21 @@ so ChiSurf's own plumbing is packaged as plugins too.
 Two open fronts: the **PTO inspector**'s operation index, and **Global View**
 (see [below](#global-view-the-parameter-network) for what it now is).
 
-### MMFDB Admin native port (T-20261005-MMFDBEMTK, stopped 2026-10-05)
+### MMFDB Admin native port (T-20261005-MMFDBEMTK, done 2026-10-06)
 
-`core/mmfdb_admin` still opens Qt: the native app is **not written**, and the manifest
-deliberately has no `entrypoints.emtk` yet. Done: the Qt before-images of all 35
-panels and 4 dialogs in a seeded temp database plus a 457-control inventory
-(`okf/plugins/emtk-ports/mmfdb_admin/`), the Qt-free pieces the app needs
-(`legacy_schemas`, `entity_values`, `password_strength`, `optical_components/duplicates`,
-`core/fio/mmcif/metadata_keys`, `core/fluorescence/spectrum_traces`), the seeded test
-helper `mmfdb_admin/test/seeded_admin.py`, and three emtk widgets (multi-line text
-fields, FK link cells with `activated_cell_call`, value-coloured cells; emtk `7751e7d`).
-Next steps, the Qt defects to fix as deliberate improvements, and the traps:
-[REPORT.md](emtk-ports/mmfdb_admin/REPORT.md#where-to-pick-this-up).
+`core/mmfdb_admin` opens the native emtk app (`gui/app.py`, manifest
+`entrypoints.emtk`); the Qt `gui/tool.py` stays as the legacy `entrypoints.gui`.
+Parity against the 457-control Qt baseline, the deliberate differences, the
+screenshots read and the open follow-ups:
+[REPORT.md](emtk-ports/mmfdb_admin/REPORT.md#where-to-pick-this-up). Docs:
+`docs/guides/102_mmfdb_admin.md`, `docs/concepts/measurement_database.md`.
+Open front, in order: (1) the Qt `gui/tool.py` + its Qt-only views can be deleted once
+the owner accepts the port (nothing native imports them; `optical_components/__init__`
+is lazy so `duplicates` stays Qt-free); (2) table selection is not mirrored into the
+Protocols / Studies / Reagent Lots tables when the model selects programmatically
+(entity panels and Spectra do it via `_sync_selection`); (3) re-capturing the after
+half costs ~50 min (PixelPainter PNG encoding of ~50 states) -- run it in the
+background.
 
 ### PTO inspector
 

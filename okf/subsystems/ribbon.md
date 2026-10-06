@@ -75,7 +75,9 @@ Hub scopes that decide where a new tool goes:
    the ALEX Suite still subclasses the Qt shell (card AS4) and the hub inherits two
    ToolHubApp limits (fixed rail, header badge); the ordered list is in
    [burst-survey.md](../plugins/emtk-ports/burst-survey.md).
-2. **Ribbon buttons that still open Qt:** MMFDB Admin. (Intensity
+2. **Ribbon buttons that still open Qt:** none. MMFDB Admin is native
+   since 2026-10-06 (T-20261005-MMFDBEMTK, `entrypoints.emtk`; parity in
+   `okf/plugins/emtk-ports/mmfdb_admin/REPORT.md`). (Intensity
    trace landed as emtk; Screenshot is no longer a plugin but the main window's
    *Screenshot* action, `chisurf/gui/screenshot_action.py`, shown in Main › Window.)
 

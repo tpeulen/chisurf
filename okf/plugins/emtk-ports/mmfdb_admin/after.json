@@ -1,0 +1,2713 @@
+{
+  "entrypoint": "chisurf.plugins.core.mmfdb_admin.gui.app:make_app",
+  "size": [
+    1200,
+    800
+  ],
+  "format": "drawn controls, painted strings and choice options (<= 40) of every panel and dialog; see capture_emtk_populated.py",
+  "controls": [
+    "#",
+    "'sample_hp3'",
+    "(connecttolistexperim",
+    "(connecttolistexperiments)",
+    "(embedded,",
+    "(none)",
+    "(selectasample)",
+    "(session)",
+    "(valuesstoredforthiskey)",
+    "*****",
+    "/users/tpeulen/dev/mmfdb/src/mmfdb/data/sample_management.db",
+    "/var/folders/cl/txw.",
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/.",
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/mmfdb_adm.",
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/mmfdb_admin_emtk_y9kt9dxr/mmfdb.db",
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/mmfdb_admin_emtk_y9kt9dxr/prod_gui.json",
+    "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/mmfdb_admin_emtk_y9kt9dxr/raw_gui.ptu",
+    "0",
+    "0.01",
+    "0.02",
+    "0.05",
+    "0.1",
+    "0.13",
+    "0.15",
+    "0.2",
+    "0.27",
+    "0.3",
+    "0.33",
+    "0.4",
+    "0.5",
+    "0.6",
+    "0.65",
+    "0.66",
+    "0.666667",
+    "0.68",
+    "0.7",
+    "0.8",
+    "0.9",
+    "0.92",
+    "00000000-00.",
+    "00000000-0000-000.",
+    "00000000-0000-0000-0000-0000000.",
+    "00000000-0000-0000-0000-000000000000",
+    "00000000-0000-4000-8000-000000000001",
+    "05422d2c-3960-.",
+    "05422d2c-3960-4954-9b1d-87efaa443507",
+    "1",
+    "1.05",
+    "1.4",
+    "10",
+    "10items(of10total)",
+    "10probes",
+    "10rows×16columns",
+    "10—twin",
+    "12",
+    "126",
+    "127.0.0.1",
+    "141",
+    "148l",
+    "148l_65_141.",
+    "148l_65_141_a488_a594",
+    "148l_65_141_a488_a594—t4lysozyme65/141alexa488/alexa594fretsample",
+    "148l_65_141_doubl.",
+    "148l_65_141_double_cys",
+    "148l_alex_001",
+    "148l_flim_001",
+    "148l_intrin.",
+    "148l_intrinsic_trp",
+    "148l_intrinsic_trp—t4lysozymeintrinsictryptophansample",
+    "148l_tcspc_0.",
+    "148l_tcspc_001",
+    "148l—t4lysozymecuratedfretsample",
+    "15.0",
+    "16",
+    "1detectorchannels",
+    "1fcspairs",
+    "1fretpairs",
+    "1piewindows",
+    "1projects",
+    "1rawdata",
+    "1row×10columns",
+    "1row×11columns",
+    "1row×4columns",
+    "1row×6columns",
+    "1row×9columns",
+    "1rtd_dna",
+    "1rtd_dna_10.",
+    "1rtd_dna_10_20_cy3_cy5",
+    "1rtd_dna_10_20_cy3_cy5—hivrtdnaduplexcy3/cy5fretsample",
+    "1rtd_dna_10_20_du.",
+    "1rtd_dna—hivreversetranscriptasednaduplexseed",
+    "1rtd_spectra.",
+    "1rtd_spectra_001",
+    "1setups",
+    "1—alexa488",
+    "2",
+    "2-aminopurine",
+    "20",
+    "2026-06-11t.",
+    "2026-06-11t090000",
+    "2026-06-22171617",
+    "2026-10-06060620",
+    "2026-10-06060621",
+    "2026-10-06t060620.793589+0000",
+    "2026-10-06t060620.825775+0000",
+    "2026-10-06t060621.643991+0000",
+    "2026-10-06t060621.659521+0000",
+    "2026-10-06t060621.664225+0000",
+    "2031-01-01",
+    "20mmhepes,50mm.",
+    "225",
+    "23000.0",
+    "238",
+    "244",
+    "280",
+    "280.0",
+    "293.15",
+    "298",
+    "298.15",
+    "2analyses",
+    "2branches",
+    "2processedproducts",
+    "2rows×6columns",
+    "2rows×9columns",
+    "2—alexa594",
+    "3",
+    "3.8",
+    "300",
+    "30e2dd49-2d1f-.",
+    "310.0",
+    "320",
+    "340",
+    "34dae1131d1ed3.",
+    "350.0",
+    "360",
+    "370.0",
+    "380",
+    "3d1bc79e-3b77-47f9-858b-2e87004c6363",
+    "3entities",
+    "3rows×6columns",
+    "3rows×7columns",
+    "3sampleconditions",
+    "3—cy3",
+    "4",
+    "400",
+    "450",
+    "45a3d8be-a9b8-44.",
+    "45a3d8be-a9b8-44b4-a937-c51f47515bf4",
+    "495.0",
+    "496.0",
+    "4devices",
+    "4objects",
+    "4processingruns",
+    "4rows×6columns",
+    "4rows×9columns",
+    "4—cy5",
+    "5",
+    "50",
+    "500",
+    "514272ea-bd76-473b-b3bb-4c708f86cb79",
+    "519.0",
+    "52",
+    "520.0",
+    "523db387-d0.",
+    "523db387-d0b4-4cb1-ba07-45ce3fb83481",
+    "53/53",
+    "54",
+    "550",
+    "550.0",
+    "570.0",
+    "590.0",
+    "5bb33e41-465f-.",
+    "5experiments",
+    "5rows×12columns",
+    "5rows×13columns",
+    "5samples",
+    "5—atto647n",
+    "6",
+    "6.1",
+    "600",
+    "617.0",
+    "644.0",
+    "649.0",
+    "65",
+    "650",
+    "651.0",
+    "669.0",
+    "670.0",
+    "671.0",
+    "6860303c-8783-4a.",
+    "6860303c-8783-4a48-bb6f-35c31904.",
+    "6860303c-8783-4a48-bb6f-35c3190401cb",
+    "6—trp",
+    "7",
+    "7.4",
+    "700",
+    "705a513930d365.",
+    "705a513930d365287941456532eeeb49",
+    "750",
+    "7804cdb4-7c.",
+    "7f77f37d-70af-4d20-b4b6-98fcd7a6dd7d",
+    "7labelpositions",
+    "7rows×11columns",
+    "7rows×15columns",
+    "7rows×9columns",
+    "7users",
+    "7—2-aminopurine",
+    "8",
+    "85eefc5f-890f-4d8c-ac1f-12385d075efb",
+    "8765",
+    "8b0e2410-d505-43.",
+    "8b0e2410-d505-43a8-a068-53bfc61967e4",
+    "8ef0f140-26.",
+    "8—initialdonor",
+    "9",
+    "90",
+    "9600684c-13.",
+    "9c2e8dc5478501.",
+    "9experimenttypes",
+    "9rows×6columns",
+    "9—initialacceptor",
+    "[0,1]",
+    "[485,640]",
+    "[[10,90]]",
+    "a",
+    "a488-42",
+    "aboutmmfdb-admin",
+    "absmax",
+    "absmax495.0",
+    "absmax496.0",
+    "absorbancemax(nm)",
+    "absorption",
+    "absorptionspectrum",
+    "acceptor",
+    "acceptorgui",
+    "acceptorprobeid",
+    "activebranchuuid",
+    "addlot",
+    "addmember",
+    "address",
+    "addrow",
+    "admin",
+    "administration",
+    "advanced—userconnection",
+    "affiliation",
+    "aitriage",
+    "alexa488",
+    "alexa594",
+    "all",
+    "allitems",
+    "allitems53/53",
+    "allowpasswordlesslogin",
+    "allowplainhttp(unsafe)",
+    "alternating-laserexcitationsingle-moleculeexperiment",
+    "analyses",
+    "analysis",
+    "analysis_gui",
+    "analysis_gui·local_fit·succeeded",
+    "analysis_parameter",
+    "analysis_run",
+    "analysisdetailsanalysis_gui",
+    "analysisid",
+    "anentity'slifecyclestate,itshistory,andanadministrator'stransition.",
+    "apikey",
+    "apikey(keptinmemoryonly)",
+    "application/.",
+    "application/msgpack",
+    "applytorow",
+    "applytransition",
+    "approve",
+    "approved",
+    "artifact",
+    "artifactid",
+    "assemblyid",
+    "asymid",
+    "atomid",
+    "atto647n",
+    "authname",
+    "auto",
+    "auto-generatedifleftempty",
+    "auto-generateduuid",
+    "b8af2d79-7592-.",
+    "back",
+    "backup",
+    "backupdatabase",
+    "branch",
+    "branch.",
+    "branch_gui",
+    "branches",
+    "branchname",
+    "branchuuid",
+    "browse",
+    "browse,edit,import,andexportfluorescencemeasurements,",
+    "browseandeditanalyses.",
+    "browseandeditbranches.",
+    "browseandeditdetectorchannels.",
+    "browseandeditdevices.",
+    "browseandeditentities.",
+    "browseandeditexperiments.",
+    "browseandeditexperimenttypes.",
+    "browseandeditfcspairs.",
+    "browseandeditfretpairs.",
+    "browseandeditlabelpositions.",
+    "browseandeditobjects.",
+    "browseandeditpiewindows.",
+    "browseandeditprobes.",
+    "browseandeditprocessedproducts.",
+    "browseandeditprocessingruns.",
+    "browseandeditprojects.",
+    "browseandeditrawdata.",
+    "browseandeditsampleconditions.",
+    "browseandeditsamples.",
+    "browseandeditsetups.",
+    "browseandeditusers.",
+    "buffer",
+    "buffernodescriptioninthedictionary.",
+    "burstselection",
+    "c2",
+    "calibration",
+    "calibrations",
+    "calibrationvalues(γ,g-factor,r₀,),user-registeredones,andusesgonestale.",
+    "cancel",
+    "category",
+    "category=organic_dye,probe_origin=extrinsic",
+    "categoryorganic_dyesource",
+    "cb",
+    "changepassword",
+    "changepasswordforjohn_doe",
+    "channela",
+    "channelb",
+    "channels",
+    "checkall",
+    "checksum(sha-256)",
+    "chromophorename",
+    "citation,e.g.hellenkampetal.2018",
+    "clear",
+    "close",
+    "combowith9519options",
+    "complete",
+    "completed",
+    "componenttype",
+    "cond_gui",
+    "conditionid",
+    "configurablefields",
+    "confirmpassword",
+    "confocal",
+    "connect",
+    "connection",
+    "copycheckedids",
+    "copyid",
+    "copyuuid",
+    "covalent",
+    "create",
+    "create/newversion",
+    "createabranchfor'john_doe'thatstartsata",
+    "created",
+    "createdat",
+    "createdby",
+    "createlot",
+    "createstudy",
+    "crosstalk",
+    "curated",
+    "curateddna.",
+    "curatedemi.",
+    "curatedexampl.",
+    "curatedfli.",
+    "curatedint.",
+    "curatedpro.",
+    "curatedsin.",
+    "curatedtcs.",
+    "curatefluorophores,filters,dichroics,detectorsandlightsources,withtheirspectra.",
+    "currentstatemeasured",
+    "cy3",
+    "cy5",
+    "cys",
+    "d28775b7d754c4.",
+    "da",
+    "data",
+    "database",
+    "datatype",
+    "date",
+    "db",
+    "dc",
+    "defaultmainbran.",
+    "delete",
+    "deleteartifact",
+    "deleteobject",
+    "deleteraw-dataartifact'raw_gui'?",
+    "deleterow",
+    "demo_fret",
+    "demolab",
+    "demooperat.",
+    "demooperator",
+    "demoplatere.",
+    "demoplatereader",
+    "demospec30.",
+    "demotcspcsp.",
+    "demotcspcspectrometer",
+    "department",
+    "description",
+    "detail",
+    "details",
+    "details/json",
+    "details/notes",
+    "detectorchannels",
+    "detectors",
+    "dev_gui",
+    "device",
+    "device_type=plate_reader,model=readerx,serial_number.",
+    "device_type=tcspc,model=demospec3000,serial_number=.",
+    "deviceid",
+    "devices",
+    "devicetype",
+    "df9917c9-9226-4c30-93e3-14f212c6b718",
+    "dfg123",
+    "dichroics",
+    "direct_excitation",
+    "disconnect",
+    "dispatcher",
+    "displayname",
+    "donor",
+    "donor-gui",
+    "donor_excitation",
+    "donor_lifetime",
+    "donorgui",
+    "donorprobeid",
+    "double-clickanyrowtojumptothematchingpanelandselecttheitem.",
+    "ds3000-001",
+    "d₂₅",
+    "e.g.54.0",
+    "e.g.a488-42",
+    "e.g.alexa488",
+    "ea3ae0e5-b5.",
+    "eb1b3ccb-da.",
+    "eb1b3ccb-dadf-432e-9a00-38c3d729977d",
+    "edgeid",
+    "edges",
+    "elabftw",
+    "elabftwconnection",
+    "email",
+    "email=john@example.org",
+    "email=operator@example.org,affiliation=demolab",
+    "email=thomas.peulen@tu-dortmund.de,affiliation=tudor.",
+    "embedded|userdb/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/t/mmfdb_admin_emtk_y9kt9dxr/m",
+    "emission",
+    "emissionmax(nm)",
+    "emissionspectrum",
+    "emmax",
+    "emmax519.0",
+    "emmax520.0",
+    "end",
+    "endedat",
+    "endpoint",
+    "enterapassword",
+    "enterassemblyid",
+    "enterasymid",
+    "enteratomid",
+    "enterauthname",
+    "enterchannela",
+    "enterchannelb",
+    "enterchannels",
+    "enterend",
+    "enterentityid",
+    "enterforsterradius",
+    "enterforsterradiusid",
+    "entergfactor",
+    "entergfactorcalibrationid",
+    "entergfactorchannels",
+    "enterid",
+    "enterindexofrefraction",
+    "enterkappasquared",
+    "enterkind",
+    "enterl1",
+    "enterl2",
+    "entermakefine",
+    "entermicrotimeranges",
+    "entername",
+    "enternbins",
+    "enterncasc",
+    "enternumcopies",
+    "enterordinalid",
+    "enterreducedforsterradius",
+    "enterresiduename",
+    "enterresiduenumber",
+    "entersetupid",
+    "enterstart",
+    "entities",
+    "entity_gui",
+    "entity_gui—guientitydetails",
+    "entityassemblyid",
+    "entitydescription",
+    "entityid",
+    "entitytype",
+    "error",
+    "everyrecordofeverytypeinonetable;adoubleclickopensitinitspanel.",
+    "existing",
+    "exp_gui",
+    "experiment",
+    "experiment_type",
+    "experiment_type=flim,project_id=demo_fret,status=com.",
+    "experiment_type=single_molecule_alex,project_id=demo_.",
+    "experiment_type=spectra,project_id=demo_fret,status=.",
+    "experiment_type=tcspc,project_id=demo_fret,status=co.",
+    "experiment_type=tcspc,status=complete",
+    "experimentid",
+    "experiments",
+    "experimentsdata",
+    "experimenttypes",
+    "expiry",
+    "export",
+    "exportfrommmfdb",
+    "exportjson",
+    "exportselectedsample",
+    "exporttablecsv/xlsx",
+    "exportzip",
+    "extinction",
+    "extinctioncoefficient",
+    "extrinsic",
+    "f290c33c-b0.",
+    "f836f713-195a-43a8-9abc-d2cd75652ba1",
+    "fcs",
+    "fcspairs",
+    "field",
+    "fieldkey",
+    "file",
+    "filepath/url/folder",
+    "filter",
+    "filterbyid,label,orsubstring",
+    "filtering",
+    "filters",
+    "findandmergeduplicates",
+    "findduplicates",
+    "fit_result_.",
+    "fit_result_gui",
+    "flim",
+    "fluctuation",
+    "fluorescence",
+    "fluorescencecorrelationspectroscopyexperiment",
+    "fluorescencelifetimeimagingmicroscopy",
+    "fluorophore",
+    "fluorophores",
+    "fluorophoretype",
+    "for",
+    "forster_radius",
+    "forsterradius",
+    "forsterradiusid",
+    "fr_gui",
+    "free",
+    "fret",
+    "fretgroup",
+    "fretpairs",
+    "from",
+    "g-factorofsetup_gui",
+    "g_factor",
+    "gamma",
+    "generic_table.msg.",
+    "generic_table.msgpack",
+    "gfactor",
+    "gfactorcalibrationid",
+    "gfactorchannels",
+    "grant",
+    "green",
+    "green_auto",
+    "groupdonorgu.",
+    "guest",
+    "guestuser",
+    "gui",
+    "gui_branch",
+    "guibranch",
+    "guide",
+    "guidetector",
+    "guifit",
+    "guiproject",
+    "guisample",
+    "guisetup",
+    "hairpindynamics",
+    "has",
+    "headoperationid",
+    "hellenkampetal.2018",
+    "help",
+    "hepes_50mm_.",
+    "hepes_50mm_nacl_ph70.",
+    "hivrtdna.",
+    "hivrtdnaduplexcy3/cy5fretsamp.",
+    "host",
+    "https//elab.example.org",
+    "id",
+    "id10-donor-gui",
+    "id8-donorgui",
+    "imaging",
+    "import",
+    "import/export",
+    "importchecked",
+    "importfile",
+    "importintommfdb",
+    "importpdbx/pdb-ihm/flrciffiles;exportasampleasflrciforthesampletable.",
+    "importref.set",
+    "in-process",
+    "indexofrefraction",
+    "initial",
+    "initialacc.",
+    "initialbuffer",
+    "initialdon.",
+    "initialset.",
+    "input_to",
+    "inputproducts",
+    "instrumenttype",
+    "intensity",
+    "invalid",
+    "invert",
+    "ionicstrength[m]",
+    "isadmin",
+    "iscurated",
+    "john@exampl.",
+    "john@example.org",
+    "john_doe",
+    "johndoe",
+    "jump",
+    "jumptobranch",
+    "jumptobranch—john_doe",
+    "kappasquared",
+    "kelvin",
+    "key",
+    "kind",
+    "kit",
+    "knownvalues",
+    "l1",
+    "l2",
+    "label",
+    "labelpositions",
+    "laserwavelengths",
+    "latestcalibration",
+    "leaveblankforpasswordlesslogin",
+    "lifecycle",
+    "lifetime",
+    "lightsources",
+    "liquid",
+    "load",
+    "loaddownstream",
+    "loadfullgraph",
+    "loadupstream",
+    "local",
+    "local_fi.",
+    "local_file",
+    "local_fit",
+    "localservi.",
+    "localserviceidentity",
+    "localuser",
+    "location",
+    "logout",
+    "lot#",
+    "lot_number",
+    "lotid",
+    "low-saltfretbufferat.",
+    "main",
+    "makefine",
+    "md5",
+    "measured",
+    "measuredat",
+    "measuredat25c",
+    "measuredby(device)",
+    "measuredby(user)",
+    "measurement",
+    "measurements",
+    "measurements7rows",
+    "member",
+    "memberid(sample/artifact)",
+    "members",
+    "mergecheckedgroups",
+    "mergeselectedgroup",
+    "method",
+    "microtimeranges",
+    "mimetype",
+    "mine",
+    "mmfdb",
+    "mmfdb-admin",
+    "mmfdblogin—admin",
+    "mode",
+    "model",
+    "modelname",
+    "modificationflag",
+    "modified",
+    "mt200",
+    "multiparameterfluorescencedetectionexperiment",
+    "multiparametricfluorescencedatabase",
+    "mutationflag",
+    "name",
+    "nbins",
+    "ncasc",
+    "needs_review",
+    "new",
+    "newpassword",
+    "newprotocolname",
+    "newstudyname",
+    "next",
+    "no",
+    "node",
+    "nodes(transformerinvocations)",
+    "nopipelinesareregisteredwiththisserver.",
+    "normalized",
+    "notconnected",
+    "notes",
+    "ns",
+    "numberofprobes",
+    "numcopies",
+    "object",
+    "objects",
+    "objectuuid",
+    "ok",
+    "op_art.",
+    "operation",
+    "operation_type(optional)",
+    "operationid",
+    "operationid(leaveemptytoresettonone)",
+    "operationtype",
+    "operator@ex.",
+    "operator_de.",
+    "operator_demo",
+    "ops",
+    "optical_filter",
+    "opticalfluorescenceimagingexperiment",
+    "optionalmmfdbsampleid",
+    "ordinalid",
+    "orfullgraph.",
+    "organic_d.",
+    "organic_dye",
+    "originalfilename",
+    "other",
+    "outputproducts",
+    "overlapsareignored.",
+    "overview",
+    "own",
+    "owner",
+    "p",
+    "parameter",
+    "parameters",
+    "parameterschema(fromoperationtype)",
+    "parentbranchuuid",
+    "password",
+    "pbs",
+    "pbs-7",
+    "pbs_ph74_25c",
+    "pbsph7.4at25c",
+    "ph",
+    "phd",
+    "phone",
+    "pi",
+    "pickaseedrecord(oruse'useasprovenanceseed'onaraw-data,processed-productoranalysisrow),thenloaditsupstream,downstream",
+    "picoquantmt2.",
+    "picoquantmt200",
+    "piewindows",
+    "pipelineid",
+    "pipelines",
+    "planned",
+    "plate_reader",
+    "plate_reader.",
+    "plate_reader_demo",
+    "plugin",
+    "port",
+    "postdoc",
+    "potentialduplicatesidentifiedbynamesimilarity.selecttheprimaryprobeforeachgroupinthetreebelow.usethepanelontheright",
+    "previewcif",
+    "primary",
+    "probe",
+    "probeid",
+    "probelinktype",
+    "probeorigin",
+    "probes",
+    "proc_gui",
+    "proces.",
+    "processed",
+    "processed.",
+    "processed_d.",
+    "processed_data",
+    "processedproducts",
+    "processing",
+    "processing_run",
+    "processingid",
+    "processingrunid",
+    "processingruns",
+    "prod_gui",
+    "produced",
+    "productid",
+    "producttype",
+    "proj_gui",
+    "proj_gui—guiproject",
+    "project",
+    "project_id=demo_fret,sample_uuid=00000000-0000-4000-8.",
+    "projectfromguitest",
+    "projectid",
+    "projects",
+    "protein",
+    "protocols",
+    "prov.",
+    "provenance",
+    "provenance3nodes,2edges",
+    "provenancegraph",
+    "public",
+    "quality",
+    "qualityflag",
+    "quantumyield",
+    "qy",
+    "qy0.92",
+    "raw",
+    "raw_data",
+    "raw_gui",
+    "rawdata",
+    "rawdata,processingrunsandprocessedproductsinonetable.",
+    "rawdataid",
+    "re-measured2026",
+    "reactiveprobeflag",
+    "reactiveprobename",
+    "readerx",
+    "ready",
+    "reagentlots",
+    "reagentlots(dyes,buffers,kits,filters),theirexpiry,andnewlots.",
+    "reason",
+    "received",
+    "recordedoperation,andmakeittheuser'sactive",
+    "reducedforsterradius",
+    "refcount",
+    "refresh",
+    "refreshoverview",
+    "register(user-provided)",
+    "registercalibrationvalue",
+    "registered",
+    "registeredanalysispipelinestheirnodes,wiringandrecordedruns.",
+    "reject",
+    "rejected",
+    "relationship",
+    "remoteid",
+    "required",
+    "requirementsatleast8characters,one",
+    "reset",
+    "resetwindowlayout",
+    "residuename",
+    "residuenumber",
+    "reveal",
+    "reviewqueue",
+    "role",
+    "run",
+    "runid",
+    "runs(recordedoperationchains)",
+    "rx-001",
+    "sample",
+    "sample_curve.csv",
+    "sample_gui",
+    "sample_gui—guisample",
+    "sample_hp3",
+    "sample_hp3—sample_hp3",
+    "sample_uuid=9600684c-1308-407f-ab33-f034bed2d8ce",
+    "sample_uuid=f290c33c-b0f5-45ba-8b07-9f49edcc9b02",
+    "sampleconditions",
+    "sampleid",
+    "samplemetadata",
+    "sampleqa",
+    "samples",
+    "samples,setups,andanalysisruns.",
+    "samplesample_gui3metadatakeys",
+    "sampleschemistry",
+    "save",
+    "saveall",
+    "schema",
+    "scope",
+    "search",
+    "searchremoteexperiments",
+    "seedid",
+    "seedtype",
+    "selectedlot",
+    "serialnumber",
+    "setbranchhead",
+    "setfield",
+    "sethead",
+    "settings",
+    "settings/json",
+    "setup",
+    "setup_gui",
+    "setupid",
+    "setups",
+    "setvalidationstatus",
+    "showexpired",
+    "sigma",
+    "single-molecule",
+    "single_molecule_alex",
+    "single_molecule_mfd",
+    "sizebytes",
+    "skip",
+    "smfret",
+    "socket)",
+    "solventphase",
+    "source",
+    "sourceid",
+    "sourceref",
+    "sourcetype",
+    "specialcharacter",
+    "spectra",
+    "spectracomparison",
+    "spectrometer.",
+    "spectrometer_demo",
+    "spectroscopy",
+    "sqlite",
+    "staleuses(calibrationsuperseded)",
+    "standardirf+decay",
+    "start",
+    "startedat",
+    "status",
+    "std.error",
+    "steady-stateortime-resolvedspectralexperiment",
+    "storage",
+    "storagemode",
+    "storagepath",
+    "store",
+    "strengthmedium",
+    "student",
+    "studies",
+    "studiestheirmembers(samples,artifacts)andconfigurablefields.",
+    "studyid",
+    "succee.",
+    "succeeded",
+    "suspect",
+    "synchroniseexperimentswithanelabftwelectroniclabnotebook.",
+    "t4lysozyme.",
+    "t4lysozyme65/141alexa488/alexa59.",
+    "t4lysozyme65/141alexa488/alexa594fretsample",
+    "t4lysozymeintrinsictryptophansa.",
+    "tags",
+    "targetid",
+    "targettype",
+    "tau",
+    "tcspc",
+    "tcspcacquisition",
+    "tcspcdone",
+    "temperature",
+    "temperature[k]",
+    "test",
+    "testing.",
+    "theconnection,thedatabase'scountsandqualitywarnings.",
+    "themetadatakey/valuepairsofonesample,withthemmcifkeycatalogue.",
+    "thermo",
+    "thissoft-deletestheartifactanddirectprovenancelinks.",
+    "thomas",
+    "thomas.peul.",
+    "thomaspeul.",
+    "thomaspeulen",
+    "time-correlatedsinglephotoncountingdecayexperiment",
+    "time-resolved",
+    "timeout",
+    "title",
+    "to",
+    "tocomparespectrafortheselectedgroup.whenyoumerge,theprimaryprobekeepsitsspectraandmissingonesarefilledfromduplicates.",
+    "tracewhatanartifactcamefromandwhatwasmadefromit.",
+    "transitionto",
+    "trp",
+    "tudortmund",
+    "tudortmund/f.",
+    "tudortmund/s.",
+    "twin",
+    "type",
+    "typeid",
+    "uncheckall",
+    "units",
+    "unknown",
+    "unspecified",
+    "unvalidated",
+    "unverif.",
+    "unverified",
+    "update",
+    "updatedat",
+    "useasprovenanceseed",
+    "usedby",
+    "usedcalibration",
+    "user",
+    "user_default",
+    "user_provided",
+    "userid",
+    "users",
+    "uuid",
+    "valid",
+    "validate",
+    "validationstatus",
+    "validationstatusforraw_gui",
+    "value",
+    "value(autocompletefromdb)",
+    "vendor",
+    "ver_gui",
+    "verifiedat",
+    "verifiedby",
+    "verifytlscertificates",
+    "version",
+    "versionedmeasurement,processingandanalysisprotocols.",
+    "versionhistory",
+    "versionid",
+    "vitrified",
+    "warning",
+    "warnings",
+    "wavelength",
+    "wavelength(nm)",
+    "website",
+    "when",
+    "wiring(typededges)",
+    "workflowsqc",
+    "yes",
+    "yyyy-mm-dd",
+    "{\"ch1\"}",
+    "{\"data_type\"\"tcspc\"}",
+    "{\"data_type.",
+    "{\"green\"{\"chann.",
+    "{\"green\"{\"channels\"[0,1],\"g_factor\"1.05,\"l1\"0.01,\"l2\"0.02,\"micro_time_ranges\"[[10,90]]}}",
+    "{\"threshold\"3}",
+    "—"
+  ],
+  "interactive": [
+    {
+      "kind": "input_text",
+      "label": "host",
+      "id": "##host",
+      "tooltip": "The MMFDB server: the host of the embedded server, or the base URL of a standalone one. Login connects here."
+    },
+    {
+      "kind": "input_text",
+      "label": "port",
+      "id": "##port",
+      "tooltip": "The server's command port (its publish port is the next one)."
+    },
+    {
+      "kind": "input_text",
+      "label": "user",
+      "id": "##user",
+      "tooltip": "The MMFDB user to sign in as."
+    },
+    {
+      "kind": "input_text",
+      "label": "password",
+      "id": "##password",
+      "tooltip": "The password. Not needed when this ChiSurf session is already signed in, or the account may sign in without one. Never stored."
+    },
+    {
+      "kind": "button",
+      "label": "...",
+      "id": "...##more_options",
+      "tooltip": "More connection and authentication options: the login dialog (sign in as another user, or connect to another server)."
+    },
+    {
+      "kind": "button",
+      "label": "Logout",
+      "id": "Logout##logout",
+      "tooltip": "Drop the current MMFDB session."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "id": "Refresh##refresh",
+      "tooltip": "Reload the MMFDB status and the open panel."
+    },
+    {
+      "kind": "button",
+      "label": "Import",
+      "id": "Import##import_file",
+      "tooltip": "Import fluorescence, sample or project data (PDBx / PDB-IHM / FLR CIF) into the MMFDB."
+    },
+    {
+      "kind": "button",
+      "label": "Backup",
+      "id": "Backup##backup_database",
+      "tooltip": "Create a backup copy of the active MMFDB database."
+    },
+    {
+      "kind": "button",
+      "label": "Reset",
+      "id": "Reset##reset_database",
+      "tooltip": "Reset the active MMFDB database to the curated source. A backup is created first (asks first)."
+    },
+    {
+      "kind": "button",
+      "label": "Help",
+      "id": "Help",
+      "tooltip": "Read how MMFDB Admin works: the connection, the panels, editing and the dialogs."
+    },
+    {
+      "kind": "button",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through signing in, picking a panel and editing a record."
+    },
+    {
+      "kind": "input_text",
+      "label": "mmfdb_search",
+      "id": "##mmfdb_search",
+      "tooltip": "Find a panel by name or description."
+    },
+    {
+      "kind": "selectable",
+      "label": "Overview",
+      "id": "Overview##nav_overview",
+      "tooltip": "The connection, the database's counts and quality warnings."
+    },
+    {
+      "kind": "selectable",
+      "label": "All items",
+      "id": "All items##nav_all_items",
+      "tooltip": "Every record of every type in one table; a double click opens it in its panel."
+    },
+    {
+      "kind": "selectable",
+      "label": "Measurements",
+      "id": "Measurements##nav_measurements",
+      "tooltip": "Raw data, processing runs and processed products in one table."
+    },
+    {
+      "kind": "selectable",
+      "label": "Samples",
+      "id": "Samples##nav_sample",
+      "tooltip": "Browse and edit samples."
+    },
+    {
+      "kind": "selectable",
+      "label": "Sample Conditions",
+      "id": "Sample Conditions##nav_condition",
+      "tooltip": "Browse and edit sample conditions."
+    },
+    {
+      "kind": "selectable",
+      "label": "Entities",
+      "id": "Entities##nav_entity",
+      "tooltip": "Browse and edit entities."
+    },
+    {
+      "kind": "selectable",
+      "label": "Probes",
+      "id": "Probes##nav_probe",
+      "tooltip": "Browse and edit probes."
+    },
+    {
+      "kind": "selectable",
+      "label": "Label Positions",
+      "id": "Label Positions##nav_position",
+      "tooltip": "Browse and edit label positions."
+    },
+    {
+      "kind": "selectable",
+      "label": "FRET Pairs",
+      "id": "FRET Pairs##nav_fret_pair",
+      "tooltip": "Browse and edit fret pairs."
+    },
+    {
+      "kind": "selectable",
+      "label": "Sample Metadata",
+      "id": "Sample Metadata##nav_metadata",
+      "tooltip": "The metadata key / value pairs of one sample, with the mmCIF key catalogue."
+    },
+    {
+      "kind": "selectable",
+      "label": "Spectra",
+      "id": "Spectra##nav_spectra",
+      "tooltip": "Curate fluorophores, filters, dichroics, detectors and light sources, with their spectra."
+    },
+    {
+      "kind": "selectable",
+      "label": "Experiments",
+      "id": "Experiments##nav_experiment",
+      "tooltip": "Browse and edit experiments."
+    },
+    {
+      "kind": "selectable",
+      "label": "Experiment Types",
+      "id": "Experiment Types##nav_experiment_type",
+      "tooltip": "Browse and edit experiment types."
+    },
+    {
+      "kind": "selectable",
+      "label": "Setups",
+      "id": "Setups##nav_setup",
+      "tooltip": "Browse and edit setups."
+    },
+    {
+      "kind": "selectable",
+      "label": "Detector Channels",
+      "id": "Detector Channels##nav_detector_channel",
+      "tooltip": "Browse and edit detector channels."
+    },
+    {
+      "kind": "selectable",
+      "label": "PIE Windows",
+      "id": "PIE Windows##nav_pie_window",
+      "tooltip": "Browse and edit pie windows."
+    },
+    {
+      "kind": "selectable",
+      "label": "FCS Pairs",
+      "id": "FCS Pairs##nav_fcs_pair",
+      "tooltip": "Browse and edit fcs pairs."
+    },
+    {
+      "kind": "selectable",
+      "label": "Devices",
+      "id": "Devices##nav_device",
+      "tooltip": "Browse and edit devices."
+    },
+    {
+      "kind": "selectable",
+      "label": "Raw Data",
+      "id": "Raw Data##nav_raw_data",
+      "tooltip": "Browse and edit raw data."
+    },
+    {
+      "kind": "selectable",
+      "label": "Processing Runs",
+      "id": "Processing Runs##nav_processing_run",
+      "tooltip": "Browse and edit processing runs."
+    },
+    {
+      "kind": "selectable",
+      "label": "Processed Products",
+      "id": "Processed Products##nav_processed_product",
+      "tooltip": "Browse and edit processed products."
+    },
+    {
+      "kind": "selectable",
+      "label": "Analyses",
+      "id": "Analyses##nav_analysis",
+      "tooltip": "Browse and edit analyses."
+    },
+    {
+      "kind": "selectable",
+      "label": "Objects",
+      "id": "Objects##nav_object",
+      "tooltip": "Browse and edit objects."
+    },
+    {
+      "kind": "selectable",
+      "label": "Projects",
+      "id": "Projects##nav_project",
+      "tooltip": "Browse and edit projects."
+    },
+    {
+      "kind": "selectable",
+      "label": "Branches",
+      "id": "Branches##nav_branch",
+      "tooltip": "Browse and edit branches."
+    },
+    {
+      "kind": "selectable",
+      "label": "Provenance Graph",
+      "id": "Provenance Graph##nav_provenance",
+      "tooltip": "Trace what an artifact came from and what was made from it."
+    },
+    {
+      "kind": "selectable",
+      "label": "Users",
+      "id": "Users##nav_user",
+      "tooltip": "Browse and edit users."
+    },
+    {
+      "kind": "selectable",
+      "label": "Import / Export",
+      "id": "Import / Export##nav_import_export",
+      "tooltip": "Import PDBx / PDB-IHM / FLR CIF files; export a sample as FLR CIF or the sample table."
+    },
+    {
+      "kind": "selectable",
+      "label": "eLabFTW",
+      "id": "eLabFTW##nav_elabftw",
+      "tooltip": "Synchronise experiments with an eLabFTW electronic lab notebook."
+    },
+    {
+      "kind": "selectable",
+      "label": "Studies",
+      "id": "Studies##nav_studies",
+      "tooltip": "Studies: their members (samples, artifacts) and configurable fields."
+    },
+    {
+      "kind": "selectable",
+      "label": "Protocols",
+      "id": "Protocols##nav_protocols",
+      "tooltip": "Versioned measurement, processing and analysis protocols."
+    },
+    {
+      "kind": "selectable",
+      "label": "Lifecycle",
+      "id": "Lifecycle##nav_lifecycle",
+      "tooltip": "An entity's lifecycle state, its history, and an administrator's transition."
+    },
+    {
+      "kind": "selectable",
+      "label": "Calibrations",
+      "id": "Calibrations##nav_calibrations",
+      "tooltip": "Calibration values (γ, G-factor, R₀, …), user-registered ones, and uses gone stale."
+    },
+    {
+      "kind": "selectable",
+      "label": "Reagent Lots",
+      "id": "Reagent Lots##nav_reagents",
+      "tooltip": "Reagent lots (dyes, buffers, kits, filters …), their expiry, and new lots."
+    },
+    {
+      "kind": "selectable",
+      "label": "Pipelines",
+      "id": "Pipelines##nav_pipelines",
+      "tooltip": "Registered analysis pipelines: their nodes, wiring and recorded runs."
+    },
+    {
+      "kind": "button",
+      "label": "Refresh overview",
+      "id": "Refresh overview##refresh_overview",
+      "tooltip": "Reload the database overview."
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "text",
+      "id": "##text",
+      "tooltip": "The connection (mode, endpoint, database, object store), the database's counts, and samples that lack a description."
+    },
+    {
+      "kind": "button",
+      "label": "Back",
+      "id": "Back",
+      "tooltip": "Open the previous panel of the rail."
+    },
+    {
+      "kind": "button",
+      "label": "Next",
+      "id": "Next",
+      "tooltip": "Open the next panel of the rail."
+    },
+    {
+      "kind": "input_text",
+      "label": "search",
+      "id": "##search",
+      "tooltip": "Keep the rows that contain this text in any column."
+    },
+    {
+      "kind": "button",
+      "label": "New",
+      "id": "New##new_record",
+      "tooltip": "Create a new record at once (an untitled id, or one the server assigns) and open it in the form."
+    },
+    {
+      "kind": "button",
+      "label": "Delete",
+      "id": "Delete##delete_checked",
+      "tooltip": "Delete the ticked rows (asks first)."
+    },
+    {
+      "kind": "input_text",
+      "label": "sample_id",
+      "id": "##sample_id",
+      "tooltip": "Sample ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "sample_uuid",
+      "id": "##sample_uuid",
+      "tooltip": "UUID"
+    },
+    {
+      "kind": "input_text",
+      "label": "description",
+      "id": "##description",
+      "tooltip": "Description"
+    },
+    {
+      "kind": "input_text",
+      "label": "num_of_probes",
+      "id": "##num_of_probes",
+      "tooltip": "Number of Probes"
+    },
+    {
+      "kind": "input_text",
+      "label": "sample_condition_id",
+      "id": "##sample_condition_id",
+      "tooltip": "Condition ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "entity_assembly_id",
+      "id": "##entity_assembly_id",
+      "tooltip": "Entity Assembly ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "measured_by_user_id",
+      "id": "##measured_by_user_id",
+      "tooltip": "Measured By (User)"
+    },
+    {
+      "kind": "input_text",
+      "label": "measured_by_device_id",
+      "id": "##measured_by_device_id",
+      "tooltip": "Measured By (Device)"
+    },
+    {
+      "kind": "input_text",
+      "label": "measured_at",
+      "id": "##measured_at",
+      "tooltip": "Measured At"
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "details",
+      "id": "##details",
+      "tooltip": "Details"
+    },
+    {
+      "kind": "input_text",
+      "label": "created_at",
+      "id": "##created_at",
+      "tooltip": "Created At"
+    },
+    {
+      "kind": "input_text",
+      "label": "updated_at",
+      "id": "##updated_at",
+      "tooltip": "Updated At"
+    },
+    {
+      "kind": "input_text",
+      "label": "condition_id",
+      "id": "##condition_id",
+      "tooltip": "Condition ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "ph",
+      "id": "##ph",
+      "tooltip": "pH"
+    },
+    {
+      "kind": "input_text",
+      "label": "temperature",
+      "id": "##temperature",
+      "tooltip": "Temperature [K]"
+    },
+    {
+      "kind": "input_text",
+      "label": "ionic_strength",
+      "id": "##ionic_strength",
+      "tooltip": "Ionic Strength [M]"
+    },
+    {
+      "kind": "input_text",
+      "label": "buffer_composition",
+      "id": "##buffer_composition",
+      "tooltip": "Buffer"
+    },
+    {
+      "kind": "input_text",
+      "label": "ordinal_id",
+      "id": "##ordinal_id",
+      "tooltip": "     A unique identifier for the category."
+    },
+    {
+      "kind": "input_text",
+      "label": "assembly_id",
+      "id": "##assembly_id",
+      "tooltip": "     An identifier for the entity assembly."
+    },
+    {
+      "kind": "input_text",
+      "label": "entity_id",
+      "id": "##entity_id",
+      "tooltip": "     An identifier for the entity."
+    },
+    {
+      "kind": "input_text",
+      "label": "num_copies",
+      "id": "##num_copies",
+      "tooltip": "     The number of copies/instances of the entity in the assembly."
+    },
+    {
+      "kind": "input_text",
+      "label": "probe_id",
+      "id": "##probe_id",
+      "tooltip": "Probe ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "chromophore_name",
+      "id": "##chromophore_name",
+      "tooltip": "Chromophore Name"
+    },
+    {
+      "kind": "input_text",
+      "label": "reactive_probe_flag",
+      "id": "##reactive_probe_flag",
+      "tooltip": "Reactive Probe Flag"
+    },
+    {
+      "kind": "input_text",
+      "label": "reactive_probe_name",
+      "id": "##reactive_probe_name",
+      "tooltip": "Reactive Probe Name"
+    },
+    {
+      "kind": "input_text",
+      "label": "probe_origin",
+      "id": "##probe_origin",
+      "tooltip": "Probe Origin"
+    },
+    {
+      "kind": "input_text",
+      "label": "probe_link_type",
+      "id": "##probe_link_type",
+      "tooltip": "Probe Link Type"
+    },
+    {
+      "kind": "input_text",
+      "label": "fluorophore_type",
+      "id": "##fluorophore_type",
+      "tooltip": "Fluorophore Type"
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "description",
+      "id": "##description",
+      "tooltip": "Description"
+    },
+    {
+      "kind": "input_text",
+      "label": "category",
+      "id": "##category",
+      "tooltip": "Category"
+    },
+    {
+      "kind": "checkbox",
+      "label": "Is Curated",
+      "id": "Is Curated##is_curated",
+      "tooltip": "Is Curated"
+    },
+    {
+      "kind": "input_text",
+      "label": "quality_flag",
+      "id": "##quality_flag",
+      "tooltip": "Quality Flag"
+    },
+    {
+      "kind": "input_text",
+      "label": "abs_max",
+      "id": "##abs_max",
+      "tooltip": "Absorbance Max (nm)"
+    },
+    {
+      "kind": "input_text",
+      "label": "em_max",
+      "id": "##em_max",
+      "tooltip": "Emission Max (nm)"
+    },
+    {
+      "kind": "input_text",
+      "label": "qy",
+      "id": "##qy",
+      "tooltip": "Quantum Yield"
+    },
+    {
+      "kind": "input_text",
+      "label": "ext_coeff",
+      "id": "##ext_coeff",
+      "tooltip": "Extinction Coefficient"
+    },
+    {
+      "kind": "input_text",
+      "label": "id",
+      "id": "##id",
+      "tooltip": "     A unique identifier for the category."
+    },
+    {
+      "kind": "input_text",
+      "label": "asym_id",
+      "id": "##asym_id",
+      "tooltip": "Asym Id"
+    },
+    {
+      "kind": "input_text",
+      "label": "residue_number",
+      "id": "##residue_number",
+      "tooltip": "     The sequence index of the residue with the probe."
+    },
+    {
+      "kind": "input_text",
+      "label": "residue_name",
+      "id": "##residue_name",
+      "tooltip": "     The component identifier of the residue with the probe."
+    },
+    {
+      "kind": "input_text",
+      "label": "atom_id",
+      "id": "##atom_id",
+      "tooltip": "Atom Id"
+    },
+    {
+      "kind": "input_text",
+      "label": "auth_name",
+      "id": "##auth_name",
+      "tooltip": "    An author provided name for the position in the polymer where the probe is attached."
+    },
+    {
+      "kind": "input_text",
+      "label": "forster_radius_id",
+      "id": "##forster_radius_id",
+      "tooltip": "     A unique identifier for the category."
+    },
+    {
+      "kind": "input_text",
+      "label": "forster_radius",
+      "id": "##forster_radius",
+      "tooltip": " The Forster radius of the probe pair, in angstroms. "
+    },
+    {
+      "kind": "input_text",
+      "label": "reduced_forster_radius",
+      "id": "##reduced_forster_radius",
+      "tooltip": "Reduced Forster Radius"
+    },
+    {
+      "kind": "input_text",
+      "label": "kappa_squared",
+      "id": "##kappa_squared",
+      "tooltip": " Orientation factor kappa squared for FRET pair. Default is 2/3 (0.666667) for dynamic averaging. "
+    },
+    {
+      "kind": "input_text",
+      "label": "index_of_refraction",
+      "id": "##index_of_refraction",
+      "tooltip": " Refractive index of the medium for FRET pair. Default is 1.4 for water. "
+    },
+    {
+      "kind": "input_text",
+      "label": "detail_value",
+      "id": "##detail_value",
+      "tooltip": "The value."
+    },
+    {
+      "kind": "input_text",
+      "label": "detail_details",
+      "id": "##detail_details",
+      "tooltip": "Notes about the value."
+    },
+    {
+      "kind": "button",
+      "label": "Apply to row",
+      "id": "Apply to row##apply_to_row",
+      "tooltip": "Update the picked row with the detail form's values."
+    },
+    {
+      "kind": "button",
+      "label": "Save all",
+      "id": "Save all##save_all",
+      "tooltip": "Save every row of this sample to the database."
+    },
+    {
+      "kind": "button",
+      "label": "Add row",
+      "id": "Add row##add_row",
+      "tooltip": "Add an empty row."
+    },
+    {
+      "kind": "button",
+      "label": "Delete row",
+      "id": "Delete row##delete_row",
+      "tooltip": "Remove the picked row (Save all writes the change)."
+    },
+    {
+      "kind": "button",
+      "label": "Import ref. set",
+      "id": "Import ref. set##import_reference_set",
+      "tooltip": "Import the bundled reference database; imported items are marked unverified (asks first)."
+    },
+    {
+      "kind": "button",
+      "label": "Approve",
+      "id": "Approve##approve",
+      "tooltip": "Mark the selected item as approved."
+    },
+    {
+      "kind": "button",
+      "label": "Reject",
+      "id": "Reject##reject",
+      "tooltip": "Mark the selected item as rejected."
+    },
+    {
+      "kind": "button",
+      "label": "Review queue",
+      "id": "Review queue##toggle_review_queue",
+      "tooltip": "Show only the unverified items that need review (press again for all)."
+    },
+    {
+      "kind": "button",
+      "label": "AI triage",
+      "id": "AI triage##ai_triage",
+      "tooltip": "Run deterministic checks on the selected item and queue it for review."
+    },
+    {
+      "kind": "button",
+      "label": "Find Duplicates",
+      "id": "Find Duplicates##find_duplicates",
+      "tooltip": "Find probably-duplicate components of this type and merge them."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Fluorophores",
+      "id": "Fluorophores##component0",
+      "tooltip": "Which kind of optical component to list."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Filters",
+      "id": "Filters##component1",
+      "tooltip": "Which kind of optical component to list."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Dichroics",
+      "id": "Dichroics##component2",
+      "tooltip": "Which kind of optical component to list."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Detectors",
+      "id": "Detectors##component3",
+      "tooltip": "Which kind of optical component to list."
+    },
+    {
+      "kind": "radio_button",
+      "label": "Light Sources",
+      "id": "Light Sources##component4",
+      "tooltip": "Which kind of optical component to list."
+    },
+    {
+      "kind": "button",
+      "label": "Copy checked IDs",
+      "id": "Copy checked IDs##copy_checked_ids",
+      "tooltip": "Copy the ticked rows' ids, comma-separated."
+    },
+    {
+      "kind": "button",
+      "label": "Check all",
+      "id": "Check all##check_all",
+      "tooltip": "Tick every row."
+    },
+    {
+      "kind": "button",
+      "label": "Uncheck all",
+      "id": "Uncheck all##uncheck_all",
+      "tooltip": "Untick every row."
+    },
+    {
+      "kind": "button",
+      "label": "Invert",
+      "id": "Invert##invert_checks",
+      "tooltip": "Invert the ticks."
+    },
+    {
+      "kind": "input_text",
+      "label": "type_name",
+      "id": "##type_name",
+      "tooltip": "Probe type."
+    },
+    {
+      "kind": "input_text",
+      "label": "lifetime",
+      "id": "##lifetime",
+      "tooltip": "Fluorescence lifetime (ns)."
+    },
+    {
+      "kind": "input_text",
+      "label": "d25",
+      "id": "##d25",
+      "tooltip": "Translational diffusion coefficient in water at 25 °C (µm²/s); used by the FCS diffusion/volume calculator."
+    },
+    {
+      "kind": "input_text",
+      "label": "verification_status",
+      "id": "##verification_status",
+      "tooltip": "Verification status: unverified / needs_review / approved / rejected."
+    },
+    {
+      "kind": "input_text",
+      "label": "quality",
+      "id": "##quality",
+      "tooltip": "Quality grade: unknown / low / medium / high."
+    },
+    {
+      "kind": "input_text",
+      "label": "source",
+      "id": "##source",
+      "tooltip": "Provenance source (fpbase, atto, spectra_db, user, ...)."
+    },
+    {
+      "kind": "input_text",
+      "label": "source_ref",
+      "id": "##source_ref",
+      "tooltip": "Source reference / URL / accession."
+    },
+    {
+      "kind": "input_text",
+      "label": "verified_by",
+      "id": "##verified_by",
+      "tooltip": "User who approved/rejected this probe."
+    },
+    {
+      "kind": "input_text",
+      "label": "verified_at",
+      "id": "##verified_at",
+      "tooltip": "Timestamp of the verification decision."
+    },
+    {
+      "kind": "input_text",
+      "label": "experiment_id",
+      "id": "##experiment_id",
+      "tooltip": "Experiment ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "type_id",
+      "id": "##type_id",
+      "tooltip": "Type ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "started_at",
+      "id": "##started_at",
+      "tooltip": "Started At"
+    },
+    {
+      "kind": "input_text",
+      "label": "ended_at",
+      "id": "##ended_at",
+      "tooltip": "Ended At"
+    },
+    {
+      "kind": "input_text",
+      "label": "status",
+      "id": "##status",
+      "tooltip": "Status"
+    },
+    {
+      "kind": "input_text",
+      "label": "setup_definition_id",
+      "id": "##setup_definition_id",
+      "tooltip": "Setup ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "name",
+      "id": "##name",
+      "tooltip": "Name"
+    },
+    {
+      "kind": "input_text",
+      "label": "setup_id",
+      "id": "##setup_id",
+      "tooltip": "Setup ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "instrument_type",
+      "id": "##instrument_type",
+      "tooltip": "Instrument Type"
+    },
+    {
+      "kind": "input_text",
+      "label": "laser_wavelengths",
+      "id": "##laser_wavelengths",
+      "tooltip": "Laser Wavelengths"
+    },
+    {
+      "kind": "input_text",
+      "label": "detector_channels",
+      "id": "##detector_channels",
+      "tooltip": "Detector Channels"
+    },
+    {
+      "kind": "input_text",
+      "label": "created_by_user_id",
+      "id": "##created_by_user_id",
+      "tooltip": "Owner"
+    },
+    {
+      "kind": "checkbox",
+      "label": "Public",
+      "id": "Public##is_public",
+      "tooltip": "Public"
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "channels",
+      "id": "##channels",
+      "tooltip": "Channels"
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "micro_time_ranges",
+      "id": "##micro_time_ranges",
+      "tooltip": "Micro Time Ranges"
+    },
+    {
+      "kind": "input_text",
+      "label": "g_factor",
+      "id": "##g_factor",
+      "tooltip": "G Factor"
+    },
+    {
+      "kind": "input_text",
+      "label": "l1",
+      "id": "##l1",
+      "tooltip": "L1"
+    },
+    {
+      "kind": "input_text",
+      "label": "l2",
+      "id": "##l2",
+      "tooltip": "L2"
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "g_factor_channels",
+      "id": "##g_factor_channels",
+      "tooltip": "G Factor Channels"
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "g_factor_calibration_id",
+      "id": "##g_factor_calibration_id",
+      "tooltip": "G Factor Calibration Id"
+    },
+    {
+      "kind": "input_text",
+      "label": "start",
+      "id": "##start",
+      "tooltip": "Start"
+    },
+    {
+      "kind": "input_text",
+      "label": "end",
+      "id": "##end",
+      "tooltip": "End"
+    },
+    {
+      "kind": "input_text",
+      "label": "channel_a",
+      "id": "##channel_a",
+      "tooltip": "Channel A"
+    },
+    {
+      "kind": "input_text",
+      "label": "channel_b",
+      "id": "##channel_b",
+      "tooltip": "Channel B"
+    },
+    {
+      "kind": "input_text",
+      "label": "kind",
+      "id": "##kind",
+      "tooltip": "Kind"
+    },
+    {
+      "kind": "input_text",
+      "label": "n_bins",
+      "id": "##n_bins",
+      "tooltip": "N Bins"
+    },
+    {
+      "kind": "input_text",
+      "label": "n_casc",
+      "id": "##n_casc",
+      "tooltip": "N Casc"
+    },
+    {
+      "kind": "input_text",
+      "label": "make_fine",
+      "id": "##make_fine",
+      "tooltip": "Make Fine"
+    },
+    {
+      "kind": "input_text",
+      "label": "device_id",
+      "id": "##device_id",
+      "tooltip": "Device ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "device_type",
+      "id": "##device_type",
+      "tooltip": "Device Type"
+    },
+    {
+      "kind": "input_text",
+      "label": "model",
+      "id": "##model",
+      "tooltip": "Model"
+    },
+    {
+      "kind": "input_text",
+      "label": "serial_number",
+      "id": "##serial_number",
+      "tooltip": "Serial Number"
+    },
+    {
+      "kind": "input_text",
+      "label": "location",
+      "id": "##location",
+      "tooltip": "Location"
+    },
+    {
+      "kind": "input_text",
+      "label": "owner",
+      "id": "##owner",
+      "tooltip": "Owner"
+    },
+    {
+      "kind": "button",
+      "label": "Copy ID",
+      "id": "Copy ID##copy_id",
+      "tooltip": "Copy the selected raw-data artifact's ID."
+    },
+    {
+      "kind": "button",
+      "label": "Reveal",
+      "id": "Reveal##reveal",
+      "tooltip": "Open the selected raw-data file or URL."
+    },
+    {
+      "kind": "button",
+      "label": "Use as provenance seed",
+      "id": "Use as provenance seed##use_as_seed",
+      "tooltip": "Open the Provenance Graph on the selected raw-data artifact and load its graph."
+    },
+    {
+      "kind": "button",
+      "label": "Validate",
+      "id": "Validate##validate",
+      "tooltip": "Set the validation status of the selected raw-data artifact."
+    },
+    {
+      "kind": "input_text",
+      "label": "raw_data_id",
+      "id": "##raw_data_id",
+      "tooltip": "Raw Data ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "data_type",
+      "id": "##data_type",
+      "tooltip": "Data Type"
+    },
+    {
+      "kind": "input_text",
+      "label": "storage_mode",
+      "id": "##storage_mode",
+      "tooltip": "Storage Mode"
+    },
+    {
+      "kind": "input_text",
+      "label": "validation_status",
+      "id": "##validation_status",
+      "tooltip": "Validation Status"
+    },
+    {
+      "kind": "input_text",
+      "label": "checksum",
+      "id": "##checksum",
+      "tooltip": "Checksum (SHA-256)"
+    },
+    {
+      "kind": "input_text",
+      "label": "processing_id",
+      "id": "##processing_id",
+      "tooltip": "Processing ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "type",
+      "id": "##type",
+      "tooltip": "Type"
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "settings",
+      "id": "##settings",
+      "tooltip": "Settings/JSON"
+    },
+    {
+      "kind": "input_text",
+      "label": "product_id",
+      "id": "##product_id",
+      "tooltip": "Product ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "product_type",
+      "id": "##product_type",
+      "tooltip": "Product Type"
+    },
+    {
+      "kind": "button",
+      "label": "Details",
+      "id": "Details##details",
+      "tooltip": "Show the selected analysis run's parameters and its input and output products."
+    },
+    {
+      "kind": "input_text",
+      "label": "analysis_id",
+      "id": "##analysis_id",
+      "tooltip": "Analysis ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "model_name",
+      "id": "##model_name",
+      "tooltip": "Model Name"
+    },
+    {
+      "kind": "button",
+      "label": "Copy UUID",
+      "id": "Copy UUID##copy_uuid",
+      "tooltip": "Copy the selected object's UUID to the clipboard."
+    },
+    {
+      "kind": "button",
+      "label": "Delete object",
+      "id": "Delete object##delete_object",
+      "tooltip": "Delete the selected object, or drop one reference to it while others remain (asks first)."
+    },
+    {
+      "kind": "input_text",
+      "label": "object_uuid",
+      "id": "##object_uuid",
+      "tooltip": "Object UUID"
+    },
+    {
+      "kind": "input_text",
+      "label": "content_md5",
+      "id": "##content_md5",
+      "tooltip": "MD5"
+    },
+    {
+      "kind": "input_text",
+      "label": "original_filename",
+      "id": "##original_filename",
+      "tooltip": "Original Filename"
+    },
+    {
+      "kind": "input_text",
+      "label": "size_bytes",
+      "id": "##size_bytes",
+      "tooltip": "Size Bytes"
+    },
+    {
+      "kind": "input_text",
+      "label": "mime_type",
+      "id": "##mime_type",
+      "tooltip": "MIME Type"
+    },
+    {
+      "kind": "input_text",
+      "label": "refcount",
+      "id": "##refcount",
+      "tooltip": "Refcount"
+    },
+    {
+      "kind": "input_text",
+      "label": "storage_path",
+      "id": "##storage_path",
+      "tooltip": "Storage Path"
+    },
+    {
+      "kind": "input_text",
+      "label": "created_by",
+      "id": "##created_by",
+      "tooltip": "Created By"
+    },
+    {
+      "kind": "input_text",
+      "label": "project_id",
+      "id": "##project_id",
+      "tooltip": "Version ID"
+    },
+    {
+      "kind": "button",
+      "label": "Set head",
+      "id": "Set head##set_head",
+      "tooltip": "Move the selected branch's head to another operation (empty: none)."
+    },
+    {
+      "kind": "input_text",
+      "label": "branch_uuid",
+      "id": "##branch_uuid",
+      "tooltip": "Branch UUID"
+    },
+    {
+      "kind": "input_text",
+      "label": "parent_branch_uuid",
+      "id": "##parent_branch_uuid",
+      "tooltip": "Parent Branch UUID"
+    },
+    {
+      "kind": "input_text",
+      "label": "head_operation_id",
+      "id": "##head_operation_id",
+      "tooltip": "Head Operation ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "seed_id",
+      "id": "##seed_id",
+      "tooltip": "The record's id (a raw-data, processing-run, processed-data, analysis-run or parameter id)."
+    },
+    {
+      "kind": "button",
+      "label": "Load upstream",
+      "id": "Load upstream##load_upstream",
+      "tooltip": "Trace the ancestors of the seed."
+    },
+    {
+      "kind": "button",
+      "label": "Load downstream",
+      "id": "Load downstream##load_downstream",
+      "tooltip": "Trace the descendants of the seed."
+    },
+    {
+      "kind": "button",
+      "label": "Load full graph",
+      "id": "Load full graph##load_full",
+      "tooltip": "Load the full provenance graph of the seed."
+    },
+    {
+      "kind": "button",
+      "label": "Export JSON",
+      "id": "Export JSON##export_json",
+      "tooltip": "Export the provenance graph as JSON."
+    },
+    {
+      "kind": "button",
+      "label": "Export ZIP",
+      "id": "Export ZIP##export_zip",
+      "tooltip": "Export the provenance graph as a ZIP archive."
+    },
+    {
+      "kind": "button",
+      "label": "Change password",
+      "id": "Change password##change_password",
+      "tooltip": "Set or clear the selected user's password (administrators need at least a medium-strength one and cannot be cleared)."
+    },
+    {
+      "kind": "button",
+      "label": "Jump to branch",
+      "id": "Jump to branch##jump_to_branch",
+      "tooltip": "Create a branch that starts at a recorded operation and make it the selected user's active branch."
+    },
+    {
+      "kind": "input_text",
+      "label": "user_id",
+      "id": "##user_id",
+      "tooltip": "User ID"
+    },
+    {
+      "kind": "input_text",
+      "label": "user_uuid",
+      "id": "##user_uuid",
+      "tooltip": "UUID"
+    },
+    {
+      "kind": "input_text",
+      "label": "display_name",
+      "id": "##display_name",
+      "tooltip": "Display Name"
+    },
+    {
+      "kind": "input_text",
+      "label": "email",
+      "id": "##email",
+      "tooltip": "Email"
+    },
+    {
+      "kind": "input_text",
+      "label": "affiliation",
+      "id": "##affiliation",
+      "tooltip": "Affiliation"
+    },
+    {
+      "kind": "input_text",
+      "label": "department",
+      "id": "##department",
+      "tooltip": "Department"
+    },
+    {
+      "kind": "input_text",
+      "label": "phone",
+      "id": "##phone",
+      "tooltip": "Phone"
+    },
+    {
+      "kind": "input_text",
+      "label": "website",
+      "id": "##website",
+      "tooltip": "Website"
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "address",
+      "id": "##address",
+      "tooltip": "Address"
+    },
+    {
+      "kind": "checkbox",
+      "label": "Is Admin",
+      "id": "Is Admin##is_admin",
+      "tooltip": "Is Admin"
+    },
+    {
+      "kind": "checkbox",
+      "label": "Allow Passwordless Login",
+      "id": "Allow Passwordless Login##allow_passwordless_login",
+      "tooltip": "Allow Passwordless Login"
+    },
+    {
+      "kind": "input_text",
+      "label": "active_branch_uuid",
+      "id": "##active_branch_uuid",
+      "tooltip": "Active Branch UUID"
+    },
+    {
+      "kind": "input_text",
+      "label": "path",
+      "id": "##path",
+      "tooltip": "The PDBx / PDB-IHM / FLR CIF file Import file reads (empty: it asks)."
+    },
+    {
+      "kind": "button",
+      "label": "Browse",
+      "id": "Browse##browse",
+      "tooltip": "Browse for the file."
+    },
+    {
+      "kind": "button",
+      "label": "Import file",
+      "id": "Import file##import_file",
+      "tooltip": "Import the file into the database."
+    },
+    {
+      "kind": "button",
+      "label": "Export selected sample",
+      "id": "Export selected sample##export_selected_sample",
+      "tooltip": "Export the sample selected in Samples as FLR CIF (validated first)."
+    },
+    {
+      "kind": "button",
+      "label": "Preview CIF",
+      "id": "Preview CIF##preview_cif",
+      "tooltip": "Show the FLR CIF of the selected sample below."
+    },
+    {
+      "kind": "button",
+      "label": "Export table CSV/XLSX",
+      "id": "Export table CSV/XLSX##export_table",
+      "tooltip": "Export the sample table."
+    },
+    {
+      "kind": "input_text_multiline",
+      "label": "preview",
+      "id": "##preview",
+      "tooltip": "The import summary or the CIF preview."
+    },
+    {
+      "kind": "input_text",
+      "label": "endpoint",
+      "id": "##endpoint",
+      "tooltip": "The eLabFTW server's URL."
+    },
+    {
+      "kind": "input_text",
+      "label": "api_key",
+      "id": "##api_key",
+      "tooltip": "Your eLabFTW API key. Kept in memory only and cleared when a connection attempt starts."
+    },
+    {
+      "kind": "input_text",
+      "label": "timeout",
+      "id": "##timeout",
+      "tooltip": "Seconds to wait for the server."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Verify TLS certificates",
+      "id": "Verify TLS certificates##verify_tls",
+      "tooltip": "Check the server's certificate (leave on)."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Allow plain HTTP (unsafe)",
+      "id": "Allow plain HTTP (unsafe)##allow_http",
+      "tooltip": "Only enable for an isolated trusted network. API keys are plaintext over HTTP."
+    },
+    {
+      "kind": "button",
+      "label": "Connect",
+      "id": "Connect##connect_remote",
+      "tooltip": "Connect to eLabFTW."
+    },
+    {
+      "kind": "button",
+      "label": "Disconnect",
+      "id": "Disconnect##disconnect_remote",
+      "tooltip": "Drop the eLabFTW connection."
+    },
+    {
+      "kind": "input_text",
+      "label": "query",
+      "id": "##query",
+      "tooltip": "Search the remote experiments."
+    },
+    {
+      "kind": "button",
+      "label": "Import checked",
+      "id": "Import checked##import_checked",
+      "tooltip": "Import the ticked experiments."
+    },
+    {
+      "kind": "input_text",
+      "label": "remote_id",
+      "id": "##remote_id",
+      "tooltip": "The remote entry to update (only for update)."
+    },
+    {
+      "kind": "button",
+      "label": "Export",
+      "id": "Export##export_selected",
+      "tooltip": "Export the experiment to eLabFTW."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_name",
+      "id": "##new_name",
+      "tooltip": "The name of the study to create."
+    },
+    {
+      "kind": "button",
+      "label": "Create study",
+      "id": "Create study##create_study",
+      "tooltip": "Create the study."
+    },
+    {
+      "kind": "input_text",
+      "label": "member_id",
+      "id": "##member_id",
+      "tooltip": "The id of the sample or artifact."
+    },
+    {
+      "kind": "button",
+      "label": "Add member",
+      "id": "Add member##add_member",
+      "tooltip": "Add the member to the picked study."
+    },
+    {
+      "kind": "input_text",
+      "label": "field_key",
+      "id": "##field_key",
+      "tooltip": "The field to set."
+    },
+    {
+      "kind": "input_text",
+      "label": "field_value",
+      "id": "##field_value",
+      "tooltip": "Its value."
+    },
+    {
+      "kind": "button",
+      "label": "Set field",
+      "id": "Set field##set_field",
+      "tooltip": "Set the field of the picked study."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_operation_type",
+      "id": "##new_operation_type",
+      "tooltip": "The operation type whose parameters it records (optional)."
+    },
+    {
+      "kind": "button",
+      "label": "Create / new version",
+      "id": "Create / new version##create_protocol",
+      "tooltip": "Create the protocol, or a new version of it."
+    },
+    {
+      "kind": "button",
+      "label": "Load",
+      "id": "Load##load",
+      "tooltip": "Load the entity's state and history."
+    },
+    {
+      "kind": "input_text",
+      "label": "reason",
+      "id": "##reason",
+      "tooltip": "Why (recorded in the history)."
+    },
+    {
+      "kind": "button",
+      "label": "Apply transition",
+      "id": "Apply transition##apply_transition",
+      "tooltip": "Move the entity to the chosen state."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_value",
+      "id": "##new_value",
+      "tooltip": "The value (a number)."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_notes",
+      "id": "##new_notes",
+      "tooltip": "Where it comes from."
+    },
+    {
+      "kind": "button",
+      "label": "Register (user-provided)",
+      "id": "Register (user-provided)##register",
+      "tooltip": "Register the value as user-provided."
+    },
+    {
+      "kind": "checkbox",
+      "label": "Show expired",
+      "id": "Show expired##show_expired",
+      "tooltip": "Also list lots past their expiry date."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_lot_number",
+      "id": "##new_lot_number",
+      "tooltip": "The vendor's lot number."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_vendor",
+      "id": "##new_vendor",
+      "tooltip": "Who sold it."
+    },
+    {
+      "kind": "input_text",
+      "label": "new_expiry",
+      "id": "##new_expiry",
+      "tooltip": "When it expires."
+    },
+    {
+      "kind": "button",
+      "label": "Create lot",
+      "id": "Create lot##create_lot",
+      "tooltip": "Create the lot."
+    },
+    {
+      "kind": "menu_item",
+      "label": "Import...",
+      "id": "Import...",
+      "tooltip": "Import a PDBx / PDB-IHM / FLR CIF file into the MMFDB."
+    },
+    {
+      "kind": "menu_item",
+      "label": "Export selected sample...",
+      "id": "Export selected sample...",
+      "tooltip": "Export the sample selected in Samples as an FLR CIF file (validated first)."
+    },
+    {
+      "kind": "menu_item",
+      "label": "Backup database...",
+      "id": "Backup database...",
+      "tooltip": "Write a backup copy of the active MMFDB database."
+    },
+    {
+      "kind": "menu_item",
+      "label": "Reset",
+      "id": "Reset",
+      "tooltip": "Replace the user database with the curated source (asks first; a backup is written)."
+    },
+    {
+      "kind": "menu_item",
+      "label": "Close",
+      "id": "Close",
+      "tooltip": "Close the MMFDB Admin window."
+    },
+    {
+      "kind": "menu_item",
+      "label": "Reset window layout",
+      "id": "Reset window layout",
+      "tooltip": "Restore the default panel splits and open the Overview."
+    },
+    {
+      "kind": "menu_item",
+      "label": "Help...",
+      "id": "Help...",
+      "tooltip": "Read how MMFDB Admin works."
+    },
+    {
+      "kind": "menu_item",
+      "label": "Guide",
+      "id": "Guide",
+      "tooltip": "A step-by-step walk through signing in, picking a panel and editing a record."
+    },
+    {
+      "kind": "menu_item",
+      "label": "About mmfdb-admin",
+      "id": "About mmfdb-admin",
+      "tooltip": "The version, the connection and the database in use."
+    },
+    {
+      "kind": "button",
+      "label": "×",
+      "id": "×##mmfdb_5873426816.header.×",
+      "tooltip": "Close this window (Escape)."
+    },
+    {
+      "kind": "button",
+      "label": "OK",
+      "id": "OK##ok",
+      "tooltip": "Connect and sign in with these values."
+    },
+    {
+      "kind": "button",
+      "label": "Cancel",
+      "id": "Cancel##cancel",
+      "tooltip": "Close without signing in."
+    },
+    {
+      "kind": "input_text",
+      "label": "password_new",
+      "id": "##password_new",
+      "tooltip": "The new password; shown as dots."
+    },
+    {
+      "kind": "input_text",
+      "label": "password_confirm",
+      "id": "##password_confirm",
+      "tooltip": "Type the new password again; it must match."
+    },
+    {
+      "kind": "button",
+      "label": "Save",
+      "id": "Save##save",
+      "tooltip": "Save the password."
+    },
+    {
+      "kind": "button",
+      "label": "Clear",
+      "id": "Clear##clear",
+      "tooltip": "Remove the password: the user may then sign in without one (asks first; not for administrators)."
+    },
+    {
+      "kind": "input_text",
+      "label": "operation_id",
+      "id": "##operation_id",
+      "tooltip": "The recorded operation the new branch starts at (required)."
+    },
+    {
+      "kind": "input_text",
+      "label": "branch_name",
+      "id": "##branch_name",
+      "tooltip": "A name for the branch (optional; the server picks one when empty)."
+    },
+    {
+      "kind": "button",
+      "label": "Jump",
+      "id": "Jump##ok",
+      "tooltip": "Create the branch and make it the user's active branch."
+    },
+    {
+      "kind": "input_text",
+      "label": "value",
+      "id": "##value",
+      "tooltip": "The value to apply."
+    },
+    {
+      "kind": "button",
+      "label": "Yes",
+      "id": "Yes##yes",
+      "tooltip": "Do it."
+    },
+    {
+      "kind": "button",
+      "label": "No",
+      "id": "No##no",
+      "tooltip": "Leave everything as it is."
+    },
+    {
+      "kind": "button",
+      "label": "Close",
+      "id": "Close##close_dialog",
+      "tooltip": "Close this window."
+    },
+    {
+      "kind": "button",
+      "label": "Merge Selected Group",
+      "id": "Merge Selected Group##merge_selected",
+      "tooltip": "Merge the group of the picked row into its primary."
+    },
+    {
+      "kind": "button",
+      "label": "Merge Checked Groups",
+      "id": "Merge Checked Groups##merge_checked",
+      "tooltip": "Merge every ticked group into its primary."
+    }
+  ],
+  "controls_without_tooltip": [],
+  "qt_free": {
+    "ok": true,
+    "output": "QT-FREE OK\n"
+  }
+}
