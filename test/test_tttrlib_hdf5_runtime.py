@@ -54,14 +54,24 @@ def test_writing_photon_hdf5_does_not_abort_without_h5py(tmp_path):
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="otool is macOS-only")
 def test_tttrlib_links_the_environment_hdf5():
-    """The extension's HDF5 must live in this environment, not in /opt/homebrew."""
-    import _tttrlib
+    """The extension's HDF5 must live in this environment, not in /opt/homebrew.
 
-    otool = subprocess.run(["otool", "-L", _tttrlib.__file__], capture_output=True, text=True)
-    if otool.returncode != 0:  # no developer tools: the runtime test still covers it
-        pytest.skip("otool unavailable")
+    tttrlib is a package: the SWIG extension is ``tttrlib/_tttrlib*.so`` and
+    HDF5 is linked by the per-module ``libtttrlib_io_hdf5*.dylib`` beside it
+    (the flat ``_tttrlib`` module this used to import no longer exists, so the
+    guard had been failing on the import and checking nothing).
+    """
+    import tttrlib
 
-    hdf5_lines = [ln.strip() for ln in otool.stdout.splitlines() if "hdf5" in ln.lower()]
+    package = pathlib.Path(tttrlib.__file__).parent
+    binaries = sorted(package.glob("_tttrlib*.so")) + sorted(package.glob("libtttrlib*.dylib"))
+    assert binaries, f"no tttrlib binaries found in {package}"
+    hdf5_lines = []
+    for binary in binaries:
+        otool = subprocess.run(["otool", "-L", str(binary)], capture_output=True, text=True)
+        if otool.returncode != 0:  # no developer tools: the runtime test still covers it
+            pytest.skip("otool unavailable")
+        hdf5_lines += [ln.strip() for ln in otool.stdout.splitlines() if "libhdf5" in ln.lower()]
     assert hdf5_lines, "tttrlib links no HDF5 at all"
 
     prefix = pathlib.Path(sysconfig.get_paths()["data"]).resolve()

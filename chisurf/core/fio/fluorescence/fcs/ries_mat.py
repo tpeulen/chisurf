@@ -4,6 +4,7 @@ import pathlib
 import warnings
 
 import numpy as np
+from tttrlib.matfile import MatStruct, loadmat
 
 import chisurf as cs
 import chisurf.core.fluorescence.fcs
@@ -12,30 +13,20 @@ from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
 
 def _load_nested_mat(path: pathlib.Path) -> dict:
-    """Load a MATLAB .mat file and convert nested ``mat_struct`` objects.
+    """Load a MATLAB .mat file and convert nested ``MatStruct`` objects.
 
     The Jonas Ries SFCS tools store their data in a nested ``g`` structure.
-    SciPy exposes this as ``mat_struct`` instances; here we turn them into
+    The reader exposes this as ``MatStruct`` instances; here we turn them into
     plain Python dictionaries so that field access is straightforward.
     """
-    # Suppress architecture-related scipy.io warnings; this mirrors what
-    # the original SFCS tools do while keeping the behavior explicit.
-    import scipy.io
-
+    # The SFCS tools' files carry an architecture note that readers used to
+    # warn about; nothing in it changes the data.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        data = scipy.io.loadmat(str(path), struct_as_record=False, squeeze_me=True)
-
-    try:
-        # Import here to avoid hard dependence at module import time if
-        # SciPy is missing; in that case, loadmat above will already have
-        # failed with an informative error.
-        from scipy.io.matlab.mio5_params import mat_struct  # type: ignore[attr-defined]
-    except Exception:  # pragma: no cover - very unlikely when scipy.io is present
-        mat_struct = ()  # type: ignore[assignment]
+        data = loadmat(str(path), struct_as_record=False, squeeze_me=True)
 
     def _convert(obj):  # type: ignore[override]
-        """Recursively convert mat_struct objects to plain dicts.
+        """Recursively convert MatStruct objects to plain dicts.
 
         Parameters
         ----------
@@ -49,7 +40,7 @@ def _load_nested_mat(path: pathlib.Path) -> dict:
         """
         if isinstance(obj, dict):
             return {k: _convert(v) for k, v in obj.items()}
-        if isinstance(obj, mat_struct):  # type: ignore[arg-type]
+        if isinstance(obj, MatStruct):
             out: dict[str, typing.Any] = {}
             for name in getattr(obj, "_fieldnames", []) or []:
                 out[name] = _convert(getattr(obj, name))

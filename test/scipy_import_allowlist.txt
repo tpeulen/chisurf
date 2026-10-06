@@ -25,9 +25,9 @@
 #                to hdbscan/kmeans/kdtree, assignment next to kmeans).
 #                Everything landing there is browser-ready via PRD-041's
 #                wasm wheel.
-#   legacy-io -- scipy.io MAT-file readers/writers. Not worth reimplementing;
-#                become an optional `chisurf[legacy-io]` extra with a lazy
-#                import and a clear error when absent.
+#   legacy-io -- scipy.io MAT-file readers/writers. Superseded 2026-10-06
+#                (owner: scipy leaves; curves I/O -> tttrlib): tttrlib.matfile
+#                reads/writes Level-5 MAT-files like scipy.io; none remain.
 #
 # Mixed files (one scipy call each to bff/tttrlib/local) carry a comment
 # naming the split. Two YAML files embed scipy calls in text and are NOT
@@ -107,7 +107,4 @@ chisurf/core/fluorescence/imaging/frap.py
 # scipy.stats.norm.cdf (brush kernel) -> local erf; filed under tttrlib by mistake
 modules/ndxplorer/ndxplorer/utils/mask_helpers.py
 
-# ── legacy-io: optional extra, scipy.io stays behind a lazy import ──────────
-chisurf/core/fio/fluorescence/fcs/china.py
-chisurf/core/fio/fluorescence/fcs/ries_mat.py
-chisurf/plugins/burst/burst_ebfret/io.py
+# ── legacy-io: DONE 2026-10-06 -- MAT-files read/written by tttrlib.matfile ─

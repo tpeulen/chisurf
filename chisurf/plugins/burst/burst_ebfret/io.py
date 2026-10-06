@@ -35,6 +35,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import numpy as np
+from tttrlib.matfile import loadmat, savemat
 
 from .core.model import COLORS, Analysis, Controls, Expect, HmmParams, Series, Viterbi
 
@@ -143,7 +144,7 @@ def file_base(path: str) -> str:
 # MAT-file helpers
 # --------------------------------------------------------------------------- #
 def _mat_to_py(value: Any) -> Any:
-    """Turn a ``scipy.io.loadmat`` value into plain Python / NumPy.
+    """Turn a ``loadmat`` value into plain Python / NumPy.
 
     Structs become ``dict`` (1x1) or ``list`` of ``dict`` (struct arrays),
     cell arrays become ``list``, char arrays ``str`` and numeric arrays keep
@@ -168,9 +169,7 @@ def _mat_to_py(value: Any) -> Any:
 
 def _loadmat(path: str) -> dict:
     """Read a MAT-file into plain Python values, without the ``__`` entries."""
-    import scipy.io as sio
-
-    raw = sio.loadmat(path, squeeze_me=False, struct_as_record=True, mat_dtype=False)
+    raw = loadmat(path, squeeze_me=False, struct_as_record=True, mat_dtype=False)
     return {k: _mat_to_py(v) for k, v in raw.items() if not k.startswith("__")}
 
 
@@ -203,7 +202,7 @@ def _col(values: Any) -> np.ndarray:
 
 
 def _struct_array(records: Sequence[Mapping], fields: Sequence[str]) -> np.ndarray:
-    """A ``1 x N`` MATLAB struct array for ``scipy.io.savemat``."""
+    """A ``1 x N`` MATLAB struct array for ``savemat``."""
     out = np.empty((1, len(records)), dtype=[(name, object) for name in fields])
     for i, record in enumerate(records):
         for name in fields:
@@ -922,9 +921,7 @@ def write_smd(
             fmt = "mat"
     smd = build_smd(series, analysis)
     if fmt == "mat":
-        import scipy.io as sio
-
-        sio.savemat(path, _smd_to_mat(smd), long_field_names=True)
+        savemat(path, _smd_to_mat(smd), long_field_names=True)
     elif fmt in ("json", "gz"):
         text = savejson(smd)
         if fmt == "gz":
@@ -1196,8 +1193,6 @@ def save_session(
     controls : Controls
         Control values.
     """
-    import scipy.io as sio
-
     n_series = len(series)
     series_records = [
         {
@@ -1239,7 +1234,7 @@ def save_session(
         ),
         "plots": {},
     }
-    sio.savemat(path, content, long_field_names=True, do_compression=True)
+    savemat(path, content, long_field_names=True, do_compression=True)
 
 
 def _as_list(value: Any) -> list:
@@ -1592,9 +1587,7 @@ def export_traces(
         blocks.append(np.column_stack([np.full(length, n + 1.0)] + columns))
     traces = np.vstack(blocks) if blocks else np.zeros((0, 0))
     if fmt == "mat":
-        import scipy.io as sio
-
-        sio.savemat(path, {"traces": traces})
+        savemat(path, {"traces": traces})
     elif fmt == "dat":
         with open(path, "w", newline="") as handle:
             for row in traces:

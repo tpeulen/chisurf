@@ -47,6 +47,21 @@ timestamp: '2026-10-05T00:00:00Z'
    `cmake $B` after adding a header/.i (the build tree symlinks them at configure).
 
 
+**Route 5 (legacy-io) superseded and landed 2026-10-06** (tttrlib `efc9d9c41`,
+T-20261006-MATIO): the owner's "scipy leaves" overrides the planned
+`chisurf[legacy-io]` extra. MAT-files are curve I/O, so they went to tttrlib:
+module `io_mat` (`modules/io/mat/`, own inflate/deflate -- no zlib dependency)
+and `tttrlib.matfile.loadmat` / `savemat` / `whosmat`, identical to scipy.io
+1.18 under every loader option (tttrlib `test/python/misc/test_matfile_parity.py`,
+82 tests; real MATLAB + Octave fixtures in tttrlib `test/data/matfile/`).
+china.py, ries_mat.py (`MatStruct` replaces `mat_struct`) and burst_ebfret/io.py
+are routed and A/B-identical to their HEAD scipy versions (china on both
+fixtures, Ries on a nested `g` struct, ebfret load/save session + SMD both
+directions); allow-list 51 -> 48. Left from route 5: nothing. Trap: scipy keeps
+a big-endian file's byte order in the dtype (`>f8`, also under `mat_dtype`),
+and `squeeze_me` turns every 0-d non-record result into a Python scalar
+(strings included) -- the module reproduces both; don't "fix" them.
+
 **Route 4 (tttrlib) landed 2026-10-05** (tttrlib `fb2ad5fe7`, T-20261005-TTTRIMG):
 `tttrlib.ndimage` (scipy.ndimage's names, signatures and dtype rules over the
 `NdImage.h` ports), `tttrlib.linear_sum_assignment`, `tttrlib.linkage` /

@@ -1,4 +1,5 @@
 import numpy as np
+from tttrlib.matfile import loadmat, savemat
 
 import chisurf as cs
 import chisurf.core.fluorescence.fcs
@@ -22,9 +23,7 @@ def write_china_mat(filename: str, d: typing.List[typing.Dict], verbose: bool = 
         print(f"Writing to file: {filename}")
     mdict = dict()
 
-    import scipy.io
-
-    scipy.io.savemat(file_name=filename, mdict=mdict)
+    savemat(filename, mdict)
 
 
 def read_china_mat(
@@ -46,9 +45,7 @@ def read_china_mat(
     list of FCSDataset
         List of FCS datasets.
     """
-    import scipy.io
-
-    m = scipy.io.loadmat(filename)
+    m = loadmat(filename)
     n_measurements = m["AA"].shape[1]
     # save intensity traces
     if verbose:
