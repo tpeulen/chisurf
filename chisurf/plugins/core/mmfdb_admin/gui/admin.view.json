@@ -60,8 +60,8 @@
          "buttons": [
            {"action": "login", "label": "Login", "hidden_when": {"attr": "connected", "equals": true},
             "description": "Connect to the host and port above and sign in."},
-           {"action": "more_options", "label": "...", "hidden_when": {"attr": "connected", "equals": true},
-            "description": "More connection and authentication options (the login dialog)."},
+           {"action": "more_options", "label": "...",
+            "description": "More connection and authentication options: the login dialog (sign in as another user, or connect to another server)."},
            {"action": "logout", "label": "Logout", "hidden_when": {"attr": "signed_in", "equals": false},
             "description": "Drop the current MMFDB session."}
          ]}

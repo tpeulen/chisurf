@@ -66,10 +66,15 @@ def rgba(rgb) -> tuple[int, int, int, int]:
 
 
 class ProvenanceContent(NodeContentRenderer):
-    """Provenance nodes as discs titled by their record, edges coloured by relationship."""
+    """Provenance nodes as discs labelled by their record id, edges coloured by relationship.
+
+    The kind (artifact / operation) is the disc's colour and, with the id, the
+    hover tooltip; leaving it out of the label keeps the label short enough not
+    to be elided under a disc.
+    """
 
     def node_shape(self, node):
-        return nodes.NodeShape.DISC, node.title, 21
+        return nodes.NodeShape.DISC, str(node.config.get("node_id") or node.title), 21
 
     def node_style(self, node):
         kind = node.config.get("node_type", "")
@@ -302,11 +307,22 @@ class MMFDBAdminApp(ImApp):
         self.remember_item("next")
         im.end_disabled()
         im.same_line()
-        summary = model.current.status_line() or model.summary
-        im.text_unformatted(summary)
-        im.set_item_tooltip(model.summary or "The open panel's state.")
+        summary = model.current.status_line() or model.database_summary
+        shown = self._fit(summary, im.get_content_region_avail()[0])
+        im.text_unformatted(shown)
+        im.set_item_tooltip("\n".join(t for t in (summary, model.database_summary) if t)
+                            or "The open panel's state.")
         self.remember_item("summary")
         im.end()
+
+    @staticmethod
+    def _fit(text: str, width: float) -> str:
+        """*text* cut with an ellipsis to fit *width* (the full text is the tooltip)."""
+        if im.calc_text_size(text)[0] <= width:
+            return text
+        while len(text) > 1 and im.calc_text_size(text + "…")[0] > width:
+            text = text[:-1]
+        return text + "…"
 
     # ── panels ─────────────────────────────────────────────────────────
     def _draw_panel(self, box) -> None:

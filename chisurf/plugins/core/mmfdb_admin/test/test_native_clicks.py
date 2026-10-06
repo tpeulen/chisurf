@@ -188,3 +188,26 @@ def test_everything_reachable_at_800x600(app):
     d.click_name("nav.sample")
     d.click(Driver.text_rect(d.draw(2), "sample_gui", last=False))
     assert app.model.current.selected_id == "sample_gui"
+
+
+def test_the_menus_offer_every_qt_menu_action(driver, app):
+    expected = {
+        "File": ["Import...", "Export selected sample...", "Backup database...", "Reset", "Close"],
+        "Settings": ["Reset window layout"],
+        "Help": ["Help...", "Guide", "About mmfdb-admin"],
+    }
+    for menu, items in expected.items():
+        driver.click_text(menu, last=False)
+        texts = [t[5] for t in driver.draw(2).texts]
+        for item in items:
+            assert item in texts, (menu, item, texts[:30])
+        driver.escape()
+
+
+def test_settings_reset_window_layout_returns_to_the_overview(driver, app):
+    driver.click_name("nav.sample")
+    app.splits["entity"] = 0.2
+    driver.click_text("Settings", last=False)
+    driver.click_text("Reset window layout")
+    assert app.model.selected == "overview"
+    assert app.splits["entity"] == 0.5

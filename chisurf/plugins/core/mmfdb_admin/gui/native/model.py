@@ -172,6 +172,8 @@ class AdminModel:
         self.login_user = ""
         self.status = "Ready"
         self.summary = ""
+        #: The database line of the last status call (the Qt status bar's permanent text).
+        self.database_summary = ""
         self.registry = build_registry_dict()
         self._dictionary: Any = None
         self._schema_map: Any = None
@@ -557,7 +559,7 @@ class AdminModel:
     def _apply_status(self, status: dict) -> None:
         client = self.client
         mode = "remote" if str(getattr(client, "mode", "embedded")) == "remote" else "embedded"
-        self.summary = (
+        self.summary = self.database_summary = (
             f"{mode} | User DB: {status.get('user_database', '—')} | schema "
             f"{status.get('schema_version', '?')} | samples {status.get('sample_count', '?')} | "
             f"experiments {status.get('experiment_count', '?')}"
