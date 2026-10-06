@@ -32,7 +32,8 @@ def test_tool_constructs_without_crash() -> None:
     """The BurstSelectionTool constructs without crashing (read-only init)."""
     from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
 
-    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    # Kept in a name: a QApplication nobody holds is collected at once, and the widget then aborts.
+    _app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     tool = BurstSelectionTool()
     try:
         assert tool.windowTitle() == "Burst Selection"
@@ -52,7 +53,8 @@ def test_tool_drag_drop_dispatches_to_add_paths(monkeypatch) -> None:
     """The base window drop hook routes to the tool's ``_add_paths``."""
     from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
 
-    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    # Kept in a name: a QApplication nobody holds is collected at once, and the widget then aborts.
+    _app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     tool = BurstSelectionTool()
     try:
         captured = []

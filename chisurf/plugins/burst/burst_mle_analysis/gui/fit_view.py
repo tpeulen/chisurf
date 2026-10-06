@@ -78,7 +78,10 @@ def burst_lifetimes(rows: list[dict] | None) -> dict[str, np.ndarray]:
                 continue
             key = match["colour"] if match["state"] is None else f"S{match['state']} {match['colour']}"
             series.setdefault(key, []).append(number)
-    return {key: np.asarray(values, dtype=np.float64) for key, values in series.items() if values}
+    # Sorted by series: the batch rows arrive in worker order; the plot must not depend on it.
+    return {
+        key: np.asarray(values, dtype=np.float64) for key, values in sorted(series.items()) if values
+    }
 
 
 def lifetime_histograms(
