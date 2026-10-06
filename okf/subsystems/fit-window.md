@@ -40,10 +40,9 @@ Open, in order:
    (127), `dock` (91), unknown section types (61), `tab`, `window`, `page`,
    `panels` -- emtk's docking/window dialect, which needs a decision on how it
    enters the scheme rather than more keys.
-3. **Figure 24 of `docs/manual/reference_curves.md`** is still the Qt-era grab
-   showing a "Use reference" checkbox; the text now names the **Reference**
-   selector. A faithful figure needs a FRET fit with a donor-only reference
-   dataset in `docs/guides/screenshots/fit_window_emtk.py`.
+3. **Done 2026-10-06:** Figure 24 of `docs/manual/reference_curves.md` is a real
+   donor-reference figure (`manual_donor_reference.png`, `manual_fitting.py`).
+   Handover of the whole session: `okf/plans/2026-10-06-handover-fit-window-docs.md`.
 4. **emtk view_form: a `weight: 0` `info` leaf inside an `n_col` panel
    collapses to zero width** (seen on the ProteinMC network settings, worked
    around with `width: 70`). Fix belongs in emtk with a test.
