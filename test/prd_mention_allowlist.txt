@@ -51,7 +51,6 @@ chisurf/gui/devtools/source_jump.py
 chisurf/gui/widgets/models/auto_model_widget.py
 chisurf/gui/widgets/sample_picker.py
 chisurf/gui/widgets/tools/__init__.py
-chisurf/macros/core_fit.py
 chisurf/plugins/burst/accurate_fret/__init__.py
 chisurf/plugins/burst/burst_2cde/tests/test_gui.py
 chisurf/plugins/burst/burst_bva/tests/test_construction_smoke.py

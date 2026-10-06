@@ -18,6 +18,7 @@ from typing import Callable
 
 from emtk import im
 from emtk.app import ImApp
+from emtk.i18n import tr
 from emtk.docking import DockManager, Region, Split
 from emtk.im_core import Col
 from emtk.texture import Texture
@@ -591,7 +592,9 @@ class HelpModel:
         self.review_filter = "all"
         self.include_development = False
         self.review_summary = ""
-        self.font_size = 12.0
+        from chisurf.core import settings as cs_settings
+
+        self.font_size = float(cs_settings.gui.get("application_font_size", 12.0))
         self._review_cache: dict[str, str] = {}
         self.event_queue: Queue[Callable[[], None]] = Queue()
 
@@ -843,7 +846,9 @@ class HelpModel:
         self.set_font_size(self.font_size + steps * 0.5)
 
     def reset_zoom(self) -> None:
-        self.font_size = 12.0
+        from chisurf.core import settings as cs_settings
+
+        self.font_size = float(cs_settings.gui.get("application_font_size", 12.0))
 
     def _get_review_status(self, path: pathlib.Path) -> str:
         return help_review.status_of(path).status
@@ -1120,9 +1125,7 @@ class HelpGui:
         width = float(w or vp.size[0] or 1200.0)
         height = float(h or vp.size[1] or 760.0)
 
-        im.push_font("sans-serif")
         self.docks.draw((0.0, 0.0, width, height))
-        im.pop_font()
         self._draw_provider_settings()
 
     def _expand_inline_markup(self, text: str) -> tuple[str, list[tuple[str, str]]]:
@@ -1456,7 +1459,7 @@ class HelpGui:
         im.same_line()
         if im.small_button("Reset zoom"):
             self.model.reset_zoom()
-        im.set_item_tooltip("Restore the default 12-point document text")
+        im.set_item_tooltip(tr("Restore the application font size", context="Help"))
         im.same_line()
         if im.small_button("A+"):
             self.model.zoom(1)
@@ -1610,7 +1613,7 @@ class HelpGui:
             im.end_child()
             return
 
-        im.push_font({"family": "sans-serif", "size": self.model.font_size})
+        im.push_font({"size": self.model.font_size})
 
         for idx, block in enumerate(self.model.current_blocks):
             im.push_id(f"blk_{idx}")
@@ -1636,7 +1639,7 @@ class HelpGui:
             if block.kind == "h1":
                 im.dummy(0.0, 12.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
-                im.push_font({"family": "sans-serif", "bold": True})
+                im.push_font({"bold": True})
                 im.push_font_scale(1.55)
                 im.text_colored((125, 205, 255, 255), clean_title)
                 im.pop_font_scale()
@@ -1648,7 +1651,7 @@ class HelpGui:
             elif block.kind == "h2":
                 im.dummy(0.0, 10.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
-                im.push_font({"family": "sans-serif", "bold": True})
+                im.push_font({"bold": True})
                 im.push_font_scale(1.3)
                 im.text_colored((145, 225, 160, 255), clean_title)
                 im.pop_font_scale()
@@ -1658,7 +1661,7 @@ class HelpGui:
             elif block.kind == "h3":
                 im.dummy(0.0, 8.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
-                im.push_font({"family": "sans-serif", "bold": True})
+                im.push_font({"bold": True})
                 im.push_font_scale(1.15)
                 im.text_colored((245, 205, 115, 255), clean_title)
                 im.pop_font_scale()
@@ -1668,7 +1671,7 @@ class HelpGui:
             elif block.kind == "h4":
                 im.dummy(0.0, 6.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
-                im.push_font({"family": "sans-serif", "bold": True})
+                im.push_font({"bold": True})
                 im.push_font_scale(1.05)
                 im.text_colored((220, 225, 235, 255), clean_title)
                 im.pop_font_scale()
@@ -1770,7 +1773,7 @@ class HelpGui:
                 draw_list.add_rect_filled((x, y), (x + 3.0, y + panel_h), adm_color)
                 im.indent(12.0)
                 im.dummy(0.0, 6.0)
-                im.push_font({"family": "sans-serif", "bold": True})
+                im.push_font({"bold": True})
                 im.text_colored(adm_color, adm_title)
                 im.pop_font()
                 im.text_wrapped(clean_body)
@@ -1801,7 +1804,7 @@ class HelpGui:
                             im.table_next_column()
                             clean_cell, _ = self._expand_inline_markup(cell_text)
                             if r_idx == 0:
-                                im.push_font({"family": "sans-serif", "bold": True})
+                                im.push_font({"bold": True})
                                 im.text_colored((140, 200, 255, 255), clean_cell)
                                 im.pop_font()
                             else:

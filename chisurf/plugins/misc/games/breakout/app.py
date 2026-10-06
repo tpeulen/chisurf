@@ -7,6 +7,8 @@ from types import SimpleNamespace
 
 from emtk import i18n, im
 from emtk.app import ImApp
+
+from chisurf.plugins.misc.games.gui.keys import blocked
 from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT
 
 from .drawing import pixel_text, text_width
@@ -96,7 +98,7 @@ class BreakoutApp(ImApp):
         return {" ": "confirm", "p": "menu", "r": "cancel", "m": "shoulder_r"}.get(letter)
 
     def key(self, key, text="", modifiers=0):
-        if modifiers or self.closed:
+        if blocked(modifiers) or self.closed:
             return False
         action = self.binding(key, text)
         if action is None:

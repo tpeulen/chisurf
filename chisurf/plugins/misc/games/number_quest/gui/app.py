@@ -5,6 +5,8 @@ import math
 
 from emtk import i18n, im
 from emtk.app import ImApp
+
+from chisurf.plugins.misc.games.gui.keys import blocked
 from emtk.keys import KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT
 
 from ..core.game import GuessStatus, NumberQuestGame
@@ -46,7 +48,7 @@ class NumberQuestApp(ImApp):
         self.request_frame()
 
     def key(self, key, text="", modifiers=0) -> bool:
-        if modifiers or self.closed:
+        if blocked(modifiers) or self.closed:
             return False
         value = (text or (chr(key) if 32 <= key < 127 else "")).lower()
         if key == KEY_LEFT or value == "a":

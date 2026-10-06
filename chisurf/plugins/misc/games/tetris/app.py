@@ -7,6 +7,8 @@ from types import SimpleNamespace
 
 from emtk import i18n, im
 from emtk.app import ImApp
+
+from chisurf.plugins.misc.games.gui.keys import blocked
 from emtk.keys import KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_UP
 
 from .drawing import pixel_text, text_width
@@ -80,7 +82,7 @@ class TetrisApp(ImApp):
         }.get(letter)
 
     def key(self, key, text="", modifiers=0):
-        if modifiers or self.closed:
+        if blocked(modifiers) or self.closed:
             return False
         action = self.binding(key, text)
         if action is None:

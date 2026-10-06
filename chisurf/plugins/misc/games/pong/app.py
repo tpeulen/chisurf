@@ -7,6 +7,8 @@ from types import SimpleNamespace
 
 from emtk import i18n, im
 from emtk.app import ImApp
+
+from chisurf.plugins.misc.games.gui.keys import blocked
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_RETURN, KEY_UP
 
 from .drawing import pixel_text, text_width
@@ -97,7 +99,7 @@ class PongApp(ImApp):
         return {"p": "menu", "r": "cancel", "m": "shoulder_l", "n": "shoulder_r", " ": "confirm"}.get(letter, "confirm" if key in {KEY_ENTER, KEY_RETURN} else None), False
 
     def key(self, key, text="", modifiers=0):
-        if modifiers or self.closed:
+        if blocked(modifiers) or self.closed:
             return False
         action, second = self.binding(key, text)
         if action is None:

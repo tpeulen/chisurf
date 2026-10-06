@@ -247,11 +247,106 @@ def test_it_works_on_shipped_view_specs(qt_app):
         if keys:
             with_bindings += 1
             assert all(keys), f"{path.name} produced an empty key"
-            assert len(keys) == len(set(keys)), (
-                f"{path.name} binds the same attribute twice; a restore would be ambiguous"
-            )
+            # Conditional editors (e.g. masked/plain API key) may share one
+            # binding. Persistence keys address the value, not the widget.
 
     assert with_bindings >= 5, (
         f"only {with_bindings} shipped specs had bindings — the collector is "
         "probably not recognising them"
     )
+
+
+def test_native_window_round_trip_keeps_geometry_and_docks(monkeypatch, tmp_path):
+    """Host coordinates and dock state are part of the same restorable snapshot."""
+    from types import SimpleNamespace
+
+    from emtk.docking import DockManager
+
+    from chisurf.emtk import state
+
+    monkeypatch.setattr(
+        state, "_path", lambda plugin_id, kind: tmp_path / f"{plugin_id}.{kind}.json"
+    )
+    closed, moved, resized = [], [], []
+    docks = DockManager()
+    docks.set_extra("analysis", {"threshold": 7})
+    app = SimpleNamespace(
+        native_layouts={"main": docks},
+        window_size=(640, 480),
+        close=lambda: closed.append(True),
+        window_moved=lambda x, y: moved.append((x, y)),
+        window_resized=lambda w, h: resized.append((w, h)),
+    )
+    state.attach_native_state("window-test", app)
+    app.window_screen_changed((0, 0, 1600, 1000))
+    app.window_moved(125, 175)
+    app.window_resized(900, 650)
+    app.close()
+    app.close()
+    payload = json.loads((tmp_path / "window-test.window.json").read_text())
+    assert payload["size"] == [900, 650]
+    assert payload["pos"] == [125, 175]
+    assert payload["docks"]["main"] == docks.state()
+    assert closed == [True] and moved == [(125, 175)] and resized == [(900, 650)]
+
+    restored = SimpleNamespace(native_layouts={"main": DockManager()})
+    state.attach_native_state("window-test", restored)
+    restored.window_screen_changed((0, 0, 1600, 1000))
+    assert restored.window_size == (900, 650)
+    assert restored.window_pos == (125, 175)
+    assert restored.native_layouts["main"].extras["analysis"] == {"threshold": 7}
+    restored.close()
+
+
+@pytest.mark.parametrize("pos", [[99999, 2], [-1, 50], [50, float("nan")], [True, 40], "bad"])
+def test_native_restore_rejects_invalid_or_offscreen_positions(monkeypatch, tmp_path, pos):
+    """A stale saved monitor position must not put a reopened tool out of reach."""
+    from types import SimpleNamespace
+
+    from chisurf.emtk import state
+
+    monkeypatch.setattr(
+        state, "_path", lambda plugin_id, kind: tmp_path / f"{plugin_id}.{kind}.json"
+    )
+    (tmp_path / "bad-pos.window.json").write_text(json.dumps({"size": [600, 400], "pos": pos}))
+    app = state.attach_native_state("bad-pos", SimpleNamespace())
+    app.window_screen_changed((0, 0, 800, 600))
+    assert app.window_pos is None
+    assert app.window_size == (600, 400)
+    app.close()
+    assert json.loads((tmp_path / "bad-pos.window.json").read_text())["pos"] is None
+
+
+def test_native_restore_accepts_old_size_only_window_state(monkeypatch, tmp_path):
+    """Preferences written before position support still reopen normally."""
+    from types import SimpleNamespace
+
+    from chisurf.emtk import state
+
+    monkeypatch.setattr(
+        state, "_path", lambda plugin_id, kind: tmp_path / f"{plugin_id}.{kind}.json"
+    )
+    (tmp_path / "legacy.window.json").write_text(json.dumps({"size": [600, 400]}))
+    app = state.attach_native_state("legacy", SimpleNamespace())
+    assert app.window_size == (600, 400)
+    assert app.window_pos is None
+    app.close()
+
+
+def test_conditional_editors_share_one_persisted_value():
+    """Two representations of a value serialize and restore it just once."""
+    from types import SimpleNamespace
+
+    spec = vs.ModelView(
+        sections=(
+            vs.ValueSection(label="Masked", kind="str", attr="name"),
+            vs.ValueSection(label="Plain", kind="str", attr="name"),
+        )
+    )
+    model = Model()
+    model.view_spec = lambda: spec
+    form = SimpleNamespace(model=model, spec=spec)
+    assert af_state.collect_state(form) == {"name": "run A"}
+    result = af_state.apply_state(form, {"name": "run B"}, sync=False)
+    assert result.applied == ["name"]
+    assert model.name == "run B"

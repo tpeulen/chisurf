@@ -11,6 +11,8 @@ from pathlib import Path
 
 from emtk import i18n, im
 from emtk.app import ImApp
+
+from chisurf.plugins.misc.games.gui.keys import blocked
 from emtk.keys import KEY_DOWN, KEY_ENTER, KEY_LEFT, KEY_RETURN, KEY_RIGHT, KEY_UP
 
 from ..core.game import DIFFICULTIES, GameStatus, MinesweeperGame
@@ -118,7 +120,7 @@ class MinesweeperApp(ImApp):
             self.audio_callback(name, frequency)
 
     def key(self, key, text="", modifiers=0):
-        if modifiers:
+        if blocked(modifiers):
             return False
         # Arrows only, per the owner's direction-key rule (no WASD).
         direction = {KEY_UP: (-1, 0), KEY_DOWN: (1, 0), KEY_LEFT: (0, -1), KEY_RIGHT: (0, 1)}
