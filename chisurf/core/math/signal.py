@@ -304,12 +304,9 @@ def gaussian_kernel(kernel_size: int = 21, nsig: float = 3):
     """
     interval = (2.0 * nsig + 1.0) / kernel_size
     x = np.linspace(-nsig - interval / 2.0, nsig + interval / 2.0, kernel_size + 1)
-    # Imported here rather than at module scope: scipy.stats costs ~0.9 s and
-    # this is its only use in the module, which is otherwise reached by every
-    # model through chisurf.core.curve.
-    import scipy.stats as st
+    from chisurf.core.math.special import norm
 
-    kern1d = np.diff(st.norm.cdf(x))
+    kern1d = np.diff(norm.cdf(x))
     kernel_raw = np.sqrt(np.outer(kern1d, kern1d))
     kernel = kernel_raw / kernel_raw.sum()
     return kernel

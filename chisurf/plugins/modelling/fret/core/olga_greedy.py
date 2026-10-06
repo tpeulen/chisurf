@@ -12,7 +12,8 @@ a reader checking this against Olga's ``chisqdist.hpp`` wants to see.
 from __future__ import annotations
 
 import numpy as np
-from scipy.special import erfc, gammaincc
+
+from chisurf.core.math.special import erfc, gammaincc
 
 
 def _chisq_rt_cdf(chisq: np.ndarray, ndof: int) -> np.ndarray:

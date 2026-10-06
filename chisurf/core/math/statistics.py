@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import numpy as np
-import scipy.special
-import scipy.stats
 
 from chisurf import typing
+
+
+
+def _stats():
+    """The F and chi-square distributions (bff-backed, scipy-shaped)."""
+    from chisurf.core.math import special
+
+    return special
 
 
 def incremental_average(
@@ -168,7 +174,9 @@ def random_point_in_sphere(
     ndim = center.size
     x = np.random.normal(size=(n_per_sphere, ndim))
     ssq = np.sum(x**2, axis=1)
-    fr = r * scipy.special.gammainc(ndim / 2, ssq / 2) ** (1 / ndim) / np.sqrt(ssq)
+    from chisurf.core.math.special import gammainc
+
+    fr = r * gammainc(ndim / 2, ssq / 2) ** (1 / ndim) / np.sqrt(ssq)
     frtiled = np.tile(fr.reshape(n_per_sphere, 1), (1, ndim))
     p = center + np.multiply(x, frtiled)
     if n_per_sphere == 1:
@@ -329,7 +337,7 @@ def chi2_max(
             1.0
             + float(number_of_parameters)
             / nu
-            * scipy.stats.f.isf(1.0 - conf_level, number_of_parameters, nu)
+            * _stats().f.isf(1.0 - conf_level, number_of_parameters, nu)
         )
     )
 
@@ -376,11 +384,11 @@ def chi2_threshold(
         The reduced chi-squared level of the confidence boundary.
     """
     if objective == "likelihood":
-        delta = scipy.stats.chi2.isf(1.0 - p_value, n_extra_params)
+        delta = _stats().chi2.isf(1.0 - p_value, n_extra_params)
         return float(chi2_min + delta / float(nu))
     return float(
         chi2_min
-        * (1.0 + float(n_extra_params) / nu * scipy.stats.f.isf(1.0 - p_value, n_extra_params, nu))
+        * (1.0 + float(n_extra_params) / nu * _stats().f.isf(1.0 - p_value, n_extra_params, nu))
     )
 
 
@@ -428,7 +436,7 @@ def f_test_confidence(
     """
     if chi2r_2 <= 0.0:
         return float("nan")
-    return float(scipy.stats.f.cdf(chi2r_1 / chi2r_2, nu_1, nu_2))
+    return float(_stats().f.cdf(chi2r_1 / chi2r_2, nu_1, nu_2))
 
 
 def f_test_chi2r(
@@ -461,7 +469,7 @@ def f_test_chi2r(
     >>> round(f_test_chi2r(1.0, 0.95, 100, 5), 6)
     0.227011
     """
-    critical = float(scipy.stats.f.ppf(conf_level, nu_1, nu_2))
+    critical = float(_stats().f.ppf(conf_level, nu_1, nu_2))
     if critical <= 0.0:
         return float("inf")
     return chi2r_1 / critical

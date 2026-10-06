@@ -455,7 +455,7 @@ def _hankel_matrix(n_r: int, r_max: float, kr_max: float, n_kr: int) -> np.ndarr
     np.ndarray
         Read-only ``(n_kr, n_r)`` matrix; multiply a profile by it to transform.
     """
-    from scipy.special import j0
+    from chisurf.core.math.special import j0
 
     r = np.linspace(0.0, r_max, n_r)
     kr = np.linspace(0.0, kr_max, n_kr)

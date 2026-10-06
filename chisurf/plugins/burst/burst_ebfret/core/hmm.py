@@ -24,7 +24,8 @@ import math
 from collections.abc import Sequence
 
 import numpy as np
-from scipy.special import digamma
+
+from chisurf.core.math.special import digamma
 
 from . import _matlab as ml
 from . import dist

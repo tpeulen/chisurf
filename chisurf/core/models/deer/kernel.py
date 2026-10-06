@@ -22,8 +22,8 @@ which has the closed Fresnel form implemented in :func:`dipolar_kernel`.
 from __future__ import annotations
 
 import numpy as np
-from scipy import special
-from scipy.integrate import trapezoid
+
+from chisurf.core.math import special
 
 #: Dipolar constant ``D`` in rad·µs⁻¹·Å³ (``2*pi * 52.04`` nm³ · 1000 Å³/nm³).
 DIPOLAR_CONSTANT = 2.0 * np.pi * 52.04e3
@@ -75,7 +75,7 @@ def dipolar_kernel(t: np.ndarray, r: np.ndarray) -> np.ndarray:
 def _normalize(p: np.ndarray, r: np.ndarray) -> np.ndarray:
     """Normalise a distance distribution to unit area on grid ``r``."""
     p = np.clip(np.asarray(p, dtype=float), 0.0, None)
-    area = trapezoid(p, r)
+    area = np.trapezoid(p, r)
     if area > 0:
         p = p / area
     return p
@@ -194,7 +194,7 @@ def deer_signal(
     r = np.asarray(r, dtype=float)
     p = _normalize(p_r, r)
     k_mat = dipolar_kernel(t, r) if kernel is None else kernel
-    form_factor = trapezoid(k_mat * p.reshape(1, -1), r, axis=1)
+    form_factor = np.trapezoid(k_mat * p.reshape(1, -1), r, axis=1)
     lam = float(np.clip(mod_depth, 0.0, 1.0))
     intra = (1.0 - lam) + lam * form_factor
     b = background(t, bg_model, bg_k, bg_d)

@@ -40,24 +40,10 @@
 # ── numpy: delete-and-rename, no new code ────────────────────────────────────
 
 # ── local: chisurf/core/math/special.py + per-site reimplementations ────────
-chisurf/core/math/statistics.py
-chisurf/core/math/signal.py
-chisurf/core/fitting/fit.py
-chisurf/core/ml/_gaussian.py
-chisurf/core/fluorescence/mfd/histogram.py
-chisurf/core/fluorescence/pda3c/likelihood.py
-chisurf/core/fluorescence/pda3c/model.py
-chisurf/core/models/pda3c/pda3c.py
-chisurf/core/fluorescence/mfd/occupation.py
-chisurf/core/fluorescence/kinetics.py
-chisurf/core/models/deer/kernel.py
-chisurf/core/models/parse/parse.py
-chisurf/plugins/modelling/fret/core/olga_greedy.py
 chisurf/plugins/tttr/audifier/core.py
 # lazy scipy.interpolate (spline rebin) -> local np.interp/spline
 chisurf/core/fluorescence/fcs/__init__.py
 # rankdata/t.ppf -> local (cKDTree -> tttrlib.KDTree done 2026-10-05)
-modules/ndxplorer/ndxplorer/analysis/projection_scores.py
 
 # ── bff: performance-relevant numerics into IMP.bff C++ ─────────────────────
 chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
@@ -84,8 +70,6 @@ chisurf/plugins/pch/backend/services.py
 chisurf/plugins/tttr/intensity_trace/model.py
 chisurf/plugins/tttr/intensity_trace/qt_tool.py
 # digamma/polygamma/gammaln: VB-MCMC hot loops, vectorized C++
-chisurf/plugins/burst/burst_ebfret/core/hmm.py
-chisurf/plugins/burst/burst_ebfret/core/dist.py
 modules/ndxplorer/ndxplorer/analysis/curve_fit.py
 
 # ── tttrlib: image + spatial + clustering kernels ────────────────────────────
@@ -94,6 +78,5 @@ chisurf/core/fluorescence/imaging/tracking.py
 # erf -> local; least_squares -> bff (median_filter -> tttrlib.ndimage done)
 chisurf/core/fluorescence/imaging/frap.py
 # scipy.stats.norm.cdf (brush kernel) -> local erf; filed under tttrlib by mistake
-modules/ndxplorer/ndxplorer/utils/mask_helpers.py
 
 # ── legacy-io: DONE 2026-10-06 -- MAT-files read/written by tttrlib.matfile ─

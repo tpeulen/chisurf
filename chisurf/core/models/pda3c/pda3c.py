@@ -920,7 +920,7 @@ class Pda3cModel(ModelCurve):
         of the two states, and the burst likelihood is averaged over the
         fraction.
         """
-        from scipy.special import logsumexp
+        from chisurf.core.math.special import logsumexp
 
         from chisurf.core.fluorescence.pda3c import burst_log_likelihood
         from chisurf.core.models.pda2c.dynamic import two_state_occupation_quadrature
@@ -993,7 +993,7 @@ class Pda3cModel(ModelCurve):
         Accuracy of a *fitted* rate is limited by the approximation this route
         makes elsewhere, not by the sampling: see the module docstring.
         """
-        from scipy.special import logsumexp
+        from chisurf.core.math.special import logsumexp
 
         from chisurf.core.fluorescence.pda3c import burst_log_likelihood
 
@@ -1104,7 +1104,7 @@ class Pda3cModel(ModelCurve):
         -------
         numpy.ndarray
         """
-        from scipy.special import logsumexp
+        from chisurf.core.math.special import logsumexp
 
         weights = np.asarray(weights, dtype=float)
         total = weights.sum()
@@ -1242,7 +1242,7 @@ def _binomial_marginal_histogram(sizes, weights, probabilities, node_weights) ->
     numpy.ndarray
         Normalised histogram over ``N_RATIO_BINS`` bins of ``k / n`` in [0, 1].
     """
-    from scipy.stats import binom
+    from chisurf.core.math.special import binom
 
     edges = np.linspace(0.0, 1.0, N_RATIO_BINS + 1)
     out = np.zeros(N_RATIO_BINS, dtype=float)

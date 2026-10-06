@@ -217,7 +217,7 @@ Accessible Volume (Gaussian approx)->RDA, dRDAE, E:
         # and E (mean FRET efficiency) over this distribution.
         
         import numpy as np
-        from scipy.stats import ncx2
+        from chisurf.core.math.special import ncx2
         
         sigma = np.sqrt(sD**2 + sA**2)
         if sigma < 1e-10:
@@ -281,7 +281,7 @@ Accessible Volume (Gaussian approx) RDA -> dRmp, dRDAE, E:
     def g(RDA, sD, sA, R0):
         # Inverse transform: Find dRmp that yields the target RDA, then compute dRDAE and E
         import numpy as np
-        from scipy.stats import ncx2
+        from chisurf.core.math.special import ncx2
         from scipy.optimize import root_scalar
         
         def _compute(dRmp):
@@ -336,7 +336,7 @@ Accessible Volume (Gaussian approx) dRDAE -> dRmp, RDA, E:
     def g(dRDAE, sD, sA, R0):
         # Inverse transform: Find dRmp that yields the target dRDAE, then compute RDA and E
         import numpy as np
-        from scipy.stats import ncx2
+        from chisurf.core.math.special import ncx2
         from scipy.optimize import root_scalar
         
         def _compute(dRmp):
@@ -391,7 +391,7 @@ Accessible Volume (Gaussian approx) E -> dRmp, RDA, dRDAE:
     def g(E, sD, sA, R0):
         # Inverse transform: Find dRmp that yields the target E, then compute RDA and dRDAE
         import numpy as np
-        from scipy.stats import ncx2
+        from chisurf.core.math.special import ncx2
         from scipy.optimize import root_scalar
         
         def _compute(dRmp):

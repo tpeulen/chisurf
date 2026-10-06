@@ -32,7 +32,8 @@ from __future__ import annotations
 import dataclasses
 
 import numpy as np
-from scipy.special import logsumexp
+
+from chisurf.core.math.special import logsumexp
 
 from .likelihood import burst_log_likelihood, collapse_bursts
 from .physics import (

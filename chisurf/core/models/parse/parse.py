@@ -24,7 +24,7 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
     @staticmethod
     def _validate_expression(expression: object) -> None:
         """Accept numerical expressions without Python execution capabilities."""
-        import scipy.special
+        from chisurf.core.math import special
 
         if not isinstance(expression, str) or not expression.strip():
             raise ValueError("ParseModel expression is missing")
@@ -35,9 +35,9 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
         functions = {
             name for name, value in vars(numpy).items() if isinstance(value, numpy.ufunc)
         } | {"abs", "min", "max", "pow"}
-        special_functions = {
-            name for name, value in vars(scipy.special).items() if isinstance(value, numpy.ufunc)
-        }
+        # ``scipy.special.<name>`` stays the spelling a saved expression uses;
+        # the functions behind it are chisurf's (scipy-identical, bff-backed).
+        special_functions = set(special.ELEMENTWISE)
         calls = (
             functions
             | {f"{module}.{name}" for module in ("numpy", "np") for name in functions}
@@ -384,7 +384,9 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
                 )
                 self._expression = None
 
-        import scipy.special
+        from types import SimpleNamespace
+
+        from chisurf.core.math import special
 
         self._validate_expression(self.func)
         scope = {
@@ -394,7 +396,7 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
             x=x,
             numpy=numpy,
             np=numpy,
-            scipy=scipy,
+            scipy=SimpleNamespace(special=special),
             pi=numpy.pi,
             e=numpy.e,
             abs=numpy.abs,

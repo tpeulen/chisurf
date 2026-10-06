@@ -130,7 +130,7 @@ def gaussian_prompt(prompt: np.ndarray, shape: float = 0.0) -> np.ndarray:
         return amp * np.exp(-0.5 * ((xx - mu) / sig) ** 2)
 
     def _skew_gauss(xx, amp, mu, sig, alpha):
-        from scipy.special import erf
+        from chisurf.core.math.special import erf
 
         z = (xx - mu) / sig
         return amp * np.exp(-0.5 * z * z) * (1.0 + erf(alpha * z / np.sqrt(2.0)))

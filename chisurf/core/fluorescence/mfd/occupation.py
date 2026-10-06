@@ -25,7 +25,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.linalg import expm
+
+from chisurf.core.math.special import expm
 
 from chisurf.core.fluorescence.kinetics import (
     equilibrium_populations,

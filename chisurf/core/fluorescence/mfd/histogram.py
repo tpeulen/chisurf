@@ -35,7 +35,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
-from scipy.special import gammaln
 
 from chisurf.core.fluorescence.mfd.moments import mixture_moments
 from chisurf.core.fluorescence.mfd.prepare import BurstPreparation, NuisanceMeasure
@@ -201,14 +200,17 @@ def observed_histogram(
 #: Cached ``log k!``. The nested background sum asks for binomial coefficients tens
 #: of thousands of times per model evaluation, for a handful of distinct photon
 #: counts; recomputing ``gammaln`` each time was 87% of the evaluation cost.
-_LOG_FACTORIAL = gammaln(np.arange(1024, dtype=float) + 1.0)
+#: Built on first use, so importing this module does not load the numerics library.
+_LOG_FACTORIAL = np.empty(0)
 
 
 def _log_factorial(n_max: int) -> np.ndarray:
     """Return ``log k!`` for ``k = 0 … n_max``, growing the cache as needed."""
     global _LOG_FACTORIAL
     if n_max >= _LOG_FACTORIAL.size:
-        size = 1 << int(np.ceil(np.log2(n_max + 2)))
+        from chisurf.core.math.special import gammaln
+
+        size = max(1024, 1 << int(np.ceil(np.log2(n_max + 2))))
         _LOG_FACTORIAL = gammaln(np.arange(size, dtype=float) + 1.0)
     return _LOG_FACTORIAL
 
@@ -392,7 +394,7 @@ def _gaussian_bin_weights(mean: np.ndarray, sigma: np.ndarray, edges: np.ndarray
         ``(n, n_bins)``; rows sum to at most one (weight outside the axis is lost,
         which is the same treatment the observed histogram gives it).
     """
-    from scipy.special import erf
+    from chisurf.core.math.special import erf
 
     safe = np.maximum(sigma, 1e-12)[:, None]
     z = (edges[None, :] - mean[:, None]) / (safe * np.sqrt(2.0))

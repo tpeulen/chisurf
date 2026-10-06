@@ -163,7 +163,7 @@ def rfrap_model(
     >>> bool(late > 0.99)
     True
     """
-    from scipy.special import erf
+    from chisurf.core.math.special import erf
 
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)

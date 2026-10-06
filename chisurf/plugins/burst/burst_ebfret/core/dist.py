@@ -18,7 +18,8 @@ over ``N`` traces is an array of shape ``(K, N)``, a stacked transition matrix
 from __future__ import annotations
 
 import numpy as np
-from scipy.special import digamma, gammaln, polygamma
+
+from chisurf.core.math.special import digamma, gammaln, polygamma
 
 __all__ = [
     "beta_log_pdf",

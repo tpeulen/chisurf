@@ -96,8 +96,8 @@ size and drops a factor that is *almost* independent of the model.
 from __future__ import annotations
 
 import numpy as np
-from scipy.special import gammaln
-from scipy.stats import poisson
+
+from chisurf.core.math.special import gammaln, poisson
 
 __all__ = [
     "background_series",

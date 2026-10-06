@@ -384,7 +384,7 @@ def szabo_gopich_quadrature(
     alpha = scaled_mean * concentration
     beta_shape = (1.0 - scaled_mean) * concentration
 
-    from scipy.stats import beta as beta_dist
+    from chisurf.core.math.special import beta as beta_dist
 
     # Mid-point rule on the quantile scale: it puts nodes where the mass is,
     # which matters because in the slow limit the density is two spikes.

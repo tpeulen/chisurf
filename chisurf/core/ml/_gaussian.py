@@ -14,7 +14,6 @@ from __future__ import annotations
 from typing import Literal
 
 import numpy as np
-from scipy import linalg
 
 #: Emission covariance parameterisations, named as scikit-learn names them.
 COVARIANCE_TYPES: tuple[Literal["spherical", "diag", "full", "tied"], ...] = (
@@ -144,15 +143,15 @@ def _log_gaussian_density(
     log_prob = np.empty((len(X), n_components))
     for c, (mu, cv) in enumerate(zip(means, covars)):
         try:
-            cv_chol = linalg.cholesky(cv, lower=True)
-        except linalg.LinAlgError:
+            cv_chol = np.linalg.cholesky(cv)
+        except np.linalg.LinAlgError:
             # A component that captured too few samples can go singular; nudge it.
             try:
-                cv_chol = linalg.cholesky(cv + min_covar * np.eye(n_features), lower=True)
-            except linalg.LinAlgError as err:
+                cv_chol = np.linalg.cholesky(cv + min_covar * np.eye(n_features))
+            except np.linalg.LinAlgError as err:
                 raise ValueError("covariances must be symmetric positive-definite") from err
         cv_log_det = 2 * np.sum(np.log(np.diagonal(cv_chol)))
-        cv_sol = linalg.solve_triangular(cv_chol, (X - mu).T, lower=True).T
+        cv_sol = np.linalg.solve(cv_chol, (X - mu).T).T
         log_prob[:, c] = -0.5 * (
             n_features * np.log(2 * np.pi) + (cv_sol**2).sum(axis=1) + cv_log_det
         )

@@ -10,7 +10,6 @@ import time
 from collections import deque
 
 import numpy as np
-import scipy.linalg
 
 import chisurf as cs
 import chisurf.core.base
@@ -2999,8 +2998,10 @@ def covariance_matrix(
             da_beta = pdi[i_beta]
             m[i_alpha, i_beta] = (da_alpha * da_beta).sum()
     try:
-        cov_m = scipy.linalg.pinvh(m)
-    except (scipy.linalg.LinAlgError, np.linalg.LinAlgError) as e:
+        from chisurf.core.math.special import pinvh
+
+        cov_m = pinvh(m)
+    except np.linalg.LinAlgError as e:
         cs.logging.debug(f"Failed to compute covariance matrix: {e}")
         # np.zeros_like((n, n)) would build a length-2 vector from the shape
         # tuple rather than an n x n matrix.
