@@ -323,7 +323,7 @@ class BurstAnalysisHubApp(ToolHubApp):
     def select(self, role: str, retry: bool = False, by_user: bool = True):
         child = super().select(role, retry=retry, by_user=by_user)
         if self.status == "Ready":
-            self.status = self.summary()
+            self.status = self._summary_shown = self.summary()
         return child
 
     def _to_setup(self, child) -> None:
@@ -358,6 +358,9 @@ class BurstAnalysisHubApp(ToolHubApp):
             child.controller.set_folder(folder)
 
     def _to_two_cde(self, child) -> None:
+        settings = self.context.channel_settings
+        if settings and self._changed("two_cde", "setup", settings):
+            child.model.apply_channel_settings(settings)
         folder = analysis_path(self.context)
         if folder is not None and child.model.folder != str(folder):
             child.model.set_folder(str(folder))
@@ -479,6 +482,8 @@ class BurstAnalysisHubApp(ToolHubApp):
         return " · ".join(parts)
 
     def render(self):
+        if self.status == getattr(self, "_summary_shown", None) or self.status == "Ready":
+            self.status = self._summary_shown = self.summary()
         for panel in self.tools:
             base = self._base_names.get(panel["role"], panel["name"])
             badge = self.badge(panel["role"])

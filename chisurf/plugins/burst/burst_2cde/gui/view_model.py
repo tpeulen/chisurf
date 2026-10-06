@@ -84,6 +84,20 @@ class TwoCdeViewModel:
         except Exception:
             return []
 
+    def apply_channel_settings(self, settings: dict) -> None:
+        """Take a workflow's detector definition: the donor (green) and acceptor (red) routing channels and the
+        file type (the burst workflow hands its setup over this way)."""
+        from chisurf.core.fluorescence.burst.table import fret_detectors
+
+        found = fret_detectors(settings)
+        for role in ("donor", "acceptor"):
+            if role in found:
+                setattr(self, f"{role}_channels_text", ",".join(str(c) for c in found[role].get("chs", [])))
+        file_type = ((settings or {}).get("tttr_reading") or {}).get("file_type")
+        if file_type:
+            self.file_type = file_type
+        self.notify("channels")
+
     def set_folder(self, folder: str | pathlib.Path) -> None:
         self.folder = str(folder).strip()
         self.notify("folder")
