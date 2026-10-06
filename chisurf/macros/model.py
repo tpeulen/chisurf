@@ -42,7 +42,10 @@ def set_linearization(
         return
 
     for f in fit[fit.selected_fit_index :]:
-        f.model.corrections.lintable = cs.core.data.DataCurve(x=lin_table.x, y=lin_table.y)
+        # a named copy: the editor's Lin. table field shows the stored curve's name
+        f.model.corrections.lintable = cs.core.data.DataCurve(
+            x=lin_table.x, y=lin_table.y, name=getattr(lin_table, "name", "")
+        )
         f.model.corrections.correct_dnl = True
     fit.update()
     _sync_editors(fit)
@@ -300,7 +303,10 @@ def set_background_curve(
         return
 
     for f in fit[fit.selected_fit_index :]:
-        f.model.generic.background_curve = cs.core.data.DataCurve(x=curve.x, y=curve.y)
+        # a named copy: the editor's Background field shows the stored curve's name
+        f.model.generic.background_curve = cs.core.data.DataCurve(
+            x=curve.x, y=curve.y, name=getattr(curve, "name", "")
+        )
 
     fit.update()
     _sync_editors(fit)
@@ -392,10 +398,12 @@ def append_global_parameter(parameter_name: str, fit: cs.core.fitting.fit.FitGro
         fit = gui.current_fit
     if fit is None:
         return
-    try:
-        fit.append_global_parameter(parameter_name)
-    except Exception:
-        pass
+    from chisurf.core.fitting.parameter import FittingParameter
+
+    # The global parameters belong to the global *model*; a Fit has no such method,
+    # and this used to fail silently inside a bare except.
+    model = getattr(fit, "_model", None) or getattr(fit, "model", None)
+    model.append_global_parameter(FittingParameter(name=str(parameter_name)))
 
 
 def append_fit(fit_index: int, fit: cs.core.fitting.fit.FitGroup = None) -> None:

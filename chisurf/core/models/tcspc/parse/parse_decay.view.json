@@ -112,7 +112,7 @@
           "select_action": "model.set_linearization",
           "unload_action": "model.unload_lintable",
           "index_key": "idx",
-          "name_key": "lin_name"
+          "name_key": "lin_name", "name_attr": "lintable"
         },
         {
           "type": "choice",

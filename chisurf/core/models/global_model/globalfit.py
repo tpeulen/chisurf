@@ -122,9 +122,9 @@ class GlobalFitModel(model.Model, Curve):
     def add_selected_fit(self) -> None:
         """Add the fit named by :attr:`selected_candidate_fit` to the global fit."""
         name = str(self.selected_candidate_fit or "")
-        for i, f in enumerate(getattr(cs, "fits", []) or []):
+        for f in getattr(cs, "fits", []) or []:
             if str(getattr(f, "name", "") or "") == name:
-                self.fit.append_fit(i)
+                self.append_fit(f)
                 return
         cs.logging.warning(f"GlobalFitModel: no fit named {name!r} to add")
 
@@ -134,7 +134,8 @@ class GlobalFitModel(model.Model, Curve):
         if row < 0:
             cs.logging.warning("GlobalFitModel: no local fit selected to remove")
             return
-        self.fit.remove_local_fit(row)
+        self.remove_local_fit(row)
+        self.selected_local_fit = -1
 
     def add_global_parameter(self) -> None:
         """Create a global parameter named by :attr:`new_global_parameter_name`."""
@@ -142,8 +143,14 @@ class GlobalFitModel(model.Model, Curve):
         if not name:
             cs.logging.warning("GlobalFitModel: type a name before adding a global parameter")
             return
-        self.fit.append_global_parameter(name)
+        from chisurf.core.fitting.parameter import FittingParameter
+
+        self.append_global_parameter(FittingParameter(name=name))
         self.new_global_parameter_name = ""
+
+    def local_fit_rows(self) -> typing.List[dict]:
+        """The local-fit table's rows (a method: a table ``source`` is called)."""
+        return [{"name": name} for name in self.fit_names]
 
     @property
     def fit_names(self) -> typing.List[str]:
