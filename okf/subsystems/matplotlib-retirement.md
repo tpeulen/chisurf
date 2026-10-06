@@ -9,25 +9,20 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
-Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 8** (2026-10-05/06),
+Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 7** (2026-10-05/06),
 guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 `emtk.colormaps`), **delete** (1), **figure** (all but the two below, via
 `emtk.figure`). Open, in order:
 
-1. **trace browser DOCX picture** (`plugins/tttr/trace_browser/gui/model.py`,
-   `_render_trace_png`) -- ported in `f992386bb`, **restored to matplotlib**
-   in the next commit because it broke `test_emtk_trace_browser_t4.py -k docx`
-   (A/B in a clean worktree: old 4/4 green, ported 0/4). Cause: the figure is
-   drawn from inside the app's docked `plot` window; emtk.figure's nested
-   ImApp corrupts the host context's `_child` stack (`im_core.end_child`:
-   "not enough values to unpack (expected 6, got 2)"). emtk `1c13d40` isolates
-   implot's global context and im's current context, which fixes the
-   "begin_plot() inside a plot" half but not the child-stack half. The fix
-   belongs in emtk: find what state a nested `ImApp.draw` shares with the
-   host (`Context` class-level / module storage; check `im_core` globals
-   besides `_CURRENT`), add it to `emtk.figure._isolated`, prove with a test
-   that saves a figure from inside a *docked* window, then re-port (the
-   ported function is in `f992386bb`).
+1. **trace browser DOCX picture -- DONE 2026-10-06.** The cause was not
+   nesting: the export runs on a job thread (`chisurf/emtk/jobs.py`), and
+   `emtk.figure` swapped implot's `gp` and im's current context (process
+   globals) while the GUI thread was mid-frame. emtk `a89dc09` adds
+   `im_core.FRAME_LOCK`, held by every `frame()` and by `figure._isolated()`;
+   the port is re-applied and `test_emtk_trace_browser_t4.py -k docx` is green
+   (3/3). Before/after picture on BH_SPC132 (ALEX): same title, labels,
+   legend, channels. **Rule for any off-thread emtk drawing: it goes through
+   `frame()`/`emtk.figure`, never a hand-made Context.**
 2. **ndXplorer `export/publication_figure.py`** -- blocked on a vector
    backend: it exports PDF/SVG (`EXPORT_FORMATS`); `emtk.figure` rasterises.
    Needs an SVG (and PDF) painter in emtk implementing the painter contract,

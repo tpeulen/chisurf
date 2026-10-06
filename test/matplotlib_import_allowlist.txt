@@ -36,8 +36,6 @@
 # --- figure ---
 modules/ndxplorer/ndxplorer/export/publication_figure.py
 
-chisurf/plugins/tttr/trace_browser/gui/model.py
-
 # --- plot ---
 chisurf/plugins/fluorescence_decay/lltf/lltf_gui.py
 

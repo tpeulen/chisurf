@@ -1420,8 +1420,8 @@ class TraceBrowserModel:
         """Write ``<folder name>.docx`` into the open folder: one section per file.
 
         The Qt tool's ``_on_export_docx``: a heading, then per file its name, folder, rating,
-        annotation and a picture of its trace (drawn here from the loaded trace with the
-        Qt-free Agg backend of matplotlib; no picture when that is not available).
+        annotation and a picture of its trace (drawn here from the loaded trace with
+        :mod:`emtk.figure`, which needs no toolkit; no picture when the trace cannot be read).
 
         Returns
         -------
@@ -1471,27 +1471,22 @@ class TraceBrowserModel:
         return save_path
 
     def _render_trace_png(self, path: pathlib.Path, png: pathlib.Path) -> pathlib.Path | None:
-        """Draw the trace of *path* into *png* (matplotlib Agg); ``None`` when that fails."""
+        """Draw the trace of *path* into *png* (:mod:`emtk.figure`); ``None`` when that fails."""
         try:
-            from matplotlib.backends.backend_agg import FigureCanvasAgg
-            from matplotlib.figure import Figure
+            from emtk.figure import Figure
 
             time_axis, counts, labels = self.load_trace(path, self.window_ms)
             counts = np.asarray(counts, dtype=float)
             if counts.ndim == 1:
                 counts = counts[:, None]
-            fig = Figure(figsize=(7.0, 3.0), dpi=100)
-            FigureCanvasAgg(fig)
-            ax = fig.add_subplot(1, 1, 1)
+            ax = Figure(size=(700, 300)).ax()
             for j, label in enumerate(labels[: counts.shape[1]]):
-                ax.plot(time_axis, counts[:, j], linewidth=0.8, label=str(label))
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel(f"Counts / {self.window_ms:g} ms")
+                ax.line(time_axis, counts[:, j], width=0.8, label=str(label))
+            ax.set_labels(x="Time (s)", y=f"Counts / {self.window_ms:g} ms")
             ax.set_title(path.name)
             if labels:
-                ax.legend(loc="upper right", fontsize=7)
-            fig.tight_layout()
-            fig.savefig(str(png))
+                ax.legend("ne")
+            ax.figure.save(png)
             return png
         except Exception as exc:
             logger.debug("TraceBrowser: No trace picture for %s: %s", path, exc)
