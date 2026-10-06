@@ -1,4 +1,4 @@
-"""The emtk burst-MLE windows draw what the wizard computed, or say that there is none (PRD-153 rule 8a, card ML-X).
+"""The emtk burst-MLE windows draw what the wizard computed, or say that there is none (no invented data, card ML-X).
 
 The earlier app drew a Gaussian "IRF" and an exponential "decay" built with ``np.exp`` for any data and a lifetime
 histogram from its own ``tau1`` / ``tau2`` fields, and read wizard attributes (``irf_background_patterns``,

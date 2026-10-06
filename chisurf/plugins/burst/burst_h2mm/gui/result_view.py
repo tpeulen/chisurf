@@ -3,7 +3,7 @@
 Every function takes the :class:`~chisurf.plugins.burst.burst_h2mm.core.analysis.H2mmAnalysis` that
 :func:`~chisurf.plugins.burst.burst_h2mm.core.analysis.analyze` / ``run_analysis`` returned and gives back the
 arrays the plots and tables show. With no analysis they return ``None`` (or an empty list): the windows then draw
-an empty-state message, never a placeholder curve (PRD-153 rule 8a: no invented data).
+an empty-state message, never a placeholder curve (no invented data).
 
 The module is Qt-free and emtk-free so the parity tests can compare its output with the backend directly.
 """

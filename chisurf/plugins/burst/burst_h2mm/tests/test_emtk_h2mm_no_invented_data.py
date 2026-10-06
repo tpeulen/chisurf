@@ -1,4 +1,4 @@
-"""The emtk H2MM windows draw what the fit computed, or say that there is none (PRD-153 rule 8a, card H-X).
+"""The emtk H2MM windows draw what the fit computed, or say that there is none (no invented data, card H-X).
 
 The earlier app drew a hard-coded rate matrix, seeded ``np.random.normal`` transition clusters and invented
 exponential dwell curves whenever there was no result, and read result fields (``rates``, dict-shaped

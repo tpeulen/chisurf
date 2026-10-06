@@ -3,7 +3,7 @@
 The wizard owns the fit. This module reads its state and nothing else: the curves ``plot_fit_result`` last drew
 (``wizard.fit_curves``), the fit-parameter rows, the per-burst lifetimes of the last ``process_bursts`` run
 (``wizard.burst_results``) and the pooled state lifetimes. With no fit (or no batch run) each function returns
-``None`` / an empty list and the windows draw an empty-state message: nothing is ever invented (PRD-153 rule 8a).
+``None`` / an empty list and the windows draw an empty-state message: nothing is ever invented.
 
 Qt-free: the wizard is read through its public attributes only, so the tests can feed a stand-in object.
 """

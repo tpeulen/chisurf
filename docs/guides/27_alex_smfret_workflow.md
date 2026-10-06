@@ -30,23 +30,39 @@ typical analysis notebook is structured — but using ChiSurf's guided
 
 ## In ChiSurf
 
-The guided window is **Burst Analysis** (`chisurf/plugins/burst/burst_analysis/`):
-a numbered pipeline on the left — *1. Data Selection*, *2. Burst Selection*,
-*3. Burst Fusion (optional)*, *4. Burst BVA*, *5. Burst 2CDE*, *6. Burst MLE*,
-*7. Burst segmentation (H2MM)*, *8. Burst segment MLE* — and the side tools
-(Browser, Accurate FRET, Burst FCS, Kinetics (GS), Background,
-IRF & Background) below the separator. Each step reads the previous step's
-output folder; **Next ▶** moves on.
+The guided window is **Burst Analysis** (`chisurf/plugins/burst/burst_analysis/`,
+drawn natively by {src}`chisurf/plugins/burst/burst_analysis/gui/native.py`):
+a numbered pipeline on the left — *0. Setup Selection*, *1. Data Selection*,
+*2. Burst Selection*, *3. Burst Fusion (optional)*, *4. Burst BVA*, *5. Burst 2CDE*,
+*6. Burst MLE*, *7. Burst segmentation (H2MM)*, *8. Burst segment MLE* — and the side
+tools (Browser, Accurate FRET, Burst FCS, Kinetics (GS), Background,
+IRF & Background) under *Side tools*. Each step is that tool's own window, and it
+is handed what the earlier steps produced each time it is opened: the detector
+setup of step 0 (every detector editor, the BVA / 2CDE / Kinetics channels, the
+Burst FCS pairs), the files of step 1 (Burst Selection, Background,
+IRF & Background) and the burst folder of step 2 (or the fused folder once step 3
+wrote one). **Next** runs the open step where it has a run (Burst Selection
+searches) and moves on when it is done; **>>** walks the remaining steps; the line
+beside them names the setup, the files and the burst folder the later steps read.
+*Send to MLE* in IRF & Background fills both MLE steps.
+
+1. On **0. Setup Selection** choose the stored detector setup (or define one and
+   **Save** it).
+2. **Next**, then drop the measurements on **1. Data Selection** (or **Add files**).
+3. **Next** to **2. Burst Selection**; check the search settings, then **Next**
+   again: it searches every file and moves on to the later steps.
 
 ```{figure} figures/27_burst_analysis_pipeline.png
 :name: fig-27-burst-analysis-pipeline
 :width: 100%
 
-Burst Analysis on step 2 after ▶ Run on the ten BH SPC-130 files of a
-double-labelled DNA sample (`burst_selection/tests/data/bh_spc132_sm_dna`):
-the inter-photon-time trace of the first 10 s window, with the
-sliding-window search (L = 20, m = 10, max dT 0.15 ms) marking the selected
-burst photons in cyan — 71 bursts in this window, 1130 over all ten files.
+Burst Analysis on step 2 after **Next** ran the search on the ten BH SPC-130 files
+of a double-labelled DNA sample (`burst_selection/tests/data/bh_spc132_sm_dna`,
+setup green 0/1, red 8/9) with the sliding-window search (L = 20, m = 10,
+max dT 0.15 ms): the count rate of the first 10 s of `m000.spc`, all photons
+(blue) and the selected burst photons (orange), and the proximity-ratio histogram
+of its bursts — 71 bursts in `m000.spc`, 1130 over all ten files. The rail shows
+the step badges: setup done, ten files, bursts ready for steps 4–8.
 ```
 
 The same pipeline from Python is the `BurstWorkflow` facade, where each step is

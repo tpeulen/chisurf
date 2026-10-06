@@ -8,6 +8,13 @@ pipeline that produces them, in the order they have to happen.
 If you have not run one before, press **Guide** beside this button. It walks the
 numbered steps in the left list and says what each one decides.
 
+**Next** (bottom right) runs the open step where it has a run — Burst Selection
+searches — and moves on when it has finished; **>>** walks the remaining steps the
+same way. **Tool help** opens the help of the step that is open. The line beside
+Back / Next names the setup, the number of files and the burst folder every later
+step reads; the rail marks a step that is done (✓), how many files or burst tables
+it holds, and (•) which analysis steps have bursts to work on.
+
 ## Why the steps are numbered
 
 The order is not a suggestion. Each step consumes what the one before it wrote:

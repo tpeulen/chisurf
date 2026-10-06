@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour for the integrated burst workflow. The steps are the numbered panels in the left navigation list, so they target 'panel' -- and they WAIT for the user to select the row rather than selecting it for them. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour for the integrated burst workflow (the native hub, gui/native.py; the legacy Qt shell reads it too). The steps are the numbered rows of the left rail, so they target 'panel' -- and they WAIT for the user to select the row rather than selecting it for them. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
   "steps": [
     {
       "title": "What this window is",
@@ -68,6 +68,13 @@
       }
     },
     {
+      "title": "Next runs the step, >> runs the rest",
+      "text": "<b>Next</b> runs the open step where it has a run (Burst Selection searches) and moves on once it has finished. <b>&gt;&gt;</b> walks every remaining pipeline step in order, waiting for each; pressed again it stops after the current one. Fusion is never run by walking past it.<br/><br/>The line beside them says which setup, how many files and which burst folder the later steps read.",
+      "target": {
+        "name": "next"
+      }
+    },
+    {
       "title": "The background is not a detail",
       "text": "Every corrected quantity is a count <i>minus a background</i>. Get it wrong and <i>E</i> moves for the dim bursts while the bright ones stay put — which looks exactly like a real sub-population, and is the most common way a burst histogram lies.<br/><br/>Estimate it from the measurement itself, not from a blank.",
       "target": {
@@ -86,7 +93,7 @@
     },
     {
       "title": "Four checks before you believe a histogram",
-      "text": "1. <b>Does the burst count survive a factor of two</b> on the threshold? A real population does; an artefact does not.<br/>2. <b>Is donor-only at E ≈ 0</b> after correction?<br/>3. <b>Does S separate the species?</b> Singly-labelled molecules must leave before anything is read as a distance.<br/>4. <b>Do dim and bright bursts agree?</b> If E drifts with burst size, suspect the background before the biophysics.<br/><br/>The <b>?</b> button beside Guide has the long version and the reading list.",
+      "text": "1. <b>Does the burst count survive a factor of two</b> on the threshold? A real population does; an artefact does not.<br/>2. <b>Is donor-only at E ≈ 0</b> after correction?<br/>3. <b>Does S separate the species?</b> Singly-labelled molecules must leave before anything is read as a distance.<br/>4. <b>Do dim and bright bursts agree?</b> If E drifts with burst size, suspect the background before the biophysics.<br/><br/><b>Help</b> beside Guide has the long version and the reading list.",
       "target": {}
     }
   ]
