@@ -23,6 +23,23 @@ the routed modules, construct `ChiSurfServer`, and start the GUI via
 `chisurf.gui.get_win` + `show()`; 2026-10-06: all imports fine, server 0.79 s,
 GUI 3.0 s with every model registered, console clean.
 
+**Recipes, locks and CI -- swept 2026-10-06.** Runtime manifests across the
+stack no longer declare scipy, matplotlib, numba, ipython or nbformat:
+chisurf (pixi `[dependencies]`, recipe `run:`, pyproject, test_py314,
+setup_runtime; lock `1a7aad799`), ndXplorer (`55e711d` recipe/env, `40aa74c`
+pyproject + its last use, `simpson` inside `settings/curve_equations.yaml`),
+imp-tricks (scipy `3b951db`; matplotlib -> `plot` extra, pandas/jsonschema/tqdm
+gone `ce397ee`), quest (recipe numba `c9d6d68`; lock re-solved `1daacfa` -- it
+was stale against its own manifest, which a locked `setup-pixi` install
+rejects). ipython/nbformat left chisurf (`60af57358`): the notebook editor uses
+`code_editor/ipynb.py`, byte-identical to nbformat on 435 repo notebooks.
+CI needs no edit: chisurf's workflows install the pixi `test` env (scipy,
+nbformat, matplotlib as oracles) with `locked: false`; tttrlib/imp.bff CI
+install scipy/matplotlib only in test/docs steps; chimol/emtk CI never needed
+them. **YAML is a seam the `.py` guards cannot see** -- now guarded in chisurf
+(`test_settings_yaml_never_embeds_scipy`) and ndXplorer
+(`tests/test_no_scipy_in_settings.py`).
+
 Where each family went: optimisers, root finding, special functions,
 distributions, `expm`/`pinvh`, LSODA -> IMP.bff (via
 `chisurf/core/math/numerics.py`, `chisurf/core/math/special.py`); ndimage,
