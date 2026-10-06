@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 from emtk import im
@@ -50,7 +50,9 @@ class ChimolView:
         Keyword options for chimol's Viewer, as a Qt host would construct it with.
     """
 
-    def __init__(self, min_size: tuple[int, int] = (760, 420), viewer_options: dict | None = None) -> None:
+    def __init__(
+        self, min_size: tuple[int, int] = (760, 420), viewer_options: dict | None = None
+    ) -> None:
         self.min_size = min_size
         #: Passed to chimol's Viewer when it starts (``scale_factor=1.0`` for Angstrom coordinates, ...).
         self.viewer_options = dict(viewer_options or {})
@@ -63,6 +65,10 @@ class ChimolView:
         self._render_size = min_size
         self._dragging = False
         self._focused = False
+        #: ``claim(x, y) -> bool``, asked on a left press over the picture before chimol sees it: True keeps the
+        #: press (and its release) from chimol, for a host that hit-tests overlays of its own (a sphere it placed).
+        self.claim_click: Callable[[float, float], bool] | None = None
+        self._claimed = False
 
     # ── lifecycle ─────────────────────────────────────────────────────────
 
@@ -148,6 +154,21 @@ class ChimolView:
         renderer.on_resize(w, h, 1.0)
         self._render_size = (w, h)
 
+    def screen_points(self, coords) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Where points in Angstrom are on screen (emtk coordinates) in the last frame: ``(x, y, visible)``."""
+        empty = (np.zeros(0), np.zeros(0), np.zeros(0, dtype=bool))
+        viewer = self.viewer
+        if viewer is None or self.rect is None or not hasattr(viewer, "world_to_screen"):
+            return empty
+        fx, fy, visible = viewer.world_to_screen(coords)
+        rx, ry, rw, rh = self.rect
+        fw, fh = self._render_size
+        return (
+            rx + np.asarray(fx) * rw / max(fw, 1),
+            ry + np.asarray(fy) * rh / max(fh, 1),
+            np.asarray(visible),
+        )
+
     # ── input ─────────────────────────────────────────────────────────────
 
     def _to_frame(self, x: float, y: float) -> tuple[float, float]:
@@ -185,10 +206,24 @@ class ChimolView:
         fx, fy = self._to_frame(mx, my)
         mods = self._modifiers(io)
         pressed = False
+        if (
+            io.mouse_clicked[0]
+            and over
+            and self.claim_click is not None
+            and self.claim_click(mx, my)
+        ):
+            self._claimed = True
+            self._focused = True
+            return
+        if self._claimed:
+            self._claimed = any(io.mouse_down)
+            return
         for i, code in enumerate(_BUTTONS):
             if io.mouse_clicked[i]:
                 if over:
-                    renderer.on_pointer_press(fx, fy, code, mods, double=bool(io.mouse_double_clicked[i]))
+                    renderer.on_pointer_press(
+                        fx, fy, code, mods, double=bool(io.mouse_double_clicked[i])
+                    )
                     self._dragging = pressed = True
                     self._focused = True
                 else:
@@ -202,7 +237,9 @@ class ChimolView:
                 renderer.on_pointer_release(fx, fy, code, mods)
                 self._dragging = any(io.mouse_down)
         if over and io.mouse_wheel:
-            renderer.on_wheel(fx, fy, int(round(io.mouse_wheel)) or (1 if io.mouse_wheel > 0 else -1), mods)
+            renderer.on_wheel(
+                fx, fy, int(round(io.mouse_wheel)) or (1 if io.mouse_wheel > 0 else -1), mods
+            )
             io.mouse_wheel = 0.0
         if self._focused and not io.want_capture_keyboard:
             for key, text, kmods in list(io.key_events):

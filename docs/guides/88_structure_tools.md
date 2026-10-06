@@ -18,27 +18,31 @@ measured *distances* between them. Open one with **Load** (or drop it on the win
 ```{figure} figures/88_fps_positions.png
 :width: 100%
 
-Positions tab with the HIV reverse-transcriptase example: the table, the selected position's dye settings, the
-accessible-volume message.
+The HIV reverse-transcriptase example: the Positions table and the selected position's dye settings on the left,
+the 3D View beside them with the selected position's accessible volume (red) in front and the others muted.
 ```
 
 | Tab | Controls |
 |---|---|
-| **Positions** | **Add Row** (a row becomes a position when it has a name, or a chain and residue: `A132`), **Delete Row**, **Browse PDB...**, **Compute AVs**, **Save AV MRC**. The table's Name, Structure, Chain, Res, Atom cells are typed; under it the form of the selected row: attachment lists from the structure, dye preset and model, colour, dye dimensions, Simulation and Advanced (folded). |
+| **Positions** | **Add Row** (a row becomes a position when it has a name, or a chain and residue: `A132`), **Delete Row**, **Browse PDB...**, **Fetch PDB...** (download by a 4-character ID from the RCSB), **◀ Residue** / **Residue ▶** (walk the selected position along its chain), **Compute AVs**, **Save AV MRC**. The table's Name, Structure, Chain, Res, Atom cells are typed; under it the form of the selected row: attachment lists from the structure, dye preset and model, colour, dye dimensions, Simulation and Advanced (folded). |
 | **Distances** | **Add Row**, **Delete Row**, **Add / Remove Scoring Group**, the scoring-group filter; the form of the selected restraint: labels, type (dRDA, dRDAE, dRMP, pRDA), score set, R0, d, errors, **Load DA Distribution...** for pRDA. |
 | **FlexFit** | Set choice with **+** / **-**, residue and bond tables with **Add** / **Remove selected**. |
 | **JSON** | The file text; edit it and press **Update** in the toolbar. |
-| **3D View** | The ChiMOL viewer: the structures as cartoon, the accessible volumes as surfaces with their mean positions, the distance lines; clicking an atom attaches the selected position to it. |
+| **3D View** | The ChiMOL viewer: the structures as cartoon, the accessible volumes as surfaces with their mean positions, the distance lines. The selected position's volume is in front, the others are muted, and picking a row brings the camera to it. Clicking an atom attaches the selected position to it (with none selected, it starts a new position; an atom of the other structure moves the position there); clicking a mean sphere selects that position. |
 
-The five views are dock windows, tabbed together at first. Drag a tab onto a side of the window (the drop pads show where
-it lands) to see two views at once, for example the 3D View beside the Positions table; drag it back onto the tab strip
-to tab it again. The arrangement is kept for the next time the editor opens.
+**Placing a dye.** Select a position (or none, to start one), then click an atom in the 3D View, or step with
+**◀ Residue** / **Residue ▶**: the accessible volume is recomputed at once and drawn where the dye can now be, so a
+labelling site can be chosen by looking at where its dye would sit.
+
+The five views are dock windows: the tables tabbed on the left and the 3D View beside them. Drag a tab onto a side of
+a view (the drop pads show where it lands) to see more at once, for example Distances beside Positions; drag it back
+onto a tab strip to tab it again. The arrangement is kept for the next time the editor opens.
 
 ```{figure} figures/88_fps_split.png
 :width: 100%
 
-The 3D View dragged beside the Positions table: both stay live, so a row picked in the table and an atom clicked in the
-viewer act on the same position.
+Distances dragged out beside Positions, the 3D View on the right: every view stays live, so a row picked in a table
+and an atom clicked in the viewer act on the same position.
 ```
 
 Toolbar: **Load**, **Save**, **Update**, **Clear** (asks first), **Guide**, **Help**. The accessible volume of a position is

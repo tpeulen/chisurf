@@ -14,14 +14,24 @@ from typing import Any
 
 import numpy as np
 from emtk import im, implot3d
-from emtk.docking import DockManager, Region
+from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.chimol_view import ChimolView
 from chisurf.plugins.emtk_layout import LabelColumn, layout_spec
 
-from .fps_model import (ALL_DISTANCES, DISTANCE_TYPE_NAMES, DISTANCE_TYPES, POSITION_DEFAULTS, FpsEditor,
-                        colour_from_hex, dye_presets, hex_colour, safe_mrc_stem)
+from .fps_model import (
+    ALL_DISTANCES,
+    DISTANCE_TYPE_NAMES,
+    DISTANCE_TYPES,
+    PDB_ID,
+    POSITION_DEFAULTS,
+    FpsEditor,
+    colour_from_hex,
+    dye_presets,
+    hex_colour,
+    safe_mrc_stem,
+)
 from .shell import CardShell
 
 HERE = Path(__file__).resolve().parent
@@ -29,8 +39,13 @@ RES = HERE / "resources" / "fps_json"
 VIEWS = HERE / "views"
 TABS = ("Positions", "Distances", "FlexFit", "JSON", "3D View")
 #: The dock window of each view (the Qt editor's docks; the user can split and rearrange them).
-VIEW_KEYS = {"Positions": "positions", "Distances": "distances", "FlexFit": "flexfit", "JSON": "json",
-             "3D View": "view3d"}
+VIEW_KEYS = {
+    "Positions": "positions",
+    "Distances": "distances",
+    "FlexFit": "flexfit",
+    "JSON": "json",
+    "3D View": "view3d",
+}
 TAB_TIPS = {
     "Positions": "Labelling positions: structure, chain, residue, atom and the dye of each.",
     "Distances": "Distance restraints between two positions, and the scoring groups.",
@@ -38,9 +53,6 @@ TAB_TIPS = {
     "JSON": "The raw fps.json text; edit it and press Update.",
     "3D View": "The accessible volumes and distance lines of the computed positions.",
 }
-FPS_FILTER = "fps.json (*.fps.json *.json);;All files (*)"
-PDB_FILTER = "PDB (*.pdb *.pdb.gz *.ent);;All files (*)"
-MRC_FILTER = "MRC map (*.mrc *.map *.ccp4);;All files (*)"
 FPS_FILTER = "fps.json (*.fps.json *.json);;All files (*)"
 PDB_FILTER = "PDB (*.pdb *.pdb.gz *.ent);;All files (*)"
 MRC_FILTER = "MRC map (*.mrc *.map *.ccp4);;All files (*)"
@@ -61,7 +73,7 @@ def _with(options: list, current: Any) -> list[str]:
 class _View:
     """What a spec reads: the editor's rows, the selected row's fields and the table callbacks."""
 
-    def __init__(self, card: "FpsJsonCard") -> None:
+    def __init__(self, card: FpsJsonCard) -> None:
         object.__setattr__(self, "card", card)
         object.__setattr__(self, "ed", card.editor)
 
@@ -86,8 +98,14 @@ class PositionsView(_View):
         self.card.used("positions")
 
     def edit_row(self, record, key: str, value) -> None:
-        field = {"show": "visible", "name": "name", "pdb": "pdb_path", "chain": "chain_identifier",
-                 "res": "residue_seq_number", "atom": "atom_name"}.get(key)
+        field = {
+            "show": "visible",
+            "name": "name",
+            "pdb": "pdb_path",
+            "chain": "chain_identifier",
+            "res": "residue_seq_number",
+            "atom": "atom_name",
+        }.get(key)
         if field is None:
             return
         rid = record["row"]
@@ -325,10 +343,16 @@ class FpsJsonCard(CardShell):
         self.views = {}
         super().__init__("FPS JSON Editor", RES, "fps")
         self.editor.on_change = self.request_frame
-        self.views = {"positions": PositionsView(self), "distances": DistancesView(self),
-                      "flexfit": FlexView(self)}
-        self.specs = {"positions": _spec("fps_positions.view.json"), "distances": _spec("fps_distances.view.json"),
-                      "flexfit": _spec("fps_flexfit.view.json")}
+        self.views = {
+            "positions": PositionsView(self),
+            "distances": DistancesView(self),
+            "flexfit": FlexView(self),
+        }
+        self.specs = {
+            "positions": _spec("fps_positions.view.json"),
+            "distances": _spec("fps_distances.view.json"),
+            "flexfit": _spec("fps_flexfit.view.json"),
+        }
         self.forms = {name: FormState(on_used=self.used) for name in self.specs}
         self.json_form = FormState(on_used=self.used)
         self.labels = LabelColumn()
@@ -338,6 +362,13 @@ class FpsJsonCard(CardShell):
         self._chimol_scene = None
         self._chimol_objects: dict[str, str] = {}
         self._chimol_picks = False
+        self.chimol.claim_click = self._claim_3d_click
+        #: The position the camera was last centred on (a row picked in a table brings the 3D view to it).
+        self._centred_on = ""
+        #: Set while a pick in the viewer changes the selection, so the camera does not jump to what was clicked.
+        self._picking = False
+        # Saved under a name of its own: the one-window layout ("main") of the earlier editor would hide the split.
+        self.native_layouts = {"views": self.docks}
 
     # ── status ────────────────────────────────────────────────────────────
 
@@ -349,7 +380,9 @@ class FpsJsonCard(CardShell):
     # ── file actions ──────────────────────────────────────────────────────
 
     def load(self) -> None:
-        self.open_file("Open JSON Labeling-File", FPS_FILTER, self.load_path, current=self.editor.path)
+        self.open_file(
+            "Open JSON Labeling-File", FPS_FILTER, self.load_path, current=self.editor.path
+        )
 
     def load_path(self, path: str) -> None:
         if self.editor.load(path):
@@ -358,8 +391,13 @@ class FpsJsonCard(CardShell):
 
     def save(self) -> None:
         name = Path(self.editor.path).name if self.editor.path else "labeling.fps.json"
-        self.save_file("Save JSON Labeling-File", FPS_FILTER, self.save_path, filename=name,
-                       directory=os.path.dirname(self.editor.path) if self.editor.path else "")
+        self.save_file(
+            "Save JSON Labeling-File",
+            FPS_FILTER,
+            self.save_path,
+            filename=name,
+            directory=os.path.dirname(self.editor.path) if self.editor.path else "",
+        )
 
     def save_path(self, path: str) -> None:
         if not str(path).endswith(".json"):
@@ -374,8 +412,13 @@ class FpsJsonCard(CardShell):
         self.used("update")
 
     def clear(self) -> None:
-        self.ask("Clear Configuration", "Are you sure you want to clear all parameters?",
-                 self._clear, yes="Clear all", no="Keep")
+        self.ask(
+            "Clear Configuration",
+            "Are you sure you want to clear all parameters?",
+            self._clear,
+            yes="Clear all",
+            no="Keep",
+        )
 
     def _clear(self) -> None:
         self.editor.clear()
@@ -394,17 +437,27 @@ class FpsJsonCard(CardShell):
     # ── positions / distances ─────────────────────────────────────────────
 
     def ask_delete_position(self, rid: str) -> None:
-        self.ask("Remove position", f"Remove {rid or 'the empty row'}"
-                 + (" and every distance that uses it?" if rid and not rid.startswith("#") else "?"),
-                 lambda: self._delete_position(rid), yes="Remove", no="Keep")
+        self.ask(
+            "Remove position",
+            f"Remove {rid or 'the empty row'}"
+            + (" and every distance that uses it?" if rid and not rid.startswith("#") else "?"),
+            lambda: self._delete_position(rid),
+            yes="Remove",
+            no="Keep",
+        )
 
     def _delete_position(self, rid: str) -> None:
         self.editor.delete_position(rid)
         self.sync_status()
 
     def ask_delete_distance(self, rid: str) -> None:
-        self.ask("Remove Restraint?", "Are you sure you want to remove this restraint?",
-                 lambda: self._delete_distance(rid), yes="Remove", no="Keep")
+        self.ask(
+            "Remove Restraint?",
+            "Are you sure you want to remove this restraint?",
+            lambda: self._delete_distance(rid),
+            yes="Remove",
+            no="Keep",
+        )
 
     def _delete_distance(self, rid: str) -> None:
         self.editor.delete_distance(rid)
@@ -415,8 +468,24 @@ class FpsJsonCard(CardShell):
         if not rid or self.editor._pos(rid) is None:
             self.say("Select a position row first.", True)
             return
-        self.open_file("Open PDB-File", PDB_FILTER, lambda p: self._set_pdb(rid, p),
-                       current=str(self.editor._pos(rid).get("pdb_path") or ""))
+        self.open_file(
+            "Open PDB-File",
+            PDB_FILTER,
+            lambda p: self._set_pdb(rid, p),
+            current=str(self.editor._pos(rid).get("pdb_path") or ""),
+        )
+
+    def _fetch_pdb(self, pdb_id: str) -> None:
+        """The Fetch PDB prompt: the ID becomes the structure of the selected row (a new row when none is)."""
+        pdb_id = pdb_id.strip()
+        if not PDB_ID.match(pdb_id):
+            self.say(f"{pdb_id!r} is not a PDB ID (4 characters, such as 1R0A).", True)
+            return
+        rid = self.editor.selected_pos
+        if not rid or self.editor._pos(rid) is None:
+            rid = self.editor.add_position_row()
+        self._set_pdb(rid, pdb_id.lower())
+        self.used("fetch_pdb")
 
     def _set_pdb(self, rid: str, path: str) -> None:
         self.editor.set_position(rid, "pdb_path", path)
@@ -430,18 +499,29 @@ class FpsJsonCard(CardShell):
             self.say(self.editor.av_message, True)
             return
         if len(names) == 1:
-            self.save_file("Save AV as MRC", MRC_FILTER, lambda p: self._write_mrc(names, p),
-                           filename=f"{safe_mrc_stem(names[0])}.mrc")
+            self.save_file(
+                "Save AV as MRC",
+                MRC_FILTER,
+                lambda p: self._write_mrc(names, p),
+                filename=f"{safe_mrc_stem(names[0])}.mrc",
+            )
         else:
-            self.open_file(f"Save {len(names)} AV MRC maps", "All files (*)", lambda p: self._write_mrc(names, p),
-                           folder=True)
+            self.open_file(
+                f"Save {len(names)} AV MRC maps",
+                "All files (*)",
+                lambda p: self._write_mrc(names, p),
+                folder=True,
+            )
 
     def _write_mrc(self, names: list[str], target: str) -> None:
         try:
             if len(names) == 1:
                 written = [self.editor.write_mrc(names[0], target)]
             else:
-                written = [self.editor.write_mrc(n, Path(target) / f"{safe_mrc_stem(n)}.mrc") for n in names]
+                written = [
+                    self.editor.write_mrc(n, Path(target) / f"{safe_mrc_stem(n)}.mrc")
+                    for n in names
+                ]
         except Exception as exc:  # noqa: BLE001
             self.editor.av_message = f"Failed to save AV MRC: {exc}"
             self.say(self.editor.av_message, True)
@@ -454,8 +534,11 @@ class FpsJsonCard(CardShell):
         if not rid or self.editor._dist(rid) is None:
             self.say("Select a restraint row first.", True)
             return
-        self.open_file("DA-Distance distribution (1st column RDA, 2nd pRDA)", "CSV/Text Files (*.csv *.txt);;All files (*)",
-                       lambda p: (self.editor.load_distribution(rid, p), self.sync_status()))
+        self.open_file(
+            "DA-Distance distribution (1st column RDA, 2nd pRDA)",
+            "CSV/Text Files (*.csv *.txt);;All files (*)",
+            lambda p: (self.editor.load_distribution(rid, p), self.sync_status()),
+        )
 
     # ── frame ─────────────────────────────────────────────────────────────
 
@@ -474,15 +557,26 @@ class FpsJsonCard(CardShell):
     # ── windows ───────────────────────────────────────────────────────────
 
     def build_docks(self) -> DockManager:
-        """One dock window per view, tabbed together at first as the Qt editor's dock area; the user can drag a tab
-        out to split the window or put views side by side (the arrangement is kept with the card's layout)."""
-        docks = DockManager(Region("views"))
-        draw = {"Positions": self._draw_positions, "Distances": self._draw_distances,
-                "FlexFit": self._draw_flexfit, "JSON": self._draw_json, "3D View": self._draw_3d}
+        """One dock window per view: the tables tabbed on the left and the 3D View beside them, so a dye placed in a
+        table (or a click in the viewer) shows at once. Any tab can be dragged to re-tab or split; the arrangement is
+        kept with the card's layout."""
+        docks = DockManager(Split("h", 0.5, Region("views"), Region("scene")))
+        draw = {
+            "Positions": self._draw_positions,
+            "Distances": self._draw_distances,
+            "FlexFit": self._draw_flexfit,
+            "JSON": self._draw_json,
+            "3D View": self._draw_3d,
+        }
         for title in TABS:
-            docks.add_window(VIEW_KEYS[title], title, lambda box, t=title, f=draw[title]: self._draw_view(box, t, f),
-                             dock="views",
-                             closable=False, tooltip=TAB_TIPS[title])
+            docks.add_window(
+                VIEW_KEYS[title],
+                title,
+                lambda box, t=title, f=draw[title]: self._draw_view(box, t, f),
+                dock="scene" if title == "3D View" else "views",
+                closable=False,
+                tooltip=TAB_TIPS[title],
+            )
         docks.focus(VIEW_KEYS[TABS[0]])
         return docks
 
@@ -490,7 +584,11 @@ class FpsJsonCard(CardShell):
         """One view; a press inside it brings it forward as :attr:`tab` (with views side by side, the one in use)."""
         if im.is_mouse_clicked(0):
             mx, my = im.get_mouse_pos()
-            if box[0] <= mx < box[0] + box[2] and box[1] <= my < box[1] + box[3] and self._tab != title:
+            if (
+                box[0] <= mx < box[0] + box[2]
+                and box[1] <= my < box[1] + box[3]
+                and self._tab != title
+            ):
                 self._tab = title
                 self.used(f"tab_{title}")
         draw()
@@ -564,15 +662,58 @@ class FpsJsonCard(CardShell):
 
     def _draw_positions(self) -> None:
         ed = self.editor
-        pressed = self.toolbar([
-            {"label": "Add Row", "key": "add_row", "tip": "Add an empty position row; it becomes a position once it has a name."},
-            {"label": "Delete Row", "key": "delete_row", "enabled": bool(ed.selected_pos) and ed._pos(ed.selected_pos) is not None,
-             "tip": "Remove the selected row (asks first; the distances that use a position go with it)."},
-            {"label": "Browse PDB...", "key": "browse_pdb", "enabled": bool(ed.selected_pos),
-             "tip": "Choose the structure file of the selected row."},
-            {"label": "Compute AVs", "key": "compute_avs", "tip": "Recompute the accessible volume of every named position."},
-            {"label": "Save AV MRC", "key": "save_mrc", "tip": "Save the selected position's computed accessible volume (else every one) as an MRC density map."},
-        ])
+        has_place = ed.attachment(ed.selected_pos) is not None if ed.selected_pos else False
+        pressed = self.toolbar(
+            [
+                {
+                    "label": "Add Row",
+                    "key": "add_row",
+                    "tip": "Add an empty position row; it becomes a position once it has a name.",
+                },
+                {
+                    "label": "Delete Row",
+                    "key": "delete_row",
+                    "enabled": bool(ed.selected_pos) and ed._pos(ed.selected_pos) is not None,
+                    "tip": "Remove the selected row (asks first; the distances that use a position go with it).",
+                },
+                {
+                    "label": "Browse PDB...",
+                    "key": "browse_pdb",
+                    "enabled": bool(ed.selected_pos),
+                    "tip": "Choose the structure file of the selected row.",
+                },
+                {
+                    "label": "Fetch PDB...",
+                    "key": "fetch_pdb",
+                    "tip": "Download a structure from the RCSB by its 4-character ID: for the selected row, else a new "
+                    "row on it. Typing the ID into PDB file or ID does the same.",
+                },
+                {
+                    "label": "\u25c0 Residue",
+                    "key": "res_prev",
+                    "enabled": has_place,
+                    "tip": "Move the selected position to the previous residue of its chain; its volume is recomputed "
+                    "and shown in the 3D View.",
+                },
+                {
+                    "label": "Residue \u25b6",
+                    "key": "res_next",
+                    "enabled": has_place,
+                    "tip": "Move the selected position to the next residue of its chain; its volume is recomputed "
+                    "and shown in the 3D View.",
+                },
+                {
+                    "label": "Compute AVs",
+                    "key": "compute_avs",
+                    "tip": "Recompute the accessible volume of every named position.",
+                },
+                {
+                    "label": "Save AV MRC",
+                    "key": "save_mrc",
+                    "tip": "Save the selected position's computed accessible volume (else every one) as an MRC density map.",
+                },
+            ]
+        )
         if pressed == "add_row":
             ed.add_position_row()
             self.sync_status()
@@ -581,6 +722,12 @@ class FpsJsonCard(CardShell):
             self.ask_delete_position(ed.selected_pos)
         elif pressed == "browse_pdb":
             self.browse_pdb()
+        elif pressed == "fetch_pdb":
+            self.prompt("Fetch PDB", "PDB ID (4 characters, from the RCSB):", self._fetch_pdb)
+        elif pressed in ("res_prev", "res_next"):
+            if ed.step_residue(ed.selected_pos, -1 if pressed == "res_prev" else 1):
+                self.sync_status()
+                self.used(pressed)
         elif pressed == "compute_avs":
             ed.compute_all()
             self.used("compute_avs")
@@ -592,14 +739,32 @@ class FpsJsonCard(CardShell):
 
     def _draw_distances(self) -> None:
         ed = self.editor
-        pressed = self.toolbar([
-            {"label": "Add Row", "key": "add_dist", "tip": "Add an empty restraint row; choose its two labels below."},
-            {"label": "Delete Row", "key": "delete_dist", "enabled": bool(ed.selected_dist) and ed._dist(ed.selected_dist) is not None,
-             "tip": "Remove the selected restraint (asks first)."},
-            {"label": "Add Scoring Group", "key": "add_set", "tip": "Add a scoring group (a chi-squared set of restraints)."},
-            {"label": "Remove Scoring Group", "key": "remove_set",
-             "enabled": ed.score_filter != ALL_DISTANCES, "tip": "Remove the scoring group shown in the filter (asks first)."},
-        ])
+        pressed = self.toolbar(
+            [
+                {
+                    "label": "Add Row",
+                    "key": "add_dist",
+                    "tip": "Add an empty restraint row; choose its two labels below.",
+                },
+                {
+                    "label": "Delete Row",
+                    "key": "delete_dist",
+                    "enabled": bool(ed.selected_dist) and ed._dist(ed.selected_dist) is not None,
+                    "tip": "Remove the selected restraint (asks first).",
+                },
+                {
+                    "label": "Add Scoring Group",
+                    "key": "add_set",
+                    "tip": "Add a scoring group (a chi-squared set of restraints).",
+                },
+                {
+                    "label": "Remove Scoring Group",
+                    "key": "remove_set",
+                    "enabled": ed.score_filter != ALL_DISTANCES,
+                    "tip": "Remove the scoring group shown in the filter (asks first).",
+                },
+            ]
+        )
         if pressed == "add_dist":
             ed.add_distance_row()
             self.sync_status()
@@ -609,15 +774,26 @@ class FpsJsonCard(CardShell):
             self.prompt("New Scoring Group", "Scoring group name:", self._add_set)
         elif pressed == "remove_set":
             name = ed.score_filter
-            self.ask("Remove Scoring Group?", f"Are you sure you want to remove scoring group '{name}'?",
-                     lambda: (ed.remove_score_set(name), self.sync_status()), yes="Remove", no="Keep")
+            self.ask(
+                "Remove Scoring Group?",
+                f"Are you sure you want to remove scoring group '{name}'?",
+                lambda: (ed.remove_score_set(name), self.sync_status()),
+                yes="Remove",
+                no="Keep",
+            )
         self._set_filter()
         self._form("distances")
-        if ed.selected_dist and ed._dist(ed.selected_dist) is not None and \
-                DISTANCE_TYPE_NAMES.get(ed._dist(ed.selected_dist).get("distance_type"), "dRDA") == "pRDA":
+        if (
+            ed.selected_dist
+            and ed._dist(ed.selected_dist) is not None
+            and DISTANCE_TYPE_NAMES.get(ed._dist(ed.selected_dist).get("distance_type"), "dRDA")
+            == "pRDA"
+        ):
             if im.button("Load DA Distribution..."):
                 self.load_distribution()
-            im.set_item_tooltip("A file with R_DA in the first column and p(R_DA) in the second; one header line.")
+            im.set_item_tooltip(
+                "A file with R_DA in the first column and p(R_DA) in the second; one header line."
+            )
             self.remember("load_distribution")
 
     def _add_set(self, name: str) -> None:
@@ -650,23 +826,52 @@ class FpsJsonCard(CardShell):
         self.remember("flex_set")
         im.set_item_tooltip("The FlexFit set whose residues and bonds are shown.")
         im.same_line()
-        pressed = self.toolbar([
-            {"label": "+", "key": "flex_add_set", "tip": "Add a new FlexFit set."},
-            {"label": "-", "key": "flex_remove_set", "enabled": bool(names), "tip": "Remove the current FlexFit set."},
-        ])
+        pressed = self.toolbar(
+            [
+                {"label": "+", "key": "flex_add_set", "tip": "Add a new FlexFit set."},
+                {
+                    "label": "-",
+                    "key": "flex_remove_set",
+                    "enabled": bool(names),
+                    "tip": "Remove the current FlexFit set.",
+                },
+            ]
+        )
         if pressed == "flex_add_set":
-            self.prompt("New FlexFit set", "Set name:", lambda n: (ed.add_flexfit_set(n), self.sync_status()))
+            self.prompt(
+                "New FlexFit set",
+                "Set name:",
+                lambda n: (ed.add_flexfit_set(n), self.sync_status()),
+            )
         elif pressed == "flex_remove_set":
             ed.remove_flexfit_set()
             self.sync_status()
-        pressed = self.toolbar([
-            {"label": "Add residue", "key": "flex_add_res", "tip": "Add a flexible residue to the set."},
-            {"label": "Remove selected residue", "key": "flex_remove_res",
-             "enabled": ed.selected_residue >= 0, "tip": "Remove the selected residue row."},
-            {"label": "Add bond", "key": "flex_add_bond", "tip": "Add a bond (two atoms) to the set."},
-            {"label": "Remove selected bond", "key": "flex_remove_bond",
-             "enabled": ed.selected_bond >= 0, "tip": "Remove the selected bond row."},
-        ])
+        pressed = self.toolbar(
+            [
+                {
+                    "label": "Add residue",
+                    "key": "flex_add_res",
+                    "tip": "Add a flexible residue to the set.",
+                },
+                {
+                    "label": "Remove selected residue",
+                    "key": "flex_remove_res",
+                    "enabled": ed.selected_residue >= 0,
+                    "tip": "Remove the selected residue row.",
+                },
+                {
+                    "label": "Add bond",
+                    "key": "flex_add_bond",
+                    "tip": "Add a bond (two atoms) to the set.",
+                },
+                {
+                    "label": "Remove selected bond",
+                    "key": "flex_remove_bond",
+                    "enabled": ed.selected_bond >= 0,
+                    "tip": "Remove the selected bond row.",
+                },
+            ]
+        )
         if pressed == "flex_add_res":
             ed.add_flexfit_residue()
         elif pressed == "flex_remove_res":
@@ -680,8 +885,16 @@ class FpsJsonCard(CardShell):
         self._form("flexfit")
 
     def _draw_json(self) -> None:
-        spec = {"sections": [{"type": "custom", "key": "code_editor", "target": "json_text",
-                              "options": {"language": "JSON", "expand": True, "height": 200}}]}
+        spec = {
+            "sections": [
+                {
+                    "type": "custom",
+                    "key": "code_editor",
+                    "target": "json_text",
+                    "options": {"language": "JSON", "expand": True, "height": 200},
+                }
+            ]
+        }
         self.json_form.rects.clear()
         draw_form(spec, self._json_view(), self.json_form)
         self.item_rects.update(self.json_form.rects)
@@ -697,7 +910,9 @@ class FpsJsonCard(CardShell):
         form = self.forms[name]
         form.rects.clear()
         if not self.labels.ready:
-            self.labels.measure([s["label"] for s in _labelled(self.specs[name]["sections"])] or [""])
+            self.labels.measure(
+                [s["label"] for s in _labelled(self.specs[name]["sections"])] or [""]
+            )
         draw_form(self.specs[name], self.views[name], form)
         self.item_rects.update(form.rects)
 
@@ -718,21 +933,77 @@ class FpsJsonCard(CardShell):
             )
             self._draw_3d_points()
             return
+        rid = (
+            self.editor.selected_pos
+            if self.editor._pos(self.editor.selected_pos) is not None
+            else ""
+        )
+        im.text_wrapped(
+            f"Click an atom to attach {rid} there; click a coloured sphere to select its position."
+            if rid
+            else "Click an atom to start a new position there; click a coloured sphere to select its position."
+        )
+        self.remember("pick_hint")
         self._sync_chimol(viewer, scene)
+        self._follow_selection(viewer)
         self.chimol.draw(enabled=not self.blocked)
         im.set_item_tooltip(
             "The structures as cartoon, the accessible volumes as surfaces with their mean positions, and the "
-            "distance lines. Drag to rotate, wheel to zoom; click an atom to attach the selected position to it."
+            "distance lines; the selected position's attachment atom is the white sphere. Drag to rotate, wheel to "
+            "zoom; click an atom to attach the selected position to it, click a mean sphere to select its position."
         )
         self.remember("plot3d")
+
+    def _follow_selection(self, viewer) -> None:
+        """A position picked in a table (or stepped along its chain) brings the camera to its attachment atom; a
+        pick in the viewer does not move the camera."""
+        rid = self.editor.selected_pos
+        place = self.editor.attachment(rid) if rid else None
+        key = f"{rid}:{tuple(np.round(place[2], 2))}" if place is not None else ""
+        if key == self._centred_on:
+            self._picking = False
+            return
+        if place is not None and not self._picking and hasattr(viewer, "center_on_point"):
+            viewer.center_on_point(place[2])
+        self._centred_on = key
+        self._picking = False
+
+    def _claim_3d_click(self, x: float, y: float) -> bool:
+        """A press on an AV's mean sphere selects that position (and is not an atom pick)."""
+        means = [(name, mean) for name, _p, mean, _s, _c in self.editor.scene3d()["avs"]]
+        if not means:
+            return False
+        sx, sy, visible = self.chimol.screen_points(np.array([m for _n, m in means]))
+        if not len(sx):
+            return False
+        d = np.hypot(sx - x, sy - y)
+        d[~visible.astype(bool)] = np.inf
+        best = int(np.argmin(d))
+        if d[best] > 9.0:
+            return False
+        self.editor.selected_pos = means[best][0]
+        self.editor.say(f"{means[best][0]} selected (clicked in the 3D View)")
+        self._picking = True  # the camera stays where the user is looking
+        self.sync_status()
+        self.used("pick_sphere")
+        return True
 
     def _sync_chimol(self, viewer, scene: dict) -> None:
         """Give the viewer what the Qt editor gave its viewer, when it changed: each structure once (cartoon, framed
         when the set of structures changes), the AV surfaces with mean spheres, and the distance lines."""
         paths = tuple(scene["structures"])
-        avs = tuple((n, id(p), tuple(c)) for n, p, _m, _s, c in scene["avs"])
+        # By the cached AV arrays, not the points handed over: scene3d slices them afresh each call, and an id that
+        # changes every frame re-meshed every surface every frame.
+        cache = self.editor.av_cache
+        avs = tuple(
+            (n, id(cache[n][0]) if n in cache else id(p), tuple(c))
+            for n, p, _m, _s, c in scene["avs"]
+        )
         lines = tuple((k, round(length, 3), tuple(c)) for k, _a, _b, length, c in scene["lines"])
-        signature = (paths, avs, lines)
+        rid = self.editor.selected_pos
+        place = self.editor.attachment(rid) if rid else None
+        marker = (rid, tuple(np.round(place[2], 3))) if place is not None else None
+        signature = (paths, avs, lines, marker)
         if signature == self._chimol_scene:
             return
         new_structures = self._chimol_scene is None or self._chimol_scene[0] != paths
@@ -750,11 +1021,15 @@ class FpsJsonCard(CardShell):
             self.chimol.sync_panel()
         viewer.clear_point_overlays()
         for name, points, mean, step, colour in scene["avs"]:
+            # With a position selected its volume stands out and the others are muted (chimol's labelling window
+            # does the same: selected / muted), so the one being placed is seen.
+            base = colour[3]
+            alpha = base if marker is None else max(base, 0.45) if name == rid else 0.3 * base
             viewer.add_surface_overlay(
                 f"av_{name}",
                 points,
-                color=colour,
-                alpha=colour[3],
+                color=(*colour[:3], alpha),
+                alpha=1.0,
                 grid_spacing=max(step, 0.1),
                 padding=max(step * 2.0, 1.0),
                 smoothing_sigma=0.75,
@@ -764,9 +1039,24 @@ class FpsJsonCard(CardShell):
                 fallback_min_size=1.5,
             )
             viewer.add_sphere(
-                mean, radius=1.5, color=(*colour[:3], max(colour[3], 0.9)), label=name, key=f"mean_{name}"
+                mean,
+                radius=1.5,
+                color=(*colour[:3], max(colour[3], 0.9)),
+                label=name,
+                key=f"mean_{name}",
             )
-        measurements = {k: v for k, v in viewer.measurements.items() if not k.startswith("dist_line_")}
+        if marker is not None:
+            # The selected position's attachment atom: where a click or the residue buttons put the dye.
+            viewer.add_sphere(
+                place[2],
+                radius=1.2,
+                color=(1.0, 1.0, 1.0, 0.95),
+                label=f"{rid} *",
+                key="attachment_selected",
+            )
+        measurements = {
+            k: v for k, v in viewer.measurements.items() if not k.startswith("dist_line_")
+        }
         for key, a, b, length, colour in scene["lines"]:
             measurements[f"dist_line_{key}"] = {
                 "kind": "distance",
@@ -782,6 +1072,7 @@ class FpsJsonCard(CardShell):
         if not atom_indices or self.chimol.app is None:
             return
         oid = self.chimol.app.viewer.get_active_object_id()
+        self._picking = True
         if self.editor.pick_atom(self._chimol_objects.get(oid, ""), int(atom_indices[0])):
             self.sync_status()
             self.used("pick_atom")

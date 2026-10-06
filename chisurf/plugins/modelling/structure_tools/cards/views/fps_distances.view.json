@@ -8,13 +8,13 @@
         "source": "dist_rows", "editable": true, "expand": true, "reserve": 190, "row_key": "row", "status": true,
         "selected_call": "select_row", "edited_call": "edit_row", "delete_call": "delete_row",
         "columns": [
-          {"key": "show", "title": "Show", "width": 54, "editable": true, "description": "Whether the restraint's line is drawn in the 3D tab."},
-          {"key": "name", "title": "Name", "description": "label1_label2, built from the two labels."},
-          {"key": "label1", "title": "Label 1", "width": 120, "description": "First position of the restraint."},
-          {"key": "label2", "title": "Label 2", "width": 120, "description": "Second position of the restraint."},
-          {"key": "type", "title": "Type", "width": 64, "description": "dRDA (mean R_DA), dRDAE (mean FRET-averaged distance), dRMP (distance of the mean positions) or pRDA (a distribution)."},
-          {"key": "details", "title": "Details", "description": "Forster radius, distance and errors, or the number of points of the distribution."},
-          {"key": "score_set", "title": "Score set", "width": 90, "description": "The scoring group that lists the restraint."}
+          {"key": "show", "min_width": 44, "title": "Show", "width": 54, "editable": true, "description": "Whether the restraint's line is drawn in the 3D tab."},
+          {"key": "name", "min_width": 150, "title": "Name", "description": "label1_label2, built from the two labels."},
+          {"key": "label1", "min_width": 96, "title": "Label 1", "width": 120, "description": "First position of the restraint."},
+          {"key": "label2", "min_width": 96, "title": "Label 2", "width": 120, "description": "Second position of the restraint."},
+          {"key": "type", "min_width": 56, "title": "Type", "width": 64, "description": "dRDA (mean R_DA), dRDAE (mean FRET-averaged distance), dRMP (distance of the mean positions) or pRDA (a distribution)."},
+          {"key": "details", "min_width": 170, "title": "Details", "description": "Forster radius, distance and errors, or the number of points of the distribution."},
+          {"key": "score_set", "min_width": 64, "title": "Score set", "width": 90, "description": "The scoring group that lists the restraint."}
         ]
       }
     },

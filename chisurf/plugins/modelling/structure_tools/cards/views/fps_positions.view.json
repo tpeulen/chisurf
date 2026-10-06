@@ -18,6 +18,7 @@
         "columns": [
           {
             "key": "show",
+            "min_width": 44,
             "title": "Show",
             "width": 54,
             "editable": true,
@@ -25,6 +26,7 @@
           },
           {
             "key": "name",
+            "min_width": 96,
             "title": "Name",
             "width": 120,
             "editable": true,
@@ -32,12 +34,14 @@
           },
           {
             "key": "pdb",
+            "min_width": 110,
             "title": "Structure",
             "editable": false,
             "description": "The structure file name (the full path is in the tooltip) or the PDB ID; change it in the form below or with Browse PDB..."
           },
           {
             "key": "chain",
+            "min_width": 44,
             "title": "Chain",
             "width": 56,
             "editable": true,
@@ -45,6 +49,7 @@
           },
           {
             "key": "res",
+            "min_width": 48,
             "title": "Res",
             "width": 60,
             "editable": true,
@@ -52,6 +57,7 @@
           },
           {
             "key": "atom",
+            "min_width": 48,
             "title": "Atom",
             "width": 60,
             "editable": true,
@@ -59,24 +65,28 @@
           },
           {
             "key": "preset",
+            "min_width": 80,
             "title": "Dye Preset",
             "width": 90,
             "description": "The dye definition the dimensions were taken from (change it in the form below)."
           },
           {
             "key": "dye_model",
+            "min_width": 56,
             "title": "Dye Model",
             "width": 84,
             "description": "Accessible-volume model: AV1, AV0, AV3 or ROTAMER (change it in the form below)."
           },
           {
             "key": "color",
+            "min_width": 72,
             "title": "Color",
             "width": 76,
             "description": "Colour of the accessible volume in the 3D tab (change it in the form below)."
           },
           {
             "key": "volume",
+            "min_width": 60,
             "title": "AV (A^3)",
             "width": 70,
             "align": "right",

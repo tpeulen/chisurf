@@ -76,8 +76,6 @@ _SIBLING_PROJECTS = {
     "chimol",
     "RMF",
     "ihm",
-    "pymol",
-    "pymol2",
     "LabelLib",
 }
 

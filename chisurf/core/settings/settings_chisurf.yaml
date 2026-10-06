@@ -183,7 +183,6 @@ gui:
   show_console: true
   qt_style: auto
   style_sheet: dark_blue_flat.qss
-  mol_viewer: chimol # 3D molecule viewer backend: chimol (default) or pymol
   memory_widget_update_interval_ms: 5000 # Memory usage widget update interval in milliseconds
   acquisition:
     # Standard output folder for new acquisition runs. When left empty, the

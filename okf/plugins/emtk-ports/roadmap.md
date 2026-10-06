@@ -34,6 +34,10 @@ Preview list now (2026-10-05): `code_editor` only.
    `audit_emtk_overflow` cannot see it: it shows only with populated data, open folded panels, and the window wheeled
    to its end. Method: `fps_json_editor/scripts/capture_emtk.py` (open the panels, wheel *over the form, not the
    table*, then assert the last field's rect is inside the window).
+3b. **FPS editor interactivity: done 2026-10-06** ([report](fps_json_editor/REPORT.md), "Placing dyes
+   interactively"). Open: the white attachment marker sits inside its own (opaque-ish) volume and is barely seen --
+   chimol has no "draw on top" sphere; the overlay labels of `add_sphere` do not render in the native host. Both
+   are chimol work. The other `ChimolView` user (`fret_docking` Structure tab) has none of the new interactions yet.
 4. **Fixed views where Qt had movable docks** (owner, 2026-10-05: "in the old one, i could move the docks around, in
    the current all is fixed"). FPS JSON editor done: one dock window per view under a fixed toolbar strip
    (`CardShell.toolbar_height` / `draw_toolbar`), [report](fps_json_editor/REPORT.md). Same defect, not yet ported:

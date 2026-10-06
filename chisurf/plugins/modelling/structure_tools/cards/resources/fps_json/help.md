@@ -15,7 +15,7 @@ If you have not used it before, press **Guide** for the walk-through.
 
 ## Positions
 
-One row per labelling position. **Add Row** adds an empty row; it becomes a position as soon as it has a name, or a chain and residue (it is then called, for example, `A132`). Select a row to see its dye and simulation settings under the table: linker length and width, up to three dye radii, the model (AV1, AV0, AV3, ROTAMER), the grid resolution and the advanced options. **Browse PDB...** chooses the structure; a four-character ID is downloaded. The accessible volume of a position is computed in the background whenever its inputs change; **Compute AVs** recomputes all of them, **Save AV MRC** writes the selected one (or every one) as an MRC density map.
+One row per labelling position. **Add Row** adds an empty row; it becomes a position as soon as it has a name, or a chain and residue (it is then called, for example, `A132`). Select a row to see its dye and simulation settings under the table: linker length and width, up to three dye radii, the model (AV1, AV0, AV3, ROTAMER), the grid resolution and the advanced options. **Browse PDB...** chooses the structure file; **Fetch PDB...** downloads one from the RCSB by its four-character ID (typing the ID into *PDB file or ID* does the same). **◀ Residue** / **Residue ▶** move the selected position to the previous / next residue of its chain, so a dye can be walked along it while the 3D View shows its volume. The accessible volume of a position is computed in the background whenever its inputs change; **Compute AVs** recomputes all of them, **Save AV MRC** writes the selected one (or every one) as an MRC density map.
 
 Deleting a position also deletes the distances that use it. Renaming it renames the labels in those distances.
 
@@ -29,11 +29,17 @@ Sets of flexible residues and bonds for FlexFit simulations.
 
 ## 3D View
 
-The computed accessible volumes (points), their mean positions, the distance lines between them, and the backbone of the structure.
+The ChiMOL viewer, beside the tables: the structures as cartoon, the accessible volumes as surfaces with their mean positions (spheres), and the distance lines. The selected position's volume stands out and the others are muted; its attachment atom is marked, and picking a row brings the camera to it.
+
+- **Click an atom**: the selected position is attached there (chain, residue, atom). An atom of the other structure moves the position onto that structure; with no position selected the click starts a new one.
+- **Click a sphere**: selects that position.
+- Drag to rotate, wheel to zoom.
+
+Every view (Positions, Distances, FlexFit, JSON, 3D View) is a dock window: drag a tab to put views side by side or to tab them together. The arrangement is kept.
 
 ## Limits
 
-The Qt editor drew the structure with the ChiMol viewer; this window draws the volumes and the backbone as a 3D plot. Several rows cannot be selected at once; delete them one by one.
+Several rows cannot be selected at once; delete them one by one.
 
 ## Further reading
 

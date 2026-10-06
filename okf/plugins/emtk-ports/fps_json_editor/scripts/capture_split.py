@@ -1,6 +1,7 @@
-"""The views rearranged by a real drag: 3D View dragged onto the right pad, beside Positions. usage: capture_split.py <out_dir>
+"""The views rearranged by a real drag: Distances dragged out beside Positions (the 3D View is beside them by
+default). usage: capture_split.py <out_dir>
 
-Writes after_split_3dview_<W>x<H>.png. The Qt editor's views were dock widgets; the native ones are dock windows.
+Writes after_split_distances_<W>x<H>.png. The Qt editor's views were dock widgets; the native ones are dock windows.
 """
 import os
 import pathlib
@@ -32,10 +33,10 @@ for size in ((1200, 800), (800, 600)):
         time.sleep(0.1)
     ed.poll()
     ui = Ui(app, size)
-    _drag_tab_to_right_pad(ui, "3D View")
+    _drag_tab_to_right_pad(ui, "Distances")
     print(size, app.docks.selected)
     app.pointer_move(size[0] * 0.25, size[1] - 12)  # off the 3D view, so no tooltip covers it
     for _ in range(5):
         ui.draw(1)
-    epp.emtk_screenshot(app, out / f"after_split_3dview_{size[0]}x{size[1]}.png", size)
+    epp.emtk_screenshot(app, out / f"after_split_distances_{size[0]}x{size[1]}.png", size)
     app.close()

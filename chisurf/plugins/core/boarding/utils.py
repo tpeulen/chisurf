@@ -295,7 +295,7 @@ OPTIONAL_DEPENDENCIES = (
     ("tttrlib", "TTTR reading and analysis"),
     ("pyqtgraph", "Plotting in the GUI"),
     ("markdown", "Rendering Markdown docs in Help"),
-    ("pymol", "3D viewer (optional)"),
+    ("chimol", "3D molecular viewer"),
 )
 
 

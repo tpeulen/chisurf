@@ -25,15 +25,32 @@ from typing import Any, Callable
 
 import numpy as np
 
-from chisurf.plugins.modelling.fps_json_editor.core.colors import DEFAULT_AV_COLOR, normalize_rgba, rgba_to_json
+from chisurf.plugins.modelling.fps_json_editor.core.colors import (
+    DEFAULT_AV_COLOR,
+    normalize_rgba,
+    rgba_to_json,
+)
 from chisurf.plugins.modelling.fps_json_editor.core.model import FpsJsonModel
-from chisurf.plugins.modelling.fps_json_editor.core.naming import default_label_name, unique_label_name
+from chisurf.plugins.modelling.fps_json_editor.core.naming import (
+    default_label_name,
+    unique_label_name,
+)
 
 #: The dye parameters a new row starts with (the Qt row's defaults).
 POSITION_DEFAULTS: dict[str, Any] = {
-    "linker_length": 20.0, "linker_width": 4.5, "radius1": 3.5, "radius2": 0.0, "radius3": 0.0, "body_id": 0,
-    "allowed_sphere_radius": 1.5, "simulation_grid_resolution": 1.5, "anchor_atoms": "", "strip_mask": "",
-    "contact_volume_thickness": 0.0, "contact_volume_trapped_fraction": -1.0, "min_sphere_volume_fraction": 0.0,
+    "linker_length": 20.0,
+    "linker_width": 4.5,
+    "radius1": 3.5,
+    "radius2": 0.0,
+    "radius3": 0.0,
+    "body_id": 0,
+    "allowed_sphere_radius": 1.5,
+    "simulation_grid_resolution": 1.5,
+    "anchor_atoms": "",
+    "strip_mask": "",
+    "contact_volume_thickness": 0.0,
+    "contact_volume_trapped_fraction": -1.0,
+    "min_sphere_volume_fraction": 0.0,
     "chain_weighting": False,
 }
 DYE_MODELS = ("AV1", "AV0", "AV3", "ROTAMER")
@@ -45,9 +62,16 @@ DISTANCE_DEFAULTS = {"Forster_radius": 52.0, "distance": 50.0, "error_neg": 5.0,
 
 #: Colours of the rows' accessible volumes (the Qt tool's palette: new rows take the next one).
 DISTINGUISHABLE_COLORS = [
-    (0.89, 0.10, 0.11, 0.35), (0.12, 0.47, 0.71, 0.35), (0.20, 0.63, 0.17, 0.35), (1.00, 0.50, 0.00, 0.35),
-    (0.42, 0.24, 0.60, 0.35), (0.69, 0.35, 0.16, 0.35), (0.97, 0.51, 0.75, 0.35), (0.00, 0.75, 0.75, 0.35),
-    (0.87, 0.87, 0.00, 0.35), (0.50, 0.50, 0.50, 0.35),
+    (0.89, 0.10, 0.11, 0.35),
+    (0.12, 0.47, 0.71, 0.35),
+    (0.20, 0.63, 0.17, 0.35),
+    (1.00, 0.50, 0.00, 0.35),
+    (0.42, 0.24, 0.60, 0.35),
+    (0.69, 0.35, 0.16, 0.35),
+    (0.97, 0.51, 0.75, 0.35),
+    (0.00, 0.75, 0.75, 0.35),
+    (0.87, 0.87, 0.00, 0.35),
+    (0.50, 0.50, 0.50, 0.35),
 ]
 
 PDB_ID = re.compile(r"^[A-Za-z0-9]{4}$")
@@ -71,14 +95,14 @@ def dye_presets() -> dict[str, dict]:
 
 def hex_colour(rgba) -> str:
     r, g, b, _a = normalize_rgba(rgba)
-    return "#{:02x}{:02x}{:02x}".format(round(r * 255), round(g * 255), round(b * 255))
+    return f"#{round(r * 255):02x}{round(g * 255):02x}{round(b * 255):02x}"
 
 
 def colour_from_hex(text: str, alpha: float) -> tuple[float, float, float, float]:
     text = text.strip().lstrip("#")
     if len(text) != 6:
         raise ValueError(f"not a colour: {text!r}")
-    r, g, b = (int(text[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    r, g, b = (int(text[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
     return (r, g, b, alpha)
 
 
@@ -97,7 +121,7 @@ class FpsEditor:
         self.fetcher = fetcher
         self.status = ""
         self.status_error = False
-        self.path = ""                         # the file last loaded or saved
+        self.path = ""  # the file last loaded or saved
         self.dirty = False
         # unnamed rows (the Qt trailing empty row): id -> record
         self.pos_drafts: dict[str, dict] = {}
@@ -116,7 +140,7 @@ class FpsEditor:
         self._fetching: set[str] = set()
         self.av_cache: dict[str, tuple] = {}
         self.av_signatures: dict[str, tuple] = {}
-        self.av_state: dict[str, str] = {}      # name -> "computing" | "done" | error text
+        self.av_state: dict[str, str] = {}  # name -> "computing" | "done" | error text
         self.av_message = "AV: Not computed"
         self._executor = concurrent.futures.ThreadPoolExecutor(1, thread_name_prefix="fps-av")
         self._lock = threading.Lock()
@@ -179,7 +203,9 @@ class FpsEditor:
         self.av_cache.clear()
         self.av_signatures.clear()
         self.av_state.clear()
-        self.say(f"Loaded {Path(path).name}: {len(fresh.positions)} positions, {len(fresh.distances)} distances.")
+        self.say(
+            f"Loaded {Path(path).name}: {len(fresh.positions)} positions, {len(fresh.distances)} distances."
+        )
         self._changed(schedule_all=True)
         return True
 
@@ -242,7 +268,9 @@ class FpsEditor:
     def sync(self, json_text: bool = True) -> None:
         """Rebuild the table rows (and the JSON text, unless only a result arrived that is not in the document)."""
         if json_text:
-            self.json_text = json.dumps(self.doc.fps_json_payload, sort_keys=True, indent=4, separators=(",", ": "))
+            self.json_text = json.dumps(
+                self.doc.fps_json_payload, sort_keys=True, indent=4, separators=(",", ": ")
+            )
         self.rows_pos = self._position_rows()
         self.rows_dist = self._distance_rows()
         self.rows_res, self.rows_bond = self._flexfit_rows()
@@ -268,20 +296,26 @@ class FpsEditor:
             volume = ""
             if rid in self.av_cache:
                 coords, _mean, step, _c = self.av_cache[rid]
-                volume = f"{len(coords) * step ** 3:.0f}"
+                volume = f"{len(coords) * step**3:.0f}"
             elif self.av_state.get(rid) == "computing":
                 volume = "..."
-            rows.append({
-                "row": rid, "name": "" if self.is_draft(rid) else rid, "show": bool(params.get("visible", True)),
-                "pdb": _short_path(str(params.get("pdb_path") or params.get("pdb_id") or "")),
-                "chain": str(params.get("chain_identifier", "")),
-                "res": str(params.get("residue_seq_number", "")) if params.get("residue_seq_number", "") != "" else "",
-                "atom": str(params.get("atom_name", "")),
-                "preset": str(params.get("dye_preset", "Custom")),
-                "dye_model": str(params.get("simulation_type", "AV1")),
-                "color": hex_colour(self.colour_of(rid)),
-                "volume": volume,
-            })
+            rows.append(
+                {
+                    "row": rid,
+                    "name": "" if self.is_draft(rid) else rid,
+                    "show": bool(params.get("visible", True)),
+                    "pdb": _short_path(str(params.get("pdb_path") or params.get("pdb_id") or "")),
+                    "chain": str(params.get("chain_identifier", "")),
+                    "res": str(params.get("residue_seq_number", ""))
+                    if params.get("residue_seq_number", "") != ""
+                    else "",
+                    "atom": str(params.get("atom_name", "")),
+                    "preset": str(params.get("dye_preset", "Custom")),
+                    "dye_model": str(params.get("simulation_type", "AV1")),
+                    "color": hex_colour(self.colour_of(rid)),
+                    "volume": volume,
+                }
+            )
         return rows
 
     def add_position_row(self) -> str:
@@ -289,8 +323,14 @@ class FpsEditor:
         rid = self._new_draft_id()
         index = len(self.doc.positions) + len(self.pos_drafts)
         self.pos_drafts[rid] = {
-            **POSITION_DEFAULTS, "pdb_path": "", "chain_identifier": "", "residue_seq_number": "", "atom_name": "",
-            "simulation_type": "AV1", "dye_preset": "Custom", "visible": True,
+            **POSITION_DEFAULTS,
+            "pdb_path": "",
+            "chain_identifier": "",
+            "residue_seq_number": "",
+            "atom_name": "",
+            "simulation_type": "AV1",
+            "dye_preset": "Custom",
+            "visible": True,
             "av_color": list(DISTINGUISHABLE_COLORS[index % len(DISTINGUISHABLE_COLORS)]),
         }
         self.selected_pos = rid
@@ -338,8 +378,11 @@ class FpsEditor:
             if key == "dye_preset":
                 self._apply_preset(rid, str(value))
         elif key in POSITION_DEFAULTS:
-            params[key] = type(POSITION_DEFAULTS[key])(value) if not isinstance(POSITION_DEFAULTS[key], bool) \
+            params[key] = (
+                type(POSITION_DEFAULTS[key])(value)
+                if not isinstance(POSITION_DEFAULTS[key], bool)
                 else bool(value)
+            )
         else:
             params[key] = value
         self._auto_name(rid)
@@ -417,7 +460,11 @@ class FpsEditor:
 
     def _commit_position(self, rid: str) -> None:
         self.dirty = True
-        rid = self.selected_pos if rid not in self.doc.positions and rid not in self.pos_drafts else rid
+        rid = (
+            self.selected_pos
+            if rid not in self.doc.positions and rid not in self.pos_drafts
+            else rid
+        )
         self._changed(only=rid if rid in self.doc.positions else None)
 
     def delete_position(self, rid: str) -> bool:
@@ -462,7 +509,9 @@ class FpsEditor:
                 self.struct_errors.pop(pdb_val, None)
                 return self.structures[pdb_val]
             except Exception as exc:  # noqa: BLE001
-                self.struct_errors[pdb_val] = f"Failed to load structure from path '{pdb_val}': {exc}"
+                self.struct_errors[pdb_val] = (
+                    f"Failed to load structure from path '{pdb_val}': {exc}"
+                )
                 self.say(self.struct_errors[pdb_val], True)
                 return None
         self.struct_errors[pdb_val] = f"No such file: {pdb_val}"
@@ -488,7 +537,9 @@ class FpsEditor:
                 struct = cs_structure.Structure(str(path))
             except Exception as exc:  # noqa: BLE001
                 with self._lock:
-                    self._finished.append(("fetch", pdb_id, None, f"Failed to fetch/load PDB ID '{pdb_id}': {exc}"))
+                    self._finished.append(
+                        ("fetch", pdb_id, None, f"Failed to fetch/load PDB ID '{pdb_id}': {exc}")
+                    )
                 return
             with self._lock:
                 self._finished.append(("fetch", pdb_id, struct, str(path)))
@@ -535,8 +586,11 @@ class FpsEditor:
 
     def _after_residue(self, rid: str) -> None:
         params = self._pos(rid)
-        names = self.atoms(params.get("pdb_path", ""), params.get("chain_identifier", ""),
-                           params.get("residue_seq_number", ""))
+        names = self.atoms(
+            params.get("pdb_path", ""),
+            params.get("chain_identifier", ""),
+            params.get("residue_seq_number", ""),
+        )
         if names and params.get("atom_name", "") not in names:
             params["atom_name"] = "CB" if "CB" in names else "CA" if "CA" in names else names[0]
 
@@ -547,8 +601,11 @@ class FpsEditor:
         if params is None:
             return None
         pdb = str(params.get("pdb_path") or params.get("pdb_id") or "").strip()
-        chain, res, atom = (str(params.get("chain_identifier", "")), params.get("residue_seq_number", ""),
-                            str(params.get("atom_name", "")))
+        chain, res, atom = (
+            str(params.get("chain_identifier", "")),
+            params.get("residue_seq_number", ""),
+            str(params.get("atom_name", "")),
+        )
         if not pdb:
             self.av_message = f"AV: Not computed (no PDB path/ID for '{rid}')"
             return None
@@ -566,13 +623,26 @@ class FpsEditor:
                 return None
             pdb = str(struct.filename)
         elif not Path(pdb).is_file():
-            self.av_message = f"AV: Not computed (failed to load structure for '{rid}' with PDB '{pdb}')"
+            self.av_message = (
+                f"AV: Not computed (failed to load structure for '{rid}' with PDB '{pdb}')"
+            )
             return None
-        radii = (float(params.get("radius1", 3.5)), float(params.get("radius2", 0.0)),
-                 float(params.get("radius3", 0.0)))
-        return (pdb, chain, res_id, atom, str(params.get("simulation_type", "AV1")),
-                float(params.get("linker_length", 20.0)), float(params.get("linker_width", 4.5)), radii,
-                float(params.get("simulation_grid_resolution", 1.5)))
+        radii = (
+            float(params.get("radius1", 3.5)),
+            float(params.get("radius2", 0.0)),
+            float(params.get("radius3", 0.0)),
+        )
+        return (
+            pdb,
+            chain,
+            res_id,
+            atom,
+            str(params.get("simulation_type", "AV1")),
+            float(params.get("linker_length", 20.0)),
+            float(params.get("linker_width", 4.5)),
+            radii,
+            float(params.get("simulation_grid_resolution", 1.5)),
+        )
 
     def schedule_av(self, rid: str, force: bool = False) -> bool:
         """Queue the accessible volume of a position (nothing when it is up to date or lacks inputs)."""
@@ -595,13 +665,25 @@ class FpsEditor:
                 atoms_xyzr = av.load_structure_with_vdw(pdb)
                 xyz = av._find_attachment_point(atoms_xyzr, chain, res_id, atom, pdb_path=pdb)
                 if xyz is None:
-                    raise ValueError(f"Attachment point '{chain}:{res_id}:{atom}' not found in {pdb}")
+                    raise ValueError(
+                        f"Attachment point '{chain}:{res_id}:{atom}' not found in {pdb}"
+                    )
                 clean = av._strip_residue_atoms(atoms_xyzr, chain, res_id, pdb_path=pdb)
-                volume = av.compute_av(atoms=clean, source_xyz=xyz, linker_length=length, linker_width=width,
-                                       radii=radii, disc_step=step, pdb_path=pdb, source_info=source)
+                volume = av.compute_av(
+                    atoms=clean,
+                    source_xyz=xyz,
+                    linker_length=length,
+                    linker_width=width,
+                    radii=radii,
+                    disc_step=step,
+                    pdb_path=pdb,
+                    source_info=source,
+                )
             except Exception as exc:  # noqa: BLE001
                 with self._lock:
-                    self._finished.append(("av", rid, signature, f"AV calculation failed for {rid}: {exc}"))
+                    self._finished.append(
+                        ("av", rid, signature, f"AV calculation failed for {rid}: {exc}")
+                    )
                 return
             with self._lock:
                 self._finished.append(("av", rid, signature, volume))
@@ -635,7 +717,9 @@ class FpsEditor:
                 else:
                     self.structures[key] = extra
                     self.say(f"Downloaded and loaded PDB ID '{key}'.")
-                    for rid, params in list(self.doc.positions.items()) + list(self.pos_drafts.items()):
+                    for rid, params in list(self.doc.positions.items()) + list(
+                        self.pos_drafts.items()
+                    ):
                         if str(params.get("pdb_path") or "") == key:
                             self._after_pdb(rid)
                             self._auto_name(rid)
@@ -644,7 +728,7 @@ class FpsEditor:
                 continue
             rid, signature = key, extra
             if rid not in self.doc.positions or self.av_signatures.get(rid) != signature:
-                continue                              # the row was removed or edited while it ran
+                continue  # the row was removed or edited while it ran
             if isinstance(payload, str):
                 self.av_state[rid] = payload
                 self.av_message = payload
@@ -652,10 +736,17 @@ class FpsEditor:
             else:
                 color = self.colour_of(rid)
                 mean = np.asarray(payload.mean_position, dtype=float)
-                self.av_cache[rid] = (np.asarray(payload.points), mean, float(payload.grid_step), color)
+                self.av_cache[rid] = (
+                    np.asarray(payload.points),
+                    mean,
+                    float(payload.grid_step),
+                    color,
+                )
                 self.av_state[rid] = "done"
-                volume = payload.n_points * payload.grid_step ** 3
-                self.av_message = f"AV: Calculated {rid} (Vol: {volume:.1f} Å³, Points: {payload.n_points})"
+                volume = payload.n_points * payload.grid_step**3
+                self.av_message = (
+                    f"AV: Calculated {rid} (Vol: {volume:.1f} Å³, Points: {payload.n_points})"
+                )
             changed = True
         if changed:
             self.sync(json_text=False)
@@ -681,7 +772,11 @@ class FpsEditor:
         import IMP.bff as bff
 
         coords, _mean, step, _color = self.av_cache[name]
-        return Path(bff.write_points_mrc(str(path), np.ascontiguousarray(coords, dtype=np.float64), float(step)))
+        return Path(
+            bff.write_points_mrc(
+                str(path), np.ascontiguousarray(coords, dtype=np.float64), float(step)
+            )
+        )
 
     # ── distances ─────────────────────────────────────────────────────────
 
@@ -690,7 +785,9 @@ class FpsEditor:
         rows.revision = getattr(self.rows_dist, "revision", 0) + 1
         sets = self.doc.score_sets
         if self.score_filter != ALL_DISTANCES and self.score_filter in sets:
-            keys = [k for k in sets[self.score_filter].get("distances", []) if k in self.doc.distances]
+            keys = [
+                k for k in sets[self.score_filter].get("distances", []) if k in self.doc.distances
+            ]
         else:
             keys = list(self.doc.distances)
         entries = [(k, self.doc.distances[k]) for k in keys] + list(self.dist_drafts.items())
@@ -699,13 +796,22 @@ class FpsEditor:
             if dtype == "pRDA":
                 details = f"R0 {params.get('Forster_radius', 52.0):g}, {len(params.get('rda', []))} points"
             else:
-                details = (f"R0 {params.get('Forster_radius', 52.0):g}, d {params.get('distance', 50.0):g} "
-                           f"(-{params.get('error_neg', 5.0):g}/+{params.get('error_pos', 5.0):g})")
-            rows.append({
-                "row": rid, "name": "" if self.is_draft(rid) else rid, "show": bool(params.get("visible", True)),
-                "label1": str(params.get("position1_name", "")), "label2": str(params.get("position2_name", "")),
-                "type": dtype, "details": details, "score_set": self.distance_set(rid),
-            })
+                details = (
+                    f"R0 {params.get('Forster_radius', 52.0):g}, d {params.get('distance', 50.0):g} "
+                    f"(-{params.get('error_neg', 5.0):g}/+{params.get('error_pos', 5.0):g})"
+                )
+            rows.append(
+                {
+                    "row": rid,
+                    "name": "" if self.is_draft(rid) else rid,
+                    "show": bool(params.get("visible", True)),
+                    "label1": str(params.get("position1_name", "")),
+                    "label2": str(params.get("position2_name", "")),
+                    "type": dtype,
+                    "details": details,
+                    "score_set": self.distance_set(rid),
+                }
+            )
         return rows
 
     def distance_set(self, rid: str) -> str:
@@ -719,8 +825,14 @@ class FpsEditor:
 
     def add_distance_row(self) -> str:
         rid = self._new_draft_id()
-        self.dist_drafts[rid] = {**DISTANCE_DEFAULTS, "position1_name": "", "position2_name": "",
-                                 "distance_type": "RDAMean", "visible": True, "_set": ""}
+        self.dist_drafts[rid] = {
+            **DISTANCE_DEFAULTS,
+            "position1_name": "",
+            "position2_name": "",
+            "distance_type": "RDAMean",
+            "visible": True,
+            "_set": "",
+        }
         self.selected_dist = rid
         self.say("Added an empty row: choose two labels.")
         self._changed()
@@ -768,10 +880,14 @@ class FpsEditor:
                 self.say(f"The distance {new} already exists.", True)
                 self._changed()
                 return False
-            self.doc.distances = {(new if k == rid else k): v for k, v in self.doc.distances.items()}
+            self.doc.distances = {
+                (new if k == rid else k): v for k, v in self.doc.distances.items()
+            }
             for group in self.doc.score_sets.values():
                 if isinstance(group, dict):
-                    group["distances"] = [new if d == rid else d for d in group.get("distances", [])]
+                    group["distances"] = [
+                        new if d == rid else d for d in group.get("distances", [])
+                    ]
         if self.selected_dist == rid:
             self.selected_dist = new
         self._changed()
@@ -886,16 +1002,28 @@ class FpsEditor:
         residues, bonds = Rows(), Rows()
         entry = self._flexfit_entry() or {}
         for i, res in enumerate(entry.get("Flexible residues", []) or []):
-            residues.append({"row": i, "chain": str(res.get("chain_identifier", "")),
-                             "residue": str(res.get("residue_seq_number", ""))})
+            residues.append(
+                {
+                    "row": i,
+                    "chain": str(res.get("chain_identifier", "")),
+                    "residue": str(res.get("residue_seq_number", "")),
+                }
+            )
         for i, bond in enumerate(entry.get("Bonds", []) or []):
             if not (isinstance(bond, list) and len(bond) >= 2):
                 continue
             e1, e2 = bond[0] or {}, bond[1] or {}
-            bonds.append({"row": i, "chain1": str(e1.get("chain_identifier", "")),
-                          "residue1": str(e1.get("residue_seq_number", "")), "atom1": str(e1.get("atom_name", "")),
-                          "chain2": str(e2.get("chain_identifier", "")),
-                          "residue2": str(e2.get("residue_seq_number", "")), "atom2": str(e2.get("atom_name", ""))})
+            bonds.append(
+                {
+                    "row": i,
+                    "chain1": str(e1.get("chain_identifier", "")),
+                    "residue1": str(e1.get("residue_seq_number", "")),
+                    "atom1": str(e1.get("atom_name", "")),
+                    "chain2": str(e2.get("chain_identifier", "")),
+                    "residue2": str(e2.get("residue_seq_number", "")),
+                    "atom2": str(e2.get("atom_name", "")),
+                }
+            )
         residues.revision = getattr(self.rows_res, "revision", 0) + 1
         bonds.revision = getattr(self.rows_bond, "revision", 0) + 1
         return residues, bonds
@@ -937,7 +1065,9 @@ class FpsEditor:
         if entry is None:
             self.say("Add a FlexFit set first.", True)
             return False
-        entry.setdefault("Flexible residues", []).append({"chain_identifier": "", "residue_seq_number": 0})
+        entry.setdefault("Flexible residues", []).append(
+            {"chain_identifier": "", "residue_seq_number": 0}
+        )
         self.dirty = True
         self._changed()
         return True
@@ -1021,9 +1151,15 @@ class FpsEditor:
         for key, dist in self.doc.distances.items():
             a, b = dist.get("position1_name"), dist.get("position2_name")
             if dist.get("visible", True) and a in by_name and b in by_name and a != b:
-                lines.append((key, by_name[a], by_name[b], float(np.linalg.norm(by_name[a] - by_name[b]))))
+                lines.append(
+                    (key, by_name[a], by_name[b], float(np.linalg.norm(by_name[a] - by_name[b])))
+                )
         backbone = None
-        anchor = self.selected_pos if self.selected_pos in self.doc.positions else next(iter(self.doc.positions), "")
+        anchor = (
+            self.selected_pos
+            if self.selected_pos in self.doc.positions
+            else next(iter(self.doc.positions), "")
+        )
         pdb = str(self.doc.positions.get(anchor, {}).get("pdb_path") or "") if anchor else ""
         struct = self.structures.get(pdb)
         if struct is not None and struct.atoms is not None:
@@ -1058,32 +1194,105 @@ class FpsEditor:
                 lines.append((key, ma, mb, float(np.linalg.norm(ma - mb)), colour))
         return {"structures": structures, "avs": avs, "lines": lines}
 
+    def attachment(self, rid: str) -> tuple[str, int, np.ndarray] | None:
+        """``(structure, atom index, xyz)`` of a position's attachment atom, or None while it has none."""
+        params = self._pos(rid)
+        if params is None:
+            return None
+        pdb = str(params.get("pdb_path") or params.get("pdb_id") or "").strip()
+        struct = self.structure(pdb) if pdb else None
+        atoms = getattr(struct, "atoms", None)
+        res = params.get("residue_seq_number", "")
+        if atoms is None or str(res).strip() == "":
+            return None
+        try:
+            res = int(res)
+        except (TypeError, ValueError):
+            return None
+        hit = np.flatnonzero(
+            (atoms["chain"] == str(params.get("chain_identifier", "")))
+            & (atoms["res_id"] == res)
+            & (atoms["atom_name"] == str(params.get("atom_name", "")))
+        )
+        if not hit.size:
+            return None
+        return pdb, int(hit[0]), np.asarray(atoms["xyz"][hit[0]], dtype=float)
+
+    def step_residue(self, rid: str, step: int) -> bool:
+        """Move a position to the previous / next residue of its chain (the attachment atom follows: the same name
+        when the residue has it, else CB / CA), so a dye can be walked along the chain with its AV recomputed."""
+        params = self._pos(rid)
+        if params is None:
+            return False
+        residues = self.residues(
+            str(params.get("pdb_path", "")), str(params.get("chain_identifier", ""))
+        )
+        if not residues:
+            return False
+        try:
+            at = residues.index(int(params.get("residue_seq_number")))
+        except (TypeError, ValueError):
+            at = -1 if step > 0 else len(residues)
+        to = min(max(at + int(step), 0), len(residues) - 1)
+        if to == at:
+            return False
+        return self.set_position(rid, "residue_seq_number", residues[to])
+
     def pick_atom(self, pdb: str, atom_index: int) -> bool:
         """An atom picked in the viewer becomes the attachment of the selected position (Qt: the current row takes
-        the picked atom's chain, residue and atom). Only a pick in the selected position's own structure counts."""
-        rid = self.selected_pos
-        params = self._pos(rid)
+        the picked atom's chain, residue and atom). An atom of another structure moves the position onto that
+        structure; with no position selected the pick starts a new one there (named from chain and residue)."""
         struct = self.structure(pdb) if pdb else None
-        if params is None or struct is None or getattr(struct, "atoms", None) is None:
-            return False
-        own = str(params.get("pdb_path") or params.get("pdb_id") or "").strip()
-        if own != pdb or not 0 <= int(atom_index) < len(struct.atoms):
+        if (
+            struct is None
+            or getattr(struct, "atoms", None) is None
+            or not 0 <= int(atom_index) < len(struct.atoms)
+        ):
             return False
         atom = struct.atoms[int(atom_index)]
         chain = atom["chain"].decode() if isinstance(atom["chain"], bytes) else str(atom["chain"])
-        name = atom["atom_name"].decode() if isinstance(atom["atom_name"], bytes) else str(atom["atom_name"])
-        self.set_position(rid, "chain_identifier", chain.strip())
-        self.set_position(rid, "residue_seq_number", int(atom["res_id"]))
-        self.set_position(rid, "atom_name", name.strip())
-        self.say(f"{rid}: attached to {chain.strip()} {int(atom['res_id'])} {name.strip()} (picked)")
+        name = (
+            atom["atom_name"].decode()
+            if isinstance(atom["atom_name"], bytes)
+            else str(atom["atom_name"])
+        )
+        chain, name, res = chain.strip(), name.strip(), int(atom["res_id"])
+        rid = self.selected_pos
+        params = self._pos(rid)
+        new = params is None
+        if new:
+            rid = self.add_position_row()
+            params = self._pos(rid)
+        own = str(params.get("pdb_path") or params.get("pdb_id") or "").strip()
+        moved = not new and own != pdb
+        if own != pdb:
+            params["pdb_path"] = pdb
+            params.pop("pdb_id", None)
+        params["chain_identifier"] = chain
+        params["residue_seq_number"] = res
+        params["atom_name"] = name
+        self._auto_name(rid)
+        self._commit_position(rid)
+        rid = self.selected_pos or rid
+        where = f"{chain} {res} {name}"
+        if new:
+            self.say(f"{rid}: new position at {where} (picked)")
+        elif moved:
+            self.say(f"{rid}: moved to {Path(pdb).name} {where} (picked)")
+        else:
+            self.say(f"{rid}: attached to {where} (picked)")
         return True
 
     # ── persistence ───────────────────────────────────────────────────────
 
     def export_settings(self) -> dict:
         """What the window remembers: the document (positions, distances, sets, FlexFit) and the selections."""
-        return {"payload": copy.deepcopy(self.doc.fps_json_payload), "path": self.path,
-                "score_filter": self.score_filter, "flexfit_set": self.flexfit_set}
+        return {
+            "payload": copy.deepcopy(self.doc.fps_json_payload),
+            "path": self.path,
+            "score_filter": self.score_filter,
+            "flexfit_set": self.flexfit_set,
+        }
 
     def restore_settings(self, settings: dict) -> None:
         if not isinstance(settings, dict):
@@ -1111,5 +1320,15 @@ def _int_or(value: Any, default: int = 0) -> int:
         return default
 
 
-__all__ = ["ALL_DISTANCES", "DISTANCE_TYPES", "DYE_MODELS", "FpsEditor", "POSITION_DEFAULTS", "Rows",
-           "colour_from_hex", "dye_presets", "hex_colour", "safe_mrc_stem"]
+__all__ = [
+    "ALL_DISTANCES",
+    "DISTANCE_TYPES",
+    "DYE_MODELS",
+    "FpsEditor",
+    "POSITION_DEFAULTS",
+    "Rows",
+    "colour_from_hex",
+    "dye_presets",
+    "hex_colour",
+    "safe_mrc_stem",
+]

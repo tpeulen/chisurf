@@ -3,48 +3,92 @@
   "steps": [
     {
       "title": "What this editor is for",
-      "text": "An <b>fps.json</b> file says where dyes sit on a structure (<i>positions</i>) and which FRET distances were measured between them (<i>distances</i>). The docking and screening tools read it.<br/><br/>You can open an existing file with <b>Load</b>, or build one here from nothing. Seven steps; you press the buttons, the tour only points at them.",
+      "text": "An <b>fps.json</b> file says where dyes sit on a structure (<i>positions</i>) and which FRET distances were measured between them (<i>distances</i>). The docking and screening tools read it.<br/><br/>You can open an existing file with <b>Load</b>, or build one here from nothing. Ten steps; you press the buttons, the tour only points at them.",
       "target": {}
     },
     {
       "title": "Add a position",
       "text": "A position is one labelling site. Press <b>Add Row</b> to start one.",
-      "target": {"key": "add_row"},
-      "await": {"hint": "Press <b>Add Row</b>."}
+      "target": {
+        "key": "add_row"
+      },
+      "await": {
+        "hint": "Press <b>Add Row</b>."
+      }
     },
     {
-      "title": "Name it and choose the structure",
-      "text": "The new row is in the table. Select it, press <b>Browse PDB...</b> and pick a structure: the chain, residue and atom lists in <b>Selected position</b> are filled from it, and the row is named from its chain and residue (for example <b>A132</b>).<br/><br/>Add a second row the same way.",
-      "target": {"key": "pos_rows"}
+      "title": "Choose the structure",
+      "text": "Press <b>Fetch PDB...</b> and type a 4-character PDB ID (for example <b>1R0A</b>): the structure is downloaded from the RCSB for the selected row and shown in the <b>3D View</b>. <b>Browse PDB...</b> takes a file instead; typing an ID or a path into <b>PDB file or ID</b> does the same.<br/><br/>The chain, residue and atom lists in <b>Selected position</b> are filled from it, and the row is named from its chain and residue (for example <b>A132</b>).",
+      "target": {
+        "key": "fetch_pdb"
+      },
+      "await": {
+        "hint": "Press <b>Fetch PDB...</b> (or <b>Browse PDB...</b>)."
+      }
+    },
+    {
+      "title": "Walk the dye along the chain",
+      "text": "<b>Residue ▶</b> and <b>◀ Residue</b> move the selected position one residue on; its accessible volume is recomputed and the <b>3D View</b> shows where the dye can now be. The selected position's volume stands out, the others are muted.",
+      "target": {
+        "key": "res_next"
+      },
+      "await": {
+        "hint": "Press <b>Residue ▶</b>."
+      }
+    },
+    {
+      "title": "Place it in 3D",
+      "text": "In the <b>3D View</b>, click an atom: the selected position is attached there (with no position selected, a click starts a new one). Click a coloured sphere (an AV's mean position) to select that position. Drag to rotate, wheel to zoom. Any view's tab can be dragged to rearrange the window.",
+      "target": {
+        "key": "plot3d"
+      }
     },
     {
       "title": "Compute the accessible volumes",
       "text": "The <b>accessible volume</b> is where the dye can be, given its linker. It is computed for every position that has a structure, chain, residue and atom; <b>Compute AVs</b> recomputes them all.",
-      "target": {"key": "compute_avs"},
-      "await": {"hint": "Press <b>Compute AVs</b>."}
+      "target": {
+        "key": "compute_avs"
+      },
+      "await": {
+        "hint": "Press <b>Compute AVs</b>."
+      }
     },
     {
       "title": "Distances between positions",
       "text": "Open the <b>Distances</b> tab: a restraint joins two positions.",
-      "target": {"key": "tab_Distances"},
-      "await": {"hint": "Open the <b>Distances</b> tab."}
+      "target": {
+        "key": "tab_Distances"
+      },
+      "await": {
+        "hint": "Open the <b>Distances</b> tab."
+      }
     },
     {
       "title": "Add a restraint",
       "text": "<b>Add Row</b> adds an empty restraint; choose its two labels and the numbers in <b>Selected restraint</b>. It is named <b>label1_label2</b>.",
-      "target": {"key": "add_dist"},
-      "await": {"hint": "Press <b>Add Row</b>."}
+      "target": {
+        "key": "add_dist"
+      },
+      "await": {
+        "hint": "Press <b>Add Row</b>."
+      }
     },
     {
       "title": "The raw file",
       "text": "The <b>JSON</b> tab shows exactly what will be written. You can edit it by hand; <b>Update</b> in the toolbar reads your text back into the tables.",
-      "target": {"key": "tab_JSON"},
-      "await": {"hint": "Open the <b>JSON</b> tab."}
+      "target": {
+        "key": "tab_JSON"
+      },
+      "await": {
+        "hint": "Open the <b>JSON</b> tab."
+      }
     },
     {
       "title": "Save it",
       "text": "<b>Save</b> writes the fps.json. Press <b>Help</b> for the file format and what each tab does.",
-      "target": {"key": "save"}
+      "target": {
+        "key": "save"
+      }
     }
   ]
 }

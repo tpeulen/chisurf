@@ -82,9 +82,13 @@ def _reveal(ui, key):
         x, y, w, h = rect
         if y >= 0 and y + h <= ui.size[1] - 2:
             return rect
-        ui.app.pointer_move(20, ui.size[1] / 2)
+        # Over the control's own column at the window's edge it moves towards: over the form, not the table (a
+        # wheel over the table scrolls the table) and inside the view that holds it (views sit side by side).
+        below = y + h > ui.size[1] - 2  # the same limit as the test above, or it wheels back and forth
+        px, py = x + 4, (ui.size[1] - 12 if below else 90)
+        ui.app.pointer_move(px, py)
         ui.draw(1)
-        ui.app.wheel(20, ui.size[1] / 2, -3 if y + h > ui.size[1] else 3)
+        ui.app.wheel(px, py, -3 if below else 3)
         ui.draw(1)
     raise AssertionError(f"{key} cannot be scrolled into the window: {ui.app.item_rects.get(key)}")
 
@@ -463,10 +467,10 @@ def test_a_view_dragged_out_splits_the_window_and_both_stay_live(fps):
     """The Qt editor's views were dock widgets the user could rearrange; here a dragged tab splits the window."""
     ui = _open(fps)
     docks = ui.app.docks
-    assert len({r for r, k in docks.selected.items() if k}) == 1
+    assert {k for k in docks.selected.values() if k} == {"positions", "view3d"}  # the tables, the 3D View beside
     _drag_tab_to_right_pad(ui, "Distances")
     shown = {k for k in docks.selected.values() if k}
-    assert "distances" in shown and len(shown) == 2, docks.selected
+    assert shown == {"positions", "distances", "view3d"}, docks.selected
     # both views are drawn and react: the Distances table beside the Positions one
     assert ui.app.item_rects["dist_rows"][0] > ui.app.item_rects["pos_rows"][0]
     ed = ui.app.editor
@@ -498,3 +502,84 @@ def test_the_arrangement_is_kept_and_an_old_single_window_layout_is_ignored(fps,
     Ui(again, (1200, 800)).draw(3)
     assert {k for k in again.docks.selected.values() if k} == {k for k in split.values() if k}
     again.close()
+
+
+# ---- placing dyes: residue steps, fetch, picks in the 3D View --------------------------------------------------
+
+
+def test_the_residue_buttons_walk_the_selected_position_along_its_chain(fps):
+    ui = _open(fps)
+    ed = ui.app.editor
+    _select(ui, "p51_E194C")
+    chain = ed.position_field("p51_E194C", "chain_identifier")
+    residues = ed.residues(ed.position_field("p51_E194C", "pdb_path"), chain)
+    at = residues.index(194)
+    ui.click("res_next")
+    assert ed.position_field("p51_E194C", "residue_seq_number") == residues[at + 1]
+    ui.click("res_prev")
+    ui.click("res_prev")
+    assert ed.position_field("p51_E194C", "residue_seq_number") == residues[at - 1]
+    assert ed.position_field("p51_E194C", "atom_name") in ed.atoms(ed.position_field("p51_E194C", "pdb_path"),
+                                                                   chain, residues[at - 1])
+    ui.app.close()
+
+
+def test_fetch_pdb_downloads_an_id_into_a_new_row(fps, tmp_path):
+    ui = _open(fps)
+    ed = ui.app.editor
+    asked = []
+    ed.fetcher = lambda pdb_id: (asked.append(pdb_id), str(tmp_path / "protein_1R0A.pdb"))[1]
+    ed.selected_pos = ""
+    n = len(ed.doc.positions)
+    ui.click("fetch_pdb")
+    assert ui.app.modal is not None
+    ui.type_text("1r0a")
+    ui.key(keys.KEY_RETURN, "\r")
+    _settle(ui)
+    assert asked == ["1r0a"]
+    new = [p for p in ed.doc.positions.values() if p.get("pdb_path") == "1r0a"]
+    assert len(ed.doc.positions) == n + 1 and new and new[0]["chain_identifier"] in ed.chains("1r0a")
+    ui.app.close()
+
+
+def test_the_selected_volume_stands_out_and_the_others_are_muted(view3d):
+    overlays = view3d.app.chimol.viewer._point_overlays
+    selected = overlays["av_p51_E194C"]["color"][3]
+    others = [o["color"][3] for k, o in overlays.items() if k.startswith("av_") and k != "av_p51_E194C"]
+    assert selected >= 0.45 and max(others) < selected / 2
+    assert "attachment_selected" in overlays
+
+
+def test_clicking_a_mean_sphere_selects_its_position(view3d):
+    app = view3d.app
+    ed = app.editor
+    before = ed.attachment("p51_E194C")[1]
+    mean = app.editor.av_cache["p_10bp"][1]
+    x, y, visible = app.chimol.screen_points(np.asarray(mean).reshape(1, 3))
+    assert visible[0]
+    view3d.click_at(float(x[0]), float(y[0]))
+    assert ed.selected_pos == "p_10bp"
+    assert ed.attachment("p51_E194C")[1] == before  # a sphere click is not an atom pick
+    assert view3d.shown("p_10bp selected")
+
+
+def test_a_pick_with_nothing_selected_starts_a_position_and_one_on_the_other_structure_moves_it(fps, tmp_path):
+    from chisurf.plugins.modelling.structure_tools.cards.fps_model import FpsEditor
+
+    ed = FpsEditor()
+    ed.auto_av = False
+    assert ed.load(str(fps))
+    protein = ed.position_field("p51_E194C", "pdb_path")
+    struct = ed.structure(protein)
+    index = int(np.flatnonzero((struct.atoms["chain"] == "A") & (struct.atoms["res_id"] == 100)
+                               & (struct.atoms["atom_name"] == "CA"))[0])
+    ed.selected_pos = ""
+    n = len(ed.doc.positions)
+    assert ed.pick_atom(protein, index)
+    assert len(ed.doc.positions) == n + 1 and ed.selected_pos == "A100"
+    assert ed.attachment("A100")[1] == index
+    dna = ed.position_field("p_1bp", "pdb_path")
+    ed.selected_pos = "p51_E194C"
+    assert ed.pick_atom(dna, 5)
+    assert ed.position_field("p51_E194C", "pdb_path") == dna
+    assert "moved to dna.pdb" in ed.status

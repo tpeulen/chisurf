@@ -103,6 +103,29 @@ both tables stay clickable; a split survives close and reopen, and the old one-w
 Evidence: `after_split_3dview_{1200x800,800x600}.png` from `scripts/capture_split.py`; parity re-run `lost: []`,
 `untooltipped: []`, Qt-free.
 
+## Placing dyes interactively (2026-10-06, owner: "old had some pdb download and was somehow more interactive in placing the dyes and visualizing")
+
+What made it feel dead was a chimol defect: overlays added after the first build were never drawn (the per-object
+scene cache did not fingerprint `point_overlays`), so a computed volume, a moved dye or a recoloured surface showed
+only after the user rotated (chimol `2389bac`). A second chimol defect kept a faded volume visible: the transparency
+rim added a flat `(1 - a) * 0.55` (chimol `5df67ff`). The card's own scene signature took `id()` of a freshly sliced
+array, so it re-added every overlay each frame; it now keys on the cached AV arrays (a frame is ~16 ms).
+
+New, beyond Qt (Qt had the same pieces scattered: a per-row PDB field that downloaded IDs, a viewer in a tab):
+- Default layout: tables on the left, the 3D View beside them (layout key `views`; the earlier `main` is ignored).
+- **Fetch PDB...** (RCSB by ID, for the selected row or a new one); **◀ Residue / Residue ▶** walk a dye along its
+  chain with the AV recomputed (`FpsEditor.step_residue`).
+- 3D: the selected position's volume in front, the others muted, its attachment atom marked
+  (`FpsEditor.attachment`); a row pick centres the camera there (chimol `Viewer.center_on_point`); a click on a mean
+  sphere selects the position (`ChimolView.claim_click` + `screen_points`, chimol `Viewer.world_to_screen`); an atom
+  click with nothing selected starts a position, one on the other structure moves the position there.
+- Narrow tables keep readable columns and scroll sideways (emtk `d94a5a9`, `TableColumn.min_width`).
+
+Tests (`test_emtk_real_input.py`, 22 pass): residue buttons, Fetch PDB with a stub fetcher, the muted / selected
+alphas and the marker, a click on a mean sphere, picks that start or move a position. Evidence:
+`after_populated_*`, `after_split_distances_*`; parity `lost: []`, `untooltipped: []`, Qt-free. The tour
+(`guide.json`) gains the fetch, residue and 3D-click steps.
+
 ## Docs
 
 Guide 23 (*The FPS JSON Editor*) rewritten for the native window. Its figures (`23_fps_editor.png`, `_distances.png`, new
