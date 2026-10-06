@@ -45,7 +45,10 @@ jsonschema = "*"
 qtpy = "<2.0"
 pyqt = "*"
 pyqtgraph = "0.13.*"
-matplotlib-base = "*"
+# matplotlib was dropped: colour tables are emtk.colormaps, static figures
+# emtk.figure (PNG/SVG/PDF), formulas emtk.tex. It stays a test oracle
+# ([feature.test]) and the console's optional inline plotting uses it when the
+# user has it.
 # scikit-image was dropped: regionprops lives in chisurf.core.roi.props and
 # the five segmentation primitives the imaging tools used (gaussian,
 # threshold_otsu, clear_border, peak_local_max, watershed) in
@@ -187,6 +190,9 @@ pytest-timeout = "*"
 # file an external tool wrote. The shipped package imports it nowhere
 # (PRD-82), which is why this lives here and not in [dependencies].
 pandas = "*"
+# Test-only: colormap parity tests compare emtk.colormaps against
+# matplotlib's tables. The shipped package imports it nowhere.
+matplotlib-base = "*"
 # Test-only notebook execution (test/plugins/burst/test_mmfdb_example_notebooks.py):
 # nbconvert + ipykernel were dragged in by the `notebook` runtime dependency,
 # removed in 2026-08; the slow example-notebook test still needs them.
@@ -202,6 +208,11 @@ python-lsp-server = ">=1.14"
 build-pkg = { cmd = "python build_tools/run_rattler_build.py", depends-on = ["build-extensions"] }
 # One cross-platform installer builder (AppImage / DMG / setup.exe).
 build-installer = { cmd = "python build_tools/build_installer.py --no-build", depends-on = ["build-pkg"] }
+
+[feature.docs.dependencies]
+# docs/guides/make_figures.py draws the concept figures with matplotlib; the
+# shipped package does not use it.
+matplotlib-base = "*"
 
 [feature.docs.pypi-dependencies]
 sphinx = "*"

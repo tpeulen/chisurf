@@ -1,8 +1,8 @@
 """The native Lazy Lifetime Analysis at parity with the Qt LLTFGUIWizard.
 
-Both hosts run the LLTF command line in a subprocess, so parity is first the command:
-the Qt wizard runs in a subprocess here (this process stays Qt-free) and the command
-it builds is compared with the emtk model's for the same inputs and options. Then one
+Both hosts ran the LLTF command line in a subprocess, so parity is first the command:
+what the Qt wizard launched (recorded before it was retired, ``qt_reference_lltf.json``)
+is compared with the emtk model's command for the same inputs and options. Then one
 real fit of the shipped example is checked against the data itself (the starting
 values are random, so two runs agree only to a tolerance -- a known issue), and the
 two command-line defects the port fixed are pinned down: ``-n`` now wins over the
@@ -67,59 +67,35 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-_QT = r"""
-import json, subprocess, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.gui import dialogs
-from chisurf.plugins.fluorescence_decay.lltf import lltf_gui
-decay, irf, config, out = sys.argv[1:5]
-warned, launched = [], []
-dialogs.warning = lambda parent, title, text, *a, **k: warned.append([title, text])
-
-class FakePopen:                                       # record what the wizard would run, run nothing
-    def __init__(self, cmd, **kwargs):
-        launched.append({"cmd": cmd, "mpl": (kwargs.get("env") or {}).get("MPLBACKEND")})
-        self.stdout = iter(())
-        self.returncode = 0
-    def poll(self):
-        return 0
-    def wait(self, timeout=None):
-        return 0
-
-lltf_gui.subprocess.Popen = FakePopen
-w = lltf_gui.LLTFGUIWizard()
-w.on_fit()                                             # nothing loaded
-w.decay_file, w.irf_file, w.output_dir = decay, irf, out
-w.config_file_edit.setText(config)
-w.n_lifetimes_spin.setValue(2); w.verbose_check.setChecked(False)
-w._update_fit_button_state()
-fit_enabled = w.fit_button.isEnabled()
-w.analysis_tab.running = False
-w.on_fit()
-w.analysis_tab.running = False
-w.find_optimal_check.setChecked(True); w.max_lifetimes_spin.setValue(3); w.prob_threshold_spin.setValue(0.7)
-greyed = [w.n_lifetimes_spin.isEnabled(), w.max_lifetimes_spin.isEnabled(), w.prob_threshold_spin.isEnabled()]
-w.verbose_check.setChecked(True)
-w.on_fit()
-print("FACTS" + json.dumps({"warned": warned, "launched": launched, "fit_enabled": fit_enabled, "greyed": greyed}))
-"""
+#: What the Qt ``LLTFGUIWizard`` launched for the same inputs, recorded from the
+#: wizard itself (offscreen, ``Popen`` replaced by a recorder) on 2026-10-06, just
+#: before it was retired. Paths are placeholders: {DECAY} {IRF} {CONFIG} {OUT} {PYTHON}.
+QT_REFERENCE = HERE / "qt_reference_lltf.json"
 
 
 @pytest.fixture(scope="module")
 def qt(tmp_path_factory):
-    pytest.importorskip("qtpy")
     out = tmp_path_factory.mktemp("qt")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, DECAY, IRF, CONFIG, str(out)], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt wizard's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
+    values = {
+        "{DECAY}": DECAY,
+        "{IRF}": IRF,
+        "{CONFIG}": CONFIG,
+        "{OUT}": str(out),
+        "{PYTHON}": sys.executable,
+    }
+
+    def fill(x):
+        if isinstance(x, str):
+            for key, value in values.items():
+                x = x.replace(key, value)
+            return x
+        if isinstance(x, list):
+            return [fill(v) for v in x]
+        if isinstance(x, dict):
+            return {k: fill(v) for k, v in x.items()}
+        return x
+
+    facts = fill(json.loads(QT_REFERENCE.read_text()))
     facts["out"] = out
     return facts
 

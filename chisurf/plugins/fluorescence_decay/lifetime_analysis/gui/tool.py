@@ -29,10 +29,12 @@ def _maxent_mem(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 
 
 def _lazy_lifetime(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Create the Lazy Lifetime Analysis panel."""
-    from chisurf.plugins.fluorescence_decay.lltf.lltf_gui import LLTFGUIWizard
+    """Create the Lazy Lifetime Analysis panel: the emtk app, hosted."""
+    from emtk.qt_host import ControlHost
 
-    return LLTFGUIWizard(parent=parent)
+    from chisurf.plugins.fluorescence_decay.lltf.gui.app import make_app
+
+    return ControlHost(make_app(), parent=parent)
 
 
 def _microtime_histogram(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:

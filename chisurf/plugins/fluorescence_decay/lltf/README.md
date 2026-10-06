@@ -32,12 +32,12 @@ in fluorescence spectroscopy.
 
 ## Requirements
 
-- numpy, scipy, PyYAML and matplotlib (the fit writes `<decay>_fit.png`; no figure is shown on screen).
-- The emtk window (`gui/app.py`) needs no Qt; the legacy Qt wizard (`lltf_gui.py`) does.
+- numpy, scipy and PyYAML; the fit writes `<decay>_fit.png` with `emtk.figure` (no figure is shown on screen).
+- The window (`gui/app.py`) is an emtk app and needs no Qt; the Decay Analysis hub hosts the same app.
 
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Tools > Lazy Lifetime Analysis
+1. Open Spectroscopy ▸ Decay ▸ Decay Analysis and choose panel **3. Lazy Lifetime Analysis** (it has no menu entry of its own)
 2. Load TCSPC data:
    - Import decay curves
    - Load instrument response function (IRF)

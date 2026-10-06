@@ -1928,58 +1928,52 @@ def _grab_decay_analysis_hub():
 
 
 def _grab_lltf():
-    """Grab the Decay Analysis hub on its Lazy Lifetime Analysis panel.
+    """Grab the Lazy Lifetime Analysis window after a real fit.
 
-    Loads the plugin's bundled donor-only decay and IRF, runs the real Fit
-    button (a child ``lltf fit`` process) with a two-lifetime model and waits
-    for the Results tab.
+    Loads the plugin's bundled donor-only decay, IRF and ``config.yml``, runs
+    the real Fit (a child ``lltf fit`` process) with a two-lifetime model, waits
+    for it and grabs the Results and Analysis Output tabs and the YAML editor.
     """
-    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import (
-        LifetimeAnalysisTool,
-    )
-    from chisurf.plugins.fluorescence_decay.lltf.lltf_gui import LLTFGUIWizard
+    from emtk.pil_painter import PilPainter
+
+    from chisurf.plugins.fluorescence_decay.lltf.gui.app import make_app
 
     ex = pathlib.Path("chisurf") / "plugins" / "fluorescence_decay" / "lltf" / "example"
     out = pathlib.Path(tempfile.mkdtemp(prefix="lltf_"))
-    hub = LifetimeAnalysisTool()
-    hub.resize(1280, 900)
-    hub.show()
-    _pump(0.3)
+    app = make_app()
+    m = app.model
+    m.decay_file = str((ex / "5-44_D0.dat").resolve())
+    m.irf_file = str((ex / "IRF_D0.dat").resolve())
+    m.output_dir = str(out)
+    m.load_config(str((ex / "config.yml").resolve()))
+    m.n_lifetimes = 2
+    size = (1200, 800)
 
-    hub.resize(1280, 1350)
-    hub.nav_list.setCurrentRow(2)  # 3. Lazy Lifetime Analysis
-    _pump(0.5)
-    lltf = hub.findChildren(LLTFGUIWizard)[0]
-    lltf.decay_file = str(ex / "5-44_D0.dat")
-    lltf.decay_file_edit.setText(lltf.decay_file)
-    lltf.irf_file = str(ex / "IRF_D0.dat")
-    lltf.irf_file_edit.setText(lltf.irf_file)
-    lltf.output_dir = str(out)
-    lltf.output_dir_edit.setText(str(out))
-    lltf._update_fit_button_state()
-    lltf.n_lifetimes_spin.setValue(2)
-    _pump(0.2)
-    lltf.fit_button.click()
+    def draw(n=1):
+        painter = None
+        for _ in range(n):
+            painter = PilPainter(*size)
+            app.draw(painter, 0, 0, *size)
+        return painter
+
+    app.start()
     for _ in range(600):  # the child process: ~5 s for one fixed-n fit
-        _pump(0.1)
-        if not lltf.analysis_tab.running:
+        draw()
+        if m.process is None:
             break
-    _pump(0.5)
-    lltf.tab_widget.setCurrentIndex(1)
-    _pump(0.2)
-    _grab(hub, "lltf_output.png")
-    lltf.tab_widget.setCurrentWidget(lltf.results_tab)
-    from qtpy import QtWidgets
-    for sp in lltf.results_tab.findChildren(QtWidgets.QSplitter):
-        sp.setSizes([230, 520])
-    _pump(0.3)
-    _grab(hub, "lltf_results.png")
-
-    lltf.on_edit_config()
-    ed = lltf.settings_editor
-    ed.resize(560, 940)
-    _pump(0.3)
-    _grab(ed, "lltf_settings.png")
+        time.sleep(0.1)
+    for tab, name in (("Results", "lltf_results.png"), ("Analysis Output", "lltf_output.png")):
+        app.pending_tab = tab
+        draw(4).frame.save(FIG / name)
+        print(f"wrote {name}")
+    app.edit_config()
+    draw(4).frame.save(FIG / "lltf_settings.png")
+    print("wrote lltf_settings.png")
+    app.config_open = False
+    r = m.result
+    print("LLTF", [(round(x["lifetime"], 3), round(x["amplitude"], 3)) for x in r["lifetimes"]],
+          round(r["reduced_chi_square"], 2), r.get("time_range"))
+    app.close()
 
 
 def _grab_synthetic_decay():

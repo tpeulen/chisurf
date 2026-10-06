@@ -71,7 +71,6 @@ def test_lifetime_panel_factories_import_expected_widgets(monkeypatch) -> None:
             "MaxentDecayWidget",
             MainWindow,
         ),
-        "chisurf.plugins.fluorescence_decay.lltf.lltf_gui": ("LLTFGUIWizard", MainWindow),
         "chisurf.plugins.tttr.microtime_histogram.wizard": (
             "MicrotimeHistogram",
             Widget,

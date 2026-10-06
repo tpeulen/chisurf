@@ -76,7 +76,6 @@ dependencies = [
     "PyYAML",
     "packaging",
     "typing-extensions",
-    "matplotlib",
     "python-docx",
     "markdown",
     "msgpack>=1.1.2",

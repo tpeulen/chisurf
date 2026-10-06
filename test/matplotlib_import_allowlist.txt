@@ -35,8 +35,7 @@
 
 # --- figure --- (done 2026-10-06: emtk.figure, vector via emtk's SVG/PDF painters)
 
-# --- plot ---
-chisurf/plugins/fluorescence_decay/lltf/lltf_gui.py
+# --- plot --- (done 2026-10-06: the last importer, the Qt LLTF wizard, is retired)
 
 # --- math ---
 

@@ -19,7 +19,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.fluorescence_decay.lltf.lltf_gui:LLTFGUIWizard",
     "cli": "lltf=chisurf.plugins.fluorescence_decay.lltf.core.cli:cli",
     "emtk": "chisurf.plugins.fluorescence_decay.lltf.gui.app:make_app"
   },

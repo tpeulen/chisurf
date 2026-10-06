@@ -30,23 +30,4 @@ name = "Spectroscopy:Fluorescence decay:Lazy Lifetime Analysis"
 cli_entrypoint = "lltf=chisurf.plugins.fluorescence_decay.lltf.core.cli:cli"
 
 
-def __getattr__(attr_name):
-    """Lazily expose GUI classes without forcing Qt imports for core modules."""
-    if attr_name == "LLTFGUIWizard":
-        from chisurf.plugins.fluorescence_decay.lltf.lltf_gui import LLTFGUIWizard
-
-        return LLTFGUIWizard
-    raise AttributeError(attr_name)
-
-
-__all__ = ["LLTFGUIWizard", "cli_entrypoint", "name"]
-
-# When the plugin is loaded as a module with __name__ == "plugin",
-# this code will be executed
-if __name__ == "plugin":
-    from chisurf.plugins.fluorescence_decay.lltf.lltf_gui import LLTFGUIWizard
-
-    # Create an instance of the LLTFGUIWizard class
-    window = LLTFGUIWizard()
-    # Show the window
-    window.show()
+__all__ = ["cli_entrypoint", "name"]

@@ -1,0 +1,58 @@
+{
+  "warned": [
+    [
+      "Warning",
+      "Please load decay and IRF data first."
+    ]
+  ],
+  "launched": [
+    {
+      "cmd": [
+        "{PYTHON}",
+        "-m",
+        "chisurf.plugins.fluorescence_decay.lltf.core",
+        "fit",
+        "{DECAY}",
+        "{IRF}",
+        "-sp",
+        "{OUT}",
+        "-o",
+        "{OUT}/5-44_D0_fit.json",
+        "-c",
+        "{CONFIG}",
+        "-n",
+        "2"
+      ],
+      "mpl": "Agg"
+    },
+    {
+      "cmd": [
+        "{PYTHON}",
+        "-m",
+        "chisurf.plugins.fluorescence_decay.lltf.core",
+        "fit",
+        "{DECAY}",
+        "{IRF}",
+        "-sp",
+        "{OUT}",
+        "-o",
+        "{OUT}/5-44_D0_fit.json",
+        "-c",
+        "{CONFIG}",
+        "-f",
+        "-m",
+        "3",
+        "-pt",
+        "0.7",
+        "-v"
+      ],
+      "mpl": "Agg"
+    }
+  ],
+  "fit_enabled": true,
+  "greyed": [
+    false,
+    true,
+    true
+  ]
+}

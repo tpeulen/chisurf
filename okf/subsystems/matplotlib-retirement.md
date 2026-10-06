@@ -9,7 +9,7 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
-Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 1** (2026-10-05/06),
+Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 0** (2026-10-05/06),
 guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 `emtk.colormaps`), **delete** (1), **figure** (all but the two below, via
 `emtk.figure`). Open, in order:
@@ -36,18 +36,22 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
    ships it to Pyodide. Known gap: `transparent=True` is accepted but the
    figure is drawn on white paper. Checking a vector file by eye: `rsvg-convert`
    (SVG) and `sips` (PDF) render them independently of emtk.
-3. **plot route -- the last entry (checked 2026-10-06).**
-   `plugins/fluorescence_decay/lltf/lltf_gui.py` (legacy Qt `LLTFGUIWizard`,
-   `FigureCanvasQTAgg`). The emtk LLTF app *has* landed (`lltf/gui/app.py`,
-   manifest `entrypoints.emtk`), but the Qt wizard is still reached from: the
-   manifest's `gui` entrypoint, the Qt `lifetime_analysis` tool
-   (`gui/tool.py::_lazy_lifetime`), `lltf/__init__.py`, `test/test_widgets.py`,
-   and `test/test_emtk_lltf_parity.py` (its reference). No lane holds it on the
-   board. Next step, in order: point `lifetime_analysis`'s panel and the
-   manifest `gui` entry at the emtk app (hosted), keep the parity test's
-   reference as a frozen capture, then delete the wizard -- that empties the
-   list. Do **not** port its canvas to chiplot first: it is a legacy surface on
-   its way out, not one to extend.
+3. **plot route -- DONE 2026-10-06 (the Qt LLTF wizard is retired).**
+   `lltf_gui.py` (`LLTFGUIWizard`, `FigureCanvasQTAgg`) is deleted. Parity
+   re-checked before deletion with `test.gui.emtk_port_parity before/after/
+   compare lltf`: 17 Qt controls, **0 lost**, 4 explained renames
+   (`?`->Help, Find Optimal Number of Lifetimes->Find Optimal, Stop Process->
+   Stop, Clear Output in its tab); the Qt menu actions (Load Decay/IRF,
+   Select Output, Edit Configuration, Fit, Exit) are the panel's buttons and
+   the window's close. Same inputs, real fit: the Qt run gave chi2_r 34.5,
+   the emtk app 1.39 -- the Qt path was the broken one. Now: the manifest has
+   no `gui` entry (emtk only), `lifetime_analysis`'s panel 3 hosts the emtk
+   app in `emtk.qt_host.ControlHost`, the parity test reads the wizard's
+   recorded commands from `lltf/test/qt_reference_lltf.json` (captured from
+   the live wizard just before deletion), `test_widgets.py` asserts the same
+   three things on the emtk app, and guide 76's `lltf_output.png` (the last
+   Qt-hub grab) is redrawn from the emtk window by
+   `make_screenshots._grab_lltf`.
 4. **math route -- DONE 2026-10-06.** emtk `e1e04d5` (+ `11d64c4`, sans)
    adds `emtk/tex.py`, a TeX box-layout typesetter (scripts, fractions, roots,
    grown delimiters, big operators with limits, accents on ink, font commands,
@@ -66,11 +70,23 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 5. **Static exports go through emtk.figure, not chiplot**: `chisurf.gui`
    imports Qt, and callers include Qt-free api/server/agent code. chiplot
    stays the API for plots *inside* GUIs.
-6. **Manifests** once the list is empty (one entry left, item 3): drop `matplotlib-base` from
-   `pixi.toml` `[dependencies]` (keep it for `test`/`docs` --
-   `docs/guides/make_figures.py`), `matplotlib` from the recipe `run:` and
-   `modules/ndxplorer/pyproject.toml`; add it to `RETIRED` in
-   `test/test_no_retired_dependency_imports.py`.
+6. **Manifests -- DONE 2026-10-06.** The list is empty. `matplotlib-base` left
+   `pixi.toml` `[dependencies]` and is declared under `[feature.test]` (the
+   colormap oracle) and `[feature.docs]` (`docs/guides/make_figures.py`);
+   `matplotlib` left the recipe `run:`, the root `pyproject.toml` and
+   `build_installer.TEST_PKGS`. **Not done -- `RETIRED` entry:** adding
+   matplotlib to `test/test_no_retired_dependency_imports.py` fails its
+   packaging check, which reads every `pixi.toml` table alike (so the test/docs
+   features count) and also scans `test/settings/test_py314.toml` and
+   `build_tools/setup_runtime.sh`, both still listing matplotlib. Next: drop it
+   from those two files, teach `_declared_dependencies` to skip
+   `[feature.test*]`/`[feature.docs*]` tables (or exempt them per package),
+   then add `RETIRED["matplotlib"]` with `_ALLOWED_PREFIXES` for
+   `core/console/{mpl_inline,shell}.py` and the four test oracles
+   (`tttr_image_browser/test/`, `psf_calculator/tests/`, `chimol/test/`,
+   `modules/ndxplorer/ndxplorer/tests/`, `test/repro/`). Also not done:
+   `pixi.lock` was not re-solved (other lanes co-edit it) -- the next
+   `pixi install` drops matplotlib from the default env.
 
 Trap when committing here: the tree is shared and most of these files carry
 other lanes' edits. Save `git diff <file>` before editing, stage via a temp

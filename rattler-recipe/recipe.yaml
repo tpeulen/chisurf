@@ -141,7 +141,7 @@ requirements:
     - rendercanvas
     - glfw
     - pyqtgraph
-    - matplotlib
+    # matplotlib removed: emtk.colormaps / emtk.figure / emtk.tex replace it.
     # scikit-image was dropped: regionprops lives in chisurf.core.roi.props and
     # the five segmentation primitives the imaging tools used (gaussian,
     # threshold_otsu, clear_border, peak_local_max, watershed) in
