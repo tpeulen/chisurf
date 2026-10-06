@@ -9,7 +9,7 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
-Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 4** (2026-10-05/06),
+Allow-list `test/matplotlib_import_allowlist.txt`: **31 -> 1** (2026-10-05/06),
 guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 `emtk.colormaps`), **delete** (1), **figure** (all but the two below, via
 `emtk.figure`). Open, in order:
@@ -39,20 +39,21 @@ guard `test/test_matplotlib_seam.py`. Routes done: **colormap** (all 12, via
 3. **plot route**: `plugins/fluorescence_decay/lltf/lltf_gui.py`, legacy Qt
    `FigureCanvasQTAgg`. Another lane is building the emtk LLTF app
    (`lltf/gui/app.py`); the Qt wizard goes with it. Do not port in parallel.
-4. **math route -- engine DONE 2026-10-06; 3 callers left.** emtk `e1e04d5`
-   (+ `11d64c4`, sans) adds `emtk/tex.py`, a TeX box-layout typesetter
-   (scripts, fractions, roots, grown delimiters, big operators with limits,
-   accents on ink, font commands, math alphabets, under/overset) drawing
-   FreeType glyphs through Pillow; `emtk.mathtext.render_math_to_texture` uses
-   it, so emtk itself no longer needs matplotlib. Coverage measured: all 2005
-   formulas in `docs/` + help pages (after `normalise_latex`) typeset; 32 of
-   the most complex checked side by side against matplotlib's renders. The
-   help viewer (`help/api/mathtext.py` MathRenderer, `help/gui/help_app.py`)
-   is ported. **Left:** `gui/widgets/{equation_editor,expression_input,
-   general}.py` -- each builds a pyplot figure only to draw one formula; swap to
-   `emtk.tex.render_rgba` (white background) and screenshot the editor before
-   and after. Traps: Pillow's `getbbox` clamps an accent's ink bottom to the
-   baseline (use the mask, `tex._ink`); STIX Two Text has no bold face.
+4. **math route -- DONE 2026-10-06.** emtk `e1e04d5` (+ `11d64c4`, sans)
+   adds `emtk/tex.py`, a TeX box-layout typesetter (scripts, fractions, roots,
+   grown delimiters, big operators with limits, accents on ink, font commands,
+   math alphabets, under/overset) drawing FreeType glyphs through Pillow;
+   `emtk.mathtext.render_math_to_texture` uses it, so emtk needs no matplotlib.
+   All 2005 formulas in `docs/` + help pages (after `normalise_latex`)
+   typeset; 32 of the most complex checked side by side against matplotlib's
+   renders. Ported: the help viewer (`0852ebf95`) and the two parse-model
+   previews through one helper, `models/parse/latex.expression_preview_png`
+   (before/after grabs of ExpressionInput and EquationTableEditor: same
+   controls, preview present, sans as before); the unused `tex2svg` deleted.
+   Traps: Pillow's `getbbox` clamps an accent's ink bottom to the baseline (use
+   the mask, `tex._ink`); STIX Two Text has no bold face; TeX puts no space
+   around `+` in script style, so a fraction's parts look tighter than
+   matplotlib drew them -- correct, not a bug.
 5. **Static exports go through emtk.figure, not chiplot**: `chisurf.gui`
    imports Qt, and callers include Qt-free api/server/agent code. chiplot
    stays the API for plots *inside* GUIs.

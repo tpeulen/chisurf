@@ -39,8 +39,5 @@
 chisurf/plugins/fluorescence_decay/lltf/lltf_gui.py
 
 # --- math ---
-chisurf/gui/widgets/equation_editor.py
-chisurf/gui/widgets/expression_input.py
-chisurf/gui/widgets/general.py
 
 # --- delete ---

@@ -6,8 +6,36 @@ import ast
 import re
 
 
+def expression_preview_png(expression: str, font_size: float = 13.0) -> bytes | None:
+    """A parse-model expression typeset as a PNG on white, for a preview label.
+
+    Parameters
+    ----------
+    expression : str
+        Python expression, as the parse model writes it.
+    font_size : float
+        Point size at 100 dpi (what the previews were drawn at).
+
+    Returns
+    -------
+    bytes or None
+        PNG bytes, or ``None`` when the expression cannot be converted or
+        typeset -- the caller then hides its preview.
+    """
+    try:
+        from emtk.tex import render_rgba
+        from emtk.testing import png_encode
+
+        tex = sanitize_latex_for_mathtext(convert_python_expression_to_latex(expression))
+        w, h, rgba, _ = render_rgba(tex, font_size * 100.0 / 72.0, colour=(0, 0, 0, 255),
+                                    pad=5, background=(255, 255, 255, 255), sans=True)
+        return png_encode(w, h, rgba)
+    except Exception:  # noqa: BLE001 - a preview is best effort
+        return None
+
+
 def sanitize_latex_for_mathtext(latex: str) -> str:
-    """Return LaTeX that Matplotlib's mathtext parser can render.
+    """Return LaTeX the math typesetter (:mod:`emtk.tex`) can render.
 
     Parameters
     ----------
@@ -17,7 +45,7 @@ def sanitize_latex_for_mathtext(latex: str) -> str:
     Returns
     -------
     str
-        LaTeX expression with commands unsupported by Matplotlib mathtext
+        LaTeX expression with commands the typesetter does not read
         rewritten or removed.
     """
     if not latex:

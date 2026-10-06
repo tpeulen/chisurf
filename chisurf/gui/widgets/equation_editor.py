@@ -358,29 +358,13 @@ class EquationTableEditor(QtWidgets.QWidget):
 
     def _render_latex(self, expr: str) -> QtGui.QPixmap | None:
         """Best-effort math render of ``expr``; None if it cannot be rendered."""
-        try:
-            import io
+        from chisurf.gui.widgets.models.parse.latex import expression_preview_png
 
-            import matplotlib.pyplot as plt
-
-            from chisurf.gui.widgets.models.parse.latex import (
-                convert_python_expression_to_latex,
-                sanitize_latex_for_mathtext,
-            )
-
-            tex = sanitize_latex_for_mathtext(convert_python_expression_to_latex(expr))
-            fig = plt.figure(figsize=(3.0, 0.5), dpi=100)
-            fig.patch.set_facecolor("white")
-            fig.text(0.5, 0.5, f"${tex}$", ha="center", va="center", fontsize=13, color="black")
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", pad_inches=0.05, facecolor="white")
-            plt.close(fig)
-            buf.seek(0)
-            pix = QtGui.QPixmap()
-            pix.loadFromData(buf.getvalue())
-            return pix
-        except Exception:
+        data = expression_preview_png(expr)
+        if data is None:
             return None
+        pix = QtGui.QPixmap()
+        return pix if pix.loadFromData(data) else None
 
     # -- equations <-> table ----------------------------------------------
     def equations(self) -> list[dict]:

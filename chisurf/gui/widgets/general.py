@@ -6,7 +6,6 @@ import os
 import pathlib
 import re
 import time
-from io import BytesIO
 
 import chisurf as cs
 import chisurf.core.base
@@ -596,36 +595,6 @@ def make_widget_from_yaml(variable_dictionary, name: str = ""):
         return g
 
     return make_group(variable_dictionary, name)
-
-
-def tex2svg(formula: str, fontsize: int = 12, dpi: int = 300):
-    """Render TeX formula to SVG.
-    Args:
-        formula (str): TeX formula.
-        fontsize (int, optional): Font size.
-        dpi (int, optional): DPI.
-    Returns:
-        str: SVG render.
-    """
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(figsize=(0.01, 0.01))
-    fig.text(0, 0, rf"${formula}$", fontsize=fontsize)
-
-    output = BytesIO()
-    fig.savefig(
-        output,
-        dpi=dpi,
-        transparent=True,
-        format="svg",
-        bbox_inches="tight",
-        pad_inches=0.0,
-        frameon=False,
-    )
-    plt.close(fig)
-
-    output.seek(0)
-    return output.read()
 
 
 def get_subtree_nodes(tree_widget_item):
