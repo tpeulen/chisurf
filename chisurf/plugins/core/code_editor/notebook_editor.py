@@ -65,13 +65,13 @@ from chisurf.core.console import ansi as _ansi
 from chisurf.core.console.history import HistoryManager
 from chisurf.core.console.shell import Shell
 from chisurf.gui.chinsole.theme import theme_from_settings
+from chisurf.plugins.core.code_editor import ipynb as nbformat
 from chisurf.plugins.core.code_editor.text_editor import (
     TextEditor,
     get_editor_settings,
     make_editor_font,
 )
 
-nbformat = None
 
 __all__ = ["NotebookEditor", "NotebookCell", "CellOutput", "shipped_notebooks"]
 
@@ -158,21 +158,6 @@ def _cell_source(node: dict) -> str:
     if isinstance(source, list):
         return "".join(str(part) for part in source)
     return str(source or "")
-
-
-def _ensure_nbformat() -> None:
-    """Import :mod:`nbformat` on first use (kept lazy).
-
-    Raises
-    ------
-    ImportError
-        When the dependency is not installed.
-    """
-    global nbformat
-    if nbformat is None:
-        import nbformat as _nbformat
-
-        nbformat = _nbformat
 
 
 class CellOutput(QtWidgets.QTextEdit):
@@ -924,7 +909,6 @@ class NotebookCell(QtWidgets.QWidget):
         -------
         dict
         """
-        _ensure_nbformat()
         if self._source_node is not None:
             node = copy.deepcopy(self._source_node)
         elif self.cell_type == "markdown":
@@ -1435,7 +1419,6 @@ class NotebookEditor(QtWidgets.QWidget):
 
     def new_notebook(self) -> None:
         """Replace the document with a fresh empty notebook (one code cell)."""
-        _ensure_nbformat()
         self._clear_cells()
         nb = nbformat.v4.new_notebook()
         nb.metadata.setdefault(
@@ -1469,7 +1452,6 @@ class NotebookEditor(QtWidgets.QWidget):
             ``True`` on success; ``False`` when ``path`` is not a valid ipynb
             (the Raw JSON fallback is then the plain-text tab's job).
         """
-        _ensure_nbformat()
         try:
             nb = nbformat.read(str(path), as_version=4)
         except Exception as exc:  # noqa: BLE001 - a corrupt notebook is a text file
@@ -1507,7 +1489,6 @@ class NotebookEditor(QtWidgets.QWidget):
         -------
         dict
         """
-        _ensure_nbformat()
         source_nb = self._source_nb
         if source_nb is None:
             nb = nbformat.v4.new_notebook()
@@ -1519,7 +1500,6 @@ class NotebookEditor(QtWidgets.QWidget):
 
     def save_to(self, path: str) -> None:
         """Write the notebook to *path* as an ipynb file."""
-        _ensure_nbformat()
         nb = self.to_nbformat()
         payload = nbformat.writes(nb, sort_keys=False, indent=1)
         with open(path, "w", encoding="utf-8") as handle:
@@ -1669,7 +1649,6 @@ class NotebookEditor(QtWidgets.QWidget):
 
     def setText(self, text: str) -> None:
         """Replace the notebook from *text* (a JSON ipynb or plain source)."""
-        _ensure_nbformat()
         try:
             nb = nbformat.reads(text, as_version=4)
         except Exception:

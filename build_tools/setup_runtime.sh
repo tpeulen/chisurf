@@ -42,7 +42,6 @@ DEPS=(
     "pyyaml"
     "markdown"
     "click"
-    "ipython"
     "notebook<7"
     "pyopengl"
     "python-docx"

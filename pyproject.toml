@@ -78,10 +78,6 @@ dependencies = [
     "python-docx",
     "markdown",
     "msgpack>=1.1.2",
-    "ipython",
-    # Backs the shipped notebook editor (lazy import); declared directly since
-    # it used to arrive transitively via the removed `notebook` dependency.
-    "nbformat",
     "click",
     # Plugin-manifest and view-spec validation; without it those validators
     # report everything valid.

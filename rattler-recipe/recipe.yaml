@@ -156,11 +156,8 @@ requirements:
     # it belonged to. Nothing in the tree or in the local modules links libboost
     # -- tttrlib builds against the C++17 standard library -- so shipping it in
     # `run:` installed a compiler dependency into every user's environment.
-    - ipython
-    # nbformat backs the shipped notebook editor (lazy import). It used to
-    # arrive transitively via `notebook`, removed with the external Jupyter
-    # server in 2026-08.
-    - nbformat
+    # ipython and nbformat removed: the console is chinsole, and .ipynb files
+    # are read and written by code_editor/ipynb.py.
     - pyopengl
     # guidata/guiqwt removed: guiqwt's users (global_tcspc, surfaceplot) were
     # ported to pyqtgraph, and guidata's DataFrameEditor was replaced by the

@@ -26,6 +26,15 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 #: ``import name -> (packaging name, what to use instead)``.
 RETIRED = {
+    "IPython": (
+        "ipython",
+        "the console is chinsole (chisurf.core.console); it implements the IPython "
+        "spellings old settings files use",
+    ),
+    "nbformat": (
+        "nbformat",
+        "read and write .ipynb with chisurf.plugins.core.code_editor.ipynb",
+    ),
     "scipy": (
         "scipy",
         "use chisurf.core.math.numerics / chisurf.core.math.special (IMP.bff) or "
@@ -138,7 +147,7 @@ _IMPORT_ONLY = {"requests"}
 #: ``tests`` -- the rule test_scipy_seam/test_matplotlib_seam use), and the
 #: packaging check ignores pixi's ``[feature.test*]`` and ``[feature.docs*]``
 #: tables, where they are declared on purpose. Every runtime table still counts.
-_TEST_ORACLE = {"scipy", "matplotlib"}
+_TEST_ORACLE = {"scipy", "matplotlib", "nbformat"}
 
 #: Files whose only mention of the names is this test itself.
 _ALLOWED = {"test/test_no_retired_dependency_imports.py"}

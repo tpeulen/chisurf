@@ -71,11 +71,10 @@ pillow = "*"
 # the burbulator library and the Cython extensions -- is retired, tttrlib
 # builds against the C++17 standard library instead, and no built extension
 # in the tree or in the local modules records a libboost load command.
-ipython = "*"
-# nbformat backs the shipped notebook editor (chisurf/plugins/core/code_editor),
-# which imports it lazily on first use. It used to arrive transitively via
-# `notebook`, removed with the external Jupyter server in 2026-08.
-nbformat = "*"
+# ipython was dropped: the console is chinsole (chisurf.core.console), and
+# nothing shipped imports IPython. nbformat was dropped: the notebook editor
+# reads and writes .ipynb through chisurf/plugins/core/code_editor/ipynb.py,
+# byte-identical to nbformat's output (nbformat stays the test oracle).
 pyopengl = "*"
 # WebGPU: the graphics API behind chisurf.gui.chigame, and the platform surface
 # plumbing (Qt embedding, offscreen rendering) that goes with it. Both were only
@@ -202,6 +201,8 @@ scipy = "*"
 # nbconvert + ipykernel were dragged in by the `notebook` runtime dependency,
 # removed in 2026-08; the slow example-notebook test still needs them.
 nbconvert = "*"
+# Oracle of chisurf/plugins/core/code_editor/test/test_ipynb.py.
+nbformat = "*"
 ipykernel = "*"
 
 [feature.dev.dependencies]
