@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W7 resume: canonical provider15, owning science32, fit notification/menu23 and related DTO/service/graph89 checks pass; available guards plus reviewed harness987/17 expected skips. Additional35 harness cases expose child-coordinate/context/tour-selection requirements before a fresh matrix. Splitter duplicate browse IDs depend on W1 orphan-source landing; FCS timeout remains profiling. Independent staging audit confirms pin/modes and foreign edits preserved. Programme continues, no acceptance claim for old matrices. [Resume](prds/prd-154.md).
+
 - PRD-154 W7: restore the fitting source's tracked executable mode after private-index staging normalized it unintentionally. The blob and scientific behavior are unchanged; future staging must read each existing mode from HEAD instead of hard-coding100644.
 
 - PRD-154 W7: graph-completed fits publish exact owner/member notifications without another model evaluation, Main refreshes UID-matched windows, and Parse link menus filter additive active-structure metadata while preserving134 catalogue ports.23 focused regressions pass; inspected real A488 before/after receipts confirm unchanged science and six active targets. Global chi2r0.9999763241843488 legitimately rounds to1.0000; no formula correction was needed. [Evidence](validation/release-readiness-w7.md).
