@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-import chisurf
 
 logger = logging.getLogger(__name__)
 from chisurf.core.fio.staging import TTTR_EXTENSIONS as _TTTR_EXTENSIONS
@@ -21,36 +18,8 @@ from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.setup_client import (
     DetectorSetupClient,
 )
-
-
-@dataclass
-class BurstWorkflowContext:
-    """Shared state handed from earlier burst workflow steps to later steps."""
-
-    channel_settings: dict[str, Any] = field(default_factory=dict)
-    #: Name of the detector setup ``channel_settings`` was read from — panels
-    #: that take a setup by name (rather than a detector table) need it.
-    setup_name: str = ""
-    raw_files: list[Path] = field(default_factory=list)
-    burst_folder: Path | None = None
-    bur_files: list[Path] = field(default_factory=list)
-    mmfdb_artifacts: dict[str, Any] = field(default_factory=dict)
-    raw_mmfdb_artifacts: dict[str, Any] = field(default_factory=dict)
-    #: VV/VH-stacked {detector: {"irf", "bg"}} patterns from the IRF/background
-    #: tool, applied to the MLE panel when it loads.
-    irf_background_patterns: dict[str, Any] = field(default_factory=dict)
-
-    def to_payload(self) -> dict[str, Any]:
-        """Return a JSON-compatible workflow context payload."""
-        return {
-            "channel_settings": self.channel_settings,
-            "setup_name": self.setup_name,
-            "raw_files": [str(path) for path in self.raw_files],
-            "burst_folder": str(self.burst_folder) if self.burst_folder else None,
-            "bur_files": [str(path) for path in self.bur_files],
-            "mmfdb_artifacts": self.mmfdb_artifacts,
-            "raw_mmfdb_artifacts": self.raw_mmfdb_artifacts,
-        }
+from chisurf.plugins.burst.burst_analysis import workflow_context as _wf
+from chisurf.plugins.burst.burst_analysis.workflow_context import BurstWorkflowContext
 
 
 class BurstDataSelectionWidget(QtWidgets.QWidget):
@@ -1324,162 +1293,18 @@ class BurstAnalysisTool(ChisurfDockTool):
 
     def _folder_from_selection_result(self, result: object) -> Path | None:
         """Return an output folder from a burst-selection result payload."""
-        if not isinstance(result, dict):
-            return None
-        candidates: list[str] = []
-        for key in ("output_folder", "analysis_folder"):
-            value = result.get(key)
-            if isinstance(value, str):
-                candidates.append(value)
-        for nested_key in ("metadata", "output_paths"):
-            nested = result.get(nested_key) or {}
-            if isinstance(nested, dict):
-                value = nested.get("output_folder")
-                if isinstance(value, str):
-                    candidates.append(value)
-        for candidate in candidates:
-            path = Path(candidate)
-            if path.exists() and path.is_dir():
-                return path
-        return None
-
+        return _wf.folder_from_result(result)
     def _materialize_burst_handoff(self, widget: QtWidgets.QWidget) -> Path | None:
-        """Give the later steps something to read the bursts from.
-
-        For a `.pto` source that is the container itself: it already holds the
-        bursts, beside the photons they were found in, and every downstream read
-        goes through ``read_burst_analysis``, which opens one. Writing a
-        ``burst_analysis_handoff/`` folder of `.bur` files there put the same
-        results in a second place — and the second place went stale the moment
-        the selection was re-run, which is how a step came to report **8 bursts**
-        from a handoff folder while the panel above it showed hundreds.
-
-        Anything else still gets the folder: a vendor file has nowhere to keep
-        the bursts, and the legacy layout is what the readers understand.
-        """
-        frames_by_file = getattr(widget, "_last_frames_by_file", None)
-        if not frames_by_file:
-            return None
-        raw_files = self.workflow_context.raw_files or [
-            Path(path) for path in frames_by_file.keys()
-        ]
-        if not raw_files:
-            return None
-
-        from chisurf.core.fio.pto import SUFFIX
-
-        containers = [p for p in raw_files if Path(p).suffix.lower() == SUFFIX]
-        if containers and len(containers) == len(raw_files):
-            # One container is one measurement; the later steps take the first
-            # and read the rest from their own file the same way.
-            return Path(containers[0])
-
-        output_folder = raw_files[0].parent / "burst_analysis_handoff"
-        bur_folder = output_folder / "bi4_bur"
-        bur_folder.mkdir(parents=True, exist_ok=True)
-
-        from chisurf.plugins.burst.burst_selection.api.io import (
-            write_bur,
-            write_container,
+        """Give the later steps something to read the bursts from (see ``workflow_context.materialize_handoff``)."""
+        return _wf.materialize_handoff(
+            self.workflow_context, getattr(widget, "_last_frames_by_file", None) or {}
         )
-
-        for raw_path in raw_files:
-            frame = frames_by_file.get(raw_path.resolve())
-            if frame is None:
-                frame = frames_by_file.get(raw_path)
-            if frame is None:
-                continue
-            write_bur(frame, bur_folder / f"{raw_path.stem}.bur")
-            # The same bursts, in the measurement's own file. The handoff
-            # folder is a bridge between two steps of one session and is
-            # rewritten each time; the container is where they keep living, and
-            # it goes through the shared writer rather than growing a third
-            # copy of the `bi4_bur` layout.
-            try:
-                write_container(
-                    raw_path,
-                    frame,
-                    parameters=self.workflow_context.to_payload(),
-                )
-            except Exception as exc:
-                chisurf.logging.warning(f"Could not write the container for {raw_path}: {exc}")
-
-        payload = self.workflow_context.to_payload()
-        payload["raw_files"] = [str(path) for path in raw_files]
-        (output_folder / "burst_analysis_handoff.json").write_text(
-            json.dumps(payload, indent=2, default=str)
-        )
-        return output_folder
-
     def burst_sources(self) -> list[Path]:
-        """Return the burst tables this workflow has produced, however stored.
-
-        A burst search over a `.pto` keeps its bursts **inside the measurement**
-        and writes no ``.bur`` at all — the ordinary case here, since step 2
-        converts every measurement into a container. So a step that reads only
-        ``bur_files`` sees nothing after a perfectly successful run.
-
-        Both shapes come back as paths: a loose ``.bur``, or a container run
-        addressed like a folder (``m000.pto/sliding_window_All 0.1500#60``),
-        which every burst reader in ChiSurf understands.
-        """
-        if self.workflow_context.bur_files:
-            return list(self.workflow_context.bur_files)
-        folder = self.workflow_context.burst_folder
-        if folder is None:
-            return []
-        from chisurf.core.fio.fluorescence import burst_tree
-
-        if not burst_tree.is_container_path(folder):
-            return []
-        if folder.suffix.lower() != burst_tree.SUFFIX:
-            return [folder]  # the path already names one run
-        try:
-            runs = burst_tree.list_runs(folder)
-        except Exception as exc:
-            logger.warning(f"ALEX Suite: could not list the runs of {folder} — {exc}")
-            return []
-        if not runs:
-            return []
-        # Newest last -- but newest is not automatically *usable*. A container
-        # accumulates runs, and a search made before the detector definitions
-        # reached the step writes a table with no per-detector split at all:
-        # nine columns of burst geometry and nothing that can be called I_DD.
-        # Handing that to accurate FRET or the E-S step produces "the donor
-        # channel is not mapped", which reads like a mapping bug and is really
-        # the wrong run. So: the newest run whose columns *map*, and only if
-        # none of them do, the newest run there is.
-        from chisurf.core.fluorescence.burst.table import maps_fret_channels
-
-        for run in reversed(runs):
-            candidate = folder / run
-            if maps_fret_channels(candidate):
-                if run != runs[-1]:
-                    logger.info(
-                        f"burst analysis: using the run '{run}' — the newer "
-                        f"'{runs[-1]}' has no per-detector columns (it was "
-                        "searched without detector definitions)."
-                    )
-                return [candidate]
-        return [folder / runs[-1]]
-
+        """Return the burst tables this workflow has produced, however stored (``.bur`` or container runs)."""
+        return _wf.burst_sources(self.workflow_context)
     def analysis_path(self) -> Path | None:
-        """The burst analysis a folder-taking tool should read.
-
-        The burst folder as it stands, except when it is a `.pto` container:
-        a container holds one analysis *per run*, and the tools read a run, not
-        the file. Returns the newest run in that case.
-        """
-        folder = self.workflow_context.burst_folder
-        if folder is None:
-            return None
-        from chisurf.core.fio.fluorescence import burst_tree
-
-        if folder.suffix.lower() != burst_tree.SUFFIX:
-            return folder
-        sources = self.burst_sources()
-        return sources[0] if sources else folder
-
+        """The burst analysis a folder-taking tool should read (the newest usable run of a container)."""
+        return _wf.analysis_path(self.workflow_context)
     def _apply_context_to_downstream(self) -> None:
         """Apply current workflow context to every loaded panel but the source.
 

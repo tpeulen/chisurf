@@ -16,7 +16,8 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.burst.burst_analysis.gui.tool:BurstAnalysisTool"
+    "gui": "chisurf.plugins.burst.burst_analysis.gui.tool:BurstAnalysisTool",
+    "emtk": "chisurf.plugins.burst.burst_analysis.gui.native:create_app"
   },
   "optional_requires": {
     "accurate_fret": "*",

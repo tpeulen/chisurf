@@ -92,6 +92,7 @@ def _panels_json(rel: str) -> list[str]:
 
 def _declared_children() -> dict[str, list[str]]:
     """``{hub id: [child refs]}``, read from each hub's declaration."""
+    from chisurf.plugins.burst.burst_analysis.gui.native import STEPS as BURST
     from chisurf.plugins.calculator.hub.core.registry import default_calculators
     from chisurf.plugins.core.setup.gui.model import PANELS as SETUP
     from chisurf.plugins.core.wizards.core.registry import default_wizards
@@ -114,8 +115,8 @@ def _declared_children() -> dict[str, list[str]]:
         + _module_refs(ROOT / "modelling/structure_tools/gui/tool.py"),
         "traj_tools": [p["emtk"] for p in TOOL_PANELS],
         "lifetime_analysis": [row[0] for row in DECAY],
+        "burst_analysis": [p["plugin"] for p in BURST if p.get("plugin")],
         # Qt-only hubs: their panel factories import the hosted tools.
-        "burst_analysis": _module_refs(ROOT / "burst/burst_analysis/gui/tool.py"),
         "alex_suite": _module_refs(ROOT / "burst/alex_suite/gui/tool.py"),
         "fcs_toolbox": _module_refs(ROOT / "fcs/fcs_toolbox/tool.py", ROOT / "fcs/fcs_toolbox/gui/app.py"),
         "fcs_correlator": _module_refs(ROOT / "fcs/fcs_correlator/tool.py", ROOT / "fcs/fcs_correlator/gui/app.py"),

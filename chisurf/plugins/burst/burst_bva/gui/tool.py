@@ -56,20 +56,7 @@ class _DetectorPageShim:
 
     def load_data_into_tables(self, settings: dict) -> None:
         self._settings = dict(settings or {})
-        detectors = self._settings.get("detectors", {})
-        for name, d in detectors.items():
-            chs = d.get("chs", [])
-            ranges = d.get("micro_time_ranges", [(0, 32768)])
-            if "green" in name.lower() or "donor" in name.lower():
-                self._model.donor_channels_text = ",".join(str(c) for c in chs)
-                self._model.donor_micro_time_ranges = ranges
-            elif "red" in name.lower() or "acceptor" in name.lower():
-                self._model.acceptor_channels_text = ",".join(str(c) for c in chs)
-                self._model.acceptor_micro_time_ranges = ranges
-        tttr_reading = self._settings.get("tttr_reading", {})
-        if "file_type" in tttr_reading:
-            self._model.file_type = tttr_reading["file_type"]
-        self._model.notify("detector_settings")
+        self._model.apply_channel_settings(self._settings)
 
     def get_settings(self) -> dict[str, Any]:
         return self._settings or {

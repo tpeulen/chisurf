@@ -105,6 +105,24 @@ class BvaViewModel:
         self.data_folder = self.analysis_folder = new
         self.notify("folder")
 
+    def apply_channel_settings(self, settings: dict) -> None:
+        """Take a workflow's detector definition: the green/donor and red/acceptor detectors' channels and
+        micro-time ranges, and the file type (the burst workflow hands its setup over this way)."""
+        settings = dict(settings or {})
+        for name, d in (settings.get("detectors") or {}).items():
+            chs = d.get("chs", [])
+            ranges = d.get("micro_time_ranges", [(0, 32768)])
+            if "green" in name.lower() or "donor" in name.lower():
+                self.donor_channels_text = ",".join(str(c) for c in chs)
+                self.donor_micro_time_ranges = ranges
+            elif "red" in name.lower() or "acceptor" in name.lower():
+                self.acceptor_channels_text = ",".join(str(c) for c in chs)
+                self.acceptor_micro_time_ranges = ranges
+        file_type = (settings.get("tttr_reading") or {}).get("file_type")
+        if file_type:
+            self.file_type = file_type
+        self.notify("detector_settings")
+
     def set_file_type(self, file_type: str) -> None:
         """Change the photon-file type the bursts are read with (drops the read table)."""
         if file_type != self.file_type:
