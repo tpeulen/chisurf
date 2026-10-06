@@ -182,3 +182,13 @@ $f \in \{0, 0.25, 0.5, 0.75, 1\}$.
   like.
 - {cite}`page1957`, {cite}`watkins2005`, {cite}`ensign2010` — change-point
   detection, classical and photon-by-photon.
+
+## Cooperative fitting cancellation
+
+HMM estimation and BIC state-count scans may be stopped between EM maps.
+Cancellation is a lifecycle operation: it does not change the likelihood,
+state ordering, convergence criterion or completed-fit values. A cancelled
+scan does not substitute a partial curve for the last complete scan; cancelled
+HMM fits do not write partial exports. One already-running lattice sweep is
+indivisible, so stopping waits for that sweep to return.
+See [the native workflow](../guides/22_binned_photon_traces.md).

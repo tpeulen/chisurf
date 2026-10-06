@@ -108,7 +108,8 @@ from __future__ import annotations
 import logging
 import sys
 from collections import deque
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from concurrent.futures import CancelledError
 
 import numpy as np
 from scipy import linalg
@@ -671,7 +672,8 @@ class GaussianHMM:
 
     # -- fitting ------------------------------------------------------------
 
-    def fit(self, X: np.ndarray, lengths: Sequence[int] | None = None) -> GaussianHMM:
+    def fit(self, X: np.ndarray, lengths: Sequence[int] | None = None, *,
+            cancel: Callable[[], bool] | None = None) -> GaussianHMM:
         """Estimate the model parameters from one or more observation sequences.
 
         Parameters
@@ -682,31 +684,47 @@ class GaussianHMM:
         lengths : sequence of int, optional
             Length of each sequence in ``X``; they must sum to ``len(X)``. The
             default treats ``X`` as a single sequence.
+        cancel : callable, optional
+            Return true to raise ``CancelledError`` between EM maps. An
+            event's ``is_set`` method provides cooperative cancellation.
 
         Returns
         -------
         GaussianHMM
             This model, fitted.
         """
-        X = self._check_input(X)
-        self._init(X, lengths)
-        self.monitor_.reset()
-        if self.accelerate:
-            self._fit_squarem(X, lengths)
-        else:
-            self._fit_em(X, lengths)
-        if (self.transmat_.sum(axis=1) == 0).any():
-            logger.warning(
-                "Some rows of transmat_ sum to zero: no transition out of those "
-                "states was ever observed."
-            )
-        return self
+        self._cancel_requested = cancel
+        try:
+            self._check_cancel()
+            X = self._check_input(X)
+            self._init(X, lengths)
+            self.monitor_.reset()
+            if self.accelerate:
+                self._fit_squarem(X, lengths)
+            else:
+                self._fit_em(X, lengths)
+            self._check_cancel()
+            if (self.transmat_.sum(axis=1) == 0).any():
+                logger.warning(
+                    "Some rows of transmat_ sum to zero: no transition out of those "
+                    "states was ever observed."
+                )
+            return self
+        finally:
+            self._cancel_requested = None
+
+    def _check_cancel(self) -> None:
+        """Stop cooperatively before the next indivisible lattice sweep."""
+        cancel = getattr(self, "_cancel_requested", None)
+        if cancel is not None and cancel():
+            raise CancelledError()
 
     def _fit_em(
         self, X: np.ndarray, lengths: Sequence[int] | None, n_maps: int | None = None
     ) -> None:
         """Run plain Baum-Welch for ``n_maps`` maps or until the monitor converges."""
         for _ in range(self.n_iter if n_maps is None else n_maps):
+            self._check_cancel()
             stats, log_prob = self._do_estep(X, lengths)
             # The M-step runs before the convergence check so that n_iter=1
             # still updates the parameters once.
@@ -823,6 +841,7 @@ class GaussianHMM:
         self, theta: np.ndarray, X: np.ndarray, lengths: Sequence[int] | None
     ) -> tuple[float, np.ndarray]:
         """Apply one EM map to ``theta``, returning its log-likelihood and the image."""
+        self._check_cancel()
         self._set_parameters(theta)
         stats, log_prob = self._do_estep(X, lengths)
         self._do_mstep(stats)

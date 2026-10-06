@@ -115,3 +115,16 @@ Binned photon trace (MCS).
 ## See also
 
 - `chisurf/plugins/tttr/trace_browser/`; the burst search consumes these traces ([burst identification](13_burst_identification.md)).
+
+## Cancel an HMM fit or BIC scan
+
+In the native Intensity Trace tool, load the **Example**, open **HMM**, and
+press **Compute HMM** or **BIC Elbow**. While fitting, the top toolbar enables
+**Cancel**. Press it to stop at the next iteration boundary. The status reports
+that cancellation kept previous results; a partial fit is not exported.
+
+![Cancellation keeps the loaded trace and completed results](figures/intensity_trace_cancelled.png)
+
+The [intensity-trace concept](../concepts/intensity_traces.md) describes the
+statistical meaning of the completed results. Closing the tool also requests
+cancellation and bounds the worker cleanup wait.

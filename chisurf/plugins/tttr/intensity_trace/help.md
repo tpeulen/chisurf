@@ -25,3 +25,15 @@ channel, with each trace's count histogram beside it, and their sum.
 
 - [Intensity traces and file tools](docs/guides/74_intensity_traces_and_file_tools.md)
 - [HMM of binned traces](docs/guides/92_hmm_binned_traces.md)
+
+## Stopping a fit
+
+**Cancel** in the top toolbar requests a cooperative stop for HMM fitting or
+the BIC state-count scan. It is enabled only while that computation is active.
+The worker stops between EM maps; the last completed states, transition matrix
+and BIC curve remain available. A cancelled HMM fit does not export partial
+results. If one native numerical sweep is already running, cancellation takes
+effect when that sweep returns. Closing the tool also requests cancellation.
+
+[Intensity-trace theory](docs/concepts/intensity_traces.md) and
+[binned-trace workflow](docs/guides/22_binned_photon_traces.md).

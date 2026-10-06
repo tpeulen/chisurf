@@ -9,6 +9,8 @@ the Qt tool writes beside the file (``<stem>_HMM#<n>_<ms>ms/{bst,traces,hist}``)
 from __future__ import annotations
 
 import pathlib
+from collections.abc import Callable
+from concurrent.futures import CancelledError
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -48,11 +50,15 @@ def save_burst_ids(hmm_states, time_axis, time_window_s, tttr_obj, output_dir=".
     return burst_ids
 
 
-def compute_bic_curve(data, max_states=10):
-    """``(n_states, bic)`` for HMMs of 1..max_states states (``nan`` where a fit failed): its elbow is the state count."""
+def compute_bic_curve(data, max_states=10, *, cancel: Callable[[], bool] | None = None):
+    """Return the BIC curve, propagating cooperative cancellation instead of ``nan``.
+
+    A failed numerical fit still scores ``nan``. ``cancel`` may be an event's
+    ``is_set`` callback; it stops the scan with ``CancelledError``.
+    """
     from chisurf.plugins.core.hmm.core import scan_state_counts
 
-    scan = scan_state_counts(data, min_states=1, max_states=max_states)
+    scan = scan_state_counts(data, min_states=1, max_states=max_states, cancel=cancel)
     return list(zip(scan.n_states, scan.bic))
 
 
@@ -208,14 +214,17 @@ class IntensityTraceModel:
 
     # ── HMM ───────────────────────────────────────────────────────────────
 
-    def run_hmm(self) -> str:
-        """Fit an HMM of :attr:`n_states` states to the trace (dimmest state first)."""
+    def run_hmm(self, *, cancel: Callable[[], bool] | None = None) -> str:
+        """Fit :attr:`n_states` states, dimmest first; cancellation retains prior results."""
         if not self.loaded:
             return "Load a TTTR file first."
         from chisurf.plugins.core.hmm.api import HmmSettings
         from chisurf.plugins.core.hmm.core import fit_traces
 
-        fit = fit_traces(self.counts, HmmSettings(n_states=int(self.n_states), covariance_type="full", n_iter=1000))
+        fit = fit_traces(self.counts, HmmSettings(n_states=int(self.n_states), covariance_type="full", n_iter=1000),
+                         cancel=cancel)
+        if cancel is not None and cancel():
+            raise CancelledError()
         self.states, self.transmat = np.asarray(fit.state_array), np.asarray(fit.transmat)
         occupancy = np.bincount(self.states, minlength=int(self.n_states))
         self.message = f"HMM of {self.n_states} states: " + ", ".join(
@@ -225,8 +234,9 @@ class IntensityTraceModel:
     def dwell_times(self) -> dict:
         return compute_dwell_times(self.states, float(self.window_ms) / 1000.0) if self.states is not None else {}
 
-    def bic_curve(self, max_states: int = STATES[1]):
-        return compute_bic_curve(self.counts, max_states=max_states) if self.loaded else []
+    def bic_curve(self, max_states: int = STATES[1], *, cancel: Callable[[], bool] | None = None):
+        """Return the state-count criteria, forwarding an optional cancellation callback."""
+        return compute_bic_curve(self.counts, max_states=max_states, cancel=cancel) if self.loaded else []
 
     # ── files ─────────────────────────────────────────────────────────────
 

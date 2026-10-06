@@ -27,6 +27,11 @@
               "action": "request_guide",
               "label": "Guide",
               "description": "A step-by-step walk through the tool, pointing at each control."
+            },
+            {
+              "action": "request_cancel",
+              "label": "Cancel",
+              "description": "Stop an ongoing HMM fit or BIC scan after its current iteration; keep the previous results."
             }
           ]
         },

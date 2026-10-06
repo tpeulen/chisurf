@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W7: native Intensity Trace now offers cooperative HMM/BIC cancellation; 47 focused regressions pass and captured EM/SQUAREM parameters, states, likelihood and BIC are identical. Real demo before/busy/cancelled PNGs inspected; partial exports prevented and close cleanup bounded. Provider-dependent dwell checks continue against the rebuilt owning IMP.bff provider. [Evidence](validation/release-readiness-w7/hmm-equivalence.json).
+
 - **2026-10-07 · W7 runtime roots:** Driver handles undrawn canvases; PTO picker rendering, Global View toggle callbacks and optional Structure Tools key release use their real contracts.17focused cases pass; three actual plugin workers pass with inspected PNGs. [Native contracts](subsystems/gui-autoform.md).
 
 ## 2026-10-06

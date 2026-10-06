@@ -69,3 +69,16 @@ Packages 📚) distinct.
 3. **Re-check duplicates** when adding a child: list a hub's icons with
    `entry_icon` over its registry (one line of Python) before committing.
 
+
+## Where to pick this up — cancellable native trace fitting (2026-10-07)
+
+HMM/BIC workers now propagate a cooperative callback through GaussianHMM
+EM/SQUAREM maps and the state-count scan; CancelledError is never converted
+to a failed-fit NaN. The real toolbar Cancel was clicked through Driver with
+the 10,001-bin demo loaded. Previous completed outputs are retained and a
+cancelled fit does not export. Before/busy-after/cancelled PNGs were inspected;
+EM/SQUAREM parameters/states and likelihood/BIC match the captured baseline.
+47 targeted regressions plus the legacy numerical oracle pass. The two old
+pointer cases require the matching rebuilt IMP.bff FitResidualFunction provider
+to recover dwell-fit tau labels; this is a provider-root issue, not cancellation.
+Continue PRD-154's guarded e2e acceptance after that provider is installed.

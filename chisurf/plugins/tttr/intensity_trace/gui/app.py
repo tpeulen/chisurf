@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import threading
+from concurrent.futures import CancelledError
 from pathlib import Path
 
 import numpy as np
@@ -20,6 +21,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 
@@ -65,6 +67,8 @@ class _Form:
 
     def enabled(self, name):
         app, m = self._app, self._app.model
+        if name == "request_cancel":
+            return app.busy and app._cancellable and not app._cancel_event.is_set()
         if name in ("request_help", "request_guide", "request_load", "request_example"):
             return not app.busy
         if name in ("request_matrix", "request_dwell", "request_fret"):
@@ -107,6 +111,10 @@ class _Form:
     def request_bic(self):
         self._app.compute_bic()
 
+    def request_cancel(self):
+        """Ask the current fit or state-count scan to stop cooperatively."""
+        self._app.cancel()
+
     def request_matrix(self):
         self._app.show_result("HMM Matrix")
 
@@ -142,6 +150,9 @@ class IntensityTraceApp(ImApp):
         self.result = RESULTS[0]
         self.item_rects: dict = {}
         self._worker: threading.Thread | None = None
+        self._cancel_event = threading.Event()
+        self._cancellable = False
+        self._closed = False
         self.dialog = None
         self.dialog_window = None
         self._on_pick = None
@@ -175,28 +186,42 @@ class IntensityTraceApp(ImApp):
     def _used(self, name):
         self.tour.notify_used(name)
 
-    def _run(self, work, label: str) -> None:
+    def _run(self, work, label: str, *, cancellable: bool = False) -> None:
         """Run *work* on a worker; its returned text becomes the status."""
-        if self.busy:
+        if self.busy or self._closed:
             return
+        self._cancel_event.clear()
+        self._cancellable = cancellable
         self.status = label
 
         def run():
             try:
                 self.status = work() or self.model.message
+            except CancelledError:
+                self.status = tr("Cancelled. Previous results kept.")
             except Exception as exc:  # noqa: BLE001 - shown in the status line
                 self.status = f"{type(exc).__name__}: {exc}"
-            self.request_frame()
+            finally:
+                if not self._closed:
+                    self.request_frame()
 
         self._worker = threading.Thread(target=run, daemon=True)
         self._worker.start()
+
+    def cancel(self) -> None:
+        """Request cancellation at the next fit iteration or scan boundary."""
+        if self.busy and self._cancellable:
+            self._cancel_event.set()
+            self.status = tr("Cancelling…")
+            self.request_frame()
 
     def wait(self, timeout: float = 300.0) -> None:
         if self._worker is not None:
             self._worker.join(timeout)
 
     def animating(self):
-        return self.busy or getattr(self.editor, "_future", None) is not None or super().animating()
+        return not self._closed and (self.busy or getattr(self.editor, "_future", None) is not None
+                                     or super().animating())
 
     def use_setup(self, name: str, rebin: bool = True) -> None:
         if name not in self.setups.get("setups", {}) and name != ROUTING and self.model.setup:
@@ -231,21 +256,33 @@ class IntensityTraceApp(ImApp):
 
     def compute_hmm(self) -> None:
         def work():
-            msg = self.model.run_hmm()
+            previous = self.model.states, self.model.transmat, self.model.message
+            try:
+                msg = self.model.run_hmm(cancel=self._cancel_event.is_set)
+                if self._cancel_event.is_set():
+                    raise CancelledError()
+            except CancelledError:
+                self.model.states, self.model.transmat, self.model.message = previous
+                raise
+            # The fit is now complete; writing its outputs is a separate step.
+            self._cancellable = False
             base = self.model.export()
             return f"{msg}. Written to {base.name}/"
 
         self.tab = "HMM"
-        self._run(work, f"Fitting a {self.model.n_states}-state HMM...")
+        self._run(work, f"Fitting a {self.model.n_states}-state HMM...", cancellable=True)
 
     def compute_bic(self) -> None:
         def work():
-            self.bics = self.model.bic_curve()
+            bics = self.model.bic_curve(cancel=self._cancel_event.is_set)
+            if self._cancel_event.is_set():
+                raise CancelledError()
+            self.bics = bics
             best = min((b for b in self.bics if np.isfinite(b[1])), key=lambda b: b[1], default=None)
             return f"BIC of 1-{len(self.bics)} states" + (f"; lowest at {best[0]}" if best else "")
 
         self.show_result("BIC Elbow")
-        self._run(work, "Fitting 1-15 state models...")
+        self._run(work, "Fitting 1-15 state models...", cancellable=True)
 
     def show_result(self, name: str) -> None:
         self.result = name
@@ -512,6 +549,10 @@ class IntensityTraceApp(ImApp):
             self.open_file(state["path"])
 
     def close(self) -> None:
+        """Cancel estimation and release host resources without an unbounded join."""
+        self._closed = True
+        self._cancel_event.set()
+        self.set_frame_request_callback(None)
         self.wait(1.0)
         self.editor.close()
 

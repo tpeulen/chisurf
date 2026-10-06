@@ -31,6 +31,8 @@ estimator (:mod:`chisurf.core.math.hmm`) stays free of analysis policy.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
+from concurrent.futures import CancelledError
 
 import numpy as np
 
@@ -213,7 +215,8 @@ def _ordering(model: GaussianHMM) -> np.ndarray:
     return np.argsort(model.means_.sum(axis=1))
 
 
-def fit_traces(traces, settings: HmmSettings | None = None) -> HmmFit:
+def fit_traces(traces, settings: HmmSettings | None = None, *,
+               cancel: Callable[[], bool] | None = None) -> HmmFit:
     """Fit a Gaussian HMM to one or more binned traces and summarise it.
 
     Parameters
@@ -222,6 +225,8 @@ def fit_traces(traces, settings: HmmSettings | None = None) -> HmmFit:
         Binned trace(s); see :func:`as_matrix`.
     settings : HmmSettings, optional
         Fit settings; the defaults fit two states with full covariances.
+    cancel : callable, optional
+        Return true to stop fitting between EM maps with ``CancelledError``.
 
     Returns
     -------
@@ -250,7 +255,7 @@ def fit_traces(traces, settings: HmmSettings | None = None) -> HmmFit:
     settings = settings or HmmSettings()
     X, lengths = as_matrix(traces)
     model = _build_model(settings)
-    model.fit(X, lengths)
+    model.fit(X, lengths, cancel=cancel)
 
     order = _ordering(model)
     relabel = np.argsort(order)
@@ -330,7 +335,8 @@ def transition_rates(transmat, time_step: float = 1.0) -> np.ndarray:
 
 
 def scan_state_counts(
-    traces, settings: HmmSettings | None = None, min_states: int = 1, max_states: int = 6
+    traces, settings: HmmSettings | None = None, min_states: int = 1, max_states: int = 6,
+    *, cancel: Callable[[], bool] | None = None,
 ) -> StateScan:
     """Fit a range of state counts and score each by AIC and BIC.
 
@@ -342,6 +348,9 @@ def scan_state_counts(
         Fit settings; ``n_states`` is overridden by the scan.
     min_states, max_states : int
         Inclusive range of state counts to try.
+    cancel : callable, optional
+        Return true to raise ``CancelledError`` between fits and EM maps.
+        Cancellation aborts the scan instead of producing a failed-fit ``nan``.
 
     Returns
     -------
@@ -366,17 +375,23 @@ def scan_state_counts(
     X, lengths = as_matrix(traces)
     scan = StateScan()
     for n_states in range(int(min_states), int(max_states) + 1):
+        if cancel is not None and cancel():
+            raise CancelledError()
         scan.n_states.append(n_states)
         try:
             model = _build_model(settings, n_states)
-            model.fit(X, lengths)
+            model.fit(X, lengths, cancel=cancel)
             scan.log_likelihood.append(float(model.score(X, lengths)))
             scan.aic.append(float(model.aic(X, lengths)))
             scan.bic.append(float(model.bic(X, lengths)))
+        except CancelledError:
+            raise
         except Exception as exc:
             logger.warning("HMM fit with %d states failed: %s", n_states, exc)
             for values in (scan.log_likelihood, scan.aic, scan.bic):
                 values.append(float("nan"))
+    if cancel is not None and cancel():
+        raise CancelledError()
     if scan.n_states:
         counts = np.asarray(scan.n_states)
         for name, values in (("best_bic", scan.bic), ("best_aic", scan.aic)):
