@@ -27,8 +27,10 @@ Where each family went: optimisers, root finding, special functions,
 distributions, `expm`/`pinvh`, LSODA -> IMP.bff (via
 `chisurf/core/math/numerics.py`, `chisurf/core/math/special.py`); ndimage,
 spatial, clustering, signal, splines, MAT-files -> tttrlib. Left:
-1. `pixi.lock` not re-solved (co-edited by other lanes): the next
-   `pixi install` drops scipy from the default env.
+1. **`pixi.lock` re-solved -- DONE 2026-10-06** (`0a9294207`, locked in a
+   clean worktree at HEAD so another lane's uncommitted `rmf` edit stayed
+   out): scipy and matplotlib-base remain only in `test`/`dev` (and
+   matplotlib-base in `docs`); numba/llvmlite are gone everywhere.
 2. A ParseModel expression may call only `special.ELEMENTWISE` names as
    `scipy.special.<name>` (item 2 below).
 3. **Sibling repos, audited 2026-10-06:** quest is scipy-free; imp-tricks'
