@@ -64,6 +64,29 @@ class Section:
     #: panel is built and registered but starts hidden, so it is one click away
     #: in the dock's restore menu without taking room by default.
     start_hidden: bool = False
+    #: Condition that hides the section entirely: ``{target, attr,
+    #: equals|not_equals}``. AutoForm honours it on panels; emtk on any section.
+    hidden_when: typing.Optional[typing.Mapping[str, typing.Any]] = None
+    # -- line layout, read by ``emtk.view_form`` (AutoForm lays out with Qt's
+    # -- own size policies and ignores these) ---------------------------------
+    #: Fixed width of the control, in pixels.
+    width: typing.Optional[float] = None
+    #: Share of a line's spare width; ``0`` keeps the natural width.
+    weight: typing.Optional[float] = None
+    #: Never narrower than this many pixels.
+    min_width: typing.Optional[float] = None
+    #: Never narrower than this many characters.
+    min_chars: typing.Optional[int] = None
+    #: A line too crowded for every control wraps before this one.
+    wrap_before: bool = False
+    #: ``False``: a wrapped line starts at the left edge, not under the first control.
+    wrap_indent: typing.Optional[bool] = None
+    #: ``"start"``: a long text shows its end (a path); ``"end"`` its start.
+    elide: typing.Optional[str] = None
+    #: ``False`` on a slider: the slider alone, its value written on it.
+    field: typing.Optional[bool] = None
+    #: A choice's list gets a filter field at its top.
+    filter: typing.Optional[bool] = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -302,9 +325,6 @@ class PanelSection(Section):
     collapsed: bool = False
     #: Optional condition that folds the panel: ``{target, attr, equals|not_equals}``.
     collapsed_when: typing.Optional[typing.Mapping[str, typing.Any]] = None
-    #: Optional condition that fully hides the panel (header included):
-    #: ``{target, attr, equals|not_equals}`` — stronger than ``collapsed_when``.
-    hidden_when: typing.Optional[typing.Mapping[str, typing.Any]] = None
     #: How many label/field pairs to pack per row for the panel's simple fields
     #: (value/choice/toggle). ``None`` uses the renderer default; ``1`` gives a
     #: single-column form layout that saves horizontal space in narrow docks.

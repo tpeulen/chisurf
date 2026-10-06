@@ -174,24 +174,6 @@ _CUSTOM_OPTION_KEYS: dict[str, set[str]] = {
 }
 
 
-#: Layout keys :mod:`emtk.view_form` reads on any section and documents in its
-#: module docstring. The Qt loader's dataclasses do not carry them -- AutoForm
-#: lays out with Qt's own policies -- but emtk is where new forms are drawn, so a
-#: key it honours is part of the format, as ``title``/``model`` are above.
-_EMTK_LAYOUT_KEYS = {
-    "width": {"type": "number", "description": "emtk: the control's fixed width in pixels."},
-    "weight": {"type": "number", "description": "emtk: share of a line's spare width (0: natural)."},
-    "min_width": {"type": "number", "description": "emtk: never narrower than this many pixels."},
-    "min_chars": {"type": "integer", "description": "emtk: never narrower than this many characters."},
-    "wrap_before": {"type": "boolean", "description": "emtk: a crowded line wraps before this leaf."},
-    "wrap_indent": {"type": "boolean", "description": "emtk: a wrapped line starts under the first control."},
-    "elide": {"enum": ["start", "end"], "description": "emtk: which end of a long text is shortened."},
-    "field": {"type": "boolean", "description": "emtk: false draws a slider without its value field."},
-    "hidden_when": {"description": "emtk/AutoForm: hide the section while this condition holds."},
-    "filter": {"type": "boolean", "description": "emtk: a choice's list gets a filter field."},
-}
-
-
 def _json_type(annotation) -> dict:
     """A JSON Schema fragment for a dataclass field's annotation.
 
@@ -238,9 +220,6 @@ def build_view_schema() -> dict:
             if (name, field.name) in _OPAQUE:
                 fragment = {}
             properties[field.name] = fragment
-
-        for key, fragment in _EMTK_LAYOUT_KEYS.items():
-            properties.setdefault(key, fragment)
 
         # A nested section list is the same shape as the top-level one.
         for key in ("sections", "steps"):
