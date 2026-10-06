@@ -180,6 +180,11 @@ class AlexHubApp(BurstAnalysisHubApp):
         )
 
     # -- the steps only ALEX has ------------------------------------------------------------------------------ #
+    def _make_setup(self, app_class=None):
+        from .step_apps import AlexSetupSelectionApp
+
+        return super()._make_setup(app_class or AlexSetupSelectionApp)
+
     def _make_data(self):
         from chisurf.plugins.burst.burst_analysis.gui.data_selection_app import BurstDataSelectionModel
 

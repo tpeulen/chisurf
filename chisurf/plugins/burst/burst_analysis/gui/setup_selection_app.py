@@ -45,10 +45,14 @@ class BurstSetupSelectionApp(ImApp):
     on_changed : callable, optional
         Called with the complete definition after every selection or edit.
     on_proceed : callable, optional
-        Called by *Proceed to Data Selection* (the workflow hub moves on).
+        Called by the *Proceed* button (the workflow hub moves on); its label and tooltip are
+        :attr:`PROCEED_LABEL` / :attr:`PROCEED_TIP`, so a hub with other step names says where it goes.
     autoload : bool
         List the stored setups (and open the last used one) on the first frame.
     """
+
+    PROCEED_LABEL = "Proceed to Data Selection"
+    PROCEED_TIP = "Go on to 1. Data Selection with this setup."
 
     def __init__(
         self,
@@ -153,13 +157,13 @@ class BurstSetupSelectionApp(ImApp):
         im.same_line()
         ready = bool(self.model.data.get("detectors"))
         im.begin_disabled(not ready or not callable(self.on_proceed))
-        if im.button("Proceed to Data Selection"):
+        if im.button(self.PROCEED_LABEL):
             self.tour.notify_used("proceed")
             self.on_proceed()
         im.end_disabled()
         self._item(
             "proceed",
-            "Go on to 1. Data Selection with this setup." if ready else "Define at least one detector first.",
+            self.PROCEED_TIP if ready else "Define at least one detector first.",
         )
         im.same_line()
         name = self.selected_setup_name()

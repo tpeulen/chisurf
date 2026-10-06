@@ -182,10 +182,10 @@ class BurstAnalysisHubApp(ToolHubApp):
         self._base_names = {p["role"]: p["name"] for p in self.tools}
 
     # -- the step apps the hub owns the wiring of ------------------------------------------------------- #
-    def _make_setup(self):
+    def _make_setup(self, app_class=None):
         from .setup_selection_app import BurstSetupSelectionApp
 
-        app = BurstSetupSelectionApp(
+        app = (app_class or BurstSetupSelectionApp)(
             on_changed=lambda _settings: self._setup_changed(),
             on_proceed=lambda: self.select("data"),
         )

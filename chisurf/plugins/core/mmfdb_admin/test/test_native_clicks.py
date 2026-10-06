@@ -211,3 +211,24 @@ def test_settings_reset_window_layout_returns_to_the_overview(driver, app):
     driver.click_text("Reset window layout")
     assert app.model.selected == "overview"
     assert app.splits["entity"] == 0.5
+
+
+@pytest.mark.parametrize(
+    "key, name, rows, source",
+    [
+        ("protocols", "Protocols", "protocol_rows", "protocol_rows"),
+        ("studies", "Studies", "study_rows", "study_rows"),
+        ("reagents", "Reagent", "lot_rows", "lot_rows"),
+    ],
+)
+def test_a_selection_set_by_the_model_is_shown_in_the_table(driver, app, key, name, rows, source):
+    """A jump or a new record sets ``panel.selected``; the table must highlight that row too."""
+    open_panel(driver, key, name)
+    panel = app.model.current
+    records = getattr(panel, rows)()
+    if not records:
+        pytest.skip(f"the seeded database has no {name} rows")
+    wanted = records[-1]["_row"]
+    panel.selected = wanted
+    driver.draw(2)
+    assert app.form(key).tables[source].control.selected_key == wanted

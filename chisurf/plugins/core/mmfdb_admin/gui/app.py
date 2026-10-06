@@ -362,7 +362,9 @@ class MMFDBAdminApp(ImApp):
             self._draw_provenance(panel, inner)
         else:
             im.begin_child(f"##panel_{key}", inner)
-            draw_sections(self.panel_specs[key]["sections"], panel, self.form(key), titles=True)
+            state = self.form(key)
+            draw_sections(self.panel_specs[key]["sections"], panel, state, titles=True)
+            self._sync_spec_tables(key, panel, state)
             im.end_child()
         im.end()
 
@@ -412,6 +414,21 @@ class MMFDBAdminApp(ImApp):
             im.text_disabled("Pick a row to see and edit its fields." if panel.rows else "No records.")
         draw_sections(panel.form_sections(), panel.form, state, n_col=2, titles=False)
         im.end_child()
+
+    def _sync_spec_tables(self, key: str, panel, state: FormState) -> None:
+        """Show a spec-drawn panel's ``selected`` in each of its pickable tables.
+
+        Protocols, Studies, Reagent Lots and Pipelines keep the picked row's key in
+        ``panel.selected``; when the model sets it (a jump, a new record, a refresh) the table
+        must highlight that row too, as the entity panels and Spectra already do.
+        """
+        selected = getattr(panel, "selected", None)
+        if not isinstance(selected, str):
+            return
+        for section in self.panel_specs[key]["sections"]:
+            options = section.get("options") or {}
+            if options.get("selected_call") and options.get("source"):
+                self._sync_selection(state, options["source"], selected)
 
     @staticmethod
     def _sync_selection(state: FormState, source: str, key: str) -> None:

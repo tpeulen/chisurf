@@ -17,6 +17,7 @@ from typing import Any, Callable
 from emtk import im
 
 from chisurf.plugins.burst.burst_analysis.gui.data_selection_app import BurstDataSelectionApp
+from chisurf.plugins.burst.burst_analysis.gui.setup_selection_app import BurstSetupSelectionApp
 
 from .alternation_model import AlexAlternationModel
 from .app import AlexAlternationApp, LegacyExportApp, TitrationApp
@@ -70,6 +71,13 @@ class _Dialog:
 
 
 # -- 2. Files ----------------------------------------------------------------------------------------------- #
+class AlexSetupSelectionApp(BurstSetupSelectionApp):
+    """The shared detector-setup step, its Proceed button naming the ALEX rail's next step."""
+
+    PROCEED_LABEL = "Proceed to 2. Files"
+    PROCEED_TIP = "Go on to 2. Files with this setup (µs-ALEX users can leave the setup as it is)."
+
+
 class AlexDataSelectionApp(BurstDataSelectionApp):
     """Burst Analysis's data step, proceeding to the alternation step, with the demo measurement below."""
 

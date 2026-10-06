@@ -101,6 +101,8 @@ class EmTkHelpWindow:
 
         # Parsed help content: list of (heading, content_lines)
         self.sections: list[tuple[str, list[str]]] = []
+        #: Folder relative help links resolve against (the help file's own folder).
+        self.base_dir = None
         if categories:
             self.sections = list(categories)
         else:
@@ -108,6 +110,7 @@ class EmTkHelpWindow:
             if not raw_text and resource:
                 resolved = resolve_resource_file(resource, owner)
                 if resolved and resolved.is_file():
+                    self.base_dir = resolved.parent
                     try:
                         raw_text = resolved.read_text(encoding="utf-8")
                     except Exception as exc:
@@ -136,6 +139,12 @@ class EmTkHelpWindow:
             parsed.append((curr_heading, curr_lines))
 
         self.sections = parsed
+
+    def _open_link(self, url: str) -> None:
+        """Open a link from the help text: a documentation page in the docs browser, a URL outside."""
+        from chisurf.emtk.doc_links import open_link
+
+        open_link(url, base=self.base_dir)
 
     def show(self) -> None:
         """Show the help window inside the EMTK canvas."""
@@ -226,23 +235,10 @@ class EmTkHelpWindow:
             im.text_colored(heading, (0.4, 0.8, 1.0, 1.0))
             im.separator()
 
-            for line in lines:
-                s = line.strip()
-                if not s:
-                    im.spacing()
-                elif s.startswith(("- ", "* ")):
-                    im.bullet()
-                    im.text_wrapped(s[2:])
-                elif len(s) >= 3 and s[0].isdigit() and s[1:3] in (". ", ") "):
-                    im.text_colored(f"  {s[:3]}", (0.3, 0.85, 0.5, 1.0))
-                    im.same_line()
-                    im.text_wrapped(s[3:])
-                elif s.startswith("### "):
-                    im.text_colored(s[4:], (0.3, 0.85, 0.5, 1.0))
-                elif s.startswith("## "):
-                    im.text_colored(s[3:], (0.4, 0.8, 1.0, 1.0))
-                else:
-                    im.text_wrapped(s)
+            # The section body is Markdown: emphasis, inline code, lists and links are rendered,
+            # not shown as raw ``**`` / backticks; a link opens the documentation browser or the
+            # system browser (``chisurf.emtk.doc_links.open_link``).
+            im.markdown("\n".join(lines), on_link=self._open_link)
 
         im.end_child()
 

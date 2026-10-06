@@ -324,3 +324,11 @@ print('QT-FREE OK')
 def test_manifest_opens_the_native_hub():
     manifest = json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.burst.alex_suite.gui.native:make_app"
+
+
+def test_the_setup_steps_proceed_button_names_the_alex_rails_next_step(hub):
+    """The shared setup step said "Proceed to Data Selection", a step the ALEX rail does not have."""
+    drv = Driver(hub, (1200, 800))
+    hub.select("setup")
+    strings = drv.draw(3).strings
+    assert "Proceed to 2. Files" in strings and "Proceed to Data Selection" not in strings
