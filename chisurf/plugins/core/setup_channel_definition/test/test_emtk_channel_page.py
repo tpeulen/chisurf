@@ -80,7 +80,11 @@ def det(ui, name="green"):
 
 def cell_point(ui, table, row_id, key):
     """Where the cell (*row_id*, *key*) of a table is drawn (from the table's own geometry of the last frame)."""
-    binding = {"detectors": ui.app.page._detector_table, "windows": ui.app.page._window_table, "luts": ui.app.page._lut_table}[table]
+    binding = {
+        "detectors": ui.app.page._detector_table,
+        "windows": ui.app.page._window_table,
+        "luts": ui.app.page._lut_table,
+    }[table]
     control = binding.control
     index = next(i for i, record in enumerate(control.records) if record["id"] == row_id)
     position = control.order().index(index)
@@ -149,7 +153,9 @@ def test_save_button_opens_the_prompt_and_a_typed_name_stores_the_setup(make):
     ui.click("Save", nth=-1)  # empty name: nothing is stored
     assert not (Path(app.model.file_path)).exists()
     ui.click("Save")
-    ui.press(ui.painter.texts[[t[5] for t in ui.painter.texts].index("Enter a name for this setup:")][:2])  # focus stays in the window
+    ui.press(
+        ui.painter.texts[[t[5] for t in ui.painter.texts].index("Enter a name for this setup:")][:2]
+    )  # focus stays in the window
     page = app.page
     field = page.item_rects["name_prompt"]
     ui.click((field[0] + 20, field[1] + field[3] / 2))
@@ -170,12 +176,17 @@ def test_rename_and_delete_buttons_ask_first_and_keep_setup_declines(make):
     ui.click("Cancel")
     assert app.toolbar.selected == "One" and app.toolbar.dialog == ""
     ui.click("Delete")
-    assert app.toolbar.dialog == "delete" and ui.drawn("Are you sure you want to delete the setup 'One'?")
+    assert app.toolbar.dialog == "delete" and ui.drawn(
+        "Are you sure you want to delete the setup 'One'?"
+    )
     ui.click("Keep setup")
     assert app.toolbar.selected == "One"
     ui.click("Delete")
     ui.click("Delete", nth=-1)  # the prompt's own button
-    assert app.toolbar.selected == "" and json.loads(Path(app.model.file_path).read_text())["setups"] == {}
+    assert (
+        app.toolbar.selected == ""
+        and json.loads(Path(app.model.file_path).read_text())["setups"] == {}
+    )
 
 
 def test_rename_button_renames_through_the_typed_prompt(make):
@@ -187,7 +198,9 @@ def test_rename_button_renames_through_the_typed_prompt(make):
     clear(ui)
     ui.type("Two")
     ui.click("Rename", nth=-1)
-    assert app.toolbar.selected == "Two" and list(json.loads(Path(app.model.file_path).read_text())["setups"]) == ["Two"]
+    assert app.toolbar.selected == "Two" and list(
+        json.loads(Path(app.model.file_path).read_text())["setups"]
+    ) == ["Two"]
 
 
 def test_public_checkbox_is_inert_until_a_setup_is_saved_and_then_toggles(make):
@@ -232,13 +245,22 @@ def test_guide_and_help_buttons_of_the_host_strip(ui):
 # ===================================================================================== 2. TTTR reading routine
 def test_section_headers_fold_and_unfold_and_the_state_is_remembered(make):
     app, ui = make()
-    assert ui.drawn("▼ TTTR Reading routine") and ui.drawn("File Type:") and not ui.drawn("Window Name")
+    assert (
+        ui.drawn("▼ TTTR Reading routine")
+        and ui.drawn("File Type:")
+        and not ui.drawn("Window Name")
+    )
     ui.click("▼ TTTR Reading routine")
     assert not ui.drawn("File Type:") and ui.drawn("▶ TTTR Reading routine")
     ui.click("▶ PIE Windows")  # PIE Windows is folded at first
     assert ui.drawn("Window Name") and ui.drawn("prompt")
     state = json.loads(json.dumps(app.export_settings()))
-    assert state["page"]["sections"] == {"reading": False, "windows": True, "detectors": True, "lut": True}
+    assert state["page"]["sections"] == {
+        "reading": False,
+        "windows": True,
+        "detectors": True,
+        "lut": True,
+    }
     other, other_ui = make()
     other.restore_settings(state)
     other_ui.frame(3)
@@ -254,7 +276,17 @@ def test_file_type_combo_lists_every_format_of_the_qt_page_and_a_pick_sets_it(ma
     ui.click("SPC-130")
     listed = set(ui.strings)
     assert {"Auto", *tttrlib.TTTR.get_supported_container_names()} <= listed
-    assert {"CZ-RAW", "SM", "PHOTONS", "PHOTON-HDF5", "SPC-QC", "SPC-600_4096", "BRIGHTEYES-TTR", "FLIMLABS-STT1", "FLIMLABS-ITT1"} <= listed
+    assert {
+        "CZ-RAW",
+        "SM",
+        "PHOTONS",
+        "PHOTON-HDF5",
+        "SPC-QC",
+        "SPC-600_4096",
+        "BRIGHTEYES-TTR",
+        "FLIMLABS-STT1",
+        "FLIMLABS-ITT1",
+    } <= listed
     ui.click("CZ-RAW")
     assert app.model.data["tttr_reading"]["file_type"] == "CZ-RAW" and ui.drawn("CZ-RAW")
     ui.click("CZ-RAW")
@@ -267,7 +299,11 @@ def test_read_button_chooses_a_file_by_clicks_and_takes_the_timing_from_it(make,
     ui.click("Read")
     assert app.page.dialog is not None and ui.drawn("BH_SPC132.spc") and ui.drawn("Open")
     ui.click("Cancel")  # declining reads nothing
-    assert app.page.dialog is None and app.model.data["tttr_reading"]["macro_time_resolution"] == 13.5 and not app.model.preview
+    assert (
+        app.page.dialog is None
+        and app.model.data["tttr_reading"]["macro_time_resolution"] == 13.5
+        and not app.model.preview
+    )
     read_sample(ui)
     assert app.model.data["tttr_reading"]["micro_time_resolution"] == pytest.approx(3.2958984375)
     assert sorted(app.model.preview) == [0, 1, 8, 9]
@@ -287,11 +323,16 @@ def test_a_bad_file_read_raises_like_qt_and_keeps_the_timing(make, folder):
     assert any(s.startswith("Error:") for s in ui.strings)
 
 
-@pytest.mark.parametrize("key,label,typed,expect", [
-    ("macro_time_resolution", "13.5", "20", 20.0),
-    ("micro_time_resolution", "3.25", "4.5", 4.5),
-])
-def test_timing_fields_take_typed_numbers_and_a_typo_leaves_the_value(make, key, label, typed, expect):
+@pytest.mark.parametrize(
+    "key,label,typed,expect",
+    [
+        ("macro_time_resolution", "13.5", "20", 20.0),
+        ("micro_time_resolution", "3.25", "4.5", 4.5),
+    ],
+)
+def test_timing_fields_take_typed_numbers_and_a_typo_leaves_the_value(
+    make, key, label, typed, expect
+):
     app, ui = make()
     reading = app.model.data["tttr_reading"]
     rect = lambda: app.page.item_rects[key]  # noqa: E731
@@ -299,7 +340,9 @@ def test_timing_fields_take_typed_numbers_and_a_typo_leaves_the_value(make, key,
     ui.click((x + 10, y + h / 2))
     clear(ui)
     last_valid = reading[key]  # every valid prefix applied live, as Qt's textChanged does
-    ui.type("x")  # not a number: the model keeps the last valid value and the field shows what was typed
+    ui.type(
+        "x"
+    )  # not a number: the model keeps the last valid value and the field shows what was typed
     assert reading[key] == last_valid and ui.drawn("x")
     clear(ui)
     ui.type(typed)
@@ -333,13 +376,17 @@ def test_plot_button_opens_the_decay_preview_and_dragging_a_gate_moves_the_range
     # drag the PIE window "delayed" start line (x = 2048, a vertical line through the plot)
     bx, by, bw, bh = window.box
     inside = [t for t in ui.painter.texts if bx <= t[0] <= bx + bw and by <= t[1] <= by + bh]
-    left = [t for t in inside if t[5] == "0"][-1]  # the window is drawn last: its tick labels are the last ones
+    left = [t for t in inside if t[5] == "0"][
+        -1
+    ]  # the window is drawn last: its tick labels are the last ones
     right = [t for t in inside if t[5] == "4000"][-1]
     x0, x4000 = left[0] + left[2] / 2, right[0] + right[2] / 2
     x_of = lambda v: x0 + (x4000 - x0) * v / 4000.0  # noqa: E731
     ax_y = left[1] - 120  # inside the plot, above the tick labels
     ui.drag((x_of(2048), ax_y), (x_of(1500), ax_y))
-    low, high = det(ui, "red")["micro_time_ranges"][0]  # the line grabbed at 2048 is the end of the red gate (and the PIE windows' edge)
+    low, high = det(ui, "red")["micro_time_ranges"][
+        0
+    ]  # the line grabbed at 2048 is the end of the red gate (and the PIE windows' edge)
     assert low == 0 and 1400 < high < 1600, (low, high)
     ui.frame(2)
     ui.click("▶ PIE Windows") if not app.page.open_sections["windows"] else None
@@ -353,11 +400,15 @@ def test_pie_windows_start_folded_and_add_edit_and_delete_by_pointer(make):
     app, ui = make()
     ui.click("▶ PIE Windows")
     ui.click("Add", nth=0)  # the PIE Windows one: it is the first section with a table drawn
-    assert "New Window" in app.model.data["windows"] and app.model.data["windows"]["New Window"] == [0, 2048]
+    assert "New Window" in app.model.data["windows"] and app.model.data["windows"][
+        "New Window"
+    ] == [0, 2048]
     ui.click("Add", nth=0)
     assert "New Window 1" in app.model.data["windows"]
     edit(ui, "windows", "New Window", "name", "late")  # rename with Enter
-    assert "late" in app.model.data["windows"] and list(app.model.data["windows"])[2] == "late"  # keeps its place
+    assert (
+        "late" in app.model.data["windows"] and list(app.model.data["windows"])[2] == "late"
+    )  # keeps its place
     edit(ui, "windows", "late", "start", "3000", finish="away")  # click-away commits
     assert app.model.data["windows"]["late"][0] == 3000
     edit(ui, "windows", "prompt", "start", "abc")  # not a whole number: refused, value stays
@@ -379,16 +430,30 @@ def test_polarization_resolved_checkbox_toggles_the_flag(make):
 def test_add_button_appends_a_detector_with_the_qt_defaults_and_names_stay_unique(make):
     app, ui = make()
     ui.click("Add", nth=0)
-    assert app.model.data["detectors"]["New Detector"] == {"chs": [0, 1], "micro_time_ranges": [[0, 2048]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}
+    assert app.model.data["detectors"]["New Detector"] == {
+        "chs": [0, 1],
+        "micro_time_ranges": [[0, 2048]],
+        "g_factor": 1.0,
+        "l1": 0.0,
+        "l2": 0.0,
+    }
     ui.click("Add", nth=0)
     assert "New Detector 1" in app.model.data["detectors"]
     assert "prompt_New Detector" in app.model.get_settings()["channels"]
 
 
-@pytest.mark.parametrize("typed,expected", [
-    ("20:10", [[10, 20]]), ("5:5", [[5, 5]]), ("0:10;20:30", [[0, 10], [20, 30]]), ("10-20", [[10, 20]]), ("7", [[7, 7]]),
-    ("a:b, 3:4", [[3, 4]]), ("", []),
-])
+@pytest.mark.parametrize(
+    "typed,expected",
+    [
+        ("20:10", [[10, 20]]),
+        ("5:5", [[5, 5]]),
+        ("0:10;20:30", [[0, 10], [20, 30]]),
+        ("10-20", [[10, 20]]),
+        ("7", [[7, 7]]),
+        ("a:b, 3:4", [[3, 4]]),
+        ("", []),
+    ],
+)
 def test_micro_time_range_cell_is_typed_and_read_with_the_qt_rules(make, typed, expected):
     app, ui = make()
     edit(ui, "detectors", "green", "ranges", typed)
@@ -408,7 +473,9 @@ def test_every_detector_cell_is_edited_by_typing_with_enter_or_click_away(make):
     edit(ui, "detectors", "donor", "l2", "-0.03")
     assert det(ui, "donor")["l2"] == -0.03
     edit(ui, "detectors", "donor", "gch", "300:400")  # start-end; ':' is accepted too
-    assert det(ui, "donor")["g_factor_channels"] == [300, 400] and ui.drawn("300:400")  # the cell keeps what was typed, as Qt
+    assert det(ui, "donor")["g_factor_channels"] == [300, 400] and ui.drawn(
+        "300:400"
+    )  # the cell keeps what was typed, as Qt
     edit(ui, "detectors", "donor", "gch", "none")
     assert "g_factor_channels" not in det(ui, "donor")
 
@@ -426,7 +493,9 @@ def test_an_empty_g_factor_is_one_and_a_typo_reverts_like_qt(make):
 def test_a_detector_name_that_exists_is_refused(make):
     app, ui = make()
     edit(ui, "detectors", "green", "name", "red")
-    assert list(app.model.data["detectors"]) == ["green", "red"] and app.page.status.startswith("Error:")
+    assert list(app.model.data["detectors"]) == ["green", "red"] and app.page.status.startswith(
+        "Error:"
+    )
 
 
 def test_calc_g_and_delete_buttons_act_on_their_own_row(make, folder):
@@ -438,17 +507,30 @@ def test_calc_g_and_delete_buttons_act_on_their_own_row(make, folder):
     app.page._refresh_rows()
     ui.frame(2)
     press_button(ui, "detectors", "green", "calc")
-    assert app.page.status == "Settings updated." and det(ui)["g_factor"] != 1.0 and det(ui, "red")["g_factor"] == 1.25
+    assert (
+        app.page.status == "Settings updated."
+        and det(ui)["g_factor"] != 1.0
+        and det(ui, "red")["g_factor"] == 1.25
+    )
     press_button(ui, "detectors", "red", "delete")
     assert list(app.model.data["detectors"]) == ["green"]
     press_button(ui, "detectors", "green", "delete")
-    assert app.model.data["detectors"] == {} and "prompt_green" not in app.model.get_settings()["channels"]
+    assert (
+        app.model.data["detectors"] == {}
+        and "prompt_green" not in app.model.get_settings()["channels"]
+    )
 
 
 def test_the_wheel_scrolls_a_long_detector_table(make):
     app, ui = make()
     for i in range(12):
-        app.model.data["detectors"][f"d{i}"] = {"chs": [i], "micro_time_ranges": [[0, 10]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}
+        app.model.data["detectors"][f"d{i}"] = {
+            "chs": [i],
+            "micro_time_ranges": [[0, 10]],
+            "g_factor": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+        }
     app.page._refresh_rows()
     ui.frame(3)
     assert ui.drawn("green") and not ui.drawn("d11")
@@ -484,7 +566,9 @@ def test_shift_cell_is_typed_and_a_row_is_selected_by_a_click(make):
     assert app.page.selected_channel == 1
 
 
-def test_assign_lut_button_needs_a_row_then_assigns_the_chosen_file_and_switches_the_gate_on(make, folder):
+def test_assign_lut_button_needs_a_row_then_assigns_the_chosen_file_and_switches_the_gate_on(
+    make, folder
+):
     app, ui = make()
     ui.click("Assign LUT...")
     assert "select a channel row first" in app.page.status and app.page.dialog is None
@@ -493,20 +577,31 @@ def test_assign_lut_button_needs_a_row_then_assigns_the_chosen_file_and_switches
     assert app.page.dialog is not None
     ui.click("channel.npy")
     ui.click("Open")
-    assert "2" in app.model.data["channel_luts"] and len(app.model.data["channel_luts"]["2"]) == 4096
-    assert app.model.data["apply_lut"] is True and app.model.data["channel_lut_sources"]["2"] == "channel.npy"
+    assert (
+        "2" in app.model.data["channel_luts"] and len(app.model.data["channel_luts"]["2"]) == 4096
+    )
+    assert (
+        app.model.data["apply_lut"] is True
+        and app.model.data["channel_lut_sources"]["2"] == "channel.npy"
+    )
     assert ui.drawn("channel.npy")  # the LUT column names the file
 
 
 def test_configure_luts_window_computes_exports_and_removes_a_lut(make, folder):
     app, ui = make()
     ui.click("Configure LUTs...")
-    assert app.page.lut_window.open and ui.drawn("Routing channel:") and ui.drawn("Linear region start")
+    assert (
+        app.page.lut_window.open
+        and ui.drawn("Routing channel:")
+        and ui.drawn("Linear region start")
+    )
     ui.click("Compute TAC LUT")
     assert app.page.status.startswith("Error:")  # no measurement yet
     read_sample(ui)
     x, y, w, h = app.page.lut_window.content_box
-    ui.click((x + 150, y + 12))  # the channel combo; channel 8 has a plateau the automatic region finds
+    ui.click(
+        (x + 150, y + 12)
+    )  # the channel combo; channel 8 has a plateau the automatic region finds
     ui.click("8", nth=-1)
     assert app.page.selected_channel == 8
     ui.click("Auto-detect TAC LUT")
@@ -556,7 +651,9 @@ def test_adjust_shifts_needs_a_calibration_then_shifts_channels_and_ok_or_cancel
     clear(ui)
     ui.type("12")
     ui.enter()
-    assert app.page._shift_draft.get(8) == 12 and app.model.data["channel_shifts"] == {}  # nothing applied before OK
+    assert (
+        app.page._shift_draft.get(8) == 12 and app.model.data["channel_shifts"] == {}
+    )  # nothing applied before OK
     ui.click("Cancel", nth=-1)
     assert not app.page.shift_window.open and app.model.data["channel_shifts"] == {}
     ui.click("Adjust shifts...")
@@ -580,7 +677,9 @@ def test_optical_setup_button_opens_the_light_path_editor_and_the_close_button_c
     assert not app.page.optical_window.open
 
 
-def test_dropping_a_measurement_reads_it_and_a_json_file_becomes_the_setups_library(make, folder, tmp_path):
+def test_dropping_a_measurement_reads_it_and_a_json_file_becomes_the_setups_library(
+    make, folder, tmp_path
+):
     from emtk.app import ControlSurface
 
     app, ui = make()
@@ -590,7 +689,19 @@ def test_dropping_a_measurement_reads_it_and_a_json_file_becomes_the_setups_libr
     ui.frame(2)
     assert sorted(app.model.preview) == [0, 1, 8, 9]
     library = tmp_path / "library.json"
-    library.write_text(json.dumps({"setups": {"From file": {"windows": {"w": [0, 10]}, "detectors": {"d": {"chs": [0], "micro_time_ranges": [[0, 10]]}}}}, "last_used": "From file"}))
+    library.write_text(
+        json.dumps(
+            {
+                "setups": {
+                    "From file": {
+                        "windows": {"w": [0, 10]},
+                        "detectors": {"d": {"chs": [0], "micro_time_ranges": [[0, 10]]}},
+                    }
+                },
+                "last_used": "From file",
+            }
+        )
+    )
     assert surface.on_files_dropped([str(library)]) is True
     ui.frame(2)
     assert str(app.model.file_path) == str(library) and app.toolbar.names == ["From file"]
@@ -646,7 +757,9 @@ def test_every_control_of_the_page_has_a_tooltip(make, folder, size):
 
 
 @pytest.mark.parametrize("size", SIZES + [(520, 500)])
-def test_no_control_overlaps_another_or_leaves_the_window_and_the_label_column_is_aligned(make, folder, size):
+def test_no_control_overlaps_another_or_leaves_the_window_and_the_label_column_is_aligned(
+    make, folder, size
+):
     app, ui = make(size)
     app.page.open_sections["windows"] = True
     driver.populate(app, folder / "BH_SPC132.spc")
@@ -657,14 +770,20 @@ def test_no_control_overlaps_another_or_leaves_the_window_and_the_label_column_i
         x, y, w, h = rects[name]
         assert x >= -1 and x + w <= size[0] + 1, (name, rects[name], size)
     for i, a in enumerate(names):
-        for b in names[i + 1:]:
+        for b in names[i + 1 :]:
             ra, rb = rects[a], rects[b]
-            overlap = min(ra[0] + ra[2], rb[0] + rb[2]) - max(ra[0], rb[0]), min(ra[1] + ra[3], rb[1] + rb[3]) - max(ra[1], rb[1])
+            overlap = (
+                min(ra[0] + ra[2], rb[0] + rb[2]) - max(ra[0], rb[0]),
+                min(ra[1] + ra[3], rb[1] + rb[3]) - max(ra[1], rb[1]),
+            )
             assert not (overlap[0] > 1 and overlap[1] > 1), (a, b, ra, rb)
     # the labels of the reading grid share one x, so do their fields
     texts = {t[5]: t for t in ui.painter.texts}
     if size[0] >= 720:
-        left = [texts[label][0] for label in ("File Type:", "Macrotime res. (ns):", "Microtime binning:")]
+        left = [
+            texts[label][0]
+            for label in ("File Type:", "Macrotime res. (ns):", "Microtime binning:")
+        ]
         assert max(left) - min(left) < 1.0, left
         fields = [rects[k][0] for k in ("file_type", "macro_time_resolution", "binning")]
         assert max(fields) - min(fields) < 1.0, fields
@@ -690,12 +809,16 @@ def test_the_page_fits_the_width_and_the_setup_row_wraps_instead_of_clipping(mak
         assert t[0] + t[2] <= size[0] + 1, (t[5], t[:4])
     labels = ("Setup:", "Save", "Rename", "Delete", "Public", "Calibration:", "?")
     texts = {}
-    for t in reversed(ui.painter.texts):  # the first drawn of a caption (the table has Delete buttons too)
+    for t in reversed(
+        ui.painter.texts
+    ):  # the first drawn of a caption (the table has Delete buttons too)
         texts[t[5]] = t
     for label in labels:
         assert label in texts
     if size[0] >= 1200:
-        assert len({round(texts[label][1]) for label in ("Save", "Rename", "Delete", "?")}) == 1  # one row
+        assert (
+            len({round(texts[label][1]) for label in ("Save", "Rename", "Delete", "?")}) == 1
+        )  # one row
 
 
 # ============================================================================== 8. numeric parity against the Qt page
@@ -735,9 +858,17 @@ def test_every_cell_text_gives_the_same_detector_as_the_qt_table(make, qt_page):
     page = qt_page
     page._allow_g_update = True
     typed = [
-        ("green", 1, "9;1;2", "chs"), ("green", 2, "20:10", "ranges"), ("red", 2, "5:5", "ranges"), ("red", 2, "0:10;20:30", "ranges"),
-        ("green", 3, "2.5", "g"), ("red", 4, "0.125", "l1"), ("red", 5, "-0.25", "l2"), ("green", 6, "100-200", "gch"),
-        ("green", 1, "", "chs"), ("green", 1, "a,b", "chs"), ("red", 2, "7, 9:3, x, 12-14", "ranges"),
+        ("green", 1, "9;1;2", "chs"),
+        ("green", 2, "20:10", "ranges"),
+        ("red", 2, "5:5", "ranges"),
+        ("red", 2, "0:10;20:30", "ranges"),
+        ("green", 3, "2.5", "g"),
+        ("red", 4, "0.125", "l1"),
+        ("red", 5, "-0.25", "l2"),
+        ("green", 6, "100-200", "gch"),
+        ("green", 1, "", "chs"),
+        ("green", 1, "a,b", "chs"),
+        ("red", 2, "7, 9:3, x, 12-14", "ranges"),
     ]
     for name, column, text, key in typed:
         cell = _qt_cell(page, name, column)
@@ -748,9 +879,15 @@ def test_every_cell_text_gives_the_same_detector_as_the_qt_table(make, qt_page):
         qt_settings = page.get_settings()["detectors"][name]
         mine = app.model.data["detectors"][name]
         assert mine["chs"] == qt_settings["chs"], (name, key, text)
-        assert mine["micro_time_ranges"] == [list(r) for r in qt_settings["micro_time_ranges"]], (name, key, text)
+        assert mine["micro_time_ranges"] == [list(r) for r in qt_settings["micro_time_ranges"]], (
+            name,
+            key,
+            text,
+        )
         assert mine["g_factor"] == pytest.approx(qt_settings["g_factor"])
-        assert mine["l1"] == pytest.approx(qt_settings["l1"]) and mine["l2"] == pytest.approx(qt_settings["l2"])
+        assert mine["l1"] == pytest.approx(qt_settings["l1"]) and mine["l2"] == pytest.approx(
+            qt_settings["l2"]
+        )
         assert mine.get("g_factor_channels") == qt_settings.get("g_factor_channels")
 
 
@@ -758,18 +895,28 @@ def test_window_start_and_end_texts_give_the_same_windows_as_the_qt_table(make, 
     app, ui = make()
     page = qt_page
     rows = {page.windows_form.item(r, 0).text(): r for r in range(page.windows_form.rowCount())}
-    for name, column, text, key in (("prompt", 1, "10", "start"), ("prompt", 2, "300", "end"), ("delayed", 1, "2100", "start")):
+    for name, column, text, key in (
+        ("prompt", 1, "10", "start"),
+        ("prompt", 2, "300", "end"),
+        ("delayed", 1, "2100", "start"),
+    ):
         page.windows_form.cellWidget(rows[name], column).setText(text)
         record = next(r for r in app.page.window_rows() if r["id"] == name)
         app.page.edit_window(record, key, text)
-    assert {k: list(v) for k, v in page.get_settings()["windows"].items()} == app.model.data["windows"]
+    assert {k: list(v) for k, v in page.get_settings()["windows"].items()} == app.model.data[
+        "windows"
+    ]
 
 
 def test_qt_and_emtk_offer_the_same_file_types_and_binnings(make, qt_page):
     from chisurf.emtk.channel_definition import BINNINGS, FILE_TYPES
 
-    assert [qt_page.file_type_combo.itemText(i) for i in range(qt_page.file_type_combo.count())] == list(FILE_TYPES)
-    assert [qt_page.micro_binning_combo.itemText(i) for i in range(qt_page.micro_binning_combo.count())] == list(BINNINGS)
+    assert [
+        qt_page.file_type_combo.itemText(i) for i in range(qt_page.file_type_combo.count())
+    ] == list(FILE_TYPES)
+    assert [
+        qt_page.micro_binning_combo.itemText(i) for i in range(qt_page.micro_binning_combo.count())
+    ] == list(BINNINGS)
 
 
 def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_page(make, qt_page):
@@ -782,7 +929,12 @@ def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_p
     drawn = " | ".join(ui.strings).replace("...", "…")
     drawn_cells = set(ui.strings)
     qt_texts = set()
-    for cls in (QtWidgets.QPushButton, QtWidgets.QToolButton, QtWidgets.QCheckBox, QtWidgets.QLabel):
+    for cls in (
+        QtWidgets.QPushButton,
+        QtWidgets.QToolButton,
+        QtWidgets.QCheckBox,
+        QtWidgets.QLabel,
+    ):
         for widget in qt_page.findChildren(cls):
             text = widget.text().strip()
             if text and widget.isVisibleTo(qt_page) or text and cls is not QtWidgets.QLabel:
@@ -793,22 +945,38 @@ def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_p
             if item and item.text().strip():
                 qt_texts.add(item.text().strip())
     # glyph prefixes (pictograms) and the colon of a label are not part of the name; the three that are deliberate
-    deliberate = {"Edit JSON": "hidden in Qt itself", "Save": "the Setup row's Save", "…": "empty", "": "empty"}
+    deliberate = {
+        "Edit JSON": "hidden in Qt itself",
+        "Save": "the Setup row's Save",
+        "…": "empty",
+        "": "empty",
+    }
     missing = []
     for text in sorted(qt_texts):
         import re
 
         name = re.sub(r"^[^\w]+", "", text.replace("...", "…")).strip().rstrip(":").strip()
-        if not name or name in ("Edit JSON", "Calculate G-Factor", "Load setups file", "Setups file"):
+        if not name or name in (
+            "Edit JSON",
+            "Calculate G-Factor",
+            "Load setups file",
+            "Setups file",
+        ):
             continue
-        if name in drawn or name.lower() in drawn.lower() or any(name.rstrip("s") in cell for cell in drawn_cells):
+        if (
+            name in drawn
+            or name.lower() in drawn.lower()
+            or any(name.rstrip("s") in cell for cell in drawn_cells)
+        ):
             continue
         missing.append(text)
     assert missing == [], missing
 
 
 # ================================================================ 9. last used setup, remembered state, bad file
-def test_the_last_used_setup_is_written_on_choice_and_opened_at_start_like_qt(make, qt_page, tmp_path, monkeypatch):
+def test_the_last_used_setup_is_written_on_choice_and_opened_at_start_like_qt(
+    make, qt_page, tmp_path, monkeypatch
+):
     from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition as mod
     from chisurf.plugins.core.setup_channel_definition.gui.app import make_app
 
@@ -835,7 +1003,9 @@ def test_the_last_used_setup_is_written_on_choice_and_opened_at_start_like_qt(ma
     fresh = make_app(file_path=str(app.model.file_path))
     try:
         assert fresh.model.current_name == ""
-        Pointer(fresh, (1200.0, 800.0))  # the first frame lists the setups and opens the last used one
+        Pointer(
+            fresh, (1200.0, 800.0)
+        )  # the first frame lists the setups and opens the last used one
         assert fresh.model.current_name == "A" and fresh.toolbar.selected == "A"
     finally:
         fresh.close()
@@ -862,7 +1032,9 @@ def test_the_last_used_setup_is_remembered_in_the_mmfdb_too(tmp_path):
     model.remember_last_used("One")
     other = ChannelDefinition(db=db)
     other.refresh_setups()
-    assert other.last_used == "One" and other.open_last_used() == "One" and other.current_name == "One"
+    assert (
+        other.last_used == "One" and other.open_last_used() == "One" and other.current_name == "One"
+    )
     assert other.data["detectors"]["red"]["g_factor"] == 1.25
 
 
@@ -874,7 +1046,12 @@ def test_which_sections_are_open_survives_a_restart_of_the_tool(make):
     other, other_ui = make()
     other.restore_settings(saved)
     other_ui.frame(3)
-    assert other.page.open_sections == {"reading": True, "windows": True, "detectors": False, "lut": True}
+    assert other.page.open_sections == {
+        "reading": True,
+        "windows": True,
+        "detectors": False,
+        "lut": True,
+    }
     assert other_ui.drawn("▶ Detectors") and other_ui.drawn("▼ PIE Windows")
     other.restore_settings({"page": {"sections": {"reading": "yes", "nonsense": 1}}})
     assert other.page.open_sections["reading"] is True
@@ -917,14 +1094,28 @@ def test_the_guide_waits_for_the_save_button_and_a_press_advances_it(make):
 
 def test_help_text_names_the_sections_and_the_controls_of_the_page():
     text = (HERE.parent / "gui" / "help.md").read_text()
-    for word in ("TTTR Reading routine", "PIE Windows", "Detectors", "LUT handling", "Optical Setup...", "Calc G", "Assign LUT...", "Configure LUTs...", "Adjust shifts...", "start:end"):
+    for word in (
+        "TTTR Reading routine",
+        "PIE Windows",
+        "Detectors",
+        "LUT handling",
+        "Optical Setup...",
+        "Calc G",
+        "Assign LUT...",
+        "Configure LUTs...",
+        "Adjust shifts...",
+        "start:end",
+    ):
         assert word in text, word
     assert "six tabs" not in text and "tab" not in text.lower().replace("table", "")
 
 
 def test_the_window_has_the_plugins_name_as_its_title(ui):
     assert "Setup: Channel Definition" in ui.strings
-    assert json.loads((HERE.parent / "manifest.json").read_text())["display_name"] == "Setup:Channel Definition"
+    assert (
+        json.loads((HERE.parent / "manifest.json").read_text())["display_name"]
+        == "Setup:Channel Definition"
+    )
 
 
 # ================================================================ 11. narrow hosts: the table's buttons and columns
@@ -939,10 +1130,16 @@ def test_the_detector_table_buttons_never_overlap_or_clip_in_a_narrow_host(make,
     compact = app.page._compact
     assert compact == (width < 540)
     if "calc" in shown and "delete" in shown:
-        assert (control.value(0, "calc"), control.value(0, "delete")) == (("G", "Del") if compact else ("Calc G", "Delete"))
+        assert (control.value(0, "calc"), control.value(0, "delete")) == (
+            ("G", "Del") if compact else ("Calc G", "Delete")
+        )
         for column, cw in zip(control._shown, control._widths):
             if column.key in ("calc", "delete"):
-                assert cw >= len(str(control.value(0, column.key))) * 6.0 + 8.0, (width, column.key, cw)
+                assert cw >= len(str(control.value(0, column.key))) * 6.0 + 8.0, (
+                    width,
+                    column.key,
+                    cw,
+                )
     assert (width >= 700) == ("gch" in shown) and (width >= 600) == ("l1" in shown)
     if width >= 470:  # the delete button of the second row still works at the narrow end
         press_button(ui, "detectors", "red", "delete")

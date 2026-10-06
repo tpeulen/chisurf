@@ -65,6 +65,7 @@ P2_BINDINGS = {"w": Action.UP, "s": Action.DOWN}
 
 class _LegacyInput:
     """Adapt the engine's enum actions to the shared simulation vocabulary."""
+
     def __init__(self, keys):
         self.keys = keys
 
@@ -77,6 +78,7 @@ class _LegacyInput:
 
 class PongGame(PongModel, chigame.Game):
     """Legacy Qt renderer over the shared, toolkit-free Pong rules."""
+
     title = "Pong"
     background = (0.030, 0.034, 0.042, 1.0)
     music_context = "battle"

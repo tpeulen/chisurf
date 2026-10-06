@@ -40,7 +40,12 @@ install_translations()
 GUI = Path(__file__).parent / "gui"
 TABLE = "result_rows"
 #: The Qt guide names its targets by the Qt button's text; the native controls answer to the same names.
-ALIASES = {"Executable": "select_exe", "Select files": "select_files", "Run": "run", "Save CSV": "save_csv"}
+ALIASES = {
+    "Executable": "select_exe",
+    "Select files": "select_files",
+    "Run": "run",
+    "Save CSV": "save_csv",
+}
 ACTION_TO_ALIAS = {action: alias for alias, action in ALIASES.items()}
 #: Width the parameter window needs for two fields per line, and the share of the window it may take.
 PARAMS_MIN = 360.0
@@ -61,13 +66,17 @@ def build_spec() -> dict:
             if section.get("type") == "value" and section.get("kind") in ("int", "float"):
                 section["style"] = "spin"
                 if section["kind"] == "float" and not section.get("step"):
-                    section["step"] = 1.0  # QDoubleSpinBox's default single step, which the Qt AutoForm keeps
+                    section["step"] = (
+                        1.0  # QDoubleSpinBox's default single step, which the Qt AutoForm keeps
+                    )
             if section.get("type") == "value" and section.get("kind") == "str":
                 section["elide"] = "start"
         if panel["title"] == "Executable & input":
             panel["n_col"] = 1
             # Its own grid: a button row sharing the fields' grid starts under their value column and overruns a narrow window.
-            panel["sections"].append({"type": "panel", "title": "", "sections": [extra["input_buttons"]]})
+            panel["sections"].append(
+                {"type": "panel", "title": "", "sections": [extra["input_buttons"]]}
+            )
         panels.append(panel)
     spec = {"params": panels, "results": extra["results"], "output": extra["output"]}
     for part in spec.values():
@@ -92,7 +101,7 @@ def soft_wrap(text: str, columns: int) -> str:
             cut = line.rfind(" ", 0, columns)
             cut = cut if cut > columns // 2 else columns
             out.append(line[:cut])
-            line = line[cut:].lstrip(" ") if line[cut:cut + 1] == " " else line[cut:]
+            line = line[cut:].lstrip(" ") if line[cut : cut + 1] == " " else line[cut:]
         out.append(line)
     return "\n".join(out)
 
@@ -101,7 +110,9 @@ class MessageWindow:
     """A titled in-app message with one OK button (the Qt ``QMessageBox``)."""
 
     def __init__(self) -> None:
-        self.window = DialogWindow("Message", size=(460.0, 170.0), key="hydropro_notice", fit_height=True)
+        self.window = DialogWindow(
+            "Message", size=(460.0, 170.0), key="hydropro_notice", fit_height=True
+        )
 
     def draw(self, notices: list, box: tuple, rects: dict) -> bool:
         """Draw the first notice; True when it was dismissed (OK, close or Escape)."""
@@ -141,19 +152,36 @@ class HydroProApp(ImApp):
         self.dialog: FileDialog | None = None
         self.dialog_callback = None
         self.file_window = DialogWindow("Choose files", size=(640.0, 460.0), key="hydropro_files")
-        self.prompt_window = DialogWindow("HYDRO executable required", size=(540.0, 250.0), key="hydropro_prompt",
-                                          fit_height=True)
+        self.prompt_window = DialogWindow(
+            "HYDRO executable required", size=(540.0, 250.0), key="hydropro_prompt", fit_height=True
+        )
         self.message = MessageWindow()
         self.tour = EmTkGuidedTour(
-            steps=GUI / "guide.json", owner=self, wait_for_controls=True,
+            steps=GUI / "guide.json",
+            owner=self,
+            wait_for_controls=True,
             get_target_rect=self._target_rect,
         )
-        self.help_window = EmTkHelpWindow(title="HydroPro - Help", resource=GUI / "help.md", owner=self,
-                                          on_start_guide=self.tour.start)
-        self.docks = DockManager(Split("h", 0.42, Region("params"), Split("v", 0.55, Region("results"), Region("output"))))
-        self.docks.add_window("params", tr("Parameters"), self.draw_params, dock="params", closable=False)
-        self.docks.add_window("results", tr("Results"), self.draw_results, dock="results", closable=False)
-        self.docks.add_window("output", tr("HYDRO Output"), self.draw_output, dock="output", closable=False)
+        self.help_window = EmTkHelpWindow(
+            title="HydroPro - Help",
+            resource=GUI / "help.md",
+            owner=self,
+            on_start_guide=self.tour.start,
+        )
+        self.docks = DockManager(
+            Split(
+                "h", 0.42, Region("params"), Split("v", 0.55, Region("results"), Region("output"))
+            )
+        )
+        self.docks.add_window(
+            "params", tr("Parameters"), self.draw_params, dock="params", closable=False
+        )
+        self.docks.add_window(
+            "results", tr("Results"), self.draw_results, dock="results", closable=False
+        )
+        self.docks.add_window(
+            "output", tr("HYDRO Output"), self.draw_output, dock="output", closable=False
+        )
         super().__init__(self.render)
 
     # -- the Qt tool's remembered state ---------------------------------------------------------------------------- #
@@ -178,7 +206,9 @@ class HydroProApp(ImApp):
         box = (*viewport.pos, *viewport.size)
         if self._sized != tuple(viewport.size):
             self._sized = tuple(viewport.size)
-            self.docks.set_ratio("root", min(0.6, max(0.36, PARAMS_MIN / float(viewport.size[0]) + 0.0)))
+            self.docks.set_ratio(
+                "root", min(0.6, max(0.36, PARAMS_MIN / float(viewport.size[0]) + 0.0))
+            )
         self.form.rects.clear()
         self.docks.draw(box)
         self._draw_dialogs(box)
@@ -189,9 +219,18 @@ class HydroProApp(ImApp):
             else:
                 # A window of its own over the docks, so the card's buttons are hovered (a button answers only when no
                 # other window is under the pointer).
-                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
-                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
-                im.begin("##hydropro_tour", (0.0, 0.0, float(viewport.size[0]), float(viewport.size[1])), flags)
+                flags = (
+                    im.WindowFlags.NO_DECORATION
+                    | im.WindowFlags.NO_BACKGROUND
+                    | im.WindowFlags.NO_SAVED_SETTINGS
+                    | im.WindowFlags.NO_MOVE
+                    | im.WindowFlags.NO_NAV
+                )
+                im.begin(
+                    "##hydropro_tour",
+                    (0.0, 0.0, float(viewport.size[0]), float(viewport.size[1])),
+                    flags,
+                )
                 self.tour.draw(*viewport.size)
                 im.end()
 
@@ -227,19 +266,40 @@ class HydroProApp(ImApp):
         home = str(Path.home())
         model = self.model
         if kind == "files":
-            self.dialog = FileDialog(tr("Select structural files"), mode="open", multiselect=True, directory=home,
-                                     filters=STRUCT_FILTER)
+            self.dialog = FileDialog(
+                tr("Select structural files"),
+                mode="open",
+                multiselect=True,
+                directory=home,
+                filters=STRUCT_FILTER,
+            )
             self.dialog_callback = lambda paths: model.files_chosen(paths)
         elif kind in ("exe", "prompt_exe"):
-            self.dialog = FileDialog(tr("Select HYDRO executable"), mode="open", directory=home, filters=EXE_FILTER)
-            self.dialog_callback = (lambda paths: model.exe_chosen(paths[0])) if kind == "exe" \
+            self.dialog = FileDialog(
+                tr("Select HYDRO executable"), mode="open", directory=home, filters=EXE_FILTER
+            )
+            self.dialog_callback = (
+                (lambda paths: model.exe_chosen(paths[0]))
+                if kind == "exe"
                 else (lambda paths: model.prompt_exe_chosen(paths[0]))
+            )
         elif kind == "csv":
-            self.dialog = FileDialog(tr("Save CSV"), mode="save", directory=home, filename=model.csv_name(), filters=CSV_FILTER)
+            self.dialog = FileDialog(
+                tr("Save CSV"),
+                mode="save",
+                directory=home,
+                filename=model.csv_name(),
+                filters=CSV_FILTER,
+            )
             self.dialog_callback = lambda paths: model.write_csv(paths[0])
         elif kind == "log":
-            self.dialog = FileDialog(tr("Save output log"), mode="save", directory=home, filename=model.log_name(),
-                                     filters=LOG_FILTER)
+            self.dialog = FileDialog(
+                tr("Save output log"),
+                mode="save",
+                directory=home,
+                filename=model.log_name(),
+                filters=LOG_FILTER,
+            )
             self.dialog_callback = lambda paths: model.write_log(paths[0])
         self.file_window.title = self.dialog.title if self.dialog else ""
         self.file_window.pos = None
@@ -250,15 +310,25 @@ class HydroProApp(ImApp):
         model = self.model
         self.prompt_window.open = True
         closed = self.prompt_window.begin(box) == "close"
-        im.text_wrapped(tr("HYDROPRO / HYDRO++ executable is not configured.\n\n"
-                           "Please download the official ZIP archive and select the executable\n"
-                           "(hydropro10.exe or hydro++10.exe) before running calculations."))
+        im.text_wrapped(
+            tr(
+                "HYDROPRO / HYDRO++ executable is not configured.\n\n"
+                "Please download the official ZIP archive and select the executable\n"
+                "(hydropro10.exe or hydro++10.exe) before running calculations."
+            )
+        )
         im.spacing()
         im.set_next_item_width(-1)
-        im.input_text("##prompt_path", str(model.prompt_path or ""), hint=tr("no executable selected"),
-                      flags=im.InputTextFlags.READ_ONLY)
+        im.input_text(
+            "##prompt_path",
+            str(model.prompt_path or ""),
+            hint=tr("no executable selected"),
+            flags=im.InputTextFlags.READ_ONLY,
+        )
         self.item_rects["prompt_path"] = im.get_item_rect()
-        im.set_item_tooltip(tr("The executable chosen here; it is used for this run when you press Close."))
+        im.set_item_tooltip(
+            tr("The executable chosen here; it is used for this run when you press Close.")
+        )
         if im.button(f"{tr('Select executable…')}##prompt_select"):
             if self.dialog is None:
                 model.dialog = "prompt_exe"
@@ -286,7 +356,9 @@ class HydroProApp(ImApp):
         im.same_line()
         if im.button(f"{tr('Guide')}##guide"):
             self.tour.start()
-        im.set_item_tooltip(tr("Walk through choosing the program and structures, the settings and a run."))
+        im.set_item_tooltip(
+            tr("Walk through choosing the program and structures, the settings and a run.")
+        )
         self.item_rects["guide"] = im.get_item_rect()
         draw_sections(self.panels, self.model, self.form, titles=True)
 

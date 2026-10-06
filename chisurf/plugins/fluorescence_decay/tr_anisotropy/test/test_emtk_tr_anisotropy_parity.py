@@ -46,7 +46,9 @@ def make_data(folder, n=256, dt=0.1, seed=3):
     }
     for key, y in curves.items():
         path = folder / f"{key}.txt"
-        np.savetxt(path, np.column_stack((x, rng.poisson(y + 4.0).astype(float))), header="time_ns counts")
+        np.savetxt(
+            path, np.column_stack((x, rng.poisson(y + 4.0).astype(float))), header="time_ns counts"
+        )
         out[key] = str(path)
     return out
 
@@ -64,7 +66,8 @@ def hermetic(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "chisurf_settings_path", tmp_path / "settings", raising=False)
     (tmp_path / "settings").mkdir(parents=True, exist_ok=True)
     (tmp_path / "settings" / "anisotropy_corrections.json").write_text(
-        json.dumps({"g_factor": 1.16, "l1": 0.12, "l2": 0.44}))
+        json.dumps({"g_factor": 1.16, "l1": 0.12, "l2": 0.44})
+    )
     monkeypatch.setattr(chisurf, "fits", [])
     monkeypatch.setattr(chisurf, "imported_datasets", [])
 
@@ -140,7 +143,9 @@ def test_loading_and_the_background_correction_equal_the_qt_wizard(qt_wizard, fi
             np.testing.assert_allclose(native.data[key].y, qt.data[key].y, err_msg=(lb, ub, key))
 
 
-def test_a_crossed_region_is_swapped_where_the_qt_wizard_silently_skipped_the_subtraction(qt_wizard, files):
+def test_a_crossed_region_is_swapped_where_the_qt_wizard_silently_skipped_the_subtraction(
+    qt_wizard, files
+):
     """Deliberate difference: Qt passes (200, 100) on, an empty region, so no background is subtracted."""
     qt = qt_wizard.model
     qt.load_data()
@@ -158,8 +163,12 @@ def test_a_crossed_region_is_swapped_where_the_qt_wizard_silently_skipped_the_su
 
 
 def test_the_qt_wizards_step_texts_and_check_marks_are_the_natives(qt_wizard, ui, files):
-    wiz = qt_wizard.findChild(__import__("chisurf.gui.autoform.sections.wizard_section", fromlist=["x"]).WizardWidget)
-    assert [s["title"] for s in ui.app.steps] == [wiz._steps[i].title for i in range(len(wiz._steps))]
+    wiz = qt_wizard.findChild(
+        __import__("chisurf.gui.autoform.sections.wizard_section", fromlist=["x"]).WizardWidget
+    )
+    assert [s["title"] for s in ui.app.steps] == [
+        wiz._steps[i].title for i in range(len(wiz._steps))
+    ]
     for i, step in enumerate(wiz._steps):
         assert ui.app.steps[i].get("subtitle", "") == (step.subtitle or "")
     # the Qt check marks: Data waits for the files, Components for both spectra, the rest are ticked
@@ -177,7 +186,9 @@ def test_the_qt_wizards_step_texts_and_check_marks_are_the_natives(qt_wizard, ui
 
 def test_corrections_defaults_and_spectra_files_equal_the_qt_wizard(qt_wizard, tmp_path):
     qt = qt_wizard.model
-    native = make_app().model          # a fresh window starts from the same stored defaults the Qt wizard reads
+    native = (
+        make_app().model
+    )  # a fresh window starts from the same stored defaults the Qt wizard reads
     assert (native.g_factor, native.l1, native.l2) == (qt.g_factor, qt.l1, qt.l2)
     assert (native.g_factor, native.l1, native.l2) == (1.16, 0.12, 0.44)
     assert native.lifetime_spectrum == qt.lifetime_spectrum
@@ -185,7 +196,9 @@ def test_corrections_defaults_and_spectra_files_equal_the_qt_wizard(qt_wizard, t
     qt.lifetime_spectrum = [[0.4, 1.0], [0.6, 3.0]]
     native.lifetime_spectrum = [[0.4, 1.0], [0.6, 3.0]]
     qt_file, native_file = tmp_path / "qt.spk.json", tmp_path / "native.spk.json"
-    core_spectra.save_spectra(qt_file, qt.lifetime_spectrum, qt.rotation_spectrum, mirror_to_default=False)
+    core_spectra.save_spectra(
+        qt_file, qt.lifetime_spectrum, qt.rotation_spectrum, mirror_to_default=False
+    )
     native.save_spectra(native_file)
     assert json.loads(qt_file.read_text()) == json.loads(native_file.read_text())
     fresh = NativeAnisotropyModel()
@@ -248,8 +261,11 @@ def test_browse_opens_the_file_dialog_and_a_clicked_file_fills_the_field(ui, fil
     m = go(ui, "Data")
     ui.app.last_dir = str(Path(files["irf_vv"]).parent)
     index = ["irf_vv_path", "irf_vh_path", "data_vv_path", "data_vh_path"].index(attr)
-    ui.click(ui.text_rect(ui.draw(), "Browse", last=False) if index == 0 else
-             [t[:4] for t in ui.draw().texts if t[5] == "Browse"][index])
+    ui.click(
+        ui.text_rect(ui.draw(), "Browse", last=False)
+        if index == 0
+        else [t[:4] for t in ui.draw().texts if t[5] == "Browse"][index]
+    )
     assert ui.app.dialog is not None
     name = Path(files[attr.replace("_path", "")]).name
     ui.click_text(name)
@@ -296,8 +312,14 @@ def test_first_column_and_header_toggles_are_clicked_and_bin_width_greys_with_a_
 
 @pytest.mark.parametrize(
     "attr,typed,expected",
-    [("bin_width", "0.05", 0.05), ("rep_rate", "40", 40.0), ("skiprows", "3", 3), ("bin_width", "500", 100.0),
-     ("rep_rate", "0", 0.001), ("skiprows", "-4", 0)],
+    [
+        ("bin_width", "0.05", 0.05),
+        ("rep_rate", "40", 40.0),
+        ("skiprows", "3", 3),
+        ("bin_width", "500", 100.0),
+        ("rep_rate", "0", 0.001),
+        ("skiprows", "-4", 0),
+    ],
 )
 def test_reader_fields_take_typed_values_and_clamp_to_their_limits(ui, attr, typed, expected):
     m = go(ui, "Data")
@@ -321,9 +343,16 @@ def test_stacked_files_are_read_with_the_channel_and_the_header_bin_width(ui, tm
     from chisurf.core.fio.vv_vh import write_vv_vh
 
     n = 64
-    arrays = {k: np.arange(n, dtype=float) * s + 3 for k, s in (("irf_vv", 1), ("irf_vh", 2), ("data_vv", 3), ("data_vh", 4))}
-    write_vv_vh(tmp_path / "irf.dat", vv=arrays["irf_vv"], vh=arrays["irf_vh"], metadata={"dt": 0.1})
-    write_vv_vh(tmp_path / "data.dat", vv=arrays["data_vv"], vh=arrays["data_vh"], metadata={"dt": 0.1})
+    arrays = {
+        k: np.arange(n, dtype=float) * s + 3
+        for k, s in (("irf_vv", 1), ("irf_vh", 2), ("data_vv", 3), ("data_vh", 4))
+    }
+    write_vv_vh(
+        tmp_path / "irf.dat", vv=arrays["irf_vv"], vh=arrays["irf_vh"], metadata={"dt": 0.1}
+    )
+    write_vv_vh(
+        tmp_path / "data.dat", vv=arrays["data_vv"], vh=arrays["data_vh"], metadata={"dt": 0.1}
+    )
     m = go(ui, "Data")
     ui.click_text("Two stacked VV/VH files")
     ui.type_into_name("irf_vv_path", str(tmp_path / "irf.dat"))
@@ -359,7 +388,11 @@ def test_load_is_greyed_without_files_and_loads_the_curves_with_them(ui, files):
     assert m.data["irf_vv"] is None
     assert "Load the data to see the IRFs." in [t[5] for t in ui.draw().texts]
     m = load(ui, files)
-    assert m.data["irf_vv"] is not None and len(m.data["irf_vv"].y) == 249 or len(m.data["irf_vv"].y) == 256
+    assert (
+        m.data["irf_vv"] is not None
+        and len(m.data["irf_vv"].y) == 249
+        or len(m.data["irf_vv"].y) == 256
+    )
     assert (m.region_lb, m.region_ub) == core_irf.initial_region(len(m.data["irf_vv"].y))
     assert m.status.startswith("Loaded")
 
@@ -373,7 +406,9 @@ def test_a_bad_file_is_reported_in_the_status_line_and_nothing_is_loaded(ui, fil
     ui.click_text("Load / reload data")
     assert m.status.startswith("Error:") or m.data["data_vh"] is None
     assert m.data["irf_vv_bg_norm"] is None
-    assert m.status[:20] in [t[5] for t in ui.draw().texts] or any(m.status[:30] in t[5] for t in ui.draw().texts)
+    assert m.status[:20] in [t[5] for t in ui.draw().texts] or any(
+        m.status[:30] in t[5] for t in ui.draw().texts
+    )
 
 
 def test_typing_the_background_channels_recomputes_the_corrected_irfs(ui, files):
@@ -423,7 +458,14 @@ def test_dragging_the_green_box_edge_in_the_plot_moves_the_background_region(ui,
 def test_the_plot_has_axes_a_legend_and_four_curves(ui, files):
     load(ui, files)
     strings = [t[5] for t in ui.draw().texts]
-    for label in ("Channel", "IRF counts", "VV (raw)", "VH (raw)", "VV (corrected)", "VH (corrected)"):
+    for label in (
+        "Channel",
+        "IRF counts",
+        "VV (raw)",
+        "VH (raw)",
+        "VV (corrected)",
+        "VH (corrected)",
+    ):
         assert label in strings, label
 
 
@@ -441,7 +483,7 @@ def test_export_writes_the_corrected_irfs_through_the_dialog(ui, files, tmp_path
 
     m = go(ui, "Normalize IRF")
     ui.click_text("Export corrected IRFs")
-    assert ui.app.dialog is None        # greyed: nothing to export before the data is loaded
+    assert ui.app.dialog is None  # greyed: nothing to export before the data is loaded
     m = load(ui, files)
     ui.app.last_dir = str(tmp_path)
     ui.click_text("Export corrected IRFs")
@@ -464,14 +506,22 @@ def test_export_writes_the_corrected_irfs_through_the_dialog(ui, files, tmp_path
 
 @pytest.mark.parametrize(
     "attr,typed,expected",
-    [("g_factor", "1.25", 1.25), ("l1", "0.03", 0.03), ("l2", "-0.02", -0.02), ("g_factor", "0", 0.001),
-     ("l1", "99", 10.0), ("l2", "-99", -10.0)],
+    [
+        ("g_factor", "1.25", 1.25),
+        ("l1", "0.03", 0.03),
+        ("l2", "-0.02", -0.02),
+        ("g_factor", "0", 0.001),
+        ("l1", "99", 10.0),
+        ("l2", "-99", -10.0),
+    ],
 )
 def test_each_correction_takes_typed_values_clamped_to_its_range(ui, attr, typed, expected):
     m = go(ui, "Corrections")
     ui.type_into_name(attr, typed)
     assert getattr(m, attr) == pytest.approx(expected)
-    assert m._corrections[{"g_factor": "g_factor", "l1": "l1", "l2": "l2"}[attr]] == pytest.approx(expected)
+    assert m._corrections[{"g_factor": "g_factor", "l1": "l1", "l2": "l2"}[attr]] == pytest.approx(
+        expected
+    )
 
 
 @pytest.mark.parametrize("attr", ["g_factor", "l1", "l2"])
@@ -537,7 +587,9 @@ def test_a_refused_edit_keeps_the_value_and_says_why(ui):
 def test_add_component_appends_the_typed_pair_to_the_right_table(ui):
     m = go(ui, "Components")
     ui.type_into(field(ui, "lifetime", "new_amplitude"), "0.25")
-    assert m.lifetime.new_amplitude == pytest.approx(0.25) and m.rotation.new_amplitude == pytest.approx(0.5)
+    assert m.lifetime.new_amplitude == pytest.approx(
+        0.25
+    ) and m.rotation.new_amplitude == pytest.approx(0.5)
     ui.type_into(field(ui, "lifetime", "new_value"), "3.5")
     ui.click(field(ui, "lifetime", "add"))
     assert m.lifetime_spectrum[-1] == [0.25, 3.5] and len(m.lifetime_spectrum) == 3
@@ -554,10 +606,10 @@ def test_remove_selected_deletes_the_clicked_row_or_the_last_one(ui):
     ui.click(field(ui, "lifetime", "delete"))
     assert m.lifetime_spectrum == [[0.3, 1.8]]
     ui.click(field(ui, "rotation", "delete"))
-    assert m.rotation_spectrum == [[0.28, 0.15]]          # none selected: the last row goes
+    assert m.rotation_spectrum == [[0.28, 0.15]]  # none selected: the last row goes
     ui.click(field(ui, "rotation", "delete"))
     ui.click(field(ui, "rotation", "delete"))
-    assert m.rotation_spectrum == []                        # nothing left to remove: no error
+    assert m.rotation_spectrum == []  # nothing left to remove: no error
 
 
 def test_the_delete_key_removes_the_selected_row(ui):
@@ -578,7 +630,7 @@ def test_the_new_component_fields_reject_non_positive_times(ui):
 
 def test_save_spectra_asks_for_a_name_then_overwrites_silently(ui, tmp_path):
     m = go(ui, "Components")
-    m.spk_path = ""                      # nothing loaded or saved yet: ask where
+    m.spk_path = ""  # nothing loaded or saved yet: ask where
     ui.app.last_dir = str(tmp_path)
     ui.click_text("Save spectra")
     assert ui.app.dialog is not None
@@ -597,7 +649,7 @@ def test_save_spectra_asks_for_a_name_then_overwrites_silently(ui, tmp_path):
 
 
 def test_a_fresh_window_saves_to_the_stored_default_file_as_the_qt_wizard_did(tmp_path):
-    core_spectra.spk_json_path()          # the stored default file exists, as after the first Qt run
+    core_spectra.spk_json_path()  # the stored default file exists, as after the first Qt run
     ui = Driver(make_app())
     ui.draw()
     m = go(ui, "Components")
@@ -611,7 +663,9 @@ def test_a_fresh_window_saves_to_the_stored_default_file_as_the_qt_wizard_did(tm
 def test_load_spectra_replaces_both_tables_from_the_file(ui, tmp_path):
     m = go(ui, "Components")
     saved = tmp_path / "in.spk.json"
-    core_spectra.save_spectra(saved, [[1.0, 2.0]], [[0.4, 5.0], [0.1, 20.0]], mirror_to_default=False)
+    core_spectra.save_spectra(
+        saved, [[1.0, 2.0]], [[0.4, 5.0], [0.1, 20.0]], mirror_to_default=False
+    )
     ui.app.last_dir = str(tmp_path)
     ui.click_text("Load spectra")
     ui.click_text("in.spk.json")
@@ -693,7 +747,7 @@ def test_the_tour_is_walked_with_the_real_controls_and_waits_at_each_await(ui, f
     assert tour.active and tour.step_idx == 0
     ui.click_text("Next ►")
     assert tour.step_idx == 1 and ui.app.step_index == 1 and tour.awaiting
-    ui.click_text("Next ►")                                  # refused while it waits
+    ui.click_text("Next ►")  # refused while it waits
     assert tour.step_idx == 1
     ui.type_into_name("irf_vv_path", files["irf_vv"])
     ui.type_into_name("irf_vh_path", files["irf_vh"])

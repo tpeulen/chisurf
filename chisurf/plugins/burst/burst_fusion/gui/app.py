@@ -28,7 +28,12 @@ from emtk.view_form import FormState, draw_sections, find_section
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.plugins.emtk_layout import (
-    LabelColumn, button_row, cap_widths, group_by_width, icon_label, labelled,
+    LabelColumn,
+    button_row,
+    cap_widths,
+    group_by_width,
+    icon_label,
+    labelled,
 )
 
 from .view_model import FusionViewModel
@@ -93,7 +98,7 @@ class BurstFusionGui(TourTarget):
         for section in self.fusion_panel.get("sections", []):
             if section.get("type") == "table":
                 section["expand"] = False
-                section["height"] = 210       # the nine summary rows, none cut off
+                section["height"] = 210  # the nine summary rows, none cut off
         cap_widths(self.fusion_panel.get("sections", []))
         self.labels = LabelColumn()
 
@@ -132,7 +137,6 @@ class BurstFusionGui(TourTarget):
         self.docks.add_window("controls", "Fusion controls", self._draw_controls, dock="controls")
         self.docks.add_window("plots", "Fusion plots", self._draw_plots, dock="plots")
 
-
     def _draw_controls(self, box):
         controller = getattr(self, "controller", None)
         if controller:
@@ -153,13 +157,17 @@ class BurstFusionGui(TourTarget):
             self.labels.measure([f["label"] for f in fields])
             self.labels.pad(self.fusion_panel.get("sections", []))
         sections = self.fusion_panel.get("sections", [])
-        at = next((i for i, s in enumerate(sections) if s.get("key") == "fusion_actions"), len(sections))
+        at = next(
+            (i for i, s in enumerate(sections) if s.get("key") == "fusion_actions"), len(sections)
+        )
         im.begin_disabled(running)
         draw_sections(group_by_width(sections[:at]), target, self.form_state, n_col=1, titles=True)
         im.end_disabled()
-        self._draw_fusion_actions(None, self.model, self.form_state, 0.0)     # Stop stays live while a run is in flight
+        self._draw_fusion_actions(
+            None, self.model, self.form_state, 0.0
+        )  # Stop stays live while a run is in flight
         im.begin_disabled(running)
-        draw_sections(sections[at + 1:], target, self.form_state, n_col=1, titles=True)
+        draw_sections(sections[at + 1 :], target, self.form_state, n_col=1, titles=True)
         im.end_disabled()
         if "summary_rows" in self.form_state.rects:  # the guide names the table by its title
             self.item_rects["Summary"] = self.form_state.rects["summary_rows"]
@@ -213,18 +221,46 @@ class BurstFusionGui(TourTarget):
         controller = getattr(self, "controller", None)
         running = bool(controller and controller.running)
         im.spacing()
-        pressed = button_row([
-            {"label": icon_label("🚀", "Run (Fuse)"), "key": "toolAction_run", "enabled": not running,
-             "keys": ("fusion_actions",), "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
-             "tip": "Fuse burst fragments that likely belong to the same molecule using the P(same) threshold."},
-            {"label": icon_label("🔄", "Estimate"), "key": "toolAction_refresh", "enabled": not running,
-             "tip": "Estimate the P(same) curve and thresholds from the loaded bursts without fusing."},
-            *([{"label": icon_label("🧪", "Demo"), "key": "load_demo", "enabled": not running, "keys": ("Load demo",),
-                "tip": "Load a demo dataset to try the fusion analysis."}] if self.on_demo is not None else []),
-            {"label": "Stop fusion", "key": "Stop", "enabled": running,
-             "tip": "Cancel the estimate before writing; an output write already started finishes consistently."
-             if running else "Nothing is running; a fusion in progress can be stopped here."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": icon_label("🚀", "Run (Fuse)"),
+                    "key": "toolAction_run",
+                    "enabled": not running,
+                    "keys": ("fusion_actions",),
+                    "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
+                    "tip": "Fuse burst fragments that likely belong to the same molecule using the P(same) threshold.",
+                },
+                {
+                    "label": icon_label("🔄", "Estimate"),
+                    "key": "toolAction_refresh",
+                    "enabled": not running,
+                    "tip": "Estimate the P(same) curve and thresholds from the loaded bursts without fusing.",
+                },
+                *(
+                    [
+                        {
+                            "label": icon_label("🧪", "Demo"),
+                            "key": "load_demo",
+                            "enabled": not running,
+                            "keys": ("Load demo",),
+                            "tip": "Load a demo dataset to try the fusion analysis.",
+                        }
+                    ]
+                    if self.on_demo is not None
+                    else []
+                ),
+                {
+                    "label": "Stop fusion",
+                    "key": "Stop",
+                    "enabled": running,
+                    "tip": "Cancel the estimate before writing; an output write already started finishes consistently."
+                    if running
+                    else "Nothing is running; a fusion in progress can be stopped here.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed in ("toolAction_run", "toolAction_refresh", "load_demo"):
             self.track(pressed)
             if pressed != "load_demo":
@@ -243,19 +279,44 @@ class BurstFusionGui(TourTarget):
         elif pressed == "Stop" and controller is not None:
             controller.stop()
         im.begin_disabled(running)
-        files = button_row([
-            {"label": "Load settings", "key": "load", "tip": "Load a saved fusion parameter JSON file."},
-            {"label": "Save settings", "key": "save", "tip": "Save current fusion parameters as JSON."},
-            {"label": "Export fusion report", "key": "export",
-             "tip": "Export before/after statistics and the output folder path."},
-        ], remember=self.remember)
+        files = button_row(
+            [
+                {
+                    "label": "Load settings",
+                    "key": "load",
+                    "tip": "Load a saved fusion parameter JSON file.",
+                },
+                {
+                    "label": "Save settings",
+                    "key": "save",
+                    "tip": "Save current fusion parameters as JSON.",
+                },
+                {
+                    "label": "Export fusion report",
+                    "key": "export",
+                    "tip": "Export before/after statistics and the output folder path.",
+                },
+            ],
+            remember=self.remember,
+        )
         im.end_disabled()
         if files and controller is not None:
             controller.browse(files)
-        pressed = button_row([
-            {"label": icon_label("📖", "Guide"), "key": "guide", "tip": "Start a step-by-step guided tour of this tool."},
-            {"label": icon_label("❓", "Help"), "key": "help", "tip": "Open the help window with reference documentation."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": icon_label("📖", "Guide"),
+                    "key": "guide",
+                    "tip": "Start a step-by-step guided tour of this tool.",
+                },
+                {
+                    "label": icon_label("❓", "Help"),
+                    "key": "help",
+                    "tip": "Open the help window with reference documentation.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed == "guide":
             self.track("guide")
             self.start_guide()
@@ -367,10 +428,13 @@ class BurstFusionGui(TourTarget):
                 request = (0.8, max(tops) * 1.5)
                 changed = request != getattr(self, "_fragments_request", None)
                 self._fragments_request = request
-                implot.setup_axis_limits(implot.AXIS_Y1, *request,
-                                         implot.COND_ALWAYS if changed else implot.COND_ONCE)
+                implot.setup_axis_limits(
+                    implot.AXIS_Y1, *request, implot.COND_ALWAYS if changed else implot.COND_ONCE
+                )
             if sizes:  # whole fragment counts, not 1.5 fragments
-                implot.setup_axis_ticks(implot.AXIS_X1, np.asarray(sizes, float), labels=[str(n) for n in sizes])
+                implot.setup_axis_ticks(
+                    implot.AXIS_X1, np.asarray(sizes, float), labels=[str(n) for n in sizes]
+                )
             for idx, s in enumerate(series_list):
                 col = _hex_to_rgba(s.get("color", ACCENT_BLUE))
                 implot.set_next_fill_style(col)

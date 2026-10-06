@@ -18,7 +18,15 @@ from ..gui.model import UserEditorModel
 
 class FakeClient:
     def list_users(self):
-        return [{"user_id": "alice", "user_uuid": "u1", "display_name": "Alice", "email": "alice@example.org", "role": "Postdoc"}]
+        return [
+            {
+                "user_id": "alice",
+                "user_uuid": "u1",
+                "display_name": "Alice",
+                "email": "alice@example.org",
+                "role": "Postdoc",
+            }
+        ]
 
     def save_user(self, payload):
         self.saved = payload

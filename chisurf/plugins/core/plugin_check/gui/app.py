@@ -5,6 +5,7 @@ The sweep actions, the two sweep options, the progress bar, the status line and 
 :class:`~.model.PluginCheckModel`. Only what a spec cannot draw is drawn here: the selected plugin's details, the
 selectable error text, and the Help / Guide buttons.
 """
+
 from __future__ import annotations
 
 import json
@@ -59,12 +60,20 @@ class PluginCheckApp(ImApp):
             wait_for_controls=True,
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
-        self.help_window = EmTkHelpWindow(title="Plugin Check - Help", resource=HERE / "help.md", owner=self,
-                                          on_start_guide=self.tour.start)
+        self.help_window = EmTkHelpWindow(
+            title="Plugin Check - Help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=self.tour.start,
+        )
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(Split("h", 0.64, Region("plugins"), Region("details")))
-        self.docks.add_window("plugins", "Plugin startup checks", self.draw_plugins, dock="plugins", closable=False)
-        self.docks.add_window("details", "Plugin details", self.draw_selected, dock="details", closable=False)
+        self.docks.add_window(
+            "plugins", "Plugin startup checks", self.draw_plugins, dock="plugins", closable=False
+        )
+        self.docks.add_window(
+            "details", "Plugin details", self.draw_selected, dock="details", closable=False
+        )
         super().__init__(self.render)
 
     # -- persistence ---------------------------------------------------------------- #
@@ -72,8 +81,12 @@ class PluginCheckApp(ImApp):
         """What is remembered: the selected plugin, the two sweep options and the filter text."""
         binding = self.form.tables.get(TABLE)
         query = binding.control.filter.text if binding is not None else ""
-        return {"selected": self.model.selected_key, "delay": self.model.delay,
-                "skip_blacklisted": bool(self.model.skip_blacklisted), "query": str(query or "")}
+        return {
+            "selected": self.model.selected_key,
+            "delay": self.model.delay,
+            "skip_blacklisted": bool(self.model.skip_blacklisted),
+            "query": str(query or ""),
+        }
 
     def restore_settings(self, settings: dict) -> None:
         """Restore :meth:`export_settings`; unknown or invalid values are ignored."""
@@ -100,7 +113,9 @@ class PluginCheckApp(ImApp):
         if self._sized != tuple(viewport.size):
             # The details window needs about DETAILS_MIN px; a resize re-proposes the split (a drag in between stays).
             self._sized = tuple(viewport.size)
-            self.docks.set_ratio("root", min(0.72, max(0.5, 1.0 - DETAILS_MIN / float(viewport.size[0]))))
+            self.docks.set_ratio(
+                "root", min(0.72, max(0.5, 1.0 - DETAILS_MIN / float(viewport.size[0])))
+            )
         self.form.rects.clear()
         self.docks.draw(box)
         self._sync_table_selection()

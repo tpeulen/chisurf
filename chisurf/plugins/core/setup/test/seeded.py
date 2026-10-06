@@ -72,5 +72,9 @@ def prepare(root, monkeypatch=None):
         # Settings are read once at import; show the seeded acquisition section.
         from chisurf.settings import gui as gui_settings
 
-        gui_settings["acquisition"] = {"chunk_size": 8192, "device_type": "Simulation", "output_path": str(root / "acq")}
+        gui_settings["acquisition"] = {
+            "chunk_size": 8192,
+            "device_type": "Simulation",
+            "output_path": str(root / "acq"),
+        }
     return folder

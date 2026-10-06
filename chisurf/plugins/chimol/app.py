@@ -50,10 +50,14 @@ class ChimolHostApp(ImApp):
         self._drag_from: tuple[float, float] | None = None
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.help_window = EmTkHelpWindow(
-            title="ChiMOL — Help", resource=HERE / "help.md", owner=self)
+            title="ChiMOL — Help", resource=HERE / "help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json", owner=self, wait_for_controls=True,
-            get_target_rect=self.item_rects.get)
+            steps=HERE / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=self.item_rects.get,
+        )
         super().__init__(self.render)
 
     # ── chimol lifecycle (lazy: keep plugin import toolkit- and wgpu-free) ──

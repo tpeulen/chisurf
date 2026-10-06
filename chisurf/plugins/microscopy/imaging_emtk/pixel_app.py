@@ -41,12 +41,25 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
         "load_regions": ("Load regions", "open", "JSON (*.json)", "load_regions"),
     }
 
-    def __init__(self, model: Any, coordinator: Any = None, ndx_callback: Any = None, **binding: Any) -> None:
-        if any(binding.get(key) for key in ("mmfdb_db", "mmfdb_source_artifact_id", "mmfdb_principal")):
-            if not all(binding.get(key) for key in ("mmfdb_db", "mmfdb_source_artifact_id", "mmfdb_principal")):
-                raise ValueError("MMFDB imaging binding requires db, source artifact and principal.")
-            model.bind_mmfdb(binding["mmfdb_db"], source_artifact_id=binding.get("mmfdb_source_artifact_id", ""),
-                             sample_id=binding.get("mmfdb_sample_id", ""), principal=binding.get("mmfdb_principal"))
+    def __init__(
+        self, model: Any, coordinator: Any = None, ndx_callback: Any = None, **binding: Any
+    ) -> None:
+        if any(
+            binding.get(key) for key in ("mmfdb_db", "mmfdb_source_artifact_id", "mmfdb_principal")
+        ):
+            if not all(
+                binding.get(key)
+                for key in ("mmfdb_db", "mmfdb_source_artifact_id", "mmfdb_principal")
+            ):
+                raise ValueError(
+                    "MMFDB imaging binding requires db, source artifact and principal."
+                )
+            model.bind_mmfdb(
+                binding["mmfdb_db"],
+                source_artifact_id=binding.get("mmfdb_source_artifact_id", ""),
+                sample_id=binding.get("mmfdb_sample_id", ""),
+                principal=binding.get("mmfdb_principal"),
+            )
         self.coordinator = coordinator
         self.ndx_callback = ndx_callback
         self.ndx = None
@@ -62,7 +75,9 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
         self.DIALOGS = {**type(self).DIALOGS, **self.REGION_DIALOGS}
         self.form.custom["plane"] = lambda section, m, st, w: self._draw_plane(section)
         self.form.custom["region_list"] = lambda section, m, st, w: self._draw_region_list(section)
-        model.tab_titles_list = tuple(t for t, w in self.windows.items() if w.get("dock") == "views" and t != "Detectors") + (("Detectors",) if self.editor is not None or self.DETECTOR_EDITOR else ())
+        model.tab_titles_list = tuple(
+            t for t, w in self.windows.items() if w.get("dock") == "views" and t != "Detectors"
+        ) + (("Detectors",) if self.editor is not None or self.DETECTOR_EDITOR else ())
         model.view_tab = model.tab_titles_list[0] if model.tab_titles_list else ""
         model.has_host = coordinator is not None
         model.next_callback = self.next_step
@@ -123,13 +138,21 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
         if self.coordinator is None:
             self.model.status_line = "Open this tool inside the Imaging Tools pipeline to use Next."
             return
-        self.coordinator.set_pipeline(source=self.model.filename or None, hdf5=self.model.pipeline_hdf5 or None)
+        self.coordinator.set_pipeline(
+            source=self.model.filename or None, hdf5=self.model.pipeline_hdf5 or None
+        )
         self.coordinator.advance_from(self.ROLE)
 
     def export_settings(self) -> dict:
         state = self.model.export_settings()
-        state["panels"] = {name: {"colormap": p.canvas.colormap, "fps": getattr(p, "fps", 10), "loop": getattr(p, "loop", True)}
-                           for name, p in self.panels.items()}
+        state["panels"] = {
+            name: {
+                "colormap": p.canvas.colormap,
+                "fps": getattr(p, "fps", 10),
+                "loop": getattr(p, "loop", True),
+            }
+            for name, p in self.panels.items()
+        }
         state["docks"] = self.docks.state()
         return state
 
@@ -222,12 +245,16 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
         self._painter = None
 
     def animating(self) -> bool:
-        return bool(super().animating() or (self.view_ndx and self.ndx is not None and self.ndx.animating()))
+        return bool(
+            super().animating() or (self.view_ndx and self.ndx is not None and self.ndx.animating())
+        )
 
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
         super().pointer_press(x, y, button, modifiers, clicks)
         if self.view_ndx and self.ndx is not None and y >= self._ndx_box[1]:
-            self.ndx.pointer_press(x - self._ndx_box[0], y - self._ndx_box[1], button, modifiers, clicks)
+            self.ndx.pointer_press(
+                x - self._ndx_box[0], y - self._ndx_box[1], button, modifiers, clicks
+            )
 
     def pointer_release(self, x, y, button, modifiers=0):
         super().pointer_release(x, y, button, modifiers)

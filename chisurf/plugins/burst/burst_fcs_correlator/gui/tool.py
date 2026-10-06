@@ -13,7 +13,9 @@ from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 from .app import create_app
-from .view_model import _BurstFcsModel  # noqa: F401  (kept importable from here: the settings model of the window)
+from .view_model import (
+    _BurstFcsModel,  # noqa: F401  (kept importable from here: the settings model of the window)
+)
 
 WINDOW_BG = (30, 32, 38)
 

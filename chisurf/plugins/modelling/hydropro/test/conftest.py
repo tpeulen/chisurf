@@ -41,5 +41,7 @@ def hydropro_hermetic(tmp_path, monkeypatch):
     except Exception:  # Qt-free runs
         yield
         return
-    hermetic.isolate(tmp_path)  # stays in force after the test: a module fixture built later must not see Qt's real settings
+    hermetic.isolate(
+        tmp_path
+    )  # stays in force after the test: a module fixture built later must not see Qt's real settings
     yield

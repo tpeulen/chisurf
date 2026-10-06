@@ -30,8 +30,11 @@ REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
 def snapshot_real():
     if not REAL_CHISURF.is_dir():
         return {}
-    return {str(p): p.stat().st_mtime_ns for p in REAL_CHISURF.rglob("*")
-            if p.is_file() and not {"cache", "logs"} & set(p.parts)}
+    return {
+        str(p): p.stat().st_mtime_ns
+        for p in REAL_CHISURF.rglob("*")
+        if p.is_file() and not {"cache", "logs"} & set(p.parts)
+    }
 
 
 REAL_BEFORE = snapshot_real()
@@ -42,9 +45,17 @@ def stub_fit():
     data = SimpleNamespace(x=t, y=y, name="two_lifetimes.dat", dx=np.array([dt]))
     irf = SimpleNamespace(x=t, y=lamp, name="IRF.dat")
     return SimpleNamespace(
-        name="Fit 1", data=data, xmin=20, xmax=255,
-        model=SimpleNamespace(convolve=SimpleNamespace(irf=irf, unnormalized_irf=irf, timeshift=0.0, lamp_background=0.0),
-                              generic=SimpleNamespace(background=5.0, scatter=0.0)))
+        name="Fit 1",
+        data=data,
+        xmin=20,
+        xmax=255,
+        model=SimpleNamespace(
+            convolve=SimpleNamespace(
+                irf=irf, unnormalized_irf=irf, timeshift=0.0, lamp_background=0.0
+            ),
+            generic=SimpleNamespace(background=5.0, scatter=0.0),
+        ),
+    )
 
 
 class UI(Driver):
@@ -164,7 +175,9 @@ def test_refreshing_from_a_live_fit_sets_the_same_values_as_the_qt_tool(qt_tool)
     assert m.settings.timeshift == pytest.approx(qt_tool.spin_timeshift.value())
     assert (m.settings.irf_background or 0.0) == pytest.approx(qt_tool.spin_irf_bg.value())
     assert m.fitrange == tuple(qt_tool._fit_range)
-    assert "two_lifetimes.dat" in qt_tool.label_data_source.text() and "two_lifetimes.dat" in m.source
+    assert (
+        "two_lifetimes.dat" in qt_tool.label_data_source.text() and "two_lifetimes.dat" in m.source
+    )
     assert "IRF.dat" in qt_tool.label_irf_source.text() and "IRF.dat" in m.irf_source
 
 
@@ -187,8 +200,13 @@ def test_the_lcurve_sweep_equals_the_qt_sweep(qt_tool, monkeypatch):
     qt_tool.spin_tau_bins.setValue(16)
     qt_tool.spin_tau_max.setValue(8.0)
     seen = {}
-    monkeypatch.setattr(qt_tool, "_update_lcurve_plot",
-                        lambda chi, sol, nu, corner: seen.update(chi=np.array(chi), sol=np.array(sol), nu=np.array(nu)))
+    monkeypatch.setattr(
+        qt_tool,
+        "_update_lcurve_plot",
+        lambda chi, sol, nu, corner: seen.update(
+            chi=np.array(chi), sol=np.array(sol), nu=np.array(nu)
+        ),
+    )
     qt_tool._run_lcurve()
     m = MEMModel()
     m.load_fit(stub_fit())
@@ -291,29 +309,52 @@ def test_refresh_lists_live_fits_and_datasets_and_each_use_button_works(ui, monk
 # ───────────────────────────────────── settings forms ───────────────────────────────────── #
 
 
-@pytest.mark.parametrize("panel,name,typed,expected", [
-    ("mode", "nu", "0.01", 0.01), ("mode", "nu", "5", 1.0), ("mode", "max_iter", "50", 50),
-    ("lifetime", "tau_min", "0.2", 0.2), ("lifetime", "tau_max", "7", 7.0), ("lifetime", "tau_bins", "24", 24),
-    ("lifetime", "tau_bins", "1", 2), ("instrument", "timeshift", "0.5", 0.5), ("instrument", "timeshift", "500", 100.0),
-    ("instrument", "background", "3.5", 3.5), ("instrument", "irf_background", "0.2", 0.2),
-    ("instrument", "lamp_scatter", "0.01", 0.01), ("lcurve", "lcurve_left", "1.5", 1.5), ("lcurve", "lcurve_right", "9", 6.0),
-    ("sampling", "sample_steps", "200", 200), ("sampling", "sample_thin", "2", 2), ("sampling", "sample_walkers", "8", 8),
-    ("sampling", "sample_substeps", "20", 20), ("sampling", "sample_nprocs", "2", 2),
-])
+@pytest.mark.parametrize(
+    "panel,name,typed,expected",
+    [
+        ("mode", "nu", "0.01", 0.01),
+        ("mode", "nu", "5", 1.0),
+        ("mode", "max_iter", "50", 50),
+        ("lifetime", "tau_min", "0.2", 0.2),
+        ("lifetime", "tau_max", "7", 7.0),
+        ("lifetime", "tau_bins", "24", 24),
+        ("lifetime", "tau_bins", "1", 2),
+        ("instrument", "timeshift", "0.5", 0.5),
+        ("instrument", "timeshift", "500", 100.0),
+        ("instrument", "background", "3.5", 3.5),
+        ("instrument", "irf_background", "0.2", 0.2),
+        ("instrument", "lamp_scatter", "0.01", 0.01),
+        ("lcurve", "lcurve_left", "1.5", 1.5),
+        ("lcurve", "lcurve_right", "9", 6.0),
+        ("sampling", "sample_steps", "200", 200),
+        ("sampling", "sample_thin", "2", 2),
+        ("sampling", "sample_walkers", "8", 8),
+        ("sampling", "sample_substeps", "20", 20),
+        ("sampling", "sample_nprocs", "2", 2),
+    ],
+)
 def test_each_setting_takes_typed_values_clamped_to_the_qt_range(ui, panel, name, typed, expected):
     m = type_value(ui, panel, name, typed)
     value = getattr(m.settings, name) if hasattr(m.settings, name) else getattr(m, name)
     assert value == pytest.approx(expected)
 
 
-@pytest.mark.parametrize("panel,name,step", [("mode", "nu", 1e-3), ("lifetime", "tau_bins", 1), ("instrument", "background", 1.0),
-                                              ("lcurve", "lcurve_left", 0.5), ("sampling", "sample_thin", 1)])
+@pytest.mark.parametrize(
+    "panel,name,step",
+    [
+        ("mode", "nu", 1e-3),
+        ("lifetime", "tau_bins", 1),
+        ("instrument", "background", 1.0),
+        ("lcurve", "lcurve_left", 0.5),
+        ("sampling", "sample_thin", 1),
+    ],
+)
 def test_the_arrows_step_each_kind_of_field(ui, panel, name, step):
     m = ui.app.model
     holder = m.settings if hasattr(m.settings, name) else m
     if panel in ("lcurve", "sampling"):
         open_more(ui)
-    setattr(holder, name, getattr(holder, name) + 10 * step)      # away from the lower limit
+    setattr(holder, name, getattr(holder, name) + 10 * step)  # away from the lower limit
     ui.draw(2)
     scroll_to(ui, panel, f"{name}.stepper")
     ui.click(field(ui, panel, f"{name}.stepper"), fy=0.25)
@@ -326,7 +367,11 @@ def test_the_arrows_step_each_kind_of_field(ui, panel, name, step):
 def test_the_mode_choice_switches_the_grid_panel_and_resets_results(fitted):
     ui = fitted
     run(ui)
-    assert ui.app.model.result is not None and ui.drawn("Lifetime grid") and not ui.drawn("Distance grid")
+    assert (
+        ui.app.model.result is not None
+        and ui.drawn("Lifetime grid")
+        and not ui.drawn("Distance grid")
+    )
     ui.click(field(ui, "mode", "mode"))
     ui.click_text("FRET")
     m = ui.app.model
@@ -342,12 +387,18 @@ def test_the_fret_fields_and_the_donor_gate(fitted, tmp_path):
     ui.click(field(ui, "mode", "mode"))
     ui.click_text("FRET")
     m = ui.app.model
-    for name, typed, expected in (("tau0", "3.5", 3.5), ("R0", "60", 60.0), ("r_min_frac", "0.2", 0.2),
-                                  ("r_max_frac", "2.5", 2.5), ("r_bins", "12", 12), ("x_donly", "0.1", 0.1)):
+    for name, typed, expected in (
+        ("tau0", "3.5", 3.5),
+        ("R0", "60", 60.0),
+        ("r_min_frac", "0.2", 0.2),
+        ("r_max_frac", "2.5", 2.5),
+        ("r_bins", "12", 12),
+        ("x_donly", "0.1", 0.1),
+    ):
         type_value(ui, "fret", name, typed)
         assert getattr(m.settings, name) == pytest.approx(expected), name
     ui.click_text("Run MEM")
-    assert ui.app.jobs.process is None                 # greyed: FRET needs a donor spectrum
+    assert ui.app.jobs.process is None  # greyed: FRET needs a donor spectrum
     assert any("required in FRET mode" in t[5] for t in ui.draw().texts)
     donor = tmp_path / "donor.csv"
     np.savetxt(donor, [[1.0, 4.1]], delimiter=",")
@@ -374,9 +425,16 @@ def test_the_period_field_is_greyed_until_periodic_convolution_is_ticked(ui):
     assert m.use_periodic is False
 
 
-@pytest.mark.parametrize("label,attr", [("Fit nuisance (ts/bg/IRF BG)", "optimize_nuisance"), ("fix timeshift", "fix_timeshift"),
-                                         ("fix background", "fix_background"), ("fix IRF background", "fix_irf_background"),
-                                         ("Vectorized sampling", "sample_vectorized")])
+@pytest.mark.parametrize(
+    "label,attr",
+    [
+        ("Fit nuisance (ts/bg/IRF BG)", "optimize_nuisance"),
+        ("fix timeshift", "fix_timeshift"),
+        ("fix background", "fix_background"),
+        ("fix IRF background", "fix_irf_background"),
+        ("Vectorized sampling", "sample_vectorized"),
+    ],
+)
 def test_every_switch_is_clicked(ui, label, attr):
     m = ui.app.model
     holder = m.settings if hasattr(m.settings, attr) else m
@@ -400,7 +458,9 @@ def test_fixed_nuisance_values_reach_the_solver(fitted):
     for label in ("fix timeshift", "fix background", "fix IRF background"):
         ui.click_text(label)
     m = run(ui)
-    assert m.result["timeshift"] == pytest.approx(0.37) and m.result["background"] == pytest.approx(7.5)
+    assert m.result["timeshift"] == pytest.approx(0.37) and m.result["background"] == pytest.approx(
+        7.5
+    )
     assert m.result["irf_background"] == pytest.approx(0.1)
 
 
@@ -416,8 +476,20 @@ def test_run_gives_the_solver_result_and_draws_all_four_plots(fitted):
     reference.settings.tau_bins, reference.settings.tau_max = 32, 8.0
     np.testing.assert_allclose(m.result["p"], reference.run()["p"], rtol=1e-6)
     strings = [t[5] for t in ui.draw().texts]
-    for label in ("Time (ns)", "Counts", "Observed", "IRF scaled", "MEM fit", "Lifetime (ns)", "Probability", "MEM",
-                  "Residual / sigma", "Residuals", "Chi-square", "Solution norm"):
+    for label in (
+        "Time (ns)",
+        "Counts",
+        "Observed",
+        "IRF scaled",
+        "MEM fit",
+        "Lifetime (ns)",
+        "Probability",
+        "MEM",
+        "Residual / sigma",
+        "Residuals",
+        "Chi-square",
+        "Solution norm",
+    ):
         assert label in strings or any(label in s for s in strings), label
     assert "Lifetime grid" in strings
 
@@ -431,7 +503,11 @@ def test_run_is_cancelled_by_the_cancel_button(fitted):
     assert ui.app.jobs.process is not None
     ui.click_text("Cancel job")
     ui.settle()
-    assert ui.app.model.result is None and "cancelled" in ui.app.model.status or "failed" in ui.app.model.status
+    assert (
+        ui.app.model.result is None
+        and "cancelled" in ui.app.model.status
+        or "failed" in ui.app.model.status
+    )
 
 
 def test_the_lcurve_button_sweeps_and_sets_nu_and_a_click_on_a_point_picks_its_nu(fitted):
@@ -477,7 +553,13 @@ def test_save_writes_the_result_folder_and_sample_writes_the_chains(fitted, tmp_
     assert ui.app.dialog is not None
     ui.click_text("[result]")
     ui.click_text("Choose")
-    assert {p.name for p in out.iterdir()} == {"distribution.txt", "decay_fit.txt", "irf.txt", "wres.txt", "meta.json"}
+    assert {p.name for p in out.iterdir()} == {
+        "distribution.txt",
+        "decay_fit.txt",
+        "irf.txt",
+        "wres.txt",
+        "meta.json",
+    }
     type_value(ui, "sampling", "sample_steps", "20")
     type_value(ui, "sampling", "sample_thin", "1")
     type_value(ui, "sampling", "sample_substeps", "10")
@@ -485,7 +567,7 @@ def test_save_writes_the_result_folder_and_sample_writes_the_chains(fitted, tmp_
     ui.app.last_dir = str(tmp_path)
     samples = tmp_path / "samples"
     samples.mkdir()
-    ui.wheel(120, 400, 30.0)                              # back to the top: the buttons
+    ui.wheel(120, 400, 30.0)  # back to the top: the buttons
     ui.click_text("Sample")
     ui.click_text("[samples]")
     ui.click_text("Choose")
@@ -583,7 +665,11 @@ def test_settings_round_trip(ui):
     other = make_app()
     other.restore_settings(saved)
     assert other.model.settings.tau_max == 9.0 and other.model.settings.nu == 0.02
-    assert other.model.use_periodic is True and other.model.sample_steps == 300 and other.last_dir == "/somewhere"
+    assert (
+        other.model.use_periodic is True
+        and other.model.sample_steps == 300
+        and other.last_dir == "/somewhere"
+    )
     other.close()
 
 
@@ -614,7 +700,9 @@ def test_every_control_has_a_tooltip(fitted):
 
 
 def test_every_spec_field_exists_on_the_form_object_and_is_described():
-    form = __import__("chisurf.plugins.fluorescence_decay.maxent_decay.gui.model", fromlist=["x"]).MEMForm(MEMModel())
+    form = __import__(
+        "chisurf.plugins.fluorescence_decay.maxent_decay.gui.model", fromlist=["x"]
+    ).MEMForm(MEMModel())
     spec = json.loads((PLUGIN / "gui" / "maxent_emtk.view.json").read_text())["panels"]
 
     def walk(sections):

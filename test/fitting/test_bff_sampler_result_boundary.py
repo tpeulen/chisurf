@@ -85,22 +85,33 @@ def test_callback_signature_shapes_do_not_materialize_or_drop_progress(monkeypat
         callback = operator.add
         seen.append(True)  # operator.add is a builtin two-argument callable.
     elif kind == "callable":
+
         class Callable:
             def __call__(self, done, total):
                 seen.append((done, total))
+
         callback = Callable()
     elif kind == "partial":
         callback = partial(lambda prefix, done, total: seen.append((prefix, done, total)), "p")
     elif kind == "varargs":
+
         def callback(*args, **kwargs):
             seen.append((args, kwargs))
     else:
+
         def callback(done, total, *, result=None):
             seen.append(result is not None)
 
     sampler_bff.sample_via_graph(
-        fit, fit.model, "metropolis", steps=4, n_adapt=0, blocks=[[0, 1, 2]],
-        seed=15, substeps=2, callback=callback,
+        fit,
+        fit.model,
+        "metropolis",
+        steps=4,
+        n_adapt=0,
+        blocks=[[0, 1, 2]],
+        seed=15,
+        substeps=2,
+        callback=callback,
     )
     assert seen
 
@@ -115,8 +126,15 @@ def test_type_error_inside_callback_is_not_swallowed():
 
     with pytest.raises(TypeError, match="callback body sentinel"):
         sampler_bff.sample_via_graph(
-            fit, fit.model, "metropolis", steps=4, n_adapt=0, blocks=[[0, 1, 2]],
-            seed=16, substeps=2, callback=callback,
+            fit,
+            fit.model,
+            "metropolis",
+            steps=4,
+            n_adapt=0,
+            blocks=[[0, 1, 2]],
+            seed=16,
+            substeps=2,
+            callback=callback,
         )
 
 
@@ -135,8 +153,15 @@ def test_opaque_native_two_argument_callback_remains_compatible():
         __call__ = np.add
 
     result = sampler_bff.sample_via_graph(
-        fit, fit.model, "metropolis", steps=4, n_adapt=0, blocks=[[0, 1, 2]],
-        seed=17, substeps=2, callback=Callback(),
+        fit,
+        fit.model,
+        "metropolis",
+        steps=4,
+        n_adapt=0,
+        blocks=[[0, 1, 2]],
+        seed=17,
+        substeps=2,
+        callback=Callback(),
     )
 
     assert result is not None
@@ -163,8 +188,15 @@ def test_opaque_python_callback_body_type_error_is_not_retried():
 
     with pytest.raises(TypeError, match="opaque callback body sentinel"):
         sampler_bff.sample_via_graph(
-            fit, fit.model, "metropolis", steps=4, n_adapt=0, blocks=[[0, 1, 2]],
-            seed=18, substeps=2, callback=Callback(),
+            fit,
+            fit.model,
+            "metropolis",
+            steps=4,
+            n_adapt=0,
+            blocks=[[0, 1, 2]],
+            seed=18,
+            substeps=2,
+            callback=Callback(),
         )
 
     assert seen == [(2, 4)]

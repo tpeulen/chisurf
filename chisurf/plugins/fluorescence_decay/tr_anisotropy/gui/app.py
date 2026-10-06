@@ -31,17 +31,27 @@ FILE_FIELDS = (
 )
 STACKED_FIELDS = (("irf_vv_path", "IRF VV/VH"), ("data_vv_path", "Data VV/VH"))
 #: The tour target of each step that waits for a control, and the step it lives on.
-TARGET_STEP = {"data_vv_path": 1, "load_data": 2, "g_factor": 3, "lifetime.add": 4, "create_fits": 5}
+TARGET_STEP = {
+    "data_vv_path": 1,
+    "load_data": 2,
+    "g_factor": 3,
+    "lifetime.add": 4,
+    "create_fits": 5,
+}
 
 
 class AnisotropyApp(ImApp):
     def __init__(self, model=None):
         self.model = model or NativeAnisotropyModel()
-        self.steps = json.loads((HERE.parent / "anisotropy.view.json").read_text())["sections"][0]["steps"]
+        self.steps = json.loads((HERE.parent / "anisotropy.view.json").read_text())["sections"][0][
+            "steps"
+        ]
         for step in self.steps:
-            step.pop("icon", None)          # the Qt wizard's pictograms: emtk draws text
+            step.pop("icon", None)  # the Qt wizard's pictograms: emtk draws text
         if model is None:
-            self.model.error(self.model.restore_preferences, {})   # the stored defaults the Qt wizard starts from
+            self.model.error(
+                self.model.restore_preferences, {}
+            )  # the stored defaults the Qt wizard starts from
         self.step_index = 0
         self.plot_info = {}
         self.item_rects = {}
@@ -88,7 +98,11 @@ class AnisotropyApp(ImApp):
             self.step_index = 0
 
     def export_settings(self):
-        return {**self.model.export_preferences(), "step_index": self.step_index, "last_dir": self.last_dir}
+        return {
+            **self.model.export_preferences(),
+            "step_index": self.step_index,
+            "last_dir": self.last_dir,
+        }
 
     def target_rect(self, key):
         return self.item_rects.get(key) or next(
@@ -111,14 +125,19 @@ class AnisotropyApp(ImApp):
             "load_spectra": "Load spectra",
             "export_irfs": "Export corrected IRFs",
         }.get(action, "Select polarized decay")
-        filename = {"save_spectra": "anisotropy.spk.json", "export_irfs": "corrected_irfs.dat"}.get(action, "")
+        filename = {"save_spectra": "anisotropy.spk.json", "export_irfs": "corrected_irfs.dat"}.get(
+            action, ""
+        )
         filters = (
             "Spectra (*.spk.json *.json);;All files (*)"
             if "spectra" in action
             else "TCSPC data (*.dat *.txt *.csv *.npy *.thd *.pqres);;All files (*)"
         )
         self.dialog = FileDialog(
-            title, mode="save" if saving else "open", filename=filename, filters=filters,
+            title,
+            mode="save" if saving else "open",
+            filename=filename,
+            filters=filters,
             directory=self.last_dir or None,
         )
         self.file_window = DialogWindow(title, size=(760, 540))
@@ -164,7 +183,9 @@ class AnisotropyApp(ImApp):
     def navigation(self, box):
         if im.button("Help"):
             self.help_window.show()
-        im.set_item_tooltip("Explain polarized decays, background correction and parameter linking.")
+        im.set_item_tooltip(
+            "Explain polarized decays, background correction and parameter linking."
+        )
         im.same_line()
         if im.button("Guide"):
             self.tour.start()
@@ -172,7 +193,9 @@ class AnisotropyApp(ImApp):
         im.separator()
         for index, step in enumerate(self.steps):
             mark = "[x]" if self.model.step_complete(index) else "[ ]"
-            if im.selectable(f"{mark} {step['title']}##anisotropy{index}", selected=self.step_index == index):
+            if im.selectable(
+                f"{mark} {step['title']}##anisotropy{index}", selected=self.step_index == index
+            ):
                 self.select_step(index)
             im.set_item_tooltip(step.get("subtitle", step["title"]))
             self.item_rects[step["title"]] = im.get_item_rect()
@@ -192,14 +215,19 @@ class AnisotropyApp(ImApp):
         label_w = max(im.calc_text_size(label)[0] for _, label in fields) + 12.0
         browse_w = im.calc_text_size("Browse")[0] + 2 * im.get_style().frame_padding[0]
         spacing = im.get_style().item_spacing[0]
-        field_w = max(160.0, min(520.0, im.get_content_region_avail()[0] - label_w - browse_w - 80.0 - 3 * spacing))
+        field_w = max(
+            160.0,
+            min(520.0, im.get_content_region_avail()[0] - label_w - browse_w - 80.0 - 3 * spacing),
+        )
         im.text_disabled("Files")
         for attr, label in fields:
             im.text(label)
             im.same_line(label_w)
             im.set_next_item_width(field_w)
             changed, value = im.input_text(f"##{attr}", getattr(m, attr), elide_start=True)
-            im.set_item_tooltip(f"Path to the {label} curve: type or paste it, press Enter, or use Browse.")
+            im.set_item_tooltip(
+                f"Path to the {label} curve: type or paste it, press Enter, or use Browse."
+            )
             self.item_rects[attr] = im.get_item_rect()
             if changed:
                 setattr(m, attr, value)
@@ -225,10 +253,18 @@ class AnisotropyApp(ImApp):
         m = self.model
         pressed = button_row(
             [
-                {"label": "Load / reload data", "key": "load_data", "enabled": m.enabled("load_data"),
-                 "tip": "Read all selected IRF and decay files, then initialize a background region."},
-                {"label": "Export corrected IRFs", "key": "export_irfs", "enabled": m.enabled("export_irfs"),
-                 "tip": "Save the two background-subtracted, intensity-matched IRFs with their time-bin width."},
+                {
+                    "label": "Load / reload data",
+                    "key": "load_data",
+                    "enabled": m.enabled("load_data"),
+                    "tip": "Read all selected IRF and decay files, then initialize a background region.",
+                },
+                {
+                    "label": "Export corrected IRFs",
+                    "key": "export_irfs",
+                    "enabled": m.enabled("export_irfs"),
+                    "tip": "Save the two background-subtracted, intensity-matched IRFs with their time-bin width.",
+                },
             ],
             remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),
         )
@@ -250,21 +286,30 @@ class AnisotropyApp(ImApp):
                 y = np.asarray(curve["y"])
                 base = VV_COLOUR if "VV" in curve["name"] else VH_COLOUR
                 corrected = "corrected" in curve["name"]
-                implot.set_next_line_style((*base, 255 if corrected else 110), 2.0 if corrected else 1.0)
+                implot.set_next_line_style(
+                    (*base, 255 if corrected else 110), 2.0 if corrected else 1.0
+                )
                 implot.plot_line(curve["name"], np.asarray(curve["x"]), np.where(y > 0, y, np.nan))
             positive = np.concatenate([np.asarray(c["y"])[np.asarray(c["y"]) > 0] for c in series])
             low = max(float(positive.min()) * 0.5, 1e-12) if positive.size else 1e-12
             high = max(float(positive.max()), low) * 1.1 if positive.size else 1.0
             region = implot.drag_rect(
-                1, float(m.region_lb), low, float(m.region_ub), high,
-                col=(70, 200, 90, 180), flags=implot.DRAG_TOOL_FLAGS_NO_FIT,
+                1,
+                float(m.region_lb),
+                low,
+                float(m.region_ub),
+                high,
+                col=(70, 200, 90, 180),
+                flags=implot.DRAG_TOOL_FLAGS_NO_FIT,
             )
             if region.modified:
                 m.error(m.apply_region, int(round(region.x_min)), int(round(region.x_max)))
             mid = (low * high) ** 0.5
-            self.plot_info = {          # where the plot and the box edges are on screen (tour, tests)
-                "pos": implot.get_plot_pos(), "size": implot.get_plot_size(),
-                "lb": implot.plot_to_pixels(float(m.region_lb), mid), "ub": implot.plot_to_pixels(float(m.region_ub), mid),
+            self.plot_info = {  # where the plot and the box edges are on screen (tour, tests)
+                "pos": implot.get_plot_pos(),
+                "size": implot.get_plot_size(),
+                "lb": implot.plot_to_pixels(float(m.region_lb), mid),
+                "ub": implot.plot_to_pixels(float(m.region_ub), mid),
             }
             implot.end_plot()
 
@@ -279,8 +324,16 @@ class AnisotropyApp(ImApp):
         m = self.model
         pressed = button_row(
             [
-                {"label": "Save spectra", "key": "save_spectra", "tip": "Save the lifetime and rotation components as amplitude/value pairs in JSON."},
-                {"label": "Load spectra", "key": "load_spectra", "tip": "Replace both component lists from a saved spectrum file."},
+                {
+                    "label": "Save spectra",
+                    "key": "save_spectra",
+                    "tip": "Save the lifetime and rotation components as amplitude/value pairs in JSON.",
+                },
+                {
+                    "label": "Load spectra",
+                    "key": "load_spectra",
+                    "tip": "Replace both component lists from a saved spectrum file.",
+                },
             ],
             remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),
         )
@@ -299,7 +352,7 @@ class AnisotropyApp(ImApp):
             if side and index:
                 im.same_line()
             if im.begin_child(f"{name}_spectrum", (width, height)):
-                im.push_id(name)                    # both tables name their buttons "add" and "delete"
+                im.push_id(name)  # both tables name their buttons "add" and "delete"
                 self.form(name, table)
                 im.pop_id()
                 self.item_rects[f"{name}.add"] = self.forms[name].rects.get("add")
@@ -308,7 +361,9 @@ class AnisotropyApp(ImApp):
     def finish_step(self):
         m = self.model
         im.text_wrapped(_clean_html_text(m.finish_html().split("<p style")[0]))
-        if im.button("Create fits", ) and m.enabled("create_fits"):
+        if im.button(
+            "Create fits",
+        ) and m.enabled("create_fits"):
             m.error(m.create_fits)
             self.tour.notify_used("create_fits")
         im.set_item_tooltip(

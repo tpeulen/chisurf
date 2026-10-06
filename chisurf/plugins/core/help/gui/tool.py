@@ -2012,7 +2012,9 @@ class HelpEmtkTool(ChisurfDockTool):
 
     name = "Documentation"
 
-    def __init__(self, parent: Any = None, *, path: str | pathlib.Path | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self, parent: Any = None, *, path: str | pathlib.Path | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(parent, **kwargs)
 
         from chisurf.plugins.core.help.gui.help_app import WINDOW_BG, HelpApp

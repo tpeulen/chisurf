@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from emtk.testing import RecordingPainter
 
-from chisurf.plugins.emtk_hermetic import hermetic, real_chisurf_untouched  # noqa: F401  (autouse fixtures)
+from chisurf.plugins.emtk_hermetic import (  # noqa: F401  (autouse fixtures)
+    hermetic,
+    real_chisurf_untouched,
+)
 
 from ..gui.app import BatchAnalysisApp
 from ..gui.model import BatchModel

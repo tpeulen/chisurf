@@ -7,6 +7,7 @@ persists per process.
 
 Usage: ``python -m chisurf.plugins.traj.traj_tools.test.capture_native normal|narrow``
 """
+
 import sys
 from pathlib import Path
 

@@ -22,15 +22,16 @@ import pytest
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
-from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
-
 from emtk.testing import PixelPainter, RecordingPainter  # noqa: E402
 
 from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app  # noqa: E402
 from chisurf.plugins.burst.burst_irf_bg.test.demo_data import IRF_PEAK_NS, build  # noqa: E402
+from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
 
-DETECTORS = {"green": {"chs": [0, 8], "micro_time_ranges": [[0, 4096]]},
-             "red": {"chs": [1, 9], "micro_time_ranges": [[0, 4096]]}}
+DETECTORS = {
+    "green": {"chs": [0, 8], "micro_time_ranges": [[0, 4096]]},
+    "red": {"chs": [1, 9], "micro_time_ranges": [[0, 4096]]},
+}
 
 
 @pytest.fixture(scope="module")
@@ -92,14 +93,22 @@ def qt(measurement):
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, str(measurement), json.dumps(DETECTORS)], capture_output=True,
-                          text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, str(measurement), json.dumps(DETECTORS)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the Qt tool's results, and the IRF the demo was made with
@@ -111,7 +120,7 @@ def test_results_equal_the_qt_tools_and_the_known_irf(qt, measurement):
         for row in rows:
             assert abs(row["prompt_ns"] - IRF_PEAK_NS) < 0.15
         rates = [r["background_khz"] for r in rows]
-        assert abs(rates[0] - rates[1]) / max(rates) < 0.05     # the same non-burst stream on both
+        assert abs(rates[0] - rates[1]) / max(rates) < 0.05  # the same non-burst stream on both
         for series in app.model.irf_series()[:2]:
             x, y = np.asarray(series["x"]), np.asarray(series["y"])
             assert abs(float(x[np.argmax(y)]) - IRF_PEAK_NS) < 0.05
@@ -122,7 +131,9 @@ def test_results_equal_the_qt_tools_and_the_known_irf(qt, measurement):
 # 2. the MLE hand-off, in the Qt words
 def test_send_to_mle_hands_the_patterns_over_as_the_qt_tool_does(qt, measurement):
     received = []
-    app = create_app(mle_receiver=lambda patterns: (received.append(sorted(patterns)), len(patterns))[1])
+    app = create_app(
+        mle_receiver=lambda patterns: (received.append(sorted(patterns)), len(patterns))[1]
+    )
     try:
         app.controller.send_to_mle()
         assert app.controller.status == qt["early"] == "Compute the IRF and background first."
@@ -135,7 +146,7 @@ def test_send_to_mle_hands_the_patterns_over_as_the_qt_tool_does(qt, measurement
     alone = _computed(create_app(), measurement)
     try:
         assert not alone.controller.send_to_mle()
-        assert "Burst Analysis" in alone.controller.status       # no workflow to receive them
+        assert "Burst Analysis" in alone.controller.status  # no workflow to receive them
     finally:
         alone.close()
 
@@ -144,7 +155,10 @@ def test_export_patterns_needs_a_result_and_writes_them(measurement, tmp_path):
     app = create_app()
     try:
         app.controller.browse("patterns")
-        assert app.controller.status == "Compute the IRF and background first." and app.controller.dialog is None
+        assert (
+            app.controller.status == "Compute the IRF and background first."
+            and app.controller.dialog is None
+        )
         _computed(app, measurement)
         app.controller.browse("patterns")
         assert app.controller.dialog.title == "Export MLE patterns"
@@ -181,8 +195,11 @@ def test_the_status_is_drawn_once_and_frames_requested_while_computing(measureme
 
     gate = threading.Event()
     original = view_model.IrfBackgroundViewModel.compute
-    monkeypatch.setattr(view_model.IrfBackgroundViewModel, "compute",
-                        lambda self, cancel_check=None: (gate.wait(10), original(self, cancel_check))[1])
+    monkeypatch.setattr(
+        view_model.IrfBackgroundViewModel,
+        "compute",
+        lambda self, cancel_check=None: (gate.wait(10), original(self, cancel_check))[1],
+    )
     app = create_app()
     try:
         app.controller.add_files([measurement])
@@ -205,12 +222,18 @@ def test_every_guide_target_is_drawn_and_extract_waits(measurement):
     try:
         app.controller.add_files([measurement])
         _draw(app, size, painter=PixelPainter)
-        keys = {app.irf_gui.tour._target_key(s.get("target")) for s in app.irf_gui.tour.steps} - {""}
+        keys = {app.irf_gui.tour._target_key(s.get("target")) for s in app.irf_gui.tour.steps} - {
+            ""
+        }
         app.controller.run()
-        _frames_until(app, lambda: not app.controller.running and app.model.has_results(), size=size)
-        drawn = set(app.item_rects) | set(app.irf_gui.form_state.rects)         # buttons, and the spec's fields
+        _frames_until(
+            app, lambda: not app.controller.running and app.model.has_results(), size=size
+        )
+        drawn = set(app.item_rects) | set(
+            app.irf_gui.form_state.rects
+        )  # buttons, and the spec's fields
         assert keys and keys <= drawn, keys - drawn
-        _draw(app, size, n=1, painter=PixelPainter)              # the rect from the painter we press with
+        _draw(app, size, n=1, painter=PixelPainter)  # the rect from the painter we press with
         step = next(i for i, st in enumerate(app.irf_gui.tour.steps) if st.get("await"))
         app.irf_gui.tour.start(step)
         assert app.irf_gui.tour.awaiting
@@ -245,9 +268,13 @@ def test_draws_empty_and_populated(measurement, size):
         _computed(app, measurement)
         strings = _draw(app, size).strings
         assert "IRF (non-burst scatter)" in strings
-        assert {"Detector", "Background (kHz)", "Prompt (ns)", "Non-burst", "Burst"} <= set(strings)   # the data_table's headers
+        assert {"Detector", "Background (kHz)", "Prompt (ns)", "Non-burst", "Burst"} <= set(
+            strings
+        )  # the data_table's headers
         rows = app.model.results_rows()
-        assert rows and all(f"{r['background_khz']:.3f}" in strings and r["detector"] in strings for r in rows)
+        assert rows and all(
+            f"{r['background_khz']:.3f}" in strings and r["detector"] in strings for r in rows
+        )
     finally:
         app.close()
 

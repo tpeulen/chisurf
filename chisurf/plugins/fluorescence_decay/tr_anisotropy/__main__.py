@@ -3,8 +3,9 @@
 
 def main():
     from chisurf.emtk.__main__ import main as launch
-    return launch(["--plugin","tr_anisotropy"])
+
+    return launch(["--plugin", "tr_anisotropy"])
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     raise SystemExit(main())

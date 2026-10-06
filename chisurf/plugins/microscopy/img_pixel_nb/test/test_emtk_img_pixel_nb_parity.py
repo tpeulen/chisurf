@@ -13,15 +13,22 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from test.gui.emtk_layout_checks import SIZES, assert_disjoint, assert_icons_clear, assert_inside, assert_short, assert_texts_apart, draw
-
-from chisurf.plugins.microscopy.img_pixel_nb.gui.app import NBApp, make_app
-from chisurf.plugins.microscopy.img_pixel_nb.gui.model import NBModel
-from chisurf.plugins.microscopy.img_pixel_nb import demo
-from chisurf.plugins.microscopy.img_pixel_nb.gui.view_model import NBViewModel
 from chisurf.plugins.microscopy.imaging_emtk import pixel_checks as C
 from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, hermetic_env, walk
+from chisurf.plugins.microscopy.img_pixel_nb import demo
+from chisurf.plugins.microscopy.img_pixel_nb.gui.app import NBApp, make_app
+from chisurf.plugins.microscopy.img_pixel_nb.gui.model import NBModel
+from chisurf.plugins.microscopy.img_pixel_nb.gui.view_model import NBViewModel
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_inside,
+    assert_short,
+    assert_texts_apart,
+    draw,
+)
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -32,11 +39,34 @@ EMTK_SPEC = json.loads((PLUGIN / "gui" / "nb_emtk.view.json").read_text(encoding
 QT_SPEC = json.loads((PLUGIN / "gui" / "nb.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
-TABS = ("Intensity", "Brightness (B)", "Number (N)", "Brightness \u03b5", "Number n", "Parameter plane", "Gated pixels", "Cross brightness", "Cross number", "Frames (movie)")
-TOOL = C.Tool(make_app=make_app, tabs=TABS, role="pixel_nb", hdf5_label="Add N&B to HDF5",
-              maps={"Intensity": "intensity_map", "Brightness (B)": "b_map", "Number (N)": "n_map"}, axes={"Parameter plane": ("intensity \u27e8k\u27e9", "apparent brightness B")},
-              optional=("Cross brightness", "Cross number"))
-PLANE_LABELS = ("intensity \u27e8k\u27e9", "apparent brightness B", "brightness \u03b5", "apparent number N", "number n")
+TABS = (
+    "Intensity",
+    "Brightness (B)",
+    "Number (N)",
+    "Brightness \u03b5",
+    "Number n",
+    "Parameter plane",
+    "Gated pixels",
+    "Cross brightness",
+    "Cross number",
+    "Frames (movie)",
+)
+TOOL = C.Tool(
+    make_app=make_app,
+    tabs=TABS,
+    role="pixel_nb",
+    hdf5_label="Add N&B to HDF5",
+    maps={"Intensity": "intensity_map", "Brightness (B)": "b_map", "Number (N)": "n_map"},
+    axes={"Parameter plane": ("intensity \u27e8k\u27e9", "apparent brightness B")},
+    optional=("Cross brightness", "Cross number"),
+)
+PLANE_LABELS = (
+    "intensity \u27e8k\u27e9",
+    "apparent brightness B",
+    "brightness \u03b5",
+    "apparent number N",
+    "number n",
+)
 STATIC_TABS = tuple(t for t in TABS if t not in TOOL.optional)
 
 
@@ -116,7 +146,9 @@ def test_load_demo_runs_the_demo_and_the_maps_show_the_monomer_dimer_truth(app, 
     assert np.median(n[:, :half]) == pytest.approx(truth["monomer"]["number"], rel=0.15)
     assert np.median(n[:, half:]) == pytest.approx(truth["dimer"]["number"], rel=0.15)
     mean = m.intensity_map()
-    assert np.median(mean[:, :half]) == pytest.approx(np.median(mean[:, half:]), rel=0.1), "the same intensity, only the packaging differs"
+    assert np.median(mean[:, :half]) == pytest.approx(np.median(mean[:, half:]), rel=0.1), (
+        "the same intensity, only the packaging differs"
+    )
     assert Path(m.filename) == with_demo and m.status_line == ""
 
 
@@ -126,7 +158,7 @@ def test_the_maps_are_the_moments_of_the_simulated_counts(app, drv, with_demo):
     mean, var = counts.mean(axis=0), counts.var(axis=0, ddof=1)
     b = var / mean
     np.testing.assert_allclose(m.b_map(), b, rtol=1e-9)
-    np.testing.assert_allclose(m.n_map(), mean ** 2 / var, rtol=1e-9)
+    np.testing.assert_allclose(m.n_map(), mean**2 / var, rtol=1e-9)
     np.testing.assert_allclose(m.epsilon_map(), b - 1.0, rtol=1e-9, atol=1e-12)
     np.testing.assert_allclose(m.number_map(), mean / (b - 1.0), rtol=1e-9)
 
@@ -135,7 +167,15 @@ def test_the_live_qt_view_model_gives_the_same_maps_on_the_demo(app, drv, with_d
     m = run_demo(app, drv)
     qt = NBViewModel()
     qt.load_demo()
-    for name in ("b_map", "n_map", "epsilon_map", "number_map", "intensity_map", "plane_histogram", "gated_intensity_map"):
+    for name in (
+        "b_map",
+        "n_map",
+        "epsilon_map",
+        "number_map",
+        "intensity_map",
+        "plane_histogram",
+        "gated_intensity_map",
+    ):
         np.testing.assert_array_equal(getattr(m, name)(), getattr(qt, name)())
     assert set(m._columns) == set(qt._columns) and m.results_text == qt.results_text
 
@@ -152,7 +192,9 @@ SETTING_SETS = [
 
 
 @pytest.mark.parametrize("changes", SETTING_SETS, ids=lambda c: "+".join(sorted(c)))
-def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(app, drv, with_demo, changes):
+def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(
+    app, drv, with_demo, changes
+):
     m = app.model
     for k, v in changes.items():
         setattr(m, k, v)
@@ -164,21 +206,41 @@ def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(app, d
     qt.filename = str(with_demo)
     assert qt.compute()
     for name in ("b_map", "n_map", "epsilon_map", "number_map"):
-        np.testing.assert_allclose(getattr(m, name)(), getattr(qt, name)(), rtol=1e-12, equal_nan=True)
+        np.testing.assert_allclose(
+            getattr(m, name)(), getattr(qt, name)(), rtol=1e-12, equal_nan=True
+        )
 
 
 def test_typed_settings_are_clamped_to_the_qt_ranges_and_the_choices_are_the_qt_lists(app, drv):
-    qt_fields = {s["attr"]: s for s in walk(QT_SPEC["sections"]) if s.get("attr") and s.get("type") in ("value", "choice")}
-    emtk_fields = {s["attr"]: s for s in walk(EMTK_SPEC["sections"]) if s.get("attr") and s.get("type") in ("value", "choice")}
+    qt_fields = {
+        s["attr"]: s
+        for s in walk(QT_SPEC["sections"])
+        if s.get("attr") and s.get("type") in ("value", "choice")
+    }
+    emtk_fields = {
+        s["attr"]: s
+        for s in walk(EMTK_SPEC["sections"])
+        if s.get("attr") and s.get("type") in ("value", "choice")
+    }
     for attr, spec in qt_fields.items():
         if attr == "filename":
             continue
         other = emtk_fields[attr]
-        for key in ("label", "minimum", "maximum", "decimals", "options", "options_source", "description"):
+        for key in (
+            "label",
+            "minimum",
+            "maximum",
+            "decimals",
+            "options",
+            "options_source",
+            "description",
+        ):
             assert other.get(key) == spec.get(key), (attr, key)
 
 
-def test_a_typed_number_is_taken_on_enter_and_changes_what_the_next_run_computes(app, drv, with_demo):
+def test_a_typed_number_is_taken_on_enter_and_changes_what_the_next_run_computes(
+    app, drv, with_demo
+):
     app.model.select_file(str(with_demo))
     C.run(app, drv)
     before = app.model.epsilon_map().copy()
@@ -214,13 +276,20 @@ def test_the_stack_correction_and_detector_panels_fold_and_take_typed_values(app
     drv.type_into("dead_time_ns", "12.5")
     drv.type_into("pixel_dwell_us", "20")
     m = app.model
-    assert (m.box_pixels, m.detrend_segments, m.dead_time_ns, m.pixel_dwell_us) == (5, 2, 12.5, 20.0)
+    assert (m.box_pixels, m.detrend_segments, m.dead_time_ns, m.pixel_dwell_us) == (
+        5,
+        2,
+        12.5,
+        20.0,
+    )
     drv.click("subtract")
     drv.click_text("frame_mean", last=True)
     assert m.subtract == "frame_mean"
 
 
-def test_calibrate_analog_is_greyed_without_a_result_and_gives_the_qt_answer_with_one(app, drv, with_demo):
+def test_calibrate_analog_is_greyed_without_a_result_and_gives_the_qt_answer_with_one(
+    app, drv, with_demo
+):
     assert not app.model.enabled("calibrate_analog")
     drv.click("calibrate_analog")
     assert app.model.gain == 1.0
@@ -229,7 +298,9 @@ def test_calibrate_analog_is_greyed_without_a_result_and_gives_the_qt_answer_wit
     qt.load_demo()
     qt.calibrate_analog()
     drv.click("calibrate_analog")
-    assert (m.gain, m.offset) == pytest.approx((qt.gain, qt.offset), rel=1e-3) and m.results_text == qt.results_text
+    assert (m.gain, m.offset) == pytest.approx(
+        (qt.gain, qt.offset), rel=1e-3
+    ) and m.results_text == qt.results_text
 
 
 def test_the_load_demo_failure_is_reported(app, drv, monkeypatch):
@@ -343,7 +414,10 @@ def test_gates_survive_the_saved_settings(app, drv, with_demo):
 
 
 def test_cross_nb_is_built_on_the_worker_when_a_second_window_is_chosen(app, drv, flim):
-    app.model.detectors = {"a": {"chs": [0], "micro_time_ranges": []}, "b": {"chs": [0], "micro_time_ranges": [(0, 255)]}}
+    app.model.detectors = {
+        "a": {"chs": [0], "micro_time_ranges": []},
+        "b": {"chs": [0], "micro_time_ranges": [(0, 255)]},
+    }
     m = C.computed(app, drv, flim)
     assert m.cross_brightness_map() is None
     drv.click("Cross N&B.fold")
@@ -358,9 +432,15 @@ def test_cross_nb_is_built_on_the_worker_when_a_second_window_is_chosen(app, drv
 
 
 def test_two_detector_windows_give_two_map_sets(app, drv, flim2):
-    app.model.detectors = {"first": {"chs": [0], "micro_time_ranges": []}, "second": {"chs": [1], "micro_time_ranges": []}}
+    app.model.detectors = {
+        "first": {"chs": [0], "micro_time_ranges": []},
+        "second": {"chs": [1], "micro_time_ranges": []},
+    }
     m = C.computed(app, drv, flim2)
-    assert list(m._by_window) == ["first", "second"] and {"epsilon (first)", "epsilon (second)"} <= set(m._columns)
+    assert list(m._by_window) == ["first", "second"] and {
+        "epsilon (first)",
+        "epsilon (second)",
+    } <= set(m._columns)
 
 
 # ── 2. the file ─────────────────────────────────────────────────────────────────────────────────────────────── #
@@ -386,8 +466,11 @@ def test_the_database_button_picks_a_dataset(app, drv, flim):
     C.database_button_picks_a_dataset(app, drv, flim)
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; "
-                   "see okf/plugins/emtk-ports/img_drift/REPORT.md")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; "
+    "see okf/plugins/emtk-ports/img_drift/REPORT.md",
+)
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim):
     C.open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim)
 
@@ -407,12 +490,18 @@ def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, flim):
 # ── 3. running ──────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_run_without_a_file_does_nothing_with_one_it_computes_and_a_second_run_says_it_is_up_to_date(app, drv, flim):
-    C.run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_it_is_up_to_date(app, drv, flim)
+def test_run_without_a_file_does_nothing_with_one_it_computes_and_a_second_run_says_it_is_up_to_date(
+    app, drv, flim
+):
+    C.run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_it_is_up_to_date(
+        app, drv, flim
+    )
 
 
 def test_cancel_stops_a_running_calculation(app, drv, flim, monkeypatch):
-    C.cancel_stops_a_running_calculation_and_keeps_the_previous_state(app, drv, flim, TOOL, monkeypatch)
+    C.cancel_stops_a_running_calculation_and_keeps_the_previous_state(
+        app, drv, flim, TOOL, monkeypatch
+    )
 
 
 def test_cancel_is_idle_when_nothing_runs(app, drv):
@@ -448,12 +537,19 @@ def test_a_window_added_in_the_editor_is_computed_by_the_next_run(app, drv, flim
 # ── 5. the outputs ──────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(app, drv, stream, tmp_path):
-    target = C.hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(app, drv, stream, tmp_path, source_ref=False)
+def test_hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(
+    app, drv, stream, tmp_path
+):
+    target = C.hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(
+        app, drv, stream, tmp_path, source_ref=False
+    )
     from chisurf.core.datastore import numeric_column
     from chisurf.core.fluorescence.imaging import read_imaging_table
 
-    np.testing.assert_allclose(numeric_column(read_imaging_table(str(target)), "epsilon (ch0)"), app.model.epsilon_map().ravel())
+    np.testing.assert_allclose(
+        numeric_column(read_imaging_table(str(target)), "epsilon (ch0)"),
+        app.model.epsilon_map().ravel(),
+    )
 
 
 def test_the_hdf5_dialog_cancel_writes_nothing(app, drv, stream, tmp_path):
@@ -465,7 +561,9 @@ def test_an_unwritable_hdf5_place_is_reported(app, drv, stream, tmp_path):
 
 
 def test_the_container_button_writes_the_artifact_beside_the_source(app, drv, stream):
-    C.container_is_greyed_without_a_result_and_writes_the_artifact_beside_the_source(app, drv, stream, "nb")
+    C.container_is_greyed_without_a_result_and_writes_the_artifact_beside_the_source(
+        app, drv, stream, "nb"
+    )
 
 
 def test_ndx_opens_over_the_maps_and_back_returns(app, drv, stream):
@@ -485,7 +583,9 @@ def test_closing_a_computed_session_flushes_the_hdf5_and_the_container(app, drv,
 # ── 6. the maps ─────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_every_tab_draws_empty_with_a_message_and_populated_with_a_picture_with_axes(app, drv, flim):
+def test_every_tab_draws_empty_with_a_message_and_populated_with_a_picture_with_axes(
+    app, drv, flim
+):
     C.every_tab_draws_empty_with_a_message_and_populated_with_a_picture(app, drv, flim, TOOL)
 
 
@@ -514,8 +614,12 @@ def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
     C.guide_button_starts_the_tour_and_close_tour_ends_it(app)
 
 
-def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, with_demo):
-    C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, with_demo, {"demo": lambda: drv.click("demo")})
+def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+    app, drv, with_demo
+):
+    C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+        app, drv, with_demo, {"demo": lambda: drv.click("demo")}
+    )
     assert app.model._columns and not app.job.error
 
 
@@ -524,11 +628,25 @@ def test_every_guide_target_is_a_drawn_control_or_window(app, drv, flim):
 
 
 def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
-    C.settings_round_trip_and_invalid_values_are_ignored(app, drv, {"gamma": 0.5, "smoothing": "disk", "plane_bins": 32}, {"gamma": "big", "smoothing": "blurry"})
+    C.settings_round_trip_and_invalid_values_are_ignored(
+        app,
+        drv,
+        {"gamma": 0.5, "smoothing": "disk", "plane_bins": 32},
+        {"gamma": "big", "smoothing": "blurry"},
+    )
 
 
 def test_the_imaging_hub_drives_the_tool(app, drv, flim):
-    C.hub_contract(TOOL, flim, drv, {"green": {"chs": [0], "micro_time_ranges": []}, "red": {"chs": [1], "micro_time_ranges": [(0, 100)]}}, {})
+    C.hub_contract(
+        TOOL,
+        flim,
+        drv,
+        {
+            "green": {"chs": [0], "micro_time_ranges": []},
+            "red": {"chs": [1], "micro_time_ranges": [(0, 100)]},
+        },
+        {},
+    )
 
 
 def test_the_hub_starts_the_run_through_start(app, drv, flim):
@@ -545,17 +663,49 @@ def _labels(sections):
             out.add(sec["label"])
         for b in sec.get("buttons", []):
             out.add(b["label"])
-    return {"".join(ch for ch in label if ord(ch) < 0x2300 or ch in "\u03b5\u03c3\u03b3\u2080\u00b2").strip() for label in out}
+    return {
+        "".join(
+            ch for ch in label if ord(ch) < 0x2300 or ch in "\u03b5\u03c3\u03b3\u2080\u00b2"
+        ).strip()
+        for label in out
+    }
 
 
 def test_every_qt_control_has_an_emtk_equivalent():
     qt, emtk = _labels(QT_SPEC["sections"]), _labels(EMTK_SPEC["sections"])
-    assert {"TTTR file", "Subtract", "Add back", "Box (px)", "Box (frames)", "Background", "Detrend segments", "Dead time (ns)", "Pixel dwell (\u00b5s)", "Gain S", "Offset",
-            "Read variance \u03c3\u2080\u00b2", "Shape factor \u03b3", "Moment smoothing", "Radius", "Median filter (\u03b5, n)", "Plane x", "Plane y", "Bins", "Log counts",
-            "Clear gates", "Cross with"} <= qt
+    assert {
+        "TTTR file",
+        "Subtract",
+        "Add back",
+        "Box (px)",
+        "Box (frames)",
+        "Background",
+        "Detrend segments",
+        "Dead time (ns)",
+        "Pixel dwell (\u00b5s)",
+        "Gain S",
+        "Offset",
+        "Read variance \u03c3\u2080\u00b2",
+        "Shape factor \u03b3",
+        "Moment smoothing",
+        "Radius",
+        "Median filter (\u03b5, n)",
+        "Plane x",
+        "Plane y",
+        "Bins",
+        "Log counts",
+        "Clear gates",
+        "Cross with",
+    } <= qt
     assert qt - {""} <= emtk, sorted(qt - emtk)
-    qt_tabs = [s["title"] for s in walk(QT_SPEC["sections"]) if s.get("type") == "custom" and s.get("key") == "image"]
-    assert sorted(qt_tabs) == sorted(TABS) and [p["title"] for p in EMTK_SPEC["sections"][1:]] == list(TABS)
+    qt_tabs = [
+        s["title"]
+        for s in walk(QT_SPEC["sections"])
+        if s.get("type") == "custom" and s.get("key") == "image"
+    ]
+    assert sorted(qt_tabs) == sorted(TABS) and [
+        p["title"] for p in EMTK_SPEC["sections"][1:]
+    ] == list(TABS)
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():
@@ -570,8 +720,17 @@ def test_every_spec_attribute_and_action_exists_on_the_model():
                 assert hasattr(model, section[key]), (key, section)
         if section.get("type") == "custom" and section.get("options", {}).get("source"):
             assert callable(getattr(model, section["options"]["source"])), section
-    assert not [s for s in walk(EMTK_SPEC["sections"]) if s.get("type") not in ("custom", "panel") and not s.get("description")]
-    assert not [b for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", []) if not b.get("description")]
+    assert not [
+        s
+        for s in walk(EMTK_SPEC["sections"])
+        if s.get("type") not in ("custom", "panel") and not s.get("description")
+    ]
+    assert not [
+        b
+        for s in walk(EMTK_SPEC["sections"])
+        for b in s.get("buttons", [])
+        if not b.get("description")
+    ]
 
 
 def test_the_port_is_qt_free():
@@ -596,12 +755,33 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, flim
     for tab in TOOL.tabs:
         app.docks.focus(tab)
         painter = draw(app, size)
-        if tab != "Phasor plot movie":  # a 160-bin image: the plot draws the y label over its three-digit ticks (emtk gap, see the report)
+        if (
+            tab != "Phasor plot movie"
+        ):  # a 160-bin image: the plot draws the y label over its three-digit ticks (emtk gap, see the report)
             C.texts_apart(painter, ignore=(str(flim), *PLANE_LABELS))
-    app.docks.focus("Detectors")  # the shared editor draws its row buttons over their cells: only the frame is checked
+    app.docks.focus(
+        "Detectors"
+    )  # the shared editor draws its row buttons over their cells: only the frame is checked
     painter = draw(app, size)
-    assert_inside({k: v for k, v in app.item_rects.items() if k in ("detectors.add_detector", "detectors.section_detectors")}, size)
-    names = ("run_maps", "request_hdf5", "save_container", "open_ndx", "next_step", "filename", "open_file", "open_database", "display_window")
+    assert_inside(
+        {
+            k: v
+            for k, v in app.item_rects.items()
+            if k in ("detectors.add_detector", "detectors.section_detectors")
+        },
+        size,
+    )
+    names = (
+        "run_maps",
+        "request_hdf5",
+        "save_container",
+        "open_ndx",
+        "next_step",
+        "filename",
+        "open_file",
+        "open_database",
+        "display_window",
+    )
     rects = {k: app.form.rects[k] for k in names}
     rects.update({k: app.item_rects[k] for k in ("help", "guide", "cancel")})
     assert_inside(rects, size)

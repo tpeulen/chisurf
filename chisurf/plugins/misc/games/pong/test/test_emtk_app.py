@@ -1,4 +1,5 @@
 """Behavior and import-boundary checks for native Pong without a GPU."""
+
 from __future__ import annotations
 
 import copy
@@ -17,7 +18,7 @@ from ..translations import LOCALES, STRINGS, install_translations
 
 
 def test_native_factory_does_not_import_qt_in_a_clean_process():
-    script = '''import sys
+    script = """import sys
 from importlib.abc import MetaPathFinder
 class BlockQt(MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
@@ -29,7 +30,7 @@ app = make_app()
 assert app.game.player_score == 0
 app.close()
 assert not any(name.startswith(('qtpy', 'PyQt', 'PySide')) for name in sys.modules)
-'''
+"""
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 
@@ -37,15 +38,15 @@ assert not any(name.startswith(('qtpy', 'PyQt', 'PySide')) for name in sys.modul
 def test_held_keys_release_and_focus_loss_stop_motion():
     app = PongApp()
     app.key(KEY_DOWN)
-    app.advance(.1)
+    app.advance(0.1)
     assert app.game.paddle_y > 300
     app.key_release(KEY_DOWN)
     before = app.game.paddle_y
-    app.advance(.1)
+    app.advance(0.1)
     assert app.game.paddle_y == before
     app.key(KEY_UP)
     app.focus_lost()
-    app.advance(.1)
+    app.advance(0.1)
     assert app.game.paddle_y == before
 
 
@@ -55,10 +56,10 @@ def test_two_player_keys_are_independent_and_clamped():
     assert not app.game.vs_computer
     app.key(ord("W"), "w")
     app.key(KEY_DOWN)
-    app.advance(.1)
+    app.advance(0.1)
     assert app.game.cpu_y < 300 < app.game.paddle_y
     for _ in range(30):
-        app.advance(.1)
+        app.advance(0.1)
     assert app.game.cpu_y == PADDLE_H / 2
     assert app.game.paddle_y == FIELD_H - PADDLE_H / 2
     app.key_release(ord("W"), "w")
@@ -72,7 +73,7 @@ def test_pause_repeat_guard_and_reset_preserve_legacy_behavior():
     app.key(ord("P"), "p")
     assert app.game.paused
     before = app.game.ball_x
-    app.advance(.1)
+    app.advance(0.1)
     assert app.game.ball_x == before
     app.key(ord("R"), "r")
     assert not app.game.paused
@@ -84,14 +85,14 @@ def test_bounce_and_win_stop_the_ball_and_confirm_restarts():
     g = app.game
     g.serve_timer = 0
     g.ball_x, g.ball_y, g.ball_vx, g.ball_vy = 40, 300, -300, 0
-    app.advance(.1)
+    app.advance(0.1)
     assert g.ball_vx > 300 and g.rally == 1 and g.ball_nm == DONOR_NM
     g.player_score = WIN_SCORE - 1
     g.ball_x, g.ball_vx = FIELD_W + 40, 400
-    app.advance(.1)
+    app.advance(0.1)
     assert g.winner == "Donor"
     before = g.ball_x
-    app.advance(.1)
+    app.advance(0.1)
     assert g.ball_x == before and not app.animating()
     app.key(KEY_RETURN)
     assert g.winner is None and g.player_score == 0
@@ -100,10 +101,10 @@ def test_bounce_and_win_stop_the_ball_and_confirm_restarts():
 def test_serve_and_wall_bounce():
     app = PongApp()
     for _ in range(11):
-        app.advance(.1)
+        app.advance(0.1)
     assert app.game.ball_vx != 0
     app.game.ball_y, app.game.ball_vy = 1, -300
-    app.game._move_ball(.001)
+    app.game._move_ball(0.001)
     assert app.game.ball_vy > 0
 
 
@@ -140,10 +141,13 @@ def test_close_stops_animation_and_releases_audio():
     class Audio:
         enabled = True
         closed = False
+
         def set_enabled(self, enabled):
             self.enabled = enabled
+
         def close(self):
             self.closed = True
+
     audio = Audio()
     app = PongApp(audio)
     app.key(KEY_DOWN)
@@ -154,12 +158,15 @@ def test_close_stops_animation_and_releases_audio():
 
 def test_six_locale_catalogs_and_responsive_render():
     from emtk import i18n
+
     install_translations()
     for locale in LOCALES:
         i18n.set_locale(locale)
         for source, values in STRINGS.items():
             assert len(values) == 5
-            assert i18n.tr(source, context="Pong") == (source if locale == "en" else values[LOCALES.index(locale)-1])
+            assert i18n.tr(source, context="Pong") == (
+                source if locale == "en" else values[LOCALES.index(locale) - 1]
+            )
         app = make_app()
         app.clock = lambda: 0
         for size in ((820, 640), (480, 640)):
@@ -178,13 +185,14 @@ def test_manifest_native_factory():
 
 def test_native_surface_routes_key_press_and_release():
     from emtk.app import as_surface
+
     app = PongApp()
     surface = as_surface(app)
     assert surface.on_key_press(KEY_DOWN, "", 0)
-    app.advance(.1)
+    app.advance(0.1)
     before = app.game.paddle_y
     assert surface.on_key_release(KEY_DOWN, "", 0)
-    app.advance(.1)
+    app.advance(0.1)
     assert app.game.paddle_y == before
 
 

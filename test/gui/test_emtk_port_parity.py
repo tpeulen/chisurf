@@ -17,9 +17,9 @@ def test_normalize_treats_renames_as_parity():
     assert epp.normalize("📁 Folder") == epp.normalize("Folder")
     assert epp.normalize("<b>Bins X:</b>") == "binsx"
     assert epp.normalize("ℹ️ Help") == "help"
-    assert epp.normalize("📥loadtttr") == "loadtttr"      # already normalised, emoji glued on
+    assert epp.normalize("📥loadtttr") == "loadtttr"  # already normalised, emoji glued on
     assert epp.normalize(epp.normalize("📥 Load TTTR")) == "loadtttr"
-    assert epp.normalize("χ² min") == "χ²min"       # a name, not a pictogram
+    assert epp.normalize("χ² min") == "χ²min"  # a name, not a pictogram
 
 
 def test_recorder_attributes_a_tooltip_to_the_control_before_it():
@@ -30,7 +30,7 @@ def test_recorder_attributes_a_tooltip_to_the_control_before_it():
         im.begin("t", (0, 0, 300, 200))
         im.button("Run")
         im.set_item_tooltip("Start the analysis.")
-        im.button("Stop")            # no tooltip: must be reported
+        im.button("Stop")  # no tooltip: must be reported
         im.end()
 
     inventory = epp.emtk_inventory(ImApp(gui), (400, 300))
@@ -62,8 +62,9 @@ def test_a_real_port_produces_the_evidence_files(tmp_path):
 def test_compare_flags_a_lost_control(tmp_path):
     (tmp_path / "before.json").write_text(json.dumps({"controls": ["run", "stop", "save"]}))
     (tmp_path / "after.json").write_text(
-        json.dumps({"controls": ["run", "stop"], "controls_without_tooltip": [],
-                    "qt_free": {"ok": True}})
+        json.dumps(
+            {"controls": ["run", "stop"], "controls_without_tooltip": [], "qt_free": {"ok": True}}
+        )
     )
     result = epp.compare("x", tmp_path)
     assert result["lost"] == ["save"]
@@ -84,7 +85,9 @@ def _evidence(tmp_path, before, after, deliberate=None):
 
 
 def test_a_deliberate_difference_is_explained_not_hidden(tmp_path):
-    _evidence(tmp_path, ["run", "\u03b51", "save"], ["run", "save"], {"\u03b5 1": "now a table column"})
+    _evidence(
+        tmp_path, ["run", "\u03b51", "save"], ["run", "save"], {"\u03b5 1": "now a table column"}
+    )
     result = epp.compare("x", tmp_path)
     assert result["lost"] == []
     assert result["explained"] == {"\u03b51": "now a table column"}

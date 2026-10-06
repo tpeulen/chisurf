@@ -24,7 +24,16 @@ def _channels(path):
 
 
 BATCH_EXTENSIONS = (".dat", ".txt")
-BATCH_COLUMNS = ("filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor", "error")
+BATCH_COLUMNS = (
+    "filename",
+    "r_inf",
+    "region_min",
+    "region_max",
+    "bg_vv",
+    "bg_vh",
+    "g_factor",
+    "error",
+)
 
 
 class AnisotropyModel:
@@ -154,7 +163,7 @@ class AnisotropyModel:
         self.time_axis = np.arange(len(vv), dtype=float)
         self.loaded_file = str(path)
         n = len(vv)
-        self.region_bounds = [float(int(n * .7)), float(int(n * .9))]
+        self.region_bounds = [float(int(n * 0.7)), float(int(n * 0.9))]
         self.message = f"Loaded {Path(path).name}: {n} channels"
         self.compute()
 
@@ -218,21 +227,45 @@ class AnisotropyModel:
         info = base.with_name(base.name + "_rinf.csv")
         write_vv_vh(decay, vv=vv, vh=vh)
         corrected = self.r_t - self.r_infty if np.isfinite(self.r_infty) else self.r_t.copy()
-        np.savetxt(trace, np.column_stack((self.time_axis, self.r_t, corrected)),
-                   header="channel\tr(t)\tr(t)-r_inf", comments="", delimiter="\t", fmt="%.10g")
+        np.savetxt(
+            trace,
+            np.column_stack((self.time_axis, self.r_t, corrected)),
+            header="channel\tr(t)\tr(t)-r_inf",
+            comments="",
+            delimiter="\t",
+            fmt="%.10g",
+        )
         with info.open("w", newline="", encoding="utf-8") as stream:
             writer = csv.writer(stream, lineterminator="\n")
-            writer.writerow(("filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor"))
-            writer.writerow((Path(self.loaded_file).name, self.r_infty, self.region_min, self.region_max,
-                             self.bg_vv, self.bg_vh, self.g_factor))
+            writer.writerow(
+                ("filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor")
+            )
+            writer.writerow(
+                (
+                    Path(self.loaded_file).name,
+                    self.r_infty,
+                    self.region_min,
+                    self.region_max,
+                    self.bg_vv,
+                    self.bg_vh,
+                    self.g_factor,
+                )
+            )
         self.message = f"Saved {decay.name}, {trace.name}, {info.name}"
         return decay, trace, info
 
     def snapshot(self):
         """The settings a batch run uses: what the main window shows when the batch window opens."""
-        return {"apply_bg": self.apply_bg, "bg_vv": float(self.bg_vv), "bg_vh": float(self.bg_vh),
-                "g": float(self.g_factor), "shift": float(self.shift), "flip": bool(self.flip),
-                "region_min": float(self.region_min), "region_max": float(self.region_max)}
+        return {
+            "apply_bg": self.apply_bg,
+            "bg_vv": float(self.bg_vv),
+            "bg_vh": float(self.bg_vh),
+            "g": float(self.g_factor),
+            "shift": float(self.shift),
+            "flip": bool(self.flip),
+            "region_min": float(self.region_min),
+            "region_max": float(self.region_max),
+        }
 
     def _batch_row(self, path, snap):
         """r-infinity of one file under *snap*: ``(name, r_inf, lo, hi, bg_vv, bg_vh, g, error)``."""
@@ -281,8 +314,13 @@ class AnisotropyModel:
         found = []
         for path in paths or []:
             p = Path(str(path))
-            found.extend(sorted(q for q in p.rglob("*") if q.is_file()) if p.is_dir()
-                         else [p] if p.is_file() else [])
+            found.extend(
+                sorted(q for q in p.rglob("*") if q.is_file())
+                if p.is_dir()
+                else [p]
+                if p.is_file()
+                else []
+            )
         added = 0
         for p in found:
             if p.suffix.lower() in BATCH_EXTENSIONS and str(p) not in self.batch_files:
@@ -325,9 +363,20 @@ class AnisotropyModel:
         self.message = f"Saved {Path(path).name}"
 
     def export_settings(self):
-        return {key: getattr(self, key) for key in (
-            "g_factor", "apply_bg", "bg_vv", "bg_vh", "flip", "shift",
-            "region_bounds", "loaded_file", "batch_files")}
+        return {
+            key: getattr(self, key)
+            for key in (
+                "g_factor",
+                "apply_bg",
+                "bg_vv",
+                "bg_vh",
+                "flip",
+                "shift",
+                "region_bounds",
+                "loaded_file",
+                "batch_files",
+            )
+        }
 
     def restore_settings(self, state):
         for key in ("g_factor", "apply_bg", "bg_vv", "bg_vh", "flip", "shift", "batch_files"):

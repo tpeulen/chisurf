@@ -108,8 +108,12 @@ class PhotonTableApp(ImApp):
         draw_sections(self.panels["file"]["sections"][1:], self.model, self.form, titles=False)
         x1, y1 = im.get_cursor_screen_pos()
         # the summary block, as a target for the guided tour (an info line records no rect)
-        self.item_rects["file_summary"] = (x0, y0, max(im.get_content_region_avail()[0], 1.0),
-                                           max(y1 - y0, 1.0))
+        self.item_rects["file_summary"] = (
+            x0,
+            y0,
+            max(im.get_content_region_avail()[0], 1.0),
+            max(y1 - y0, 1.0),
+        )
         if self.job.busy:
             im.text_disabled("Loading the photons...")
 

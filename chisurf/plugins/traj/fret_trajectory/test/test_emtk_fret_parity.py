@@ -49,7 +49,7 @@ def _settle(app, timeout=120.0):
 def _loaded(dipoles=True):
     app = FretTrajectoryApp()
     m = app.model
-    m.set_trajectory(TRAJ)                    # before the topology: it must still end with atoms to pick
+    m.set_trajectory(TRAJ)  # before the topology: it must still end with atoms to pick
     m.set_topology(TOP)
     m.stride, m.forster_radius, m.tau0, m.t_step, m.dipoles = STRIDE, R0, TAU0, 1.0, dipoles
     m.donor, m.acceptor = DONOR, ACCEPTOR
@@ -86,14 +86,22 @@ def qt(tmp_path_factory):
     target = tmp_path_factory.mktemp("qt") / "fret.csv"
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, TRAJ, TOP, str(target)], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, TRAJ, TOP, str(target)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt tool's: a skip here once hid a broken topology row.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
+    facts = json.loads(line[len("FACTS") :])
     facts["target"] = target
     return facts
 
@@ -111,7 +119,7 @@ def reference():
     unit = lambda v: v / np.linalg.norm(v, axis=1)[:, None]  # noqa: E731
     ud, ua, ur = unit(dd), unit(da), unit(rda)
     kappa = np.sum(ud * ua, 1) - 3 * np.sum(ud * ur, 1) * np.sum(ua * ur, 1)
-    rate = 1.5 * kappa ** 2 * (R0 / r) ** 6 / TAU0
+    rate = 1.5 * kappa**2 * (R0 / r) ** 6 / TAU0
     return r, kappa, rate
 
 
@@ -122,12 +130,18 @@ def test_processing_writes_what_the_qt_tool_writes(qt, reference, tmp_path):
         _draw(app)
         index = app.atom_index()
         labels = [[*map(str, index.where(i)), index.name(i)] for i in (*DONOR, *ACCEPTOR)]
-        assert labels == qt["labels"] == [["A", "1", "CA"], ["A", "3", "C"], ["B", "332", "HA"], ["B", "334", "CA"]]
+        assert (
+            labels
+            == qt["labels"]
+            == [["A", "1", "CA"], ["A", "3", "C"], ["B", "332", "HA"], ["B", "334", "CA"]]
+        )
         app.begin_save()
-        assert app.dialog.title == "Output-file" and app.dialog.filename == "hgbp1_transition_fret.csv"
+        assert (
+            app.dialog.title == "Output-file" and app.dialog.filename == "hgbp1_transition_fret.csv"
+        )
         target = tmp_path / "fret.csv"
         app.dialog.draw = lambda: [str(target)]
-        _draw(app, n=1)                                   # the pick starts the worker
+        _draw(app, n=1)  # the pick starts the worker
         assert app.dialog is None and app.running
         _settle(app)
         ours = np.loadtxt(target, skiprows=1)
@@ -135,8 +149,8 @@ def test_processing_writes_what_the_qt_tool_writes(qt, reference, tmp_path):
         assert ours.shape == theirs.shape == (116, 6)
         np.testing.assert_allclose(ours, theirs, rtol=1e-3, atol=1e-2)
         r, kappa, rate = reference
-        np.testing.assert_allclose(ours[:, 0], np.arange(116) * STRIDE)          # frame numbers
-        np.testing.assert_allclose(ours[:, 2], r, atol=0.01)                      # RDA, the dipole centres
+        np.testing.assert_allclose(ours[:, 0], np.arange(116) * STRIDE)  # frame numbers
+        np.testing.assert_allclose(ours[:, 2], r, atol=0.01)  # RDA, the dipole centres
         np.testing.assert_allclose(np.abs(ours[:, 3]), np.abs(kappa), rtol=1e-3, atol=1e-3)
         np.testing.assert_allclose(ours[:, 5], rate, rtol=2e-3)
         assert app.model.log_text()[-1].endswith("(116 frames)")
@@ -165,7 +179,7 @@ def test_the_trajectory_may_come_before_its_topology():
     app = FretTrajectoryApp()
     try:
         trajectory, topology = app.paths
-        assert app.set_path(trajectory, TRAJ)                 # used to raise: a DCD cannot be read alone
+        assert app.set_path(trajectory, TRAJ)  # used to raise: a DCD cannot be read alone
         assert app.model.pdb is None and "choose the topology" in app.model.log_text()[-1]
         assert "Choose the trajectory and its topology to pick the atoms." in _draw(app).strings
         assert app.set_path(topology, TOP)
@@ -191,7 +205,7 @@ def test_nothing_chosen_and_a_cancel_answer_as_the_qt_tool_does(qt, tmp_path):
 def test_a_failure_is_reported_as_processing_failed(tmp_path):
     app = _loaded()
     try:
-        app.save(str(tmp_path / "missing" / "bad.csv"))         # a folder that does not exist
+        app.save(str(tmp_path / "missing" / "bad.csv"))  # a folder that does not exist
         _settle(app)
         assert app.status.startswith("Processing failed: ") and app.status in _draw(app).strings
     finally:
@@ -208,12 +222,19 @@ def test_the_pickers_cascade_chain_residue_atom(monkeypatch):
         original = im.combo
         index = app.atom_index()
         picks = {"##acceptor1.residue": index.residues["B"].index(300)}
-        monkeypatch.setattr(im, "combo", lambda label, current, items, *a, **k: (True, picks[label]) if label in picks
-                            else original(label, current, items, *a, **k))
+        monkeypatch.setattr(
+            im,
+            "combo",
+            lambda label, current, items, *a, **k: (
+                (True, picks[label]) if label in picks else original(label, current, items, *a, **k)
+            ),
+        )
         _draw(app, n=1)
         monkeypatch.setattr(im, "combo", original)
         new = app.model.acceptor[1]
-        assert index.where(new) == ("B", 300) and new == index.atoms("B", 300)[0]          # first atom of residue
+        assert (
+            index.where(new) == ("B", 300) and new == index.atoms("B", 300)[0]
+        )  # first atom of residue
         assert app.model.acceptor[0] == ACCEPTOR[0] and app.model.donor == DONOR
     finally:
         app.close()
@@ -246,8 +267,13 @@ def test_frames_are_requested_while_processing(monkeypatch, tmp_path):
     gate = threading.Event()
     runs = []
     original = view_model.FretTrajectoryViewModel.calc
-    monkeypatch.setattr(view_model.FretTrajectoryViewModel, "calc",
-                        lambda self, output_file, **k: (runs.append(1), gate.wait(10), original(self, output_file))[2])
+    monkeypatch.setattr(
+        view_model.FretTrajectoryViewModel,
+        "calc",
+        lambda self, output_file, **k: (runs.append(1), gate.wait(10), original(self, output_file))[
+            2
+        ],
+    )
     app = _loaded()
     try:
         app.save(str(tmp_path / "a.csv"))
@@ -282,9 +308,13 @@ def test_the_guide_points_at_real_controls_and_waits():
 
         steps = app.tour.steps
         for target, button in (("topology", "topology_browse"), ("process", "process")):
-            index = next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target)
+            index = next(
+                i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target
+            )
             app.tour.start(index)
-            assert app.tour.awaiting and steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)
+            assert app.tour.awaiting and steps[index]["title"] in " ".join(
+                _draw(app, size, n=1).strings
+            )
             _draw(app, size, n=1, painter=PixelPainter)
             press(button)
             assert not app.tour.awaiting, target
@@ -300,14 +330,25 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = FretTrajectoryApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Trajectory", "Topology", "Reference", "Dipole atoms", "▶ Process trajectory", "Log"} <= {s.strip() for s in strings}
+        assert {
+            "Trajectory",
+            "Topology",
+            "Reference",
+            "Dipole atoms",
+            "▶ Process trajectory",
+            "Log",
+        } <= {s.strip() for s in strings}
         app = _loaded()
         app.save(str(tmp_path / "fret.csv"))
         _settle(app)
         strings = _draw(app, size).strings
         assert {"Donor", "Acceptor", "CA", "HA", "332"} <= {s.strip() for s in strings}
-        assert [strings.count(c) for c in ("Chain", "Residue", "Atom")] == [2, 2, 2]  # both columns captioned
-        assert any(line.endswith("(116 frames)") for line in strings)            # the log is drawn
+        assert [strings.count(c) for c in ("Chain", "Residue", "Atom")] == [
+            2,
+            2,
+            2,
+        ]  # both columns captioned
+        assert any(line.endswith("(116 frames)") for line in strings)  # the log is drawn
         for attr in ("donor", "acceptor"):
             x, y, w, h = app.item_rects[attr]
             assert x + w <= size[0] + 0.5
@@ -320,8 +361,14 @@ def test_settings_round_trip():
     other = FretTrajectoryApp()
     other.restore_settings(json.loads(json.dumps(app.export_settings())))
     m = other.model
-    assert (m.trajectory_file, m.topology_filename, m.donor, m.acceptor, m.stride) == (TRAJ, TOP, DONOR, ACCEPTOR, STRIDE)
-    assert m.pdb is not None and m._engine.topology_file == TOP              # ready to process, atoms to pick
+    assert (m.trajectory_file, m.topology_filename, m.donor, m.acceptor, m.stride) == (
+        TRAJ,
+        TOP,
+        DONOR,
+        ACCEPTOR,
+        STRIDE,
+    )
+    assert m.pdb is not None and m._engine.topology_file == TOP  # ready to process, atoms to pick
 
 
 def test_help_opens_with_its_page():

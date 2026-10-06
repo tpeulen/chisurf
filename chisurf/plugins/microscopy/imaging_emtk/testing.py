@@ -71,7 +71,9 @@ class Driver:
         """The rectangle a control was drawn in: a form field/action, a stepper (``attr.stepper``) or a view."""
         self.draw(1)
         found = self.app.form.rects.get(name) or self.app.item_rects.get(name)
-        assert found, f"{name!r} was not drawn: {sorted(self.app.form.rects)[:40]} {sorted(self.app.item_rects)[:40]}"
+        assert found, (
+            f"{name!r} was not drawn: {sorted(self.app.form.rects)[:40]} {sorted(self.app.item_rects)[:40]}"
+        )
         return tuple(found)
 
     def text_rect(self, label: str, last: bool = False) -> tuple:
@@ -122,7 +124,9 @@ class Driver:
         self.draw(1)
         for i in range(1, steps + 1):
             f = i / steps
-            self.app.pointer_move(start[0] + (end[0] - start[0]) * f, start[1] + (end[1] - start[1]) * f, 1)
+            self.app.pointer_move(
+                start[0] + (end[0] - start[0]) * f, start[1] + (end[1] - start[1]) * f, 1
+            )
             self.draw(1)
         self.app.release()
         self.draw(1)

@@ -33,14 +33,24 @@ BOUNDARY_COLOUR = (220, 220, 220, 180)
 
 
 #: The time-window duration, as a form field (typed, clamped to the Qt spin box's range).
-TIME_WINDOW_FIELD = [{
-    "type": "value", "attr": "time_window_ms", "label": "Time window (ms)", "kind": "float",
-    "minimum": 0.001, "maximum": 3_600_000.0, "decimals": 3, "step": 1.0, "style": "spin",
-    "call": "on_time_window",
-    "description": (
-        "Duration of each time window in milliseconds. Smaller values give more windows with "
-        "fewer photons each; the preview's dashed lines follow."),
-}]
+TIME_WINDOW_FIELD = [
+    {
+        "type": "value",
+        "attr": "time_window_ms",
+        "label": "Time window (ms)",
+        "kind": "float",
+        "minimum": 0.001,
+        "maximum": 3_600_000.0,
+        "decimals": 3,
+        "step": 1.0,
+        "style": "spin",
+        "call": "on_time_window",
+        "description": (
+            "Duration of each time window in milliseconds. Smaller values give more windows with "
+            "fewer photons each; the preview's dashed lines follow."
+        ),
+    }
+]
 
 
 class TimeWindowGui(TourTarget):
@@ -78,9 +88,7 @@ class TimeWindowGui(TourTarget):
             Split("v", 0.62, Region("preview"), Region("summary")),
         )
         self.docks = DockManager(layout)
-        self.docks.add_window(
-            "files", "TTTR files", self._draw_files, dock="files", closable=True
-        )
+        self.docks.add_window("files", "TTTR files", self._draw_files, dock="files", closable=True)
         self.docks.add_window(
             "settings", "Settings", self._draw_settings, dock="settings", closable=True
         )

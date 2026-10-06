@@ -314,7 +314,11 @@ class HmmViewModel:
 
     def remove_file(self, record=None) -> None:
         """Remove the file of *record* (or the last one) from the selection."""
-        path = (record or {}).get("path") or getattr(self, "_selected", None) or (self.files[-1] if self.files else None)
+        path = (
+            (record or {}).get("path")
+            or getattr(self, "_selected", None)
+            or (self.files[-1] if self.files else None)
+        )
         if path in self.files:
             self.sel_files = [p for p in self.files if p != path]
             self._selected = None
@@ -356,12 +360,38 @@ class HmmViewModel:
     def state_columns(self) -> list[dict]:
         unit = "s" if self.settings.time_step != 1.0 else "bins"
         return [
-            {"key": "state", "title": "State", "tooltip": "State index (its colour is the one used in the plots)."},
-            {"key": "mean", "title": "Mean", "tooltip": "Emission mean of each channel (counts per bin)."},
-            {"key": "std", "title": "Std", "tooltip": "Emission standard deviation of each channel."},
-            {"key": "occupancy", "title": "Occ.", "format": "%.3f", "tooltip": "Fraction of bins decoded into this state."},
-            {"key": "visits", "title": "Visits", "tooltip": "Number of dwells (uninterrupted runs) in this state."},
-            {"key": "dwell", "title": f"Dwell ({unit})", "format": "%.4g", "tooltip": "Mean dwell time of the state."},
+            {
+                "key": "state",
+                "title": "State",
+                "tooltip": "State index (its colour is the one used in the plots).",
+            },
+            {
+                "key": "mean",
+                "title": "Mean",
+                "tooltip": "Emission mean of each channel (counts per bin).",
+            },
+            {
+                "key": "std",
+                "title": "Std",
+                "tooltip": "Emission standard deviation of each channel.",
+            },
+            {
+                "key": "occupancy",
+                "title": "Occ.",
+                "format": "%.3f",
+                "tooltip": "Fraction of bins decoded into this state.",
+            },
+            {
+                "key": "visits",
+                "title": "Visits",
+                "tooltip": "Number of dwells (uninterrupted runs) in this state.",
+            },
+            {
+                "key": "dwell",
+                "title": f"Dwell ({unit})",
+                "format": "%.4g",
+                "tooltip": "Mean dwell time of the state.",
+            },
         ]
 
     def transition_rows(self) -> list[dict]:
@@ -385,7 +415,11 @@ class HmmViewModel:
     def transition_columns(self) -> list[dict]:
         n = 0 if self._fit is None else len(self._fit.transmat)
         return [{"key": "from", "title": "From", "width": 50, "tooltip": "State left."}] + [
-            {"key": f"to_{j}", "title": f"To {j}", "tooltip": f"Probability per bin of moving to state {j} (rate in 1/s when a bin width is set)."}
+            {
+                "key": f"to_{j}",
+                "title": f"To {j}",
+                "tooltip": f"Probability per bin of moving to state {j} (rate in 1/s when a bin width is set).",
+            }
             for j in range(n)
         ]
 

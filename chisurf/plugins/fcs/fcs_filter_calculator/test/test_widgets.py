@@ -4,7 +4,15 @@ from qtpy import QtCore, QtWidgets
 
 #: The detector setup the widget tests were written against: green, red and yellow detectors, the "last used" one.
 SEEDED_SETUPS = {
-    "setups": {"Test setup": {"detectors": {"green": {"chs": [0, 8]}, "red": {"chs": [1, 9]}, "yellow": {"chs": [2, 10]}}}},
+    "setups": {
+        "Test setup": {
+            "detectors": {
+                "green": {"chs": [0, 8]},
+                "red": {"chs": [1, 9]},
+                "yellow": {"chs": [2, 10]},
+            }
+        }
+    },
     "last_used": "Test setup",
 }
 

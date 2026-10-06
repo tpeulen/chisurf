@@ -70,8 +70,11 @@ class PixelMleApp(ImagingToolApp):
     def _draw_main(self, box: tuple) -> None:
         if self._pending and not (self.job.busy or self.model.busy):
             pending, self._pending = dict(self._pending), {}
-            for key, method in (("setup", self.model.apply_setup_settings), ("pipeline", self.model.apply_pipeline_context),
-                                ("calibration", self.model.apply_calibration)):
+            for key, method in (
+                ("setup", self.model.apply_setup_settings),
+                ("pipeline", self.model.apply_pipeline_context),
+                ("calibration", self.model.apply_calibration),
+            ):
                 if key in pending:
                     method(pending[key])
         super()._draw_main(box)

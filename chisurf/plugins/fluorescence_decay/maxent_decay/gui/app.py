@@ -52,7 +52,9 @@ class MaxentApp(ImApp):
         )
         self.tour = EmTkGuidedTour(
             steps=Path(__file__).with_name("guide.json"),
-            get_target_rect=lambda key: self.item_rects.get(key) or self.item_rects.get(ALIASES.get(key, key)),
+            get_target_rect=lambda key: (
+                self.item_rects.get(key) or self.item_rects.get(ALIASES.get(key, key))
+            ),
             owner=self,
             wait_for_controls=True,
         )
@@ -106,14 +108,17 @@ class MaxentApp(ImApp):
             "sample": "Sample MEM distribution into folder",
         }[action]
         self.dialog = FileDialog(
-            title, mode=mode, filters="Data (*.txt *.dat *.csv);;All files (*)", directory=self.last_dir or None
+            title,
+            mode=mode,
+            filters="Data (*.txt *.dat *.csv);;All files (*)",
+            directory=self.last_dir or None,
         )
         self.file_window = DialogWindow(title, size=(760, 540))
 
     def remember(self, name):
         rect = im.get_item_rect()
         self.item_rects[name] = rect
-        for alias, target in ALIASES.items():          # the Qt-era tour names
+        for alias, target in ALIASES.items():  # the Qt-era tour names
             if target == name:
                 self.item_rects[alias] = rect
 
@@ -165,61 +170,158 @@ class MaxentApp(ImApp):
         idle = self.jobs.process is None and self.dialog is None and not self.edit_settings
         have_data = m.decay is not None
         fret = s.mode == "fret"
-        self.buttons([
-            {"label": "Run MEM", "key": "run", "enabled": idle and have_data and (not fret or m.donor is not None),
-             "tip": "Solve the maximum-entropy inversion in an isolated, cancellable process."},
-            {"label": "L-curve", "key": "lcurve", "enabled": idle and have_data and (not fret or m.donor is not None),
-             "tip": "Run the 16-point nu sweep and pick the discrete corner."},
-            {"label": "Sample", "key": "sample", "enabled": idle and m.result is not None,
-             "tip": "Run Q-MCMC sampling of the distribution and save chains, summaries and project metadata in a folder."},
-            {"label": "Save", "key": "save", "enabled": idle and m.result is not None,
-             "tip": "Export the distribution, observed and fitted curves, IRF, weighted residuals and metadata."},
-            {"label": "Cancel job", "key": "cancel", "enabled": not idle and self.jobs.process is not None,
-             "tip": "Terminate the MEM or sampling process this window started."},
-        ])
-        self.buttons([
-            {"label": "Refresh", "key": "refresh", "enabled": idle,
-             "tip": "List the datasets and fits of this running ChiSurf session."},
-            {"label": "Load decay", "key": "load_decay", "enabled": idle,
-             "tip": "Load a measured two-column time/counts decay from a file."},
-            {"label": "IRF file", "key": "load_irf", "enabled": idle,
-             "tip": "Load a measured instrument response and resample it onto the decay time axis."},
-            {"label": "Clear IRF", "key": "clear_irf", "enabled": idle and m.irf is not None,
-             "tip": "Drop the measured IRF: use the response of the live fit, or an impulse."},
-            {"label": "Prior", "key": "load_prior", "enabled": idle,
-             "tip": "Use a vector or axis/value prior for the current distribution grid."},
-            {"label": "Donor", "key": "load_donor", "enabled": idle and fret,
-             "tip": "Load the amplitude/lifetime pairs of the donor-only decay (FRET mode)."},
-            {"label": "JSON", "key": "settings", "enabled": idle,
-             "tip": "Inspect and edit the declared preferences as JSON."},
-            {"label": "Help", "key": "help", "tip": "Explain maximum entropy, FRET priors and uncertainty."},
-            {"label": "Guide", "key": "guide", "tip": "Tour the real input, regularization and run controls."},
-        ])
+        self.buttons(
+            [
+                {
+                    "label": "Run MEM",
+                    "key": "run",
+                    "enabled": idle and have_data and (not fret or m.donor is not None),
+                    "tip": "Solve the maximum-entropy inversion in an isolated, cancellable process.",
+                },
+                {
+                    "label": "L-curve",
+                    "key": "lcurve",
+                    "enabled": idle and have_data and (not fret or m.donor is not None),
+                    "tip": "Run the 16-point nu sweep and pick the discrete corner.",
+                },
+                {
+                    "label": "Sample",
+                    "key": "sample",
+                    "enabled": idle and m.result is not None,
+                    "tip": "Run Q-MCMC sampling of the distribution and save chains, summaries and project metadata in a folder.",
+                },
+                {
+                    "label": "Save",
+                    "key": "save",
+                    "enabled": idle and m.result is not None,
+                    "tip": "Export the distribution, observed and fitted curves, IRF, weighted residuals and metadata.",
+                },
+                {
+                    "label": "Cancel job",
+                    "key": "cancel",
+                    "enabled": not idle and self.jobs.process is not None,
+                    "tip": "Terminate the MEM or sampling process this window started.",
+                },
+            ]
+        )
+        self.buttons(
+            [
+                {
+                    "label": "Refresh",
+                    "key": "refresh",
+                    "enabled": idle,
+                    "tip": "List the datasets and fits of this running ChiSurf session.",
+                },
+                {
+                    "label": "Load decay",
+                    "key": "load_decay",
+                    "enabled": idle,
+                    "tip": "Load a measured two-column time/counts decay from a file.",
+                },
+                {
+                    "label": "IRF file",
+                    "key": "load_irf",
+                    "enabled": idle,
+                    "tip": "Load a measured instrument response and resample it onto the decay time axis.",
+                },
+                {
+                    "label": "Clear IRF",
+                    "key": "clear_irf",
+                    "enabled": idle and m.irf is not None,
+                    "tip": "Drop the measured IRF: use the response of the live fit, or an impulse.",
+                },
+                {
+                    "label": "Prior",
+                    "key": "load_prior",
+                    "enabled": idle,
+                    "tip": "Use a vector or axis/value prior for the current distribution grid.",
+                },
+                {
+                    "label": "Donor",
+                    "key": "load_donor",
+                    "enabled": idle and fret,
+                    "tip": "Load the amplitude/lifetime pairs of the donor-only decay (FRET mode).",
+                },
+                {
+                    "label": "JSON",
+                    "key": "settings",
+                    "enabled": idle,
+                    "tip": "Inspect and edit the declared preferences as JSON.",
+                },
+                {
+                    "label": "Help",
+                    "key": "help",
+                    "tip": "Explain maximum entropy, FRET priors and uncertainty.",
+                },
+                {
+                    "label": "Guide",
+                    "key": "guide",
+                    "tip": "Tour the real input, regularization and run controls.",
+                },
+            ]
+        )
         if self.fits or self.datasets:
             if self.fits:
-                _, self.fit_index = im.combo("Live fit", self.fit_index, [getattr(f, "name", "Fit") for f in self.fits])
-                im.set_item_tooltip("Choose a fit for the observed data, the fit range and the instrument values.")
-                self.buttons([
-                    {"label": "Fit", "key": "use_fit", "enabled": idle, "tip": "Take data, range, response and nuisance values from the selected live fit."},
-                    {"label": "Donor from fit", "key": "donor_fit", "enabled": idle and fret,
-                     "tip": "Use the selected fit's lifetime components as the donor-only spectrum."},
-                ])
+                _, self.fit_index = im.combo(
+                    "Live fit", self.fit_index, [getattr(f, "name", "Fit") for f in self.fits]
+                )
+                im.set_item_tooltip(
+                    "Choose a fit for the observed data, the fit range and the instrument values."
+                )
+                self.buttons(
+                    [
+                        {
+                            "label": "Fit",
+                            "key": "use_fit",
+                            "enabled": idle,
+                            "tip": "Take data, range, response and nuisance values from the selected live fit.",
+                        },
+                        {
+                            "label": "Donor from fit",
+                            "key": "donor_fit",
+                            "enabled": idle and fret,
+                            "tip": "Use the selected fit's lifetime components as the donor-only spectrum.",
+                        },
+                    ]
+                )
             if self.datasets:
-                _, self.dataset_index = im.combo("Dataset", self.dataset_index, [getattr(d, "name", "Dataset") for d in self.datasets])
+                _, self.dataset_index = im.combo(
+                    "Dataset",
+                    self.dataset_index,
+                    [getattr(d, "name", "Dataset") for d in self.datasets],
+                )
                 im.set_item_tooltip("Choose an existing measured curve.")
-                self.buttons([
-                    {"label": "Use as decay", "key": "use_decay", "enabled": idle, "tip": "Use the selected dataset's counts and time axis as the decay."},
-                    {"label": "Use as IRF", "key": "use_irf", "enabled": idle, "tip": "Resample the selected dataset to the decay grid as the response."},
-                ])
+                self.buttons(
+                    [
+                        {
+                            "label": "Use as decay",
+                            "key": "use_decay",
+                            "enabled": idle,
+                            "tip": "Use the selected dataset's counts and time axis as the decay.",
+                        },
+                        {
+                            "label": "Use as IRF",
+                            "key": "use_irf",
+                            "enabled": idle,
+                            "tip": "Resample the selected dataset to the decay grid as the response.",
+                        },
+                    ]
+                )
         im.separator()
         im.text_wrapped(m.source)
         im.text_wrapped("IRF: " + m.irf_source)
         prior = m.priors[s.mode]
-        im.text_wrapped(("Prior: " + ("loaded" if prior is not None else "default 1/tau")) if not fret
-                        else ("Distance prior: " + ("loaded" if prior is not None else "default flat")))
+        im.text_wrapped(
+            ("Prior: " + ("loaded" if prior is not None else "default 1/tau"))
+            if not fret
+            else ("Distance prior: " + ("loaded" if prior is not None else "default flat"))
+        )
         if fret:
-            im.text_wrapped(f"Donor spectrum: {len(m.donor) // 2} components" if m.donor is not None
-                            else "Donor spectrum: required in FRET mode (Donor).")
+            im.text_wrapped(
+                f"Donor spectrum: {len(m.donor) // 2} components"
+                if m.donor is not None
+                else "Donor spectrum: required in FRET mode (Donor)."
+            )
         im.text_wrapped(m.status)
         if self.jobs.progress[1]:
             im.text(f"Progress: {self.jobs.progress[0]}/{self.jobs.progress[1]}")
@@ -289,7 +391,8 @@ class MaxentApp(ImApp):
                         )
                     mid = (minimum * maximum) ** 0.5
                     self.plot_info["decay"] = {
-                        "pos": implot.get_plot_pos(), "size": implot.get_plot_size(),
+                        "pos": implot.get_plot_pos(),
+                        "size": implot.get_plot_size(),
                         "left": implot.plot_to_pixels(float(m.time[low]), mid),
                         "right": implot.plot_to_pixels(float(m.time[high]), mid),
                     }
@@ -333,8 +436,10 @@ class MaxentApp(ImApp):
             if curve is not None:
                 implot.plot_line("Regularization sweep", curve["chi2r"], curve["sol_norm"])
                 implot.plot_scatter("nu values", curve["chi2r"], curve["sol_norm"])
-                self.plot_info["lcurve"] = [implot.plot_to_pixels(float(x), float(y))
-                                            for x, y in zip(curve["chi2r"], curve["sol_norm"])]
+                self.plot_info["lcurve"] = [
+                    implot.plot_to_pixels(float(x), float(y))
+                    for x, y in zip(curve["chi2r"], curve["sol_norm"])
+                ]
                 if implot.is_plot_hovered() and im.is_mouse_clicked(0):
                     mouse = implot.get_plot_mouse_pos()
                     if mouse.x > 0 and mouse.y > 0:
@@ -356,7 +461,9 @@ class MaxentApp(ImApp):
         slots = iter(("decay", "irf"))
         for path in paths:
             if path.lower().endswith(".json"):
-                self.error(lambda p=path: self.model.restore_preferences(json.loads(Path(p).read_text())))
+                self.error(
+                    lambda p=path: self.model.restore_preferences(json.loads(Path(p).read_text()))
+                )
                 continue
             slot = next(slots, None)
             if slot is None:
@@ -412,7 +519,11 @@ class MaxentApp(ImApp):
             if result:
                 action = self.file_action
                 self.dialog = None
-                self.last_dir = str(result[0]) if action in ("export", "sample") else str(Path(result[0]).parent)
+                self.last_dir = (
+                    str(result[0])
+                    if action in ("export", "sample")
+                    else str(Path(result[0]).parent)
+                )
                 if action in ("decay", "irf"):
                     self.error(lambda: self.model.load_file(result[0], irf=action == "irf"))
                 elif action == "prior":

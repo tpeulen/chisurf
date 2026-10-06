@@ -36,5 +36,6 @@ def __getattr__(name):
 
 if __name__ == "plugin":
     from .gui.tool import IRFEstimatorTool
+
     gui = IRFEstimatorTool()
     gui.show()

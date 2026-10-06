@@ -33,7 +33,7 @@ REPORT_HINT = "Select a burst folder and press Prepare to see the MFD preparatio
 class MfdPreparePanel:
     """What the spec reads (fields, rows) and calls (actions); a thin layer over the model and the app."""
 
-    def __init__(self, app: "MfdPrepareApp") -> None:
+    def __init__(self, app: MfdPrepareApp) -> None:
         self.app = app
 
     @property
@@ -58,12 +58,48 @@ class MfdPreparePanel:
     # tables
     def detector_columns(self):
         return [
-            {"key": "detector", "label": "Detector", "width": 90, "editable": False, "description": "Detector name from the burst table's Number of Photons columns."},
-            {"key": "channels", "label": "Channels", "width": 90, "editable": False, "description": "Routing channels that define the detector (from the manifest, or inferred from the photons)."},
-            {"key": "window", "label": "Micro-time window", "width": 140, "editable": False, "description": "Micro-time window of the detector in channels; an acceptor-excitation detector is a window on the acceptor channels."},
-            {"key": "empty", "label": "Bursts without photons", "width": 170, "editable": False, "description": "Bursts in which this detector registered no photon."},
-            {"key": "agreement", "label": "Count agreement", "width": 130, "format": "%.4f", "editable": False, "description": "Fraction of bursts whose count, recomputed from the photons, equals the burst table's column."},
-            {"key": "verdict", "label": "Verdict", "editable": False, "description": "ok needs a count agreement of 0.98; an UNVERIFIED detector would put photons under the wrong colour and the MFD fit refuses it."},
+            {
+                "key": "detector",
+                "label": "Detector",
+                "width": 90,
+                "editable": False,
+                "description": "Detector name from the burst table's Number of Photons columns.",
+            },
+            {
+                "key": "channels",
+                "label": "Channels",
+                "width": 90,
+                "editable": False,
+                "description": "Routing channels that define the detector (from the manifest, or inferred from the photons).",
+            },
+            {
+                "key": "window",
+                "label": "Micro-time window",
+                "width": 140,
+                "editable": False,
+                "description": "Micro-time window of the detector in channels; an acceptor-excitation detector is a window on the acceptor channels.",
+            },
+            {
+                "key": "empty",
+                "label": "Bursts without photons",
+                "width": 170,
+                "editable": False,
+                "description": "Bursts in which this detector registered no photon.",
+            },
+            {
+                "key": "agreement",
+                "label": "Count agreement",
+                "width": 130,
+                "format": "%.4f",
+                "editable": False,
+                "description": "Fraction of bursts whose count, recomputed from the photons, equals the burst table's column.",
+            },
+            {
+                "key": "verdict",
+                "label": "Verdict",
+                "editable": False,
+                "description": "ok needs a count agreement of 0.98; an UNVERIFIED detector would put photons under the wrong colour and the MFD fit refuses it.",
+            },
         ]
 
     def detector_rows(self):
@@ -71,10 +107,33 @@ class MfdPreparePanel:
 
     def source_columns(self):
         return [
-            {"key": "file", "label": "File", "width": 110, "editable": False, "description": "Photon file named by the burst table."},
-            {"key": "path", "label": "Resolved path", "editable": False, "description": "Where the file was found."},
-            {"key": "origin", "label": "Found by", "width": 100, "editable": False, "description": "manifest, legacy .mti sidecar, or a file beside the folder."},
-            {"key": "photons", "label": "Photons", "width": 90, "editable": False, "description": "Photons read from the file."},
+            {
+                "key": "file",
+                "label": "File",
+                "width": 110,
+                "editable": False,
+                "description": "Photon file named by the burst table.",
+            },
+            {
+                "key": "path",
+                "label": "Resolved path",
+                "editable": False,
+                "description": "Where the file was found.",
+            },
+            {
+                "key": "origin",
+                "label": "Found by",
+                "width": 100,
+                "editable": False,
+                "description": "manifest, legacy .mti sidecar, or a file beside the folder.",
+            },
+            {
+                "key": "photons",
+                "label": "Photons",
+                "width": 90,
+                "editable": False,
+                "description": "Photons read from the file.",
+            },
         ]
 
     def source_rows(self):
@@ -82,7 +141,13 @@ class MfdPreparePanel:
 
     def summary_columns(self):
         return [
-            {"key": "quantity", "label": "Quantity", "width": 190, "editable": False, "description": "What the report states about the folder as a whole."},
+            {
+                "key": "quantity",
+                "label": "Quantity",
+                "width": 190,
+                "editable": False,
+                "description": "What the report states about the folder as a whole.",
+            },
             {"key": "value", "label": "Value", "editable": False, "description": "Its value."},
         ]
 
@@ -123,11 +188,22 @@ class MfdPrepareApp(TourTarget, ImApp):
         self.form_state = FormState(on_used=lambda name: self.tour.notify_used(name))
         self.item_rects: dict = {}
         self.dialog: FileDialog | None = None
-        self.file_window = DialogWindow("Choose the burst folder", size=(560.0, 420.0), key="mfd_prepare_folder")
-        self.help_window = EmTkHelpWindow(title="MFD Prepare - Help & Reference", resource=HERE / "help.md", owner=self,
-                                          on_start_guide=lambda: self.tour.start(), size=(700.0, 520.0))
-        self.tour = EmTkGuidedTour(steps=HERE / "guide.json", get_target_rect=lambda k: self.item_rects.get(k), owner=self,
-                                   wait_for_controls=True)
+        self.file_window = DialogWindow(
+            "Choose the burst folder", size=(560.0, 420.0), key="mfd_prepare_folder"
+        )
+        self.help_window = EmTkHelpWindow(
+            title="MFD Prepare - Help & Reference",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=lambda: self.tour.start(),
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "guide.json",
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self,
+            wait_for_controls=True,
+        )
         super().__init__(self._render, continuous=False)
 
     # -- actions -------------------------------------------------------------------------------------- #
@@ -158,19 +234,31 @@ class MfdPrepareApp(TourTarget, ImApp):
         """The folder line and one wrapping row of buttons (natural widths, greyed while they cannot act)."""
         im.text_wrapped(self.panel.folder_line)
         busy = self.job.busy
-        pressed = button_row([
-            {"label": "Browse...", "key": "browse", "enabled": not busy,
-             "tip": "Choose the burst-analysis folder (the one holding bi4_bur and Info) in a folder chooser, or drop it on the window."},
-            {"label": "Prepare", "key": "prepare", "enabled": bool(self.model.folder) and not busy,
-             "colours": ((46, 160, 67, 255), (56, 180, 77, 255), (36, 140, 57, 255)),
-             "tip": "Read the folder the way the MFD fit does: resolve the photon files, detect the photon-index convention and "
-                    "recompute each detector's counts. Nothing is moved or rewritten. Choose a folder first."},
-            {"label": "Guide", "key": "guide", "tip": "A step-by-step walk through the tool."},
-            {"label": "Help", "key": "help", "tip": "Explain what the report says."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": "Browse...",
+                    "key": "browse",
+                    "enabled": not busy,
+                    "tip": "Choose the burst-analysis folder (the one holding bi4_bur and Info) in a folder chooser, or drop it on the window.",
+                },
+                {
+                    "label": "Prepare",
+                    "key": "prepare",
+                    "enabled": bool(self.model.folder) and not busy,
+                    "colours": ((46, 160, 67, 255), (56, 180, 77, 255), (36, 140, 57, 255)),
+                    "tip": "Read the folder the way the MFD fit does: resolve the photon files, detect the photon-index convention and "
+                    "recompute each detector's counts. Nothing is moved or rewritten. Choose a folder first.",
+                },
+                {"label": "Guide", "key": "guide", "tip": "A step-by-step walk through the tool."},
+                {"label": "Help", "key": "help", "tip": "Explain what the report says."},
+            ],
+            remember=self.remember,
+        )
         if pressed:
             self.tour.notify_used(pressed)
             getattr(self.panel, pressed)()
+
     def draw_report(self) -> None:
         """The report text in a scrolling region that takes the room left (the mouse wheel scrolls it)."""
         im.text_unformatted("Report")
@@ -205,8 +293,13 @@ class MfdPrepareApp(TourTarget, ImApp):
                 self.tour.draw(width, height)  # the highlighted control must stay clickable
             else:
                 # A window of its own: drawn into the root window the card's Next / Prev presses also reached the buttons under it.
-                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
-                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
+                flags = (
+                    im.WindowFlags.NO_DECORATION
+                    | im.WindowFlags.NO_BACKGROUND
+                    | im.WindowFlags.NO_SAVED_SETTINGS
+                    | im.WindowFlags.NO_MOVE
+                    | im.WindowFlags.NO_NAV
+                )
                 im.begin("##mfd_prepare_tour", (0.0, 0.0, width, height), flags)
                 self.tour.draw(width, height)
                 im.end()

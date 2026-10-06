@@ -32,10 +32,15 @@ def _fresh_db(tmp_path):
 
 def test_migrating_a_legacy_json_into_a_fresh_database_works(tmp_path):
     legacy = tmp_path / "detector_setups.json"
-    legacy.write_text(json.dumps({"setups": {"ALEX Suite (auto)": SETUP}, "last_used": "ALEX Suite (auto)"}))
+    legacy.write_text(
+        json.dumps({"setups": {"ALEX Suite (auto)": SETUP}, "last_used": "ALEX Suite (auto)"})
+    )
     db = _fresh_db(tmp_path)
 
-    assert setup_store.migrate_json_to_mmfdb(db, CONFIG, legacy, user_id="a_user_nobody_seeded") is True
+    assert (
+        setup_store.migrate_json_to_mmfdb(db, CONFIG, legacy, user_id="a_user_nobody_seeded")
+        is True
+    )
 
     owned = [s for s in db.list_setups() if s.get("created_by_user_id") == "a_user_nobody_seeded"]
     assert len(owned) == 1

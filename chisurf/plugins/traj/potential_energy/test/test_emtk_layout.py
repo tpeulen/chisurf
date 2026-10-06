@@ -5,12 +5,19 @@ Defects fixed: a full-width Add button and choice, stretched cutoffs, weight and
 
 import pytest
 
-from test.gui.emtk_layout_checks import (
-    SIZES, assert_above, assert_aligned, assert_disjoint, assert_icons_clear, assert_inside, assert_log_capped,
-    assert_short, assert_texts_apart, draw,
-)
-
 from chisurf.plugins.traj.potential_energy.app import PotentialEnergyApp
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_above,
+    assert_aligned,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_inside,
+    assert_log_capped,
+    assert_short,
+    assert_texts_apart,
+    draw,
+)
 
 
 @pytest.fixture(params=SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
@@ -25,8 +32,18 @@ def test_editor_fields_are_short_and_share_one_label_column(drawn):
     app, _p, _s = drawn
     assert_short(app.item_rects, ["cutoff_ca", "cutoff_hbond", "potential_weight", "stride"])
     assert app.item_rects["add"][2] <= 180 and app.item_rects["potential_type"][2] <= 180
-    assert_aligned(app.item_rects, ["trajectory", "potential_type", "add", "cutoff_ca", "potential", "potential_weight",
-                                    "stride"])
+    assert_aligned(
+        app.item_rects,
+        [
+            "trajectory",
+            "potential_type",
+            "add",
+            "cutoff_ca",
+            "potential",
+            "potential_weight",
+            "stride",
+        ],
+    )
 
 
 def test_log_and_texts(drawn):
@@ -35,4 +52,3 @@ def test_log_and_texts(drawn):
     assert_log_capped(app.item_rects, size)
     assert_inside(app.item_rects, size)
     assert_texts_apart(painter)
-

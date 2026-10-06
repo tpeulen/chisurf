@@ -264,10 +264,11 @@ class SwitchUserModel:
 
     def _apply(self, result: dict, user_id: str) -> None:
         """Remember the account and the server and keep the session token (as the dialog did)."""
+        from mmfdb.security import credentials
+
         import chisurf.core.settings as cs_settings
         from chisurf.core.settings import settings_utils
         from chisurf.plugins.core.mmfdb_admin.gui.client import client_config, credential_endpoint
-        from mmfdb.security import credentials
 
         mmfdb_settings = cs_settings.cs_settings.setdefault("mmfdb", {})
         configured = mmfdb_settings.setdefault("client", {})
@@ -298,13 +299,18 @@ class SwitchUserModel:
         credential_host, credential_port = credential_endpoint(client_config(mmfdb_settings))
         token = result.get("token", "")
         if not settings_utils.set_mmfdb_login_settings(mmfdb_settings):
-            self.notices.append((
-                "warning", "Settings Not Saved",
-                "Login succeeded, but ChiSurf could not store the MMFDB login settings."))
+            self.notices.append(
+                (
+                    "warning",
+                    "Settings Not Saved",
+                    "Login succeeded, but ChiSurf could not store the MMFDB login settings.",
+                )
+            )
         token_saved = True
         if autologin:
             token_saved = credentials.store_session_token(
-                credential_host, credential_port, user_id, token)
+                credential_host, credential_port, user_id, token
+            )
         else:
             credentials.delete_session_token(credential_host, credential_port, user_id)
         credentials.store_runtime_session_token(credential_host, credential_port, user_id, token)
@@ -314,10 +320,14 @@ class SwitchUserModel:
                 cs_settings.mmfdb["autologin"] = False
             settings_utils.set_mmfdb_login_settings(mmfdb_settings)
             self.autologin = False
-            self.notices.append((
-                "warning", "Autologin Not Saved",
-                "Login succeeded, but ChiSurf could not store the session token in the OS "
-                "credential store."))
+            self.notices.append(
+                (
+                    "warning",
+                    "Autologin Not Saved",
+                    "Login succeeded, but ChiSurf could not store the session token in the OS "
+                    "credential store.",
+                )
+            )
         self.server_history = history
         self._sync_pickers()
         self.accepted = True

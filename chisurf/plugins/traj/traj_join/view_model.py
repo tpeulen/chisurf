@@ -137,7 +137,10 @@ class JoinTrajectoriesViewModel:
         if not fn1 or not fn2:
             self.append_log("Two trajectories are required")
             return
-        if self.join_mode not in ("time", "atoms"):  # pragma: no cover - guarded by the choice section
+        if self.join_mode not in (
+            "time",
+            "atoms",
+        ):  # pragma: no cover - guarded by the choice section
             raise ValueError(f"unknown join_mode {self.join_mode!r}")
 
         self.append_log(f"Join mode: {self.join_mode}")
@@ -151,17 +154,27 @@ class JoinTrajectoriesViewModel:
         block = self._block()
         if self.join_mode == "time":
             if traj_1.n_atoms != traj_2.n_atoms:
-                raise ValueError(f"Joining in time needs the same atoms: trajectory 1 has {traj_1.n_atoms}, "
-                                 f"trajectory 2 has {traj_2.n_atoms}")
+                raise ValueError(
+                    f"Joining in time needs the same atoms: trajectory 1 has {traj_1.n_atoms}, "
+                    f"trajectory 2 has {traj_2.n_atoms}"
+                )
             n_atoms, n_frames = traj_1.n_atoms, traj_1.n_frames + traj_2.n_frames
-            pieces = (xyz[start:start + block] for xyz in (xyz_1, xyz_2) for start in range(0, len(xyz), block))
+            pieces = (
+                xyz[start : start + block]
+                for xyz in (xyz_1, xyz_2)
+                for start in range(0, len(xyz), block)
+            )
         else:
             if traj_1.n_frames != traj_2.n_frames:
-                raise ValueError(f"Joining by atoms needs the same number of frames: trajectory 1 has "
-                                 f"{traj_1.n_frames}, trajectory 2 has {traj_2.n_frames}")
+                raise ValueError(
+                    f"Joining by atoms needs the same number of frames: trajectory 1 has "
+                    f"{traj_1.n_frames}, trajectory 2 has {traj_2.n_frames}"
+                )
             n_atoms, n_frames = traj_1.n_atoms + traj_2.n_atoms, traj_1.n_frames
-            pieces = (np.concatenate((xyz_1[start:start + block], xyz_2[start:start + block]), axis=1)
-                      for start in range(0, n_frames, block))
+            pieces = (
+                np.concatenate((xyz_1[start : start + block], xyz_2[start : start + block]), axis=1)
+                for start in range(0, n_frames, block)
+            )
 
         with DCDWriter(target_filename, n_atoms=n_atoms) as writer:
             for piece in pieces:

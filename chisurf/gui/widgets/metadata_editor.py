@@ -17,9 +17,17 @@ from chisurf.core.fio.mmcif.pdbx_metadata import (
 # Keep the historical star-import surface, including the demand-loaded catalog.
 ALL_METADATA_KEYS: list[str]  # The real list is supplied on demand by __getattr__.
 __all__ = [
-    "ALL_METADATA_KEYS", "COMMON_METADATA_KEYS", "MetadataEditor",
-    "MetadataKeyComboBox", "Qt", "QtCore", "QtGui", "QtWidgets",
-    "TooltipDelegate", "get_pdbx_metadata_descriptions", "get_pdbx_metadata_keys",
+    "ALL_METADATA_KEYS",
+    "COMMON_METADATA_KEYS",
+    "MetadataEditor",
+    "MetadataKeyComboBox",
+    "Qt",
+    "QtCore",
+    "QtGui",
+    "QtWidgets",
+    "TooltipDelegate",
+    "get_pdbx_metadata_descriptions",
+    "get_pdbx_metadata_keys",
     "key_description",
 ]
 

@@ -26,7 +26,7 @@ def preset_dir() -> Path:
 class ResultTable:
     """One results tab as rows and columns for a ``data_table`` section."""
 
-    def __init__(self, panel: "LightPathPanel", kind: str) -> None:
+    def __init__(self, panel: LightPathPanel, kind: str) -> None:
         self.panel = panel
         self.kind = kind
 
@@ -40,14 +40,25 @@ class ResultTable:
         matrix = self._matrix()
         cols = [{"key": "row", "title": "", "description": "The row of the matrix."}]
         for i, name in enumerate(matrix.get("columns") or []):
-            cols.append({"key": f"c{i}", "title": str(name), "format": "%.4e", "description": f"Column {name} of the {self.kind} matrix."})
+            cols.append(
+                {
+                    "key": f"c{i}",
+                    "title": str(name),
+                    "format": "%.4e",
+                    "description": f"Column {name} of the {self.kind} matrix.",
+                }
+            )
         return cols
 
     def rows(self) -> list[dict]:
         if self.kind == "signals":
             return [
-                {"laser": str(r.get("laser", "")), "detector": str(r.get("detector", "")), "dye": str(r.get("dye", "")),
-                 "intensity": float(r.get("intensity", 0.0))}
+                {
+                    "laser": str(r.get("laser", "")),
+                    "detector": str(r.get("detector", "")),
+                    "dye": str(r.get("dye", "")),
+                    "intensity": float(r.get("intensity", 0.0)),
+                }
                 for r in (self.panel.controller.result or {}).get("detector_signals", [])
             ]
         matrix = self._matrix()
@@ -65,8 +76,17 @@ class LightPathPanel:
 
     TABS = ("Signals", "Excitation", "Emission", "Detected", "Förster radius")
 
-    def __init__(self, controller, graph_control, *, browse: Callable[[str], None], ask_name: Callable[..., None],
-                 show_help: Callable[[], None], start_guide: Callable[[], None], focus_graph: Callable[[], None] | None = None) -> None:
+    def __init__(
+        self,
+        controller,
+        graph_control,
+        *,
+        browse: Callable[[str], None],
+        ask_name: Callable[..., None],
+        show_help: Callable[[], None],
+        start_guide: Callable[[], None],
+        focus_graph: Callable[[], None] | None = None,
+    ) -> None:
         self.controller = controller
         self.graph_control = graph_control
         self._browse, self._ask_name = browse, ask_name
@@ -86,10 +106,21 @@ class LightPathPanel:
 
     # -- fields -------------------------------------------------------------------------------------------- #
     running = property(lambda self: bool(self.controller.running))
-    remote = property(lambda s: s.controller.remote, lambda s, v: setattr(s.controller, "remote", bool(v)))
-    auto_update = property(lambda s: s.controller.auto_update, lambda s, v: setattr(s.controller, "auto_update", bool(v)))
-    operation_name = property(lambda s: s.controller.operation_name, lambda s, v: setattr(s.controller, "operation_name", str(v)))
-    show_minimap = property(lambda s: s.graph_control.show_minimap, lambda s, v: setattr(s.graph_control, "show_minimap", bool(v)))
+    remote = property(
+        lambda s: s.controller.remote, lambda s, v: setattr(s.controller, "remote", bool(v))
+    )
+    auto_update = property(
+        lambda s: s.controller.auto_update,
+        lambda s, v: setattr(s.controller, "auto_update", bool(v)),
+    )
+    operation_name = property(
+        lambda s: s.controller.operation_name,
+        lambda s, v: setattr(s.controller, "operation_name", str(v)),
+    )
+    show_minimap = property(
+        lambda s: s.graph_control.show_minimap,
+        lambda s, v: setattr(s.graph_control, "show_minimap", bool(v)),
+    )
 
     @property
     def db_path(self) -> str:
@@ -133,8 +164,13 @@ class LightPathPanel:
         return [{"id": d.id, "title": d.title} for d in optical_registry.all_types().values()]
 
     def saved_rows(self) -> list[dict]:
-        return [{"name": str(r.get("name") or r.get("operation_id")), "operation_id": str(r["operation_id"])}
-                for r in self.controller.saved]
+        return [
+            {
+                "name": str(r.get("name") or r.get("operation_id")),
+                "operation_id": str(r["operation_id"]),
+            }
+            for r in self.controller.saved
+        ]
 
     # -- the connection form -------------------------------------------------------------------------------- #
     def node_options(self) -> list:
@@ -152,15 +188,27 @@ class LightPathPanel:
         out = []
         for e in doc.edges:
             s, t = doc.node(e.source), doc.node(e.target)
-            out.append({"source": f"{s.title if s else e.source} : {e.source_port}", "target": f"{t.title if t else e.target} : {e.target_port}",
-                        "_edge": e})
+            out.append(
+                {
+                    "source": f"{s.title if s else e.source} : {e.source_port}",
+                    "target": f"{t.title if t else e.target} : {e.target_port}",
+                    "_edge": e,
+                }
+            )
         return out
 
     def select_link(self, record: Any) -> None:
         self.selected_link = (record or {}).get("_edge") if isinstance(record, dict) else None
 
     def connect_ports(self) -> None:
-        self._try("Connect Failed", self.controller.connect, self.source_node, self.source_port, self.target_node, self.target_port)
+        self._try(
+            "Connect Failed",
+            self.controller.connect,
+            self.source_node,
+            self.source_port,
+            self.target_node,
+            self.target_port,
+        )
 
     def remove_link(self) -> None:
         if self.selected_link is not None:
@@ -209,7 +257,12 @@ class LightPathPanel:
         self._try("Save Failed", write)
 
     def save_mmfdb(self) -> None:
-        self._ask_name("Save Simulation to MMFDB", "Name:", self.controller.operation_name or "Light path simulation", self._save_named)
+        self._ask_name(
+            "Save Simulation to MMFDB",
+            "Name:",
+            self.controller.operation_name or "Light path simulation",
+            self._save_named,
+        )
 
     def _save_named(self, name: str) -> None:
         self.controller.operation_name = name.strip() or "Light path simulation"
@@ -220,7 +273,9 @@ class LightPathPanel:
         self.controller.start("list")
 
     def select_saved(self, record: Any) -> None:
-        self.selected_saved = str((record or {}).get("operation_id", "")) if isinstance(record, dict) else ""
+        self.selected_saved = (
+            str((record or {}).get("operation_id", "")) if isinstance(record, dict) else ""
+        )
 
     def activate_saved(self, record: Any) -> None:
         self.select_saved(record)

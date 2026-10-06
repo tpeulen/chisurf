@@ -3,6 +3,7 @@
 Updated for the eight-step wizard: the earlier four pages (Welcome, Repair settings, Status,
 Finish) are the steps of the Qt wizard now, and the remembered state is the step index.
 """
+
 from __future__ import annotations
 
 import pytest

@@ -84,7 +84,11 @@ def load_decay_handler(path: str) -> dict[str, Any]:
         from chisurf.core.fio import read_vv_vh
 
         channels, metadata = read_vv_vh(path, split=True, return_metadata=True)
-        vv = channels.get("VV", next(iter(channels.values()))) if isinstance(channels, dict) else channels[0]
+        vv = (
+            channels.get("VV", next(iter(channels.values())))
+            if isinstance(channels, dict)
+            else channels[0]
+        )
         vv = np.asarray(vv, dtype=np.float32)
         dt = float(metadata.get("dt", metadata.get("dt_ns", 1.0)))
         return service_success(

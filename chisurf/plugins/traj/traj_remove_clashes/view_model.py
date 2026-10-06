@@ -214,7 +214,9 @@ class RemoveClashesViewModel:
                 writer.close()
         # Without the count the only way to learn what the threshold did was to
         # read the output back.
-        self.append_log(f"Kept {len(kept_times)} of {n_read} frames (min distance {min_distance:g} Å)")
+        self.append_log(
+            f"Kept {len(kept_times)} of {n_read} frames (min distance {min_distance:g} Å)"
+        )
         self.append_log(f"Clash-free trajectory saved: {target_filename}")
 
 

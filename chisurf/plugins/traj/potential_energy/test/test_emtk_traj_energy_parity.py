@@ -64,14 +64,22 @@ def qt(trajectory):
     dcd, pdb, tmp = trajectory
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, dcd, pdb, str(tmp / "qt.txt"), json.dumps(POTENTIALS)],
-                          capture_output=True, text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, dcd, pdb, str(tmp / "qt.txt"), json.dumps(POTENTIALS)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 def _wait(app, timeout=60.0):
@@ -94,7 +102,7 @@ def test_process_writes_the_qt_tools_energies(qt, trajectory):
         target = str(tmp / "emtk.txt")
         app.save(target)
         assert app.running
-        app.save(str(tmp / "second.txt"))               # one run at a time
+        app.save(str(tmp / "second.txt"))  # one run at a time
         _wait(app)
         assert app.notice == "Processed 4 frame(s)." and app.frames_done >= 1
         assert open(target).read() == qt["energies"]
@@ -119,14 +127,20 @@ def test_browse_and_process_ask_for_files(trajectory):
     try:
         trajectory_row = next(p for p in app.paths if p.key == "trajectory")
         app.browse(trajectory_row)
-        assert app.dialog is not None and app.dialog.mode == "open" and app.dialog.title == "Open trajectory"
+        assert (
+            app.dialog is not None
+            and app.dialog.mode == "open"
+            and app.dialog.title == "Open trajectory"
+        )
         app.dialog = None
         app.model.set_trajectory(dcd)
         app.model.set_topology(pdb)
-        app.model.add_potential(make_potential("Radius of Gyration", {}), 1.0, name="Radius of Gyration")
+        app.model.add_potential(
+            make_potential("Radius of Gyration", {}), 1.0, name="Radius of Gyration"
+        )
         app.begin_save()
         assert app.dialog.mode == "save" and app.dialog.title == "Save energies"
-        assert app.dialog.filters[0] == ("CSV-name file", ["*.txt"])         # the Qt dialog's filter
+        assert app.dialog.filters[0] == ("CSV-name file", ["*.txt"])  # the Qt dialog's filter
     finally:
         app.close()
 

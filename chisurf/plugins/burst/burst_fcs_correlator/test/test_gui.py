@@ -20,7 +20,15 @@ def test_selecting_a_curve_drives_the_plot_sources():
     m = _BurstFcsModel()
     tau = np.logspace(-3, 2, 40)
     g = 0.5 / (1.0 + tau) + 1.0
-    m._selected = {"tau_raw": tau.tolist(), "g_raw": g.tolist(), "tau": tau.tolist(), "g": g.tolist(), "g_fit": (g * 0.99).tolist(), "td_grid": [], "p": []}
+    m._selected = {
+        "tau_raw": tau.tolist(),
+        "g_raw": g.tolist(),
+        "tau": tau.tolist(),
+        "g": g.tolist(),
+        "g_fit": (g * 0.99).tolist(),
+        "td_grid": [],
+        "p": [],
+    }
     assert len(m.corr_plot_series()) == 2  # data + fit
     assert m.dist_plot_series() == []
 

@@ -31,7 +31,13 @@ DIALOGS = {
     "files": ("Open BUR/BST files", "open", True, "BUR/BST (*.bur *.bst);;All files (*)", ""),
     "folder": ("Add analysis folder", "folder", True, "", ""),
     "load_settings": ("Load settings", "open", False, "Settings (*.json)", ""),
-    "save_settings": ("Save settings", "save", False, "Settings (*.json)", "burst_fcs_settings.json"),
+    "save_settings": (
+        "Save settings",
+        "save",
+        False,
+        "Settings (*.json)",
+        "burst_fcs_settings.json",
+    ),
     "load_pairs": ("Load channel pairs or detector setup", "open", False, "JSON (*.json)", ""),
     "save_pairs": ("Save channel pairs", "save", False, "JSON (*.json)", "burst_fcs_pairs.json"),
     "export_curves": ("Export curves", "save", False, "JSON (*.json)", "burst_fcs_curves.json"),
@@ -53,23 +59,67 @@ class BurstFcsApp(TourTarget, ImApp):
         self.forms: dict = {}
         self._limits: dict = {}
         self._ratio_set = False
-        self.file_window = DialogWindow("Burst FCS file chooser", size=(560.0, 420.0), key="burst_fcs_files")
-        self.pairs_window = DialogWindow("Channel pairs (JSON)", size=(480.0, 360.0), key="burst_fcs_pairs")
+        self.file_window = DialogWindow(
+            "Burst FCS file chooser", size=(560.0, 420.0), key="burst_fcs_files"
+        )
+        self.pairs_window = DialogWindow(
+            "Channel pairs (JSON)", size=(480.0, 360.0), key="burst_fcs_pairs"
+        )
         self.setup = ChannelDefinitionWidget()
         self._setup_name = self.setup.model.current_name
-        self.help_window = EmTkHelpWindow(title="Burst-wise FCS - Help", resource=HERE / "help.md", owner=self,
-                                          on_start_guide=lambda: self.tour.start(), size=(700.0, 520.0))
-        self.tour = EmTkGuidedTour(steps=HERE / "guide.json", get_target_rect=lambda k: self.item_rects.get(k), owner=self, wait_for_controls=True,
-                                   on_step_change=lambda _i, step: step.get("tab") and self.select_tab(step["tab"]))
+        self.help_window = EmTkHelpWindow(
+            title="Burst-wise FCS - Help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=lambda: self.tour.start(),
+            size=(700.0, 520.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "guide.json",
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self,
+            wait_for_controls=True,
+            on_step_change=lambda _i, step: step.get("tab") and self.select_tab(step["tab"]),
+        )
         self.tab = "Inputs"
-        self.docks = DockManager(Split("h", 0.38, Split("v", 0.13, Region("toolbar"), Region("controls")), Split("v", 0.5, Region("correlation"), Split("h", 0.6, Region("curves"), Region("distribution")))),
-                                 name="burst_fcs")
-        self.docks.add_window("toolbar", "Burst-wise FCS", self.draw_toolbar, dock="toolbar", closable=False)
+        self.docks = DockManager(
+            Split(
+                "h",
+                0.38,
+                Split("v", 0.13, Region("toolbar"), Region("controls")),
+                Split(
+                    "v",
+                    0.5,
+                    Region("correlation"),
+                    Split("h", 0.6, Region("curves"), Region("distribution")),
+                ),
+            ),
+            name="burst_fcs",
+        )
+        self.docks.add_window(
+            "toolbar", "Burst-wise FCS", self.draw_toolbar, dock="toolbar", closable=False
+        )
         self.docks.add_window("inputs", "Inputs", self.draw_inputs, dock="controls", closable=False)
-        self.docks.add_window("settings", "Settings", self.draw_settings, dock="controls", closable=False)
-        self.docks.add_window("setup", "Detector setup", self.draw_setup, dock="controls", closable=False)
-        self.docks.add_window("correlation", "Correlation G(t)", self.draw_correlation, dock="correlation", closable=False)
-        self.docks.add_window("distribution", "Distribution P(tau_D)", self.draw_distribution, dock="distribution", closable=False)
+        self.docks.add_window(
+            "settings", "Settings", self.draw_settings, dock="controls", closable=False
+        )
+        self.docks.add_window(
+            "setup", "Detector setup", self.draw_setup, dock="controls", closable=False
+        )
+        self.docks.add_window(
+            "correlation",
+            "Correlation G(t)",
+            self.draw_correlation,
+            dock="correlation",
+            closable=False,
+        )
+        self.docks.add_window(
+            "distribution",
+            "Distribution P(tau_D)",
+            self.draw_distribution,
+            dock="distribution",
+            closable=False,
+        )
         self.docks.add_window("curves", "Curves", self.draw_curves, dock="curves", closable=False)
         self.native_layouts = {"main": self.docks}
         super().__init__(self._render, continuous=True)
@@ -78,7 +128,9 @@ class BurstFcsApp(TourTarget, ImApp):
     def select_tab(self, name):
         """Bring a tab of the controls forward (the guide does it per step)."""
         self.tab = name
-        self.docks.focus({"Inputs": "inputs", "Settings": "settings", "Detector setup": "setup"}.get(name, name))
+        self.docks.focus(
+            {"Inputs": "inputs", "Settings": "settings", "Detector setup": "setup"}.get(name, name)
+        )
 
     def _used(self, name):
         self.tour.notify_used(name)
@@ -96,7 +148,9 @@ class BurstFcsApp(TourTarget, ImApp):
     def choose(self, action):
         title, mode, multiple, filters, filename = DIALOGS[action]
         self.dialog_action = action
-        self.dialog = FileDialog(title, mode=mode, multiselect=multiple, filters=filters, filename=filename)
+        self.dialog = FileDialog(
+            title, mode=mode, multiselect=multiple, filters=filters, filename=filename
+        )
         self.file_window.title = title
         self.file_window.show()
 
@@ -138,9 +192,20 @@ class BurstFcsApp(TourTarget, ImApp):
             self.controller.status = f"Error: could not write the demonstration data: {exc}"
             return
         self.controller.add_files([str(table)])
-        if not self.controller._pair_presets or self.controller.pairs_text.count("donor_ACF") and len(self.controller._pair_presets) == 1:
-            self.controller.apply_pairs(json.dumps([{"pair_name": "ACF_0", "chs_a": [0], "chs_b": [0]}, {"pair_name": "ACF_1", "chs_a": [1], "chs_b": [1]},
-                                                     {"pair_name": "cross_01", "chs_a": [0], "chs_b": [1]}]))
+        if (
+            not self.controller._pair_presets
+            or self.controller.pairs_text.count("donor_ACF")
+            and len(self.controller._pair_presets) == 1
+        ):
+            self.controller.apply_pairs(
+                json.dumps(
+                    [
+                        {"pair_name": "ACF_0", "chs_a": [0], "chs_b": [0]},
+                        {"pair_name": "ACF_1", "chs_a": [1], "chs_b": [1]},
+                        {"pair_name": "cross_01", "chs_a": [0], "chs_b": [1]},
+                    ]
+                )
+            )
         self.controller.status = "Demonstration data added (8 bursts, two detectors)."
         self._used("example")
 
@@ -189,7 +254,13 @@ class BurstFcsApp(TourTarget, ImApp):
             return
         self._limits[key] = sig
         pad = 0.06 * ((y.max() - y.min()) or abs(y.max()) or 1.0)
-        implot.setup_axes_limits(x.min() / 1.3, x.max() * 1.3, min(0.0, float(y.min())) - pad if y.min() < 0 else float(y.min()) - pad, float(y.max()) + pad, implot.COND_ALWAYS)
+        implot.setup_axes_limits(
+            x.min() / 1.3,
+            x.max() * 1.3,
+            min(0.0, float(y.min())) - pad if y.min() < 0 else float(y.min()) - pad,
+            float(y.max()) + pad,
+            implot.COND_ALWAYS,
+        )
 
     def draw_correlation(self, box):
         m = self.controller._model
@@ -206,7 +277,9 @@ class BurstFcsApp(TourTarget, ImApp):
                 for s in series:
                     sx, sy = np.asarray(s["x"], dtype=float), np.asarray(s["y"], dtype=float)
                     ok = np.isfinite(sx) & np.isfinite(sy) & (sx > 0)
-                    implot.set_next_line_style(WHITE if s["name"] == "data" else RED, float(s.get("width", 1.5)))
+                    implot.set_next_line_style(
+                        WHITE if s["name"] == "data" else RED, float(s.get("width", 1.5))
+                    )
                     implot.plot_line(s["name"], sx[ok], sy[ok])
                 lo = m.tmin_fit if m.tmin_fit > 0 else float(np.nanmin(x[x > 0]))
                 hi = m.tmax_fit if m.tmax_fit > 0 else float(np.nanmax(x))
@@ -220,7 +293,9 @@ class BurstFcsApp(TourTarget, ImApp):
                 implot.setup_axes_limits(1e-4, 1e2, 0.0, 1.0, implot.COND_ALWAYS)
                 implot.plot_text("Run FCS, then select a curve", 1e-1, 0.5)
             implot.end_plot()
-            im.set_item_tooltip("The selected burst's correlation curve (white) and its fit (red). Drag the two vertical lines to set the fit window t_min and t_max; the wheel zooms.")
+            im.set_item_tooltip(
+                "The selected burst's correlation curve (white) and its fit (red). Drag the two vertical lines to set the fit window t_min and t_max; the wheel zooms."
+            )
 
     def draw_distribution(self, box):
         series = self.controller._model.dist_plot_series()
@@ -239,7 +314,9 @@ class BurstFcsApp(TourTarget, ImApp):
                 implot.setup_axes_limits(1e-6, 30.0, 0.0, 1.0, implot.COND_ALWAYS)
                 implot.plot_text("MaxEnt mode only", 1e-3, 0.5)
             implot.end_plot()
-            im.set_item_tooltip("The diffusion-time distribution P(tau_D) of the selected curve (MaxEnt mode).")
+            im.set_item_tooltip(
+                "The diffusion-time distribution P(tau_D) of the selected curve (MaxEnt mode)."
+            )
 
     @staticmethod
     def _plot_box():
@@ -270,9 +347,16 @@ class BurstFcsApp(TourTarget, ImApp):
             else:
                 # A window of its own over the docks: drawn into the root window the card's buttons sat under the dock windows
                 # (a button is hovered only when no other window is under the pointer), so Prev and most Next presses never arrived.
-                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
-                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
-                im.begin("##burst_fcs_tour", (0.0, 0.0, float(vp.size[0]), float(vp.size[1])), flags)
+                flags = (
+                    im.WindowFlags.NO_DECORATION
+                    | im.WindowFlags.NO_BACKGROUND
+                    | im.WindowFlags.NO_SAVED_SETTINGS
+                    | im.WindowFlags.NO_MOVE
+                    | im.WindowFlags.NO_NAV
+                )
+                im.begin(
+                    "##burst_fcs_tour", (0.0, 0.0, float(vp.size[0]), float(vp.size[1])), flags
+                )
                 self.tour.draw(*vp.size)
                 im.end()
         if self.dialog:

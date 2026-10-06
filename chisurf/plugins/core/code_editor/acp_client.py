@@ -229,7 +229,9 @@ class AcpClient:
         """Send a JSON-RPC notification."""
         self._send({"jsonrpc": "2.0", "method": method, "params": params or {}})
 
-    def respond(self, request_id: Any, result: Any = None, error: dict[str, Any] | None = None) -> None:
+    def respond(
+        self, request_id: Any, result: Any = None, error: dict[str, Any] | None = None
+    ) -> None:
         """Send a JSON-RPC response to an incoming agent request."""
         payload: dict[str, Any] = {"jsonrpc": "2.0", "id": request_id}
         if error is not None:
@@ -387,7 +389,9 @@ class AcpClient:
             return
 
         while self._running:
-            chunk = proc.stdout.read1(4096) if hasattr(proc.stdout, "read1") else proc.stdout.read(4096)
+            chunk = (
+                proc.stdout.read1(4096) if hasattr(proc.stdout, "read1") else proc.stdout.read(4096)
+            )
             if not chunk:
                 break
             self._feed_bytes(chunk)
@@ -473,7 +477,11 @@ class AcpClient:
 
             if "error" in message:
                 err_data = message.get("error", {})
-                err_msg = err_data.get("message", str(err_data)) if isinstance(err_data, dict) else str(err_data)
+                err_msg = (
+                    err_data.get("message", str(err_data))
+                    if isinstance(err_data, dict)
+                    else str(err_data)
+                )
                 if err_cb:
                     err_cb(err_data)
                 else:
@@ -498,7 +506,9 @@ class AcpClient:
             self._handle_request_permission(req_id, params)
         else:
             if req_id is not None:
-                self.respond(req_id, error={"code": -32601, "message": f"Method not handled: {method}"})
+                self.respond(
+                    req_id, error={"code": -32601, "message": f"Method not handled: {method}"}
+                )
 
     def _handle_session_update(self, params: dict[str, Any]) -> None:
         """Handle ``session/update`` notifications."""
@@ -525,7 +535,6 @@ class AcpClient:
             if mode_id:
                 self.current_mode_id = mode_id
                 self.mode_changed.emit(session_id, mode_id)
-
 
     def _handle_fs_read(self, request_id: Any, params: dict[str, Any]) -> None:
         """Handle ``fs/read_text_file`` request from the agent."""

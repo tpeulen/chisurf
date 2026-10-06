@@ -1,4 +1,5 @@
 """Capture the populated retained Qt GPU widget before native migration."""
+
 from pathlib import Path
 
 from qtpy.QtWidgets import QApplication

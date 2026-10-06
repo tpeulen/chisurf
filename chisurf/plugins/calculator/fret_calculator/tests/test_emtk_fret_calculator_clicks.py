@@ -55,14 +55,34 @@ def spin(app, name, direction, size=SIZE):
 
 # ── fields: arrows, wheel, click-away commit ----------------------------------------------------- #
 
-HETERO_ARROWS = [("tau0", "tau"), ("R0", "E"), ("R", "E"), ("tau", "R"), ("E", "R"), ("kFRET", "R"), ("sigma", "E")]
-HOMO_ARROWS = [("tau0", "R_DA"), ("R0", "R_DA"), ("t_RM", "R_DA"), ("rho", "R_DA"), ("R_DA", "t_RM"), ("sigma", None)]
+HETERO_ARROWS = [
+    ("tau0", "tau"),
+    ("R0", "E"),
+    ("R", "E"),
+    ("tau", "R"),
+    ("E", "R"),
+    ("kFRET", "R"),
+    ("sigma", "E"),
+]
+HOMO_ARROWS = [
+    ("tau0", "R_DA"),
+    ("R0", "R_DA"),
+    ("t_RM", "R_DA"),
+    ("rho", "R_DA"),
+    ("R_DA", "t_RM"),
+    ("sigma", None),
+]
 
 
 @pytest.mark.parametrize(("name", "follows"), HETERO_ARROWS)
 def test_each_hetero_arrow_steps_its_field_up_and_down_and_runs_its_handler(app, name, follows):
     m = app.model.hetero
-    section = next(s for sec in app.hetero.form_spec["sections"] for s in sec["sections"] if s.get("attr") == name)
+    section = next(
+        s
+        for sec in app.hetero.form_spec["sections"]
+        for s in sec["sections"]
+        if s.get("attr") == name
+    )
     start = getattr(m, name)
     other = getattr(m, follows)
     spin(app, name, +1)
@@ -73,7 +93,11 @@ def test_each_hetero_arrow_steps_its_field_up_and_down_and_runs_its_handler(app,
     spin(app, name, -1)
     down = getattr(m, name)
     assert down < up, (name, up, down)
-    assert m.status == "" or name in ("E", "tau", "kFRET")  # a stepped inverse may leave its range, then it says so
+    assert m.status == "" or name in (
+        "E",
+        "tau",
+        "kFRET",
+    )  # a stepped inverse may leave its range, then it says so
 
 
 @pytest.mark.parametrize(("name", "follows"), HOMO_ARROWS)
@@ -95,11 +119,16 @@ def test_each_homo_arrow_steps_its_field_up_and_down_and_runs_its_handler(app, n
 
 def test_a_step_is_one_decade_below_the_value_when_the_spec_names_none(app):
     section = {"kind": "float"}
-    assert spin_step(50.0, section) == 1.0 and spin_step(4.0, section) == 0.1  # what the arrows moved in the checks above
+    assert (
+        spin_step(50.0, section) == 1.0 and spin_step(4.0, section) == 0.1
+    )  # what the arrows moved in the checks above
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: a DockManager window consumes the wheel, a spin field inside it never sees it "
-                   "(works in a plain im.begin window); see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: a DockManager window consumes the wheel, a spin field inside it never sees it "
+    "(works in a plain im.begin window); see REPORT.md section 10",
+)
 def test_the_wheel_over_a_field_steps_it(app):
     m = app.model.hetero
     draw(app)
@@ -144,8 +173,11 @@ def test_a_clicked_field_takes_the_keyboard_and_a_read_only_one_ignores_typing(a
     assert app.model.homo.k_homo != 7.0 and "7" not in app.active.form.buffers.get("k_homo", "")
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: a text field keeps the keyboard after a click on a checkbox or button, "
-                   "so the next typed character lands in it; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: a text field keeps the keyboard after a click on a checkbox or button, "
+    "so the next typed character lands in it; see REPORT.md section 10",
+)
 def test_clicking_a_checkbox_takes_the_keyboard_away_from_a_text_field(app):
     draw(app)
     click(app, app.active.form.rects["R0"], fx=0.3)
@@ -174,7 +206,9 @@ def test_clicking_the_tab_labels_switches_the_window_and_the_selected_tab_is_kep
     assert "HeteroFRET" in " ".join(draw(app).strings)
     click(app, app.item_rects["tab_homofret"])
     strings = draw(app).strings
-    assert "Homo-FRET parameters" in strings and "k_homo" in strings and "Lifetime D0" not in strings
+    assert (
+        "Homo-FRET parameters" in strings and "k_homo" in strings and "Lifetime D0" not in strings
+    )
     assert app.export_settings()["tab"] == 1
     click(app, app.item_rects["tab_heterofret"])
     assert "Lifetime D0" in draw(app).strings and app.export_settings()["tab"] == 0
@@ -197,8 +231,11 @@ def tick_labels(painter):
     return [s for s in painter.strings if s.replace(".", "").replace("-", "").isdigit()]
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot can be "
-                   "zoomed with it (works in a plain im.begin window); see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot can be "
+    "zoomed with it (works in a plain im.begin window); see REPORT.md section 10",
+)
 def test_the_wheel_zooms_a_plot(app):
     draw(app)
     before = tick_labels(draw(app))
@@ -231,7 +268,9 @@ def test_a_plot_redraws_with_the_curves_after_a_field_edit(app):
     assert {"Gaussian", "chi"} <= set(first.strings)
     type_into(app, "sigma", "20")
     series = {s["name"]: s for s in app.model.hetero.distance_plot_series()}
-    assert max(series["Gaussian"]["y"]) < 0.02  # a broad distribution: lower peak than the sigma = 6 default (0.0166)
+    assert (
+        max(series["Gaussian"]["y"]) < 0.02
+    )  # a broad distribution: lower peak than the sigma = 6 default (0.0166)
     assert series["Gaussian"]["x"][0] == 0.0
 
 
@@ -243,7 +282,9 @@ def test_the_guide_button_starts_the_tour_and_close_tour_ends_it(app):
     assert app.tour.active and app.tour.step_idx == 0
     painter = draw(app)
     assert app.tour.awaiting and {"Next ►", "◄ Prev", "Close Tour"} <= set(painter.strings)
-    type_into(app, "tau0", "3")  # the highlighted field is operated by the user: the tour is released
+    type_into(
+        app, "tau0", "3"
+    )  # the highlighted field is operated by the user: the tour is released
     assert not app.tour.awaiting
     click(app, text_rect(draw(app), "Close Tour"))
     assert not app.tour.active
@@ -276,7 +317,9 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
             else:
                 current = getattr(app.active.model, name)
                 type_into(app, name, repr(round(current * 0.9, 3)) if current else "1")
-            assert not app.tour.awaiting, f"{step['title']}: operating {name} did not release the step"
+            assert not app.tour.awaiting, (
+                f"{step['title']}: operating {name} did not release the step"
+            )
         app.tour.next()  # the Next button's callback (its click is the xfail test above)
         walked += 1
     assert not app.tour.active and app.active_tab == 1  # ended on the HomoFRET tab
@@ -303,13 +346,19 @@ def test_the_help_button_opens_a_window_with_working_buttons(app):
     assert not app.help_window.open
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the help window's section buttons are all '...##filter' (one id), so a click on any but "
-                   "the first never fires; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the help window's section buttons are all '...##filter' (one id), so a click on any but "
+    "the first never fires; see REPORT.md section 10",
+)
 def test_a_help_section_button_shows_only_that_section(app):
     press_text(app, "Help")
     click(app, text_rect(draw(app), "Plots"))
     shown = " ".join(draw(app).strings)
-    assert "The distance distribution and the induced rate" in shown and "HeteroFRET links the donor-acceptor" not in shown
+    assert (
+        "The distance distribution and the induced rate" in shown
+        and "HeteroFRET links the donor-acceptor" not in shown
+    )
 
 
 # ── file drop through the Qt host -------------------------------------------------------------------------- #
@@ -326,10 +375,22 @@ def test_a_file_dropped_on_the_host_reaches_the_app_and_says_the_calculator_has_
     host.show()
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile("/tmp/run.ptu")])
-    enter = QtGui.QDragEnterEvent(QtCore.QPoint(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    enter = QtGui.QDragEnterEvent(
+        QtCore.QPoint(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dragEnterEvent(enter)
     assert enter.isAccepted(), "the host refuses a drop on this app"
-    drop = QtGui.QDropEvent(QtCore.QPointF(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    drop = QtGui.QDropEvent(
+        QtCore.QPointF(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dropEvent(drop)
     qapp.processEvents()
     assert drop.isAccepted()
@@ -352,5 +413,9 @@ def test_the_flow_works_in_the_small_window_too(app):
     click(app, app.item_rects["tab_homofret"], SMALL)
     assert app.active_tab == 1
     type_into(app, "t_RM", "2", size=SMALL)
-    assert app.model.homo.t_RM == 2.0 and hetero_state(m)["R"] == 57.0 and homo_state(app.model.homo)["R_DA"] != 51.35
+    assert (
+        app.model.homo.t_RM == 2.0
+        and hetero_state(m)["R"] == 57.0
+        and homo_state(app.model.homo)["R_DA"] != 51.35
+    )
     assert edit  # (re-exported helper kept for symmetry with the parity tests)

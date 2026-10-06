@@ -40,7 +40,7 @@ def _palette():
         colours = [c["hex"].lstrip("#") for c in settings.colors]
     except Exception:  # noqa: BLE001 - a missing palette falls back to one colour
         colours = ["78DBE2"]
-    return [tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (255,) for h in colours]
+    return [tuple(int(h[i : i + 2], 16) for i in (0, 2, 4)) + (255,) for h in colours]
 
 
 class _Form:
@@ -114,12 +114,24 @@ class MergerApp(ImApp):
         self.form_model = _Form(self)
         self.form = FormState(on_used=self._used)
         self.form.custom["status"] = self.draw_status
-        self.help = EmTkHelpWindow(title="FCS curve merger — help", resource=PLUGIN / "help.md", owner=self,
-                                   on_start_guide=lambda: self.tour.start())
-        self.tour = EmTkGuidedTour(steps=PLUGIN / "guide.json", owner=self, wait_for_controls=True,
-                                   get_target_rect=lambda key: self.item_rects.get(TOUR_KEYS.get(key, key)))
-        self.docks = DockManager(Split("h", 0.44, Region("files"), Split("v", 0.5, Region("curves"), Region("mean"))))
-        self.docks.add_window("files", "Curves and target", self.draw_files, dock="files", closable=False)
+        self.help = EmTkHelpWindow(
+            title="FCS curve merger — help",
+            resource=PLUGIN / "help.md",
+            owner=self,
+            on_start_guide=lambda: self.tour.start(),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=PLUGIN / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(TOUR_KEYS.get(key, key)),
+        )
+        self.docks = DockManager(
+            Split("h", 0.44, Region("files"), Split("v", 0.5, Region("curves"), Region("mean")))
+        )
+        self.docks.add_window(
+            "files", "Curves and target", self.draw_files, dock="files", closable=False
+        )
         self.docks.add_window("curves", "FCS", self.draw_curves, dock="curves", closable=False)
         self.docks.add_window("mean", "FCS Merged", self.draw_mean, dock="mean", closable=False)
         self.native_layouts = {"main": self.docks}
@@ -187,12 +199,19 @@ class MergerApp(ImApp):
                 if len(state.get("use", [])) == len(self.model.use):
                     self.use = list(state["use"])
                 self.model.output = str(state.get("output") or self.model.output)
-                self.model.selected = min(int(state.get("selected", 0)), len(self.model.correlations) - 1)
-            self.model.status = f"Loaded {len(curves)} curves." + (f" Skipped: {'; '.join(skipped)}" if skipped else "")
+                self.model.selected = min(
+                    int(state.get("selected", 0)), len(self.model.correlations) - 1
+                )
+            self.model.status = f"Loaded {len(curves)} curves." + (
+                f" Skipped: {'; '.join(skipped)}" if skipped else ""
+            )
             self.tour.notify_used("lineEdit")
 
-        return self.job.start(lambda: read_folder(folder), publish,
-                              lambda exc: self._fail(f"Could not read {Path(folder).name}: {exc}"))
+        return self.job.start(
+            lambda: read_folder(folder),
+            publish,
+            lambda exc: self._fail(f"Could not read {Path(folder).name}: {exc}"),
+        )
 
     def save(self, filename=None, add=False):
         """Write the merge on the worker; with *add*, then add it to ChiSurf as an FCS dataset."""
@@ -217,16 +236,26 @@ class MergerApp(ImApp):
 
                     dispatch(name="experiment.set", payload={"name": "FCS"})
                     dispatch(name="setup.select", payload={"name": "Seidel Kristine"})
-                    dispatch(name="dataset.add", payload={"filename": str(path), "experiment_reader": None})
+                    dispatch(
+                        name="dataset.add",
+                        payload={"filename": str(path), "experiment_reader": None},
+                    )
                 self.model.status += " Added to ChiSurf."
 
-        return self.job.start(lambda: self.model.save(target), publish,
-                              lambda exc: self._fail(f"Saving failed: {exc}"))
+        return self.job.start(
+            lambda: self.model.save(target),
+            publish,
+            lambda exc: self._fail(f"Saving failed: {exc}"),
+        )
 
     def choose(self, mode):
         title = "Correlation folder" if mode == "folder" else "Save merged correlation"
-        self.dialog = FileDialog(title, mode=mode, filters="Correlation (*.cor);;All files (*)",
-                                 filename=Path(self.model.output).name if mode == "save" and self.model.output else "")
+        self.dialog = FileDialog(
+            title,
+            mode=mode,
+            filters="Correlation (*.cor);;All files (*)",
+            filename=Path(self.model.output).name if mode == "save" and self.model.output else "",
+        )
         self.dialog_window = DialogWindow(title, size=(720, 520))
         self.dialog_mode = mode
 
@@ -278,14 +307,16 @@ class MergerApp(ImApp):
     # -- drawing -----------------------------------------------------------------------
     def draw_status(self, section, model, state, width):
         if self.model.error:
-            im.push_style_color(im.Col.TEXT, ERROR)              # wrapped: a path does not fit a dock
+            im.push_style_color(im.Col.TEXT, ERROR)  # wrapped: a path does not fit a dock
             im.text_wrapped(self.model.error)
             im.pop_style_color()
         else:
             im.text_wrapped(self.model.status)
         m = self.model
         if m.correlations and not any(m.use):
-            im.text_disabled("No curve ticked: the merge averages all of them, as the Qt page does.")
+            im.text_disabled(
+                "No curve ticked: the merge averages all of them, as the Qt page does."
+            )
 
     def draw_files(self, box):
         self.item_rects["files"] = tuple(box)
@@ -301,9 +332,14 @@ class MergerApp(ImApp):
             for i, curve in enumerate(m.correlations):
                 used = m.use[i]
                 colour = self.palette[i % len(self.palette)] if used else UNUSED
-                implot.set_next_line_style(colour, 3.0 if used and i == m.selected else 1.0,
-                                           None if used else (5.0, 4.0))
-                implot.plot_line(f"{m.labels[i]}##{i}", np.asarray(curve["x"], float), np.asarray(curve["y"], float))
+                implot.set_next_line_style(
+                    colour, 3.0 if used and i == m.selected else 1.0, None if used else (5.0, 4.0)
+                )
+                implot.plot_line(
+                    f"{m.labels[i]}##{i}",
+                    np.asarray(curve["x"], float),
+                    np.asarray(curve["y"], float),
+                )
             implot.end_plot()
         self.item_rects["curves"] = tuple(box)
 
@@ -313,8 +349,11 @@ class MergerApp(ImApp):
             implot.setup_axes("Lag time (s)", "G(τ)")
             implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
             if mean is not None:
-                implot.plot_line(f"Merge of {self.model.n_used()}", np.asarray(mean["x"], float),
-                                 np.asarray(mean["y"], float))
+                implot.plot_line(
+                    f"Merge of {self.model.n_used()}",
+                    np.asarray(mean["x"], float),
+                    np.asarray(mean["y"], float),
+                )
             implot.end_plot()
         self.item_rects["mean"] = tuple(box)
 

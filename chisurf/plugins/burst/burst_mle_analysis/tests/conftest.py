@@ -62,13 +62,27 @@ def hermetic_settings(tmp_path, monkeypatch):
 # Real photons and a real fit: no invented or externally downloaded fixture. The wizard writes beside the burst
 # files, so everything runs on a temporary copy.
 # --------------------------------------------------------------------------------------------------------------------
-REPO_DATA = Path(__file__).resolve().parents[2] / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+REPO_DATA = (
+    Path(__file__).resolve().parents[2] / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+)
 BURST_TABLE = Path("burstwise_All 0.1000#15") / "bi4_bur" / "m000.bur"
 #: BH SPC-132 dual-colour polarisation routing: green 0/1, red 8/9 (the detector page's definition).
 CHANNEL_SETTINGS = {
     "detectors": {
-        "green": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0308, "l2": 0.0368},
-        "red": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0308, "l2": 0.0368},
+        "green": {
+            "chs": [0, 1],
+            "micro_time_ranges": [],
+            "g_factor": 1.0,
+            "l1": 0.0308,
+            "l2": 0.0368,
+        },
+        "red": {
+            "chs": [8, 9],
+            "micro_time_ranges": [],
+            "g_factor": 1.0,
+            "l1": 0.0308,
+            "l2": 0.0368,
+        },
     },
     "windows": {},
     "file_type": "SPC-130",

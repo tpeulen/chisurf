@@ -76,7 +76,9 @@ class AccurateFretGui(TourTarget):
             get_target_rect=lambda key: self.item_rects.get(key),
             owner=model,
             wait_for_controls=True,
-            on_step_change=lambda _index, step: self.reveal(self.tour._target_key(step.get("target"))),
+            on_step_change=lambda _index, step: self.reveal(
+                self.tour._target_key(step.get("target"))
+            ),
         )
         self.on_used = self.tour.notify_used
         self.form_state.on_used = self.tour.notify_used
@@ -157,7 +159,9 @@ class AccurateFretGui(TourTarget):
             self._open_once.discard(title)
             opened = im.collapsing_header(title, True)
         else:
-            opened = im.collapsing_header(title, im.TreeNodeFlags.DEFAULT_OPEN if default_open else 0)
+            opened = im.collapsing_header(
+                title, im.TreeNodeFlags.DEFAULT_OPEN if default_open else 0
+            )
         self.remember(title)
         return opened
 
@@ -323,7 +327,12 @@ class AccurateFretGui(TourTarget):
                         "source": source,
                         "editable": False,
                         "columns": [
-                            {"key": key, "title": label, "width": width, "description": f"{label} of each row."}
+                            {
+                                "key": key,
+                                "title": label,
+                                "width": width,
+                                "description": f"{label} of each row.",
+                            }
                             for key, label, width in columns
                         ],
                     },
@@ -376,7 +385,13 @@ class AccurateFretGui(TourTarget):
             im.text_wrapped(self.model.results_text)
 
     def _draw_plot(self, title, xlabel, ylabel, series, box=None):
-        key = "es_plot" if title == "E–S" else "lifetime_plot" if title == "E–lifetime" else "histogram"
+        key = (
+            "es_plot"
+            if title == "E–S"
+            else "lifetime_plot"
+            if title == "E–lifetime"
+            else "histogram"
+        )
         if implot.begin_plot(title, (-1, -1)):
             implot.setup_axes(xlabel, ylabel)
             # Top right is empty in all three plots; the default top-left legend
@@ -418,7 +433,7 @@ class AccurateFretGui(TourTarget):
         rect = tuple(box) if box is not None else None
         self.remember(key, rect)
         if key == "histogram":
-            self.remember("E histogram", rect)      # the guide's name for it
+            self.remember("E histogram", rect)  # the guide's name for it
         im.set_item_tooltip(
             "Measured burst classes and calibrated FRET lines. Drag to pan; scroll to zoom."
             if series

@@ -26,19 +26,43 @@ REAL_POPEN = subprocess.Popen
 
 #: The releases the fake download server lists, newest first (``_list_remote_versions`` returns them).
 RELEASES = [
-    {"version": "26.10.02", "file_path": "https://downloads.invalid/chisurf/conda/macos/chisurf-macos-26.10.02.tar.bz2",
-     "file_name": "chisurf-macos-26.10.02.tar.bz2"},
-    {"version": "26.09.20", "file_path": "https://downloads.invalid/chisurf/conda/macos/chisurf-macos-26.09.20.tar.bz2",
-     "file_name": "chisurf-macos-26.09.20.tar.bz2"},
-    {"version": "26.08.01", "file_path": "https://downloads.invalid/chisurf/conda/macos/chisurf-macos-26.08.01.conda",
-     "file_name": "chisurf-macos-26.08.01.conda"},
+    {
+        "version": "26.10.02",
+        "file_path": "https://downloads.invalid/chisurf/conda/macos/chisurf-macos-26.10.02.tar.bz2",
+        "file_name": "chisurf-macos-26.10.02.tar.bz2",
+    },
+    {
+        "version": "26.09.20",
+        "file_path": "https://downloads.invalid/chisurf/conda/macos/chisurf-macos-26.09.20.tar.bz2",
+        "file_name": "chisurf-macos-26.09.20.tar.bz2",
+    },
+    {
+        "version": "26.08.01",
+        "file_path": "https://downloads.invalid/chisurf/conda/macos/chisurf-macos-26.08.01.conda",
+        "file_name": "chisurf-macos-26.08.01.conda",
+    },
 ]
 
 #: What the fake GitHub commits API returns (``_build_changelog`` reads author, date and the first message line).
 COMMITS = [
-    {"commit": {"message": "Add the updater tour\n\nbody text", "author": {"name": "Ada", "date": "2026-10-01T10:00:00Z"}}},
-    {"commit": {"message": "Merge branch 'x'", "author": {"name": "Bob", "date": "2026-09-30T10:00:00Z"}}},
-    {"commit": {"message": "Fix <b>bold</b> & ampersand handling", "author": {"name": "Cy", "date": "2026-09-25T08:00:00Z"}}},
+    {
+        "commit": {
+            "message": "Add the updater tour\n\nbody text",
+            "author": {"name": "Ada", "date": "2026-10-01T10:00:00Z"},
+        }
+    },
+    {
+        "commit": {
+            "message": "Merge branch 'x'",
+            "author": {"name": "Bob", "date": "2026-09-30T10:00:00Z"},
+        }
+    },
+    {
+        "commit": {
+            "message": "Fix <b>bold</b> & ampersand handling",
+            "author": {"name": "Cy", "date": "2026-09-25T08:00:00Z"},
+        }
+    },
 ]
 
 #: What the fake solver lists as installed (``list --json``: name, version, channel, as conda prints them).
@@ -53,14 +77,37 @@ INSTALLED = [
 #: ``search numpy --json`` as conda prints it: a mapping from the package name to its builds.
 SEARCH_CONDA = {
     "numpy": [
-        {"name": "numpy", "version": "1.26.3", "build": "py311_0", "channel": "https://conda.anaconda.org/conda-forge/osx-arm64"},
-        {"name": "numpy", "version": "1.26.4", "build": "py311_0", "channel": "https://conda.anaconda.org/conda-forge/osx-arm64"},
-        {"name": "numpy", "version": "1.26.4", "build": "py312_0", "channel": "https://conda.anaconda.org/conda-forge/osx-arm64"},
-        {"name": "numpy", "version": "2.0.1", "build": "py312_0", "channel": "https://conda.anaconda.org/conda-forge/osx-arm64"},
+        {
+            "name": "numpy",
+            "version": "1.26.3",
+            "build": "py311_0",
+            "channel": "https://conda.anaconda.org/conda-forge/osx-arm64",
+        },
+        {
+            "name": "numpy",
+            "version": "1.26.4",
+            "build": "py311_0",
+            "channel": "https://conda.anaconda.org/conda-forge/osx-arm64",
+        },
+        {
+            "name": "numpy",
+            "version": "1.26.4",
+            "build": "py312_0",
+            "channel": "https://conda.anaconda.org/conda-forge/osx-arm64",
+        },
+        {
+            "name": "numpy",
+            "version": "2.0.1",
+            "build": "py312_0",
+            "channel": "https://conda.anaconda.org/conda-forge/osx-arm64",
+        },
     ],
 }
 #: The same search as micromamba prints it.
-SEARCH_MICROMAMBA = {"result": {"pkgs": [dict(p, channel="conda-forge") for p in SEARCH_CONDA["numpy"]]}, "status": "OK"}
+SEARCH_MICROMAMBA = {
+    "result": {"pkgs": [dict(p, channel="conda-forge") for p in SEARCH_CONDA["numpy"]]},
+    "status": "OK",
+}
 
 ENVS = ["/fake/mambaforge", "/fake/mambaforge/envs/arm64", "/fake/mambaforge/envs/analysis"]
 CHANNELS = ["conda-forge", "defaults"]
@@ -89,8 +136,15 @@ class _Response:
 class Fakes:
     """The recorded stand-ins; ``install(monkeypatch)`` puts them in place."""
 
-    def __init__(self, *, search: Any = None, installed: list | None = None, releases: list | None = None,
-                 commits: list | None = None, solver_fails: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        search: Any = None,
+        installed: list | None = None,
+        releases: list | None = None,
+        commits: list | None = None,
+        solver_fails: bool = False,
+    ) -> None:
         self.releases = [dict(r) for r in (RELEASES if releases is None else releases)]
         self.commits = COMMITS if commits is None else commits
         self.installed = [dict(p) for p in (INSTALLED if installed is None else installed)]
@@ -135,7 +189,9 @@ class Fakes:
         """The scripted answer of the solver to *cmd* (``ok, stdout, stderr, returncode``)."""
         cmd = list(cmd)
         self.solver_commands.append(cmd)
-        if self.solver_fails and any(c in cmd for c in ("install", "remove", "update", "create", "--add", "--remove")):
+        if self.solver_fails and any(
+            c in cmd for c in ("install", "remove", "update", "create", "--add", "--remove")
+        ):
             return False, "", "fake solver: the operation is refused", 1
         words = cmd[1:]
         if words[:1] == ["list"]:
@@ -145,7 +201,12 @@ class Fakes:
         if words[:2] == ["env", "list"]:
             return True, json.dumps({"envs": self.envs}), "", 0
         if words[:2] == ["env", "export"]:
-            return True, "name: fake\nchannels:\n  - conda-forge\ndependencies:\n  - numpy=1.26.4\n", "", 0
+            return (
+                True,
+                "name: fake\nchannels:\n  - conda-forge\ndependencies:\n  - numpy=1.26.4\n",
+                "",
+                0,
+            )
         if words[:1] == ["config"] and "--show" in words:
             return True, json.dumps({"channels": self.channels}), "", 0
         return True, f"fake solver ran: {' '.join(words)}", "", 0
@@ -174,7 +235,7 @@ class Fakes:
         raise NetworkBlocked(f"no process may be started: {args[:1]}")
 
     # -- wiring -------------------------------------------------------------------------------------------------------- #
-    def install(self, patcher) -> "Fakes":
+    def install(self, patcher) -> Fakes:
         """Put every fake in place with *patcher* (a ``pytest.MonkeyPatch``)."""
         import subprocess
         import urllib.request
@@ -184,9 +245,14 @@ class Fakes:
         fakes = self
         Updater, Manager = up.ChiSurfUpdater, up.PackageManager
         patcher.setattr(Updater, "_run_command", lambda s, cmd: fakes.run_command(s, cmd))
-        patcher.setattr(Updater, "_run_with_elevation", lambda s, cmd: fakes.run_with_elevation(s, cmd))
-        patcher.setattr(Updater, "_run_update_in_separate_process",
-                        lambda s, cmd, callback=None: fakes.run_update_in_separate_process(s, cmd, callback))
+        patcher.setattr(
+            Updater, "_run_with_elevation", lambda s, cmd: fakes.run_with_elevation(s, cmd)
+        )
+        patcher.setattr(
+            Updater,
+            "_run_update_in_separate_process",
+            lambda s, cmd, callback=None: fakes.run_update_in_separate_process(s, cmd, callback),
+        )
         patcher.setattr(Updater, "_schedule_restart", lambda s: fakes.schedule_restart(s))
         patcher.setattr(Updater, "_list_remote_versions", lambda s: fakes.list_remote_versions(s))
         patcher.setattr(Manager, "_popen", lambda s, cmd: fakes.popen(s, cmd))
@@ -213,16 +279,37 @@ class Fakes:
             out.append(cmd)
         return out
 
-    def expected_update_commands(self, file_path_or_name: str, *, sys_prefix: str | None = None) -> list[str]:
+    def expected_update_commands(
+        self, file_path_or_name: str, *, sys_prefix: str | None = None
+    ) -> list[str]:
         """The line ``update_to_version`` builds for a package file (written out, not derived from the code under test)."""
-        return ["/fake/bin/micromamba", "install", "--yes", "--update-deps", "--force-reinstall", "--prefix",
-                sys_prefix or sys.prefix, file_path_or_name]
+        return [
+            "/fake/bin/micromamba",
+            "install",
+            "--yes",
+            "--update-deps",
+            "--force-reinstall",
+            "--prefix",
+            sys_prefix or sys.prefix,
+            file_path_or_name,
+        ]
 
     @staticmethod
     def expected_latest_command(sys_prefix: str | None = None) -> list[str]:
         """The line ``update`` builds when it has no package file."""
-        return ["/fake/bin/micromamba", "install", "-y", "--update-deps", "--prefix", sys_prefix or sys.prefix,
-                "chisurf", "-c", "conda-forge", "-c", "defaults"]
+        return [
+            "/fake/bin/micromamba",
+            "install",
+            "-y",
+            "--update-deps",
+            "--prefix",
+            sys_prefix or sys.prefix,
+            "chisurf",
+            "-c",
+            "conda-forge",
+            "-c",
+            "defaults",
+        ]
 
 
 def hermetic_environment(tmp_path, patcher) -> None:

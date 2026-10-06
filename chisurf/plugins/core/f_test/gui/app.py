@@ -12,12 +12,15 @@ from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
-from .model import FTestModel, _CONF_ATTRS, _CHI2_2_ATTRS, _CHI2_MAX_ATTRS
+
+from .model import _CHI2_2_ATTRS, _CHI2_MAX_ATTRS, _CONF_ATTRS, FTestModel
 
 #: The Qt tool's "From fit" menu: three load targets per open fit.
-LOAD_TARGETS = (("model1", "→ F-test model 1 (χ²₁, n₁)"),
-                ("model2", "→ F-test model 2 (χ²₂, n₂)"),
-                ("chi2max", "→ χ²-max (χ²min, params, ν)"))
+LOAD_TARGETS = (
+    ("model1", "→ F-test model 1 (χ²₁, n₁)"),
+    ("model2", "→ F-test model 2 (χ²₂, n₂)"),
+    ("chi2max", "→ χ²-max (χ²min, params, ν)"),
+)
 
 
 def open_fits() -> list[Any]:
@@ -34,8 +37,9 @@ def open_fits() -> list[Any]:
 
 
 class FTestApp(ImApp):
-    def __init__(self, model: FTestModel | None = None,
-                 fit_provider: Callable[[], list[Any]] | None = None) -> None:
+    def __init__(
+        self, model: FTestModel | None = None, fit_provider: Callable[[], list[Any]] | None = None
+    ) -> None:
         self.model = model or FTestModel()
         self.fit_provider = fit_provider or open_fits
         self.fits: list[Any] = []
@@ -55,13 +59,33 @@ class FTestApp(ImApp):
                 elif attr in _CHI2_MAX_ATTRS:
                     field["call"] = "recompute_chi2_max"
         self.forms = [FormState(), FormState()]
-        self.help_window = EmTkHelpWindow(title="F-test — Help", resource=Path(__file__).with_name("help.md"), owner=self)
-        self.tour = EmTkGuidedTour(steps=Path(__file__).with_name("guide.json"), get_target_rect=self.target_rect, owner=self, wait_for_controls=True, on_step_change=self.reveal_step)
+        self.help_window = EmTkHelpWindow(
+            title="F-test — Help", resource=Path(__file__).with_name("help.md"), owner=self
+        )
+        self.tour = EmTkGuidedTour(
+            steps=Path(__file__).with_name("guide.json"),
+            get_target_rect=self.target_rect,
+            owner=self,
+            wait_for_controls=True,
+            on_step_change=self.reveal_step,
+        )
         for form in self.forms:
             form.on_used = self.tour.notify_used
-        self.docks = DockManager(Split("v", .58, Region("comparison"), Region("upper_limit")))
-        self.docks.add_window("comparison", "F-test: compare nested fits", self.draw_comparison, dock="comparison", closable=False)
-        self.docks.add_window("upper_limit", "Chi-square upper limit", self.draw_upper_limit, dock="upper_limit", closable=False)
+        self.docks = DockManager(Split("v", 0.58, Region("comparison"), Region("upper_limit")))
+        self.docks.add_window(
+            "comparison",
+            "F-test: compare nested fits",
+            self.draw_comparison,
+            dock="comparison",
+            closable=False,
+        )
+        self.docks.add_window(
+            "upper_limit",
+            "Chi-square upper limit",
+            self.draw_upper_limit,
+            dock="upper_limit",
+            closable=False,
+        )
         self.refresh_fits()
         super().__init__(self.render, continuous=False)
 
@@ -72,7 +96,9 @@ class FTestApp(ImApp):
                 form.folds[panel["title"]] = True
 
     def target_rect(self, name):
-        return self.item_rects.get(name) or next((form.rects[name] for form in self.forms if name in form.rects), None)
+        return self.item_rects.get(name) or next(
+            (form.rects[name] for form in self.forms if name in form.rects), None
+        )
 
     def refresh_fits(self) -> None:
         """Re-read the open fits (the Qt menu rebuilds itself each time it opens)."""

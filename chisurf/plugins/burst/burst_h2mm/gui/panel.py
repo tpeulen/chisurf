@@ -81,8 +81,16 @@ def make_panel(parent: Any = None):
         def failed(error):
             model.status_text = f"Error: {error}"
 
-        run_in_background(host, "Fitting H2MM models ...", worker, maximum=100, title="H2MM", owner=host,
-                          on_result=done, on_error=failed)
+        run_in_background(
+            host,
+            "Fitting H2MM models ...",
+            worker,
+            maximum=100,
+            title="H2MM",
+            owner=host,
+            on_result=done,
+            on_error=failed,
+        )
 
     host._run_analysis = run
     host.stop = app.stop

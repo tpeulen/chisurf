@@ -6,7 +6,7 @@ LOCALES = ("en", "de", "fr", "es", "pt", "ru")
 
 # Every native control uses one of these stable English identities. Tooltip
 # messages are kept here too, so changing locale covers help as well as labels.
-ROWS = '''Plot Settings|Diagrammeinstellungen|Paramètres des graphiques|Ajustes de gráficos|Configurações de gráficos|Настройки графиков
+ROWS = """Plot Settings|Diagrammeinstellungen|Paramètres des graphiques|Ajustes de gráficos|Configurações de gráficos|Настройки графиков
 Rendering Backend|Render-Backend|Moteur de rendu|Motor de renderizado|Motor de renderização|Движок отрисовки
 Active backend|Aktives Backend|Moteur actif|Motor activo|Motor ativo|Активный движок
 Colors|Farben|Couleurs|Colores|Cores|Цвета
@@ -64,7 +64,7 @@ Choose contrasting axis and tick color.|Kontrastfarbe für Achsen wählen.|Chois
 Apply the current values to this session.|Aktuelle Werte in dieser Sitzung anwenden.|Appliquer les valeurs à cette session.|Aplicar valores a esta sesión.|Aplicar valores a esta sessão.|Применить значения в сеансе.
 Save plot settings to the settings file.|Diagrammeinstellungen in der Datei speichern.|Enregistrer les paramètres dans le fichier.|Guardar ajustes en el archivo.|Salvar configurações no arquivo.|Сохранить настройки графика в файл.
 Reload plot settings from the settings file.|Diagrammeinstellungen aus der Datei laden.|Recharger les paramètres du fichier.|Recargar ajustes desde el archivo.|Recarregar configurações do arquivo.|Загрузить настройки графика из файла.
-Sample data, model and instrument response using the selected colors.|Beispiel für Daten, Modell und Instrumentenantwort in gewählten Farben.|Données, modèle et réponse instrumentale avec les couleurs choisies.|Datos, modelo y respuesta instrumental con colores elegidos.|Dados, modelo e resposta instrumental nas cores escolhidas.|Пример данных, модели и отклика прибора в выбранных цветах.'''
+Sample data, model and instrument response using the selected colors.|Beispiel für Daten, Modell und Instrumentenantwort in gewählten Farben.|Données, modèle et réponse instrumentale avec les couleurs choisies.|Datos, modelo y respuesta instrumental con colores elegidos.|Dados, modelo e resposta instrumental nas cores escolhidas.|Пример данных, модели и отклика прибора в выбранных цветах."""
 
 TRANSLATIONS = {locale: {} for locale in LOCALES}
 for line in ROWS.splitlines():

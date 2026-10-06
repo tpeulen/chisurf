@@ -34,10 +34,21 @@ print("FACTS" + json.dumps({"bindings": {k: v.name for k, v in BINDINGS.items()}
                             "shares_model": issubclass(TetrisGame, TetrisModel)}))
 """
 
-ACTION = {"LEFT": "left", "RIGHT": "right", "DOWN": "down", "CONFIRM": "confirm", "MENU": "menu",
-          "CANCEL": "cancel", "SHOULDER_R": "shoulder_r"}
-KEYCODE = {"ArrowLeft": (KEY_LEFT, ""), "ArrowRight": (KEY_RIGHT, ""), "ArrowDown": (KEY_DOWN, ""),
-           "ArrowUp": (KEY_UP, "")}
+ACTION = {
+    "LEFT": "left",
+    "RIGHT": "right",
+    "DOWN": "down",
+    "CONFIRM": "confirm",
+    "MENU": "menu",
+    "CANCEL": "cancel",
+    "SHOULDER_R": "shoulder_r",
+}
+KEYCODE = {
+    "ArrowLeft": (KEY_LEFT, ""),
+    "ArrowRight": (KEY_RIGHT, ""),
+    "ArrowDown": (KEY_DOWN, ""),
+    "ArrowUp": (KEY_UP, ""),
+}
 
 
 @pytest.fixture(scope="module")
@@ -45,14 +56,22 @@ def qt():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT], capture_output=True, text=True, timeout=300,
-                          env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt game's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 def test_the_qt_game_runs_the_same_model(qt):
@@ -75,7 +94,7 @@ def test_keys_drive_the_game_like_the_qt_controller():
     app.key(ord("p"), "p")
     assert game.paused is False
     app.key_release(ord("p"), "p")
-    app.key(ord(" "), " ")                      # hard drop: the piece is written into the well
+    app.key(ord(" "), " ")  # hard drop: the piece is written into the well
     app.advance(1 / 60)
     assert sum(cell is not None for row in game.well for cell in row) == 4
 
@@ -85,8 +104,11 @@ def test_sound_is_greyed_without_an_audio_output_and_works_with_one():
     app.set_sound()
     assert app.sound_enabled is False
     calls = []
-    audio = SimpleNamespace(sfx=lambda *a: calls.append(("sfx", a)), set_enabled=lambda on: calls.append(("on", on)),
-                            close=lambda: calls.append(("close",)))
+    audio = SimpleNamespace(
+        sfx=lambda *a: calls.append(("sfx", a)),
+        set_enabled=lambda on: calls.append(("on", on)),
+        close=lambda: calls.append(("close",)),
+    )
     app = make_app(audio=audio)
     app.set_sound()
     assert app.sound_enabled is True and ("on", True) in calls

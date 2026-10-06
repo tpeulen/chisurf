@@ -56,8 +56,16 @@ def arrow(app, name, direction, size=SIZE):
 
 # ── the eight spin fields -------------------------------------------------------------------------------- #
 
-STEPS = {"r_0": 0.01, "r_Dinf": 0.01, "r_Ainf": 0.01, "r_ADinf": 0.001, "kappa2_true": 0.01, "fret_efficiency": 0.01,
-         "step": 0.1, "n_bins": 1}
+STEPS = {
+    "r_0": 0.01,
+    "r_Dinf": 0.01,
+    "r_Ainf": 0.01,
+    "r_ADinf": 0.001,
+    "kappa2_true": 0.01,
+    "fret_efficiency": 0.01,
+    "step": 0.1,
+    "n_bins": 1,
+}
 
 
 @pytest.mark.parametrize("name", list(STEPS))
@@ -74,7 +82,9 @@ def test_each_arrow_steps_its_field_by_the_qt_step_and_recomputes(app, name):
     assert getattr(m, name) == pytest.approx(start - STEPS[name]), name
     arrow(app, name, +1)
     assert getattr(m, name) == pytest.approx(start)
-    assert m.k2_mean != 0.0 and mean != 0.0  # the distribution was recomputed on every click (no stale zero)
+    assert (
+        m.k2_mean != 0.0 and mean != 0.0
+    )  # the distribution was recomputed on every click (no stale zero)
 
 
 def test_an_arrow_stops_at_the_qt_limit(app):
@@ -91,7 +101,10 @@ def test_every_edit_recomputes_the_statistics_table_and_the_plot(app):
     before = {r["quantity"]: r["value"] for r in app.kappa2_gui.result_rows()}
     type_into(app, "r_Dinf", "0.3")
     after = {r["quantity"]: r["value"] for r in app.kappa2_gui.result_rows()}
-    assert after["SD R_app/R_DA"] != before["SD R_app/R_DA"] and after["SD₂ (donor)"] != before["SD₂ (donor)"]
+    assert (
+        after["SD R_app/R_DA"] != before["SD R_app/R_DA"]
+        and after["SD₂ (donor)"] != before["SD₂ (donor)"]
+    )
     shown = draw(app).strings
     assert after["SD R_app/R_DA"] in shown  # the table cell shows the new value
 
@@ -116,11 +129,17 @@ def test_clicking_away_commits_a_typed_value(app):
 
 def test_the_model_combo_lists_three_entries_and_each_can_be_clicked(app):
     m = app.tool._model
-    for label, value in (("DWT (Diffusion)", "diffusion"), ("Isotropic", "isotropic"), ("WIC (Cone)", "cone")):
+    for label, value in (
+        ("DWT (Diffusion)", "diffusion"),
+        ("Isotropic", "isotropic"),
+        ("WIC (Cone)", "cone"),
+    ):
         pick_model(app, label)
         assert m.model_type == value
         assert label in draw(app).strings  # the closed combo shows the choice
-    assert m.k2_sd == pytest.approx(0.2192, abs=0.02)  # back on the cone model: the cone's spread, not the isotropic 0.72
+    assert m.k2_sd == pytest.approx(
+        0.2192, abs=0.02
+    )  # back on the cone model: the cone's spread, not the isotropic 0.72
 
 
 def test_escape_closes_the_open_model_list_without_choosing(app):
@@ -143,7 +162,9 @@ def test_the_rad_known_checkbox_is_clicked_and_recomputes(app):
     click(app, app.item_rects["rAD_known"])
     settle(app)
     assert m.rAD_known is False
-    assert m.k2_mean == pytest.approx(0.66644, abs=1e-5)  # the unchecked seed-7 value the Qt tool showed
+    assert m.k2_mean == pytest.approx(
+        0.66644, abs=1e-5
+    )  # the unchecked seed-7 value the Qt tool showed
 
 
 # ── Compute, Save, Guide, Help ------------------------------------------------------------------------------- #
@@ -170,11 +191,15 @@ def open_save_dialog(app, monkeypatch, tmp_path, size=SIZE):
     draw(app, size)
     click(app, app.item_rects["save"], size)
     painter = draw(app, size)
-    assert {"Cancel", "kappa2.csv"} <= set(painter.strings), "the Save click did not open the dialog"
+    assert {"Cancel", "kappa2.csv"} <= set(painter.strings), (
+        "the Save click did not open the dialog"
+    )
     return painter
 
 
-def test_save_click_opens_the_dialog_and_its_cancel_button_closes_it_writing_nothing(app, monkeypatch, tmp_path):
+def test_save_click_opens_the_dialog_and_its_cancel_button_closes_it_writing_nothing(
+    app, monkeypatch, tmp_path
+):
     open_save_dialog(app, monkeypatch, tmp_path)
     click(app, text_rect(draw(app), "Cancel"))
     assert "Cancel" not in draw(app).strings
@@ -187,7 +212,9 @@ def test_the_save_dialog_window_has_a_close_button_that_dismisses_it(app, monkey
     assert "Cancel" not in draw(app).strings and not list(tmp_path.glob("*.csv"))
 
 
-def test_save_with_a_typed_file_name_writes_the_csv_and_the_status_line_says_so(app, monkeypatch, tmp_path):
+def test_save_with_a_typed_file_name_writes_the_csv_and_the_status_line_says_so(
+    app, monkeypatch, tmp_path
+):
     open_save_dialog(app, monkeypatch, tmp_path)
     draw(app)
     click(app, text_rect(draw(app), "kappa2.csv"), fx=0.3)  # the file name field
@@ -201,13 +228,19 @@ def test_save_with_a_typed_file_name_writes_the_csv_and_the_status_line_says_so(
     assert written.is_file(), [p.name for p in tmp_path.iterdir()]
     lines = written.read_text().splitlines()
     qt_lines = (REPO / "okf/plugins/emtk-ports/kappa2_dist/qt_saved.csv").read_text().splitlines()
-    assert lines[0] == "# Kappa2 Distribution" and lines[-1].count(",") == 1 and len(lines) == len(qt_lines) == 141
+    assert (
+        lines[0] == "# Kappa2 Distribution"
+        and lines[-1].count(",") == 1
+        and len(lines) == len(qt_lines) == 141
+    )
     assert app.tool.status == f"Saved to my_k2.csv ({tmp_path})"
     shown = " ".join(draw(app).strings)
     assert "Saved to my_k2.csv" in shown and "Cancel" not in shown  # the dialog closed
 
 
-def test_the_save_button_is_greyed_without_a_distribution_and_a_click_then_opens_nothing(app, monkeypatch, tmp_path):
+def test_the_save_button_is_greyed_without_a_distribution_and_a_click_then_opens_nothing(
+    app, monkeypatch, tmp_path
+):
     app.tool._model._k2hist = None
     monkeypatch.chdir(tmp_path)
     draw(app)
@@ -257,7 +290,9 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
                 type_into(app, "r_Dinf", "0.2")
             assert not tour.awaiting, f"{step['title']}: operating {key} did not release the step"
         tour.next()
-    assert not tour.active and app.tool._model.model_type == "cone" and app.tool._model.r_Dinf == 0.2
+    assert (
+        not tour.active and app.tool._model.model_type == "cone" and app.tool._model.r_Dinf == 0.2
+    )
 
 
 def test_help_button_opens_the_help_window_whose_buttons_work(app):
@@ -279,8 +314,11 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     assert not window.open
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the help window's section buttons are all '...##filter' (one id), so a click on any but "
-                   "the first never fires; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the help window's section buttons are all '...##filter' (one id), so a click on any but "
+    "the first never fires; see REPORT.md section 10",
+)
 def test_a_help_section_button_shows_only_that_section(app):
     press_text(app, "Help")
     click(app, text_rect(draw(app), "The three models"))
@@ -306,8 +344,11 @@ def tick_labels(painter):
     return [s for s in painter.strings if s.replace(".", "").replace("-", "").isdigit()]
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot can be "
-                   "zoomed with it (works in a plain im.begin window); see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot can be "
+    "zoomed with it (works in a plain im.begin window); see REPORT.md section 10",
+)
 def test_the_wheel_zooms_the_distribution_plot(app):
     draw(app)
     before = tick_labels(draw(app))
@@ -342,12 +383,20 @@ def test_the_qt_host_refuses_a_dropped_file_as_the_qt_widget_did(app):
     from emtk.qt_host import ControlHost
     from qtpy import QtCore, QtGui
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])  # kept alive for the host
+    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication(
+        []
+    )  # kept alive for the host
     host = ControlHost(app)
     host.resize(*SIZE)
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile("/tmp/run.ptu")])
-    enter = QtGui.QDragEnterEvent(QtCore.QPoint(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    enter = QtGui.QDragEnterEvent(
+        QtCore.QPoint(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dragEnterEvent(enter)
     assert not enter.isAccepted() and qapp is not None
     host.close()

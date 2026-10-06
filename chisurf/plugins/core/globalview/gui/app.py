@@ -11,6 +11,7 @@ the dialog and answers "nothing yet"; when the user picks a file the action runs
 again with a hook that answers the chosen path, so the model's code is the Qt
 tool's, unchanged.
 """
+
 from __future__ import annotations
 
 import sys
@@ -58,15 +59,20 @@ class GlobalViewApp(GlobalViewSurface):
         self.dialog: FileDialog | None = None
         self._dialog_action: str = ""
         self.message: tuple[str, str] | None = None
-        self.message_window = DialogWindow("Global View", size=(420.0, 170.0), key="globalview-warning",
-                                           fit_height=True)
+        self.message_window = DialogWindow(
+            "Global View", size=(420.0, 170.0), key="globalview-warning", fit_height=True
+        )
         self.file_window = DialogWindow("File", size=(640.0, 460.0), key="globalview-file")
         self.help_window = EmTkHelpWindow(
-            title="Global View — help", resource=HERE / "help.md", owner=self)
+            title="Global View — help", resource=HERE / "help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json", owner=self, wait_for_controls=True,
+            steps=HERE / "guide.json",
+            owner=self,
+            wait_for_controls=True,
             get_target_rect=self.rect_of,
-            on_step_change=lambda _i, step: self.reveal(self.tour._target_key(step.get("target"))))
+            on_step_change=lambda _i, step: self.reveal(self.tour._target_key(step.get("target"))),
+        )
         model.ask_open_path = self._ask_path
         model.ask_save_path = self._ask_path
         model.warn = self._warn
@@ -81,12 +87,14 @@ class GlobalViewApp(GlobalViewSurface):
         action, mode = FILE_ACTIONS.get(title, ("", "save"))
         if not action:
             return ""
-        name = {"export_parameters": "parameters.csv", "save_network": "network.gml"}.get(action, "")
+        name = {"export_parameters": "parameters.csv", "save_network": "network.gml"}.get(
+            action, ""
+        )
         self.dialog = FileDialog(title, mode=mode, filename=name, filters=file_filter)
         self._dialog_action = action
         self.file_window.title = title
         self.file_window.show()
-        return ""                      # nothing yet: the action runs again on the answer
+        return ""  # nothing yet: the action runs again on the answer
 
     def answer_file(self, path: str) -> None:
         """Run the pending action with *path*, as if the Qt dialog had returned it."""
@@ -116,7 +124,8 @@ class GlobalViewApp(GlobalViewSurface):
         if client is None:
             return
         for topic in ("fit.", "parameter."):
-            def callback(*_args, **_kwargs):      # any thread: only a flag
+
+            def callback(*_args, **_kwargs):  # any thread: only a flag
                 self._fits_dirty = True
                 self.request_frame()
 

@@ -257,9 +257,9 @@ def _solve(
         "instrument.scatter": (float(lamp_scatter) * lamp_area, False, -1e12, 1e12),
         **extra_parameters,
     }
-    for canonical,is_free in (nuisance_free or {}).items():
-        value,_,lower,upper=parameters[canonical]
-        parameters[canonical]=(value,bool(is_free),lower,upper)
+    for canonical, is_free in (nuisance_free or {}).items():
+        value, _, lower, upper = parameters[canonical]
+        parameters[canonical] = (value, bool(is_free), lower, upper)
     for canonical, (value, is_free, lower, upper) in parameters.items():
         spec.set_parameter(canonical, float(value), bool(is_free), float(lower), float(upper))
     problem = spec.build()
@@ -398,7 +398,12 @@ def solve_lifetime_mem(
         irf_background,
         optimize_nuisance,
         {},
-        nuisance_free={"instrument.timeshift":optimize_nuisance and nuisance_step_timeshift!=0.,"instrument.background":optimize_nuisance and nuisance_step_background!=0.,"instrument.response_background":optimize_nuisance and nuisance_step_irf_background!=0.},
+        nuisance_free={
+            "instrument.timeshift": optimize_nuisance and nuisance_step_timeshift != 0.0,
+            "instrument.background": optimize_nuisance and nuisance_step_background != 0.0,
+            "instrument.response_background": optimize_nuisance
+            and nuisance_step_irf_background != 0.0,
+        },
     )
     prepared = port("basis", "prepared_response")
     result = _result(
@@ -481,7 +486,13 @@ def solve_fret_mem(
         optimize_nuisance,
         extra,
         scalars={"donor_lifetimes": donly_arr.size // 2},
-        nuisance_free={"instrument.timeshift":optimize_nuisance and nuisance_step_timeshift!=0.,"instrument.background":optimize_nuisance and nuisance_step_background!=0.,"instrument.response_background":optimize_nuisance and nuisance_step_irf_background!=0.,"fret.x_donly":optimize_nuisance and nuisance_step_x_donly!=0.},
+        nuisance_free={
+            "instrument.timeshift": optimize_nuisance and nuisance_step_timeshift != 0.0,
+            "instrument.background": optimize_nuisance and nuisance_step_background != 0.0,
+            "instrument.response_background": optimize_nuisance
+            and nuisance_step_irf_background != 0.0,
+            "fret.x_donly": optimize_nuisance and nuisance_step_x_donly != 0.0,
+        },
     )
     # The design, per distance: the quenched donor species with their
     # amplitudes, plus the donor-only part (FRETSpectrumNode's layout).

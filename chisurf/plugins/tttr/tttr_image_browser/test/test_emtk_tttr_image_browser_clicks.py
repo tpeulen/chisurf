@@ -123,13 +123,17 @@ def test_the_folder_chooser_cancel_the_cross_and_escape_change_nothing(app, drv,
 
 
 # ---------------------------------------------------------------------------------------------------- toolbar: Clear
-def test_clear_empties_the_list_and_deletes_nothing_and_is_greyed_when_there_is_nothing(app, drv, shown):
+def test_clear_empties_the_list_and_deletes_nothing_and_is_greyed_when_there_is_nothing(
+    app, drv, shown
+):
     app.model.rate_1()
     drv.click("clear")
     assert app.model.file_entries() == [] and app.model.current_file is None
     assert SP8 not in strings(drv) and "Select a file in the list" in " ".join(strings(drv))
     assert (shown / SP8).is_file() and (shown / "corrupt.ptu").is_file()
-    assert json.loads((shown / ".image_browser_meta.json").read_text())[SP8]["rating"] == 1  # the rating is kept
+    assert (
+        json.loads((shown / ".image_browser_meta.json").read_text())[SP8]["rating"] == 1
+    )  # the rating is kept
     status = app.model.status_line
     drv.click("clear")  # greyed now: a press changes nothing
     assert app.model.status_line == status and not app.model.enabled("clear")
@@ -158,7 +162,11 @@ def test_include_subfolders_lists_the_files_below(app, drv, opened):
     drv.click("recursive")
     drv.settle()
     assert app.model.recursive is True
-    assert [e["label"] for e in app.model.file_entries()] == ["corrupt.ptu", "sub/Leica_SP5.ptu", SP8]
+    assert [e["label"] for e in app.model.file_entries()] == [
+        "corrupt.ptu",
+        "sub/Leica_SP5.ptu",
+        SP8,
+    ]
     assert "sub/Leica_SP5.ptu" in strings(drv)
     drv.click("recursive")
     drv.settle()
@@ -185,7 +193,9 @@ def test_copy_raw_files_asks_for_a_folder_and_copies_the_selection(app, drv, sho
     choose_in_dialog(drv, app, tmp_path, "out", "Choose")
     drv.settle()
     assert (dest / SP8).read_bytes() == (shown / SP8).read_bytes()
-    assert "Copied 1 raw file(s)" in app.model.status_line and "Copied 1 raw file(s)" in " ".join(strings(drv))
+    assert "Copied 1 raw file(s)" in app.model.status_line and "Copied 1 raw file(s)" in " ".join(
+        strings(drv)
+    )
 
 
 def test_copy_raw_files_and_tiff_are_greyed_until_a_file_is_selected(app, drv, opened):
@@ -269,11 +279,18 @@ def test_next_hands_the_image_to_the_pipeline(photon_folder, hermetic):
     drv.settle()
     drv.click_text(SP8)
     drv.settle()
-    assert ("set_pipeline", SP8) in calls  # picking a file already told the pipeline (the Qt tool did too)
+    assert (
+        "set_pipeline",
+        SP8,
+    ) in calls  # picking a file already told the pipeline (the Qt tool did too)
     del calls[:]
     drv.click("next_step")
     drv.draw(2)
-    assert calls == [("set_pipeline", SP8), ("goto_role", "pixel_intensity"), ("autorun_role", "pixel_intensity")]
+    assert calls == [
+        ("set_pipeline", SP8),
+        ("goto_role", "pixel_intensity"),
+        ("autorun_role", "pixel_intensity"),
+    ]
     assert "Sent to the Intensity step" in app.model.status_line
 
 
@@ -323,7 +340,9 @@ def operate_step(app, drv, folder, tmp_path):
     drv.draw(2)
 
 
-def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_control(app, drv, photon_folder, tmp_path):
+def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_control(
+    app, drv, photon_folder, tmp_path
+):
     drv.click("start_guide")
     drv.draw(2)
     assert app.tour.active
@@ -333,7 +352,9 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_cont
         drv.draw(2)
         if app.tour.awaiting:
             operate_step(app, drv, photon_folder, tmp_path)
-            assert not app.tour.awaiting, f"{app.tour.steps[app.tour.step_idx]['title']}: the step did not release"
+            assert not app.tour.awaiting, (
+                f"{app.tour.steps[app.tour.step_idx]['title']}: the step did not release"
+            )
         index = app.tour.step_idx
         drv.click_text("Finish ✓" if index == len(app.tour.steps) - 1 else "Next ►", last=True)
         if app.tour.active:
@@ -360,15 +381,33 @@ def test_every_guide_target_is_a_drawn_control_and_the_card_does_not_cover_it(ap
         card_w = min(480.0, drv.size[0] - 40.0)
         W, H = float(drv.size[0]), float(drv.size[1])
         x, y = place_tour_card(rect, W, H, card_w, 150.0)
-        clear = x + card_w <= rect[0] or x >= rect[0] + rect[2] or y + 150.0 <= rect[1] or y >= rect[1] + rect[3]
+        clear = (
+            x + card_w <= rect[0]
+            or x >= rect[0] + rect[2]
+            or y + 150.0 <= rect[1]
+            or y >= rect[1] + rect[3]
+        )
         # a target that fills most of the window (the mosaic) leaves no free side for a card; the user drags it away
         free_side = (
-            rect[0] + rect[2] + card_w + 16 <= W or rect[0] - card_w - 16 >= 0 or rect[1] + rect[3] + 150 + 16 <= H or rect[1] - 150 - 16 >= 0
+            rect[0] + rect[2] + card_w + 16 <= W
+            or rect[0] - card_w - 16 >= 0
+            or rect[1] + rect[3] + 150 + 16 <= H
+            or rect[1] - 150 - 16 >= 0
         )
-        assert clear or not free_side, f"{step['title']}: the card would cover its target although room was free"
+        assert clear or not free_side, (
+            f"{step['title']}: the card would cover its target although room was free"
+        )
         seen.add(key)
     app.tour.stop()
-    assert {"choose_folder", "rows", "image", "levels", "current_rating", "multi_select", "export_tiff"} <= seen
+    assert {
+        "choose_folder",
+        "rows",
+        "image",
+        "levels",
+        "current_rating",
+        "multi_select",
+        "export_tiff",
+    } <= seen
 
 
 def test_the_tour_card_can_be_dragged_away(app, drv):
@@ -402,10 +441,15 @@ def test_a_setup_chosen_on_the_setup_page_filters_the_list_and_the_tiles(app, dr
     """The shared editor's TTTR format combo: HT3 reads no .ptu file, so the list empties; PTU brings them back."""
     assert drv.drop(str(photon_folder))
     drv.settle()
-    assert [e["label"] for e in app.model.file_entries()] == ["corrupt.ptu", SP8]  # auto: every supported type
+    assert [e["label"] for e in app.model.file_entries()] == [
+        "corrupt.ptu",
+        SP8,
+    ]  # auto: every supported type
     drv.click("tab_setup")
     drv.draw(3)
-    combo = [t for t in drv.draw(1).texts if t[5] == "Auto"][0][:4]       # the File Type combo of the one-page editor
+    combo = [t for t in drv.draw(1).texts if t[5] == "Auto"][0][
+        :4
+    ]  # the File Type combo of the one-page editor
     drv.click_at(combo[0] + 10, combo[1] + combo[3] / 2)
     drv.draw(2)
     drv.click_text("HT3", last=True)
@@ -449,22 +493,30 @@ def test_a_click_on_a_row_selects_it_and_draws_its_mosaic(app, drv, opened):
     drv.settle()
     assert app.model.current_file == str(opened / SP8)
     drv.draw(2)
-    assert app.item_rects["image"][2] > 100 and "Leica_SP8.ptu: 2 tile(s), mosaic 512 x 256 px" in strings(drv)
-    assert any(t.startswith("green") for t in strings(drv)) and any(t.startswith("red") for t in strings(drv))  # tile labels
+    assert app.item_rects["image"][
+        2
+    ] > 100 and "Leica_SP8.ptu: 2 tile(s), mosaic 512 x 256 px" in strings(drv)
+    assert any(t.startswith("green") for t in strings(drv)) and any(
+        t.startswith("red") for t in strings(drv)
+    )  # tile labels
 
 
 def test_the_mosaic_is_drawn_on_the_screen(app, drv, shown):
     px = pixels(app)
     x, y, w, h = (int(v) for v in app.item_rects["image"])
     region = px[y : y + h, x : x + w]
-    assert len({tuple(p) for p in region.reshape(-1, region.shape[-1])[::97]}) > 40  # an image, not a flat field
+    assert (
+        len({tuple(p) for p in region.reshape(-1, region.shape[-1])[::97]}) > 40
+    )  # an image, not a flat field
 
 
 def test_a_file_without_an_image_says_so_in_the_image_area(app, drv, opened):
     drv.click_text("corrupt.ptu")
     drv.settle()
     text = " ".join(strings(drv))
-    assert "corrupt.ptu: no image could be reconstructed" in text and app.model.current_image() is None
+    assert (
+        "corrupt.ptu: no image could be reconstructed" in text and app.model.current_image() is None
+    )
     drv.click_text(SP8)
     drv.settle()
     assert app.model.current_image() is not None
@@ -481,7 +533,9 @@ def test_a_slow_load_does_not_freeze_the_selection(app, drv, opened):
 def header(drv, title):
     """The drawn header text of the column *title* (a sorted column carries an arrow after its title)."""
     hits = [t for t in drv.draw(1).texts if t[5] in (title, title + " \u25b4", title + " \u25be")]
-    return min(hits, key=lambda t: t[1])  # the column header is above the label of the same word below the list
+    return min(
+        hits, key=lambda t: t[1]
+    )  # the column header is above the label of the same word below the list
 
 
 def listed(drv):
@@ -524,7 +578,10 @@ def test_select_all_selects_every_row_and_multiple_selection_toggles_rows(app, d
     drv.settle()
     drv.click_text("corrupt.ptu")
     drv.settle()
-    assert sorted(pathlib.Path(p).name for p in app.model.selected_files) == ["Leica_SP8.ptu", "corrupt.ptu"]
+    assert sorted(pathlib.Path(p).name for p in app.model.selected_files) == [
+        "Leica_SP8.ptu",
+        "corrupt.ptu",
+    ]
     assert "2 image(s) in imgs, 2 selected" in strings(drv)
     drv.click_text("corrupt.ptu")  # toggled off
     drv.settle()
@@ -554,11 +611,15 @@ def test_the_rating_filter_choice_lists_the_five_filters_and_applies_one(app, dr
     drv.click("rating_filter")
     drv.draw(2)
     for label in ("All", "≥ 1  ★", "≥ 2  ★★", "≥ 3  ★★★", "Only 0  ★"):
-        assert label in strings(drv), label  # a gap before the stars: they are drawn wider than they measure
+        assert label in strings(drv), (
+            label
+        )  # a gap before the stars: they are drawn wider than they measure
     drv.click_text("≥ 2  ★★", last=True)
     drv.settle()
     assert app.model.rating_filter == "≥ 2★★"
-    assert [e["label"] for e in app.model.file_entries()] == [SP8] and "corrupt.ptu" not in strings(drv)
+    assert [e["label"] for e in app.model.file_entries()] == [SP8] and "corrupt.ptu" not in strings(
+        drv
+    )
 
 
 def test_the_rating_choice_writes_the_stars_and_the_file(app, drv, shown):
@@ -585,7 +646,10 @@ def test_the_annotation_is_typed_saved_and_follows_the_file(app, drv, shown):
     drv.type_text("bleached")
     drv.draw(2)
     assert app.model.note_of(str(shown / SP8)) == "bleached"
-    assert json.loads((shown / ".image_browser_meta.json").read_text())[SP8]["annotation"] == "bleached"
+    assert (
+        json.loads((shown / ".image_browser_meta.json").read_text())[SP8]["annotation"]
+        == "bleached"
+    )
     drv.click_text("corrupt.ptu")
     drv.settle()
     assert app.note_text == ""  # another file: its own (empty) note
@@ -617,7 +681,9 @@ def test_the_wheel_over_the_image_zooms_in_and_out_about_the_pointer(app, drv, s
     notches(drv, cx, cy, 5)
     zoomed = span(app)
     assert zoomed[0] < full[0] * 0.75 and zoomed[1] < full[1] * 0.75
-    assert abs(zoomed[0] / zoomed[1] - full[0] / full[1]) < 0.02  # equal aspect: square pixels stay square
+    assert (
+        abs(zoomed[0] / zoomed[1] - full[0] / full[1]) < 0.02
+    )  # equal aspect: square pixels stay square
     notches(drv, cx, cy, -3)
     assert span(app)[0] > zoomed[0] * 1.1
     # zooming about the pointer: the image pixel under it keeps its place
@@ -644,8 +710,12 @@ def test_a_drag_pans_the_image_and_reset_view_restores_it(app, drv, shown):
     zoomed = app.view_limits
     drv.drag((cx, cy), (cx - 90, cy - 50))
     panned = app.view_limits
-    assert span(app)[0] == pytest.approx(zoomed[1] - zoomed[0], rel=0.02)  # a pan does not change the scale
-    assert panned[0] > zoomed[0] + 10 and panned[2] > zoomed[2] + 5  # dragged left / up: the view moved right / down in the image
+    assert span(app)[0] == pytest.approx(
+        zoomed[1] - zoomed[0], rel=0.02
+    )  # a pan does not change the scale
+    assert (
+        panned[0] > zoomed[0] + 10 and panned[2] > zoomed[2] + 5
+    )  # dragged left / up: the view moved right / down in the image
     drv.click("reset_view")
     drv.draw(2)
     assert app.view_limits == pytest.approx(home)
@@ -792,7 +862,17 @@ def test_display_controls_are_greyed_without_an_image(app, drv, opened):
 def test_the_idle_state_offers_only_what_can_act_and_says_what_to_do(app, drv):
     text = " ".join(strings(drv))
     assert "Open a folder with photon files" in text
-    for name in ("clear", "clear_caches", "copy_files", "export_tiff", "export_docx", "next_step", "select_all_files", "colormap", "gamma"):
+    for name in (
+        "clear",
+        "clear_caches",
+        "copy_files",
+        "export_tiff",
+        "export_docx",
+        "next_step",
+        "select_all_files",
+        "colormap",
+        "gamma",
+    ):
         assert not app.model.enabled(name), name
     assert app.model.enabled("choose_folder")
     assert app.item_rects.get("image") is None or app.model.current_image() is None
@@ -829,18 +909,25 @@ def test_the_imaging_hub_contract(app, drv, photon_folder):
             calls.append(pathlib.Path(kw["source"]).name)
 
     app.apply_setup_settings(two_detector_setup())
-    assert set(app.model.setup_settings["detectors"]) == {"green", "red"} and "2 detector(s)" in app.model.status_line
+    assert (
+        set(app.model.setup_settings["detectors"]) == {"green", "red"}
+        and "2 detector(s)" in app.model.status_line
+    )
     app._coordinator = Hub()
     app.model.can_next = True
     app.apply_pipeline_context({"file": str(photon_folder / SP8)})
     drv.settle()
-    assert app.model.current_folder == str(photon_folder) and app.model.current_file == str(photon_folder / SP8)
+    assert app.model.current_folder == str(photon_folder) and app.model.current_file == str(
+        photon_folder / SP8
+    )
     assert app.model.current_image() is not None and calls == [SP8]
     drv.click("tab_setup")
     drv.draw(3)
     drv.click_text("Detectors")
     drv.draw(3)
-    assert "green" in strings(drv) and "red" in strings(drv)  # the shared editor holds the hub's setup
+    assert "green" in strings(drv) and "red" in strings(
+        drv
+    )  # the shared editor holds the hub's setup
     app.apply_pipeline_context({})  # nothing to open: ignored
     assert app.model.current_file == str(photon_folder / SP8)
 
@@ -859,4 +946,8 @@ def test_resizing_the_window_shows_the_whole_mosaic_again(app, drv, shown):
 def test_the_window_draws_at_both_sizes_populated(app, drv, shown):
     for size in ((1200, 800), (800, 600)):
         painter = drv.draw(2, size=size)
-        assert "Open folder" in painter.strings and SP8 in painter.strings and "Colormap" in painter.strings
+        assert (
+            "Open folder" in painter.strings
+            and SP8 in painter.strings
+            and "Colormap" in painter.strings
+        )

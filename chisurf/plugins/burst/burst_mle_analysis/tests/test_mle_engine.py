@@ -68,10 +68,17 @@ def test_auto_extract_equals_the_wizards_one_click(pair):
     np.testing.assert_array_equal(session.background(), wiz.bg)
     # the fit: same optimum, same displayed curves
     assert session.outcome.names[0] == "tau"
-    assert session.outcome.x[0] == pytest.approx(wiz.tau_result, abs=6e-4)  # the wizard shows 3 decimals
+    assert session.outcome.x[0] == pytest.approx(
+        wiz.tau_result, abs=6e-4
+    )  # the wizard shows 3 decimals
     assert session.outcome.two_istar == pytest.approx(float(wiz.twoIstar_result), abs=6e-4)
     for field in ("data", "model", "irf", "background", "residuals"):
-        np.testing.assert_allclose(getattr(session.outcome.curves, field), getattr(wiz.fit_curves, field), rtol=1e-9, atol=1e-12)
+        np.testing.assert_allclose(
+            getattr(session.outcome.curves, field),
+            getattr(wiz.fit_curves, field),
+            rtol=1e-9,
+            atol=1e-12,
+        )
     assert 0.5 < session.outcome.x[0] < 5.0
 
 
@@ -81,7 +88,9 @@ def test_the_second_detector_and_a_changed_window_equal_the_wizard(pair):
     session.current_detector = "red"
     wiz.auto_extract_irf_bg()
     session.auto_extract()
-    assert session.outcome.x[0] == pytest.approx(wiz.tau_result, abs=6e-4)  # the wizard shows 3 decimals
+    assert session.outcome.x[0] == pytest.approx(
+        wiz.tau_result, abs=6e-4
+    )  # the wizard shows 3 decimals
     # narrow the window by hand on both
     start, stop = wiz.micro_time_range
     wiz.micro_time_range = (start + 3, stop - 3)
@@ -121,7 +130,14 @@ def _tau_columns(rows):
     rows = [r for _i, r in ordered]
     return {
         key: np.array([r.get(key, np.nan) for r in rows], dtype=float)
-        for key in sorted({k for r in rows for k in r if k.startswith("Tau (") or k.startswith("Number of Photons")})
+        for key in sorted(
+            {
+                k
+                for r in rows
+                for k in r
+                if k.startswith("Tau (") or k.startswith("Number of Photons")
+            }
+        )
     }
 
 
@@ -133,7 +149,9 @@ def test_the_batch_rows_equal_the_wizards_process_bursts(qapp_module, sample_cop
     import shutil
 
     second = tmp_path / "second"
-    shutil.copytree(sample_copy, second)  # the session exports into its own copy: same data, other folder
+    shutil.copytree(
+        sample_copy, second
+    )  # the session exports into its own copy: same data, other folder
     session.add_burst_files([second / BURST_TABLE])
     try:
         for det in ("green", "red"):
@@ -147,10 +165,16 @@ def test_the_batch_rows_equal_the_wizards_process_bursts(qapp_module, sample_cop
         mine, theirs = _tau_columns(session.burst_results), _tau_columns(wiz.burst_results)
         assert sorted(mine) == sorted(theirs) and "Tau (green)" in mine and "Tau (red)" in mine
         for key in mine:
-            np.testing.assert_allclose(mine[key], theirs[key], rtol=1e-9, atol=1e-12, equal_nan=True, err_msg=key)
+            np.testing.assert_allclose(
+                mine[key], theirs[key], rtol=1e-9, atol=1e-12, equal_nan=True, err_msg=key
+            )
         # the batch fitted the detector on screen with its live window (it used the 0..128 seed before the fix)
         assert wiz.channel_settings["red"]["micro_time_start"] == wiz.micro_time_range[0] != 0
-        assert len(session.burst_results) == len(wiz.burst_results) == 2 * engine.row_count(session.df_bursts)
+        assert (
+            len(session.burst_results)
+            == len(wiz.burst_results)
+            == 2 * engine.row_count(session.df_bursts)
+        )
         assert seen and seen[-1][0] == seen[-1][1] == engine.row_count(session.df_bursts)
         # the exported b?4 tables: the same files with the same text
         written = session.export_results()
@@ -174,5 +198,7 @@ def test_session_settings_round_trip():
     other = engine.MleSession()
     other.apply_settings_payload(s.settings_payload())
     assert other.settings_of("red").tau == 2.5 and other.settings_of("red").fix_gamma is False
-    assert other.settings_of("red").micro_time_stop == 99 and other.template.micro_time_binning == 16
+    assert (
+        other.settings_of("red").micro_time_stop == 99 and other.template.micro_time_binning == 16
+    )
     assert other.file_type == "SPC-130" and list(other.detectors) == ["green", "red"]

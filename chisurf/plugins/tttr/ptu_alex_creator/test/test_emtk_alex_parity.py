@@ -37,7 +37,10 @@ REAL_HOME = Path(pwd.getpwuid(os.getuid()).pw_dir)
 def _tree(root: Path) -> dict:
     out = {}
     for path in sorted(root.rglob("*")) if root.is_dir() else []:
-        if path.relative_to(root).parts[:1] in (("logs",), ("cache",)):  # logs, and the bytecode cache any Python process fills
+        if path.relative_to(root).parts[:1] in (
+            ("logs",),
+            ("cache",),
+        ):  # logs, and the bytecode cache any Python process fills
             continue
         try:
             st = path.stat()
@@ -139,7 +142,14 @@ def same_file(first, second):
 
 def test_defaults_and_choices_equal_the_qt_tools(ui):
     qt = AlexViewModel()
-    for attr in ("input_format", "output_format", "alex_period", "period_shift", "batch_mode", "batch_output_folder"):
+    for attr in (
+        "input_format",
+        "output_format",
+        "alex_period",
+        "period_shift",
+        "batch_mode",
+        "batch_output_folder",
+    ):
         assert getattr(ui.app, attr) == getattr(qt, attr), attr
     assert ui.app.input_format_options() == qt.input_format_options()
     assert ui.app.output_format_options() == qt.output_format_options()
@@ -161,10 +171,16 @@ def test_the_number_fields_have_the_qt_tools_range_and_step(ui):
         return found
 
     qt = fields(json.loads((PLUGIN / "gui" / "alex.view.json").read_text()))
-    assert fields(ui.app.spec_source) == qt == {"alex_period": (1, 1000000, 100, "int"), "period_shift": (-1000000, 1000000, 1, "int")}
+    assert (
+        fields(ui.app.spec_source)
+        == qt
+        == {"alex_period": (1, 1000000, 100, "int"), "period_shift": (-1000000, 1000000, 1, "int")}
+    )
     ui.draw()
     spin = [s for s in _walk(ui.app.spec) if s.get("attr") in ("alex_period", "period_shift")]
-    assert spin and all(s["style"] == "spin" for s in spin)  # typed value, arrows and wheel: not a drag field
+    assert spin and all(
+        s["style"] == "spin" for s in spin
+    )  # typed value, arrows and wheel: not a drag field
 
 
 def rects_left_width(ui) -> float:
@@ -337,7 +353,11 @@ def test_a_click_away_commits_a_typed_value(ui):
 @pytest.mark.parametrize("field,step", [("alex_period", 100), ("period_shift", 1)])
 def test_each_arrow_steps_its_field_by_the_qt_step(ui, field, step):
     start = getattr(ui.app.model, field)
-    rect = ui.app.item_rects[f"{field}.stepper"] if f"{field}.stepper" in ui.app.item_rects else ui.rect(f"{field}.stepper")
+    rect = (
+        ui.app.item_rects[f"{field}.stepper"]
+        if f"{field}.stepper" in ui.app.item_rects
+        else ui.rect(f"{field}.stepper")
+    )
     ui.click(rect, 0.5, 0.25)
     assert getattr(ui.app.model, field) == start + step
     ui.click(rect, 0.5, 0.75)
@@ -450,7 +470,11 @@ def test_folder_button_queues_the_supported_files_recursively(ui, source, tmp_pa
 def test_database_button_opens_the_dataset_picker(ui):
     before = ui.draw().strings
     ui.click_name("choose_database")
-    assert ui.app.dataset_picker.open if hasattr(ui.app.dataset_picker, "open") else ui.draw().strings != before
+    assert (
+        ui.app.dataset_picker.open
+        if hasattr(ui.app.dataset_picker, "open")
+        else ui.draw().strings != before
+    )
 
 
 def test_remove_is_grey_until_a_row_is_selected_then_removes_that_file(ui, source, second):
@@ -541,8 +565,15 @@ def test_run_batch_with_real_input_writes_the_files(ui, source, second, tmp_path
     ui.type_into_name("batch_output_folder", str(out))
     ui.click_name("run_batch")
     ui.settle()
-    expected = run(AlexRequest(files=[str(source), str(second)], mode=mode, output_dir=str(tmp_path / "ref"),
-                               alex_period=4000, period_shift=7)).output_paths
+    expected = run(
+        AlexRequest(
+            files=[str(source), str(second)],
+            mode=mode,
+            output_dir=str(tmp_path / "ref"),
+            alex_period=4000,
+            period_shift=7,
+        )
+    ).output_paths
     assert len(ui.app.outputs) == len(expected) == (2 if mode == "convert" else 1)
     for a, b in zip(expected, ui.app.outputs):
         same_file(a, b)
@@ -588,9 +619,17 @@ def test_settings_round_trip_and_bad_values_are_ignored(tmp_path, source):
     try:
         assert (again.model.alex_period, again.model.period_shift) == (1500, -22)
         assert again.model.output_format == "HT3" and again.model.batch_mode == "merge"
-        assert again.model.batch_files == [str(source)] and not again.model.has_data  # a remembered file is loaded explicitly
-        again.set_state({"settings": {"alex_period": "junk", "input_format": "NOPE", "batch_mode": "x"}})
-        assert again.model.alex_period == 8000 and again.model.input_format == "Auto" and again.model.batch_mode == "convert"
+        assert (
+            again.model.batch_files == [str(source)] and not again.model.has_data
+        )  # a remembered file is loaded explicitly
+        again.set_state(
+            {"settings": {"alex_period": "junk", "input_format": "NOPE", "batch_mode": "x"}}
+        )
+        assert (
+            again.model.alex_period == 8000
+            and again.model.input_format == "Auto"
+            and again.model.batch_mode == "convert"
+        )
     finally:
         again.close()
 
@@ -599,7 +638,11 @@ def test_the_default_settings_file_is_in_the_settings_folder_not_the_real_home(t
     app = AlexApp()
     app.close()
     assert (tmp_path / "settings" / "alex-emtk.json").is_file()
-    assert not (REAL_HOME / ".chisurf" / "alex-emtk.json").stat().st_mtime_ns > time.time_ns() - 60e9 if (REAL_HOME / ".chisurf" / "alex-emtk.json").exists() else True
+    assert (
+        not (REAL_HOME / ".chisurf" / "alex-emtk.json").stat().st_mtime_ns > time.time_ns() - 60e9
+        if (REAL_HOME / ".chisurf" / "alex-emtk.json").exists()
+        else True
+    )
 
 
 # -- guide, help ---------------------------------------------------------------------------------------------------------- #
@@ -640,11 +683,17 @@ def test_layout_populated_and_empty(ui, source, second, size):
             ui.app.add_paths([source, second])
             ui.draw(3)
         painter = ui.draw(3)
-        lay.assert_texts_apart(painter, region=(0, 0, rects_left_width(ui), size[1]))  # (the plot's rotated axis caption is not a box)
+        lay.assert_texts_apart(
+            painter, region=(0, 0, rects_left_width(ui), size[1])
+        )  # (the plot's rotated axis caption is not a box)
         rects = {k: v for k, v in ui.app.item_rects.items() if not k.endswith(".stepper")}
         lay.assert_inside(rects, size)
         lay.assert_short(rects, ["alex_period", "period_shift"])
-        lay.assert_aligned(rects, ["input_file", "input_format", "alex_period", "batch_output_folder"], tolerance=2.0)
+        lay.assert_aligned(
+            rects,
+            ["input_file", "input_format", "alex_period", "batch_output_folder"],
+            tolerance=2.0,
+        )
         px, py, pw, ph = rects["plot"]
         assert pw * ph > 0.35 * size[0] * size[1], "the plot gets the space"
         qx, qy, qw, qh = rects["queue"]
@@ -675,7 +724,11 @@ def test_every_spec_guide_and_message_text_is_translated_in_all_five_locales(ui)
     def collect(node):
         if isinstance(node, dict):
             for key, value in node.items():
-                if key in ("title", "label", "description", "tooltip", "hint", "text") and isinstance(value, str) and value:
+                if (
+                    key in ("title", "label", "description", "tooltip", "hint", "text")
+                    and isinstance(value, str)
+                    and value
+                ):
                     texts.add(value)
                 elif key == "labels":
                     texts.update(value)
@@ -687,10 +740,22 @@ def test_every_spec_guide_and_message_text_is_translated_in_all_five_locales(ui)
 
     collect(ui.app.spec_source)
     collect(json.loads((PLUGIN / "gui" / "guide.json").read_text()))
-    texts.update(["No file loaded.", "Guide", "Help", "events", "Loading…", "Loaded", "Written files", "Working…",
-                  "Please choose an existing TTTR file.", "Choose a different output file to preserve the source.",
-                  "Add .sm (or other TTTR) files to the batch list first.",
-                  "Choose an output folder for the converted files."])
+    texts.update(
+        [
+            "No file loaded.",
+            "Guide",
+            "Help",
+            "events",
+            "Loading…",
+            "Loaded",
+            "Written files",
+            "Working…",
+            "Please choose an existing TTTR file.",
+            "Choose a different output file to preserve the source.",
+            "Add .sm (or other TTTR) files to the batch list first.",
+            "Choose an output folder for the converted files.",
+        ]
+    )
     rows = [line.split("|") for line in translations.ROWS.splitlines()]
     assert all(len(row) == 6 for row in rows)
     known = {row[0] for row in rows}

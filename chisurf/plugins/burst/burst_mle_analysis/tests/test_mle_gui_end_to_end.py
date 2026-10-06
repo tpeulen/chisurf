@@ -16,7 +16,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-REPO_DATA = Path(__file__).resolve().parents[2] / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+REPO_DATA = (
+    Path(__file__).resolve().parents[2] / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+)
 DATA = REPO_DATA  # read-only uses (headers); fits run on the temporary copy below
 BUR = REPO_DATA / "burstwise_All 0.1000#15" / "bi4_bur" / "m000.bur"
 HANDOFF = REPO_DATA / "burst_analysis_handoff" / "burst_analysis_handoff.json"

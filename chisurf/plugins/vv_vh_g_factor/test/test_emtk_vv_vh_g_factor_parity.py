@@ -31,7 +31,11 @@ REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
 def snapshot_real():
     if not REAL_CHISURF.is_dir():
         return {}
-    return {str(p): p.stat().st_mtime_ns for p in REAL_CHISURF.rglob("*") if p.is_file() and not {"cache", "logs"} & set(p.parts)}
+    return {
+        str(p): p.stat().st_mtime_ns
+        for p in REAL_CHISURF.rglob("*")
+        if p.is_file() and not {"cache", "logs"} & set(p.parts)
+    }
 
 
 REAL_BEFORE = snapshot_real()
@@ -45,7 +49,12 @@ def make_data(folder, n=512, dt=0.05, seed=5):
     t = np.arange(n) * dt
     irf = np.exp(-0.5 * ((t - 5.0) / 0.1) ** 2)
     out = {}
-    for name, rho, scale in (("fast", 0.2, 2000), ("slow", 16.0, 2000), ("batch1", 8.0, 1500), ("batch2", 30.0, 1500)):
+    for name, rho, scale in (
+        ("fast", 0.2, 2000),
+        ("slow", 16.0, 2000),
+        ("batch1", 8.0, 1500),
+        ("batch2", 30.0, 1500),
+    ):
         r = 0.38 * np.exp(-t / rho)
         i = np.convolve(irf, np.exp(-t / 4.0))[:n]
         vv = rng.poisson(i * (1 + 2 * r) * scale + 3.0).astype(float)
@@ -177,11 +186,15 @@ def test_g_factor_mixing_and_defaults_equal_the_qt_tool(qt_tool, files, backgrou
     assert native.g_factor == pytest.approx(qt.g_factor)
     if background:
         assert native.result["g_factor_corrected"] == pytest.approx(qt.g_factor_corrected)
-        assert native.result["bg_parallel_avg"] == pytest.approx(float(qt.bg_parallel_value.text()), abs=1e-3)
+        assert native.result["bg_parallel_avg"] == pytest.approx(
+            float(qt.bg_parallel_value.text()), abs=1e-3
+        )
     assert native.fp_result["tau_estimate_ns"] == pytest.approx(qt.fp_tau_estimate_ns)
     assert native.fp_result["r_expected"] == pytest.approx(qt.fp_rs_expected)
     assert native.fp_result["warning"][:20] in qt.fp_warning_label.text() or True
-    assert float(qt.g_factor_value.text()) == pytest.approx(native.result["g_factor_uncorrected"], abs=1e-4)
+    assert float(qt.g_factor_value.text()) == pytest.approx(
+        native.result["g_factor_uncorrected"], abs=1e-4
+    )
 
 
 def test_shift_and_flip_recompute_like_the_qt_tool(qt_tool, files):
@@ -224,15 +237,23 @@ def test_batch_results_equal_the_qt_batch_window(qt_tool, files):
 def test_the_fast_reference_loads_through_the_dialog_and_gives_the_calculated_g(ui, files):
     m = pick_file(ui, "load_fast", "fast.dat", Path(files["fast"]).parent)
     assert m.fast_file == files["fast"] and m.g_factor == pytest.approx(1.2, rel=0.05)
-    expected = calculate_g_factor_core(*m.channels(), m.region, decay_shift=0, use_bg=False,
-                                       bg_region_bounds=m.background_region, flip=False)
+    expected = calculate_g_factor_core(
+        *m.channels(),
+        m.region,
+        decay_shift=0,
+        use_bg=False,
+        bg_region_bounds=m.background_region,
+        flip=False,
+    )
     assert m.result == expected
     assert f"G = {m.g_factor:.6g}" in [t[5] for t in ui.draw().texts]
 
 
 def test_the_slow_reference_adds_the_mixing_estimate(ui, files):
     m = loaded(ui, files)
-    assert m.slow_file == files["slow"] and m.fp_result["tau_estimate_ns"] == pytest.approx(8.8642, rel=2e-3)  # qt_values.json: 8.864208 (with background correction on)
+    assert m.slow_file == files["slow"] and m.fp_result["tau_estimate_ns"] == pytest.approx(
+        8.8642, rel=2e-3
+    )  # qt_values.json: 8.864208 (with background correction on)
     assert m.fp_result["r_expected"] is not None
 
 
@@ -255,7 +276,9 @@ def test_a_file_that_is_not_vv_vh_data_is_reported(ui, tmp_path):
     ui.click_text("Open")
     m = ui.settle()
     assert m.fast is None and m.message.startswith("Error")
-    assert m.message in [t[5] for t in ui.draw().texts] or any(m.message[:40] in t[5] for t in ui.draw().texts)
+    assert m.message in [t[5] for t in ui.draw().texts] or any(
+        m.message[:40] in t[5] for t in ui.draw().texts
+    )
 
 
 def test_dropped_files_load_fast_then_slow_and_queue_the_rest(ui, files):
@@ -283,8 +306,14 @@ def test_the_tail_region_fields_recalculate_g_like_the_core(ui, files):
     m = type_value(ui, "tail_start", "300")
     m = type_value(ui, "tail_stop", "400")
     assert m.region == [300.0, 400.0]
-    expected = calculate_g_factor_core(*m.channels(), [300.0, 400.0], decay_shift=0, use_bg=False,
-                                       bg_region_bounds=m.background_region, flip=False)
+    expected = calculate_g_factor_core(
+        *m.channels(),
+        [300.0, 400.0],
+        decay_shift=0,
+        use_bg=False,
+        bg_region_bounds=m.background_region,
+        flip=False,
+    )
     assert m.result["g_factor"] == pytest.approx(expected["g_factor"])
 
 
@@ -333,8 +362,15 @@ def test_manual_g_overrides_the_calculated_value_and_is_clamped(ui, files):
     assert "G used (manual)" in [r["quantity"] for r in m.result_rows()]
 
 
-@pytest.mark.parametrize("name,typed,expected", [("fp_rho_ns", "25", 25.0), ("fp_r0", "0.3", 0.3), ("fp_dt_ns", "0.1", 0.1),
-                                                  ("fp_r0", "9", 0.4)])
+@pytest.mark.parametrize(
+    "name,typed,expected",
+    [
+        ("fp_rho_ns", "25", 25.0),
+        ("fp_r0", "0.3", 0.3),
+        ("fp_dt_ns", "0.1", 0.1),
+        ("fp_r0", "9", 0.4),
+    ],
+)
 def test_mixing_parameters_are_typed_and_change_the_estimate(ui, files, name, typed, expected):
     m = loaded(ui, files)
     before = dict(m.fp_result)
@@ -345,9 +381,11 @@ def test_mixing_parameters_are_typed_and_change_the_estimate(ui, files, name, ty
 
 def test_the_manual_mixing_overrides_replace_the_estimates(ui, files):
     m = loaded(ui, files)
-    for toggle, value_name, typed, key in (("manual_tau", "tau_override", "5", "tau_used_ns"),
-                                           ("manual_rs", "rs_override", "0.2", "r_expected"),
-                                           ("manual_l", "l_override", "0.1", "l1")):
+    for toggle, value_name, typed, key in (
+        ("manual_tau", "tau_override", "5", "tau_used_ns"),
+        ("manual_rs", "rs_override", "0.2", "r_expected"),
+        ("manual_l", "l_override", "0.1", "l1"),
+    ):
         assert not m.enabled(value_name)
         ui.click_name(toggle)
         ui.settle()
@@ -355,7 +393,10 @@ def test_the_manual_mixing_overrides_replace_the_estimates(ui, files):
         m = type_value(ui, value_name, typed)
         assert m.fp_result[key] == pytest.approx(float(typed))
     assert m.fp_result["l1"] == m.fp_result["l2"] == 0.1
-    assert "Manual linked l1=l2 override" in m.fp_result["warning"] or "override" in m.fp_result["warning"]
+    assert (
+        "Manual linked l1=l2 override" in m.fp_result["warning"]
+        or "override" in m.fp_result["warning"]
+    )
 
 
 def test_an_out_of_range_estimate_is_shown_with_its_warning_and_not_applied(ui, files):
@@ -370,7 +411,15 @@ def test_an_out_of_range_estimate_is_shown_with_its_warning_and_not_applied(ui, 
 def test_the_plots_have_axes_legends_and_all_traces(ui, files):
     loaded(ui, files)
     strings = [t[5] for t in ui.draw().texts]
-    for label in ("TAC bin", "Counts", "Anisotropy r(t)", "Fast vv raw", "Slow vh corrected", "Fast corrected", "Slow raw"):
+    for label in (
+        "TAC bin",
+        "Counts",
+        "Anisotropy r(t)",
+        "Fast vv raw",
+        "Slow vh corrected",
+        "Fast corrected",
+        "Slow raw",
+    ):
         assert label in strings, label
 
 
@@ -388,8 +437,14 @@ def test_dragging_a_yellow_tail_line_moves_the_region_and_recalculates(ui, files
     ui.drag((x1, y1), (x1 - 60, y1))
     m = ui.settle()
     assert m.region[1] < before[1] and m.region[0] == before[0]
-    expected = calculate_g_factor_core(*m.channels(), m.region, decay_shift=0, use_bg=False,
-                                       bg_region_bounds=m.background_region, flip=False)
+    expected = calculate_g_factor_core(
+        *m.channels(),
+        m.region,
+        decay_shift=0,
+        use_bg=False,
+        bg_region_bounds=m.background_region,
+        flip=False,
+    )
     assert m.result["g_factor"] == pytest.approx(expected["g_factor"])
 
 
@@ -405,8 +460,13 @@ def test_the_blue_background_lines_appear_with_the_toggle_and_drag(ui, files):
 
 def test_the_trace_checkboxes_hide_and_show_traces(ui, files):
     loaded(ui, files)
-    for label, attr in (("Fast reference", "show_fast"), ("Slow reference", "show_slow"), ("Raw", "show_raw"),
-                        ("Corrected", "show_corrected"), ("Log counts", "log_y")):
+    for label, attr in (
+        ("Fast reference", "show_fast"),
+        ("Slow reference", "show_slow"),
+        ("Raw", "show_raw"),
+        ("Corrected", "show_corrected"),
+        ("Log counts", "log_y"),
+    ):
         assert getattr(ui.app, attr) is True
         ui.click_text(label)
         assert getattr(ui.app, attr) is False, attr
@@ -415,7 +475,11 @@ def test_the_trace_checkboxes_hide_and_show_traces(ui, files):
     ui.click_text("Raw")
     ui.click_text("Slow reference")
     strings = [t[5] for t in ui.draw().texts]
-    assert "Fast vv raw" not in strings and "Fast vv corrected" in strings and "Slow vv corrected" not in strings
+    assert (
+        "Fast vv raw" not in strings
+        and "Fast vv corrected" in strings
+        and "Slow vv corrected" not in strings
+    )
 
 
 def test_the_wheel_zooms_the_decay_plot(ui, files):
@@ -461,7 +525,11 @@ def test_archive_sends_the_reference_and_parameters_and_reports_the_id(ui, files
 
 def test_archive_failure_is_reported(ui, files, monkeypatch):
     loaded(ui, files)
-    monkeypatch.setattr(FakeArchive, "archive_g_factor", lambda self, *a, **k: {"ok": False, "error": "no database", "calibration_id": ""})
+    monkeypatch.setattr(
+        FakeArchive,
+        "archive_g_factor",
+        lambda self, *a, **k: {"ok": False, "error": "no database", "calibration_id": ""},
+    )
     ui.click_name("archive")
     ui.settle()
     assert "no database" in ui.app.model.message
@@ -476,7 +544,7 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     open_batch(ui)
     assert any(t[5].startswith("No files queued") for t in ui.draw().texts)
     ui.click_name("run")
-    assert m.batch_results == []                       # greyed: nothing queued
+    assert m.batch_results == []  # greyed: nothing queued
     ui.app.last_dir = str(Path(files["fast"]).parent)
     ui.click_name("add")
     ui.click_text("batch1.dat")
@@ -496,7 +564,9 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     reference.compute()
     reference.batch_files = list(m.batch_files)
     reference.compute_batch()
-    assert [r["r_inf"] for r in m.batch_results] == pytest.approx([r["r_inf"] for r in reference.batch_results])
+    assert [r["r_inf"] for r in m.batch_results] == pytest.approx(
+        [r["r_inf"] for r in reference.batch_results]
+    )
     shown = {t[5] for t in ui.draw().texts}
     assert f"{m.batch_results[0]['r_inf']:.5g}" in shown
     ui.app.last_dir = str(tmp_path)
@@ -535,7 +605,7 @@ def test_the_tour_waits_for_the_real_controls(ui, files):
     tour = ui.app.guide
     assert tour.active and tour.awaiting
     ui.click_text("Next ►")
-    assert tour.step_idx == 0                          # refused while it waits for the fast reference
+    assert tour.step_idx == 0  # refused while it waits for the fast reference
     pick_file(ui, "load_fast", "fast.dat", Path(files["fast"]).parent)
     assert not tour.awaiting
     ui.click_text("Next ►")
@@ -565,7 +635,11 @@ def test_settings_round_trip_reloads_the_files_and_the_choices(ui, files):
     driver = UI(other)
     driver.settle()
     assert other.model.fast_file == files["fast"] and other.model.region[0] == 310.0
-    assert other.model.slow_file == files["slow"] and other.show_raw is False and other.last_dir == "/elsewhere"
+    assert (
+        other.model.slow_file == files["slow"]
+        and other.show_raw is False
+        and other.last_dir == "/elsewhere"
+    )
     assert other.model.g_factor == pytest.approx(ui.app.model.g_factor)
     other.restore_settings({})
     other.close()

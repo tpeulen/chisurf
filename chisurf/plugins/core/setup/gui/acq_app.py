@@ -202,7 +202,9 @@ class AcquisitionSettingsApp(ImApp):
         self.form = FormState()
         self.item_rects: dict[str, tuple] = {}
         self.dialog: FileDialog | None = None
-        self.dialog_window = DialogWindow("Select acquisition output folder", size=(700, 540), key="acq_output_dialog")
+        self.dialog_window = DialogWindow(
+            "Select acquisition output folder", size=(700, 540), key="acq_output_dialog"
+        )
         self.help_window = EmTkHelpWindow(
             title="Acquisition - Help",
             text=(
@@ -215,9 +217,17 @@ class AcquisitionSettingsApp(ImApp):
         )
         self.tour = EmTkGuidedTour(
             steps=[
-                {"title": "Output folder", "text": "New measurements are written here. Press Browse to pick a folder.",
-                 "target": "browse_output", "await": {"hint": "Press Browse..."}},
-                {"title": "Device type", "text": "Choose the simulator or the hardware family.", "target": "device_type"},
+                {
+                    "title": "Output folder",
+                    "text": "New measurements are written here. Press Browse to pick a folder.",
+                    "target": "browse_output",
+                    "await": {"hint": "Press Browse..."},
+                },
+                {
+                    "title": "Device type",
+                    "text": "Choose the simulator or the hardware family.",
+                    "target": "device_type",
+                },
             ],
             owner=self,
             wait_for_controls=True,
@@ -232,10 +242,14 @@ class AcquisitionSettingsApp(ImApp):
         self.form.rects.clear()
         im.set_next_window_pos(vp.pos, im.Cond.ALWAYS)
         im.set_next_window_size(vp.size, im.Cond.ALWAYS)
-        if im.begin("Acquisition settings", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            "Acquisition settings", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        ):
             if im.button("Help"):
                 self.help_window.show()
-            im.set_item_tooltip("Explain the output folder, the chunk size, the device type and the simulator parameters.")
+            im.set_item_tooltip(
+                "Explain the output folder, the chunk size, the device type and the simulator parameters."
+            )
             self.item_rects["help"] = im.get_item_rect()
             im.same_line()
             if im.button("Guide"):

@@ -31,8 +31,16 @@ QT_SPEC = json.loads((PLUGIN / "gui" / "tracking.view.json").read_text(encoding=
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "tracking_emtk.view.json").read_text(encoding="utf-8"))
 
 #: The settings of the small simulated movie the Qt baseline used.
-SMALL = dict(use_simulation=True, sim_n_frames=40, sim_size=160, sim_n_particles=6, sim_diffusion=0.5,
-             sim_seed=1, max_distance=4.0, n_bootstrap=50)
+SMALL = dict(
+    use_simulation=True,
+    sim_n_frames=40,
+    sim_size=160,
+    sim_n_particles=6,
+    sim_diffusion=0.5,
+    sim_seed=1,
+    max_distance=4.0,
+    n_bootstrap=50,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -52,8 +60,16 @@ def drv(app):
 
 @pytest.fixture(scope="module")
 def movie_frames():
-    frames, _ = tk.simulate_particle_movie(n_frames=40, shape=(160, 160), n_particles=6, diffusion_coefficient=0.5,
-                                           sigma_psf=1.5, amplitude=250.0, background=10.0, seed=1)
+    frames, _ = tk.simulate_particle_movie(
+        n_frames=40,
+        shape=(160, 160),
+        n_particles=6,
+        diffusion_coefficient=0.5,
+        sigma_psf=1.5,
+        amplitude=250.0,
+        background=10.0,
+        seed=1,
+    )
     return frames
 
 
@@ -116,10 +132,14 @@ def test_the_fit_alpha_checkbox_gives_the_qt_numbers_for_the_anomalous_fit(app, 
 
 def test_the_core_functions_give_the_same_answer_without_the_view_model(movie_frames):
     """A written-out run of the pipeline with the Qt tool's defaults: no shared view model in the path."""
-    result = core.analyse(movie_frames, max_distance=4.0, min_track_length=10, n_bootstrap=50, fix_alpha=1.0)
+    result = core.analyse(
+        movie_frames, max_distance=4.0, min_track_length=10, n_bootstrap=50, fix_alpha=1.0
+    )
     qt = QT_VALUES["simulated"]
     assert result.fit.diffusion_coefficient == pytest.approx(qt["fit"]["D"], rel=1e-9)
-    assert result.fit.diffusion_coefficient == pytest.approx(0.5, rel=0.25)  # the truth the movie was simulated with
+    assert result.fit.diffusion_coefficient == pytest.approx(
+        0.5, rel=0.25
+    )  # the truth the movie was simulated with
     assert result.report() == qt["results_text"]
 
 
@@ -129,14 +149,23 @@ def test_a_tiff_gives_the_same_tracks_as_the_simulation(app, drv, tiff):
     drv.click("track")
     drv.settle()
     assert app.model.status_line == QT_VALUES["file_tracked"]["status"]
-    assert app.model.result.fit.diffusion_coefficient == pytest.approx(QT_VALUES["file_tracked"]["fit"]["D"], rel=1e-9)
+    assert app.model.result.fit.diffusion_coefficient == pytest.approx(
+        QT_VALUES["file_tracked"]["fit"]["D"], rel=1e-9
+    )
 
 
 def test_the_tracks_table_shows_what_the_qt_table_showed(app, drv):
     m = tracked(app, drv)
     qt_rows = QT_VALUES["simulated"]["track_rows_head"]
-    shown = [{"track": str(r["track"]), "length": str(r["length"]), "frames": r["frames"], "net": f"{r['net']:.2f}"}
-             for r in m.track_table_rows()[:5]]
+    shown = [
+        {
+            "track": str(r["track"]),
+            "length": str(r["length"]),
+            "frames": r["frames"],
+            "net": f"{r['net']:.2f}",
+        }
+        for r in m.track_table_rows()[:5]
+    ]
     assert shown == qt_rows
     drv.click_text("Tracks")  # the tab
     strings = drv.draw(2).strings
@@ -152,6 +181,7 @@ def qt_tool():
     if importlib.util.find_spec("qtpy") is None:
         pytest.skip("Qt is not installed")
     import os
+
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     from qtpy import QtWidgets
 
@@ -167,12 +197,22 @@ def qt_tool():
 def qt_table_cells(tool):
     from qtpy import QtWidgets
 
-    table = next(t for t in tool.findChildren(QtWidgets.QTableWidget) if t.rowCount() or t.columnCount() == 4)
-    return [[table.item(r, c).text() for c in range(table.columnCount())] for r in range(table.rowCount())]
+    table = next(
+        t for t in tool.findChildren(QtWidgets.QTableWidget) if t.rowCount() or t.columnCount() == 4
+    )
+    return [
+        [table.item(r, c).text() for c in range(table.columnCount())]
+        for r in range(table.rowCount())
+    ]
 
 
-SCENARIOS = {"defaults": {}, "quantile detector": {"method": "quantile"}, "anomalous fit": {"fit_alpha": True},
-             "tight link": {"max_distance": 2.0, "max_frame_gap": 0}, "short tracks only": {"min_track_length": 30}}
+SCENARIOS = {
+    "defaults": {},
+    "quantile detector": {"method": "quantile"},
+    "anomalous fit": {"fit_alpha": True},
+    "tight link": {"max_distance": 2.0, "max_frame_gap": 0},
+    "short tracks only": {"min_track_length": 30},
+}
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
@@ -190,21 +230,51 @@ def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(app, drv, qt_tool, s
     assert m.result.fit.diffusion_coefficient == qt_tool.model.result.fit.diffusion_coefficient
     assert [r["track"] for r in m.track_rows()] == [r["track"] for r in qt_tool.model.track_rows()]
     assert m.track_series() and m.track_series() == qt_tool.model.track_series()
-    assert m.msd_series() == qt_tool.model.msd_series() and m.length_series() == qt_tool.model.length_series()
+    assert (
+        m.msd_series() == qt_tool.model.msd_series()
+        and m.length_series() == qt_tool.model.length_series()
+    )
     qt_cells = qt_table_cells(qt_tool)
-    emtk_cells = [[str(r["track"]), str(r["length"]), r["frames"], f"{r['net']:.2f}"] for r in m.track_table_rows()]
+    emtk_cells = [
+        [str(r["track"]), str(r["length"]), r["frames"], f"{r['net']:.2f}"]
+        for r in m.track_table_rows()
+    ]
     assert qt_cells == emtk_cells
 
 
-@pytest.mark.parametrize("attr", [s["attr"] for s in QT_SPEC["sections"][0]["sections"][0]["sections"][0]["sections"]
-                                  if False] or [
-    "channel", "max_frames", "sim_n_particles", "sim_n_frames", "sim_size", "sim_seed", "min_area", "max_frame_gap",
-    "min_track_length", "n_bootstrap", "max_drawn_tracks", "sim_diffusion", "sim_amplitude", "sim_background",
-    "threshold", "min_separation", "max_distance", "pixel_size", "frame_interval"])
+@pytest.mark.parametrize(
+    "attr",
+    [s["attr"] for s in QT_SPEC["sections"][0]["sections"][0]["sections"][0]["sections"] if False]
+    or [
+        "channel",
+        "max_frames",
+        "sim_n_particles",
+        "sim_n_frames",
+        "sim_size",
+        "sim_seed",
+        "min_area",
+        "max_frame_gap",
+        "min_track_length",
+        "n_bootstrap",
+        "max_drawn_tracks",
+        "sim_diffusion",
+        "sim_amplitude",
+        "sim_background",
+        "threshold",
+        "min_separation",
+        "max_distance",
+        "pixel_size",
+        "frame_interval",
+    ],
+)
 def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, qt_tool, attr):
     from chisurf.gui.autoform.sections.builtin import ValueWidget
 
-    editors = {vw._section.attr: vw.editor for vw in qt_tool.findChildren(ValueWidget) if getattr(vw, "_section", None)}
+    editors = {
+        vw._section.attr: vw.editor
+        for vw in qt_tool.findChildren(ValueWidget)
+        if getattr(vw, "_section", None)
+    }
     editor = editors[attr]
     drv.draw(2)
     if attr not in app.form.rects:  # fields inside a folded panel
@@ -226,7 +296,11 @@ def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, d
 
 def test_track_with_nothing_loaded_says_why_and_starts_nothing(app, drv):
     drv.click("track")
-    assert app.model.status_line == QT_VALUES["empty_track"]["status"] == "Load an image stack, or tick Simulate."
+    assert (
+        app.model.status_line
+        == QT_VALUES["empty_track"]["status"]
+        == "Load an image stack, or tick Simulate."
+    )
     assert not app.job.busy and app.model.result is None
     assert QT_VALUES["empty_track"]["status"] in drv.strings()
 
@@ -234,7 +308,11 @@ def test_track_with_nothing_loaded_says_why_and_starts_nothing(app, drv):
 def test_track_with_a_missing_file_says_which(app, drv, tmp_path):
     app.model.filename = str(tmp_path / "missing.tif")
     drv.click("track")
-    assert app.model.status_line == "missing.tif does not exist." == QT_VALUES["missing_file"]["status"]
+    assert (
+        app.model.status_line
+        == "missing.tif does not exist."
+        == QT_VALUES["missing_file"]["status"]
+    )
     assert not app.job.busy
 
 
@@ -302,7 +380,9 @@ def test_a_path_typed_into_the_field_is_taken_on_enter(app, drv, tiff):
 def test_a_path_typed_but_not_confirmed_is_not_taken(app, drv, tiff):
     drv.type_into("filename", str(tiff), enter=False)
     assert app.model.filename == ""
-    drv.click("max_frames", fx=0.3)  # clicking away commits, as the Qt line edit did on losing focus
+    drv.click(
+        "max_frames", fx=0.3
+    )  # clicking away commits, as the Qt line edit did on losing focus
     assert Path(app.model.filename) == tiff
 
 
@@ -333,7 +413,11 @@ def test_export_csv_writes_the_file_the_qt_tool_wrote(app, drv, tmp_path, tiff):
     drv.settle()
     drv.click("request_export")
     painter = drv.draw(2)
-    assert dialog_open(drv) and app.dialog.title == "Export tracks" and "movie.tracks.csv" in painter.strings  # the Qt default name
+    assert (
+        dialog_open(drv)
+        and app.dialog.title == "Export tracks"
+        and "movie.tracks.csv" in painter.strings
+    )  # the Qt default name
     drv.click_text("Save", last=True)
     written = tmp_path / "movie.tracks.csv"
     assert written.is_file()
@@ -341,7 +425,9 @@ def test_export_csv_writes_the_file_the_qt_tool_wrote(app, drv, tmp_path, tiff):
     assert app.model.status_line == f"Wrote {written}"
 
 
-def test_export_csv_to_a_typed_name_appends_the_extension_and_cancel_writes_nothing(app, drv, tmp_path):
+def test_export_csv_to_a_typed_name_appends_the_extension_and_cancel_writes_nothing(
+    app, drv, tmp_path
+):
     tracked(app, drv)
     app.model.folder = str(tmp_path)
     drv.click("request_export")
@@ -350,7 +436,9 @@ def test_export_csv_to_a_typed_name_appends_the_extension_and_cancel_writes_noth
     assert not list(tmp_path.glob("*.csv")) and not dialog_open(drv)
     drv.click("request_export")
     drv.draw(2)
-    drv.click_text("file name")  # the empty name field's hint: a simulation has no source name to propose
+    drv.click_text(
+        "file name"
+    )  # the empty name field's hint: a simulation has no source name to propose
     assert app.io.want_capture_keyboard
     drv.type_text("mytracks")
     drv.click_text("Save", last=True)
@@ -370,8 +458,17 @@ def test_export_to_an_unwritable_place_reports_instead_of_raising(app, drv, tmp_
 
 SPIN_FIELDS = {
     # attr: (step the Qt spin box moved by, start value)
-    "channel": 1, "max_frames": 1, "min_area": 1, "max_frame_gap": 1, "min_track_length": 1, "n_bootstrap": 1,
-    "max_drawn_tracks": 1, "threshold": 1.0, "min_separation": 1.0, "max_distance": 1.0, "pixel_size": 1.0,
+    "channel": 1,
+    "max_frames": 1,
+    "min_area": 1,
+    "max_frame_gap": 1,
+    "min_track_length": 1,
+    "n_bootstrap": 1,
+    "max_drawn_tracks": 1,
+    "threshold": 1.0,
+    "min_separation": 1.0,
+    "max_distance": 1.0,
+    "pixel_size": 1.0,
     "frame_interval": 1.0,
 }
 
@@ -392,17 +489,34 @@ def test_each_arrow_steps_its_field_by_the_qt_step(app, drv, attr):
     drv.click_at(x + w / 2, y + h * 0.75)
     drv.click_at(x + w / 2, y + h * 0.75)
     expected = start - SPIN_FIELDS[attr]
-    lo = {"channel": 0, "max_frames": 0, "min_area": 1, "max_frame_gap": 0, "min_track_length": 3, "n_bootstrap": 0,
-          "max_drawn_tracks": 1, "threshold": 0.5, "min_separation": 0.0, "max_distance": 0.1, "pixel_size": 1e-5,
-          "frame_interval": 1e-6}[attr]
+    lo = {
+        "channel": 0,
+        "max_frames": 0,
+        "min_area": 1,
+        "max_frame_gap": 0,
+        "min_track_length": 3,
+        "n_bootstrap": 0,
+        "max_drawn_tracks": 1,
+        "threshold": 0.5,
+        "min_separation": 0.0,
+        "max_distance": 0.1,
+        "pixel_size": 1e-5,
+        "frame_interval": 1e-6,
+    }[attr]
     assert getattr(app.model, attr) == pytest.approx(max(expected, lo), abs=1e-5), attr
 
 
 def test_the_simulation_fields_are_typed_and_clamped(app, drv):
     drv.click("Simulate instead.fold")
-    for attr, text, expected in (("sim_diffusion", "2.5", 2.5), ("sim_n_particles", "12", 12), ("sim_n_frames", "1", 2),
-                                 ("sim_size", "10000", 2048), ("sim_amplitude", "300", 300.0),
-                                 ("sim_background", "-4", 0.0), ("sim_seed", "7", 7)):
+    for attr, text, expected in (
+        ("sim_diffusion", "2.5", 2.5),
+        ("sim_n_particles", "12", 12),
+        ("sim_n_frames", "1", 2),
+        ("sim_size", "10000", 2048),
+        ("sim_amplitude", "300", 300.0),
+        ("sim_background", "-4", 0.0),
+        ("sim_seed", "7", 7),
+    ):
         drv.type_into(attr, text)
         assert getattr(app.model, attr) == pytest.approx(expected), attr
 
@@ -418,10 +532,14 @@ def test_simulate_checkbox_and_the_folding_panels_are_clicked(app, drv):
         assert "threshold" in app.form.rects or fold != "1. Detect.fold"
         drv.click(fold)
     drv.draw(2)
-    assert not {"threshold", "max_distance", "pixel_size", "channel"} & set(app.form.rects)  # all four closed
+    assert not {"threshold", "max_distance", "pixel_size", "channel"} & set(
+        app.form.rects
+    )  # all four closed
     for fold in ("1. Detect.fold", "2. Link.fold", "3. Transport.fold", "Movie.fold"):
         drv.click(fold)
-    assert {"threshold", "max_distance", "pixel_size", "channel"} <= set(drv.draw(2) and app.form.rects)
+    assert {"threshold", "max_distance", "pixel_size", "channel"} <= set(
+        drv.draw(2) and app.form.rects
+    )
 
 
 def test_the_detector_choice_lists_the_two_methods_and_each_can_be_picked(app, drv):
@@ -446,17 +564,25 @@ def test_escape_closes_the_open_detector_list_without_choosing(app, drv):
 
 
 def test_every_view_says_what_to_do_before_there_is_a_result(app, drv):
-    for tab, message in (("Movie", "Press Track (or tick Simulate)"), ("Trajectories", "Press Track: the linked"),
-                         ("MSD", "Press Track: the mean squared"), ("Track lengths", "Press Track: the histogram")):
+    for tab, message in (
+        ("Movie", "Press Track (or tick Simulate)"),
+        ("Trajectories", "Press Track: the linked"),
+        ("MSD", "Press Track: the mean squared"),
+        ("Track lengths", "Press Track: the histogram"),
+    ):
         drv.click_text(tab)
         assert any(s.startswith(message) for s in drv.draw(2).strings), tab
 
 
 def test_every_view_is_drawn_after_a_run(app, drv):
     tracked(app, drv)
-    for tab, expect in (("Movie", {"Z slice", "Play", "Colormap"}), ("Trajectories", {"x / px", "y / px"}),
-                        ("MSD", {"lag", "MSD", "measured", "fit"}), ("Track lengths", {"track length / frames", "tracks"}),
-                        ("Tracks", {"#", "Points", "Frames", "Net [px]"})):
+    for tab, expect in (
+        ("Movie", {"Z slice", "Play", "Colormap"}),
+        ("Trajectories", {"x / px", "y / px"}),
+        ("MSD", {"lag", "MSD", "measured", "fit"}),
+        ("Track lengths", {"track length / frames", "tracks"}),
+        ("Tracks", {"#", "Points", "Frames", "Net [px]"}),
+    ):
         drv.click_text(tab)
         strings = set(drv.draw(2).strings)
         assert expect <= strings, (tab, expect - strings)
@@ -471,7 +597,9 @@ def test_the_movie_markers_follow_the_frame(app, drv):
     marks = app.model.detection_markers()
     on_frame_0 = [m for m in marks if m[0] == 0]
     on_frame_9 = [m for m in marks if m[0] == 9]
-    assert len(on_frame_0) == len(on_frame_9) == 6 and on_frame_0 != on_frame_9  # the particles moved
+    assert (
+        len(on_frame_0) == len(on_frame_9) == 6 and on_frame_0 != on_frame_9
+    )  # the particles moved
 
 
 def test_play_advances_the_frames_pause_holds_and_stop_returns_to_the_first(app, drv):
@@ -578,11 +706,15 @@ def test_the_colormap_combo_gamma_and_levels_are_operated(app, drv):
     assert canvas.colormap == "viridis"
     drv.click_text("Automatic levels")
     assert canvas.auto_levels is False
-    assert {"Display minimum", "Display maximum"} <= set(drv.draw(2).strings)  # the manual levels appear
+    assert {"Display minimum", "Display maximum"} <= set(
+        drv.draw(2).strings
+    )  # the manual levels appear
     drv.click_text("Automatic levels")
     assert canvas.auto_levels is True
     gamma = [t for t in drv.draw(2).texts if t[5] == "1.0"][0][:4]
-    drv.click_at(gamma[0] + 5, gamma[1] + gamma[3] / 2)  # a click on the slider track sets the gamma
+    drv.click_at(
+        gamma[0] + 5, gamma[1] + gamma[3] / 2
+    )  # a click on the slider track sets the gamma
     assert canvas.gamma != 1.0
 
 
@@ -663,15 +795,20 @@ BIG = (1200, 800)
 
 
 def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
-    drv = Driver(app, BIG)  # the card is clear of the form here; see the xfail below for the overlapping case
+    drv = Driver(
+        app, BIG
+    )  # the card is clear of the form here; see the xfail below for the overlapping case
     drv.click("guide")
     assert app.tour.active
     drv.click_text("Close Tour")
     assert not app.tour.active
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: a tour card drawn over a control of a window cannot be pressed: the control "
-                   "underneath claims the pointer (hovered id) first; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: a tour card drawn over a control of a window cannot be pressed: the control "
+    "underneath claims the pointer (hovered id) first; see REPORT.md section 10",
+)
 def test_the_tour_card_buttons_work_when_the_card_lies_over_a_form_field(app, drv):
     drv.click("guide")
     drv.click_text("Close Tour")
@@ -696,8 +833,12 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
                 drv.click("track")
                 drv.settle()
             drv.draw(2)
-            assert not app.tour.awaiting, f"{step['title']}: operating the control did not release the step"
-        drv.click_text("Finish ✓" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next ►", last=True)
+            assert not app.tour.awaiting, (
+                f"{step['title']}: operating the control did not release the step"
+            )
+        drv.click_text(
+            "Finish ✓" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next ►", last=True
+        )
     assert not app.tour.active and app.model.use_simulation and app.model.result is not None
 
 
@@ -724,8 +865,16 @@ def test_every_guide_target_is_a_drawn_control_or_window(app, drv):
         assert rect and rect[2] > 0 and rect[3] > 0, f"{step['title']}: nothing drawn for {key!r}"
         seen.add(key)
     app.tour.stop()
-    assert {"Simulate instead.fold", "use_simulation", "method", "max_distance", "computed", "Movie", "MSD",
-            "fit_alpha"} <= seen
+    assert {
+        "Simulate instead.fold",
+        "use_simulation",
+        "method",
+        "max_distance",
+        "computed",
+        "Movie",
+        "MSD",
+        "fit_alpha",
+    } <= seen
 
 
 def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
@@ -733,10 +882,20 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
     saved = json.loads(json.dumps(app.export_settings()))
     other = make_app()
     other.restore_settings(saved)
-    assert other.export_settings() == saved and other.model.threshold == 7.5 and other.model.method == "quantile"
-    other.restore_settings({"threshold": "high", "method": "nonsense", "fit_alpha": 3, "max_frames": 2.5, "folder": 4})
+    assert (
+        other.export_settings() == saved
+        and other.model.threshold == 7.5
+        and other.model.method == "quantile"
+    )
+    other.restore_settings(
+        {"threshold": "high", "method": "nonsense", "fit_alpha": 3, "max_frames": 2.5, "folder": 4}
+    )
     assert other.model.threshold == 7.5 and other.model.method == "quantile"
-    assert other.model.fit_alpha is True and other.model.max_frames == 12 and other.model.folder == "/tmp"
+    assert (
+        other.model.fit_alpha is True
+        and other.model.max_frames == 12
+        and other.model.folder == "/tmp"
+    )
     other.restore_settings("garbage")  # not a dict: ignored
     assert "filename" not in saved  # the data is never persisted
 
@@ -770,7 +929,10 @@ def test_a_worker_that_raises_is_reported_not_swallowed(app, drv, monkeypatch):
     monkeypatch.setattr(core, "analyse", boom)
     drv.click("track")
     drv.settle()
-    assert "detector exploded" in app.model.results_text or "detector exploded" in app.model.status_line
+    assert (
+        "detector exploded" in app.model.results_text
+        or "detector exploded" in app.model.status_line
+    )
 
 
 def test_the_idle_window_does_not_ask_for_frames(app, drv):
@@ -792,8 +954,11 @@ def test_the_wheel_scrolls_the_settings_window_when_the_form_is_taller_than_it(a
     assert app.form.rects["track"][1] == top
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach a spin field inside a DockManager window (it does in a plain "
-                   "window); see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel does not reach a spin field inside a DockManager window (it does in a plain "
+    "window); see REPORT.md section 10",
+)
 def test_the_wheel_over_a_spin_field_steps_it(app, drv):
     x, y, w, h = drv.rect("max_distance")
     start = app.model.max_distance
@@ -801,8 +966,11 @@ def test_the_wheel_over_a_spin_field_steps_it(app, drv):
     assert app.model.max_distance == pytest.approx(start + 1.0)
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot "
-                   "can be zoomed with it; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel never reaches an implot inside a DockManager window, so no docked plot "
+    "can be zoomed with it; see REPORT.md section 10",
+)
 def test_the_wheel_zooms_the_trajectory_plot(app, drv):
     tracked(app, drv)
     drv.click_text("Trajectories")
@@ -826,11 +994,22 @@ def test_every_spec_key_exists_on_the_model():
     model = make_app().model
     for section in walk(EMTK_SPEC["sections"]):
         options = section.get("options") or {}
-        for name in (section.get("attr"), section.get("source"), section.get("call"), section.get("options_source"),
-                     options.get("source"), options.get("markers")):
+        for name in (
+            section.get("attr"),
+            section.get("source"),
+            section.get("call"),
+            section.get("options_source"),
+            options.get("source"),
+            options.get("markers"),
+        ):
             if name:
                 assert hasattr(model, name), (section.get("title"), name)
-        for name in (section.get("call"), section.get("options_source"), options.get("source"), options.get("markers")):
+        for name in (
+            section.get("call"),
+            section.get("options_source"),
+            options.get("source"),
+            options.get("markers"),
+        ):
             if name:
                 assert callable(getattr(model, name)) or name in ("report_text",), name
         for button in section.get("buttons", []):
@@ -841,7 +1020,11 @@ def test_every_spec_key_exists_on_the_model():
 
 def test_every_qt_setting_is_in_the_emtk_spec_with_the_same_range():
     def values(sections):
-        return {s["attr"]: s for s in walk(sections) if s.get("type") in ("value", "toggle", "choice") and s.get("attr")}
+        return {
+            s["attr"]: s
+            for s in walk(sections)
+            if s.get("type") in ("value", "toggle", "choice") and s.get("attr")
+        }
 
     qt, emtk = values(QT_SPEC["sections"]), values(EMTK_SPEC["sections"])
     assert set(qt) == set(emtk), set(qt) ^ set(emtk)
@@ -895,10 +1078,22 @@ def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, tiff):
     host.resize(900, 600)
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile(str(tiff))])
-    enter = QtGui.QDragEnterEvent(QtCore.QPoint(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    enter = QtGui.QDragEnterEvent(
+        QtCore.QPoint(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dragEnterEvent(enter)
     assert enter.isAccepted(), "the host refused the drag: the app has no drop hook"
-    drop = QtGui.QDropEvent(QtCore.QPointF(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    drop = QtGui.QDropEvent(
+        QtCore.QPointF(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dropEvent(drop)
     assert Path(app.model.filename) == tiff and qapp is not None
     host.close()

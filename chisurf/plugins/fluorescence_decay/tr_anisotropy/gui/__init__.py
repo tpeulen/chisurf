@@ -4,10 +4,12 @@ __all__ = ["AnisotropyWizard", "ChisurfWizard", "AnisotropyViewModel"]
 
 
 def __getattr__(name):
-    if name=="AnisotropyViewModel":
+    if name == "AnisotropyViewModel":
         from .view_model import AnisotropyViewModel
+
         return AnisotropyViewModel
-    if name in {"AnisotropyWizard","ChisurfWizard"}:
+    if name in {"AnisotropyWizard", "ChisurfWizard"}:
         from . import tool
-        return getattr(tool,name)
+
+        return getattr(tool, name)
     raise AttributeError(name)

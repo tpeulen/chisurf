@@ -54,10 +54,12 @@ class PchApp(ImApp):
         self._outcome = (None, None, None)
         self._reported_error = ""
         self.docks = DockManager(Split("h", 0.6, Region("plots"), Region("settings")))
-        self.docks.add_window("plots", "Photon counting histogram", self.draw_plots,
-                              dock="plots", closable=False)
-        self.docks.add_window("settings", "PCH settings", self.draw_settings,
-                              dock="settings", closable=False)
+        self.docks.add_window(
+            "plots", "Photon counting histogram", self.draw_plots, dock="plots", closable=False
+        )
+        self.docks.add_window(
+            "settings", "PCH settings", self.draw_settings, dock="settings", closable=False
+        )
         super().__init__(self.render, continuous=True)
 
     # ── jobs ───────────────────────────────────────────────────────────
@@ -95,8 +97,11 @@ class PchApp(ImApp):
             if button in self.form.rects:
                 self.item_rects[key] = self.form.rects[button]
         model = self.model
-        now = (model.filename or None, id(model.result) if model.result else None,
-               id(model.fit_result) if model.fit_result else None)
+        now = (
+            model.filename or None,
+            id(model.result) if model.result else None,
+            id(model.fit_result) if model.fit_result else None,
+        )
         for key, before, current in zip(("file_loaded", "computed", "fitted"), self._outcome, now):
             if current is not None and current != before:
                 self.tour.notify_used(key)
@@ -166,11 +171,17 @@ class PchApp(ImApp):
             return
         directory = self.model.folder or None
         if kind == "open":
-            self.dialog = FileDialog("Open TTTR", mode="open", filters=TTTR_FILE_FILTER,
-                                     directory=directory)
+            self.dialog = FileDialog(
+                "Open TTTR", mode="open", filters=TTTR_FILE_FILTER, directory=directory
+            )
         else:
-            self.dialog = FileDialog("Save Base Name", mode="save", filename="results",
-                                     filters="All Files (*)", directory=directory)
+            self.dialog = FileDialog(
+                "Save Base Name",
+                mode="save",
+                filename="results",
+                filters="All Files (*)",
+                directory=directory,
+            )
         self.dialog_kind = kind
 
     def _draw_dialog(self, box: Any) -> None:

@@ -11,7 +11,6 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
-
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
@@ -21,7 +20,6 @@ from chisurf.plugins.emtk_layout import LabelColumn, button_row, labelled, layou
 from .canvas import ImageCanvas
 from .jobs import SnapshotJob
 from .view_model import PsfViewModel
-
 
 HERE = Path(__file__).parent
 
@@ -72,11 +70,15 @@ class PsfDeterminationApp(ImApp):
         self.panels = self.build_panels()
         self.forms = {n: FormState() for n in self.panels}
         self.columns = {n: LabelColumn() for n in self.panels}
-        self.help_window = EmTkHelpWindow(title="PSF determination: Help", resource=HERE / "help.md", owner=self)
+        self.help_window = EmTkHelpWindow(
+            title="PSF determination: Help", resource=HERE / "help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
-            get_target_rect=lambda key: self.item_rects.get(key)
-            or next((f.rects[key] for f in self.forms.values() if key in f.rects), None),
+            get_target_rect=lambda key: (
+                self.item_rects.get(key)
+                or next((f.rects[key] for f in self.forms.values() if key in f.rects), None)
+            ),
             owner=self,
             wait_for_controls=True,
         )
@@ -110,7 +112,9 @@ class PsfDeterminationApp(ImApp):
 
     def build_panels(self):
         """The Qt tool's value sections (one source of truth), as spin forms."""
-        spec = json.loads((HERE / "psf.view.json").read_text())["sections"][0]["sections"][0]["sections"]
+        spec = json.loads((HERE / "psf.view.json").read_text())["sections"][0]["sections"][0][
+            "sections"
+        ]
         out = {}
         for panel in spec:
             if panel.get("type") != "panel":
@@ -120,14 +124,35 @@ class PsfDeterminationApp(ImApp):
             for field in panel["sections"]:
                 field["style"] = "spin"
             key = {"PSF parameters": "psf", "Detection": "detection"}[panel["title"]]
-            panel["description"] = {"psf": "Pixel size, z step and the ROI cut around a bead for the 3-D Gaussian fit.",
-                                    "detection": "Thresholds that decide which bright regions count as beads."}[key]
+            panel["description"] = {
+                "psf": "Pixel size, z step and the ROI cut around a bead for the 3-D Gaussian fit.",
+                "detection": "Thresholds that decide which bright regions count as beads.",
+            }[key]
             out[key] = layout_spec({"sections": [panel]})
-        out["beads"] = layout_spec({"sections": [{
-            "type": "panel", "title": "Beads", "description": "Walk through the detected beads; selecting one fits it and opens its z slice.",
-            "sections": [{"type": "value", "attr": "bead_index", "label": "Bead index", "kind": "int", "style": "spin",
-                          "minimum": 0, "maximum": 100000, "step": 1,
-                          "description": "Zero-based index of the detected bead; selecting a bead fits it and opens its z slice."}]}]})
+        out["beads"] = layout_spec(
+            {
+                "sections": [
+                    {
+                        "type": "panel",
+                        "title": "Beads",
+                        "description": "Walk through the detected beads; selecting one fits it and opens its z slice.",
+                        "sections": [
+                            {
+                                "type": "value",
+                                "attr": "bead_index",
+                                "label": "Bead index",
+                                "kind": "int",
+                                "style": "spin",
+                                "minimum": 0,
+                                "maximum": 100000,
+                                "step": 1,
+                                "description": "Zero-based index of the detected bead; selecting a bead fits it and opens its z slice.",
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
         return out
 
     def on_files_dropped(self, paths):
@@ -180,7 +205,9 @@ class PsfDeterminationApp(ImApp):
             if action == "save_settings"
             else ""
         )
-        directory = self.last_dir or (str(Path(self.model.filename).parent) if self.model.filename else None)
+        directory = self.last_dir or (
+            str(Path(self.model.filename).parent) if self.model.filename else None
+        )
         self.dialog = FileDialog(
             action.replace("_", " ").title(),
             mode="open" if load else "save",
@@ -230,26 +257,70 @@ class PsfDeterminationApp(ImApp):
         idle = not (self.job.busy or self.dialog is not None or self.picker.is_open)
         pressed = button_row(
             [
-                {"label": "Load stack", "key": "load_stack", "enabled": idle,
-                 "tip": "Load a 2-D TIFF image or a 3-D TIFF bead stack (or drop the file on the window)."},
-                {"label": "Demo stack", "key": "demo", "enabled": idle,
-                 "tip": "Replace the stack by a generated one with five beads of known size (a demo, not data)."},
-                {"label": "MMFDB dataset", "key": "mmfdb", "enabled": idle,
-                 "tip": "Select a registered TIFF dataset from the MMFDB catalog."},
-                {"label": "Detect", "key": "detect_beads", "enabled": idle and m.enabled("detect_beads"),
-                 "tip": "Find beads using the adaptive quantile threshold and the separation filters."},
-                {"label": "Fit selected", "key": "fit_selected", "enabled": idle and m.enabled("fit_selected"),
-                 "tip": "Fit a 3-D Gaussian to the clicked or selected bead."},
-                {"label": "Fit all", "key": "fit_all", "enabled": idle and m.enabled("fit_all"),
-                 "tip": "Fit every detected bead and report the complete batch including failures."},
-                {"label": "Export CSV", "key": "export_csv", "enabled": idle and m.enabled("export_csv"),
-                 "tip": "Refit and export all detected beads with physical widths and fit quality."},
-                {"label": "Save settings", "key": "save_settings", "enabled": idle,
-                 "tip": "Save calibration, ROI, detection and display settings to JSON."},
-                {"label": "Load settings", "key": "load_settings", "enabled": idle,
-                 "tip": "Restore settings and reopen the stored source stack when available."},
-                {"label": "Help", "key": "help", "tip": "Explain how a bead stack gives the PSF and what to check."},
-                {"label": "Guide", "key": "guide", "tip": "Walk through loading, detection, fitting and the checks."},
+                {
+                    "label": "Load stack",
+                    "key": "load_stack",
+                    "enabled": idle,
+                    "tip": "Load a 2-D TIFF image or a 3-D TIFF bead stack (or drop the file on the window).",
+                },
+                {
+                    "label": "Demo stack",
+                    "key": "demo",
+                    "enabled": idle,
+                    "tip": "Replace the stack by a generated one with five beads of known size (a demo, not data).",
+                },
+                {
+                    "label": "MMFDB dataset",
+                    "key": "mmfdb",
+                    "enabled": idle,
+                    "tip": "Select a registered TIFF dataset from the MMFDB catalog.",
+                },
+                {
+                    "label": "Detect",
+                    "key": "detect_beads",
+                    "enabled": idle and m.enabled("detect_beads"),
+                    "tip": "Find beads using the adaptive quantile threshold and the separation filters.",
+                },
+                {
+                    "label": "Fit selected",
+                    "key": "fit_selected",
+                    "enabled": idle and m.enabled("fit_selected"),
+                    "tip": "Fit a 3-D Gaussian to the clicked or selected bead.",
+                },
+                {
+                    "label": "Fit all",
+                    "key": "fit_all",
+                    "enabled": idle and m.enabled("fit_all"),
+                    "tip": "Fit every detected bead and report the complete batch including failures.",
+                },
+                {
+                    "label": "Export CSV",
+                    "key": "export_csv",
+                    "enabled": idle and m.enabled("export_csv"),
+                    "tip": "Refit and export all detected beads with physical widths and fit quality.",
+                },
+                {
+                    "label": "Save settings",
+                    "key": "save_settings",
+                    "enabled": idle,
+                    "tip": "Save calibration, ROI, detection and display settings to JSON.",
+                },
+                {
+                    "label": "Load settings",
+                    "key": "load_settings",
+                    "enabled": idle,
+                    "tip": "Restore settings and reopen the stored source stack when available.",
+                },
+                {
+                    "label": "Help",
+                    "key": "help",
+                    "tip": "Explain how a bead stack gives the PSF and what to check.",
+                },
+                {
+                    "label": "Guide",
+                    "key": "guide",
+                    "tip": "Walk through loading, detection, fitting and the checks.",
+                },
             ],
             remember=self.remember,
         )
@@ -277,7 +348,6 @@ class PsfDeterminationApp(ImApp):
         )
         self.model.colormap = self.canvas.colormap
         self.item_rects["stack"] = self.canvas.rect
-
 
     def profiles(self, box):
         if im.begin_tab_bar("psf_profiles"):

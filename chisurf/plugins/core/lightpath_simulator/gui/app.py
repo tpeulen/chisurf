@@ -6,19 +6,17 @@ import types
 from pathlib import Path
 
 from emtk import im
+from emtk import nodes as _nodes
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
-from emtk.im_core import Col
 from emtk.docking import DockManager, Region, Split
-
-from emtk import nodes as _nodes
+from emtk.im_core import Col
+from emtk.view_form import FormState, draw_form
 
 from chisurf.core.optical_configuration import _graph_to_config, extract_forster
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.node_editor.control import GraphControl
 from chisurf.emtk.optical_configuration import OpticalConfigurationWidget
-
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from emtk.view_form import FormState, draw_form
 
 from .controller import LightPathController
 from .emtk_view import BeampathContent
@@ -273,7 +271,9 @@ class FileChooser(_Modal):
         super().__init__(title)
         from emtk.file_dialog import FileDialog
 
-        self.dialog = FileDialog(title, mode=mode, filters=[("JSON", ["*.json"])], filename=filename)
+        self.dialog = FileDialog(
+            title, mode=mode, filters=[("JSON", ["*.json"])], filename=filename
+        )
         self.result = None
 
     def body(self) -> None:
@@ -335,17 +335,35 @@ class LightPathApp(TourTarget, ImApp):
             show_help=self.help_window.show,
             start_guide=self.start_guide,
         )
-        self.forms = {name: FormState(on_used=self.tour.notify_used) for name in ("toolbar", "palette", "view", "backend", "connections", "mmfdb", "calc", "table")}
+        self.forms = {
+            name: FormState(on_used=self.tour.notify_used)
+            for name in (
+                "toolbar",
+                "palette",
+                "view",
+                "backend",
+                "connections",
+                "mmfdb",
+                "calc",
+                "table",
+            )
+        }
         # Graph | (components and Easy Mode as tabs over the results): every window is docked, none floats over
         # the graph; a title bar can still be dragged to rearrange or float one.
         self.docks = DockManager(
             Split("h", 0.55, Split("v", 0.62, Region("graph"), Region("results")), Region("setup")),
             name="lightpath",
         )
-        self.docks.add_window("graph", "Optical Path", self._draw_graph, dock="graph", closable=False)
-        self.docks.add_window("controls", "Optical Components", self._draw_controls, dock="setup", closable=False)
+        self.docks.add_window(
+            "graph", "Optical Path", self._draw_graph, dock="graph", closable=False
+        )
+        self.docks.add_window(
+            "controls", "Optical Components", self._draw_controls, dock="setup", closable=False
+        )
         self.docks.add_window("easy", "Easy Mode", self._draw_easy, dock="setup", closable=False)
-        self.docks.add_window("results", "Emission Probability", self._draw_results, dock="results", closable=False)
+        self.docks.add_window(
+            "results", "Emission Probability", self._draw_results, dock="results", closable=False
+        )
         self.docks.focus("controls")
         self.native_layouts = {"main": self.docks}
         self.graph_control.fit()
@@ -422,8 +440,13 @@ class LightPathApp(TourTarget, ImApp):
         self.graph_control._draw_graph(canvas)
         io = self.io
         px, py = io.mouse_pos
-        if (io.mouse_clicked[1] and not self.controller.running and self.graph_control.context is None
-                and canvas[0] <= px <= canvas[0] + canvas[2] and canvas[1] <= py <= canvas[1] + canvas[3]):
+        if (
+            io.mouse_clicked[1]
+            and not self.controller.running
+            and self.graph_control.context is None
+            and canvas[0] <= px <= canvas[0] + canvas[2]
+            and canvas[1] <= py <= canvas[1] + canvas[3]
+        ):
             # A right press on the canvas asks for the component menu (the node under it is resolved on the next draw).
             self.graph_control.context = ("pending", px, py)
         im.set_item_tooltip(
@@ -467,11 +490,15 @@ class LightPathApp(TourTarget, ImApp):
         elif status:
             im.text_wrapped(status)
         if not controller.result and not controller.running:
-            im.text_wrapped("Press Calculate Emission Intensity to simulate the light path; the results appear in these tabs.")
+            im.text_wrapped(
+                "Press Calculate Emission Intensity to simulate the light path; the results appear in these tabs."
+            )
         if im.begin_tab_bar("lightpath_results"):
             for title in self.panel.TABS:
                 opened = im.begin_tab_item(title)
-                im.set_item_tooltip(f"Inspect the calculated {title.lower()} values for this optical path.")
+                im.set_item_tooltip(
+                    f"Inspect the calculated {title.lower()} values for this optical path."
+                )
                 if opened:
                     self.results_tab = title
                     key = {"Förster radius": "forster"}.get(title, title.lower())
@@ -488,7 +515,9 @@ class LightPathApp(TourTarget, ImApp):
         self.dialog_action = action
         names = {"load": None, "save": "lightpath.json", "instrument": "instrument_setting.json"}
         self.dialog = FileChooser(
-            {"load": "Open Graph", "save": "Save Graph", "instrument": "Export Instrument Setting"}[action],
+            {"load": "Open Graph", "save": "Save Graph", "instrument": "Export Instrument Setting"}[
+                action
+            ],
             "open" if action == "load" else "save",
             names[action],
         )
@@ -520,11 +549,20 @@ class LightPathApp(TourTarget, ImApp):
         if self._was_running and not running:
             action = getattr(controller, "_action", "")
             failed = controller.status.startswith("Error")
-            if action == "save" and not failed and controller.last_operation_id != self._last_operation:
+            if (
+                action == "save"
+                and not failed
+                and controller.last_operation_id != self._last_operation
+            ):
                 self._last_operation = controller.last_operation_id
-                self.dialog = MessageDialog("Saved to MMFDB", f"Saved operation {controller.last_operation_id}")
+                self.dialog = MessageDialog(
+                    "Saved to MMFDB", f"Saved operation {controller.last_operation_id}"
+                )
             elif action in ("save", "list", "get") and failed:
-                self.dialog = MessageDialog({"save": "MMFDB Save Failed"}.get(action, "MMFDB Load Failed"), controller.status[7:])
+                self.dialog = MessageDialog(
+                    {"save": "MMFDB Save Failed"}.get(action, "MMFDB Load Failed"),
+                    controller.status[7:],
+                )
             elif action == "list" and panel.want_list:
                 if controller.saved:
                     panel.selected_saved = ""

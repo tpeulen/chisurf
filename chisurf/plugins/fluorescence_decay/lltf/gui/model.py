@@ -67,8 +67,14 @@ class LLTFModel:
 
     def lifetime_rows(self):
         """The fitted components, as the Qt results table listed them."""
-        return [{"component": index + 1, "amplitude": float(row["amplitude"]), "lifetime": float(row["lifetime"])}
-                for index, row in enumerate((self.result or {}).get("lifetimes", []))]
+        return [
+            {
+                "component": index + 1,
+                "amplitude": float(row["amplitude"]),
+                "lifetime": float(row["lifetime"]),
+            }
+            for index, row in enumerate((self.result or {}).get("lifetimes", []))
+        ]
 
     def results_summary(self):
         """The lines under the Qt results table: χ², χ²ᵣ, the time range and the component count."""
@@ -81,7 +87,9 @@ class LLTFModel:
         if "reduced_chi_square" in result:
             lines.append(f"Reduced chi-square: {result['reduced_chi_square']:.3f}")
         if "time_range" in result:
-            lines.append(f"Time range: {result['time_range']['start']:.3f} - {result['time_range']['stop']:.3f} ns")
+            lines.append(
+                f"Time range: {result['time_range']['start']:.3f} - {result['time_range']['stop']:.3f} ns"
+            )
         if "n_lifetimes" in result:
             lines.append(f"Number of lifetimes: {result['n_lifetimes']}")
         return "\n".join(lines)

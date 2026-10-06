@@ -15,9 +15,13 @@ import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
 
-from chisurf.plugins.core.project_browser.test.driving import clipped_texts, draw_clip, layout_problems
+from chisurf.plugins.core.project_browser.test.driving import (
+    clipped_texts,
+    draw_clip,
+    layout_problems,
+)
 from chisurf.plugins.fret_line.gui.app import FRETLineApp, make_app
-from chisurf.plugins.fret_line.gui.model import PALETTE, NO_NDX_WINDOW, FretLineModel
+from chisurf.plugins.fret_line.gui.model import NO_NDX_WINDOW, PALETTE, FretLineModel
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -77,8 +81,12 @@ def qt(monkeypatch, tmp_path):
     from chisurf.plugins.fret_line.gui import tool as tool_module
 
     shown = []
-    monkeypatch.setattr(tool_module.dialogs, "information", lambda parent, title, text: shown.append((title, text)))
-    monkeypatch.setattr(tool_module.dialogs, "warning", lambda parent, title, text: shown.append((title, text)))
+    monkeypatch.setattr(
+        tool_module.dialogs, "information", lambda parent, title, text: shown.append((title, text))
+    )
+    monkeypatch.setattr(
+        tool_module.dialogs, "warning", lambda parent, title, text: shown.append((title, text))
+    )
     tool = tool_module.FRETLineTool()
     tool._shown, tool._tool_module, tool._qapp = shown, tool_module, qapp
     yield tool
@@ -86,11 +94,15 @@ def qt(monkeypatch, tmp_path):
 
 
 def qt_targets(tool):
-    return [(tool._sweep_combo.itemData(i) or {}).get("label") for i in range(tool._sweep_combo.count())]
+    return [
+        (tool._sweep_combo.itemData(i) or {}).get("label") for i in range(tool._sweep_combo.count())
+    ]
 
 
 def qt_pick(tool, predicate):
-    index = next(i for i in range(tool._sweep_combo.count()) if predicate(tool._sweep_combo.itemData(i)))
+    index = next(
+        i for i in range(tool._sweep_combo.count()) if predicate(tool._sweep_combo.itemData(i))
+    )
     tool._sweep_combo.setCurrentIndex(index)
 
 
@@ -99,11 +111,18 @@ def qt_pick(tool, predicate):
 
 def test_defaults_equal_the_qt_tools(model, qt):
     assert (model.minimum, model.maximum, model.n_points, model.tau_d0, model.log_scale) == (
-        qt._min_spin.value(), qt._max_spin.value(), qt._n_pts_spin.value(), qt._tau_d0_spin.value(), qt._log_check.isChecked())
+        qt._min_spin.value(),
+        qt._max_spin.value(),
+        qt._n_pts_spin.value(),
+        qt._tau_d0_spin.value(),
+        qt._log_check.isChecked(),
+    )
     assert model.weight == qt._weight_spin.value() == 1.0
     assert [c["model_name"] for c in model.components] == [qt._components[0]["label"]]
     qt_models = [qt._model_combo.itemText(i) for i in range(qt._model_combo.count())]
-    assert set(qt_models) <= set(model.model_labels())  # the native list adds the backend's fixed-distance entry
+    assert set(qt_models) <= set(
+        model.model_labels()
+    )  # the native list adds the backend's fixed-distance entry
 
 
 def test_the_component_list_text_and_the_add_remove_rules_equal_the_qt_tools(model, qt):
@@ -118,7 +137,9 @@ def test_the_component_list_text_and_the_add_remove_rules_equal_the_qt_tools(mod
     model.remove_component()
     qt._remove_component()  # the last one stays
     model.remove_component()
-    assert len(qt._components) == len(model.components) == 1 and not model.enabled("remove_component")
+    assert len(qt._components) == len(model.components) == 1 and not model.enabled(
+        "remove_component"
+    )
 
 
 def test_a_changed_weight_and_model_follow_the_qt_rules(model, qt):
@@ -128,7 +149,9 @@ def test_a_changed_weight_and_model_follow_the_qt_rules(model, qt):
     qt._model_combo.setCurrentText("Lifetime")
     model.model_label = "Lifetime"
     assert qt._components[0]["label"] == model.components[0]["model_name"] == "Lifetime"
-    assert qt._components[0]["weight"] == model.components[0]["weight"] == 2.5  # the weight survives a model change
+    assert (
+        qt._components[0]["weight"] == model.components[0]["weight"] == 2.5
+    )  # the weight survives a model change
 
 
 # -- the sweep targets and the lines --------------------------------------------------------------------------------------- #
@@ -168,7 +191,10 @@ def test_the_static_line_equals_the_qt_tools_point_for_point(model, qt):
     a, b = line_arrays(line["result"]), line_arrays(qt._lines[0]["result"])
     for key in a:
         np.testing.assert_allclose(a[key], b[key], rtol=1e-12, err_msg=key)
-    assert line["sweep_label"] == qt._lines[0]["sweep_label"] and line["name"] == "Line 1" == qt._lines[0]["name"]
+    assert (
+        line["sweep_label"] == qt._lines[0]["sweep_label"]
+        and line["name"] == "Line 1" == qt._lines[0]["name"]
+    )
     assert line["color"] == qt._lines[0]["color"] == PALETTE[0]
     assert line["components"] == qt._lines[0]["components"]
     assert len(a["tau_f"]) == 100
@@ -182,12 +208,22 @@ def test_a_log_sweep_and_a_user_tau_d0_equal_the_qt_tools(model, qt):
     qt._tau_d0_spin.setValue(3.5)
     qt._n_pts_spin.setValue(40)
     qt._do_compute()
-    model.minimum, model.maximum, model.log_scale, model.tau_d0, model.n_points = 20.0, 120.0, True, 3.5, 40
+    model.minimum, model.maximum, model.log_scale, model.tau_d0, model.n_points = (
+        20.0,
+        120.0,
+        True,
+        3.5,
+        40,
+    )
     line = model.add_line()
     a, b = line_arrays(line["result"]), line_arrays(qt._lines[0]["result"])
     for key in a:
         np.testing.assert_allclose(a[key], b[key], rtol=1e-12, err_msg=key)
-    assert line["log"] is True and a["parameter_values"][0] == pytest.approx(20.0) and len(a["tau_f"]) == 40
+    assert (
+        line["log"] is True
+        and a["parameter_values"][0] == pytest.approx(20.0)
+        and len(a["tau_f"]) == 40
+    )
 
 
 def test_the_dynamic_line_equals_the_qt_tools_from_the_same_start(model, qt):
@@ -202,7 +238,9 @@ def test_the_dynamic_line_equals_the_qt_tools_from_the_same_start(model, qt):
     qt._min_spin.setValue(0.0)
     qt._max_spin.setValue(1.0)
     qt._do_compute()
-    model.sweep_label = next(label for label in model.sweep_labels() if label.startswith("fraction · C0"))
+    model.sweep_label = next(
+        label for label in model.sweep_labels() if label.startswith("fraction · C0")
+    )
     model.minimum, model.maximum = 0.0, 1.0
     line = model.add_line()
     a, b = line_arrays(line["result"]), line_arrays(qt._lines[0]["result"])
@@ -212,7 +250,11 @@ def test_the_dynamic_line_equals_the_qt_tools_from_the_same_start(model, qt):
 
 
 def test_a_sweep_leaves_the_users_parameters_where_they_were(model):
-    parameter = next(p for p in model.components[0]["model"].parameters_all if p.canonical_id == "distance.mean.0")
+    parameter = next(
+        p
+        for p in model.components[0]["model"].parameters_all
+        if p.canonical_id == "distance.mean.0"
+    )
     parameter.value = 55.0
     model.minimum, model.maximum = 20.0, 120.0
     model.add_line()
@@ -256,14 +298,19 @@ def test_visibility_remove_and_clear_follow_the_qt_rules(model, qt):
     qt._remove_line()
     model.line_index = 1
     model.remove_line()
-    assert [l["name"] for l in model.lines] == [l["name"] for l in qt._lines] == ["Line 1", "Line 3"]
+    assert (
+        [l["name"] for l in model.lines] == [l["name"] for l in qt._lines] == ["Line 1", "Line 3"]
+    )
     qt._lines.pop()
     model.remove_line()  # nothing selected any more: the last one goes, as in the Qt tool
     model.line_index = -1
     qt._clear_lines()
     model.clear_lines()
     assert model.lines == [] and qt._lines == []
-    assert not any(model.enabled(a) for a in ("save_csv", "push", "show_all", "hide_all", "remove_line", "clear_lines"))
+    assert not any(
+        model.enabled(a)
+        for a in ("save_csv", "push", "show_all", "hide_all", "remove_line", "clear_lines")
+    )
     qt._do_compute()
     model.add_line()
     assert qt._lines[0]["name"] == "Line 4" == model.lines[0]["name"]  # the numbering continues
@@ -281,12 +328,16 @@ def test_the_csv_is_byte_equal_to_the_qt_writer(model, qt, tmp_path, monkeypatch
     for _ in range(2):
         model.add_line()
     qt_path = tmp_path / "qt.csv"
-    monkeypatch.setattr(qt._tool_module.QtWidgets.QFileDialog, "getSaveFileName", lambda *a, **k: (str(qt_path), ""))
+    monkeypatch.setattr(
+        qt._tool_module.QtWidgets.QFileDialog, "getSaveFileName", lambda *a, **k: (str(qt_path), "")
+    )
     qt._on_save()
     mine = tmp_path / "mine.csv"
     model.write_csv(mine)
     assert mine.read_bytes() == qt_path.read_bytes()
-    assert qt._shown[-1][0] == "Saved" == model.dialog_title and model.dialog_text.startswith("Saved 2 line(s) to:")
+    assert qt._shown[-1][0] == "Saved" == model.dialog_title and model.dialog_text.startswith(
+        "Saved 2 line(s) to:"
+    )
 
 
 def test_a_name_without_csv_gets_the_extension_and_an_unwritable_path_is_reported(model, tmp_path):
@@ -322,17 +373,38 @@ def test_the_components_are_registered_for_the_global_view_and_dropped_on_close(
 
     m = FretLineModel()
     m.add_component()
-    mine = [label for _, label, _ in iter_registered_parameter_groups() if label.startswith("FRET Line C")]
+    mine = [
+        label
+        for _, label, _ in iter_registered_parameter_groups()
+        if label.startswith("FRET Line C")
+    ]
     assert len(mine) == 2
     m.remove_component()
-    assert len([1 for _, label, _ in iter_registered_parameter_groups() if label.startswith("FRET Line C")]) == 1
+    assert (
+        len(
+            [
+                1
+                for _, label, _ in iter_registered_parameter_groups()
+                if label.startswith("FRET Line C")
+            ]
+        )
+        == 1
+    )
     m.close()
-    assert not [1 for _, label, _ in iter_registered_parameter_groups() if label.startswith("FRET Line C")]
+    assert not [
+        1 for _, label, _ in iter_registered_parameter_groups() if label.startswith("FRET Line C")
+    ]
 
 
 def test_settings_round_trip_and_invalid_values_are_ignored():
     app = FRETLineApp()
-    app.model.minimum, app.model.maximum, app.model.n_points, app.model.log_scale, app.model.tau_d0 = 25.0, 90.0, 50, True, 3.2
+    (
+        app.model.minimum,
+        app.model.maximum,
+        app.model.n_points,
+        app.model.log_scale,
+        app.model.tau_d0,
+    ) = 25.0, 90.0, 50, True, 3.2
     saved = json.loads(json.dumps(app.export_settings()))
     other = FRETLineApp()
     other.restore_settings(saved)
@@ -353,8 +425,14 @@ def test_every_spec_attribute_call_and_action_exists_on_the_model(model):
     spec = json.loads(SPEC.read_text())
     for section in _walk(spec["sections"]):
         opts = section.get("options") or {}
-        for attr in (section.get("attr"), section.get("source"), section.get("options_source"), opts.get("source"),
-                     opts.get("selected_call"), opts.get("edited_call")):
+        for attr in (
+            section.get("attr"),
+            section.get("source"),
+            section.get("options_source"),
+            opts.get("source"),
+            opts.get("selected_call"),
+            opts.get("edited_call"),
+        ):
             if attr:
                 assert hasattr(model, attr), attr
         for button in section.get("buttons", []):
@@ -385,7 +463,9 @@ def test_draws_empty_and_with_lines_without_clipped_or_overlapping_text(size):
     three_lines(app.model)
     app.model.add_component()
     painter = draw_clip(app, size, frames=4)
-    plots = [tuple(app.docks.region_boxes[name]) for name in ("efficiency", "lifetime")]  # plots (rotated axis labels)
+    plots = [
+        tuple(app.docks.region_boxes[name]) for name in ("efficiency", "lifetime")
+    ]  # plots (rotated axis labels)
     assert layout_problems(painter, size, ignore=plots) == []
     assert clipped_texts(painter, ignore=plots) == []
     app.close()

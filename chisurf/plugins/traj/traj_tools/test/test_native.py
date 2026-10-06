@@ -14,8 +14,14 @@ from ..registry import TOOL_PANELS
 def test_registry_covers_every_child_tool():
     names = [panel["name"] for panel in TOOL_PANELS]
     assert names == [
-        "Align", "Convert", "Energy Calc", "FRET",
-        "Join", "Remove Clashed", "Rot Translate", "Save Topol",
+        "Align",
+        "Convert",
+        "Energy Calc",
+        "FRET",
+        "Join",
+        "Remove Clashed",
+        "Rot Translate",
+        "Save Topol",
     ]
     assert all(panel["emtk"] for panel in TOOL_PANELS)
 
@@ -44,7 +50,10 @@ def test_native_state_roundtrip_with_pending_child_state():
     app = TrajectoryToolsHubApp()
     app.select("Convert")
     # A file that exists: the trajectory tools do not restore a path whose file has gone.
-    run = str(Path(__file__).resolve().parents[5] / "test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd")
+    run = str(
+        Path(__file__).resolve().parents[5]
+        / "test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd"
+    )
     app.children["Convert"].model.trajectory = run
     app.select("FRET")
     app.children["FRET"].model.forster_radius = 51.0

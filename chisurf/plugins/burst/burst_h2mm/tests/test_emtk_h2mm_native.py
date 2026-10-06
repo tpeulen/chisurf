@@ -18,10 +18,12 @@ from emtk.testing import RecordingPainter
 from chisurf.plugins.burst.burst_h2mm.gui import result_view
 from chisurf.plugins.burst.burst_h2mm.gui.model import H2mmViewModel
 from chisurf.plugins.burst.burst_h2mm.gui.native import create_app
-from chisurf.plugins.emtk_test_input import SMALL, Driver
 from chisurf.plugins.burst.burst_h2mm.tests.test_emtk_h2mm_no_invented_data import PlotSpy
+from chisurf.plugins.emtk_test_input import SMALL, Driver
 
-REPO_DATA = Path(__file__).resolve().parents[2] / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+REPO_DATA = (
+    Path(__file__).resolve().parents[2] / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna"
+)
 BURSTS = "burstwise_All 0.1000#15"
 
 
@@ -70,7 +72,12 @@ BH_SETUP = {
         "red": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
     },
     "windows": {},
-    "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 0.0, "micro_time_resolution": 0.0, "micro_time_binning": 1},
+    "tttr_reading": {
+        "file_type": "SPC-130",
+        "macro_time_resolution": 0.0,
+        "micro_time_resolution": 0.0,
+        "micro_time_binning": 1,
+    },
 }
 
 
@@ -95,8 +102,16 @@ def test_empty_state_draws_no_data_at_both_sizes(monkeypatch, app):
             shown.update(" ".join(texts(drv.draw())).split(". "))
     assert spy.calls == []
     text = " ".join(shown)
-    for message in ("No H2MM fit yet", "No transition density yet", "No dwell times yet", "No dwell FRET states yet",
-                    "No model selection yet", "No per-state decays", "No likelihood scan yet", "No state path yet"):
+    for message in (
+        "No H2MM fit yet",
+        "No transition density yet",
+        "No dwell times yet",
+        "No dwell FRET states yet",
+        "No model selection yet",
+        "No per-state decays",
+        "No likelihood scan yet",
+        "No state path yet",
+    ):
         assert message in text, message
 
 
@@ -114,7 +129,13 @@ def test_settings_equal_the_qt_tools_gathered_settings(app, qapp_ref):
 
     model = app.model
     model.min_states, model.max_states, model.criterion, model.restarts = 2, 4, "icl", 5
-    model.max_iter, model.min_photons, model.engine, model.seed, model.patience = 321, 8, "em", 7, -1
+    model.max_iter, model.min_photons, model.engine, model.seed, model.patience = (
+        321,
+        8,
+        "em",
+        7,
+        -1,
+    )
     model.decoder, model.decoder_seed, model.divisors, model.time_scale = "ffbs", 3, 2, 4
     tool = H2mmTool(embedded=True)
     try:
@@ -136,9 +157,25 @@ def test_settings_equal_the_qt_tools_gathered_settings(app, qapp_ref):
         tool.close()
     mine = model.build_settings()
     for name in (
-        "min_states", "max_states", "criterion", "n_restarts", "max_iter", "min_photons", "engine", "seed", "patience",
-        "decoder", "decoder_seed", "divisors", "time_scale", "photon_hdf5", "photon_csv", "write_state_tttr",
-        "state_tttr_ptu", "state_tttr_sidecar", "tol",
+        "min_states",
+        "max_states",
+        "criterion",
+        "n_restarts",
+        "max_iter",
+        "min_photons",
+        "engine",
+        "seed",
+        "patience",
+        "decoder",
+        "decoder_seed",
+        "divisors",
+        "time_scale",
+        "photon_hdf5",
+        "photon_csv",
+        "write_state_tttr",
+        "state_tttr_ptu",
+        "state_tttr_sidecar",
+        "tol",
     ):
         assert getattr(mine, name) == getattr(qt, name), name
 
@@ -152,8 +189,23 @@ def test_default_settings_equal_the_qt_tools_defaults(qapp_ref):
     finally:
         tool.close()
     mine = H2mmViewModel().build_settings()
-    for name in ("min_states", "max_states", "criterion", "n_restarts", "max_iter", "min_photons", "engine", "seed",
-                 "patience", "decoder", "decoder_seed", "divisors", "time_scale", "photon_hdf5", "photon_csv"):
+    for name in (
+        "min_states",
+        "max_states",
+        "criterion",
+        "n_restarts",
+        "max_iter",
+        "min_photons",
+        "engine",
+        "seed",
+        "patience",
+        "decoder",
+        "decoder_seed",
+        "divisors",
+        "time_scale",
+        "photon_hdf5",
+        "photon_csv",
+    ):
         assert getattr(mine, name) == getattr(qt, name), name
 
 
@@ -167,7 +219,9 @@ def test_typed_fields_reach_the_model_and_are_clamped(app):
     assert app.model.max_iter == 10, "clamped up to the spec's minimum"
 
 
-def test_a_real_fit_by_clicks_equals_the_backend_and_fills_tables_and_plots(monkeypatch, app, sample):
+def test_a_real_fit_by_clicks_equals_the_backend_and_fills_tables_and_plots(
+    monkeypatch, app, sample
+):
     from chisurf.plugins.burst.burst_h2mm.backend.services import run_analysis
 
     drv = Driver(app)
@@ -193,10 +247,14 @@ def test_a_real_fit_by_clicks_equals_the_backend_and_fills_tables_and_plots(monk
     rates = np.asarray(ana.trans_rates)
     assert f"{rates[0, 1]:.1f}" in shown and f"{rates[1, 0]:.1f}" in shown
     rows = {r["transition"]: r["rate"] for r in app.model.rate_rows()}
-    assert rows == {"S0 -> S1": f"{rates[0, 1]:.1f}", "S1 -> S0": f"{rates[1, 0]:.1f}"}, "the table pairs a rate with its transition"
+    assert rows == {"S0 -> S1": f"{rates[0, 1]:.1f}", "S1 -> S0": f"{rates[1, 0]:.1f}"}, (
+        "the table pairs a rate with its transition"
+    )
     for e in ana.fret:
         assert f"{float(e):.3f}" in shown
-    np.testing.assert_array_equal(spy.named("Transitions")[2][0], np.ascontiguousarray(result_view.tdp_histogram(ana).T[::-1]))
+    np.testing.assert_array_equal(
+        spy.named("Transitions")[2][0], np.ascontiguousarray(result_view.tdp_histogram(ana).T[::-1])
+    )
     assert "Selected 2 states" in " ".join(shown)
 
 
@@ -242,7 +300,12 @@ def test_settings_file_round_trip(tmp_path):
     model.save_settings(path)
     other = H2mmViewModel()
     other.load_settings(path)
-    assert (other.restarts, other.criterion, other.donor, other.decoder) == (9, "icl", "red", "ffbs")
+    assert (other.restarts, other.criterion, other.donor, other.decoder) == (
+        9,
+        "icl",
+        "red",
+        "ffbs",
+    )
 
 
 def test_guide_targets_are_drawn_and_the_run_step_waits_for_the_press(app, sample):
@@ -256,10 +319,14 @@ def test_guide_targets_are_drawn_and_the_run_step_waits_for_the_press(app, sampl
         if key:
             assert key in app.item_rects or key in app.form.rects, key
     app.start_guide()
-    app.tour.step_idx = next(i for i, s in enumerate(steps) if s.get("await") and s["target"]["name"] == "toolAction_run")
+    app.tour.step_idx = next(
+        i for i, s in enumerate(steps) if s.get("await") and s["target"]["name"] == "toolAction_run"
+    )
     configure(drv, sample)
     app.start_guide()
-    app.tour.step_idx = next(i for i, s in enumerate(steps) if s.get("await") and s["target"]["name"] == "toolAction_run")
+    app.tour.step_idx = next(
+        i for i, s in enumerate(steps) if s.get("await") and s["target"]["name"] == "toolAction_run"
+    )
     drv.draw()
     assert app.tour.awaiting
     drv.click_name("toolAction_run")
@@ -309,7 +376,9 @@ def test_the_detector_setup_is_the_shared_editor_and_edits_reach_the_model(app):
     drv = Driver(app)
     painter = tab(drv, "Detector setup")
     shown = texts(painter)
-    assert "Detector Name" in shown and "Channels" in shown, "the shared editor's detector table is not drawn"
+    assert "Detector Name" in shown and "Channels" in shown, (
+        "the shared editor's detector table is not drawn"
+    )
     editor = app.editor
     rec = next(r for r in editor.detector_rows() if r["name"] == "green")
     editor.edit_detector(rec, "chs", "0, 1")
@@ -320,8 +389,15 @@ def test_the_detector_setup_is_the_shared_editor_and_edits_reach_the_model(app):
 
 
 def test_stream_choices_follow_the_detector_names(app):
-    app.model.set_setup({"detectors": {"a": {"chs": [0]}, "b": {"chs": [1]}}, "tttr_reading": {"file_type": "PTU"}})
-    assert (app.model.donor, app.model.acceptor, app.model.aex, app.model.file_type) == ("a", "b", "(none)", "PTU")
+    app.model.set_setup(
+        {"detectors": {"a": {"chs": [0]}, "b": {"chs": [1]}}, "tttr_reading": {"file_type": "PTU"}}
+    )
+    assert (app.model.donor, app.model.acceptor, app.model.aex, app.model.file_type) == (
+        "a",
+        "b",
+        "(none)",
+        "PTU",
+    )
     assert [s.name for s in app.model.streams()] == ["a", "b"]
     app.model.aex = "b"
     assert [s.name for s in app.model.streams()] == ["a", "b", "b"]
@@ -344,8 +420,12 @@ def test_plot_tabs_hold_the_analysis_numbers(monkeypatch, fitted):
     lines = [c for c in s.calls if c[0] == "plot_line" and not c[1].startswith("k ")]
     assert [c[1] for c in lines] == [f"S{i}" for i in info.counts]
     arrows = {c[1]: c for c in s.calls if c[0] == "plot_line" and c[1].startswith("k ")}
-    expected = result_view.transition_arrows(ana, max(float(c.max()) for c in info.counts.values()) * 1.08)
-    assert sorted(arrows) == sorted(f"k S{i}->S{j}" for i, j, *_ in expected), "one arrow per transition with a rate"
+    expected = result_view.transition_arrows(
+        ana, max(float(c.max()) for c in info.counts.values()) * 1.08
+    )
+    assert sorted(arrows) == sorted(f"k S{i}->S{j}" for i, j, *_ in expected), (
+        "one arrow per transition with a rate"
+    )
     for i, j, x0, y0, x1, y1, _w in expected:
         np.testing.assert_allclose(arrows[f"k S{i}->S{j}"][2][0], [x0, x1])
         assert np.isclose(arrows[f"k S{i}->S{j}"][2][1][0], y0)
@@ -412,7 +492,9 @@ def test_bootstrap_and_ll_scan_buttons_compute_the_backends_results(monkeypatch,
     e_scans = [s for s in scans if s.param == "E"]
     drawn = {c[1]: c for c in spy.calls if c[0] == "plot_line"}
     for sc in e_scans:
-        np.testing.assert_allclose(drawn[f"S{sc.state}"][2][1], 2.0 * (np.max(sc.loglik) - sc.loglik))
+        np.testing.assert_allclose(
+            drawn[f"S{sc.state}"][2][1], 2.0 * (np.max(sc.loglik) - sc.loglik)
+        )
 
 
 def test_buttons_needing_a_fit_are_greyed_without_one(app):
@@ -505,7 +587,9 @@ def test_bootstrap_bands_follow_the_uncertainty_on_the_dwell_fret_plot(monkeypat
 
 
 def test_result_view_arrows_and_bands_are_empty_without_a_fit():
-    assert result_view.transition_arrows(None, 1.0) == [] and result_view.e_ci_bands(None, None) == []
+    assert (
+        result_view.transition_arrows(None, 1.0) == [] and result_view.e_ci_bands(None, None) == []
+    )
     assert result_view.tdp_histogram(None) is None
 
 
@@ -520,8 +604,15 @@ def test_apply_workflow_context_sets_the_folder_and_the_detectors(sample):
     assert (model.donor, model.acceptor) == ("green", "red")
     assert model._stream("red").channels == [8, 9]
     other = H2mmViewModel()
-    other.apply_workflow_context({"analysis_folder": "/no/such/folder", "channel_settings": {"tttr_reading": {"file_type": "PTU"}}})
-    assert other.data_folder == "" and other.file_type == "PTU", "a missing folder is ignored; a bare file type is taken"
+    other.apply_workflow_context(
+        {
+            "analysis_folder": "/no/such/folder",
+            "channel_settings": {"tttr_reading": {"file_type": "PTU"}},
+        }
+    )
+    assert other.data_folder == "" and other.file_type == "PTU", (
+        "a missing folder is ignored; a bare file type is taken"
+    )
 
 
 def test_the_workflow_panel_runs_a_fit_through_the_task_seam(qapp_ref, sample):

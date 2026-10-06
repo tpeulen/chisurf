@@ -28,8 +28,8 @@ from emtk.view_form import FormState, draw_form, draw_sections
 
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
 from chisurf.emtk.dataset_picker import DatasetPicker
-from chisurf.plugins.emtk_layout import NUMBER_WIDTH, LabelColumn, icon_label, labelled, layout_spec
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.emtk_layout import NUMBER_WIDTH, LabelColumn, icon_label, labelled, layout_spec
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from .client import MicrotimeShifterClient
@@ -44,9 +44,16 @@ class SampleFields:
     entity, ``donor`` / ``acceptor`` the first two probes; setting a probe also adds the FRET pair, as before.
     """
 
-    ENTITY = {"entity_name": "name", "entity_type": "entity_type", "sequence": "sequence",
-              "uniprot_accession": "uniprot_accession", "pdb_id": "pdb_id", "pdb_chain_id": "pdb_chain_id",
-              "organism": "organism", "reference_sequence": "reference_sequence"}
+    ENTITY = {
+        "entity_name": "name",
+        "entity_type": "entity_type",
+        "sequence": "sequence",
+        "uniprot_accession": "uniprot_accession",
+        "pdb_id": "pdb_id",
+        "pdb_chain_id": "pdb_chain_id",
+        "organism": "organism",
+        "reference_sequence": "reference_sequence",
+    }
     SAMPLE = ("name", "description", "buffer_description")
     PROBES = {"donor": 0, "acceptor": 1}
 
@@ -159,8 +166,10 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.samples = []
         self.sample_definition = None
         self.item_rects = {}
-        self.spec = layout_spec(json.loads((HERE / "shifter.view.json").read_text(encoding="utf-8")))
-        self.labels = LabelColumn()                  # one caption column for the fields of every panel
+        self.spec = layout_spec(
+            json.loads((HERE / "shifter.view.json").read_text(encoding="utf-8"))
+        )
+        self.labels = LabelColumn()  # one caption column for the fields of every panel
         for panel in self.spec["sections"]:
             for group in panel["sections"]:
                 for field in group.get("sections", ()):
@@ -169,7 +178,9 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.form = FormState()
         self.form.custom["channel_shifts"] = self.draw_channel_shifts
         self.form.custom["sample_list"] = self.draw_sample_list
-        self.sample_spec = layout_spec(json.loads((HERE / "sample.view.json").read_text(encoding="utf-8")))
+        self.sample_spec = layout_spec(
+            json.loads((HERE / "sample.view.json").read_text(encoding="utf-8"))
+        )
         self.sample_form = FormState()
         self.sample_labels = LabelColumn()
         self.shift_fields = ShiftFields(self)
@@ -178,20 +189,29 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.shift_sections = []
         self.sample_fields = SampleFields(self)
         self.help = EmTkHelpWindow(
-            title="Micro-time shifter — Help", resource=HERE / "help.md", owner=self,
-            on_start_guide=self.start_guide, size=(700.0, 520.0),
+            title="Micro-time shifter — Help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+            size=(700.0, 520.0),
         )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
-            owner=self, wait_for_controls=True, on_step_change=self.reveal_step,
+            owner=self,
+            wait_for_controls=True,
+            on_step_change=self.reveal_step,
         )
         self.form.on_used = self.shift_form.on_used = self.tour.notify_used
         self.job = BackgroundJob()
         self.dialog = None
         self.dialog_callback = None
-        self.dialog_window = DialogWindow("Choose a file", size=(640.0, 420.0), key="microtime-shifter-file")
-        self.sample_window = DialogWindow("New MMFDB sample", size=(620.0, 560.0), key="microtime-shifter-sample")
+        self.dialog_window = DialogWindow(
+            "Choose a file", size=(640.0, 420.0), key="microtime-shifter-file"
+        )
+        self.sample_window = DialogWindow(
+            "New MMFDB sample", size=(620.0, 560.0), key="microtime-shifter-sample"
+        )
         self.dataset_picker = DatasetPicker(on_paths=self.add_paths)
         self.docks = DockManager(
             Split(
@@ -202,7 +222,12 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             ("files", icon_label("📂", "Files"), self.draw_files, "files"),
             ("controls", "↔ Micro-time shift", self.draw_controls, "controls"),
             ("status", "Status", self.draw_status, "controls"),
-            ("histogram", icon_label("📊", "Micro-time histograms"), self.draw_histogram, "histogram"),
+            (
+                "histogram",
+                icon_label("📊", "Micro-time histograms"),
+                self.draw_histogram,
+                "histogram",
+            ),
         ):
             self.docks.add_window(key, title, draw, dock=dock, closable=False)
         self.native_layouts = {"main": self.docks}
@@ -262,15 +287,24 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         target = EmTkGuidedTour._target_key(step.get("target"))
         for panel in self.spec["sections"]:
             names = {s.get("attr") or s.get("key") for s in panel.get("sections", [])}
-            names |= {b.get("action") for s in panel.get("sections", []) for b in s.get("buttons", [])}
+            names |= {
+                b.get("action") for s in panel.get("sections", []) for b in s.get("buttons", [])
+            }
             if target in names:
                 self.form.folds[panel["title"]] = True
 
     # ── view_form hooks: the app is the spec's model ──────────────────────
     def enabled(self, name):
         if self.job.running:
-            return name not in ("auto_align", "save_dialog", "save_batch", "register", "browse_output_folder",
-                                "refresh_samples", "new_sample")
+            return name not in (
+                "auto_align",
+                "save_dialog",
+                "save_batch",
+                "register",
+                "browse_output_folder",
+                "refresh_samples",
+                "new_sample",
+            )
         if name in ("auto_align",):
             return self.n_mt > 0
         if name in ("save_dialog", "save_batch", "register"):
@@ -279,11 +313,18 @@ class MicrotimeShifterApp(TourTarget, ImApp):
 
     def bounds(self, name):
         top = max(self.n_mt - 1, 0)
-        return {"trigger_level": (1, None), "trigger_position": (0, top),
-                "global_shift": (-top, top)}.get(name)
+        return {
+            "trigger_level": (1, None),
+            "trigger_position": (0, top),
+            "global_shift": (-top, top),
+        }.get(name)
 
     def browse_output_folder(self):
-        self.choose("Output folder", lambda paths: setattr(self, "output_folder", str(paths[0])), mode="folder")
+        self.choose(
+            "Output folder",
+            lambda paths: setattr(self, "output_folder", str(paths[0])),
+            mode="folder",
+        )
 
     def save_batch(self):
         if not self.output_folder:
@@ -296,7 +337,15 @@ class MicrotimeShifterApp(TourTarget, ImApp):
 
     def new_sample(self):
         self.sample_definition = json.dumps(
-            {"name": "New sample", "description": "", "entities": [], "probes": [], "fret_pairs": []}, indent=2)
+            {
+                "name": "New sample",
+                "description": "",
+                "entities": [],
+                "probes": [],
+                "fret_pairs": [],
+            },
+            indent=2,
+        )
         self.sample_window.show()
 
     def choose(self, title, callback, mode="open", multiple=False):
@@ -648,10 +697,19 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.item_rects.update({f"sample_{k}": v for k, v in self.sample_form.rects.items()})
 
     def draw_files(self, box):
-        self.button("📖  Guide", "A walk through the tool, pointing at each control.", self.start_guide, key="guide")
+        self.button(
+            "📖  Guide",
+            "A walk through the tool, pointing at each control.",
+            self.start_guide,
+            key="guide",
+        )
         im.same_line()
-        self.button("❓  Help", "Shifts, alignment, what is written and the MMFDB archive.", self.help.show,
-                    key="help")
+        self.button(
+            "❓  Help",
+            "Shifts, alignment, what is written and the MMFDB archive.",
+            self.help.show,
+            key="help",
+        )
         im.separator()
         im.text_wrapped(self.message)
         if self.job.running:
@@ -661,23 +719,43 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                 self.stop_operation,
                 key="stop",
             )
-        im.begin_disabled(self.job.running or self.dataset_picker.is_open or self.dialog is not None
-                          or self.sample_definition is not None)
+        im.begin_disabled(
+            self.job.running
+            or self.dataset_picker.is_open
+            or self.dialog is not None
+            or self.sample_definition is not None
+        )
         buttons = (
-            ("➕  Files…", "Queue TTTR files; originals are retained when saving shifts.",
-             lambda: self.choose("TTTR inputs", self.add_paths, multiple=True), "add_files"),
-            ("📁  Folder…", "Queue supported TTTR files recursively from a folder.",
-             lambda: self.choose("TTTR folder", self.add_paths, mode="folder"), "add_folder"),
-            ("🗄  Database…", "Select TTTR inputs from the MMFDB object store.", self.dataset_picker.open,
-             "add_database"),
-            ("➖  Remove", "Remove the selected file from the queue (it stays on disk).", self.remove_selected,
-             "remove"),
+            (
+                "➕  Files…",
+                "Queue TTTR files; originals are retained when saving shifts.",
+                lambda: self.choose("TTTR inputs", self.add_paths, multiple=True),
+                "add_files",
+            ),
+            (
+                "📁  Folder…",
+                "Queue supported TTTR files recursively from a folder.",
+                lambda: self.choose("TTTR folder", self.add_paths, mode="folder"),
+                "add_folder",
+            ),
+            (
+                "🗄  Database…",
+                "Select TTTR inputs from the MMFDB object store.",
+                self.dataset_picker.open,
+                "add_database",
+            ),
+            (
+                "➖  Remove",
+                "Remove the selected file from the queue (it stays on disk).",
+                self.remove_selected,
+                "remove",
+            ),
             ("🧹  Clear", "Remove queued files and preview shifts.", self.clear, "clear"),
         )
         pad = 2 * im.get_style().frame_padding[0] + im.get_style().item_spacing[0]
         for i, (label, tip, callback, key) in enumerate(buttons):
             if i and im.get_line_avail() >= im.calc_text_size(label)[0] + pad:
-                im.same_line()                    # wrap rather than run off a narrow dock
+                im.same_line()  # wrap rather than run off a narrow dock
             self.button(label, tip, callback, key=key)
         top = im.get_cursor_screen_pos()
         for i, path in enumerate(list(self.files)):
@@ -692,15 +770,27 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                     self.remove_file(i)
                 im.set_item_tooltip("Remove this input without deleting it from disk.")
                 im.end_popup()
-        self.remember("files", (top[0], top[1], max(1.0, float(box[2]) - 16.0),
-                                max(im.get_text_line_height(), im.get_cursor_screen_pos()[1] - top[1])))
+        self.remember(
+            "files",
+            (
+                top[0],
+                top[1],
+                max(1.0, float(box[2]) - 16.0),
+                max(im.get_text_line_height(), im.get_cursor_screen_pos()[1] - top[1]),
+            ),
+        )
         im.end_disabled()
 
     def draw_controls(self, box):
-        im.begin_disabled(self.dataset_picker.is_open or self.dialog is not None
-                          or self.sample_definition is not None)
+        im.begin_disabled(
+            self.dataset_picker.is_open
+            or self.dialog is not None
+            or self.sample_definition is not None
+        )
         if not self.labels.ready:
-            self.labels.measure([f["label"] for f in labelled(self.spec["sections"])] + ["Channel 00"])
+            self.labels.measure(
+                [f["label"] for f in labelled(self.spec["sections"])] + ["Channel 00"]
+            )
             self.labels.pad(self.spec["sections"])
         self.form.rects.clear()
         draw_form(self.spec, self, self.form)
@@ -719,29 +809,54 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             self.shift_channels = channels
             rows = []
             for channel in channels:
-                rows.append({"type": "value", "attr": f"shift_{channel}", "label": f"Channel {channel}",
-                             "kind": "int", "style": "spin", "step": 1, "width": NUMBER_WIDTH,
-                             "description": "Shift micro-times cyclically; the global and routing-channel shifts "
-                                            "are added modulo the bin count."})
-                rows.append({"type": "button_row", "weight": 0, "buttons": [
-                    {"action": f"reset_{channel}", "label": "↺",
-                     "description": f"Reset the shift of channel {channel} to zero."}]})
+                rows.append(
+                    {
+                        "type": "value",
+                        "attr": f"shift_{channel}",
+                        "label": f"Channel {channel}",
+                        "kind": "int",
+                        "style": "spin",
+                        "step": 1,
+                        "width": NUMBER_WIDTH,
+                        "description": "Shift micro-times cyclically; the global and routing-channel shifts "
+                        "are added modulo the bin count.",
+                    }
+                )
+                rows.append(
+                    {
+                        "type": "button_row",
+                        "weight": 0,
+                        "buttons": [
+                            {
+                                "action": f"reset_{channel}",
+                                "label": "↺",
+                                "description": f"Reset the shift of channel {channel} to zero.",
+                            }
+                        ],
+                    }
+                )
             self.shift_sections = [{"type": "panel", "title": "", "n_col": 2, "sections": rows}]
             self.labels.pad(self.shift_sections)
         self.shift_form.rects.clear()
         draw_sections(self.shift_sections, self.shift_fields, self.shift_form)
         self.item_rects.update(self.shift_form.rects)
-        self.remember("channel_shifts", (top[0], top[1], width, im.get_cursor_screen_pos()[1] - top[1]))
+        self.remember(
+            "channel_shifts", (top[0], top[1], width, im.get_cursor_screen_pos()[1] - top[1])
+        )
 
     def draw_sample_list(self, section, model, state, width):
         """The samples of the active database, once refreshed."""
         if not self.samples:
             return
         ids = [str(row.get("sample_id") or row.get("id") or "") for row in self.samples]
-        names = [str(row.get("name") or row.get("display_name") or identifier)
-                 for row, identifier in zip(self.samples, ids)]
+        names = [
+            str(row.get("name") or row.get("display_name") or identifier)
+            for row, identifier in zip(self.samples, ids)
+        ]
         im.set_next_item_width(width)
-        changed, index = im.combo("##sample", ids.index(self.sample_id) if self.sample_id in ids else -1, names)
+        changed, index = im.combo(
+            "##sample", ids.index(self.sample_id) if self.sample_id in ids else -1, names
+        )
         im.set_item_tooltip("Sample to own the registered shifted TTTR artifacts.")
         self.remember("sample_list")
         if changed:
@@ -761,7 +876,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
             histograms = self.histograms()
             peak = max((int(np.max(hist)) for hist in histograms.values()), default=1)
             signature = (self.n_mt, self.log_y, peak)
-            if not self.n_mt:                         # nothing loaded: the bin axis of a typical TCSPC card
+            if not self.n_mt:  # nothing loaded: the bin axis of a typical TCSPC card
                 implot.setup_axes_limits(0, 4096, 0, 100, cond=implot.COND_ONCE)
             if self.n_mt:
                 implot.setup_axes_limits(
@@ -905,11 +1020,20 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                     "Complete sample schema: name, description, entities, probes, FRET pairs, buffer, pH, "
                     "temperature and external-reference annotations."
                 )
-            self.button("Create sample", "Create the defined sample in the authenticated database.",
-                        self.create_sample, key="sample_create")
+            self.button(
+                "Create sample",
+                "Create the defined sample in the authenticated database.",
+                self.create_sample,
+                key="sample_create",
+            )
             im.end_disabled()
             im.same_line()
-            self.button("Cancel sample", "Discard the sample definition.", self.cancel_sample, key="sample_cancel")
+            self.button(
+                "Cancel sample",
+                "Discard the sample definition.",
+                self.cancel_sample,
+                key="sample_cancel",
+            )
             self.sample_window.end()
             if pressed == "close":
                 self.cancel_sample()

@@ -16,9 +16,15 @@ import numpy as np
 import pytest
 
 from chisurf.core.fio.image import imread, imwrite
+from chisurf.plugins.microscopy.imaging_emtk.testing import (
+    Driver,
+    dialog_open,
+    hermetic_env,
+    numeric_ticks,
+    walk,
+)
 from chisurf.plugins.microscopy.img_drift import core
 from chisurf.plugins.microscopy.img_drift.gui.app import ImgDriftApp, make_app
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, hermetic_env, numeric_ticks, walk
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -31,7 +37,9 @@ EMTK_SPEC = json.loads((PLUGIN / "gui" / "drift_emtk.view.json").read_text(encod
 HT3 = REPO / "test/data/clsm/PQ_Olympus_MFIS.ht3"
 BIG = (1200, 800)
 
-_make = importlib.util.spec_from_file_location("drift_make_data", EVIDENCE / "scripts" / "make_data.py")
+_make = importlib.util.spec_from_file_location(
+    "drift_make_data", EVIDENCE / "scripts" / "make_data.py"
+)
 _data = importlib.util.module_from_spec(_make)
 _make.loader.exec_module(_data)
 
@@ -72,17 +80,23 @@ def shifts_of(model):
 # ── 1. the numbers ──────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_choosing_a_drifting_stack_measures_exactly_the_injected_drift_and_the_qt_numbers(app, drv, tiff):
+def test_choosing_a_drifting_stack_measures_exactly_the_injected_drift_and_the_qt_numbers(
+    app, drv, tiff
+):
     m = measured(app, drv, tiff)
     qt = QT_VALUES["tiff_default"]
     assert m.status_line == qt["status"] == "Max drift 24.6 px over 12 frames."
     np.testing.assert_allclose(shifts_of(m), qt["shifts"], atol=0)
-    truth = np.array([[2 * k, -k] for k in range(12)], dtype=float)  # the drift written into the stack, (dy, dx) per frame
+    truth = np.array(
+        [[2 * k, -k] for k in range(12)], dtype=float
+    )  # the drift written into the stack, (dy, dx) per frame
     np.testing.assert_allclose(shifts_of(m), truth)
     assert m.result.total_drift == pytest.approx(qt["total_drift"], rel=1e-12)
     assert float(np.asarray(m.before_image()).sum()) == pytest.approx(qt["before_sum"], rel=1e-9)
     assert float(np.asarray(m.after_image()).std()) == pytest.approx(qt["after_std"], rel=1e-9)
-    assert np.asarray(m.after_image()).std() > 2 * np.asarray(m.before_image()).std() / 2  # sharper: the correction worked
+    assert (
+        np.asarray(m.after_image()).std() > 2 * np.asarray(m.before_image()).std() / 2
+    )  # sharper: the correction worked
     assert m.channel == "ch0" and m.channel_names == ["ch0"]
 
 
@@ -105,7 +119,11 @@ def test_the_options_give_the_numbers_the_qt_window_showed(app, drv, tiff):
 def test_the_real_photon_stream_has_no_measurable_drift_as_in_the_qt_window(app, drv):
     m = measured(app, drv, HT3)
     qt = QT_VALUES["photon_stream"]
-    assert m.status_line == qt["status"] == "Max drift below one pixel — correction changes nothing over 40 frames."
+    assert (
+        m.status_line
+        == qt["status"]
+        == "Max drift below one pixel — correction changes nothing over 40 frames."
+    )
     assert m.result.kind == "tttr" and m.result.n_frames == 40 and not shifts_of(m).any()
     assert m.channel_names == qt["channel_names"] == ["ch0", "ch1", "ch4", "ch5"]
     assert "No image loaded." not in drv.strings()
@@ -114,8 +132,15 @@ def test_the_real_photon_stream_has_no_measurable_drift_as_in_the_qt_window(app,
 def test_the_shift_table_shows_what_the_qt_table_showed(app, drv, tiff):
     m = measured(app, drv, tiff)
     qt_rows = QT_VALUES["tiff_default"]["shift_rows"]
-    shown = [{"frame": r["frame"], "dx": f"{r['dx']:+.2f}", "dy": f"{r['dy']:+.2f}", "magnitude": f"{r['magnitude']:.2f}"}
-             for r in m.shift_table_rows()]
+    shown = [
+        {
+            "frame": r["frame"],
+            "dx": f"{r['dx']:+.2f}",
+            "dy": f"{r['dy']:+.2f}",
+            "magnitude": f"{r['magnitude']:.2f}",
+        }
+        for r in m.shift_table_rows()
+    ]
     assert shown == qt_rows
     drv.click_text("Shifts")
     assert {"Frame", "dx / px", "dy / px", "|d| / px"} <= set(drv.draw(2).strings)
@@ -130,6 +155,7 @@ def qt_tool():
     if importlib.util.find_spec("qtpy") is None:
         pytest.skip("Qt is not installed")
     import os
+
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     from qtpy import QtWidgets
 
@@ -162,9 +188,14 @@ def qt_table_cells(tool):
     return [[table.item(r, c).text() for c in range(4)] for r in range(table.rowCount())]
 
 
-SCENARIOS = {"defaults": {}, "previous frame": {"reference": "previous"}, "stack mean": {"reference": "mean"},
-             "blanking": {"mode": "constant"}, "no smoothing, subpixel": {"smooth": 0.0, "subpixel": True},
-             "heavy smoothing": {"smooth": 6.0}}
+SCENARIOS = {
+    "defaults": {},
+    "previous frame": {"reference": "previous"},
+    "stack mean": {"reference": "mean"},
+    "blanking": {"mode": "constant"},
+    "no smoothing, subpixel": {"smooth": 0.0, "subpixel": True},
+    "heavy smoothing": {"smooth": 6.0},
+}
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
@@ -180,11 +211,16 @@ def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(app, drv, qt_tool, t
     np.testing.assert_array_equal(shifts_of(m), shifts_of(qt))
     np.testing.assert_array_equal(np.asarray(m.before_image()), np.asarray(qt.before_image()))
     np.testing.assert_array_equal(np.asarray(m.after_image()), np.asarray(qt.after_image()))
-    assert [{k: v for k, v in s.items()} for s in m.drift_series()] and len(m.drift_series()) == len(qt.drift_series())
+    assert [{k: v for k, v in s.items()} for s in m.drift_series()] and len(
+        m.drift_series()
+    ) == len(qt.drift_series())
     for a, b in zip(m.drift_series(), qt.drift_series()):
         np.testing.assert_array_equal(a["y"], b["y"])
         assert a["name"] == b["name"] and a["color"] == b["color"]
-    cells = [[str(r["frame"]), f"{r['dx']:+.2f}", f"{r['dy']:+.2f}", f"{r['magnitude']:.2f}"] for r in m.shift_table_rows()]
+    cells = [
+        [str(r["frame"]), f"{r['dx']:+.2f}", f"{r['dy']:+.2f}", f"{r['magnitude']:.2f}"]
+        for r in m.shift_table_rows()
+    ]
     assert cells == qt_table_cells(qt_tool)
 
 
@@ -201,7 +237,11 @@ def test_the_qt_tool_and_the_emtk_app_agree_on_the_photon_stream(app, drv, qt_to
 def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, qt_tool, attr):
     from chisurf.gui.autoform.sections.builtin import ValueWidget
 
-    editor = {vw._section.attr: vw.editor for vw in qt_tool.findChildren(ValueWidget) if getattr(vw, "_section", None)}[attr]
+    editor = {
+        vw._section.attr: vw.editor
+        for vw in qt_tool.findChildren(ValueWidget)
+        if getattr(vw, "_section", None)
+    }[attr]
     drv.click("Estimator.fold")
     for qt_value in (1e9, -5.0):
         editor.setValue(qt_value)
@@ -217,12 +257,20 @@ def test_the_qt_choice_lists_equal_the_emtk_choice_lists(app, qt_tool):
     for cw in qt_tool.findChildren(ChoiceWidget):
         section = getattr(cw, "_section", None)
         if section is not None and section.attr in ("reference", "mode"):
-            qt_options[section.attr] = [cw.combo.itemText(i) for i in range(cw.combo.count())] if hasattr(cw, "combo") else None
+            qt_options[section.attr] = (
+                [cw.combo.itemText(i) for i in range(cw.combo.count())]
+                if hasattr(cw, "combo")
+                else None
+            )
     spec = {s["attr"]: s for s in walk(EMTK_SPEC["sections"]) if s.get("type") == "choice"}
-    for attr, labels in (("reference", ["First frame", "Previous frame", "Stack mean"]),
-                         ("mode", ["Wrapping (keep all signal)", "Blanking (drop what leaves)"])):
+    for attr, labels in (
+        ("reference", ["First frame", "Previous frame", "Stack mean"]),
+        ("mode", ["Wrapping (keep all signal)", "Blanking (drop what leaves)"]),
+    ):
         assert spec[attr]["labels"] == labels
-        assert spec[attr]["options"] == (["first", "previous", "mean"] if attr == "reference" else ["wrap", "constant"])
+        assert spec[attr]["options"] == (
+            ["first", "previous", "mean"] if attr == "reference" else ["wrap", "constant"]
+        )
         if qt_options.get(attr):
             assert qt_options[attr] == labels
 
@@ -252,7 +300,10 @@ def test_browse_opens_the_dialog_and_a_chosen_file_is_measured(app, drv, tiff):
     drv.click_text("drift.tif")
     drv.click_text("Open", last=True)
     drv.settle()
-    assert Path(app.model.filename) == tiff and app.model.status_line == QT_VALUES["tiff_default"]["status"]
+    assert (
+        Path(app.model.filename) == tiff
+        and app.model.status_line == QT_VALUES["tiff_default"]["status"]
+    )
     assert not dialog_open(drv) and app.model.folder == str(tiff.parent)
 
 
@@ -284,8 +335,17 @@ class FakeClient:
 
     def call(self, method, params=None):
         if method == "mmfdb.datasets.browse":
-            return {"datasets": [{"artifact_id": "a1", "artifact_kind": "raw_data", "data_format": "tif",
-                                  "original_filename": "stored_drift.tif"}], "total": 1}
+            return {
+                "datasets": [
+                    {
+                        "artifact_id": "a1",
+                        "artifact_kind": "raw_data",
+                        "data_format": "tif",
+                        "original_filename": "stored_drift.tif",
+                    }
+                ],
+                "total": 1,
+            }
         if method == "mmfdb.datasets.open":
             return {"local_path": self.path}
         raise AssertionError(method)
@@ -303,17 +363,26 @@ def open_picker(app, drv, tiff):
         time.sleep(0.02)
 
 
-def test_the_database_button_opens_the_picker_and_a_dataset_is_selected_and_measured(app, drv, tiff):
+def test_the_database_button_opens_the_picker_and_a_dataset_is_selected_and_measured(
+    app, drv, tiff
+):
     open_picker(app, drv, tiff)
     drv.click_text("stored_drift.tif [raw_data] (tif)")
     assert app.picker.selection is not None and app.picker.selection.artifact_id == "a1"
-    assert app.picker.accept()  # the picker's own accept: what the "Open selected" button would call (see the xfail below)
+    assert (
+        app.picker.accept()
+    )  # the picker's own accept: what the "Open selected" button would call (see the xfail below)
     drv.settle()
-    assert Path(app.model.filename) == tiff and app.model.result is not None and not app.picker.is_open
+    assert (
+        Path(app.model.filename) == tiff and app.model.result is not None and not app.picker.is_open
+    )
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the dataset picker's Refresh / Previous / Next / Open selected buttons share one id "
-                   "('...##dataset'), so the disabled Previous / Next swallow the release and 'Open selected' never fires; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the dataset picker's Refresh / Previous / Next / Open selected buttons share one id "
+    "('...##dataset'), so the disabled Previous / Next swallow the release and 'Open selected' never fires; see REPORT.md section 10",
+)
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, tiff):
     import time
 
@@ -333,8 +402,11 @@ def test_the_database_picker_window_close_button_closes_it_and_loads_nothing(app
     assert not app.picker.is_open and app.model.filename == ""
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the picker's Cancel button shares the id '...##dataset' with Refresh / Previous / Next / "
-                   "Open selected and never fires; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the picker's Cancel button shares the id '...##dataset' with Refresh / Previous / Next / "
+    "Open selected and never fires; see REPORT.md section 10",
+)
 def test_the_cancel_button_of_the_database_picker_can_be_pressed(app, drv, tiff):
     open_picker(app, drv, tiff)
     drv.click_text("Cancel")
@@ -365,10 +437,24 @@ def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, tiff):
     host.resize(900, 600)
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile(str(tiff))])
-    enter = QtGui.QDragEnterEvent(QtCore.QPoint(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    enter = QtGui.QDragEnterEvent(
+        QtCore.QPoint(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dragEnterEvent(enter)
     assert enter.isAccepted()
-    host.dropEvent(QtGui.QDropEvent(QtCore.QPointF(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier))
+    host.dropEvent(
+        QtGui.QDropEvent(
+            QtCore.QPointF(10, 10),
+            QtCore.Qt.CopyAction,
+            mime,
+            QtCore.Qt.LeftButton,
+            QtCore.Qt.NoModifier,
+        )
+    )
     assert Path(app.model.filename) == tiff and qapp is not None
     host.close()
 
@@ -390,7 +476,9 @@ def test_a_corrupt_file_reports_the_reason(app, drv, tmp_path):
     drv.settle()
     assert app.model.status_line.startswith("Could not read the image:")
     assert app.model.status_line == app.model.status and app.model.result is None
-    assert app.model.before_image() is None and "Could not read the image" in " ".join(drv.strings())
+    assert app.model.before_image() is None and "Could not read the image" in " ".join(
+        drv.strings()
+    )
 
 
 def test_a_single_frame_file_is_refused_with_the_qt_message(app, drv, tmp_path):
@@ -398,14 +486,21 @@ def test_a_single_frame_file_is_refused_with_the_qt_message(app, drv, tmp_path):
     imwrite(one, np.zeros((16, 16), dtype=np.float32))
     drv.type_into("filename", str(one))
     drv.settle()
-    assert app.model.status_line == QT_VALUES["one_frame"]["model_status"] == "1 frame(s): drift correction needs at least two."
+    assert (
+        app.model.status_line
+        == QT_VALUES["one_frame"]["model_status"]
+        == "1 frame(s): drift correction needs at least two."
+    )
     assert app.model.result is None
 
 
 def test_a_missing_file_leaves_no_image_loaded(app, drv, tmp_path):
     drv.type_into("filename", str(tmp_path / "missing.tif"))
     drv.settle()
-    assert app.model.status_line == QT_VALUES["missing"]["model_status"] == "No image loaded." and app.model.result is None
+    assert (
+        app.model.status_line == QT_VALUES["missing"]["model_status"] == "No image loaded."
+        and app.model.result is None
+    )
 
 
 def test_a_new_bad_file_clears_the_previous_result(app, drv, tiff, tmp_path):
@@ -415,7 +510,11 @@ def test_a_new_bad_file_clears_the_previous_result(app, drv, tiff, tmp_path):
     bad.write_bytes(b"nope")
     drv.type_into("filename", str(bad))
     drv.settle()
-    assert app.model.result is None and app.model.shift_table_rows() == [] and app.model.drift_series() == []
+    assert (
+        app.model.result is None
+        and app.model.shift_table_rows() == []
+        and app.model.drift_series() == []
+    )
 
 
 def test_the_actions_and_the_form_are_greyed_while_a_run_is_in_flight(app, drv, tiff):
@@ -452,7 +551,11 @@ def pick(drv, field, label):
 
 
 def test_the_reference_list_offers_the_three_qt_references_and_each_is_picked(app, drv):
-    for label, value in (("Previous frame", "previous"), ("Stack mean", "mean"), ("First frame", "first")):
+    for label, value in (
+        ("Previous frame", "previous"),
+        ("Stack mean", "mean"),
+        ("First frame", "first"),
+    ):
         pick(drv, "reference", label)
         assert app.model.reference == value
         assert label in drv.draw(2).strings
@@ -483,12 +586,16 @@ def test_the_channel_list_names_the_channels_of_the_file_and_the_chosen_one_is_m
     assert app.model.channel == "ch4"
     drv.click("measure")
     drv.settle()
-    expected = core.measure_drift(str(HT3), "ch4")  # an independent call of the core on the chosen channel
+    expected = core.measure_drift(
+        str(HT3), "ch4"
+    )  # an independent call of the core on the chosen channel
     np.testing.assert_array_equal(shifts_of(app.model), np.asarray(expected.shifts, dtype=float))
     assert app.model.status_line.startswith("Max drift")
 
 
-def test_the_estimator_panel_opens_and_smoothing_and_subpixel_give_the_qt_measurement(app, drv, qt_tool, tiff):
+def test_the_estimator_panel_opens_and_smoothing_and_subpixel_give_the_qt_measurement(
+    app, drv, qt_tool, tiff
+):
     drv.click("Estimator.fold")
     assert {"smooth", "subpixel"} <= set(app.form.rects)
     measured(app, drv, tiff)
@@ -500,7 +607,9 @@ def test_the_estimator_panel_opens_and_smoothing_and_subpixel_give_the_qt_measur
     drv.settle()
     qt = qt_measure(qt_tool, tiff, smooth=0.0, subpixel=True)
     np.testing.assert_array_equal(shifts_of(app.model), shifts_of(qt))
-    assert not np.array_equal(shifts_of(app.model), default)  # sub-pixel refinement moved the answer off the whole pixels
+    assert not np.array_equal(
+        shifts_of(app.model), default
+    )  # sub-pixel refinement moved the answer off the whole pixels
     drv.click("subpixel")
     assert app.model.subpixel is False
 
@@ -524,7 +633,9 @@ def test_changing_a_setting_does_not_re_measure_by_itself_as_in_the_qt_tool(app,
     before = app.model.status_line
     pick(drv, "reference", "Stack mean")
     assert not app.job.busy and app.model.status_line == before
-    assert app.model.result.total_drift == pytest.approx(QT_VALUES["tiff_default"]["total_drift"])  # still the first-frame result
+    assert app.model.result.total_drift == pytest.approx(
+        QT_VALUES["tiff_default"]["total_drift"]
+    )  # still the first-frame result
 
 
 # ── 6. exports ────────────────────────────────────────────────────────────────────────────────────────────── #
@@ -541,7 +652,11 @@ def test_export_shifts_writes_the_csv_the_qt_tool_wrote(app, drv, tiff, tmp_path
     measured(app, drv, tiff)
     drv.click("request_export_shifts")
     painter = drv.draw(2)
-    assert dialog_open(drv) and app.dialog.title == "Export drift shifts" and "drift.drift.csv" in painter.strings
+    assert (
+        dialog_open(drv)
+        and app.dialog.title == "Export drift shifts"
+        and "drift.drift.csv" in painter.strings
+    )
     drv.click_text("Save", last=True)
     written = tmp_path / "drift.drift.csv"
     assert written.read_text() == QT_SHIFTS_CSV
@@ -552,18 +667,28 @@ def test_export_stack_writes_the_corrected_tiff_the_qt_tool_wrote(app, drv, tiff
     measured(app, drv, tiff)
     drv.click("request_export_stack")
     painter = drv.draw(2)
-    assert dialog_open(drv) and app.dialog.title == "Export corrected stack" and "drift.corrected.tif" in painter.strings
+    assert (
+        dialog_open(drv)
+        and app.dialog.title == "Export corrected stack"
+        and "drift.corrected.tif" in painter.strings
+    )
     drv.click_text("Save", last=True)
     drv.settle()
     written = tmp_path / "drift.corrected.tif"
     corrected = np.asarray(imread(str(written)))
     qt = QT_VALUES["export_stack"]
-    assert list(corrected.shape) == qt["shape"] and float(corrected.sum()) == pytest.approx(qt["sum"], rel=1e-9)
-    assert float(np.std(list(corrected), axis=0).mean()) == pytest.approx(qt["std_frame_to_frame"], rel=1e-6)
+    assert list(corrected.shape) == qt["shape"] and float(corrected.sum()) == pytest.approx(
+        qt["sum"], rel=1e-9
+    )
+    assert float(np.std(list(corrected), axis=0).mean()) == pytest.approx(
+        qt["std_frame_to_frame"], rel=1e-6
+    )
     assert app.model.status_line == f"Wrote {written}"
     # every corrected frame lies on the first one: the drift is gone
     raw = np.asarray(imread(str(tiff)))
-    assert np.abs(corrected[5] - corrected[0]).mean() < 3.0 < np.abs(raw[5] - raw[0]).mean()  # 3.0: the noise floor of two frames
+    assert (
+        np.abs(corrected[5] - corrected[0]).mean() < 3.0 < np.abs(raw[5] - raw[0]).mean()
+    )  # 3.0: the noise floor of two frames
 
 
 def test_export_dialog_cancel_writes_nothing(app, drv, tiff, tmp_path):
@@ -590,16 +715,21 @@ def test_export_to_an_unwritable_place_reports_instead_of_raising(app, drv, tiff
 
 
 def test_every_view_says_what_to_do_before_there_is_a_result(app, drv):
-    for tab, message in (("Drift trace", "Choose an image or press Measure"), ("Projection", "Measure a file")):
+    for tab, message in (
+        ("Drift trace", "Choose an image or press Measure"),
+        ("Projection", "Measure a file"),
+    ):
         drv.click_text(tab)
         assert any(s.startswith(message) for s in drv.draw(2).strings), tab
 
 
 def test_every_view_is_drawn_after_a_measurement(app, drv, tiff):
     measured(app, drv, tiff)
-    for tab, expect in (("Drift trace", {"frame", "displacement / px", "dx", "dy", "|d|"}),
-                        ("Projection", {"Before", "After", "Colormap", "Reset view"}),
-                        ("Shifts", {"Frame", "dx / px", "dy / px", "|d| / px"})):
+    for tab, expect in (
+        ("Drift trace", {"frame", "displacement / px", "dx", "dy", "|d|"}),
+        ("Projection", {"Before", "After", "Colormap", "Reset view"}),
+        ("Shifts", {"Frame", "dx / px", "dy / px", "|d| / px"}),
+    ):
         drv.click_text(tab)
         strings = set(drv.draw(2).strings)
         assert expect <= strings, (tab, expect - strings)
@@ -659,7 +789,10 @@ def test_the_shift_table_header_sorts_by_value_and_a_row_click_changes_nothing(a
     assert app.model.export_settings() == before and app.model.result is not None
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel never reaches an implot inside a DockManager window; see REPORT.md section 10",
+)
 def test_the_wheel_zooms_the_drift_trace(app, drv, tiff):
     measured(app, drv, tiff)
     drv.click_text("Drift trace")
@@ -670,7 +803,10 @@ def test_the_wheel_zooms_the_drift_trace(app, drv, tiff):
     assert numeric_ticks(drv.draw(2)) != before
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach a spin field inside a DockManager window; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel does not reach a spin field inside a DockManager window; see REPORT.md section 10",
+)
 def test_the_wheel_over_the_smoothing_field_steps_it(app, drv):
     drv.click("Estimator.fold")
     x, y, w, h = drv.rect("smooth")
@@ -705,7 +841,9 @@ def test_help_button_opens_the_help_and_its_buttons_work(app, drv):
 
 
 def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
-    drv = Driver(app, BIG)  # the card is clear of the form here; see the xfail below for the overlapping case
+    drv = Driver(
+        app, BIG
+    )  # the card is clear of the form here; see the xfail below for the overlapping case
     drv.click("guide")
     assert app.tour.active
     drv.click_text("Close Tour")
@@ -729,8 +867,12 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
                 drv.click("measure")
                 drv.settle()
             drv.draw(2)
-            assert not app.tour.awaiting, f"{step['title']}: operating the control did not release the step"
-        drv.click_text("Finish ✓" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next ►", last=True)
+            assert not app.tour.awaiting, (
+                f"{step['title']}: operating the control did not release the step"
+            )
+        drv.click_text(
+            "Finish ✓" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next ►", last=True
+        )
     assert not app.tour.active and app.model.result is not None
 
 
@@ -771,13 +913,31 @@ def test_every_guide_target_is_a_drawn_control_or_window(app, drv, tiff):
 
 
 def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
-    app.model.reference, app.model.mode, app.model.smooth, app.model.subpixel = "mean", "constant", 3.5, True
+    app.model.reference, app.model.mode, app.model.smooth, app.model.subpixel = (
+        "mean",
+        "constant",
+        3.5,
+        True,
+    )
     app.model.colormap, app.model.folder = "viridis", "/tmp"
     saved = json.loads(json.dumps(app.export_settings()))
     other = make_app()
     other.restore_settings(saved)
-    assert other.export_settings() == saved and other.model.reference == "mean" and other.model.mode == "constant"
-    other.restore_settings({"reference": "middle", "mode": "reflect", "smooth": "high", "subpixel": 3, "colormap": 4, "folder": 4})
+    assert (
+        other.export_settings() == saved
+        and other.model.reference == "mean"
+        and other.model.mode == "constant"
+    )
+    other.restore_settings(
+        {
+            "reference": "middle",
+            "mode": "reflect",
+            "smooth": "high",
+            "subpixel": 3,
+            "colormap": 4,
+            "folder": 4,
+        }
+    )
     assert other.export_settings() == saved
     other.restore_settings(None)
     assert "filename" not in saved and "channel" not in saved
@@ -794,7 +954,14 @@ def test_the_imaging_hub_contract(app):
 
 def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, tiff):
     for size in ((1200, 800), (800, 600)):
-        assert {"Settings", "Measure", "Export stack", "Export shifts", "Browse", "Database"} <= set(drv.draw(3, size).strings)
+        assert {
+            "Settings",
+            "Measure",
+            "Export stack",
+            "Export shifts",
+            "Browse",
+            "Database",
+        } <= set(drv.draw(3, size).strings)
     measured(app, drv, tiff)
     for size in ((1200, 800), (800, 600)):
         assert any("Max drift 24.6 px" in s for s in drv.draw(3, size).strings)
@@ -812,7 +979,12 @@ def test_every_spec_key_exists_on_the_model():
     model = make_app().model
     for section in walk(EMTK_SPEC["sections"]):
         options = section.get("options") if isinstance(section.get("options"), dict) else {}
-        for name in (section.get("attr"), section.get("call"), section.get("options_source"), options.get("source")):
+        for name in (
+            section.get("attr"),
+            section.get("call"),
+            section.get("options_source"),
+            options.get("source"),
+        ):
             if name:
                 assert hasattr(model, name), (section.get("title"), name)
         for name in (section.get("call"), options.get("source")):
@@ -828,7 +1000,11 @@ def test_every_spec_key_exists_on_the_model():
 
 def test_every_qt_setting_is_in_the_emtk_spec_with_the_same_range():
     def values(sections):
-        return {s["attr"]: s for s in walk(sections) if s.get("type") in ("value", "toggle", "choice") and s.get("attr")}
+        return {
+            s["attr"]: s
+            for s in walk(sections)
+            if s.get("type") in ("value", "toggle", "choice") and s.get("attr")
+        }
 
     qt, emtk = values(QT_SPEC["sections"]), values(EMTK_SPEC["sections"])
     assert set(qt) - {"filename"} == set(emtk) - {"filename"}, set(qt) ^ set(emtk)

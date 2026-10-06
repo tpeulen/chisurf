@@ -1,4 +1,5 @@
 """Subprocess-native startup validation, independent of the Qt application."""
+
 from __future__ import annotations
 
 import argparse
@@ -57,9 +58,15 @@ def check_factory(spec: str, screenshot: str | None = None) -> dict:
         qt_modules = sorted(name for name in sys.modules if name.split(".", 1)[0] in QT_ROOTS)
         if qt_modules:
             raise AssertionError(f"Qt modules loaded: {qt_modules}")
-        return {"factory": spec, "status": "pass", "seconds": round(time.monotonic() - started, 3),
-                "qt_modules": qt_modules, "sizes": [[1200, 800], [800, 600]],
-                "parity_verified": False, "tooltips_verified": False}
+        return {
+            "factory": spec,
+            "status": "pass",
+            "seconds": round(time.monotonic() - started, 3),
+            "qt_modules": qt_modules,
+            "sizes": [[1200, 800], [800, 600]],
+            "parity_verified": False,
+            "tooltips_verified": False,
+        }
     finally:
         try:
             close = getattr(app, "close", None)
@@ -78,8 +85,13 @@ def main(argv=None):
     try:
         result = check_factory(args.factory, args.screenshot)
     except Exception as error:
-        result = {"factory": args.factory, "status": "fail", "error": str(error),
-                  "error_type": type(error).__name__, "traceback": traceback.format_exc()}
+        result = {
+            "factory": args.factory,
+            "status": "fail",
+            "error": str(error),
+            "error_type": type(error).__name__,
+            "traceback": traceback.format_exc(),
+        }
     print(json.dumps(result))
     return int(result["status"] != "pass")
 

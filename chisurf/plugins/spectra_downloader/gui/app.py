@@ -27,14 +27,25 @@ from .translations import LOCALES, TOOLTIPS, install, tr
 HERE = Path(__file__).parent
 PANELS = ("Overview", "Browse", "Download", "Add to MMFDB")
 _TEXT_KEYS = ("title", "label", "description", "tooltip", "hint", "placeholder")
-SPECTRUM_COLOURS = {"emission": (200, 0, 0, 255), "absorption": (0, 100, 200, 255), "transmission": (0, 150, 0, 255)}
+SPECTRUM_COLOURS = {
+    "emission": (200, 0, 0, 255),
+    "absorption": (0, 100, 200, 255),
+    "transmission": (0, 150, 0, 255),
+}
 ERROR_COLOUR = (235, 100, 90, 255)
 HEADER = 0.0
 
 
 def _optical_view():
     """The mmfdb-admin component detail spec (found by path: importing its package would import Qt)."""
-    return Path(__file__).resolve().parents[2] / "core" / "mmfdb_admin" / "gui" / "optical_components" / "fluorophore.view.json"
+    return (
+        Path(__file__).resolve().parents[2]
+        / "core"
+        / "mmfdb_admin"
+        / "gui"
+        / "optical_components"
+        / "fluorophore.view.json"
+    )
 
 
 def translated(node):
@@ -85,13 +96,20 @@ class SpectraApp(TourTarget, ImApp):
         self.navigation_search = ""
         self.detail_tab = "Properties"
         self.current = None
-        self.forms = {key: FormState(on_used=self.used) for key in ("overview", "browse", "detail", "download", "mmfdb", "mmfdb_top")}
+        self.forms = {
+            key: FormState(on_used=self.used)
+            for key in ("overview", "browse", "detail", "download", "mmfdb", "mmfdb_top")
+        }
         for key in ("properties", "metadata"):
             self.forms[key] = FormState(on_used=self.used)
         self.forms["endpoint"] = FormState(on_used=self.used)
-        self.sources_json = json.loads((HERE / "spectra_emtk.view.json").read_text(encoding="utf-8"))
+        self.sources_json = json.loads(
+            (HERE / "spectra_emtk.view.json").read_text(encoding="utf-8")
+        )
         self.specs, self.spec_locale = {}, None
-        self.help = EmTkHelpWindow(title="Spectra", resource=HERE / "help.md", on_start_guide=self.start_guide)
+        self.help = EmTkHelpWindow(
+            title="Spectra", resource=HERE / "help.md", on_start_guide=self.start_guide
+        )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
             get_target_rect=self._target_rect,
@@ -108,16 +126,31 @@ class SpectraApp(TourTarget, ImApp):
     def build_specs(self):
         """Load, translate and lay out every panel's spec once per locale; one caption column per window."""
         src = self.sources_json
-        overview_fields = json.loads((HERE / "overview.view.json").read_text(encoding="utf-8"))["sections"]
+        overview_fields = json.loads((HERE / "overview.view.json").read_text(encoding="utf-8"))[
+            "sections"
+        ]
         endpoint = json.loads((HERE / "endpoint_auth.view.json").read_text(encoding="utf-8"))
         for section in endpoint["sections"]:
             self._spin_ports(section)
         detail = json.loads(_optical_view().read_text(encoding="utf-8"))
         specs = {
-            "overview": {"sections": [{"type": "panel", "title": "Staging database overview", "n_col": 2,
-                                       "sections": overview_fields}] + src["overview"]["sections"]},
+            "overview": {
+                "sections": [
+                    {
+                        "type": "panel",
+                        "title": "Staging database overview",
+                        "n_col": 2,
+                        "sections": overview_fields,
+                    }
+                ]
+                + src["overview"]["sections"]
+            },
             "browse": src["browse"],
-            "detail": {"sections": [{"type": "panel", "title": "", "n_col": 2, "sections": detail["sections"]}]},
+            "detail": {
+                "sections": [
+                    {"type": "panel", "title": "", "n_col": 2, "sections": detail["sections"]}
+                ]
+            },
             "properties": src["properties"],
             "metadata": src["metadata"],
             "download": src["download"],
@@ -129,14 +162,24 @@ class SpectraApp(TourTarget, ImApp):
         for key, spec in specs.items():
             out[key] = layout_spec(translated(deepcopy(spec)))
         labels = LabelColumn()
-        labels.measure([f["label"] for key in ("endpoint", "download", "browse") for f in labelled(out[key]["sections"])])
+        labels.measure(
+            [
+                f["label"]
+                for key in ("endpoint", "download", "browse")
+                for f in labelled(out[key]["sections"])
+            ]
+        )
         for key in ("endpoint", "download", "browse"):
             labels.pad(out[key]["sections"])
         return out
 
     @staticmethod
     def _spin_ports(section):
-        if section.get("type") == "value" and section.get("kind") == "int" and not section.get("read_only"):
+        if (
+            section.get("type") == "value"
+            and section.get("kind") == "int"
+            and not section.get("read_only")
+        ):
             section["style"] = "spin"
         for child in section.get("sections", []):
             SpectraApp._spin_ports(child)
@@ -211,8 +254,13 @@ class SpectraApp(TourTarget, ImApp):
         return json.dumps(
             {
                 "probe": d["probe"],
-                "optical_properties": {p["property_name"]: p["property_value"] for p in d["optical_properties"]},
-                "spectra": [{"type": s["spectrum_type"], "points": len(s["wavelengths"])} for s in d["spectra"]],
+                "optical_properties": {
+                    p["property_name"]: p["property_value"] for p in d["optical_properties"]
+                },
+                "spectra": [
+                    {"type": s["spectrum_type"], "points": len(s["wavelengths"])}
+                    for s in d["spectra"]
+                ],
             },
             indent=2,
             default=str,
@@ -237,10 +285,15 @@ class SpectraApp(TourTarget, ImApp):
 
     # -- data for the tables -------------------------------------------------------------------------------------------- #
     def category_rows(self):
-        return [{"name": k or "(none)", "count": v} for k, v in sorted(self.overview_data["by_category"].items())]
+        return [
+            {"name": k or "(none)", "count": v}
+            for k, v in sorted(self.overview_data["by_category"].items())
+        ]
 
     def source_rows(self):
-        return [{"name": k or "(none)", "count": v} for k, v in self.overview_data["by_source"].items()]
+        return [
+            {"name": k or "(none)", "count": v} for k, v in self.overview_data["by_source"].items()
+        ]
 
     def component_rows(self):
         m = self.model
@@ -258,7 +311,10 @@ class SpectraApp(TourTarget, ImApp):
 
     def property_rows(self):
         d = self.model.detail
-        return [{"property": p["property_name"], "value": str(p["property_value"])} for p in (d["optical_properties"] if d else [])]
+        return [
+            {"property": p["property_name"], "value": str(p["property_value"])}
+            for p in (d["optical_properties"] if d else [])
+        ]
 
     def select_row(self, record):
         if isinstance(record, dict) and record.get("probe_id") is not None:
@@ -278,7 +334,9 @@ class SpectraApp(TourTarget, ImApp):
     def refresh_overview(self):
         self.model.refresh()
         self.overview_data = self.model.overview()
-        self.overview = Fields(**{k: str(v) for k, v in self.overview_data.items() if not isinstance(v, dict)})
+        self.overview = Fields(
+            **{k: str(v) for k, v in self.overview_data.items() if not isinstance(v, dict)}
+        )
 
     def refresh_browse(self):
         self.model.refresh()
@@ -306,12 +364,22 @@ class SpectraApp(TourTarget, ImApp):
         if not self.model.selected:
             self.ask("Push selected", tr("No components selected."), [("OK", None)])
             return
-        self.ask("Push to MMFDB", tr("Push {} selected component(s) from this staging database into the connected MMFDB?").format(len(self.model.selected)),
-                 [("Yes", lambda: self.do_push(True)), ("No", None)])
+        self.ask(
+            "Push to MMFDB",
+            tr(
+                "Push {} selected component(s) from this staging database into the connected MMFDB?"
+            ).format(len(self.model.selected)),
+            [("Yes", lambda: self.do_push(True)), ("No", None)],
+        )
 
     def push_all(self):
-        self.ask("Push to MMFDB", tr("Push all {} component(s) from this staging database into the connected MMFDB?").format(len(self.model.rows)),
-                 [("Yes", lambda: self.do_push(False)), ("No", None)])
+        self.ask(
+            "Push to MMFDB",
+            tr(
+                "Push all {} component(s) from this staging database into the connected MMFDB?"
+            ).format(len(self.model.rows)),
+            [("Yes", lambda: self.do_push(False)), ("No", None)],
+        )
 
     def do_push(self, selected):
         try:
@@ -320,8 +388,13 @@ class SpectraApp(TourTarget, ImApp):
             self.ask("Push failed", str(exc), [("OK", None)])
             return
         summary = summary if isinstance(summary, dict) else {}
-        self.ask("Push complete", tr("Pushed {} component(s) into the MMFDB.").format(summary.get("merged", 0))
-                 + "\n" + tr("Consolidated: {}").format(summary.get("consolidated")), [("OK", None)])
+        self.ask(
+            "Push complete",
+            tr("Pushed {} component(s) into the MMFDB.").format(summary.get("merged", 0))
+            + "\n"
+            + tr("Consolidated: {}").format(summary.get("consolidated")),
+            [("OK", None)],
+        )
 
     def add_all(self):
         self.model.add_all_logged()
@@ -358,21 +431,27 @@ class SpectraApp(TourTarget, ImApp):
         self.tour.notify_used(panel)
 
     def draw_navigation(self, width):
-        _, self.navigation_search = im.input_text("##navigation_search", self.navigation_search, hint=tr("Filter"))
+        _, self.navigation_search = im.input_text(
+            "##navigation_search", self.navigation_search, hint=tr("Filter")
+        )
         im.set_item_tooltip(tr(TOOLTIPS.get("Filter", "Filter")))
         self.item_rects["search"] = im.get_item_rect()
         im.spacing()
         for panel in PANELS:
             if self.navigation_search.lower() not in tr(panel).lower():
                 continue
-            if im.selectable(tr(panel) + "##nav." + panel, self.panel == panel, size=(width - 8, 24)):
+            if im.selectable(
+                tr(panel) + "##nav." + panel, self.panel == panel, size=(width - 8, 24)
+            ):
                 self.select_panel(panel)
             im.set_item_tooltip(tr(TOOLTIPS.get(panel, panel)))
             self.item_rects["nav." + panel] = im.get_item_rect()
         im.separator()
         im.text(tr("Language"))
         locale = i18n.get_locale()
-        changed, index = im.combo("##locale", LOCALES.index(locale) if locale in LOCALES else 0, list(LOCALES))
+        changed, index = im.combo(
+            "##locale", LOCALES.index(locale) if locale in LOCALES else 0, list(LOCALES)
+        )
         im.set_item_tooltip(tr(TOOLTIPS.get("Language", "Language")))
         self.item_rects["language"] = im.get_item_rect()
         if changed:
@@ -393,7 +472,9 @@ class SpectraApp(TourTarget, ImApp):
     def draw_form(self, key, model=None):
         state = self.forms[key]
         state.rects.clear()
-        state.custom.update({"count": self.draw_count, "scraped": self.draw_scraped, "session": self.draw_session})
+        state.custom.update(
+            {"count": self.draw_count, "scraped": self.draw_scraped, "session": self.draw_session}
+        )
         draw_form(self.specs[key], model if model is not None else self, state, titles=True)
         self.item_rects.update(state.rects)
 
@@ -401,7 +482,9 @@ class SpectraApp(TourTarget, ImApp):
         im.text_disabled(f"{len(self.model.filtered())} / {len(self.model.rows)}")
 
     def draw_scraped(self, section, model, state, width):
-        counts = json.dumps(self.model.source_counts()) if self.model.source_counts() else tr("none yet")
+        counts = (
+            json.dumps(self.model.source_counts()) if self.model.source_counts() else tr("none yet")
+        )
         im.text_wrapped(f"{tr('Already scraped')} ({self.model.source_slug()}): {counts}")
 
     def draw_session(self, section, model, state, width):
@@ -433,11 +516,15 @@ class SpectraApp(TourTarget, ImApp):
         wide = width >= 900
         x, y = im.get_cursor_screen_pos()
         left = min(max(520.0, width * 0.52), width - 360.0) if wide else width
-        im.begin_child((x, y, left, height if wide else max(260.0, height * 0.5)), child_id="spectra-list")
+        im.begin_child(
+            (x, y, left, height if wide else max(260.0, height * 0.5)), child_id="spectra-list"
+        )
         self.draw_form("browse")
         im.end_child()
         if wide:
-            im.begin_child((x + left + 8.0, y, width - left - 8.0, height), child_id="spectra-detail")
+            im.begin_child(
+                (x + left + 8.0, y, width - left - 8.0, height), child_id="spectra-detail"
+            )
         self.draw_detail()
         if wide:
             im.end_child()
@@ -473,8 +560,13 @@ class SpectraApp(TourTarget, ImApp):
             implot.setup_axes(tr("Wavelength (nm)"), tr("Intensity"))
             for s in m.detail["spectra"]:
                 implot.plot_line(
-                    s["spectrum_type"], s["wavelengths"], s["intensity"],
-                    spec=implot.PlotSpec(line_color=SPECTRUM_COLOURS.get(s["spectrum_type"], (0, 100, 200, 255)), line_weight=2),
+                    s["spectrum_type"],
+                    s["wavelengths"],
+                    s["intensity"],
+                    spec=implot.PlotSpec(
+                        line_color=SPECTRUM_COLOURS.get(s["spectrum_type"], (0, 100, 200, 255)),
+                        line_weight=2,
+                    ),
                 )
             implot.end_plot()
 
@@ -564,8 +656,13 @@ class SpectraApp(TourTarget, ImApp):
             else:
                 # A window of its own over the others, so the card's buttons are hovered (a button answers only when no
                 # other window is under the pointer).
-                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
-                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
+                flags = (
+                    im.WindowFlags.NO_DECORATION
+                    | im.WindowFlags.NO_BACKGROUND
+                    | im.WindowFlags.NO_SAVED_SETTINGS
+                    | im.WindowFlags.NO_MOVE
+                    | im.WindowFlags.NO_NAV
+                )
                 im.begin("##spectra_tour", (0.0, 0.0, width, height), flags)
                 self.tour.draw(width, height)
                 im.end()

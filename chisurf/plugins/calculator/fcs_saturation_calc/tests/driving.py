@@ -13,7 +13,11 @@ from chisurf.plugins.calculator.psf_calculator.tests.driving import (  # noqa: F
     layout_problems,
     overlaps,
 )
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter, hermetic_env  # noqa: F401
+from chisurf.plugins.microscopy.imaging_emtk.testing import (  # noqa: F401
+    Driver,
+    MetricPainter,
+    hermetic_env,
+)
 
 BIG = (1200, 800)
 SMALL = (800, 600)
@@ -35,10 +39,14 @@ class SatDriver(Driver):
     def control(self, table):
         """The painted table control of a spec table (``dark_rows``, ``exc_rows``, ``brightness_rows``, ``optics_rows``)."""
         self.draw(1)
-        for state in self.app.forms.values():  # any window of the app that draws a table of this source
+        for (
+            state
+        ) in self.app.forms.values():  # any window of the app that draws a table of this source
             if table in state.tables:
                 return state.tables[table].control
-        raise AssertionError(f"no table {table!r} is drawn: {[list(s.tables) for s in self.app.forms.values()]}")
+        raise AssertionError(
+            f"no table {table!r} is drawn: {[list(s.tables) for s in self.app.forms.values()]}"
+        )
 
     def cell(self, table, row, column):
         """The rectangle of a table cell: *row* is the row's position, *column* the column's key."""
@@ -50,7 +58,9 @@ class SatDriver(Driver):
             if col.key == column:
                 return (x, by + position * control._row_h, width, control._row_h)
             x += width
-        raise AssertionError(f"column {column!r} of {table} is not shown: {[c.key for c in control._shown]}")
+        raise AssertionError(
+            f"column {column!r} of {table} is not shown: {[c.key for c in control._shown]}"
+        )
 
     def edit_cell(self, table, row, column, text, enter=True):
         """Double click the cell, replace its text, press Enter."""
@@ -71,4 +81,9 @@ class SatDriver(Driver):
         self.click_at(x + w / 2, y + h / 2)
 
 
-TABLE_FORMS = {"dark_rows": "k_dark", "exc_rows": "k_exc", "brightness_rows": "brightness", "optics_rows": "optics"}
+TABLE_FORMS = {
+    "dark_rows": "k_dark",
+    "exc_rows": "k_exc",
+    "brightness_rows": "brightness",
+    "optics_rows": "optics",
+}

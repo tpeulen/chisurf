@@ -8,7 +8,10 @@ import pytest
 from chisurf.core.fio.pto import Measurement
 from chisurf.plugins.core.tttr_to_pto.gui.app import TttrToPtoApp
 
-DATA = Path(__file__).resolve().parents[4] / "plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna"
+DATA = (
+    Path(__file__).resolve().parents[4]
+    / "plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna"
+)
 
 
 def finish(app):
@@ -89,7 +92,19 @@ def test_rejects_sidecar_missing_file_and_reports_async_errors(tmp_path):
 def test_restored_pending_operations_never_reexecute(tmp_path):
     app = TttrToPtoApp()
     try:
-        app.restore_settings({"history": [{"paths": [str(tmp_path / "old.ptu")], "action": "pack", "status": "queued", "outputs": [], "error": ""}]})
+        app.restore_settings(
+            {
+                "history": [
+                    {
+                        "paths": [str(tmp_path / "old.ptu")],
+                        "action": "pack",
+                        "status": "queued",
+                        "outputs": [],
+                        "error": "",
+                    }
+                ]
+            }
+        )
         app.poll()
         assert not app.job.running and not app.pending
         assert app.rows[0]["status"] == "interrupted"
@@ -98,7 +113,9 @@ def test_restored_pending_operations_never_reexecute(tmp_path):
 
 
 @pytest.mark.skipif(not (DATA / "m000.spc").exists(), reason="BH SPC fixture absent")
-def test_content_detected_container_and_verification_failure_preserve_sources(tmp_path, monkeypatch):
+def test_content_detected_container_and_verification_failure_preserve_sources(
+    tmp_path, monkeypatch
+):
     source = tmp_path / "m000.spc"
     source.write_bytes((DATA / source.name).read_bytes())
     original = source.read_bytes()

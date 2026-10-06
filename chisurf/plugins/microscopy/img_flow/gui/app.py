@@ -24,8 +24,12 @@ class ImgFlowApp(ImagingToolApp):
     SPEC = "flow_emtk.view.json"
     TITLE = "Flow maps"
     HELP_TITLE = "Flow maps - Help"
-    LAYOUT = Split("h", 0.40, Region("settings"),
-                   Split("v", 0.20, Region("report"), Split("h", 0.5, Region("field"), Region("diag"))))
+    LAYOUT = Split(
+        "h",
+        0.40,
+        Region("settings"),
+        Split("v", 0.20, Region("report"), Split("h", 0.5, Region("field"), Region("diag"))),
+    )
     DIALOGS = {
         "open": ("Open image", "open", IMAGE_FILE_FILTER, "open_path"),
         "export": ("Export flow map", "save", "CSV (*.csv)", "write_export"),

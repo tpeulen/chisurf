@@ -22,11 +22,10 @@ import pytest
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
-from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
-
 from emtk.testing import RecordingPainter  # noqa: E402
 
 from chisurf.plugins.burst.burst_fusion.gui.app import create_app  # noqa: E402
+from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
 
 
 def _draw(app, size=(1200, 800), n=2):
@@ -73,14 +72,22 @@ def _qt_facts(settings_dir):
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", CHISURF_SETTINGS_DIR=str(settings_dir))
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT], capture_output=True, text=True, timeout=600, env=env,
-                          cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT],
+        capture_output=True,
+        text=True,
+        timeout=600,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the demo fused: the Qt tool's result and files, and towards the declared molecule count
@@ -92,7 +99,9 @@ def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
     qt = _qt_facts(tmp_path / "qt_settings")
     # A demo of its own: the cached one already holds fused folders from earlier runs, and the
     # writer then picks a new name ("…_0") instead of overwriting.
-    monkeypatch.setattr(demo, "create_demo", functools.partial(demo.create_demo, directory=tmp_path / "own"))
+    monkeypatch.setattr(
+        demo, "create_demo", functools.partial(demo.create_demo, directory=tmp_path / "own")
+    )
     app = _demo(create_app())
     try:
         truth = app.model._demo["truth"]
@@ -103,12 +112,15 @@ def test_the_demo_fuses_as_in_the_qt_tool(tmp_path, monkeypatch):
         assert sorted(p.name for p in out.rglob("*") if p.is_file()) == qt["files"]
         # The status names the written folder, under each side's own settings folder (the demo is
         # cached there; this process resolved its settings folder at import).
-        assert (app.model._status.replace(str(out.parent), "<demo>")
-                == qt["status"].replace(str(tmp_path / "qt_settings" / "demo" / "burst_fusion"), "<demo>"))
+        assert app.model._status.replace(str(out.parent), "<demo>") == qt["status"].replace(
+            str(tmp_path / "qt_settings" / "demo" / "burst_fusion"), "<demo>"
+        )
         assert json.loads(json.dumps(app.model.summary_rows(), default=str)) == qt["summary"]
         stats = app.model.analysis.statistics
         before, after = stats["n_bursts_before"], stats["n_bursts_after"]
-        assert abs(after - truth["n_molecules"]) < abs(before - truth["n_molecules"])  # towards the 300 molecules
+        assert abs(after - truth["n_molecules"]) < abs(
+            before - truth["n_molecules"]
+        )  # towards the 300 molecules
     finally:
         app.close()
 
@@ -122,16 +134,21 @@ def test_stop_before_writing_keeps_the_previous_results(monkeypatch):
     app = _demo(create_app())
     gate = threading.Event()
     original = view_model.FusionViewModel.analyze
-    monkeypatch.setattr(view_model.FusionViewModel, "analyze",
-                        lambda self, cancel_check=None: (gate.wait(10), original(self, cancel_check))[1])
+    monkeypatch.setattr(
+        view_model.FusionViewModel,
+        "analyze",
+        lambda self, cancel_check=None: (gate.wait(10), original(self, cancel_check))[1],
+    )
     try:
         app.controller.run()
         _draw(app, n=1)
-        assert app.controller.running and app.next_frame_in() is not None   # frames while running
+        assert app.controller.running and app.next_frame_in() is not None  # frames while running
         app.controller.stop()
         gate.set()
         _settle(app)
-        assert app.controller.status == "Fusion cancelled before writing; previous results retained."
+        assert (
+            app.controller.status == "Fusion cancelled before writing; previous results retained."
+        )
         assert not app.model.written_folder
     finally:
         gate.set()
@@ -144,7 +161,7 @@ def test_the_status_line_is_drawn_once():
         app.controller.estimate()
         _settle(app)
         strings = " ".join(_draw(app).strings)
-        assert strings.count("283 bursts") == 1          # the result once (the controller repeated it)
+        assert strings.count("283 bursts") == 1  # the result once (the controller repeated it)
     finally:
         app.close()
 
@@ -163,7 +180,7 @@ def test_settings_round_trip_and_report(tmp_path):
         with pytest.raises(ValueError):
             app.controller.load_settings(bad)
         with pytest.raises(ValueError):
-            app.controller.export_summary(tmp_path / "early.json")      # nothing estimated yet
+            app.controller.export_summary(tmp_path / "early.json")  # nothing estimated yet
         app.controller.estimate()
         _settle(app)
         report = tmp_path / "report.json"
@@ -181,7 +198,10 @@ def test_errors_reach_the_window(tmp_path):
         stray = tmp_path / "notes.txt"
         stray.write_text("x")
         app.on_paths_dropped([str(stray)])
-        assert app.controller.status == "Burst fusion reads a burst-analysis folder; notes.txt is not one."
+        assert (
+            app.controller.status
+            == "Burst fusion reads a burst-analysis folder; notes.txt is not one."
+        )
         assert not app.model.folder
         assert "is not one" in " ".join(_draw(app).strings)
     finally:
@@ -194,12 +214,16 @@ def test_the_folder_dialog_and_a_drop_take_a_burst_folder(tmp_path):
     folder.mkdir()
     app = create_app()
     try:
-        for action, (title, mode) in {"folder": ("Select burst folder", "folder"),
-                                      "load": ("Load fusion settings", "open"),
-                                      "save": ("Save fusion settings", "save"),
-                                      "export": ("Export fusion report", "save")}.items():
+        for action, (title, mode) in {
+            "folder": ("Select burst folder", "folder"),
+            "load": ("Load fusion settings", "open"),
+            "save": ("Save fusion settings", "save"),
+            "export": ("Export fusion report", "save"),
+        }.items():
             app.controller.browse(action)
-            assert (app.controller.dialog.title, app.controller.dialog.mode) == (title, mode), action
+            assert (app.controller.dialog.title, app.controller.dialog.mode) == (title, mode), (
+                action
+            )
         app.controller.browse("folder")
         app.controller.dialog.draw = lambda: [str(folder)]
         _frames_until(app, lambda: app.controller.dialog is None)
@@ -237,13 +261,19 @@ def test_the_fragments_axis_holds_every_bar(monkeypatch):
 
     ticks = []
     tik = implot.setup_axis_ticks
-    monkeypatch.setattr(implot, "setup_axis_ticks",
-                        lambda axis, values, n_ticks=None, labels=None, *a, **k: (ticks.append(labels), tik(axis, values, n_ticks, labels, *a, **k))[1])
+    monkeypatch.setattr(
+        implot,
+        "setup_axis_ticks",
+        lambda axis, values, n_ticks=None, labels=None, *a, **k: (
+            ticks.append(labels),
+            tik(axis, values, n_ticks, labels, *a, **k),
+        )[1],
+    )
     seen = _y_ranges(monkeypatch)
     app = create_app()
     try:
         app.fusion_gui.selected_tab = "Fragments"
-        _draw(app)                                            # the plot exists, empty
+        _draw(app)  # the plot exists, empty
         _demo(app)
         app.controller.estimate()
         _settle(app)
@@ -263,7 +293,9 @@ def test_every_guide_target_is_drawn():
     try:
         app.controller.estimate()
         _settle(app)
-        keys = {app.fusion_gui.tour._target_key(s.get("target")) for s in app.fusion_gui.tour.steps} - {""}
+        keys = {
+            app.fusion_gui.tour._target_key(s.get("target")) for s in app.fusion_gui.tour.steps
+        } - {""}
         drawn = set(app.item_rects) | set(app.fusion_gui.form_state.rects)
         assert keys and keys <= drawn, keys - drawn
     finally:

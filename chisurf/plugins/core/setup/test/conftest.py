@@ -18,7 +18,9 @@ def real_settings_state() -> dict:
     state = {}
     if _REAL_ROOT.exists():
         for dirpath, dirs, files in os.walk(_REAL_ROOT):
-            dirs[:] = [d for d in dirs if not (pathlib.Path(dirpath) == _REAL_ROOT and d in _IGNORED)]
+            dirs[:] = [
+                d for d in dirs if not (pathlib.Path(dirpath) == _REAL_ROOT and d in _IGNORED)
+            ]
             for name in files:
                 path = pathlib.Path(dirpath) / name
                 try:

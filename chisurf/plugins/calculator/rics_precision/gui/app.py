@@ -67,23 +67,33 @@ class RicsPrecisionApp(ImApp):
         #: the last thing the window did that the verdict line does not say (an export)
         self.notice = ""
         self.dialog: FileDialog | None = None
-        self.file_window = DialogWindow("Export precision sweep", size=(760.0, 520.0),
-                                        key="rics-export")
+        self.file_window = DialogWindow(
+            "Export precision sweep", size=(760.0, 520.0), key="rics-export"
+        )
         self._plot_signature = None
         self.help_window = EmTkHelpWindow(
-            title="RICS precision — Help & Reference", resource=HERE / "help.md", owner=self,
-            size=(720.0, 540.0))
+            title="RICS precision — Help & Reference",
+            resource=HERE / "help.md",
+            owner=self,
+            size=(720.0, 540.0),
+        )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json", owner=self, wait_for_controls=True,
-            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key))
+            steps=HERE / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
+        )
         self.form.on_used = self.tour.notify_used
-        self.docks = DockManager(Split("h", 0.40, Region("settings"),
-                                       Split("v", 0.5, Region("plot"), Region("numbers"))))
-        self.docks.add_window("settings", "Settings", self.draw_settings,
-                              dock="settings", closable=False)
+        self.docks = DockManager(
+            Split("h", 0.40, Region("settings"), Split("v", 0.5, Region("plot"), Region("numbers")))
+        )
+        self.docks.add_window(
+            "settings", "Settings", self.draw_settings, dock="settings", closable=False
+        )
         self.docks.add_window("plot", "Error vs dwell", self.draw_plot, dock="plot", closable=False)
-        self.docks.add_window("numbers", "Numbers", self.draw_numbers, dock="numbers",
-                              closable=False)
+        self.docks.add_window(
+            "numbers", "Numbers", self.draw_numbers, dock="numbers", closable=False
+        )
         super().__init__(gui=self.render, continuous=False)
 
     # -- actions ------------------------------------------------------------------
@@ -112,10 +122,12 @@ class RicsPrecisionApp(ImApp):
             self.notice = "Predict something first."
             return False
         self.notice = ""
-        self.dialog = FileDialog("Export precision sweep", mode="save", filename=EXPORT_NAME,
-                                 filters="CSV (*.csv)")
-        self.file_window = DialogWindow("Export precision sweep", size=(760.0, 520.0),
-                                        key="rics-export")
+        self.dialog = FileDialog(
+            "Export precision sweep", mode="save", filename=EXPORT_NAME, filters="CSV (*.csv)"
+        )
+        self.file_window = DialogWindow(
+            "Export precision sweep", size=(760.0, 520.0), key="rics-export"
+        )
         return True
 
     def write_csv(self, path) -> None:
@@ -173,10 +185,14 @@ class RicsPrecisionApp(ImApp):
                         keep = np.isfinite(xs) & np.isfinite(ys) & (xs > 0) & (ys > 0)
                         if keep.any():
                             implot.set_next_marker_style(implot.MARKER_DIAMOND, 9.0, YOURS_COLOUR)
-                            implot.plot_scatter(item.get("name", "your setting"), xs[keep], ys[keep])
+                            implot.plot_scatter(
+                                item.get("name", "your setting"), xs[keep], ys[keep]
+                            )
                         continue
                     for index, (rx, ry) in enumerate(finite_runs(xs, ys)):
-                        label = item.get("name", "predicted error") if index == 0 else f"##run{index}"
+                        label = (
+                            item.get("name", "predicted error") if index == 0 else f"##run{index}"
+                        )
                         implot.set_next_line_style(CURVE_COLOUR, 2.0)
                         implot.set_next_marker_style(implot.MARKER_CIRCLE, 4.0, CURVE_COLOUR)
                         implot.plot_line(label, rx, ry)
@@ -186,21 +202,23 @@ class RicsPrecisionApp(ImApp):
         im.set_item_tooltip(
             "Predicted relative error on D against pixel dwell time (log axes), with your own "
             "setting marked. Both ends rise: too fast and the molecule has not moved between "
-            "pixels, too slow and it has already decorrelated.")
+            "pixels, too slow and it has already decorrelated."
+        )
         self.item_rects["plot"] = im.get_item_rect()
 
     def draw_numbers(self, box: Any) -> None:
         """The right-hand lower window: the verdict line and the table of numbers."""
         im.text_wrapped(self.status_line())
-        im.set_item_tooltip("The verdict on your own dwell time, the progress of a sweep, or what "
-                            "went wrong.")
+        im.set_item_tooltip(
+            "The verdict on your own dwell time, the progress of a sweep, or what went wrong."
+        )
         self.item_rects["status"] = im.get_item_rect()
         draw_sections(self.panels["numbers"]["sections"], self.model, self.form, titles=False)
 
     # -- one frame ----------------------------------------------------------------
     def render(self) -> None:
         self.job.poll()
-        if self.job.error:                                  # an exception out of the worker itself
+        if self.job.error:  # an exception out of the worker itself
             self.model._status = f"Prediction failed: {self.job.error}"
         self.model.busy = self.job.busy
         request, self.model.request = self.model.request, ""

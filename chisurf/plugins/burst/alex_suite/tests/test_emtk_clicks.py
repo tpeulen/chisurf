@@ -5,6 +5,7 @@ burst-file combo opens and selects, Sample/Buffer fields accept typing, the
 five part-checkboxes toggle, the Write button runs the export on a real table,
 Help opens its window, and the titration table's cells take typed values.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -102,7 +103,8 @@ def test_export_write_button_runs_on_a_real_table(app, drv, tmp_path, monkeypatc
     drv.draw(2)
     calls = []
     monkeypatch.setattr(
-        app.suite_gui.export_gui.panel, "run_export",
+        app.suite_gui.export_gui.panel,
+        "run_export",
         lambda **kw: calls.append(kw),
     )
     drv.click_text("💾 Write ALEX-Suite CSVs")
@@ -140,8 +142,10 @@ def test_titration_cells_take_typing(app, drv, tmp_path):
 def _rects(drv):
     drv.draw()
     out = dict(getattr(drv.app, "item_rects", {}) or {})
-    for form in (getattr(drv.app, "forms", None) or {}).values() if isinstance(
-        getattr(drv.app, "forms", None), dict
-    ) else [getattr(drv.app, "form", None)]:
+    for form in (
+        (getattr(drv.app, "forms", None) or {}).values()
+        if isinstance(getattr(drv.app, "forms", None), dict)
+        else [getattr(drv.app, "form", None)]
+    ):
         out.update(getattr(form, "rects", {}) or {})
     return out

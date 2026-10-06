@@ -119,7 +119,9 @@ def roles(drv):
     return [p["role"] for p in drv.app.panels]
 
 
-def test_every_tool_is_listed_and_a_click_on_its_entry_selects_it_builds_its_tool_and_shows_its_description(drv):
+def test_every_tool_is_listed_and_a_click_on_its_entry_selects_it_builds_its_tool_and_shows_its_description(
+    drv,
+):
     app = drv.app
     assert app.selected == roles(drv)[0] and app.child is not None
     for panel in app.panels:
@@ -130,19 +132,27 @@ def test_every_tool_is_listed_and_a_click_on_its_entry_selects_it_builds_its_too
         assert panel["description"][:40] in " ".join(drv.draw(2).strings)
     count = len(app.children)
     drv.click(drv.rect("nav_" + roles(drv)[0]))
-    assert len(app.children) == count and app.child is app.children[roles(drv)[0]]  # kept, not rebuilt
+    assert (
+        len(app.children) == count and app.child is app.children[roles(drv)[0]]
+    )  # kept, not rebuilt
 
 
 def test_the_search_field_keeps_the_tools_matching_name_or_description(drv):
     app = drv.app
     names = [caption(p) for p in app.panels]
-    drv.click(drv.rect("nav_" + app.panels[1]["role"]))  # select another tool: the description strip names it, not the list
+    drv.click(
+        drv.rect("nav_" + app.panels[1]["role"])
+    )  # select another tool: the description strip names it, not the list
     drv.type_into("search", "header", enter=False)
     strings = drv.draw(2).strings
-    assert strings.count(names[3]) == 1 and strings.count(names[2]) == 0  # only the matching tool stays in the list
+    assert (
+        strings.count(names[3]) == 1 and strings.count(names[2]) == 0
+    )  # only the matching tool stays in the list
     drv.select_all()
     drv.type_text("zzzz")
-    assert [n for n in names if drv.draw(2).strings.count(n) == 1 and n != caption(app.panels[1])] == []
+    assert [
+        n for n in names if drv.draw(2).strings.count(n) == 1 and n != caption(app.panels[1])
+    ] == []
     drv.select_all()
     drv.key(keys.KEY_BACKSPACE)
     strings = drv.draw(2).strings
@@ -169,7 +179,9 @@ def test_the_wheel_over_the_tool_reaches_it_and_over_the_list_does_not(drv):
     assert not [e for e in app.child.events[n:] if e[0] == "wheel"]
 
 
-def test_keys_go_to_the_open_tool_after_a_press_inside_it_and_a_file_dropped_on_the_window_goes_to_it(drv, tmp_path):
+def test_keys_go_to_the_open_tool_after_a_press_inside_it_and_a_file_dropped_on_the_window_goes_to_it(
+    drv, tmp_path
+):
     bx, by, bw, bh = drv.app.child_box
     drv.click_at(bx + 100, by + 60)
     drv.key(0x41, "a")
@@ -186,7 +198,10 @@ def test_a_tool_that_cannot_open_breaks_only_its_panel_and_retry_tries_again():
     d.click(d.rect("nav_tttr_to_pto"))
     d.draw(3)
     shown = " ".join(d.draw(2).strings)
-    assert "Cannot open native panel: missing dependency for tttr_to_pto" in shown and "Retry" in d.draw(2).strings
+    assert (
+        "Cannot open native panel: missing dependency for tttr_to_pto" in shown
+        and "Retry" in d.draw(2).strings
+    )
     d.click(d.rect("nav_pto_inspector"))
     assert app.child is not None and "pto_inspector" in app.children  # the rest of the hub works
     d.click(d.rect("nav_tttr_to_pto"))
@@ -194,7 +209,11 @@ def test_a_tool_that_cannot_open_breaks_only_its_panel_and_retry_tries_again():
     app.resolver = lambda panel: calls.append(panel["role"]) or SPEC
     d.click_text("Retry")
     d.draw(3)
-    assert calls == ["tttr_to_pto"] and "tttr_to_pto" in app.children and "Retry" not in d.draw(2).strings
+    assert (
+        calls == ["tttr_to_pto"]
+        and "tttr_to_pto" in app.children
+        and "Retry" not in d.draw(2).strings
+    )
     app.close()
 
 
@@ -254,9 +273,18 @@ def test_every_guide_target_is_a_drawn_control_and_the_card_does_not_cover_it(dr
         assert rect and rect[2] > 0, f"{step['title']}: {key} is not drawn"
         card_w, card_h = min(480.0, BIG[0] - 40.0), 150.0
         x, y = place_tour_card(rect, float(BIG[0]), float(BIG[1]), card_w, card_h)
-        clear = x + card_w <= rect[0] or x >= rect[0] + rect[2] or y + card_h <= rect[1] or y >= rect[1] + rect[3]
-        free = (rect[0] + rect[2] + card_w + 16 <= BIG[0] or rect[0] - card_w - 16 >= 0
-                or rect[1] + rect[3] + card_h + 16 <= BIG[1] or rect[1] - card_h - 16 >= 0)
+        clear = (
+            x + card_w <= rect[0]
+            or x >= rect[0] + rect[2]
+            or y + card_h <= rect[1]
+            or y >= rect[1] + rect[3]
+        )
+        free = (
+            rect[0] + rect[2] + card_w + 16 <= BIG[0]
+            or rect[0] - card_w - 16 >= 0
+            or rect[1] + rect[3] + card_h + 16 <= BIG[1]
+            or rect[1] - card_h - 16 >= 0
+        )
         assert clear or not free, step["title"]
 
 
@@ -282,8 +310,14 @@ def test_every_description_fits_above_the_tool_whatever_the_window_width(size):
         painter = d.draw(3)
         top = app.child_box[1]
         words = panel["description"].split()[:3]
-        lines = [t for t in painter.texts if t[0] >= app.child_box[0] - 1 and t[1] < top + 2 and t[5] and t[5] != caption(panel)]
-        assert lines and max(t[1] + t[3] for t in lines) <= top + 0.5, f"{panel['role']}: the description runs into the tool"
+        lines = [
+            t
+            for t in painter.texts
+            if t[0] >= app.child_box[0] - 1 and t[1] < top + 2 and t[5] and t[5] != caption(panel)
+        ]
+        assert lines and max(t[1] + t[3] for t in lines) <= top + 0.5, (
+            f"{panel['role']}: the description runs into the tool"
+        )
     app.close()
 
 

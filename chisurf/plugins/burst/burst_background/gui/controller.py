@@ -82,7 +82,9 @@ class BackgroundController:
                 # A .pto beside a vendor file of the same stem is the container this tool
                 # (and the burst search) writes next to the photons, not a second measurement.
                 vendor = {p.stem for p in found if p.suffix.lower() != ".pto"}
-                files.extend(p for p in found if not (p.suffix.lower() == ".pto" and p.stem in vendor))
+                files.extend(
+                    p for p in found if not (p.suffix.lower() == ".pto" and p.stem in vendor)
+                )
         self.add_files(files)
 
     def apply_detectors(self, text):
@@ -123,7 +125,11 @@ class BackgroundController:
 
     #: Per action: the dialog's title, mode and file filters.
     DIALOGS = {
-        "files": ("Select TTTR files", "open", [("TTTR", ["*.ptu", "*.spc", "*.ht3", "*.pt3", "*.h5", "*.hdf5"])]),
+        "files": (
+            "Select TTTR files",
+            "open",
+            [("TTTR", ["*.ptu", "*.spc", "*.ht3", "*.pt3", "*.h5", "*.hdf5"])],
+        ),
         "folder": ("Add TTTR folder", "folder", None),
         "load_setup": ("Load detector setup", "open", [("JSON", ["*.json"])]),
         "save_setup": ("Save detector setup", "save", [("JSON", ["*.json"])]),
@@ -137,8 +143,13 @@ class BackgroundController:
         title, mode, filters = self.DIALOGS[action]
         self.dialog_action = action
         options = {"filters": filters} if filters else {}
-        self.dialog = FileDialog(title, mode=mode, multiselect=action == "files",
-                                 filename="detectors.json" if action == "save_setup" else None, **options)
+        self.dialog = FileDialog(
+            title,
+            mode=mode,
+            multiselect=action == "files",
+            filename="detectors.json" if action == "save_setup" else None,
+            **options,
+        )
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-background-file")
         self._dialog_window.show()
 

@@ -103,14 +103,22 @@ def qt(tmp_path_factory):
     target = tmp_path_factory.mktemp("qt") / "joined.dcd"
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, TRAJ, TOP, str(target), str(CHUNK)], capture_output=True,
-                          text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, TRAJ, TOP, str(target), str(CHUNK)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
+    facts = json.loads(line[len("FACTS") :])
     facts["target"] = target
     return facts
 
@@ -126,7 +134,9 @@ def test_a_time_join_appends_the_whole_reversed_trajectory(qt, source, tmp_path)
     app = _loaded()
     try:
         app.begin_save()
-        assert app.dialog.title == "Save trajectory" and app.dialog.filters == [("DCD trajectory", ["*.dcd"])]
+        assert app.dialog.title == "Save trajectory" and app.dialog.filters == [
+            ("DCD trajectory", ["*.dcd"])
+        ]
         assert app.dialog.filename == "hgbp1_transition_joined.dcd"
         target = tmp_path / "joined.dcd"
         _pick(app, target)
@@ -134,11 +144,15 @@ def test_a_time_join_appends_the_whole_reversed_trajectory(qt, source, tmp_path)
         ours, theirs = _read(target), _read(qt["target"])
         expected = np.concatenate([source, source[::-1]])
         assert ours.shape == theirs.shape == expected.shape == (928, 5235, 3)
-        np.testing.assert_allclose(ours, expected, atol=1e-3)         # not A0-99, B99-0, A100-199, ...
+        np.testing.assert_allclose(ours, expected, atol=1e-3)  # not A0-99, B99-0, A100-199, ...
         np.testing.assert_allclose(ours, theirs, atol=1e-4)
-        np.testing.assert_allclose(ours[463], ours[464], atol=1e-3)  # forward and back: the turn repeats a frame
-        assert _messages(app.model.log_text())[-2:] == ["Wrote 928 frames of 5235 atoms",
-                                                        f"Joined trajectory saved: {target}"]
+        np.testing.assert_allclose(
+            ours[463], ours[464], atol=1e-3
+        )  # forward and back: the turn repeats a frame
+        assert _messages(app.model.log_text())[-2:] == [
+            "Wrote 928 frames of 5235 atoms",
+            f"Joined trajectory saved: {target}",
+        ]
         assert "Wrote 928 frames of 5235 atoms" in _messages(qt["log"])
     finally:
         app.close()
@@ -151,26 +165,32 @@ def test_an_atoms_join_stacks_frame_by_frame(source, tmp_path):
         _settle(app)
         from chisurf.core.fio.trajectory.dcd import read_dcd
 
-        stacked = np.asarray(read_dcd(str(tmp_path / "stacked.dcd"))[0])     # no topology names 2 x 5235 atoms
+        stacked = np.asarray(
+            read_dcd(str(tmp_path / "stacked.dcd"))[0]
+        )  # no topology names 2 x 5235 atoms
         assert stacked.shape == (464, 2 * 5235, 3)
         np.testing.assert_allclose(stacked, np.concatenate([source, source], axis=1), atol=1e-3)
     finally:
         app.close()
 
 
-@pytest.mark.parametrize("mode, words", [("time", "needs the same atoms"), ("atoms", "needs the same number of frames")])
+@pytest.mark.parametrize(
+    "mode, words", [("time", "needs the same atoms"), ("atoms", "needs the same number of frames")]
+)
 def test_a_mismatch_stops_the_join_instead_of_truncating(mode, words, tmp_path):
     from chisurf.core.structure import trajectory_data as md
 
     trajectory = md.load(TRAJ, top=TOP)
-    if mode == "time":       # fewer atoms: self-describing PDBs (a shared topology would refuse the DCD on load)
+    if (
+        mode == "time"
+    ):  # fewer atoms: self-describing PDBs (a shared topology would refuse the DCD on load)
         first, second = tmp_path / "all.pdb", tmp_path / "part.pdb"
         trajectory[0].save_pdb(str(first))
         trajectory[0].atom_slice(np.arange(100)).save_pdb(str(second))
         app = JoinTrajectoriesApp()
         app.model.set_trajectory_1(str(first))
         app.model.set_trajectory_2(str(second))
-    else:                    # fewer frames
+    else:  # fewer frames
         short = tmp_path / "short.dcd"
         trajectory[:10].save_dcd(str(short))
         app = _loaded(mode=mode, reverse_2=False, second=str(short))
@@ -189,7 +209,11 @@ def test_one_file_and_a_cancel_answer_as_the_qt_widget_does(qt):
     try:
         app.model.set_trajectory_1(TRAJ)
         app.begin_save()
-        assert [app.status] == [text for _title, text in qt["told"]] == ["Open two trajectories first."]
+        assert (
+            [app.status]
+            == [text for _title, text in qt["told"]]
+            == ["Open two trajectories first."]
+        )
         app.model.set_trajectory_2(TRAJ)
         app.begin_save()
         app.dialog.draw = lambda: False
@@ -207,7 +231,11 @@ def test_two_dropped_trajectories_fill_both_rows(tmp_path):
     try:
         app.on_paths_dropped([TRAJ, str(second), TOP])
         m = app.model
-        assert (m.trajectory_filename_1, m.trajectory_filename_2, m.topology_filename) == (TRAJ, str(second), TOP)
+        assert (m.trajectory_filename_1, m.trajectory_filename_2, m.topology_filename) == (
+            TRAJ,
+            str(second),
+            TOP,
+        )
     finally:
         app.close()
 
@@ -228,7 +256,9 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
         names = {"join_mode", "reverse_traj_1", "reverse_traj_2", "chunk_size"}
         assert {f["attr"] for f in fields} == names and names <= set(app.form.rects)
         assert all(f["description"] in tips for f in fields)
-        assert not any("chunk of trajectory" in f["description"] for f in fields)   # whole-trajectory reversal
+        assert not any(
+            "chunk of trajectory" in f["description"] for f in fields
+        )  # whole-trajectory reversal
         _commit(app.model, next(f for f in fields if f["attr"] == "join_mode"), "atoms", app.form)
         assert app.model.join_mode == "atoms" and app.export_settings()["join_mode"] == "atoms"
     finally:
@@ -242,8 +272,11 @@ def test_frames_are_requested_and_the_form_disabled_while_joining(monkeypatch, t
 
     gate = threading.Event()
     original = view_model.JoinTrajectoriesViewModel.save_joined
-    monkeypatch.setattr(view_model.JoinTrajectoriesViewModel, "save_joined",
-                        lambda self, target: (gate.wait(10), original(self, target))[1])
+    monkeypatch.setattr(
+        view_model.JoinTrajectoriesViewModel,
+        "save_joined",
+        lambda self, target: (gate.wait(10), original(self, target))[1],
+    )
     app = _loaded()
     try:
         app.save(str(tmp_path / "joined.dcd"))
@@ -264,8 +297,16 @@ def test_the_guide_points_at_real_controls_and_waits():
     try:
         _draw(app, size, painter=PixelPainter)
         keys = {app.tour._target_key(s.get("target")) for s in app.tour.steps} - {""}
-        assert keys == {"trajectory_1", "trajectory_2", "topology", "join_mode", "reverse_traj_2", "chunk_size",
-                        "save", "log"}
+        assert keys == {
+            "trajectory_1",
+            "trajectory_2",
+            "topology",
+            "join_mode",
+            "reverse_traj_2",
+            "chunk_size",
+            "save",
+            "log",
+        }
         assert keys <= set(app.item_rects)
 
         def press(key):
@@ -278,9 +319,13 @@ def test_the_guide_points_at_real_controls_and_waits():
 
         steps = app.tour.steps
         for target, button in (("trajectory_2", "trajectory_2_browse"), ("save", "save")):
-            index = next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target)
+            index = next(
+                i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target
+            )
             app.tour.start(index)
-            assert app.tour.awaiting and steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)
+            assert app.tour.awaiting and steps[index]["title"] in " ".join(
+                _draw(app, size, n=1).strings
+            )
             _draw(app, size, n=1, painter=PixelPainter)
             press(button)
             assert not app.tour.awaiting, target
@@ -296,7 +341,14 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = JoinTrajectoriesApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Trajectory 1", "Trajectory 2", "Topology", "💾  Save joined…", "Chunk size", "Log"} <= {s.strip() for s in strings}
+        assert {
+            "Trajectory 1",
+            "Trajectory 2",
+            "Topology",
+            "💾  Save joined…",
+            "Chunk size",
+            "Log",
+        } <= {s.strip() for s in strings}
         app = _loaded()
         app.save(str(tmp_path / "joined.dcd"))
         _settle(app)
@@ -312,8 +364,14 @@ def test_settings_round_trip():
     other = JoinTrajectoriesApp()
     other.restore_settings(json.loads(json.dumps(app.export_settings())))
     m = other.model
-    assert (m.trajectory_filename_1, m.trajectory_filename_2, m.topology_filename, m.join_mode, m.reverse_traj_2,
-            m.chunk_size) == (TRAJ, TRAJ, TOP, "time", True, CHUNK)
+    assert (
+        m.trajectory_filename_1,
+        m.trajectory_filename_2,
+        m.topology_filename,
+        m.join_mode,
+        m.reverse_traj_2,
+        m.chunk_size,
+    ) == (TRAJ, TRAJ, TOP, "time", True, CHUNK)
 
 
 def test_help_opens_with_its_page():

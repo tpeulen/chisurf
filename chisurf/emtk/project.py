@@ -19,9 +19,7 @@ def get_project_payload(project_name: str = "chisurf_project") -> Project:
     return capture(project_name)
 
 
-def load_project_payload(
-    payload: Project | dict[str, Any], project_path: str | None = None
-) -> Any:
+def load_project_payload(payload: Project | dict[str, Any], project_path: str | None = None) -> Any:
     """Restore a canonical project payload without requiring the Qt GUI."""
     from chisurf.macros.core_fit import load_project_payload as restore
 

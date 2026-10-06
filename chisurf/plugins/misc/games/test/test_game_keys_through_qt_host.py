@@ -52,7 +52,7 @@ def test_number_quest_steps_once_per_press_and_releases(qapp):
     for _ in range(3):
         _press(qapp, host, QtCore.Qt.Key_Right)
         _release(qapp, host, QtCore.Qt.Key_Right)
-    assert app.estimate == start + 3          # every press lands
+    assert app.estimate == start + 3  # every press lands
     assert not app.held
 
 
@@ -71,7 +71,9 @@ def test_pong_paddle_stops_when_the_key_goes_up(qapp):
     app = host.control
     _press(qapp, host, QtCore.Qt.Key_Up)
     assert "up" in app.keys.held
-    _send(qapp, host, QtCore.QEvent.KeyRelease, QtCore.Qt.Key_Up, repeat=True)   # auto-repeat: still held
+    _send(
+        qapp, host, QtCore.QEvent.KeyRelease, QtCore.Qt.Key_Up, repeat=True
+    )  # auto-repeat: still held
     assert "up" in app.keys.held
     _release(qapp, host, QtCore.Qt.Key_Up)
     assert "up" not in app.keys.held
@@ -100,7 +102,7 @@ def test_keys_reach_the_game_selected_in_the_launcher(qapp):
     host = build_plugin_widget(load_manifest(GAMES / "manifest.json"))
     hub = host.control
     for name in ("Number Quest", "Tetris"):
-        assert hub.select(name) is not None, name           # every game opens (Tetris was 'pending')
+        assert hub.select(name) is not None, name  # every game opens (Tetris was 'pending')
     child = hub.select("Number Quest")
     start = child.estimate
     for _ in range(2):
@@ -109,7 +111,7 @@ def test_keys_reach_the_game_selected_in_the_launcher(qapp):
     assert child.estimate == start + 2 and not child.held
     _press(qapp, host, QtCore.Qt.Key_Right)
     qapp.sendEvent(host, QtGui.QFocusEvent(QtCore.QEvent.FocusOut))
-    assert not child.held                                    # focus loss reaches the game
+    assert not child.held  # focus loss reaches the game
 
 
 def test_the_game_shown_when_the_hub_opens_takes_keys_without_a_click(qapp):
@@ -119,6 +121,9 @@ def test_the_game_shown_when_the_hub_opens_takes_keys_without_a_click(qapp):
     assert hub.child is not None, "the first game was only built after clicking its list entry"
     seen = []
     original = hub.child.key
-    hub.child.key = lambda key, text="", modifiers=0: (seen.append(key), original(key, text, modifiers))[1]
+    hub.child.key = lambda key, text="", modifiers=0: (
+        seen.append(key),
+        original(key, text, modifiers),
+    )[1]
     _press(qapp, host, QtCore.Qt.Key_Left)
     assert seen == [int(QtCore.Qt.Key_Left)]

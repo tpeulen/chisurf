@@ -99,7 +99,10 @@ def test_pack_and_unpack_equal_the_qt_tool(qapp, tmp_path):
     assert qt_pack == f"{pack['files']} → {pack['result']}" == "m000.spc, m001.spc → m000.pto"
     assert qt_unpack == f"m000.pto → {unpack['result']}"
     assert (pack["status"], pack["action"], unpack["status"], unpack["action"]) == (
-        "Verified", "Pack", "Verified", "Unpack"
+        "Verified",
+        "Pack",
+        "Verified",
+        "Unpack",
     )
     # the same files exist, byte for byte, and equal the originals; the sidecar rode along
     native_bytes = {p.name: p.read_bytes() for p in native_dir.iterdir()}
@@ -144,8 +147,12 @@ def test_the_accept_rule_equals_the_qt_filter(qapp, tmp_path):
     (tmp_path / "x.pto").write_bytes(b"x")
     (tmp_path / "notes.txt").write_text("hi")
     for name in ("m000.spc", "m000.set", "x.pto", "notes.txt"):
-        assert TttrToPtoModel.accepts(tmp_path / name) == TttrToPtoTool._accepts(str(tmp_path / name)), name
-    assert not TttrToPtoModel.accepts(tmp_path / "missing.ptu")  # the Qt drop only offers existing paths
+        assert TttrToPtoModel.accepts(tmp_path / name) == TttrToPtoTool._accepts(
+            str(tmp_path / name)
+        ), name
+    assert not TttrToPtoModel.accepts(
+        tmp_path / "missing.ptu"
+    )  # the Qt drop only offers existing paths
 
 
 # ── 2. every action and its error path ──────────────────────────────────
@@ -190,11 +197,20 @@ def test_a_lone_sidecar_a_missing_file_and_an_unknown_type_are_rejected(tmp_path
     (tmp_path / "notes.txt").write_text("hello")
     app = make_app()
     try:
-        assert app.add_paths([tmp_path / "alone.set", tmp_path / "missing.ptu", tmp_path / "notes.txt"]) is False
+        assert (
+            app.add_paths(
+                [tmp_path / "alone.set", tmp_path / "missing.ptu", tmp_path / "notes.txt"]
+            )
+            is False
+        )
         records = app.model.records
         assert [r["status"] for r in records] == ["Rejected"] * 3
         assert records[0]["result"] == "Sidecars need their .spc file."
-        assert records[1]["result"] == records[2]["result"] == "Choose existing vendor photon files or PTO containers."
+        assert (
+            records[1]["result"]
+            == records[2]["result"]
+            == "Choose existing vendor photon files or PTO containers."
+        )
         assert not app.model.pending and not app.model.job.running
         assert (tmp_path / "alone.set").read_bytes() == b"sidecar"
     finally:
@@ -296,7 +312,9 @@ def test_add_files_opens_the_dialog_and_converts_the_choice(tmp_path, monkeypatc
         assert app.dialog is not None and app.dialog.title == "Add files"
         assert Path(app.dialog.directory) == tmp_path
         monkeypatch.setattr(
-            FileDialog, "draw", lambda self: [str(tmp_path / "m001.spc"), str(tmp_path / "m000.spc")]
+            FileDialog,
+            "draw",
+            lambda self: [str(tmp_path / "m001.spc"), str(tmp_path / "m000.spc")],
         )
         draw(app, frames=1)
         assert app.dialog is None
@@ -364,8 +382,18 @@ def test_every_spec_key_exists_on_the_model():
             assert callable(getattr(model, button["action"])), button["action"]
         options = section.get("options") or {}
         if options.get("source"):
-            record_keys = set(model._record({"id": "1", "paths": ["a"], "action": "pack", "status": "queued",
-                                             "outputs": [], "error": ""}))
+            record_keys = set(
+                model._record(
+                    {
+                        "id": "1",
+                        "paths": ["a"],
+                        "action": "pack",
+                        "status": "queued",
+                        "outputs": [],
+                        "error": "",
+                    }
+                )
+            )
             assert hasattr(model, options["source"])
             assert {c["key"] for c in options["columns"]} <= record_keys
             assert options["row_key"] in record_keys and options["tooltip_key"] in record_keys
@@ -419,7 +447,9 @@ def test_guide_steps_point_at_controls_the_app_draws():
             name = EmTkGuidedTour._target_key(step["target"])
             rect = app.item_rects.get(name) or app.form.rects.get(name)
             assert rect is not None, f"{step['title']}: nothing drawn for {name!r}"
-        assert [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")] == ["request_add"]
+        assert [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")] == [
+            "request_add"
+        ]
         heard = []
         app.tour.notify_used = heard.append
         app.form.on_used = app.tour.notify_used
@@ -445,7 +475,9 @@ def test_help_exists_and_draws():
 
 def test_the_qt_tool_keeps_its_own_help_and_guide():
     """The legacy Qt tool still reads help.md and guide.json untouched."""
-    assert json.loads((GUI / "guide.json").read_text())["steps"][1]["await"]["hint"].startswith("Drop a vendor")
+    assert json.loads((GUI / "guide.json").read_text())["steps"][1]["await"]["hint"].startswith(
+        "Drop a vendor"
+    )
     assert "TTTR ⇄ PTO" in (GUI / "help.md").read_text()
 
 
@@ -461,8 +493,16 @@ def test_settings_round_trip(tmp_path):
         finish(app)
         saved = json.loads(json.dumps(app.export_settings()))
         assert saved["last_dir"] == str(tmp_path) and saved["history"][0]["status"] == "verified"
-        saved["history"].append({"paths": ["/x/old.ptu"], "action": "pack", "status": "queued",
-                                 "outputs": [], "error": "", "id": "9"})
+        saved["history"].append(
+            {
+                "paths": ["/x/old.ptu"],
+                "action": "pack",
+                "status": "queued",
+                "outputs": [],
+                "error": "",
+                "id": "9",
+            }
+        )
         other = make_app()
         try:
             other.restore_settings(saved)
@@ -482,7 +522,9 @@ def test_restore_is_refused_while_a_write_runs(tmp_path):
 
     gate = threading.Event()
     (tmp_path / "a.ptu").write_bytes(b"x")
-    app = TttrToPtoApp(converter=lambda paths, keep_original=True: gate.wait(10) or tmp_path / "a.pto")
+    app = TttrToPtoApp(
+        converter=lambda paths, keep_original=True: gate.wait(10) or tmp_path / "a.pto"
+    )
     try:
         app.add_paths([tmp_path / "a.ptu"])
         with pytest.raises(RuntimeError, match="write is active"):

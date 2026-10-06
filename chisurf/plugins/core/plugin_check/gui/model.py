@@ -5,6 +5,7 @@ maps, the dependency problems the resolver reports), joined with each plugin's m
 A sweep builds every native app in a fresh process on throw-away settings, one plugin at a time, and the results come
 back through a queue that :meth:`PluginCheckModel.poll` drains once per frame, so the window never blocks.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,8 +28,14 @@ SAFE_COUNT = 10
 SAFE_TIMEOUT = 5.0
 
 #: The words the table shows for a result.
-STATUS_WORDS = {"pass": "pass", "fail": "fail", "skipped": "skipped", "pending": "Qt only", "non_gui": "no GUI",
-                "cancelled": "cancelled"}
+STATUS_WORDS = {
+    "pass": "pass",
+    "fail": "fail",
+    "skipped": "skipped",
+    "pending": "Qt only",
+    "non_gui": "no GUI",
+    "cancelled": "cancelled",
+}
 NOT_CHECKED = "pending"
 
 
@@ -44,8 +51,10 @@ def dependency_summary(requires: dict, optional: dict) -> str:
 
 def render_bounds(mapping: dict) -> str:
     """``name bound`` pairs; ``*`` (any version) is noise beside every name, so a bare name stands for it."""
-    return ", ".join(name if str(bound).strip() in ("", "*") else f"{name} {bound}"
-                     for name, bound in sorted(mapping.items()))
+    return ", ".join(
+        name if str(bound).strip() in ("", "*") else f"{name} {bound}"
+        for name, bound in sorted(mapping.items())
+    )
 
 
 def discover() -> tuple[dict[str, dict], Any]:
@@ -83,8 +92,12 @@ def discover() -> tuple[dict[str, dict], Any]:
         from chisurf.core.plugin.dependencies import resolve
 
         report = resolve(
-            {"id": r.get("manifest_id") or "", "version": r.get("manifest_version") or "",
-             "requires": r.get("requires") or {}, "optional_requires": r.get("optional_requires") or {}}
+            {
+                "id": r.get("manifest_id") or "",
+                "version": r.get("manifest_version") or "",
+                "requires": r.get("requires") or {},
+                "optional_requires": r.get("optional_requires") or {},
+            }
             for r in records
         )
     except Exception:
@@ -153,7 +166,11 @@ class PluginCheckModel:
     def status_of(self, key: str) -> str:
         """The word in the Status column."""
         result = self.results.get(key)
-        return STATUS_WORDS.get(result.get("status"), result.get("status", "")) if result else NOT_CHECKED
+        return (
+            STATUS_WORDS.get(result.get("status"), result.get("status", ""))
+            if result
+            else NOT_CHECKED
+        )
 
     def check_rows(self) -> list[dict]:
         """One record per plugin for the table: Plugin, Status, Source, Depends on, Error."""
@@ -163,16 +180,24 @@ class PluginCheckModel:
             result = self.results.get(key, {})
             error = str(result.get("error") or "")
             first = error.splitlines()[0] if error else ""
-            rows.append({
-                "key": key,
-                "plugin": self.name_of(key),
-                "status": self.status_of(key),
-                "source": manifest.get("source", "built-in"),
-                "depends": dependency_summary(manifest.get("requires") or {}, manifest.get("optional_requires") or {}),
-                "error": first if len(first) <= ERROR_CELL else first[:ERROR_CELL] + "...",
-                "tip": "\n".join(part for part in (self.name_of(key), error or self._depends_tip(manifest)) if part),
-                "muted": key not in self.results,
-            })
+            rows.append(
+                {
+                    "key": key,
+                    "plugin": self.name_of(key),
+                    "status": self.status_of(key),
+                    "source": manifest.get("source", "built-in"),
+                    "depends": dependency_summary(
+                        manifest.get("requires") or {}, manifest.get("optional_requires") or {}
+                    ),
+                    "error": first if len(first) <= ERROR_CELL else first[:ERROR_CELL] + "...",
+                    "tip": "\n".join(
+                        part
+                        for part in (self.name_of(key), error or self._depends_tip(manifest))
+                        if part
+                    ),
+                    "muted": key not in self.results,
+                }
+            )
         return rows
 
     @staticmethod
@@ -199,14 +224,22 @@ class PluginCheckModel:
         if key not in self.catalog:
             return []
         manifest = self.catalog[key]
-        blocks = [("Plugin", self.name_of(key)), ("Module", str(manifest.get("module_path") or "Unknown")),
-                  ("Source", str(manifest.get("source", "built-in"))),
-                  ("Version", str(manifest.get("version") or "")), ("Status", self.status_of(key))]
+        blocks = [
+            ("Plugin", self.name_of(key)),
+            ("Module", str(manifest.get("module_path") or "Unknown")),
+            ("Source", str(manifest.get("source", "built-in"))),
+            ("Version", str(manifest.get("version") or "")),
+            ("Status", self.status_of(key)),
+        ]
         if manifest.get("requires"):
             blocks.append(("Requires (load order)", render_bounds(manifest["requires"])))
         if manifest.get("optional_requires"):
             blocks.append(("Optional", render_bounds(manifest["optional_requires"])))
-        mine = [line for line in self.problems() if manifest.get("id") and line.startswith(f"{manifest['id']}:")]
+        mine = [
+            line
+            for line in self.problems()
+            if manifest.get("id") and line.startswith(f"{manifest['id']}:")
+        ]
         if mine:
             blocks.append(("Problems", "\n".join(mine)))
         if manifest.get("description"):
@@ -220,7 +253,11 @@ class PluginCheckModel:
     def error_text(self) -> str:
         """The selected plugin's whole error (and traceback): the Qt tool's error box, shown for a failed check."""
         result = self.results.get(self.selected_key, {})
-        return "\n".join(part for part in (str(result.get("error") or ""), str(result.get("traceback") or "")) if part)
+        return "\n".join(
+            part
+            for part in (str(result.get("error") or ""), str(result.get("traceback") or ""))
+            if part
+        )
 
     @property
     def progress_fraction(self) -> float:
@@ -282,10 +319,16 @@ class PluginCheckModel:
                 if self.skip_blacklisted and key in self.blacklisted:
                     result = {"status": "skipped", "error": "Blacklisted after repeated failures"}
                 elif not entry.get("emtk"):
-                    result = {"status": "pending" if entry.get("gui") or entry.get("script") else "non_gui",
-                              "error": "No native factory declared"}
+                    result = {
+                        "status": "pending"
+                        if entry.get("gui") or entry.get("script")
+                        else "non_gui",
+                        "error": "No native factory declared",
+                    }
                 else:
-                    result = self._check(entry["emtk"], min(self.timeout, SAFE_TIMEOUT) if safe else self.timeout)
+                    result = self._check(
+                        entry["emtk"], min(self.timeout, SAFE_TIMEOUT) if safe else self.timeout
+                    )
                 self._events.put((key, result))
                 if self._stop.wait(max(0.0, self.delay)):
                     break
@@ -297,12 +340,22 @@ class PluginCheckModel:
         with tempfile.TemporaryDirectory(prefix="chisurf-plugin-check-") as directory:
             home = Path(directory) / "home"
             home.mkdir()
-            env = dict(os.environ, HOME=str(home), CHISURF_SETTINGS_DIR=directory, MMFDB_SETTINGS_DIR=directory,
-                       MMFDB_DATABASE_PATH=str(Path(directory) / "mmfdb.sqlite"),
-                       MMFDB_OBJECT_STORE_ROOT=str(Path(directory) / "objects"),
-                       NDXPLORER_SETTINGS_DIR=str(Path(directory) / "ndxplorer"))
-            process = subprocess.Popen([sys.executable, "-m", "chisurf.emtk.validation", "--factory", factory],
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+            env = dict(
+                os.environ,
+                HOME=str(home),
+                CHISURF_SETTINGS_DIR=directory,
+                MMFDB_SETTINGS_DIR=directory,
+                MMFDB_DATABASE_PATH=str(Path(directory) / "mmfdb.sqlite"),
+                MMFDB_OBJECT_STORE_ROOT=str(Path(directory) / "objects"),
+                NDXPLORER_SETTINGS_DIR=str(Path(directory) / "ndxplorer"),
+            )
+            process = subprocess.Popen(
+                [sys.executable, "-m", "chisurf.emtk.validation", "--factory", factory],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+            )
             self._process = process
             started = time.monotonic()
             try:
@@ -320,7 +373,10 @@ class PluginCheckModel:
                 try:
                     return json.loads(stdout.strip().splitlines()[-1])
                 except (ValueError, IndexError):
-                    return {"status": "fail", "error": stderr or f"Child exited {process.returncode}"}
+                    return {
+                        "status": "fail",
+                        "error": stderr or f"Child exited {process.returncode}",
+                    }
             finally:
                 if process.poll() is None:
                     process.terminate()
@@ -359,8 +415,10 @@ class PluginCheckModel:
             if result.get("status") in counts:
                 counts[result["status"]] += 1
         other = len(self.results) - sum(counts.values())
-        return (f"Testing complete: {counts['pass']} pass, {counts['fail']} failed, {counts['skipped']} skipped"
-                + (f", {other} without a native app" if other else ""))
+        return (
+            f"Testing complete: {counts['pass']} pass, {counts['fail']} failed, {counts['skipped']} skipped"
+            + (f", {other} without a native app" if other else "")
+        )
 
     def close(self) -> None:
         self.stop()

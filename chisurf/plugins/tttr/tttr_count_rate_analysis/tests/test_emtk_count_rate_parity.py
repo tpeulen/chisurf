@@ -22,8 +22,13 @@ from chisurf.plugins.tttr.tttr_count_rate_analysis.gui.controller import create_
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 PTU = REPO / "test" / "data" / "clsm" / "Leica_SP5.ptu"
-QT_ROW = {"channel": "all", "mean_khz": 44.72292671613037, "std_khz": 0.0,
-          "photons": 6714549, "time_s": 150.13661879999998}
+QT_ROW = {
+    "channel": "all",
+    "mean_khz": 44.72292671613037,
+    "std_khz": 0.0,
+    "photons": 6714549,
+    "time_s": 150.13661879999998,
+}
 
 
 def _draw(app, size=(1200, 800), times=3):
@@ -63,7 +68,7 @@ def test_calculate_gives_the_qt_tools_row(monkeypatch):
         assert rows[0]["mean_khz"] == pytest.approx(QT_ROW["mean_khz"], rel=1e-9)
         assert rows[0]["time_s"] == pytest.approx(QT_ROW["time_s"], rel=1e-9)
         painter = _draw(app)
-        for text in ("44.72", "6714549", "150.137"):              # the Qt cells' formats
+        for text in ("44.72", "6714549", "150.137"):  # the Qt cells' formats
             assert text in painter.strings
     finally:
         app.close()
@@ -74,7 +79,8 @@ def test_remove_selected_file(tmp_path):
     app = create_app()
     try:
         a, b = tmp_path / "a.ptu", tmp_path / "b.ptu"
-        a.write_bytes(b"x"); b.write_bytes(b"x")
+        a.write_bytes(b"x")
+        b.write_bytes(b"x")
         app.tool.add_paths([a, b])
         gui = app.count_rate_gui
         events = []
@@ -85,7 +91,7 @@ def test_remove_selected_file(tmp_path):
         gui.remove_file(gui.selected_file)
         assert app.tool._model.files == [str(b)]
         assert gui.selected_file is None and "files" in events
-        gui.remove_file("/not/queued.ptu")                       # nothing happens
+        gui.remove_file("/not/queued.ptu")  # nothing happens
         assert app.tool._model.files == [str(b)]
     finally:
         app.close()
@@ -140,7 +146,9 @@ def test_every_control_has_a_tooltip():
 
     app = build_emtk_app("tttr_count_rate_analysis")
     for opened in (False, True):
-        app.tool.channel_editor.open_sections = dict.fromkeys(app.tool.channel_editor.open_sections, opened)
+        app.tool.channel_editor.open_sections = dict.fromkeys(
+            app.tool.channel_editor.open_sections, opened
+        )
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == [], (opened, inv["controls_without_tooltip"])
 
@@ -170,11 +178,12 @@ def test_dropped_files_and_folders_are_queued(tmp_path):
         folder = tmp_path / "set"
         (folder / "sub").mkdir(parents=True)
         a, b = folder / "a.ptu", folder / "sub" / "b.ht3"
-        a.write_bytes(b"x"); b.write_bytes(b"x")
+        a.write_bytes(b"x")
+        b.write_bytes(b"x")
         (folder / "notes.txt").write_text("no")
-        assert callable(getattr(app, "files_dropped", None))        # what the native/web hosts call
-        assert callable(getattr(app, "on_files_dropped", None))     # what the Qt host prefers
-        assert app.files_dropped([str(folder)]) is True              # a folder is expanded
+        assert callable(getattr(app, "files_dropped", None))  # what the native/web hosts call
+        assert callable(getattr(app, "on_files_dropped", None))  # what the Qt host prefers
+        assert app.files_dropped([str(folder)]) is True  # a folder is expanded
         assert sorted(Path(f).name for f in app.tool._model.files) == ["a.ptu", "b.ht3"]
         assert app.files_dropped([str(folder / "notes.txt")]) is False  # nothing queued
         assert "supported" in app.tool.message
@@ -193,12 +202,12 @@ def test_calculate_and_save_errors_reach_the_status_line(tmp_path):
         a = tmp_path / "a.ptu"
         a.write_bytes(b"x")
         tool.add_paths([a])
-        tool.channel_editor.model.get_settings = lambda: {}          # no detector in the setup
+        tool.channel_editor.model.get_settings = lambda: {}  # no detector in the setup
         tool.message = ""
         assert tool.calculate() is False
         assert "detector setup" in tool.message
         tool.message = ""
-        tool.save_dialog()                                           # nothing computed yet
+        tool.save_dialog()  # nothing computed yet
         assert tool.message == "There is no data to save." and tool.dialog is None
         painter = _draw(app)
         assert "There is no data to save." in painter.strings
@@ -263,14 +272,14 @@ def test_guide_waits_for_the_user():
         for step in steps:
             assert isinstance(step["target"], dict), step["title"]
         _draw(app)
-        for step in steps:                                           # the targets are drawn controls
+        for step in steps:  # the targets are drawn controls
             key = tour._target_key(step["target"])
-            if key != "results":                                     # the table exists after Calculate
+            if key != "results":  # the table exists after Calculate
                 assert key in app.item_rects, key
         tour.start(0)
         assert tour.awaiting
         app.count_rate_gui.on_add_files = lambda: None
-        tour.notify_used("calculate")                                # another control: still waiting
+        tour.notify_used("calculate")  # another control: still waiting
         assert tour.awaiting
         tour.notify_used("add_files")
         assert not tour.awaiting

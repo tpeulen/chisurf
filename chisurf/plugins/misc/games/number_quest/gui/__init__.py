@@ -6,5 +6,6 @@ __all__ = ["NumberQuestWidget"]
 def __getattr__(name):
     if name == "NumberQuestWidget":
         from .tool import NumberQuestWidget
+
         return NumberQuestWidget
     raise AttributeError(name)

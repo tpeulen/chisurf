@@ -47,13 +47,13 @@ class SetupChannelDefinitionApp(ImApp):
                 default_settings() if settings is None else settings, file_path=file_path, db=db
             )
         self._on_changed = on_changed
-        self.page = ChannelDefinitionWidget(
-            model=model, on_changed=self._model_changed
-        )
+        self.page = ChannelDefinitionWidget(model=model, on_changed=self._model_changed)
         self.model = self.page.model
         #: Rectangles of the named controls (tests, guided tours, embedding hosts): the page's and this app's.
         self.item_rects: dict[str, tuple] = self.page.item_rects
-        self.help_window = EmTkHelpWindow(title="Setup: Channel Definition - Help", resource=HERE / "help.md", owner=self)
+        self.help_window = EmTkHelpWindow(
+            title="Setup: Channel Definition - Help", resource=HERE / "help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
             owner=self,
@@ -98,7 +98,9 @@ class SetupChannelDefinitionApp(ImApp):
     def _draw_strip(self) -> None:
         """The host's Guide and Help buttons, at the right above the page (as the Qt settings window has them)."""
         width = self._width("Guide") + self._width("Help") + im.get_style().item_spacing[0]
-        im.dummy(max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0)
+        im.dummy(
+            max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0
+        )
         im.same_line()
         if im.button("Guide"):
             self.tour.start()
@@ -106,7 +108,10 @@ class SetupChannelDefinitionApp(ImApp):
         im.same_line()
         if im.button("Help"):
             self.help_window.show()
-        self._item("help", "Explain the page: setups, the reading routine, PIE windows, detectors, units of micro-time ranges and LUTs.")
+        self._item(
+            "help",
+            "Explain the page: setups, the reading routine, PIE windows, detectors, units of micro-time ranges and LUTs.",
+        )
 
     def _item(self, name: str, tooltip: str) -> None:
         """Tooltip and tour rectangle for the control just drawn."""

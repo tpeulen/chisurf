@@ -17,7 +17,6 @@ from emtk.im_core import Col
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-
 from chisurf.plugins.emtk_layout import button_row
 
 from .model import SaturationModel
@@ -68,7 +67,12 @@ def _plot_sections() -> dict[str, dict]:
 
 PLOTS = _plot_sections()
 #: The guide's names for the tables (the form records a table under its source).
-TABLE_ALIASES = {"dark_rows": "k_dark", "exc_rows": "k_exc", "brightness_rows": "brightness", "optics_rows": "optics"}
+TABLE_ALIASES = {
+    "dark_rows": "k_dark",
+    "exc_rows": "k_exc",
+    "brightness_rows": "brightness",
+    "optics_rows": "optics",
+}
 SHORT_TITLES = {"Residual against a single diffusion component": "Residual vs one component"}
 
 
@@ -88,17 +92,42 @@ class SaturationApp(TourTarget, ImApp):
         self.item_rects: dict = {}
         self._limits_key: dict = {}
         self.help_window = EmTkHelpWindow(
-            title="FCS saturation - Help", resource=HERE / "help.md", owner=self, on_start_guide=lambda: self.tour.start()
+            title="FCS saturation - Help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=lambda: self.tour.start(),
         )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json", get_target_rect=lambda k: self.item_rects.get(k), owner=self, wait_for_controls=True,
+            steps=HERE / "guide.json",
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self,
+            wait_for_controls=True,
             on_step_change=lambda _i, step: step.get("tab") and self.select_tab(step["tab"]),
         )
-        names = ("toolbar", "photophysics", "k_dark", "k_exc", "brightness", "optics", "fcs_toggles", "profile_toggles")
+        names = (
+            "toolbar",
+            "photophysics",
+            "k_dark",
+            "k_exc",
+            "brightness",
+            "optics",
+            "fcs_toggles",
+            "profile_toggles",
+        )
         self.forms = {n: FormState(on_used=self.tour.notify_used) for n in names}
-        self.docks = DockManager(Split("h", 0.40, Region("controls"), Region("plots")), name="saturation")
-        self.docks.add_window("controls", "Photophysics and kinetics", self._draw_controls, dock="controls", closable=False)
-        self.docks.add_window("plots", "FCS predictions", self._draw_results, dock="plots", closable=False)
+        self.docks = DockManager(
+            Split("h", 0.40, Region("controls"), Region("plots")), name="saturation"
+        )
+        self.docks.add_window(
+            "controls",
+            "Photophysics and kinetics",
+            self._draw_controls,
+            dock="controls",
+            closable=False,
+        )
+        self.docks.add_window(
+            "plots", "FCS predictions", self._draw_results, dock="plots", closable=False
+        )
         self.native_layouts = {"main": self.docks}
         super().__init__(self._render, continuous=False)
 
@@ -115,7 +144,12 @@ class SaturationApp(TourTarget, ImApp):
     def choose(self, mode: str) -> None:
         self.dialog_mode = mode
         title = "Load scheme" if mode == "open" else "Save scheme"
-        self.dialog = FileDialog(title, mode=mode, filename="scheme.json" if mode == "save" else "", filters="JSON (*.json)")
+        self.dialog = FileDialog(
+            title,
+            mode=mode,
+            filename="scheme.json" if mode == "save" else "",
+            filters="JSON (*.json)",
+        )
         self.file_window = DialogWindow(title, size=(560, 420), key=title)
         self.file_window.show()
 
@@ -161,7 +195,15 @@ class SaturationApp(TourTarget, ImApp):
 
     def _draw_controls(self, box) -> None:
         self._form("toolbar")
-        for name in ("compute", "load_scheme", "save_scheme", "load_session", "save_session", "guide", "help"):
+        for name in (
+            "compute",
+            "load_scheme",
+            "save_scheme",
+            "load_session",
+            "save_session",
+            "guide",
+            "help",
+        ):
             if name in self.item_rects:
                 self.item_rects[name.title().replace("_", " ")] = self.item_rects[name]
         if self.error:
@@ -176,20 +218,40 @@ class SaturationApp(TourTarget, ImApp):
         sat = self.model.saturation
         n = sat.n_states
         unit = self.model.rate_unit
-        self._fold(f"K_dark ({unit}), row to column",
-                   "The power-independent transitions between states. Row is the state a transition starts from, column where it ends.",
-                   "k_dark", n, "k_dark")
-        self._fold("K_exc cross-sections, row to column",
-                   "Excitation transitions relative to the peak excitation rate; 1 means a full cross-section.",
-                   "k_exc", n, "k_exc")
-        self._fold("State brightness Q",
-                   "Relative fluorescence emitted by each state; dark states have zero.", "brightness", n, "brightness")
+        self._fold(
+            f"K_dark ({unit}), row to column",
+            "The power-independent transitions between states. Row is the state a transition starts from, column where it ends.",
+            "k_dark",
+            n,
+            "k_dark",
+        )
+        self._fold(
+            "K_exc cross-sections, row to column",
+            "Excitation transitions relative to the peak excitation rate; 1 means a full cross-section.",
+            "k_exc",
+            n,
+            "k_exc",
+        )
+        self._fold(
+            "State brightness Q",
+            "Relative fluorescence emitted by each state; dark states have zero.",
+            "brightness",
+            n,
+            "brightness",
+        )
         self.remember("controls", tuple(box))
 
     # -- the right window ----------------------------------------------------------------------------------- #
     def _draw_results(self, box) -> None:
-        buttons = [{"label": label, "key": label, "tip": f"Show {label}.",
-                    "colours": SELECTED_TAB if label == self.result_tab else None} for label in TABS]
+        buttons = [
+            {
+                "label": label,
+                "key": label,
+                "tip": f"Show {label}.",
+                "colours": SELECTED_TAB if label == self.result_tab else None,
+            }
+            for label in TABS
+        ]
         picked = button_row(buttons, remember=self.remember)
         if picked:
             self.result_tab = picked
@@ -209,7 +271,11 @@ class SaturationApp(TourTarget, ImApp):
             avail = im.get_content_region_avail()[1]
             residual = 190.0 if len(sources) > 1 else 0.0
             for i, source in enumerate(sources):
-                height = max(avail - residual - 8.0, 120.0) if i == 0 and len(sources) > 1 else (residual if i else -1)
+                height = (
+                    max(avail - residual - 8.0, 120.0)
+                    if i == 0 and len(sources) > 1
+                    else (residual if i else -1)
+                )
                 self._plot(source, height)
         self.remember("results", tuple(box))
 
@@ -217,7 +283,9 @@ class SaturationApp(TourTarget, ImApp):
         """One series plot of the Qt spec: its axes, log scales, colours, dashes and markers."""
         section = dict(PLOTS[source])
         full_title = section["title"]
-        section["title"] = SHORT_TITLES.get(full_title, full_title)  # a plot title is drawn inside the plot: keep it short
+        section["title"] = SHORT_TITLES.get(
+            full_title, full_title
+        )  # a plot title is drawn inside the plot: keep it short
         section.setdefault("description", full_title + ".")
         series = [s for s in getattr(self.model, source) if len(s["x"])]
         title = section["title"]
@@ -230,20 +298,31 @@ class SaturationApp(TourTarget, ImApp):
             if section.get("log_y"):
                 implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             if flags == 0:
-                implot.setup_legend(implot.LOCATION_NORTH_EAST) if hasattr(implot, "LOCATION_NORTH_EAST") else implot.setup_legend()
+                implot.setup_legend(implot.LOCATION_NORTH_EAST) if hasattr(
+                    implot, "LOCATION_NORTH_EAST"
+                ) else implot.setup_legend()
             self._fit_limits(source, series, bool(section.get("log_x")))
             for item in series:
                 x = np.asarray(item["x"], dtype=float)
                 y = np.asarray(item["y"], dtype=float)
                 colour = _colour(item.get("color", "white"))
                 if item.get("no_line"):
-                    implot.set_next_marker_style(implot.MARKER_CIRCLE, float(item.get("symbol_size", 9)), colour)
+                    implot.set_next_marker_style(
+                        implot.MARKER_CIRCLE, float(item.get("symbol_size", 9)), colour
+                    )
                     implot.plot_scatter(item.get("name", ""), x, y)
                 else:
-                    implot.set_next_line_style(colour, float(item.get("width", 1.5)), (6, 4) if item.get("dash") else None)
+                    implot.set_next_line_style(
+                        colour, float(item.get("width", 1.5)), (6, 4) if item.get("dash") else None
+                    )
                     implot.plot_line(item.get("name", ""), x, y)
             implot.end_plot()
-            im.set_item_tooltip(re_plain(section.get("description") or f"{title}: prediction from the current scheme and optics."))
+            im.set_item_tooltip(
+                re_plain(
+                    section.get("description")
+                    or f"{title}: prediction from the current scheme and optics."
+                )
+            )
 
     @staticmethod
     def _plot_box(height: float) -> tuple:
@@ -290,7 +369,9 @@ class SaturationApp(TourTarget, ImApp):
         optics_h = ROW_H * 12 + 14.0 + NOTE_H
         self._diagram(max(total - optics_h - 28.0, 140.0))
         if im.collapsing_header("Optics and measurement", im.TreeNodeFlags.DEFAULT_OPEN):
-            im.set_item_tooltip("Power, wavelength, extinction, beam waists, diffusion and the measurement settings.")
+            im.set_item_tooltip(
+                "Power, wavelength, extinction, beam waists, diffusion and the measurement settings."
+            )
             SPEC["optics"]["sections"][0]["height"] = optics_h
             self._form("optics")
 
@@ -300,7 +381,11 @@ class SaturationApp(TourTarget, ImApp):
         n = sat.n_states
         pos = self._positions(n)
         labels = list(sat.state_labels)
-        flags = implot.FLAGS_EQUAL | implot.FLAGS_NO_MOUSE_TEXT if hasattr(implot, "FLAGS_NO_MOUSE_TEXT") else implot.FLAGS_EQUAL
+        flags = (
+            implot.FLAGS_EQUAL | implot.FLAGS_NO_MOUSE_TEXT
+            if hasattr(implot, "FLAGS_NO_MOUSE_TEXT")
+            else implot.FLAGS_EQUAL
+        )
         self.item_rects["state_scheme"] = self._plot_box(height)
         if implot.begin_plot(f"State scheme##{n}", (-1, height), flags):
             decorations = implot.AXIS_FLAGS_NO_DECORATIONS
@@ -312,7 +397,9 @@ class SaturationApp(TourTarget, ImApp):
                 p, q = pos[src], pos[dst]
                 chord = q - p
                 length = float(np.hypot(*chord)) or 1.0
-                normal = np.array([chord[1], -chord[0]]) / length  # to the right of the direction: the reverse edge bows away
+                normal = (
+                    np.array([chord[1], -chord[0]]) / length
+                )  # to the right of the direction: the reverse edge bows away
                 control = (p + q) / 2.0 + normal * 0.28 * length
                 t = np.linspace(0.16, 0.84, 24)[:, None]
                 curve = (1 - t) ** 2 * p + 2 * (1 - t) * t * control + t**2 * q
@@ -326,14 +413,18 @@ class SaturationApp(TourTarget, ImApp):
                 back = curve[-1] - curve[-3]
                 back = back / (float(np.hypot(*back)) or 1.0)
                 side = np.array([-back[1], back[0]])
-                head = np.array([tip - 0.09 * back + 0.045 * side, tip, tip - 0.09 * back - 0.045 * side])
+                head = np.array(
+                    [tip - 0.09 * back + 0.045 * side, tip, tip - 0.09 * back - 0.045 * side]
+                )
                 implot.set_next_line_style(colour, 2.0)
                 implot.plot_line(f"##head{group}{src}{dst}", head[:, 0], head[:, 1])
                 mid = curve[len(curve) // 2]
                 text = f"{value:g}" if group == "dark" else f"σ {value:g}"
                 implot.plot_text(text, float(mid[0]), float(mid[1]), (0.0, 0.0))
             for i, label in enumerate(labels):
-                implot.set_next_marker_style(implot.MARKER_CIRCLE, 26.0, _colour(STATE_COLOURS[i % len(STATE_COLOURS)]))
+                implot.set_next_marker_style(
+                    implot.MARKER_CIRCLE, 26.0, _colour(STATE_COLOURS[i % len(STATE_COLOURS)])
+                )
                 implot.plot_scatter(f"##state{i}", [float(pos[i, 0])], [float(pos[i, 1])])
                 implot.plot_text(str(label), float(pos[i, 0]), float(pos[i, 1]), (0.0, 0.0))
             implot.end_plot()
@@ -341,7 +432,9 @@ class SaturationApp(TourTarget, ImApp):
                 "The scheme: states as circles, dark transitions (orange, rate in the units of K_dark) and excitation "
                 "transitions (pink, sigma relative to the peak rate) as arrows. Edit the rates in the tables on the left."
             )
-        self.item_rects["rate_matrix"] = self.item_rects.get("k_dark_header", self.item_rects["state_scheme"])
+        self.item_rects["rate_matrix"] = self.item_rects.get(
+            "k_dark_header", self.item_rects["state_scheme"]
+        )
 
     # -- the summary ------------------------------------------------------------------------------------------ #
     def _draw_info(self) -> None:
@@ -393,7 +486,9 @@ class SaturationApp(TourTarget, ImApp):
         box = (0.0, 0.0, float(vp.size[0]), float(vp.size[1]))
         if not self._ratio_set:
             self._ratio_set = True  # a narrow window gives the controls room for their fields; the bar still drags
-            self.docks.layout.ratio = max(0.40, min(0.52, MIN_CONTROLS / max(float(vp.size[0]), 1.0)))
+            self.docks.layout.ratio = max(
+                0.40, min(0.52, MIN_CONTROLS / max(float(vp.size[0]), 1.0))
+            )
         self.docks.draw(box)
         self._draw_dialog(box)
         self.help_window.draw(box)

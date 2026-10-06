@@ -244,7 +244,9 @@ class HeteroFretModel(_CoupledModel):
         """p(R) of both distributions around the distance."""
         params = (self.R, self.sigma, bool(self.use_chi))
         return self._cached(
-            "distance", params, lambda: distribution_series(self.R, self.sigma, bool(self.use_chi), wide=True)
+            "distance",
+            params,
+            lambda: distribution_series(self.R, self.sigma, bool(self.use_chi), wide=True),
         )
 
     def rate_plot_series(self) -> list[dict]:
@@ -291,9 +293,7 @@ class HomoFretModel(_CoupledModel):
         """Migration time given: the rate and, when it exists, the implied distance follow."""
         result = self._call(
             "Homo-FRET rate",
-            self.client.compute_homo_fret(
-                t_RM=self.t_RM, rho=self.rho, tau0=self.tau0, R0=self.R0
-            ),
+            self.client.compute_homo_fret(t_RM=self.t_RM, rho=self.rho, tau0=self.tau0, R0=self.R0),
         )
         if result is None:
             return
@@ -308,9 +308,7 @@ class HomoFretModel(_CoupledModel):
         """Distance given: the rate and the migration time follow."""
         result = self._call(
             "Homo-FRET back-map",
-            self.client.homo_backmap(
-                R_DA=self.R_DA, R0=self.R0, tau0=self.tau0, rho=self.rho
-            ),
+            self.client.homo_backmap(R_DA=self.R_DA, R0=self.R0, tau0=self.tau0, rho=self.rho),
         )
         if result is None:
             return
@@ -330,7 +328,9 @@ class HomoFretModel(_CoupledModel):
         """p(R) of both distributions around the homo-FRET distance."""
         params = (self.R_DA, self.sigma, bool(self.use_chi))
         return self._cached(
-            "distance", params, lambda: distribution_series(self.R_DA, self.sigma, bool(self.use_chi), wide=True)
+            "distance",
+            params,
+            lambda: distribution_series(self.R_DA, self.sigma, bool(self.use_chi), wide=True),
         )
 
     def aniso_time_plot_series(self) -> list[dict]:

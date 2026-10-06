@@ -6,10 +6,15 @@ from emtk.testing import RecordingPainter
 def test_sweep_reports_real_child_success_and_missing_native_ports():
     from chisurf.plugins.core.plugin_check.gui.model import PluginCheckModel
 
-    model = PluginCheckModel({
-        "about": {"id": "about", "entrypoints": {"emtk": "chisurf.plugins.core.about.gui.app:make_app"}},
-        "pending": {"id": "pending", "entrypoints": {"gui": "missing:Tool"}},
-    })
+    model = PluginCheckModel(
+        {
+            "about": {
+                "id": "about",
+                "entrypoints": {"emtk": "chisurf.plugins.core.about.gui.app:make_app"},
+            },
+            "pending": {"id": "pending", "entrypoints": {"gui": "missing:Tool"}},
+        }
+    )
     model.delay = 0
     assert model.start()
     assert not model.start()
@@ -28,8 +33,18 @@ def test_checker_lists_metadata_and_renders_native_docks():
     from chisurf.plugins.core.plugin_check.gui.app import PluginCheckApp
     from chisurf.plugins.core.plugin_check.gui.model import PluginCheckModel
 
-    model = PluginCheckModel({"demo": {"id": "demo", "display_name": "Demo", "version": "1",
-        "requires": {"base": ">=1"}, "description": "Demo metadata", "entrypoints": {}}})
+    model = PluginCheckModel(
+        {
+            "demo": {
+                "id": "demo",
+                "display_name": "Demo",
+                "version": "1",
+                "requires": {"base": ">=1"},
+                "description": "Demo metadata",
+                "entrypoints": {},
+            }
+        }
+    )
     painter = RecordingPainter()
     app = PluginCheckApp(model)
     app.draw(painter, 0, 0, 1200, 800)
@@ -44,7 +59,9 @@ def test_checker_failure_blacklist_and_stop_are_observable(monkeypatch):
 
     model = PluginCheckModel({"bad": {"entrypoints": {"emtk": "bad:make_app"}}})
     model.delay = 0
-    monkeypatch.setattr(model, "_check", lambda factory, timeout: {"status": "fail", "error": "Failure"})
+    monkeypatch.setattr(
+        model, "_check", lambda factory, timeout: {"status": "fail", "error": "Failure"}
+    )
     for _ in range(5):
         model.start()
         model._thread.join(2)

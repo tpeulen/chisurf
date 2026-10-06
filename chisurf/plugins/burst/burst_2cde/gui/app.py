@@ -320,7 +320,9 @@ class BurstTwoCdeGui:
             im.separator()
             fraction = self.model.progress
             # An unknown amount (reading, writing) shows as an empty bar with its caption.
-            im.progress_bar(0.0 if fraction is None else float(fraction), overlay=self.model.progress_text)
+            im.progress_bar(
+                0.0 if fraction is None else float(fraction), overlay=self.model.progress_text
+            )
             im.set_item_tooltip("Progress of the running 2CDE computation; Stop cancels it.")
         if self.model.status_text:
             im.separator()

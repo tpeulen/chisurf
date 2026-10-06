@@ -17,7 +17,11 @@ from emtk.testing import RecordingPainter
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-REF = json.loads((REPO / "okf" / "plugins" / "emtk-ports" / "updater" / "qt_values.json").read_text(encoding="utf-8"))
+REF = json.loads(
+    (REPO / "okf" / "plugins" / "emtk-ports" / "updater" / "qt_values.json").read_text(
+        encoding="utf-8"
+    )
+)
 RECORDED_PREFIX = REF["pm_install"]["commands"][0][REF["pm_install"]["commands"][0].index("-p") + 1]
 
 
@@ -42,9 +46,18 @@ def model(fakes):
 
 
 def pick(model, kind, **match):
-    rows = {"installed": model.installed_rows, "search": model.search_rows, "env": model.env_rows, "channel": model.channel_rows}[kind]
+    rows = {
+        "installed": model.installed_rows,
+        "search": model.search_rows,
+        "env": model.env_rows,
+        "channel": model.channel_rows,
+    }[kind]
     record = next(r for r in rows if all(r[k] == v for k, v in match.items()))
-    getattr(model, "select_" + {"installed": "installed", "search": "search", "env": "env", "channel": "channel"}[kind])(record)
+    getattr(
+        model,
+        "select_"
+        + {"installed": "installed", "search": "search", "env": "env", "channel": "channel"}[kind],
+    )(record)
 
 
 def confirm(model, kind, accept=True, text=""):
@@ -62,18 +75,26 @@ def test_the_lists_loaded_on_opening_equal_the_qt_dialogs(fakes):
     m.refresh_all()
     ref = REF["pm_initial"]
     assert [[r["name"], r["version"], r["channel"]] for r in m.installed_rows] == ref["installed"]
-    assert [r["env"] for r in m.env_rows] == ref["envs"] and [r["channel"] for r in m.channel_rows] == ref["channels"]
+    assert [r["env"] for r in m.env_rows] == ref["envs"] and [
+        r["channel"] for r in m.channel_rows
+    ] == ref["channels"]
     assert m.current_env == sys.prefix and list(TABS) == [t.replace("&", "&") for t in ref["tabs"]]
-    assert [mine(c) for c in ref["startup_commands"]] and sorted(map(tuple, fakes.solver_commands)) == sorted(
-        tuple(mine(c)) for c in ref["startup_commands"])
-    assert [line.split("] ", 1)[1] for line in m.log] == ["Refreshing installed packages...", "Loaded 5 packages."]
+    assert [mine(c) for c in ref["startup_commands"]] and sorted(
+        map(tuple, fakes.solver_commands)
+    ) == sorted(tuple(mine(c)) for c in ref["startup_commands"])
+    assert [line.split("] ", 1)[1] for line in m.log] == [
+        "Refreshing installed packages...",
+        "Loaded 5 packages.",
+    ]
     assert ops(fakes) == []
 
 
 def test_the_filter_keeps_the_names_containing_the_text_like_the_qt_filter(model):
     model.installed_filter = "NUM"
     model.apply_filter()
-    assert [[r["name"], r["version"], r["channel"]] for r in model.installed_rows] == REF["pm_filter"]
+    assert [[r["name"], r["version"], r["channel"]] for r in model.installed_rows] == REF[
+        "pm_filter"
+    ]
     model.installed_filter = ""
     model.apply_filter()
     assert len(model.installed_rows) == 5
@@ -82,18 +103,28 @@ def test_the_filter_keeps_the_names_containing_the_text_like_the_qt_filter(model
 def test_search_lists_the_rows_a_real_solver_prints_where_the_qt_tool_listed_none(model, fakes):
     from .fakes import SEARCH_CONDA, SEARCH_MICROMAMBA
 
-    assert REF["pm_search_rows"] == 0                           # what the Qt dialog showed for conda's real payload (the defect)
+    assert (
+        REF["pm_search_rows"] == 0
+    )  # what the Qt dialog showed for conda's real payload (the defect)
     for payload in (SEARCH_CONDA, SEARCH_MICROMAMBA):
         fakes.search_payload = payload
         model.search_query = " numpy "
         model.search_packages()
         assert [(r["name"], r["version"], r["channel"]) for r in model.search_rows] == [
-            ("numpy", "2.0.1", "conda-forge"), ("numpy", "1.26.4", "conda-forge"), ("numpy", "1.26.3", "conda-forge")]
+            ("numpy", "2.0.1", "conda-forge"),
+            ("numpy", "1.26.4", "conda-forge"),
+            ("numpy", "1.26.3", "conda-forge"),
+        ]
         assert fakes.solver_commands[-1] == ["/fake/bin/micromamba", "search", "numpy", "--json"]
         assert model.log[-1].endswith("Found 3 results.")
-    fakes.search_payload = [{"name": "numpy", "version": "2.0.1", "channel": "conda-forge"}, {"name": "numpy-base", "version": "1.26.4", "channel": "defaults"}]
+    fakes.search_payload = [
+        {"name": "numpy", "version": "2.0.1", "channel": "conda-forge"},
+        {"name": "numpy-base", "version": "1.26.4", "channel": "defaults"},
+    ]
     model.search_packages()
-    assert [[r["name"], r["version"], r["channel"]] for r in model.search_rows] == REF["pm_search_rows_list_payload"]
+    assert [[r["name"], r["version"], r["channel"]] for r in model.search_rows] == REF[
+        "pm_search_rows_list_payload"
+    ]
 
 
 def test_an_empty_query_searches_nothing(model, fakes):
@@ -109,20 +140,30 @@ def test_install_selected_asks_and_runs_the_qt_install_line(model, fakes):
     pick(model, "search", version="2.0.1")
     fakes.solver_commands.clear()
     model.ask_install_selected()
-    assert model.dialog_title == "Confirm Installation" and model.dialog_text == REF["pm_install"]["asked"][0][2]
+    assert (
+        model.dialog_title == "Confirm Installation"
+        and model.dialog_text == REF["pm_install"]["asked"][0][2]
+    )
     confirm(model, "install", accept=False)
-    assert ops(fakes) == []                                       # declined: nothing runs
+    assert ops(fakes) == []  # declined: nothing runs
     model.ask_install_selected()
     confirm(model, "install")
-    assert ops(fakes) == [mine(REF["pm_install"]["commands"][0])] == [["/fake/bin/micromamba", "install", "-y", "--update-deps", "-p", sys.prefix, "numpy"]]
-    assert model.log[-1].endswith("Loaded 5 packages.") and "Operation completed successfully." in " ".join(model.log)
+    assert (
+        ops(fakes)
+        == [mine(REF["pm_install"]["commands"][0])]
+        == [["/fake/bin/micromamba", "install", "-y", "--update-deps", "-p", sys.prefix, "numpy"]]
+    )
+    assert model.log[-1].endswith(
+        "Loaded 5 packages."
+    ) and "Operation completed successfully." in " ".join(model.log)
 
 
 def test_update_selected_runs_the_qt_update_line_without_a_question(model, fakes):
     pick(model, "installed", name="scipy")
     model.ask_update_selected()
-    assert model.dialog == "" and ops(fakes) == [mine(REF["pm_update_selected"]["commands"][0])] == [
-        ["/fake/bin/micromamba", "update", "-y", "-p", sys.prefix, "scipy"]]
+    assert model.dialog == "" and ops(fakes) == [
+        mine(REF["pm_update_selected"]["commands"][0])
+    ] == [["/fake/bin/micromamba", "update", "-y", "-p", sys.prefix, "scipy"]]
 
 
 def test_update_all_asks_and_runs_the_qt_line(model, fakes):
@@ -132,28 +173,43 @@ def test_update_all_asks_and_runs_the_qt_line(model, fakes):
     assert ops(fakes) == []
     model.ask_update_all()
     confirm(model, "update_all")
-    assert ops(fakes) == [mine(REF["pm_update_all"]["commands"][0])] == [["/fake/bin/micromamba", "update", "-y", "-p", sys.prefix, "--all"]]
+    assert (
+        ops(fakes)
+        == [mine(REF["pm_update_all"]["commands"][0])]
+        == [["/fake/bin/micromamba", "update", "-y", "-p", sys.prefix, "--all"]]
+    )
 
 
 def test_remove_selected_asks_and_runs_the_qt_line_only_when_confirmed(model, fakes):
     pick(model, "installed", name="scipy")
     model.ask_remove_selected()
-    assert (model.dialog_title, model.dialog_text) == ("Confirm Removal", REF["pm_remove"]["asked"][0][2])
+    assert (model.dialog_title, model.dialog_text) == (
+        "Confirm Removal",
+        REF["pm_remove"]["asked"][0][2],
+    )
     confirm(model, "remove", accept=False)
     assert ops(fakes) == [] and REF["pm_remove_declined"]["commands"] == []
     model.ask_remove_selected()
     confirm(model, "remove")
-    assert ops(fakes) == [mine(REF["pm_remove"]["commands"][0])] == [["/fake/bin/micromamba", "remove", "-y", "-p", sys.prefix, "scipy"]]
+    assert (
+        ops(fakes)
+        == [mine(REF["pm_remove"]["commands"][0])]
+        == [["/fake/bin/micromamba", "remove", "-y", "-p", sys.prefix, "scipy"]]
+    )
 
 
 def test_create_new_asks_for_a_name_and_runs_the_qt_line(model, fakes):
     model.ask_create_env()
     assert model.dialog_text == "Enter environment name:" and not model.dialog_input_hidden == "yes"
     confirm(model, "create_env", text="")
-    assert ops(fakes) == []                                       # no name, nothing
+    assert ops(fakes) == []  # no name, nothing
     model.ask_create_env()
     confirm(model, "create_env", text="scratch")
-    assert ops(fakes) == [REF["pm_create_env"]["commands"][0]] == [["/fake/bin/micromamba", "create", "-y", "-n", "scratch"]]
+    assert (
+        ops(fakes)
+        == [REF["pm_create_env"]["commands"][0]]
+        == [["/fake/bin/micromamba", "create", "-y", "-n", "scratch"]]
+    )
 
 
 def test_clone_selected_asks_for_the_new_name_and_runs_the_qt_line(model, fakes):
@@ -166,8 +222,10 @@ def test_clone_selected_asks_for_the_new_name_and_runs_the_qt_line(model, fakes)
     model.env_rows = [{"env": "named"}]
     pick(model, "env", env="named")
     model.ask_clone_env()
-    confirm(model, "clone_env", text="copy2")                      # a name (no path separator) is cloned by name
-    assert ops(fakes) == [["/fake/bin/micromamba", "create", "-y", "-n", "copy2", "--clone", "named"]]
+    confirm(model, "clone_env", text="copy2")  # a name (no path separator) is cloned by name
+    assert ops(fakes) == [
+        ["/fake/bin/micromamba", "create", "-y", "-n", "copy2", "--clone", "named"]
+    ]
 
 
 def test_remove_environment_asks_and_runs_the_qt_line(model, fakes):
@@ -187,7 +245,9 @@ def test_remove_environment_asks_and_runs_the_qt_line(model, fakes):
     assert ops(fakes) == [["/fake/bin/micromamba", "env", "remove", "-y", "-n", "named"]]
 
 
-def test_export_writes_the_yaml_the_qt_tool_wrote_for_the_selected_environment(model, fakes, tmp_path):
+def test_export_writes_the_yaml_the_qt_tool_wrote_for_the_selected_environment(
+    model, fakes, tmp_path
+):
     pick(model, "env", env="/fake/mambaforge/envs/analysis")
     target = tmp_path / "exported.yaml"
     model.request_export()
@@ -196,7 +256,7 @@ def test_export_writes_the_yaml_the_qt_tool_wrote_for_the_selected_environment(m
     assert fakes.solver_commands == [REF["pm_export_env"]["commands"][0]]
     assert target.read_text() == REF["pm_export_env"]["file"]
     fakes.solver_commands.clear()
-    model.sel_env = None                                          # nothing selected: the current environment
+    model.sel_env = None  # nothing selected: the current environment
     model.export_to(str(target))
     assert fakes.solver_commands == [["/fake/bin/micromamba", "env", "export", "-p", sys.prefix]]
 
@@ -244,7 +304,9 @@ def test_a_failing_operation_says_why_where_the_qt_tool_showed_an_empty_box(mode
     confirm(model, "remove")
     assert model.dialog == "notice" and model.dialog_title == "Error"
     assert model.dialog_text == "The operation failed:\nfake solver: the operation is refused"
-    assert REF["pm_failure"]["asked"][1][2] == "The operation failed:\n"      # the Qt dialog lost the text (and asked twice)
+    assert (
+        REF["pm_failure"]["asked"][1][2] == "The operation failed:\n"
+    )  # the Qt dialog lost the text (and asked twice)
     assert model.log[-1].endswith("Operation failed: fake solver: the operation is refused")
     model.dialog_ok()
     assert model.dialog == ""
@@ -263,16 +325,36 @@ def test_the_qt_worker_now_passes_the_failure_text_too(qapp, qtbot):
 
 
 def test_buttons_that_need_a_selection_are_greyed_without_one(model):
-    for name in ("ask_update_selected", "ask_remove_selected", "ask_install_selected", "ask_clone_env", "ask_remove_env", "remove_channel", "search_packages"):
+    for name in (
+        "ask_update_selected",
+        "ask_remove_selected",
+        "ask_install_selected",
+        "ask_clone_env",
+        "ask_remove_env",
+        "remove_channel",
+        "search_packages",
+    ):
         assert not model.enabled(name), name
-    for name in ("refresh_installed", "ask_update_all", "ask_create_env", "request_export", "request_import", "ask_add_channel", "refresh_all"):
+    for name in (
+        "refresh_installed",
+        "ask_update_all",
+        "ask_create_env",
+        "request_export",
+        "request_import",
+        "ask_add_channel",
+        "refresh_all",
+    ):
         assert model.enabled(name), name
 
 
 def test_every_destructive_action_asks_and_nothing_runs_on_no(model, fakes):
     pick(model, "installed", name="numpy")
     pick(model, "env", env="/fake/mambaforge")
-    for ask, kind in ((model.ask_remove_selected, "remove"), (model.ask_remove_env, "remove_env"), (model.ask_update_all, "update_all")):
+    for ask, kind in (
+        (model.ask_remove_selected, "remove"),
+        (model.ask_remove_env, "remove_env"),
+        (model.ask_update_all, "update_all"),
+    ):
         ask()
         assert model.dialog == kind
         model.dialog_cancel()
@@ -281,7 +363,9 @@ def test_every_destructive_action_asks_and_nothing_runs_on_no(model, fakes):
 
 def test_settings_round_trip_and_spec_keys(model):
     model.restore_settings({"tab": 2, "installed_filter": "py"})
-    assert model.export_settings() == {"tab": 2, "installed_filter": "py"} and [r["name"] for r in model.installed_rows] == ["numpy", "scipy", "python"]
+    assert model.export_settings() == {"tab": 2, "installed_filter": "py"} and [
+        r["name"] for r in model.installed_rows
+    ] == ["numpy", "scipy", "python"]
     spec = json.loads((GUI / "packages.view.json").read_text())
 
     def walk(sections):

@@ -25,14 +25,25 @@ class NBApp(PixelToolApp):
     LAYOUT = Split("h", 0.34, Region("settings"), Region("views"))
     OUTCOMES = {**PixelToolApp.OUTCOMES, "demo": "demo"}
 
-    def __init__(self, model: NBModel | None = None, coordinator=None, ndx_callback=None, **binding) -> None:
+    def __init__(
+        self, model: NBModel | None = None, coordinator=None, ndx_callback=None, **binding
+    ) -> None:
         super().__init__(model or NBModel(), coordinator, ndx_callback, **binding)
         m = self.model
-        panel = PlanePanel("nb_plane", collection=lambda: m.gates, image=m.plane_histogram, extent=m.plane_extent,
-                           x_label=lambda: PLANE_AXES.get(m.plane_x, m.plane_x), y_label=lambda: PLANE_AXES.get(m.plane_y, m.plane_y),
-                           on_change=m.notify_gates, empty="No parameter plane yet. Select a photon file and press Run.",
-                           tooltip="Histogram of the displayed window on the chosen axes; drag a gate's handles to select a population.")
-        regions = PlaneRegions(lambda: m.gates, m.plane_extent, lambda kind: m.request_dialog(kind), m.notify_gates)
+        panel = PlanePanel(
+            "nb_plane",
+            collection=lambda: m.gates,
+            image=m.plane_histogram,
+            extent=m.plane_extent,
+            x_label=lambda: PLANE_AXES.get(m.plane_x, m.plane_x),
+            y_label=lambda: PLANE_AXES.get(m.plane_y, m.plane_y),
+            on_change=m.notify_gates,
+            empty="No parameter plane yet. Select a photon file and press Run.",
+            tooltip="Histogram of the displayed window on the chosen axes; drag a gate's handles to select a population.",
+        )
+        regions = PlaneRegions(
+            lambda: m.gates, m.plane_extent, lambda kind: m.request_dialog(kind), m.notify_gates
+        )
         self.add_plane("gates", panel, regions)
 
     def export_settings(self) -> dict:

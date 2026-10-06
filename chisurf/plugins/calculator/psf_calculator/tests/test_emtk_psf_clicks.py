@@ -71,16 +71,27 @@ def pick(drv, field, label):
 
 # -- the number fields --------------------------------------------------------------------------------------- #
 
-FIELDS = {"na": (0.05, 1.7, 1.40, 0.05), "n_immersion": (1.0, 2.0, 1.518, 0.01), "wavelength_nm": (300.0, 1200.0, 520.0, 10.0),
-          "angle_deg": (0.0, 180.0, 0.0, 5.0), "nxy": (16, 192, 24, 8), "nz": (3, 81, 7, 2), "pixel_size_nm": (1.0, 200.0, 30.0, 5.0),
-          "z_step_nm": (5.0, 1000.0, 100.0, 25.0), "threshold": (0.0, 0.9, 0.02, 0.01), "gamma": (0.1, 3.0, 0.6, 0.1)}
+FIELDS = {
+    "na": (0.05, 1.7, 1.40, 0.05),
+    "n_immersion": (1.0, 2.0, 1.518, 0.01),
+    "wavelength_nm": (300.0, 1200.0, 520.0, 10.0),
+    "angle_deg": (0.0, 180.0, 0.0, 5.0),
+    "nxy": (16, 192, 24, 8),
+    "nz": (3, 81, 7, 2),
+    "pixel_size_nm": (1.0, 200.0, 30.0, 5.0),
+    "z_step_nm": (5.0, 1000.0, 100.0, 25.0),
+    "threshold": (0.0, 0.9, 0.02, 0.01),
+    "gamma": (0.1, 3.0, 0.6, 0.1),
+}
 
 
 @pytest.mark.parametrize("name", list(FIELDS))
 def test_each_number_field_is_typed_clamped_and_stepped_by_its_arrows(drv, name):
     lo, hi, start, step = FIELDS[name]
     if name == "angle_deg":
-        pick(drv, "polarization", "Linear at angle")  # the angle field only takes input for a linear state
+        pick(
+            drv, "polarization", "Linear at angle"
+        )  # the angle field only takes input for a linear state
     assert getattr(model(drv), name) == pytest.approx(start)
     stepper(drv, name, +1)
     assert getattr(model(drv), name) == pytest.approx(start + step)
@@ -95,7 +106,9 @@ def test_each_number_field_is_typed_clamped_and_stepped_by_its_arrows(drv, name)
     assert getattr(model(drv), name) == pytest.approx(lo)  # garbage is ignored
 
 
-def test_a_typed_value_recomputes_after_the_debounce_with_the_volume_the_model_gives(drv, monkeypatch):
+def test_a_typed_value_recomputes_after_the_debounce_with_the_volume_the_model_gives(
+    drv, monkeypatch
+):
     import time
 
     from chisurf.plugins.calculator.psf_calculator.gui import app as app_module
@@ -117,7 +130,11 @@ def test_the_summary_follows_the_volume(drv):
     drv.type_into("wavelength_nm", "640")
     drv.settle()
     after = drv.app.panel.summary_lines()
-    assert after != before and after in "\n".join(drv.draw(2).strings) or all(line in drv.draw(2).strings for line in after.splitlines())
+    assert (
+        after != before
+        and after in "\n".join(drv.draw(2).strings)
+        or all(line in drv.draw(2).strings for line in after.splitlines())
+    )
 
 
 # -- the choices, the radio and the toggle --------------------------------------------------------------------- #
@@ -127,7 +144,9 @@ def test_choosing_the_airy_model_greys_the_polarization_and_the_volume_is_the_ai
     assert drv.app.panel.enabled("polarization") and drv.app.panel.enabled("show_polarization")
     pick(drv, "model", "Airy (scalar, 2-D)")
     assert model(drv).model == "airy"
-    assert not drv.app.panel.enabled("polarization") and not drv.app.panel.enabled("show_polarization")
+    assert not drv.app.panel.enabled("polarization") and not drv.app.panel.enabled(
+        "show_polarization"
+    )
     drv.click("polarization")  # greyed: the list does not open
     assert "Linear x" not in drv.draw(2).strings
     drv.settle()
@@ -146,7 +165,16 @@ def test_the_gaussian_model_and_back(drv):
 def test_every_polarization_is_listed_and_a_linear_angle_enables_the_angle(drv):
     drv.click("polarization")
     shown = drv.draw(2).strings
-    for label in ("Circular", "Linear x", "Linear y", "Linear at angle", "Left circular", "Unpolarized", "Radial", "Azimuthal"):
+    for label in (
+        "Circular",
+        "Linear x",
+        "Linear y",
+        "Linear at angle",
+        "Left circular",
+        "Unpolarized",
+        "Radial",
+        "Azimuthal",
+    ):
         assert label in shown, label
     drv.click_text("Linear at angle", last=True)
     assert model(drv).polarization == "linear" and drv.app.panel.enabled("angle_deg")
@@ -236,7 +264,10 @@ def test_a_failing_computation_is_reported_once_and_the_next_edit_tries_again(dr
     monkeypatch.setattr(PSFModel, "compute", failing)
     drv.type_into("na", "1.3")
     drv.settle()
-    assert drv.app.error == "Error: no optics today" and "Error: no optics today" in drv.draw(2).strings
+    assert (
+        drv.app.error == "Error: no optics today"
+        and "Error: no optics today" in drv.draw(2).strings
+    )
     n = len(calls)
     drv.draw(5)
     assert len(calls) == n  # not retried every frame
@@ -283,10 +314,14 @@ def test_export_is_greyed_until_a_volume_exists_and_a_click_then_opens_nothing()
         app._executor.shutdown(wait=True)
 
 
-def test_export_npy_opens_the_dialog_with_the_descriptive_name_and_writes_the_typed_one(drv, tmp_path):
+def test_export_npy_opens_the_dialog_with_the_descriptive_name_and_writes_the_typed_one(
+    drv, tmp_path
+):
     drv.click("export_npy")
     assert drv.app.dialog is not None and drv.app.file_window.title == "Export PSF as .npy"
-    assert "psf_vectorial_NA1.4_n1.518_520nm_circular.npy" in drv.draw(2).strings  # the name that records the optics
+    assert (
+        "psf_vectorial_NA1.4_n1.518_520nm_circular.npy" in drv.draw(2).strings
+    )  # the name that records the optics
     drv.click_text("psf_vectorial_NA1.4_n1.518_520nm_circular.npy")
     drv.select_all()
     drv.type_text("my_psf")
@@ -294,7 +329,9 @@ def test_export_npy_opens_the_dialog_with_the_descriptive_name_and_writes_the_ty
     written = tmp_path / "my_psf.npy"
     assert written.is_file() and np.array_equal(np.load(written), model(drv).volume)
     assert drv.app.status == f"Exported to {written}" and drv.app.dialog is None
-    assert f"Exported to {written}" in drv.draw(2).strings or any(s.startswith("Exported to") for s in drv.painter.strings)
+    assert f"Exported to {written}" in drv.draw(2).strings or any(
+        s.startswith("Exported to") for s in drv.painter.strings
+    )
 
 
 def test_export_tif_writes_an_imagej_stack_with_the_voxel_size(drv, tmp_path):
@@ -308,7 +345,11 @@ def test_export_tif_writes_an_imagej_stack_with_the_voxel_size(drv, tmp_path):
     written = tmp_path / "stack.tif"
     assert written.is_file()
     with tifffile.TiffFile(written) as tif:
-        assert tif.is_imagej and tif.imagej_metadata["spacing"] == pytest.approx(0.1) and tif.imagej_metadata["unit"] == "um"
+        assert (
+            tif.is_imagej
+            and tif.imagej_metadata["spacing"] == pytest.approx(0.1)
+            and tif.imagej_metadata["unit"] == "um"
+        )
         assert np.allclose(tif.asarray(), model(drv).volume.astype(np.float32))
 
 
@@ -337,7 +378,9 @@ def test_export_to_an_unwritable_place_reports_instead_of_raising(drv, tmp_path)
     drv.select_all()
     drv.type_text("no_such_folder/psf")
     drv.click_text("Save", last=True)
-    assert drv.app.error.startswith("Error: Export failed:") and any(t.startswith("Error: Export failed:") for t in drv.draw(2).strings)
+    assert drv.app.error.startswith("Error: Export failed:") and any(
+        t.startswith("Error: Export failed:") for t in drv.draw(2).strings
+    )
 
 
 # -- the 3-D view ------------------------------------------------------------------------------------------------ #
@@ -346,7 +389,11 @@ def test_export_to_an_unwritable_place_reports_instead_of_raising(drv, tmp_path)
 def view_texts(drv):
     """Every text drawn inside the 3-D window (axis titles and ticks) with its position: they move when the box rotates."""
     x, y, w, h = drv.rect("volume")
-    return sorted((t[5], round(t[0]), round(t[1])) for t in drv.draw(2).texts if x <= t[0] <= x + w and y <= t[1] <= y + h)
+    return sorted(
+        (t[5], round(t[0]), round(t[1]))
+        for t in drv.draw(2).texts
+        if x <= t[0] <= x + w and y <= t[1] <= y + h
+    )
 
 
 def test_dragging_in_the_3d_view_rotates_it(drv):

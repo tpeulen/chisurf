@@ -40,12 +40,12 @@ import typing
 from emtk import im
 from emtk import nodes as emtk_nodes
 
+from chisurf.emtk.node_editor.control import NodeContentRenderer
 from chisurf.emtk.node_editor.document import (
     GraphDocument,
     GraphEdge,
     GraphNode,
 )
-from chisurf.emtk.node_editor.control import NodeContentRenderer
 from chisurf.emtk.node_editor.model import PortSpec
 
 __all__ = [

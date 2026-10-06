@@ -368,7 +368,9 @@ def extract_irf_background(
         chs = np.asarray(det.get("chs", []), dtype=int)
         ch_mask = np.isin(rout, chs) if chs.size else np.zeros_like(keep)
         times = macro[_background_mask(det, ch_mask & keep)]
-        gaps[name] = np.diff(times.astype(np.float64)) * dt_scale_ms if times.size >= 2 else np.empty(0)
+        gaps[name] = (
+            np.diff(times.astype(np.float64)) * dt_scale_ms if times.size >= 2 else np.empty(0)
+        )
     window = bg_tail_range_ms
     if window is None:
         from chisurf.core.fluorescence.burst.background import seed_tail_window

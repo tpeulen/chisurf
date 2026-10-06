@@ -14,15 +14,21 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from test.gui.emtk_layout_checks import SIZES, assert_disjoint, assert_icons_clear, assert_inside, assert_texts_apart, draw
-
+from chisurf.plugins.microscopy.imaging_emtk import pixel_checks as C
+from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
+from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, hermetic_env, walk
 from chisurf.plugins.microscopy.img_pixel_mle import core as mle_core
 from chisurf.plugins.microscopy.img_pixel_mle.gui.app import PixelMleApp, make_app
 from chisurf.plugins.microscopy.img_pixel_mle.gui.model import PixelMleModel
 from chisurf.plugins.microscopy.img_pixel_mle.gui.view_model import PixelMleViewModel
-from chisurf.plugins.microscopy.imaging_emtk import pixel_checks as C
-from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, hermetic_env, walk
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_inside,
+    assert_texts_apart,
+    draw,
+)
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -70,7 +76,13 @@ def drv(app):
     return Driver(app, BIG)
 
 
-FIT = dict(channels_parallel_text="0", channels_perpendicular_text="1", micro_time_start=0, micro_time_stop=250, min_photons=3)
+FIT = dict(
+    channels_parallel_text="0",
+    channels_perpendicular_text="1",
+    micro_time_start=0,
+    micro_time_stop=250,
+    min_photons=3,
+)
 
 
 def ready(app, files, **settings):
@@ -117,14 +129,31 @@ def test_the_csv_is_written_beside_the_input_and_the_fitted_lifetimes_are_physic
     m = fitted(app, drv, files)
     csv = files[0].with_name("scan_pixel_mle.csv")
     lines = csv.read_text().splitlines()
-    assert csv.exists() and "tau" in lines[0].split(",") and len(lines) - 1 >= m.results[0].n_pixels_fit
+    assert (
+        csv.exists()
+        and "tau" in lines[0].split(",")
+        and len(lines) - 1 >= m.results[0].n_pixels_fit
+    )
     tau = np.asarray(m.results[0].tau)
-    assert np.isfinite(tau).any() and (tau[np.isfinite(tau) & (tau != 0)] > 0).all() and np.nanmax(tau) < 100
+    assert (
+        np.isfinite(tau).any()
+        and (tau[np.isfinite(tau) & (tau != 0)] > 0).all()
+        and np.nanmax(tau) < 100
+    )
 
 
-@pytest.mark.parametrize("changes", [{"micro_time_binning": 2, "micro_time_stop": 120}, {"irf_threshold": 0.1, "shift_sp": 0.5},
-                                     {"use_bg": True, "bg_p": 1.0, "bg_s": 1.0}, {"twoi_star": False, "bifl_scatter": True},
-                                     {"engine": "loop", "n_workers": 1}, {"fit_model": "fit24"}], ids=lambda c: "+".join(sorted(c)))
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"micro_time_binning": 2, "micro_time_stop": 120},
+        {"irf_threshold": 0.1, "shift_sp": 0.5},
+        {"use_bg": True, "bg_p": 1.0, "bg_s": 1.0},
+        {"twoi_star": False, "bifl_scatter": True},
+        {"engine": "loop", "n_workers": 1},
+        {"fit_model": "fit24"},
+    ],
+    ids=lambda c: "+".join(sorted(c)),
+)
 def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(app, drv, files, changes):
     m = fitted(app, drv, files, **changes)
     qt = qt_run(files, **changes)
@@ -205,7 +234,7 @@ def test_remove_and_clear_edit_the_list_without_deleting_files(app, drv, files, 
     assert m.files == [str(files[0])] and extra.exists()
     drv.click("sel_files.clear")
     assert m.files == [] and files[0].exists()
-    assert not app.model.enabled("x") is False
+    assert app.model.enabled("x") is not False
 
 
 def test_the_database_buttons_pick_a_file_and_an_irf(app, drv, files):
@@ -253,21 +282,48 @@ def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, files):
     host.resize(900, 600)
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile(str(files[0]))])
-    host.dropEvent(QtGui.QDropEvent(QtCore.QPointF(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier))
+    host.dropEvent(
+        QtGui.QDropEvent(
+            QtCore.QPointF(10, 10),
+            QtCore.Qt.CopyAction,
+            mime,
+            QtCore.Qt.LeftButton,
+            QtCore.Qt.NoModifier,
+        )
+    )
     assert app.model.files == [str(files[0])] and qapp is not None
     host.close()
 
 
 # ── 3. the settings ─────────────────────────────────────────────────────────────────────────────────────── #
 
-FOLDS = {"irf_threshold": "IRF preparation.fold", "shift_sp": "IRF preparation.fold", "shift_ss": "IRF preparation.fold", "bg_p": "Background.fold",
-         "bg_s": "Background.fold", "n_workers": "Performance.fold"}
+FOLDS = {
+    "irf_threshold": "IRF preparation.fold",
+    "shift_sp": "IRF preparation.fold",
+    "shift_ss": "IRF preparation.fold",
+    "bg_p": "Background.fold",
+    "bg_s": "Background.fold",
+    "n_workers": "Performance.fold",
+}
 
 
-@pytest.mark.parametrize("attr, text, expected", [
-    ("channels_parallel_text", "0 4", "0 4"), ("channels_perpendicular_text", "1, 5", "1 5"), ("micro_time_start", "12", 12), ("micro_time_stop", "200", 200),
-    ("micro_time_binning", "4", 4), ("min_photons", "9", 9), ("irf_threshold", "0.25", 0.25), ("shift_sp", "1.5", 1.5), ("shift_ss", "-2.25", -2.25),
-    ("bg_p", "3.5", 3.5), ("bg_s", "4.5", 4.5), ("n_workers", "3", 3)])
+@pytest.mark.parametrize(
+    "attr, text, expected",
+    [
+        ("channels_parallel_text", "0 4", "0 4"),
+        ("channels_perpendicular_text", "1, 5", "1 5"),
+        ("micro_time_start", "12", 12),
+        ("micro_time_stop", "200", 200),
+        ("micro_time_binning", "4", 4),
+        ("min_photons", "9", 9),
+        ("irf_threshold", "0.25", 0.25),
+        ("shift_sp", "1.5", 1.5),
+        ("shift_ss", "-2.25", -2.25),
+        ("bg_p", "3.5", 3.5),
+        ("bg_s", "4.5", 4.5),
+        ("n_workers", "3", 3),
+    ],
+)
 def test_every_typed_setting_is_taken_on_enter(app, drv, attr, text, expected):
     if attr in FOLDS:
         drv.click(FOLDS[attr])
@@ -330,7 +386,9 @@ def test_the_region_file_is_typed_or_browsed_and_a_bad_one_is_reported(app, drv,
     path = tmp_path / "region.json"
     regions.save(str(path))
     drv.type_into("roi_path", str(path))
-    assert app.model.roi is not None and app.model.status_text.startswith("Region loaded: 1 region(s)")
+    assert app.model.roi is not None and app.model.status_text.startswith(
+        "Region loaded: 1 region(s)"
+    )
     drv.type_into("roi_path", str(tmp_path / "missing.json"))
     assert app.model.roi is None and app.model.status_text.startswith("Could not read region")
     app.model.folder = str(tmp_path)
@@ -363,7 +421,9 @@ def test_a_region_confines_the_fit_to_its_pixels(app, drv, files, tmp_path):
 # ── 4. running ──────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_run_is_pressed_with_the_pointer_greyed_while_it_runs_and_the_status_is_empty_after(app, drv, files):
+def test_run_is_pressed_with_the_pointer_greyed_while_it_runs_and_the_status_is_empty_after(
+    app, drv, files
+):
     ready(app, files)
     assert app.model.enabled("request_run")
     drv.click("request_run")
@@ -372,7 +432,9 @@ def test_run_is_pressed_with_the_pointer_greyed_while_it_runs_and_the_status_is_
     assert app.model.status_text == "" and app.model.results and not app.job.error
 
 
-def test_cancel_stops_after_the_current_file_and_keeps_the_finished_ones(app, drv, files, monkeypatch):
+def test_cancel_stops_after_the_current_file_and_keeps_the_finished_ones(
+    app, drv, files, monkeypatch
+):
     real = mle_core.fit_pixel_lifetimes_from_file
     second = files[0].with_name("second.ptu")
     second.write_bytes(files[0].read_bytes())
@@ -396,7 +458,9 @@ def test_cancel_stops_after_the_current_file_and_keeps_the_finished_ones(app, dr
         drv.draw(1)
     drv.click("cancel")
     drv.settle(timeout=120)
-    assert m.status_text == "Cancelled; completed files are retained." and m.result_names == ["scan"]
+    assert m.status_text == "Cancelled; completed files are retained." and m.result_names == [
+        "scan"
+    ]
 
 
 def test_cancel_is_idle_when_nothing_runs(app, drv):
@@ -468,7 +532,9 @@ def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
     C.guide_button_starts_the_tour_and_close_tour_ends_it(app)
 
 
-def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, files):
+def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+    app, drv, files
+):
     def add_files():
         app.model.folder = str(files[0].parent)
         drv.click("sel_files.add")
@@ -486,7 +552,9 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
             setattr(app.model, k, v)
         drv.click("request_run")
 
-    C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, files[0], {"files": add_files, "irf": add_irf, "run": run})
+    C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+        app, drv, files[0], {"files": add_files, "irf": add_irf, "run": run}
+    )
     assert app.model.results
 
 
@@ -513,9 +581,25 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app, drv, files):
     fresh = make_app()
     fresh.restore_settings(saved)
     f = fresh.model
-    assert (f.min_photons, f.engine, f.use_bg, f.bg_p, f.fit_model, f.p0_value) == (7, "fast", True, 2.5, "fit24", 3.25)
+    assert (f.min_photons, f.engine, f.use_bg, f.bg_p, f.fit_model, f.p0_value) == (
+        7,
+        "fast",
+        True,
+        2.5,
+        "fit24",
+        3.25,
+    )
     assert f.files == [str(files[0])] and f.irf_files == [str(files[1])]
-    fresh.restore_settings({"min_photons": "many", "engine": "turbo", "use_bg": "yes", "fit_model": "fit99", "files": "x", "model_params": {"fit24": [[1], "x"]}})
+    fresh.restore_settings(
+        {
+            "min_photons": "many",
+            "engine": "turbo",
+            "use_bg": "yes",
+            "fit_model": "fit99",
+            "files": "x",
+            "model_params": {"fit24": [[1], "x"]},
+        }
+    )
     assert (f.min_photons, f.engine, f.use_bg, f.fit_model) == (7, "fast", True, "fit24")
     fresh.restore_settings("garbage")
     fresh.close()
@@ -525,15 +609,46 @@ def test_the_imaging_hub_drives_the_tool(files):
     coordinator = C.FakeCoordinator()
     app = make_app(coordinator=coordinator)
     d = Driver(app, BIG)
-    app.apply_setup_settings({"detectors": {"green": {"chs": [0, 2], "ch_p": [0], "ch_s": [2], "micro_time_ranges": [[0, 200]], "g_factor": 1.2}}})
-    assert app.model.settings.detector_chs_p == [0] and app.model.settings.detector_chs_s == [2] and app.model.settings.g_factor == 1.2
-    app.apply_calibration({"green": {"irf": [str(files[1])], "bg_vv": 2.0, "bg_vh": 1.0, "conv_start": 5, "conv_stop": 150}})
-    assert app.model.irf_files == [str(files[1])] and (app.model.micro_time_start, app.model.micro_time_stop) == (5, 150)
+    app.apply_setup_settings(
+        {
+            "detectors": {
+                "green": {
+                    "chs": [0, 2],
+                    "ch_p": [0],
+                    "ch_s": [2],
+                    "micro_time_ranges": [[0, 200]],
+                    "g_factor": 1.2,
+                }
+            }
+        }
+    )
+    assert (
+        app.model.settings.detector_chs_p == [0]
+        and app.model.settings.detector_chs_s == [2]
+        and app.model.settings.g_factor == 1.2
+    )
+    app.apply_calibration(
+        {
+            "green": {
+                "irf": [str(files[1])],
+                "bg_vv": 2.0,
+                "bg_vh": 1.0,
+                "conv_start": 5,
+                "conv_stop": 150,
+            }
+        }
+    )
+    assert app.model.irf_files == [str(files[1])] and (
+        app.model.micro_time_start,
+        app.model.micro_time_stop,
+    ) == (5, 150)
     app.apply_pipeline_context({"source": str(files[0]), "hdf5": ""})
     assert app.model.files == [str(files[0])]
     ready(app, files, **{k: v for k, v in FIT.items() if k not in ("micro_time_start",)})
     assert app.start("request_run")
-    app.apply_setup_settings({"detectors": {"late": {"chs": [1], "ch_p": [1], "ch_s": [3], "micro_time_ranges": []}}})  # arrives while the worker runs
+    app.apply_setup_settings(
+        {"detectors": {"late": {"chs": [1], "ch_p": [1], "ch_s": [3], "micro_time_ranges": []}}}
+    )  # arrives while the worker runs
     assert app.model.settings.detector_chs_p != [1]
     d.settle(timeout=300)
     d.draw(3)
@@ -553,15 +668,38 @@ def _labels(sections):
             out.add(sec["title"])
         for b in sec.get("buttons", []):
             out.add(b["label"])
-    return {"".join(ch for ch in label if ord(ch) < 0x2300 or ch in "ρτ∥⊥γ").strip() for label in out}
+    return {
+        "".join(ch for ch in label if ord(ch) < 0x2300 or ch in "ρτ∥⊥γ").strip() for label in out
+    }
 
 
 def test_every_qt_control_has_an_emtk_equivalent():
     qt, emtk = _labels(QT_SPEC["sections"]), _labels(EMTK_SPEC["sections"])
-    assert {"CLSM imaging files", "IRF file", "Fit start", "Fit stop", "Micro-time binning", "Min photons", "Region", "Threshold", "Run", "Engine", "Threads", "Subtract",
-            "2I* (P+2S)", "BIFL scatter"} <= qt
-    assert qt - {"Lifetime map"} <= emtk | {"Parallel channels", "Perpendicular channels", "Shift", "bg"}, sorted(qt - emtk)
-    assert {"Parallel channels (∥)", "Perpendicular channels (⊥)"} <= {s.get("label") for s in walk(EMTK_SPEC["sections"])}
+    assert {
+        "CLSM imaging files",
+        "IRF file",
+        "Fit start",
+        "Fit stop",
+        "Micro-time binning",
+        "Min photons",
+        "Region",
+        "Threshold",
+        "Run",
+        "Engine",
+        "Threads",
+        "Subtract",
+        "2I* (P+2S)",
+        "BIFL scatter",
+    } <= qt
+    assert qt - {"Lifetime map"} <= emtk | {
+        "Parallel channels",
+        "Perpendicular channels",
+        "Shift",
+        "bg",
+    }, sorted(qt - emtk)
+    assert {"Parallel channels (∥)", "Perpendicular channels (⊥)"} <= {
+        s.get("label") for s in walk(EMTK_SPEC["sections"])
+    }
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():
@@ -576,8 +714,17 @@ def test_every_spec_attribute_and_action_exists_on_the_model():
                 assert hasattr(model, section[key]), (key, section)
         if section.get("type") == "custom" and section.get("options", {}).get("source"):
             assert callable(getattr(model, section["options"]["source"])), section
-    assert not [s for s in walk(EMTK_SPEC["sections"]) if s.get("type") not in ("custom", "panel") and not s.get("description")]
-    assert not [b for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", []) if not b.get("description")]
+    assert not [
+        s
+        for s in walk(EMTK_SPEC["sections"])
+        if s.get("type") not in ("custom", "panel") and not s.get("description")
+    ]
+    assert not [
+        b
+        for s in walk(EMTK_SPEC["sections"])
+        for b in s.get("buttons", [])
+        if not b.get("description")
+    ]
 
 
 def test_the_port_is_qt_free():
@@ -614,7 +761,18 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, file
     for tab in ("Lifetime map", "Settings"):
         app.docks.focus(tab)
         C.texts_apart(draw(app, size), ignore=tuple(str(p) for p in files))
-    rects = {k: app.form.rects[k] for k in ("request_run", "sel_files", "sel_irf_files", "channels_parallel_text", "min_photons", "fit_model") if k in app.form.rects}
+    rects = {
+        k: app.form.rects[k]
+        for k in (
+            "request_run",
+            "sel_files",
+            "sel_irf_files",
+            "channels_parallel_text",
+            "min_photons",
+            "fit_model",
+        )
+        if k in app.form.rects
+    }
     assert_inside(rects, size)
     assert_icons_clear(draw(app, size))
 

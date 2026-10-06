@@ -29,9 +29,14 @@ from chisurf.plugins.tttr.microtime_histogram.gui.app import create_app  # noqa:
 
 SIZE = (1200, 800)
 SPC = REPO / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
-SETUP = {"detectors": {"green": {"chs": [8, 0, 3], "micro_time_ranges": [[0, 4095]], "g_factor": 1.0},
-                       "red": {"chs": [9, 1], "micro_time_ranges": [[0, 4095]], "g_factor": 0.8}},
-         "windows": {"early": [0, 2000]}, "tttr_reading": {}}
+SETUP = {
+    "detectors": {
+        "green": {"chs": [8, 0, 3], "micro_time_ranges": [[0, 4095]], "g_factor": 1.0},
+        "red": {"chs": [9, 1], "micro_time_ranges": [[0, 4095]], "g_factor": 0.8},
+    },
+    "windows": {"early": [0, 2000]},
+    "tttr_reading": {},
+}
 
 
 class Ui(_Ui):
@@ -53,7 +58,9 @@ class Ui(_Ui):
     def right_click(self, key_or_rect):
         from emtk.app import RIGHT_BUTTON
 
-        x, y, w, h = self.app.item_rects[key_or_rect] if isinstance(key_or_rect, str) else key_or_rect
+        x, y, w, h = (
+            self.app.item_rects[key_or_rect] if isinstance(key_or_rect, str) else key_or_rect
+        )
         self.app.pointer_move(x + w / 2, y + h / 2)
         self.draw(1)
         self.app.pointer_press(x + w / 2, y + h / 2, RIGHT_BUTTON, 0, 1)
@@ -67,8 +74,11 @@ class Ui(_Ui):
         self.app.pointer_press(*start, LEFT_BUTTON, 0, 1)
         self.draw(1)
         for i in range(1, steps + 1):
-            self.app.pointer_move(start[0] + (end[0] - start[0]) * i / steps,
-                                  start[1] + (end[1] - start[1]) * i / steps, LEFT_BUTTON)
+            self.app.pointer_move(
+                start[0] + (end[0] - start[0]) * i / steps,
+                start[1] + (end[1] - start[1]) * i / steps,
+                LEFT_BUTTON,
+            )
             self.draw(1)
         self.app.pointer_release(*end, LEFT_BUTTON, 0)
         return self.draw(3)
@@ -92,7 +102,7 @@ class Ui(_Ui):
 @pytest.fixture
 def ui():
     ui = Ui(create_app(), SIZE)
-    ui.app.definition_changed(SETUP)          # what the shared detector editor calls when the setup changes
+    ui.app.definition_changed(SETUP)  # what the shared detector editor calls when the setup changes
     ui.draw(3)
     yield ui
     ui.app.close()
@@ -102,7 +112,9 @@ def ui():
 def loaded(ui, tmp_path):
     ui.pick("filetype", "SPC-130")
     ui.drop(SPC)
-    ui.app.model.output = str(tmp_path / "autosave.dat")      # autosave goes to the temp folder, not the test data
+    ui.app.model.output = str(
+        tmp_path / "autosave.dat"
+    )  # autosave goes to the temp folder, not the test data
     assert ui.app.model.files
     return ui
 
@@ -163,7 +175,9 @@ def test_the_files_button_opens_a_dialog_and_every_way_out_works(ui, monkeypatch
     ui.press_text(SPC.name)
     ui.press_text("Open")
     assert not ui.dialog_open and ui.app.model.files == [str(SPC.resolve())]
-    assert ui.shown(SPC.name) and ui.app.model.output.endswith("_(0)-(1).dat") or ui.app.model.output
+    assert (
+        ui.shown(SPC.name) and ui.app.model.output.endswith("_(0)-(1).dat") or ui.app.model.output
+    )
 
 
 def test_the_folder_button_queues_the_photon_files_of_a_folder(ui):
@@ -189,7 +203,9 @@ def test_dropped_photon_and_burst_files_land_in_their_lists(ui, tmp_path):
     bur.write_text("First File\tLast File\tFirst Photon\tLast Photon\nunits\n0\t0\t10\t500\n")
     ui.drop(SPC, bur)
     ui.click("burst_header")
-    assert ui.app.model.files == [str(SPC.resolve())] and ui.app.model.bid_files == [str(bur.resolve())]
+    assert ui.app.model.files == [str(SPC.resolve())] and ui.app.model.bid_files == [
+        str(bur.resolve())
+    ]
     assert ui.shown("BH_SPC132.bur") and ui.shown(SPC.name)
 
 
@@ -242,7 +258,7 @@ def test_find_corresponding_tttr_reports_what_it_could_not_find(ui, tmp_path):
 
 
 def test_burst_buttons_open_their_dialogs(ui):
-    assert "burst_files" not in ui.app.item_rects                    # folded away until asked for
+    assert "burst_files" not in ui.app.item_rects  # folded away until asked for
     ui.click("burst_header")
     ui.click("burst_files")
     assert ui.dialog_open and ui.shown("Burst indices")
@@ -267,7 +283,7 @@ def test_channel_lists_are_typed(loaded):
     loaded.type_into("perpendicular_text", "0")
     m = loaded.app.model
     assert (m.parallel, m.perpendicular) == ([8, 9], [0]) and "(8,9)-(0)" in m.output
-    loaded.type_into("parallel_text", "x")                           # not integers: refused, the lists stay
+    loaded.type_into("parallel_text", "x")  # not integers: refused, the lists stay
     assert loaded.app.model.parallel == [8, 9] and "integers" in loaded.app.model.message
 
 
@@ -293,19 +309,27 @@ def test_gfactor_and_shifts_are_typed_stepped_and_update_the_decay(computed):
     m = computed.app.model
     before = m.cumulative_parallel.copy()
     computed.type_into("vv_shift", "5")
-    assert m.vv_shift == 5 and np.array_equal(m.cumulative_parallel[5:], before[:-5]) and m.cumulative_parallel[:5].sum() == 0
+    assert (
+        m.vv_shift == 5
+        and np.array_equal(m.cumulative_parallel[5:], before[:-5])
+        and m.cumulative_parallel[:5].sum() == 0
+    )
     computed.arrow("vv_shift", +1)
     assert m.vv_shift == 6
     computed.arrow("vh_shift", -1)
     assert m.vh_shift == -1
     computed.type_into("g_factor", "2")
     assert m.g_factor == 2.0
-    np.testing.assert_array_equal(m.combined, m.cumulative_parallel + 4 * m.cumulative_perpendicular)
+    np.testing.assert_array_equal(
+        m.combined, m.cumulative_parallel + 4 * m.cumulative_perpendicular
+    )
 
 
 def test_the_wheel_steps_a_shift_field(computed):
     x, y, w, h = computed.app.item_rects["vh_shift"]
-    computed.app.pointer_move(x + w / 2, y + h / 2)          # the pointer rests on the field before the wheel turns
+    computed.app.pointer_move(
+        x + w / 2, y + h / 2
+    )  # the pointer rests on the field before the wheel turns
     computed.draw(2)
     computed.wheel_over("vh_shift", 2)
     assert computed.app.model.vh_shift != 0
@@ -329,8 +353,14 @@ def test_compute_reads_the_photons_and_draws_the_decay(loaded):
     loaded.settle()
     m = loaded.app.model
     assert m.message.startswith("Computed 1 file(s).") and m.cumulative_ps is not None
-    assert int(m.cumulative_ps.sum()) == 135967          # the Qt wizard's sum for the same file and detector
-    assert loaded.shown("FWHM (VV + 2G VH): ") and loaded.shown("VV + 2G VH") and loaded.shown("Time (ns)")
+    assert (
+        int(m.cumulative_ps.sum()) == 135967
+    )  # the Qt wizard's sum for the same file and detector
+    assert (
+        loaded.shown("FWHM (VV + 2G VH): ")
+        and loaded.shown("VV + 2G VH")
+        and loaded.shown("Time (ns)")
+    )
     assert loaded.app.enabled("save") and loaded.app.enabled("transfer")
 
 
@@ -358,7 +388,7 @@ def test_stop_discards_a_running_computation(loaded):
     loaded.draw(3)
     assert loaded.app.job.running and loaded.shown("0/1 files")
     loaded.click("stop")
-    assert loaded.app.job.cancelled.is_set()            # the worker was told to stop
+    assert loaded.app.job.cancelled.is_set()  # the worker was told to stop
     gate.set()
     loaded.settle()
     assert not loaded.app.job.running and loaded.app.model.cumulative_ps is None
@@ -378,7 +408,9 @@ def test_the_plot_toggles_hide_traces_and_the_axis_goes_linear(computed):
     log = [s for s in computed.last.strings if s in ("1", "10", "100", "1000")]
     computed.click("log_y")
     assert not computed.app.log_y
-    assert [s for s in computed.last.strings if s in ("1", "10", "100", "1000")] != log or computed.shown("50")
+    assert [
+        s for s in computed.last.strings if s in ("1", "10", "100", "1000")
+    ] != log or computed.shown("50")
 
 
 def plot_ticks(ui):
@@ -396,7 +428,7 @@ def test_the_wheel_over_the_plot_zooms(computed):
     ticks = lambda: plot_ticks(computed)
     before = ticks()
     computed.draw(3)
-    assert ticks() == before          # stable without input
+    assert ticks() == before  # stable without input
     px, py = x + w * 0.2, y + h * 0.5
     for _ in range(4):
         computed.app.wheel(px, py, 1)

@@ -68,11 +68,17 @@ class FileToolsApp(TourTarget, ImApp):
         self._child_focus = False
         self.item_rects = {}
         self.help = EmTkHelpWindow(
-            title="File tools — Help", resource=Path(__file__).with_name("help.md"), owner=self,
+            title="File tools — Help",
+            resource=Path(__file__).with_name("help.md"),
+            owner=self,
             on_start_guide=self.start_guide,
         )
-        self.tour = EmTkGuidedTour(Path(__file__).with_name("guide.json"), owner=self,
-                                   get_target_rect=self.item_rects.get, wait_for_controls=True)
+        self.tour = EmTkGuidedTour(
+            Path(__file__).with_name("guide.json"),
+            owner=self,
+            get_target_rect=self.item_rects.get,
+            wait_for_controls=True,
+        )
         super().__init__(self.render, continuous=False)
 
     def start_guide(self):
@@ -159,7 +165,9 @@ class FileToolsApp(TourTarget, ImApp):
             im.set_item_tooltip(tr("Read the file-tools help and the workflow of every tool."))
             self.remember("help")
             im.set_next_item_width(-1)
-            _, self.filter = im.input_text("##File tool search", self.filter, hint=tr("Filter tools…"))
+            _, self.filter = im.input_text(
+                "##File tool search", self.filter, hint=tr("Filter tools…")
+            )
             im.set_item_tooltip(tr("Filter tools by name or description."))
             self.remember("search")
             for panel in self.panels:
@@ -228,7 +236,9 @@ class FileToolsApp(TourTarget, ImApp):
     def pointer_move(self, x, y, buttons=0, modifiers=0):
         super().pointer_move(x, y, buttons, modifiers)
         if self.child and not self.help.open and not self.tour.active:
-            self.child.pointer_move(x - self.child_box[0], y - self.child_box[1], buttons, modifiers)
+            self.child.pointer_move(
+                x - self.child_box[0], y - self.child_box[1], buttons, modifiers
+            )
 
     def wheel(self, x, y, steps, modifiers=0):
         # Wheel routing: the old scroll(x, y, dx, dy) override rejected the

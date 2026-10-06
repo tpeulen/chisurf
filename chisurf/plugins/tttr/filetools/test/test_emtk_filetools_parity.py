@@ -49,13 +49,21 @@ def qt():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT], capture_output=True, text=True, timeout=300, env=env,
-                          cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the Qt hub's tools, in its order; every one opens its own emtk app
@@ -65,23 +73,32 @@ def test_the_tools_are_the_qt_hubs_and_each_opens_natively(qt):
         names = [p["name"] for p in app.panels]
         assert len(qt["rows"]) == len(names) == 7
         for qt_row, name in zip(qt["rows"], names):
-            assert name in qt_row                                     # the Qt row is icon + name
+            assert name in qt_row  # the Qt row is icon + name
         for panel in app.panels:
             child = app.select(panel["role"])
-            assert child is not None and panel["role"] not in app.errors, app.errors.get(panel["role"])
+            assert child is not None and panel["role"] not in app.errors, app.errors.get(
+                panel["role"]
+            )
             _draw(app, n=1)
     finally:
         app.close()
 
 
 def test_a_child_that_cannot_open_breaks_only_its_panel():
-    app = FileToolsApp(resolver=lambda panel: None if panel["role"] == "pto_inspector" else
-                       __import__("chisurf.plugins.tttr.filetools.gui.app", fromlist=["x"]).native_factory(panel))
+    app = FileToolsApp(
+        resolver=lambda panel: (
+            None
+            if panel["role"] == "pto_inspector"
+            else __import__(
+                "chisurf.plugins.tttr.filetools.gui.app", fromlist=["x"]
+            ).native_factory(panel)
+        )
+    )
     try:
         assert app.select("pto_inspector") is None
         strings = " ".join(_draw(app).strings)
         assert "Native panel pending" in strings and "Retry" in strings
-        assert app.select("tttr_header_edit") is not None                 # the rest of the hub works
+        assert app.select("tttr_header_edit") is not None  # the rest of the hub works
     finally:
         app.close()
 
@@ -112,7 +129,7 @@ def test_the_filter_hides_what_does_not_match():
         app.select("tttr_header_edit")
         app.filter = "header"
         strings = _draw(app).strings
-        assert strings.count(caption(PANELS[3])) == 2               # the list entry and the description strip
+        assert strings.count(caption(PANELS[3])) == 2  # the list entry and the description strip
         assert caption(PANELS[0]) not in strings
     finally:
         app.close()
@@ -122,7 +139,7 @@ def test_the_filter_hides_what_does_not_match():
 def test_frames_follow_the_open_child(monkeypatch):
     app = FileToolsApp()
     try:
-        child = app.select("pto_inspector")          # renders on demand (most children render continuously)
+        child = app.select("pto_inspector")  # renders on demand (most children render continuously)
         _draw(app)
         assert not child.animating() and not app.animating()
         monkeypatch.setattr(child, "animating", lambda: True)
@@ -139,7 +156,11 @@ def test_drops_and_keys_reach_the_open_child(monkeypatch, tmp_path):
     try:
         child = app.select("tttr_header_edit")
         received, keys = [], []
-        hook = "files_dropped" if callable(getattr(child, "files_dropped", None)) else "on_paths_dropped"
+        hook = (
+            "files_dropped"
+            if callable(getattr(child, "files_dropped", None))
+            else "on_paths_dropped"
+        )
         monkeypatch.setattr(child, hook, lambda paths: received.append(paths))
         assert app.files_dropped([str(tmp_path / "a.ptu")])
         assert received == [[str(tmp_path / "a.ptu")]]
@@ -161,14 +182,20 @@ def test_the_guide_points_at_real_controls_and_waits():
         _draw(app)
         steps = app.tour.steps
         keys = {app.tour._target_key(s.get("target")) for s in steps} - {""}
-        assert keys == {"nav_split_convert", "description", "nav_tttr_header_edit", "search", "panel"}
+        assert keys == {
+            "nav_split_convert",
+            "description",
+            "nav_tttr_header_edit",
+            "search",
+            "panel",
+        }
         assert keys <= set(app.item_rects)
         index = next(i for i, s in enumerate(steps) if s.get("await"))
         app.tour.start(index)
         assert app.tour.awaiting
         assert steps[index]["title"] in " ".join(_draw(app, n=1).strings)
         app.select("pto_inspector")
-        assert app.tour.awaiting                                        # not the converter
+        assert app.tour.awaiting  # not the converter
         app.select("split_convert")
         assert not app.tour.awaiting
     finally:

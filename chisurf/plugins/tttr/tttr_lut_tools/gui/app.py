@@ -358,7 +358,9 @@ class LutToolsApp(ImApp):
         im.set_item_tooltip(tr("Close the JSON preview."))
         self.form.rects["close_json"] = im.get_item_rect()
         avail = im.get_content_region_avail()
-        im.begin_child((*im.get_cursor_screen_pos(), max(100.0, avail[0]), max(60.0, avail[1])), clip=True)
+        im.begin_child(
+            (*im.get_cursor_screen_pos(), max(100.0, avail[0]), max(60.0, avail[1])), clip=True
+        )
         for line in shown:
             im.text(line)
         im.end_child()

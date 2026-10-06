@@ -86,7 +86,9 @@ class PluginManagerModel(PluginManagerViewModel):
         #: The plan the install confirmation is about.
         self.install_plan: Any = None
         #: Returns the records the table shows (filtered, sorted) and its columns.
-        self.displayed_provider: Callable[[], tuple[list[dict], list[tuple[str, str]]]] | None = None
+        self.displayed_provider: Callable[[], tuple[list[dict], list[tuple[str, str]]]] | None = (
+            None
+        )
         # icon panel
         self.icon_open = False
         self.icon_path_text = ""
@@ -153,7 +155,10 @@ class PluginManagerModel(PluginManagerViewModel):
         if row is None:
             return [
                 ("title", "No plugin selected"),
-                ("text", "Pick a row to see what it is, what it depends on, and what depends on it."),
+                (
+                    "text",
+                    "Pick a row to see what it is, what it depends on, and what depends on it.",
+                ),
             ]
         blocks: list[tuple[str, str]] = [("title", row.name)]
         if row.description:
@@ -553,8 +558,9 @@ class PluginManagerModel(PluginManagerViewModel):
         """Ask the configured provider for an icon, in the background."""
         from chisurf.plugins.core.plugin_manager.api import icons as icon_api
 
-        config = icon_api.IconConfig(self.icon_provider, self.icon_endpoint.strip(),
-                                     self.icon_model.strip())
+        config = icon_api.IconConfig(
+            self.icon_provider, self.icon_endpoint.strip(), self.icon_model.strip()
+        )
         if not config.base_url or not config.model:
             self._notice("Not configured", "Set an endpoint and an image model before generating.")
             return
@@ -572,8 +578,9 @@ class PluginManagerModel(PluginManagerViewModel):
         row = self.selected
         if row is None:
             return
-        config = icon_api.IconConfig(self.icon_provider, self.icon_endpoint.strip(),
-                                     self.icon_model.strip())
+        config = icon_api.IconConfig(
+            self.icon_provider, self.icon_endpoint.strip(), self.icon_model.strip()
+        )
         try:
             payload = icon_api.request_icon_bytes(
                 config, {"name": row.name, "doc": row.description}

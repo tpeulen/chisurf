@@ -19,9 +19,11 @@ else:
 
 __all__ = ["LightPathSimulatorWidget"]
 
+
 def __getattr__(name):
-    if name == 'LightPathSimulatorWidget':
+    if name == "LightPathSimulatorWidget":
         from .gui.tool import LightPathSimulatorWidget
+
         return LightPathSimulatorWidget
     raise AttributeError(name)
 
@@ -29,6 +31,7 @@ def __getattr__(name):
 # When the plugin is loaded, this code will be executed
 if __name__ == "plugin":
     from .gui.tool import LightPathSimulatorWidget
+
     window = LightPathSimulatorWidget()
     if _manifest is not None:
         apply_manifest_statefulness(window, _manifest)

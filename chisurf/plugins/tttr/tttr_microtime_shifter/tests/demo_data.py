@@ -16,7 +16,7 @@ import numpy as np
 TICK = 12.5e-9
 N_MT = 4096
 RISE = {0: 600, 8: 1000}
-TARGET = 409            # the tool's default target bin: 10 % of the bins
+TARGET = 409  # the tool's default target bin: 10 % of the bins
 N_PEAK = 60_000
 N_FLAT = 20_000
 
@@ -40,9 +40,14 @@ def build(root: pathlib.Path, seed: int = 7) -> pathlib.Path:
     ticks = np.round(t[order] / TICK).astype(np.uint64)
     keep = np.concatenate([[True], np.diff(ticks) > 0])
     data = tttrlib.TTTR()
-    data.append_events(ticks[keep], np.concatenate(micro)[order][keep].astype(np.uint16),
-                       np.concatenate(channels)[order][keep].astype(np.int8),
-                       np.zeros(int(keep.sum()), np.int8), False, 0)
+    data.append_events(
+        ticks[keep],
+        np.concatenate(micro)[order][keep].astype(np.uint16),
+        np.concatenate(channels)[order][keep].astype(np.int8),
+        np.zeros(int(keep.sum()), np.int8),
+        False,
+        0,
+    )
     data.header.set_macro_time_resolution(TICK)
     data.header.set_micro_time_resolution(TICK / N_MT)
     root.mkdir(parents=True, exist_ok=True)

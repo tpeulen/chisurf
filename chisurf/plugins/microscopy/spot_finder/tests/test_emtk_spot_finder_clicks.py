@@ -82,7 +82,10 @@ def test_workflow_choice_replaces_the_detector_fields_and_name_is_typed(ui):
     assert ui.app.model.name == "mydetection"
 
 
-@pytest.mark.parametrize("key,typed,attr", [("sigma", "2.5", "sigma"), ("peak_footprint_size", "9", "peak_footprint_size")])
+@pytest.mark.parametrize(
+    "key,typed,attr",
+    [("sigma", "2.5", "sigma"), ("peak_footprint_size", "9", "peak_footprint_size")],
+)
 def test_detector_fields_typed_clamped_and_arrowed(ui, key, typed, attr):
     ui.type_into(key, typed)
     assert getattr(ui.app.model, attr) == pytest.approx(float(typed))
@@ -98,7 +101,10 @@ def test_detector_fields_typed_clamped_and_arrowed(ui, key, typed, attr):
 
 
 def test_folds_open_and_their_fields_edit(ui):
-    for title, key, typed in (("Filters", "min_area", "3"), ("Spot width (log / dog)", "num_sigma", "7")):
+    for title, key, typed in (
+        ("Filters", "min_area", "3"),
+        ("Spot width (log / dog)", "num_sigma", "7"),
+    ):
         ui.click(f"{title}.fold")
         ui.type_into(key, typed)
         assert getattr(ui.app.model, key) == int(typed)
@@ -172,7 +178,9 @@ def test_click_on_the_image_picks_and_add_clear_picks_buttons(ui):
     from chisurf.plugins.microscopy.spot_finder.tests.test_native_app import field
 
     # a detection that found nothing still shows the image (a Preview that finds nothing shows none): the spots are for the user
-    ui.app.model.results = [detect(field(), SpotFinderSettings(method="threshold", threshold=1000, clear_border=False))]
+    ui.app.model.results = [
+        detect(field(), SpotFinderSettings(method="threshold", threshold=1000, clear_border=False))
+    ]
     ui.draw(4)
     x, y = ui.app.canvas.pick_pixels(14, 12)
     ui.click_at(x, y)

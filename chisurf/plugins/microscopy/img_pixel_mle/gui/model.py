@@ -14,8 +14,25 @@ PHOTON_FILE_FILTER = "Photon data (*.pto *.ptu *.ht3 *.spc *.pt3);;All files (*)
 REGION_FILE_FILTER = "Regions (*.json *.npy *.tif *.tiff *.png);;All files (*)"
 
 #: scalar settings kept between sessions (attributes of the view model)
-PERSISTED = ("channels_parallel_text", "channels_perpendicular_text", "micro_time_start", "micro_time_stop", "micro_time_binning", "min_photons",
-             "irf_threshold", "shift_sp", "shift_ss", "twoi_star", "bifl_scatter", "use_bg", "bg_p", "bg_s", "engine", "n_workers", "roi_path")
+PERSISTED = (
+    "channels_parallel_text",
+    "channels_perpendicular_text",
+    "micro_time_start",
+    "micro_time_stop",
+    "micro_time_binning",
+    "min_photons",
+    "irf_threshold",
+    "shift_sp",
+    "shift_ss",
+    "twoi_star",
+    "bifl_scatter",
+    "use_bg",
+    "bg_p",
+    "bg_s",
+    "engine",
+    "n_workers",
+    "roi_path",
+)
 
 
 class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
@@ -129,8 +146,13 @@ class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
     # -- settings ------------------------------------------------------------------------- #
     def export_settings(self) -> dict[str, Any]:
         state = {name: getattr(self, name) for name in PERSISTED}
-        state.update(files=list(self.files), irf_files=list(self.irf_files), fit_model=self.fit_model, folder=self.folder,
-                     model_params={k: [list(v[0]), list(v[1])] for k, v in self._model_params.items()})
+        state.update(
+            files=list(self.files),
+            irf_files=list(self.irf_files),
+            fit_model=self.fit_model,
+            folder=self.folder,
+            model_params={k: [list(v[0]), list(v[1])] for k, v in self._model_params.items()},
+        )
         return state
 
     def restore_settings(self, state: dict) -> None:
@@ -143,7 +165,11 @@ class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
             try:
                 if isinstance(current, bool) and not isinstance(value, bool):
                     continue
-                if isinstance(current, (int, float)) and not isinstance(current, bool) and (isinstance(value, (bool, str)) or value != value):
+                if (
+                    isinstance(current, (int, float))
+                    and not isinstance(current, bool)
+                    and (isinstance(value, (bool, str)) or value != value)
+                ):
                     continue
                 if isinstance(current, str) and not isinstance(value, str):
                     continue
@@ -163,7 +189,10 @@ class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
         for name, pair in (state.get("model_params") or {}).items():
             if name in self.fit_model_choices() and isinstance(pair, list) and len(pair) == 2:
                 try:
-                    self._model_params[name] = ([float(x) for x in pair[0]], [int(x) for x in pair[1]])
+                    self._model_params[name] = (
+                        [float(x) for x in pair[0]],
+                        [int(x) for x in pair[1]],
+                    )
                 except (TypeError, ValueError):
                     continue
 

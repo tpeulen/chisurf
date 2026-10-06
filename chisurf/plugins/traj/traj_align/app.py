@@ -10,7 +10,13 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, icon_label, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import (
+    SaveAction,
+    TrajToolApp,
+    icon_label,
+    topology_field,
+    trajectory_field,
+)
 
 from .view_model import AlignTrajectoryViewModel
 
@@ -32,9 +38,15 @@ class AlignTrajectoryApp(TrajToolApp):
     """The Align-Trajectory window."""
 
     def __init__(self, model: AlignTrajectoryViewModel | None = None) -> None:
-        super().__init__(model or AlignTrajectoryViewModel(), HERE, "align_trajectory.view.json",
-                         "traj_align_io", "Align trajectory",
-                         [trajectory_field(), topology_field()], SAVE)
+        super().__init__(
+            model or AlignTrajectoryViewModel(),
+            HERE,
+            "align_trajectory.view.json",
+            "traj_align_io",
+            "Align trajectory",
+            [trajectory_field(), topology_field()],
+            SAVE,
+        )
 
 
 def make_app(**kwargs) -> AlignTrajectoryApp:

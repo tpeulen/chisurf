@@ -53,7 +53,11 @@ def cap_widths(sections: Sequence[dict]) -> None:
                 section["width"] = NUMBER_WIDTH
             elif section.get("kind") not in ("directory", "file"):
                 section["width"] = TEXT_WIDTH
-        elif kind == "choice" and not section.get("width") and section.get("style") not in ("radio", "radio_list"):
+        elif (
+            kind == "choice"
+            and not section.get("width")
+            and section.get("style") not in ("radio", "radio_list")
+        ):
             section["width"] = CHOICE_WIDTH
         cap_widths(section.get("sections", []))
 
@@ -77,8 +81,13 @@ def group_by_width(sections: list, toggles_join: bool = True) -> list:
     joins the run it follows, so it stays indented under the fields' column like the others of its form
     (*toggles_join* false: a narrow panel keeps them at the left edge, where their caption has room).
     """
-    sections = [dict(s, sections=group_by_width(s["sections"], toggles_join)) if isinstance(s.get("sections"), list) else s
-                for s in sections]
+    sections = [
+        dict(s, sections=group_by_width(s["sections"], toggles_join))
+        if isinstance(s.get("sections"), list)
+        else s
+        for s in sections
+    ]
+
     def width_class(section):
         if not toggles_join and section.get("type") in ("toggle", "toggle_row"):
             return "toggle"
@@ -91,7 +100,9 @@ def group_by_width(sections: list, toggles_join: bool = True) -> list:
     run_class = None
     for section in sections + [None]:
         cls = width_class(section) if section else None
-        joins = toggles_join and section is not None and section.get("type") in ("toggle", "toggle_row")
+        joins = (
+            toggles_join and section is not None and section.get("type") in ("toggle", "toggle_row")
+        )
         if joins and run:
             run.append(section)
             continue
@@ -143,7 +154,9 @@ class LabelColumn:
             text = section["label"].rstrip()
             gap = (self.text_w or 0.0) - im.calc_text_size(text)[0]
             section["label"] = text + " " * max(int(gap // space), 0)
-        self.text_w = max([self.text_w or 0.0] + [im.calc_text_size(s["label"])[0] for s in labelled(sections)])
+        self.text_w = max(
+            [self.text_w or 0.0] + [im.calc_text_size(s["label"])[0] for s in labelled(sections)]
+        )
 
 
 def button_width(label: str) -> float:
@@ -151,8 +164,11 @@ def button_width(label: str) -> float:
     return im.calc_text_size(label)[0] + 2.0 * im.get_style().frame_padding[0]
 
 
-def button_row(buttons: Sequence[dict], width: float | None = None,
-               remember: Callable[[str], None] | None = None) -> str | None:
+def button_row(
+    buttons: Sequence[dict],
+    width: float | None = None,
+    remember: Callable[[str], None] | None = None,
+) -> str | None:
     """Draw actions in one row that wraps at *width* (default: the room left); the key of the one pressed.
 
     Each button is a dict: ``label``, ``key`` (what is returned and remembered; defaults to the label),
@@ -179,7 +195,7 @@ def button_row(buttons: Sequence[dict], width: float | None = None,
             for col, rgba in zip((Col.BUTTON, Col.BUTTON_HOVERED, Col.BUTTON_ACTIVE), colours):
                 im.push_style_color(col, rgba)
         enabled = button.get("enabled", True)
-        if not enabled:                    # (begin_disabled(False) would re-enable inside a disabled parent)
+        if not enabled:  # (begin_disabled(False) would re-enable inside a disabled parent)
             im.begin_disabled(True)
         if im.button(label) and enabled:
             pressed = key
@@ -195,5 +211,17 @@ def button_row(buttons: Sequence[dict], width: float | None = None,
     return pressed
 
 
-__all__ = ["CHOICE_WIDTH", "ICON_GAP", "LabelColumn", "NUMBER_WIDTH", "TEXT_WIDTH", "button_row", "button_width",
-           "cap_widths", "group_by_width", "icon_label", "labelled", "layout_spec"]
+__all__ = [
+    "CHOICE_WIDTH",
+    "ICON_GAP",
+    "LabelColumn",
+    "NUMBER_WIDTH",
+    "TEXT_WIDTH",
+    "button_row",
+    "button_width",
+    "cap_widths",
+    "group_by_width",
+    "icon_label",
+    "labelled",
+    "layout_spec",
+]

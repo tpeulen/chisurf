@@ -6,7 +6,6 @@ import copy
 import importlib
 import json
 from pathlib import Path
-
 from types import SimpleNamespace
 
 from emtk import im
@@ -21,112 +20,112 @@ from .client import DetectorSetupClient
 # Every Qt route stays in the list; a tool without a native app is marked and says so when opened.
 PANELS = (
     (
-        'setup',
-        'core/setup_channel_definition',
-        'Setup',
-        'Define detector channels and PIE time windows once for all imaging tools.',
+        "setup",
+        "core/setup_channel_definition",
+        "Setup",
+        "Define detector channels and PIE time windows once for all imaging tools.",
     ),
     (
-        'browser',
-        'tttr/tttr_image_browser',
-        'Browser',
-        'Browse TTTR image files and explore intensity maps.',
+        "browser",
+        "tttr/tttr_image_browser",
+        "Browser",
+        "Browse TTTR image files and explore intensity maps.",
     ),
     (
-        'drift',
-        'microscopy/img_drift',
-        'Drift',
-        'Optional pre-processing: measure and remove inter-frame sample drift. Belongs before the numbered steps — every per-pixel map below is built from frames that must already be aligned. Photon streams are corrected photon by photon, so the steps below still see real photons.',
+        "drift",
+        "microscopy/img_drift",
+        "Drift",
+        "Optional pre-processing: measure and remove inter-frame sample drift. Belongs before the numbered steps — every per-pixel map below is built from frames that must already be aligned. Photon streams are corrected photon by photon, so the steps below still see real photons.",
     ),
     (
-        'frc',
-        'microscopy/img_frc',
-        'Resolution',
-        'How fine a detail this acquisition actually resolves, by Fourier ring correlation between two independent halves of it. Sits after Drift because drift blurs the image and so lowers the measured resolution — measure it on frames that are already aligned.',
+        "frc",
+        "microscopy/img_frc",
+        "Resolution",
+        "How fine a detail this acquisition actually resolves, by Fourier ring correlation between two independent halves of it. Sits after Drift because drift blurs the image and so lowers the measured resolution — measure it on frames that are already aligned.",
     ),
     (
-        'flow',
-        'microscopy/img_flow',
-        'Flow',
-        'Map the velocity field: one arrow per tile, over the image. Sits beside Tracking because both measure motion rather than building a per-pixel map -- and after Drift for the same reason Tracking is, since a drifting stage is indistinguishable from a sample flowing the other way. Tracking follows individual particles; this reads a velocity from the correlations of everything at once, so it works where the labels are too dense to resolve as spots.',
+        "flow",
+        "microscopy/img_flow",
+        "Flow",
+        "Map the velocity field: one arrow per tile, over the image. Sits beside Tracking because both measure motion rather than building a per-pixel map -- and after Drift for the same reason Tracking is, since a drifting stage is indistinguishable from a sample flowing the other way. Tracking follows individual particles; this reads a velocity from the correlations of everything at once, so it works where the labels are too dense to resolve as spots.",
     ),
     (
-        'tracking',
-        'microscopy/img_tracking',
-        'Tracking',
-        'Follow individual particles through the frames and fit their diffusion coefficient. Sits after Drift because a drifting sample looks exactly like directed motion, and outside the numbered steps because it measures motion rather than building a per-pixel map.',
+        "tracking",
+        "microscopy/img_tracking",
+        "Tracking",
+        "Follow individual particles through the frames and fit their diffusion coefficient. Sits after Drift because a drifting sample looks exactly like directed motion, and outside the numbered steps because it measures motion rather than building a per-pixel map.",
     ),
     (
-        'coloc',
-        'microscopy/img_coloc',
-        'Colocalization',
-        'Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) with an interactive intensity scatter gate. Sits after Drift because a channel registration error reads as anti-correlation, and outside the numbered steps because it compares two channels rather than building a per-pixel map.',
+        "coloc",
+        "microscopy/img_coloc",
+        "Colocalization",
+        "Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) with an interactive intensity scatter gate. Sits after Drift because a channel registration error reads as anti-correlation, and outside the numbered steps because it compares two channels rather than building a per-pixel map.",
     ),
     (
-        'pixel_intensity',
-        'microscopy/img_pixel_intensity',
-        '1. Intensity',
-        'Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference).',
+        "pixel_intensity",
+        "microscopy/img_pixel_intensity",
+        "1. Intensity",
+        "Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference).",
     ),
     (
-        'pixel_nb',
-        'microscopy/img_pixel_nb',
-        '2. Number & Brightness',
-        'Per-pixel Number (N) and Brightness (B); adds fields to the imaging HDF5.',
+        "pixel_nb",
+        "microscopy/img_pixel_nb",
+        "2. Number & Brightness",
+        "Per-pixel Number (N) and Brightness (B); adds fields to the imaging HDF5.",
     ),
     (
-        'pixel_micro_time',
-        'microscopy/img_pixel_micro_time',
-        '3. Mean Micro-Time',
-        'Per-pixel mean micro-time (arrival time, ns) per detector window; adds fields to the imaging HDF5.',
+        "pixel_micro_time",
+        "microscopy/img_pixel_micro_time",
+        "3. Mean Micro-Time",
+        "Per-pixel mean micro-time (arrival time, ns) per detector window; adds fields to the imaging HDF5.",
     ),
     (
-        'calibration',
-        'microscopy/img_calibration',
-        '4. IRF & BG',
-        'Optional: per-detector IRF file + background (kHz); transferred to Phasor and MLE. Skippable.',
+        "calibration",
+        "microscopy/img_calibration",
+        "4. IRF & BG",
+        "Optional: per-detector IRF file + background (kHz); transferred to Phasor and MLE. Skippable.",
     ),
     (
-        'pixel_phasor',
-        'microscopy/img_pixel_phasor',
-        '5. Phasor-FLIM',
-        'Per-pixel phasor (g, s) maps and phasor plot; adds fields to the imaging HDF5.',
+        "pixel_phasor",
+        "microscopy/img_pixel_phasor",
+        "5. Phasor-FLIM",
+        "Per-pixel phasor (g, s) maps and phasor plot; adds fields to the imaging HDF5.",
     ),
     (
-        'pixel_mle',
-        'microscopy/img_pixel_mle',
-        '6. Pixel-wise MLE',
-        'Pixel-wise MLE lifetime analysis; adds fields to the imaging HDF5.',
+        "pixel_mle",
+        "microscopy/img_pixel_mle",
+        "6. Pixel-wise MLE",
+        "Pixel-wise MLE lifetime analysis; adds fields to the imaging HDF5.",
     ),
     (
-        'clsm_draw',
-        'microscopy/clsm',
-        'CLSM Draw',
-        'Interactive CLSM pixel selection, ROI drawing and decay extraction; opens imaging HDF5 (via source back-reference).',
+        "clsm_draw",
+        "microscopy/clsm",
+        "CLSM Draw",
+        "Interactive CLSM pixel selection, ROI drawing and decay extraction; opens imaging HDF5 (via source back-reference).",
     ),
     (
-        'spot_finder',
-        'microscopy/spot_finder',
-        'Spot Finder',
+        "spot_finder",
+        "microscopy/spot_finder",
+        "Spot Finder",
         "Find the regions — molecules, beads, objects — and write them, with their pixels, into each measurement's container.",
     ),
     (
-        'molecule_mle',
-        'microscopy/region_mle',
-        'Region MLE',
-        'Lifetime MLE per region, on the regions the Spot Finder found.',
+        "molecule_mle",
+        "microscopy/region_mle",
+        "Region MLE",
+        "Lifetime MLE per region, on the regions the Spot Finder found.",
     ),
     (
-        'psf',
-        'microscopy/psf_determination',
-        'PSF Determination',
-        '3D Gaussian PSF fitting and bead detection.',
+        "psf",
+        "microscopy/psf_determination",
+        "PSF Determination",
+        "3D Gaussian PSF fitting and bead detection.",
     ),
     (
-        'clsm_generator',
-        'microscopy/clsm_generator',
-        'CLSM Generator',
-        'Generate a synthetic CLSM photon image from an intensity image and per-detector lifetime maps: a known answer to check the imaging pipeline against.',
+        "clsm_generator",
+        "microscopy/clsm_generator",
+        "CLSM Generator",
+        "Generate a synthetic CLSM photon image from an intensity image and per-detector lifetime maps: a known answer to check the imaging pipeline against.",
     ),
 )
 ROOT = Path(__file__).resolve().parents[3]
@@ -144,8 +143,18 @@ class ImagingToolsApp(CalculatorHubApp):
     """The imaging workflow list on the left, the chosen tool (built on first use) on the right, one shared context."""
 
     #: The steps Next / Previous walk, in pipeline order (the Qt tool's order).
-    PIPELINE_ORDER = ("browser", "drift", "frc", "tracking", "pixel_intensity", "pixel_nb", "pixel_micro_time",
-                      "calibration", "pixel_phasor", "pixel_mle")
+    PIPELINE_ORDER = (
+        "browser",
+        "drift",
+        "frc",
+        "tracking",
+        "pixel_intensity",
+        "pixel_nb",
+        "pixel_micro_time",
+        "calibration",
+        "pixel_phasor",
+        "pixel_mle",
+    )
     ANALYSIS_ROLES = ("pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor")
 
     def __init__(self, client=None, factories=None, mmfdb_db=None, mmfdb_session=None):
@@ -169,10 +178,18 @@ class ImagingToolsApp(CalculatorHubApp):
         self._mmfdb_source_artifact_id = ""
         self._ff_queue = []
         self.help = self.help_window = EmTkHelpWindow(
-            title="Imaging Tools - Help", resource=HERE / "help.md", owner=self, on_start_guide=self.start_guide,
-            size=(700.0, 480.0))
-        self.tour = EmTkGuidedTour(steps=HERE / "guide.json", owner=self, wait_for_controls=True,
-                                   get_target_rect=lambda key: self.item_rects.get(key))
+            title="Imaging Tools - Help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+            size=(700.0, 480.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(key),
+        )
 
     # -- the tools ------------------------------------------------------------------------------- #
     def factory(self, role):
@@ -201,8 +218,11 @@ class ImagingToolsApp(CalculatorHubApp):
             if isinstance(factory, str):
                 module, name = factory.split(":")
                 factory = getattr(importlib.import_module(module), name)
-            kwargs = ({"settings": self.setup or None, "on_changed": self.set_setup} if role == "setup"
-                      else {"coordinator": self})
+            kwargs = (
+                {"settings": self.setup or None, "on_changed": self.set_setup}
+                if role == "setup"
+                else {"coordinator": self}
+            )
             child = factory(**kwargs)
             child.set_frame_request_callback(self.request_frame)
             child._coordinator = self
@@ -340,7 +360,11 @@ class ImagingToolsApp(CalculatorHubApp):
             return
         queue = self.fast_forward_queue()
         self._ff_queue = queue[1:] if len(queue) > 1 else []
-        self.status = f"Fast-forward: {len(self._ff_queue)} step(s) to go" if self._ff_queue else "Nothing to fast-forward"
+        self.status = (
+            f"Fast-forward: {len(self._ff_queue)} step(s) to go"
+            if self._ff_queue
+            else "Nothing to fast-forward"
+        )
         self.request_frame()
 
     def _child_busy(self):
@@ -352,7 +376,11 @@ class ImagingToolsApp(CalculatorHubApp):
     def _fast_forward_tick(self):
         if self._ff_queue and not self._child_busy():
             self.goto_role(self._ff_queue.pop(0))
-            self.status = f"Fast-forward: {len(self._ff_queue)} step(s) to go" if self._ff_queue else "Fast-forward finished"
+            self.status = (
+                f"Fast-forward: {len(self._ff_queue)} step(s) to go"
+                if self._ff_queue
+                else "Fast-forward finished"
+            )
             self.request_frame()
 
     def _step(self, role, direction):
@@ -382,8 +410,14 @@ class ImagingToolsApp(CalculatorHubApp):
             export = getattr(child, "export_settings", None)
             if export:
                 states[role] = export()
-        return {"selected": self.selected, "search": self.search, "setup": copy.deepcopy(self.setup),
-                "pipeline": dict(self._pipeline), "calibration": copy.deepcopy(self._calibration), "children": states}
+        return {
+            "selected": self.selected,
+            "search": self.search,
+            "setup": copy.deepcopy(self.setup),
+            "pipeline": dict(self._pipeline),
+            "calibration": copy.deepcopy(self._calibration),
+            "children": states,
+        }
 
     def restore_settings(self, data):
         self._saved_children = copy.deepcopy(data.get("children", {}))
@@ -445,12 +479,20 @@ class ImagingToolsApp(CalculatorHubApp):
                 title = label(entry.label) + ("" if available else " - " + label("pending"))
                 if im.selectable(title, self.selected == entry.id, icon=entry.icon):
                     self.goto_role(entry.id)
-                im.set_item_tooltip(label(entry.description) + ("" if available else " " + label("Native migration pending for this tool.")))
+                im.set_item_tooltip(
+                    label(entry.description)
+                    + ("" if available else " " + label("Native migration pending for this tool."))
+                )
                 rect = im.get_item_rect()
                 self.item_rects["entry:" + entry.id] = rect
                 first, last = first or rect, rect
             if first is not None:
-                self.item_rects["navigation"] = (first[0], first[1], first[2], last[1] + last[3] - first[1])
+                self.item_rects["navigation"] = (
+                    first[0],
+                    first[1],
+                    first[2],
+                    last[1] + last[3] - first[1],
+                )
             if not shown:
                 im.text_wrapped(label("No tool matches the search."))
             im.separator()
@@ -468,19 +510,34 @@ class ImagingToolsApp(CalculatorHubApp):
                 self.step_list(1)
                 self.tour.notify_used("next")
             im.end_disabled()
-            im.set_item_tooltip(label("Go to the next tool in the list; the numbered steps compute on arrival when a source is known."))
+            im.set_item_tooltip(
+                label(
+                    "Go to the next tool in the list; the numbered steps compute on arrival when a source is known."
+                )
+            )
             self.item_rects["next"] = im.get_item_rect()
             im.same_line()
             numbered = roles[: roles.index(SEPARATOR_BEFORE)]
-            im.begin_disabled(not (self.selected in numbered and (len(self.fast_forward_queue()) > 1 or self._ff_queue)))
+            im.begin_disabled(
+                not (
+                    self.selected in numbered
+                    and (len(self.fast_forward_queue()) > 1 or self._ff_queue)
+                )
+            )
             if im.button(label("Stop") if self._ff_queue else label("Run all")):
                 self.toggle_fast_forward()
             im.end_disabled()
-            im.set_item_tooltip(label("Walk the rest of the numbered pipeline, each step when the previous has finished; press again to stop."))
+            im.set_item_tooltip(
+                label(
+                    "Walk the rest of the numbered pipeline, each step when the previous has finished; press again to stop."
+                )
+            )
             self.item_rects["fast_forward"] = im.get_item_rect()
             if im.button(label("Help")):
                 self.help.show()
-            im.set_item_tooltip(label("Read how detector setup, calibration and shared HDF5 are propagated."))
+            im.set_item_tooltip(
+                label("Read how detector setup, calibration and shared HDF5 are propagated.")
+            )
             self.item_rects["help"] = im.get_item_rect()
             im.same_line()
             if im.button(label("Guide")):
@@ -494,20 +551,33 @@ class ImagingToolsApp(CalculatorHubApp):
         wrap = max(width - left - 16.0, 50.0)
         source = label("Source") + ": " + (Path(self._pipeline["source"]).name or "-")
         hdf5 = "HDF5: " + (Path(self._pipeline["hdf5"]).name or "-")
-        texts = [entry.label if entry else "", entry.description if entry else label("Select a tool on the left."), source + "    " + hdf5, self.error]
-        header_h = max(80.0, 12.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] + 4.0 for t in texts if t))
+        texts = [
+            entry.label if entry else "",
+            entry.description if entry else label("Select a tool on the left."),
+            source + "    " + hdf5,
+            self.error,
+        ]
+        header_h = max(
+            80.0, 12.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] + 4.0 for t in texts if t)
+        )
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, header_h), im.Cond.ALWAYS)
-        if im.begin("Imaging tool description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            "Imaging tool description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        ):
             if entry:
                 im.text_unformatted(label(entry.label))
                 im.text_wrapped(label(entry.description))
             im.text_unformatted(source)
-            im.set_item_tooltip(self._pipeline["source"] or label("Choose a photon image in Browser."))
+            im.set_item_tooltip(
+                self._pipeline["source"] or label("Choose a photon image in Browser.")
+            )
             self.item_rects["source"] = im.get_item_rect()
             im.same_line()
             im.text_unformatted("    " + hdf5)
-            im.set_item_tooltip(self._pipeline["hdf5"] or label("Intensity creates the shared imaging HDF5."))
+            im.set_item_tooltip(
+                self._pipeline["hdf5"] or label("Intensity creates the shared imaging HDF5.")
+            )
             if self.error:
                 im.text_wrapped(self.error)
             self.item_rects["description"] = im.get_item_rect()

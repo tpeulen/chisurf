@@ -299,7 +299,11 @@ class PixelModelMixin(EmtkModelMixin):
     # -- the tool's settings ---------------------------------------------------------- #
     def export_settings(self) -> dict[str, Any]:
         state = super().export_settings()
-        state.update(display_window=self.display_window, colormap=self.colormap, detectors=copy.deepcopy(self.detectors))
+        state.update(
+            display_window=self.display_window,
+            colormap=self.colormap,
+            detectors=copy.deepcopy(self.detectors),
+        )
         return state
 
     def restore_settings(self, state: dict[str, Any]) -> None:
@@ -330,9 +334,16 @@ class PixelModelMixin(EmtkModelMixin):
 
     def window_rows(self) -> list[dict]:
         """The detector windows that are computed: name, channels, micro-time ranges."""
-        return [{"window": name, "channels": ", ".join(str(c) for c in d.get("chs", [])),
-                 "micro_time_ranges": ", ".join(f"{r[0]}-{r[1]}" for r in (d.get("micro_time_ranges") or []))}
-                for name, d in self._windows().items()]
+        return [
+            {
+                "window": name,
+                "channels": ", ".join(str(c) for c in d.get("chs", [])),
+                "micro_time_ranges": ", ".join(
+                    f"{r[0]}-{r[1]}" for r in (d.get("micro_time_ranges") or [])
+                ),
+            }
+            for name, d in self._windows().items()
+        ]
 
     @property
     def summary_text(self) -> str:

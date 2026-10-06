@@ -1,4 +1,5 @@
 """Standalone EMTK Number Quest surface."""
+
 from __future__ import annotations
 
 import math
@@ -74,14 +75,18 @@ class NumberQuestApp(ImApp):
             return
         self.history.append(self.estimate)
         result = self.game.guess(self.estimate)
-        self.message = tr(result.message.replace("Higher", "Longer lifetime").replace("Lower", "Shorter lifetime"))
+        self.message = tr(
+            result.message.replace("Higher", "Longer lifetime").replace("Lower", "Shorter lifetime")
+        )
         self.request_frame()
 
     def close(self) -> None:
         self.closed = True
 
     def _curve(self, x: float, y: float, width: float, height: float) -> None:
-        im.get_current_context().draw.add_rect_filled((x, y), (x + width, y + height), (25, 30, 38, 255), 2)
+        im.get_current_context().draw.add_rect_filled(
+            (x, y), (x + width, y + height), (25, 30, 38, 255), 2
+        )
         points = []
         for index in range(70):
             t = 10.0 * index / 69.0
@@ -96,7 +101,9 @@ class NumberQuestApp(ImApp):
         plot_width = max(240.0, width - 48.0)
         im.begin(tr("Number Quest"), (0, 0, width, 620))
         im.heading(tr("LIFETIME ESTIMATION"), level=2)
-        im.text_disabled(f"{tr('Turns left')}: {self.game.attempts_remaining}    {tr('Score')}: {self.game.score}")
+        im.text_disabled(
+            f"{tr('Turns left')}: {self.game.attempts_remaining}    {tr('Score')}: {self.game.score}"
+        )
         self._curve(24, 86, plot_width, 190)
         im.text_colored((80, 220, 205, 255), f"{self.tau:.1f} ns")
         im.text_wrapped(self.message)
@@ -104,7 +111,12 @@ class NumberQuestApp(ImApp):
         im.text(tr("Estimate"))
         im.same_line()
         im.text_colored((230, 230, 240, 255), str(self.estimate))
-        for label, amount, tip in (("−10", -10, "Decrease the estimate by ten units"), ("−1", -1, "Decrease the estimate by one unit"), ("+1", 1, "Increase the estimate by one unit"), ("+10", 10, "Increase the estimate by ten units")):
+        for label, amount, tip in (
+            ("−10", -10, "Decrease the estimate by ten units"),
+            ("−1", -1, "Decrease the estimate by one unit"),
+            ("+1", 1, "Increase the estimate by one unit"),
+            ("+10", 10, "Increase the estimate by ten units"),
+        ):
             im.same_line()
             if im.button(label):
                 self._nudge(amount)

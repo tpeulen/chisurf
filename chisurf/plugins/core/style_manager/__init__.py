@@ -10,8 +10,10 @@ from chisurf.core.plugin.registry import apply_manifest_statefulness
 def __getattr__(name):
     if name == "StyleManagerWidget":
         from .gui.tool import StyleManagerWidget
+
         return StyleManagerWidget
     raise AttributeError(name)
+
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -26,6 +28,7 @@ icon = "🎨"
 def load():
     """Return the style manager widget."""
     from .gui.tool import StyleManagerWidget
+
     return StyleManagerWidget()
 
 
@@ -40,6 +43,7 @@ __all__ = [
 if __name__ == "plugin":
     try:
         from .gui.tool import StyleManagerWidget
+
         parent = getattr(cs, "cs", None)
         window = StyleManagerWidget(parent=parent)
         if _manifest is not None:

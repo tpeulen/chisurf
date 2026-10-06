@@ -114,7 +114,11 @@ class TttrToPtoModel:
         counts = {key: 0 for key in STATUS_LABELS}
         for row in self.rows:
             counts[row["status"]] += 1
-        parts = [f"{counts[k]} {STATUS_LABELS[k].lower().rstrip('.')}" for k in STATUS_LABELS if counts[k]]
+        parts = [
+            f"{counts[k]} {STATUS_LABELS[k].lower().rstrip('.')}"
+            for k in STATUS_LABELS
+            if counts[k]
+        ]
         n = len(self.rows)
         return f"{n} {'entry' if n == 1 else 'entries'}: " + ", ".join(parts)
 

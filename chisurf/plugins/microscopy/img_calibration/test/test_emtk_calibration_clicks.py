@@ -13,12 +13,11 @@ import os
 from pathlib import Path
 
 import pytest
-from emtk import keys
-
 from chisurf.plugins.core.project_browser.test.driving import clipped_texts, layout_problems
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter
+from emtk import keys
 
-from .test_emtk_calibration_parity import SETUP, _binned, _loaded, spc  # noqa: F401  (spc is the module fixture)
+from .test_emtk_calibration_parity import SETUP, _binned, _loaded
 
 BIG, SMALL = (1200, 800), (800, 600)
 REAL_CHISURF = Path(os.path.expanduser("~")) / ".chisurf"
@@ -92,7 +91,9 @@ def m(drv):
 # -- the toolbar --------------------------------------------------------------------------------------------------------- #
 
 
-def test_open_tttr_chooser_opens_and_its_cancel_closes_it_and_a_chosen_file_becomes_the_source(drv, spc, tmp_path, monkeypatch):
+def test_open_tttr_chooser_opens_and_its_cancel_closes_it_and_a_chosen_file_becomes_the_source(
+    drv, spc, tmp_path, monkeypatch
+):
     monkeypatch.chdir(Path(spc).parent)
     drv.click(drv.rect("open_source"))
     assert drv.app.dialog is not None and "Cancel" in drv.draw(3).strings
@@ -141,7 +142,11 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(drv, sp
             break
         drv.draw(2)
         step = tour.steps[tour.step_idx]
-        key = (step.get("target") or {}).get("name") or (step.get("target") or {}).get("attr") or (step.get("target") or {}).get("key")
+        key = (
+            (step.get("target") or {}).get("name")
+            or (step.get("target") or {}).get("attr")
+            or (step.get("target") or {}).get("key")
+        )
         if tour.awaiting:
             seen.append(step["title"])
             drv.click(drv.rect(key))
@@ -165,16 +170,27 @@ def test_every_guide_target_is_a_drawn_control_and_the_card_does_not_cover_it(dr
         assert rect and rect[2] > 0, f"{step['title']}: {key} is not drawn"
         card_w, card_h = min(480.0, BIG[0] - 40.0), 150.0
         x, y = place_tour_card(rect, float(BIG[0]), float(BIG[1]), card_w, card_h)
-        clear = x + card_w <= rect[0] or x >= rect[0] + rect[2] or y + card_h <= rect[1] or y >= rect[1] + rect[3]
-        free = (rect[0] + rect[2] + card_w + 16 <= BIG[0] or rect[0] - card_w - 16 >= 0
-                or rect[1] + rect[3] + card_h + 16 <= BIG[1] or rect[1] - card_h - 16 >= 0)
+        clear = (
+            x + card_w <= rect[0]
+            or x >= rect[0] + rect[2]
+            or y + card_h <= rect[1]
+            or y >= rect[1] + rect[3]
+        )
+        free = (
+            rect[0] + rect[2] + card_w + 16 <= BIG[0]
+            or rect[0] - card_w - 16 >= 0
+            or rect[1] + rect[3] + card_h + 16 <= BIG[1]
+            or rect[1] - card_h - 16 >= 0
+        )
         assert clear or not free, step["title"]
 
 
 # -- the IRF file list ---------------------------------------------------------------------------------------------------- #
 
 
-def test_files_button_opens_a_multi_select_chooser_and_a_chosen_file_is_added(drv, spc, monkeypatch):
+def test_files_button_opens_a_multi_select_chooser_and_a_chosen_file_is_added(
+    drv, spc, monkeypatch
+):
     monkeypatch.chdir(Path(spc).parent)
     m(drv).sel_irf_files = []
     drv.click(drv.rect("add_irf"))
@@ -188,7 +204,9 @@ def test_files_button_opens_a_multi_select_chooser_and_a_chosen_file_is_added(dr
     assert Path(spc).name in " ".join(drv.draw(2).strings)
 
 
-def test_a_click_on_a_row_selects_it_remove_removes_it_and_clear_empties_the_list(drv, spc, tmp_path):
+def test_a_click_on_a_row_selects_it_remove_removes_it_and_clear_empties_the_list(
+    drv, spc, tmp_path
+):
     other = tmp_path / "second.spc"
     other.write_bytes(b"x")
     drv.app.add_irfs([str(other)])
@@ -201,7 +219,9 @@ def test_a_click_on_a_row_selects_it_remove_removes_it_and_clear_empties_the_lis
     drv.click(drv.rect("remove_irf"))  # nothing selected: nothing removed
     assert m(drv).sel_irf_files == [spc]
     drv.click(drv.rect("clear_irf"))
-    assert m(drv).sel_irf_files == [] and "No IRF file: the raw data are used" in drv.draw(2).strings
+    assert (
+        m(drv).sel_irf_files == [] and "No IRF file: the raw data are used" in drv.draw(2).strings
+    )
 
 
 def test_database_button_opens_the_dataset_picker_and_cancel_closes_it(drv):
@@ -230,13 +250,24 @@ def test_a_file_dropped_before_a_detector_is_chosen_says_so(empty, tmp_path):
 # -- the spec fields ------------------------------------------------------------------------------------------------------ #
 
 
-@pytest.mark.parametrize("attr,value", [("sel_conv_start", 120), ("sel_conv_stop", 3100), ("sel_irf_start", 560), ("sel_irf_stop", 720)])
+@pytest.mark.parametrize(
+    "attr,value",
+    [
+        ("sel_conv_start", 120),
+        ("sel_conv_stop", 3100),
+        ("sel_irf_start", 560),
+        ("sel_irf_stop", 720),
+    ],
+)
 def test_window_fields_take_typed_integers(drv, attr, value):
     drv.type_into(attr, str(value))
     assert getattr(m(drv), attr) == value
 
 
-@pytest.mark.parametrize("attr,value", [("sel_bg_vv", 2.5), ("sel_bg_vh", 3.125), ("sel_shift_vv", -4.5), ("sel_shift_vh", 7.25)])
+@pytest.mark.parametrize(
+    "attr,value",
+    [("sel_bg_vv", 2.5), ("sel_bg_vh", 3.125), ("sel_shift_vv", -4.5), ("sel_shift_vh", 7.25)],
+)
 def test_background_and_shift_fields_take_typed_numbers(drv, attr, value):
     drv.type_into(attr, str(value))
     assert getattr(m(drv), attr) == pytest.approx(value)
@@ -313,7 +344,9 @@ def test_next_applies_and_advances_the_pipeline_and_is_not_drawn_without_a_coord
     d = CalDriver(app, BIG)
     d.settle()
     d.click(d.rect("next"))
-    assert [c[0] for c in coordinator.calls] == ["calibration", "advance"] and coordinator.calls[1] == ("advance", "calibration")
+    assert [c[0] for c in coordinator.calls] == ["calibration", "advance"] and coordinator.calls[
+        1
+    ] == ("advance", "calibration")
     app.close()
 
 
@@ -324,17 +357,30 @@ def test_dragging_a_window_boundary_in_the_plot_moves_it(drv):
     drv.draw(3)
     box = drv.app.item_rects["decay_conv"]
     painter = drv.draw(3)
-    tags = {t[5]: t[:4] for t in painter.texts if t[5] in ("Fit", "IRF", "BG", "Fit / BG", "Fit / IRF", "IRF / BG")}
+    tags = {
+        t[5]: t[:4]
+        for t in painter.texts
+        if t[5] in ("Fit", "IRF", "BG", "Fit / BG", "Fit / IRF", "IRF / BG")
+    }
     assert tags, [t[5] for t in painter.texts][:60]
     before = m(drv).sel_conv_stop
     label, (x, y, w, h) = next(iter(tags.items()))
     drv.drag((x + w / 2, y + h + 40), (x + w / 2 - 80, y + h + 40))
-    assert (m(drv).sel_conv_stop, m(drv).sel_conv_start, m(drv).sel_irf_stop, m(drv).sel_bg_vv) != (before, 500, 700, m(drv).sel_bg_vv) or True
+    assert (m(drv).sel_conv_stop, m(drv).sel_conv_start, m(drv).sel_irf_stop, m(drv).sel_bg_vv) != (
+        before,
+        500,
+        700,
+        m(drv).sel_bg_vv,
+    ) or True
 
 
 def test_the_plot_is_drawn_with_its_axes_and_legend(drv):
     shown = drv.draw(3).strings
-    assert "Microtime channel" in shown and "Photon counts / normalized IRF" in shown and "Decay" in shown
+    assert (
+        "Microtime channel" in shown
+        and "Photon counts / normalized IRF" in shown
+        and "Decay" in shown
+    )
 
 
 # -- layout ---------------------------------------------------------------------------------------------------------------------- #
@@ -355,14 +401,22 @@ def test_draws_empty_and_populated_without_clipped_or_overlapping_text(spc, size
     d.settle()
     painter = d.draw(3)
     left = app.item_rects["controls"]
-    controls = [t for t in painter.texts if left[0] <= t[0] <= left[0] + left[2] and left[1] <= t[1] <= left[1] + left[3]]
+    controls = [
+        t
+        for t in painter.texts
+        if left[0] <= t[0] <= left[0] + left[2] and left[1] <= t[1] <= left[1] + left[3]
+    ]
     from chisurf.plugins.core.project_browser.test.driving import ClipPainter
 
     clip = ClipPainter()
     for _ in range(3):
         clip = ClipPainter()
         app.draw(clip, 0, 0, *size)
-    inside = [t for t in clip.shown if left[0] <= t[0][0] <= left[0] + left[2] and left[1] <= t[0][1] <= left[1] + left[3]]
+    inside = [
+        t
+        for t in clip.shown
+        if left[0] <= t[0][0] <= left[0] + left[2] and left[1] <= t[0][1] <= left[1] + left[3]
+    ]
     holder = type("P", (), {"shown": inside})()
     assert layout_problems(holder, size) == [] and clipped_texts(holder) == []
     assert controls

@@ -346,14 +346,16 @@ def computed_lines_as_overlays(lines, line: str = "static") -> list[dict]:
     out = []
     for ln in lines or ():
         result = ln["result"]
-        out.append({
-            "name": f"FRET line — {ln['name']} · {ln.get('sweep_label', '')}".rstrip(" ·"),
-            "kind": "curve",
-            "x": [float(v) for v in result[x_key]],
-            "y": [float(v) for v in result[y_key]],
-            "style": {"color": ln.get("color", "#50c0ff"), "width": 2},
-            "axes": {"x": x_key, "y": y_key, "label": axes_label},
-        })
+        out.append(
+            {
+                "name": f"FRET line — {ln['name']} · {ln.get('sweep_label', '')}".rstrip(" ·"),
+                "kind": "curve",
+                "x": [float(v) for v in result[x_key]],
+                "y": [float(v) for v in result[y_key]],
+                "style": {"color": ln.get("color", "#50c0ff"), "width": 2},
+                "axes": {"x": x_key, "y": y_key, "label": axes_label},
+            }
+        )
     return out
 
 

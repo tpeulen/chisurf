@@ -129,7 +129,11 @@ class _Tab:
         self.model.backmap()
 
     def target_rect(self, name: str):
-        return self.form.rects.get(name) or self.form.rects.get(name + ".fold") or self.item_rects.get(name)
+        return (
+            self.form.rects.get(name)
+            or self.form.rects.get(name + ".fold")
+            or self.item_rects.get(name)
+        )
 
     def draw(self, x: float, y: float, w: float, h: float) -> None:
         self.docks.draw((x, y, w, h))

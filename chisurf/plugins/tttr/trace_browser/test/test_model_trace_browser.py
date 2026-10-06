@@ -49,18 +49,31 @@ def real_dir(tmp_path):
 @pytest.fixture
 def fake_dir(tmp_path):
     """Temp folder of unreadable stand-in files (listed as non-image) plus metadata."""
-    for rel in ["a.ptu", "b.PTU", "c.spc", "d.txt", "sub/e.ht3", "sub/.trash/f.ptu",
-                ".trash/g.ptu", "deep/x/y.pt3", "h.h5"]:
+    for rel in [
+        "a.ptu",
+        "b.PTU",
+        "c.spc",
+        "d.txt",
+        "sub/e.ht3",
+        "sub/.trash/f.ptu",
+        ".trash/g.ptu",
+        "deep/x/y.pt3",
+        "h.h5",
+    ]:
         p = tmp_path / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(b"not a real tttr file")
-    (tmp_path / ".trace_browser_meta.json").write_text(json.dumps({
-        "a.ptu": {"rating": 3, "annotation": "hello"},
-        "sub/e.ht3": {"rating": 1},
-        "c.spc": {"rating": 0},
-        "b.PTU": {"rating": 2},
-        "deep/x/y.pt3": {"rating": 2},
-    }))
+    (tmp_path / ".trace_browser_meta.json").write_text(
+        json.dumps(
+            {
+                "a.ptu": {"rating": 3, "annotation": "hello"},
+                "sub/e.ht3": {"rating": 1},
+                "c.spc": {"rating": 0},
+                "b.PTU": {"rating": 2},
+                "deep/x/y.pt3": {"rating": 2},
+            }
+        )
+    )
     return tmp_path
 
 
@@ -78,7 +91,14 @@ LEGACY_ROWS = {
     (False, 2): [("a.ptu", 3), ("b.PTU", 2)],
     (False, 3): [("a.ptu", 3)],
     (False, 4): [("c.spc", 0), ("h.h5", 0)],
-    (True, 0): [("a.ptu", 3), ("b.PTU", 2), ("c.spc", 0), ("deep/x/y.pt3", 2), ("h.h5", 0), ("sub/e.ht3", 1)],
+    (True, 0): [
+        ("a.ptu", 3),
+        ("b.PTU", 2),
+        ("c.spc", 0),
+        ("deep/x/y.pt3", 2),
+        ("h.h5", 0),
+        ("sub/e.ht3", 1),
+    ],
     (True, 1): [("a.ptu", 3), ("b.PTU", 2), ("deep/x/y.pt3", 2), ("sub/e.ht3", 1)],
     (True, 2): [("a.ptu", 3), ("b.PTU", 2), ("deep/x/y.pt3", 2)],
     (True, 3): [("a.ptu", 3)],
@@ -117,7 +137,12 @@ def test_filter_relaxes_from_all_scanned_files(fake_dir):
 
 @pytest.mark.parametrize(
     "filetype, expected",
-    [("PTU", [".ptu"]), ("HT3", [".ht3"]), ("SPC-130", [".spc"]), ("PHOTON_HDF5", [".h5", ".hdf5"])],
+    [
+        ("PTU", [".ptu"]),
+        ("HT3", [".ht3"]),
+        ("SPC-130", [".spc"]),
+        ("PHOTON_HDF5", [".h5", ".hdf5"]),
+    ],
 )
 def test_setup_filetype_restricts_extensions(filetype, expected):
     # Reference: the legacy widget's ``_allowed_exts_for_setup`` (tttrlib 0.27 supported set).
@@ -169,7 +194,9 @@ def test_rating_and_notes_round_trip_through_metadata(fake_dir):
     m.include_subfolders = True
     m.scan()
     m.set_rating(fake_dir / "sub" / "e.ht3", 4)
-    assert json.loads((fake_dir / ".trace_browser_meta.json").read_text())["sub/e.ht3"]["rating"] == 4
+    assert (
+        json.loads((fake_dir / ".trace_browser_meta.json").read_text())["sub/e.ht3"]["rating"] == 4
+    )
 
 
 def test_rating_change_refilters_rows(fake_dir):
@@ -226,7 +253,6 @@ def test_observers_are_notified(fake_dir):
     m.add_observer(events.append)
     m.open_folder(fake_dir)
     assert "files" in events and "rows" in events
-
 
 
 # ---- traces (computed by the Qt-free binner, core.binning) -----------------------------
@@ -406,9 +432,12 @@ print('QT-FREE OK')
 """
     import os
 
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]))
-    done = subprocess.run([sys.executable, "-c", script], cwd=REPO, env=env,
-                          capture_output=True, text=True)
+    env = dict(
+        os.environ, PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")])
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", script], cwd=REPO, env=env, capture_output=True, text=True
+    )
     assert done.returncode == 0 and "QT-FREE OK" in done.stdout, done.stdout + done.stderr[-1500:]
 
 
@@ -441,7 +470,7 @@ def test_the_scan_lists_a_real_single_molecule_file_and_hides_a_scan(tmp_path):
     scan = root / "clsm" / "Leica_SP8.ptu"
     if not (molecule.exists() and scan.exists()):
         pytest.skip("sample files missing")
-    shutil.copy(molecule, tmp_path / molecule.name)      # a temp copy: the browser writes beside files
+    shutil.copy(molecule, tmp_path / molecule.name)  # a temp copy: the browser writes beside files
     shutil.copy(scan, tmp_path / scan.name)
     model = TraceBrowserModel()
     model.open_folder(tmp_path)

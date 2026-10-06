@@ -28,7 +28,9 @@ def _tree(root: Path) -> dict:
     out = {}
     for path in sorted(root.rglob("*")) if root.is_dir() else []:
         rel = path.relative_to(root)
-        if rel.parts[:1] in (("logs",), ("cache",)) or not any(t in str(rel).lower() for t in ("code_editor", "editor")):
+        if rel.parts[:1] in (("logs",), ("cache",)) or not any(
+            t in str(rel).lower() for t in ("code_editor", "editor")
+        ):
             continue
         try:
             st = path.stat()
@@ -42,7 +44,9 @@ def _tree(root: Path) -> dict:
 def real_chisurf_untouched():
     before = _tree(REAL_HOME / ".chisurf")
     yield
-    assert _tree(REAL_HOME / ".chisurf") == before, "a test wrote editor files into the real ~/.chisurf"
+    assert _tree(REAL_HOME / ".chisurf") == before, (
+        "a test wrote editor files into the real ~/.chisurf"
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -86,8 +90,10 @@ class Ed(Driver):
 
     def point(self, line: int, column: int):
         e = self.editor
-        return (e._text_x + (column - e.first_visible_column) * e._glyph_w,
-                e._body_y + (line - e.first_visible_line) * e._line_h + e._line_h / 2)
+        return (
+            e._text_x + (column - e.first_visible_column) * e._glyph_w,
+            e._body_y + (line - e.first_visible_line) * e._line_h + e._line_h / 2,
+        )
 
     def click_at(self, line: int, column: int, clicks: int = 1, modifiers: int = 0):
         x, y = self.point(line, column)
@@ -151,7 +157,15 @@ def test_enter_splits_the_line_and_backspace_and_delete_remove(ed):
     assert ed.doc.text.splitlines()[1].startswith("rint(")
 
 
-@pytest.mark.parametrize("key,expected", [(keys.KEY_RIGHT, (1, 1)), (keys.KEY_DOWN, (2, 0)), (keys.KEY_END, (1, 28)), (keys.KEY_UP, (0, 0))])
+@pytest.mark.parametrize(
+    "key,expected",
+    [
+        (keys.KEY_RIGHT, (1, 1)),
+        (keys.KEY_DOWN, (2, 0)),
+        (keys.KEY_END, (1, 28)),
+        (keys.KEY_UP, (0, 0)),
+    ],
+)
 def test_the_arrow_home_and_end_keys_move_the_caret(ed, key, expected):
     ed.key(key)
     assert ed.caret() == expected
@@ -189,7 +203,9 @@ def test_a_selection_is_indented_and_deindented_and_commented(ed):
     ed.key(keys.KEY_DOWN, "", SHIFT)
     ed.key(keys.KEY_DOWN, "", SHIFT)
     ed.key(keys.KEY_TAB)
-    assert ed.doc.text.splitlines()[1].startswith("    print(") and not ed.doc.text.splitlines()[0].startswith(" ")
+    assert ed.doc.text.splitlines()[1].startswith("    print(") and not ed.doc.text.splitlines()[
+        0
+    ].startswith(" ")
     ed.key(keys.KEY_TAB, "", SHIFT)
     assert ed.doc.text.splitlines()[1].startswith("print(")
     ed.combo("/")
@@ -231,8 +247,11 @@ def test_double_click_selects_a_word(ed):
     assert ed.selected() == "Hello" or ed.selected() == "'Hello"
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: im.text_editor passes at most clicks=2 and modifiers=0 to the editor, so a triple click "
-                   "(select line) and Shift+click (extend selection) never reach it; see REPORT.md")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: im.text_editor passes at most clicks=2 and modifiers=0 to the editor, so a triple click "
+    "(select line) and Shift+click (extend selection) never reach it; see REPORT.md",
+)
 def test_triple_click_selects_a_line_and_shift_click_extends(ed):
     ed.click_at(1, 3, clicks=3)
     assert ed.selected().strip() == "print('Hello from ChiSurf!')"
@@ -475,7 +494,9 @@ def test_ctrl_f_opens_the_find_bar_with_the_keyboard_in_it_and_escape_closes_it(
     ed.combo("f")
     assert ed.app.editor_gui.find_open and ed.drawn("Replace all")
     ed.type("ab")
-    assert ed.app.editor_gui.find_text == "ab" and ed.doc.text == START  # typed into the field, not the document
+    assert (
+        ed.app.editor_gui.find_text == "ab" and ed.doc.text == START
+    )  # typed into the field, not the document
     ed.key(keys.KEY_ESCAPE)
     assert not ed.app.editor_gui.find_open and not ed.drawn("Replace all")
 
@@ -589,13 +610,20 @@ def test_ctrl_n_makes_a_document_and_ctrl_w_closes_it_and_asks_when_modified(ed)
 
 def test_typed_letters_never_trigger_a_shortcut(ed):
     ed.type("sonwf")
-    assert "sonwf" in ed.doc.text and len(ed.app.model.documents) == 1 and ed.app.editor_gui._file_dialog is None
+    assert (
+        "sonwf" in ed.doc.text
+        and len(ed.app.model.documents) == 1
+        and ed.app.editor_gui._file_dialog is None
+    )
     assert not ed.app.editor_gui.find_open
 
 
 def test_alt_arrows_move_the_line(ed):
     ed.key(keys.KEY_UP, "", ALT_MODIFIER)
-    assert ed.doc.text.splitlines()[:2] == ["print('Hello from ChiSurf!')", "# Welcome to ChiSurf EMTK Code Editor"]
+    assert ed.doc.text.splitlines()[:2] == [
+        "print('Hello from ChiSurf!')",
+        "# Welcome to ChiSurf EMTK Code Editor",
+    ]
 
 
 def test_a_second_tab_keeps_its_own_text_caret_and_undo(ed):
@@ -612,13 +640,29 @@ def test_a_second_tab_keeps_its_own_text_caret_and_undo(ed):
 
 
 @pytest.mark.parametrize("size", [(1200, 800), (800, 600), (640, 480)])
-def test_the_toolbar_wraps_and_every_control_and_the_status_line_stay_inside_the_window(ed, size, project):
+def test_the_toolbar_wraps_and_every_control_and_the_status_line_stay_inside_the_window(
+    ed, size, project
+):
     ed.app.model.open_file(project / "script.py")
     ed.resize(size)
     ed.combo("f")
     painter = ed.draw(3)
-    for label in ("➕ New", "📂 Open", "💾 Save", "📝 Save As", "✖ Close", "▶ Run", "🧹 Check", "🛠 Fix", "📓 Notebook", "⚙ Settings",
-                  "Next", "All", "Replace all", "Close find"):
+    for label in (
+        "➕ New",
+        "📂 Open",
+        "💾 Save",
+        "📝 Save As",
+        "✖ Close",
+        "▶ Run",
+        "🧹 Check",
+        "🛠 Fix",
+        "📓 Notebook",
+        "⚙ Settings",
+        "Next",
+        "All",
+        "Replace all",
+        "Close find",
+    ):
         x, y, w, h = ed.text_rect(painter, label)
         assert x >= 0 and y >= 0 and y + h <= size[1], (label, size)
         assert x + w <= size[0] + 1, f"{label!r} is cut off at the right edge of a {size} window"

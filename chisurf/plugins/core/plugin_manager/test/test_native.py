@@ -10,13 +10,24 @@ def _model(tmp_path):
     (package / "manifest.json").write_text(
         '{"id":"alpha","version":"1.0","display_name":"Tools:Alpha","description":"Test plugin"}'
     )
-    model = PluginManagerModel(settings_block={"disabled_plugins": [], "hide_disabled_plugins": True})
-    model._rows = collect_rows([{
-        "manifest_id": "alpha", "manifest_version": "1.0", "plugin_name": "Tools:Alpha",
-        "description": "Test plugin", "module_path": "chisurf.plugins.alpha",
-        "package_dir": str(package), "source": "user", "requires": {"base": "*"},
-        "optional_requires": {},
-    }])
+    model = PluginManagerModel(
+        settings_block={"disabled_plugins": [], "hide_disabled_plugins": True}
+    )
+    model._rows = collect_rows(
+        [
+            {
+                "manifest_id": "alpha",
+                "manifest_version": "1.0",
+                "plugin_name": "Tools:Alpha",
+                "description": "Test plugin",
+                "module_path": "chisurf.plugins.alpha",
+                "package_dir": str(package),
+                "source": "user",
+                "requires": {"base": "*"},
+                "optional_requires": {},
+            }
+        ]
+    )
     model.select_row({"id": "alpha"})
     return model, package
 
@@ -26,7 +37,9 @@ def test_gui_runtime_selection_is_deterministic():
 
     from chisurf.core.plugin.registry import select_gui_entrypoint
 
-    manifest = SimpleNamespace(id="demo", entrypoints=SimpleNamespace(gui="pkg:Qt", emtk="pkg:Native"))
+    manifest = SimpleNamespace(
+        id="demo", entrypoints=SimpleNamespace(gui="pkg:Qt", emtk="pkg:Native")
+    )
     assert select_gui_entrypoint(manifest, "emtk") == ("emtk", "pkg:Native")
     assert select_gui_entrypoint(manifest, "qt") == ("qt", "pkg:Qt")
     assert select_gui_entrypoint(manifest, "auto") == ("emtk", "pkg:Native")
@@ -56,12 +69,23 @@ def test_native_manager_preferences_and_rename_use_existing_model(tmp_path, monk
     model, package = _model(tmp_path)
     import chisurf.plugins as plugins
 
-    monkeypatch.setattr(plugins, "iter_plugins", lambda: [{
-        "manifest_id": "alpha", "manifest_version": "1.0", "plugin_name": "Tools:Alpha",
-        "description": "Test plugin", "module_path": "chisurf.plugins.alpha",
-        "package_dir": str(package), "source": "user", "requires": {"base": "*"},
-        "optional_requires": {},
-    }])
+    monkeypatch.setattr(
+        plugins,
+        "iter_plugins",
+        lambda: [
+            {
+                "manifest_id": "alpha",
+                "manifest_version": "1.0",
+                "plugin_name": "Tools:Alpha",
+                "description": "Test plugin",
+                "module_path": "chisurf.plugins.alpha",
+                "package_dir": str(package),
+                "source": "user",
+                "requires": {"base": "*"},
+                "optional_requires": {},
+            }
+        ],
+    )
     model.set_disabled(True)
     model.gui_mode = "emtk"
     assert model.gui_mode == "emtk"
@@ -102,7 +126,9 @@ def test_native_install_asks_before_replacing_an_existing_plugin(tmp_path, monke
     plan = InstallPlan(tmp_path / "alpha.zip", "alpha", destination, overwrites=True)
     monkeypatch.setattr(installer, "inspect_source", lambda source: plan)
     installed = []
-    monkeypatch.setattr(installer, "install", lambda selected: installed.append(selected) or destination)
+    monkeypatch.setattr(
+        installer, "install", lambda selected: installed.append(selected) or destination
+    )
     monkeypatch.setattr(model, "reload", lambda **kwargs: None)
 
     model.choose_install_source(tmp_path / "alpha.zip")

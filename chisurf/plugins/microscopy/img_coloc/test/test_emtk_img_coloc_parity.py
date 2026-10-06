@@ -14,14 +14,25 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from test.gui.emtk_layout_checks import SIZES, assert_icons_clear, assert_inside, assert_texts_apart, draw
-
+from chisurf.plugins.microscopy.imaging_emtk import pixel_checks as C
+from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
+from chisurf.plugins.microscopy.imaging_emtk.testing import (
+    Driver,
+    dialog_open,
+    hermetic_env,
+    numeric_ticks,
+    walk,
+)
 from chisurf.plugins.microscopy.img_coloc.gui.app import ColocApp, make_app
 from chisurf.plugins.microscopy.img_coloc.gui.model import ColocModel
 from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
-from chisurf.plugins.microscopy.imaging_emtk import pixel_checks as C
-from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, hermetic_env, numeric_ticks, walk
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_icons_clear,
+    assert_inside,
+    assert_texts_apart,
+    draw,
+)
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -29,7 +40,17 @@ EMTK_SPEC = json.loads((PLUGIN / "gui" / "coloc_emtk.view.json").read_text(encod
 QT_SPEC = json.loads((PLUGIN / "gui" / "coloc.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 _REAL_BEFORE = data.real_settings_state()
-TABS = ("Coefficients", "Channels", "Colocalized pixels", "Intensity scatter", "van Steensel CCF", "CCF map (2-D)", "PCC vs intensity", "Objects", "Object distances")
+TABS = (
+    "Coefficients",
+    "Channels",
+    "Colocalized pixels",
+    "Intensity scatter",
+    "van Steensel CCF",
+    "CCF map (2-D)",
+    "PCC vs intensity",
+    "Objects",
+    "Object distances",
+)
 
 
 @pytest.fixture(autouse=True)
@@ -94,7 +115,10 @@ def test_the_coefficients_equal_the_qt_tool_and_an_independent_pearson(app, drv,
 
     m = computed(app, drv, pair)
     qt = qt_model(pair)
-    assert m.metric_rows() == qt.metric_rows() and m.results_text == qt.results_text == "pair.tif · 64×64 px · ch0 vs ch1 · PCC = 0.675"
+    assert (
+        m.metric_rows() == qt.metric_rows()
+        and m.results_text == qt.results_text == "pair.tif · 64×64 px · ch0 vs ch1 · PCC = 0.675"
+    )
     stack = __import__("tifffile").imread(str(pair)).astype(float)
     a, b = stack[0] - m.background_a, stack[1] - m.background_b
     keep = (a > 0) & (b > 0)  # above both (zero) thresholds, after the background subtraction
@@ -105,17 +129,46 @@ def test_the_coefficients_equal_the_qt_tool_and_an_independent_pearson(app, drv,
     np.testing.assert_array_equal(m.coloc_mask_image(), qt.coloc_mask_image())
 
 
-@pytest.mark.parametrize("changes", [
-    {"auto_background": False}, {"auto_threshold": True}, {"background_quantile": 0.2}, {"frame": 0}, {"bins": 32, "log_histogram": False},
-    {"costes_test": True, "costes_randomizations": 20, "costes_block": 3, "costes_seed": 5}, {"ccf_max_shift": 6, "profile_bins": 12},
-    {"object_analysis": True, "object_min_size": 6, "object_smoothing": 1.0, "object_split": True, "object_distance": 4.0},
-    {"auto_background": False, "threshold_a": 20.0, "threshold_b": 15.0},
-    {"gate_enabled": True, "gate_a_min": 10.0, "gate_a_max": 60.0, "gate_b_min": 5.0, "gate_b_max": 50.0}], ids=lambda c: "+".join(sorted(c)))
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"auto_background": False},
+        {"auto_threshold": True},
+        {"background_quantile": 0.2},
+        {"frame": 0},
+        {"bins": 32, "log_histogram": False},
+        {"costes_test": True, "costes_randomizations": 20, "costes_block": 3, "costes_seed": 5},
+        {"ccf_max_shift": 6, "profile_bins": 12},
+        {
+            "object_analysis": True,
+            "object_min_size": 6,
+            "object_smoothing": 1.0,
+            "object_split": True,
+            "object_distance": 4.0,
+        },
+        {"auto_background": False, "threshold_a": 20.0, "threshold_b": 15.0},
+        {
+            "gate_enabled": True,
+            "gate_a_min": 10.0,
+            "gate_a_max": 60.0,
+            "gate_b_min": 5.0,
+            "gate_b_max": 50.0,
+        },
+    ],
+    ids=lambda c: "+".join(sorted(c)),
+)
 def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(app, drv, pair, changes):
     m = computed(app, drv, pair, **changes)
     qt = qt_model(pair, **changes)
     assert m.metric_rows() == qt.metric_rows()
-    for name in ("image_a", "image_b", "coloc_mask_image", "histogram_image", "ccf_map_image", "object_map_image"):
+    for name in (
+        "image_a",
+        "image_b",
+        "coloc_mask_image",
+        "histogram_image",
+        "ccf_map_image",
+        "object_map_image",
+    ):
         x, y = getattr(m, name)(), getattr(qt, name)()
         assert (x is None) == (y is None), name
         if x is not None:
@@ -126,23 +179,41 @@ def test_every_setting_gives_what_the_qt_tool_gives_with_the_same_setting(app, d
 
 def test_estimate_background_sets_both_backgrounds_as_the_qt_tool_does(app, drv, pair):
     m = computed(app, drv, pair, auto_background=False)
-    assert not m.enabled("run_coloc") is False
+    assert m.enabled("run_coloc") is not False
     drv.click("estimate_background")
     drv.settle(timeout=120)
     qt = qt_model(pair, auto_background=False)
     qt.estimate_background()
-    assert (m.background_a, m.background_b, m.auto_background) == pytest.approx((qt.background_a, qt.background_b, False), rel=1e-4)
+    assert (m.background_a, m.background_b, m.auto_background) == pytest.approx(
+        (qt.background_a, qt.background_b, False), rel=1e-4
+    )
     assert m.metric_rows() == qt.metric_rows()
 
 
 def test_a_photon_stream_uses_the_detector_windows_as_channels(app, drv, stream_module):
-    app.apply_setup_settings({"name": "demo", "detectors": {"green": {"chs": [0], "micro_time_ranges": []}, "red": {"chs": [1], "micro_time_ranges": []}}})
+    app.apply_setup_settings(
+        {
+            "name": "demo",
+            "detectors": {
+                "green": {"chs": [0], "micro_time_ranges": []},
+                "red": {"chs": [1], "micro_time_ranges": []},
+            },
+        }
+    )
     drv.draw(3)
     assert app.model.channel_names() == ["green", "red"] and app.model.setup_name == "demo"
     m = computed(app, drv, stream_module)
     assert m.results_text.endswith("green vs red · PCC = %.3f" % m._metrics["pearson"])
     qt = ColocViewModel()
-    qt.apply_setup_settings({"name": "demo", "detectors": {"green": {"chs": [0], "micro_time_ranges": []}, "red": {"chs": [1], "micro_time_ranges": []}}})
+    qt.apply_setup_settings(
+        {
+            "name": "demo",
+            "detectors": {
+                "green": {"chs": [0], "micro_time_ranges": []},
+                "red": {"chs": [1], "micro_time_ranges": []},
+            },
+        }
+    )
     qt.set_filename(str(stream_module))
     qt.compute()
     assert m.metric_rows() == qt.metric_rows()
@@ -196,7 +267,10 @@ def test_the_database_button_picks_a_dataset_and_runs_it(app, drv, pair):
     assert app.model.metric_rows()
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; see okf/plugins/emtk-ports/img_drift/REPORT.md")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; see okf/plugins/emtk-ports/img_drift/REPORT.md",
+)
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, pair):
     C.open_selected_button_of_the_database_picker_can_be_pressed(app, drv, pair)
 
@@ -220,8 +294,14 @@ def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, pair):
 # ── 3. running, background, export ─────────────────────────────────────────────────────────────────────── #
 
 
-def test_run_is_greyed_without_an_image_computes_with_one_and_is_greyed_while_it_runs(app, drv, pair):
-    assert not app.model.enabled("run_coloc") and not app.model.enabled("estimate_background") and not app.model.enabled("request_export")
+def test_run_is_greyed_without_an_image_computes_with_one_and_is_greyed_while_it_runs(
+    app, drv, pair
+):
+    assert (
+        not app.model.enabled("run_coloc")
+        and not app.model.enabled("estimate_background")
+        and not app.model.enabled("request_export")
+    )
     drv.click("run_coloc")
     assert not app.job.busy
     app.model.set_filename(str(pair))
@@ -244,14 +324,21 @@ def test_export_csv_writes_the_file_the_qt_tool_writes(app, drv, pair, tmp_path)
     computed(app, drv, pair)
     app.model.folder = str(tmp_path)
     drv.click("request_export")
-    assert dialog_open(drv) and app.dialog.title == "Export colocalization results" and "pair.coloc.csv" in drv.draw(1).strings
+    assert (
+        dialog_open(drv)
+        and app.dialog.title == "Export colocalization results"
+        and "pair.coloc.csv" in drv.draw(1).strings
+    )
     drv.click_text("Save", last=True)
     drv.draw(3)
     written = tmp_path / "pair.coloc.csv"
     qt = qt_model(pair)
     expected = tmp_path / "qt.csv"
     qt.export_csv(str(expected))
-    assert written.read_text() == expected.read_text().replace(str(pair), str(pair)) and app.model.status_line == f"Wrote {written}"
+    assert (
+        written.read_text() == expected.read_text().replace(str(pair), str(pair))
+        and app.model.status_line == f"Wrote {written}"
+    )
 
 
 def test_export_cancel_and_an_unwritable_place(app, drv, pair, tmp_path):
@@ -270,15 +357,52 @@ def test_export_cancel_and_an_unwritable_place(app, drv, pair, tmp_path):
 
 FOLDS = {k: "Scatter gate.fold" for k in ("gate_a_min", "gate_a_max", "gate_b_min", "gate_b_max")}
 FOLDS.update({"brush_size": "Region of interest.fold"})
-FOLDS.update({k: "Objects (punctate signal).fold" for k in ("object_distance", "object_min_size", "object_smoothing")})
-FOLDS.update({k: "Significance / profile.fold" for k in ("costes_block", "costes_randomizations", "costes_seed", "ccf_max_shift", "profile_bins", "bins")})
+FOLDS.update(
+    {
+        k: "Objects (punctate signal).fold"
+        for k in ("object_distance", "object_min_size", "object_smoothing")
+    }
+)
+FOLDS.update(
+    {
+        k: "Significance / profile.fold"
+        for k in (
+            "costes_block",
+            "costes_randomizations",
+            "costes_seed",
+            "ccf_max_shift",
+            "profile_bins",
+            "bins",
+        )
+    }
+)
 
 
-@pytest.mark.parametrize("attr, text, expected", [
-    ("frame", "2", 2), ("background_quantile", "0.1", 0.1), ("background_a", "3.5", 3.5), ("background_b", "4.5", 4.5), ("threshold_a", "6.5", 6.5), ("threshold_b", "7.5", 7.5),
-    ("gate_a_min", "1.5", 1.5), ("gate_a_max", "2.5", 2.5), ("gate_b_min", "3.25", 3.25), ("gate_b_max", "4.25", 4.25), ("brush_size", "5", 5),
-    ("object_distance", "2.5", 2.5), ("object_min_size", "9", 9), ("object_smoothing", "1.5", 1.5), ("costes_block", "8", 8), ("costes_randomizations", "50", 50),
-    ("costes_seed", "7", 7), ("ccf_max_shift", "4", 4), ("profile_bins", "10", 10), ("bins", "64", 64)])
+@pytest.mark.parametrize(
+    "attr, text, expected",
+    [
+        ("frame", "2", 2),
+        ("background_quantile", "0.1", 0.1),
+        ("background_a", "3.5", 3.5),
+        ("background_b", "4.5", 4.5),
+        ("threshold_a", "6.5", 6.5),
+        ("threshold_b", "7.5", 7.5),
+        ("gate_a_min", "1.5", 1.5),
+        ("gate_a_max", "2.5", 2.5),
+        ("gate_b_min", "3.25", 3.25),
+        ("gate_b_max", "4.25", 4.25),
+        ("brush_size", "5", 5),
+        ("object_distance", "2.5", 2.5),
+        ("object_min_size", "9", 9),
+        ("object_smoothing", "1.5", 1.5),
+        ("costes_block", "8", 8),
+        ("costes_randomizations", "50", 50),
+        ("costes_seed", "7", 7),
+        ("ccf_max_shift", "4", 4),
+        ("profile_bins", "10", 10),
+        ("bins", "64", 64),
+    ],
+)
 def test_every_typed_setting_is_taken_on_enter(app, drv, attr, text, expected):
     if attr in FOLDS:
         drv.click(FOLDS[attr])
@@ -296,8 +420,18 @@ def test_typed_numbers_are_clamped_to_the_qt_ranges(app, drv):
     assert app.model.background_quantile == 0.5
 
 
-@pytest.mark.parametrize("attr, fold", [("auto_background", None), ("auto_threshold", None), ("gate_enabled", "Scatter gate.fold"), ("object_analysis", "Objects (punctate signal).fold"),
-                                        ("object_split", "Objects (punctate signal).fold"), ("costes_test", "Significance / profile.fold"), ("log_histogram", "Significance / profile.fold")])
+@pytest.mark.parametrize(
+    "attr, fold",
+    [
+        ("auto_background", None),
+        ("auto_threshold", None),
+        ("gate_enabled", "Scatter gate.fold"),
+        ("object_analysis", "Objects (punctate signal).fold"),
+        ("object_split", "Objects (punctate signal).fold"),
+        ("costes_test", "Significance / profile.fold"),
+        ("log_histogram", "Significance / profile.fold"),
+    ],
+)
 def test_every_toggle_is_clicked(app, drv, attr, fold):
     if fold:
         drv.click(fold)
@@ -340,11 +474,18 @@ def test_the_typed_box_gates_the_coefficients_like_the_qt_tool(app, drv, pair):
     m = computed(app, drv, pair)
     drv.click("Scatter gate.fold")
     drv.click("gate_enabled")
-    for attr, text in (("gate_a_min", "10"), ("gate_a_max", "60"), ("gate_b_min", "5"), ("gate_b_max", "50")):
+    for attr, text in (
+        ("gate_a_min", "10"),
+        ("gate_a_max", "60"),
+        ("gate_b_min", "5"),
+        ("gate_b_max", "50"),
+    ):
         drv.type_into(attr, text)
     drv.click("run_coloc")
     drv.settle(timeout=120)
-    qt = qt_model(pair, gate_enabled=True, gate_a_min=10.0, gate_a_max=60.0, gate_b_min=5.0, gate_b_max=50.0)
+    qt = qt_model(
+        pair, gate_enabled=True, gate_a_min=10.0, gate_a_max=60.0, gate_b_min=5.0, gate_b_max=50.0
+    )
     assert m.metric_rows() == qt.metric_rows() and m.gates.get("box") is not None
 
 
@@ -366,7 +507,9 @@ def test_a_gate_region_added_from_the_list_recomputes_and_clear_gate_drops_it(ap
     assert len(m.gates) == 0 and not m.gate_enabled and m.metric_rows() == before
 
 
-def test_the_box_handle_dragged_with_the_pointer_moves_the_gate_and_the_typed_bounds(app, drv, pair):
+def test_the_box_handle_dragged_with_the_pointer_moves_the_gate_and_the_typed_bounds(
+    app, drv, pair
+):
     m = computed(app, drv, pair)
     open_gates(app, drv)
     drv.click_text_scrolling("Add rectangle")
@@ -450,7 +593,10 @@ def test_every_tab_has_a_message_when_empty(app, drv):
     for tab in TABS:
         app.docks.focus(tab)
         strings = drv.draw(3).strings
-        assert any(s.startswith("No ") or s.startswith("Run") or "No " in s for s in strings), (tab, strings[:30])
+        assert any(s.startswith("No ") or s.startswith("Run") or "No " in s for s in strings), (
+            tab,
+            strings[:30],
+        )
 
 
 def test_the_coefficient_table_shows_the_qt_rows_and_sorts_by_its_header(app, drv, pair):
@@ -466,11 +612,21 @@ def test_the_coefficient_table_shows_the_qt_rows_and_sorts_by_its_header(app, dr
 
 def test_the_picture_tabs_show_an_image_with_axes_and_the_plot_tabs_their_series(app, drv, pair):
     computed(app, drv, pair, ccf_max_shift=5, object_analysis=True)
-    for tab, rect in (("Colocalized pixels", True), ("CCF map (2-D)", True), ("Objects", True), ("Channels", True), ("Intensity scatter", True)):
+    for tab, rect in (
+        ("Colocalized pixels", True),
+        ("CCF map (2-D)", True),
+        ("Objects", True),
+        ("Channels", True),
+        ("Intensity scatter", True),
+    ):
         app.docks.focus(tab)
         strings = drv.draw(3).strings
         assert app.item_rects.get(tab) and app.item_rects[tab][2] > 100, tab
-    for tab, xl in (("van Steensel CCF", "shift / px"), ("PCC vs intensity", "intensity / ratio"), ("Object distances", "nearest-neighbour distance / px")):
+    for tab, xl in (
+        ("van Steensel CCF", "shift / px"),
+        ("PCC vs intensity", "intensity / ratio"),
+        ("Object distances", "nearest-neighbour distance / px"),
+    ):
         app.docks.focus(tab)
         assert xl in drv.draw(3).strings, tab
     app.docks.focus("Intensity scatter")
@@ -528,18 +684,24 @@ def test_guide_button_starts_the_tour(app, drv):
     app.tour.stop()
 
 
-def test_close_tour_ends_the_tour_with_the_pointer(app):  # the card is dragged away from the table under it when the button is dead
+def test_close_tour_ends_the_tour_with_the_pointer(
+    app,
+):  # the card is dragged away from the table under it when the button is dead
     C.guide_button_starts_the_tour_and_close_tour_ends_it(app)
 
 
-def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, pair):
+def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+    app, drv, pair
+):
     def choose():
         app.model.folder = str(pair.parent)
         drv.click("open_file")
         drv.click_text("pair.tif")
         drv.click_text("Open", last=True)
 
-    C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, pair, {"file": choose}, card_buttons=False)
+    C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+        app, drv, pair, {"file": choose}, card_buttons=False
+    )
     assert app.model.metric_rows()
 
 
@@ -559,14 +721,24 @@ def test_every_guide_target_is_a_drawn_control_or_window(app, drv, pair):
 
 def test_settings_round_trip_and_invalid_values_are_ignored(app, drv, pair):
     m = computed(app, drv, pair, auto_threshold=True, bins=64, costes_seed=3)
-    m.gates.add(__import__("chisurf.core.roi", fromlist=["RectangleROI"]).RectangleROI(1, 1, 5, 5, name="g"))
+    m.gates.add(
+        __import__("chisurf.core.roi", fromlist=["RectangleROI"]).RectangleROI(1, 1, 5, 5, name="g")
+    )
     saved = app.export_settings()
     json.dumps(saved)
     fresh = make_app()
     fresh.restore_settings(saved)
     f = fresh.model
     assert (f.auto_threshold, f.bins, f.costes_seed, len(f.gates)) == (True, 64, 3, 1)
-    fresh.restore_settings({"bins": "many", "auto_threshold": "yes", "channel_axis_mode": "diagonal", "gates": {"bad": 1}, "detectors": 3})
+    fresh.restore_settings(
+        {
+            "bins": "many",
+            "auto_threshold": "yes",
+            "channel_axis_mode": "diagonal",
+            "gates": {"bad": 1},
+            "detectors": 3,
+        }
+    )
     assert (f.bins, f.auto_threshold, f.channel_axis_mode) == (64, True, "auto")
     fresh.restore_settings("garbage")
     fresh.close()
@@ -578,7 +750,9 @@ def test_the_imaging_hub_drives_the_tool(pair):
     d = Driver(app, BIG)
     app.apply_pipeline_context({"source": str(pair), "hdf5": ""})
     assert app.model.filename == str(pair) and app.job.busy
-    app.apply_setup_settings({"name": "late", "detectors": {"x": {"chs": [0], "micro_time_ranges": []}}})  # arrives while the worker runs
+    app.apply_setup_settings(
+        {"name": "late", "detectors": {"x": {"chs": [0], "micro_time_ranges": []}}}
+    )  # arrives while the worker runs
     assert app.model.setup_name == ""
     d.settle(timeout=120)
     d.draw(3)
@@ -601,12 +775,38 @@ def _labels(sections):
 
 def test_every_qt_control_has_an_emtk_equivalent():
     qt, emtk = _labels(QT_SPEC["sections"]), _labels(EMTK_SPEC["sections"])
-    assert {"Channel A", "Channel B", "Frame", "Axis order", "Auto background", "Quantile", "Costes thresholds", "Gate active", "Clear gate", "Clear ROI",
-            "Brush (px)", "Object analysis", "Tolerance (px)", "Costes randomization test", "van Steensel shift (px)", "Log histogram"} <= qt
-    assert qt - {"Setup", "Image", "Estimate background", "Export CSV"} <= emtk | {"Setup"}, sorted(qt - emtk)
+    assert {
+        "Channel A",
+        "Channel B",
+        "Frame",
+        "Axis order",
+        "Auto background",
+        "Quantile",
+        "Costes thresholds",
+        "Gate active",
+        "Clear gate",
+        "Clear ROI",
+        "Brush (px)",
+        "Object analysis",
+        "Tolerance (px)",
+        "Costes randomization test",
+        "van Steensel shift (px)",
+        "Log histogram",
+    } <= qt
+    assert qt - {"Setup", "Image", "Estimate background", "Export CSV"} <= emtk | {"Setup"}, sorted(
+        qt - emtk
+    )
     assert {"Image", "Run", "Estimate background", "Export CSV"} <= emtk
-    qt_tabs = [s["title"] for s in walk(QT_SPEC["sections"]) if s.get("type") in ("custom", "table", "plot") and s.get("title") and s.get("key") != "region_list"]
-    assert [t for t in qt_tabs if t in TABS] == [t for t in TABS if t in qt_tabs] and set(TABS) <= set(qt_tabs) | {"Coefficients", "Channels"}
+    qt_tabs = [
+        s["title"]
+        for s in walk(QT_SPEC["sections"])
+        if s.get("type") in ("custom", "table", "plot")
+        and s.get("title")
+        and s.get("key") != "region_list"
+    ]
+    assert [t for t in qt_tabs if t in TABS] == [t for t in TABS if t in qt_tabs] and set(
+        TABS
+    ) <= set(qt_tabs) | {"Coefficients", "Channels"}
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():
@@ -621,8 +821,17 @@ def test_every_spec_attribute_and_action_exists_on_the_model():
                 assert hasattr(model, section[key]), (key, section)
         if section.get("type") == "custom" and section.get("options", {}).get("source"):
             assert callable(getattr(model, section["options"]["source"])), section
-    assert not [s for s in walk(EMTK_SPEC["sections"]) if s.get("type") not in ("custom", "panel") and not s.get("description")]
-    assert not [b for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", []) if not b.get("description")]
+    assert not [
+        s
+        for s in walk(EMTK_SPEC["sections"])
+        if s.get("type") not in ("custom", "panel") and not s.get("description")
+    ]
+    assert not [
+        b
+        for s in walk(EMTK_SPEC["sections"])
+        for b in s.get("buttons", [])
+        if not b.get("description")
+    ]
 
 
 def test_the_port_is_qt_free():
@@ -633,7 +842,12 @@ def test_every_control_has_a_tooltip(app, drv, pair):
     from test.gui.emtk_port_parity import emtk_inventory
 
     computed(app, drv, pair, ccf_max_shift=5, object_analysis=True)
-    for fold in ("Scatter gate.fold", "Region of interest.fold", "Objects (punctate signal).fold", "Significance / profile.fold"):
+    for fold in (
+        "Scatter gate.fold",
+        "Region of interest.fold",
+        "Objects (punctate signal).fold",
+        "Significance / profile.fold",
+    ):
         drv.click(fold)
     missing = set()
     for tab in (*TABS, "Detectors"):
@@ -654,12 +868,37 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, pair
     assert_texts_apart(painter)
     assert_icons_clear(painter)
     computed(app, drv, pair, ccf_max_shift=5, object_analysis=True)
-    for fold in ("Scatter gate.fold", "Region of interest.fold", "Objects (punctate signal).fold", "Significance / profile.fold"):
+    for fold in (
+        "Scatter gate.fold",
+        "Region of interest.fold",
+        "Objects (punctate signal).fold",
+        "Significance / profile.fold",
+    ):
         drv.click(fold)
     for tab in TABS:
         app.docks.focus(tab)
-        C.texts_apart(draw(app, size), ignore=(str(pair), "Channel A intensity", "Channel B intensity", "shift / px", "intensity / ratio", "nearest-neighbour distance / px"))
-    names = ("run_coloc", "estimate_background", "request_export", "filename", "open_file", "open_database", "channel_a", "channel_b", "frame")
+        C.texts_apart(
+            draw(app, size),
+            ignore=(
+                str(pair),
+                "Channel A intensity",
+                "Channel B intensity",
+                "shift / px",
+                "intensity / ratio",
+                "nearest-neighbour distance / px",
+            ),
+        )
+    names = (
+        "run_coloc",
+        "estimate_background",
+        "request_export",
+        "filename",
+        "open_file",
+        "open_database",
+        "channel_a",
+        "channel_b",
+        "frame",
+    )
     rects = {k: app.form.rects[k] for k in names if k in app.form.rects}
     assert_inside(rects, size) if size[0] >= 1200 else None
     from test.gui.emtk_layout_checks import assert_disjoint

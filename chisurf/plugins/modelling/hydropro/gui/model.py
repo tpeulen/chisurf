@@ -243,7 +243,10 @@ class HydroProModel:
         put = self._events.put
         try:
             results = run_hydro(
-                files, settings, exe, self.work_dir,
+                files,
+                settings,
+                exe,
+                self.work_dir,
                 on_log=lambda m: put(("log", m)),
                 on_progress=lambda i, n: put(("progress", i, n)),
                 should_cancel=lambda: self._cancel,
@@ -279,7 +282,11 @@ class HydroProModel:
                 self.status = f"Finished: {len(self.results)} file(s)."
                 self.output_status = "Finished."
                 by_file = {r.struct_file: r.diffusion_coefficient for r in self.results}
-                self.cells = {str(p): format_diffusion(by_file[str(p)]) for p in self.struct_list() if str(p) in by_file}
+                self.cells = {
+                    str(p): format_diffusion(by_file[str(p)])
+                    for p in self.struct_list()
+                    if str(p) in by_file
+                }
                 self._end()
             elif kind == "failed":
                 self.status = f"Error: {event[1]}"
@@ -324,8 +331,14 @@ class HydroProModel:
                 writer = csv.writer(fh)
                 writer.writerow(CSV_HEADER)
                 for r in self.results:
-                    writer.writerow([r.struct_file, f"{r.diffusion_coefficient:.3e}"
-                                     if r.diffusion_coefficient is not None else ""])
+                    writer.writerow(
+                        [
+                            r.struct_file,
+                            f"{r.diffusion_coefficient:.3e}"
+                            if r.diffusion_coefficient is not None
+                            else "",
+                        ]
+                    )
             self.notify("Saved", f"Results saved to {path}")
             return True
         except OSError as exc:
@@ -354,7 +367,11 @@ class HydroProModel:
             self.exe_path = settings["exe_path"]
         stored = {k: v for k, v in settings.items() if k in HydroProSettings().to_dict()}
         if stored:
-            self.load_settings(HydroProSettings.from_dict({**HydroProSettings().to_dict(), **self.to_settings().to_dict(), **stored}))
+            self.load_settings(
+                HydroProSettings.from_dict(
+                    {**HydroProSettings().to_dict(), **self.to_settings().to_dict(), **stored}
+                )
+            )
 
     def close(self) -> None:
         self._cancel = True

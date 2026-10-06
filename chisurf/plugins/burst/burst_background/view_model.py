@@ -246,8 +246,12 @@ class BackgroundViewModel:
         # end before the sparse far tail of *any* of them (shared with the IRF tool).
         from chisurf.core.fluorescence.burst.background import seed_tail_window
 
-        window = seed_tail_window(arrays, binsize_ms=self.binsize_ms, min_counts=self.min_counts,
-                                  min_tail_bins=self.MIN_TAIL_BINS)
+        window = seed_tail_window(
+            arrays,
+            binsize_ms=self.binsize_ms,
+            min_counts=self.min_counts,
+            min_tail_bins=self.MIN_TAIL_BINS,
+        )
         if window is not None:
             self.fit_from_ms, self.fit_to_ms = window
             return

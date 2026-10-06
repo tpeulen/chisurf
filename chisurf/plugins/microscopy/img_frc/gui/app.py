@@ -24,8 +24,12 @@ class ImgFrcApp(ImagingToolApp):
     SPEC = "frc_emtk.view.json"
     TITLE = "FRC resolution"
     HELP_TITLE = "FRC resolution - Help"
-    LAYOUT = Split("h", 0.40, Region("settings"),
-                   Split("v", 0.22, Region("report"), Split("h", 0.42, Region("plot"), Region("diag"))))
+    LAYOUT = Split(
+        "h",
+        0.40,
+        Region("settings"),
+        Split("v", 0.22, Region("report"), Split("h", 0.42, Region("plot"), Region("diag"))),
+    )
     DIALOGS = {
         "open": ("Open image", "open", IMAGE_FILE_FILTER, "open_path"),
         "open_second": ("Open second image", "open", IMAGE_FILE_FILTER, "open_second_path"),

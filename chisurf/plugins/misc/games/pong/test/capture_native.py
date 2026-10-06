@@ -1,4 +1,5 @@
 """Capture the populated native Pong viewport using the real GPU host."""
+
 from pathlib import Path
 
 import numpy as np
@@ -21,9 +22,9 @@ def main():
                 app.game.rally = 6
                 app.game.paddle_y, app.game.cpu_y = 245, 380
                 app.game.ball_x, app.game.ball_y = 545, 245
-                app.game.spawn_particles(545, 245, (1, .5, 0), 8)
+                app.game.spawn_particles(545, 245, (1, 0.5, 0), 8)
                 for particle in app.game.particles:
-                    particle.update(.1)
+                    particle.update(0.1)
             if mode == "paused":
                 app.game.paused = True
             if mode == "winner":

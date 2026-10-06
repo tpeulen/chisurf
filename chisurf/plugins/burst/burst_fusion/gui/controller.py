@@ -37,7 +37,9 @@ class FusionController:
                 self.status = ""
                 return
         if paths:
-            self.status = f"Burst fusion reads a burst-analysis folder; {Path(paths[0]).name} is not one."
+            self.status = (
+                f"Burst fusion reads a burst-analysis folder; {Path(paths[0]).name} is not one."
+            )
 
     def progress(self, fraction=0, message=""):
         if self._cancel.is_set():
@@ -214,10 +216,19 @@ class FusionController:
         from chisurf.plugins.emtk_layout import TEXT_WIDTH, button_row
 
         im.begin_disabled(self.running)
-        pressed = button_row([
-            {"label": "Open burst folder", "tip": "Select the burst-analysis folder containing bi4_bur."},
-            {"label": "MMFDB datasets", "tip": "Resolve an existing burst analysis from the database."},
-        ], remember=remember)
+        pressed = button_row(
+            [
+                {
+                    "label": "Open burst folder",
+                    "tip": "Select the burst-analysis folder containing bi4_bur.",
+                },
+                {
+                    "label": "MMFDB datasets",
+                    "tip": "Resolve an existing burst analysis from the database.",
+                },
+            ],
+            remember=remember,
+        )
         if pressed == "Open burst folder":
             self.browse()
         elif pressed == "MMFDB datasets":

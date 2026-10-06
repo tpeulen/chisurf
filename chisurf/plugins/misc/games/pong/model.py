@@ -1,4 +1,5 @@
 """Pong simulation shared by Qt and EMTK; no toolkit or GPU imports."""
+
 from __future__ import annotations
 
 import math
@@ -23,6 +24,7 @@ CPU_SPEED = 420.0
 
 WIN_SCORE = 7
 SERVE_DELAY = 1.0
+
 
 def wavelength_to_srgb(nm):
     """Pong's two optical bands (the same values as the chigame pack)."""
@@ -154,17 +156,17 @@ class PongModel:
         keys : chisurf.gui.chigame.input.InputMap
             Player one's controller.
         """
-        if keys.just_pressed('menu'):
+        if keys.just_pressed("menu"):
             self.paused = not self.paused
-        if keys.just_pressed('cancel'):
+        if keys.just_pressed("cancel"):
             self.restart()
             return
-        if keys.just_pressed('shoulder_l'):
+        if keys.just_pressed("shoulder_l"):
             self.vs_computer = not self.vs_computer
-        if keys.just_pressed('shoulder_r'):
+        if keys.just_pressed("shoulder_r"):
             self.muted = not self.muted
         if self.winner is not None:
-            if keys.just_pressed('confirm'):
+            if keys.just_pressed("confirm"):
                 self.restart()
             return
         if self.paused:
@@ -297,4 +299,3 @@ class PongModel:
             self.winner = "Acceptor" if self.vs_computer else "Optic 2"
         else:
             self.begin_serve()
-

@@ -12,14 +12,21 @@ def test_hidden_toolbar_actions_are_available_in_emtk():
         on_save=lambda: calls.append("save"),
         on_save_settings=lambda: calls.append("settings"),
     )
-    with patch("chisurf.plugins.burst.burst_bva.gui.app.im") as im, patch("chisurf.plugins.emtk_layout.im", im):
+    with (
+        patch("chisurf.plugins.burst.burst_bva.gui.app.im") as im,
+        patch("chisurf.plugins.emtk_layout.im", im),
+    ):
         # the wrapped button rows (chisurf.plugins.emtk_layout.button_row) draw through the same mock
         im.get_style.return_value.item_spacing = (8.0, 4.0)
         im.get_style.return_value.frame_padding = (6.0, 3.0)
         im.get_item_rect.return_value = None
-        im.get_content_region_avail.return_value = (400.0, 300.0)   # the row-wrap measures the pane
+        im.get_content_region_avail.return_value = (400.0, 300.0)  # the row-wrap measures the pane
         im.calc_text_size.return_value = (60.0, 14.0)
-        for label in ("🗑  Clear", "💾  Save plot", "⚙  Save defaults"):   # one press per frame, as a pointer gives
+        for label in (
+            "🗑  Clear",
+            "💾  Save plot",
+            "⚙  Save defaults",
+        ):  # one press per frame, as a pointer gives
             im.button.side_effect = lambda text, label=label: text == label
             gui._draw_action_buttons()
         assert calls == ["clear", "save", "settings"]
@@ -130,7 +137,7 @@ def test_native_defaults_restore_and_png_export(tmp_path):
 
         app = create_app()
         try:
-            ctrl.write_window_png(app, png, (640, 480))     # a picture of the window, as the Qt grab
+            ctrl.write_window_png(app, png, (640, 480))  # a picture of the window, as the Qt grab
         finally:
             app.close()
         assert png.read_bytes().startswith(b"\x89PNG")

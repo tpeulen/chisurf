@@ -17,7 +17,14 @@ from emtk.view_form import FormState, draw_sections, find_section
 from emtk.widgets.view_spec import load_view_spec
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, group_by_width, icon_label, labelled
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    button_row,
+    cap_widths,
+    group_by_width,
+    icon_label,
+    labelled,
+)
 
 WINDOW_BG = (30, 32, 38, 255)
 
@@ -66,10 +73,14 @@ class BurstGsGui:
         dock = self.spec["sections"][0]
         self._fields = self._leaf_sections(dock)
         self.tables = [find_section(dock, "Rates"), find_section(dock, "States")]
-        for section, height in zip(self.tables, (150, 110)):   # compact: the report text stays under them
+        for section, height in zip(
+            self.tables, (150, 110)
+        ):  # compact: the report text stays under them
             section["height"] = height
-        cap_widths(list(self._fields.values()))      # a seed or a state count is a few digits, not the panel wide
-        self.labels = LabelColumn()                  # one caption column for every group of fields
+        cap_widths(
+            list(self._fields.values())
+        )  # a seed or a state count is a few digits, not the panel wide
+        self.labels = LabelColumn()  # one caption column for every group of fields
         self.tour = EmTkGuidedTour(
             steps=guide_resource,
             get_target_rect=lambda k: self.item_rects.get(k) or self.form_state.rects.get(k),
@@ -142,13 +153,20 @@ class BurstGsGui:
 
         if self.tour.active:
             if self.tour.awaiting:
-                self.tour.draw(w, h)           # the highlighted control must stay clickable: no overlay window over the docks
+                self.tour.draw(
+                    w, h
+                )  # the highlighted control must stay clickable: no overlay window over the docks
             else:
                 # In a window of its own, over the docks: drawn into the root window the card's buttons sat under the dock
                 # windows (a button is hovered only when no other window is under the pointer), so Close Tour, Prev and
                 # most Next presses never arrived.
-                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
-                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
+                flags = (
+                    im.WindowFlags.NO_DECORATION
+                    | im.WindowFlags.NO_BACKGROUND
+                    | im.WindowFlags.NO_SAVED_SETTINGS
+                    | im.WindowFlags.NO_MOVE
+                    | im.WindowFlags.NO_NAV
+                )
                 im.begin("##gs_tour_overlay", (0.0, 0.0, float(w), float(h)), flags)
                 self.tour.draw(w, h)
                 im.end()
@@ -163,22 +181,49 @@ class BurstGsGui:
         # One wrapped row of actions: Fit, Stop (live only while a fit runs), Export, Guide, Help.
         can_run_msg = self.model.can_run()
         running = bool(controller and controller.running)
-        pressed = button_row([
-            {"label": "▶ Fit Kinetics", "key": "Fit", "enabled": not can_run_msg and not running,
-             "tip": ("Fit the photon-by-photon kinetic model (Gopich–Szabo) to the loaded bursts and report rates and "
-                     "states." if not can_run_msg else
-                     "Fit the photon-by-photon kinetic model (Gopich–Szabo). Load .bur files and set the channels "
-                     "below first.")},
-            {"label": "Stop fit", "key": "Stop", "enabled": running,
-             "tip": "Cancel the optimizer at its next progress checkpoint." if running
-             else "Nothing is running; a fit in progress can be stopped here."},
-            {"label": icon_label("💾", "Export CSV"), "key": "Export", "enabled": self.model.analysis is not None,
-             "tip": "Export fitted transition rates, states and provenance as CSV." if self.model.analysis is not None
-             else "Run a fit first; the results are then exported as CSV."},
-            {"label": icon_label("📖", "Guide"), "key": "guide",
-             "tip": "Start a step-by-step guided tour of this tool."},
-            {"label": icon_label("❓", "Help"), "key": "help", "tip": "Open the help window with reference documentation."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": "▶ Fit Kinetics",
+                    "key": "Fit",
+                    "enabled": not can_run_msg and not running,
+                    "tip": (
+                        "Fit the photon-by-photon kinetic model (Gopich–Szabo) to the loaded bursts and report rates and "
+                        "states."
+                        if not can_run_msg
+                        else "Fit the photon-by-photon kinetic model (Gopich–Szabo). Load .bur files and set the channels "
+                        "below first."
+                    ),
+                },
+                {
+                    "label": "Stop fit",
+                    "key": "Stop",
+                    "enabled": running,
+                    "tip": "Cancel the optimizer at its next progress checkpoint."
+                    if running
+                    else "Nothing is running; a fit in progress can be stopped here.",
+                },
+                {
+                    "label": icon_label("💾", "Export CSV"),
+                    "key": "Export",
+                    "enabled": self.model.analysis is not None,
+                    "tip": "Export fitted transition rates, states and provenance as CSV."
+                    if self.model.analysis is not None
+                    else "Run a fit first; the results are then exported as CSV.",
+                },
+                {
+                    "label": icon_label("📖", "Guide"),
+                    "key": "guide",
+                    "tip": "Start a step-by-step guided tour of this tool.",
+                },
+                {
+                    "label": icon_label("❓", "Help"),
+                    "key": "help",
+                    "tip": "Open the help window with reference documentation.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed == "Fit":
             self.track("Fit")
             if self.on_fit:
@@ -196,7 +241,9 @@ class BurstGsGui:
             self.track("help")
             self.show_help()
         if can_run_msg:
-            im.text_wrapped(can_run_msg)    # on its own wrapped line: a hint long enough to matter did not fit beside
+            im.text_wrapped(
+                can_run_msg
+            )  # on its own wrapped line: a hint long enough to matter did not fit beside
         if controller is not None:
             controller.draw_progress()
 
@@ -213,7 +260,9 @@ class BurstGsGui:
         im.begin_disabled(running)
 
         # Simulation Mode Toggle
-        toggled, self.model.use_simulation = im.checkbox("Use Simulation Mode", self.model.use_simulation)
+        toggled, self.model.use_simulation = im.checkbox(
+            "Use Simulation Mode", self.model.use_simulation
+        )
         im.set_item_tooltip(
             "Generate simulated burst trains instead of reading .bur files, to test the fitting."
         )
@@ -224,18 +273,51 @@ class BurstGsGui:
         draw_sections(self._group("macro_time_resolution_ns"), target, form)
         if self.model.use_simulation:
             if self._section("Simulation Parameters", im.TreeNodeFlags.DEFAULT_OPEN):
-                draw_sections(self._group("sim_k_forward", "sim_k_backward", "sim_e1", "sim_e2", "sim_photon_rate_khz",
-                                          "sim_n_bursts", "sim_photons_per_burst", "sim_seed"), target, form)
+                draw_sections(
+                    self._group(
+                        "sim_k_forward",
+                        "sim_k_backward",
+                        "sim_e1",
+                        "sim_e2",
+                        "sim_photon_rate_khz",
+                        "sim_n_bursts",
+                        "sim_photons_per_burst",
+                        "sim_seed",
+                    ),
+                    target,
+                    form,
+                )
         elif self._section("Data Input & Channels", im.TreeNodeFlags.DEFAULT_OPEN):
             im.text(f"Loaded .bur files: {len(self.model.bur_files)}")
-            draw_sections(self._group("data_dir", "file_type", "donor_channels", "acceptor_channels", "min_photons",
-                                      "max_bursts"), target, form)
+            draw_sections(
+                self._group(
+                    "data_dir",
+                    "file_type",
+                    "donor_channels",
+                    "acceptor_channels",
+                    "min_photons",
+                    "max_bursts",
+                ),
+                target,
+                form,
+            )
         im.separator()
         if self._section("Kinetic Model Settings", im.TreeNodeFlags.DEFAULT_OPEN):
-            draw_sections(self._group("n_states", "initial_rate", "fix_efficiencies", "method", "max_iterations"), target, form)
+            draw_sections(
+                self._group(
+                    "n_states", "initial_rate", "fix_efficiencies", "method", "max_iterations"
+                ),
+                target,
+                form,
+            )
         if self._section("Extras", im.TreeNodeFlags.DEFAULT_OPEN):
-            draw_sections(self._group("scan_transition_time", "transit_points", "decode_states", "cross_check_h2mm"),
-                          target, form)
+            draw_sections(
+                self._group(
+                    "scan_transition_time", "transit_points", "decode_states", "cross_check_h2mm"
+                ),
+                target,
+                form,
+            )
         im.end_disabled()
 
     def _render_results_window(self, box=None) -> None:
@@ -243,7 +325,9 @@ class BurstGsGui:
         if ana is not None:
             # The spec's own table sections (``rate_rows``, ``state_rows``): sortable, selectable, tooltips per column.
             draw_sections(self.tables, self.model, self.form_state)
-            self.item_rects["Rates"] = self.form_state.rects.get("rate_rows", self.item_rects.get("Rates", (0, 0, 0, 0)))
+            self.item_rects["Rates"] = self.form_state.rects.get(
+                "rate_rows", self.item_rects.get("Rates", (0, 0, 0, 0))
+            )
             im.separator()
 
         im.text_colored("Fit Summary & Console:", (0.8, 0.8, 0.8, 1.0))
@@ -277,11 +361,18 @@ class BurstGsGui:
         transit = self.model.transit_series()
         if transit:  # the transition-time scan, when it ran
             if implot.begin_plot("Transition-time scan##gs_rates", (-1, -1)):
-                implot.setup_axes("transition time (\u00b5s)", "\u0394 log-likelihood vs instantaneous")
+                implot.setup_axes(
+                    "transition time (\u00b5s)", "\u0394 log-likelihood vs instantaneous"
+                )
                 for series in transit:
-                    implot.set_next_line_style(_hex_to_rgba(series.get("color", "#4c9be8")),
-                                               float(series.get("width", 2)))
-                    implot.plot_line(series["name"], np.asarray(series["x"], float), np.asarray(series["y"], float))
+                    implot.set_next_line_style(
+                        _hex_to_rgba(series.get("color", "#4c9be8")), float(series.get("width", 2))
+                    )
+                    implot.plot_line(
+                        series["name"],
+                        np.asarray(series["x"], float),
+                        np.asarray(series["y"], float),
+                    )
                 implot.end_plot()
             return
         labels, rates, truth = self.rate_bars()
@@ -297,10 +388,14 @@ class BurstGsGui:
                 request = (0.0, top if top > 0 else 1.0)
                 changed = request != getattr(self, "_rates_request", None)
                 self._rates_request = request
-                implot.setup_axis_limits(implot.AXIS_Y1, *request, implot.COND_ALWAYS if changed else implot.COND_ONCE)
+                implot.setup_axis_limits(
+                    implot.AXIS_Y1, *request, implot.COND_ALWAYS if changed else implot.COND_ONCE
+                )
                 implot.plot_bars("fitted", xs, rates, bar_size=0.5)
                 if truth is not None:
-                    implot.set_next_marker_style(implot.MARKER_DIAMOND, 7.0, fill=(240, 140, 30, 255))
+                    implot.set_next_marker_style(
+                        implot.MARKER_DIAMOND, 7.0, fill=(240, 140, 30, 255)
+                    )
                     implot.plot_scatter("simulated", xs, truth)
             implot.end_plot()
 

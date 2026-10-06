@@ -19,6 +19,7 @@ def test_edit_save_apply_and_reset(tmp_path):
     assert m.apply()
     assert applied
     from emtk import im
+
     assert applied[-1].color(im.Col.BUTTON) == (171, 205, 239, 255)
     assert m.current_file.read_text() == m.editor.text
     (m.styles_dir / "keep.txt").write_text("keep")
@@ -38,8 +39,10 @@ def test_canceled_or_failed_operations_preserve_buffer(tmp_path, monkeypatch):
     assert not m.save(destination)
     assert destination.read_text() == "external"
     assert m.current_file == original
+
     def fail(*args, **kwargs):
         raise PermissionError("read-only")
+
     monkeypatch.setattr(Path, "write_text", fail)
     assert not m.save()
     assert "read-only" in m.status
@@ -56,15 +59,19 @@ def test_new_never_overwrites_and_conversion_reports_unsupported(tmp_path):
     assert m.current_file.name == "custom.qss"
     style, ignored = convert_qss("QWidget { color: rgb(10,20,30); } QPushButton { image: url(x); }")
     from emtk import im
+
     assert style.color(im.Col.TEXT) == (10, 20, 30, 255)
     assert ignored
 
 
 def test_native_controls_cancel_and_apply_callback(tmp_path, monkeypatch):
+    import types
+
     from emtk import im
     from emtk.testing import RecordingPainter
+
     from chisurf.plugins.core.style_manager.gui.app import StyleManagerApp
-    import types
+
     m = model(tmp_path)
     app = StyleManagerApp(m)
     tips = []
@@ -95,7 +102,8 @@ def test_native_factory_has_no_qt_imports(tmp_path):
     import os
     import subprocess
     import sys
-    script = '''import sys
+
+    script = """import sys
 class BlockQt:
  def find_spec(self, fullname, *args):
   if fullname.split('.')[0] in ('qtpy','PyQt5','PyQt6','PySide2','PySide6'):
@@ -107,7 +115,12 @@ from emtk.testing import RecordingPainter
 app=make_style_manager_app()
 with im.frame(RecordingPainter(),(0,0,800,600)): app._render()
 app.close()
-'''
-    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
-        env={**os.environ, "CHISURF_SETTINGS_DIR": str(tmp_path / "settings")}, timeout=20)
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "CHISURF_SETTINGS_DIR": str(tmp_path / "settings")},
+        timeout=20,
+    )
     assert result.returncode == 0, result.stderr

@@ -15,11 +15,11 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
+from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 from chisurf.plugins.tttr.audifier.core import TTTRData
 from chisurf.plugins.tttr.audifier.gui.app import create_app
 from chisurf.plugins.tttr.audifier.gui.view_model import AudifierViewModel
 from chisurf.plugins.tttr.audifier.native_playback import NativeSoundPlayer
-from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 BH = REPO / "test/data/tttr/BH/132/BH_SPC132.spc"
@@ -53,14 +53,22 @@ class Process:
 
 def make(loader=None, now=None):
     clock = now if now is not None else [0.0]
-    player = NativeSoundPlayer(command=["player"], clock=lambda: clock[0], spawn=lambda *a, **k: Process())
+    player = NativeSoundPlayer(
+        command=["player"], clock=lambda: clock[0], spawn=lambda *a, **k: Process()
+    )
     return create_app(player=player, loader=loader), clock
 
 
 def stream():
     rng = np.random.default_rng(3)
     n = 4000
-    return TTTRData(rng.integers(0, 4, n), np.sort(rng.integers(0, 4_000_000, n)), rng.integers(0, 256, n), 1e-6, 1e-9)
+    return TTTRData(
+        rng.integers(0, 4, n),
+        np.sort(rng.integers(0, 4_000_000, n)),
+        rng.integers(0, 256, n),
+        1e-6,
+        1e-9,
+    )
 
 
 def settle(ui):
@@ -105,7 +113,9 @@ def test_the_app_computes_what_the_qt_models_do_for_the_same_input():
     ui, _ = loaded()
     qt_model = AudifierViewModel()
     qt_model.data = ui.app.model.data
-    qt_model.set_detectors_from_settings({"detectors": {d["name"]: {"chs": d["channels"]} for d in ui.app.model.detectors}})
+    qt_model.set_detectors_from_settings(
+        {"detectors": {d["name"]: {"chs": d["channels"]} for d in ui.app.model.detectors}}
+    )
     for mode in ("microtime", "lifetime"):
         ui.app.model.waterfall_mode = qt_model.waterfall_mode = mode
         ui.click("update")
@@ -132,13 +142,17 @@ def test_the_default_parameters_equal_the_qt_models():
 def test_a_real_bh_file_is_dropped_read_with_its_subtype_and_shown():
     app, _ = make()
     ui = Ui(app, (1200, 800))
-    assert ui.drop(BH)                                   # no subtype chosen: the reason is the answer
+    assert ui.drop(BH)  # no subtype chosen: the reason is the answer
     settle(ui)
     assert ui.shown("Select the SPC subtype") and not app.model.has_data
     app.editor.model.data.setdefault("tttr_reading", {})["file_type"] = "SPC-130"
     ui.drop(BH)
     settle(ui)
-    assert app.model.has_data and len(app.model.data.macro_ticks) == 183657 and app.model.channels == [0, 1, 8, 9]
+    assert (
+        app.model.has_data
+        and len(app.model.data.macro_ticks) == 183657
+        and app.model.channels == [0, 1, 8, 9]
+    )
     ui.click("update")
     settle(ui)
     assert app.texture is not None and ui.shown("Macro-time (s)") and ui.shown("Micro-time (bin)")
@@ -182,8 +196,15 @@ def test_range_fields_are_typed_stepped_clamped_and_wheeled():
     ui.app.close()
 
 
-@pytest.mark.parametrize("key,typed,attr,expected", [("bin_width", "0.1", "bin_width", 0.1), ("sample_rate", "22050", "sample_rate", 22050),
-                                                     ("master_gain", "1.5", "master_gain", 1.5), ("attack_frames", "5", "attack_frames", 5)])
+@pytest.mark.parametrize(
+    "key,typed,attr,expected",
+    [
+        ("bin_width", "0.1", "bin_width", 0.1),
+        ("sample_rate", "22050", "sample_rate", 22050),
+        ("master_gain", "1.5", "master_gain", 1.5),
+        ("attack_frames", "5", "attack_frames", 5),
+    ],
+)
 def test_audio_parameters_are_typed_with_the_spec_limits(key, typed, attr, expected):
     ui, _ = loaded()
     ui.app.docks.focus("audio")
@@ -191,7 +212,10 @@ def test_audio_parameters_are_typed_with_the_spec_limits(key, typed, attr, expec
     ui.type_into(key, typed)
     assert getattr(ui.app.model, attr) == pytest.approx(expected)
     ui.type_into(key, "1e12")
-    assert getattr(ui.app.model, attr) <= {"bin_width": 1.0, "sample_rate": 192000, "master_gain": 2.0, "attack_frames": 100}[key]
+    assert (
+        getattr(ui.app.model, attr)
+        <= {"bin_width": 1.0, "sample_rate": 192000, "master_gain": 2.0, "attack_frames": 100}[key]
+    )
     ui.app.close()
 
 
@@ -216,7 +240,11 @@ def test_detector_table_show_box_and_typed_colour():
     x, y = cell(ui, "Show", name)
     ui.click_at(x, y)
     assert ui.app.model.detectors[1]["enabled"] is False
-    colour = cell(ui, "Colour", next(t[5] for t in ui.last.texts if t[5].startswith("#") and t[5] == "#38ff38"))
+    colour = cell(
+        ui,
+        "Colour",
+        next(t[5] for t in ui.last.texts if t[5].startswith("#") and t[5] == "#38ff38"),
+    )
     ui.click_at(*colour, clicks=2)
     retype(ui, "#00ff00")
     np.testing.assert_allclose(ui.app.model.detectors[2]["color"], (0, 1, 0))
@@ -245,7 +273,9 @@ def test_channel_table_and_chord_choice():
     ui.click_at(*cell(ui, "Channel", "minor", 0))
     assert ui.app.selected_channel == 1
     ui.click("chord", fx=0.8)
-    ui.press_text("sus4") if "sus4" in ui.app.model.CHORD_TYPES else ui.press_text(ui.app.model.CHORD_TYPES[-1])
+    ui.press_text("sus4") if "sus4" in ui.app.model.CHORD_TYPES else ui.press_text(
+        ui.app.model.CHORD_TYPES[-1]
+    )
     assert ui.app.model.channel_configs[1].chord_type != "minor"
     ui.app.close()
 
@@ -297,7 +327,9 @@ def test_guide_and_help_buttons_and_the_tour_is_walked():
     seen = 0
     for _ in range(steps * 3):
         step = ui.app.guide.steps[ui.app.guide.step_idx]
-        assert_tour_card_clear(ui.app.guide, ui.size)  # every step's control is drawn and the card is not on it
+        assert_tour_card_clear(
+            ui.app.guide, ui.size
+        )  # every step's control is drawn and the card is not on it
         if ui.app.guide.awaiting:
             key = ui.app.guide._target_key(step["target"])
             assert key in ui.app.item_rects, key
@@ -315,7 +347,10 @@ def test_guide_and_help_buttons_and_the_tour_is_walked():
     ui.app.close()
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach an implot inside a DockManager window (repro in the report)")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel does not reach an implot inside a DockManager window (repro in the report)",
+)
 def test_the_waterfall_plot_zooms_with_the_wheel():
     ui, _ = loaded()
     ui.click("update")
@@ -326,7 +361,7 @@ def test_the_waterfall_plot_zooms_with_the_wheel():
     ui.draw(2)
     ui.app.wheel(x + w / 2, y + h / 2, 3)
     ui.draw(3)
-    assert ui.last.strings != before            # the axis ticks changed under the zoom
+    assert ui.last.strings != before  # the axis ticks changed under the zoom
     ui.app.close()
 
 
@@ -347,12 +382,31 @@ def test_layout_at_both_sizes(size):
         app.docks.focus(panel)
         painter = ui.draw(3)
         w, h = size
-        region = {"setup": (0, 24, 0.37 * w, h - 24), "audio": (0, 24, 0.37 * w, h - 24), "waterfall_parameters": (0, 24, 0.37 * w, h - 24),
-                  "waterfall": (0.37 * w, 24, 0.63 * w, 0.62 * h - 24), "mixer": (0.37 * w, 0.62 * h + 24, 0.63 * w, 0.38 * h - 24),
-                  "notes": (0.37 * w, 0.62 * h + 24, 0.63 * w, 0.38 * h - 24)}[panel]    # the dock tab strips are emtk's chrome
-        if panel != "setup":      # the setup panel is the shared detector editor (its headers: see the report)
-            flat = type("P", (), {"texts": [t for t in painter.texts if t[5] not in {"Micro-time (bin)", "Lifetime (ns)"}]})
-            assert_texts_apart(flat, region=region)      # (the rotated y label has an unrotated box in the recording)
+        region = {
+            "setup": (0, 24, 0.37 * w, h - 24),
+            "audio": (0, 24, 0.37 * w, h - 24),
+            "waterfall_parameters": (0, 24, 0.37 * w, h - 24),
+            "waterfall": (0.37 * w, 24, 0.63 * w, 0.62 * h - 24),
+            "mixer": (0.37 * w, 0.62 * h + 24, 0.63 * w, 0.38 * h - 24),
+            "notes": (0.37 * w, 0.62 * h + 24, 0.63 * w, 0.38 * h - 24),
+        }[panel]  # the dock tab strips are emtk's chrome
+        if (
+            panel != "setup"
+        ):  # the setup panel is the shared detector editor (its headers: see the report)
+            flat = type(
+                "P",
+                (),
+                {
+                    "texts": [
+                        t
+                        for t in painter.texts
+                        if t[5] not in {"Micro-time (bin)", "Lifetime (ns)"}
+                    ]
+                },
+            )
+            assert_texts_apart(
+                flat, region=region
+            )  # (the rotated y label has an unrotated box in the recording)
     for key in ("load", "update", "play", "save_wav", "guide", "help", "range_start", "range_end"):
         x, y, w, h = app.item_rects[key]
         assert 0 <= x and x + w <= size[0] + 0.5 and 0 <= y and y + h <= size[1] + 0.5, key

@@ -89,7 +89,12 @@ def table_strings(drv, frames=2):
 
 
 def spec_fields():
-    return [s for p in build_spec()["params"] for s in p["sections"] if s.get("type") == "value" and s.get("kind") in ("int", "float")]
+    return [
+        s
+        for p in build_spec()["params"]
+        for s in p["sections"]
+        if s.get("type") == "value" and s.get("kind") in ("int", "float")
+    ]
 
 
 # -- executable and structures ---------------------------------------------------------------------------------------- #
@@ -114,7 +119,11 @@ def test_a_typed_structure_list_is_committed_when_the_pointer_goes_elsewhere(drv
 
 def test_select_files_opens_the_chooser_and_the_chosen_files_replace_the_list(drv, world):
     drv.click("select_files")
-    assert dialog_open(drv) and drv.app.dialog.multiselect and drv.app.dialog.directory == str(world["home"])
+    assert (
+        dialog_open(drv)
+        and drv.app.dialog.multiselect
+        and drv.app.dialog.directory == str(world["home"])
+    )
     drv.click_text("148l.pdb")
     drv.click_text("small.pdb")
     drv.click_text("Open")
@@ -188,9 +197,22 @@ def test_the_model_combo_lists_the_three_modes_and_each_can_be_clicked(drv):
     assert drv.app.model.indmode == "1"
 
 
-TYPED = {"aer": ("3.5", 3.5), "nsig": ("8", 8), "sigmin": ("0.5", 0.5), "sigmax": ("3", 3.0), "t": ("25", 25.0),
-         "eta": ("0.0089", 0.0089), "rm": ("14300", 14300.0), "vbar": ("0.72", 0.72), "rho": ("1.002", 1.002),
-         "nq": ("20", 20), "qmax": ("35000000", 3.5e7), "ns": ("30", 30), "rmax": ("1.234", 1.234), "ntrials": ("1000", 1000)}
+TYPED = {
+    "aer": ("3.5", 3.5),
+    "nsig": ("8", 8),
+    "sigmin": ("0.5", 0.5),
+    "sigmax": ("3", 3.0),
+    "t": ("25", 25.0),
+    "eta": ("0.0089", 0.0089),
+    "rm": ("14300", 14300.0),
+    "vbar": ("0.72", 0.72),
+    "rho": ("1.002", 1.002),
+    "nq": ("20", 20),
+    "qmax": ("35000000", 3.5e7),
+    "ns": ("30", 30),
+    "rmax": ("1.234", 1.234),
+    "ntrials": ("1000", 1000),
+}
 
 
 @pytest.mark.parametrize("attr", list(TYPED))
@@ -238,7 +260,9 @@ def test_the_mouse_wheel_steps_a_numeric_field(drv):
     drv.wheel(x + w / 2, y + h / 2, -1)
     assert drv.app.model.aer == pytest.approx(2.8)
     x, y, w, h = drv.rect("nsig")
-    drv.hover(x + w / 2, y + h / 2)  # the pointer rests on the field first, as a hand does (hover registers a frame later)
+    drv.hover(
+        x + w / 2, y + h / 2
+    )  # the pointer rests on the field first, as a hand does (hover registers a frame later)
     drv.wheel(x + w / 2, y + h / 2, 1)
     assert drv.app.model.nsig == 7 and drv.app.model.aer == pytest.approx(2.8)
 
@@ -289,7 +313,13 @@ def test_run_computes_every_file_and_fills_table_status_and_log(drv, world):
     assert model.status == "Finished: 5 file(s)." and model.output_status == "Finished."
     for cell in ("1.047e-06", "2.500e-07", "4.000e+00", "N/A"):
         assert cell in painter.strings
-    assert [r["d"] for r in model.result_rows()] == ["1.047e-06", "2.500e-07", "4.000e+00", "N/A", "N/A"]
+    assert [r["d"] for r in model.result_rows()] == [
+        "1.047e-06",
+        "2.500e-07",
+        "4.000e+00",
+        "N/A",
+        "N/A",
+    ]
     assert model.log_lines[0] == f"Executable: {world['exe']}"
     assert sum(1 for line in model.log_lines if line.lstrip().startswith("=== Job")) == 5
     assert "100%" in painter.strings and model.progress_fraction == 1.0
@@ -322,7 +352,10 @@ def test_run_with_invalid_settings_names_the_problem(drv, world):
     populate(drv, world, "148l")
     drv.type_into("nsig", "2")
     drv.click("run")
-    assert drv.app.model.notices[0][0] == "Invalid settings" and "NSIG must be > 2" in drv.app.model.notices[0][1]
+    assert (
+        drv.app.model.notices[0][0] == "Invalid settings"
+        and "NSIG must be > 2" in drv.app.model.notices[0][1]
+    )
     assert not drv.app.model.running
     drv.click("notice_ok")
     drv.type_into("nsig", "-1")
@@ -344,7 +377,9 @@ def test_run_without_an_executable_opens_the_prompt_and_close_without_one_says_s
     assert drv.app.model.opened_urls
     drv.click("prompt_close")
     assert not drv.app.model.exe_prompt
-    assert drv.app.model.notices == [("Executable required", "Configure the HYDRO executable before running.")]
+    assert drv.app.model.notices == [
+        ("Executable required", "Configure the HYDRO executable before running.")
+    ]
     drv.click("notice_ok")
 
 
@@ -360,7 +395,10 @@ def test_the_prompt_select_executable_continues_the_run_with_the_chosen_program(
     assert drv.app.model.prompt_path == world["exe"]
     drv.click("prompt_close")
     finish(drv)
-    assert drv.app.model.exe_path == str(world["exe"]) and drv.app.model.result_rows()[0]["d"] == "1.047e-06"
+    assert (
+        drv.app.model.exe_path == str(world["exe"])
+        and drv.app.model.result_rows()[0]["d"] == "1.047e-06"
+    )
 
 
 def test_the_prompt_close_button_in_the_header_acts_as_close(drv, world):
@@ -375,7 +413,11 @@ def test_a_failing_run_shows_the_error_in_status_and_log_and_run_works_again(drv
     populate(drv, world, "148l", exe="noexec")
     run_and_wait(drv)
     model = drv.app.model
-    assert model.status.startswith("Error: ") and model.output_status == "Failed." and model.log_lines[-1].startswith("\nERROR:")
+    assert (
+        model.status.startswith("Error: ")
+        and model.output_status == "Failed."
+        and model.log_lines[-1].startswith("\nERROR:")
+    )
     assert not model.enabled("save_csv")
     populate(drv, world, "148l")
     run_and_wait(drv)
@@ -392,7 +434,9 @@ def test_run_is_greyed_while_a_run_is_in_flight_and_cancel_skips_the_remaining_f
     drv.click("run")  # a click on the greyed button starts nothing
     assert model.total == before
     drv.click("cancel")
-    assert model.output_status == "Cancelling after current job finishes…" and not model.enabled("cancel")
+    assert model.output_status == "Cancelling after current job finishes…" and not model.enabled(
+        "cancel"
+    )
     finish(drv)
     assert model.status == "Finished: 1 file(s)." and len(model.results) == 1
     assert model.result_rows()[1]["d"] == "" and model.output_status == "Finished."
@@ -408,15 +452,24 @@ def test_save_csv_writes_the_file_with_a_typed_name_and_confirms(drv, world):
     populate(drv, world, "148l", "garbled")
     run_and_wait(drv)
     drv.click("save_csv")
-    assert dialog_open(drv) and drv.app.dialog.mode == "save" and drv.app.dialog.filename == "hydro_results.csv"
+    assert (
+        dialog_open(drv)
+        and drv.app.dialog.mode == "save"
+        and drv.app.dialog.filename == "hydro_results.csv"
+    )
     drv.click("hydropro_file_name", fx=0.3) if False else None
     drv.app.dialog.filename = "my_results.csv"
     drv.click_text("Save")
     out = world["home"] / "my_results.csv"
-    assert out.read_text().splitlines() == ["File,DiffusionCoefficient(cm^2/s)", f"{world['files']['148l']},1.047e-06",
-                                           f"{world['files']['garbled']},"]
+    assert out.read_text().splitlines() == [
+        "File,DiffusionCoefficient(cm^2/s)",
+        f"{world['files']['148l']},1.047e-06",
+        f"{world['files']['garbled']},",
+    ]
     assert drv.app.model.notices[-1] == ("Saved", f"Results saved to {out}")
-    assert f"Results saved to {out}" in drv.draw(2).strings or any("Results saved to" in s for s in drv.draw(2).strings)
+    assert f"Results saved to {out}" in drv.draw(2).strings or any(
+        "Results saved to" in s for s in drv.draw(2).strings
+    )
     drv.click("notice_ok")
 
 
@@ -425,7 +478,11 @@ def test_save_csv_cancel_writes_nothing(drv, world):
     run_and_wait(drv)
     drv.click("save_csv")
     drv.click_text("Cancel", last=True)
-    assert not dialog_open(drv) and not (world["home"] / "hydro_results.csv").exists() and drv.app.model.notices == []
+    assert (
+        not dialog_open(drv)
+        and not (world["home"] / "hydro_results.csv").exists()
+        and drv.app.model.notices == []
+    )
 
 
 def test_save_csv_to_an_unwritable_place_reports_the_error(drv, world):
@@ -441,7 +498,12 @@ def test_clear_empties_files_status_and_results(drv, world):
     run_and_wait(drv)
     drv.click("clear")
     model = drv.app.model
-    assert (model.struct_files, model.status, model.results, model.result_rows()) == ("", "", [], [])
+    assert (model.struct_files, model.status, model.results, model.result_rows()) == (
+        "",
+        "",
+        [],
+        [],
+    )
     assert not model.enabled("save_csv")
     assert "1.047e-06" not in table_strings(drv) and "0 rows × 2 columns" in table_strings(drv)
 
@@ -471,7 +533,9 @@ def test_the_wheel_scrolls_a_long_results_table(drv, world):
     drv.app.model.struct_files = ", ".join(f"/data/set/structure_{i:03d}.pdb" for i in range(60))
     drv.draw(3)
     x, y, w, h = drv.rect("result_rows")
-    assert any("structure_000" in s for s in table_strings(drv)) and not any("structure_059" in s for s in table_strings(drv))
+    assert any("structure_000" in s for s in table_strings(drv)) and not any(
+        "structure_059" in s for s in table_strings(drv)
+    )
     for _ in range(12):
         drv.wheel(x + w / 2, y + h / 2, -5)
     shown = table_strings(drv)
@@ -483,7 +547,11 @@ def test_the_wheel_scrolls_a_long_results_table(drv, world):
 
 def test_the_output_buttons_are_greyed_before_any_run(drv):
     model = drv.app.model
-    assert not model.enabled("clear_log") and not model.enabled("save_log") and not model.enabled("cancel")
+    assert (
+        not model.enabled("clear_log")
+        and not model.enabled("save_log")
+        and not model.enabled("cancel")
+    )
     drv.click("save_log")
     assert not dialog_open(drv)
     drv.click("cancel")
@@ -515,8 +583,13 @@ def test_the_log_shows_the_programs_output_and_wraps_long_lines(drv, world):
     populate(drv, world, "148l")
     run_and_wait(drv)
     shown = drv.app._log_seen  # what the log editor holds: the log, broken at the pane's width
-    assert "Result: diffusion coefficient = 1.047e-06 cm^2/s" in shown and "HYDRO fake: read hydropro.dat" in shown
-    assert max(len(line) for line in shown.splitlines()) < max(len(line) for line in drv.app.model.log_text.splitlines())
+    assert (
+        "Result: diffusion coefficient = 1.047e-06 cm^2/s" in shown
+        and "HYDRO fake: read hydropro.dat" in shown
+    )
+    assert max(len(line) for line in shown.splitlines()) < max(
+        len(line) for line in drv.app.model.log_text.splitlines()
+    )
     drv.size = SMALL
     drv.draw(3)
     x, y, w, h = drv.rect("output_log")
@@ -556,7 +629,9 @@ def test_guide_button_starts_the_tour_and_its_card_buttons_work(drv):
     tour = drv.app.tour
     drv.click("guide")
     assert tour.active and not tour.awaiting
-    drv.click_text("Next ►", last=True)  # step 1 awaits the Executable… button: Next is greyed there
+    drv.click_text(
+        "Next ►", last=True
+    )  # step 1 awaits the Executable… button: Next is greyed there
     assert tour.step_idx == 1 and tour.awaiting
     drv.click_text("Next ►", last=True)
     assert tour.step_idx == 1
@@ -622,7 +697,12 @@ def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):
         assert rect and rect[2] > 0 and rect[3] > 0, step["title"]
         card_w, card_h = min(480.0, BIG[0] - 40.0), 150.0
         x, y = place_tour_card(rect, float(BIG[0]), float(BIG[1]), card_w, card_h)
-        clear = x + card_w <= rect[0] or x >= rect[0] + rect[2] or y + card_h <= rect[1] or y >= rect[1] + rect[3]
+        clear = (
+            x + card_w <= rect[0]
+            or x >= rect[0] + rect[2]
+            or y + card_h <= rect[1]
+            or y >= rect[1] + rect[3]
+        )
         assert clear, f"{step['title']}: the card would cover its target"
     drv.app.tour.stop()
 
@@ -654,8 +734,14 @@ def test_settings_round_trip_through_the_app(drv, world):
     state = drv.app.export_settings()
     other = HydroProApp()
     other.restore_settings(state)
-    assert (other.model.aer, other.model.indmode, other.model.exe_path) == (4.8, "2", str(world["exe"]))
-    assert other.model.struct_files == ""  # the Qt tool remembered the executable and the parameters, not the file list
+    assert (other.model.aer, other.model.indmode, other.model.exe_path) == (
+        4.8,
+        "2",
+        str(world["exe"]),
+    )
+    assert (
+        other.model.struct_files == ""
+    )  # the Qt tool remembered the executable and the parameters, not the file list
     other.close()
 
 

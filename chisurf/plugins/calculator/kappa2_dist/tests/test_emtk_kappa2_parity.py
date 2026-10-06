@@ -24,7 +24,7 @@ from chisurf.plugins.calculator.kappa2_dist.gui.app import make_app
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-PICTOGRAM = re.compile("[\U0001F000-\U0001FFFF☀-➿️]")
+PICTOGRAM = re.compile("[\U0001f000-\U0001ffff☀-➿️]")
 
 
 def _draw(app, size=(1200, 800), times=2):
@@ -71,18 +71,24 @@ def test_an_edit_while_computing_is_computed_too(monkeypatch):
 
     runs = []
     original = services._kappa2_compute_handler
-    monkeypatch.setattr(services, "_kappa2_compute_handler",
-                        lambda *a, **k: (runs.append(k.get("kappa2_true", a[-1] if a else None)), original(*a, **k))[1])
-    app = make_app()                                # one computation on construction
+    monkeypatch.setattr(
+        services,
+        "_kappa2_compute_handler",
+        lambda *a, **k: (
+            runs.append(k.get("kappa2_true", a[-1] if a else None)),
+            original(*a, **k),
+        )[1],
+    )
+    app = make_app()  # one computation on construction
     _settle(app)
-    app.kappa2_gui.on_compute()                     # a run is in flight
+    app.kappa2_gui.on_compute()  # a run is in flight
     assert app.tool.busy
-    app.tool._model.kappa2_true = 1.5               # the user edits meanwhile
+    app.tool._model.kappa2_true = 1.5  # the user edits meanwhile
     app.kappa2_gui.on_edit()
     _settle(app)
-    assert app.tool._model.kappa2_true == 1.5        # the edit survived the arriving result
+    assert app.tool._model.kappa2_true == 1.5  # the edit survived the arriving result
     assert app.tool.dirty is False
-    assert len(runs) == 3                            # construction, the run in flight, the edit
+    assert len(runs) == 3  # construction, the run in flight, the edit
 
 
 # 3. the form is the Qt tool's spec: radio labels, every field described
@@ -92,9 +98,15 @@ def test_the_form_is_the_qt_spec():
     # the model choice shows the Qt labels (a combo here: the radio row did not fit a narrow dock)
     for label in ("WIC (Cone)", "r₀ (fund.)", "r_AD known (use δ)"):
         assert label in painter.strings, label
-    choice = next(s for p in app.kappa2_gui.input_spec["sections"] for s in p.get("sections", [])
-                  if s.get("type") == "choice")
-    assert choice["labels"] == ["WIC (Cone)", "DWT (Diffusion)", "Isotropic"] and "style" not in choice
+    choice = next(
+        s
+        for p in app.kappa2_gui.input_spec["sections"]
+        for s in p.get("sections", [])
+        if s.get("type") == "choice"
+    )
+    assert (
+        choice["labels"] == ["WIC (Cone)", "DWT (Diffusion)", "Isotropic"] and "style" not in choice
+    )
     assert [s for s in painter.strings if PICTOGRAM.search(s)] == []
     spec = json.loads((PLUGIN / "k2dist.view.json").read_text(encoding="utf-8"))
 

@@ -338,7 +338,11 @@ class CalibrationViewModel:
     def check(self) -> str:
         """Why the calibration cannot be published ("" when it can): an empty range or a negative background."""
         for name, row in self.calibration.items():
-            for start, stop in (("conv_start", "conv_stop"), ("irf_start", "irf_stop"), ("bg_start", "bg_stop")):
+            for start, stop in (
+                ("conv_start", "conv_stop"),
+                ("irf_start", "irf_stop"),
+                ("bg_start", "bg_stop"),
+            ):
                 if row.get(stop, 0) and row.get(start, 0) >= row[stop]:
                     return f"{name}: range start must be smaller than stop"
             if row.get("bg_vv", 0) < 0 or row.get("bg_vh", 0) < 0:

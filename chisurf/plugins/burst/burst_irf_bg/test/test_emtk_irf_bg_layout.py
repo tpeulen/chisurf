@@ -6,11 +6,15 @@ the panel, icons touching labels.
 
 import pytest
 
-from test.gui.emtk_layout_checks import (
-    SIZES, assert_disjoint, assert_icons_clear, assert_inside, assert_texts_apart, draw,
-)
-
 from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_inside,
+    assert_texts_apart,
+    draw,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -42,7 +46,13 @@ def test_actions_are_wrapped_rows(drawn):
 def test_short_fields_icons_and_texts(drawn):
     app, painter, size = drawn
     fields = app.irf_gui.form_state.rects
-    for name in ("min_photons", "photon_window", "time_window_ms", "baseline_quantile", "micro_time_binning"):
+    for name in (
+        "min_photons",
+        "photon_window",
+        "time_window_ms",
+        "baseline_quantile",
+        "micro_time_binning",
+    ):
         assert fields[name][2] <= 140, (name, fields[name])
     assert_icons_clear(painter)
     assert_texts_apart(painter, region=(0.0, 0.0, size[0] * 0.4, size[1]))

@@ -279,7 +279,8 @@ class FlcApp(ImApp):
                 if not keep.any():
                     continue
                 implot.set_next_line_style(
-                    COLOURS.get(item.get("color", "y"), COLOURS["y"]), float(item.get("width", 1)) + 0.5
+                    COLOURS.get(item.get("color", "y"), COLOURS["y"]),
+                    float(item.get("width", 1)) + 0.5,
                 )
                 implot.plot_line(str(item.get("name", "")), x[keep], y[keep])
             implot.end_plot()

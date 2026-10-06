@@ -26,7 +26,11 @@ from .view_model import AudifierViewModel
 def _spin(sections):
     """The Qt spin boxes had arrows: number fields step by the spec's step."""
     for section in sections:
-        if section.get("type") == "value" and section.get("kind") in ("int", "float") and not section.get("read_only"):
+        if (
+            section.get("type") == "value"
+            and section.get("kind") in ("int", "float")
+            and not section.get("read_only")
+        ):
             section["style"] = "spin"
         _spin(section.get("sections", []))
 
@@ -39,35 +43,167 @@ class _Rows(list):
     revision = 0
 
 
-RANGE_SPEC = {"sections": [{"type": "panel", "title": "", "n_col": 2, "description": "The part of the stream that is rendered.", "sections": [
-    {"type": "value", "attr": "range_start", "kind": "float", "style": "spin", "label": "Range start", "minimum": 0.0, "maximum": 1e6,
-     "decimals": 3, "step": 1.0, "suffix": " s", "description": "Start relative to the first photon in the source."},
-    {"type": "value", "attr": "range_end", "kind": "float", "style": "spin", "label": "Range end", "minimum": 0.0, "maximum": 1e6,
-     "decimals": 3, "step": 1.0, "suffix": " s", "description": "Exclusive end; zero includes all remaining photons."}]}]}
+RANGE_SPEC = {
+    "sections": [
+        {
+            "type": "panel",
+            "title": "",
+            "n_col": 2,
+            "description": "The part of the stream that is rendered.",
+            "sections": [
+                {
+                    "type": "value",
+                    "attr": "range_start",
+                    "kind": "float",
+                    "style": "spin",
+                    "label": "Range start",
+                    "minimum": 0.0,
+                    "maximum": 1e6,
+                    "decimals": 3,
+                    "step": 1.0,
+                    "suffix": " s",
+                    "description": "Start relative to the first photon in the source.",
+                },
+                {
+                    "type": "value",
+                    "attr": "range_end",
+                    "kind": "float",
+                    "style": "spin",
+                    "label": "Range end",
+                    "minimum": 0.0,
+                    "maximum": 1e6,
+                    "decimals": 3,
+                    "step": 1.0,
+                    "suffix": " s",
+                    "description": "Exclusive end; zero includes all remaining photons.",
+                },
+            ],
+        }
+    ]
+}
 
-DETECTOR_TABLE = {"sections": [{"type": "custom", "key": "data_table",
-    "description": "The detectors of the waterfall. The Show box includes a detector; the colour is its hue in the waterfall (type #rrggbb).",
-    "options": {"source": "detector_rows", "editable": True, "height": 150, "row_key": "row", "selected_call": "select_detector",
-                "edited_call": "edit_detector", "columns": [
-        {"key": "show", "title": "Show", "width": 54, "editable": True, "description": "Include this detector in the micro-time and lifetime waterfall."},
-        {"key": "name", "title": "Detector", "description": "The detector's name from the setup."},
-        {"key": "channels", "title": "Channels", "description": "The routing channels of the detector."},
-        {"key": "color", "title": "Colour", "width": 90, "editable": True, "description": "Waterfall colour of the detector as #rrggbb (red, green, blue)."}]}}]}
+DETECTOR_TABLE = {
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "The detectors of the waterfall. The Show box includes a detector; the colour is its hue in the waterfall (type #rrggbb).",
+            "options": {
+                "source": "detector_rows",
+                "editable": True,
+                "height": 150,
+                "row_key": "row",
+                "selected_call": "select_detector",
+                "edited_call": "edit_detector",
+                "columns": [
+                    {
+                        "key": "show",
+                        "title": "Show",
+                        "width": 54,
+                        "editable": True,
+                        "description": "Include this detector in the micro-time and lifetime waterfall.",
+                    },
+                    {
+                        "key": "name",
+                        "title": "Detector",
+                        "description": "The detector's name from the setup.",
+                    },
+                    {
+                        "key": "channels",
+                        "title": "Channels",
+                        "description": "The routing channels of the detector.",
+                    },
+                    {
+                        "key": "color",
+                        "title": "Colour",
+                        "width": 90,
+                        "editable": True,
+                        "description": "Waterfall colour of the detector as #rrggbb (red, green, blue).",
+                    },
+                ],
+            },
+        }
+    ]
+}
 
-CHANNEL_TABLE = {"sections": [{"type": "custom", "key": "data_table",
-    "description": "One row per routing channel: whether it is played and exported, its chord, pitch, gain and micro-time gate.",
-    "options": {"source": "channel_rows", "editable": True, "expand": True, "reserve": 70, "row_key": "row", "selected_call": "select_channel",
-                "edited_call": "edit_channel", "columns": [
-        {"key": "on", "title": "On", "width": 44, "editable": True, "description": "Include this routing channel in playback and WAV export."},
-        {"key": "channel", "title": "Channel", "width": 70, "description": "The routing channel."},
-        {"key": "chord", "title": "Chord", "description": "Chord quality of the channel's photon envelope (change it below)."},
-        {"key": "pitch", "title": "Pitch", "width": 80, "editable": True, "description": "Transpose the chord by this many semitones (-24 to 24)."},
-        {"key": "gain", "title": "Gain", "width": 70, "editable": True, "description": "Channel amplitude multiplier (0 to 10)."},
-        {"key": "micro_min", "title": "Micro first", "width": 90, "editable": True, "description": "Inclusive lower photon micro-time gate (bin)."},
-        {"key": "micro_max", "title": "Micro last", "width": 90, "editable": True, "description": "Exclusive upper photon micro-time gate (bin)."}]}}]}
+CHANNEL_TABLE = {
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "One row per routing channel: whether it is played and exported, its chord, pitch, gain and micro-time gate.",
+            "options": {
+                "source": "channel_rows",
+                "editable": True,
+                "expand": True,
+                "reserve": 70,
+                "row_key": "row",
+                "selected_call": "select_channel",
+                "edited_call": "edit_channel",
+                "columns": [
+                    {
+                        "key": "on",
+                        "title": "On",
+                        "width": 44,
+                        "editable": True,
+                        "description": "Include this routing channel in playback and WAV export.",
+                    },
+                    {
+                        "key": "channel",
+                        "title": "Channel",
+                        "width": 70,
+                        "description": "The routing channel.",
+                    },
+                    {
+                        "key": "chord",
+                        "title": "Chord",
+                        "description": "Chord quality of the channel's photon envelope (change it below).",
+                    },
+                    {
+                        "key": "pitch",
+                        "title": "Pitch",
+                        "width": 80,
+                        "editable": True,
+                        "description": "Transpose the chord by this many semitones (-24 to 24).",
+                    },
+                    {
+                        "key": "gain",
+                        "title": "Gain",
+                        "width": 70,
+                        "editable": True,
+                        "description": "Channel amplitude multiplier (0 to 10).",
+                    },
+                    {
+                        "key": "micro_min",
+                        "title": "Micro first",
+                        "width": 90,
+                        "editable": True,
+                        "description": "Inclusive lower photon micro-time gate (bin).",
+                    },
+                    {
+                        "key": "micro_max",
+                        "title": "Micro last",
+                        "width": 90,
+                        "editable": True,
+                        "description": "Exclusive upper photon micro-time gate (bin).",
+                    },
+                ],
+            },
+        }
+    ]
+}
 
-CHANNEL_FORM = {"sections": [{"type": "choice", "attr": "chord", "label": "Chord of the selected channel", "options_source": "chord_options",
-                              "description": "Chord quality assigned to the selected channel's photon envelope."}]}
+CHANNEL_FORM = {
+    "sections": [
+        {
+            "type": "choice",
+            "attr": "chord",
+            "label": "Chord of the selected channel",
+            "options_source": "chord_options",
+            "description": "Chord quality assigned to the selected channel's photon envelope.",
+        }
+    ]
+}
 
 
 class AudifierApp(TourTarget, ImApp):
@@ -82,7 +218,9 @@ class AudifierApp(TourTarget, ImApp):
         self.message = "Load a TTTR stream to render audio and its waterfall."
         self.dialog = None
         self.dialog_callback = None
-        self.dialog_window = DialogWindow("Audifier file chooser", size=(640.0, 420.0), key="audifier-file")
+        self.dialog_window = DialogWindow(
+            "Audifier file chooser", size=(640.0, 420.0), key="audifier-file"
+        )
         self.item_rects = {}
         self.selected_detector = -1
         self.selected_channel = -1
@@ -93,9 +231,13 @@ class AudifierApp(TourTarget, ImApp):
         self.help = EmTkHelpWindow(
             title="Audifier help", resource=Path(__file__).with_name("help.md")
         )
-        self.guide = EmTkGuidedTour(steps=Path(__file__).with_name("guide.json"), get_target_rect=lambda k: self.item_rects.get(k),
-                                    owner=self, wait_for_controls=True,
-                                    on_step_change=lambda _i, step: step.get("window") and self.docks.focus(step["window"]))
+        self.guide = EmTkGuidedTour(
+            steps=Path(__file__).with_name("guide.json"),
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self,
+            wait_for_controls=True,
+            on_step_change=lambda _i, step: step.get("window") and self.docks.focus(step["window"]),
+        )
         self.docks = DockManager(
             Split(
                 "h", 0.37, Region("config"), Split("v", 0.62, Region("waterfall"), Region("mixer"))
@@ -121,7 +263,9 @@ class AudifierApp(TourTarget, ImApp):
             lambda box: self.draw_mixer(box, detectors=False),
             dock="mixer",
         )
-        panels = json.loads(Path(__file__).with_name("audifier.view.json").read_text())["sections"][0]["sections"]
+        panels = json.loads(Path(__file__).with_name("audifier.view.json").read_text())["sections"][
+            0
+        ]["sections"]
         self.parameter_specs = panels
         self.specs = {}
         for panel in panels:
@@ -129,8 +273,13 @@ class AudifierApp(TourTarget, ImApp):
                 spec = {"sections": json.loads(json.dumps(panel["sections"]))}
                 _spin(spec["sections"])
                 self.specs[panel["title"]] = layout_spec(spec)
-        self.forms = {name: FormState(on_used=self.guide.notify_used) for name in (*self.specs, "range", "channel")}
-        self.table_forms = {name: FormState(on_used=self.guide.notify_used) for name in ("detectors", "channels")}
+        self.forms = {
+            name: FormState(on_used=self.guide.notify_used)
+            for name in (*self.specs, "range", "channel")
+        }
+        self.table_forms = {
+            name: FormState(on_used=self.guide.notify_used) for name in ("detectors", "channels")
+        }
         self.view = self
         self.waterfall_view = None
         super().__init__(gui=self.render, continuous=False)
@@ -364,9 +513,18 @@ class AudifierApp(TourTarget, ImApp):
     # ── table sources and callbacks ───────────────────────────────────────
 
     def detector_rows(self):
-        rows = _Rows([{"row": i, "show": bool(d["enabled"]), "name": d["name"],
-                       "channels": ", ".join(str(c) for c in d["channels"]), "color": hex_of(d["color"])}
-                      for i, d in enumerate(self.model.detectors)])
+        rows = _Rows(
+            [
+                {
+                    "row": i,
+                    "show": bool(d["enabled"]),
+                    "name": d["name"],
+                    "channels": ", ".join(str(c) for c in d["channels"]),
+                    "color": hex_of(d["color"]),
+                }
+                for i, d in enumerate(self.model.detectors)
+            ]
+        )
         rows.revision = hash(tuple((r["show"], r["name"], r["color"]) for r in rows))
         return rows
 
@@ -382,7 +540,7 @@ class AudifierApp(TourTarget, ImApp):
             try:
                 if len(text) != 6:
                     raise ValueError
-                rgb = tuple(int(text[j:j + 2], 16) / 255 for j in (0, 2, 4))
+                rgb = tuple(int(text[j : j + 2], 16) / 255 for j in (0, 2, 4))
             except ValueError:
                 self.message = f"Not a colour: {value} (use #rrggbb)."
                 return
@@ -392,9 +550,32 @@ class AudifierApp(TourTarget, ImApp):
         rows = _Rows()
         for ch in self.model.channels:
             cfg = self.model.channel_configs[ch]
-            rows.append({"row": ch, "on": bool(self.model.channel_enabled.get(ch, True)), "channel": ch, "chord": cfg.chord_type,
-                         "pitch": cfg.pitch_semitones, "gain": cfg.gain, "micro_min": cfg.micro_min, "micro_max": cfg.micro_max})
-        rows.revision = hash(tuple((r["row"], r["on"], r["chord"], r["pitch"], r["gain"], r["micro_min"], r["micro_max"]) for r in rows))
+            rows.append(
+                {
+                    "row": ch,
+                    "on": bool(self.model.channel_enabled.get(ch, True)),
+                    "channel": ch,
+                    "chord": cfg.chord_type,
+                    "pitch": cfg.pitch_semitones,
+                    "gain": cfg.gain,
+                    "micro_min": cfg.micro_min,
+                    "micro_max": cfg.micro_max,
+                }
+            )
+        rows.revision = hash(
+            tuple(
+                (
+                    r["row"],
+                    r["on"],
+                    r["chord"],
+                    r["pitch"],
+                    r["gain"],
+                    r["micro_min"],
+                    r["micro_max"],
+                )
+                for r in rows
+            )
+        )
         return rows
 
     def select_channel(self, record):
@@ -405,15 +586,21 @@ class AudifierApp(TourTarget, ImApp):
         if key == "on":
             self.model.set_channel(ch, enabled=value in (True, "True", "true", 1))
             return
-        limits = {"pitch": ("pitch_semitones", -24.0, 24.0, float), "gain": ("gain", 0.0, 10.0, float),
-                  "micro_min": ("micro_min", 0, 2**31 - 1, int), "micro_max": ("micro_max", 1, 2**31 - 1, int)}
+        limits = {
+            "pitch": ("pitch_semitones", -24.0, 24.0, float),
+            "gain": ("gain", 0.0, 10.0, float),
+            "micro_min": ("micro_min", 0, 2**31 - 1, int),
+            "micro_max": ("micro_max", 1, 2**31 - 1, int),
+        }
         attr, lo, hi, kind = limits[key]
         try:
             number = kind(float(str(value).strip()))
         except ValueError:
             self.message = f"Not a number: {value}"
             return
-        self.model.channel_configs[ch] = replace(self.model.channel_configs[ch], **{attr: max(lo, min(hi, number))})
+        self.model.channel_configs[ch] = replace(
+            self.model.channel_configs[ch], **{attr: max(lo, min(hi, number))}
+        )
 
     # the selected channel's chord, for the form under the channel table
     @property
@@ -482,20 +669,66 @@ class AudifierApp(TourTarget, ImApp):
             im.set_item_tooltip(self.model.input_file)
             self.remember("file_name")
         playing = self.player.state in {"playing", "paused"}
-        pressed = button_row([
-            {"label": "Load TTTR", "key": "load", "tip": "Load a photon stream. Drag and drop is also supported."},
-            {"label": "Update", "key": "update", "tip": "Compute the selected detector waterfall in the background."},
-            {"label": "Play / Resume", "key": "play", "tip": "Render current settings, or resume the paused audio without restarting."},
-            {"label": "Pause", "key": "pause", "enabled": self.player.state == "playing", "tip": "Pause the native audio process at its current position."},
-            {"label": "Stop", "key": "stop", "enabled": playing or self.pending_play, "tip": "Stop audio and return the playback indicator to its beginning."},
-            {"label": "Revert", "key": "revert", "enabled": playing, "tip": "Restart from the beginning if playing, otherwise reset the position."},
-            {"label": "Save WAV", "key": "save_wav", "tip": "Render selected channels and range to a 16-bit mono WAV file."},
-            {"label": "Guide", "key": "guide", "tip": "Step-by-step audification workflow."},
-            {"label": "Help", "key": "help", "tip": "Audio, lifetime and timing workflow reference."},
-        ], remember=self.remember)
-        actions = {"load": self.choose, "update": self.compute_waterfall, "play": self.play, "pause": self.player.pause,
-                   "stop": self.stop_playback, "revert": self.player.revert, "save_wav": lambda: self.choose(save=True),
-                   "guide": self.guide.start, "help": self.help.show}
+        pressed = button_row(
+            [
+                {
+                    "label": "Load TTTR",
+                    "key": "load",
+                    "tip": "Load a photon stream. Drag and drop is also supported.",
+                },
+                {
+                    "label": "Update",
+                    "key": "update",
+                    "tip": "Compute the selected detector waterfall in the background.",
+                },
+                {
+                    "label": "Play / Resume",
+                    "key": "play",
+                    "tip": "Render current settings, or resume the paused audio without restarting.",
+                },
+                {
+                    "label": "Pause",
+                    "key": "pause",
+                    "enabled": self.player.state == "playing",
+                    "tip": "Pause the native audio process at its current position.",
+                },
+                {
+                    "label": "Stop",
+                    "key": "stop",
+                    "enabled": playing or self.pending_play,
+                    "tip": "Stop audio and return the playback indicator to its beginning.",
+                },
+                {
+                    "label": "Revert",
+                    "key": "revert",
+                    "enabled": playing,
+                    "tip": "Restart from the beginning if playing, otherwise reset the position.",
+                },
+                {
+                    "label": "Save WAV",
+                    "key": "save_wav",
+                    "tip": "Render selected channels and range to a 16-bit mono WAV file.",
+                },
+                {"label": "Guide", "key": "guide", "tip": "Step-by-step audification workflow."},
+                {
+                    "label": "Help",
+                    "key": "help",
+                    "tip": "Audio, lifetime and timing workflow reference.",
+                },
+            ],
+            remember=self.remember,
+        )
+        actions = {
+            "load": self.choose,
+            "update": self.compute_waterfall,
+            "play": self.play,
+            "pause": self.player.pause,
+            "stop": self.stop_playback,
+            "revert": self.player.revert,
+            "save_wav": lambda: self.choose(save=True),
+            "guide": self.guide.start,
+            "help": self.help.show,
+        }
         if pressed:
             try:
                 actions[pressed]()
@@ -519,7 +752,9 @@ class AudifierApp(TourTarget, ImApp):
     def _draw_plot(self):
         payload = self.model.waterfall_payload()
         if self.texture is None or not payload:
-            im.text_wrapped("Update computes a waterfall using the enabled detectors. Audio channel selection is independent of detector visibility.")
+            im.text_wrapped(
+                "Update computes a waterfall using the enabled detectors. Audio channel selection is independent of detector visibility."
+            )
             self.remember("empty_waterfall")
             return
         times = payload["macro_t_s"]
@@ -531,14 +766,20 @@ class AudifierApp(TourTarget, ImApp):
             y, ylabel = np.log10(y), "log10 lifetime (ns)"
         t_end = float(times[-1] + times[0]) if len(times) else 1.0
         avail = im.get_content_region_avail()
-        if implot.begin_plot("##waterfall", (-1, max(90.0, avail[1] - 4.0)), implot.FLAGS_NO_LEGEND):
+        if implot.begin_plot(
+            "##waterfall", (-1, max(90.0, avail[1] - 4.0)), implot.FLAGS_NO_LEGEND
+        ):
             implot.setup_axes("Macro-time (s)", ylabel)
             implot.plot_image("waterfall", self.texture, (0.0, float(y[0])), (t_end, float(y[-1])))
             if self.player.duration > 0 and self.player.state in {"playing", "paused"}:
-                implot.plot_inf_lines("position", [t_end * self.player.position / self.player.duration])
+                implot.plot_inf_lines(
+                    "position", [t_end * self.player.position / self.player.duration]
+                )
             implot.end_plot()
-            im.set_item_tooltip("Horizontal axis: elapsed macro-time; vertical axis: micro-time bins or lifetime. "
-                                "Brightness encodes amplitude and hue identifies detectors. Wheel zooms, drag pans.")
+            im.set_item_tooltip(
+                "Horizontal axis: elapsed macro-time; vertical axis: micro-time bins or lifetime. "
+                "Brightness encodes amplitude and hue identifies detectors. Wheel zooms, drag pans."
+            )
             self.remember("waterfall_plot")
 
     def render(self):
@@ -572,10 +813,23 @@ class AudifierApp(TourTarget, ImApp):
                 self.dialog = None
 
     def animating(self):
-        return super().animating() or self.job.running or self.player.state == "playing" or self.editor._future is not None
+        return (
+            super().animating()
+            or self.job.running
+            or self.player.state == "playing"
+            or self.editor._future is not None
+        )
 
     def next_frame_in(self):
-        return 0.05 if (self.job.running or self.player.state == "playing" or self.editor._future is not None) else super().next_frame_in()
+        return (
+            0.05
+            if (
+                self.job.running
+                or self.player.state == "playing"
+                or self.editor._future is not None
+            )
+            else super().next_frame_in()
+        )
 
     def export_settings(self):
         setup = self.editor.model.get_settings()

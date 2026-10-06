@@ -4,9 +4,9 @@ import logging
 from pathlib import Path
 
 from emtk import im
-from emtk.file_dialog import FileDialog
 from emtk.dialog_window import DialogWindow
 from emtk.docking import LayoutStore
+from emtk.file_dialog import FileDialog
 
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
@@ -135,7 +135,9 @@ class TimeWindowController:
         self.add_paths(found)
         grew = len(self._file_paths) > before
         if not grew and not any(_is_supported_path(str(p)) for p in found):
-            self.notify("Nothing to queue: drop TTTR files (.ptu, .ht3, .phu, ...) or a folder of them.")
+            self.notify(
+                "Nothing to queue: drop TTTR files (.ptu, .ht3, .phu, ...) or a folder of them."
+            )
         return grew
 
     def _remove_preview_file(self) -> None:
@@ -248,7 +250,9 @@ def _layout_store():
         from chisurf.core.settings import chisurf_settings_path
     except Exception:  # noqa: BLE001 - no settings folder: the layout is not kept
         return None
-    return LayoutStore("tttr_time_windows", path=chisurf_settings_path / "tttr_time_windows_layout.json")
+    return LayoutStore(
+        "tttr_time_windows", path=chisurf_settings_path / "tttr_time_windows_layout.json"
+    )
 
 
 class _StandaloneApp(TimeWindowApp):
@@ -272,10 +276,12 @@ class _StandaloneApp(TimeWindowApp):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.continuous = True
-        self._job_window = DialogWindow("TTTR operation", size=(320.0, 110.0), key="tw-job",
-                                        fit_height=True)
-        self._file_window = DialogWindow("Choose files or folder", size=(640.0, 460.0),
-                                         key="tw-file")
+        self._job_window = DialogWindow(
+            "TTTR operation", size=(320.0, 110.0), key="tw-job", fit_height=True
+        )
+        self._file_window = DialogWindow(
+            "Choose files or folder", size=(640.0, 460.0), key="tw-file"
+        )
         self._job_window.show()
         self._file_window.show()
         docks = self.time_window_gui.docks

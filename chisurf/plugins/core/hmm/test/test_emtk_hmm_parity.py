@@ -30,8 +30,11 @@ REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
 def snapshot_real():
     if not REAL_CHISURF.is_dir():
         return {}
-    return {str(p): p.stat().st_mtime_ns for p in REAL_CHISURF.rglob("*")
-            if p.is_file() and not {"cache", "logs"} & set(p.parts)}
+    return {
+        str(p): p.stat().st_mtime_ns
+        for p in REAL_CHISURF.rglob("*")
+        if p.is_file() and not {"cache", "logs"} & set(p.parts)
+    }
 
 
 REAL_BEFORE = snapshot_real()
@@ -161,11 +164,20 @@ def test_the_tables_show_what_the_qt_html_tables_show(qt_tool, ui, files):
     qt.n_states = 3
     qt.run()
     html = qt.states_html()
-    qt_cells = [re.sub(r"<[^>]+>|&#9632;", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", html)]
+    qt_cells = [
+        re.sub(r"<[^>]+>|&#9632;", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", html)
+    ]
     rows = qt.state_rows()
     native_cells = []
     for r in rows:
-        native_cells += [str(r["state"]), r["mean"], r["std"], f"{r['occupancy']:.3f}", str(r["visits"]), f"{r['dwell']:.4g}"]
+        native_cells += [
+            str(r["state"]),
+            r["mean"],
+            r["std"],
+            f"{r['occupancy']:.3f}",
+            str(r["visits"]),
+            f"{r['dwell']:.4g}",
+        ]
     assert native_cells == qt_cells
     trans = re.findall(r"<td[^>]*>(\d\.\d{4})", qt.transitions_html())
     flat = [t[f"to_{j}"].split()[0] for t in qt.transition_rows() for j in range(3)]
@@ -187,8 +199,22 @@ def test_the_native_forms_carry_the_ranges_choices_and_decimals_of_the_qt_spec()
     nat = {}
     for panel in native.values():
         leaves(panel["sections"], nat)
-    assert {"n_states", "covariance_type", "time_step", "n_iter", "tol", "accelerate", "decode", "random_state",
-            "min_states", "max_states"} <= set(nat) == set(qt) - set()
+    assert (
+        {
+            "n_states",
+            "covariance_type",
+            "time_step",
+            "n_iter",
+            "tol",
+            "accelerate",
+            "decode",
+            "random_state",
+            "min_states",
+            "max_states",
+        }
+        <= set(nat)
+        == set(qt) - set()
+    )
     for attr, section in qt.items():
         for key in ("minimum", "maximum", "options", "decimals", "kind"):
             if key in section:
@@ -254,7 +280,7 @@ def test_remove_and_clear_and_the_delete_key_edit_the_file_list(ui, files):
     m = ui.app.model
     ui.drop(files["a"], files["b"])
     ui.click_name("remove")
-    assert m.files == [files["a"]]                       # none selected: the last one goes
+    assert m.files == [files["a"]]  # none selected: the last one goes
     ui.drop(files["b"])
     ui.click(ui.text_rect(ui.draw(), "a.csv"))
     ui.delete()
@@ -269,18 +295,29 @@ def test_an_unreadable_file_is_reported_and_nothing_is_fitted(ui, tmp_path):
     ui.drop(bad)
     ui.click_name("request_run")
     m = ui.settle()
-    assert m.fit is None and ("Cannot read" in m.status or "No traces" in m.status or m.status.startswith("Fit failed"))
+    assert m.fit is None and (
+        "Cannot read" in m.status or "No traces" in m.status or m.status.startswith("Fit failed")
+    )
     assert any(m.status[:25] in t[5] for t in ui.draw().texts)
 
 
 # ───────────────────────────────────── settings forms ───────────────────────────────────── #
 
 
-@pytest.mark.parametrize("name,typed,attr,expected", [
-    ("n_states", "4", "n_states", 4), ("n_states", "99", "n_states", 32), ("n_states", "0", "n_states", 1),
-    ("time_step", "0.01", "time_step", 0.01), ("min_states", "2", "min_states", 2), ("max_states", "7", "max_states", 7),
-])
-def test_the_model_fields_take_typed_values_clamped_to_the_qt_range(ui, name, typed, attr, expected):
+@pytest.mark.parametrize(
+    "name,typed,attr,expected",
+    [
+        ("n_states", "4", "n_states", 4),
+        ("n_states", "99", "n_states", 32),
+        ("n_states", "0", "n_states", 1),
+        ("time_step", "0.01", "time_step", 0.01),
+        ("min_states", "2", "min_states", 2),
+        ("max_states", "7", "max_states", 7),
+    ],
+)
+def test_the_model_fields_take_typed_values_clamped_to_the_qt_range(
+    ui, name, typed, attr, expected
+):
     m = type_value(ui, name, typed)
     assert getattr(m, attr) == pytest.approx(expected)
 
@@ -290,8 +327,12 @@ def open_header(ui, label):
     ui.draw(3)
 
 
-@pytest.mark.parametrize("name,typed,expected", [("n_iter", "50", 50), ("tol", "0.05", 0.05), ("random_state", "7", 7)])
-def test_the_fitting_fields_are_behind_their_header_and_take_typed_values(ui, name, typed, expected):
+@pytest.mark.parametrize(
+    "name,typed,expected", [("n_iter", "50", 50), ("tol", "0.05", 0.05), ("random_state", "7", 7)]
+)
+def test_the_fitting_fields_are_behind_their_header_and_take_typed_values(
+    ui, name, typed, expected
+):
     assert not any(t[5].startswith("Max EM maps") for t in ui.draw().texts)
     open_header(ui, "Fitting")
     m = type_value(ui, name, typed)
@@ -372,8 +413,10 @@ def test_the_states_and_transitions_tables_show_the_fit(demo):
     for row in m.state_rows():
         assert f"{row['occupancy']:.3f}" in strings
     assert "To 0" in strings and any(s.startswith("0.98") for s in strings)
-    assert any("/s)" in s for s in strings)                                   # rates appear with a bin width
-    demo.click(demo.text_rect(demo.draw(), f"{m.state_rows()[1]['occupancy']:.3f}"))   # selecting a row changes no value
+    assert any("/s)" in s for s in strings)  # rates appear with a bin width
+    demo.click(
+        demo.text_rect(demo.draw(), f"{m.state_rows()[1]['occupancy']:.3f}")
+    )  # selecting a row changes no value
     assert demo.app.model.fit is m.fit
 
 
@@ -392,7 +435,15 @@ def test_the_plot_tabs_draw_axes_and_legends(demo):
     demo.app.model.n_states = 3
     fit(demo)
     strings = [t[5] for t in demo.draw().texts]
-    for label in ("bin", "counts per bin", "channel 1", "state path", "occurrences", "state 0", "counts"):
+    for label in (
+        "bin",
+        "counts per bin",
+        "channel 1",
+        "state path",
+        "occurrences",
+        "state 0",
+        "counts",
+    ):
         assert label in strings, label
     demo.click_text("Dwell times")
     strings = [t[5] for t in demo.draw(3).texts]
@@ -492,8 +543,16 @@ def test_settings_round_trip(ui, files):
     saved = json.loads(json.dumps(ui.app.export_settings()))
     other = make_app()
     other.restore_settings(saved)
-    assert other.model.n_states == 4 and other.model.covariance_type == "diag" and other.model.time_step == 0.002
-    assert other.model.max_states == 6 and other.model.files == [files["a"]] and other.last_dir == "/somewhere"
+    assert (
+        other.model.n_states == 4
+        and other.model.covariance_type == "diag"
+        and other.model.time_step == 0.002
+    )
+    assert (
+        other.model.max_states == 6
+        and other.model.files == [files["a"]]
+        and other.last_dir == "/somewhere"
+    )
     other.restore_settings({"n_states": "junk", "files": ["/nope.csv"]})
     other.restore_settings(None)
     other.close()

@@ -5,6 +5,7 @@ immediate-mode window/table layout state persists per process.
 
 Usage: ``python -m chisurf.plugins.modelling.structure_tools.test.capture_native normal|narrow``
 """
+
 import sys
 from pathlib import Path
 

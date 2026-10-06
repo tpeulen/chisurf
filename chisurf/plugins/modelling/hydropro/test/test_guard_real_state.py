@@ -23,12 +23,20 @@ CAPTURE = REPO / "okf/plugins/emtk-ports/hydropro/scripts/capture_populated.py"
 
 def _run(script_args, tmp_path):
     env = dict(os.environ)
-    env.update(QT_QPA_PLATFORM="offscreen", PYTHONPATH=f"{REPO}{os.pathsep}{Path.home() / 'dev/emtk'}")
+    env.update(
+        QT_QPA_PLATFORM="offscreen", PYTHONPATH=f"{REPO}{os.pathsep}{Path.home() / 'dev/emtk'}"
+    )
     env.update(hermetic.env_for(tmp_path))  # the child additionally isolates QSettings itself
     out = tmp_path / "out"
     out.mkdir()
-    return subprocess.run([sys.executable, str(CAPTURE), str(out), *script_args], cwd=REPO, env=env,
-                          capture_output=True, text=True, timeout=240), out
+    return subprocess.run(
+        [sys.executable, str(CAPTURE), str(out), *script_args],
+        cwd=REPO,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=240,
+    ), out
 
 
 def test_isolation_helper_refuses_a_native_settings_path(tmp_path):
@@ -45,14 +53,18 @@ def test_isolation_helper_refuses_a_native_settings_path(tmp_path):
     state = hermetic.RealState()
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", PYTHONPATH=str(REPO))
     env.update(hermetic.env_for(tmp_path))
-    done = subprocess.run([sys.executable, "-c", code], cwd=REPO, env=env, capture_output=True, text=True, timeout=120)
+    done = subprocess.run(
+        [sys.executable, "-c", code], cwd=REPO, env=env, capture_output=True, text=True, timeout=120
+    )
     assert done.returncode == 0, done.stderr
     name = Path(done.stdout.strip().splitlines()[-1])
     assert name.suffix == ".ini" and tmp_path in name.parents and name.exists()
     assert state.changes() == []
 
 
-@pytest.mark.skipif(not (REPO / "test/data/atomic_coordinates/pdb_files/148l.pdb").exists(), reason="no 148l.pdb")
+@pytest.mark.skipif(
+    not (REPO / "test/data/atomic_coordinates/pdb_files/148l.pdb").exists(), reason="no 148l.pdb"
+)
 def test_qt_baseline_capture_path_leaves_the_real_state_byte_equal(tmp_path):
     """The Qt capture presses Run (which calls ``_save_persisted``); the real plist and ``~/.chisurf`` stay equal."""
     state = hermetic.RealState()
@@ -63,6 +75,8 @@ def test_qt_baseline_capture_path_leaves_the_real_state_byte_equal(tmp_path):
     assert ini.suffix == ".ini" and "Library/Preferences" not in str(ini) and ini.exists()
     # The tool's QSettings did get the run's parameters: in the isolated INI file, not in the real plist.
     assert "hydro_exe" in ini.read_text() and "hp.aer" in ini.read_text()
-    assert "1.047e-06" in done.stdout.lower() or "N/A" not in done.stdout  # the recorded report was parsed
+    assert (
+        "1.047e-06" in done.stdout.lower() or "N/A" not in done.stdout
+    )  # the recorded report was parsed
     assert (out / "guard_qt.png").exists()
     assert state.changes() == []

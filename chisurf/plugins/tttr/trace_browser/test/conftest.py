@@ -16,8 +16,14 @@ import pytest
 #: (module, attribute) pairs holding the setups file path, fixed when the module is imported.
 _SETUPS_FILE_CONSTANTS = (
     ("chisurf.core.data_io.detector_setups", "DETECTOR_SETUPS_FILE"),
-    ("chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups", "DETECTOR_SETUPS_FILE"),
-    ("chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition", "DETECTOR_SETUPS_FILE"),
+    (
+        "chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups",
+        "DETECTOR_SETUPS_FILE",
+    ),
+    (
+        "chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition",
+        "DETECTOR_SETUPS_FILE",
+    ),
 )
 #: (module, attribute) pairs holding a SetupTypeConfig whose ``canonical_file`` is that path.
 _SETUP_CONFIGS = (
@@ -61,9 +67,27 @@ ALEX = {
     "setup_name": "ALEX Suite (auto)",
     "windows": {"prompt": [616, 3784], "delayed": [4278, 7762]},
     "detectors": {
-        "green": {"chs": [1], "micro_time_ranges": [[616, 3784]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
-        "red": {"chs": [0], "micro_time_ranges": [[616, 3784]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
-        "yellow": {"chs": [0], "micro_time_ranges": [[4278, 7762]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+        "green": {
+            "chs": [1],
+            "micro_time_ranges": [[616, 3784]],
+            "g_factor": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+        },
+        "red": {
+            "chs": [0],
+            "micro_time_ranges": [[616, 3784]],
+            "g_factor": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+        },
+        "yellow": {
+            "chs": [0],
+            "micro_time_ranges": [[4278, 7762]],
+            "g_factor": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+        },
     },
     "tttr_reading": {"file_type": "PTO", "micro_time_binning": 1, "excitation_period": 8000},
 }
@@ -74,9 +98,27 @@ OVERLAP = {
     "setup_name": "Overlap",
     "windows": {"prompt": [0, 2048]},
     "detectors": {
-        "green": {"chs": [8, 0, 3], "micro_time_ranges": [[0, 4095]], "g_factor": 1, "l1": 0, "l2": 0},
-        "red": {"chs": [9, 1, 2], "micro_time_ranges": [[0, 2048]], "g_factor": 1, "l1": 0, "l2": 0},
-        "yellow": {"chs": [9, 1, 2], "micro_time_ranges": [[2048, 4095]], "g_factor": 1, "l1": 0, "l2": 0},
+        "green": {
+            "chs": [8, 0, 3],
+            "micro_time_ranges": [[0, 4095]],
+            "g_factor": 1,
+            "l1": 0,
+            "l2": 0,
+        },
+        "red": {
+            "chs": [9, 1, 2],
+            "micro_time_ranges": [[0, 2048]],
+            "g_factor": 1,
+            "l1": 0,
+            "l2": 0,
+        },
+        "yellow": {
+            "chs": [9, 1, 2],
+            "micro_time_ranges": [[2048, 4095]],
+            "g_factor": 1,
+            "l1": 0,
+            "l2": 0,
+        },
     },
     "tttr_reading": {"file_type": "Auto", "micro_time_binning": 1},
 }

@@ -30,27 +30,49 @@ WINDOW_BG = (30, 32, 38, 255)
 
 #: The results table, declared (the Qt tool's Results tab, same columns).
 RESULTS_TABLE = {
-    "sections": [{
-        "type": "custom",
-        "key": "data_table",
-        "description": "One row per detector channel, summed over every queued file.",
-        "options": {
-            "source": "results_rows",
-            "editable": False,
-            "expand": True,
-            "columns": [
-                {"key": "channel", "title": "Channel", "description": "Channel of the detector setup."},
-                {"key": "mean_khz", "title": "Mean (kHz)", "format": "%.2f",
-                 "description": "Mean count rate over the files."},
-                {"key": "std_khz", "title": "Std (kHz)", "format": "%.2f",
-                 "description": "Standard deviation of the count rate between files."},
-                {"key": "photons", "title": "#Photons", "format": "%.0f",
-                 "description": "Photons of this channel in all files."},
-                {"key": "time_s", "title": "Time (s)", "format": "%.3f",
-                 "description": "Total measurement time of the files."},
-            ],
-        },
-    }]
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "One row per detector channel, summed over every queued file.",
+            "options": {
+                "source": "results_rows",
+                "editable": False,
+                "expand": True,
+                "columns": [
+                    {
+                        "key": "channel",
+                        "title": "Channel",
+                        "description": "Channel of the detector setup.",
+                    },
+                    {
+                        "key": "mean_khz",
+                        "title": "Mean (kHz)",
+                        "format": "%.2f",
+                        "description": "Mean count rate over the files.",
+                    },
+                    {
+                        "key": "std_khz",
+                        "title": "Std (kHz)",
+                        "format": "%.2f",
+                        "description": "Standard deviation of the count rate between files.",
+                    },
+                    {
+                        "key": "photons",
+                        "title": "#Photons",
+                        "format": "%.0f",
+                        "description": "Photons of this channel in all files.",
+                    },
+                    {
+                        "key": "time_s",
+                        "title": "Time (s)",
+                        "format": "%.3f",
+                        "description": "Total measurement time of the files.",
+                    },
+                ],
+            },
+        }
+    ]
 }
 
 
@@ -162,7 +184,6 @@ class CountRateGui(TourTarget):
 
     def show_help(self) -> None:
         self.help_window.show()
-
 
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         vp = im.get_main_viewport()

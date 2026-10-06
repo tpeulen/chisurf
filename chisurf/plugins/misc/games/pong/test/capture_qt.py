@@ -1,4 +1,5 @@
 """Capture the retained Qt view with its genuine GPU canvas populated."""
+
 from pathlib import Path
 
 from qtpy.QtWidgets import QApplication

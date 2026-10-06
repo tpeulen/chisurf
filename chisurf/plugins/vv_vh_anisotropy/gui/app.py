@@ -42,9 +42,15 @@ RESULT_FILTERS = "Results (*.dat *.txt *.csv);;All files (*)"
 def _translated(node: Any) -> Any:
     """The spec with its labels, titles, texts and descriptions through :func:`tr`."""
     if isinstance(node, dict):
-        return {key: (tr(value) if key in ("label", "title", "text", "description", "tooltip")
-                      and isinstance(value, str) else _translated(value))
-                for key, value in node.items()}
+        return {
+            key: (
+                tr(value)
+                if key in ("label", "title", "text", "description", "tooltip")
+                and isinstance(value, str)
+                else _translated(value)
+            )
+            for key, value in node.items()
+        }
     if isinstance(node, list):
         return [_translated(item) for item in node]
     return node
@@ -62,25 +68,45 @@ class AnisotropyApp(ImApp):
         self.dialog: FileDialog | None = None
         self.dialog_request = ""
         self.file_window = DialogWindow(tr("Choose files"), size=(760.0, 520.0), key="vv-vh-file")
-        self.batch_window = DialogWindow(tr("VV/VH Anisotropy Batch Processor"),
-                                         size=(880.0, 560.0), key="vv-vh-batch")
+        self.batch_window = DialogWindow(
+            tr("VV/VH Anisotropy Batch Processor"), size=(880.0, 560.0), key="vv-vh-batch"
+        )
         self.picker = DatasetPicker(formats=None, on_paths=self.add_batch_paths)
         self._plot_signature = None
         self.help_window = EmTkHelpWindow(
-            title="VV/VH Anisotropy Decay — Help", resource=HERE / "help.md", owner=self,
-            size=(700.0, 560.0))
+            title="VV/VH Anisotropy Decay — Help",
+            resource=HERE / "help.md",
+            owner=self,
+            size=(700.0, 560.0),
+        )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json", owner=self, wait_for_controls=True,
-            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key))
+            steps=HERE / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
+        )
         self.form.on_used = self.tour.notify_used
-        self.docks = DockManager(Split("v", 0.34, Region("controls"),
-                                       Split("h", 0.5, Region("decays"), Region("anisotropy"))))
-        self.docks.add_window("controls", tr("VV/VH anisotropy"), self.draw_controls,
-                              dock="controls", closable=False)
-        self.docks.add_window("decays", tr("Decays (VV, VH)"), self.draw_decays,
-                              dock="decays", closable=False)
-        self.docks.add_window("anisotropy", tr("Anisotropy r(t)"), self.draw_anisotropy,
-                              dock="anisotropy", closable=False)
+        self.docks = DockManager(
+            Split(
+                "v",
+                0.34,
+                Region("controls"),
+                Split("h", 0.5, Region("decays"), Region("anisotropy")),
+            )
+        )
+        self.docks.add_window(
+            "controls", tr("VV/VH anisotropy"), self.draw_controls, dock="controls", closable=False
+        )
+        self.docks.add_window(
+            "decays", tr("Decays (VV, VH)"), self.draw_decays, dock="decays", closable=False
+        )
+        self.docks.add_window(
+            "anisotropy",
+            tr("Anisotropy r(t)"),
+            self.draw_anisotropy,
+            dock="anisotropy",
+            closable=False,
+        )
         super().__init__(gui=self.render, continuous=True)
 
     # -- actions the window takes for the model --------------------------------
@@ -137,17 +163,25 @@ class AnisotropyApp(ImApp):
                 implot.setup_legend()
                 apply_bg = model.apply_bg
                 implot.set_next_line_style(VV_COLOUR, 2.0)
-                implot.plot_line("VV (BG corrected)" if apply_bg else "VV",
-                                 model.time_axis, np.where(vv > 0, vv, np.nan))
+                implot.plot_line(
+                    "VV (BG corrected)" if apply_bg else "VV",
+                    model.time_axis,
+                    np.where(vv > 0, vv, np.nan),
+                )
                 implot.set_next_line_style(VH_COLOUR, 2.0)
                 implot.plot_line(
-                    f"VH (shift {model.shift:.3f} ch, BG corrected)" if apply_bg
+                    f"VH (shift {model.shift:.3f} ch, BG corrected)"
+                    if apply_bg
                     else f"VH (shift {model.shift:.3f} ch)",
-                    model.time_axis + model.shift, np.where(vh > 0, vh, np.nan))
+                    model.time_axis + model.shift,
+                    np.where(vh > 0, vh, np.nan),
+                )
             else:
                 implot.plot_dummy(tr("Load a VV/VH file"))
             implot.end_plot()
-        im.set_item_tooltip(tr("Background-corrected VV and shifted VH on a logarithmic intensity scale."))
+        im.set_item_tooltip(
+            tr("Background-corrected VV and shifted VH on a logarithmic intensity scale.")
+        )
         self.item_rects["decays"] = im.get_item_rect()
 
     def draw_anisotropy(self, box: Any) -> None:
@@ -158,18 +192,28 @@ class AnisotropyApp(ImApp):
                 signature = id(model.time_axis)
                 implot.setup_axis_limits(implot.AXIS_Y1, *R_LIMITS, cond=implot.COND_ALWAYS)
                 implot.setup_axis_limits(
-                    implot.AXIS_X1, 0.0, max(1.0, len(model.r_t) - 1.0),
-                    cond=implot.COND_ALWAYS if signature != self._plot_signature else implot.COND_ONCE)
+                    implot.AXIS_X1,
+                    0.0,
+                    max(1.0, len(model.r_t) - 1.0),
+                    cond=implot.COND_ALWAYS
+                    if signature != self._plot_signature
+                    else implot.COND_ONCE,
+                )
                 self._plot_signature = signature
                 implot.setup_legend()
                 implot.set_next_line_style(R_COLOUR, 2.0)
                 implot.plot_line("r(t)", model.time_axis, model.r_t)
                 implot.set_next_fill_style(REGION_COLOUR, 0.2)
-                implot.plot_shaded("##region", np.array([model.region_min, model.region_max]),
-                                   np.array([R_LIMITS[1]] * 2), np.array([R_LIMITS[0]] * 2))
+                implot.plot_shaded(
+                    "##region",
+                    np.array([model.region_min, model.region_max]),
+                    np.array([R_LIMITS[1]] * 2),
+                    np.array([R_LIMITS[0]] * 2),
+                )
                 for index in range(2):
-                    result = implot.drag_line_x(200 + index, model.region_bounds[index],
-                                                col=REGION_COLOUR)
+                    result = implot.drag_line_x(
+                        200 + index, model.region_bounds[index], col=REGION_COLOUR
+                    )
                     if result.modified:
                         model.region_bounds[index] = float(result.value)
                         model.compute()
@@ -193,7 +237,9 @@ class AnisotropyApp(ImApp):
             self.form.tables.pop("batch_file_rows", None)
             self.model.forget_selection = False
         # The form needs about CONTROLS_HEIGHT pixels; a small window gives it a larger share.
-        self.docks.layout.ratio = min(0.6, max(0.3, CONTROLS_HEIGHT / max(float(viewport.size[1]), 1.0)))
+        self.docks.layout.ratio = min(
+            0.6, max(0.3, CONTROLS_HEIGHT / max(float(viewport.size[1]), 1.0))
+        )
         self.docks.draw(box)
         self._requests()
         self._draw_batch(box)
@@ -216,15 +262,23 @@ class AnisotropyApp(ImApp):
         if request == "save_batch" and not self.model.has_batch_results:
             self.model.message = "Run batch before saving CSV."
             return
-        titles = {"load": "Load VV/VH file", "save": "Save outputs", "add_files": "Add VV/VH files",
-                  "add_folder": "Add a folder of VV/VH files", "save_batch": "Save batch CSV"}
+        titles = {
+            "load": "Load VV/VH file",
+            "save": "Save outputs",
+            "add_files": "Add VV/VH files",
+            "add_folder": "Add a folder of VV/VH files",
+            "save_batch": "Save batch CSV",
+        }
         if request not in titles:
             return
         mode = {"save": "save", "save_batch": "save", "add_folder": "folder"}.get(request, "open")
         self.dialog_request = request
         self.dialog = FileDialog(
-            tr(titles[request]), mode=mode, multiselect=request == "add_files",
-            filters=DATA_FILTERS if mode == "open" else RESULT_FILTERS)
+            tr(titles[request]),
+            mode=mode,
+            multiselect=request == "add_files",
+            filters=DATA_FILTERS if mode == "open" else RESULT_FILTERS,
+        )
         self.file_window = DialogWindow(tr(titles[request]), size=(760.0, 520.0), key="vv-vh-file")
 
     def _draw_file_dialog(self, box: Any) -> None:

@@ -132,9 +132,15 @@ def test_open_burst_table_dialog_loads_the_file_the_user_clicks(app, bursts):
     assert "No burst table loaded." in draw(app).strings
     load_by_clicks(app, bursts)
     assert app.model.filename == str(bursts) and app.controller.status == "Burst table loaded."
-    assert (app.model.column_i_dd, app.model.column_i_da, app.model.column_i_aa, app.model.column_tau_f) == (
-        "Green Count Rate (KHz)", "Red Count Rate (KHz)", "S delayed yellow (kHz)", "Tau (green)")
-    assert str(bursts) in " ".join(draw(app).strings).replace(" ", "") or bursts.name in " ".join(draw(app).strings)
+    assert (
+        app.model.column_i_dd,
+        app.model.column_i_da,
+        app.model.column_i_aa,
+        app.model.column_tau_f,
+    ) == ("Green Count Rate (KHz)", "Red Count Rate (KHz)", "S delayed yellow (kHz)", "Tau (green)")
+    assert str(bursts) in " ".join(draw(app).strings).replace(" ", "") or bursts.name in " ".join(
+        draw(app).strings
+    )
 
 
 def test_the_dialog_cancel_button_closes_it_and_loads_nothing(app, bursts):
@@ -142,7 +148,11 @@ def test_the_dialog_cancel_button_closes_it_and_loads_nothing(app, bursts):
     click(app, rect_of(app, "filename"))
     assert app.controller.dialog is not None
     click(app, text_rect(draw(app), "Cancel"))
-    assert app.controller.dialog is None and app.model.filename in ("", None) and "Cancel" not in draw(app).strings
+    assert (
+        app.controller.dialog is None
+        and app.model.filename in ("", None)
+        and "Cancel" not in draw(app).strings
+    )
 
 
 def test_a_burst_table_that_cannot_be_read_says_so_and_the_dialog_is_not_stuck(app, tmp_path):
@@ -155,7 +165,9 @@ def test_a_burst_table_that_cannot_be_read_says_so_and_the_dialog_is_not_stuck(a
     click(app, text_rect(draw(app), "Open"))
     wait(app)
     assert app.controller.status.startswith("Error:") and "Error:" in " ".join(draw(app).strings)
-    assert app.controller.dialog is None and not app.model.filename.endswith("not_a_burst_table.csv")
+    assert app.controller.dialog is None and not app.model.filename.endswith(
+        "not_a_burst_table.csv"
+    )
     # and the app still works: the next, good file loads
     assert app.controller.running is False
 
@@ -172,20 +184,38 @@ def test_a_file_dropped_on_the_host_loads_like_the_dialog(app, bursts):
     host.show()
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile(str(bursts))])
-    enter = QtGui.QDragEnterEvent(QtCore.QPoint(300, 300), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    enter = QtGui.QDragEnterEvent(
+        QtCore.QPoint(300, 300),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dragEnterEvent(enter)
     assert enter.isAccepted(), "the host refuses a drop on this app"
-    event = QtGui.QDropEvent(QtCore.QPointF(300, 300), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    event = QtGui.QDropEvent(
+        QtCore.QPointF(300, 300),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dropEvent(event)
     qapp.processEvents()
     wait(app)
-    assert event.isAccepted() and app.model.filename == str(bursts) and app.controller.status == "Burst table loaded."
+    assert (
+        event.isAccepted()
+        and app.model.filename == str(bursts)
+        and app.controller.status == "Burst table loaded."
+    )
     host.close()
 
 
 def test_a_dropped_path_that_does_not_exist_is_reported(app):
     app.on_paths_dropped(["/no/such/bursts.npz"])
-    assert "does not exist" in app.controller.status and "does not exist" in " ".join(draw(app).strings)
+    assert "does not exist" in app.controller.status and "does not exist" in " ".join(
+        draw(app).strings
+    )
 
 
 # ── channels, calibration, stop, result tabs ------------------------------------------------------------------ #
@@ -197,9 +227,23 @@ def test_each_channel_list_opens_and_a_click_on_a_column_maps_it(app, bursts, na
     draw(app)
     click(app, rect_of(app, name))
     painter = draw(app, frames=1)
-    entries = [t[5] for t in painter.texts if t[5] in ("Green Count Rate (KHz)", "Red Count Rate (KHz)", "S delayed yellow (kHz)", "Tau (green)")]
+    entries = [
+        t[5]
+        for t in painter.texts
+        if t[5]
+        in (
+            "Green Count Rate (KHz)",
+            "Red Count Rate (KHz)",
+            "S delayed yellow (kHz)",
+            "Tau (green)",
+        )
+    ]
     assert len(set(entries)) == 4  # every column of the file is offered
-    other = "Red Count Rate (KHz)" if getattr(app.model, name) != "Red Count Rate (KHz)" else "Green Count Rate (KHz)"
+    other = (
+        "Red Count Rate (KHz)"
+        if getattr(app.model, name) != "Red Count Rate (KHz)"
+        else "Green Count Rate (KHz)"
+    )
     click(app, text_rect(painter, other))
     assert getattr(app.model, name) == other
     assert other in draw(app).strings  # the closed list shows the choice
@@ -208,12 +252,17 @@ def test_each_channel_list_opens_and_a_click_on_a_column_maps_it(app, bursts, na
 def test_calibrate_click_is_refused_with_the_reason_until_a_table_is_loaded_then_runs(app, bursts):
     draw(app, frames=3)
     click(app, rect_of(app, "Calibrate"))
-    assert app.controller.status == "The donor channel (I_DD) column is not mapped." and app.model.result is None
+    assert (
+        app.controller.status == "The donor channel (I_DD) column is not mapped."
+        and app.model.result is None
+    )
     load_by_clicks(app, bursts)
     painter = calibrate_by_click(app)
     assert app.controller.status == "Accurate FRET calibrated." and app.model.result is not None
     factors = {row["factor"]: row["value"] for row in app.model.factor_rows()}
-    assert factors["α"] == "0.0798" and factors["γ"] == "0.6162"  # the numbers the Qt tool gave on these bursts
+    assert (
+        factors["α"] == "0.0798" and factors["γ"] == "0.6162"
+    )  # the numbers the Qt tool gave on these bursts
     assert "0.0798" in painter.strings and "α" in painter.strings  # the factor table cell shows it
 
 
@@ -226,7 +275,10 @@ def test_the_stop_button_cancels_a_running_calibration_and_keeps_the_previous_st
     click(app, text_rect(draw(app), "Stop calibration / read"))
     assert "Stopping" in app.controller.status
     wait(app)
-    assert app.controller.status == "Calibration/read cancelled; previous result retained." and app.model.result is None
+    assert (
+        app.controller.status == "Calibration/read cancelled; previous result retained."
+        and app.model.result is None
+    )
 
 
 def test_the_result_tabs_are_clicked_and_show_factors_populations_and_the_report(app, bursts):
@@ -282,7 +334,11 @@ def test_the_wheel_zooms_the_efficiency_plot(app, bursts):
 
 def test_the_collapsing_headers_open_and_close_with_a_click(app):
     draw(app, frames=3)
-    for title, field in (("Photophysics", "donor_lifetime"), ("Dyes (database)", "donor_dye"), ("Background", "background_dd")):
+    for title, field in (
+        ("Photophysics", "donor_lifetime"),
+        ("Dyes (database)", "donor_dye"),
+        ("Background", "background_dd"),
+    ):
         assert field not in app.accurate_gui.form_state.rects
         fold(app, title)
         assert field in app.accurate_gui.form_state.rects, title
@@ -290,11 +346,17 @@ def test_the_collapsing_headers_open_and_close_with_a_click(app):
         assert field not in app.accurate_gui.form_state.rects, title
 
 
-def test_photophysics_and_background_fields_take_typed_values_and_the_toggle_is_clicked(app, bursts):
+def test_photophysics_and_background_fields_take_typed_values_and_the_toggle_is_clicked(
+    app, bursts
+):
     load_by_clicks(app, bursts)
     fold(app, "Channels")  # keep the window short enough for the next sections
     fold(app, "Photophysics")
-    for name, text, expected in (("donor_lifetime", "3.5", 3.5), ("forster_radius", "55", 55.0), ("linker_sigma", "7", 7.0)):
+    for name, text, expected in (
+        ("donor_lifetime", "3.5", 3.5),
+        ("forster_radius", "55", 55.0),
+        ("linker_sigma", "7", 7.0),
+    ):
         type_into(app, name, text)
         assert getattr(app.model, name) == pytest.approx(expected), name
     type_into(app, "donor_lifetime", "abc")
@@ -306,7 +368,9 @@ def test_photophysics_and_background_fields_take_typed_values_and_the_toggle_is_
     fold(app, "Background")
     type_into(app, "background_dd", "1.5")
     assert app.model.background_dd == pytest.approx(1.5)
-    assert app.model.result is None  # an input edit invalidates nothing that was not computed; the next Calibrate uses it
+    assert (
+        app.model.result is None
+    )  # an input edit invalidates nothing that was not computed; the next Calibrate uses it
 
 
 def test_dye_and_optics_fields_are_reachable_and_typed_values_reach_the_model(app):
@@ -328,7 +392,11 @@ def open_data_header(app):
 
 @pytest.mark.parametrize(
     ("button", "status"),
-    [("Share calibration in session", None), ("Store calibration on setup", "Calibrate first."), ("To ndX", "Calibrate first.")],
+    [
+        ("Share calibration in session", None),
+        ("Store calibration on setup", "Calibrate first."),
+        ("To ndX", "Calibrate first."),
+    ],
 )
 def test_the_session_buttons_before_a_calibration_say_what_to_do(app, button, status):
     open_data_header(app)
@@ -336,7 +404,9 @@ def test_the_session_buttons_before_a_calibration_say_what_to_do(app, button, st
     if status:
         assert app.controller.status == status and status in " ".join(draw(app).strings)
     else:
-        assert app.controller.status  # the session registration answers with its own message (nothing to share yet)
+        assert (
+            app.controller.status
+        )  # the session registration answers with its own message (nothing to share yet)
 
 
 def test_from_ndx_and_to_ndx_answer_with_a_status_when_no_ndx_source_exists(app, bursts):
@@ -359,7 +429,9 @@ def test_the_session_share_and_setup_store_buttons_after_a_calibration(app, burs
     shared = app.controller.status
     assert shared and shared in " ".join(draw(app).strings)
     press_text(app, "Store calibration on setup")
-    assert app.controller.status == "Select or save a named detector setup first."  # no setup selected: the reason, no exception
+    assert (
+        app.controller.status == "Select or save a named detector setup first."
+    )  # no setup selected: the reason, no exception
 
 
 def test_export_per_burst_csv_through_the_dialog_with_a_typed_name(app, bursts, tmp_path):
@@ -395,7 +467,9 @@ def test_the_catalogue_refresh_buttons_run_in_the_background_and_report(app):
     assert dyes.endswith("dyes available.") or dyes.startswith("Error:"), dyes
     press_text(app, "Refresh optical priors")
     wait(app)
-    assert app.controller.status.endswith("saved optical priors available.") or app.controller.status.startswith("Error:")
+    assert app.controller.status.endswith(
+        "saved optical priors available."
+    ) or app.controller.status.startswith("Error:")
 
 
 def test_the_database_path_field_takes_typed_text(app, tmp_path):
@@ -416,7 +490,14 @@ def test_the_datasets_button_opens_the_database_window_and_it_can_be_closed(app)
     draw(app, frames=3)
     press_text(app, "MMFDB burst datasets")
     painter = draw(app)
-    assert any("dataset" in s.lower() or "mmfdb" in s.lower() for s in painter.strings if s != "MMFDB burst datasets") or app.controller.datasets is not None
+    assert (
+        any(
+            "dataset" in s.lower() or "mmfdb" in s.lower()
+            for s in painter.strings
+            if s != "MMFDB burst datasets"
+        )
+        or app.controller.datasets is not None
+    )
     app.key(keys.KEY_ESCAPE, "")
     draw(app, frames=2)
 
@@ -431,7 +512,9 @@ def test_select_detector_setup_button_brings_the_detector_setup_dock_forward(app
 # ── Guide and Help -------------------------------------------------------------------------------------------------- #
 
 
-def test_guide_button_starts_the_tour_and_the_awaited_calibrate_step_waits_for_the_click(app, bursts):
+def test_guide_button_starts_the_tour_and_the_awaited_calibrate_step_waits_for_the_click(
+    app, bursts
+):
     draw(app, frames=3)
     click(app, rect_of(app, "guide"))
     tour = app.accurate_gui.tour

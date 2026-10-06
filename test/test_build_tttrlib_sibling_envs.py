@@ -9,6 +9,7 @@ only loadable while both envs agree on native libraries (HDF5), which they
 need not. So each extra env gets a build against its own libraries, installed
 as real files.
 """
+
 import importlib.util
 import pathlib
 import sys
@@ -50,7 +51,12 @@ def test_a_failed_env_build_fails_the_task(tmp_path, monkeypatch):
 def test_dangling_links_from_the_old_scheme_are_cleared(tmp_path):
     sp = _fake_env(tmp_path) / "lib" / "python3.12" / "site-packages"
     gone = tmp_path / "purged-cache" / "tttrlib"
-    for name in ("tttrlib", "tttrlib-0.27.0.dist-info", "tttrlib.py", "_tttrlib.cpython-312-darwin.so"):
+    for name in (
+        "tttrlib",
+        "tttrlib-0.27.0.dist-info",
+        "tttrlib.py",
+        "_tttrlib.cpython-312-darwin.so",
+    ):
         (sp / name).symlink_to(gone / name)
     (sp / "numpy").mkdir()
     build_tttrlib._clear_tttrlib(sp)

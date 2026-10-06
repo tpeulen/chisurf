@@ -193,7 +193,9 @@ class PsfViewModel:
         z, y, x = np.indices((21, 110, 100))
         image = np.full(z.shape, 5.0)
         for bz, by, bx in ((10, 20, 20), (10, 22, 60), (10, 50, 30), (11, 55, 80), (9, 90, 50)):
-            image += 800 * np.exp(-0.5 * (((x - bx) / 1.8) ** 2 + ((y - by) / 1.8) ** 2 + ((z - bz) / 3.0) ** 2))
+            image += 800 * np.exp(
+                -0.5 * (((x - bx) / 1.8) ** 2 + ((y - by) / 1.8) ** 2 + ((z - bz) / 3.0) ** 2)
+            )
         self.pixel_size_nm, self.z_step_nm = 100.0, 300.0
         self.set_stack(rng.poisson(image).astype(np.float32))
         self.filename = ""

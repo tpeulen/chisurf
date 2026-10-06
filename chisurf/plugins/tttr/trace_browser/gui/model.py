@@ -86,8 +86,15 @@ HANDOFF_NDXPLORER = "open_ndxplorer"
 
 #: Spec actions that need at least one selected file.
 _SELECTION_ACTIONS = frozenset(
-    {"export_selected", "export_csv", "export_docx", "delete_selected",
-     "open_intensity_trace", "open_time_window", "open_ndxplorer"}
+    {
+        "export_selected",
+        "export_csv",
+        "export_docx",
+        "delete_selected",
+        "open_intensity_trace",
+        "open_time_window",
+        "open_ndxplorer",
+    }
 )
 _HANDOFF_ACTIONS = frozenset({"open_intensity_trace", "open_time_window", "open_ndxplorer"})
 
@@ -200,7 +207,12 @@ class TraceBrowserModel:
         #: State of the precompute job; a dict that stays the same object, so the host's worker
         #: and the draw loop see each other's writes.
         self.precompute: dict[str, Any] = {
-            "running": False, "cancel": False, "done": 0, "total": 0, "name": "", "message": "",
+            "running": False,
+            "cancel": False,
+            "done": 0,
+            "total": 0,
+            "name": "",
+            "message": "",
         }
         #: A dialog the host app should open (``"folder"``); the app clears it when it does.
         self.dialog = ""
@@ -609,7 +621,9 @@ class TraceBrowserModel:
             kept.append(row)
         self.files = kept
         allowed = self.allowed_exts()
-        self.rows = [r for r in kept if self.accepts(int(r["rating"]), pathlib.Path(r["path"]), allowed)]
+        self.rows = [
+            r for r in kept if self.accepts(int(r["rating"]), pathlib.Path(r["path"]), allowed)
+        ]
         keep = {r["path"] for r in self.rows}
         self.selected_files = [s for s in self.selected_files if s in keep]
         # A file the filter hides (or that vanished) is no longer shown: the Qt browser cleared its
@@ -719,7 +733,9 @@ class TraceBrowserModel:
                         chs = sorted(tt.get_used_routing_channels())
                         if chs:
                             self.selected_channels = chs
-                            logger.info("TraceBrowser: Auto-selected channels from %s: %s", _p.name, chs)
+                            logger.info(
+                                "TraceBrowser: Auto-selected channels from %s: %s", _p.name, chs
+                            )
                             break
                     except Exception:
                         continue
@@ -1224,7 +1240,6 @@ class TraceBrowserModel:
         self.notify("caches")
         return removed_dirs
 
-
     # ── selection set, export, delete and hand-offs (the Qt toolbar's actions) ──────────
     def selection_paths(self) -> list[pathlib.Path]:
         """The files the export, delete and hand-off actions work on, in table order.
@@ -1306,7 +1321,7 @@ class TraceBrowserModel:
             used.add(name)
             try:
                 if target.exists() and src.resolve() == target.resolve():
-                    continue                       # exporting a file onto itself
+                    continue  # exporting a file onto itself
                 shutil.copy2(str(src), str(target))
                 copied += 1
             except Exception as exc:
@@ -1512,7 +1527,7 @@ class TraceBrowserModel:
                     return
                 rel = fp.resolve().relative_to(base)
             except Exception:
-                return                              # outside the open folder: never touched
+                return  # outside the open folder: never touched
             if any(part == ".trash" for part in rel.parts):
                 return
             chosen[fp] = None
@@ -1608,7 +1623,7 @@ class TraceBrowserModel:
             try:
                 if not p.is_file():
                     continue
-                rel = p.resolve().relative_to(base)       # outside the folder: not moved
+                rel = p.resolve().relative_to(base)  # outside the folder: not moved
                 if any(part == ".trash" for part in rel.parts):
                     continue
                 dest = trash / rel
@@ -1760,7 +1775,9 @@ class TraceBrowserModel:
             start_stop = [(int(a), int(b)) for a, b in np.asarray(bids).tolist()]
             if burstio is None:
                 raise ImportError("burst utilities unavailable")
-            df = burstio.generate_burst_dataframe(start_stop, str(src.name), tttr, windows, detectors)
+            df = burstio.generate_burst_dataframe(
+                start_stop, str(src.name), tttr, windows, detectors
+            )
             burstio.write_dataframe_to_bur(df, str(bi4_bur_dir / f"{src.stem}.bur"))
             try:
                 max_macro_time = 0.0
@@ -1769,7 +1786,9 @@ class TraceBrowserModel:
                 )
                 if len(tttr) > 0 and res > 0:
                     max_macro_time = float(tttr.macro_times.max()) * res
-                burstio.write_mti_summary(src, analysis_dir, max_macro_time=max_macro_time, append=True)
+                burstio.write_mti_summary(
+                    src, analysis_dir, max_macro_time=max_macro_time, append=True
+                )
             except Exception as exc:
                 logger.debug("TraceBrowser: MTI write skipped: %s", exc)
         except Exception as exc:

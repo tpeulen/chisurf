@@ -40,50 +40,142 @@ def _pointer_masked(active):
         yield
         return
     io = im.get_current_context().io
-    saved = (list(io.mouse_clicked), list(io.mouse_down), list(io.mouse_released), list(io.mouse_double_clicked), io.mouse_pos)
+    saved = (
+        list(io.mouse_clicked),
+        list(io.mouse_down),
+        list(io.mouse_released),
+        list(io.mouse_double_clicked),
+        io.mouse_pos,
+    )
     io.mouse_clicked, io.mouse_down, io.mouse_released = [False] * 5, [False] * 5, [False] * 5
     io.mouse_double_clicked = [False] * 5
     io.mouse_pos = (-1e6, -1e6)
     try:
         yield
     finally:
-        io.mouse_clicked, io.mouse_down, io.mouse_released, io.mouse_double_clicked, io.mouse_pos = saved
+        (
+            io.mouse_clicked,
+            io.mouse_down,
+            io.mouse_released,
+            io.mouse_double_clicked,
+            io.mouse_pos,
+        ) = saved
 
 
 def _table(source, columns, **extra):
-    return {"sections": [{"type": "custom", "key": "data_table", "description": extra.pop("description"),
-                          "options": {"source": source, "columns": columns, "status": True, **extra}}]}
+    return {
+        "sections": [
+            {
+                "type": "custom",
+                "key": "data_table",
+                "description": extra.pop("description"),
+                "options": {"source": source, "columns": columns, "status": True, **extra},
+            }
+        ]
+    }
 
 
-FILE_SPEC = _table("file_rows", [
-    {"key": "file", "title": "Imaging files", "description": "The input file; the full path is in the tooltip."},
-    {"key": "folder", "title": "Folder", "description": "The folder of the file."}],
+FILE_SPEC = _table(
+    "file_rows",
+    [
+        {
+            "key": "file",
+            "title": "Imaging files",
+            "description": "The input file; the full path is in the tooltip.",
+        },
+        {"key": "folder", "title": "Folder", "description": "The folder of the file."},
+    ],
     description="The files of this detection batch. Select one for Remove file; Delete removes the selected row.",
-    height=96, row_key="row", selected_call="select_file", delete_call="delete_file")
-RUN_SPEC = _table("run_rows", [
-    {"key": "input", "title": "File", "description": "The input file."},
-    {"key": "status", "title": "Status", "width": 80, "description": "ok, empty or failed."},
-    {"key": "n_regions", "title": "Regions", "width": 80, "description": "Number of regions found."},
-    {"key": "container", "title": "Written to", "description": "The measurement container the result was written to."},
-    {"key": "reason", "title": "Reason", "description": "Why a file produced no regions."}],
-    description="One row per input file of the last run, including empty and failed ones.", expand=True, reserve=4)
-MEASURE_SPEC = {"sections": [{"type": "custom", "key": "data_table",
-    "description": "Measured geometry and intensity of every region of the shown result.",
-    "options": {"source": "measure_rows", "columns_source": "measure_columns", "expand": True, "reserve": 4, "status": True,
-                "fit_columns": True}}]}
-INPUT_SPEC = {"sections": [{"type": "panel", "title": "Input", "n_col": 2, "collapsible": True,
-    "description": "Which detector channels and frame are analyzed, and whether Detect writes results.", "sections": [
-    {"type": "value", "attr": "channel_field", "kind": "str", "label": "Detector channels", "width": 150,
-     "description": "Photon-routing channels to sum, comma separated; blank selects every available detector channel."},
-    {"type": "value", "attr": "frame", "kind": "int", "style": "spin", "label": "Frame", "minimum": -1, "maximum": 1000000000,
-     "description": "Photon/image frame to analyze; -1 sums all available frames."},
-    {"type": "toggle", "attr": "write_results", "label": "Write results",
-     "description": "Detect stores each label image and region table in its own measurement container; Preview always writes nothing."}]}]}
+    height=96,
+    row_key="row",
+    selected_call="select_file",
+    delete_call="delete_file",
+)
+RUN_SPEC = _table(
+    "run_rows",
+    [
+        {"key": "input", "title": "File", "description": "The input file."},
+        {"key": "status", "title": "Status", "width": 80, "description": "ok, empty or failed."},
+        {
+            "key": "n_regions",
+            "title": "Regions",
+            "width": 80,
+            "description": "Number of regions found.",
+        },
+        {
+            "key": "container",
+            "title": "Written to",
+            "description": "The measurement container the result was written to.",
+        },
+        {"key": "reason", "title": "Reason", "description": "Why a file produced no regions."},
+    ],
+    description="One row per input file of the last run, including empty and failed ones.",
+    expand=True,
+    reserve=4,
+)
+MEASURE_SPEC = {
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "Measured geometry and intensity of every region of the shown result.",
+            "options": {
+                "source": "measure_rows",
+                "columns_source": "measure_columns",
+                "expand": True,
+                "reserve": 4,
+                "status": True,
+                "fit_columns": True,
+            },
+        }
+    ]
+}
+INPUT_SPEC = {
+    "sections": [
+        {
+            "type": "panel",
+            "title": "Input",
+            "n_col": 2,
+            "collapsible": True,
+            "description": "Which detector channels and frame are analyzed, and whether Detect writes results.",
+            "sections": [
+                {
+                    "type": "value",
+                    "attr": "channel_field",
+                    "kind": "str",
+                    "label": "Detector channels",
+                    "width": 150,
+                    "description": "Photon-routing channels to sum, comma separated; blank selects every available detector channel.",
+                },
+                {
+                    "type": "value",
+                    "attr": "frame",
+                    "kind": "int",
+                    "style": "spin",
+                    "label": "Frame",
+                    "minimum": -1,
+                    "maximum": 1000000000,
+                    "description": "Photon/image frame to analyze; -1 sums all available frames.",
+                },
+                {
+                    "type": "toggle",
+                    "attr": "write_results",
+                    "label": "Write results",
+                    "description": "Detect stores each label image and region table in its own measurement container; Preview always writes nothing.",
+                },
+            ],
+        }
+    ]
+}
 
 
 def _spin(sections):
     for sec in sections:
-        if sec.get("type") == "value" and sec.get("kind") in ("int", "float") and not sec.get("read_only"):
+        if (
+            sec.get("type") == "value"
+            and sec.get("kind") in ("int", "float")
+            and not sec.get("read_only")
+        ):
             sec["style"] = "spin"
         _spin(sec.get("sections", []))
 
@@ -118,8 +210,10 @@ class SpotFinderApp(ImApp):
         _spin(panels)
         self.spec_top = layout_spec({"sections": json.loads(json.dumps(top))})
         self.spec_detector = layout_spec({"sections": panels})
-        self.forms = {k: FormState(on_used=lambda n: self.tour.notify_used(n)) for k in
-                      ("files", "main", "detector", "input", "tables")}
+        self.forms = {
+            k: FormState(on_used=lambda n: self.tour.notify_used(n))
+            for k in ("files", "main", "detector", "input", "tables")
+        }
         self.picker = DatasetPicker(
             formats=["tif", "tiff", "ptu", "pto", "ht3", "spc", "pt3"], on_paths=self.open_paths
         )
@@ -219,8 +313,12 @@ class SpotFinderApp(ImApp):
 
     @property
     def file_rows(self):
-        rows = _Rows([{"row": i, "file": Path(p).name, "folder": str(Path(p).parent), "path": p}
-                      for i, p in enumerate(self.model.files)])
+        rows = _Rows(
+            [
+                {"row": i, "file": Path(p).name, "folder": str(Path(p).parent), "path": p}
+                for i, p in enumerate(self.model.files)
+            ]
+        )
         rows.revision = hash(tuple(self.model.files))
         return rows
 
@@ -250,7 +348,10 @@ class SpotFinderApp(ImApp):
         return rows
 
     def measure_columns(self):
-        return [{"key": key, "title": key, "description": "Measured " + key} for key in self.model.selection_columns()]
+        return [
+            {"key": key, "title": key, "description": "Measured " + key}
+            for key in self.model.selection_columns()
+        ]
 
     # the input fields the Qt shared setup page carried, as attributes of the app for the spec
     @property
@@ -261,7 +362,9 @@ class SpotFinderApp(ImApp):
     def channel_field(self, value):
         self.channel_text = str(value)
         try:
-            self.model.channels = list(dict.fromkeys(int(v.strip()) for v in self.channel_text.split(",") if v.strip()))
+            self.model.channels = list(
+                dict.fromkeys(int(v.strip()) for v in self.channel_text.split(",") if v.strip())
+            )
             self.error = ""
         except ValueError:
             self.error = "Detector channels must be comma-separated integers."
@@ -286,22 +389,54 @@ class SpotFinderApp(ImApp):
         return not (self.job.busy or self.dialog is not None or self.picker.is_open)
 
     def controls(self, box):
-        pressed = button_row([
-            {"label": "Help", "key": "help", "tip": "Explain detection recipes, ROI restriction, picking and measurement-container outputs."},
-            {"label": "Guide", "key": "guide", "tip": "Work through the known-field demo with actual actions and image picking."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": "Help",
+                    "key": "help",
+                    "tip": "Explain detection recipes, ROI restriction, picking and measurement-container outputs.",
+                },
+                {
+                    "label": "Guide",
+                    "key": "guide",
+                    "tip": "Work through the known-field demo with actual actions and image picking.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed == "help":
             self.help_window.show()
         elif pressed == "guide":
             self.tour.start()
         busy = self.job.busy or self.dialog is not None or self.picker.is_open
         im.begin_disabled(busy)
-        pressed = button_row([
-            {"label": "Add files", "key": "Add files", "tip": "Select photon or camera imaging files for preview and batch detection."},
-            {"label": "MMFDB datasets", "key": "MMFDB datasets", "tip": "Select registered photon/camera datasets from the MMFDB catalog."},
-            {"label": "Remove file", "key": "Remove file", "enabled": bool(self.model.files), "tip": "Remove the selected input from this detection batch."},
-            {"label": "Clear files", "key": "Clear files", "enabled": bool(self.model.files), "tip": "Remove every input file from the batch without deleting the files."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": "Add files",
+                    "key": "Add files",
+                    "tip": "Select photon or camera imaging files for preview and batch detection.",
+                },
+                {
+                    "label": "MMFDB datasets",
+                    "key": "MMFDB datasets",
+                    "tip": "Select registered photon/camera datasets from the MMFDB catalog.",
+                },
+                {
+                    "label": "Remove file",
+                    "key": "Remove file",
+                    "enabled": bool(self.model.files),
+                    "tip": "Remove the selected input from this detection batch.",
+                },
+                {
+                    "label": "Clear files",
+                    "key": "Clear files",
+                    "enabled": bool(self.model.files),
+                    "tip": "Remove every input file from the batch without deleting the files.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed == "Add files":
             self.choose("add_files")
         elif pressed == "MMFDB datasets":
@@ -326,17 +461,60 @@ class SpotFinderApp(ImApp):
         self.item_rects.update(self.forms["input"].rects)
         im.end_disabled()
         actions = [
-            ("Load demo", "Simulate/cache the known four-object photon field for validating a detection.", lambda: self.start("load_demo"), True),
-            ("Preview", "Detect in the first input only and write nothing.", lambda: self.start("preview"), True),
-            ("Detect", "Detect in every input; retain a run-table row even for empty or failed files.", lambda: self.start("run"), True),
-            ("Add picks", "Add fitted picked ellipses to the current detection and remeasure the regions.", lambda: self.start("add_picked_to_detection"), True),
-            ("Clear picks", "Forget every manually picked Gaussian proposal.", lambda: self.start("clear_picked"), True),
-            ("Export", "Export all files' measured region rows as CSV or TSV.", lambda: self.choose("export_results"), self.model.has_results()),
-            ("Save settings", "Save files, workflow deviations, routing, ROI composition and display state to JSON.", lambda: self.choose("save_settings"), True),
-            ("Load settings", "Restore the complete analysis configuration from JSON.", lambda: self.choose("load_settings"), True),
+            (
+                "Load demo",
+                "Simulate/cache the known four-object photon field for validating a detection.",
+                lambda: self.start("load_demo"),
+                True,
+            ),
+            (
+                "Preview",
+                "Detect in the first input only and write nothing.",
+                lambda: self.start("preview"),
+                True,
+            ),
+            (
+                "Detect",
+                "Detect in every input; retain a run-table row even for empty or failed files.",
+                lambda: self.start("run"),
+                True,
+            ),
+            (
+                "Add picks",
+                "Add fitted picked ellipses to the current detection and remeasure the regions.",
+                lambda: self.start("add_picked_to_detection"),
+                True,
+            ),
+            (
+                "Clear picks",
+                "Forget every manually picked Gaussian proposal.",
+                lambda: self.start("clear_picked"),
+                True,
+            ),
+            (
+                "Export",
+                "Export all files' measured region rows as CSV or TSV.",
+                lambda: self.choose("export_results"),
+                self.model.has_results(),
+            ),
+            (
+                "Save settings",
+                "Save files, workflow deviations, routing, ROI composition and display state to JSON.",
+                lambda: self.choose("save_settings"),
+                True,
+            ),
+            (
+                "Load settings",
+                "Restore the complete analysis configuration from JSON.",
+                lambda: self.choose("load_settings"),
+                True,
+            ),
         ]
         im.begin_disabled(busy)
-        pressed = button_row([{"label": l, "key": l, "tip": t, "enabled": e} for l, t, _a, e in actions], remember=self.remember)
+        pressed = button_row(
+            [{"label": l, "key": l, "tip": t, "enabled": e} for l, t, _a, e in actions],
+            remember=self.remember,
+        )
         im.end_disabled()
         if pressed and not busy:
             dict((l, a) for l, _t, a, _e in actions)[pressed]()
@@ -416,14 +594,21 @@ class SpotFinderApp(ImApp):
                 self.table_view = index
             if selected:
                 im.pop_style_color(1)
-            im.set_item_tooltip("Review all input outcomes." if index == 0 else
-                                "Measured centroid, area, intensity and second moments of each region.")
+            im.set_item_tooltip(
+                "Review all input outcomes."
+                if index == 0
+                else "Measured centroid, area, intensity and second moments of each region."
+            )
             self.remember("tab_run" if index == 0 else "tab_measurements")
         self.forms["tables"].rects.clear()
         # a tour card drawn over a table would lose its button presses to the table (emtk gap): the tour has the table
         with _pointer_masked(self.tour.active):
-            draw_form(RUN_SPEC if self.table_view == 0 else MEASURE_SPEC, self, self.forms["tables"])
-        self.item_rects["Run"] = self.item_rects.get("run_rows") or self.item_rects.get("measure_rows")
+            draw_form(
+                RUN_SPEC if self.table_view == 0 else MEASURE_SPEC, self, self.forms["tables"]
+            )
+        self.item_rects["Run"] = self.item_rects.get("run_rows") or self.item_rects.get(
+            "measure_rows"
+        )
         self.item_rects.update(self.forms["tables"].rects)
 
     def state_dict(self):

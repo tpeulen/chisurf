@@ -19,6 +19,7 @@ icon = "🤖"
 def load():
     """Return the plugin's main widget instance."""
     from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
+
     return AISettingsWidget()
 
 
@@ -27,6 +28,7 @@ __all__ = ["name", "load", "icon", "AISettingsWidget"]
 if __name__ == "plugin":
     try:
         from chisurf.plugins.ai_settings.gui.tool import AISettingsWidget
+
         parent = getattr(cs, "cs", None)
         window = AISettingsWidget(parent=parent)
         if _manifest is not None:
@@ -39,5 +41,6 @@ if __name__ == "plugin":
 def __getattr__(name):
     if name == "AISettingsWidget":
         from .gui.tool import AISettingsWidget
+
         return AISettingsWidget
     raise AttributeError(name)

@@ -826,8 +826,10 @@ def _panel_frame(painter: Any, x: float, y: float, w: float, h: float, title: st
     painter.fill_rect(x + 8.0, y, tw, 12.0, WINDOW_BG)
     painter.text(x + 12.0, y - 1.0, tw, 14.0, 0, title, PANEL_TITLE)
 
+
 def make_app(**kwargs) -> App:
     from chisurf.emtk.i18n import install
+
     from ..api.client import EbfretClient
 
     install()

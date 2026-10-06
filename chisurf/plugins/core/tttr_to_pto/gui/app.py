@@ -47,9 +47,7 @@ class TttrToPtoApp(ImApp):
         )
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(Region("conversion"))
-        self.docks.add_window(
-            "conversion", "TTTR ⇄ .pto", self.draw_conversion, dock="conversion"
-        )
+        self.docks.add_window("conversion", "TTTR ⇄ .pto", self.draw_conversion, dock="conversion")
         super().__init__(self.render, continuous=True)
 
     # ── compatibility with the earlier app's surface ───────────────────

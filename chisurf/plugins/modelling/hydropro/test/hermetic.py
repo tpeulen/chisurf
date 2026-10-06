@@ -10,8 +10,8 @@ before any ``QSettings`` object exists. :class:`RealState` snapshots the real pl
 from __future__ import annotations
 
 import hashlib
-import shutil
 import os
+import shutil
 from pathlib import Path
 
 REAL_HOME = Path(os.path.expanduser("~"))
@@ -50,7 +50,13 @@ def _binding_qsettings():
 
     import qtpy
 
-    for name in (f"{qtpy.API_NAME}.QtCore", "PyQt5.QtCore", "PySide2.QtCore", "PyQt6.QtCore", "PySide6.QtCore"):
+    for name in (
+        f"{qtpy.API_NAME}.QtCore",
+        "PyQt5.QtCore",
+        "PySide2.QtCore",
+        "PyQt6.QtCore",
+        "PySide6.QtCore",
+    ):
         module = sys.modules.get(name)
         if module is not None and hasattr(module, "QSettings"):
             return module.QSettings
@@ -163,9 +169,15 @@ class RealState:
         if self.chisurf.exists():
             for path in sorted(self.chisurf.rglob("*")):
                 rel = path.relative_to(self.chisurf)
-                if (rel.parts and rel.parts[0] == "logs") or "__pycache__" in rel.parts or not path.is_file():
+                if (
+                    (rel.parts and rel.parts[0] == "logs")
+                    or "__pycache__" in rel.parts
+                    or not path.is_file()
+                ):
                     continue
-                if path.suffix == ".pyc":  # ChiSurf keeps its bytecode cache here (a module edited meanwhile is recompiled)
+                if (
+                    path.suffix == ".pyc"
+                ):  # ChiSurf keeps its bytecode cache here (a module edited meanwhile is recompiled)
                     continue
                 out[str(path)] = _digest(path)
         return out
@@ -182,5 +194,7 @@ def install_fake_exe(folder: Path, name: str = "hydropro10.exe") -> Path:
     target = folder / name
     target.write_bytes(FAKE_EXE.read_bytes())
     target.chmod(0o755)
-    shutil.copytree(RECORDED, folder / "recorded", dirs_exist_ok=True)  # the fake looks for recorded/ beside itself
+    shutil.copytree(
+        RECORDED, folder / "recorded", dirs_exist_ok=True
+    )  # the fake looks for recorded/ beside itself
     return target

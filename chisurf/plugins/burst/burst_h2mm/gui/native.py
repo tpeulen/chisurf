@@ -21,7 +21,13 @@ from emtk.widgets.view_spec import load_view_spec
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.jobs import SnapshotJob
-from chisurf.plugins.emtk_layout import LabelColumn, button_row, cap_widths, group_by_width, labelled
+from chisurf.plugins.emtk_layout import (
+    LabelColumn,
+    button_row,
+    cap_widths,
+    group_by_width,
+    labelled,
+)
 
 from .model import H2mmViewModel
 from .plots import ResultPlots
@@ -49,8 +55,12 @@ class H2mmNativeApp(TourTarget, ImApp):
         self.form = FormState()
         spec = load_view_spec(str(HERE / "h2mm.view.json"))
         sections = spec["sections"]
-        self.settings_sections = [s for s in sections if s.get("type") == "panel" and s.get("title") != "Burst"]
-        self.burst_sections = [s for s in sections if s.get("type") == "panel" and s.get("title") == "Burst"]
+        self.settings_sections = [
+            s for s in sections if s.get("type") == "panel" and s.get("title") != "Burst"
+        ]
+        self.burst_sections = [
+            s for s in sections if s.get("type") == "panel" and s.get("title") == "Burst"
+        ]
         self.tables = [s for s in sections if s.get("type") == "table"]
         for table, height in zip(self.tables, (110, 90)):
             table["height"] = height
@@ -80,8 +90,17 @@ class H2mmNativeApp(TourTarget, ImApp):
         self.on_used = self.tour.notify_used
         self.editor.on_used = self.tour.notify_used
         self.docks = DockManager(
-            Split("h", 0.40, Region("controls"),
-                  Split("v", 0.26, Region("results"), Split("v", 0.5, Region("plots_a"), Region("plots_b")))),
+            Split(
+                "h",
+                0.40,
+                Region("controls"),
+                Split(
+                    "v",
+                    0.26,
+                    Region("results"),
+                    Split("v", 0.5, Region("plots_a"), Region("plots_b")),
+                ),
+            ),
             name="burst_h2mm",
         )
         add = self.docks.add_window
@@ -164,7 +183,11 @@ class H2mmNativeApp(TourTarget, ImApp):
 
         title, mode, filters = self.DIALOGS[action]
         options = {"filters": filters} if filters else {}
-        filename = {"save_settings": "h2mm_settings.json", "export_dwells": "h2mm_dwells.csv", "save_plot": "h2mm.png"}.get(action, "")
+        filename = {
+            "save_settings": "h2mm_settings.json",
+            "export_dwells": "h2mm_dwells.csv",
+            "save_plot": "h2mm.png",
+        }.get(action, "")
         if mode == "folder" and self.model.data_folder:
             options["directory"] = str(self.model.data_folder)
         elif self.model.data_folder and mode != "folder":
@@ -252,37 +275,98 @@ class H2mmNativeApp(TourTarget, ImApp):
         idle_fit = has_fit and not running
         pressed = button_row(
             [
-                {"label": "Browse folder", "key": "folder", "enabled": not running,
-                 "tip": "Choose the folder with the burst (.bur) tables of a finished burst analysis."},
-                {"label": "Run H2MM", "key": "toolAction_run", "enabled": not problem and not running,
-                 "tip": "Fit the photon-by-photon HMM to the bursts of the folder: every state count of the scan, then the "
-                        "criterion picks one. A fit of unchanged inputs is kept." if not problem
-                 else "Fit the photon-by-photon HMM. " + problem},
-                {"label": "Restart", "key": "toolAction_restart", "enabled": not problem and not running,
-                 "tip": "Refit even when nothing changed. The restarts are seeded: the same seed reproduces the answer; "
-                        "change the seed to draw a new sample." if not problem else "Refit. " + problem},
-                {"label": "Stop", "key": "Stop", "enabled": running,
-                 "tip": "Stop the running fit at its next progress checkpoint." if running
-                 else "Nothing is running; a fit in progress can be stopped here."},
-                {"label": "Bootstrap", "key": "bootstrap", "enabled": idle_fit,
-                 "tip": "Estimate confidence intervals of E and S by refitting 20 bootstrap resamples of the bursts."
-                 if has_fit else "Run a fit first; the bootstrap resamples its bursts."},
-                {"label": "LL scan", "key": "ll_scan", "enabled": idle_fit,
-                 "tip": "Profile the log-likelihood over each state's E (and S): a flat profile means the data do not "
-                        "determine that state." if has_fit else "Run a fit first; the scan profiles its states."},
-                {"label": "Save plot", "key": "save_plot", "enabled": has_fit,
-                 "tip": "Write the dwell FRET, TDP, model selection and dwell-time plots of the fit as one PNG."
-                 if has_fit else "Run a fit first."},
-                {"label": "Dwells in ndX", "key": "ndx", "enabled": has_fit,
-                 "tip": "Open the per-dwell table (state, duration, E, S, edge flag) in ndXplorer." if has_fit
-                 else "Run a fit first."},
-                {"label": "Export dwells", "key": "export_dwells", "enabled": has_fit,
-                 "tip": "Write the per-dwell table as CSV." if has_fit else "Run a fit first."},
-                {"label": "Save settings", "key": "save_settings", "tip": "Write the settings and the detector definition to a JSON file."},
-                {"label": "Load settings", "key": "load_settings", "enabled": not running,
-                 "tip": "Read settings and the detector definition from a JSON file."},
-                {"label": "Guide", "key": "guide", "tip": "Start a step-by-step guided tour of this tool."},
-                {"label": "Help", "key": "help", "tip": "Open the help window with reference documentation."},
+                {
+                    "label": "Browse folder",
+                    "key": "folder",
+                    "enabled": not running,
+                    "tip": "Choose the folder with the burst (.bur) tables of a finished burst analysis.",
+                },
+                {
+                    "label": "Run H2MM",
+                    "key": "toolAction_run",
+                    "enabled": not problem and not running,
+                    "tip": "Fit the photon-by-photon HMM to the bursts of the folder: every state count of the scan, then the "
+                    "criterion picks one. A fit of unchanged inputs is kept."
+                    if not problem
+                    else "Fit the photon-by-photon HMM. " + problem,
+                },
+                {
+                    "label": "Restart",
+                    "key": "toolAction_restart",
+                    "enabled": not problem and not running,
+                    "tip": "Refit even when nothing changed. The restarts are seeded: the same seed reproduces the answer; "
+                    "change the seed to draw a new sample."
+                    if not problem
+                    else "Refit. " + problem,
+                },
+                {
+                    "label": "Stop",
+                    "key": "Stop",
+                    "enabled": running,
+                    "tip": "Stop the running fit at its next progress checkpoint."
+                    if running
+                    else "Nothing is running; a fit in progress can be stopped here.",
+                },
+                {
+                    "label": "Bootstrap",
+                    "key": "bootstrap",
+                    "enabled": idle_fit,
+                    "tip": "Estimate confidence intervals of E and S by refitting 20 bootstrap resamples of the bursts."
+                    if has_fit
+                    else "Run a fit first; the bootstrap resamples its bursts.",
+                },
+                {
+                    "label": "LL scan",
+                    "key": "ll_scan",
+                    "enabled": idle_fit,
+                    "tip": "Profile the log-likelihood over each state's E (and S): a flat profile means the data do not "
+                    "determine that state."
+                    if has_fit
+                    else "Run a fit first; the scan profiles its states.",
+                },
+                {
+                    "label": "Save plot",
+                    "key": "save_plot",
+                    "enabled": has_fit,
+                    "tip": "Write the dwell FRET, TDP, model selection and dwell-time plots of the fit as one PNG."
+                    if has_fit
+                    else "Run a fit first.",
+                },
+                {
+                    "label": "Dwells in ndX",
+                    "key": "ndx",
+                    "enabled": has_fit,
+                    "tip": "Open the per-dwell table (state, duration, E, S, edge flag) in ndXplorer."
+                    if has_fit
+                    else "Run a fit first.",
+                },
+                {
+                    "label": "Export dwells",
+                    "key": "export_dwells",
+                    "enabled": has_fit,
+                    "tip": "Write the per-dwell table as CSV." if has_fit else "Run a fit first.",
+                },
+                {
+                    "label": "Save settings",
+                    "key": "save_settings",
+                    "tip": "Write the settings and the detector definition to a JSON file.",
+                },
+                {
+                    "label": "Load settings",
+                    "key": "load_settings",
+                    "enabled": not running,
+                    "tip": "Read settings and the detector definition from a JSON file.",
+                },
+                {
+                    "label": "Guide",
+                    "key": "guide",
+                    "tip": "Start a step-by-step guided tour of this tool.",
+                },
+                {
+                    "label": "Help",
+                    "key": "help",
+                    "tip": "Open the help window with reference documentation.",
+                },
             ],
             remember=self.remember,
         )
@@ -330,7 +414,9 @@ class H2mmNativeApp(TourTarget, ImApp):
         self.remember("results", box)
         im.text_wrapped(self.model.status_text)
         if self.model.analysis is None:
-            im.text_wrapped("No H2MM fit yet. Select a burst folder, define the detectors and press Run H2MM.")
+            im.text_wrapped(
+                "No H2MM fit yet. Select a burst folder, define the detectors and press Run H2MM."
+            )
             return
         draw_sections(self.tables, self.model, self.form)
 
@@ -376,7 +462,9 @@ class H2mmNativeApp(TourTarget, ImApp):
         if bursts:
             self.model.nav_burst = max(0, min(int(self.model.nav_burst), len(bursts) - 1))
             draw_sections(self.burst_sections, self.model, self.form)
-            self.plots.draw_state_path(self.model.analysis, self.model.bundle.data, bursts[self.model.nav_burst])
+            self.plots.draw_state_path(
+                self.model.analysis, self.model.bundle.data, bursts[self.model.nav_burst]
+            )
         else:
             self.plots.draw_state_path(None, None, 0)
 

@@ -38,8 +38,8 @@ import typing
 import numpy as np
 from emtk import im, implot, nodes
 
-from chisurf.emtk.node_editor.document import GraphNode
 from chisurf.emtk.node_editor.control import NodeContentRenderer
+from chisurf.emtk.node_editor.document import GraphNode
 from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import WAVELENGTHS
 
 __all__ = ["BeampathContent", "PROBE_CATEGORY"]
@@ -52,14 +52,16 @@ logger = logging.getLogger(__name__)
 #: how a beam path acquires a component that cannot be there.
 PROBE_CATEGORY: dict = {
     "filter": lambda p: (
-        p.get("category") == "filter" or (p.get("category") in (None,"","other") and p.get("has_trans"))
+        p.get("category") == "filter"
+        or (p.get("category") in (None, "", "other") and p.get("has_trans"))
     ),
     "splitter": lambda p: (
         p.get("category") in ("dichroic", "polarizer")
-        or (p.get("category") in (None,"","other") and p.get("has_trans"))
+        or (p.get("category") in (None, "", "other") and p.get("has_trans"))
     ),
     "detector": lambda p: (
-        p.get("category") == "detector" or (p.get("category") in (None,"","other") and p.get("has_qe"))
+        p.get("category") == "detector"
+        or (p.get("category") in (None, "", "other") and p.get("has_qe"))
     ),
     "sample": lambda p: bool(p.get("has_abs") or p.get("has_em")),
     "light_source": lambda p: bool(p.get("has_ex") or p.get("has_em")),
@@ -239,7 +241,9 @@ class BeampathContent(NodeContentRenderer):
             column of results.
         """
         edited, value = im.input_text("name", str(node.config.get("detector_name", "Detector")))
-        im.set_item_tooltip("Name of this optical detector; it labels the calculated signal and crosstalk columns.")
+        im.set_item_tooltip(
+            "Name of this optical detector; it labels the calculated signal and crosstalk columns."
+        )
         if edited and not read_only:
             node.config["detector_name"] = value
             return True
@@ -263,7 +267,7 @@ class BeampathContent(NodeContentRenderer):
         options = self.choices(node.type)
         labels = [label for label, _ in options]
         current = node.config.get("probe_id", node.config.get("spectrum_id"))
-        if current is None and node.type=="sample" and node.config.get("probe_ids"):
+        if current is None and node.type == "sample" and node.config.get("probe_ids"):
             current = node.config["probe_ids"][0]
         index = next((i for i, (_, pid) in enumerate(options) if pid == current), 0)
 
@@ -274,12 +278,17 @@ class BeampathContent(NodeContentRenderer):
             # The two keys are alternatives, and leaving the old one behind
             # means the backend sees a component the user replaced.
             node.config.pop("spectrum_id", None)
-            if node.type=='sample':
+            if node.type == "sample":
                 selected = options[chosen][1]
-                node.config['probe_ids'] = [] if selected is None else [selected]
+                node.config["probe_ids"] = [] if selected is None else [selected]
                 if selected is not None:
-                    probe = next((value for value in self.probes if value.get('probe_id')==selected),{})
-                    node.config.setdefault('dye_properties',{})[str(selected)] = {'qy':probe.get('qy',1.),'ec':probe.get('ec',1.)}
+                    probe = next(
+                        (value for value in self.probes if value.get("probe_id") == selected), {}
+                    )
+                    node.config.setdefault("dye_properties", {})[str(selected)] = {
+                        "qy": probe.get("qy", 1.0),
+                        "ec": probe.get("ec", 1.0),
+                    }
             return True
         return False
 
@@ -313,9 +322,15 @@ class BeampathContent(NodeContentRenderer):
 
         if node.config.get("source_mode", "manual") == "manual":
             lines = node.config.get("manual_lines") or ""
-            text = lines if isinstance(lines,str) else ", ".join(f"{float(v):g}" for v in lines if _is_number(v))
+            text = (
+                lines
+                if isinstance(lines, str)
+                else ", ".join(f"{float(v):g}" for v in lines if _is_number(v))
+            )
             edited, value = im.input_text("lines", text)
-            im.set_item_tooltip("Excitation wavelengths and relative powers, for example 488:1.0, 640:1.0.")
+            im.set_item_tooltip(
+                "Excitation wavelengths and relative powers, for example 488:1.0, 640:1.0."
+            )
             if edited and not read_only:
                 node.config["manual_lines"] = value
                 changed = True
@@ -355,13 +370,13 @@ class BeampathContent(NodeContentRenderer):
         radius = node.config.get("_r0")
         # Written as text rather than as a disabled field: it is an output,
         # and a greyed-out input still invites an edit that goes nowhere.
-        results = node.config.get('_last_results') or []
-        if not _is_number(radius) and len(results)==1:
-            radius = results[0].get('r0')
+        results = node.config.get("_last_results") or []
+        if not _is_number(radius) and len(results) == 1:
+            radius = results[0].get("r0")
         if _is_number(radius):
-            im.text(f'R0: {radius:.1f} A')
+            im.text(f"R0: {radius:.1f} A")
         else:
-            im.text(f'R0: {len(results)} dye pairs; see results' if results else 'R0: -')
+            im.text(f"R0: {len(results)} dye pairs; see results" if results else "R0: -")
         return changed
 
     def _draw_spectra(self, node: GraphNode) -> bool:

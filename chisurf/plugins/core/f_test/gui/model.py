@@ -66,7 +66,6 @@ class FTestModel:
             )
         )
 
-
     def edit_field(self, attr: str, value: Any) -> None:
         """Apply an edited statistic using the reference tool's coupling rules."""
         if attr not in _CONF_ATTRS | _CHI2_2_ATTRS | _CHI2_MAX_ATTRS:

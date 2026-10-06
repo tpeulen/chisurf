@@ -140,9 +140,7 @@ def test_a_table_handed_over_is_shown(qapp):
     from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
     source = DataSource.from_columns({"I_DD": [10.0, 20.0, 30.0], "I_DA": [4.0, 8.0, 3.0]})
-    window = build_ndxplorer_window(
-        data_source=source, session_autosave=False, layout_store=None
-    )
+    window = build_ndxplorer_window(data_source=source, session_autosave=False, layout_store=None)
     try:
         assert window.app.model.has_data
         assert window.app.model.source.size == 3
@@ -249,9 +247,7 @@ def test_from_mmfdb_without_a_client_says_why(qapp, monkeypatch):
 # -- Save > Burst IDs records the selection in MMFDB ---------------------------
 
 
-def test_saved_burst_ids_are_recorded_against_the_mmfdb_product(
-    qapp, embedded_mmfdb, tmp_path
-):
+def test_saved_burst_ids_are_recorded_against_the_mmfdb_product(qapp, embedded_mmfdb, tmp_path):
     """Opened on an MMFDB product (the admin's *Open in ndX*), Save > Burst IDs
     records an ``ndxplorer_selection`` run with the gate and the selection mask,
     linked to that product."""
@@ -262,7 +258,9 @@ def test_saved_burst_ids_are_recorded_against_the_mmfdb_product(
     from chisurf.gui.widgets.mmfdb import picker
     from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
-    mfd = PLUGIN_DIR.parents[2] / "modules" / "ndxplorer" / "test" / "mfd" / "burstwise_All 0.1500#30"
+    mfd = (
+        PLUGIN_DIR.parents[2] / "modules" / "ndxplorer" / "test" / "mfd" / "burstwise_All 0.1500#30"
+    )
     if not mfd.exists():
         pytest.skip("ndX's MFD fixture folder is missing")
     _log_in_like_chisurf_startup()
@@ -272,11 +270,17 @@ def test_saved_burst_ids_are_recorded_against_the_mmfdb_product(
     with MFDatabase(db_path) as db:
         db.add_sample("sample_1")
         db.add_experiment("exp_1", sample_id="sample_1", status="complete")
-        run_id = db.add_processing_run(experiment_id="exp_1", input_raw_data_ids=[],
-                                       settings={}, status="succeeded")
+        run_id = db.add_processing_run(
+            experiment_id="exp_1", input_raw_data_ids=[], settings={}, status="succeeded"
+        )
         prod_id = db.add_processed_data_product(
-            processing_id=run_id, product_type="derived_product", storage_mode="folder",
-            folder_path=str(mfd), checksum="1" * 64, validation_status="valid")
+            processing_id=run_id,
+            product_type="derived_product",
+            storage_mode="folder",
+            folder_path=str(mfd),
+            checksum="1" * 64,
+            validation_status="valid",
+        )
 
     window = build_ndxplorer_window(mfd, session_autosave=False, layout_store=None)
     try:
@@ -299,15 +303,18 @@ def test_saved_burst_ids_are_recorded_against_the_mmfdb_product(
         window.close()
 
     with MFDatabase(db_path) as db:
-        edges = db.get_provenance_edges(source_node_type="processed_data",
-                                        source_node_id=prod_id, relationship_type="input_to")
+        edges = db.get_provenance_edges(
+            source_node_type="processed_data", source_node_id=prod_id, relationship_type="input_to"
+        )
         assert len(edges) == 1
         run = db.get_processing_run_full(edges[0]["target_node_id"])
         assert run["processing_type"] == "ndxplorer_selection"
         assert run["settings"]["folder"] == str(out)
-        produced = db.get_provenance_edges(source_node_type="processing_run",
-                                           source_node_id=run["processing_id"],
-                                           relationship_type="produced")
+        produced = db.get_provenance_edges(
+            source_node_type="processing_run",
+            source_node_id=run["processing_id"],
+            relationship_type="produced",
+        )
         assert len(produced) == 1
 
 

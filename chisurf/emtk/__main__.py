@@ -1,4 +1,5 @@
 """Launch a ChiSurf native EMTK plugin without starting the Qt application."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,7 +11,9 @@ from .plugins import configure_launch, manifests, native_factory
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plugin", help="Manifest plugin id")
-    parser.add_argument("--list", action="store_true", help="List native factories and pending ports")
+    parser.add_argument(
+        "--list", action="store_true", help="List native factories and pending ports"
+    )
     parser.add_argument("--language", choices=SUPPORTED_LOCALES)
     parser.add_argument("--size", help="WIDTHxHEIGHT; otherwise restore the saved size")
     parser.add_argument("--path", help="Initial document for help/code_editor")

@@ -59,7 +59,9 @@ class ImagingToolApp(ImApp):
         self.job = SnapshotJob(model)
         model.runner = self.start_job
         model.add_observer(self._on_event)
-        self.spec = self.prepare_spec(json.loads((self.GUI_DIR / self.SPEC).read_text(encoding="utf-8")))
+        self.spec = self.prepare_spec(
+            json.loads((self.GUI_DIR / self.SPEC).read_text(encoding="utf-8"))
+        )
         self.form = FormState()
         self.item_rects: dict[str, tuple] = {}
         self.dialog: FileDialog | None = None
@@ -75,10 +77,17 @@ class ImagingToolApp(ImApp):
             quiver=lambda s, m, st, w: self._draw_quiver(s),
         )
         self.tour = EmTkGuidedTour(
-            steps=self.GUI_DIR / "guide.json", owner=self, wait_for_controls=True,
-            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key))
-        self.help_window = EmTkHelpWindow(title=self.HELP_TITLE, resource=self.GUI_DIR / "help.md", owner=self,
-                                          on_start_guide=self.tour.start)
+            steps=self.GUI_DIR / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
+        )
+        self.help_window = EmTkHelpWindow(
+            title=self.HELP_TITLE,
+            resource=self.GUI_DIR / "help.md",
+            owner=self,
+            on_start_guide=self.tour.start,
+        )
         self.form.on_used = self.tour.notify_used
         self._reported_error = ""
         self.docks = DockManager(self.LAYOUT)
@@ -86,8 +95,13 @@ class ImagingToolApp(ImApp):
         for panel in self.spec["sections"]:
             key = str(panel["title"])
             self.windows[key] = panel
-            self.docks.add_window(key, key, lambda box, p=panel: self._draw_window(p),
-                                  dock=str(panel.get("dock", "views")), closable=False)
+            self.docks.add_window(
+                key,
+                key,
+                lambda box, p=panel: self._draw_window(p),
+                dock=str(panel.get("dock", "views")),
+                closable=False,
+            )
         super().__init__(self.render, continuous=False)
 
     def prepare_spec(self, spec: dict) -> dict:
@@ -98,7 +112,12 @@ class ImagingToolApp(ImApp):
         """Hook: what fills the frame under the dialogs (the dock windows)."""
         self.docks.draw(box)
         shown = self.docks.selected.get("views")
-        if shown and hasattr(self.model, "view_tab") and shown in self.windows and self.model.view_tab != shown:
+        if (
+            shown
+            and hasattr(self.model, "view_tab")
+            and shown in self.windows
+            and self.model.view_tab != shown
+        ):
             self.model.view_tab = shown  # the View choice follows the tab that was clicked
 
     # -- worker ----------------------------------------------------------- #
@@ -157,7 +176,9 @@ class ImagingToolApp(ImApp):
         if is_settings:
             self._toolbar()
         im.begin_disabled(is_settings and bool(self.model.busy))
-        draw_sections(panel.get("sections") or [], self.model, self.form, int(panel.get("n_col") or 1))
+        draw_sections(
+            panel.get("sections") or [], self.model, self.form, int(panel.get("n_col") or 1)
+        )
         im.end_disabled()
         if is_settings:
             self._round_to_decimals(panel)
@@ -169,9 +190,18 @@ class ImagingToolApp(ImApp):
             section = stack.pop()
             stack.extend(section.get("sections") or [])
             decimals = section.get("decimals")
-            if section.get("type") == "value" and section.get("kind") == "float" and decimals is not None and section.get("attr"):
+            if (
+                section.get("type") == "value"
+                and section.get("kind") == "float"
+                and decimals is not None
+                and section.get("attr")
+            ):
                 value = getattr(self.model, section["attr"], None)
-                if isinstance(value, float) and value == value and round(value, int(decimals)) != value:
+                if (
+                    isinstance(value, float)
+                    and value == value
+                    and round(value, int(decimals)) != value
+                ):
                     setattr(self.model, section["attr"], round(value, int(decimals)))
 
     #: show a Cancel button (greyed while idle) that calls ``model.cancel()``
@@ -181,22 +211,32 @@ class ImagingToolApp(ImApp):
         """Help and Guide (and Cancel), then the status line (what the Qt status bar showed)."""
         if im.button("Help"):
             self.help_window.show()
-        im.set_item_tooltip(f"Explain what {self.TITLE.lower()} measures, which settings decide the answer and what to check.")
+        im.set_item_tooltip(
+            f"Explain what {self.TITLE.lower()} measures, which settings decide the answer and what to check."
+        )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
         if im.button("Guide"):
             self.tour.start()
-        im.set_item_tooltip("Walk through the tool step by step; each step waits for you to use the control it points at.")
+        im.set_item_tooltip(
+            "Walk through the tool step by step; each step waits for you to use the control it points at."
+        )
         self.item_rects["guide"] = im.get_item_rect()
         if self.CANCELLABLE:
             im.same_line()
             im.begin_disabled(not (self.job.busy or self.model.busy))
             if im.button("Cancel"):
                 self.model.cancel()
-            im.set_item_tooltip("Stop at the next checkpoint of the running calculation and discard the unfinished result.")
+            im.set_item_tooltip(
+                "Stop at the next checkpoint of the running calculation and discard the unfinished result."
+            )
             self.item_rects["cancel"] = im.get_item_rect()
             im.end_disabled()
-        message = f"{self.job.progress} {self.model.status_line}".strip() if self.job.busy else self.model.status_line
+        message = (
+            f"{self.job.progress} {self.model.status_line}".strip()
+            if self.job.busy
+            else self.model.status_line
+        )
         if message:
             im.text_wrapped(message)
         im.separator()
@@ -210,16 +250,24 @@ class ImagingToolApp(ImApp):
         options = section.get("options") or {}
         name = str(options.get("name", section.get("title", "image")))
         panel = self._panel(name, lambda key: ImagePanel(key, movie=bool(options.get("movie"))))
-        panel.canvas.image_label = str(options.get("label", section.get("title", name)))  # the legend names what is drawn
+        panel.canvas.image_label = str(
+            options.get("label", section.get("title", name))
+        )  # the legend names what is drawn
         fn = getattr(self.model, str(options.get("source", "")), None)
         array = fn() if callable(fn) else None
         marks = getattr(self.model, str(options.get("markers", "")), None)
         if array is not None and getattr(panel, "_array_id", None) != id(array):
             panel._array_id = id(array)
             panel.reset()
-        panel.draw(array, self.model, self, markers=marks() if callable(marks) else (),
-                   empty=str(options.get("empty", "")), description=str(section.get("description", "")),
-                   colormap_attr=str(options.get("colormap_attr", "")))
+        panel.draw(
+            array,
+            self.model,
+            self,
+            markers=marks() if callable(marks) else (),
+            empty=str(options.get("empty", "")),
+            description=str(section.get("description", "")),
+            colormap_attr=str(options.get("colormap_attr", "")),
+        )
         if "image" in panel.rects and array is not None:
             self.item_rects[str(section.get("title", name))] = panel.rects["image"]
 
@@ -230,10 +278,19 @@ class ImagingToolApp(ImApp):
         x, y = im.get_cursor_screen_pos()
         half = max(80.0, width / 2.0 - 2.0)
         for i, spec in enumerate((left, right)):
-            im.begin_child((x + i * (half + 4.0), y, half, max(100.0, height - 4.0)), clip=True, child_id=f"pair_{i}")
+            im.begin_child(
+                (x + i * (half + 4.0), y, half, max(100.0, height - 4.0)),
+                clip=True,
+                child_id=f"pair_{i}",
+            )
             im.text(str(spec.get("title", "")))
-            self._draw_image_panel({"title": spec.get("title", ""), "description": spec.get("description", ""),
-                                    "options": dict(spec, name=spec.get("name", spec.get("title", "")))})
+            self._draw_image_panel(
+                {
+                    "title": spec.get("title", ""),
+                    "description": spec.get("description", ""),
+                    "options": dict(spec, name=spec.get("name", spec.get("title", ""))),
+                }
+            )
             im.end_child()
         self.item_rects[str(section.get("title", "images"))] = (x, y, 2.0 * half + 4.0, height)
 
@@ -252,9 +309,14 @@ class ImagingToolApp(ImApp):
             return
         title, mode, filters, _handler, *rest = self.DIALOGS[kind]
         name_for = getattr(self.model, "dialog_filename", None)
-        self.dialog = FileDialog(title, mode=mode, filters=filters, multiselect=bool(rest and rest[0]),
-                                 directory=self.model.folder or None,
-                                 filename=name_for(kind) if callable(name_for) and mode == "save" else "")
+        self.dialog = FileDialog(
+            title,
+            mode=mode,
+            filters=filters,
+            multiselect=bool(rest and rest[0]),
+            directory=self.model.folder or None,
+            filename=name_for(kind) if callable(name_for) and mode == "save" else "",
+        )
         self.dialog_kind = kind
         self.dialog_window = DialogWindow(title, size=(640.0, 460.0), key=f"file_{kind}")
 
@@ -270,7 +332,11 @@ class ImagingToolApp(ImApp):
             self.tour.notify_used(kind)
             self.model.remember_folder(result[0])
             handler = getattr(self.model, self.DIALOGS[kind][3])
-            handler([str(p) for p in result] if len(self.DIALOGS[kind]) > 4 and self.DIALOGS[kind][4] else result[0])
+            handler(
+                [str(p) for p in result]
+                if len(self.DIALOGS[kind]) > 4 and self.DIALOGS[kind][4]
+                else result[0]
+            )
         elif result is False or pressed == "close":
             self.dialog = None
 

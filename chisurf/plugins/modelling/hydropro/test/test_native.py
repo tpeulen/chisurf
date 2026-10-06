@@ -26,7 +26,13 @@ def test_native_state_roundtrip():
     fresh = HydroProApp()
     fresh.restore_settings(app.export_settings())
     m = fresh.model
-    assert (m.exe_path, m.indmode, m.aer, m.nsig, m.idif) == ("/opt/hydro++10.exe", "4", 6.1, 8, False)
+    assert (m.exe_path, m.indmode, m.aer, m.nsig, m.idif) == (
+        "/opt/hydro++10.exe",
+        "4",
+        6.1,
+        8,
+        False,
+    )
     assert isinstance(m.to_settings(), HydroProSettings)
 
 
@@ -44,8 +50,19 @@ def test_native_renders_all_controls():
     for _ in range(3):
         painter = RecordingPainter()
         make_app().draw(painter, 0, 0, 1200, 800)
-    for expected in ("Executable", "Structures", "INDMODE", "AER", "NSIG", "SIGMIN", "SIGMAX", "Full diffusion tensor",
-                     "Run", "Save CSV", "Select files…"):
+    for expected in (
+        "Executable",
+        "Structures",
+        "INDMODE",
+        "AER",
+        "NSIG",
+        "SIGMIN",
+        "SIGMAX",
+        "Full diffusion tensor",
+        "Run",
+        "Save CSV",
+        "Select files…",
+    ):
         assert expected in painter.strings, expected
 
 
@@ -55,7 +72,15 @@ def test_native_every_section_button_and_column_has_a_description():
     spec = build_spec()
     for part in spec.values():
         for section in _walk(part):
-            if section.get("type") in ("value", "choice", "toggle", "info", "progress", "custom", "button_row"):
+            if section.get("type") in (
+                "value",
+                "choice",
+                "toggle",
+                "info",
+                "progress",
+                "custom",
+                "button_row",
+            ):
                 assert str(section.get("description", "")).strip(), section
             for button in section.get("buttons", []):
                 assert button["description"].strip(), button

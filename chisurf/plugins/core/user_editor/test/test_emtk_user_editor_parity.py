@@ -25,8 +25,18 @@ GUI = HERE.parent / "gui"
 SPEC_FILE = GUI / "users_emtk.view.json"
 TABLE = "user_records"
 
-FIELDS = ("user_id", "display_name", "email", "role", "affiliation", "department",
-          "phone", "website", "address", "details")
+FIELDS = (
+    "user_id",
+    "display_name",
+    "email",
+    "role",
+    "affiliation",
+    "department",
+    "phone",
+    "website",
+    "address",
+    "details",
+)
 
 
 # ── fixtures ────────────────────────────────────────────────────────────
@@ -107,9 +117,15 @@ class FakeServer:
 
 
 def record(user_id, name=None, **over):
-    base = {"user_id": user_id, "user_uuid": f"uuid-{user_id}", "display_name": name or user_id.title(),
-            "email": f"{user_id}@example.org", "role": "Postdoc", "is_admin": 0,
-            "allow_passwordless_login": 0}
+    base = {
+        "user_id": user_id,
+        "user_uuid": f"uuid-{user_id}",
+        "display_name": name or user_id.title(),
+        "email": f"{user_id}@example.org",
+        "role": "Postdoc",
+        "is_admin": 0,
+        "allow_passwordless_login": 0,
+    }
     base.update(over)
     return base
 
@@ -212,8 +228,10 @@ def test_rows_fields_and_status_match_the_qt_widget(qapp, qtbot, temp_db):
     assert titles[: len(shared)] == shared
     assert emtk_cells == [row[: len(shared)] for row in qt_cells]
     assert len(emtk_cells) == 11 and "alice" in [r[1] for r in emtk_cells]
-    assert app.model.status_text() == qt_widget.model.status_text() == (
-        "11 user(s). Signed in as 'admin'."
+    assert (
+        app.model.status_text()
+        == qt_widget.model.status_text()
+        == ("11 user(s). Signed in as 'admin'.")
     )
 
     # select the same account in both and compare every field
@@ -405,7 +423,8 @@ def test_a_role_stored_by_another_tool_is_listed_and_kept():
     assert app.model.role == "Facility Manager"
     assert app.model.role_options()[-1] == "Facility Manager"
     assert app.model.role_options()[:-1] == list(
-        __import__("chisurf.plugins.core.user_editor.api.records", fromlist=["x"]).ROLE_OPTIONS)
+        __import__("chisurf.plugins.core.user_editor.api.records", fromlist=["x"]).ROLE_OPTIONS
+    )
     click_row(app, "bob")
     assert "Facility Manager" not in app.model.role_options()
 
@@ -465,8 +484,13 @@ def test_save_writes_the_temporary_database(temp_db):
     # a fresh client reads the change back from the temporary database
     fresh = {u["user_id"]: u for u in seeded_db.admin_client().list_users()}
     assert fresh["bob"]["display_name"] == "Robert Baker" and fresh["bob"]["phone"] == "+49 1"
-    assert fresh["bob"]["email"] == "bob@example.org" and fresh["carol"]["display_name"] == "Carol Chen"
-    assert [r["user"] for r in app.model.user_records() if r["username"] == "bob"] == ["Robert Baker"]
+    assert (
+        fresh["bob"]["email"] == "bob@example.org"
+        and fresh["carol"]["display_name"] == "Carol Chen"
+    )
+    assert [r["user"] for r in app.model.user_records() if r["username"] == "bob"] == [
+        "Robert Baker"
+    ]
 
 
 def test_a_staged_password_alone_is_saved_and_works_for_sign_in(temp_db):
@@ -559,7 +583,10 @@ def test_save_refuses_a_problem_without_calling_the_server():
     app.model.email = "not-an-email"
     app.model.do_save()
     assert not app.job.busy and client.saved == []
-    assert "Cannot save:" in app.model.status_text() and "not a valid e-mail" in app.model.status_text()
+    assert (
+        "Cannot save:" in app.model.status_text()
+        and "not a valid e-mail" in app.model.status_text()
+    )
     assert "Cannot save yet" in app.model.details_text()
     app.model.email = "bob@example.org"
     app.model.website = "example.org"
@@ -676,7 +703,8 @@ def test_delete_asks_first_and_deletes_only_the_selected_account(temp_db):
     model.confirm_no()
     pump(app)
     assert set(shown(app)) == before and "bob" in {
-        u["user_id"] for u in seeded_db.admin_client().list_users()}
+        u["user_id"] for u in seeded_db.admin_client().list_users()
+    }
     model.ask_delete()
     model.confirm_yes()
     assert app.job.busy
@@ -719,7 +747,10 @@ def test_a_refused_delete_offers_force_to_an_administrator():
     model.confirm_yes()
     pump(app)
     assert model.confirm == "force_delete"
-    assert "Account owns committed data" in model.confirm_text and "Force the deletion?" in model.confirm_text
+    assert (
+        "Account owns committed data" in model.confirm_text
+        and "Force the deletion?" in model.confirm_text
+    )
     painter = draw(app)
     assert "Force delete" in painter.strings
     model.confirm_no()
@@ -784,7 +815,9 @@ def test_password_mismatch_empty_and_weak_admin_password_are_refused():
     model.ask_password()
     model.password_new = model.password_confirm = "abc"
     model.password_set()
-    assert "Administrator password is too weak" in model.password_error and not model.password_staged
+    assert (
+        "Administrator password is too weak" in model.password_error and not model.password_staged
+    )
     model.password_new = model.password_confirm = "Abcdef1!"
     model.password_set()
     assert model.password_staged
@@ -800,12 +833,18 @@ def test_a_staged_password_is_sent_with_save_and_forgotten_after():
     assert app.model.password_new == "" and app.model.password_confirm == ""
     assert "a new password is staged" in app.model.status_text()
     # a password can be set on its own: Save and Revert are usable without any field edit
-    assert app.model.dirty is False and app.model.enabled("do_save") and app.model.enabled("ask_revert")
+    assert (
+        app.model.dirty is False
+        and app.model.enabled("do_save")
+        and app.model.enabled("ask_revert")
+    )
     app.model.do_save()
     pump(app)
     assert client.saved[-1]["password"] == "S3cret!pw"
     assert client.saved[-1]["display_name"] == "Bob Baker"
-    assert "staged" not in app.model.status_text() and "Saved 'Bob Baker'" in app.model.status_text()
+    assert (
+        "staged" not in app.model.status_text() and "Saved 'Bob Baker'" in app.model.status_text()
+    )
     assert not app.model.password_staged and not app.model.enabled("do_save")
 
 
@@ -909,11 +948,32 @@ def test_app_draws_populated_and_empty_at_both_sizes(size):
     click_row(app, "bob")
     painter = draw(app, size)
     strings = painter.strings
-    for expected in ("Accounts", "Account", "Save", "Revert", "Reload", "New", "Delete",
-                     "Password...", "Copy", "Export CSV", "Help", "Guide", "Username",
-                     "Display name", "E-mail", "Role", "Affiliation", "Department", "Phone",
-                     "Website", "Address", "Notes", "Administrator",
-                     "Allow sign-in without a password"):
+    for expected in (
+        "Accounts",
+        "Account",
+        "Save",
+        "Revert",
+        "Reload",
+        "New",
+        "Delete",
+        "Password...",
+        "Copy",
+        "Export CSV",
+        "Help",
+        "Guide",
+        "Username",
+        "Display name",
+        "E-mail",
+        "Role",
+        "Affiliation",
+        "Department",
+        "Phone",
+        "Website",
+        "Address",
+        "Notes",
+        "Administrator",
+        "Allow sign-in without a password",
+    ):
         assert expected in strings, expected
     assert "bob" in strings and "carol" in strings  # (display names are elided when narrow)
     assert any("5 user(s)" in s for s in strings)
@@ -961,8 +1021,11 @@ def test_every_spec_key_exists_on_the_model():
             assert section["key"] in app.form.custom, section["key"]
         columns = [c["key"] for c in options.get("columns", [])]
         if columns:
-            model.users = [__import__(
-                "chisurf.plugins.core.user_editor.api.records", fromlist=["x"]).UserRow(user_id="x")]
+            model.users = [
+                __import__("chisurf.plugins.core.user_editor.api.records", fromlist=["x"]).UserRow(
+                    user_id="x"
+                )
+            ]
             assert set(columns) <= set(model.user_records()[0]), columns
 
 
@@ -973,9 +1036,21 @@ def test_every_control_has_a_tooltip():
     assert inventory["controls_without_tooltip"] == []
     spec = json.loads(SPEC_FILE.read_text())
     for section in _walk(spec["sections"]):
-        if section.get("type") in ("value", "choice", "toggle", "table", "data_table", "custom",
-                                   "info", "button_row", "panel", "progress"):
-            assert section.get("description"), section.get("attr") or section.get("title") or section
+        if section.get("type") in (
+            "value",
+            "choice",
+            "toggle",
+            "table",
+            "data_table",
+            "custom",
+            "info",
+            "button_row",
+            "panel",
+            "progress",
+        ):
+            assert section.get("description"), (
+                section.get("attr") or section.get("title") or section
+            )
         for column in (section.get("options") or {}).get("columns", []):
             assert column.get("tooltip"), column
         for button in section.get("buttons", []):
@@ -992,8 +1067,20 @@ def test_the_populated_app_has_no_untooltipped_control_either():
     # the shared dialog window's close button is emtk's and has no tooltip (reported)
     assert set(inventory["controls_without_tooltip"]) <= {"button: ×"}
     labels = {row["label"] for row in inventory["interactive"]}
-    assert {"Save", "Revert", "Reload", "New", "Delete", "Password...", "Copy", "Export CSV",
-            "Help", "Guide", "Administrator", "Allow sign-in without a password"} <= labels
+    assert {
+        "Save",
+        "Revert",
+        "Reload",
+        "New",
+        "Delete",
+        "Password...",
+        "Copy",
+        "Export CSV",
+        "Help",
+        "Guide",
+        "Administrator",
+        "Allow sign-in without a password",
+    } <= labels
 
 
 def test_guide_steps_point_at_controls_the_app_draws():
@@ -1021,7 +1108,9 @@ def test_the_tour_hears_the_row_pick_the_edit_and_the_buttons():
     click_row(app, "bob")
     draw(app)
     assert "row_selected" in heard
-    section = next(s for s in _walk(app.panels["account"]["sections"]) if s.get("attr") == "display_name")
+    section = next(
+        s for s in _walk(app.panels["account"]["sections"]) if s.get("attr") == "display_name"
+    )
     from emtk.view_form import _commit
 
     _commit(app.model, section, "Robert", app.form)
@@ -1066,7 +1155,7 @@ def test_settings_round_trip_restores_the_selection_once_loaded():
 
 
 def test_a_stale_message_does_not_outlive_the_selection_it_was_about():
-    """"New account..." and "Changes discarded." used to stay on the status line."""
+    """ "New account..." and "Changes discarded." used to stay on the status line."""
     app = loaded_app()
     model = app.model
     model.new_user()

@@ -3,6 +3,7 @@
 The window is a view over this class (``gui/fret_line_emtk.view.json`` + ``gui/app.py``). Every method a button calls
 takes no arguments; ``enabled(action)`` greys the buttons that have nothing to act on, as the Qt tool did.
 """
+
 from __future__ import annotations
 
 import csv
@@ -27,7 +28,18 @@ from ..core.algorithms import (
 )
 
 #: Colour cycle of the computed lines (the Qt tool's).
-PALETTE = ("#e05c00", "#1f77b4", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#17becf", "#bcbd22", "#7f7f7f")
+PALETTE = (
+    "#e05c00",
+    "#1f77b4",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#17becf",
+    "#bcbd22",
+    "#7f7f7f",
+)
 NO_NDX_WINDOW = "No ndX window is open to take the lines.\nOpen ndX, then push again; Save CSV keeps them in a file."
 
 
@@ -46,8 +58,10 @@ def push_to_ndx(lines) -> int:
         from ndxplorer.app.frame import live_apps
 
         if live_apps():
-            raise ValueError("The open ndX window(s) rejected the lines. Check their columns "
-                             "and axis hints; details are in the log.")
+            raise ValueError(
+                "The open ndX window(s) rejected the lines. Check their columns "
+                "and axis hints; details are in the log."
+            )
     return taken
 
 
@@ -112,8 +126,10 @@ class FretLineModel:
 
     def component_rows(self) -> list[dict]:
         """One row per component for the table: ``C0``, its model and its weight (the Qt list's text)."""
-        return [{"index": i, "name": f"C{i}", "model": c["model_name"], "weight": c["weight"]}
-                for i, c in enumerate(self.components)]
+        return [
+            {"index": i, "name": f"C{i}", "model": c["model_name"], "weight": c["weight"]}
+            for i, c in enumerate(self.components)
+        ]
 
     @property
     def selected(self) -> dict:
@@ -165,9 +181,15 @@ class FretLineModel:
             unregister_parameter_group(owner)
         for i, component in enumerate(self.components):
             owner = prefix + str(i)
-            if owner not in self._registered or get_registered_parameter_group(owner) is not component["model"]:
-                register_parameter_group(component["model"], owner_id=owner,
-                                         label=f"FRET Line C{i}: {component['model_name']}")
+            if (
+                owner not in self._registered
+                or get_registered_parameter_group(owner) is not component["model"]
+            ):
+                register_parameter_group(
+                    component["model"],
+                    owner_id=owner,
+                    label=f"FRET Line C{i}: {component['model_name']}",
+                )
         self._registered = current
 
     def close(self) -> None:
@@ -178,9 +200,11 @@ class FretLineModel:
     # -- the sweep -------------------------------------------------------------------- #
     def sweep_targets(self) -> list[dict]:
         """Every sweepable parameter and mixing fraction (nuisance parameters only with *All parameters*)."""
-        targets = sweep_targets_for_models([c["model"] for c in self.components],
-                                           [c["model_name"] for c in self.components],
-                                           relevant_only=not self.show_all_parameters)
+        targets = sweep_targets_for_models(
+            [c["model"] for c in self.components],
+            [c["model_name"] for c in self.components],
+            relevant_only=not self.show_all_parameters,
+        )
         signature = [(t.get("kind"), t.get("component"), t.get("name")) for t in targets]
         if signature != self._sweep_signature and self._sweep_key in signature:
             self.sweep_index = signature.index(self._sweep_key)
@@ -191,7 +215,10 @@ class FretLineModel:
 
     def _select_default_sweep(self) -> None:
         targets = self.sweep_targets()
-        self.sweep_index = next((i for i, t in enumerate(targets) if (t.get("name") or "").startswith("distance.mean")), 0)
+        self.sweep_index = next(
+            (i for i, t in enumerate(targets) if (t.get("name") or "").startswith("distance.mean")),
+            0,
+        )
         self.sweep_targets()
 
     @property
@@ -239,8 +266,15 @@ class FretLineModel:
             snapshots = [(p, p.value) for c in self.components for p in _parameters_of(c["model"])]
             try:
                 response = compute_fret_line_for_models(
-                    [c["model"] for c in self.components], sweep, self.minimum, self.maximum, self.n_points,
-                    [c["weight"] for c in self.components], self.tau_d0 or None, self.log_scale)
+                    [c["model"] for c in self.components],
+                    sweep,
+                    self.minimum,
+                    self.maximum,
+                    self.n_points,
+                    [c["weight"] for c in self.components],
+                    self.tau_d0 or None,
+                    self.log_scale,
+                )
             finally:  # a sweep moves the swept parameter; the mixture the user built stays as it was
                 for parameter, value in snapshots:
                     parameter.value = value
@@ -248,8 +282,11 @@ class FretLineModel:
                 raise ValueError(response.get("error", "?"))
         except Exception as exc:
             self.message = f"Compute error: {exc}"
-            self.dialog_title, self.dialog_text = ("Sweep", "No sweep target selected.") if "No sweep target" in str(exc) else (
-                "Compute error", str(exc))
+            self.dialog_title, self.dialog_text = (
+                ("Sweep", "No sweep target selected.")
+                if "No sweep target" in str(exc)
+                else ("Compute error", str(exc))
+            )
             return None
         self._line_seq += 1
         line = {
@@ -260,7 +297,9 @@ class FretLineModel:
             "visible": True,
             "log": self.log_scale,
             "tau_d0": self.tau_d0 or None,
-            "components": "; ".join(f"C{i}={c['model_name']}(w={c['weight']:g})" for i, c in enumerate(self.components)),
+            "components": "; ".join(
+                f"C{i}={c['model_name']}(w={c['weight']:g})" for i, c in enumerate(self.components)
+            ),
         }
         self.lines.append(line)
         self.line_index = len(self.lines) - 1
@@ -326,7 +365,9 @@ class FretLineModel:
                 r = ln["result"]
                 comps = ln["components"].replace(",", ";")
                 for p, tf, tx, e in zip(r["parameter_values"], r["tau_f"], r["tau_x"], r["e_fret"]):
-                    fh.write(f"{ln['name']},{ln['sweep_label']},{ln['log']},{comps},{p:.8g},{tf:.8g},{tx:.8g},{e:.8g}\n")
+                    fh.write(
+                        f"{ln['name']},{ln['sweep_label']},{ln['log']},{comps},{p:.8g},{tf:.8g},{tx:.8g},{e:.8g}\n"
+                    )
         self.notice("Saved", f"Saved {len(self.lines)} line(s) to:\n{path}")
 
     def push(self) -> None:
@@ -363,16 +404,29 @@ class FretLineModel:
         rows = []
         for p in _parameters_of(self.selected["model"]):
             low, high = p.bounds
-            rows.append({"id": getattr(p, "canonical_id", p.name), "name": p.name, "value": float(p.value),
-                         "fixed": bool(p.fixed), "bounds_on": bool(p.bounds_on),
-                         "lower": float(low) if low is not None else float("-inf"),
-                         "upper": float(high) if high is not None else float("inf")})
+            rows.append(
+                {
+                    "id": getattr(p, "canonical_id", p.name),
+                    "name": p.name,
+                    "value": float(p.value),
+                    "fixed": bool(p.fixed),
+                    "bounds_on": bool(p.bounds_on),
+                    "lower": float(low) if low is not None else float("-inf"),
+                    "upper": float(high) if high is not None else float("inf"),
+                }
+            )
         return rows
 
     def parameter_edited(self, record: dict, key: str, value: Any) -> None:
         """The table wrote a cell: put it into the live parameter (a value that is not a number is refused)."""
-        parameter = next((p for p in _parameters_of(self.selected["model"])
-                          if getattr(p, "canonical_id", p.name) == record["id"]), None)
+        parameter = next(
+            (
+                p
+                for p in _parameters_of(self.selected["model"])
+                if getattr(p, "canonical_id", p.name) == record["id"]
+            ),
+            None,
+        )
         if parameter is None:
             return
         try:
@@ -397,7 +451,11 @@ class FretLineModel:
         values = {}
         for parameter in getattr(model, "parameters_all", []):
             pieces = getattr(parameter, "canonical_id", "").split(".")
-            if len(pieces) == 3 and pieces[0] in ("donor", "lifetime") and pieces[1] in ("amplitude", "tau"):
+            if (
+                len(pieces) == 3
+                and pieces[0] in ("donor", "lifetime")
+                and pieces[1] in ("amplitude", "tau")
+            ):
                 values[(pieces[1], int(pieces[2]))] = parameter.value
         return values
 
@@ -409,7 +467,11 @@ class FretLineModel:
             models = getattr(fit, "models", None) or [getattr(fit, "model", None)]
             sources.extend((getattr(m, "name", "Fit donor"), m) for m in models if m is not None)
         own = {id(c["model"]) for c in self.components}
-        return [(label, self.spectrum_of(m)) for label, m in sources if id(m) not in own and self.spectrum_of(m)]
+        return [
+            (label, self.spectrum_of(m))
+            for label, m in sources
+            if id(m) not in own and self.spectrum_of(m)
+        ]
 
     def apply_donor_reference(self, spectrum: dict) -> None:
         model = self.selected["model"]
@@ -418,7 +480,12 @@ class FretLineModel:
         from chisurf.core.fluorescence.fret.fret_line import find_parameter
 
         for _ in range(40):
-            current = len({int(p.canonical_id.split(".")[-1]) for p in model._groups[group_name].component_parameters()})
+            current = len(
+                {
+                    int(p.canonical_id.split(".")[-1])
+                    for p in model._groups[group_name].component_parameters()
+                }
+            )
             if current == count:
                 break
             if not model.change_components(group_name, 1 if current < count else -1):
@@ -428,7 +495,14 @@ class FretLineModel:
 
     def bind_input(self, slot: str, curve: Any, model: Any = None) -> None:
         x, y = np.asarray(curve.x, dtype=float), np.asarray(curve.y, dtype=float)
-        if x.ndim != 1 or y.ndim != 1 or not len(x) or len(x) != len(y) or not np.isfinite(x).all() or not np.isfinite(y).all():
+        if (
+            x.ndim != 1
+            or y.ndim != 1
+            or not len(x)
+            or len(x) != len(y)
+            or not np.isfinite(x).all()
+            or not np.isfinite(y).all()
+        ):
             raise ValueError("Measured input curves need matching finite x/y arrays.")
         model = self.selected["model"] if model is None else model
         model.set_dataset(slot, curve)
@@ -443,11 +517,22 @@ class FretLineModel:
 
     # -- settings --------------------------------------------------------------------------------- #
     def export_state(self) -> dict:
-        return {"minimum": self.minimum, "maximum": self.maximum, "n_points": self.n_points, "log_scale": self.log_scale,
-                "tau_d0": self.tau_d0, "show_all_parameters": self.show_all_parameters}
+        return {
+            "minimum": self.minimum,
+            "maximum": self.maximum,
+            "n_points": self.n_points,
+            "log_scale": self.log_scale,
+            "tau_d0": self.tau_d0,
+            "show_all_parameters": self.show_all_parameters,
+        }
 
     def restore_state(self, settings: dict) -> None:
-        for key, kind in (("minimum", float), ("maximum", float), ("tau_d0", float), ("n_points", int)):
+        for key, kind in (
+            ("minimum", float),
+            ("maximum", float),
+            ("tau_d0", float),
+            ("n_points", int),
+        ):
             try:
                 value = kind(settings[key])
             except (KeyError, TypeError, ValueError):

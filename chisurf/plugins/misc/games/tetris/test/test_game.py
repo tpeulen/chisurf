@@ -16,7 +16,9 @@ from ..model import BOARD_H, BOARD_W, SHAPE_NM, SHAPES, SQUARE, TetrisModel, rot
 
 @pytest.fixture
 def game():
-    return TetrisModel(SimpleNamespace(keys=Inputs(), audio=SimpleNamespace(sfx=lambda *args: None)))
+    return TetrisModel(
+        SimpleNamespace(keys=Inputs(), audio=SimpleNamespace(sfx=lambda *args: None))
+    )
 
 
 def test_a_new_game_starts_with_an_empty_well(game):

@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from chisurf.plugins.traj.fret_trajectory.app import make_app
-from chisurf.plugins.traj.traj_save_topology.test.real_input import (  # noqa: F401  (hermetic is autouse)
+from chisurf.plugins.traj.traj_save_topology.test.real_input import (
     Ui,
     check_action_flow,
     check_browse_row,
@@ -20,13 +19,11 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import (  # noqa: F
     check_number_field,
     check_row_is_read_only,
     dead_tour_buttons,
-    hermetic,
     read_xyz,
-    small_trajectory,
     wheel_steps_a_number_field,
 )
 
-SIZE = (800, 700)               # the Process panel and the log are on screen
+SIZE = (800, 700)  # the Process panel and the log are on screen
 
 
 def _ui():
@@ -48,16 +45,35 @@ def test_no_tour_card_button_is_dead_on_any_step():
     assert dead_tour_buttons(make_app, SIZE) == []
 
 
-def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_works(small_trajectory, monkeypatch):
+def test_the_trajectory_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+    small_trajectory, monkeypatch
+):
     monkeypatch.chdir(small_trajectory)
-    check_browse_row(make_app, "trajectory", small_trajectory / "small.dcd", small_trajectory / "topol.pdb",
-                     small_trajectory, "Open trajectory", model_attr="trajectory_file", size=SIZE)
+    check_browse_row(
+        make_app,
+        "trajectory",
+        small_trajectory / "small.dcd",
+        small_trajectory / "topol.pdb",
+        small_trajectory,
+        "Open trajectory",
+        model_attr="trajectory_file",
+        size=SIZE,
+    )
 
 
-def test_the_topology_browse_button_opens_a_filtered_dialog_and_every_way_out_works(small_trajectory, monkeypatch):
+def test_the_topology_browse_button_opens_a_filtered_dialog_and_every_way_out_works(
+    small_trajectory, monkeypatch
+):
     monkeypatch.chdir(small_trajectory)
-    check_browse_row(make_app, "topology", small_trajectory / "topol.pdb", small_trajectory / "small.dcd",
-                     small_trajectory, "Open topology", size=SIZE)
+    check_browse_row(
+        make_app,
+        "topology",
+        small_trajectory / "topol.pdb",
+        small_trajectory / "small.dcd",
+        small_trajectory,
+        "Open topology",
+        size=SIZE,
+    )
 
 
 @pytest.mark.parametrize("row", ["trajectory", "topology"])
@@ -71,10 +87,14 @@ def test_dropped_files_fill_the_rows_by_type_and_either_order_works(small_trajec
         assert ui.drop(small_trajectory / "notes.txt") is True
         assert ui.shown("No trajectory or topology file among the dropped paths.")
         assert ui.shown("Choose the trajectory and its topology to pick the atoms.")
-        ui.drop(small_trajectory / "small.dcd")                           # the trajectory before its topology
-        assert ui.app.model.pdb is None and ui.shown("Choose the trajectory and its topology to pick the atoms.")
+        ui.drop(small_trajectory / "small.dcd")  # the trajectory before its topology
+        assert ui.app.model.pdb is None and ui.shown(
+            "Choose the trajectory and its topology to pick the atoms."
+        )
         ui.drop(small_trajectory / "topol.pdb")
-        assert ui.app.model.pdb is not None and not ui.shown("Choose the trajectory and its topology")
+        assert ui.app.model.pdb is not None and not ui.shown(
+            "Choose the trajectory and its topology"
+        )
         assert ui.shown("Donor") and ui.shown("Acceptor") and ui.shown("Chain")
     finally:
         ui.app.close()
@@ -109,7 +129,7 @@ def test_each_of_the_twelve_pickers_opens_its_list_and_a_choice_changes_the_atom
             atoms = index.atoms(chain, residue)
             combo_at(ui, role, slot, 2)
             target = index.name(atoms[3])
-            assert ui.shown(target) and ui.shown(index.name(atoms[0]))     # the list is open
+            assert ui.shown(target) and ui.shown(index.name(atoms[0]))  # the list is open
             entry(ui, target)
             after = getattr(ui.app.model, role)
             assert after[slot] == atoms[3] and after[1 - slot] == before[1 - slot], (role, slot)
@@ -117,7 +137,10 @@ def test_each_of_the_twelve_pickers_opens_its_list_and_a_choice_changes_the_atom
         # residues: the first atom of the residue picked
         combo_at(ui, "donor", 0, 1)
         entry(ui, "2", nth=-1)
-        assert index.where(ui.app.model.donor[0]) == ("A", 2) and ui.app.model.donor[0] == index.atoms("A", 2)[0]
+        assert (
+            index.where(ui.app.model.donor[0]) == ("A", 2)
+            and ui.app.model.donor[0] == index.atoms("A", 2)[0]
+        )
         # chains: the first atom of the first residue of the chain picked
         combo_at(ui, "acceptor", 1, 0)
         entry(ui, "B")
@@ -143,20 +166,36 @@ def test_a_picker_list_closes_with_escape_without_choosing(small_trajectory):
         ui.app.close()
 
 
-@pytest.mark.parametrize("key, start, typed, minimum, maximum, step, as_type", [
-    ("stride", 1, 4, 1, 99999, 1, int),
-    ("forster_radius", 52.0, 60.0, 0.0, 9999.0, 1.0, float),
-    ("tau0", 2.6, 4.0, 0.0, 1000.0, 0.1, float),
-    ("t_step", 1.0, 2.5, 0.0, 100000.0, 0.1, float),
-])
-def test_each_number_field_is_typed_clicked_away_clamped_and_stepped_by_its_arrows(key, start, typed, minimum, maximum,
-                                                                                    step, as_type):
-    check_number_field(make_app, key, start=start, typed=typed, minimum=minimum, maximum=maximum, step=step,
-                       as_type=as_type, size=SIZE)
+@pytest.mark.parametrize(
+    "key, start, typed, minimum, maximum, step, as_type",
+    [
+        ("stride", 1, 4, 1, 99999, 1, int),
+        ("forster_radius", 52.0, 60.0, 0.0, 9999.0, 1.0, float),
+        ("tau0", 2.6, 4.0, 0.0, 1000.0, 0.1, float),
+        ("t_step", 1.0, 2.5, 0.0, 100000.0, 0.1, float),
+    ],
+)
+def test_each_number_field_is_typed_clicked_away_clamped_and_stepped_by_its_arrows(
+    key, start, typed, minimum, maximum, step, as_type
+):
+    check_number_field(
+        make_app,
+        key,
+        start=start,
+        typed=typed,
+        minimum=minimum,
+        maximum=maximum,
+        step=step,
+        as_type=as_type,
+        size=SIZE,
+    )
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach a field inside a DockManager window "
-                                       "(repro in the report); the Qt spin box steps on the wheel")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel does not reach a field inside a DockManager window "
+    "(repro in the report); the Qt spin box steps on the wheel",
+)
 @pytest.mark.parametrize("key", ["stride", "forster_radius", "tau0", "t_step"])
 def test_the_wheel_steps_a_number_field(key):
     before, after = wheel_steps_a_number_field(make_app, key, size=SIZE)
@@ -205,10 +244,12 @@ def _reference(xyz, donor, acceptor, r0, tau0, dipoles=True):
     r = np.linalg.norm(rda, axis=1)
     ud, ua, ur = unit(dd), unit(da), unit(rda)
     kappa = np.sum(ud * ua, 1) - 3 * np.sum(ud * ur, 1) * np.sum(ua * ur, 1)
-    return r, kappa, 1.5 * kappa ** 2 * (r0 / r) ** 6 / tau0
+    return r, kappa, 1.5 * kappa**2 * (r0 / r) ** 6 / tau0
 
 
-def test_processing_through_the_ui_writes_the_physics_of_the_picked_atoms(small_trajectory, tmp_path):
+def test_processing_through_the_ui_writes_the_physics_of_the_picked_atoms(
+    small_trajectory, tmp_path
+):
     top = small_trajectory / "topol.pdb"
     xyz = read_xyz(small_trajectory / "small.dcd", top).astype(float)
     ui = _loaded(small_trajectory)
@@ -235,8 +276,10 @@ def test_processing_through_the_ui_writes_the_physics_of_the_picked_atoms(small_
         table = _table(target)
         r, kappa, rate = _reference(xyz[::2], donor, acceptor, 55.0, 3.5)
         assert table.shape == (4, 6)
-        np.testing.assert_allclose(table[:, 0], [0, 2, 4, 6])                    # frame numbers
-        np.testing.assert_allclose(table[:, 1], np.array([0, 2, 4, 6]) * 2.5)    # time = frame x t-step
+        np.testing.assert_allclose(table[:, 0], [0, 2, 4, 6])  # frame numbers
+        np.testing.assert_allclose(
+            table[:, 1], np.array([0, 2, 4, 6]) * 2.5
+        )  # time = frame x t-step
         np.testing.assert_allclose(table[:, 2], r, atol=0.01)
         np.testing.assert_allclose(np.abs(table[:, 3]), np.abs(kappa), rtol=1e-3, atol=1e-3)
         np.testing.assert_allclose(table[:, 5], rate, rtol=2e-3)
@@ -269,13 +312,22 @@ def test_the_action_flow_dialog_cancel_close_save_and_replace(small_trajectory, 
     def verify(path):
         assert _table(path).shape == (8, 6)
 
-    check_action_flow(make_app, small_trajectory, tmp_path,
-                      lambda ui: ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb"),
-                      suggested="small_fret.csv", title="Output-file", precondition="Open a trajectory first.",
-                      cancelled="Process cancelled", verify=verify, log_names_target=False, size=SIZE)
+    check_action_flow(
+        make_app,
+        small_trajectory,
+        tmp_path,
+        lambda ui: ui.drop(small_trajectory / "small.dcd", small_trajectory / "topol.pdb"),
+        suggested="small_fret.csv",
+        title="Output-file",
+        precondition="Open a trajectory first.",
+        cancelled="Process cancelled",
+        verify=verify,
+        log_names_target=False,
+        size=SIZE,
+    )
 
 
 def test_the_log_scrolls_under_the_wheel_and_back():
     at_start, scrolled_down, back_up = check_log_scrolls_with_the_wheel(make_app, size=SIZE)
-    assert scrolled_down < at_start                               # a turn down moves the lines up: later ones show
-    assert back_up > scrolled_down                                # a turn the other way brings them back
+    assert scrolled_down < at_start  # a turn down moves the lines up: later ones show
+    assert back_up > scrolled_down  # a turn the other way brings them back

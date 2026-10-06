@@ -154,7 +154,8 @@ def test_summary_and_cells_equal_the_qt_tool(qapp, sample):
             assert f"{r['micro']}" in qt_strings and f"{r['macro']:.6f}" in qt_strings
         # the model behind both is the same rows
         assert [r["idx"] for r in m.rows] == [
-            r["idx"] for r in tool._model.page(tool.first_index, tool.rows_per_page, tool.channel_filter)
+            r["idx"]
+            for r in tool._model.page(tool.first_index, tool.rows_per_page, tool.channel_filter)
         ]
     finally:
         tool.close()
@@ -167,7 +168,11 @@ def test_the_native_table_binds_the_same_rows_and_columns(sample):
     control = table(app)
     assert control.row_count() == 200
     assert [c.title for c in control.visible_columns()] == [
-        "Photon", "File idx", "Channel", "Micro time", "Macro time [ms]"
+        "Photon",
+        "File idx",
+        "Channel",
+        "Micro time",
+        "Macro time [ms]",
     ]
 
 
@@ -448,7 +453,11 @@ def test_every_spec_key_exists_on_the_model():
         for column in options.get("columns", []):
             assert column.get("tooltip"), column
     row_keys = {"photon", "idx", "channel", "micro", "macro"}
-    columns = {c["key"] for s in _walk(spec["sections"]) for c in (s.get("options") or {}).get("columns", [])}
+    columns = {
+        c["key"]
+        for s in _walk(spec["sections"])
+        for c in (s.get("options") or {}).get("columns", [])
+    }
     assert columns == row_keys
 
 
@@ -459,7 +468,15 @@ def test_every_control_has_a_tooltip():
     assert inventory["controls_without_tooltip"] == []
     spec = json.loads(SPEC_FILE.read_text())
     for section in _walk(spec["sections"]):
-        if section.get("type") in ("value", "choice", "toggle", "custom", "info", "button_row", "panel"):
+        if section.get("type") in (
+            "value",
+            "choice",
+            "toggle",
+            "custom",
+            "info",
+            "button_row",
+            "panel",
+        ):
             assert section.get("description"), section.get("attr") or section.get("key") or section
         for button in section.get("buttons", []):
             assert button.get("description"), button
@@ -472,7 +489,16 @@ def test_the_populated_app_has_no_untooltipped_control_either(sample):
     inventory = emtk_inventory(loaded(sample))
     assert inventory["controls_without_tooltip"] == []
     labels = {row["label"] for row in inventory["interactive"]}
-    assert {"Open TTTR...", "Copy visible", "First", "Prev", "Next", "Last", "Guide", "Help"} <= labels
+    assert {
+        "Open TTTR...",
+        "Copy visible",
+        "First",
+        "Prev",
+        "Next",
+        "Last",
+        "Guide",
+        "Help",
+    } <= labels
 
 
 @needs_sample
@@ -501,7 +527,9 @@ def test_the_tour_hears_the_buttons_and_the_channel(sample):
     app.tour.notify_used = heard.append
     app.form.on_used = app.tour.notify_used
     app.form.used("request_open")
-    section = next(s for s in _walk(app.panels["photons"]["sections"]) if s.get("attr") == "channel_filter")
+    section = next(
+        s for s in _walk(app.panels["photons"]["sections"]) if s.get("attr") == "channel_filter"
+    )
     _commit(app.model, section, 8, app.form)
     assert "channel_filter" in heard and "request_open" in heard
     assert app.model.channel_filter == 8

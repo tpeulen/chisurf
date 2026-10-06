@@ -49,12 +49,17 @@ class CalculatorHubApp(ImApp):
         self._painter = None
         self._pending_settings: dict[str, dict] = {}
         self.help_window = EmTkHelpWindow(
-            title="Calculators - Help", resource=HERE / "help.md", owner=self,
-            on_start_guide=self.start_guide, size=(700.0, 480.0),
+            title="Calculators - Help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+            size=(700.0, 480.0),
         )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json", get_target_rect=lambda name: self.item_rects.get(name),
-            owner=self, wait_for_controls=True,
+            steps=HERE / "guide.json",
+            get_target_rect=lambda name: self.item_rects.get(name),
+            owner=self,
+            wait_for_controls=True,
         )
         super().__init__(self.render, continuous=False)
 
@@ -113,7 +118,10 @@ class CalculatorHubApp(ImApp):
         return super().animating() or bool(self.child is not None and self.child.animating())
 
     def next_frame_in(self):
-        own, child = super().next_frame_in(), (self.child.next_frame_in() if self.child is not None else None)
+        own, child = (
+            super().next_frame_in(),
+            (self.child.next_frame_in() if self.child is not None else None),
+        )
         due = [t for t in (own, child) if t is not None]
         return min(due) if due else None
 
@@ -145,7 +153,12 @@ class CalculatorHubApp(ImApp):
                 first, last = first or rect, rect
                 self.item_rects["entry:" + entry.id] = rect
             if first is not None:
-                self.item_rects["calculators_list"] = (first[0], first[1], first[2], last[1] + last[3] - first[1])
+                self.item_rects["calculators_list"] = (
+                    first[0],
+                    first[1],
+                    first[2],
+                    last[1] + last[3] - first[1],
+                )
             im.separator()
             if im.button("Guide"):
                 self.start_guide()
@@ -160,11 +173,19 @@ class CalculatorHubApp(ImApp):
         entry = next((e for e in self.entries if e.id == self.selected), None)
         # the header grows with a long description or an error (a narrow window wraps them to several lines)
         wrap = max(width - left - 16.0, 50.0)
-        shown = [entry.label if entry else "", entry.description if entry else "Select a calculator on the left to get started.", self.error]
-        header_h = max(_HEADER_H, 10.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] for t in shown if t))
+        shown = [
+            entry.label if entry else "",
+            entry.description if entry else "Select a calculator on the left to get started.",
+            self.error,
+        ]
+        header_h = max(
+            _HEADER_H, 10.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] for t in shown if t)
+        )
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, header_h), im.Cond.ALWAYS)
-        if im.begin("Calculator description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            "Calculator description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        ):
             if entry:
                 im.text_unformatted(entry.label)
                 im.text_wrapped(entry.description)
@@ -188,17 +209,23 @@ class CalculatorHubApp(ImApp):
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
         super().pointer_press(x, y, button, modifiers, clicks)
         if self.child and self._inside(x, y):
-            self.child.pointer_press(x - self.child_box[0], y - self.child_box[1], button, modifiers, clicks)
+            self.child.pointer_press(
+                x - self.child_box[0], y - self.child_box[1], button, modifiers, clicks
+            )
 
     def pointer_release(self, x, y, button, modifiers=0):
         super().pointer_release(x, y, button, modifiers)
         if self.child:
-            self.child.pointer_release(x - self.child_box[0], y - self.child_box[1], button, modifiers)
+            self.child.pointer_release(
+                x - self.child_box[0], y - self.child_box[1], button, modifiers
+            )
 
     def pointer_move(self, x, y, buttons=0, modifiers=0):
         super().pointer_move(x, y, buttons, modifiers)
         if self.child:
-            self.child.pointer_move(x - self.child_box[0], y - self.child_box[1], buttons, modifiers)
+            self.child.pointer_move(
+                x - self.child_box[0], y - self.child_box[1], buttons, modifiers
+            )
 
     def wheel(self, x, y, steps, modifiers=0):
         super().wheel(x, y, steps, modifiers)
@@ -206,7 +233,9 @@ class CalculatorHubApp(ImApp):
             self.child.wheel(x - self.child_box[0], y - self.child_box[1], steps, modifiers)
 
     def key(self, key, text="", modifiers=0):
-        own = super().key(key, text, modifiers)  # the hub's own windows (help, tour) read Escape from its io
+        own = super().key(
+            key, text, modifiers
+        )  # the hub's own windows (help, tour) read Escape from its io
         taken = self.child.key(key, text, modifiers) if self.child else own
         if not taken and key in (keys.KEY_UP, keys.KEY_DOWN):
             # the Qt list answered the arrow keys: step the selection when no embedded field wants them

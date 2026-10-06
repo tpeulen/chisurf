@@ -725,7 +725,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
     @property
     def bg(self) -> np.ndarray:
         """The background of the current detector with the VH half rolled by the global shift (zeros if none)."""
-        return engine.process_background(self.bg_np.get(self.current_detector), self.shift, self.irf)
+        return engine.process_background(
+            self.bg_np.get(self.current_detector), self.shift, self.irf
+        )
 
     @property
     def BIFL_scatter(self) -> bool:
@@ -1851,7 +1853,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
             p.grid(x=True, y=True)
 
             info = self.channel_definer.detectors[det]
-            data = engine.burst_histogram(burst, info["chs"], self.micro_time_range, self.micro_time_binning)
+            data = engine.burst_histogram(
+                burst, info["chs"], self.micro_time_range, self.micro_time_binning
+            )
 
             # plot it
             p.scatter(np.arange(data.size), data, size=4)
@@ -3581,7 +3585,9 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         """FWHM of the scatter IRF prompt in RAW micro-time channels, or ``None`` (``engine.irf_fwhm_channels``)."""
         info = getattr(self.channel_definer, "detectors", {}).get(self.current_detector, {})
         return engine.irf_fwhm_channels(
-            self._current_tttr(), info.get("chs", []), np.asarray(self.get_burst_indices_for_current_file(), dtype=int)
+            self._current_tttr(),
+            info.get("chs", []),
+            np.asarray(self.get_burst_indices_for_current_file(), dtype=int),
         )
 
     def _auto_select_binning(

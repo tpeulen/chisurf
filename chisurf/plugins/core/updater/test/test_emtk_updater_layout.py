@@ -13,8 +13,17 @@ from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from test.gui import emtk_layout_checks as lc
 
 SIZES = [(1200, 800), (800, 600)]
-FORM_CONTROLS = ["current_version_text", "development", "check_on_startup", "ignore_updates_on_startup", "selected_version",
-                 "check_for_updates", "ask_update", "open_package_manager", "changelog"]
+FORM_CONTROLS = [
+    "current_version_text",
+    "development",
+    "check_on_startup",
+    "ignore_updates_on_startup",
+    "selected_version",
+    "check_for_updates",
+    "ask_update",
+    "open_package_manager",
+    "changelog",
+]
 
 
 @pytest.fixture
@@ -66,7 +75,7 @@ def test_after_a_check_the_changelog_has_room_and_nothing_overlaps(app, size):
     lc.assert_above(rects, "check_for_updates", "changelog")
     assert "Changes between 26.09.20 and 26.10.02:" in drv.painter.strings
     if size[1] >= 800:
-        assert h >= 300, h                                       # a 1200x800 window gives the changelog a real area
+        assert h >= 300, h  # a 1200x800 window gives the changelog a real area
 
 
 @pytest.mark.parametrize("size", SIZES)
@@ -91,12 +100,22 @@ def test_the_confirmation_dialog_is_inside_the_window_and_covers_no_text_of_its_
     drv.click("ask_update")
     drv.draw(3)
     box = app.message_window.box
-    assert box is not None and box[0] >= 0 and box[1] >= 0 and box[0] + box[2] <= size[0] + 1 and box[1] + box[3] <= size[1] + 1
+    assert (
+        box is not None
+        and box[0] >= 0
+        and box[1] >= 0
+        and box[0] + box[2] <= size[0] + 1
+        and box[1] + box[3] <= size[1] + 1
+    )
     assert box[2] >= 400 and box[3] >= 120
     for label in ("Yes", "No"):
         x, y, w, h = drv.text_rect(label)
         assert box[0] <= x and x + w <= box[0] + box[2] and box[1] <= y and y + h <= box[1] + box[3]
-    texts = [t for t in drv.painter.texts if t[5] and t[0] >= box[0] and t[0] + t[2] <= box[0] + box[2] and t[1] >= box[1]]
+    texts = [
+        t
+        for t in drv.painter.texts
+        if t[5] and t[0] >= box[0] and t[0] + t[2] <= box[0] + box[2] and t[1] >= box[1]
+    ]
     assert any("Do you want to continue?" in t[5] for t in texts)
     drv.click_text("No")
 
@@ -107,8 +126,16 @@ def test_the_window_with_nothing_found_says_what_to_do_and_greys_what_cannot_act
     assert "Click 'Check for Updates' to check for available updates." in painter.strings
     assert "Changelog will appear here after checking for updates..." in painter.strings
     model = app.model
-    assert [model.enabled(n) for n in ("check_for_updates", "ask_update", "selected_version", "open_package_manager", "development")] == [
-        True, False, False, True, False]
+    assert [
+        model.enabled(n)
+        for n in (
+            "check_for_updates",
+            "ask_update",
+            "selected_version",
+            "open_package_manager",
+            "development",
+        )
+    ] == [True, False, False, True, False]
     assert model.version_labels == [] and model.selected_version == ""
 
 
@@ -130,14 +157,28 @@ def test_the_progress_window_is_inside_the_frame(app, size, fakes, monkeypatch):
     drv.click("ask_update")
     drv.click_text("Yes")
     deadline = time.monotonic() + 5
-    while "Preparing to run update in a separate process..." not in drv.draw(1).strings and time.monotonic() < deadline:
+    while (
+        "Preparing to run update in a separate process..." not in drv.draw(1).strings
+        and time.monotonic() < deadline
+    ):
         time.sleep(0.02)
     box = app.progress_window.box
-    assert box is not None and box[0] >= 0 and box[0] + box[2] <= size[0] + 1 and box[1] + box[3] <= size[1] + 1
-    inside = [b for b in lc.boxes(drv.painter) if box[0] <= b[0] and b[0] + b[2] <= box[0] + box[2] and box[1] <= b[1] <= box[1] + box[3]]
-    assert any("Preparing to run update" in b[4] for b in inside)         # the window's own texts are apart (it stands over the form)
+    assert (
+        box is not None
+        and box[0] >= 0
+        and box[0] + box[2] <= size[0] + 1
+        and box[1] + box[3] <= size[1] + 1
+    )
+    inside = [
+        b
+        for b in lc.boxes(drv.painter)
+        if box[0] <= b[0] and b[0] + b[2] <= box[0] + box[2] and box[1] <= b[1] <= box[1] + box[3]
+    ]
+    assert any(
+        "Preparing to run update" in b[4] for b in inside
+    )  # the window's own texts are apart (it stands over the form)
     for i, a in enumerate(inside):
-        for b in inside[i + 1:]:
+        for b in inside[i + 1 :]:
             assert lc._overlap(a[:4], b[:4]) <= 1.0, (a[4], b[4])
     release["go"] = True
     settle(drv)

@@ -171,7 +171,7 @@ class PrecisionViewModel:
     def enabled(self, action: str) -> bool:
         """Whether a button of the spec can act now (the window greys it otherwise)."""
         if action == "request_predict" or action in self.SETTINGS:
-            return not self.busy        # the sweep works on a copy of the inputs: they wait for it
+            return not self.busy  # the sweep works on a copy of the inputs: they wait for it
         return True
 
     def csv_text(self) -> str:
@@ -185,9 +185,7 @@ class PrecisionViewModel:
         if self._sweep is None:
             raise ValueError("Predict something before exporting.")
         lines = ["dwell_us,line_ms,frame_ms,error_percent"]
-        lines += [
-            f"{r['dwell']},{r['line']},{r['frame']},{r['error']}" for r in self.sweep_rows()
-        ]
+        lines += [f"{r['dwell']},{r['line']},{r['frame']},{r['error']}" for r in self.sweep_rows()]
         return "\n".join(lines) + "\n"
 
     def export_csv(self, path) -> None:
@@ -198,9 +196,21 @@ class PrecisionViewModel:
 
     #: the inputs a session remembers
     SETTINGS = (
-        "diffusion_coefficient", "n_particles", "brightness_khz", "w_r", "w_z", "pixel_size_nm",
-        "two_d", "pixel_time_us", "line_overhead", "nx", "ny", "n_images", "n_lags",
-        "n_repeats", "seed",
+        "diffusion_coefficient",
+        "n_particles",
+        "brightness_khz",
+        "w_r",
+        "w_z",
+        "pixel_size_nm",
+        "two_d",
+        "pixel_time_us",
+        "line_overhead",
+        "nx",
+        "ny",
+        "n_images",
+        "n_lags",
+        "n_repeats",
+        "seed",
     )
 
     def export_settings(self) -> dict:
@@ -214,7 +224,9 @@ class PrecisionViewModel:
                 continue
             current = getattr(self, name)
             try:
-                value = bool(state[name]) if isinstance(current, bool) else type(current)(state[name])
+                value = (
+                    bool(state[name]) if isinstance(current, bool) else type(current)(state[name])
+                )
             except (TypeError, ValueError):
                 continue
             setattr(self, name, value)

@@ -51,7 +51,9 @@ class ModelManagerModel(ModelManagerViewModel):
         #: ``"export"`` / ``"copy"`` while the app should act on the table.
         self.request = ""
         #: Returns the records the table shows (filtered, sorted) and its columns.
-        self.displayed_provider: Callable[[], tuple[list[dict], list[tuple[str, str]]]] | None = None
+        self.displayed_provider: Callable[[], tuple[list[dict], list[tuple[str, str]]]] | None = (
+            None
+        )
         self._records = _Records()
         self._signature: tuple = ()
         super().__init__(settings_block)

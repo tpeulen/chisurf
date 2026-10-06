@@ -83,8 +83,12 @@ def test_model_matches_the_qt_tool(qapp):
     try:
         widget._load_path(str(DATA))
         qt_result = widget._compute(
-            Task(), filename=str(DATA), channels=[0, 8], bin_time_us=50.0,
-            micro_time_min=0, micro_time_max=65535,
+            Task(),
+            filename=str(DATA),
+            channels=[0, 8],
+            bin_time_us=50.0,
+            micro_time_min=0,
+            micro_time_max=65535,
         )
         widget._computed(qt_result)
         widget._on_fit()
@@ -229,8 +233,9 @@ def test_app_draws_empty_and_populated(size):
 
 # 5. the workflow through the UI path
 def test_main_action_end_to_end(tmp_path):
-    from chisurf.plugins.pch.gui.app import make_app
     from emtk.file_dialog import FileDialog
+
+    from chisurf.plugins.pch.gui.app import make_app
 
     app = make_app()
     model = app.model

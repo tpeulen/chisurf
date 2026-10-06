@@ -36,11 +36,13 @@ def _overlap(a, b) -> float:
     return w * h if w > 0 and h > 0 else 0.0
 
 
-def assert_texts_apart(painter: RecordingPainter, region: tuple | None = None, slack: float = 1.0) -> None:
+def assert_texts_apart(
+    painter: RecordingPainter, region: tuple | None = None, slack: float = 1.0
+) -> None:
     """No two strings (inside *region* ``(x, y, w, h)``, default everywhere) overlap by more than *slack* px²."""
     found = [b for b in boxes(painter) if region is None or _overlap(b[:4], region) > 0]
     for i, a in enumerate(found):
-        for b in found[i + 1:]:
+        for b in found[i + 1 :]:
             assert _overlap(a[:4], b[:4]) <= slack, f"text {a[4]!r} overlaps {b[4]!r}"
 
 
@@ -57,14 +59,17 @@ def assert_disjoint(rects: dict, names, slack: float = 1.0) -> None:
     """The named rects do not overlap one another."""
     names = list(names)
     for i, a in enumerate(names):
-        for b in names[i + 1:]:
-            assert _overlap(rects[a], rects[b]) <= slack, f"{a} overlaps {b}: {rects[a]} / {rects[b]}"
+        for b in names[i + 1 :]:
+            assert _overlap(rects[a], rects[b]) <= slack, (
+                f"{a} overlaps {b}: {rects[a]} / {rects[b]}"
+            )
 
 
 def assert_above(rects: dict, upper: str, lower: str) -> None:
     """*upper* ends at or above where *lower* starts."""
-    assert rects[upper][1] + rects[upper][3] <= rects[lower][1] + 1.0, \
+    assert rects[upper][1] + rects[upper][3] <= rects[lower][1] + 1.0, (
         f"{upper} {rects[upper]} is not above {lower} {rects[lower]}"
+    )
 
 
 def assert_short(rects: dict, names, limit: float = SHORT_MAX) -> None:
@@ -76,14 +81,22 @@ def assert_short(rects: dict, names, limit: float = SHORT_MAX) -> None:
 def assert_icons_clear(painter: RecordingPainter) -> None:
     """A button caption that opens with a colour pictogram has two spaces before the text."""
     for *_, s in boxes(painter):
-        if s and ord(s[0]) >= 0x2300 and not 0x25A0 <= ord(s[0]) <= 0x25FF and len(s) > 2 and s[1] == " ":
+        if (
+            s
+            and ord(s[0]) >= 0x2300
+            and not 0x25A0 <= ord(s[0]) <= 0x25FF
+            and len(s) > 2
+            and s[1] == " "
+        ):
             assert s[2] == " ", f"pictogram touches its caption: {s!r}"
 
 
 def assert_aligned(rects: dict, names, tolerance: float = 1.5) -> None:
     """The named rects start at the same x (one label column)."""
     xs = [rects[n][0] for n in names]
-    assert max(xs) - min(xs) <= tolerance, f"fields do not start in one column: {dict(zip(names, xs))}"
+    assert max(xs) - min(xs) <= tolerance, (
+        f"fields do not start in one column: {dict(zip(names, xs))}"
+    )
 
 
 def assert_log_capped(rects: dict, size: tuple, key: str = "log") -> None:

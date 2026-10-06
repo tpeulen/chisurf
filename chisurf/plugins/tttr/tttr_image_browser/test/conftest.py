@@ -13,8 +13,20 @@ DATA = REPO / "test" / "data" / "clsm"
 SETUP_DETECTORS = {
     "windows": {"all": [0, 4095]},
     "detectors": {
-        "green": {"chs": [0, 1], "micro_time_ranges": [[0, 4095]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
-        "red": {"chs": [2], "micro_time_ranges": [[0, 4095]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
+        "green": {
+            "chs": [0, 1],
+            "micro_time_ranges": [[0, 4095]],
+            "g_factor": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+        },
+        "red": {
+            "chs": [2],
+            "micro_time_ranges": [[0, 4095]],
+            "g_factor": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+        },
     },
     "tttr_reading": {
         "file_type": "PTU",

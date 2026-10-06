@@ -21,13 +21,16 @@ import pytest
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
-from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402  (before tttrlib's `test`)
-
 from emtk.testing import RecordingPainter  # noqa: E402
 
 from chisurf.plugins.burst.burst_2cde.tests.demo_folder import build  # noqa: E402
 from chisurf.plugins.burst.burst_bva.core import computation as core  # noqa: E402
 from chisurf.plugins.burst.burst_bva.gui.app import create_app  # noqa: E402
+from test.gui.emtk_port_parity import (  # noqa: E402  (before tttrlib's `test`)
+    build_emtk_app,
+    emtk_inventory,
+    qt_free,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -75,7 +78,11 @@ def _std(df):
     """The per-burst Std of the proximity ratio (DataStore ``columns`` are Column objects: use the names)."""
     from chisurf.core.datastore import column_names
 
-    return np.asarray(df["Proximity Ratio Std"], float) if "Proximity Ratio Std" in column_names(df) else None
+    return (
+        np.asarray(df["Proximity Ratio Std"], float)
+        if "Proximity Ratio Std" in column_names(df)
+        else None
+    )
 
 
 _QT = r"""
@@ -109,14 +116,22 @@ def _qt_facts(first, second):
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, str(first), str(second)], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, str(first), str(second)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the Qt tool's answer, and the known one; the companions it writes
@@ -160,28 +175,35 @@ def test_a_new_folder_is_computed_on_its_own_bursts(tmp_path):
     finally:
         app.close()
     qt = _qt_facts(build(tmp_path / "qa"), build(tmp_path / "qb", seed=9))
-    assert np.asarray(qt["second"]) == pytest.approx(expected, nan_ok=True)   # the Qt tool too
+    assert np.asarray(qt["second"]) == pytest.approx(expected, nan_ok=True)  # the Qt tool too
 
 
 # 2. the run's states, as the Qt tool's
 def test_auto_update_recomputes_without_writing_and_run_writes(folder, monkeypatch):
     reads = []
     original = core.read_burst_analysis
-    monkeypatch.setattr(core, "read_burst_analysis", lambda *a, **k: (reads.append(1), original(*a, **k))[1])
+    monkeypatch.setattr(
+        core, "read_burst_analysis", lambda *a, **k: (reads.append(1), original(*a, **k))[1]
+    )
     app = _app(folder, auto_update=True)
     try:
-        app.model.set_folder(folder)                             # auto update: computes, writes nothing
+        app.model.set_folder(folder)  # auto update: computes, writes nothing
         _settle(app)
         assert app.model.df is not None and not (folder / "bv4").exists()
         app.model.photons_per_slice = 12
         app.model.notify("param")
         _settle(app)
-        assert reads == [1]                                     # the table is read once and reused
-        app.controller.run()                                    # an explicit Run writes
+        assert reads == [1]  # the table is read once and reused
+        app.controller.run()  # an explicit Run writes
         _settle(app)
-        assert (folder / "bv4" / "bva.stamp.json").exists() and (folder / "bv4" / "bva_settings.json").exists()
+        assert (folder / "bv4" / "bva.stamp.json").exists() and (
+            folder / "bv4" / "bva_settings.json"
+        ).exists()
         app.controller.run()
-        assert app.model.status_text == "Unchanged — kept the previous BVA result (Restart recomputes it)"
+        assert (
+            app.model.status_text
+            == "Unchanged — kept the previous BVA result (Restart recomputes it)"
+        )
         assert app.model.restart_attention and not app.controller.running
         app.controller.restart()
         _settle(app)
@@ -200,7 +222,7 @@ def test_stop_then_an_explicit_run_computes(folder, monkeypatch):
     try:
         app.controller.run()
         _draw(app, n=1)
-        assert app.controller.running and app.next_frame_in() is not None   # frames while running
+        assert app.controller.running and app.next_frame_in() is not None  # frames while running
         app.controller.stop()
         gate.set()
         _settle(app)
@@ -214,7 +236,9 @@ def test_stop_then_an_explicit_run_computes(folder, monkeypatch):
 
 
 def test_a_failed_bv4_write_keeps_the_result(folder, monkeypatch):
-    monkeypatch.setattr(core, "write_bv4_analysis", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")))
+    monkeypatch.setattr(
+        core, "write_bv4_analysis", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
+    )
     app = _app(folder)
     try:
         app.controller.run()
@@ -233,7 +257,11 @@ def test_errors_reach_the_window(tmp_path, monkeypatch):
         empty = tmp_path / "empty"
         empty.mkdir()
         app.model.set_folder(empty)
-        monkeypatch.setattr(core, "read_burst_analysis", lambda *a, **k: (_ for _ in ()).throw(ValueError("no bursts")))
+        monkeypatch.setattr(
+            core,
+            "read_burst_analysis",
+            lambda *a, **k: (_ for _ in ()).throw(ValueError("no bursts")),
+        )
         app.controller.run()
         _settle(app)
         assert app.model.status_text == "BVA failed: no bursts"
@@ -284,7 +312,9 @@ def test_every_guide_target_is_drawn(folder):
     try:
         app.controller.run()
         _settle(app)
-        keys = {app.bva_gui.tour._target_key(s.get("target")) for s in app.bva_gui.tour.steps} - {""}
+        keys = {app.bva_gui.tour._target_key(s.get("target")) for s in app.bva_gui.tour.steps} - {
+            ""
+        }
         assert keys and keys <= set(app.item_rects), keys - set(app.item_rects)
     finally:
         app.close()
@@ -297,7 +327,14 @@ def test_draws_empty_and_populated(folder, size):
     try:
         assert "Burst folder:" in _draw(app, size).strings
         pane_right = app.item_rects["controls"][0] + app.item_rects["controls"][2]
-        for name in ("run", "restart", "stop", "folder", "guide", "help"):   # the row wraps, nothing is cut
+        for name in (
+            "run",
+            "restart",
+            "stop",
+            "folder",
+            "guide",
+            "help",
+        ):  # the row wraps, nothing is cut
             x, _y, w, _h = app.item_rects[name]
             assert x + w <= pane_right, name
         app.model.set_folder(folder)

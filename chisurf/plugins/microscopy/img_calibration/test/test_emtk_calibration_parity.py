@@ -62,7 +62,7 @@ def _loaded(spc):
     app.apply_setup_settings(SETUP)
     app.apply_pipeline_context({"source": spc})
     app.add_irfs([spc])
-    _binned(app)                                    # by drawn frames alone: the worker bins
+    _binned(app)  # by drawn frames alone: the worker bins
     app.model.set_conv_range(500, 3000)
     app.model.set_irf_range(550, 700)
     app.model.set_bg_range(0, 400)
@@ -102,13 +102,21 @@ def qt(spc):
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, spc, json.dumps(SETUP)], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, spc, json.dumps(SETUP)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the Qt tool's decay, windows and backgrounds; the backgrounds are the photons' mean counts
@@ -121,13 +129,15 @@ def test_the_calibration_is_the_qt_tools_and_the_backgrounds_are_the_photons(qt,
         assert d["n"] == qt["n"] == 4096
         np.testing.assert_allclose(d["data"], qt["data"])
         np.testing.assert_allclose(d["irf_vv"], qt["irf_vv"])
-        assert list(d["conv"]) == qt["conv"] == [500, 3000] and list(d["irf_range"]) == qt["irf_range"]
+        assert (
+            list(d["conv"]) == qt["conv"] == [500, 3000] and list(d["irf_range"]) == qt["irf_range"]
+        )
         assert [app.model.sel_bg_vv, app.model.sel_bg_vh] == pytest.approx(qt["bg"])
         data = tttrlib.TTTR(spc)
         micro, routing = np.asarray(data.micro_times), np.asarray(data.routing_channels)
         for channel, value in ((0, app.model.sel_bg_vv), (8, app.model.sel_bg_vh)):
             counts = np.bincount(micro[routing == channel], minlength=4096)
-            assert value == pytest.approx(counts[:400].mean())               # the grey region's mean
+            assert value == pytest.approx(counts[:400].mean())  # the grey region's mean
     finally:
         app.close()
 
@@ -142,7 +152,7 @@ def test_apply_publishes_a_snapshot_as_the_qt_tool_does(qt, spc):
         assert app.model.status_text == qt["status"] == "Applied calibration (1 detector(s) set)."
         assert json.loads(json.dumps(published[0])) == json.loads(json.dumps(qt["published"][0]))
         app.model.sel_irf_files = []
-        assert published[0]["green"]["irf"] == [spc]                          # an edit after Apply stays out
+        assert published[0]["green"]["irf"] == [spc]  # an edit after Apply stays out
         app.model.set_conv_range(3000, 3000)
         assert not app.apply() and len(published) == 1
         assert app.model.status_text == "Not applied: green: range start must be smaller than stop"
@@ -165,7 +175,9 @@ def test_every_spec_field_is_drawn_with_its_description(spc, monkeypatch):
         fields = list(_fields(SPEC["sections"]))
         assert {f["attr"] for f in fields} <= set(app.form.rects)
         assert all(f["description"] in tips for f in fields)
-        assert "Conv start" in _draw(app).strings and "Fit start" not in _draw(app).strings     # the spec's labels
+        assert (
+            "Conv start" in _draw(app).strings and "Fit start" not in _draw(app).strings
+        )  # the spec's labels
         field = next(f for f in fields if f["attr"] == "sel_shift_vv")
         _commit(app.model, field, 12.5, app.form)
         assert app.model.sel_shift_vv == 12.5
@@ -186,7 +198,7 @@ def test_the_irf_list_adds_removes_and_clears(spc, tmp_path):
         app.file_selection = 1
         app.remove_irf()
         assert app.model.sel_irf_files == [spc]
-        app.on_files_dropped([str(other)])                        # a drop adds to this detector's IRF
+        app.on_files_dropped([str(other)])  # a drop adds to this detector's IRF
         assert app.model.sel_irf_files == [spc, str(other)]
         app.model.sel_irf_files = []
         assert "No IRF file: the raw data are used" in _draw(app).strings
@@ -211,7 +223,9 @@ def test_the_plot_shows_the_peaks_and_frames_follow_the_binning(spc, monkeypatch
 
         monkeypatch.setattr(implot, "end_plot", record)
         _draw(app, n=2)
-        assert seen["y"][1] >= float(np.max(app.model.decay_data()["data"]))      # the peaks are not clipped
+        assert seen["y"][1] >= float(
+            np.max(app.model.decay_data()["data"])
+        )  # the peaks are not clipped
     finally:
         app.close()
     app = make_app()
@@ -219,7 +233,7 @@ def test_the_plot_shows_the_peaks_and_frames_follow_the_binning(spc, monkeypatch
         app.apply_setup_settings(SETUP)
         app.apply_pipeline_context({"source": spc})
         _draw(app, n=1)
-        assert app.busy and app.animating()                        # binning: frames are requested
+        assert app.busy and app.animating()  # binning: frames are requested
         _binned(app)
         assert not app.animating()
     finally:
@@ -234,8 +248,15 @@ def test_the_guide_points_at_real_controls_and_waits(spc):
         _draw(app, size, painter=PixelPainter)
         steps = app.tour.steps
         keys = {app.tour._target_key(s.get("target")) for s in steps} - {""}
-        assert keys == {"open_source", "display_detector", "path_list", "sel_conv_start", "sel_bg_vv", "decay_conv",
-                        "apply"}
+        assert keys == {
+            "open_source",
+            "display_detector",
+            "path_list",
+            "sel_conv_start",
+            "sel_bg_vv",
+            "decay_conv",
+            "apply",
+        }
         assert keys <= set(app.item_rects) | set(app.form.rects)
 
         def press(key):
@@ -249,14 +270,18 @@ def test_the_guide_points_at_real_controls_and_waits(spc):
         published = []
         app.model.publish = published.append
         for key in ("open_source", "apply"):
-            index = next(i for i, s in enumerate(steps) if app.tour._target_key(s.get("target")) == key)
+            index = next(
+                i for i, s in enumerate(steps) if app.tour._target_key(s.get("target")) == key
+            )
             app.tour.start(index)
-            assert app.tour.awaiting and steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)
+            assert app.tour.awaiting and steps[index]["title"] in " ".join(
+                _draw(app, size, n=1).strings
+            )
             _draw(app, size, n=1, painter=PixelPainter)
             press(key)
             assert not app.tour.awaiting, key
             app.dialog = None
-        assert len(published) == 1                                 # the Apply press applied
+        assert len(published) == 1  # the Apply press applied
     finally:
         app.tour.active = False
         app.close()
@@ -266,22 +291,30 @@ def test_the_guide_points_at_real_controls_and_waits(spc):
 @pytest.mark.parametrize("size", [(1200, 800), (800, 600)])
 def test_draws_empty_and_populated(spc, size, monkeypatch):
     from emtk import im
+
     empty = make_app()
     try:
         strings = _draw(empty, size).strings
-        assert "Configure detector windows in Imaging Tools" in " ".join(strings) and "Guide" in strings
+        assert (
+            "Configure detector windows in Imaging Tools" in " ".join(strings)
+            and "Guide" in strings
+        )
     finally:
         empty.close()
     app = _loaded(spc)
     try:
         strings = _draw(app, size).strings
-        assert {"Conv start", "Background VV (∥)", "Apply →", "IRF files (this detector)"} <= set(strings)
+        assert {"Conv start", "Background VV (∥)", "Apply →", "IRF files (this detector)"} <= set(
+            strings
+        )
         cut = []
         original = im.button
 
-        def button(text, *a, **k):                   # rects are clipped to the dock: compare with the natural width
+        def button(text, *a, **k):  # rects are clipped to the dock: compare with the natural width
             pressed = original(text, *a, **k)
-            natural = im.calc_text_size(str(text).split("##")[0])[0] + 2 * im.get_style().frame_padding[0]
+            natural = (
+                im.calc_text_size(str(text).split("##")[0])[0] + 2 * im.get_style().frame_padding[0]
+            )
             if im.get_item_rect()[2] < natural - 1.0:
                 cut.append(text)
             return pressed
@@ -289,8 +322,17 @@ def test_draws_empty_and_populated(spc, size, monkeypatch):
         monkeypatch.setattr(im, "button", button)
         _draw(app, size, n=1)
         assert not cut, cut
-        bx, by, bw, bh = app.item_rects["controls"]                 # and every toolbar button inside the dock
-        for key in ("guide", "help", "open_source", "refresh", "add_irf", "database_irf", "remove_irf", "clear_irf"):
+        bx, by, bw, bh = app.item_rects["controls"]  # and every toolbar button inside the dock
+        for key in (
+            "guide",
+            "help",
+            "open_source",
+            "refresh",
+            "add_irf",
+            "database_irf",
+            "remove_irf",
+            "clear_irf",
+        ):
             x, y, w, h = app.item_rects[key]
             assert x + w <= bx + bw + 0.5, (key, x + w, bx + bw)
     finally:

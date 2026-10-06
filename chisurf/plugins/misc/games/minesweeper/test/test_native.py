@@ -1,4 +1,5 @@
 """Native input, round restoration and import-boundary regression checks."""
+
 import json
 import os
 import subprocess
@@ -41,7 +42,18 @@ def test_keyboard_cursor_flag_loss_restart_and_presets():
 
 def test_real_mouse_delivery_reveals_and_right_click_flags():
     app = make_app()
-    app.game._fixed_mine_positions = {(0, 0), (0, 3), (1, 7), (2, 4), (3, 2), (4, 8), (5, 5), (6, 1), (7, 7), (8, 3)}
+    app.game._fixed_mine_positions = {
+        (0, 0),
+        (0, 3),
+        (1, 7),
+        (2, 4),
+        (3, 2),
+        (4, 8),
+        (5, 5),
+        (6, 1),
+        (7, 7),
+        (8, 3),
+    }
     app.game.reset()
 
     def draw():
@@ -95,8 +107,10 @@ def test_safe_region_wins_and_restart_keeps_selected_size():
 
 def test_optional_host_audio_boundary_and_saved_preference():
     events = []
-    app = MinesweeperApp(MinesweeperGame(5, 5, 1, {(0, 0)}),
-                         audio_callback=lambda event, value: events.append((event, value)))
+    app = MinesweeperApp(
+        MinesweeperGame(5, 5, 1, {(0, 0)}),
+        audio_callback=lambda event, value: events.append((event, value)),
+    )
     app.cursor_row = app.cursor_col = 1
     app.flag()
     assert not events  # Sound is opt-in, as in the original Qt host.
@@ -136,7 +150,7 @@ def test_six_locale_catalogs_cover_every_display_string():
 
 
 def test_native_factory_and_render_block_all_qt_imports():
-    script = '''
+    script = """
 import importlib.abc, sys
 class NoQt(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
@@ -148,7 +162,11 @@ from emtk.pil_painter import PilPainter
 app = make_app()
 app.draw(PilPainter(360, 620), 0, 0, 360, 620)
 assert not any(name.startswith(('qtpy', 'PyQt', 'PySide')) for name in sys.modules)
-'''
-    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
-                            env={**os.environ, "QT_QPA_PLATFORM": "offscreen"})
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+    )
     assert result.returncode == 0, result.stderr

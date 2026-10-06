@@ -22,16 +22,34 @@ class PhasorApp(PixelToolApp):
     HELP_TITLE = "Phasor-FLIM - Help"
     ROLE = "pixel_phasor"
     LAYOUT = Split("h", 0.32, Region("settings"), Region("views"))
-    DIALOGS = {**PixelToolApp.DIALOGS, "irf": ("Open IRF photon file", "open", PHOTON_FILE_FILTER, "open_irf_path")}
+    DIALOGS = {
+        **PixelToolApp.DIALOGS,
+        "irf": ("Open IRF photon file", "open", PHOTON_FILE_FILTER, "open_irf_path"),
+    }
 
-    def __init__(self, model: PhasorModel | None = None, coordinator=None, ndx_callback=None, **binding) -> None:
+    def __init__(
+        self, model: PhasorModel | None = None, coordinator=None, ndx_callback=None, **binding
+    ) -> None:
         super().__init__(model or PhasorModel(), coordinator, ndx_callback, **binding)
         m = self.model
-        panel = PlanePanel("phasor_plane", collection=lambda: m.cursors, image=m.phasor_histogram_map, extent=m.cursor_extent,
-                           x_label="g", y_label="s", on_change=m.notify_cursors, overlay=lambda: [semicircle()],
-                           empty="No phasor yet. Select a photon file and press Run.",
-                           tooltip="Density of the phasor cloud; drag a cursor's handles to change which pixels it selects.")
-        regions = PlaneRegions(lambda: m.cursors, m.cursor_extent, lambda kind: m.request_dialog(kind), m.notify_cursors)
+        panel = PlanePanel(
+            "phasor_plane",
+            collection=lambda: m.cursors,
+            image=m.phasor_histogram_map,
+            extent=m.cursor_extent,
+            x_label="g",
+            y_label="s",
+            on_change=m.notify_cursors,
+            overlay=lambda: [semicircle()],
+            empty="No phasor yet. Select a photon file and press Run.",
+            tooltip="Density of the phasor cloud; drag a cursor's handles to change which pixels it selects.",
+        )
+        regions = PlaneRegions(
+            lambda: m.cursors,
+            m.cursor_extent,
+            lambda kind: m.request_dialog(kind),
+            m.notify_cursors,
+        )
         self.add_plane("phasor", panel, regions)
         self.add_plane("cursors", panel, regions)
 

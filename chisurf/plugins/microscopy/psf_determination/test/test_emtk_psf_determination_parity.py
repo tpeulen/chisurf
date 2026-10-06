@@ -23,14 +23,17 @@ from chisurf.plugins.microscopy.psf_determination.gui.view_model import PsfViewM
 
 PLUGIN = Path(__file__).parent.parent
 REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
-BEADS = [(10, 20, 20), (10, 22, 60), (10, 50, 30), (11, 55, 80), (9, 90, 50)]      # z, y, x
+BEADS = [(10, 20, 20), (10, 22, 60), (10, 50, 30), (11, 55, 80), (9, 90, 50)]  # z, y, x
 
 
 def snapshot_real():
     if not REAL_CHISURF.is_dir():
         return {}
-    return {str(p): p.stat().st_mtime_ns for p in REAL_CHISURF.rglob("*")
-            if p.is_file() and not {"cache", "logs"} & set(p.parts)}
+    return {
+        str(p): p.stat().st_mtime_ns
+        for p in REAL_CHISURF.rglob("*")
+        if p.is_file() and not {"cache", "logs"} & set(p.parts)
+    }
 
 
 REAL_BEFORE = snapshot_real()
@@ -42,7 +45,9 @@ def make_stack(shape=(21, 110, 100), seed=4):
     z, y, x = np.indices(shape)
     img = np.full(shape, 5.0)
     for bz, by, bx in BEADS:
-        img += 800 * np.exp(-0.5 * (((x - bx) / 1.8) ** 2 + ((y - by) / 1.8) ** 2 + ((z - bz) / 3.0) ** 2))
+        img += 800 * np.exp(
+            -0.5 * (((x - bx) / 1.8) ** 2 + ((y - by) / 1.8) ** 2 + ((z - bz) / 3.0) ** 2)
+        )
     return rng.poisson(img).astype(np.float32)
 
 
@@ -128,7 +133,9 @@ def qt_model():
     return tool.model
 
 
-def test_detection_fits_and_the_batch_csv_started_in_the_native_window_equal_the_qt_tools(qt_model, demo, tmp_path):
+def test_detection_fits_and_the_batch_csv_started_in_the_native_window_equal_the_qt_tools(
+    qt_model, demo, tmp_path
+):
     qt = qt_model
     qt.detect_beads()
     qt.fit_all()
@@ -172,7 +179,9 @@ def test_the_physical_widths_of_the_known_stack_are_recovered(demo):
     fwhm_xy = [float(v) for v in re.findall(r"FWHMxy≈([\d.]+) nm", m.results_text)]
     fwhm_z = [float(v) for v in re.findall(r"FWHMz=([\d.]+) nm", m.results_text)]
     assert len(fwhm_xy) == 4 == len(fwhm_z)
-    assert np.mean(fwhm_xy) == pytest.approx(424.0, rel=0.02) and np.mean(fwhm_z) == pytest.approx(2120.0, rel=0.03)
+    assert np.mean(fwhm_xy) == pytest.approx(424.0, rel=0.02) and np.mean(fwhm_z) == pytest.approx(
+        2120.0, rel=0.03
+    )
 
 
 def test_the_native_forms_carry_every_field_range_and_decimal_of_the_qt_spec():
@@ -252,14 +261,17 @@ def test_the_demo_button_loads_a_generated_stack_labelled_as_a_demo(demo):
     m = demo.app.model
     assert m.stack.shape == (21, 110, 100) and m.filename == ""
     assert "Demo stack" in [t[5] for t in demo.draw().texts]
-    assert "Demo stack loaded" in m.results_text and (m.pixel_size_nm, m.z_step_nm) == (100.0, 300.0)
+    assert "Demo stack loaded" in m.results_text and (m.pixel_size_nm, m.z_step_nm) == (
+        100.0,
+        300.0,
+    )
 
 
 def test_the_mmfdb_button_opens_the_dataset_picker_and_cancel_closes_it(ui):
     ui.click_name("mmfdb")
     assert ui.app.picker.is_open
     assert "Select MMFDB dataset" in [t[5] for t in ui.draw(3).texts]
-    ui.click_name("load_stack")                        # greyed while the picker is open
+    ui.click_name("load_stack")  # greyed while the picker is open
     assert ui.app.dialog is None
     ui.click_text("Cancel")
     assert not ui.app.picker.is_open
@@ -293,7 +305,11 @@ def test_the_bead_index_field_selects_and_fits_the_typed_bead_and_clamps(detecte
     m = detected.app.model
     type_value(detected, "bead_index", "2")
     m = detected.settle()
-    assert detected.app.bead_index == 2 and m.selected_bead == m.detected_beads[2] and m._fit_params is not None
+    assert (
+        detected.app.bead_index == 2
+        and m.selected_bead == m.detected_beads[2]
+        and m._fit_params is not None
+    )
     type_value(detected, "bead_index", "99")
     detected.settle()
     assert detected.app.bead_index == 3
@@ -316,7 +332,9 @@ def test_fit_all_lists_every_bead_and_the_profile_tabs_show_the_fit(detected):
     for axis, label in (("x", "x [pixels]"), ("y", "y [pixels]"), ("z", "z [slices]")):
         detected.click_text(f"{axis} profile")
         strings = [t[5] for t in detected.draw(3).texts]
-        assert label in strings and "Intensity" in strings and "data" in strings and "fit" in strings, axis
+        assert (
+            label in strings and "Intensity" in strings and "data" in strings and "fit" in strings
+        ), axis
     assert detected.app.profile_axis == "z"
 
 
@@ -324,7 +342,7 @@ def test_buttons_are_greyed_while_a_job_runs(demo):
     demo.click_name("detect_beads")
     demo.draw(1)
     assert demo.app.job.busy
-    demo.click_name("fit_all")                         # greyed: nothing queued twice
+    demo.click_name("fit_all")  # greyed: nothing queued twice
     demo.settle()
     assert "Batch PSF fits" not in demo.app.model.results_text
 
@@ -332,17 +350,37 @@ def test_buttons_are_greyed_while_a_job_runs(demo):
 # ───────────────────────────────────── settings forms and display ───────────────────────────────────── #
 
 
-@pytest.mark.parametrize("name,typed,expected", [
-    ("pixel_size_nm", "65", 65.0), ("pixel_size_nm", "5000", 1000.0), ("z_step_nm", "150", 150.0), ("z_step_nm", "0", 1.0),
-    ("roi_xy", "21", 21), ("roi_xy", "1", 3), ("roi_z", "9", 9), ("roi_z", "999", 200),
-    ("pixels_per_frame", "40", 40), ("min_distance", "8", 8.0), ("min_area", "3", 3),
-])
+@pytest.mark.parametrize(
+    "name,typed,expected",
+    [
+        ("pixel_size_nm", "65", 65.0),
+        ("pixel_size_nm", "5000", 1000.0),
+        ("z_step_nm", "150", 150.0),
+        ("z_step_nm", "0", 1.0),
+        ("roi_xy", "21", 21),
+        ("roi_xy", "1", 3),
+        ("roi_z", "9", 9),
+        ("roi_z", "999", 200),
+        ("pixels_per_frame", "40", 40),
+        ("min_distance", "8", 8.0),
+        ("min_area", "3", 3),
+    ],
+)
 def test_each_field_takes_typed_values_clamped_to_the_qt_range(ui, name, typed, expected):
     m = type_value(ui, name, typed)
     assert getattr(m, name) == pytest.approx(expected)
 
 
-@pytest.mark.parametrize("name,step", [("pixel_size_nm", 1.0), ("z_step_nm", 10.0), ("roi_xy", 1), ("pixels_per_frame", 1), ("min_distance", 1.0)])
+@pytest.mark.parametrize(
+    "name,step",
+    [
+        ("pixel_size_nm", 1.0),
+        ("z_step_nm", 10.0),
+        ("roi_xy", 1),
+        ("pixels_per_frame", 1),
+        ("min_distance", 1.0),
+    ],
+)
 def test_the_arrows_step_each_field(ui, name, step):
     m = ui.app.model
     ui.click(field(ui, f"{name}.stepper"), fy=0.25)
@@ -381,7 +419,9 @@ def test_the_colormap_gamma_levels_and_reset_controls_work(demo):
 def test_the_z_slider_browses_slices_by_dragging(demo):
     c = demo.app.canvas
     label = [t[:4] for t in demo.draw().texts if t[5] == "Z slice"][-1]
-    left = [t for t in demo.draw().texts if t[5] == "Detect"]                 # the controls window ends before the stack window
+    left = [
+        t for t in demo.draw().texts if t[5] == "Detect"
+    ]  # the controls window ends before the stack window
     x0 = demo.app.item_rects["stack"][0]
     y = label[1] + label[3] / 2
     before = c.z
@@ -403,7 +443,9 @@ def test_the_wheel_zooms_the_image_and_a_drag_pans_it(demo):
 # ───────────────────────────────────── settings files, help, guide ───────────────────────────────────── #
 
 
-def test_save_and_load_settings_round_trip_through_the_dialogs_and_reopen_the_stack(ui, tiff, tmp_path):
+def test_save_and_load_settings_round_trip_through_the_dialogs_and_reopen_the_stack(
+    ui, tiff, tmp_path
+):
     ui.drop(tiff)
     ui.settle()
     m = ui.app.model
@@ -418,7 +460,12 @@ def test_save_and_load_settings_round_trip_through_the_dialogs_and_reopen_the_st
     ui.type("mine.json")
     ui.click_text("Save")
     saved = json.loads((tmp_path / "mine.json").read_text())
-    assert saved["pixel_size_nm"] == 65.0 and saved["roi_xy"] == 17 and saved["filename"] == tiff and saved["display"]["z"] == 7
+    assert (
+        saved["pixel_size_nm"] == 65.0
+        and saved["roi_xy"] == 17
+        and saved["filename"] == tiff
+        and saved["display"]["z"] == 7
+    )
     other = UI(make_app())
     other.draw(3)
     other.app.dialog = None
@@ -428,7 +475,12 @@ def test_save_and_load_settings_round_trip_through_the_dialogs_and_reopen_the_st
     other.click_text("mine.json")
     other.click_text("Open")
     om = other.settle()
-    assert om.pixel_size_nm == 65.0 and om.roi_xy == 17 and om.filename == tiff and om.stack is not None
+    assert (
+        om.pixel_size_nm == 65.0
+        and om.roi_xy == 17
+        and om.filename == tiff
+        and om.stack is not None
+    )
     assert other.app.canvas.z == 7
 
 

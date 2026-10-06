@@ -5,6 +5,7 @@ The form is ``irf_estimator_emtk.view.json`` drawn by :func:`emtk.view_form.draw
 thread; the plot and the results are their own dock windows, laid out as in the Qt tool
 (parameters left, plot right, results under the plot).
 """
+
 from __future__ import annotations
 
 import json
@@ -21,6 +22,7 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import LabelColumn, labelled, layout_spec
+
 from ..core.estimation import estimate_irf
 from .view_model import IRFViewModel
 
@@ -31,9 +33,9 @@ DATA_FILTERS = "VV/VH Files (*.dat);;All Files (*)"
 #: The Qt plot's pens, by curve: colour and dash.
 PENS = {
     "Measured Decay": ((0, 110, 255, 255), None),
-    "BG Corrected": ((0, 220, 220, 255), (6., 4.)),
+    "BG Corrected": ((0, 220, 220, 255), (6.0, 4.0)),
     "Estimated IRF (scaled)": ((0, 220, 0, 255), None),
-    "IRF \u2297 Exp (Forward Model)": ((255, 165, 0, 255), (6., 4.)),
+    "IRF \u2297 Exp (Forward Model)": ((255, 165, 0, 255), (6.0, 4.0)),
 }
 #: guide.json is shared with the Qt tour, which names the toolbar actions by caption and
 #: the spin boxes by objectName; the spec's names are mapped onto those.
@@ -44,8 +46,16 @@ TOUR_KEYS = {
     "rl_iterations": "irf_rl_iterations",
 }
 #: Fields whose change makes an existing IRF stale (auto-update re-estimates on them).
-ESTIMATION_INPUTS = {"window_length", "polyorder", "rl_iterations", "regularization", "manual_background",
-                     "use_range_selection", "first_channel", "last_channel"}
+ESTIMATION_INPUTS = {
+    "window_length",
+    "polyorder",
+    "rl_iterations",
+    "regularization",
+    "manual_background",
+    "use_range_selection",
+    "first_channel",
+    "last_channel",
+}
 
 
 def open_datasets():
@@ -157,19 +167,35 @@ class IRFEstimatorApp(ImApp):
         self.item_rects = {}
         self.pointer_text = ""
         self.spec = layout_spec(_spec())
-        self.labels = LabelColumn()                       # one caption column for the parameter fields
+        self.labels = LabelColumn()  # one caption column for the parameter fields
         self.form_model = _Form(self)
         self.form = FormState(on_used=self._used)
         self.form.custom["datasets"] = self.draw_datasets
         self.form.custom["status"] = self.draw_status
-        self.help_window = EmTkHelpWindow(title="Blind IRF estimation — help", resource=HERE / "help.md", owner=self,
-                                          on_start_guide=lambda: self.tour.start())
-        self.tour = EmTkGuidedTour(steps=HERE / "guide.json", get_target_rect=lambda key: self.item_rects.get(key),
-                                   owner=self, wait_for_controls=True)
-        self.docks = DockManager(Split("h", .32, Region("settings"), Split("v", .72, Region("plot"), Region("results"))))
-        self.docks.add_window("settings", "IRF Est Parameters", self.controls, dock="settings", closable=False)
+        self.help_window = EmTkHelpWindow(
+            title="Blind IRF estimation — help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=lambda: self.tour.start(),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "guide.json",
+            get_target_rect=lambda key: self.item_rects.get(key),
+            owner=self,
+            wait_for_controls=True,
+        )
+        self.docks = DockManager(
+            Split(
+                "h", 0.32, Region("settings"), Split("v", 0.72, Region("plot"), Region("results"))
+            )
+        )
+        self.docks.add_window(
+            "settings", "IRF Est Parameters", self.controls, dock="settings", closable=False
+        )
         self.docks.add_window("plot", "Plots", self.plot, dock="plot", closable=False)
-        self.docks.add_window("results", "Est Results", self.results, dock="results", closable=False)
+        self.docks.add_window(
+            "results", "Est Results", self.results, dock="results", closable=False
+        )
         self.native_layouts = {"main": self.docks}
         super().__init__(self.render, continuous=False)
 
@@ -192,8 +218,12 @@ class IRFEstimatorApp(ImApp):
 
     def choose_file(self, save=False):
         title = "Save IRF" if save else "Load Decay File"
-        self.dialog = FileDialog(title, mode="save" if save else "open",
-                                 filename="estimated_irf.dat" if save else "", filters=DATA_FILTERS)
+        self.dialog = FileDialog(
+            title,
+            mode="save" if save else "open",
+            filename="estimated_irf.dat" if save else "",
+            filters=DATA_FILTERS,
+        )
         self.file_window = DialogWindow(title, size=(760, 540))
         self.file_action = "save" if save else "load"
 
@@ -214,7 +244,9 @@ class IRFEstimatorApp(ImApp):
         self.datasets = list(self.dataset_provider())
         self.dataset_index = min(self.dataset_index, max(0, len(self.datasets) - 1))
         self.show_datasets = True
-        self.error = "" if self.datasets else "No datasets are open in ChiSurf; load a decay file instead."
+        self.error = (
+            "" if self.datasets else "No datasets are open in ChiSurf; load a decay file instead."
+        )
 
     def load_selected_dataset(self):
         if not self.datasets:
@@ -242,14 +274,21 @@ class IRFEstimatorApp(ImApp):
         if self.future is not None:
             self.rerun = self.rerun or bool(quick)
             return False
-        self.future = _EXECUTOR.submit(estimate_irf, m.decay_data_original.copy(), m.dt, m.settings(quick),
-                                       m.channel_axis.copy())
+        self.future = _EXECUTOR.submit(
+            estimate_irf,
+            m.decay_data_original.copy(),
+            m.dt,
+            m.settings(quick),
+            m.channel_axis.copy(),
+        )
         self.error = ""
         m.status = "Estimating IRF..."
         return True
 
     def parameter_changed(self):
-        if self.model.auto_update_enabled and (self.model.result is not None or self.future is not None):
+        if self.model.auto_update_enabled and (
+            self.model.result is not None or self.future is not None
+        ):
             self.start_estimate(quick=True)
 
     def poll(self):
@@ -263,7 +302,7 @@ class IRFEstimatorApp(ImApp):
             else:
                 dt = self.model.dt
                 result_dt, self.model.result = result.dt, result
-                if result_dt != dt:                           # the bin width changed while it ran
+                if result_dt != dt:  # the bin width changed while it ran
                     self.model.set_bin_width(dt)
                 self.model.status = "IRF estimation completed"
             if self.rerun:
@@ -299,8 +338,10 @@ class IRFEstimatorApp(ImApp):
     def draw_datasets(self, section, model, state, width):
         if not self.show_datasets or not self.datasets:
             return
-        names = [getattr(ds, "name", None) or f"Dataset {i + 1}" for i, ds in enumerate(self.datasets)]
-        im.set_next_item_width(max(80., width - 160.))
+        names = [
+            getattr(ds, "name", None) or f"Dataset {i + 1}" for i, ds in enumerate(self.datasets)
+        ]
+        im.set_next_item_width(max(80.0, width - 160.0))
         _, self.dataset_index = im.combo("Dataset##irf_dataset", self.dataset_index, names)
         im.set_item_tooltip(str(section.get("description")))
         state.rects["dataset"] = im.get_item_rect()
@@ -322,42 +363,58 @@ class IRFEstimatorApp(ImApp):
     def results(self, box):
         for label, text in self.model.result_rows():
             im.text(f"{label}:")
-            im.same_line(150.)
+            im.same_line(150.0)
             im.text(text)
         if self.pointer_text:
             im.text_disabled(self.pointer_text)
 
     def plot(self, box):
         m = self.model
-        if implot.begin_plot("IRF Estimation Results", size=(-1., -1.)):
+        if implot.begin_plot("IRF Estimation Results", size=(-1.0, -1.0)):
             implot.setup_axes("Time (ns)", "Intensity (counts/channel)")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-            if m.decay_data_original is None:                 # nothing loaded: sensible empty axes, not 1e-4 .. 1
+            if m.decay_data_original is None:  # nothing loaded: sensible empty axes, not 1e-4 .. 1
                 implot.setup_axes_limits(0.0, 1000.0, 1.0, 1000.0, cond=implot.COND_ONCE)
             for curve in m.plot_series():
                 values = np.asarray(curve["y"], dtype=float)
                 colour, dash = PENS.get(curve["name"].split(" (BG=")[0], (None, None))
-                implot.set_next_line_style(colour, 2., dash)
-                implot.plot_line(curve["name"], curve["x"], np.where(values > 0., values, np.nan))
+                implot.set_next_line_style(colour, 2.0, dash)
+                implot.plot_line(curve["name"], curve["x"], np.where(values > 0.0, values, np.nan))
             if m.use_range_selection and m.channel_axis is not None:
-                lower, upper = [int(np.clip(bound, 0, len(m.channel_axis) - 1)) for bound in m.range_bounds]
+                lower, upper = [
+                    int(np.clip(bound, 0, len(m.channel_axis) - 1)) for bound in m.range_bounds
+                ]
                 limits = implot.get_plot_limits()
-                region = implot.drag_rect(1, float(m.channel_axis[lower]), max(limits.y_min, 1e-12),
-                                          float(m.channel_axis[upper]), max(limits.y_max, 1e-12),
-                                          col=(70, 200, 90, 180), flags=implot.DRAG_TOOL_FLAGS_NO_FIT)
+                region = implot.drag_rect(
+                    1,
+                    float(m.channel_axis[lower]),
+                    max(limits.y_min, 1e-12),
+                    float(m.channel_axis[upper]),
+                    max(limits.y_max, 1e-12),
+                    col=(70, 200, 90, 180),
+                    flags=implot.DRAG_TOOL_FLAGS_NO_FIT,
+                )
                 if region.modified:
-                    m.range_bounds = sorted(float(np.argmin(np.abs(m.channel_axis - value)))
-                                            for value in (region.x_min, region.x_max))
+                    m.range_bounds = sorted(
+                        float(np.argmin(np.abs(m.channel_axis - value)))
+                        for value in (region.x_min, region.x_max)
+                    )
                     self.parameter_changed()
             if implot.is_plot_hovered() and m.channel_axis is not None:
                 mouse = implot.get_plot_mouse_pos()
                 index = int(np.argmin(np.abs(m.channel_axis - mouse.x)))
-                self.pointer_text = f"Time: {m.channel_axis[index]:.2f} ns, Intensity: {m.decay_data[index]:.1f}"
+                self.pointer_text = (
+                    f"Time: {m.channel_axis[index]:.2f} ns, Intensity: {m.decay_data[index]:.1f}"
+                )
                 pos, size = implot.get_plot_pos(), implot.get_plot_size()
                 pixel = implot.plot_to_pixels(mouse.x, mouse.y)
                 draw = implot.get_plot_draw_list()
-                draw.add_line((pixel[0], pos[1]), (pixel[0], pos[1] + size[1]), (180, 180, 180, 180))
-                draw.add_line((pos[0], pixel[1]), (pos[0] + size[0], pixel[1]), (180, 180, 180, 180))
+                draw.add_line(
+                    (pixel[0], pos[1]), (pixel[0], pos[1] + size[1]), (180, 180, 180, 180)
+                )
+                draw.add_line(
+                    (pos[0], pixel[1]), (pos[0] + size[0], pixel[1]), (180, 180, 180, 180)
+                )
                 im.set_tooltip(self.pointer_text)
             implot.end_plot()
         self.item_rects["plot"] = tuple(box)

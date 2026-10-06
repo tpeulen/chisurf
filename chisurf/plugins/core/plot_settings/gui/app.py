@@ -60,8 +60,9 @@ class PlotSettingsApp(ImApp):
         # a scrolling child inside one window lets the clipped rows under its bottom edge take
         # the clicks meant for the buttons below it.
         self.docks = DockManager(
-            Split("v", 0.64, Split("v", 0.8, Region("settings"), Region("actions")),
-                  Region("preview"))
+            Split(
+                "v", 0.64, Split("v", 0.8, Region("settings"), Region("actions")), Region("preview")
+            )
         )
         self.docks.add_window(
             "settings", "Plot Settings", self.draw_settings, dock="settings", closable=False
@@ -70,7 +71,10 @@ class PlotSettingsApp(ImApp):
             "actions", "Apply / Save / Reset", self.draw_actions, dock="actions", closable=False
         )
         self.docks.add_window(
-            "preview", "Preview (sample curves)", self.draw_preview_window, dock="preview",
+            "preview",
+            "Preview (sample curves)",
+            self.draw_preview_window,
+            dock="preview",
             closable=False,
         )
         super().__init__(self.render)
@@ -107,8 +111,9 @@ class PlotSettingsApp(ImApp):
         draw_sections(self.panels[_PREVIEW]["sections"], self.model, self.form, titles=False)
 
     # ── the preview plot ───────────────────────────────────────────────
-    def _draw_preview(self, section: dict, model: PlotSettingsModel, state: FormState,
-                      width: float) -> None:
+    def _draw_preview(
+        self, section: dict, model: PlotSettingsModel, state: FormState, width: float
+    ) -> None:
         """The ``preview_plot`` custom section: sample data / model / IRF curves."""
         dark = model.preview_dark
         background = (0, 0, 0, 255) if dark else (255, 255, 255, 255)
@@ -130,7 +135,9 @@ class PlotSettingsApp(ImApp):
         flags = implot.FLAGS_NO_TITLE | (0 if model.show_legend else implot.FLAGS_NO_LEGEND)
         grid_flag = 0 if model.preview_grid else implot.AXIS_FLAGS_NO_GRID_LINES
         self.preview_drawn = []
-        shown = implot.begin_plot("##plot_settings_preview", (-1.0, max(float(avail[1]), 90.0)), flags)
+        shown = implot.begin_plot(
+            "##plot_settings_preview", (-1.0, max(float(avail[1]), 90.0)), flags
+        )
         if shown:
             x_label = "t / ns" if model.label_axis else ""
             y_label = "counts" if model.label_axis else ""
@@ -147,9 +154,13 @@ class PlotSettingsApp(ImApp):
                     kwargs["dash"] = _DASH
                 implot.plot_line(series["label"], series["x"], series["y"], **kwargs)
                 self.preview_drawn.append(
-                    {"label": series["label"], "color": "#%02x%02x%02x" % rgb,
-                     "width": float(series["width"]), "dash": bool(series["dash"]),
-                     "points": len(series["x"])}
+                    {
+                        "label": series["label"],
+                        "color": "#%02x%02x%02x" % rgb,
+                        "width": float(series["width"]),
+                        "dash": bool(series["dash"]),
+                        "points": len(series["x"]),
+                    }
                 )
             implot.end_plot()
         implot.pop_style_color(len(pushed))

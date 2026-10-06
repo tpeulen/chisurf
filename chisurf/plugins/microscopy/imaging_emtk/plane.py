@@ -26,10 +26,20 @@ from .views import muted
 class PlaneRegions(RegionControls):
     """The shared region list, with new geometry in the units of the plane the regions live on."""
 
-    def __init__(self, collection: Callable[[], Any], extent: Callable[[], tuple], choose: Callable[[str], None],
-                 on_change: Callable[[], None]) -> None:
+    def __init__(
+        self,
+        collection: Callable[[], Any],
+        extent: Callable[[], tuple],
+        choose: Callable[[str], None],
+        on_change: Callable[[], None],
+    ) -> None:
         self._collection, self._extent = collection, extent
-        super().__init__(SimpleNamespace(regions=collection()), choose, on_change=on_change, get_image=lambda: None)
+        super().__init__(
+            SimpleNamespace(regions=collection()),
+            choose,
+            on_change=on_change,
+            get_image=lambda: None,
+        )
 
     @property
     def regions(self) -> Any:
@@ -42,7 +52,9 @@ class PlaneRegions(RegionControls):
         if kind == "ellipse":
             roi = EllipseROI(cx, cy, rx, ry, name="Ellipse")
         elif kind == "polygon":
-            roi = PolygonROI(np.array([[cx - rx, cy + ry], [cx, cy - ry], [cx + rx, cy + ry]]), name="Polygon")
+            roi = PolygonROI(
+                np.array([[cx - rx, cy + ry], [cx, cy - ry], [cx + rx, cy + ry]]), name="Polygon"
+            )
         else:
             roi = RectangleROI(cx - rx, cy - ry, cx + rx, cy + ry, name="Rectangle")
         self.model.regions = self._collection()
@@ -62,13 +74,30 @@ class PlaneRegions(RegionControls):
 class PlanePanel:
     """A histogram on measured axes with draggable regions over it."""
 
-    def __init__(self, key: str, *, collection: Callable[[], Any], image: Callable[[], Any], extent: Callable[[], tuple],
-                 x_label: str, y_label: str, on_change: Callable[[], None], overlay: Callable[[], list] | None = None,
-                 empty: str = "Nothing to show yet.", tooltip: str = "", transpose: bool = False,
-                 paint: Callable[[int, int], None] | None = None, painting: Callable[[], bool] | None = None) -> None:
+    def __init__(
+        self,
+        key: str,
+        *,
+        collection: Callable[[], Any],
+        image: Callable[[], Any],
+        extent: Callable[[], tuple],
+        x_label: str,
+        y_label: str,
+        on_change: Callable[[], None],
+        overlay: Callable[[], list] | None = None,
+        empty: str = "Nothing to show yet.",
+        tooltip: str = "",
+        transpose: bool = False,
+        paint: Callable[[int, int], None] | None = None,
+        painting: Callable[[], bool] | None = None,
+    ) -> None:
         self.key = key
         self.collection, self.image, self.extent = collection, image, extent
-        self.x_label, self.y_label, self.on_change = x_label, y_label, on_change  # str or callable returning str
+        self.x_label, self.y_label, self.on_change = (
+            x_label,
+            y_label,
+            on_change,
+        )  # str or callable returning str
         self.overlay, self.empty, self.tooltip = overlay, empty, tooltip
         #: the histogram is indexed [horizontal, vertical] (colocalization): drawn transposed
         self.transpose = transpose
@@ -99,17 +128,38 @@ class PlanePanel:
         flags = implot.FLAGS_NO_LEGEND
         height = max(160.0, im.get_content_region_avail()[1] - 6.0)
         if implot.begin_plot(f"##{self.key}", (-1.0, height), flags):
-            implot.setup_axes(self.x_label() if callable(self.x_label) else self.x_label, self.y_label() if callable(self.y_label) else self.y_label)
+            implot.setup_axes(
+                self.x_label() if callable(self.x_label) else self.x_label,
+                self.y_label() if callable(self.y_label) else self.y_label,
+            )
             implot.setup_axes_limits(x0, x1, y0, y1, implot.COND_ONCE)
             shown = np.asarray(array, dtype=float)
             shown = shown.T if self.transpose else shown
             # row 0 is the lowest value of the vertical axis: uv is flipped so it is drawn at the bottom, as an image view with y up would
-            implot.plot_image("##histogram", self.canvas.texture(shown), (x0, y0), (x1, y1), uv0=(0, 1), uv1=(1, 0))
+            implot.plot_image(
+                "##histogram",
+                self.canvas.texture(shown),
+                (x0, y0),
+                (x1, y1),
+                uv0=(0, 1),
+                uv1=(1, 0),
+            )
             for i, line in enumerate(self.overlay() if self.overlay else []):
                 implot.set_next_line_style(line.get("color", (230, 230, 230, 255)), 1.5)
-                implot.plot_line(f"##overlay{i}", np.asarray(line["x"], dtype=float), np.asarray(line["y"], dtype=float))
+                implot.plot_line(
+                    f"##overlay{i}",
+                    np.asarray(line["x"], dtype=float),
+                    np.asarray(line["y"], dtype=float),
+                )
             used = self._regions()
-            if self.paint is not None and self.painting is not None and self.painting() and not used and implot.is_plot_hovered() and im.is_mouse_down(0):
+            if (
+                self.paint is not None
+                and self.painting is not None
+                and self.painting()
+                and not used
+                and implot.is_plot_hovered()
+                and im.is_mouse_down(0)
+            ):
                 position = implot.get_plot_mouse_pos()
                 ia = int((position.x - x0) / (x1 - x0) * shown.shape[1])
                 ib = int((position.y - y0) / (y1 - y0) * shown.shape[0])
@@ -136,7 +186,12 @@ class PlanePanel:
                 result = implot.drag_rect(i * 100, roi.x0, roi.y0, roi.x1, roi.y1)
                 used |= bool(result.held or result.clicked)
                 if result.modified:
-                    roi.x0, roi.y0, roi.x1, roi.y1 = result.x_min, result.y_min, result.x_max, result.y_max
+                    roi.x0, roi.y0, roi.x1, roi.y1 = (
+                        result.x_min,
+                        result.y_min,
+                        result.x_max,
+                        result.y_max,
+                    )
                     self.on_change()
             elif isinstance(roi, EllipseROI):
                 centre = implot.drag_point(i * 100, roi.cx, roi.cy)
@@ -146,7 +201,11 @@ class PlanePanel:
                     self.on_change()
                 for slot, attr, angle in ((1, "rx", roi.angle), (2, "ry", roi.angle + np.pi / 2)):
                     radius = getattr(roi, attr)
-                    handle = implot.drag_point(i * 100 + slot, roi.cx + radius * np.cos(angle), roi.cy + radius * np.sin(angle))
+                    handle = implot.drag_point(
+                        i * 100 + slot,
+                        roi.cx + radius * np.cos(angle),
+                        roi.cy + radius * np.sin(angle),
+                    )
                     used |= bool(handle.held or handle.clicked)
                     if handle.modified:
                         setattr(roi, attr, float(np.hypot(handle.x - roi.cx, handle.y - roi.cy)))

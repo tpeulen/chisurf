@@ -21,14 +21,30 @@ class IrfBackgroundController(BackgroundController):
 
         im.text("Measurements & detectors")
         im.begin_disabled(self.running)
-        pressed = button_row([
-            {"label": "Open TTTR files", "key": "files", "tip": "Choose one or more photon measurement files."},
-            {"label": "Add TTTR folder", "tip": "Add supported photon measurements from a folder."},
-            {"label": "MMFDB datasets", "tip": "Browse database measurements and resolve their local paths."},
-            {"label": "Clear files", "tip": "Remove loaded files and analysis results."},
-            {"label": "Channel definition", "key": "bg_channels",
-             "tip": "Open the complete detector setup, timing, calibration, PIE, TAC and optical editor."},
-        ], remember=remember)
+        pressed = button_row(
+            [
+                {
+                    "label": "Open TTTR files",
+                    "key": "files",
+                    "tip": "Choose one or more photon measurement files.",
+                },
+                {
+                    "label": "Add TTTR folder",
+                    "tip": "Add supported photon measurements from a folder.",
+                },
+                {
+                    "label": "MMFDB datasets",
+                    "tip": "Browse database measurements and resolve their local paths.",
+                },
+                {"label": "Clear files", "tip": "Remove loaded files and analysis results."},
+                {
+                    "label": "Channel definition",
+                    "key": "bg_channels",
+                    "tip": "Open the complete detector setup, timing, calibration, PIE, TAC and optical editor.",
+                },
+            ],
+            remember=remember,
+        )
         if pressed == "files":
             if track is not None:
                 track("files")
@@ -142,7 +158,9 @@ class IrfBackgroundController(BackgroundController):
             filename="irf_background.npz",
             filters=[("NumPy patterns", ["*.npz"])],
         )
-        self._dialog_window = DialogWindow("Export MLE patterns", size=(640.0, 460.0), key="burst-irf-bg-file")
+        self._dialog_window = DialogWindow(
+            "Export MLE patterns", size=(640.0, 460.0), key="burst-irf-bg-file"
+        )
         self._dialog_window.show()
 
     def save_setup(self, path):

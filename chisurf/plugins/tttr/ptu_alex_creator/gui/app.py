@@ -81,7 +81,9 @@ class AlexApp(TourTarget, ImApp):
         install_translations()
         self.model = AlexViewModel()
         self.job = BackgroundJob()  # load, save, batch: the form is greyed while one runs
-        self.preview_job = BackgroundJob()  # the live histogram: edits stay possible while it recomputes
+        self.preview_job = (
+            BackgroundJob()
+        )  # the live histogram: edits stay possible while it recomputes
         self.histogram = []
         self.preview_signature = None
         self.loaded_path = ""
@@ -93,7 +95,9 @@ class AlexApp(TourTarget, ImApp):
         self.item_rects = {}
         self.file_window = DialogWindow("ALEX file chooser", size=(600.0, 420.0), key="alex_files")
         self.dataset_picker = DatasetPicker(on_paths=self.add_paths)
-        self.state_path = Path(state_path) if state_path else get_path("settings") / "alex-emtk.json"
+        self.state_path = (
+            Path(state_path) if state_path else get_path("settings") / "alex-emtk.json"
+        )
         self.form = FormState(on_used=self.used)
         self.spec_source = json.loads((HERE / "alex_emtk.view.json").read_text(encoding="utf-8"))
         self.spec, self.spec_locale = None, None
@@ -117,7 +121,10 @@ class AlexApp(TourTarget, ImApp):
 
     # -- the form's model: the Qt view model's fields -------------------------------------------------------- #
     def _field(name):  # noqa: N805 - a descriptor factory used in the class body
-        return property(lambda self: getattr(self.model, name), lambda self, value: setattr(self.model, name, value))
+        return property(
+            lambda self: getattr(self.model, name),
+            lambda self, value: setattr(self.model, name, value),
+        )
 
     input_file = _field("input_file")
     input_format = _field("input_format")
@@ -268,7 +275,14 @@ class AlexApp(TourTarget, ImApp):
             self.error(ValueError(tr(reason)))
             return False
         m = self.model
-        args = (m.input_file, str(path), int(m.alex_period), int(m.period_shift), m.output_format, m.input_format)
+        args = (
+            m.input_file,
+            str(path),
+            int(m.alex_period),
+            int(m.period_shift),
+            m.output_format,
+            m.input_format,
+        )
         if Path(args[0]).resolve() == Path(args[1]).resolve():
             self.error(ValueError(tr("Choose a different output file to preserve the source.")))
             return False
@@ -304,7 +318,9 @@ class AlexApp(TourTarget, ImApp):
             path = Path(value)
             if path.is_dir():
                 expanded.extend(
-                    str(p) for p in sorted(path.rglob("*")) if p.is_file() and p.suffix.lower() in EXTENSIONS
+                    str(p)
+                    for p in sorted(path.rglob("*"))
+                    if p.is_file() and p.suffix.lower() in EXTENSIONS
                 )
             elif path.is_file() and path.suffix.lower() in EXTENSIONS:
                 expanded.append(str(path))
@@ -312,7 +328,10 @@ class AlexApp(TourTarget, ImApp):
 
     def queue_rows(self):
         """The ``data_table`` source: one record per queued file."""
-        return [{"file": Path(p).name, "folder": str(Path(p).parent), "path": p} for p in self.model.batch_files]
+        return [
+            {"file": Path(p).name, "folder": str(Path(p).parent), "path": p}
+            for p in self.model.batch_files
+        ]
 
     def select_row(self, record):
         self.selected_path = str(record.get("path", "")) if isinstance(record, dict) else ""
@@ -351,7 +370,9 @@ class AlexApp(TourTarget, ImApp):
         self.dataset_picker.open()
 
     def choose_output(self):
-        self.choose(lambda picked: setattr(self.model, "batch_output_folder", str(picked[0])), mode="folder")
+        self.choose(
+            lambda picked: setattr(self.model, "batch_output_folder", str(picked[0])), mode="folder"
+        )
 
     def choose(self, callback, mode="open", multiple=False):
         start = Path(self.model.input_file).parent if self.model.input_file else None
@@ -396,8 +417,16 @@ class AlexApp(TourTarget, ImApp):
     def start_guide(self):
         """Start the tour from ``guide.json``; the texts go through the translation table."""
         self.guide.steps = [
-            {**step, "title": tr(step["title"]), "text": tr(step["text"]),
-             **({"await": {**step["await"], "hint": tr(step["await"]["hint"])}} if step.get("await") else {})}
+            {
+                **step,
+                "title": tr(step["title"]),
+                "text": tr(step["text"]),
+                **(
+                    {"await": {**step["await"], "hint": tr(step["await"]["hint"])}}
+                    if step.get("await")
+                    else {}
+                ),
+            }
             for step in self.guide_steps
         ]
         self.guide.start()
@@ -413,8 +442,16 @@ class AlexApp(TourTarget, ImApp):
     def draw_controls(self, box):
         pressed = button_row(
             [
-                {"label": tr("Guide"), "key": "guide", "tip": tr("Walk through loading, timing and conversion.")},
-                {"label": tr("Help"), "key": "help", "tip": tr("Read ALEX conversion and batch workflow help.")},
+                {
+                    "label": tr("Guide"),
+                    "key": "guide",
+                    "tip": tr("Walk through loading, timing and conversion."),
+                },
+                {
+                    "label": tr("Help"),
+                    "key": "help",
+                    "tip": tr("Read ALEX conversion and batch workflow help."),
+                },
             ],
             remember=lambda name: self.remember(name),
         )
@@ -424,7 +461,10 @@ class AlexApp(TourTarget, ImApp):
             self.show_help()
         locale = get_locale()
         if self.spec is None or locale != self.spec_locale:
-            self.spec, self.spec_locale = layout_spec(translated(deepcopy(self.spec_source))), locale
+            self.spec, self.spec_locale = (
+                layout_spec(translated(deepcopy(self.spec_source))),
+                locale,
+            )
             labels = LabelColumn()  # one caption column for every field of the window
             labels.measure([f["label"] for f in labelled(self.spec["sections"])])
             labels.pad(self.spec["sections"])
@@ -436,7 +476,9 @@ class AlexApp(TourTarget, ImApp):
         self.item_rects.update(self.form.rects)
         if "queue_rows" in self.form.rects:
             self.item_rects["queue"] = self.form.rects["queue_rows"]
-        fields = [self.form.rects[k] for k in ("alex_period", "period_shift") if k in self.form.rects]
+        fields = [
+            self.form.rects[k] for k in ("alex_period", "period_shift") if k in self.form.rects
+        ]
         if fields:
             x0, y0 = min(r[0] for r in fields), min(r[1] for r in fields)
             x1, y1 = max(r[0] + r[2] for r in fields), max(r[1] + r[3] for r in fields)
@@ -491,8 +533,13 @@ class AlexApp(TourTarget, ImApp):
             else:
                 # A window of its own over the others, so the card's buttons are hovered (a button answers only when no
                 # other window is under the pointer).
-                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
-                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
+                flags = (
+                    im.WindowFlags.NO_DECORATION
+                    | im.WindowFlags.NO_BACKGROUND
+                    | im.WindowFlags.NO_SAVED_SETTINGS
+                    | im.WindowFlags.NO_MOVE
+                    | im.WindowFlags.NO_NAV
+                )
                 im.begin("##alex_tour", (0.0, 0.0, width, height), flags)
                 self.guide.draw(width, height)
                 im.end()

@@ -59,7 +59,9 @@ def transition_points(ana: Any) -> tuple[np.ndarray, np.ndarray] | None:
 
 
 def transitions_in_gate(
-    points: tuple[np.ndarray, np.ndarray] | None, x_range: tuple[float, float], y_range: tuple[float, float]
+    points: tuple[np.ndarray, np.ndarray] | None,
+    x_range: tuple[float, float],
+    y_range: tuple[float, float],
 ) -> tuple[int, int]:
     """How many of the *points* fall in the gate, and how many there are."""
     if points is None:
@@ -85,7 +87,11 @@ def dwell_histograms(ana: Any, bins: int = DWELL_BINS) -> tuple[list[DwellHistog
             censored.append(int(state))
             continue
         counts, edges = np.histogram(arr * base_ms, bins=bins)
-        out.append(DwellHistogram(int(state), (edges[:-1] + edges[1:]) / 2.0, counts.astype(np.float64), int(arr.size)))
+        out.append(
+            DwellHistogram(
+                int(state), (edges[:-1] + edges[1:]) / 2.0, counts.astype(np.float64), int(arr.size)
+            )
+        )
     return out, censored
 
 
@@ -251,7 +257,9 @@ def e_ci_bands(ana: Any, uncertainty: Any) -> list[tuple[int, float, float]]:
     return out
 
 
-def transition_arrows(ana: Any, y_node: float) -> list[tuple[int, int, float, float, float, float, float]]:
+def transition_arrows(
+    ana: Any, y_node: float
+) -> list[tuple[int, int, float, float, float, float, float]]:
     """Arrows of the kinetic scheme along the E axis: ``(from, to, x0, y0, x1, y1, line width)``.
 
     One arrow per transition with a positive finite rate, from state node ``i`` to node ``j`` (nodes at the states' E
@@ -273,10 +281,25 @@ def transition_arrows(ana: Any, y_node: float) -> list[tuple[int, int, float, fl
     out = []
     for i in range(n):
         for j in range(n):
-            if i == j or not (np.isfinite(rates[i, j]) and rates[i, j] > 0 and np.isfinite(xs[i]) and np.isfinite(xs[j])):
+            if i == j or not (
+                np.isfinite(rates[i, j])
+                and rates[i, j] > 0
+                and np.isfinite(xs[i])
+                and np.isfinite(xs[j])
+            ):
                 continue
             dx = xs[j] - xs[i]
             length = abs(float(dx)) or 1.0
             oy = dx / length * off  # perpendicular of a horizontal arrow is vertical
-            out.append((i, j, float(xs[i]), float(y_node + oy), float(xs[j]), float(y_node + oy), 1.0 + 4.0 * float(rates[i, j] / rmax)))
+            out.append(
+                (
+                    i,
+                    j,
+                    float(xs[i]),
+                    float(y_node + oy),
+                    float(xs[j]),
+                    float(y_node + oy),
+                    1.0 + 4.0 * float(rates[i, j] / rmax),
+                )
+            )
     return out

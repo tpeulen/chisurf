@@ -19,7 +19,6 @@ from emtk.app import ImApp
 from emtk.im_core import Col, ItemFlags, get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
-
 from chisurf.plugins.emtk_layout import button_row, icon_label
 
 from .view_model import BvaViewModel
@@ -166,7 +165,9 @@ class BurstBvaGui:
         if im.begin("BVA Plot Window"):
             if im.begin_tab_bar("bva_plot_tabs"):
                 opened = im.begin_tab_item("Plot")
-                im.set_item_tooltip("Std of the proximity ratio per burst against its mean, with the static line.")
+                im.set_item_tooltip(
+                    "Std of the proximity ratio per burst against its mean, with the static line."
+                )
                 if opened:
                     self.remember("Plot")
                     avail_w, avail_h = im.get_content_region_avail()
@@ -189,22 +190,49 @@ class BurstBvaGui:
     def _draw_action_buttons(self) -> None:
         """The actions in three wrapped rows: the run controls, the saves, then guide and help."""
         running = bool(self.model.is_running)
-        attention = bool(getattr(self.model, "restart_attention", False))  # the Qt tool's flag_attention
-        pressed = button_row([
-            {"label": icon_label("🚀", "Run"), "key": "run", "keys": ("toolAction_run",), "enabled": not running,
-             "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
-             "tip": "Compute the per-burst standard deviation of the proximity ratio (BVA) for the loaded bursts."},
-            {"label": icon_label("🔄", "Restart"), "key": "restart", "keys": ("toolAction_restart",),
-             "enabled": not running,
-             "colours": ((200, 120, 20, 255), (220, 140, 40, 255), (180, 100, 10, 255)) if attention else None,
-             "tip": "Reset the analysis state and recompute from scratch."},
-            {"label": icon_label("⏹", "Stop"), "key": "stop", "keys": ("toolAction_stop",), "enabled": running,
-             "colours": (ACCENT_RED, (234, 59, 60, 255), (180, 20, 20, 255)) if running else None,
-             "tip": "Stop the running BVA computation." if running
-             else "Nothing is running; a BVA computation in progress can be stopped here."},
-            {"label": icon_label("📁", "Folder"), "key": "folder",
-             "tip": "Browse for the folder containing the burst analysis files."},
-        ], remember=self.remember)
+        attention = bool(
+            getattr(self.model, "restart_attention", False)
+        )  # the Qt tool's flag_attention
+        pressed = button_row(
+            [
+                {
+                    "label": icon_label("🚀", "Run"),
+                    "key": "run",
+                    "keys": ("toolAction_run",),
+                    "enabled": not running,
+                    "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
+                    "tip": "Compute the per-burst standard deviation of the proximity ratio (BVA) for the loaded bursts.",
+                },
+                {
+                    "label": icon_label("🔄", "Restart"),
+                    "key": "restart",
+                    "keys": ("toolAction_restart",),
+                    "enabled": not running,
+                    "colours": ((200, 120, 20, 255), (220, 140, 40, 255), (180, 100, 10, 255))
+                    if attention
+                    else None,
+                    "tip": "Reset the analysis state and recompute from scratch.",
+                },
+                {
+                    "label": icon_label("⏹", "Stop"),
+                    "key": "stop",
+                    "keys": ("toolAction_stop",),
+                    "enabled": running,
+                    "colours": (ACCENT_RED, (234, 59, 60, 255), (180, 20, 20, 255))
+                    if running
+                    else None,
+                    "tip": "Stop the running BVA computation."
+                    if running
+                    else "Nothing is running; a BVA computation in progress can be stopped here.",
+                },
+                {
+                    "label": icon_label("📁", "Folder"),
+                    "key": "folder",
+                    "tip": "Browse for the folder containing the burst analysis files.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed == "run":
             self.track("toolAction_run")
             self.track("run")
@@ -226,21 +254,48 @@ class BurstBvaGui:
                 self.on_browse()
 
         # These actions previously lived only in the hidden Qt toolbar.
-        pressed = button_row([
-            {"label": icon_label("🗑", "Clear"), "key": "clear",
-             "tip": "Clear the plotted BVA results and invalidate the cached analysis."},
-            {"label": icon_label("💾", "Save plot"), "key": "save_plot",
-             "tip": "Save the displayed BVA plot as a PNG image."},
-            {"label": icon_label("⚙", "Save defaults"), "key": "save_defaults",
-             "tip": "Save the current analysis and display settings as defaults."},
-        ], remember=self.remember)
-        actions = {"clear": self.on_clear, "save_plot": self.on_save, "save_defaults": self.on_save_settings}
+        pressed = button_row(
+            [
+                {
+                    "label": icon_label("🗑", "Clear"),
+                    "key": "clear",
+                    "tip": "Clear the plotted BVA results and invalidate the cached analysis.",
+                },
+                {
+                    "label": icon_label("💾", "Save plot"),
+                    "key": "save_plot",
+                    "tip": "Save the displayed BVA plot as a PNG image.",
+                },
+                {
+                    "label": icon_label("⚙", "Save defaults"),
+                    "key": "save_defaults",
+                    "tip": "Save the current analysis and display settings as defaults.",
+                },
+            ],
+            remember=self.remember,
+        )
+        actions = {
+            "clear": self.on_clear,
+            "save_plot": self.on_save,
+            "save_defaults": self.on_save_settings,
+        }
         if pressed in actions and callable(actions[pressed]):
             actions[pressed]()
-        pressed = button_row([
-            {"label": icon_label("📖", "Guide"), "key": "guide", "tip": "Start a step-by-step guided tour of this tool."},
-            {"label": icon_label("❓", "Help"), "key": "help", "tip": "Open the help window with reference documentation."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": icon_label("📖", "Guide"),
+                    "key": "guide",
+                    "tip": "Start a step-by-step guided tour of this tool.",
+                },
+                {
+                    "label": icon_label("❓", "Help"),
+                    "key": "help",
+                    "tip": "Open the help window with reference documentation.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed == "guide":
             self.track("guide")
             self.start_guide()
@@ -412,7 +467,9 @@ class BurstBvaGui:
                     self.model.status_text = self.INVALID_RANGES
                 else:
                     if self.model.status_text == self.INVALID_RANGES:
-                        self.model.status_text = "Ready"       # the message was about the half-typed value
+                        self.model.status_text = (
+                            "Ready"  # the message was about the half-typed value
+                        )
                     setattr(self.model, f"{name}_micro_time_ranges", parsed)
                     self.model.notify("channel")
 

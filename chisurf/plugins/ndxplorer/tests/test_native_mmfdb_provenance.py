@@ -1,4 +1,5 @@
 """Native MMFDB picker -> measured bursts -> saved mask with authenticated lineage."""
+
 from __future__ import annotations
 
 import json
@@ -34,15 +35,20 @@ def native(tmp_path, monkeypatch):
     assert client.login("user", "user", quiet=True).get("ok")
     monkeypatch.setattr(dataset_picker, "session_client", lambda: client)
     # Only suppress background browsing; refresh/resolve/accept use the real service.
-    monkeypatch.setattr(dataset_picker.DatasetPicker, "open", lambda self: setattr(self, "is_open", True))
+    monkeypatch.setattr(
+        dataset_picker.DatasetPicker, "open", lambda self: setattr(self, "is_open", True)
+    )
     mfd = Path(__file__).resolve().parents[4] / "modules/ndxplorer/test/mfd/burstwise_All 0.1500#30"
     copied = tmp_path / mfd.name
     shutil.copytree(mfd, copied)
     with MFDatabase(str(tmp_path / "mmfdb.db")) as db:
         source_id = register_result(
-            kind="external_reference", data=None, data_format="directory",
+            kind="external_reference",
+            data=None,
+            data_format="directory",
             metadata={"path": str(copied), "label": "Measured MFD bursts"},
-            db=db, session=SessionContext(user_id="user", db=db),
+            db=db,
+            session=SessionContext(user_id="user", db=db),
         )
     assert source_id
     app = make_app(session_autosave=False)
@@ -91,13 +97,15 @@ def test_native_picker_preserves_the_artifact_in_saved_selection_lineage(native,
     with MFDatabase(str(tmp_path / "mmfdb.db")) as db:
         links = db.conn.execute(
             "SELECT operation_id FROM mmfdb_operation_artifact "
-            "WHERE artifact_id=? AND direction='input'", (source_id,),
+            "WHERE artifact_id=? AND direction='input'",
+            (source_id,),
         ).fetchall()
         assert len(links) == 1
         op_id = links[0]["operation_id"]
         out_id = db.conn.execute(
             "SELECT artifact_id FROM mmfdb_operation_artifact "
-            "WHERE operation_id=? AND direction='output'", (op_id,),
+            "WHERE operation_id=? AND direction='output'",
+            (op_id,),
         ).fetchone()["artifact_id"]
     operation = client.call("mmfdb.v1.operations.get", {"operation_id": op_id})["operation"]
     settings = json.loads(operation["settings_json"])
@@ -133,9 +141,12 @@ def test_an_expired_session_keeps_bids_and_reports_the_recording_failure(native,
 
     assert "recording them failed" in app.status
     with MFDatabase(str(tmp_path / "mmfdb.db")) as db:
-        assert db.conn.execute(
-            "SELECT COUNT(*) FROM mmfdb_operation WHERE software_package='ndxplorer'",
-        ).fetchone()[0] == 0
+        assert (
+            db.conn.execute(
+                "SELECT COUNT(*) FROM mmfdb_operation WHERE software_package='ndxplorer'",
+            ).fetchone()[0]
+            == 0
+        )
 
 
 def test_a_failed_input_link_leaves_a_failed_operation_not_a_success(native, tmp_path, monkeypatch):

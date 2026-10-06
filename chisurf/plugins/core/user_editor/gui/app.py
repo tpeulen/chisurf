@@ -183,7 +183,9 @@ class UserEditorApp(ImApp):
             self.model.notice = f"Copied {len(records)} rows to the clipboard."
         elif request == "export" and self.dialog is None:
             self.dialog = FileDialog(
-                "Export users as CSV", mode="save", filename="users.csv",
+                "Export users as CSV",
+                mode="save",
+                filename="users.csv",
                 filters="CSV (*.csv);;All Files (*)",
             )
 
@@ -228,9 +230,7 @@ class UserEditorApp(ImApp):
             return
         self.password_window.title = model.password_title
         pressed = self.password_window.begin(box)
-        draw_sections(
-            self.panels[_PASSWORD]["sections"], model, self.password_form, titles=False
-        )
+        draw_sections(self.panels[_PASSWORD]["sections"], model, self.password_form, titles=False)
         self.password_window.end()
         if pressed == "close":
             model.password_cancel()
@@ -240,12 +240,22 @@ class UserEditorApp(ImApp):
     ) -> None:
         """The ``password_fields`` custom section: two masked text entries."""
         flags = im.InputTextFlags.PASSWORD
-        label_w = max(im.calc_text_size("Confirm password")[0], im.calc_text_size("New password")[0])
+        label_w = max(
+            im.calc_text_size("Confirm password")[0], im.calc_text_size("New password")[0]
+        )
         for label, attr, name, tip in (
-            ("New password", "password_new", "password_new",
-             "The new password; shown as stars. It is applied when you press Save."),
-            ("Confirm password", "password_confirm", "password_confirm",
-             "Type the new password again; it must match."),
+            (
+                "New password",
+                "password_new",
+                "password_new",
+                "The new password; shown as stars. It is applied when you press Save.",
+            ),
+            (
+                "Confirm password",
+                "password_confirm",
+                "password_confirm",
+                "Type the new password again; it must match.",
+            ),
         ):
             im.text(label)
             im.same_line(label_w + 14.0)

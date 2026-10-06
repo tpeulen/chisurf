@@ -34,7 +34,13 @@ from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
-    NUMBER_WIDTH, LabelColumn, cap_widths, group_by_width, icon_label, labelled, layout_spec,
+    NUMBER_WIDTH,
+    LabelColumn,
+    cap_widths,
+    group_by_width,
+    icon_label,
+    labelled,
+    layout_spec,
 )
 
 ERROR = (1.0, 0.45, 0.45, 1.0)
@@ -119,10 +125,15 @@ class SaveAction:
 def trajectory_field(**overrides) -> PathField:
     """The trajectory row every tool has (DCD, as the Qt sections filter)."""
     values = dict(
-        key="trajectory", label="Trajectory", attr="trajectory_filename", setter="set_trajectory",
-        filters=TRAJECTORY_FILTERS, placeholder="Drop a DCD trajectory here or browse…",
+        key="trajectory",
+        label="Trajectory",
+        attr="trajectory_filename",
+        setter="set_trajectory",
+        filters=TRAJECTORY_FILTERS,
+        placeholder="Drop a DCD trajectory here or browse…",
         tooltip="The trajectory the tool reads. Drop a .dcd here or press … to pick one.",
-        browse_tooltip="Open a DCD trajectory.", dialog_title="Open trajectory",
+        browse_tooltip="Open a DCD trajectory.",
+        dialog_title="Open trajectory",
     )
     values.update(overrides)
     return PathField(**values)
@@ -131,11 +142,15 @@ def trajectory_field(**overrides) -> PathField:
 def topology_field(**overrides) -> PathField:
     """The topology row: the PDB that names the atoms a DCD stores coordinates for."""
     values = dict(
-        key="topology", label="Topology", attr="topology_filename", setter="set_topology",
-        filters=STRUCTURE_FILTERS, placeholder="PDB naming the atoms — required for DCD",
+        key="topology",
+        label="Topology",
+        attr="topology_filename",
+        setter="set_topology",
+        filters=STRUCTURE_FILTERS,
+        placeholder="PDB naming the atoms — required for DCD",
         tooltip="The structure that names the atoms; a DCD stores coordinates only.",
         browse_tooltip="Open the PDB that names the atoms. DCD stores coordinates only, so "
-                       "this is required for them.",
+        "this is required for them.",
         dialog_title="Open topology",
     )
     values.update(overrides)
@@ -176,8 +191,17 @@ class TrajToolApp(TourTarget, ImApp):
     caption; a spec of several panels keeps them, titled.
     """
 
-    def __init__(self, model, folder: pathlib.Path, spec_name: str, io_key: str, title: str,
-                 paths: Sequence[PathField], action: SaveAction, action_key: str | None = None) -> None:
+    def __init__(
+        self,
+        model,
+        folder: pathlib.Path,
+        spec_name: str,
+        io_key: str,
+        title: str,
+        paths: Sequence[PathField],
+        action: SaveAction,
+        action_key: str | None = None,
+    ) -> None:
         self.model = model
         self.folder = pathlib.Path(folder)
         self.title = title
@@ -189,20 +213,27 @@ class TrajToolApp(TourTarget, ImApp):
         self.future: concurrent.futures.Future | None = None
         self._executor = concurrent.futures.ThreadPoolExecutor(1, thread_name_prefix=io_key)
         self.dialog: FileDialog | None = None
-        self.dialog_window = DialogWindow("Choose a file", size=(640.0, 400.0), key=f"{io_key}-file")
+        self.dialog_window = DialogWindow(
+            "Choose a file", size=(640.0, 400.0), key=f"{io_key}-file"
+        )
         self._on_pick: Callable[[str], None] | None = None
         self._log_seen = 0
 
         spec = json.loads((self.folder / spec_name).read_text(encoding="utf-8"))
         panel = spec["sections"][0]
-        top = panel.get("sections", []) if len(spec["sections"]) == 1 else [
-            dict(s, collapsible=True) if s.get("type") == "panel" else s for s in spec["sections"]
-        ]                                                   # several panels fold, as the Qt AutoForm panels do
+        top = (
+            panel.get("sections", [])
+            if len(spec["sections"]) == 1
+            else [
+                dict(s, collapsible=True) if s.get("type") == "panel" else s
+                for s in spec["sections"]
+            ]
+        )  # several panels fold, as the Qt AutoForm panels do
         self.spec = {"sections": [self._host_section(s) for s in top]}
         _spin_numbers(self.spec["sections"])
         self.spec = layout_spec(self.spec)
-        self.labels = LabelColumn()                 # the one label column every row of the window shares
-        if not action_key:                          # the action closes the inputs, above the log
+        self.labels = LabelColumn()  # the one label column every row of the window shares
+        if not action_key:  # the action closes the inputs, above the log
             action_key = f"{io_key}_action"
             if not _insert_before_log(self.spec["sections"], {"type": "custom", "key": action_key}):
                 self.spec["sections"].append({"type": "custom", "key": action_key})
@@ -216,13 +247,17 @@ class TrajToolApp(TourTarget, ImApp):
         self.native_layouts = {"main": self.docks}
 
         self.help_window = EmTkHelpWindow(
-            title=f"{panel.get('title', title)} — Help", resource=self.folder / "help.md", owner=self,
-            on_start_guide=self.start_guide, size=(680.0, 500.0),
+            title=f"{panel.get('title', title)} — Help",
+            resource=self.folder / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+            size=(680.0, 500.0),
         )
         self.tour = EmTkGuidedTour(
             steps=self.folder / "guide.json",
             get_target_rect=lambda k: self.item_rects.get(k) or self.form.rects.get(k),
-            owner=self, wait_for_controls=True,
+            owner=self,
+            wait_for_controls=True,
         )
         self.form.on_used = self.tour.notify_used
         super().__init__(gui=self.render, continuous=False)
@@ -264,9 +299,15 @@ class TrajToolApp(TourTarget, ImApp):
         current = getattr(self.model, path_field.attr) or ""
         folder = path_field.takes_folder(self.model)
         start = current if folder and os.path.isdir(current) else os.path.dirname(current)
-        self._open_dialog(FileDialog(path_field.dialog_title, mode="folder" if folder else "open",
-                                     filters=path_field.filters, directory=start or None),
-                          lambda path: self.set_path(path_field, path))
+        self._open_dialog(
+            FileDialog(
+                path_field.dialog_title,
+                mode="folder" if folder else "open",
+                filters=path_field.filters,
+                directory=start or None,
+            ),
+            lambda path: self.set_path(path_field, path),
+        )
 
     def begin_save(self) -> None:
         """The action button: say what is missing, else ask where to write."""
@@ -277,18 +318,27 @@ class TrajToolApp(TourTarget, ImApp):
         if not self.action.dialog_title:
             self.save(None)
             return
-        source = getattr(self.model, self.paths[0].attr) or ""     # the first row is the source
-        self._open_dialog(FileDialog(self.action.dialog_title, mode="save", filters=self.action.filters,
-                                     directory=os.path.dirname(source) or None,
-                                     filename=self.action.suggest(self.model)),
-                          self.save, on_cancel=lambda: self.model.append_log(self.action.cancelled))
+        source = getattr(self.model, self.paths[0].attr) or ""  # the first row is the source
+        self._open_dialog(
+            FileDialog(
+                self.action.dialog_title,
+                mode="save",
+                filters=self.action.filters,
+                directory=os.path.dirname(source) or None,
+                filename=self.action.suggest(self.model),
+            ),
+            self.save,
+            on_cancel=lambda: self.model.append_log(self.action.cancelled),
+        )
 
     def save(self, target: str | None) -> None:
         """Run the action on *target* on the worker; the result lands in the log and status."""
         if self.running:
             return
         self.status = self.notice = ""
-        self.future = self._executor.submit(self.action.run, self.model, None if target is None else str(target))
+        self.future = self._executor.submit(
+            self.action.run, self.model, None if target is None else str(target)
+        )
 
     def poll(self) -> None:
         if self.future is None or not self.future.done():
@@ -302,8 +352,12 @@ class TrajToolApp(TourTarget, ImApp):
             done = self.action.done
             self.notice = done(result) if callable(done) else done
 
-    def _open_dialog(self, dialog: FileDialog, on_pick: Callable[[str], Any],
-                     on_cancel: Callable[[], Any] | None = None) -> None:
+    def _open_dialog(
+        self,
+        dialog: FileDialog,
+        on_pick: Callable[[str], Any],
+        on_cancel: Callable[[], Any] | None = None,
+    ) -> None:
         self.dialog, self._on_pick, self._on_cancel = dialog, on_pick, on_cancel
         self.dialog_window.title = dialog.title
         self.dialog_window.show()
@@ -323,7 +377,11 @@ class TrajToolApp(TourTarget, ImApp):
             if os.path.isdir(path):
                 rows = [p for p in self.paths if p.takes_folder(self.model)]
             elif os.path.isfile(path):
-                rows = [p for p in self.paths if not p.takes_folder(self.model) and _matches(path, p.filters)]
+                rows = [
+                    p
+                    for p in self.paths
+                    if not p.takes_folder(self.model) and _matches(path, p.filters)
+                ]
             else:
                 continue
             rows.sort(key=lambda p: bool(getattr(self.model, p.attr)))
@@ -386,7 +444,9 @@ class TrajToolApp(TourTarget, ImApp):
         """
         if not self.labels.ready:
             captions = [p.label for p in self.paths]
-            captions += [s["label"] for s in labelled(self.spec["sections"])] + self.extra_captions()
+            captions += [
+                s["label"] for s in labelled(self.spec["sections"])
+            ] + self.extra_captions()
             self.labels.measure(captions)
             self.labels.pad(self.spec["sections"])
         return self.labels.x
@@ -408,10 +468,15 @@ class TrajToolApp(TourTarget, ImApp):
         button_w = im.get_frame_height() + 6.0
         for path_field in self.paths:
             im.text(path_field.label)
-            im.same_line(label_w)                    # the paths start in one column
+            im.same_line(label_w)  # the paths start in one column
             im.set_next_item_width(max(80.0, width - label_w - button_w - 8.0))
-            im.input_text(f"##{path_field.key}", getattr(model, path_field.attr) or "",
-                          hint=path_field.placeholder, flags=im.InputTextFlags.READ_ONLY, elide_start=True)
+            im.input_text(
+                f"##{path_field.key}",
+                getattr(model, path_field.attr) or "",
+                hint=path_field.placeholder,
+                flags=im.InputTextFlags.READ_ONLY,
+                elide_start=True,
+            )
             im.set_item_tooltip(path_field.tooltip)
             self.remember(path_field.key)
             im.same_line()
@@ -453,8 +518,8 @@ class TrajToolApp(TourTarget, ImApp):
         im.begin_child("##log", box[2:])
         lines = self.model.log_text()
         for line in lines:
-            im.text_wrapped(line)                 # paths are long; the Qt log wrapped them too
-        if len(lines) != self._log_seen:      # follow new lines, as the Qt log does
+            im.text_wrapped(line)  # paths are long; the Qt log wrapped them too
+        if len(lines) != self._log_seen:  # follow new lines, as the Qt log does
             self._log_seen = len(lines)
             im.set_scroll_here_y(1.0)
         im.end_child()
@@ -490,7 +555,9 @@ def _insert_before_log(sections: list, node: dict) -> bool:
         if section.get("type") == "custom" and section.get("key") == LOG_KEY:
             sections.insert(i, node)
             return True
-        if isinstance(section.get("sections"), list) and _insert_before_log(section["sections"], node):
+        if isinstance(section.get("sections"), list) and _insert_before_log(
+            section["sections"], node
+        ):
             return True
     return False
 
@@ -503,8 +570,11 @@ def _spin_numbers(sections) -> None:
     ``spin`` style and the same step.
     """
     for section in sections:
-        if section.get("type") == "value" and section.get("kind") in ("int", "float") \
-                and not section.get("read_only"):
+        if (
+            section.get("type") == "value"
+            and section.get("kind") in ("int", "float")
+            and not section.get("read_only")
+        ):
             section["style"] = "spin"
             section.setdefault("step", 1)
         _spin_numbers(section.get("sections", []))
@@ -517,5 +587,11 @@ def _fields(sections):
         yield from _fields(section.get("sections", []))
 
 
-__all__ = ["PathField", "SaveAction", "TrajToolApp", "icon_label", "topology_field",
-           "trajectory_field"]
+__all__ = [
+    "PathField",
+    "SaveAction",
+    "TrajToolApp",
+    "icon_label",
+    "topology_field",
+    "trajectory_field",
+]

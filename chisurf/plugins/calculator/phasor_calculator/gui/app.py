@@ -11,10 +11,9 @@ showed, as a real table.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
-
-import json
 
 import emtk.im as im
 import emtk.implot as implot
@@ -29,6 +28,7 @@ if TYPE_CHECKING:
 
 WINDOW_BG = (30, 32, 38, 255)
 
+
 def _leaves(section: dict):
     """Every section inside *section*, toggles of a row included."""
     for inner in section.get("sections") or []:
@@ -40,9 +40,12 @@ def _leaves(section: dict):
 
 def _has_attr(section: dict, attr: str) -> bool:
     """Whether *section* or one inside it edits the model field *attr*."""
-    if section.get("attr") == attr or any(i.get("attr") == attr for i in section.get("items") or []):
+    if section.get("attr") == attr or any(
+        i.get("attr") == attr for i in section.get("items") or []
+    ):
         return True
     return any(_has_attr(inner, attr) for inner in section.get("sections") or [])
+
 
 #: pyqtgraph's single-letter colours, which the shared overlay builder emits.
 _LETTER_COLOURS = {
@@ -79,15 +82,33 @@ def _in_legend(name: str) -> bool:
 SPEC = json.loads((Path(__file__).parent / "phasor_emtk.view.json").read_text(encoding="utf-8"))
 
 #: The model attributes that make up a saved session (everything the controls edit).
-SETTINGS = ("frequency", "harmonic", "taus", "show_grid", "show_ticks", "show_polar_grid", "show_fret", "tau_d0",
-            "show_component", "g1", "s1", "g2", "s2", "show_mixing", "frac1", "show_cursor", "cursor_g", "cursor_s",
-            "cursor_radius")
+SETTINGS = (
+    "frequency",
+    "harmonic",
+    "taus",
+    "show_grid",
+    "show_ticks",
+    "show_polar_grid",
+    "show_fret",
+    "tau_d0",
+    "show_component",
+    "g1",
+    "s1",
+    "g2",
+    "s2",
+    "show_mixing",
+    "frac1",
+    "show_cursor",
+    "cursor_g",
+    "cursor_s",
+    "cursor_radius",
+)
 
 
 class PhasorForm:
     """What the specs read and call: the model's fields, and the derived texts and rows of the results."""
 
-    def __init__(self, gui: "PhasorGui") -> None:
+    def __init__(self, gui: PhasorGui) -> None:
         object.__setattr__(self, "_gui", gui)
 
     def __getattr__(self, name: str):
@@ -133,8 +154,12 @@ class PhasorGui(TourTarget):
             Region("plot"),
         )
         self.docks = DockManager(layout)
-        self.docks.add_window("controls", "Controls", self._draw_controls, dock="controls", closable=False)
-        self.docks.add_window("results", "Reference lifetimes", self._draw_results, dock="results", closable=False)
+        self.docks.add_window(
+            "controls", "Controls", self._draw_controls, dock="controls", closable=False
+        )
+        self.docks.add_window(
+            "results", "Reference lifetimes", self._draw_results, dock="results", closable=False
+        )
         self.docks.add_window("plot", "Phasor plot", self._draw_plot, dock="plot", closable=False)
 
         self.help_window = EmTkHelpWindow(
@@ -246,8 +271,14 @@ class PhasorGui(TourTarget):
                     continue
                 if overlay.get("kind") == "scatter":
                     implot.set_next_marker_style(implot.MARKER_CIRCLE, 5.0, colour)
-                    implot.plot_scatter(name, xs, ys, spec=None if _in_legend(name)
-                                        else implot.PlotSpec(flags=implot.ITEM_FLAGS_NO_LEGEND))
+                    implot.plot_scatter(
+                        name,
+                        xs,
+                        ys,
+                        spec=None
+                        if _in_legend(name)
+                        else implot.PlotSpec(flags=implot.ITEM_FLAGS_NO_LEGEND),
+                    )
                 else:
                     dash = style.get("dash")
                     implot.set_next_line_style(
@@ -276,7 +307,9 @@ class PhasorGui(TourTarget):
                 "mixture inside on the chord between its components."
             )
         self.remember("plot", tuple(box))  # the window's content: the plot fills it
-        self.remember("phasor", tuple(box))  # the spec's name for the plot section, which the guide targets
+        self.remember(
+            "phasor", tuple(box)
+        )  # the spec's name for the plot section, which the guide targets
         if im.is_item_clicked():
             self.tour.notify_used("plot")
             self.tour.notify_used("phasor")
@@ -347,7 +380,9 @@ class PhasorCalcApp(ImApp):
                     continue
                 spec = limits.get(name, {})
                 lo, hi = spec.get("minimum"), spec.get("maximum")
-                value = min(max(value, lo if lo is not None else value), hi if hi is not None else value)
+                value = min(
+                    max(value, lo if lo is not None else value), hi if hi is not None else value
+                )
                 setattr(model, name, int(value) if isinstance(current, int) else float(value))
             elif isinstance(current, str) and isinstance(value, str):
                 setattr(model, name, value)

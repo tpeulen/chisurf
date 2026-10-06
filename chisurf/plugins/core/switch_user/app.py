@@ -6,6 +6,7 @@ and the message-box window are drawn here. State and work are in
 :class:`~.model.SwitchUserModel`; the sign-in runs on a :class:`~chisurf.emtk.jobs.SnapshotJob`
 because the server may take seconds to answer.
 """
+
 from __future__ import annotations
 
 import json
@@ -46,15 +47,20 @@ class SwitchUserApp(ImApp):
         self.panels = {p["name"]: p for p in spec["sections"]}
         self.form = FormState()
         self.notice_form = FormState()
-        self.notice_window = DialogWindow("Notice", size=(380.0, 110.0), key="switch_user_notice",
-                                          fit_height=True)
+        self.notice_window = DialogWindow(
+            "Notice", size=(380.0, 110.0), key="switch_user_notice", fit_height=True
+        )
         self.item_rects: dict = {}
         self._reported_error = ""
-        self.help_window = EmTkHelpWindow(title="Switch User — Help", resource=HERE / "help.md",
-                                          owner=self)
+        self.help_window = EmTkHelpWindow(
+            title="Switch User — Help", resource=HERE / "help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json", owner=self, wait_for_controls=True,
-            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key))
+            steps=HERE / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
+        )
         self.form.on_used = self.tour.notify_used
         self.model.runner = self.start_job
         super().__init__(self.render, continuous=True)
@@ -93,7 +99,9 @@ class SwitchUserApp(ImApp):
         im.text("Sign in to the MMFDB workspace")
         if im.button("Help"):
             self.help_window.show()
-        im.set_item_tooltip("Explain the fields, the two remember options and what happens on Login.")
+        im.set_item_tooltip(
+            "Explain the fields, the two remember options and what happens on Login."
+        )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
         if im.button("Guide"):

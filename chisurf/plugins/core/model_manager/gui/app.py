@@ -161,7 +161,9 @@ class ModelManagerApp(ImApp):
             self.model.set_status(f"Copied {len(records)} rows to the clipboard.")
         elif request == "export" and self.dialog is None:
             self.dialog = FileDialog(
-                "Export models as CSV", mode="save", filename="models.csv",
+                "Export models as CSV",
+                mode="save",
+                filename="models.csv",
                 filters="CSV (*.csv);;All Files (*)",
             )
 

@@ -166,7 +166,7 @@ def counts_histogram(counts: Any, bins: int = HIST_BINS) -> tuple[np.ndarray, np
         return np.zeros(0), np.zeros(0)
     freq, edges = np.histogram(data, bins=bins)
     centres = 0.5 * (edges[:-1] + edges[1:])
-    keep = freq > 0                                      # a log axis cannot show an empty bin
+    keep = freq > 0  # a log axis cannot show an empty bin
     return freq[keep].astype(float), centres[keep]
 
 
@@ -195,7 +195,7 @@ class TraceView:
         columns = [(label, counts[:, i]) for i, label in enumerate(labels[: counts.shape[1]])]
         for i, (label, column) in enumerate(columns):
             self.series.append(self._entry(label, series_colour(label, i), time_axis, column))
-        if columns:      # the sum is drawn first, behind the detectors (the Qt plot ends with it)
+        if columns:  # the sum is drawn first, behind the detectors (the Qt plot ends with it)
             total = counts[:, : len(columns)].sum(axis=1)
             self.series.insert(0, self._entry("Sum", SUM_COLOUR, time_axis, total))
 
@@ -299,9 +299,7 @@ class TraceBrowserApp(ImApp):
         self._notes_dirty_for: Path | None = None
         self._queue: deque[tuple[str, tuple]] = deque()
         self._reported_error = ""
-        self.spec = json.loads(
-            (HERE / "trace_browser_emtk.view.json").read_text(encoding="utf-8")
-        )
+        self.spec = json.loads((HERE / "trace_browser_emtk.view.json").read_text(encoding="utf-8"))
         self.form = FormState()
         self.dialog: FileDialog | None = None
         self.dialog_kind = ""
@@ -361,8 +359,8 @@ class TraceBrowserApp(ImApp):
             method, args = self._queue.popleft()
             self._reported_error = ""
             self.model.error_text = ""
-            self._failed = None                       # a new scan: the files may load now
-            self.model.precompute["cancel"] = True    # a new scan ends a running precompute
+            self._failed = None  # a new scan: the files may load now
+            self.model.precompute["cancel"] = True  # a new scan ends a running precompute
             if self.job.start(method, *args):
                 self.model.busy = True
 
@@ -421,7 +419,9 @@ class TraceBrowserApp(ImApp):
                 if not self.pre_job.start("precompute"):
                     model.precompute["running"] = False
         if self.pre_job.error and model.precompute["running"]:
-            model.precompute.update(running=False, message=f"Precompute failed: {self.pre_job.error}")
+            model.precompute.update(
+                running=False, message=f"Precompute failed: {self.pre_job.error}"
+            )
 
     def animating(self) -> bool:
         """Keep drawing while a worker runs or a request waits, so the result appears."""
@@ -661,7 +661,7 @@ class TraceBrowserApp(ImApp):
         """The counts-against-time plot and, to its right, the counts histogram (log axis)."""
         model = self.model
         low, high = model.y_range
-        fixed = high > low                         # equal limits: let the plot fit the data
+        fixed = high > low  # equal limits: let the plot fit the data
         key = (view.path, view.window_ms, low, high)
         cond = implot.COND_ALWAYS if key != self._limits_key else implot.COND_ONCE
         self._limits_key = key
@@ -688,7 +688,9 @@ class TraceBrowserApp(ImApp):
                 implot.end_plot()
             self.item_rects["trace_plot"] = im.get_item_rect()
             if implot.begin_plot(
-                "Counts histogram##tb_hist", (-1.0, -1.0), implot.FLAGS_NO_LEGEND | implot.FLAGS_NO_TITLE
+                "Counts histogram##tb_hist",
+                (-1.0, -1.0),
+                implot.FLAGS_NO_LEGEND | implot.FLAGS_NO_TITLE,
             ):
                 implot.setup_axes("Counts (log)", "", 0, y_flags | implot.AXIS_FLAGS_NO_TICK_LABELS)
                 implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)

@@ -21,7 +21,7 @@ from chisurf.plugins.core.help.gui.help_app import make_help_app
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 PAGE = REPO / "docs" / "concepts" / "fret.md"
-EMOJI = re.compile("[\U0001F000-\U0001FFFF☀-➿️]")
+EMOJI = re.compile("[\U0001f000-\U0001ffff☀-➿️]")
 
 _QT_FACTS = r"""
 import html, json, re, sys, pathlib
@@ -47,12 +47,18 @@ def qt_facts():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT_FACTS, str(PAGE)], capture_output=True,
-                          text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT_FACTS, str(PAGE)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
     if line is None:
         pytest.skip(f"Qt HelpWidget could not be built here: {proc.stderr[-800:]}")
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 @pytest.fixture
@@ -73,9 +79,11 @@ def _draw(app, size=(1200, 800), times=3):
 # 1. the start page lists the same pages, with the same titles, as the Qt start page
 def test_start_page_matches_the_qt_start_page(app, qt_facts):
     home = app.model._build_home_content()
-    ours = [(Path(target).name, title) for title, target in re.findall(r"\[([^\]]+)\]\(([^)]+)\)", home)]
+    ours = [
+        (Path(target).name, title) for title, target in re.findall(r"\[([^\]]+)\]\(([^)]+)\)", home)
+    ]
     assert ours == [tuple(x) for x in qt_facts["home_links"]]
-    assert "Welcome to ChiSurf Documentation" not in home       # the earlier hard-coded page
+    assert "Welcome to ChiSurf Documentation" not in home  # the earlier hard-coded page
 
 
 # 1b. the breadcrumb of an open page is the Qt one
@@ -102,14 +110,15 @@ def test_tree_opens_to_the_open_page(app):
 
     group = parent_of(app.model.toc)
     # a sibling's title is drawn only by the tree (the page's own title is also its heading)
-    sibling = next(c.title for c in group.children
-                   if not (c.path and str(Path(c.path).resolve()) == target))
+    sibling = next(
+        c.title for c in group.children if not (c.path and str(Path(c.path).resolve()) == target)
+    )
     painter = _draw(app)
     assert sibling not in painter.strings
     app.model.open_page(PAGE)
     painter = _draw(app)
     assert sibling in painter.strings
-    assert app.help_gui._reveal_keys == set()          # revealed once, not forced open
+    assert app.help_gui._reveal_keys == set()  # revealed once, not forced open
 
 
 # 2b. back/forward are disabled, not recoloured, when there is nowhere to go
@@ -120,7 +129,7 @@ def test_navigation_actions(app):
     assert app.model.current_path is None
     app.model.go_forward()
     assert app.model.current_path == PAGE.resolve()
-    assert app.model.navigate_address("docs/no/such/page.md") in (True, False)   # never raises
+    assert app.model.navigate_address("docs/no/such/page.md") in (True, False)  # never raises
 
 
 # 4. draws, home and page, at both sizes, with no pictogram in any label
@@ -152,7 +161,7 @@ def test_every_control_has_a_tooltip():
 
     inv = emtk_inventory(build_emtk_app("help"))
     assert inv["controls_without_tooltip"] == []
-    assert {"onlinedocs", "videos", "home", "back", "fwd"} <= set(inv["controls"])   # normalised
+    assert {"onlinedocs", "videos", "home", "back", "fwd"} <= set(inv["controls"])  # normalised
 
 
 # 8. persistence

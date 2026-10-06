@@ -22,7 +22,14 @@ from chisurf.plugins.burst.mfd_prepare.gui.app import MfdPrepareApp, make_app
 from chisurf.plugins.burst.mfd_prepare.gui.model import MfdPrepareModel
 from chisurf.plugins.emtk_test_input import SIZE, SMALL, Driver, assert_tour_card_clear
 
-FIXTURE = (Path(__file__).resolve().parents[2] / "burst_selection" / "tests" / "data" / "bh_spc132_sm_dna" / "burst_analysis_handoff")
+FIXTURE = (
+    Path(__file__).resolve().parents[2]
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
+    / "burst_analysis_handoff"
+)
 pytestmark = pytest.mark.usefixtures("no_failed_draws")
 
 
@@ -79,7 +86,9 @@ def test_the_tables_show_the_backends_values(prepared):
         assert name in texts
         assert f"{backend['count_agreement'][name]:.4f}" in texts
         assert str(summary["n_empty"][name]) in texts
-    assert "0-2047" in texts and "2048-4094" in texts and "all" in texts      # the micro-time windows of red / yellow / green
+    assert (
+        "0-2047" in texts and "2048-4094" in texts and "all" in texts
+    )  # the micro-time windows of red / yellow / green
     assert str(summary["photons"]["m000.spc"]) in texts
     assert "sibling" in texts and "m000.spc" in texts
     assert str(backend["total_photons"]) in texts
@@ -102,9 +111,19 @@ def test_an_unverified_detector_is_flagged(drv):
     m = drv.app.model
     m.folder = "/generated/example"
     m.report = "burst folder: generated\nbursts: 3 (4 interleaved sentinel rows removed)\n  green: count agreement 0.5000 [UNVERIFIED]"
-    m.result = {"n_bursts": 3, "channels": ["green", "red"], "verified_channels": ["red"], "count_agreement": {"green": 0.5, "red": 1.0},
-                "duration_s": 1.0, "total_photons": 10,
-                "summary": {"unverified_channels": ["green"], "n_empty": {"green": 0, "red": 0}, "stream_origin": "manifest"}}
+    m.result = {
+        "n_bursts": 3,
+        "channels": ["green", "red"],
+        "verified_channels": ["red"],
+        "count_agreement": {"green": 0.5, "red": 1.0},
+        "duration_s": 1.0,
+        "total_photons": 10,
+        "summary": {
+            "unverified_channels": ["green"],
+            "n_empty": {"green": 0, "red": 0},
+            "stream_origin": "manifest",
+        },
+    }
     texts = {t[5] for t in drv.draw(3).texts}
     assert "UNVERIFIED" in texts and "ok" in texts and "0.5000" in texts
     assert m.verdict_text() == "UNVERIFIED: green"
@@ -213,7 +232,7 @@ def test_a_folder_without_bursts_reports_the_backend_error(drv, tmp_path):
     assert prepare_folder(PrepareRequest(folder=str(empty))).error == m.error
     texts = " ".join(t[5] for t in drv.draw(2).texts)
     assert m.report.splitlines()[0][:40] in texts
-    assert "Detectors" not in texts          # no empty result tables
+    assert "Detectors" not in texts  # no empty result tables
 
 
 def test_an_exception_in_the_backend_is_reported_not_raised(drv, monkeypatch):
@@ -237,8 +256,17 @@ def test_a_connected_rpc_client_is_used_for_the_result():
 
         def call(self, method, params):
             self.calls.append((method, params))
-            return {"ok": True, "result": {"report": "from the service", "n_bursts": 7, "channels": ["a"], "verified_channels": ["a"],
-                                           "count_agreement": {"a": 1.0}, "summary": {}}}
+            return {
+                "ok": True,
+                "result": {
+                    "report": "from the service",
+                    "n_bursts": 7,
+                    "channels": ["a"],
+                    "verified_channels": ["a"],
+                    "count_agreement": {"a": 1.0},
+                    "summary": {},
+                },
+            }
 
     from chisurf.plugins.burst.mfd_prepare.gui.client import MfdPrepareClient
 
@@ -291,9 +319,15 @@ def test_the_tour_is_walked_with_the_user_pressing_each_awaited_control(drv, hom
         seen.append(step["title"])
         target = tour._target_key(step.get("target"))
         if step.get("await"):
-            assert tour.awaiting and not tour._step_used, (tour.step_idx, tour.awaiting, tour._step_used, tour.wait_for_controls, step.get("await"))
-            drv.click_name(target)                       # the user presses the highlighted control
-            if target == "browse":                         # and finishes the chooser
+            assert tour.awaiting and not tour._step_used, (
+                tour.step_idx,
+                tour.awaiting,
+                tour._step_used,
+                tour.wait_for_controls,
+                step.get("await"),
+            )
+            drv.click_name(target)  # the user presses the highlighted control
+            if target == "browse":  # and finishes the chooser
                 drv.click_text("[mfdfolder]")
                 drv.click_text("Choose")
                 drv.app.files_dropped([str(FIXTURE)])
@@ -314,7 +348,7 @@ def test_every_target_of_the_guide_is_a_drawn_control(prepared):
 
 
 def test_every_control_and_table_column_has_a_tooltip_description():
-    from chisurf.plugins.burst.mfd_prepare.gui.app import MfdPreparePanel, SPEC
+    from chisurf.plugins.burst.mfd_prepare.gui.app import SPEC, MfdPreparePanel
 
     def walk(sections):
         for s in sections:
@@ -345,11 +379,16 @@ def test_draws_at_both_sizes_without_overlap_or_clipped_controls(size, populated
         settle(drv)
     painter = lay.draw(drv.app, size)
     lay.assert_texts_apart(painter)
-    rects = {k: v for k, v in drv.app.item_rects.items() if k in ("browse", "prepare", "guide", "help")}
+    rects = {
+        k: v for k, v in drv.app.item_rects.items() if k in ("browse", "prepare", "guide", "help")
+    }
     assert set(rects) == {"browse", "prepare", "guide", "help"}
     lay.assert_inside(rects, size)
     lay.assert_disjoint(rects, list(rects))
-    lay.assert_aligned({k: rects[k] for k in ("browse", "prepare", "guide", "help")}, ["browse", "prepare", "guide", "help"]) if False else None
+    lay.assert_aligned(
+        {k: rects[k] for k in ("browse", "prepare", "guide", "help")},
+        ["browse", "prepare", "guide", "help"],
+    ) if False else None
     # the buttons keep their natural width: none stretched across the window
     assert all(w <= 140 for (_x, _y, w, _h) in rects.values())
     if populated:
@@ -370,11 +409,11 @@ def test_the_mouse_wheel_scrolls_a_report_that_does_not_fit_the_small_window(pre
         return y is None or y + 16 > SMALL[1]
 
     assert hidden(), "the report should run past the bottom edge at 800x600"
-    prepared.wheel(400, 560, steps=-8)            # wheel down inside the report region
+    prepared.wheel(400, 560, steps=-8)  # wheel down inside the report region
     scrolled = last_y()
     assert scrolled is not None and scrolled < SMALL[1], scrolled
     prepared.wheel(400, 560, steps=8)
-    assert hidden()                               # and back up to the top
+    assert hidden()  # and back up to the top
 
 
 # ---- the Qt host --------------------------------------------------------------------------------------------------------- #
@@ -386,7 +425,10 @@ def test_the_qt_tool_hosts_the_app_and_exposes_the_old_attributes(qapp):
     assert tool._folder == "" and tool._report_text == ""
     tool.model.set_folder(str(FIXTURE))
     tool.model.prepare()
-    assert tool._folder == str(FIXTURE) and tool._report_text == prepare_folder(PrepareRequest(folder=str(FIXTURE))).report
+    assert (
+        tool._folder == str(FIXTURE)
+        and tool._report_text == prepare_folder(PrepareRequest(folder=str(FIXTURE))).report
+    )
 
 
 # ---- Qt-free ------------------------------------------------------------------------------------------------------------- #

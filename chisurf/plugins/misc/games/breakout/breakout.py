@@ -1,8 +1,11 @@
 """Retained Qt reference view of the shared Breakout simulation."""
+
 from qtpy import QtWidgets
+
 from chisurf.gui import chigame
 from chisurf.gui.chigame.input import Action
 from chisurf.gui.misc_helpers import persist_plugin_state
+
 from .model import *
 
 BINDINGS = {
@@ -39,8 +42,10 @@ class BreakoutGame(BreakoutModel, chigame.Game):
         class Controller:
             def just_pressed(self, action):
                 return keys.just_pressed(Action(action))
+
             def axis(self):
                 return keys.axis()
+
         return super().update(dt, Controller())
 
     def draw(self, scene) -> None:

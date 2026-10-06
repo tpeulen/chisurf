@@ -32,7 +32,9 @@ class TwoCdeController:
         self._cache = analysis_cache.ResultCache()
         self._progress_max = 0
         self.dialog = None
-        self._dialog_window = DialogWindow("Select burstwise folder", size=(640.0, 460.0), key="2cde-folder")
+        self._dialog_window = DialogWindow(
+            "Select burstwise folder", size=(640.0, 460.0), key="2cde-folder"
+        )
 
     # -- runs ---------------------------------------------------------------- #
     def run(self, force=False, explicit=True):
@@ -53,7 +55,9 @@ class TwoCdeController:
             and self._cache.matches(fingerprint)
             and analysis_cache.is_current(stamp, fingerprint)
         ):
-            self.model.status_text = "Unchanged — kept the previous 2CDE result (Restart recomputes it)"
+            self.model.status_text = (
+                "Unchanged — kept the previous 2CDE result (Restart recomputes it)"
+            )
             self.model.restart_attention = True
             return
         self.model.restart_attention = False
@@ -133,7 +137,9 @@ class TwoCdeController:
                 outputs=sorted((folder / "2c4").glob("*.2c4")),
                 tool="2cde",
             )
-        except Exception as exc:  # the result stands, as in the Qt tool; say why nothing was written
+        except (
+            Exception
+        ) as exc:  # the result stands, as in the Qt tool; say why nothing was written
             logger.warning("Could not write 2c4 companion: %s", exc)
             note = f" (could not write the 2c4 companion: {exc})"
         return df, settings["variant"], note
@@ -203,7 +209,9 @@ class TwoCdeController:
                 self.adopt_folder(path)
                 return
         if paths:
-            self.model.status_text = f"2CDE reads a burst-analysis folder; {Path(paths[0]).name} is not one."
+            self.model.status_text = (
+                f"2CDE reads a burst-analysis folder; {Path(paths[0]).name} is not one."
+            )
 
     def close(self):
         """Stop and release the worker."""

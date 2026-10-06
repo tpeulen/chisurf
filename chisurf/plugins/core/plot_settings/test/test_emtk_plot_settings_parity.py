@@ -616,7 +616,15 @@ def test_every_control_has_a_tooltip():
     assert inventory["controls_without_tooltip"] == []
     assert len(inventory["interactive"]) >= 25
     for section in walk(spec()["sections"]):
-        if section.get("type") in ("value", "choice", "toggle", "info", "button_row", "panel", "custom"):
+        if section.get("type") in (
+            "value",
+            "choice",
+            "toggle",
+            "info",
+            "button_row",
+            "panel",
+            "custom",
+        ):
             assert section.get("description"), section.get("attr") or section.get("title")
         for button in section.get("buttons", []):
             assert button.get("description"), button

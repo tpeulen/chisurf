@@ -35,25 +35,74 @@ def _pointer_masked(active):
         yield
         return
     io = im.get_current_context().io
-    saved = (list(io.mouse_clicked), list(io.mouse_down), list(io.mouse_released), list(io.mouse_double_clicked), io.mouse_pos)
+    saved = (
+        list(io.mouse_clicked),
+        list(io.mouse_down),
+        list(io.mouse_released),
+        list(io.mouse_double_clicked),
+        io.mouse_pos,
+    )
     io.mouse_clicked, io.mouse_down, io.mouse_released = [False] * 5, [False] * 5, [False] * 5
     io.mouse_double_clicked = [False] * 5
     io.mouse_pos = (-1e6, -1e6)
     try:
         yield
     finally:
-        io.mouse_clicked, io.mouse_down, io.mouse_released, io.mouse_double_clicked, io.mouse_pos = saved
+        (
+            io.mouse_clicked,
+            io.mouse_down,
+            io.mouse_released,
+            io.mouse_double_clicked,
+            io.mouse_pos,
+        ) = saved
 
 
-CHANNEL_SPEC = layout_spec({"sections": [{"type": "value", "attr": "channels_text", "kind": "str", "label": "Detector channels", "width": 150,
-    "description": "Comma-separated photon routing channels."}]})
-MARKER_SPEC = layout_spec({"sections": [
-    {"type": "toggle", "attr": "use_pixel_markers", "label": "Use pixel markers",
-     "description": "Use explicit per-pixel marker records instead of time-derived raster positions."},
-    {"type": "value", "attr": "marker_pixel", "kind": "int", "style": "spin", "label": "Pixel marker", "minimum": 0, "maximum": 255,
-     "description": "Routing marker code for the beginning of a pixel."},
-    {"type": "value", "attr": "n_lines", "kind": "int", "style": "spin", "label": "Lines/frame", "minimum": 0, "maximum": 65536,
-     "description": "Explicit scanner line count; zero uses pixels/line."}]})
+CHANNEL_SPEC = layout_spec(
+    {
+        "sections": [
+            {
+                "type": "value",
+                "attr": "channels_text",
+                "kind": "str",
+                "label": "Detector channels",
+                "width": 150,
+                "description": "Comma-separated photon routing channels.",
+            }
+        ]
+    }
+)
+MARKER_SPEC = layout_spec(
+    {
+        "sections": [
+            {
+                "type": "toggle",
+                "attr": "use_pixel_markers",
+                "label": "Use pixel markers",
+                "description": "Use explicit per-pixel marker records instead of time-derived raster positions.",
+            },
+            {
+                "type": "value",
+                "attr": "marker_pixel",
+                "kind": "int",
+                "style": "spin",
+                "label": "Pixel marker",
+                "minimum": 0,
+                "maximum": 255,
+                "description": "Routing marker code for the beginning of a pixel.",
+            },
+            {
+                "type": "value",
+                "attr": "n_lines",
+                "kind": "int",
+                "style": "spin",
+                "label": "Lines/frame",
+                "minimum": 0,
+                "maximum": 65536,
+                "description": "Explicit scanner line count; zero uses pixels/line.",
+            },
+        ]
+    }
+)
 
 
 class ClsmApp(ImApp):
@@ -93,11 +142,18 @@ class ClsmApp(ImApp):
             owner=self,
         )
         self.item_rects = {}
-        self.tour = EmTkGuidedTour(steps=Path(__file__).with_name("guide.json"), get_target_rect=lambda k: self.item_rects.get(k),
-                                   owner=self, wait_for_controls=True)
+        self.tour = EmTkGuidedTour(
+            steps=Path(__file__).with_name("guide.json"),
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self,
+            wait_for_controls=True,
+        )
         self.group_forms = self._group_forms()
         self.skip_group = False
-        self.forms = {k: FormState(on_used=lambda n: self.tour.notify_used(n)) for k in ("channels", "markers")}
+        self.forms = {
+            k: FormState(on_used=lambda n: self.tour.notify_used(n))
+            for k in ("channels", "markers")
+        }
         self.docks = DockManager(
             Split("h", 0.33, Region("controls"), Split("v", 0.65, Region("image"), Region("decay")))
         )
@@ -136,7 +192,9 @@ class ClsmApp(ImApp):
         self.selection_version += 1
         mask = self.model.selection_mask
         if mask is not None and mask.any():
-            self.tour.notify_used("CLSM image")  # the guide's "paint a decay" step waits for a painted pixel
+            self.tour.notify_used(
+                "CLSM image"
+            )  # the guide's "paint a decay" step waits for a painted pixel
         if self.model.live_update:
             self._decay_deadline = time.monotonic() + 0.12
 
@@ -257,33 +315,93 @@ class ClsmApp(ImApp):
                 secs = json.loads(json.dumps(secs))
                 for sec in secs:
                     sec.pop("target", None)
-                    if sec.get("type") == "value" and sec.get("kind") in ("int", "float") and not sec.get("read_only"):
+                    if (
+                        sec.get("type") == "value"
+                        and sec.get("kind") in ("int", "float")
+                        and not sec.get("read_only")
+                    ):
                         sec["style"] = "spin"
-                out.append((panel["title"] if i == 0 else "", target, layout_spec({"sections": secs})))
+                out.append(
+                    (panel["title"] if i == 0 else "", target, layout_spec({"sections": secs}))
+                )
         return out
 
     def controls(self, box):
         busy = self.job.busy or self.dialog is not None or self.picker.is_open
-        pressed = button_row([
-            {"label": "Help", "key": "help", "tip": "Explain marker reconstruction, intensity/lifetime representations and brush-selected decays."},
-            {"label": "Guide", "key": "guide", "tip": "Walk through loading a CLSM scan, building an image and painting a decay."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": "Help",
+                    "key": "help",
+                    "tip": "Explain marker reconstruction, intensity/lifetime representations and brush-selected decays.",
+                },
+                {
+                    "label": "Guide",
+                    "key": "guide",
+                    "tip": "Walk through loading a CLSM scan, building an image and painting a decay.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed == "help":
             self.help.show()
         elif pressed == "guide":
             self.tour.start()
         im.begin_disabled(busy)
         actions = [
-            ("Open TTTR / imaging", "Load photon data or follow an imaging HDF5 source reference.", lambda: self.choose("load_file"), True),
-            ("MMFDB dataset", "Resolve registered photon data to a local input file.", self.picker.open, True),
-            ("Build CLSM", "Reconstruct and fill a scanner image using the acquisition settings.", lambda: self.start("add_clsm"), self.model.tttr_data is not None),
-            ("Add representation", "Compute the selected intensity or micro-time representation.", lambda: self.start("add_representation"), bool(self.model.clsm_image_names())),
-            ("Compute decay", "Compute the photon histogram of selected pixels.", self.request_decay, self.model.selection_mask is not None),
-            ("Add decay → ChiSurf", "Publish the current decay as a real ChiSurf experimental dataset.", self.publish_dataset, self.model.current_decay is not None),
-            ("Export image", "Save the current physical image as a TIFF.", lambda: self.choose("image"), self.model.current_image is not None),
-            ("Export decay CSV", "Export time, counts and Poisson noise of the current decay.", lambda: self.choose("decay"), self.model.current_decay is not None),
+            (
+                "Open TTTR / imaging",
+                "Load photon data or follow an imaging HDF5 source reference.",
+                lambda: self.choose("load_file"),
+                True,
+            ),
+            (
+                "MMFDB dataset",
+                "Resolve registered photon data to a local input file.",
+                self.picker.open,
+                True,
+            ),
+            (
+                "Build CLSM",
+                "Reconstruct and fill a scanner image using the acquisition settings.",
+                lambda: self.start("add_clsm"),
+                self.model.tttr_data is not None,
+            ),
+            (
+                "Add representation",
+                "Compute the selected intensity or micro-time representation.",
+                lambda: self.start("add_representation"),
+                bool(self.model.clsm_image_names()),
+            ),
+            (
+                "Compute decay",
+                "Compute the photon histogram of selected pixels.",
+                self.request_decay,
+                self.model.selection_mask is not None,
+            ),
+            (
+                "Add decay → ChiSurf",
+                "Publish the current decay as a real ChiSurf experimental dataset.",
+                self.publish_dataset,
+                self.model.current_decay is not None,
+            ),
+            (
+                "Export image",
+                "Save the current physical image as a TIFF.",
+                lambda: self.choose("image"),
+                self.model.current_image is not None,
+            ),
+            (
+                "Export decay CSV",
+                "Export time, counts and Poisson noise of the current decay.",
+                lambda: self.choose("decay"),
+                self.model.current_decay is not None,
+            ),
         ]
-        pressed = button_row([{"label": l, "key": l, "tip": t, "enabled": e} for l, t, _a, e in actions], remember=self.remember)
+        pressed = button_row(
+            [{"label": l, "key": l, "tip": t, "enabled": e} for l, t, _a, e in actions],
+            remember=self.remember,
+        )
         if pressed:
             dict((l, a) for l, _t, a, _e in actions)[pressed]()
             self.tour.notify_used(pressed)
@@ -297,23 +415,39 @@ class ClsmApp(ImApp):
             im.text_disabled(Path(self.model.filename).name)
             im.set_item_tooltip(self.model.filename)
         names = self.model.setup_names
-        index = names.index(self.model.setup.setup_name) if self.model.setup.setup_name in names else 0
+        index = (
+            names.index(self.model.setup.setup_name) if self.model.setup.setup_name in names else 0
+        )
         im.text("Setup preset")
         im.same_line(150)
         im.set_next_item_width(-1)
         changed, index = im.combo("##Setup preset", index, names)
         self.remember("setup_preset")
-        im.set_item_tooltip("Restore scanner markers, file type and reading routine from a named acquisition preset.")
+        im.set_item_tooltip(
+            "Restore scanner markers, file type and reading routine from a named acquisition preset."
+        )
         if changed:
             self.model.apply_preset(names[index])
         self.forms["channels"].rects.clear()
         draw_form(CHANNEL_SPEC, self.model.setup, self.forms["channels"])
         self.item_rects.update(self.forms["channels"].rects)
         for attr, source, remove, label, tip, removed in [
-            ("current_clsm_name", self.model.clsm_image_names, "remove_clsm", "CLSM image",
-             "Choose among independently reconstructed channel images.", "Remove CLSM"),
-            ("current_representation_name", self.model.representation_names, "remove_representation", "Representation",
-             "Choose among stored representations.", "Remove representation"),
+            (
+                "current_clsm_name",
+                self.model.clsm_image_names,
+                "remove_clsm",
+                "CLSM image",
+                "Choose among independently reconstructed channel images.",
+                "Remove CLSM",
+            ),
+            (
+                "current_representation_name",
+                self.model.representation_names,
+                "remove_representation",
+                "Representation",
+                "Choose among stored representations.",
+                "Remove representation",
+            ),
         ]:
             names = source()
             if not names:
@@ -323,7 +457,9 @@ class ClsmApp(ImApp):
             im.same_line(150)
             narrow = im.get_content_region_avail()[0] < 330.0
             im.set_next_item_width(-1 if narrow else im.get_content_region_avail()[0] - 90.0)
-            changed, index = im.combo("##" + attr, names.index(current) if current in names else 0, names)
+            changed, index = im.combo(
+                "##" + attr, names.index(current) if current in names else 0, names
+            )
             self.remember(attr)
             im.set_item_tooltip(tip)
             if changed:
@@ -337,11 +473,15 @@ class ClsmApp(ImApp):
             if im.button("Remove##remove_" + attr):
                 getattr(self.model, remove)(getattr(self.model, attr))
                 self.selection_changed()
-            im.set_item_tooltip("Remove this stored image/representation; retained sources stay available.")
+            im.set_item_tooltip(
+                "Remove this stored image/representation; retained sources stay available."
+            )
             self.remember(removed)
         for title, target, spec in self.group_forms:
             if title:
-                if not im.collapsing_header(title, 0 if title == "Acquisition" else im.TreeNodeFlags.DEFAULT_OPEN):
+                if not im.collapsing_header(
+                    title, 0 if title == "Acquisition" else im.TreeNodeFlags.DEFAULT_OPEN
+                ):
                     self.skip_group = True
                 else:
                     self.skip_group = False
@@ -351,7 +491,9 @@ class ClsmApp(ImApp):
                 continue
             group = getattr(self.model, target)
             before = dict(vars(group))
-            form = self.forms.setdefault(f"{title}:{target}", FormState(on_used=self.tour.notify_used))
+            form = self.forms.setdefault(
+                f"{title}:{target}", FormState(on_used=self.tour.notify_used)
+            )
             form.rects.clear()
             draw_form(spec, group, form)
             self.item_rects.update(form.rects)
@@ -364,11 +506,24 @@ class ClsmApp(ImApp):
         im.text("Selection")
         _, self.paint = im.checkbox("Paint selection", self.paint)
         self.remember("paint")
-        im.set_item_tooltip("Reserve left-mouse dragging for selecting/erasing pixels; use the middle button to pan.")
-        pressed = button_row([
-            {"label": "Clear selection", "key": "Clear selection", "tip": "Clear painted pixels and the active decay."},
-            {"label": "Save painted region", "key": "Save painted region", "tip": "Capture painted pixels as a reusable named mask region."},
-        ], remember=self.remember)
+        im.set_item_tooltip(
+            "Reserve left-mouse dragging for selecting/erasing pixels; use the middle button to pan."
+        )
+        pressed = button_row(
+            [
+                {
+                    "label": "Clear selection",
+                    "key": "Clear selection",
+                    "tip": "Clear painted pixels and the active decay.",
+                },
+                {
+                    "label": "Save painted region",
+                    "key": "Save painted region",
+                    "tip": "Capture painted pixels as a reusable named mask region.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed == "Clear selection":
             self.model.clear_selection()
             self.selection_changed()
@@ -381,10 +536,21 @@ class ClsmApp(ImApp):
         self.remember("roi_name")
         im.set_item_tooltip("Name for the saved painted mask.")
         self.regions.draw()
-        pressed = button_row([
-            {"label": "Save settings", "key": "Save settings", "tip": "Persist acquisition, brush and representation settings plus region geometry."},
-            {"label": "Load settings", "key": "Load settings", "tip": "Restore acquisition, brush and representation settings plus region geometry."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": "Save settings",
+                    "key": "Save settings",
+                    "tip": "Persist acquisition, brush and representation settings plus region geometry.",
+                },
+                {
+                    "label": "Load settings",
+                    "key": "Load settings",
+                    "tip": "Restore acquisition, brush and representation settings plus region geometry.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed:
             self.choose("save_settings" if pressed == "Save settings" else "load_settings")
         im.end_disabled()
@@ -403,7 +569,9 @@ class ClsmApp(ImApp):
 
     def image(self, box):
         self.canvas.colormap = self.model.colormap
-        with _pointer_masked(self.tour.active and not self.tour.awaiting):  # the paint step needs the canvas
+        with _pointer_masked(
+            self.tour.active and not self.tour.awaiting
+        ):  # the paint step needs the canvas
             self._draw_canvas()
         self.model.colormap = self.canvas.colormap
         self.item_rects["CLSM image"] = self.canvas.rect
@@ -498,9 +666,15 @@ class ClsmApp(ImApp):
             self.selection_version += 1
             self.canvas.reset()
             m = self.model
-            self.status = (f"{Path(m.filename).name if m.filename else 'No file'}: {len(m.clsm_image_names())} CLSM image(s), "
-                           f"{len(m.representation_names())} representation(s)"
-                           + (f", image {m.current_image.shape[1]} x {m.current_image.shape[0]} px" if m.current_image is not None else ""))
+            self.status = (
+                f"{Path(m.filename).name if m.filename else 'No file'}: {len(m.clsm_image_names())} CLSM image(s), "
+                f"{len(m.representation_names())} representation(s)"
+                + (
+                    f", image {m.current_image.shape[1]} x {m.current_image.shape[0]} px"
+                    if m.current_image is not None
+                    else ""
+                )
+            )
         if self._future is not None and self._future.done():
             try:
                 t, y, noise = self._future.result()

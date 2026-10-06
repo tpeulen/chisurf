@@ -92,7 +92,9 @@ def test_empty_or_absent_mapping_uses_the_channel_list_then_all_channels(spc, ma
 
 
 def test_selected_names_filter_and_order_detectors(spc):
-    _, c, labels = bin_trace(spc, 0.01, detectors=ALEX["detectors"], selected=["red", "nope", "green"])
+    _, c, labels = bin_trace(
+        spc, 0.01, detectors=ALEX["detectors"], selected=["red", "nope", "green"]
+    )
     assert labels == ["red", "green"]
     assert [int(x) for x in c.sum(axis=0)] == [56257, 22443]
     assert bin_trace(spc, 0.01, detectors=ALEX["detectors"], selected=["nope"])[2] == []
@@ -117,8 +119,12 @@ def test_photons_outside_every_window_are_not_counted_and_bounds_are_inclusive()
 
 def test_each_series_is_as_long_as_its_last_photon_then_padded():
     t = FakeTTTR([0, 5, 95, 100], [0, 0, 1, 1], [0, 0, 0, 0])
-    det = {"a": {"chs": [0], "micro_time_ranges": []}, "b": {"chs": [1]}, "none": {"chs": []},
-           "empty": {"chs": [7]}}
+    det = {
+        "a": {"chs": [0], "micro_time_ranges": []},
+        "b": {"chs": [1]},
+        "none": {"chs": []},
+        "empty": {"chs": [7]},
+    }
     ta, c, labels = bin_trace(t, 10e-6, detectors=det)
     assert labels == ["a", "b", "empty"]  # a detector without chs is skipped
     assert c.shape == (11, 3)  # b's last photon (clock 100) -> 100 // 10 + 1 bins
@@ -158,11 +164,15 @@ def test_load_trace_computes_an_uncached_trace_with_the_binner(spc):
 
 
 def test_load_trace_without_a_setup_uses_channels_or_all_channels(spc):
-    assert core_trace.load_trace(str(spc), 10.0, selected_channels=[0, 1])["labels"] == ["Ch0", "Ch1"]
+    assert core_trace.load_trace(str(spc), 10.0, selected_channels=[0, 1])["labels"] == [
+        "Ch0",
+        "Ch1",
+    ]
     assert core_trace.load_trace(str(spc), 10.0)["labels"] == ["Ch0", "Ch1", "Ch8", "Ch9"]
     # a setup with an empty detector mapping behaves like no setup
-    assert core_trace.load_trace(str(spc), 10.0, setup_settings={"detectors": {}},
-                                 selected_channels=[1])["labels"] == ["Ch1"]
+    assert core_trace.load_trace(
+        str(spc), 10.0, setup_settings={"detectors": {}}, selected_channels=[1]
+    )["labels"] == ["Ch1"]
 
 
 def test_binner_and_trace_are_qt_free_and_compute_uncached(spc):
@@ -181,7 +191,10 @@ bad = sorted(x for x in sys.modules if x == 'chisurf.gui' or x.startswith('chisu
 assert not bad, bad[:5]
 print('QT-FREE OK')
 """
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]))
-    done = subprocess.run([sys.executable, "-c", script], cwd=REPO, env=env,
-                          capture_output=True, text=True)
+    env = dict(
+        os.environ, PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")])
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", script], cwd=REPO, env=env, capture_output=True, text=True
+    )
     assert done.returncode == 0 and "QT-FREE OK" in done.stdout, done.stdout + done.stderr[-1500:]

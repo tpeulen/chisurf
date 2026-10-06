@@ -37,12 +37,25 @@ def hermetic(tmp_path, monkeypatch):
 @pytest.fixture(scope="module")
 def qt(tmp_path_factory):
     root = tmp_path_factory.mktemp("qt_ref")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", HOME=str(root / "home"),
-               CHISURF_SETTINGS_DIR=str(root / "s"), MMFDB_SETTINGS_DIR=str(root / "m"),
-               MMFDB_DATABASE_PATH=str(root / "m.sqlite"), PYTHONPATH=f"{REPO}:{os.environ.get('PYTHONPATH', '')}")
-    run = subprocess.run([sys.executable, str(HERE / "qt_reference.py"), str(REPO), str(root / "ref.npz")],
-                         capture_output=True, text=True, env=env, timeout=300)
-    assert run.returncode == 0, run.stderr[-2000:]      # a broken Qt host fails here, it is never skipped
+    env = dict(
+        os.environ,
+        QT_QPA_PLATFORM="offscreen",
+        HOME=str(root / "home"),
+        CHISURF_SETTINGS_DIR=str(root / "s"),
+        MMFDB_SETTINGS_DIR=str(root / "m"),
+        MMFDB_DATABASE_PATH=str(root / "m.sqlite"),
+        PYTHONPATH=f"{REPO}:{os.environ.get('PYTHONPATH', '')}",
+    )
+    run = subprocess.run(
+        [sys.executable, str(HERE / "qt_reference.py"), str(REPO), str(root / "ref.npz")],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=300,
+    )
+    assert run.returncode == 0, run.stderr[
+        -2000:
+    ]  # a broken Qt host fails here, it is never skipped
     info = json.loads(next(line for line in run.stdout.splitlines() if line.startswith("JSON"))[4:])
     return info, dict(np.load(root / "ref.npz"))
 
@@ -50,9 +63,16 @@ def qt(tmp_path_factory):
 def emtk_model(info):
     model = HistogramModel()
     model.auto_save = False
-    model.set_setup({"detectors": {info["detector"]: info["setup"]}, "windows": {}, "tttr_reading": {}})
-    model.filetype = "SPC-130"      # the wizard reads with its (disabled) format box: SPC-130
-    model.binning, model.vv_shift, model.vh_shift, model.g_factor = info["binning"], info["vv"], info["vh"], info["g"]
+    model.set_setup(
+        {"detectors": {info["detector"]: info["setup"]}, "windows": {}, "tttr_reading": {}}
+    )
+    model.filetype = "SPC-130"  # the wizard reads with its (disabled) format box: SPC-130
+    model.binning, model.vv_shift, model.vh_shift, model.g_factor = (
+        info["binning"],
+        info["vv"],
+        info["vh"],
+        info["g"],
+    )
     model.add_paths([PHOTONS])
     model.compute()
     return model
@@ -62,11 +82,16 @@ def emtk_model(info):
 def test_the_export_equals_the_qt_wizards_for_the_same_photons(qt, name):
     info, arrays = qt
     model = emtk_model(info[name])
-    assert model.parallel == info[name]["parallel"] and model.perpendicular == info[name]["perpendicular"]
+    assert (
+        model.parallel == info[name]["parallel"]
+        and model.perpendicular == info[name]["perpendicular"]
+    )
     assert model.g_factor == info[name]["g"]
     np.testing.assert_array_equal(model.cumulative_ps, arrays[name])
-    qt_channels = float(info[name]["fwhm_text"].split("(")[1].split()[0])      # "5.65 ns (113.0 channels)"
-    assert model.fwhm_bins == qt_channels                                       # same crossing rule, same width
+    qt_channels = float(
+        info[name]["fwhm_text"].split("(")[1].split()[0]
+    )  # "5.65 ns (113.0 channels)"
+    assert model.fwhm_bins == qt_channels  # same crossing rule, same width
 
 
 def test_the_qt_reference_is_not_empty(qt):

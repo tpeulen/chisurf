@@ -70,8 +70,11 @@ def _photons(path):
     import tttrlib
 
     data = tttrlib.TTTR(str(path))
-    return (np.asarray(data.macro_times), np.asarray(data.micro_times, dtype=np.int64),
-            np.asarray(data.routing_channels, dtype=np.int64))
+    return (
+        np.asarray(data.macro_times),
+        np.asarray(data.micro_times, dtype=np.int64),
+        np.asarray(data.routing_channels, dtype=np.int64),
+    )
 
 
 def _fields(sections):
@@ -112,14 +115,22 @@ def qt(demo, tmp_path_factory):
     target = tmp_path_factory.mktemp("qt") / "qt_shifted.spc"
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, str(demo), str(target)], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, str(demo), str(target)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
+    facts = json.loads(line[len("FACTS") :])
     facts["target"] = target
     return facts
 
@@ -129,18 +140,23 @@ def test_auto_align_gives_the_qt_shifts_and_lands_each_edge_on_the_target(qt, de
     _, micro, routing = _photons(demo)
     app = _loaded(demo)
     try:
-        assert (app.trigger_level, app.trigger_position) == (qt["level"], qt["pos"]) == (124, TARGET)
+        assert (
+            (app.trigger_level, app.trigger_position) == (qt["level"], qt["pos"]) == (124, TARGET)
+        )
         app.auto_align()
         assert {str(k): v for k, v in app.channel_shifts.items()} == qt["shifts"]
-        for channel, rise in RISE.items():                    # the edge, found here from the photons
+        for channel, rise in RISE.items():  # the edge, found here from the photons
             counts = np.bincount(micro[routing == channel], minlength=N_MT)
             peak = int(np.argmax(counts))
-            edge = int(np.where(counts[:peak + 1] >= app.trigger_level)[0][0])
+            edge = int(np.where(counts[: peak + 1] >= app.trigger_level)[0][0])
             assert abs(edge - rise) <= 3
             assert app.channel_shifts[channel] == (TARGET - edge) % N_MT
-        for channel, counts in app.histograms().items():      # the emtk preview is the Qt (backend) preview
+        for (
+            channel,
+            counts,
+        ) in app.histograms().items():  # the emtk preview is the Qt (backend) preview
             assert counts.tolist() == qt["preview"][str(channel)]
-            edge = int(np.where(counts[:int(np.argmax(counts)) + 1] >= app.trigger_level)[0][0])
+            edge = int(np.where(counts[: int(np.argmax(counts)) + 1] >= app.trigger_level)[0][0])
             assert edge == TARGET
     finally:
         app.close()
@@ -173,7 +189,11 @@ def test_a_saved_file_holds_every_photon_shifted_as_the_qt_tool_writes_it(qt, de
 def test_actions_say_what_is_missing(demo, tmp_path):
     app = create_app()
     try:
-        assert not app.enabled("save_dialog") and not app.enabled("auto_align") and not app.enabled("register")
+        assert (
+            not app.enabled("save_dialog")
+            and not app.enabled("auto_align")
+            and not app.enabled("register")
+        )
         assert app.apply() is False and app.message == "Load TTTR files first."
         app.add_paths([str(tmp_path / "notes.txt")])
         assert app.message == "Choose supported TTTR or PTO photon files."
@@ -195,9 +215,10 @@ def test_files_with_different_bin_counts_are_refused(demo, tmp_path):
     other.write_bytes(Path(demo).read_bytes())
     app = create_app()
     try:
-        original = app._client.load_metadata                 # the second file reports 256 bins
-        app._client.load_metadata = lambda path: ({**original(path), "n_mt": 256} if Path(path) == other.resolve()
-                                                  else original(path))
+        original = app._client.load_metadata  # the second file reports 256 bins
+        app._client.load_metadata = lambda path: (
+            {**original(path), "n_mt": 256} if Path(path) == other.resolve() else original(path)
+        )
         app.load_files([demo, other])
         _settle(app)
         assert app.message == "Queued files must have the same positive number of micro-time bins."
@@ -236,7 +257,7 @@ def test_remove_takes_the_selected_file_off_the_queue(demo, tmp_path):
         app.remove_selected()
         _settle(app)
         assert [p.name for p in app.files] == ["offset.spc"]
-        assert Path(second).exists()                              # off the queue, not off the disk
+        assert Path(second).exists()  # off the queue, not off the disk
     finally:
         app.close()
 
@@ -266,7 +287,9 @@ def test_every_spec_field_is_drawn_with_its_description(demo, monkeypatch):
         fields = list(_fields(SPEC["sections"]))
         assert {f["attr"] for f in fields} <= set(app.form.rects)
         assert all(f["description"] in tips for f in fields)
-        buttons = [b for s in SPEC["sections"] for sub in s["sections"] for b in sub.get("buttons", [])]
+        buttons = [
+            b for s in SPEC["sections"] for sub in s["sections"] for b in sub.get("buttons", [])
+        ]
         assert all(b["description"] in tips for b in buttons)
     finally:
         app.close()
@@ -280,7 +303,10 @@ def test_editing_the_target_bin_realigns(demo):
         field = next(f for f in _fields(SPEC["sections"]) if f["attr"] == "trigger_position")
         _commit(app, field, 1000, app.form)
         for channel, counts in app.histograms().items():
-            assert int(np.where(counts[:int(np.argmax(counts)) + 1] >= app.trigger_level)[0][0]) == 1000
+            assert (
+                int(np.where(counts[: int(np.argmax(counts)) + 1] >= app.trigger_level)[0][0])
+                == 1000
+            )
         assert app.bounds("trigger_position") == (0, N_MT - 1)
     finally:
         app.close()
@@ -314,7 +340,7 @@ def test_the_guide_points_at_real_controls_and_waits(demo):
             assert key in app.item_rects or key in app.form.rects, key
 
         def press(key):
-            x, y, w, h = (app.item_rects.get(key) or app.form.rects[key])
+            x, y, w, h = app.item_rects.get(key) or app.form.rects[key]
             app.pointer_move(x + w / 2, y + h / 2)
             app.press(x + w / 2, y + h / 2)
             _draw(app, size, n=1, painter=PixelPainter)
@@ -322,7 +348,9 @@ def test_the_guide_points_at_real_controls_and_waits(demo):
             _draw(app, size, n=1, painter=PixelPainter)
 
         for key in ("add_files", "auto_align", "save_dialog"):
-            index = next(i for i, s in enumerate(steps) if app.tour._target_key(s.get("target")) == key)
+            index = next(
+                i for i, s in enumerate(steps) if app.tour._target_key(s.get("target")) == key
+            )
             app.tour.start(index)
             assert app.tour.awaiting
             assert steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)
@@ -330,7 +358,7 @@ def test_the_guide_points_at_real_controls_and_waits(demo):
             press(key)
             assert not app.tour.awaiting, key
             app.dialog = None
-        assert app.channel_shifts == {0: 3904, 8: 3504}          # the Auto align press aligned
+        assert app.channel_shifts == {0: 3904, 8: 3504}  # the Auto align press aligned
     finally:
         app.tour.active = False
         app.close()
@@ -344,7 +372,9 @@ def test_draws_empty_and_populated(demo, size, monkeypatch):
     app = create_app()
     try:
         strings = _draw(app, size).strings
-        assert {"📖  Guide", "❓  Help", "➕  Files…", "Alignment", "Shifts", "Save"} <= set(strings)
+        assert {"📖  Guide", "❓  Help", "➕  Files…", "Alignment", "Shifts", "Save"} <= set(
+            strings
+        )
         assert "No file loaded." in strings
         app.load_files([demo])
         _settle(app, size=size)
@@ -362,8 +392,8 @@ def test_draws_empty_and_populated(demo, size, monkeypatch):
         monkeypatch.setattr(im, "button", button)
         strings = " ".join(_draw(app, size).strings)
         assert "Channel 0" in strings and "Channel 8" in strings and "Routing 8" in strings
-        assert not clipped, clipped                                 # every button inside the window
-        fx, fy, fw, fh = app.item_rects["files"]                    # and the file buttons inside their dock
+        assert not clipped, clipped  # every button inside the window
+        fx, fy, fw, fh = app.item_rects["files"]  # and the file buttons inside their dock
         for key in ("add_files", "add_folder", "add_database", "remove", "clear"):
             x, y, w, h = app.item_rects[key]
             assert x + w <= fx + fw + 16.5, key

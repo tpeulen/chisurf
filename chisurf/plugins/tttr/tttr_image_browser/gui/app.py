@@ -73,7 +73,11 @@ def fit_label(text: str, room: float) -> str:
     name keeps the name (zoom in to see it whole).
     """
     parts = [part.strip() for part in text.split("|")]
-    for candidate in (" | ".join(parts), f"{parts[0]} | {parts[-1]}" if len(parts) > 2 else "", parts[0]):
+    for candidate in (
+        " | ".join(parts),
+        f"{parts[0]} | {parts[-1]}" if len(parts) > 2 else "",
+        parts[0],
+    ):
         if candidate and im.calc_text_size(candidate)[0] <= room:
             return candidate
     return parts[0]
@@ -414,7 +418,9 @@ class TTTRImageBrowserApp(ImApp):
         assert self.editor is not None
         x, y = im.get_cursor_screen_pos()
         avail_w, avail_h = (float(v) for v in im.get_content_region_avail())
-        im.begin_child((x, y, min(avail_w, EDITOR_W), max(100.0, avail_h)), clip=True, child_id="setup_editor")
+        im.begin_child(
+            (x, y, min(avail_w, EDITOR_W), max(100.0, avail_h)), clip=True, child_id="setup_editor"
+        )
         self.editor.draw()
         im.end_child()
 
@@ -437,7 +443,11 @@ class TTTRImageBrowserApp(ImApp):
     def _status_bar(self) -> None:
         """The Qt status bar: the last message, or what the worker is doing."""
         model = self.model
-        text = f"{self.job.progress} {model.status_line}".strip() if self.job.busy else model.status_line
+        text = (
+            f"{self.job.progress} {model.status_line}".strip()
+            if self.job.busy
+            else model.status_line
+        )
         if self.load_job.busy and not self.job.busy:
             text = f"Loading {Path(self.loader.path or '').name} \u2026"
         im.text_wrapped(text or " ")
@@ -446,7 +456,12 @@ class TTTRImageBrowserApp(ImApp):
 
     def _fit(self, attr: str, pad: float) -> None:
         """Size the window to what it drew (read from last frame: one frame late, then stable)."""
-        wanted = float(im.get_cursor_pos_y()) - float(im.get_window_pos()[1]) + float(im.get_scroll_y()) + pad
+        wanted = (
+            float(im.get_cursor_pos_y())
+            - float(im.get_window_pos()[1])
+            + float(im.get_scroll_y())
+            + pad
+        )
         if abs(wanted - getattr(self, attr)) > 1.0:
             setattr(self, attr, wanted)
             self.request_frame()
@@ -559,11 +574,18 @@ class TTTRImageBrowserApp(ImApp):
         span_y = span_x * plot_h / plot_w
         cx, cy = (nx - 1.0) / 2.0, (ny - 1.0) / 2.0
         limits = (cx - span_x / 2, cx + span_x / 2, cy - span_y / 2, cy + span_y / 2)
-        key = (id(array), model.current_file, round(width), round(height))  # a resized window shows the whole mosaic again
+        key = (
+            id(array),
+            model.current_file,
+            round(width),
+            round(height),
+        )  # a resized window shows the whole mosaic again
         reset = model.reset_view_requested or key != self.view_key
         model.reset_view_requested = False
         self.view_key = key
-        if implot.begin_plot("##mosaic", (width, height), implot.FLAGS_EQUAL | implot.FLAGS_NO_LEGEND):
+        if implot.begin_plot(
+            "##mosaic", (width, height), implot.FLAGS_EQUAL | implot.FLAGS_NO_LEGEND
+        ):
             implot.setup_axes("x [px]", "y [px]", y_flags=implot.AXIS_FLAGS_INVERT)
             if reset:
                 implot.setup_axes_limits(*limits, implot.COND_ALWAYS)
@@ -575,11 +597,20 @@ class TTTRImageBrowserApp(ImApp):
             line = im.get_text_line_height()
             for label in model.tile_labels():
                 text = fit_label(str(label["text"]), model.tile_width() * per_pixel - 8.0)
-                implot.plot_text(text, float(label["x"]), float(label["y"]),
-                                 pix_offset=(im.calc_text_size(text)[0] / 2 + 2, line / 2 + 2))
+                implot.plot_text(
+                    text,
+                    float(label["x"]),
+                    float(label["y"]),
+                    pix_offset=(im.calc_text_size(text)[0] / 2 + 2, line / 2 + 2),
+                )
             self.item_rects["image"] = (*implot.get_plot_pos(), *implot.get_plot_size())
             limits_now = implot.get_plot_limits()
-            self.view_limits = (limits_now.x_min, limits_now.x_max, limits_now.y_min, limits_now.y_max)
+            self.view_limits = (
+                limits_now.x_min,
+                limits_now.x_max,
+                limits_now.y_min,
+                limits_now.y_max,
+            )
             implot.end_plot()
         im.set_item_tooltip(
             "The detector-window mosaic of the selected file. Scroll the mouse wheel to zoom, drag to pan, "
@@ -597,7 +628,9 @@ class TTTRImageBrowserApp(ImApp):
         ys = np.arange(len(counts), dtype=float)
         if implot.begin_plot("##levels", (width, height), implot.FLAGS_NO_LEGEND):
             implot.setup_axes("log n", "level")
-            implot.setup_axes_limits(0.0, float(max(1.0, xs.max())) * 1.05, -1.0, 256.0, implot.COND_ALWAYS)
+            implot.setup_axes_limits(
+                0.0, float(max(1.0, xs.max())) * 1.05, -1.0, 256.0, implot.COND_ALWAYS
+            )
             implot.plot_line("Pixels", xs, ys)
             lo = implot.drag_line_y(1, float(low), (255, 210, 60, 255), 2.0)
             hi = implot.drag_line_y(2, float(high), (255, 120, 60, 255), 2.0)

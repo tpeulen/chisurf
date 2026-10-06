@@ -34,8 +34,15 @@ print("FACTS" + json.dumps({"p1": {k: v.name for k, v in P1_BINDINGS.items()},
                             "shares_model": issubclass(PongGame, PongModel)}))
 """
 
-ACTION = {"UP": "up", "DOWN": "down", "CONFIRM": "confirm", "MENU": "menu", "CANCEL": "cancel",
-          "SHOULDER_L": "shoulder_l", "SHOULDER_R": "shoulder_r"}
+ACTION = {
+    "UP": "up",
+    "DOWN": "down",
+    "CONFIRM": "confirm",
+    "MENU": "menu",
+    "CANCEL": "cancel",
+    "SHOULDER_L": "shoulder_l",
+    "SHOULDER_R": "shoulder_r",
+}
 KEYCODE = {"ArrowUp": (KEY_UP, ""), "ArrowDown": (KEY_DOWN, ""), "Enter": (KEY_ENTER, "")}
 
 
@@ -44,14 +51,22 @@ def qt():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT], capture_output=True, text=True, timeout=300,
-                          env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt game's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 def _code(key):
@@ -94,8 +109,11 @@ def test_sound_is_greyed_without_an_audio_output_and_works_with_one():
     app.set_sound()
     assert app.sound_enabled is False
     calls = []
-    audio = SimpleNamespace(sfx=lambda *a: calls.append(("sfx", a)), set_enabled=lambda on: calls.append(("on", on)),
-                            close=lambda: None)
+    audio = SimpleNamespace(
+        sfx=lambda *a: calls.append(("sfx", a)),
+        set_enabled=lambda on: calls.append(("on", on)),
+        close=lambda: None,
+    )
     app = make_app(audio=audio)
     app.set_sound()
     assert app.sound_enabled is True and ("on", True) in calls

@@ -35,14 +35,39 @@ TAB_TIPS = {
 
 #: The file rows: model attribute, caption, tooltip, browse action, browse caption, guide key of the browse button.
 FILE_ROWS = (
-    ("decay_file", "Decay File", "Measured two-column decay: time (ns) and counts.", "decay_file", "Load...",
-     "Load..."),
-    ("irf_file", "IRF File", "Measured two-column instrument response: time (ns) and counts.", "irf_file", "Load...",
-     "load_irf"),
-    ("config_file", "Config File", "The LLTF YAML configuration: fit range, background, IRF shift, starting values, "
-     "pile-up. Edit… opens it; the next run uses the edited text.", None, "Edit...", "Edit..."),
-    ("output_dir", "Output Directory", "Where <decay>_fit.json and <decay>_fit.png are written (the decay's folder "
-     "when empty).", "output_dir", "Select...", "Select..."),
+    (
+        "decay_file",
+        "Decay File",
+        "Measured two-column decay: time (ns) and counts.",
+        "decay_file",
+        "Load...",
+        "Load...",
+    ),
+    (
+        "irf_file",
+        "IRF File",
+        "Measured two-column instrument response: time (ns) and counts.",
+        "irf_file",
+        "Load...",
+        "load_irf",
+    ),
+    (
+        "config_file",
+        "Config File",
+        "The LLTF YAML configuration: fit range, background, IRF shift, starting values, "
+        "pile-up. Edit… opens it; the next run uses the edited text.",
+        None,
+        "Edit...",
+        "Edit...",
+    ),
+    (
+        "output_dir",
+        "Output Directory",
+        "Where <decay>_fit.json and <decay>_fit.png are written (the decay's folder when empty).",
+        "output_dir",
+        "Select...",
+        "Select...",
+    ),
 )
 
 
@@ -61,8 +86,12 @@ class LLTFApp(TourTarget, ImApp):
         self.item_rects = {}
         self.arrays = None
         spec = json.loads((Path(__file__).parent / "lltf.view.json").read_text(encoding="utf-8"))
-        self.controls_spec = {"sections": [p for p in spec["sections"] if p.get("title") != "Results"]}
-        self.results_spec = {"sections": [p["sections"] for p in spec["sections"] if p.get("title") == "Results"][0]}
+        self.controls_spec = {
+            "sections": [p for p in spec["sections"] if p.get("title") != "Results"]
+        }
+        self.results_spec = {
+            "sections": [p["sections"] for p in spec["sections"] if p.get("title") == "Results"][0]
+        }
         self.form = FormState()
         self.form.custom["lltf_files"] = self.draw_files
         self.results_form = FormState()
@@ -164,7 +193,9 @@ class LLTFApp(TourTarget, ImApp):
         im.same_line()
         if im.button("❓  Help"):
             self.help_window.show()
-        im.set_item_tooltip("What the fit decides by rule, what it reports, and what to check before believing it.")
+        im.set_item_tooltip(
+            "What the fit decides by rule, what it reports, and what to check before believing it."
+        )
         self.remember("help")
         im.separator()
         self.form.rects.clear()
@@ -172,20 +203,26 @@ class LLTFApp(TourTarget, ImApp):
         draw_form(self.controls_spec, m, self.form)
         im.end_disabled()
         self.item_rects.update(self.form.rects)
-        self.item_rects["Find Optimal"] = self.form.rects.get("find_optimal")      # the Qt tour's name for it
+        self.item_rects["Find Optimal"] = self.form.rects.get(
+            "find_optimal"
+        )  # the Qt tour's name for it
         ready = Path(m.decay_file).is_file() and Path(m.irf_file).is_file()
         im.begin_disabled(m.running or not ready)
         if im.button("▶  Fit"):
             self.error(self.start)
-        im.set_item_tooltip("Run the LLTF command line in a background process with these inputs and options; "
-                            "needs a decay and an IRF.")
+        im.set_item_tooltip(
+            "Run the LLTF command line in a background process with these inputs and options; "
+            "needs a decay and an IRF."
+        )
         self.remember("Fit")
         im.end_disabled()
         im.same_line()
         im.begin_disabled(not m.running)
         if im.button("⏹  Stop"):
             self.model.stop()
-        im.set_item_tooltip("Terminate the running fit; its captured output stays in Analysis Output.")
+        im.set_item_tooltip(
+            "Terminate the running fit; its captured output stays in Analysis Output."
+        )
         self.remember("stop")
         im.end_disabled()
         if m.status.startswith("Error:") or "failed" in m.status:
@@ -200,26 +237,37 @@ class LLTFApp(TourTarget, ImApp):
         being cut to a few characters beside a caption.
         """
         m = self.model
-        button_w = max(im.calc_text_size(row[4])[0] for row in FILE_ROWS) + 2 * im.get_style().frame_padding[0]
+        button_w = (
+            max(im.calc_text_size(row[4])[0] for row in FILE_ROWS)
+            + 2 * im.get_style().frame_padding[0]
+        )
         spacing = im.get_style().item_spacing[0]
         for attr, label, tip, action, button, key in FILE_ROWS:
             im.text(label)
             im.set_next_item_width(max(60.0, width - button_w - spacing - 4.0))
             flags = 0 if attr == "config_file" else im.InputTextFlags.READ_ONLY
-            changed, value = im.input_text(f"##{attr}", getattr(m, attr) or "", flags=flags, elide_start=True)
+            changed, value = im.input_text(
+                f"##{attr}", getattr(m, attr) or "", flags=flags, elide_start=True
+            )
             im.set_item_tooltip(tip)
             self.remember(attr)
             if changed and attr == "config_file":
                 m.config_file, m.config_dirty = value, False
             im.same_line()
-            if im.button(f"{button}##{attr}.browse", (button_w, 0)):     # not the field's id: it took the click
+            if im.button(
+                f"{button}##{attr}.browse", (button_w, 0)
+            ):  # not the field's id: it took the click
                 self.tour.notify_used(key)
                 if action is None:
                     self.edit_config()
                 else:
                     self.choose(action)
-            im.set_item_tooltip({"Edit...": "Open the configuration in the YAML editor (load another, edit, save).",
-                                 "Select...": "Choose the output directory."}.get(button, f"Choose the {label.lower()}."))
+            im.set_item_tooltip(
+                {
+                    "Edit...": "Open the configuration in the YAML editor (load another, edit, save).",
+                    "Select...": "Choose the output directory.",
+                }.get(button, f"Choose the {label.lower()}.")
+            )
             self.remember(key)
 
     def edit_config(self):
@@ -249,7 +297,7 @@ class LLTFApp(TourTarget, ImApp):
             for tab in ("Information", "Analysis Output", "Results"):
                 flags = im.TabItemFlags.SET_SELECTED if self.pending_tab == tab else 0
                 active = im.begin_tab_item(tab, flags=flags)
-                im.set_item_tooltip(TAB_TIPS[tab])               # on every tab, not only the open one
+                im.set_item_tooltip(TAB_TIPS[tab])  # on every tab, not only the open one
                 self.item_rects[tab] = im.get_item_rect()
                 if active:
                     self.tab = tab
@@ -274,7 +322,9 @@ class LLTFApp(TourTarget, ImApp):
                                 "Copy the complete fit result and model arrays to a JSON file."
                             )
                             self.remember("export_json")
-                            draw_form(self.results_spec, m, self.results_form)    # the spec's Results panel
+                            draw_form(
+                                self.results_spec, m, self.results_form
+                            )  # the spec's Results panel
                     im.end_tab_item()
             im.end_tab_bar()
             self.pending_tab = None

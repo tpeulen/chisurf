@@ -174,12 +174,16 @@ def test_loaded_state_equals_the_qt_widget(env, qt_tool):
     np.testing.assert_array_equal(native_y, after_y)
     assert native_spins(model) == qt_spins(widget)
     assert model.info_text == widget.tac_panel.model.info_text()
-    assert model.ws.compute.available_channels == widget.tac_panel.model.available_channels == [
-        0,
-        1,
-        8,
-        9,
-    ]
+    assert (
+        model.ws.compute.available_channels
+        == widget.tac_panel.model.available_channels
+        == [
+            0,
+            1,
+            8,
+            9,
+        ]
+    )
     assert model.channel == widget.tac_panel.model.channel == "0"
     np.testing.assert_array_equal(
         model.ws.compute.current_table["NTAC_fract"],
@@ -291,9 +295,13 @@ def test_autodetect_equals_qt_on_a_channel_with_a_plateau_and_reports_failure(en
         target.linear_start, target.linear_stop = 1200, 1900
     qt_model.autodetect()
     click(app, "autodetect")
-    assert (model.linear_start, model.linear_stop) == (788, 828) == (
-        qt_model.linear_start,
-        qt_model.linear_stop,
+    assert (
+        (model.linear_start, model.linear_stop)
+        == (788, 828)
+        == (
+            qt_model.linear_start,
+            qt_model.linear_stop,
+        )
     )
     assert model.message == "Auto-detected region [788, 828)."
 
@@ -387,9 +395,7 @@ def _edge_pixels(app, monkeypatch):
     return seen
 
 
-def test_the_plateau_region_is_dragged_with_the_pointer_and_the_lut_follows(
-    env, monkeypatch
-):
+def test_the_plateau_region_is_dragged_with_the_pointer_and_the_lut_follows(env, monkeypatch):
     app = make(env)
     model = load(app, env)
     seen = _edge_pixels(app, monkeypatch)
@@ -442,9 +448,7 @@ def test_offset_and_threshold_lines_are_dragged(env, monkeypatch):
             self.modified, self.value = True, value
             self.clicked = self.hovered = self.held = False
 
-    monkeypatch.setattr(
-        implot, "drag_line_x", lambda n, x, *a, **k: Line(321.6)
-    )
+    monkeypatch.setattr(implot, "drag_line_x", lambda n, x, *a, **k: Line(321.6))
     monkeypatch.setattr(implot, "drag_line_y", lambda n, y, *a, **k: Line(-4.0))
     frames(app, count=1)
     assert model.noffset == 322
@@ -458,7 +462,9 @@ def test_the_corrected_preview_is_cached_until_an_input_changes(env, monkeypatch
     calls = []
     real = type(model.ws.compute).corrected_after_hist
     monkeypatch.setattr(
-        type(model.ws.compute), "corrected_after_hist", lambda self: (calls.append(1), real(self))[1]
+        type(model.ws.compute),
+        "corrected_after_hist",
+        lambda self: (calls.append(1), real(self))[1],
     )
     frames(app, count=5)
     first = len(calls)
@@ -475,9 +481,19 @@ def test_the_corrected_preview_is_cached_until_an_input_changes(env, monkeypatch
 # --------------------------------------------------------------------------- #
 def test_buttons_are_disabled_until_there_is_something_to_act_on(env):
     model = make(env).model
-    for name in ("autodetect", "save_lut", "export_corrected", "add_all", "remove_file",
-                 "clear_files", "remove_lut", "clear_luts", "assign_selected", "assign_all",
-                 "save_json"):
+    for name in (
+        "autodetect",
+        "save_lut",
+        "export_corrected",
+        "add_all",
+        "remove_file",
+        "clear_files",
+        "remove_lut",
+        "clear_luts",
+        "assign_selected",
+        "assign_all",
+        "save_json",
+    ):
         assert not model.enabled(name), name
     assert model.enabled("request_add_files") and model.enabled("show_help")
     assert not model.enabled("apply_setup")
@@ -503,8 +519,11 @@ def test_file_buttons_open_the_right_dialogs(env, chooser):
     app.model.stage = 1
     app.model.ws.receive_computed_lut("a", [0.0, 1.0], 0)  # Save JSON needs a LUT
     frames(app)
-    for name, mode in (("request_load_lut", "open"), ("request_load_json", "open"),
-                       ("request_save_json", "save")):
+    for name, mode in (
+        ("request_load_lut", "open"),
+        ("request_load_json", "open"),
+        ("request_save_json", "save"),
+    ):
         app.dialog = None
         chooser.chosen = []
         click(app, name)
@@ -568,8 +587,14 @@ def test_export_formats_follow_the_extension(env, chooser):
         model.finish_dialog("export_corrected", [str(path)])
         settle(app)
         assert path.is_file(), ext
-        data = np.load(path)["corrected_ntac"] if ext == ".npz" else (
-            np.load(path) if ext == ".npy" else np.loadtxt(path, delimiter="," if ext == ".csv" else None)
+        data = (
+            np.load(path)["corrected_ntac"]
+            if ext == ".npz"
+            else (
+                np.load(path)
+                if ext == ".npy"
+                else np.loadtxt(path, delimiter="," if ext == ".csv" else None)
+            )
         )
         assert data.size == 56499, ext
     lut = env["dir"] / "lut.json"

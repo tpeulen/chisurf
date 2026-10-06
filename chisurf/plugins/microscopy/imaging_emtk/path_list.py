@@ -40,12 +40,34 @@ class PathListView:
         room = im.get_content_region_avail()[0]
         used = 0.0
         for key, label, tip, needs_files, act in (
-            ("add", "Add files" if not options.get("single") else "Choose file", str(options.get("add_tip", "Choose photon files to add.")), False,
-             lambda: model.request_dialog(str(options.get("add", "add_files")))),
-            ("database", "Database", "Pick a registered photon dataset from the database.", False,
-             lambda: model.request_dialog(str(options.get("database", "database")))),
-            ("remove", "Remove", "Remove the selected file from the list (the file itself is not deleted).", True, lambda: self._remove(model, target, index)),
-            ("clear", "Clear", "Empty the list without deleting any file.", True, lambda: self._clear(model, target)),
+            (
+                "add",
+                "Add files" if not options.get("single") else "Choose file",
+                str(options.get("add_tip", "Choose photon files to add.")),
+                False,
+                lambda: model.request_dialog(str(options.get("add", "add_files"))),
+            ),
+            (
+                "database",
+                "Database",
+                "Pick a registered photon dataset from the database.",
+                False,
+                lambda: model.request_dialog(str(options.get("database", "database"))),
+            ),
+            (
+                "remove",
+                "Remove",
+                "Remove the selected file from the list (the file itself is not deleted).",
+                True,
+                lambda: self._remove(model, target, index),
+            ),
+            (
+                "clear",
+                "Clear",
+                "Empty the list without deleting any file.",
+                True,
+                lambda: self._clear(model, target),
+            ),
         ):
             width = im.calc_text_size(label)[0] + 16.0
             if used and used + 6.0 + width <= room:

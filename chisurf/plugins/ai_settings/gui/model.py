@@ -26,7 +26,17 @@ _VIEW = pathlib.Path(__file__).with_name("ai_settings.view.json")
 #: excluded on purpose: switching it *loads* another provider rather than editing
 #: the current one, so it must not save the current fields under the new key.
 _PERSIST_FIELDS = frozenset(
-    {"base_url", "api_key", "text_model", "image_model", "temperature", "top_p", "max_tokens", "command", "acp_backend_provider"}
+    {
+        "base_url",
+        "api_key",
+        "text_model",
+        "image_model",
+        "temperature",
+        "top_p",
+        "max_tokens",
+        "command",
+        "acp_backend_provider",
+    }
 )
 
 
@@ -361,7 +371,9 @@ class AISettingsModel:
         runner = self.async_runner
         if callable(runner):
             if runner(work, done) is False:  # the host runs one request at a time
-                self._set_status("Another request is still running. Try again in a moment.", "orange")
+                self._set_status(
+                    "Another request is still running. Try again in a moment.", "orange"
+                )
         else:
             done(work())
 

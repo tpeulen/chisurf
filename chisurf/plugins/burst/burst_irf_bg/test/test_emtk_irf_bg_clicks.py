@@ -15,14 +15,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from emtk import keys
-from emtk.testing import RecordingPainter
-
 from chisurf.plugins.burst.burst_irf_bg.gui import view_model
 from chisurf.plugins.burst.burst_irf_bg.gui.app import create_app
 from chisurf.plugins.burst.burst_irf_bg.test.demo_data import IRF_PEAK_NS, build
-
-from .test_emtk_irf_bg_parity import qt  # noqa: F401  (the Qt tool's result: a module fixture)
+from emtk import keys
+from emtk.testing import RecordingPainter
 
 SIZE = (1200, 800)
 SMALL = (800, 600)
@@ -131,7 +128,9 @@ def load(app, measurement):
 # -- Compute, Stop, the result ------------------------------------------------------------------------------------------ #
 
 
-def test_compute_without_files_says_why_and_a_click_on_a_loaded_demo_gives_the_qt_tools_rows(app, measurement, qt):
+def test_compute_without_files_says_why_and_a_click_on_a_loaded_demo_gives_the_qt_tools_rows(
+    app, measurement, qt
+):
     press(app, "irf_bg_run")
     assert "Please load TTTR files first." in shown(app) and not app.controller.running
     load(app, measurement)
@@ -143,12 +142,24 @@ def test_compute_without_files_says_why_and_a_click_on_a_loaded_demo_gives_the_q
     rows = app.model.results_rows()
     assert json.loads(json.dumps(rows)) == qt["rows"]
     for row in rows:
-        assert abs(row["prompt_ns"] - IRF_PEAK_NS) < 0.15                       # the IRF the demo was made with
+        assert abs(row["prompt_ns"] - IRF_PEAK_NS) < 0.15  # the IRF the demo was made with
     strings = draw(app).strings
     assert strings.count("Extracted IRF + background for 2 detector(s).") == 1
-    assert {"Detector", "Background (kHz)", "Prompt (ns)", "Non-burst", "Burst", "green", "red"} <= set(strings)
-    assert all(f"{r['background_khz']:.3f}" in strings for r in rows)                # the table cells
-    assert "Micro time (ns)" in strings and "IRF (normalised)" in strings and "No IRF data available." not in " ".join(strings)
+    assert {
+        "Detector",
+        "Background (kHz)",
+        "Prompt (ns)",
+        "Non-burst",
+        "Burst",
+        "green",
+        "red",
+    } <= set(strings)
+    assert all(f"{r['background_khz']:.3f}" in strings for r in rows)  # the table cells
+    assert (
+        "Micro time (ns)" in strings
+        and "IRF (normalised)" in strings
+        and "No IRF data available." not in " ".join(strings)
+    )
 
 
 def test_stop_computation_cancels_and_keeps_the_previous_results(app, measurement, monkeypatch):
@@ -157,8 +168,15 @@ def test_stop_computation_cancels_and_keeps_the_previous_results(app, measuremen
     before = dict(app.model._display)
     gate = threading.Event()
     original = view_model.IrfBackgroundViewModel.compute
-    monkeypatch.setattr(view_model.IrfBackgroundViewModel, "compute",
-                        lambda self, cancel_check=None: (gate.wait(30), cancel_check and cancel_check(), original(self, cancel_check))[2])
+    monkeypatch.setattr(
+        view_model.IrfBackgroundViewModel,
+        "compute",
+        lambda self, cancel_check=None: (
+            gate.wait(30),
+            cancel_check and cancel_check(),
+            original(self, cancel_check),
+        )[2],
+    )
     press(app, "irf_bg_run")
     draw(app, frames=1)
     assert app.controller.running and app.next_frame_in() is not None
@@ -178,8 +196,11 @@ def test_everything_is_inert_while_a_computation_runs(app, measurement, monkeypa
     load(app, measurement)
     gate = threading.Event()
     original = view_model.IrfBackgroundViewModel.compute
-    monkeypatch.setattr(view_model.IrfBackgroundViewModel, "compute",
-                        lambda self, cancel_check=None: (gate.wait(30), original(self, cancel_check))[1])
+    monkeypatch.setattr(
+        view_model.IrfBackgroundViewModel,
+        "compute",
+        lambda self, cancel_check=None: (gate.wait(30), original(self, cancel_check))[1],
+    )
     press(app, "irf_bg_run")
     draw(app, frames=2)
     future = app.controller._future
@@ -212,25 +233,37 @@ def test_a_broken_file_reports_its_error_in_the_window(app, tmp_path):
 @pytest.mark.parametrize(
     "field,typed,expected",
     [
-        ("min_photons", "80", 80), ("min_photons", "1", 2), ("min_photons", "999999", 100000),
-        ("photon_window", "12", 12), ("photon_window", "0", 2), ("photon_window", "99999", 10000),
-        ("time_window_ms", "2.5", 2.5), ("time_window_ms", "0", 0.001), ("time_window_ms", "5000", 1000.0),
-        ("baseline_quantile", "0.3", 0.3), ("baseline_quantile", "2", 0.9), ("baseline_quantile", "-1", 0.0),
-        ("micro_time_binning", "8", 8), ("micro_time_binning", "0", 1), ("micro_time_binning", "500", 64),
+        ("min_photons", "80", 80),
+        ("min_photons", "1", 2),
+        ("min_photons", "999999", 100000),
+        ("photon_window", "12", 12),
+        ("photon_window", "0", 2),
+        ("photon_window", "99999", 10000),
+        ("time_window_ms", "2.5", 2.5),
+        ("time_window_ms", "0", 0.001),
+        ("time_window_ms", "5000", 1000.0),
+        ("baseline_quantile", "0.3", 0.3),
+        ("baseline_quantile", "2", 0.9),
+        ("baseline_quantile", "-1", 0.0),
+        ("micro_time_binning", "8", 8),
+        ("micro_time_binning", "0", 1),
+        ("micro_time_binning", "500", 64),
     ],
 )
 def test_each_parameter_is_typed_and_clamped_to_the_qt_ranges(app, field, typed, expected):
     type_into(app, field, typed)
     assert getattr(app.model, field) == pytest.approx(expected), (field, typed)
-    shown_value = {"time_window_ms": f"{expected:.3f}", "baseline_quantile": f"{expected:.2f}"}.get(field, f"{expected}")
-    assert shown_value in draw(app).strings                                        # the field shows what the model holds
+    shown_value = {"time_window_ms": f"{expected:.3f}", "baseline_quantile": f"{expected:.2f}"}.get(
+        field, f"{expected}"
+    )
+    assert shown_value in draw(app).strings  # the field shows what the model holds
 
 
 def test_a_parameter_changes_what_the_extraction_finds(app, measurement):
     load(app, measurement)
     compute(app)
     first = {r["detector"]: r["n_bg"] for r in app.model.results_rows()}
-    type_into(app, "min_photons", "20000")                                          # no burst is that long: every photon is "non-burst"
+    type_into(app, "min_photons", "20000")  # no burst is that long: every photon is "non-burst"
     compute(app)
     second = {r["detector"]: r["n_bg"] for r in app.model.results_rows()}
     assert all(second[k] > first[k] for k in first)
@@ -242,7 +275,9 @@ def test_the_binning_field_and_the_channel_editors_microtime_binning_are_one_val
     assert reading["micro_time_binning"] == 4
     press_text(app, "Channel definition", last=False)
     strings = draw(app).strings
-    assert "Microtime binning:" in strings and "4" in strings                        # the editor shows the value typed in the tool
+    assert (
+        "Microtime binning:" in strings and "4" in strings
+    )  # the editor shows the value typed in the tool
 
 
 # -- the channel definition window (the shared editor) ----------------------------------------------------------------------------- #
@@ -264,7 +299,12 @@ def detector_cell(app, detector, key):
     x = control._header_box[0]
     for column, width in zip(control._shown, control._widths):
         if column.key == key:
-            return (x, body_y + (position - control.bar.top) * control._row_h, width, control._row_h)
+            return (
+                x,
+                body_y + (position - control.bar.top) * control._row_h,
+                width,
+                control._row_h,
+            )
         x += width
     raise AssertionError(key)
 
@@ -274,13 +314,15 @@ def type_into_cell(app, detector, key, text):
     click(app, detector_cell(app, detector, key), clicks=2)
     assert app.controller.channel_definition._detector_table.control.editing is not None
     app.key(keys.KEY_END, "")
-    for _ in range(24):                                                              # the cell opens with its text: empty it
+    for _ in range(24):  # the cell opens with its text: empty it
         app.key(keys.KEY_BACKSPACE, "")
         draw(app, frames=1)
     key_text(app, text)
 
 
-def test_the_channel_definition_button_opens_the_editor_and_a_typed_routing_reaches_the_detectors(app):
+def test_the_channel_definition_button_opens_the_editor_and_a_typed_routing_reaches_the_detectors(
+    app,
+):
     assert "TTTR Reading Routine:" not in draw(app).strings
     open_editor(app)
     strings = draw(app).strings
@@ -300,7 +342,13 @@ def test_a_typed_list_of_routing_channels_arrives_as_a_list(app):
 
 def test_the_ptu_reading_section_lists_its_fields(app):
     open_editor(app)
-    assert {"File Type:", "Macrotime res. (ns):", "Microtime res. (ps):", "Microtime binning:", "Read"} <= set(draw(app).strings)
+    assert {
+        "File Type:",
+        "Macrotime res. (ns):",
+        "Microtime res. (ps):",
+        "Microtime binning:",
+        "Read",
+    } <= set(draw(app).strings)
 
 
 # -- Send to MLE and the pattern export ----------------------------------------------------------------------------------------------- #
@@ -308,7 +356,9 @@ def test_the_ptu_reading_section_lists_its_fields(app):
 
 def test_send_to_mle_before_a_result_then_with_a_receiver_as_the_qt_tool_does(measurement, qt):
     received = []
-    window = create_app(mle_receiver=lambda patterns: (received.append(sorted(patterns)), len(patterns))[1])
+    window = create_app(
+        mle_receiver=lambda patterns: (received.append(sorted(patterns)), len(patterns))[1]
+    )
     try:
         press(window, "send_to_mle")
         assert window.controller.status == qt["early"] == "Compute the IRF and background first."
@@ -326,10 +376,15 @@ def test_send_to_mle_without_a_receiver_points_at_the_export(app, measurement):
     load(app, measurement)
     compute(app)
     press(app, "send_to_mle")
-    assert "Open inside Burst Analysis to feed MLE, or export the patterns for scripted use." in shown(app)
+    assert (
+        "Open inside Burst Analysis to feed MLE, or export the patterns for scripted use."
+        in shown(app)
+    )
 
 
-def test_export_mle_patterns_needs_a_result_then_writes_the_npz_with_every_pattern(app, measurement, tmp_path):
+def test_export_mle_patterns_needs_a_result_then_writes_the_npz_with_every_pattern(
+    app, measurement, tmp_path
+):
     press_text(app, "Export MLE patterns")
     assert "Compute the IRF and background first." in shown(app) and app.controller.dialog is None
     load(app, measurement)
@@ -368,7 +423,11 @@ def test_open_tttr_files_dialog_lists_measurements_and_open_adds_the_clicked_one
     (measurement.parent / "notes.txt").write_text("x")
     press_text(app, "Open TTTR files")
     strings = draw(app).strings
-    assert "Select TTTR files" in strings and measurement.name in strings and "notes.txt" not in strings   # the TTTR filter
+    assert (
+        "Select TTTR files" in strings
+        and measurement.name in strings
+        and "notes.txt" not in strings
+    )  # the TTTR filter
     click(app, text_rect(draw(app), measurement.name))
     click(app, text_rect(draw(app), "Open"))
     assert app.model.files == [str(measurement)]
@@ -397,19 +456,25 @@ def test_add_tttr_folder_dialog_adds_the_measurement_in_it(app, measurement):
     assert app.model.files == [str(measurement)]
 
 
-def test_a_dropped_measurement_folder_or_container_is_handled_as_the_qt_tool_does(app, measurement, tmp_path):
+def test_a_dropped_measurement_folder_or_container_is_handled_as_the_qt_tool_does(
+    app, measurement, tmp_path
+):
     folder = tmp_path / "pair"
     folder.mkdir()
     spc = folder / "m.spc"
     spc.write_bytes(measurement.read_bytes())
-    (folder / "m.pto").write_bytes(b"")                       # the container beside the vendor file is not a second measurement
+    (folder / "m.pto").write_bytes(
+        b""
+    )  # the container beside the vendor file is not a second measurement
     (folder / "notes.txt").write_text("x")
     assert app.files_dropped([str(folder)])
     assert app.model.files == [str(spc)]
     assert app.files_dropped([]) is False
 
 
-def test_each_listed_file_has_a_remove_button_and_clear_files_drops_files_and_results(app, measurement, tmp_path):
+def test_each_listed_file_has_a_remove_button_and_clear_files_drops_files_and_results(
+    app, measurement, tmp_path
+):
     other = tmp_path / "other.spc"
     other.write_bytes(measurement.read_bytes())
     app.files_dropped([str(measurement), str(other)])
@@ -417,19 +482,37 @@ def test_each_listed_file_has_a_remove_button_and_clear_files_drops_files_and_re
     assert painter.strings.count("Remove") == 2 and "Files loaded: 2" in " ".join(painter.strings)
     compute(app)
     click(app, text_rect(draw(app), "Remove", last=False))
-    assert app.model.files == [str(other)] if str(other) < str(measurement) else len(app.model.files) == 1
-    assert "File removed; recompute to refresh pooled results." in shown(app) and not app.model.has_results()
+    assert (
+        app.model.files == [str(other)]
+        if str(other) < str(measurement)
+        else len(app.model.files) == 1
+    )
+    assert (
+        "File removed; recompute to refresh pooled results." in shown(app)
+        and not app.model.has_results()
+    )
     compute(app)
     press_text(app, "Clear files")
     assert app.model.files == [] and not app.model.has_results()
-    assert "Files and results cleared." in shown(app) and "No IRF data available." in " ".join(draw(app).strings)
+    assert "Files and results cleared." in shown(app) and "No IRF data available." in " ".join(
+        draw(app).strings
+    )
 
 
 def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(app):
     class Client:
         def call(self, name, args=None):
-            return {"datasets": [{"artifact_id": "a1", "original_filename": "m000.spc", "artifact_kind": "raw_data",
-                                  "data_format": "spc"}], "total": 1}
+            return {
+                "datasets": [
+                    {
+                        "artifact_id": "a1",
+                        "original_filename": "m000.spc",
+                        "artifact_kind": "raw_data",
+                        "data_format": "spc",
+                    }
+                ],
+                "total": 1,
+            }
 
     app.controller.datasets.client = Client()
     press_text(app, "MMFDB datasets")
@@ -454,7 +537,7 @@ def test_a_click_on_a_row_and_on_the_headers_sorts_and_changes_no_result(app, me
     compute(app)
     before = {r["detector"]: r["background_khz"] for r in app.model.results_rows()}
     click(app, text_rect(draw(app), "green"))
-    for _ in range(2):                                                                      # a header click sorts, again flips
+    for _ in range(2):  # a header click sorts, again flips
         header = [t[:4] for t in draw(app).texts if "Backgr" in t[5]][0]
         click(app, header)
     assert before == {r["detector"]: r["background_khz"] for r in app.model.results_rows()}
@@ -462,7 +545,9 @@ def test_a_click_on_a_row_and_on_the_headers_sorts_and_changes_no_result(app, me
 
 
 def tick_labels(painter):
-    return [s for s in painter.strings if s.replace(".", "").replace("-", "").replace("e", "").isdigit()]
+    return [
+        s for s in painter.strings if s.replace(".", "").replace("-", "").replace("e", "").isdigit()
+    ]
 
 
 def test_a_drag_pans_the_irf_plot(app, measurement):
@@ -500,7 +585,10 @@ def test_the_dock_tabs_switch_between_the_parameters_and_the_channel_editor(app)
     strings = draw(app).strings
     assert "TTTR Reading Routine:" in strings and "Burst Search & Baseline" not in strings
     click(app, text_rect(draw(app), "IRF parameters"))
-    assert "Burst Search & Baseline" in draw(app).strings and "TTTR Reading Routine:" not in draw(app).strings
+    assert (
+        "Burst Search & Baseline" in draw(app).strings
+        and "TTTR Reading Routine:" not in draw(app).strings
+    )
 
 
 # -- Guide and Help ----------------------------------------------------------------------------------------------------------------------- #
@@ -531,13 +619,18 @@ def test_the_tour_is_walked_to_the_end_and_waits_for_the_extract_button(app, mea
             target = tour._target_key(tour.steps[tour.step_idx].get("target"))
             waited.append(target)
             click(app, text_rect(draw(app), "Next ►"))
-            assert tour.step_idx == tour.step_idx and tour.awaiting                    # greyed until the control is pressed
+            assert (
+                tour.step_idx == tour.step_idx and tour.awaiting
+            )  # greyed until the control is pressed
             press(app, target)
             settle(app)
             assert not tour.awaiting
         draw(app)
         painter = draw(app)
-        click(app, text_rect(painter, "Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►"))
+        click(
+            app,
+            text_rect(painter, "Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►"),
+        )
     assert waited == ["irf_bg_run"] and not tour.active and app.model.has_results()
 
 

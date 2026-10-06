@@ -21,11 +21,10 @@ import pytest
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
-from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
-
 from emtk.testing import PixelPainter, RecordingPainter  # noqa: E402
 
 from chisurf.plugins.burst.burst_gs.gui.app import create_app  # noqa: E402
+from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
 
 
 def _app(simulate=True, **settings):
@@ -72,14 +71,22 @@ def qt():
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT], capture_output=True, text=True, timeout=600, env=env,
-                          cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT],
+        capture_output=True,
+        text=True,
+        timeout=600,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the Qt tool's fit, status line and report; the simulated rates come back
@@ -106,16 +113,28 @@ def test_the_rates_plot_names_each_transition_and_the_truth(monkeypatch):
 
     ticks, scatters = [], []
     tik, sca = implot.setup_axis_ticks, implot.plot_scatter
-    monkeypatch.setattr(implot, "setup_axis_ticks",
-                        lambda axis, values, n_ticks=None, labels=None, *a, **k: (ticks.append(labels), tik(axis, values, n_ticks, labels, *a, **k))[1])
-    monkeypatch.setattr(implot, "plot_scatter", lambda name, x, y, *a, **k: (scatters.append((name, list(y))), sca(name, x, y, *a, **k))[1])
+    monkeypatch.setattr(
+        implot,
+        "setup_axis_ticks",
+        lambda axis, values, n_ticks=None, labels=None, *a, **k: (
+            ticks.append(labels),
+            tik(axis, values, n_ticks, labels, *a, **k),
+        )[1],
+    )
+    monkeypatch.setattr(
+        implot,
+        "plot_scatter",
+        lambda name, x, y, *a, **k: (scatters.append((name, list(y))), sca(name, x, y, *a, **k))[1],
+    )
     app = _app()
     try:
         app.controller.run()
         _settle(app)
         labels, rates, truth = app.gs_gui.rate_bars()
         assert labels == ["k(1→2)", "k(2→1)"]
-        assert rates == pytest.approx([app.model.analysis.fit.rate_matrix[1, 0], app.model.analysis.fit.rate_matrix[0, 1]])
+        assert rates == pytest.approx(
+            [app.model.analysis.fit.rate_matrix[1, 0], app.model.analysis.fit.rate_matrix[0, 1]]
+        )
         ticks.clear(), scatters.clear()
         strings = _draw(app, n=1).strings
         assert labels in ticks and ("simulated", [3000.0, 1000.0]) in scatters
@@ -182,12 +201,17 @@ def test_errors_and_the_no_result_case(monkeypatch):
         from chisurf.plugins.burst.burst_gs.gui import view_model
 
         app.model.use_simulation = True
-        monkeypatch.setattr(view_model.BurstGsViewModel, "compute", lambda self, progress=None: False)
+        monkeypatch.setattr(
+            view_model.BurstGsViewModel, "compute", lambda self, progress=None: False
+        )
         app.controller.run()
         _settle(app)
         assert app.controller.status == "The fit did not produce a result — see the report."
-        monkeypatch.setattr(view_model.BurstGsViewModel, "compute",
-                            lambda self, progress=None: (_ for _ in ()).throw(ValueError("singular Hessian")))
+        monkeypatch.setattr(
+            view_model.BurstGsViewModel,
+            "compute",
+            lambda self, progress=None: (_ for _ in ()).throw(ValueError("singular Hessian")),
+        )
         app.controller.run()
         _settle(app)
         assert app.controller.status == "The fit failed: singular Hessian"
@@ -242,7 +266,9 @@ def test_every_guide_target_is_drawn():
         app.controller.run()
         _settle(app)
         keys = {app.gs_gui.tour._target_key(s.get("target")) for s in app.gs_gui.tour.steps} - {""}
-        drawn = set(app.item_rects) | set(app.gs_gui.form_state.rects)         # buttons, and the spec's fields
+        drawn = set(app.item_rects) | set(
+            app.gs_gui.form_state.rects
+        )  # buttons, and the spec's fields
         assert keys and keys <= drawn, keys - drawn
     finally:
         app.close()
@@ -258,14 +284,18 @@ def test_the_simulate_and_fit_steps_wait_for_their_controls():
         def press(key):
             x, y, w, h = app.item_rects[key]
             app.pointer_move(x + w / 2, y + h / 2)
-            _draw(app, size, n=2, painter=PixelPainter)    # a frame between the tour's overlay going and the press, as a host has
+            _draw(
+                app, size, n=2, painter=PixelPainter
+            )  # a frame between the tour's overlay going and the press, as a host has
             app.press(x + 8, y + h / 2)
             _draw(app, size, n=1, painter=PixelPainter)
             app.release()
             _draw(app, size, n=1, painter=PixelPainter)
 
         steps = app.gs_gui.tour.steps
-        simulate = next(i for i, st in enumerate(steps) if st.get("target", {}).get("attr") == "use_simulation")
+        simulate = next(
+            i for i, st in enumerate(steps) if st.get("target", {}).get("attr") == "use_simulation"
+        )
         app.gs_gui.tour.start(simulate)
         assert app.gs_gui.tour.awaiting
         press("use_simulation")
@@ -274,7 +304,9 @@ def test_the_simulate_and_fit_steps_wait_for_their_controls():
         app.gs_gui.tour.start(fit)
         assert app.gs_gui.tour.awaiting
         press("Fit")
-        assert not app.gs_gui.tour.awaiting and (app.controller.running or app.model.analysis is not None)
+        assert not app.gs_gui.tour.awaiting and (
+            app.controller.running or app.model.analysis is not None
+        )
         _settle(app)
     finally:
         app.close()
@@ -289,7 +321,9 @@ def test_draws_empty_and_populated(size):
         app.controller.run()
         _settle(app)
         strings = _draw(app, size).strings
-        assert "Fitted rates" in strings and "1 → 2" in strings and "Transition" in strings   # the spec's rates table
+        assert (
+            "Fitted rates" in strings and "1 → 2" in strings and "Transition" in strings
+        )  # the spec's rates table
     finally:
         app.close()
 

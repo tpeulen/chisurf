@@ -45,8 +45,13 @@ class UpdaterApp(ImApp):
 
     window_title = "ChiSurf Updater"
 
-    def __init__(self, model: UpdaterModel | None = None, auto_check: bool = True,
-                 exit_hook: Callable[[], None] | None = None, auto_check_delay: float = AUTO_CHECK_DELAY) -> None:
+    def __init__(
+        self,
+        model: UpdaterModel | None = None,
+        auto_check: bool = True,
+        exit_hook: Callable[[], None] | None = None,
+        auto_check_delay: float = AUTO_CHECK_DELAY,
+    ) -> None:
         self.model = model or UpdaterModel()
         self.job = SnapshotJob(self.model)
         self.model.runner = self.start_job
@@ -59,24 +64,40 @@ class UpdaterApp(ImApp):
         #: Called (from a frame) when the update script took the process over; ChiSurf has to end.
         self.exit_hook = exit_hook or (lambda: sys.exit(0))
         spec = json.loads((HERE / "updater.view.json").read_text(encoding="utf-8"))
-        self.panels = {p["name"]: layout_spec(p) if p["name"] == _UPDATER else p for p in spec["sections"]}
+        self.panels = {
+            p["name"]: layout_spec(p) if p["name"] == _UPDATER else p for p in spec["sections"]
+        }
         self.form = FormState()
         self.form.custom["changelog"] = self._draw_changelog
         self.form.custom["version_line"] = self._draw_version
         self.dialog_form = FormState()
         self.progress_form = FormState()
-        self.message_window = DialogWindow("ChiSurf Updater", size=(520.0, 190.0), key="updater_dialog", fit_height=True)
-        self.progress_window = DialogWindow("Updating ChiSurf", size=(520.0, 130.0), key="updater_progress",
-                                            fit_height=True, escape_closes=False)
+        self.message_window = DialogWindow(
+            "ChiSurf Updater", size=(520.0, 190.0), key="updater_dialog", fit_height=True
+        )
+        self.progress_window = DialogWindow(
+            "Updating ChiSurf",
+            size=(520.0, 130.0),
+            key="updater_progress",
+            fit_height=True,
+            escape_closes=False,
+        )
         #: The package manager window (the panel is built when it is first opened).
         self.packages: PackagePanel | None = None
-        self.package_window = DialogWindow("ChiSurf Package Manager", size=(780.0, 560.0), key="updater_packages", escape_closes=False)
+        self.package_window = DialogWindow(
+            "ChiSurf Package Manager",
+            size=(780.0, 560.0),
+            key="updater_packages",
+            escape_closes=False,
+        )
         self.item_rects: dict[str, tuple] = {}
         self._reported_error = ""
         self.exited = False
         #: Opens a link of the changelog in the system browser (a test replaces it).
         self.open_link: Callable[[str], None] = webbrowser.open
-        self.help_window = EmTkHelpWindow(title="ChiSurf Updater - Help", resource=HERE / "help.md", owner=self)
+        self.help_window = EmTkHelpWindow(
+            title="ChiSurf Updater - Help", resource=HERE / "help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
             owner=self,
@@ -97,16 +118,25 @@ class UpdaterApp(ImApp):
         self.job.poll()
         model = self.model
         model.busy = self.job.busy
-        if model.updating and self.job.busy and self.job.progress and self.job.progress != "Do update\u2026":
-            model.update_message = self.job.progress                 # the latest step the update's worker reported
+        if (
+            model.updating
+            and self.job.busy
+            and self.job.progress
+            and self.job.progress != "Do update\u2026"
+        ):
+            model.update_message = self.job.progress  # the latest step the update's worker reported
         if self.job.error and self.job.error != self._reported_error:
             self._reported_error = self.job.error
             model.set_status(f"Failed: {self.job.error}")
             model.updating = False
         if self._first_frame is None:
             self._first_frame = time.monotonic()
-        if (self.auto_check and model.auto_check_pending and not self.job.busy
-                and time.monotonic() - self._first_frame >= self.auto_check_delay):
+        if (
+            self.auto_check
+            and model.auto_check_pending
+            and not self.job.busy
+            and time.monotonic() - self._first_frame >= self.auto_check_delay
+        ):
             model.auto_check_pending = False
             model.status = "Checking for updates..."
             model._run("auto_check")
@@ -153,7 +183,12 @@ class UpdaterApp(ImApp):
         im.text(model.current_version_text)
         im.set_item_tooltip(str(section.get("description", "")))
         right = im.get_item_rect()
-        state.rects["current_version_text"] = (left[0], left[1], right[0] + right[2] - left[0], max(left[3], right[3]))
+        state.rects["current_version_text"] = (
+            left[0],
+            left[1],
+            right[0] + right[2] - left[0],
+            max(left[3], right[3]),
+        )
 
     def _draw_changelog(self, section: dict, model: Any, state: FormState, width: float) -> None:
         """The ``changelog`` custom section: the Markdown changes in a scrolling area that takes the room left."""

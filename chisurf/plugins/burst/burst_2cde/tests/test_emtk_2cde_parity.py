@@ -21,13 +21,16 @@ import pytest
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
-from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402  (before tttrlib's `test`)
-
 from emtk.testing import RecordingPainter  # noqa: E402
 
 from chisurf.plugins.burst.burst_2cde.core import computation as core  # noqa: E402
 from chisurf.plugins.burst.burst_2cde.gui.app import create_app  # noqa: E402
 from chisurf.plugins.burst.burst_2cde.tests.demo_folder import build  # noqa: E402
+from test.gui.emtk_port_parity import (  # noqa: E402  (before tttrlib's `test`)
+    build_emtk_app,
+    emtk_inventory,
+    qt_free,
+)
 
 
 @pytest.fixture
@@ -91,14 +94,22 @@ def _qt_facts(folder):
     pytest.importorskip("qtpy")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, str(folder)], capture_output=True, text=True, timeout=300,
-                          env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, str(folder)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS"):])
+    return json.loads(line[len("FACTS") :])
 
 
 # 1. the same answer as the Qt tool's worker, and the known one
@@ -129,9 +140,14 @@ def test_an_unchanged_run_is_kept_and_points_at_restart(folder, monkeypatch):
         _settle(app)
         calls = []
         original = core.compute_2cde
-        monkeypatch.setattr(core, "compute_2cde", lambda *a, **k: calls.append(1) or original(*a, **k))
+        monkeypatch.setattr(
+            core, "compute_2cde", lambda *a, **k: calls.append(1) or original(*a, **k)
+        )
         app.controller.run()
-        assert app.model.status_text == "Unchanged — kept the previous 2CDE result (Restart recomputes it)"
+        assert (
+            app.model.status_text
+            == "Unchanged — kept the previous 2CDE result (Restart recomputes it)"
+        )
         assert app.model.restart_attention and not calls and not app.controller.running
         app.controller.restart()
         _settle(app)
@@ -161,11 +177,11 @@ def test_stop_abandons_the_run_and_only_an_explicit_run_restarts_it(folder, monk
         release.set()
         _settle(app)
         assert app.model.df is None and "cancelled" in app.model.status_text
-        assert not (folder / "2c4").exists()                     # nothing written
-        app.controller.auto_run()                                # shown again: not by itself
+        assert not (folder / "2c4").exists()  # nothing written
+        app.controller.auto_run()  # shown again: not by itself
         assert not app.controller.running
         assert app.model.status_text == "Stopped earlier — press Run to compute 2CDE"
-        app.controller.run()                                     # an explicit Run
+        app.controller.run()  # an explicit Run
         _settle(app)
         assert app.model.df is not None
     finally:
@@ -221,7 +237,7 @@ def test_progress_is_shown_while_running(folder, monkeypatch):
         assert seen == [("Computing 2CDE …", pytest.approx(0.5))]
         painter = _draw(app)
         assert "Computing 2CDE …" in painter.strings
-        assert app.next_frame_in() is not None                   # looks again soon while running
+        assert app.next_frame_in() is not None  # looks again soon while running
         gate.set()
         _settle(app)
         assert app.model.progress_text == "" and not app.controller.running
@@ -237,12 +253,18 @@ def test_errors_reach_the_window(folder, tmp_path, monkeypatch):
         app.controller.run()
         assert app.model.status_text == "Select a valid burstwise analysis folder."
         app.model.set_folder(folder)
-        monkeypatch.setattr(core, "write_2cde_analysis", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")))
+        monkeypatch.setattr(
+            core, "write_2cde_analysis", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
+        )
         app.controller.run()
         _settle(app)
-        assert app.model.df is not None                          # the result stands, as in Qt
+        assert app.model.df is not None  # the result stands, as in Qt
         assert "could not write the 2c4 companion: disk full" in app.model.status_text
-        monkeypatch.setattr(core, "read_burst_analysis", lambda *a, **k: (_ for _ in ()).throw(ValueError("bad table")))
+        monkeypatch.setattr(
+            core,
+            "read_burst_analysis",
+            lambda *a, **k: (_ for _ in ()).throw(ValueError("bad table")),
+        )
         app.controller.restart()
         _settle(app)
         assert app.model.df is None and app.model.status_text == "Error: bad table"
@@ -272,7 +294,14 @@ def test_draws_empty_and_populated(folder, size):
     try:
         assert {"Analysis folder:", "2CDE Parameters"} <= set(_draw(app, size).strings)
         pane_right = app.item_rects["controls"][0] + app.item_rects["controls"][2]
-        for name in ("run", "restart", "stop", "folder", "guide", "help"):   # the row wraps, nothing is cut
+        for name in (
+            "run",
+            "restart",
+            "stop",
+            "folder",
+            "guide",
+            "help",
+        ):  # the row wraps, nothing is cut
             x, _y, w, _h = app.item_rects[name]
             assert x + w <= pane_right, name
         app.model.set_folder(folder)
@@ -309,7 +338,7 @@ def test_the_2cde_axis_fits_every_burst_of_a_new_result(folder, monkeypatch):
     seen = _y_ranges(monkeypatch)
     app = _app()
     try:
-        _draw(app)                                            # the empty plot exists
+        _draw(app)  # the empty plot exists
         app.model.set_folder(folder)
         app.controller.run()
         _settle(app)

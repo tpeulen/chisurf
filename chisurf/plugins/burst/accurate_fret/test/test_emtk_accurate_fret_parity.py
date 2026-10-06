@@ -29,8 +29,15 @@ REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 def _bursts(tmp_path) -> Path:
     dd, da, aa, tau = _simulate(n=100)
     path = tmp_path / "bursts.npz"
-    np.savez(path, **{"Green Count Rate (KHz)": dd, "Red Count Rate (KHz)": da,
-                      "S delayed yellow (kHz)": aa, "Tau (green)": tau})
+    np.savez(
+        path,
+        **{
+            "Green Count Rate (KHz)": dd,
+            "Red Count Rate (KHz)": da,
+            "S delayed yellow (kHz)": aa,
+            "Tau (green)": tau,
+        },
+    )
     return path
 
 
@@ -76,16 +83,26 @@ def test_calibration_equals_the_qt_tool(tmp_path):
     path = _bursts(tmp_path)
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", CHISURF_SETTINGS_DIR=str(tmp_path / "s"))
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, str(path), str(TAU_D0)], capture_output=True,
-                          text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [sys.executable, "-c", _QT, str(path), str(TAU_D0)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
     if line is None:
         pytest.skip(f"AccurateFretTool could not be built here: {proc.stderr[-800:]}")
-    qt = json.loads(line[len("FACTS"):])
+    qt = json.loads(line[len("FACTS") :])
     app = _calibrated(path)
     try:
-        ours = json.loads(json.dumps({"factors": app.model.factor_rows(),
-                                      "populations": app.model.population_rows()}, default=str))
+        ours = json.loads(
+            json.dumps(
+                {"factors": app.model.factor_rows(), "populations": app.model.population_rows()},
+                default=str,
+            )
+        )
         assert ours == qt
     finally:
         app.close()
@@ -106,7 +123,7 @@ def test_every_guide_target_is_drawn_and_the_calibrate_step_waits():
             assert gui.tour.awaiting == bool(step.get("await")), (index, key)
         calibrate = next(i for i, s in enumerate(steps) if s.get("await"))
         gui.tour.start(calibrate)
-        gui.track("Calibrate")                       # what the button reports when pressed
+        gui.track("Calibrate")  # what the button reports when pressed
         assert not gui.tour.awaiting
     finally:
         app.close()
@@ -118,11 +135,15 @@ def test_the_legend_leaves_the_donor_only_corner_free(monkeypatch, tmp_path):
 
     seen = []
     original = implot.setup_legend
-    monkeypatch.setattr(implot, "setup_legend", lambda loc=0, flags=0: (seen.append(loc), original(loc, flags)))
+    monkeypatch.setattr(
+        implot, "setup_legend", lambda loc=0, flags=0: (seen.append(loc), original(loc, flags))
+    )
     app = _calibrated(_bursts(tmp_path))
     try:
         es = {s["name"]: s for s in app.model.es_series()}
-        assert np.median(es["donor-only"]["y"]) > 0.9 and abs(np.median(es["donor-only"]["x"])) < 0.1
+        assert (
+            np.median(es["donor-only"]["y"]) > 0.9 and abs(np.median(es["donor-only"]["x"])) < 0.1
+        )
         _draw(app)
         assert seen and set(seen) == {implot.LOCATION_NORTH_EAST}
     finally:
@@ -188,8 +209,9 @@ def test_the_histogram_is_drawn_with_its_range_fitted_to_the_counts(tmp_path, mo
 
     limits = []
     original = implot.setup_axes_limits
-    monkeypatch.setattr(implot, "setup_axes_limits",
-                        lambda *a, **k: (limits.append(a), original(*a, **k)))
+    monkeypatch.setattr(
+        implot, "setup_axes_limits", lambda *a, **k: (limits.append(a), original(*a, **k))
+    )
     app = _calibrated(_bursts(tmp_path))
     try:
         app.accurate_gui.docks.focus("hist")

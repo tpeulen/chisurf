@@ -107,8 +107,10 @@ class BurstGsController:
         """The Qt tool's status line after a fit."""
         fit = self.model.analysis.fit
         matrix = fit.rate_matrix
-        return (f"logL = {fit.log_likelihood:,.1f}, "
-                f"k(1→2) = {matrix[1, 0]:,.0f} /s, k(2→1) = {matrix[0, 1]:,.0f} /s")
+        return (
+            f"logL = {fit.log_likelihood:,.1f}, "
+            f"k(1→2) = {matrix[1, 0]:,.0f} /s, k(2→1) = {matrix[0, 1]:,.0f} /s"
+        )
 
     def stop(self):
         if self.running:
@@ -140,10 +142,16 @@ class BurstGsController:
         options = {"filters": filters} if filters else {}
         filename = None
         if action == "export":  # the Qt tool's suggestion: beside the first table
-            filename = Path(self.model.bur_files[0]).with_suffix(".gs.csv").name if self.model.bur_files else "kinetics.gs.csv"
+            filename = (
+                Path(self.model.bur_files[0]).with_suffix(".gs.csv").name
+                if self.model.bur_files
+                else "kinetics.gs.csv"
+            )
             if self.model.bur_files:
                 options["directory"] = str(Path(self.model.bur_files[0]).parent)
-        self.dialog = FileDialog(title, mode=mode, multiselect=action == "files", filename=filename, **options)
+        self.dialog = FileDialog(
+            title, mode=mode, multiselect=action == "files", filename=filename, **options
+        )
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-gs-file")
         self._dialog_window.show()
 
@@ -154,13 +162,25 @@ class BurstGsController:
         from chisurf.plugins.emtk_layout import button_row
 
         im.begin_disabled(self.running)
-        pressed = button_row([
-            {"label": "Open BUR files", "key": "bur_files",
-             "tip": "Choose burst tables containing photon ranges to fit."},    # the guide's "files" step
-            {"label": "Add burst folder", "tip": "Find BUR tables recursively in an analysis folder."},
-            {"label": "MMFDB datasets", "tip": "Select a burst analysis dataset from MMFDB."},
-            {"label": "Clear burst files", "tip": "Remove the input tables and previous fitted result."},
-        ], remember=remember)
+        pressed = button_row(
+            [
+                {
+                    "label": "Open BUR files",
+                    "key": "bur_files",
+                    "tip": "Choose burst tables containing photon ranges to fit.",
+                },  # the guide's "files" step
+                {
+                    "label": "Add burst folder",
+                    "tip": "Find BUR tables recursively in an analysis folder.",
+                },
+                {"label": "MMFDB datasets", "tip": "Select a burst analysis dataset from MMFDB."},
+                {
+                    "label": "Clear burst files",
+                    "tip": "Remove the input tables and previous fitted result.",
+                },
+            ],
+            remember=remember,
+        )
         if pressed == "bur_files":
             if track is not None:
                 track("bur_files")

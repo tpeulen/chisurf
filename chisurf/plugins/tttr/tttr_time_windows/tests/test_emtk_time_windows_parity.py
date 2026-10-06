@@ -22,7 +22,7 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 PTU = REPO / "test" / "data" / "clsm" / "Leica_SP5.ptu"
 QT_BST_SHA256_PREFIX = "4e4d0add2e46ce4f"
-PICTOGRAM = re.compile("[\U0001F000-\U0001FFFF☀-➿️]")
+PICTOGRAM = re.compile("[\U0001f000-\U0001ffff☀-➿️]")
 
 
 def _draw(app, size=(1200, 800), times=3):
@@ -49,9 +49,9 @@ def test_process_writes_the_qt_tools_bst(app, tmp_path):
     tool.add_paths([PTU])
     tool.time_window_ms = 10000.0
     tool.output_dir_text = str(tmp_path)
-    tool._process_all()                 # pressed while the preview of the added file loads
+    tool._process_all()  # pressed while the preview of the added file loads
     assert tool.process_pending or tool._job_kind == "process"
-    for _ in range(600):                # frames, as the app runs them
+    for _ in range(600):  # frames, as the app runs them
         if tool.job.future is not None:
             tool.job.future.result(timeout=300)
         _draw(app, times=1)
@@ -78,7 +78,7 @@ def test_the_job_and_file_windows_are_sized(app):
     app.tool._add_files_dialog()
     _draw(app)
     x, y, w, h = app._file_window.box
-    assert w < 1200 and h < 800                 # not the whole viewport
+    assert w < 1200 and h < 800  # not the whole viewport
     app.tool.dialog = None
 
 
@@ -122,7 +122,7 @@ def test_dock_layout_is_kept_only_when_changed(tmp_path, monkeypatch):
     app = create_app()
     _draw(app)
     app.close()
-    assert not target.exists()                       # opened and closed: nothing written
+    assert not target.exists()  # opened and closed: nothing written
     app = create_app()
     _draw(app)
     docks = app.time_window_gui.docks
@@ -143,7 +143,11 @@ def test_window_boundaries_are_drawn_only_when_they_can_be_told_apart(app, monke
 
     drawn = []
     original = implot.plot_inf_lines
-    monkeypatch.setattr(implot, "plot_inf_lines", lambda name, values, **k: (drawn.append(len(values)), original(name, values, **k)))
+    monkeypatch.setattr(
+        implot,
+        "plot_inf_lines",
+        lambda name, values, **k: (drawn.append(len(values)), original(name, values, **k)),
+    )
     t = np.linspace(0.0, 150.0, 15014)
     gui = app.time_window_gui
     gui.preview = {"counts": np.ones_like(t), "time_axis": t, "time_window_ms": 10.0}
@@ -170,8 +174,12 @@ class _FakeClient:
         self.analyzed.append((list(files), time_window_ms, output_dir))
         if self.fail_analyze:
             raise OSError("analysis broke")
-        return {"files": [str(f) for f in files], "n_windows": {str(files[0]): 3},
-                "output_paths": {}, "metadata": {"output_dir": "/out", "total_windows": 3}}
+        return {
+            "files": [str(f) for f in files],
+            "n_windows": {str(files[0]): 3},
+            "output_paths": {},
+            "metadata": {"output_dir": "/out", "total_windows": 3},
+        }
 
 
 def _settle(app, times=400):
@@ -193,14 +201,15 @@ def test_dropped_files_and_folders_are_queued(app, tmp_path):
     folder = tmp_path / "set"
     (folder / "sub").mkdir(parents=True)
     a, b = folder / "a.ptu", folder / "sub" / "b.ht3"
-    a.write_bytes(b"x"); b.write_bytes(b"x")
+    a.write_bytes(b"x")
+    b.write_bytes(b"x")
     (folder / "notes.txt").write_text("no")
     for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
         assert callable(getattr(app, name, None)), name
     app.tool._client = _FakeClient()
     assert app.files_dropped([str(folder)]) is True
     assert sorted(p.name for p in app.tool._file_paths) == ["a.ptu", "b.ht3"]
-    assert app.files_dropped([str(a)]) is False                      # already queued
+    assert app.files_dropped([str(a)]) is False  # already queued
     assert app.files_dropped([str(folder / "notes.txt")]) is False
     assert "Nothing to queue" in app.tool.message
     assert len(app.tool._file_paths) == 2
@@ -258,7 +267,10 @@ def test_process_without_files_says_so_and_a_good_run_logs_the_windows(tmp_path)
         _settle(app)
         assert client.analyzed == [([f], 25.0, tmp_path / "out")]
         assert tool.message == "Processing complete" and tool.output_dir_text == "/out"
-        assert any(l.startswith("Processing 1 file(s) with time window = 25.000 ms") for l in tool._log_lines)
+        assert any(
+            l.startswith("Processing 1 file(s) with time window = 25.000 ms")
+            for l in tool._log_lines
+        )
         assert any("Done: 1 file(s), 3 total windows" in line for line in tool._log_lines)
     finally:
         app.close()
@@ -270,7 +282,8 @@ def test_remove_and_clear(tmp_path):
     try:
         tool = app.tool
         a, b = tmp_path / "a.ptu", tmp_path / "b.ptu"
-        a.write_bytes(b"x"); b.write_bytes(b"x")
+        a.write_bytes(b"x")
+        b.write_bytes(b"x")
         tool.add_paths([a, b])
         _settle(app)
         assert app.time_window_gui.preview_index == 0 and tool.preview_data is not None
@@ -296,7 +309,7 @@ def test_guide_waits_for_the_user(app):
         assert tour._target_key(step["target"]) in app.item_rects, step["title"]
     tour.start(0)
     assert tour.awaiting
-    tour.notify_used("process")                                      # another control: still waiting
+    tour.notify_used("process")  # another control: still waiting
     assert tour.awaiting
     tour.notify_used("add_files")
     assert not tour.awaiting

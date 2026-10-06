@@ -18,7 +18,11 @@ from emtk.app import ImApp
 from emtk.testing import RecordingPainter
 
 from chisurf.emtk.validation import BlockQt
-from chisurf.plugins.core.project_browser.test.driving import clipped_texts, draw_clip, layout_problems
+from chisurf.plugins.core.project_browser.test.driving import (
+    clipped_texts,
+    draw_clip,
+    layout_problems,
+)
 from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS, ImagingToolsApp, make_app
 
 HERE = Path(__file__).parent
@@ -144,7 +148,9 @@ def test_the_tool_list_equals_the_qt_lists_names_order_roles_and_descriptions(qt
     qt = [p for p in qt_module.IMAGING_PANELS if not p.get("separator")]
     assert [p["role"] for p in qt] == ROLES
     assert [p["name"] for p in qt] == [row[2] for row in PANELS]
-    assert [p["description"] for p in qt] == [row[3] for row in PANELS]  # the tooltip and header texts, word for word
+    assert [p["description"] for p in qt] == [
+        row[3] for row in PANELS
+    ]  # the tooltip and header texts, word for word
 
 
 def test_the_separator_sits_where_the_qt_list_has_it(qt_module):
@@ -218,7 +224,10 @@ def test_next_and_previous_hand_offs_walk_the_pipeline_order_and_stop_at_its_end
     for _ in range(len(app.PIPELINE_ORDER) + 2):
         app.advance_from(app.selected)
         visited.append(app.selected)
-    assert visited[: len(app.PIPELINE_ORDER)] == list(app.PIPELINE_ORDER) and visited[-1] == "pixel_mle"
+    assert (
+        visited[: len(app.PIPELINE_ORDER)] == list(app.PIPELINE_ORDER)
+        and visited[-1] == "pixel_mle"
+    )
     app.goto_role("clsm_draw")
     app.advance_from("clsm_draw")  # not a step of the pipeline: stays
     assert app.selected == "clsm_draw"
@@ -266,7 +275,9 @@ def test_the_auto_run_starts_only_the_analysis_steps_that_have_a_source_and_no_r
     app.goto_role("pixel_micro_time")
     app.goto_role("calibration")
     app.goto_role("pixel_mle")
-    assert started == ["compute_job"]  # micro-time ran; calibration and MLE are settings / manual steps
+    assert started == [
+        "compute_job"
+    ]  # micro-time ran; calibration and MLE are settings / manual steps
     app.close()
 
 
@@ -349,7 +360,12 @@ def test_settings_round_trip_keeps_search_selection_and_the_context():
     other = fake_hub()
     other.restore_settings(copy.deepcopy(saved))
     assert (other.search, other.selected, other._pipeline, other.setup, other._calibration) == (
-        "pixel", "pixel_phasor", {"source": "a.ptu", "hdf5": "a.h5"}, {"detectors": {"g": {"chs": [1]}}}, {"g": {"bg": 1}})
+        "pixel",
+        "pixel_phasor",
+        {"source": "a.ptu", "hdf5": "a.h5"},
+        {"detectors": {"g": {"chs": [1]}}},
+        {"g": {"bg": 1}},
+    )
     app.close()
     other.close()
 
@@ -373,22 +389,43 @@ def test_make_app_builds_the_hub():
     app.close()
 
 
-@pytest.mark.parametrize("role", ["pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor", "calibration"])
+@pytest.mark.parametrize(
+    "role", ["pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor", "calibration"]
+)
 def test_current_native_pipeline_receives_setup_source_hdf5_and_calibration(role, monkeypatch):
     import numpy as np
 
     from chisurf.core.fluorescence import imaging
 
     def fake_compute(filename, windows, kind, progress=None):
-        return {"green": {"n_par": np.ones((4, 4)) * 10, "n_perp": np.ones((4, 4)), "durations": np.ones(4) * 0.01,
-                          "n_pixel": 4, "bg": 0.0, "frames": np.ones((3, 4, 4))}}
+        return {
+            "green": {
+                "n_par": np.ones((4, 4)) * 10,
+                "n_perp": np.ones((4, 4)),
+                "durations": np.ones(4) * 0.01,
+                "n_pixel": 4,
+                "bg": 0.0,
+                "frames": np.ones((3, 4, 4)),
+            }
+        }
 
     monkeypatch.setattr(imaging, "compute_windows", fake_compute)
     app = ImagingToolsApp(client=Client())
     try:
         assert app.goto_role(role), app.error
         child = app.child
-        app.set_setup({"detectors": {"green": {"chs": [0, 1], "ch_p": [0], "ch_s": [1], "micro_time_ranges": [[0, 4095]]}}})
+        app.set_setup(
+            {
+                "detectors": {
+                    "green": {
+                        "chs": [0, 1],
+                        "ch_p": [0],
+                        "ch_s": [1],
+                        "micro_time_ranges": [[0, 4095]],
+                    }
+                }
+            }
+        )
         app.set_pipeline(source="selected.ptu", hdf5="shared.imaging.h5")
         app.set_calibration({"green": {"bg_vv": 2.0, "bg_vh": 3.0}})
         job = getattr(child, "job", None)
@@ -398,7 +435,10 @@ def test_current_native_pipeline_receives_setup_source_hdf5_and_calibration(role
             child.draw(RecordingPainter(), 0, 0, 950, 650)
         assert "green" in child.model.detectors and child.model.filename == "selected.ptu"
         if role != "calibration":
-            assert child.model.pipeline_hdf5 == "shared.imaging.h5" and child.model.pipeline_sink == app.set_pipeline
+            assert (
+                child.model.pipeline_hdf5 == "shared.imaging.h5"
+                and child.model.pipeline_sink == app.set_pipeline
+            )
         else:
             assert child.model.publish == app.set_calibration
     finally:

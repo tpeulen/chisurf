@@ -18,7 +18,12 @@ from chisurf.plugins.core.plugin_check.gui.app import PluginCheckApp
 from chisurf.plugins.core.plugin_check.gui.model import PluginCheckModel
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
-from .test_emtk_plugin_check_parity import BIG, SMALL, hermetic, small_catalog  # noqa: F401  (hermetic is autouse)
+from .test_emtk_plugin_check_parity import (  # noqa: F401  (hermetic is autouse)
+    BIG,
+    SMALL,
+    hermetic,
+    small_catalog,
+)
 
 
 class Stub:
@@ -66,8 +71,11 @@ def names(drv):
     """The plugin names in the table (not the details pane), in the order drawn."""
     painter = drv.draw(2)
     x, y, w, h = drv.app.form.rects["check_rows"]
-    return [t[5] for t in painter.texts if t[5].startswith("Group:") and x <= t[0] <= x + w
-            and y <= t[1] <= y + h - 50]  # not the selected row's tooltip and the count line under the rows
+    return [
+        t[5]
+        for t in painter.texts
+        if t[5].startswith("Group:") and x <= t[0] <= x + w and y <= t[1] <= y + h - 50
+    ]  # not the selected row's tooltip and the count line under the rows
 
 
 def details(drv):
@@ -85,7 +93,9 @@ def test_test_all_button_runs_every_plugin_and_the_table_and_status_line_follow(
     assert drv.app.model.current == drv.app.model.total == 30
     assert len(stub.calls) == 20  # every third plugin (p00, p03, ...) declares no native window
     shown = painter.strings
-    assert "30/30" in shown and any(s.startswith("Testing complete: 20 pass, 0 failed") for s in shown)
+    assert "30/30" in shown and any(
+        s.startswith("Testing complete: 20 pass, 0 failed") for s in shown
+    )
     assert shown.count("pass") >= 8 and "Qt only" in shown
 
 
@@ -110,8 +120,12 @@ def test_the_sweep_buttons_are_greyed_while_a_sweep_runs_and_a_click_on_them_doe
     assert drv.app.model.total == before[0] and drv.app.model.running
     drv.click("stop")
     wait_done(drv)
-    assert drv.app.model.message == "Cancelled" and len(stub.calls) < 20 and len(stub.calls) >= calls
-    assert all(drv.app.model.enabled(n) for n in ("test_all", "test_safe", "refresh", "clear_blacklist"))
+    assert (
+        drv.app.model.message == "Cancelled" and len(stub.calls) < 20 and len(stub.calls) >= calls
+    )
+    assert all(
+        drv.app.model.enabled(n) for n in ("test_all", "test_safe", "refresh", "clear_blacklist")
+    )
 
 
 def test_stop_is_greyed_while_idle_and_ends_a_running_sweep_when_clicked(drv):
@@ -137,7 +151,9 @@ def test_a_failed_check_shows_in_the_row_and_the_details_pane_after_selecting_it
     painter = drv.draw(3)
     assert "Startup error" in painter.strings and details(drv)["Status"] == "fail"
     assert drv.app._error_editor.text == "pkg4:make_app failed\nsecond line"
-    assert "pkg4:make_app failed" in painter.strings  # the first line, in the Error column and the editor
+    assert (
+        "pkg4:make_app failed" in painter.strings
+    )  # the first line, in the Error column and the editor
     drv.click_text("Group:Tool 05")
     assert "Startup error" not in drv.draw(3).strings and details(drv)["Status"] == "pass"
 
@@ -157,7 +173,11 @@ def test_refresh_button_rescans_and_clears_the_results(drv, monkeypatch):
     drv.click("refresh")
     painter = drv.draw(3)
     assert drv.app.model.results == {} and len(names(drv)) == 5
-    assert "Ready: 5 plugin(s) found" in painter.strings and "pass" not in painter.strings and "0/0" in painter.strings
+    assert (
+        "Ready: 5 plugin(s) found" in painter.strings
+        and "pass" not in painter.strings
+        and "0/0" in painter.strings
+    )
 
 
 def test_clear_blacklist_button_lets_a_blacklisted_plugin_be_checked_again(drv):
@@ -181,7 +201,9 @@ def test_clear_blacklist_button_lets_a_blacklisted_plugin_be_checked_again(drv):
 # -- the two sweep options -------------------------------------------------------------------------------------------- #
 
 
-def test_skip_blacklisted_checkbox_is_clicked_and_decides_whether_a_blacklisted_plugin_is_checked(drv):
+def test_skip_blacklisted_checkbox_is_clicked_and_decides_whether_a_blacklisted_plugin_is_checked(
+    drv,
+):
     model = drv.app.model
     stub = install(drv, fail={"pkg1"})
     model.blacklisted.add("p01")
@@ -234,7 +256,9 @@ def test_a_typed_delay_is_used_by_the_sweep(drv):
     drv.click("test_safe")
     start = time.monotonic()
     wait_done(drv)
-    assert time.monotonic() - start >= 0.3 * 6  # the pause follows each of the plugins that were checked
+    assert (
+        time.monotonic() - start >= 0.3 * 6
+    )  # the pause follows each of the plugins that were checked
 
 
 def test_clicking_away_commits_a_typed_delay(drv):
@@ -254,7 +278,9 @@ def test_a_click_on_a_row_selects_it_and_the_details_follow(drv):
     assert drv.app.model.selected_key == "p05"
     blocks = details(drv)
     assert blocks["Plugin"] == "Group:Tool 05" and blocks["Optional"] == "p02, p04"
-    assert {"Module", "Source", "Description"} <= set(blocks) and "chisurf.plugins.p05" in drv.draw(2).strings
+    assert {"Module", "Source", "Description"} <= set(blocks) and "chisurf.plugins.p05" in drv.draw(
+        2
+    ).strings
     drv.click_text("Group:Tool 01")
     assert details(drv)["Requires (load order)"] == "p00 >=1"
     drv.click_text("Group:Tool 03")
@@ -278,7 +304,9 @@ def test_a_header_click_sorts_a_second_click_reverses(drv):
     assert names(drv)[:2] == ["Group:Tool 00", "Group:Tool 01"]
     drv.click_text("Plugin")
     drv.click_text("Plugin ▴")
-    assert names(drv)[:2] == ["Group:Tool 29", "Group:Tool 28"] and "Plugin ▾" in drv.draw(1).strings
+    assert (
+        names(drv)[:2] == ["Group:Tool 29", "Group:Tool 28"] and "Plugin ▾" in drv.draw(1).strings
+    )
     drv.click_text("Plugin ▾")
     assert names(drv)[:2] == ["Group:Tool 00", "Group:Tool 01"]
     install(drv)
@@ -286,7 +314,9 @@ def test_a_header_click_sorts_a_second_click_reverses(drv):
     wait_done(drv)
     drv.click_text("Status")
     drv.click_text("Status ▴")
-    assert drv.draw(2).strings.index("pending") < drv.draw(2).strings.index("pass")  # descending: pending sorts after pass
+    assert drv.draw(2).strings.index("pending") < drv.draw(2).strings.index(
+        "pass"
+    )  # descending: pending sorts after pass
 
 
 def test_the_filter_box_keeps_the_rows_containing_the_text_in_any_column(drv):
@@ -294,18 +324,25 @@ def test_the_filter_box_keeps_the_rows_containing_the_text_in_any_column(drv):
     drv.type_text("Tool 2")
     shown = names(drv)
     assert len(shown) == 10 and all("Tool 2" in s for s in shown)
-    assert any("10" in s and "30" in s and "rows" in s for s in drv.draw(1).strings)  # "10 of 30 rows x 5 columns"
+    assert any(
+        "10" in s and "30" in s and "rows" in s for s in drv.draw(1).strings
+    )  # "10 of 30 rows x 5 columns"
     for _ in range(6):
         drv.key(keys.KEY_BACKSPACE)
     drv.type_text("user")
     assert names(drv) == ["Group:Tool 03"]  # the Source column is searched too
     for _ in range(4):
         drv.key(keys.KEY_BACKSPACE)
-    assert len(names(drv)) >= 28 and any("30 rows" in s for s in drv.draw(1).strings)  # the filter is empty again
+    assert len(names(drv)) >= 28 and any(
+        "30 rows" in s for s in drv.draw(1).strings
+    )  # the filter is empty again
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: Ctrl+A in the table's filter box does not select its text (it does in every input field); "
-                   "see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: Ctrl+A in the table's filter box does not select its text (it does in every input field); "
+    "see REPORT.md section 10",
+)
 def test_ctrl_a_selects_the_filter_text_so_typing_replaces_it(drv):
     drv.click_text("filter")
     drv.type_text("Tool 2")
@@ -340,11 +377,19 @@ def test_right_click_on_a_header_offers_the_columns_and_hides_one(drv):
     painter = drv.draw(2)
     assert "Depends on" in painter.strings
     control = drv.app.form.tables["check_rows"].control
-    assert [c.key for c in control.visible_columns()] == ["plugin", "status", "source", "depends", "error"]
+    assert [c.key for c in control.visible_columns()] == [
+        "plugin",
+        "status",
+        "source",
+        "depends",
+        "error",
+    ]
 
 
 def test_hovering_a_cell_or_a_header_shows_its_tooltip(drv):
-    drv.app.model._events.put(("p01", {"status": "fail", "error": "ImportError: no module named widget\nsecond line"}))
+    drv.app.model._events.put(
+        ("p01", {"status": "fail", "error": "ImportError: no module named widget\nsecond line"})
+    )
     drv.draw(2)
     x, y, w, h = drv.text_rect("Depends on")
     drv.hover(x + 4, y + h / 2, frames=2)
@@ -361,8 +406,19 @@ def test_hovering_a_cell_or_a_header_shows_its_tooltip(drv):
 
 def test_the_error_text_can_be_selected_with_the_mouse_and_copied(drv, monkeypatch):
     copied = []
-    monkeypatch.setattr("emtk.clipboard.copy", lambda text: copied.append(text) or True)  # never the real clipboard
-    drv.app.model._events.put(("p01", {"status": "fail", "error": "ImportError: no module named widget", "traceback": "File a.py, line 3"}))
+    monkeypatch.setattr(
+        "emtk.clipboard.copy", lambda text: copied.append(text) or True
+    )  # never the real clipboard
+    drv.app.model._events.put(
+        (
+            "p01",
+            {
+                "status": "fail",
+                "error": "ImportError: no module named widget",
+                "traceback": "File a.py, line 3",
+            },
+        )
+    )
     drv.click_text("Group:Tool 01")
     drv.draw(3)
     x, y, w, h = drv.rect("error_text")
@@ -380,7 +436,10 @@ def test_typing_into_the_error_text_changes_nothing(drv):
     drv.click_at(x + 40, y + 12)
     drv.type_text("zzz")
     drv.key(keys.KEY_BACKSPACE)
-    assert drv.app.model.error_text == "ImportError: x" and drv.app._error_editor.text == "ImportError: x"
+    assert (
+        drv.app.model.error_text == "ImportError: x"
+        and drv.app._error_editor.text == "ImportError: x"
+    )
 
 
 def test_the_divider_between_the_two_windows_can_be_dragged(drv):
@@ -416,7 +475,13 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
 def test_the_help_text_names_the_controls_and_its_links_are_live(drv):
     drv.click_text("Help")
     shown = " ".join(drv.draw(2).strings)
-    for word in ("Test all plugins", "Skip blacklisted", "Delay between plugins", "pass", "Qt only"):
+    for word in (
+        "Test all plugins",
+        "Skip blacklisted",
+        "Delay between plugins",
+        "pass",
+        "Qt only",
+    ):
         assert word in shown, word
 
 
@@ -430,7 +495,9 @@ def test_guide_button_starts_the_tour_and_its_card_buttons_work(drv):
     assert tour.step_idx == 0
     drv.escape()
     drv.draw(2)
-    drv.click_text("Close Tour", last=True) if tour.active and not _over_table(drv, "Close Tour") else tour.stop()
+    drv.click_text("Close Tour", last=True) if tour.active and not _over_table(
+        drv, "Close Tour"
+    ) else tour.stop()
     assert not tour.active
 
 
@@ -451,7 +518,9 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_awaited_cont
                 drv.click_text("Group:Tool 08")
             elif target.get("name") == "test_safe":
                 drv.click("test_safe")
-            assert not tour.awaiting, f"{step['title']}: operating the control did not release the step"
+            assert not tour.awaiting, (
+                f"{step['title']}: operating the control did not release the step"
+            )
         tour.next()
     wait_done(drv)
     assert not tour.active and seen == ["Pick a plugin", "Run a safe sweep"]
@@ -463,7 +532,9 @@ def test_every_guide_target_is_a_drawn_control(drv):
         target = step.get("target") or {}
         key = target.get("name") or target.get("attr")
         if key:
-            assert drv.app.item_rects.get(key) or drv.app.form.rects.get(key), f"{step['title']}: {key} is not drawn"
+            assert drv.app.item_rects.get(key) or drv.app.form.rects.get(key), (
+                f"{step['title']}: {key} is not drawn"
+            )
 
 
 def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):
@@ -479,10 +550,21 @@ def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):
         assert rect and rect[2] > 0 and rect[3] > 0, step["title"]
         card_w, card_h = min(480.0, BIG[0] - 40.0), 150.0
         x, y = place_tour_card(rect, float(BIG[0]), float(BIG[1]), card_w, card_h)
-        clear = x + card_w <= rect[0] or x >= rect[0] + rect[2] or y + card_h <= rect[1] or y >= rect[1] + rect[3]
-        free_side = (rect[0] + rect[2] + card_w + 16 <= BIG[0] or rect[0] - card_w - 16 >= 0
-                     or rect[1] + rect[3] + card_h + 16 <= BIG[1] or rect[1] - card_h - 16 >= 0)
-        assert clear or not free_side, f"{step['title']}: the card would cover its target although room was free"
+        clear = (
+            x + card_w <= rect[0]
+            or x >= rect[0] + rect[2]
+            or y + card_h <= rect[1]
+            or y >= rect[1] + rect[3]
+        )
+        free_side = (
+            rect[0] + rect[2] + card_w + 16 <= BIG[0]
+            or rect[0] - card_w - 16 >= 0
+            or rect[1] + rect[3] + card_h + 16 <= BIG[1]
+            or rect[1] - card_h - 16 >= 0
+        )
+        assert clear or not free_side, (
+            f"{step['title']}: the card would cover its target although room was free"
+        )
     drv.app.tour.stop()
 
 
@@ -499,9 +581,14 @@ def _card_buttons_per_step(drv):
     for index in range(len(tour.steps)):
         tour.start(index)
         drv.draw(3)
-        tour._step_used = True  # the awaited control was operated: the card's own buttons are what is tested
-        labels = ["Close Tour"] + (["Next ►"] if index < len(tour.steps) - 1 else ["Finish ✓"]) + (
-            ["◄ Prev"] if index else [])
+        tour._step_used = (
+            True  # the awaited control was operated: the card's own buttons are what is tested
+        )
+        labels = (
+            ["Close Tour"]
+            + (["Next ►"] if index < len(tour.steps) - 1 else ["Finish ✓"])
+            + (["◄ Prev"] if index else [])
+        )
         for label in labels:
             if _over_table(drv, label):
                 blocked.append((index, label))
@@ -523,11 +610,16 @@ def _card_buttons_per_step(drv):
 
 def test_every_tour_card_button_that_is_not_over_the_table_works_on_every_step(drv):
     blocked = _card_buttons_per_step(drv)
-    assert len(blocked) < 3 * len(drv.app.tour.steps)  # most buttons are reachable; the rest sit over the table
+    assert len(blocked) < 3 * len(
+        drv.app.tour.steps
+    )  # most buttons are reachable; the rest sit over the table
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: a table claims the press under the tour card although the card's button is drawn "
-                   "later and on top, so Close Tour / Prev / Next over the table never fire; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: a table claims the press under the tour card although the card's button is drawn "
+    "later and on top, so Close Tour / Prev / Next over the table never fire; see REPORT.md section 10",
+)
 def test_no_tour_card_button_is_dead_even_over_the_table(drv):
     assert _card_buttons_per_step(drv) == []
 
@@ -552,7 +644,10 @@ def test_the_whole_flow_works_in_the_small_window_too():
     d.click("test_safe")
     wait_done(d)
     x, y, w, h = d.app.form.rects["check_rows"]
-    rows = sorted((t for t in d.draw(2).texts if t[5].startswith("Group:") and x <= t[0] <= x + w), key=lambda t: t[1])
+    rows = sorted(
+        (t for t in d.draw(2).texts if t[5].startswith("Group:") and x <= t[0] <= x + w),
+        key=lambda t: t[1],
+    )
     d.click(rows[4][:4])  # the fifth row, p04 (the long names are elided in the narrow column)
     assert d.app.model.selected_key == "p04"
     assert details(d)["Status"] == "fail" and "Startup error" in d.draw(2).strings

@@ -36,8 +36,18 @@ TRUE_K2_COLOUR = (200, 200, 200, 160)
 MODEL_OPTIONS = ("cone", "diffusion", "isotropic")
 
 #: The inputs of the model (what ``export_settings`` keeps).
-INPUT_FIELDS = ("model_type", "r_0", "r_Dinf", "r_Ainf", "r_ADinf", "kappa2_true", "fret_efficiency",
-                "step", "n_bins", "rAD_known")
+INPUT_FIELDS = (
+    "model_type",
+    "r_0",
+    "r_Dinf",
+    "r_Ainf",
+    "r_ADinf",
+    "kappa2_true",
+    "fret_efficiency",
+    "step",
+    "n_bins",
+    "rAD_known",
+)
 
 #: What a computation writes (everything else on the model is an input).
 _RESULT_FIELDS = {"k2_mean", "k2_sd", "Rapp_mean", "RappSD", "delta_deg"}
@@ -47,20 +57,26 @@ _SPEC_PATH = Path(__file__).resolve().parent.parent / "k2dist.view.json"
 
 #: The orientation statistics, declared (the Qt Results panel plus the two order parameters).
 RESULTS_TABLE = {
-    "sections": [{
-        "type": "custom",
-        "key": "data_table",
-        "description": "Orientation statistics of the κ² distribution; SD R_app/R_DA is the relative "
-                       "systematic uncertainty on the distance -- the number to quote.",
-        "options": {
-            "source": "result_rows",
-            "editable": False,
-            "columns": [
-                {"key": "quantity", "title": "Quantity", "description": "What is reported."},
-                {"key": "value", "title": "Value", "description": "Its value for the last computation."},
-            ],
-        },
-    }]
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "Orientation statistics of the κ² distribution; SD R_app/R_DA is the relative "
+            "systematic uncertainty on the distance -- the number to quote.",
+            "options": {
+                "source": "result_rows",
+                "editable": False,
+                "columns": [
+                    {"key": "quantity", "title": "Quantity", "description": "What is reported."},
+                    {
+                        "key": "value",
+                        "title": "Value",
+                        "description": "Its value for the last computation.",
+                    },
+                ],
+            },
+        }
+    ]
 }
 
 
@@ -86,8 +102,13 @@ class Kappa2Gui(TourTarget):
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         spec = json.loads(_SPEC_PATH.read_text(encoding="utf-8"))
         # Inputs only: the Results panel is the statistics window, the plot its own window.
-        self.input_spec = {"sections": [s for s in spec["sections"]
-                                        if s.get("type") == "panel" and s.get("title") != "Results"]}
+        self.input_spec = {
+            "sections": [
+                s
+                for s in spec["sections"]
+                if s.get("type") == "panel" and s.get("title") != "Results"
+            ]
+        }
         # The Qt radio row does not wrap in a narrow dock ("Isotropic" was cut at
         # 800 px); a combo with the same labels fits any width.
         for panel in self.input_spec["sections"]:
@@ -95,7 +116,9 @@ class Kappa2Gui(TourTarget):
                 if section.get("type") == "choice":
                     section.pop("style", None)
                 if section.get("type") == "value" and not section.get("read_only"):
-                    section["style"] = "spin"  # the Qt fields were spin boxes: arrows step by the spec's step
+                    section["style"] = (
+                        "spin"  # the Qt fields were spin boxes: arrows step by the spec's step
+                    )
         self.form = FormState()
         self.results_form = FormState()
 
@@ -154,7 +177,6 @@ class Kappa2Gui(TourTarget):
     def show_help(self) -> None:
         self.help_window.show()
 
-
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         vp = im.get_main_viewport()
         width = float(w or vp.size[0] or 860.0)
@@ -183,8 +205,11 @@ class Kappa2Gui(TourTarget):
         self.item_rects.update(self.form.rects)
         im.end_disabled()
 
-        changed = [name for name, before in before_inputs.items()
-                   if getattr(self.model, name, before) != before]
+        changed = [
+            name
+            for name, before in before_inputs.items()
+            if getattr(self.model, name, before) != before
+        ]
         for name in changed:
             self.tour.notify_used(name)
         if changed:
@@ -204,11 +229,21 @@ class Kappa2Gui(TourTarget):
         self.remember("compute")
         im.end_disabled()
         for label, key, tip, action in (
-            ("Save", "save", "Save the κ² distribution and the orientation statistics as CSV "
-                             "(enabled once a distribution is computed).", self.on_save),
+            (
+                "Save",
+                "save",
+                "Save the κ² distribution and the orientation statistics as CSV "
+                "(enabled once a distribution is computed).",
+                self.on_save,
+            ),
             ("Guide", "guide", "A step-by-step walk through the tool.", self.start_guide),
-            ("Help", "help", "The short help page: the three models, the anisotropies to measure "
-                             "first, and reading the result.", self.show_help),
+            (
+                "Help",
+                "help",
+                "The short help page: the three models, the anisotropies to measure "
+                "first, and reading the result.",
+                self.show_help,
+            ),
         ):
             # A narrow dock wraps the row instead of clipping a button at its border.
             if im.get_line_avail() < im.calc_text_size(label)[0] + 24.0:
@@ -324,8 +359,12 @@ class Kappa2App(ImApp):
         if not isinstance(settings, dict):
             return
         model = self.tool._model
-        limits = {s["attr"]: s for p in self.kappa2_gui.input_spec["sections"]
-                  for s in p.get("sections", []) if s.get("attr")}
+        limits = {
+            s["attr"]: s
+            for p in self.kappa2_gui.input_spec["sections"]
+            for s in p.get("sections", [])
+            if s.get("attr")
+        }
         for name in INPUT_FIELDS:
             value = settings.get(name)
             if name == "model_type":
@@ -334,7 +373,11 @@ class Kappa2App(ImApp):
             elif name == "rAD_known":
                 if isinstance(value, bool):
                     model.rAD_known = value
-            elif isinstance(value, (int, float)) and not isinstance(value, bool) and np.isfinite(value):
+            elif (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and np.isfinite(value)
+            ):
                 lo, hi = limits[name].get("minimum"), limits[name].get("maximum")
                 value = min(max(float(value), float(lo)), float(hi))
                 setattr(model, name, int(round(value)) if name == "n_bins" else value)
@@ -359,8 +402,9 @@ def _install_save_dialog(app, write):
     shown: dict = {"dialog": None, "window": None, "error": ""}
 
     def request() -> None:
-        shown["dialog"] = FileDialog("Save κ² distribution", mode="save", filename="kappa2.csv",
-                                     filters="CSV (*.csv)")
+        shown["dialog"] = FileDialog(
+            "Save κ² distribution", mode="save", filename="kappa2.csv", filters="CSV (*.csv)"
+        )
         shown["window"] = DialogWindow("Save κ² distribution", size=(640.0, 480.0))
         shown["error"] = ""
 
@@ -455,8 +499,11 @@ def make_app(kappa2: float = 0.667, **kwargs):
     def draw():
         if pending:
             result = pending.pop()
-            inputs = {k: v for k, v in state._model.__dict__.items() if not k.startswith("_")
-                      and k not in _RESULT_FIELDS}
+            inputs = {
+                k: v
+                for k, v in state._model.__dict__.items()
+                if not k.startswith("_") and k not in _RESULT_FIELDS
+            }
             state._model.__dict__.update(result.__dict__)
             # Keep what the user typed meanwhile; only the results come from the run.
             state._model.__dict__.update(inputs)

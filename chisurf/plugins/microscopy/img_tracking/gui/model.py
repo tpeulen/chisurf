@@ -13,17 +13,37 @@ from ...imaging_emtk.model_base import EmtkModelMixin
 from .view_model import ImgTrackingViewModel
 
 #: Files the Open dialog lists (the Qt dialog's filter).
-IMAGE_FILE_FILTER = "Images and photon streams (*.pto *.tif *.tiff *.ptu *.ht3 *.spc *.hdf *.h5);;All files (*)"
+IMAGE_FILE_FILTER = (
+    "Images and photon streams (*.pto *.tif *.tiff *.ptu *.ht3 *.spc *.hdf *.h5);;All files (*)"
+)
 
 
 class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
     """The tracking analysis plus the state of its emtk window."""
 
     SETTINGS = (
-        "channel", "max_frames", "use_simulation", "sim_n_frames", "sim_size", "sim_n_particles",
-        "sim_diffusion", "sim_amplitude", "sim_background", "sim_seed", "pixel_size", "frame_interval",
-        "method", "threshold", "min_area", "min_separation", "max_distance", "max_frame_gap",
-        "min_track_length", "fit_alpha", "n_bootstrap", "max_drawn_tracks",
+        "channel",
+        "max_frames",
+        "use_simulation",
+        "sim_n_frames",
+        "sim_size",
+        "sim_n_particles",
+        "sim_diffusion",
+        "sim_amplitude",
+        "sim_background",
+        "sim_seed",
+        "pixel_size",
+        "frame_interval",
+        "method",
+        "threshold",
+        "min_area",
+        "min_separation",
+        "max_distance",
+        "max_frame_gap",
+        "min_track_length",
+        "fit_alpha",
+        "n_bootstrap",
+        "max_drawn_tracks",
     )
 
     def __init__(self) -> None:
@@ -55,7 +75,9 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
                     f"± {result.fit.diffusion_coefficient_error:.2g}"
                 )
             else:
-                self.status_line = f"{len(result.tracks)} tracks — no transport fit; see the report."
+                self.status_line = (
+                    f"{len(result.tracks)} tracks — no transport fit; see the report."
+                )
         else:
             self.status_line = "Tracking did not produce a result — see the report."
 
@@ -112,8 +134,12 @@ class TrackingModel(EmtkModelMixin, ImgTrackingViewModel):
         if self.result is None:
             return []
         return [
-            {"track": int(r["track"]), "length": int(r["length"]), "frames": f"{r['first']}–{r['last']}",
-             "net": float(r["net"])}
+            {
+                "track": int(r["track"]),
+                "length": int(r["length"]),
+                "frames": f"{r['first']}–{r['last']}",
+                "net": float(r["net"]),
+            }
             for r in self.result.tracks_table()[:500]
         ]
 

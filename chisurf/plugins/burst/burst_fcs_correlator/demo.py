@@ -34,10 +34,19 @@ def photon_stream(seed: int = SEED, n_bursts: int = N_BURSTS):
         centre = t0 + 370_000  # a burst 10 ms (370 000 ticks) long, its envelope 1 ms wide
         width = 74_000 * (0.7 + 0.6 * rng.random())
         n = PHOTONS_PER_BURST
-        times = np.sort(np.concatenate([rng.normal(centre, width, int(0.8 * n)), rng.uniform(t0, t0 + 740_000, n - int(0.8 * n))]))
+        times = np.sort(
+            np.concatenate(
+                [
+                    rng.normal(centre, width, int(0.8 * n)),
+                    rng.uniform(t0, t0 + 740_000, n - int(0.8 * n)),
+                ]
+            )
+        )
         times = np.clip(times, t0, t0 + 740_000).astype(np.uint64)
         macro.append(times)
-        micro.append(np.clip(rng.exponential(LIFETIME_S / MICRO_RES, n), 0, N_MICRO - 1).astype(np.uint16))
+        micro.append(
+            np.clip(rng.exponential(LIFETIME_S / MICRO_RES, n), 0, N_MICRO - 1).astype(np.uint16)
+        )
         routing.append(rng.integers(0, 2, n).astype(np.int8))
         ranges.append((index, index + n - 1))
         index += n

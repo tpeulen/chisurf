@@ -15,7 +15,13 @@ import pytest
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
 # isort: off
-from test.gui.emtk_layout_checks import SIZES, assert_aligned, assert_disjoint, assert_icons_clear, assert_texts_apart  # noqa: E402
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_aligned,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_texts_apart,
+)  # noqa: E402
 from chisurf.plugins.traj.traj_save_topology.test.real_input import hermetic  # noqa: E402,F401
 from chisurf.plugins.tttr.microtime_histogram.tests.test_emtk_histogram_clicks import SETUP, SPC, Ui  # noqa: E402
 from chisurf.plugins.tttr.microtime_histogram.gui.app import create_app  # noqa: E402
@@ -37,7 +43,7 @@ def ui(request, tmp_path):
 
 
 def left_edge_of_plot(ui):
-    return ui.app.item_rects["plot"][0] - 70       # the axis labels start left of the plot item
+    return ui.app.item_rects["plot"][0] - 70  # the axis labels start left of the plot item
 
 
 def test_the_run_buttons_are_always_inside_the_dock_without_scrolling(ui):
@@ -49,14 +55,32 @@ def test_the_run_buttons_are_always_inside_the_dock_without_scrolling(ui):
 
 
 def test_every_option_field_lies_inside_the_dock_and_the_window(ui):
-    for name in ("detector", "parallel_text", "perpendicular_text", "window", "filetype", "binning", "dt_ns", "g_factor",
-                 "vv_shift", "vh_shift", "output", "polarization", "polarized", "photon_files", "photon_list"):
+    for name in (
+        "detector",
+        "parallel_text",
+        "perpendicular_text",
+        "window",
+        "filetype",
+        "binning",
+        "dt_ns",
+        "g_factor",
+        "vv_shift",
+        "vh_shift",
+        "output",
+        "polarization",
+        "polarized",
+        "photon_files",
+        "photon_list",
+    ):
         x, y, w, h = ui.app.item_rects[name]
         assert x >= 0 and x + w <= left_edge_of_plot(ui) + 5, (name, ui.app.item_rects[name])
 
 
 def test_inputs_start_in_one_caption_column(ui):
-    assert_aligned(ui.app.item_rects, ["parallel_text", "perpendicular_text", "detector", "window", "filetype", "binning"])
+    assert_aligned(
+        ui.app.item_rects,
+        ["parallel_text", "perpendicular_text", "detector", "window", "filetype", "binning"],
+    )
     assert_aligned(ui.app.item_rects, ["dt_ns", "g_factor", "vv_shift", "vh_shift"])
 
 

@@ -108,9 +108,7 @@ class RegionMleApp(ImApp):
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
         self.form.on_used = self._used
-        self.docks = DockManager(
-            Split("h", 0.34, Region("analysis"), Region("results"))
-        )
+        self.docks = DockManager(Split("h", 0.34, Region("analysis"), Region("results")))
         for key, section, draw in zip(
             ("analysis", "regions", "decay"),
             self.windows,
@@ -207,12 +205,16 @@ class RegionMleApp(ImApp):
     def _draw_analysis(self, box: Any) -> None:
         if im.button("Help"):
             self.help_window.show()
-        im.set_item_tooltip("Explain what the fit does, what a region needs and how to read the decay.")
+        im.set_item_tooltip(
+            "Explain what the fit does, what a region needs and how to read the decay."
+        )
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
         if im.button("Guide"):
             self.tour.start()
-        im.set_item_tooltip("Walk through the demo: load it, preview the regions, run and read a decay.")
+        im.set_item_tooltip(
+            "Walk through the demo: load it, preview the regions, run and read a decay."
+        )
         self.item_rects["guide"] = im.get_item_rect()
         im.separator()
         # The analysis form: the panel of the first window, drawn in place.
@@ -229,8 +231,9 @@ class RegionMleApp(ImApp):
         draw_sections([self.windows[2]], self.model, self.form)
 
     # ── custom section: a list of files ────────────────────────────────
-    def _draw_path_list(self, section: dict, model: RegionMleModel, state: FormState,
-                        width: float) -> None:
+    def _draw_path_list(
+        self, section: dict, model: RegionMleModel, state: FormState, width: float
+    ) -> None:
         """The CLSM or IRF file list with Add, Database, Remove and Clear."""
         target = section["target"]
         title = section.get("title", target)
@@ -250,15 +253,34 @@ class RegionMleApp(ImApp):
         room = im.get_content_region_avail()[0]
         used = 0.0
         for label, tip, needs_files, act in (
-            ("Add files", "Choose photon files to add." if target == "sel_files"
-             else "Choose the IRF measurement.", False,
-             lambda: setattr(self.model, "dialog", section.get("options", {}).get("add", "add_files"))),
-            ("Database", "Pick a registered photon dataset from the MMFDB catalogue.", False,
-             lambda: self._open_picker(target)),
-            ("Remove", "Remove the selected file from the list.", True,
-             lambda: self._remove_path(target, index)),
-            ("Clear", "Empty the list without deleting any file.", True,
-             lambda: self._clear_paths(target)),
+            (
+                "Add files",
+                "Choose photon files to add."
+                if target == "sel_files"
+                else "Choose the IRF measurement.",
+                False,
+                lambda: setattr(
+                    self.model, "dialog", section.get("options", {}).get("add", "add_files")
+                ),
+            ),
+            (
+                "Database",
+                "Pick a registered photon dataset from the MMFDB catalogue.",
+                False,
+                lambda: self._open_picker(target),
+            ),
+            (
+                "Remove",
+                "Remove the selected file from the list.",
+                True,
+                lambda: self._remove_path(target, index),
+            ),
+            (
+                "Clear",
+                "Empty the list without deleting any file.",
+                True,
+                lambda: self._clear_paths(target),
+            ),
         ):
             width = im.calc_text_size(label)[0] + 16.0
             if used and used + 6.0 + width <= room:
@@ -289,8 +311,9 @@ class RegionMleApp(ImApp):
         self.model.add_paths(self.picker_target, [str(p) for p in paths])
 
     # ── custom section: the analysis region ────────────────────────────
-    def _draw_region_list(self, section: dict, model: RegionMleModel, state: FormState,
-                          width: float) -> None:
+    def _draw_region_list(
+        self, section: dict, model: RegionMleModel, state: FormState, width: float
+    ) -> None:
         """Named regions the fit is confined to (add, edit, combine, save, load)."""
         im.text_unformatted(section.get("title", "Analysis region"))
         im.set_item_tooltip(section.get("description", ""))
@@ -310,8 +333,13 @@ class RegionMleApp(ImApp):
             labels = []
             for entry in found:
                 roi = entry.roi
-                labels.append({"text": str(entry.name).rsplit(" ", 1)[-1],
-                               "x": float(roi.cx), "y": float(roi.cy)})
+                labels.append(
+                    {
+                        "text": str(entry.name).rsplit(" ", 1)[-1],
+                        "x": float(roi.cx),
+                        "y": float(roi.cy),
+                    }
+                )
             self._view = dict(
                 entries=model.molecule_entries(),
                 image=model.segmentation_image(),
@@ -324,14 +352,18 @@ class RegionMleApp(ImApp):
             self.canvas.reset()
         return self._view
 
-    def _draw_image_browser(self, section: dict, model: RegionMleModel, state: FormState,
-                            width: float) -> None:
+    def _draw_image_browser(
+        self, section: dict, model: RegionMleModel, state: FormState, width: float
+    ) -> None:
         """Filterable region list with its fit summary, and the image with region overlays."""
         view = self._view_of_results()
         entries = view["entries"]
-        _, self.region_filter = im.input_text("Filter regions", self.region_filter,
-                                              hint="Region name")
-        im.set_item_tooltip("Show only regions whose name contains this text; the image is unchanged.")
+        _, self.region_filter = im.input_text(
+            "Filter regions", self.region_filter, hint="Region name"
+        )
+        im.set_item_tooltip(
+            "Show only regions whose name contains this text; the image is unchanged."
+        )
         shown = [e for e in entries if self.region_filter.casefold() in e["label"].casefold()]
         if shown:
             current = next((i for i, e in enumerate(shown) if e["id"] == model.current_molecule), 0)
@@ -361,8 +393,9 @@ class RegionMleApp(ImApp):
         )
 
     # ── custom section: the decay ──────────────────────────────────────
-    def _draw_decay_panel(self, section: dict, model: RegionMleModel, state: FormState,
-                          width: float) -> None:
+    def _draw_decay_panel(
+        self, section: dict, model: RegionMleModel, state: FormState, width: float
+    ) -> None:
         """Weighted residuals above the log decay, sharing the channel axis."""
         curves = self._view_of_results()["curves"]
         if curves is None:
@@ -377,14 +410,18 @@ class RegionMleApp(ImApp):
         height = max(120.0, im.get_content_region_avail()[1] - 6.0)
         x_label = section.get("options", {}).get("x_label", "channel")
         if implot.begin_aligned_plots("decay_aligned"):
-            if implot.begin_plot("##decay_residuals", (-1.0, height * 0.30),
-                                 implot.FLAGS_NO_LEGEND):
+            if implot.begin_plot(
+                "##decay_residuals", (-1.0, height * 0.30), implot.FLAGS_NO_LEGEND
+            ):
                 implot.setup_axes("", "Residuals")
                 implot.setup_axis_links(implot.AXIS_X1, self._decay_xlim)
                 lo, hi = curves.residual_ylim
                 implot.setup_axis_limits(implot.AXIS_Y1, float(lo), float(hi), implot.COND_ONCE)
-                implot.plot_line("residuals", np.asarray(curves.channels, float),
-                                 np.asarray(curves.residuals, float))
+                implot.plot_line(
+                    "residuals",
+                    np.asarray(curves.channels, float),
+                    np.asarray(curves.residuals, float),
+                )
                 implot.end_plot()
             self.item_rects["Decay"] = state.rects["current_region_curves"] = im.get_item_rect()
             im.set_item_tooltip(
@@ -402,8 +439,9 @@ class RegionMleApp(ImApp):
                 implot.plot_line("Model (fit)", x, np.asarray(curves.model, float))
                 for name, values in (("IRF", curves.irf), ("Background", curves.background)):
                     if values is not None:
-                        implot.plot_line(name, np.arange(len(values), dtype=float),
-                                         np.asarray(values, float))
+                        implot.plot_line(
+                            name, np.arange(len(values), dtype=float), np.asarray(values, float)
+                        )
                 implot.end_plot()
             implot.end_aligned_plots()
 

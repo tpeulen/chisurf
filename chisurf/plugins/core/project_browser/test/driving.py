@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import time
 
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter, hermetic_env  # noqa: F401
+from chisurf.plugins.microscopy.imaging_emtk.testing import (  # noqa: F401
+    Driver,
+    MetricPainter,
+    hermetic_env,
+)
 
 BIG = (1200, 800)
 SMALL = (800, 600)
@@ -118,7 +122,9 @@ def layout_problems(painter, size, ignore=()):
             problems.append(f"outside the window: {s!r} {tuple(round(v) for v in rect)}")
         visible.append((rect, s))
     for i, (a, sa) in enumerate(visible):
-        for b, sb in visible[i + 1:]:
+        for b, sb in visible[i + 1 :]:
             if overlaps(a, b, 2.0):
-                problems.append(f"overlap: {sa!r} {tuple(round(v) for v in a)} with {sb!r} {tuple(round(v) for v in b)}")
+                problems.append(
+                    f"overlap: {sa!r} {tuple(round(v) for v in a)} with {sb!r} {tuple(round(v) for v in b)}"
+                )
     return problems

@@ -55,7 +55,9 @@ def app(catalogue):
     app.controller.auto_update = False
     yield app
     app.close()
-    app.controller._executor.shutdown(wait=True)  # a catalogue call still in flight would read the next test's environment
+    app.controller._executor.shutdown(
+        wait=True
+    )  # a catalogue call still in flight would read the next test's environment
 
 
 def load_catalogue(app):
@@ -85,7 +87,9 @@ def qt_tool(catalogue, monkeypatch):
     qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     from chisurf.plugins.core.lightpath_simulator.api.client import LightPathClient
 
-    monkeypatch.setattr(LightPathClient, "from_settings", classmethod(lambda cls, timeout_ms=0: in_process_client()))
+    monkeypatch.setattr(
+        LightPathClient, "from_settings", classmethod(lambda cls, timeout_ms=0: in_process_client())
+    )
     name = "chisurf.plugins.core.lightpath_simulator.gui.qt_original"
     loader = importlib.machinery.SourceFileLoader(name, str(QT_SOURCE))
     spec = importlib.util.spec_from_loader(name, loader)
@@ -114,31 +118,53 @@ def qt_tool(catalogue, monkeypatch):
 # -- numbers: the same graph, the same catalogue, the same results ------------------------------------------ #
 
 
-def test_the_qt_tool_and_the_native_window_simulate_the_same_graph_to_the_same_numbers(app, qt_tool, catalogue):
+def test_the_qt_tool_and_the_native_window_simulate_the_same_graph_to_the_same_numbers(
+    app, qt_tool, catalogue
+):
     populated(app, catalogue)
-    assert [n.type for n in app.controller.document.nodes] == [n.type for n in qt_tool.graph_widget.document.nodes]
+    assert [n.type for n in app.controller.document.nodes] == [
+        n.type for n in qt_tool.graph_widget.document.nodes
+    ]
     assert len(app.controller.probes) == len(qt_tool.probes) == 7
     native = app.controller.result
     assert native["detector_signals"] == qt_tool._last_detector_signals
     for kind in ("excitation", "emission", "detected"):
-        assert native["crosstalk_matrices"][kind]["values"] == qt_tool._last_crosstalk_matrices[kind]["values"]
-        assert native["crosstalk_matrices"][kind]["rows"] == qt_tool._last_crosstalk_matrices[kind]["rows"]
-        assert native["crosstalk_matrices"][kind]["columns"] == qt_tool._last_crosstalk_matrices[kind]["columns"]
+        assert (
+            native["crosstalk_matrices"][kind]["values"]
+            == qt_tool._last_crosstalk_matrices[kind]["values"]
+        )
+        assert (
+            native["crosstalk_matrices"][kind]["rows"]
+            == qt_tool._last_crosstalk_matrices[kind]["rows"]
+        )
+        assert (
+            native["crosstalk_matrices"][kind]["columns"]
+            == qt_tool._last_crosstalk_matrices[kind]["columns"]
+        )
 
 
 def test_the_result_tables_hold_the_cells_the_qt_tables_showed(app, qt_tool, catalogue):
     populated(app, catalogue)
-    tabs = {"Signals": app.panel.signals, "Excitation": app.panel.excitation, "Emission": app.panel.emission, "Detected": app.panel.detected}
+    tabs = {
+        "Signals": app.panel.signals,
+        "Excitation": app.panel.excitation,
+        "Emission": app.panel.emission,
+        "Detected": app.panel.detected,
+    }
     for index, (name, table) in enumerate(tabs.items()):
         qt = qt_tool.results_tabs.widget(index)
         assert qt_tool.results_tabs.tabText(index) == name
         qt_header = [qt.horizontalHeaderItem(c).text() for c in range(qt.columnCount())]
-        qt_cells = [[qt.item(r, c).text() for c in range(qt.columnCount())] for r in range(qt.rowCount())]
+        qt_cells = [
+            [qt.item(r, c).text() for c in range(qt.columnCount())] for r in range(qt.rowCount())
+        ]
         rows = table.rows()
         if name == "Signals":
             keys = ["laser", "detector", "dye", "intensity"]
             assert qt_header == ["Laser Source", "Detector Name", "Dye", "Detected Intensity"]
-            assert [[r[k] if k != "intensity" else f"{r[k]:.4e}" for k in keys] for r in rows] == qt_cells
+            assert [
+                [r[k] if k != "intensity" else f"{r[k]:.4e}" for k in keys] for r in rows
+            ] == qt_cells
         else:
             columns = table.columns()
             assert [c["title"] for c in columns[1:]] == qt_header
@@ -159,7 +185,9 @@ def test_the_toolbar_has_every_qt_action_with_the_qt_tooltips(app, qt_tool):
     spec = {b["label"]: b["description"] for b in SPEC["toolbar"]["sections"][0]["buttons"]}
     assert set(qt_actions) <= set(spec) | {"Save to MMFDB"}
     for label, tip in qt_actions.items():
-        assert spec[label].split(".")[0].lower().split()[-1] in tip.lower() or label in spec  # present with a description
+        assert (
+            spec[label].split(".")[0].lower().split()[-1] in tip.lower() or label in spec
+        )  # present with a description
 
 
 def test_the_default_path_is_the_qt_default_path(app, qt_tool, catalogue):
@@ -170,7 +198,9 @@ def test_the_default_path_is_the_qt_default_path(app, qt_tool, catalogue):
     assert sorted(sample.config["probe_ids"]) == sorted(qt_sample.config["probe_ids"])
     splitter = next(n for n in app.controller.document.nodes if n.type == "splitter")
     qt_splitter = next(n for n in qt_tool.graph_widget.document.nodes if n.type == "splitter")
-    assert splitter.config["probe_id"] == qt_splitter.config["probe_id"] == catalogue["561LP dichroic"]
+    assert (
+        splitter.config["probe_id"] == qt_splitter.config["probe_id"] == catalogue["561LP dichroic"]
+    )
 
 
 def test_a_saved_graph_loads_to_the_same_nodes_in_both(app, qt_tool, catalogue, tmp_path):
@@ -179,7 +209,9 @@ def test_a_saved_graph_loads_to_the_same_nodes_in_both(app, qt_tool, catalogue, 
     app.controller.save_graph(path)
     saved = json.loads(path.read_text())
     qt_tool.load_graph_from_dict(saved)
-    assert sorted(n.id for n in qt_tool.graph_widget.document.nodes) == sorted(n["id"] for n in saved["nodes"])
+    assert sorted(n.id for n in qt_tool.graph_widget.document.nodes) == sorted(
+        n["id"] for n in saved["nodes"]
+    )
 
 
 # -- spec, tooltips, Qt-free ------------------------------------------------------------------------------ #
@@ -204,10 +236,18 @@ def test_every_section_button_and_column_of_the_spec_has_a_description():
                 missing.append(("section", kind, node.get("attr") or node.get("key")))
         if "action" in node and not node.get("description"):
             missing.append(("button", node["action"]))
-        if "key" in node and "title" in node and "options" not in node and not node.get("description") and node.get("type") != "custom":
+        if (
+            "key" in node
+            and "title" in node
+            and "options" not in node
+            and not node.get("description")
+            and node.get("type") != "custom"
+        ):
             missing.append(("column", node["key"]))
         if "items" in node:
-            missing += [("toggle", i.get("attr")) for i in node["items"] if not i.get("description")]
+            missing += [
+                ("toggle", i.get("attr")) for i in node["items"] if not i.get("description")
+            ]
     assert not missing, missing
 
 
@@ -239,7 +279,9 @@ def test_draws_and_the_layout_is_clean(app, catalogue, size, state):
     strings = painter.strings
     assert "Optical Path" in strings and "Calculate Emission Intensity" in strings
     canvas = app.item_rects["graph"]
-    problems = layout_problems(painter, size, ignore=[canvas]) + clipped_texts(painter, ignore=[canvas])
+    problems = layout_problems(painter, size, ignore=[canvas]) + clipped_texts(
+        painter, ignore=[canvas]
+    )
     # The tables scroll sideways by design; everything else must be whole.
     problems = [p for p in problems if "Detected Intensity" not in p and "Förster radius" not in p]
     assert not problems, problems[:6]
@@ -268,7 +310,11 @@ def test_settings_round_trip_and_garbage_is_ignored(app):
     app.controller.db_path = "/x/y.sqlite"
     app.graph_control.show_minimap = False
     saved = app.export_settings()
-    assert saved["auto_update"] is False and saved["db_path"] == "/x/y.sqlite" and saved["minimap"] is False
+    assert (
+        saved["auto_update"] is False
+        and saved["db_path"] == "/x/y.sqlite"
+        and saved["minimap"] is False
+    )
     from chisurf.plugins.core.lightpath_simulator.gui.app import create_app
 
     other = create_app(client=in_process_client())

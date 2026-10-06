@@ -42,7 +42,12 @@ def overlap(a, b):
 
 
 def inside(rect, box):
-    return rect[0] >= box[0] - 1 and rect[1] >= box[1] - 1 and rect[0] + rect[2] <= box[0] + box[2] + 1 and rect[1] + rect[3] <= box[1] + box[3] + 1
+    return (
+        rect[0] >= box[0] - 1
+        and rect[1] >= box[1] - 1
+        and rect[0] + rect[2] <= box[0] + box[2] + 1
+        and rect[1] + rect[3] <= box[1] + box[3] + 1
+    )
 
 
 @pytest.mark.parametrize("size", SIZES)
@@ -54,7 +59,9 @@ def test_the_image_area_gets_most_of_the_window(app, photon_folder, size):
     assert plot_share >= (0.40 if size[0] >= 1200 else 0.30), plot_share
     # the window that holds the controls, the mosaic and the histogram: more than half of the frame
     display = app.form.rects["colormap"]
-    window_share = (size[0] - display[0]) * (size[1] - app.form.rects["colormap"][1]) / (size[0] * size[1])
+    window_share = (
+        (size[0] - display[0]) * (size[1] - app.form.rects["colormap"][1]) / (size[0] * size[1])
+    )
     assert window_share >= 0.55, window_share
     assert x > 0 and inside((x, y, w, h), (0, 0, *size)) and inside(levels, (0, 0, *size))
 
@@ -64,8 +71,15 @@ def test_no_text_is_clipped_or_overlaps_other_text(app, photon_folder, size):
     drv = populated(app, photon_folder, size)
     texts = [t for t in drv.draw(1).texts if str(t[5]).strip()]
     image, levels = app.item_rects["image"], app.item_rects["levels"]
-    vertical = {"y [px]", "level"}  # axis titles drawn turned: the recorder reports their unturned box
-    widgets = [t for t in texts if not (inside(t[:4], image) or inside(t[:4], levels)) and t[5] not in vertical]
+    vertical = {
+        "y [px]",
+        "level",
+    }  # axis titles drawn turned: the recorder reports their unturned box
+    widgets = [
+        t
+        for t in texts
+        if not (inside(t[:4], image) or inside(t[:4], levels)) and t[5] not in vertical
+    ]
     for t in widgets:
         assert inside(t[:4], (0, 0, *size)), f"{t[5]!r} leaves the window"
     for i, a in enumerate(widgets):
@@ -92,23 +106,47 @@ def test_a_zoomed_tile_shows_its_whole_label(app, photon_folder):
     for _ in range(8):
         drv.wheel(cx, cy, 1)
     full = [t[5] for t in drv.draw(1).texts if str(t[5]).startswith("green")]
-    assert len(short) < len("green  |  mt: 0-4095  |  ch: 0,1") and full and len(full[0]) >= len(short)
+    assert (
+        len(short) < len("green  |  mt: 0-4095  |  ch: 0,1") and full and len(full[0]) >= len(short)
+    )
 
 
 @pytest.mark.parametrize("size", SIZES)
 def test_button_labels_fit_their_buttons(app, photon_folder, size):
     drv = populated(app, photon_folder, size)
     painter = drv.draw(1)
-    for action in ("choose_folder", "clear", "clear_caches", "copy_files", "export_tiff", "export_docx", "next_step", "show_help", "start_guide", "select_all_files", "reset_view"):
+    for action in (
+        "choose_folder",
+        "clear",
+        "clear_caches",
+        "copy_files",
+        "export_tiff",
+        "export_docx",
+        "next_step",
+        "show_help",
+        "start_guide",
+        "select_all_files",
+        "reset_view",
+    ):
         rect = app.form.rects[action]
-        label = next(t for t in painter.texts if t[5] and inside(t[:4], (rect[0] - 2, rect[1] - 2, rect[2] + 4, rect[3] + 4)))
+        label = next(
+            t
+            for t in painter.texts
+            if t[5] and inside(t[:4], (rect[0] - 2, rect[1] - 2, rect[2] + 4, rect[3] + 4))
+        )
         assert label[2] <= rect[2] + 1, f"{action}: the caption is wider than its button"
 
 
 @pytest.mark.parametrize("size", SIZES)
 def test_short_inputs_are_not_stretched(app, photon_folder, size):
     populated(app, photon_folder, size)
-    for name, widest in (("gamma", 150), ("level_low", 150), ("level_high", 150), ("colormap", 200), ("rating_filter", 200)):
+    for name, widest in (
+        ("gamma", 150),
+        ("level_low", 150),
+        ("level_high", 150),
+        ("colormap", 200),
+        ("rating_filter", 200),
+    ):
         assert app.form.rects[name][2] <= widest, (name, app.form.rects[name])
 
 
@@ -122,7 +160,10 @@ def test_the_windows_do_not_overlap_and_fill_the_frame(app, photon_folder, size)
     assert toolbar[1] + toolbar[3] <= files[1] and toolbar[1] + toolbar[3] <= display[1]
     assert files[0] + files[2] <= display[0]  # the file column is left of the display controls
     status = app.item_rects["status"]
-    assert status[1] + status[3] <= size[1] and app.item_rects["image"][1] + app.item_rects["image"][3] <= status[1]
+    assert (
+        status[1] + status[3] <= size[1]
+        and app.item_rects["image"][1] + app.item_rects["image"][3] <= status[1]
+    )
 
 
 @pytest.mark.parametrize("size", SIZES)
@@ -154,7 +195,13 @@ def test_a_narrow_window_still_shows_every_control(app, photon_folder):
     drv = populated(app, photon_folder, (500, 500))
     drv.draw(2, size=(500, 500))
     strings_ = strings(drv)
-    for caption in ("Open folder", "Copy raw files", "Include subfolders", "Colormap", "Reset view"):
+    for caption in (
+        "Open folder",
+        "Copy raw files",
+        "Include subfolders",
+        "Colormap",
+        "Reset view",
+    ):
         assert caption in strings_, caption
 
 

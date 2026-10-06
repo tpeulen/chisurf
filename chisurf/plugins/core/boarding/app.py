@@ -107,7 +107,9 @@ class BoardingApp(ImApp):
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(Split("h", 0.22, Region("steps"), Region("page"), min_size=165.0))
         self.docks.add_window("steps", tr("Steps"), self.draw_steps, dock="steps", closable=False)
-        self.docks.add_window("page", tr("Welcome to ChiSurf"), self.draw_page, dock="page", closable=False)
+        self.docks.add_window(
+            "page", tr("Welcome to ChiSurf"), self.draw_page, dock="page", closable=False
+        )
         super().__init__(gui=self.render)
 
     # ----------------------------------------------------------- the editors
@@ -198,7 +200,9 @@ class BoardingApp(ImApp):
         text = getattr(model, source)()
         im.markdown(text)
 
-    def _draw_repair_status(self, section: dict, model: Any, state: FormState, width: float) -> None:
+    def _draw_repair_status(
+        self, section: dict, model: Any, state: FormState, width: float
+    ) -> None:
         if model.repair_message:
             im.text_colored(_OK if model.repair_ok else _FAILED, model.repair_message)
 

@@ -71,12 +71,16 @@ class CalibrationApp(TourTarget, ImApp):
         self.dataset_picker = DatasetPicker(on_paths=self.add_irfs)
         self.plot_limits = None
         self.help = EmTkHelpWindow(
-            title="IRF & BG — Help", resource=HERE / "help.md", owner=self, on_start_guide=self.start_guide
+            title="IRF & BG — Help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
         )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
-            owner=self, wait_for_controls=True,
+            owner=self,
+            wait_for_controls=True,
         )
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(Split("h", 0.32, Region("controls"), Region("plot")))
@@ -95,7 +99,10 @@ class CalibrationApp(TourTarget, ImApp):
         self.dialog = FileDialog(
             label("Open TTTR" if action == "source" else "Add IRF"),
             mode="open",
-            filters=[("Photon data", ["*.pto", "*.ptu", "*.ht3", "*.spc", "*.pt3"]), ("All files", ["*"])],
+            filters=[
+                ("Photon data", ["*.pto", "*.ptu", "*.ht3", "*.spc", "*.pt3"]),
+                ("All files", ["*"]),
+            ],
             multiselect=action == "irf",
         )
         self.dialog_window = DialogWindow(
@@ -197,13 +204,27 @@ class CalibrationApp(TourTarget, ImApp):
             action()
 
     def controls(self, box):
-        self.remember("controls", tuple(box))             # the dock's box: what must hold the toolbar
+        self.remember("controls", tuple(box))  # the dock's box: what must hold the toolbar
         toolbar = (
             ("Guide", self.start_guide, "A walk through calibrating one detector.", "guide"),
-            ("Help", self.help.show, "What the windows and backgrounds mean, and where they go.", "help"),
-            ("Open TTTR…", lambda: self.choose("source"), "Open the source photon data whose decay is shown.",
-             "open_source"),
-            ("Refresh", self.retry, "Bin the histograms again after correcting the source files.", "refresh"),
+            (
+                "Help",
+                self.help.show,
+                "What the windows and backgrounds mean, and where they go.",
+                "help",
+            ),
+            (
+                "Open TTTR…",
+                lambda: self.choose("source"),
+                "Open the source photon data whose decay is shown.",
+                "open_source",
+            ),
+            (
+                "Refresh",
+                self.retry,
+                "Bin the histograms again after correcting the source files.",
+                "refresh",
+            ),
         )
         self.button_row(toolbar)
         im.text_wrapped(self.model.filename or label("Choose source photon data"))
@@ -212,28 +233,45 @@ class CalibrationApp(TourTarget, ImApp):
             im.text_wrapped(label("Configure detector windows in Imaging Tools"))
         self.form.rects.clear()
         im.begin_disabled(not self.model.window_names())
-        draw_form(self.spec, self.model, self.form)          # the spec the Qt tool renders
+        draw_form(self.spec, self.model, self.form)  # the spec the Qt tool renders
         im.end_disabled()
         self.item_rects.update(self.form.rects)
         if self.coordinator is not None:
-            self.button("Next ▶", self.next_step, "Apply and advance the imaging pipeline.", key="next")
+            self.button(
+                "Next ▶", self.next_step, "Apply and advance the imaging pipeline.", key="next"
+            )
         if self.busy:
             im.text_disabled(label("Binning histograms…"))
-        for message in (self.error, self.apply_error):       # shown while binning too
+        for message in (self.error, self.apply_error):  # shown while binning too
             if message:
                 im.text_colored(ERROR, message)
 
     def draw_irf_files(self, section, model, state, width):
         """The spec's IRF file list: this detector's files, summed into its IRF."""
         im.text(str(section.get("title") or "IRF files"))
-        self.button_row((
-            ("Files…", lambda: self.choose("irf"), "Add IRF photon files for this detector; they are summed.",
-             "add_irf"),
-            ("Database…", self.dataset_picker.open, "Pick IRF files from the MMFDB object store.", "database_irf"),
-            ("Remove", self.remove_irf, "Remove the selected IRF file.", "remove_irf"),
-            ("Clear", lambda: setattr(self.model, "sel_irf_files", []), "Clear this detector's IRF files.",
-             "clear_irf"),
-        ))
+        self.button_row(
+            (
+                (
+                    "Files…",
+                    lambda: self.choose("irf"),
+                    "Add IRF photon files for this detector; they are summed.",
+                    "add_irf",
+                ),
+                (
+                    "Database…",
+                    self.dataset_picker.open,
+                    "Pick IRF files from the MMFDB object store.",
+                    "database_irf",
+                ),
+                ("Remove", self.remove_irf, "Remove the selected IRF file.", "remove_irf"),
+                (
+                    "Clear",
+                    lambda: setattr(self.model, "sel_irf_files", []),
+                    "Clear this detector's IRF files.",
+                    "clear_irf",
+                ),
+            )
+        )
         top = im.get_cursor_screen_pos()
         for index, path in enumerate(self.model.sel_irf_files):
             if im.selectable(Path(path).name + "##irf" + str(index), index == self.file_selection):
@@ -241,7 +279,10 @@ class CalibrationApp(TourTarget, ImApp):
             im.set_item_tooltip(path)
         if not self.model.sel_irf_files:
             im.text_disabled(label("No IRF file: the raw data are used"))
-        self.remember("path_list", (top[0], top[1] - 24.0, width, im.get_cursor_screen_pos()[1] - top[1] + 24.0))
+        self.remember(
+            "path_list",
+            (top[0], top[1] - 24.0, width, im.get_cursor_screen_pos()[1] - top[1] + 24.0),
+        )
 
     def remove_irf(self):
         files = self.model.sel_irf_files
@@ -267,7 +308,9 @@ class CalibrationApp(TourTarget, ImApp):
             top = max(float(np.max(data["data"])), 1.0) * 2.0
             limits = (0.0, float(data["n"]), 0.5, top)
             # ALWAYS when the data change, ONCE after (a first ONCE on a drawn plot is ignored -- known issue).
-            implot.setup_axes_limits(*limits, cond=implot.COND_ALWAYS if limits != self.plot_limits else implot.COND_ONCE)
+            implot.setup_axes_limits(
+                *limits, cond=implot.COND_ALWAYS if limits != self.plot_limits else implot.COND_ONCE
+            )
             self.plot_limits = limits
             x = np.arange(data["n"], dtype=float)
             implot.plot_line(label("Decay"), x, np.maximum(data["data"], 0.1))

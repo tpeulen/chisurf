@@ -19,6 +19,7 @@ icon = "🔢"
 def load():
     """Return the setup channel definition widget."""
     from .gui.tool import SetupChannelDefinitionWidget
+
     return SetupChannelDefinitionWidget()
 
 
@@ -30,15 +31,18 @@ __all__ = [
     "icon",
 ]
 
+
 def __getattr__(name):
-    if name == 'SetupChannelDefinitionWidget':
+    if name == "SetupChannelDefinitionWidget":
         from .gui.tool import SetupChannelDefinitionWidget
+
         return SetupChannelDefinitionWidget
     raise AttributeError(name)
 
 
 if __name__ == "plugin":
     from .gui.tool import SetupChannelDefinitionWidget
+
     try:
         parent = getattr(cs, "cs", None)
         window = SetupChannelDefinitionWidget(parent=parent)

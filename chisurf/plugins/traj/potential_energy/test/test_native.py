@@ -147,7 +147,9 @@ def test_native_control_tooltips_in_all_locales(monkeypatch):
         return original(text, *args, **kwargs)
 
     monkeypatch.setattr(im, "set_item_tooltip", capture)
-    monkeypatch.setattr(im_widgets, "set_item_tooltip", capture)      # the spec-drawn fields tooltip through here
+    monkeypatch.setattr(
+        im_widgets, "set_item_tooltip", capture
+    )  # the spec-drawn fields tooltip through here
     try:
         for locale in ("en", "de", "fr", "es", "pt", "ru"):
             set_locale(locale)

@@ -98,7 +98,10 @@ def hetero_state(m):
 
 
 def homo_state(m):
-    return {k: getattr(m, k) for k in ("tau0", "R0", "t_RM", "rho", "sigma", "k_homo", "R_DA", "use_chi")}
+    return {
+        k: getattr(m, k)
+        for k in ("tau0", "R0", "t_RM", "rho", "sigma", "k_homo", "R_DA", "use_chi")
+    }
 
 
 # -- the Qt tool, built from the committed source -------------------------------------------- #
@@ -135,9 +138,16 @@ def qt_edit(tool, tab, attr, value):
         tab.check_chi.setChecked(bool(value))
     else:
         spin = {
-            "tau0": "spin_tau0", "R0": "spin_R0", "R": "spin_R", "sigma": "spin_sigma",
-            "tau": "spin_tau", "E": "spin_E", "kFRET": "spin_kFRET",
-            "t_RM": "spin_tRM", "rho": "spin_rho", "R_DA": "spin_Rhomo",
+            "tau0": "spin_tau0",
+            "R0": "spin_R0",
+            "R": "spin_R",
+            "sigma": "spin_sigma",
+            "tau": "spin_tau",
+            "E": "spin_E",
+            "kFRET": "spin_kFRET",
+            "t_RM": "spin_tRM",
+            "rho": "spin_rho",
+            "R_DA": "spin_Rhomo",
         }[attr]
         widget = getattr(tab, spin)
         widget.setValue(value)
@@ -147,17 +157,27 @@ def qt_edit(tool, tab, attr, value):
 
 def qt_hetero(tab):
     return {
-        "tau0": tab.spin_tau0.value(), "R0": tab.spin_R0.value(), "tau": tab.spin_tau.value(),
-        "R": tab.spin_R.value(), "sigma": tab.spin_sigma.value(), "E": tab.spin_E.value(),
-        "kFRET": tab.spin_kFRET.value(), "use_chi": tab.check_chi.isChecked(),
+        "tau0": tab.spin_tau0.value(),
+        "R0": tab.spin_R0.value(),
+        "tau": tab.spin_tau.value(),
+        "R": tab.spin_R.value(),
+        "sigma": tab.spin_sigma.value(),
+        "E": tab.spin_E.value(),
+        "kFRET": tab.spin_kFRET.value(),
+        "use_chi": tab.check_chi.isChecked(),
     }
 
 
 def qt_homo(tab):
     return {
-        "tau0": tab.spin_tau0.value(), "R0": tab.spin_R0.value(), "t_RM": tab.spin_tRM.value(),
-        "rho": tab.spin_rho.value(), "sigma": tab.spin_sigma.value(), "k_homo": tab.spin_kHomo.value(),
-        "R_DA": tab.spin_Rhomo.value(), "use_chi": tab.check_chi.isChecked(),
+        "tau0": tab.spin_tau0.value(),
+        "R0": tab.spin_R0.value(),
+        "t_RM": tab.spin_tRM.value(),
+        "rho": tab.spin_rho.value(),
+        "sigma": tab.spin_sigma.value(),
+        "k_homo": tab.spin_kHomo.value(),
+        "R_DA": tab.spin_Rhomo.value(),
+        "use_chi": tab.check_chi.isChecked(),
     }
 
 
@@ -167,19 +187,44 @@ def assert_same(native, qt, what):
         if isinstance(native[key], bool):
             assert native[key] == qt[key], (what, key)
         else:
-            assert native[key] == pytest.approx(qt[key], abs=1e-9), (what, key, native[key], qt[key])
+            assert native[key] == pytest.approx(qt[key], abs=1e-9), (
+                what,
+                key,
+                native[key],
+                qt[key],
+            )
 
 
 # ── 1. numbers equal the Qt tool and the backend ----------------------------------------------- #
 
 HETERO_EDITS = [
-    ("tau0", 3.5), ("R0", 60.0), ("R", 55.0), ("sigma", 8.0), ("use_chi", True),
-    ("E", 0.8), ("tau", 2.0), ("kFRET", 0.5), ("use_chi", False),
-    ("E", 0.0), ("E", 1.0), ("tau", 0.0), ("kFRET", 0.0), ("R", 0.1), ("sigma", 0.1),
+    ("tau0", 3.5),
+    ("R0", 60.0),
+    ("R", 55.0),
+    ("sigma", 8.0),
+    ("use_chi", True),
+    ("E", 0.8),
+    ("tau", 2.0),
+    ("kFRET", 0.5),
+    ("use_chi", False),
+    ("E", 0.0),
+    ("E", 1.0),
+    ("tau", 0.0),
+    ("kFRET", 0.0),
+    ("R", 0.1),
+    ("sigma", 0.1),
 ]
 HOMO_EDITS = [
-    ("tau0", 2.5), ("R0", 55.0), ("rho", 20.0), ("t_RM", 1.5), ("R_DA", 45.0),
-    ("use_chi", True), ("sigma", 10.0), ("R_DA", 0.0), ("t_RM", 0.001), ("R_DA", 60.0),
+    ("tau0", 2.5),
+    ("R0", 55.0),
+    ("rho", 20.0),
+    ("t_RM", 1.5),
+    ("R_DA", 45.0),
+    ("use_chi", True),
+    ("sigma", 10.0),
+    ("R_DA", 0.0),
+    ("t_RM", 0.001),
+    ("R_DA", 60.0),
 ]
 
 
@@ -210,7 +255,9 @@ def test_homo_every_edit_equals_the_qt_tool(app, qt_tool):
         if attr in ("tau0", "R0", "rho", "sigma", "use_chi"):
             if attr in ("tau0", "R0", "rho"):
                 h = app.model.homo
-                rate = services.homo_compute_handler(t_RM=h.t_RM, rho=h.rho, tau0=h.tau0, R0=h.R0)["result"]["k_homo"]
+                rate = services.homo_compute_handler(t_RM=h.t_RM, rho=h.rho, tau0=h.tau0, R0=h.R0)[
+                    "result"
+                ]["k_homo"]
                 assert native["k_homo"] == pytest.approx(rate, abs=5e-7), (attr, value)
             native.pop("k_homo"), qt_values.pop("k_homo")
         assert_same(native, qt_values, f"after {attr}={value}")
@@ -239,7 +286,9 @@ def test_native_values_equal_the_backend_services_not_only_the_qt_tool():
     m = HeteroFretModel()
     m.R = 55.0
     m.compute_forward()
-    expect = services.fret_compute_handler(R=55.0, R0=52.0, tau0=4.0, kappa2=0.667, sigma=6.0)["result"]
+    expect = services.fret_compute_handler(R=55.0, R0=52.0, tau0=4.0, kappa2=0.667, sigma=6.0)[
+        "result"
+    ]
     assert m.E == pytest.approx(expect["E"], abs=5e-7)
     assert m.kFRET == pytest.approx(expect["kFRET"], abs=5e-7)
     assert m.tau == pytest.approx(expect["tau_DA"], abs=5e-5)
@@ -279,8 +328,10 @@ def test_plot_series_equal_the_qt_plots(app, qt_tool):
     qt_edit(qt_tool, het, "use_chi", True)
     edit(app, "use_chi", True)
     het._sync_model()
-    for native, qt in ((app.model.hetero.distance_plot_series(), het._model.distance_plot_series()),
-                       (app.model.hetero.rate_plot_series(), het._model.rate_plot_series())):
+    for native, qt in (
+        (app.model.hetero.distance_plot_series(), het._model.distance_plot_series()),
+        (app.model.hetero.rate_plot_series(), het._model.rate_plot_series()),
+    ):
         assert [s["name"] for s in native] == [s["name"] for s in qt]
         for a, b in zip(native, qt):
             np.testing.assert_allclose(a["x"], b["x"])
@@ -291,8 +342,10 @@ def test_plot_series_equal_the_qt_plots(app, qt_tool):
         qt_edit(qt_tool, homo, attr, value)
         edit(app, attr, value)
     homo._sync_model()
-    for native, qt in ((app.model.homo.distance_plot_series(), homo._model.distance_plot_series()),
-                       (app.model.homo.aniso_time_plot_series(), homo._model.aniso_time_plot_series())):
+    for native, qt in (
+        (app.model.homo.distance_plot_series(), homo._model.distance_plot_series()),
+        (app.model.homo.aniso_time_plot_series(), homo._model.aniso_time_plot_series()),
+    ):
         for a, b in zip(native, qt):
             np.testing.assert_allclose(a["x"], b["x"])
             np.testing.assert_allclose(a["y"], b["y"])
@@ -303,10 +356,16 @@ def test_plot_series_equal_the_qt_plots(app, qt_tool):
 
 @pytest.mark.parametrize(
     ("attr", "value", "message"),
-    [("E", 0.0, "FRET from efficiency failed"), ("E", 1.0, "FRET from efficiency failed"),
-     ("tau", 0.0, "FRET from lifetime failed"), ("kFRET", 0.0, "FRET from rate failed")],
+    [
+        ("E", 0.0, "FRET from efficiency failed"),
+        ("E", 1.0, "FRET from efficiency failed"),
+        ("tau", 0.0, "FRET from lifetime failed"),
+        ("kFRET", 0.0, "FRET from rate failed"),
+    ],
 )
-def test_a_failed_inverse_says_so_keeps_the_other_fields_and_the_next_edit_clears_it(app, attr, value, message):
+def test_a_failed_inverse_says_so_keeps_the_other_fields_and_the_next_edit_clears_it(
+    app, attr, value, message
+):
     m = app.model.hetero
     before = hetero_state(m)
     edit(app, attr, value)
@@ -379,16 +438,25 @@ def test_the_arrows_step_the_value_and_run_the_handler(app):
 def test_the_chi_toggle_recomputes_and_swaps_the_solid_curve(app):
     m = app.model.hetero
     e = m.E
-    assert {s["name"]: s["style"] for s in m.distance_plot_series()} == {"Gaussian": "solid", "chi": "dash"}
+    assert {s["name"]: s["style"] for s in m.distance_plot_series()} == {
+        "Gaussian": "solid",
+        "chi": "dash",
+    }
     edit(app, "use_chi", True)
     assert m.use_chi and m.E != e
-    assert {s["name"]: s["style"] for s in m.distance_plot_series()} == {"Gaussian": "dash", "chi": "solid"}
+    assert {s["name"]: s["style"] for s in m.distance_plot_series()} == {
+        "Gaussian": "dash",
+        "chi": "solid",
+    }
     app.select_tab(1)
     h = app.model.homo
     t = h.t_RM
     edit(app, "use_chi", True)  # homo: the toggle only changes the plot
     assert h.use_chi and h.t_RM == t
-    assert {s["name"]: s["style"] for s in h.aniso_time_plot_series()} == {"Gaussian": "dash", "chi": "solid"}
+    assert {s["name"]: s["style"] for s in h.aniso_time_plot_series()} == {
+        "Gaussian": "dash",
+        "chi": "solid",
+    }
 
 
 def test_k_homo_is_an_output_it_cannot_be_typed_into(app):
@@ -439,7 +507,10 @@ def _walk(sections):
         yield from _walk(section.get("sections", []))
 
 
-@pytest.mark.parametrize(("spec_file", "model"), [("fret.view.json", HeteroFretModel), ("homofret.view.json", HomoFretModel)])
+@pytest.mark.parametrize(
+    ("spec_file", "model"),
+    [("fret.view.json", HeteroFretModel), ("homofret.view.json", HomoFretModel)],
+)
 def test_every_spec_key_exists_on_the_model(spec_file, model):
     spec = json.loads((GUI / spec_file).read_text(encoding="utf-8"))
     m = model()
@@ -451,16 +522,28 @@ def test_every_spec_key_exists_on_the_model(spec_file, model):
                 found.add(section[key])
         if section.get("call"):
             assert callable(getattr(m, section["call"]))
-    assert {"tau0", "R0", "R", "sigma", "use_chi"} <= found or {"tau0", "R0", "t_RM", "rho"} <= found
+    assert {"tau0", "R0", "R", "sigma", "use_chi"} <= found or {
+        "tau0",
+        "R0",
+        "t_RM",
+        "rho",
+    } <= found
 
 
 def test_every_field_has_the_qt_limits_and_decimals():
     """Spec ranges equal the Qt AutoForm spec (HEAD) and the model's result rounding."""
-    for spec_file, model in (("fret.view.json", HeteroFretModel), ("homofret.view.json", HomoFretModel)):
+    for spec_file, model in (
+        ("fret.view.json", HeteroFretModel),
+        ("homofret.view.json", HomoFretModel),
+    ):
         spec = json.loads((GUI / spec_file).read_text(encoding="utf-8"))
         fields = {s["attr"]: s for s in _walk(spec["sections"]) if s.get("type") == "value"}
         for attr, (decimals, lo, hi) in {**model.input_fields, **model.result_fields}.items():
-            assert (fields[attr]["decimals"], fields[attr]["minimum"], fields[attr]["maximum"]) == (decimals, lo, hi), attr
+            assert (fields[attr]["decimals"], fields[attr]["minimum"], fields[attr]["maximum"]) == (
+                decimals,
+                lo,
+                hi,
+            ), attr
 
 
 @pytest.mark.parametrize("size", [SIZE, SMALL])
@@ -469,10 +552,37 @@ def test_draws_the_form_and_both_plots_at_both_sizes(size, tab):
     app = make_app()
     app.select_tab(tab)
     strings = " ".join(draw(app, size).strings)
-    labels = ("Lifetime D0", "Förster R0", "Distance DA", "Lifetime DA", "Efficiency", "kFRET", "σ", "χ distribution",
-              "Distance distribution", "Rate-constant distribution", "HeteroFRET", "HomoFRET") if tab == 0 else (
-              "τ0", "R0", "t_RM", "ρ", "k_homo", "R_DA", "σ", "χ distribution", "Distance distribution",
-              "Anisotropy decay time", "HeteroFRET", "HomoFRET")
+    labels = (
+        (
+            "Lifetime D0",
+            "Förster R0",
+            "Distance DA",
+            "Lifetime DA",
+            "Efficiency",
+            "kFRET",
+            "σ",
+            "χ distribution",
+            "Distance distribution",
+            "Rate-constant distribution",
+            "HeteroFRET",
+            "HomoFRET",
+        )
+        if tab == 0
+        else (
+            "τ0",
+            "R0",
+            "t_RM",
+            "ρ",
+            "k_homo",
+            "R_DA",
+            "σ",
+            "χ distribution",
+            "Distance distribution",
+            "Anisotropy decay time",
+            "HeteroFRET",
+            "HomoFRET",
+        )
+    )
     for label in labels:
         assert label in strings, (tab, size, label)
     assert "Gaussian" in strings and "chi" in strings  # legends: the plots drew curves
@@ -480,7 +590,14 @@ def test_draws_the_form_and_both_plots_at_both_sizes(size, tab):
 
 
 def test_draws_after_every_edit_even_at_the_ends_of_the_ranges(app):
-    for attr, value in (("R", 0.1), ("R", 9999.0), ("sigma", 999.0), ("sigma", 0.1), ("R0", 999.0), ("tau0", 0.001)):
+    for attr, value in (
+        ("R", 0.1),
+        ("R", 9999.0),
+        ("sigma", 999.0),
+        ("sigma", 0.1),
+        ("R0", 999.0),
+        ("tau0", 0.001),
+    ):
         edit(app, attr, value)
         assert draw(app).strings
         for series in app.model.hetero.distance_plot_series() + app.model.hetero.rate_plot_series():
@@ -501,7 +618,18 @@ def test_every_control_has_a_tooltip(app):
     inventory = emtk_inventory(build_emtk_app("fret_calculator"))
     assert inventory["controls_without_tooltip"] == []
     labels = {row["label"] for row in inventory["interactive"]}
-    assert {"Guide", "Help", "R", "E", "tau0", "R0", "tau", "kFRET", "sigma", "χ distribution"} <= labels
+    assert {
+        "Guide",
+        "Help",
+        "R",
+        "E",
+        "tau0",
+        "R0",
+        "tau",
+        "kFRET",
+        "sigma",
+        "χ distribution",
+    } <= labels
     app.select_tab(1)
     assert emtk_inventory(app)["controls_without_tooltip"] == []
     for spec_file in ("fret.view.json", "homofret.view.json"):
@@ -519,8 +647,15 @@ def test_guide_steps_point_at_controls_the_app_draws(app):
 
     steps = json.loads((GUI / "guide.json").read_text(encoding="utf-8"))["steps"]
     assert [s["title"] for s in steps if s.get("await")] == [
-        "Donor lifetime", "Förster radius", "Distance", "Inverse calculation", "Distance distribution",
-        "HomoFRET", "Migration time", "Back-map"]
+        "Donor lifetime",
+        "Förster radius",
+        "Distance",
+        "Inverse calculation",
+        "Distance distribution",
+        "HomoFRET",
+        "Migration time",
+        "Back-map",
+    ]
     app.tour.start()
     for index, step in enumerate(steps):
         app.tour.step_idx = index
@@ -579,7 +714,9 @@ def test_guide_and_help_buttons_open_the_tour_and_the_help(app):
 def test_help_text_is_plain_and_its_links_are_live(app):
     text = (GUI / "help.md").read_text(encoding="utf-8")
     assert "**" not in text and "`" not in text  # the native help window shows Markdown marks raw
-    assert "slider" not in text.lower()  # the Qt-era text described sliders this window does not have
+    assert (
+        "slider" not in text.lower()
+    )  # the Qt-era text described sliders this window does not have
     links = re.findall(r"\]\((docs/[^)#]+)\)", text)
     assert links and all((REPO / link).is_file() for link in links)
     app.help_window.show()
@@ -597,17 +734,33 @@ def test_settings_round_trip_and_invalid_values_are_ignored(app):
     edit(app, "t_RM", 2.5)
     edit(app, "rho", 12.0)
     saved = json.loads(json.dumps(app.export_settings()))
-    assert saved["tab"] == 1 and saved["hetero"]["tau0"] == 3.5 and saved["hetero"]["use_chi"] is True
+    assert (
+        saved["tab"] == 1 and saved["hetero"]["tau0"] == 3.5 and saved["hetero"]["use_chi"] is True
+    )
     assert set(saved["homo"]) == {"tau0", "R0", "t_RM", "rho", "sigma", "use_chi"}
     other = make_app()
     other.restore_settings(saved)
     assert other.export_settings() == saved
     assert other.active_tab == 1
-    assert other.model.hetero.E == app.model.hetero.E and other.model.homo.k_homo == app.model.homo.k_homo
-    other.restore_settings({"hetero": {"tau0": "x", "R0": float("nan"), "R": 1e9, "use_chi": "yes"},
-                            "homo": ["no"], "tab": 7})
-    assert other.model.hetero.tau0 == 3.5 and other.model.hetero.R0 == 52.0  # unusable values change nothing
-    assert other.model.hetero.R == 55.0 and other.model.hetero.use_chi is True and other.active_tab == 1
+    assert (
+        other.model.hetero.E == app.model.hetero.E
+        and other.model.homo.k_homo == app.model.homo.k_homo
+    )
+    other.restore_settings(
+        {
+            "hetero": {"tau0": "x", "R0": float("nan"), "R": 1e9, "use_chi": "yes"},
+            "homo": ["no"],
+            "tab": 7,
+        }
+    )
+    assert (
+        other.model.hetero.tau0 == 3.5 and other.model.hetero.R0 == 52.0
+    )  # unusable values change nothing
+    assert (
+        other.model.hetero.R == 55.0
+        and other.model.hetero.use_chi is True
+        and other.active_tab == 1
+    )
     other.restore_settings("garbage")
     assert draw(other).strings
 
@@ -621,7 +774,10 @@ def test_port_is_qt_free():
 
 def test_the_manifest_opens_the_native_app_and_the_hub_kwargs_are_accepted():
     manifest = json.loads((HERE.parent / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.calculator.fret_calculator.gui.app:make_app"
+    assert (
+        manifest["entrypoints"]["emtk"]
+        == "chisurf.plugins.calculator.fret_calculator.gui.app:make_app"
+    )
     assert isinstance(make_app(restore=False), FretCalcApp)
 
 
@@ -637,7 +793,11 @@ def test_the_qt_host_runs_the_same_app_on_the_same_models(qt_tool):
         tool.app.hetero.model.R = 55.0
         tool.app.hetero._compute_forward()
         assert tool.app.hetero.model.E == pytest.approx(
-            services.fret_compute_handler(R=55.0, R0=52.0, tau0=4.0, kappa2=0.667, sigma=6.0)["result"]["E"], abs=5e-7)
+            services.fret_compute_handler(R=55.0, R0=52.0, tau0=4.0, kappa2=0.667, sigma=6.0)[
+                "result"
+            ]["E"],
+            abs=5e-7,
+        )
     finally:
         tool.close()
         assert QtWidgets is not None

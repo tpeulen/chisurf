@@ -13,7 +13,15 @@ REAL_PDB = REPO / "test/data/atomic_coordinates/pdb_files/148l.pdb"
 BIG = (1200, 800)
 SMALL = (800, 600)
 #: Structure stems the fake program knows (see data/fake_hydro.sh) and what it reports for each.
-EXPECTED = {"148l": 1.047e-06, "small": 2.5e-07, "plain": 4.0, "garbled": None, "silent": None, "fails": None, "slow": None}
+EXPECTED = {
+    "148l": 1.047e-06,
+    "small": 2.5e-07,
+    "plain": 4.0,
+    "garbled": None,
+    "silent": None,
+    "fails": None,
+    "slow": None,
+}
 
 
 def make_world(home: Path) -> dict:
@@ -30,7 +38,9 @@ def make_world(home: Path) -> dict:
         if stem == "148l" and REAL_PDB.exists():
             shutil.copyfile(REAL_PDB, path)
         else:
-            path.write_text("ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\nEND\n")
+            path.write_text(
+                "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\nEND\n"
+            )
         structures[stem] = path
     return {"exe": exe, "hpp": hpp, "noexec": noexec, "files": structures, "home": home}
 

@@ -9,7 +9,13 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import SaveAction, TrajToolApp, icon_label, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import (
+    SaveAction,
+    TrajToolApp,
+    icon_label,
+    topology_field,
+    trajectory_field,
+)
 
 from .view_model import SaveTopologyViewModel
 
@@ -35,9 +41,15 @@ class SaveTopologyApp(TrajToolApp):
     """The Save-Topology window."""
 
     def __init__(self, model: SaveTopologyViewModel | None = None) -> None:
-        super().__init__(model or SaveTopologyViewModel(), HERE, "save_topology.view.json",
-                         "traj_save_topology_io", "Save topology",
-                         [trajectory_field(), topology_field()], SAVE)
+        super().__init__(
+            model or SaveTopologyViewModel(),
+            HERE,
+            "save_topology.view.json",
+            "traj_save_topology_io",
+            "Save topology",
+            [trajectory_field(), topology_field()],
+            SAVE,
+        )
 
 
 def make_app(**kwargs) -> SaveTopologyApp:

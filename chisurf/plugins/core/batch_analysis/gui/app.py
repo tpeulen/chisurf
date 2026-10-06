@@ -72,12 +72,18 @@ class BatchAnalysisApp(ImApp):
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
             on_step_change=self._tour_step,
         )
-        self.help_window = EmTkHelpWindow(title="Batch analysis - help", resource=HERE / "help.md", owner=self,
-                                          on_start_guide=self.tour.start)
+        self.help_window = EmTkHelpWindow(
+            title="Batch analysis - help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=self.tour.start,
+        )
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(Split("h", 0.22, Region("steps"), Region("page"), min_size=165.0))
         self.docks.add_window("steps", tr("Steps"), self.draw_steps, dock="steps", closable=False)
-        self.docks.add_window("page", tr("Batch Analysis"), self.draw_page, dock="page", closable=False)
+        self.docks.add_window(
+            "page", tr("Batch Analysis"), self.draw_page, dock="page", closable=False
+        )
         super().__init__(self.render)
 
     # -- one frame ---------------------------------------------------------------------------------- #
@@ -103,7 +109,11 @@ class BatchAnalysisApp(ImApp):
         """Keep the file table's selection equal to the model's (a removal or a clear moves it); name the headers."""
         for table, name in (("dataset_rows", "dataset_header"), ("result_rows", "result_header")):
             bound = self.form.tables.get(table)
-            box = getattr(getattr(bound, "control", None), "_header_box", None) if bound is not None else None
+            box = (
+                getattr(getattr(bound, "control", None), "_header_box", None)
+                if bound is not None
+                else None
+            )
             if box and table in self.form.rects:
                 self.item_rects[name] = tuple(box)
             else:
@@ -155,7 +165,9 @@ class BatchAnalysisApp(ImApp):
         im.text_wrapped(self.model.subtitle)
         im.end_disabled()
         im.separator()
-        draw_sections(self.panels[self.model.step_id]["sections"], self.model, self.form, titles=False)
+        draw_sections(
+            self.panels[self.model.step_id]["sections"], self.model, self.form, titles=False
+        )
 
     # -- custom sections ---------------------------------------------------------------------------- #
     def _draw_markdown(self, section: dict, model: Any, state: FormState, width: float) -> None:
@@ -168,9 +180,18 @@ class BatchAnalysisApp(ImApp):
 
     def _draw_actions(self, section: dict, model: Any, state: FormState, width: float) -> None:
         """A row of actions at their natural width (the spec's own button rows stretch to the window)."""
-        buttons = [{"label": b["label"], "key": b["action"], "tip": b.get("description", ""),
-                    "enabled": model.enabled(b["action"])} for b in (section.get("options") or {}).get("buttons", [])]
-        pressed = button_row(buttons, width, remember=lambda name: state.rects.__setitem__(name, im.get_item_rect()))
+        buttons = [
+            {
+                "label": b["label"],
+                "key": b["action"],
+                "tip": b.get("description", ""),
+                "enabled": model.enabled(b["action"]),
+            }
+            for b in (section.get("options") or {}).get("buttons", [])
+        ]
+        pressed = button_row(
+            buttons, width, remember=lambda name: state.rects.__setitem__(name, im.get_item_rect())
+        )
         if pressed:
             state.used(pressed)
             getattr(model, pressed)()
@@ -195,13 +216,19 @@ class BatchAnalysisApp(ImApp):
         self.dialog_kind = kind
         start = self.last_folder or None
         if kind == "files":
-            self.dialog = FileDialog("Add files", multiselect=True, filters=[("All files (*)", ["*"])], directory=start)
+            self.dialog = FileDialog(
+                "Add files", multiselect=True, filters=[("All files (*)", ["*"])], directory=start
+            )
         elif kind == "folder":
             self.dialog = FileDialog("Add a folder", mode="folder", directory=start)
         else:
             current = Path(self.model.save_path).parent if self.model.save_path else None
-            self.dialog = FileDialog("Save results", mode="save", filters=_CSV,
-                                     directory=str(current) if current and current.is_dir() else start)
+            self.dialog = FileDialog(
+                "Save results",
+                mode="save",
+                filters=_CSV,
+                directory=str(current) if current and current.is_dir() else start,
+            )
         self._dialog_window.title = self.dialog.title
         self._dialog_window.show()
 
@@ -220,7 +247,9 @@ class BatchAnalysisApp(ImApp):
                     path += ".csv"
                 self.model.choose_results(path)
             else:
-                self.last_folder = str(Path(result[0]) if kind == "folder" else Path(result[0]).parent)
+                self.last_folder = str(
+                    Path(result[0]) if kind == "folder" else Path(result[0]).parent
+                )
                 self.model.add_paths([str(p) for p in result])
         elif result is False or pressed == "close":
             self.dialog = None

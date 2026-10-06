@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import time
 
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter, hermetic_env  # noqa: F401
+from chisurf.plugins.microscopy.imaging_emtk.testing import (  # noqa: F401
+    Driver,
+    MetricPainter,
+    hermetic_env,
+)
 
 BIG = (1200, 800)
 SMALL = (800, 600)
@@ -26,7 +30,11 @@ class PSFDriver(Driver):
         """Draw until the debounce has run and the volume for the current parameters is in."""
         end = time.monotonic() + timeout
         self.draw(1)
-        while (self.app.busy or self.app.model.is_stale) and not self.app.error and time.monotonic() < end:
+        while (
+            (self.app.busy or self.app.model.is_stale)
+            and not self.app.error
+            and time.monotonic() < end
+        ):
             time.sleep(0.02)
             self.draw(1)
         assert not self.app.busy, "the computation did not finish"
@@ -119,7 +127,9 @@ def layout_problems(painter, size, ignore=()):
             problems.append(f"outside the window: {s!r} {tuple(round(v) for v in rect)}")
         visible.append((rect, s))
     for i, (a, sa) in enumerate(visible):
-        for b, sb in visible[i + 1:]:
+        for b, sb in visible[i + 1 :]:
             if overlaps(a, b, 2.0):
-                problems.append(f"overlap: {sa!r} {tuple(round(v) for v in a)} with {sb!r} {tuple(round(v) for v in b)}")
+                problems.append(
+                    f"overlap: {sa!r} {tuple(round(v) for v in a)} with {sb!r} {tuple(round(v) for v in b)}"
+                )
     return problems

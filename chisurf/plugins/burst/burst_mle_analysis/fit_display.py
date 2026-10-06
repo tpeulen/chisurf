@@ -53,7 +53,9 @@ def clamp_window(start: int, stop: int | None, n: int) -> tuple[int, int]:
     return start, stop
 
 
-def windowed(full: np.ndarray, ranges: tuple[int, int | None, int, int | None]) -> tuple[np.ndarray, int]:
+def windowed(
+    full: np.ndarray, ranges: tuple[int, int | None, int, int | None]
+) -> tuple[np.ndarray, int]:
     """VV window then VH window of a two-halves array, and the VV length."""
     n = len(full) // 2
     vv_sb, vv_eb = clamp_window(ranges[0], ranges[1], n)

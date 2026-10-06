@@ -54,15 +54,23 @@ class LifetimeFcsSimApp(ImApp):
         self.item_rects: dict[str, tuple] = {}
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="lfcs-sim")
         self._future = None
-        self.help_window = EmTkHelpWindow(title="Lifetime-FCS simulator — help", resource=GUI_DIR / "help.md",
-                                          owner=self)
-        self.tour = EmTkGuidedTour(steps=GUI_DIR / "guide.json", get_target_rect=self.target_rect, owner=self,
-                                   wait_for_controls=True)
+        self.help_window = EmTkHelpWindow(
+            title="Lifetime-FCS simulator — help", resource=GUI_DIR / "help.md", owner=self
+        )
+        self.tour = EmTkGuidedTour(
+            steps=GUI_DIR / "guide.json",
+            get_target_rect=self.target_rect,
+            owner=self,
+            wait_for_controls=True,
+        )
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(Split("h", 0.3, Region("form"), Region("plot")))
-        self.docks.add_window("form", tr("Lifetime-FCS simulator"), self.draw_form_pane, dock="form",
-                              closable=False)
-        self.docks.add_window("plot", tr("Filtered correlations"), self.draw_plot, dock="plot", closable=False)
+        self.docks.add_window(
+            "form", tr("Lifetime-FCS simulator"), self.draw_form_pane, dock="form", closable=False
+        )
+        self.docks.add_window(
+            "plot", tr("Filtered correlations"), self.draw_plot, dock="plot", closable=False
+        )
         super().__init__(self.render)
 
     # -- the run ------------------------------------------------------------- #
@@ -107,7 +115,9 @@ class LifetimeFcsSimApp(ImApp):
         if im.button(tr(SIMULATE)):
             self.simulate()
         im.pop_style_color(2)
-        im.set_item_tooltip(tr("Generate synthetic photons, build lifetime filters and calculate correlations."))
+        im.set_item_tooltip(
+            tr("Generate synthetic photons, build lifetime filters and calculate correlations.")
+        )
         self.item_rects["lfcs_sim_controls"] = im.get_item_rect()
         im.end_disabled()
         im.same_line()
@@ -128,7 +138,9 @@ class LifetimeFcsSimApp(ImApp):
     def _draw_run_panel(self, section, model, state, width) -> None:
         """The spec's Run panel: the status line (its button is on the strip, as in the Qt widget)."""
         im.text_wrapped(self.message)
-        im.set_item_tooltip(tr("Curves made and the filter condition number of the last simulation."))
+        im.set_item_tooltip(
+            tr("Curves made and the filter condition number of the last simulation.")
+        )
         self.item_rects["status"] = im.get_item_rect()
 
     def draw_plot(self, box) -> None:

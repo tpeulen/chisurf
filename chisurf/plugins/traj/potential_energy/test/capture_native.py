@@ -6,6 +6,7 @@ capture in a fresh process shows what a user resizing a fresh window sees.
 
 Usage: ``python -m chisurf.plugins.traj.potential_energy.test.capture_native normal|narrow``
 """
+
 import sys
 from pathlib import Path
 

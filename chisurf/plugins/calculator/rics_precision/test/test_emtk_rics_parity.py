@@ -21,7 +21,11 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.calculator.rics_precision import core
 from chisurf.plugins.calculator.rics_precision.gui import app as app_module
-from chisurf.plugins.calculator.rics_precision.gui.app import RicsPrecisionApp, finite_runs, make_app
+from chisurf.plugins.calculator.rics_precision.gui.app import (
+    RicsPrecisionApp,
+    finite_runs,
+    make_app,
+)
 from chisurf.plugins.calculator.rics_precision.gui.view_model import PrecisionViewModel
 
 HERE = Path(__file__).parent
@@ -90,7 +94,13 @@ def test_predict_gives_the_qt_tools_numbers(app, tmp_path):
     assert app.model.sweep_rows() == QT_ROWS
     assert app.model.status == QT_STATUS and app.status_line() == QT_STATUS
     painter = _draw(app)
-    for text in ("0.0384", "314.8", "1.04e+03", "Dwell [µs]", QT_STATUS):    # the table cells and the verdict
+    for text in (
+        "0.0384",
+        "314.8",
+        "1.04e+03",
+        "Dwell [µs]",
+        QT_STATUS,
+    ):  # the table cells and the verdict
         assert text in painter.strings, text
     out = tmp_path / "sweep.csv"
     app.write_csv(out)
@@ -118,7 +128,7 @@ def test_a_running_sweep_is_shown_and_not_started_twice(app, monkeypatch):
     monkeypatch.setattr(core, "sweep_dwell", slow)
     _small(app)
     assert app.predict() is True
-    assert app.predict() is False                                      # one sweep at a time
+    assert app.predict() is False  # one sweep at a time
     t0 = time.time()
     while "50 %" not in app.status_line() and time.time() - t0 < 30:
         time.sleep(0.05)
@@ -126,13 +136,13 @@ def test_a_running_sweep_is_shown_and_not_started_twice(app, monkeypatch):
     assert app.status_line() == "Sweeping dwell times (50 %)"
     assert app.model.busy and not app.model.enabled("request_predict")
     assert "Sweeping dwell times (50 %)" in _draw(app).strings
-    assert app.continuous                                              # frames follow while it runs
+    assert app.continuous  # frames follow while it runs
     gate.set()
     _settle(app)
     assert app.model.sweep is not None and not app.model.busy
     assert app.model.enabled("request_predict") and app.model.status == QT_STATUS
     _draw(app, times=1)
-    assert not app.continuous                                          # idle again
+    assert not app.continuous  # idle again
 
 
 # 3. the failure paths: the Qt message, no stale curve, nothing to export
@@ -147,8 +157,10 @@ def test_a_bad_setting_is_reported_and_leaves_no_curve(app, tmp_path):
     assert app.model.status == QT_FAILURE and app.model.sweep is None
     assert app.model.sweep_rows() == [] and app.model.sweep_series() == []
     painter = _draw(app)
-    assert any("Prediction failed: n_lags=15" in s for s in painter.strings)     # on screen, wrapped
-    assert not app.start_export() and app.notice == "Predict something first." and app.dialog is None
+    assert any("Prediction failed: n_lags=15" in s for s in painter.strings)  # on screen, wrapped
+    assert (
+        not app.start_export() and app.notice == "Predict something first." and app.dialog is None
+    )
     with pytest.raises(ValueError, match="Predict something before exporting"):
         app.write_csv(tmp_path / "x.csv")
     assert not (tmp_path / "x.csv").exists()
@@ -183,7 +195,7 @@ def test_an_unexpected_error_in_the_worker_is_reported(app, monkeypatch):
 # 4. Export CSV: before a prediction, the dialog, the suffix, the content, errors, cancel
 def test_export_csv_paths(app, tmp_path):
     assert app.model.enabled("request_export")
-    app.model.request_export()                                          # nothing predicted yet
+    app.model.request_export()  # nothing predicted yet
     _draw(app, times=1)
     assert app.dialog is None and app.notice == "Predict something first."
     assert "Predict something first." in _draw(app).strings
@@ -194,12 +206,12 @@ def test_export_csv_paths(app, tmp_path):
     app.model.request_export()
     _draw(app)
     assert app.dialog is not None and app.continuous
-    app.dialog.draw = lambda: False                                      # Cancel
+    app.dialog.draw = lambda: False  # Cancel
     _draw(app, times=1)
     assert app.dialog is None and not list(tmp_path.iterdir())
     app.start_export()
     _draw(app)
-    chosen = tmp_path / "plan"                                           # no suffix: .csv is added
+    chosen = tmp_path / "plan"  # no suffix: .csv is added
     app.dialog.draw = lambda: [str(chosen)]
     _draw(app, times=1)
     assert (tmp_path / "plan.csv").read_text() == QT_CSV
@@ -207,7 +219,7 @@ def test_export_csv_paths(app, tmp_path):
     assert any("Wrote" in s for s in _draw(app).strings)
     app.start_export()
     _draw(app)
-    app.dialog.draw = lambda: [str(tmp_path / "plan.csv" / "x.csv")]     # the folder is a file
+    app.dialog.draw = lambda: [str(tmp_path / "plan.csv" / "x.csv")]  # the folder is a file
     _draw(app, times=1)
     assert app.notice.startswith("Could not write x.csv:") and app.dialog is None
 
@@ -219,9 +231,19 @@ def _values(spec):
     def walk(sections, panel=""):
         for s in sections:
             if s.get("attr"):
-                found[s["attr"]] = (s["type"], s.get("kind"), s.get("minimum"), s.get("maximum"),
-                                    s.get("decimals"), s.get("label"), s.get("description"), panel)
-            walk(s.get("sections", []), s.get("title", panel) if s.get("type") == "panel" else panel)
+                found[s["attr"]] = (
+                    s["type"],
+                    s.get("kind"),
+                    s.get("minimum"),
+                    s.get("maximum"),
+                    s.get("decimals"),
+                    s.get("label"),
+                    s.get("description"),
+                    panel,
+                )
+            walk(
+                s.get("sections", []), s.get("title", panel) if s.get("type") == "panel" else panel
+            )
 
     walk(spec["sections"])
     return found
@@ -232,8 +254,10 @@ def test_the_form_has_the_qt_specs_fields():
     native = json.loads((GUI / "precision_emtk.view.json").read_text(encoding="utf-8"))
     assert _values(native) == _values(qt)
     assert len(_values(native)) == 15
-    estimator = next(s for p in native["sections"][0]["sections"] if p.get("title") == "Estimator" for s in [p])
-    assert estimator["collapsed"] is True                                # folded at first, as in Qt
+    estimator = next(
+        s for p in native["sections"][0]["sections"] if p.get("title") == "Estimator" for s in [p]
+    )
+    assert estimator["collapsed"] is True  # folded at first, as in Qt
     model = PrecisionViewModel()
     for attr in _values(native):
         assert hasattr(model, attr), attr
@@ -268,13 +292,15 @@ def test_settings_round_trip():
 def test_draws_empty_populated_and_failed(app, size):
     painter = _draw(app, size)
     assert "Predict" in painter.strings and "Export CSV" in painter.strings
-    assert app.model.status in painter.strings                          # the initial hint
-    assert "Dwell [µs]" in painter.strings                              # the table header, no rows
+    assert app.model.status in painter.strings  # the initial hint
+    assert "Dwell [µs]" in painter.strings  # the table header, no rows
     _small(app)
     app.predict()
     _settle(app)
     painter = _draw(app, size)
-    assert "7.3 % error (usable)" in " ".join(painter.strings) and "314.8" in painter.strings   # the verdict may wrap
+    assert (
+        "7.3 % error (usable)" in " ".join(painter.strings) and "314.8" in painter.strings
+    )  # the verdict may wrap
     app.model.nx = app.model.ny = 8
     app.model.n_lags = 15
     app.predict()
@@ -288,18 +314,26 @@ def test_the_curve_is_drawn_as_a_line_and_your_setting_as_a_marker(app, monkeypa
     app.predict()
     _settle(app)
     lines, scatters = [], []
-    monkeypatch.setattr(implot, "plot_line", lambda label, x, y, *a, **k: lines.append((label, len(x))))
-    monkeypatch.setattr(implot, "plot_scatter", lambda label, x, y, *a, **k: scatters.append((label, len(x))))
+    monkeypatch.setattr(
+        implot, "plot_line", lambda label, x, y, *a, **k: lines.append((label, len(x)))
+    )
+    monkeypatch.setattr(
+        implot, "plot_scatter", lambda label, x, y, *a, **k: scatters.append((label, len(x)))
+    )
     _draw(app, times=1)
-    assert lines == [("predicted error", 9)]                            # connected, all nine points
+    assert lines == [("predicted error", 9)]  # connected, all nine points
     assert scatters == [("your setting", 1)]
 
 
 def test_finite_runs_split_at_gaps():
     x = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
-    y = np.array([1.0, 2.0, np.nan, 4.0, 0.0, 6.0])                     # a NaN and a point log axes cannot show
+    y = np.array([1.0, 2.0, np.nan, 4.0, 0.0, 6.0])  # a NaN and a point log axes cannot show
     runs = finite_runs(x, y)
-    assert [(list(a), list(b)) for a, b in runs] == [([1.0, 2.0], [1.0, 2.0]), ([4.0], [4.0]), ([6.0], [6.0])]
+    assert [(list(a), list(b)) for a, b in runs] == [
+        ([1.0, 2.0], [1.0, 2.0]),
+        ([4.0], [4.0]),
+        ([6.0], [6.0]),
+    ]
     assert finite_runs(x, np.full(6, np.nan)) == []
 
 
@@ -362,7 +396,9 @@ def test_the_spec_names_exist_on_the_model():
 # 12. help and guide: the tour waits for the controls it names
 def test_guide_waits_for_the_user_and_points_at_drawn_controls(app):
     tour = app.tour
-    assert tour.wait_for_controls and len(tour.steps) >= 5 and any(s.get("await") for s in tour.steps)
+    assert (
+        tour.wait_for_controls and len(tour.steps) >= 5 and any(s.get("await") for s in tour.steps)
+    )
     _small(app)
     app.predict()
     _settle(app)
@@ -373,11 +409,13 @@ def test_guide_waits_for_the_user_and_points_at_drawn_controls(app):
             assert key in app.item_rects or key in app.form.rects, step["title"]
     tour.start(1)
     assert tour.awaiting and tour.steps[1]["target"] == {"attr": "diffusion_coefficient"}
-    tour.notify_used("request_predict")                                  # another control: still waiting
+    tour.notify_used("request_predict")  # another control: still waiting
     assert tour.awaiting
-    app.form.on_used("diffusion_coefficient")                            # what the form reports on a commit
+    app.form.on_used("diffusion_coefficient")  # what the form reports on a commit
     assert not tour.awaiting
-    predict_step = next(i for i, s in enumerate(tour.steps) if s["target"] == {"action": "request_predict"})
+    predict_step = next(
+        i for i, s in enumerate(tour.steps) if s["target"] == {"action": "request_predict"}
+    )
     tour.start(predict_step)
     assert tour.awaiting
     app.form.on_used("request_predict")
@@ -408,7 +446,10 @@ def test_the_table_numbers_equal_the_qt_rows_and_an_unrealisable_dwell_is_not_a_
     for number, row in zip(numbers, QT_ROWS):
         assert f"{number['dwell']:.3g}" == row["dwell"] and f"{number['line']:.3g}" == row["line"]
         assert f"{number['frame']:.3g}" == row["frame"] and f"{number['error']:.1f}" == row["error"]
-    assert numbers[0]["error"] > numbers[4]["error"]                    # 314.8 > 4.5 as numbers
+    assert numbers[0]["error"] > numbers[4]["error"]  # 314.8 > 4.5 as numbers
     app.model._sweep.relative_error = np.array([np.nan] + list(app.model._sweep.relative_error[1:]))
-    assert np.isnan(app.model.sweep_numbers()[0]["error"]) and app.model.sweep_rows()[0]["error"] == "—"
+    assert (
+        np.isnan(app.model.sweep_numbers()[0]["error"])
+        and app.model.sweep_rows()[0]["error"] == "—"
+    )
     assert "N/A" in _draw(app).strings

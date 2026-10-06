@@ -14,8 +14,8 @@ def test_frames_follow_the_open_game(monkeypatch):
         child = app.child
         assert child is not None
         monkeypatch.setattr(child, "animating", lambda: False)
-        assert not app.animating()                    # a paused game: no frames
+        assert not app.animating()  # a paused game: no frames
         monkeypatch.setattr(child, "animating", lambda: True)
-        assert app.animating()                        # a running game (Pong, Tetris): frames
+        assert app.animating()  # a running game (Pong, Tetris): frames
     finally:
         app.close()

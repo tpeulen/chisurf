@@ -23,8 +23,17 @@ class DialogMixin:
     _dialog_cancel: bool = True
     _dialog_labels: tuple = ("OK", "Cancel")
 
-    def ask(self, kind: str, title: str, text: str, *, yes_no: bool = True, entry: bool = False, value: str = "",
-            context: Any = None) -> None:
+    def ask(
+        self,
+        kind: str,
+        title: str,
+        text: str,
+        *,
+        yes_no: bool = True,
+        entry: bool = False,
+        value: str = "",
+        context: Any = None,
+    ) -> None:
         """Open a dialog: a question (``yes_no``: Yes / No, else OK / Cancel), optionally with an entry field."""
         self.dialog, self.dialog_title, self.dialog_text = kind, title, text
         self.dialog_input, self.dialog_context = value, context

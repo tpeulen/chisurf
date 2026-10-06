@@ -113,9 +113,15 @@ def qt(qapp, tmp_path, monkeypatch):
     for kind in ("information", "warning", "error"):
         monkeypatch.setattr(dialogs, kind, lambda *a, **k: None)
     monkeypatch.setattr(
-        dialogs, "question", lambda *a, **k: mod.QMessageBox.Yes if answers["yes"] else mod.QMessageBox.No
+        dialogs,
+        "question",
+        lambda *a, **k: mod.QMessageBox.Yes if answers["yes"] else mod.QMessageBox.No,
     )
-    monkeypatch.setattr(mod.QInputDialog, "getText", staticmethod(lambda *a, **k: (answers["name"], bool(answers["name"]))))
+    monkeypatch.setattr(
+        mod.QInputDialog,
+        "getText",
+        staticmethod(lambda *a, **k: (answers["name"], bool(answers["name"]))),
+    )
     widget = SetupChannelDefinitionWidget()
     widget.page._load_data(DATA)
     ref = QtRef(widget.page, widget, file, answers)
@@ -166,12 +172,17 @@ def test_save_stores_every_edit_the_tables_hold(qt, data_app, setups_file):
     model.data["detectors"]["red"]["g_factor"] = 2.5
     model.data["detectors"]["green"]["micro_time_ranges"] = [[0, 100], [200, 300]]
     model.data["windows"]["delayed"] = [2000, 4000]
-    row = {qt.page.detectors_form.item(r, 0).text(): r for r in range(qt.page.detectors_form.rowCount())}
+    row = {
+        qt.page.detectors_form.item(r, 0).text(): r
+        for r in range(qt.page.detectors_form.rowCount())
+    }
     qt.page._allow_g_update = True  # the Qt cell refuses programmatic G edits otherwise
     qt.page.detectors_form.cellWidget(row["red"], 3).setText("2.5")
     qt.page._allow_g_update = False
     qt.page.detectors_form.cellWidget(row["green"], 2).setText("0:100, 200:300")
-    wrow = {qt.page.windows_form.item(r, 0).text(): r for r in range(qt.page.windows_form.rowCount())}
+    wrow = {
+        qt.page.windows_form.item(r, 0).text(): r for r in range(qt.page.windows_form.rowCount())
+    }
     qt.page.windows_form.cellWidget(wrow["delayed"], 1).setText("2000")
     qt.page.windows_form.cellWidget(wrow["delayed"], 2).setText("4000")
     qt.answers["name"] = "Edited"
@@ -298,14 +309,22 @@ def test_crud_and_calibration_in_the_mmfdb_equal_the_qt_tool(tmp_path):
     """Save, Public, Calibration, Rename and Delete against a temporary MMFDB, Qt and emtk side by side."""
     pytest.importorskip("qtpy")
     pytest.importorskip("mmfdb.repository")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]))
+    env = dict(
+        os.environ,
+        QT_QPA_PLATFORM="offscreen",
+        PYTHONPATH=os.pathsep.join([str(REPO), os.environ.get("PYTHONPATH", "")]),
+    )
     done = subprocess.run(
         [sys.executable, str(HERE / "reference.py"), str(tmp_path / "ref")],
-        cwd=REPO, env=env, capture_output=True, text=True, timeout=300,
+        cwd=REPO,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=300,
     )
     lines = [line for line in done.stdout.splitlines() if line.startswith("RESULT ")]
     assert lines, done.stdout[-1500:] + done.stderr[-1500:]
-    result = json.loads(lines[0][len("RESULT "):])
+    result = json.loads(lines[0][len("RESULT ") :])
     qt, emtk = result["qt"], result["emtk"]
     # saved, saved public and deleted: identical stored setups, owners and public flags
     for step in ("saved", "saved_public", "deleted"):
@@ -321,10 +340,13 @@ def test_crud_and_calibration_in_the_mmfdb_equal_the_qt_tool(tmp_path):
     assert emtk["renamed"]["rows"]["Lab B"]["public"] is True
     assert qt["renamed"]["rows"]["Lab B"]["public"] in (True, False)
     # calibration: the emtk choice lists the stored snapshot and applies it to the detectors
-    assert emtk["calibration_items"][0] == "Latest" and "2026-09-01T10:00:00" in emtk["calibration_items"]
+    assert (
+        emtk["calibration_items"][0] == "Latest"
+        and "2026-09-01T10:00:00" in emtk["calibration_items"]
+    )
     assert emtk["calibration_cells"] == {"green": [1.7, 0.1, 0.2], "red": [0.9, 0.3, 0.4]}
     if qt["calibration_cells"] == emtk["calibration_cells"]:  # the day the Qt combo works
-        assert qt["calibration_items"] == emtk["calibration_items"][:len(qt["calibration_items"])]
+        assert qt["calibration_items"] == emtk["calibration_items"][: len(qt["calibration_items"])]
     else:
         # Qt defect: its combo calls setup_id_for_name(name, user) without the prefix argument,
         # swallows the TypeError and so never lists a snapshot nor applies one.
@@ -343,9 +365,14 @@ def test_calibration_latest_is_a_no_op_and_a_snapshot_applies_to_named_detectors
 
         def get_setup_calibration(self, key, calibrated_at=None):
             assert calibrated_at == "2026-09-01"
-            return [{"channel_name": "green", "g_factor": 1.7, "l1": 0.1, "l2": 0.2}, {"channel_name": "ghost", "g_factor": 9}]
+            return [
+                {"channel_name": "green", "g_factor": 1.7, "l1": 0.1, "l2": 0.2},
+                {"channel_name": "ghost", "g_factor": 9},
+            ]
 
-    page = ChannelDefinitionWidget(model=ChannelDefinition(DATA, file_path=str(tmp_path / "s.json"), db=Database()))
+    page = ChannelDefinitionWidget(
+        model=ChannelDefinition(DATA, file_path=str(tmp_path / "s.json"), db=Database())
+    )
     bar = SetupToolbar(page)
     bar.definition.current_name = "Inst"
     bar.definition.setups = {"Inst": {}}
@@ -369,24 +396,40 @@ def test_qt_and_emtk_hold_the_same_detectors_and_windows_for_the_same_setup(qt, 
 # ---------------------------------------------------------------------------
 # 3. reading a TTTR measurement
 # ---------------------------------------------------------------------------
-def test_reading_the_bh_sample_gives_the_timing_and_decays_the_qt_tool_shows(qt, data_app, measurement, monkeypatch):
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition_tttr_io as tio
+def test_reading_the_bh_sample_gives_the_timing_and_decays_the_qt_tool_shows(
+    qt, data_app, measurement, monkeypatch
+):
+    from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
+        tttr_channel_definition_tttr_io as tio,
+    )
 
-    monkeypatch.setattr(tio.QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (str(measurement), "")))
+    monkeypatch.setattr(
+        tio.QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (str(measurement), ""))
+    )
     qt.page._read_from_tttr_file()
     driver.populate(data_app, measurement)
     reading = data_app.model.data["tttr_reading"]
-    assert reading["macro_time_resolution"] == pytest.approx(float(qt.page.macro_time_le.text()), rel=1e-12)
-    assert reading["micro_time_resolution"] == pytest.approx(float(qt.page.micro_time_le.text()), rel=1e-12)
+    assert reading["macro_time_resolution"] == pytest.approx(
+        float(qt.page.macro_time_le.text()), rel=1e-12
+    )
+    assert reading["micro_time_resolution"] == pytest.approx(
+        float(qt.page.micro_time_le.text()), rel=1e-12
+    )
     assert reading["macro_time_resolution"] == pytest.approx(13.5)
     assert reading["micro_time_resolution"] == pytest.approx(3.2958984375)
-    assert sorted(data_app.model.preview) == sorted(qt.page._microtime_per_channel_counts) == [0, 1, 8, 9]
+    assert (
+        sorted(data_app.model.preview)
+        == sorted(qt.page._microtime_per_channel_counts)
+        == [0, 1, 8, 9]
+    )
     for channel, counts in qt.page._microtime_per_channel_counts.items():
         np.testing.assert_array_equal(data_app.model.preview[channel], counts)
     assert sum(float(c.sum()) for c in data_app.model.preview.values()) > 1000
     # the effective tick and the excitation period, as in the Qt "Eff. microtime" field
     settings = data_app.get_settings()["tttr_reading"]
-    assert settings["effective_micro_time_resolution"] == pytest.approx(float(qt.page.effective_micro_time_le.text()), rel=1e-5)
+    assert settings["effective_micro_time_resolution"] == pytest.approx(
+        float(qt.page.effective_micro_time_le.text()), rel=1e-5
+    )
     assert settings["excitation_period"] == pytest.approx(13.5)
     assert data_app.page.status == "Header timing and per-routing-channel decay histograms loaded."
 
@@ -394,15 +437,19 @@ def test_reading_the_bh_sample_gives_the_timing_and_decays_the_qt_tool_shows(qt,
 def test_binning_scales_the_effective_tick_like_the_qt_combo(qt, data_app):
     data_app.model.data["tttr_reading"]["micro_time_binning"] = 4
     qt.page.micro_binning_combo.setCurrentText("4")
-    assert data_app.get_settings()["tttr_reading"]["effective_micro_time_resolution"] == pytest.approx(
-        float(qt.page.effective_micro_time_le.text()), rel=1e-6
-    )
+    assert data_app.get_settings()["tttr_reading"][
+        "effective_micro_time_resolution"
+    ] == pytest.approx(float(qt.page.effective_micro_time_le.text()), rel=1e-6)
 
 
-def test_reading_something_that_is_not_a_measurement_reports_and_keeps_the_timing(data_app, tmp_path):
+def test_reading_something_that_is_not_a_measurement_reports_and_keeps_the_timing(
+    data_app, tmp_path
+):
     bad = tmp_path / "not_a_measurement.ptu"
     bad.write_text("this is not photon data")
-    data_app.model.data["tttr_reading"]["file_type"] = "auto"  # detect the container, as the Qt tool does
+    data_app.model.data["tttr_reading"]["file_type"] = (
+        "auto"  # detect the container, as the Qt tool does
+    )
     before = json.dumps(data_app.model.data["tttr_reading"], sort_keys=True)
     data_app.page.read(str(bad))
     driver.finish_read(data_app)
@@ -412,7 +459,9 @@ def test_reading_something_that_is_not_a_measurement_reports_and_keeps_the_timin
 
 
 @pytest.mark.parametrize("file_type", ["SPC-130", "Auto", "PTU", "PTO"])
-def test_a_file_that_is_not_photon_data_is_refused_whatever_the_file_type(qt, data_app, tmp_path, file_type):
+def test_a_file_that_is_not_photon_data_is_refused_whatever_the_file_type(
+    qt, data_app, tmp_path, file_type
+):
     """Qt detects the container from the file and refuses what it cannot read; so does the editor, keeping the timing."""
     bad = tmp_path / "not_a_measurement.ptu"
     bad.write_text("this is not photon data")
@@ -447,12 +496,16 @@ def _lut_file(tmp_path):
     return path
 
 
-def test_assigning_a_lut_stores_it_and_switches_the_gate_on_like_qt(qt, data_app, measurement, tmp_path, monkeypatch):
+def test_assigning_a_lut_stores_it_and_switches_the_gate_on_like_qt(
+    qt, data_app, measurement, tmp_path, monkeypatch
+):
     from chisurf.core.fio.lut_context import get_active_setup_lut
     from chisurf.gui.widgets.wizard.tttr_channeldefinition import tttr_channel_definition as mod
 
     lut = _lut_file(tmp_path)
-    monkeypatch.setattr(mod.QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (str(lut), "")))
+    monkeypatch.setattr(
+        mod.QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (str(lut), ""))
+    )
     qt.page._lut_table.setCurrentCell(0, 0)
     channel = int(qt.page._lut_table.item(0, 0).text())
     qt.page._on_assign_lut_file()
@@ -460,12 +513,18 @@ def test_assigning_a_lut_stores_it_and_switches_the_gate_on_like_qt(qt, data_app
 
     data_app.model.assign_lut(channel, str(lut))
     assert data_app.model.data["apply_lut"] is True  # the toolbar model applies the Qt rule
-    np.testing.assert_array_equal(data_app.model.data["channel_luts"][str(channel)], qt.page._channel_luts[channel])
-    assert norm(data_app.get_settings())["apply_lut"] is norm(qt.page.get_settings())["apply_lut"] is True
-    # the LUT rows the Qt table lists are the routing channels of the detectors
-    assert [int(qt.page._lut_table.item(r, 0).text()) for r in range(qt.page._lut_table.rowCount())] == sorted(
-        {c for d in DATA["detectors"].values() for c in d["chs"]}
+    np.testing.assert_array_equal(
+        data_app.model.data["channel_luts"][str(channel)], qt.page._channel_luts[channel]
     )
+    assert (
+        norm(data_app.get_settings())["apply_lut"]
+        is norm(qt.page.get_settings())["apply_lut"]
+        is True
+    )
+    # the LUT rows the Qt table lists are the routing channels of the detectors
+    assert [
+        int(qt.page._lut_table.item(r, 0).text()) for r in range(qt.page._lut_table.rowCount())
+    ] == sorted({c for d in DATA["detectors"].values() for c in d["chs"]})
     luts, _shifts, apply = get_active_setup_lut()
     assert apply and channel in {int(k) for k in luts}
 
@@ -508,7 +567,9 @@ def test_compute_shift_export_and_remove_a_lut(data_app, measurement, tmp_path):
 
 def test_compute_lut_without_a_measurement_says_what_to_do(data_app):
     data_app.page._compute_lut()
-    assert data_app.page.status == "Error: Read a uniform-illumination calibration measurement first."
+    assert (
+        data_app.page.status == "Error: Read a uniform-illumination calibration measurement first."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -534,13 +595,19 @@ def test_every_control_of_the_prompts_has_a_tooltip(data_app, prompt):
         bar.confirm()
     assert bar.dialog == prompt
     inventory = emtk_inventory(data_app)
-    assert any(row["label"] in ("Save", "Rename", "Delete", "Overwrite") for row in inventory["interactive"])
+    assert any(
+        row["label"] in ("Save", "Rename", "Delete", "Overwrite")
+        for row in inventory["interactive"]
+    )
     assert inventory["controls_without_tooltip"] == []
 
 
 def test_the_window_has_the_plugins_name_as_its_title(data_app):
     assert "Setup: Channel Definition" in driver.settle(data_app).strings
-    assert json.loads((PLUGIN / "manifest.json").read_text())["display_name"] == "Setup:Channel Definition"
+    assert (
+        json.loads((PLUGIN / "manifest.json").read_text())["display_name"]
+        == "Setup:Channel Definition"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -565,7 +632,10 @@ def test_the_guide_advances_when_the_user_presses_save(setups_file):
 # ---------------------------------------------------------------------------
 def test_the_manifest_opens_the_emtk_tool_and_keeps_the_qt_one():
     manifest = json.loads((PLUGIN / "manifest.json").read_text())
-    assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.core.setup_channel_definition.gui.app:make_app"
+    assert (
+        manifest["entrypoints"]["emtk"]
+        == "chisurf.plugins.core.setup_channel_definition.gui.app:make_app"
+    )
     assert manifest["entrypoints"]["gui"].endswith("gui.tool:SetupChannelDefinitionWidget")
 
 

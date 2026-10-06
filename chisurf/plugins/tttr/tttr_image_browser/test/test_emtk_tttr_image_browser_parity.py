@@ -36,7 +36,14 @@ QT_SP8 = dict(
     max=212,
     sha1="c12bdf5fb28317ad7abfe2aef4b8836eb7756997",
 )
-QT_SP5 = dict(shape=[512, 34], cols=2, rows=1, sum=13610, max=69, sha1="f0c5aab7335256fc31c33806321be8b77e1e753a")
+QT_SP5 = dict(
+    shape=[512, 34],
+    cols=2,
+    rows=1,
+    sum=13610,
+    max=69,
+    sha1="f0c5aab7335256fc31c33806321be8b77e1e753a",
+)
 QT_TIFF = {
     "Leica_SP5_green.tiff": ([7921, 256], 443139),
     "Leica_SP5_red.tiff": ([7921, 256], 0),
@@ -69,7 +76,13 @@ def qt(photon_template, tmp_path_factory):
     if probe.returncode != 0:
         pytest.skip("Qt (qtpy) is not installed")
     proc = subprocess.run(
-        [sys.executable, str(HERE / "qt_reference.py"), str(folder), str(work / "setup.json"), str(work)],
+        [
+            sys.executable,
+            str(HERE / "qt_reference.py"),
+            str(folder),
+            str(work / "setup.json"),
+            str(work),
+        ],
         env=env,
         capture_output=True,
         text=True,
@@ -104,7 +117,11 @@ def test_the_file_list_is_what_the_qt_list_showed(qt, photon_folder):
     assert [r[0] for r in rows(model.file_entries())] == ["corrupt.ptu", "Leica_SP8.ptu"]
     model.set_recursive(True)
     assert rows(model.file_entries()) == [tuple(r) for r in qt["entries_recursive"]]
-    assert [r[0] for r in rows(model.file_entries())] == ["corrupt.ptu", "sub/Leica_SP5.ptu", "Leica_SP8.ptu"]
+    assert [r[0] for r in rows(model.file_entries())] == [
+        "corrupt.ptu",
+        "sub/Leica_SP5.ptu",
+        "Leica_SP8.ptu",
+    ]
 
 
 def test_the_info_line_says_what_the_qt_info_panel_said(qt, photon_folder):
@@ -118,7 +135,10 @@ def test_a_text_file_is_never_listed(photon_folder):
 
 
 # 2. the mosaics ----------------------------------------------------------------------------------------------------
-@pytest.mark.parametrize("name,pinned,key", [("Leica_SP8.ptu", QT_SP8, "mosaic_SP8"), ("sub/Leica_SP5.ptu", QT_SP5, "mosaic_SP5")])
+@pytest.mark.parametrize(
+    "name,pinned,key",
+    [("Leica_SP8.ptu", QT_SP8, "mosaic_SP8"), ("sub/Leica_SP5.ptu", QT_SP5, "mosaic_SP5")],
+)
 def test_the_mosaic_equals_the_qt_mosaic(qt, photon_folder, name, pinned, key):
     model = model_on(photon_folder)
     model.set_recursive(True)
@@ -178,7 +198,9 @@ def test_the_draw_loop_never_reads_a_photon_file(photon_folder):
     """``current_image`` answers from the cache only: a selection without a loaded mosaic shows nothing yet."""
     model = model_on(photon_folder)
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
-    assert model.current_image() is None and model.wanted_image() == str(photon_folder / "Leica_SP8.ptu")
+    assert model.current_image() is None and model.wanted_image() == str(
+        photon_folder / "Leica_SP8.ptu"
+    )
     model.load_current()
     assert model.current_image() is not None and model.wanted_image() is None
 
@@ -201,7 +223,11 @@ def test_rating_and_annotation_write_the_file_the_qt_tool_wrote(qt, photon_folde
     model.rate_2()
     model.set_note(path, "good cell, bleached after frame 3")
     on_disk = json.loads((photon_folder / ".image_browser_meta.json").read_text())
-    assert on_disk == qt["meta"] == {"Leica_SP8.ptu": {"rating": 2, "annotation": "good cell, bleached after frame 3"}}
+    assert (
+        on_disk
+        == qt["meta"]
+        == {"Leica_SP8.ptu": {"rating": 2, "annotation": "good cell, bleached after frame 3"}}
+    )
     assert rows(model.file_entries()) == [tuple(r) for r in qt["entries_rated"]]
     assert model.rating_of(path) == 2 and model.current_rating == 2
     # a new model on the same folder reads the rating back
@@ -225,7 +251,9 @@ def test_rows_carry_name_size_and_stars(photon_folder):
     model.rate_3()
     table = {r["name"]: r for r in model.rows()}
     assert table["Leica_SP8.ptu"]["rating"] == "★★★"
-    assert table["Leica_SP8.ptu"]["size_mb"] == pytest.approx((photon_folder / "Leica_SP8.ptu").stat().st_size / 2**20)
+    assert table["Leica_SP8.ptu"]["size_mb"] == pytest.approx(
+        (photon_folder / "Leica_SP8.ptu").stat().st_size / 2**20
+    )
     assert table["corrupt.ptu"]["rating"] == "" and table["corrupt.ptu"]["size_mb"] == 0.0
 
 
@@ -236,7 +264,10 @@ def test_copy_raw_files_copies_the_bytes_the_qt_export_copied(qt, photon_folder,
     model.selected_files = [e["id"] for e in model.file_entries()]
     model.current_file = model.selected_files[0]
     model.do_copy_files(str(tmp_path / "copy"))
-    got = {p.name: hashlib.md5(p.read_bytes()).hexdigest() for p in sorted((tmp_path / "copy").rglob("*.ptu"))}
+    got = {
+        p.name: hashlib.md5(p.read_bytes()).hexdigest()
+        for p in sorted((tmp_path / "copy").rglob("*.ptu"))
+    }
     assert got == qt["copy"]
     # the paths below the opened folder are kept (the Qt tool flattened them: two files of one name would collide)
     assert (tmp_path / "copy" / "sub" / "Leica_SP5.ptu").is_file()
@@ -248,12 +279,20 @@ def test_tiff_stacks_equal_the_qt_stacks(qt, photon_folder, tmp_path):
 
     model = model_on(photon_folder)
     model.set_recursive(True)
-    model.selected_files = [str(photon_folder / "sub" / "Leica_SP5.ptu"), str(photon_folder / "Leica_SP8.ptu")]
+    model.selected_files = [
+        str(photon_folder / "sub" / "Leica_SP5.ptu"),
+        str(photon_folder / "Leica_SP8.ptu"),
+    ]
     model.current_file = model.selected_files[0]
     model.do_export_tiff(str(tmp_path / "tiff"))
-    got = {p.name: [list(tifffile.imread(p).shape), int(tifffile.imread(p).sum())] for p in sorted((tmp_path / "tiff").iterdir())}
+    got = {
+        p.name: [list(tifffile.imread(p).shape), int(tifffile.imread(p).sum())]
+        for p in sorted((tmp_path / "tiff").iterdir())
+    }
     assert got == qt["tiff"]
-    assert {k: (v[0], v[1]) for k, v in got.items()} == {k: (v[0], v[1]) for k, v in QT_TIFF.items()}
+    assert {k: (v[0], v[1]) for k, v in got.items()} == {
+        k: (v[0], v[1]) for k, v in QT_TIFF.items()
+    }
     assert "Wrote 4 TIFF stack(s)" in model.status_line
 
 
@@ -301,7 +340,9 @@ def test_the_docx_report_has_what_the_qt_report_wrote(photon_folder, tmp_path):
         "Rating: 2",
         "Annotation: good cell",
     ]
-    assert [k for k, _ in items].count("image") == 1  # the empty file has no picture (Qt skipped it too)
+    assert [k for k, _ in items].count(
+        "image"
+    ) == 1  # the empty file has no picture (Qt skipped it too)
     from PIL import Image
 
     picture = np.asarray(Image.open(io.BytesIO(media["word/media/image1.png"])))
@@ -333,17 +374,23 @@ def test_next_hands_the_image_to_the_pipeline_as_the_qt_tool_did(qt, photon_fold
     del calls[:]
     app.next_step()
     # the Qt tool also announced the selection to the pipeline when it was picked (observer); Next repeats it once
-    assert calls == qt["next_calls"] == [
-        ["set_pipeline", {"source": "Leica_SP8.ptu"}],
-        ["goto_role", "pixel_intensity"],
-        ["autorun_role", "pixel_intensity"],
-    ]
+    assert (
+        calls
+        == qt["next_calls"]
+        == [
+            ["set_pipeline", {"source": "Leica_SP8.ptu"}],
+            ["goto_role", "pixel_intensity"],
+            ["autorun_role", "pixel_intensity"],
+        ]
+    )
 
 
 def test_clear_caches_removes_the_cache_folders_the_qt_tool_removed(qt, photon_folder):
     model = model_on(photon_folder)
     model.set_recursive(True)
-    before = sorted(str(p.relative_to(photon_folder)) for p in photon_folder.rglob(".tttr_image_cache"))
+    before = sorted(
+        str(p.relative_to(photon_folder)) for p in photon_folder.rglob(".tttr_image_cache")
+    )
     assert before == qt["cache_dirs_before"] == [".tttr_image_cache", "sub/.tttr_image_cache"]
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
     model.load_current()
@@ -358,7 +405,11 @@ def test_clear_empties_the_list_but_deletes_nothing(qt, photon_folder):
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
     model.rate_1()
     model.clear()
-    assert model.file_entries() == [] and model.current_file is None and qt["entries_after_clear"] == []
+    assert (
+        model.file_entries() == []
+        and model.current_file is None
+        and qt["entries_after_clear"] == []
+    )
     assert (photon_folder / "Leica_SP8.ptu").is_file()
     assert (photon_folder / ".image_browser_meta.json").is_file()
 
@@ -405,17 +456,36 @@ def test_actions_are_greyed_until_they_can_act(photon_folder):
     from chisurf.plugins.tttr.tttr_image_browser.gui.model import ImageBrowserModel
 
     model = ImageBrowserModel()
-    for name in ("copy_files", "export_tiff", "export_docx", "clear", "clear_caches", "select_all_files", "next_step", "rate_1", "current_rating", "colormap", "level_low"):
+    for name in (
+        "copy_files",
+        "export_tiff",
+        "export_docx",
+        "clear",
+        "clear_caches",
+        "select_all_files",
+        "next_step",
+        "rate_1",
+        "current_rating",
+        "colormap",
+        "level_low",
+    ):
         assert not model.enabled(name), name
     assert model.enabled("choose_folder")
     model.open_folder(str(photon_folder))
-    assert model.enabled("clear") and model.enabled("clear_caches") and model.enabled("export_docx") and model.enabled("select_all_files")
+    assert (
+        model.enabled("clear")
+        and model.enabled("clear_caches")
+        and model.enabled("export_docx")
+        and model.enabled("select_all_files")
+    )
     assert not model.enabled("copy_files") and not model.enabled("export_tiff")
     model.select_file(str(photon_folder / "Leica_SP8.ptu"))
     assert model.enabled("copy_files") and model.enabled("export_tiff") and model.enabled("rate_1")
     assert not model.enabled("colormap")  # no mosaic yet
     model.load_current()
-    assert model.enabled("colormap") and model.enabled("reset_view") and not model.enabled("level_low")
+    assert (
+        model.enabled("colormap") and model.enabled("reset_view") and not model.enabled("level_low")
+    )
     model.auto_levels = False
     assert model.enabled("level_low") and model.enabled("level_high")
 
@@ -464,7 +534,9 @@ def test_multiple_selection_toggles_rows_and_switching_it_off_keeps_one(photon_f
     model.select_row(rows_["corrupt.ptu"])
     assert len(model.selected_files) == 2 and model.current_file.endswith("corrupt.ptu")
     model.select_row(rows_["corrupt.ptu"])  # toggled off
-    assert model.selected_files == [str(photon_folder / "Leica_SP8.ptu")] and model.current_file.endswith("Leica_SP8.ptu")
+    assert model.selected_files == [
+        str(photon_folder / "Leica_SP8.ptu")
+    ] and model.current_file.endswith("Leica_SP8.ptu")
     model.select_row(rows_["sub/Leica_SP5.ptu"])
     model.set_multi_select(False)
     assert len(model.selected_files) == 1 and model.paths() == model.selected_files
@@ -483,12 +555,28 @@ def test_settings_round_trip_and_bad_values_are_ignored(photon_folder):
     state = json.loads(json.dumps(model.export_settings()))
     other = ImageBrowserModel()
     other.restore_settings(state)
-    assert (other.colormap, other.gamma, other.auto_levels, other.show_labels) == ("viridis", 1.7, False, False)
+    assert (other.colormap, other.gamma, other.auto_levels, other.show_labels) == (
+        "viridis",
+        1.7,
+        False,
+        False,
+    )
     assert other.recursive is True and other.rating_filter == "≥ 1★"
     assert other.current_folder == str(photon_folder)
-    assert other.selected_files == [str(photon_folder / "Leica_SP8.ptu")] and other.setup_settings == model.setup_settings
+    assert (
+        other.selected_files == [str(photon_folder / "Leica_SP8.ptu")]
+        and other.setup_settings == model.setup_settings
+    )
     third = ImageBrowserModel()
-    third.restore_settings({"colormap": "nope", "gamma": 99.0, "rating_filter": "x", "current_folder": str(photon_folder / "gone"), "recursive": "yes"})
+    third.restore_settings(
+        {
+            "colormap": "nope",
+            "gamma": 99.0,
+            "rating_filter": "x",
+            "current_folder": str(photon_folder / "gone"),
+            "recursive": "yes",
+        }
+    )
     assert third.colormap == "magma" and third.gamma == 1.0 and third.rating_filter == "All"
     assert third.current_folder is None and third.recursive is False
     third.restore_settings("not a dict")  # ignored
@@ -539,21 +627,31 @@ def test_every_spec_key_exists_on_the_model():
         if section.get("source"):
             assert callable(getattr(model, section["source"])) or hasattr(model, section["source"])
     # every window the app draws is in the spec
-    assert {s["window"] for s in json.loads(SPEC.read_text())["sections"]} == {"toolbar", "files", "display"}
+    assert {s["window"] for s in json.loads(SPEC.read_text())["sections"]} == {
+        "toolbar",
+        "files",
+        "display",
+    }
 
 
 def test_the_rating_filter_choice_carries_the_qt_values_with_spaced_labels():
     from chisurf.plugins.tttr.tttr_image_browser.gui.model import ImageBrowserModel
 
     section = next(s for s in spec_sections() if s.get("attr") == "rating_filter")
-    assert section["options"] == ImageBrowserModel().rating_filter_options()  # the values are the Qt filter strings
-    assert [l.replace(" ", "") for l in section["labels"]] == [o.replace(" ", "") for o in section["options"]]  # same words, a gap before the stars
+    assert (
+        section["options"] == ImageBrowserModel().rating_filter_options()
+    )  # the values are the Qt filter strings
+    assert [l.replace(" ", "") for l in section["labels"]] == [
+        o.replace(" ", "") for o in section["options"]
+    ]  # same words, a gap before the stars
     assert len(section["labels"]) == 5
 
 
 def test_every_spec_section_column_and_button_has_a_description():
     for section in spec_sections():
-        assert section.get("description"), section.get("attr") or section.get("title") or section.get("type")
+        assert section.get("description"), (
+            section.get("attr") or section.get("title") or section.get("type")
+        )
         options = section.get("options") if isinstance(section.get("options"), dict) else {}
         for column in options.get("columns", []):
             assert column.get("description"), column
@@ -580,9 +678,8 @@ def test_the_port_is_qt_free():
 
 
 def test_every_control_has_a_tooltip_empty_and_populated(photon_folder):
-    from test.gui.emtk_port_parity import emtk_inventory
-
     from chisurf.plugins.tttr.tttr_image_browser.gui.app import make_app
+    from test.gui.emtk_port_parity import emtk_inventory
 
     app = make_app()
     assert emtk_inventory(app)["controls_without_tooltip"] == []
@@ -605,8 +702,10 @@ def test_the_app_draws_empty_and_populated_at_both_sizes(size, photon_folder):
     for _ in range(3):
         empty = RecordingPainter()
         app.draw(empty, 0, 0, *size)
-    assert "Open a folder with photon files (or drop one here) to see their detector-window mosaics." in empty.strings or any(
-        "Open a folder with photon files" in s for s in empty.strings
+    assert (
+        "Open a folder with photon files (or drop one here) to see their detector-window mosaics."
+        in empty.strings
+        or any("Open a folder with photon files" in s for s in empty.strings)
     )
     app.model.apply_setup_settings(two_detector_setup())
     app.model.open_folder(str(photon_folder))
@@ -616,7 +715,9 @@ def test_the_app_draws_empty_and_populated_at_both_sizes(size, photon_folder):
         full = RecordingPainter()
         app.draw(full, 0, 0, *size)
     assert "Leica_SP8.ptu: 2 tile(s), mosaic 512 x 256 px" in full.strings
-    assert any(s.startswith("green") for s in full.strings) and any(s.startswith("red") for s in full.strings)
+    assert any(s.startswith("green") for s in full.strings) and any(
+        s.startswith("red") for s in full.strings
+    )
     assert "x [px]" in full.strings and "level" in full.strings
     app.pending_page = "setup"
     for _ in range(3):
@@ -634,13 +735,20 @@ def test_the_level_range_and_histogram_describe_the_qt_image(qt, photon_folder):
     mosaic = model.current_image()
     assert model.level_range() == (0.0, float(qt["mosaic_SP8"]["max"])) == (0.0, 212.0)
     counts = model.histogram()
-    assert len(counts) == 256 and int(counts.sum()) == mosaic.size and counts[212] > 0 and counts[213:].sum() == 0
+    assert (
+        len(counts) == 256
+        and int(counts.sum()) == mosaic.size
+        and counts[212] > 0
+        and counts[213:].sum() == 0
+    )
     model.auto_levels, model.level_low, model.level_high = False, 20.0, 120.0
     assert model.level_range() == (20.0, 120.0)
 
 
 @pytest.mark.parametrize("colormap", ["magma", "viridis", "gray"])
-def test_the_drawn_colours_are_the_colormap_of_the_value_between_the_levels(photon_folder, colormap):
+def test_the_drawn_colours_are_the_colormap_of_the_value_between_the_levels(
+    photon_folder, colormap
+):
     """What pyqtgraph's image view did: value -> (value - low) / (high - low) -> colormap (gamma 1, auto levels 0..max)."""
     from matplotlib import colormaps
 
@@ -655,7 +763,11 @@ def test_the_drawn_colours_are_the_colormap_of_the_value_between_the_levels(phot
     texture = canvas.texture(mosaic)
     low, high = float(mosaic.min()), float(mosaic.max())
     for y, x in ((10, 10), (100, 150), (200, 90), (255, 511), (130, 400)):
-        expected = tuple((np.asarray(colormaps[colormap]((mosaic[y, x] - low) / (high - low))) * 255).astype(np.uint8))
+        expected = tuple(
+            (np.asarray(colormaps[colormap]((mosaic[y, x] - low) / (high - low))) * 255).astype(
+                np.uint8
+            )
+        )
         assert tuple(texture.get_pixel(x, y)) == expected, (colormap, y, x)
     # gamma lifts a dim pixel; fixed levels clip
     canvas.gamma = 2.0
@@ -664,4 +776,6 @@ def test_the_drawn_colours_are_the_colormap_of_the_value_between_the_levels(phot
     canvas.auto_levels, canvas.low, canvas.high = False, 20.0, 120.0
     clipped = canvas.texture(mosaic)
     y, x = np.argwhere(mosaic == 0)[0]
-    assert tuple(clipped.get_pixel(int(x), int(y))) == tuple((np.asarray(colormaps[colormap](0.0)) * 255).astype(np.uint8))
+    assert tuple(clipped.get_pixel(int(x), int(y))) == tuple(
+        (np.asarray(colormaps[colormap](0.0)) * 255).astype(np.uint8)
+    )

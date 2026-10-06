@@ -79,21 +79,33 @@ class Ui(_Ui):
         self.app.pointer_press(*start, LEFT_BUTTON, 0, 1)
         self.draw(1)
         for i in range(1, steps + 1):
-            self.app.pointer_move(start[0] + (end[0] - start[0]) * i / steps,
-                                  start[1] + (end[1] - start[1]) * i / steps, LEFT_BUTTON)
+            self.app.pointer_move(
+                start[0] + (end[0] - start[0]) * i / steps,
+                start[1] + (end[1] - start[1]) * i / steps,
+                LEFT_BUTTON,
+            )
             self.draw(1)
         self.app.pointer_release(*end, LEFT_BUTTON, 0)
         return self.draw(3)
 
     # -- the histogram -------------------------------------------------------------------------------- #
     def lines(self, colour):
-        return [f for f in self.last.fills if f[4] == colour and (f[2] <= 3 or f[3] <= 3) and max(f[2], f[3]) > 200]
+        return [
+            f
+            for f in self.last.fills
+            if f[4] == colour and (f[2] <= 3 or f[3] <= 3) and max(f[2], f[3]) > 200
+        ]
 
     def plot_box(self):
         """Left, top, width, height of the plot area, from its four axis border lines."""
         border = [f for f in self.last.fills if f[4] == (90, 90, 96, 200) and max(f[2], f[3]) > 200]
         xs = sorted({f[0] for f in border}), sorted({f[1] for f in border})
-        x0, x1, y0, y1 = xs[0][0], max(f[0] + f[2] for f in border), xs[1][0], max(f[1] + f[3] for f in border)
+        x0, x1, y0, y1 = (
+            xs[0][0],
+            max(f[0] + f[2] for f in border),
+            xs[1][0],
+            max(f[1] + f[3] for f in border),
+        )
         return x0, y0, x1 - x0, y1 - y0
 
     def target_line_x(self):
@@ -135,7 +147,9 @@ def shifts(app):
     return {ch: app.channel_shifts[ch] for ch in sorted(app.channel_shifts)}
 
 
-EXPECTED = {ch: (TARGET - 1 - RISE[ch]) % N_MT for ch in RISE}      # the rising edge is found one bin after the rise
+EXPECTED = {
+    ch: (TARGET - 1 - RISE[ch]) % N_MT for ch in RISE
+}  # the rising edge is found one bin after the rise
 
 
 def test_the_idle_window_offers_only_what_can_act(ui):
@@ -173,7 +187,7 @@ def test_the_files_button_opens_a_dialog_and_every_way_out_works(ui, demo, monke
     ui.click("add_files")
     assert ui.dialog_open and ui.shown("TTTR inputs") and ui.shown("Cancel")
     assert ui.shown(demo.name)
-    ui.press_text("Open")                                             # nothing selected
+    ui.press_text("Open")  # nothing selected
     assert ui.dialog_open and ui.shown("Select a file first.") and not ui.app.files
     ui.press_text("Cancel")
     assert not ui.dialog_open and not ui.app.files
@@ -280,9 +294,9 @@ def test_trigger_level_and_target_bin_are_typed_and_realign(loaded):
     assert shifts(loaded.app)[0] == (1000 - 1 - RISE[0]) % N_MT
     loaded.type_into("trigger_level", "300")
     assert loaded.app.trigger_level == 300
-    loaded.type_into("trigger_level", "0")                            # below the minimum: clamped, never a zero threshold
+    loaded.type_into("trigger_level", "0")  # below the minimum: clamped, never a zero threshold
     assert loaded.app.trigger_level >= 1
-    loaded.type_into("trigger_level", "abc")                          # not a number: the field keeps its value
+    loaded.type_into("trigger_level", "abc")  # not a number: the field keeps its value
     assert loaded.app.trigger_level >= 1
 
 
@@ -310,7 +324,7 @@ def test_log_y_switches_the_axis(loaded):
     assert loaded.app.log_y
     log = loaded.axis_numbers()
     assert log != linear and any(v in log for v in (1.0, 10.0, 100.0, 1000.0))
-    assert 200.0 not in log and 300.0 not in log        # decades only: the counts axis is logarithmic
+    assert 200.0 not in log and 300.0 not in log  # decades only: the counts axis is logarithmic
     loaded.click("log_y")
     assert not loaded.app.log_y and loaded.axis_numbers() == linear
 
@@ -341,7 +355,10 @@ def test_the_wheel_over_the_histogram_zooms(loaded):
         loaded.app.wheel(x0 + w * 0.12, y0 + h * 0.5, 1)
         loaded.draw(2)
     after = loaded.axis_numbers()
-    assert after != before and max(after) < max(before), (before, after)     # zoomed in: the axis ends sooner
+    assert after != before and max(after) < max(before), (
+        before,
+        after,
+    )  # zoomed in: the axis ends sooner
 
 
 # -- shifts ---------------------------------------------------------------------------------------------- #
@@ -397,7 +414,11 @@ def test_save_shifted_writes_the_file_with_the_shifts_applied(loaded, demo, tmp_
     loaded.click("auto_align")
     target = tmp_path / "typed_name.spc"
     loaded.click("save_dialog")
-    assert loaded.dialog_open and loaded.shown("Save shifted TTTR") and loaded.shown(demo.stem + "_shifted")
+    assert (
+        loaded.dialog_open
+        and loaded.shown("Save shifted TTTR")
+        and loaded.shown(demo.stem + "_shifted")
+    )
     loaded.press_text("Cancel")
     assert not loaded.dialog_open and not target.exists()
     loaded.click("save_dialog")
@@ -428,7 +449,9 @@ def test_save_batch_needs_a_folder_then_writes_one_file_per_input(loaded, demo, 
     loaded.settle()
     written = list(out.glob("*"))
     assert len(written) == 1
-    assert np.array_equal(_micro(written[0])[0], np.array([(m + EXPECTED[c]) % N_MT for m, c in zip(*_micro(demo))]))
+    assert np.array_equal(
+        _micro(written[0])[0], np.array([(m + EXPECTED[c]) % N_MT for m, c in zip(*_micro(demo))])
+    )
 
 
 # -- MMFDB ----------------------------------------------------------------------------------------------- #
@@ -436,8 +459,14 @@ def test_the_mmfdb_panel_unfolds_and_its_buttons_answer(loaded):
     assert "MMFDB.fold" in loaded.app.item_rects
     assert not loaded.shown("Register shifts in MMFDB")
     loaded.click("MMFDB.fold")
-    assert loaded.shown("Register shifts in MMFDB") and loaded.shown("Refresh samples") and loaded.shown("New sample")
-    loaded.press_text("➕  New sample…") if loaded.shown("➕  New sample…") else loaded.press_text("➕ New sample…")
+    assert (
+        loaded.shown("Register shifts in MMFDB")
+        and loaded.shown("Refresh samples")
+        and loaded.shown("New sample")
+    )
+    loaded.press_text("➕  New sample…") if loaded.shown("➕  New sample…") else loaded.press_text(
+        "➕ New sample…"
+    )
     assert loaded.app.sample_definition is not None and loaded.shown("New MMFDB sample")
     loaded.press_text("Cancel sample")
     assert loaded.app.sample_definition is None

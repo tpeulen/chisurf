@@ -112,7 +112,11 @@ class BurstBrowserController:
     #: Per action: the dialog's title, mode and file filters (open ones as the Qt widget's).
     DIALOGS = {
         "folder": ("Select folder with .bur files", "folder", None),
-        "file": ("Select burst file", "open", [("Burst Files", ["*.bur", "*.pto"]), ("All Files", ["*"])]),
+        "file": (
+            "Select burst file",
+            "open",
+            [("Burst Files", ["*.bur", "*.pto"]), ("All Files", ["*"])],
+        ),
         "export_gate": ("Export gated bursts", "save", [("CSV", ["*.csv"])]),
         "export_selected": ("Export selected bursts", "save", [("CSV", ["*.csv"])]),
     }
@@ -125,13 +129,20 @@ class BurstBrowserController:
         title, mode, filters = self.DIALOGS[action]
         self.action = action
         options = {"filters": filters} if filters else {}
-        self.dialog = FileDialog(title, mode=mode, filename="bursts.csv" if mode == "save" else None, **options)
+        self.dialog = FileDialog(
+            title, mode=mode, filename="bursts.csv" if mode == "save" else None, **options
+        )
         self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-browser-file")
         self._dialog_window.show()
 
     #: The tour/remember key of each control button (the guide points at them).
-    CONTROL_KEYS = {"Export gated bursts": "export_gated", "Export selected bursts": "export_selected",
-                    "MMFDB datasets": "mmfdb", "Clear data": "clear", "Stop loading": "stop"}
+    CONTROL_KEYS = {
+        "Export gated bursts": "export_gated",
+        "Export selected bursts": "export_selected",
+        "MMFDB datasets": "mmfdb",
+        "Clear data": "clear",
+        "Stop loading": "stop",
+    }
 
     def draw_controls(self, remember=None, track=None):
         """The controller's buttons and status; *remember*/*track* record rects and use for the tour."""

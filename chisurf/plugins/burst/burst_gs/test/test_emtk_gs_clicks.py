@@ -16,13 +16,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from emtk import keys
-from emtk.testing import RecordingPainter
-
 from chisurf.plugins.burst.burst_gs.gui import view_model
 from chisurf.plugins.burst.burst_gs.gui.app import create_app
-
-from .test_emtk_gs_parity import qt  # noqa: F401  (the Qt tool's fit, a module fixture)
+from emtk import keys
+from emtk.testing import RecordingPainter
 
 SIZE = (1200, 800)
 SMALL = (800, 600)
@@ -40,7 +37,11 @@ def hermetic(tmp_path, monkeypatch):
 @pytest.fixture
 def app():
     window = create_app()
-    window.model.sim_n_bursts, window.model.sim_photons_per_burst, window.model.max_iterations = 30, 60, 200
+    window.model.sim_n_bursts, window.model.sim_photons_per_burst, window.model.max_iterations = (
+        30,
+        60,
+        200,
+    )
     yield window
     window.close()
 
@@ -142,9 +143,11 @@ def burs(tmp_path, *names):
 def test_the_simulation_checkbox_switches_the_input_panels_and_enables_fit(app):
     strings = draw(app).strings
     assert has(strings, "Data Input & Channels") and not has(strings, "Simulation Parameters")
-    assert "Add at least one .bur burst table, or tick Simulate." in shown(app)         # Fit is greyed with its hint
+    assert "Add at least one .bur burst table, or tick Simulate." in shown(
+        app
+    )  # Fit is greyed with its hint
     click(app, text_rect(draw(app), "▶ Fit Kinetics"))
-    assert not app.controller.running                                                       # a click on the greyed button does nothing
+    assert not app.controller.running  # a click on the greyed button does nothing
     simulate(app)
     strings = draw(app).strings
     assert has(strings, "Simulation Parameters") and not has(strings, "Data Input & Channels")
@@ -155,7 +158,11 @@ def test_the_simulation_checkbox_switches_the_input_panels_and_enables_fit(app):
 
 def test_fit_click_gives_the_qt_tools_rates_status_report_and_tables(app, qt):
     simulate(app)
-    app.model.sim_n_bursts, app.model.sim_photons_per_burst, app.model.max_iterations = 200, 200, 2000   # the Qt run's own
+    app.model.sim_n_bursts, app.model.sim_photons_per_burst, app.model.max_iterations = (
+        200,
+        200,
+        2000,
+    )  # the Qt run's own
     press_text(app, "▶ Fit Kinetics")
     assert app.controller.running and "Fitting…" in shown(app) or app.controller.running
     settle(app)
@@ -165,7 +172,9 @@ def test_fit_click_gives_the_qt_tools_rates_status_report_and_tables(app, qt):
     assert app.controller.status == qt["status"] and app.model.results_text == qt["report"]
     strings = draw(app).strings
     assert qt["status"] in " ".join(strings)
-    assert f"{fit_.rate_matrix[1, 0]:,.1f}" in strings and f"{fit_.rate_matrix[0, 1]:,.1f}" in strings    # the Rates table cells
+    assert (
+        f"{fit_.rate_matrix[1, 0]:,.1f}" in strings and f"{fit_.rate_matrix[0, 1]:,.1f}" in strings
+    )  # the Rates table cells
     assert {"Transition", "1 → 2", "2 → 1", "State", "Population"} <= set(strings)
     assert {"Fitted rates", "k(1→2)", "k(2→1)", "simulated"} <= set(strings)
 
@@ -174,23 +183,43 @@ def test_the_simulation_fields_are_typed_clamped_and_reach_the_simulated_rates(a
     simulate(app)
     m = app.model
     for field, typed, expected in (
-        ("sim_k_forward", "5000", 5000.0), ("sim_k_forward", "0", 0.1), ("sim_k_forward", "99999999", 1e7),
-        ("sim_k_backward", "2000", 2000.0), ("sim_e1", "0.1", 0.1), ("sim_e1", "5", 1.0), ("sim_e2", "0.9", 0.9),
-        ("sim_photon_rate_khz", "80", 80.0), ("sim_photon_rate_khz", "0", 0.1),
-        ("sim_n_bursts", "20", 20), ("sim_n_bursts", "0", 1), ("sim_n_bursts", "999999", 100000),
-        ("sim_photons_per_burst", "50", 50), ("sim_photons_per_burst", "1", 5), ("sim_seed", "7", 7), ("sim_seed", "-3", 0),
+        ("sim_k_forward", "5000", 5000.0),
+        ("sim_k_forward", "0", 0.1),
+        ("sim_k_forward", "99999999", 1e7),
+        ("sim_k_backward", "2000", 2000.0),
+        ("sim_e1", "0.1", 0.1),
+        ("sim_e1", "5", 1.0),
+        ("sim_e2", "0.9", 0.9),
+        ("sim_photon_rate_khz", "80", 80.0),
+        ("sim_photon_rate_khz", "0", 0.1),
+        ("sim_n_bursts", "20", 20),
+        ("sim_n_bursts", "0", 1),
+        ("sim_n_bursts", "999999", 100000),
+        ("sim_photons_per_burst", "50", 50),
+        ("sim_photons_per_burst", "1", 5),
+        ("sim_seed", "7", 7),
+        ("sim_seed", "-3", 0),
     ):
         type_into(app, field, typed)
         assert getattr(m, field) == pytest.approx(expected), (field, typed)
-    for field, typed in (("sim_n_bursts", "20"), ("sim_photons_per_burst", "40"), ("sim_k_forward", "5000"), ("sim_k_backward", "2000"),
-                         ("sim_e1", "0.1"), ("sim_e2", "0.9"), ("sim_photon_rate_khz", "80")):
+    for field, typed in (
+        ("sim_n_bursts", "20"),
+        ("sim_photons_per_burst", "40"),
+        ("sim_k_forward", "5000"),
+        ("sim_k_backward", "2000"),
+        ("sim_e1", "0.1"),
+        ("sim_e2", "0.9"),
+        ("sim_photon_rate_khz", "80"),
+    ):
         type_into(app, field, typed)
-    assert "5000.0" in draw(app).strings and "0.100" in draw(app).strings         # the fields show what the model holds
+    assert (
+        "5000.0" in draw(app).strings and "0.100" in draw(app).strings
+    )  # the fields show what the model holds
     type_into(app, "max_iterations", "100")
     fit(app)
     assert app.model.analysis is not None
     labels, rates, truth = app.gs_gui.rate_bars()
-    assert truth.tolist() == [5000.0, 2000.0]                                       # the simulated truth is what was typed
+    assert truth.tolist() == [5000.0, 2000.0]  # the simulated truth is what was typed
 
 
 def test_the_same_seed_gives_the_same_fit_through_the_ui(app):
@@ -212,11 +241,17 @@ def test_the_model_fields_are_typed_and_the_number_of_states_changes_the_tables(
     type_into(app, "sim_photons_per_burst", "60")
     m = app.model
     for field, typed, expected in (
-        ("n_states", "3", 3), ("n_states", "9", 5), ("n_states", "1", 2),             # the spec's 2..5
-        ("initial_rate", "500", 500.0), ("initial_rate", "0", 0.1),
-        ("max_iterations", "100", 100), ("max_iterations", "1", 50),
-        ("macro_time_resolution_ns", "50", 50.0), ("macro_time_resolution_ns", "-4", 0.0),
-        ("transit_points", "10", 10), ("transit_points", "2", 5),
+        ("n_states", "3", 3),
+        ("n_states", "9", 5),
+        ("n_states", "1", 2),  # the spec's 2..5
+        ("initial_rate", "500", 500.0),
+        ("initial_rate", "0", 0.1),
+        ("max_iterations", "100", 100),
+        ("max_iterations", "1", 50),
+        ("macro_time_resolution_ns", "50", 50.0),
+        ("macro_time_resolution_ns", "-4", 0.0),
+        ("transit_points", "10", 10),
+        ("transit_points", "2", 5),
     ):
         # a field in a collapsed group is not drawn: every group starts open
         type_into(app, field, typed)
@@ -227,7 +262,9 @@ def test_the_model_fields_are_typed_and_the_number_of_states_changes_the_tables(
     fit(app)
     strings = draw(app).strings
     assert app.model.analysis.fit.rate_matrix.shape == (3, 3)
-    assert {"1 → 2", "1 → 3", "2 → 1", "2 → 3", "3 → 1", "3 → 2"} <= set(strings)    # six transitions in the Rates table
+    assert {"1 → 2", "1 → 3", "2 → 1", "2 → 3", "3 → 1", "3 → 2"} <= set(
+        strings
+    )  # six transitions in the Rates table
     assert {"k(1→2)", "k(3→2)"} <= set(strings)
 
 
@@ -252,12 +289,14 @@ def test_scan_transition_time_and_decode_states_through_the_checkboxes_show_the_
     fit(app)
     strings = draw(app).strings
     assert app.model.analysis.transit_times.size == 6
-    assert "transition time (µs)" in strings and "Fitted rates" not in strings      # the scan replaces the rates plot
+    assert (
+        "transition time (µs)" in strings and "Fitted rates" not in strings
+    )  # the scan replaces the rates plot
 
 
 def test_the_optimiser_and_container_choices_are_picked_from_their_lists(app):
     simulate(app)
-    press(app, "use_simulation")                                                     # the container is in the data panel
+    press(app, "use_simulation")  # the container is in the data panel
     press(app, "method")
     assert {"nelder-mead", "l-bfgs-b"} <= set(draw(app, frames=1).strings)
     click(app, text_rect(draw(app, frames=1), "l-bfgs-b"))
@@ -266,15 +305,20 @@ def test_the_optimiser_and_container_choices_are_picked_from_their_lists(app):
     click(app, text_rect(draw(app, frames=1), "PTU"))
     assert app.model.file_type == "PTU"
     press(app, "file_type")
-    app.key(keys.KEY_ESCAPE, "")                                                       # Escape closes the list, nothing chosen
+    app.key(keys.KEY_ESCAPE, "")  # Escape closes the list, nothing chosen
     draw(app, frames=2)
     assert app.model.file_type == "PTU"
 
 
 def test_the_data_fields_are_typed(app):
     for field, typed, expected in (
-        ("donor_channels", "0, 8", "0, 8"), ("acceptor_channels", "1, 9", "1, 9"), ("data_dir", "/some/dir", "/some/dir"),
-        ("min_photons", "30", 30), ("min_photons", "1", 2), ("max_bursts", "500", 500), ("max_bursts", "-1", 0),
+        ("donor_channels", "0, 8", "0, 8"),
+        ("acceptor_channels", "1, 9", "1, 9"),
+        ("data_dir", "/some/dir", "/some/dir"),
+        ("min_photons", "30", 30),
+        ("min_photons", "1", 2),
+        ("max_bursts", "500", 500),
+        ("max_bursts", "-1", 0),
     ):
         type_into(app, field, typed)
         assert getattr(app.model, field) == expected, (field, typed)
@@ -357,8 +401,11 @@ def test_a_failed_fit_and_an_empty_result_are_reported_in_the_window(app, monkey
     monkeypatch.setattr(view_model.BurstGsViewModel, "compute", lambda self, progress=None: False)
     fit(app)
     assert "The fit did not produce a result — see the report." in shown(app)
-    monkeypatch.setattr(view_model.BurstGsViewModel, "compute",
-                        lambda self, progress=None: (_ for _ in ()).throw(ValueError("singular Hessian")))
+    monkeypatch.setattr(
+        view_model.BurstGsViewModel,
+        "compute",
+        lambda self, progress=None: (_ for _ in ()).throw(ValueError("singular Hessian")),
+    )
     fit(app)
     assert "The fit failed: singular Hessian" in shown(app)
 
@@ -371,7 +418,12 @@ def test_open_bur_files_dialog_selects_files_by_clicks_and_open_adds_them(app, t
     (tmp_path / "notes.txt").write_text("x")
     press_text(app, "Open BUR files")
     strings = draw(app).strings
-    assert "Open burst tables" in strings and "a.bur" in strings and "b.bur" in strings and "notes.txt" not in strings  # the BUR filter
+    assert (
+        "Open burst tables" in strings
+        and "a.bur" in strings
+        and "b.bur" in strings
+        and "notes.txt" not in strings
+    )  # the BUR filter
     click(app, text_rect(draw(app), "a.bur"))
     click(app, text_rect(draw(app), "Open"))
     assert [Path(p).name for p in app.model.bur_files] == ["a.bur"]
@@ -413,14 +465,22 @@ def test_each_listed_table_has_a_remove_button_and_clear_removes_all_and_the_res
     a, b = burs(tmp_path, "a.bur", "b.bur")
     app.files_dropped([str(a), str(b)])
     painter = draw(app)
-    assert "a.bur" in " ".join(painter.strings) and "b.bur" in " ".join(painter.strings) and painter.strings.count("Remove") == 2
-    click(app, text_rect(draw(app), "Remove", last=False))                    # the first one's button
+    assert (
+        "a.bur" in " ".join(painter.strings)
+        and "b.bur" in " ".join(painter.strings)
+        and painter.strings.count("Remove") == 2
+    )
+    click(app, text_rect(draw(app), "Remove", last=False))  # the first one's button
     assert [Path(p).name for p in app.model.bur_files] == ["b.bur"]
     simulate(app)
     fit(app)
     assert app.model.analysis is not None
     press_text(app, "Clear burst files")
-    assert app.model.bur_files == [] and app.model.analysis is None and "1 → 2" not in draw(app).strings
+    assert (
+        app.model.bur_files == []
+        and app.model.analysis is None
+        and "1 → 2" not in draw(app).strings
+    )
 
 
 def test_a_fit_on_a_dropped_table_reports_the_load_failure_in_the_report(app, tmp_path):
@@ -433,8 +493,17 @@ def test_a_fit_on_a_dropped_table_reports_the_load_failure_in_the_report(app, tm
 def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(app):
     class Client:
         def call(self, name, args=None):
-            return {"datasets": [{"artifact_id": "a1", "original_filename": "m.bur", "artifact_kind": "burst_data",
-                                  "data_format": "bur"}], "total": 1}
+            return {
+                "datasets": [
+                    {
+                        "artifact_id": "a1",
+                        "original_filename": "m.bur",
+                        "artifact_kind": "burst_data",
+                        "data_format": "bur",
+                    }
+                ],
+                "total": 1,
+            }
 
     app.controller.datasets.client = Client()
     press_text(app, "MMFDB datasets")
@@ -456,7 +525,7 @@ def test_mmfdb_datasets_picker_lists_a_dataset_selects_it_and_the_window_closes(
 
 def test_export_is_greyed_before_a_fit_then_writes_the_csv_the_qt_tool_wrote(app, tmp_path):
     click(app, text_rect(draw(app), "💾  Export CSV"))
-    assert app.controller.dialog is None                                                    # greyed: nothing opens
+    assert app.controller.dialog is None  # greyed: nothing opens
     simulate(app)
     type_into(app, "sim_n_bursts", "20")
     type_into(app, "sim_photons_per_burst", "40")
@@ -473,8 +542,12 @@ def test_export_is_greyed_before_a_fit_then_writes_the_csv_the_qt_tool_wrote(app
     click(app, text_rect(draw(app), "Save"))
     written = tmp_path / "mine.csv"
     lines = written.read_text().splitlines()
-    assert lines[0] == "quantity,value" and lines[1].startswith("k_12_per_s,") and any(l.startswith("bic,") for l in lines)
-    assert app.controller.status == f"Wrote mine.csv" or app.controller.status.endswith("mine.csv")
+    assert (
+        lines[0] == "quantity,value"
+        and lines[1].startswith("k_12_per_s,")
+        and any(l.startswith("bic,") for l in lines)
+    )
+    assert app.controller.status == "Wrote mine.csv" or app.controller.status.endswith("mine.csv")
     assert "mine.csv" in shown(app) and "Cancel" not in draw(app).strings
 
 
@@ -504,7 +577,7 @@ def test_a_click_on_a_table_row_and_header_changes_no_value_and_the_columns_have
     small_fit(app)
     before = np.array(app.model.analysis.fit.rate_matrix)
     click(app, text_rect(draw(app), "1 → 2"))
-    for _ in range(2):                                                                         # a header click sorts, again flips
+    for _ in range(2):  # a header click sorts, again flips
         header = [t[:4] for t in draw(app).texts if t[5].startswith("Transition")][0]
         click(app, header)
     assert np.array_equal(before, app.model.analysis.fit.rate_matrix) and not app.controller.running
@@ -516,7 +589,11 @@ def test_the_fret_states_tab_is_clicked_and_shows_the_state_lines(app):
     assert "FRET efficiency & fitted states" not in draw(app).strings
     click(app, text_rect(draw(app), "FRET states"))
     strings = draw(app).strings
-    assert "FRET efficiency" in strings and "Population / photon density" in strings and "state 1" in strings
+    assert (
+        "FRET efficiency" in strings
+        and "Population / photon density" in strings
+        and "state 1" in strings
+    )
     click(app, text_rect(draw(app), "Kinetics dynamics"))
     assert "Fitted rates" in draw(app).strings
 
@@ -542,8 +619,11 @@ def test_a_drag_pans_the_rates_plot(app):
     assert tick_labels(draw(app, frames=2)) != before
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window (works in a plain "
-                   "im.begin window); see REPORT.md 'emtk gaps'")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel never reaches an implot inside a DockManager window (works in a plain "
+    "im.begin window); see REPORT.md 'emtk gaps'",
+)
 def test_the_wheel_zooms_the_rates_plot(app):
     small_fit(app)
     cx, cy = 900.0, 600.0
@@ -562,10 +642,10 @@ def test_guide_click_starts_the_tour_whose_close_prev_and_next_buttons_are_click
     tour = app.gs_gui.tour
     assert tour.active and not tour.awaiting
     click(app, text_rect(draw(app), "Next ►"))
-    assert tour.step_idx == 1 and tour.awaiting                                         # "Tick Simulate" waits for the checkbox
+    assert tour.step_idx == 1 and tour.awaiting  # "Tick Simulate" waits for the checkbox
     click(app, text_rect(draw(app), "Next ►"))
-    assert tour.step_idx == 1                                                              # greyed
-    simulate(app)                                                                          # the user ticks the highlighted checkbox
+    assert tour.step_idx == 1  # greyed
+    simulate(app)  # the user ticks the highlighted checkbox
     assert not tour.awaiting
     click(app, text_rect(draw(app), "◄ Prev"))
     assert tour.step_idx == 0
@@ -596,15 +676,26 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
                 simulate(app)
                 waited.append("use_simulation")
             elif target.get("action") == "Fit":
-                app.model.sim_n_bursts, app.model.sim_photons_per_burst, app.model.max_iterations = 20, 40, 100
+                (
+                    app.model.sim_n_bursts,
+                    app.model.sim_photons_per_burst,
+                    app.model.max_iterations,
+                ) = 20, 40, 100
                 press(app, "Fit")
                 waited.append("Fit")
                 settle(app)
-            assert not tour.awaiting, f"{tour.steps[tour.step_idx]['title']}: operating {target} did not release the step"
+            assert not tour.awaiting, (
+                f"{tour.steps[tour.step_idx]['title']}: operating {target} did not release the step"
+            )
         draw(app)
         painter = draw(app)
-        click(app, text_rect(painter, "Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►"))   # every card button by click
-    assert waited == ["use_simulation", "Fit"] and not tour.active and app.model.analysis is not None
+        click(
+            app,
+            text_rect(painter, "Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►"),
+        )  # every card button by click
+    assert (
+        waited == ["use_simulation", "Fit"] and not tour.active and app.model.analysis is not None
+    )
 
 
 def test_every_guide_target_is_a_real_control_that_can_be_clicked(app):

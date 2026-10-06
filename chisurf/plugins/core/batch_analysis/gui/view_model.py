@@ -195,6 +195,7 @@ class BatchViewModel:
         final message box; the numeric work lives in :func:`...core.runner.run_batch`.
         """
         from qtpy import QtCore, QtWidgets
+
         from chisurf.gui import dialogs
         from chisurf.gui.progress import ChiSurfProgress
 

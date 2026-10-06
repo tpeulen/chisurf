@@ -156,7 +156,11 @@ def default_request_handler() -> Callable[[str, dict], QtWidgets.QWidget]:
             raise ValueError(f"unknown request {name!r}")
         if QtWidgets.QApplication.instance() is None:
             raise RuntimeError("no Qt application is running")
-        logger.info("TraceBrowser: %s for %s", name, payload.get("file") or payload.get("files") or payload.get("folder"))
+        logger.info(
+            "TraceBrowser: %s for %s",
+            name,
+            payload.get("file") or payload.get("files") or payload.get("folder"),
+        )
         return opener(dict(payload))
 
     return handle

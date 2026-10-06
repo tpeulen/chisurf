@@ -59,10 +59,12 @@ class PluginManagerApp(ImApp):
         #: The file chooser that is open, and what it is for.
         self.dialog: FileDialog | None = None
         self.dialog_purpose = ""
-        self.message_window = DialogWindow("Plugin Manager", size=(520.0, 190.0),
-                                           key="plugin_manager_dialog", fit_height=True)
-        self.icon_window = DialogWindow("Icon", size=(580.0, 400.0), key="plugin_manager_icon",
-                                         fit_height=True)
+        self.message_window = DialogWindow(
+            "Plugin Manager", size=(520.0, 190.0), key="plugin_manager_dialog", fit_height=True
+        )
+        self.icon_window = DialogWindow(
+            "Icon", size=(580.0, 400.0), key="plugin_manager_icon", fit_height=True
+        )
         self.item_rects: dict[str, tuple] = {}
         self._reported_error = ""
         self._last_selected = self.model.selected_key
@@ -219,16 +221,34 @@ class PluginManagerApp(ImApp):
             self.model.set_status(f"Copied {len(records)} rows to the clipboard.")
         elif request and self.dialog is None:
             if request == "install":
-                self._open_dialog("install_archive", FileDialog(
-                    "Choose a plugin archive", filters="Plugin archive (*.zip);;All files (*)", directory=_HOME))
+                self._open_dialog(
+                    "install_archive",
+                    FileDialog(
+                        "Choose a plugin archive",
+                        filters="Plugin archive (*.zip);;All files (*)",
+                        directory=_HOME,
+                    ),
+                )
             elif request == "icon_file":
-                self._open_dialog("icon", FileDialog(
-                    "Choose an icon image",
-                    filters="Images (*.png *.jpg *.jpeg *.ico);;All files (*)", directory=_HOME))
+                self._open_dialog(
+                    "icon",
+                    FileDialog(
+                        "Choose an icon image",
+                        filters="Images (*.png *.jpg *.jpeg *.ico);;All files (*)",
+                        directory=_HOME,
+                    ),
+                )
             elif request == "export":
-                self._open_dialog("export", FileDialog(
-                    "Export plugins as CSV", mode="save", filename="plugins.csv", directory=_HOME,
-                    filters="CSV (*.csv);;All Files (*)"))
+                self._open_dialog(
+                    "export",
+                    FileDialog(
+                        "Export plugins as CSV",
+                        mode="save",
+                        filename="plugins.csv",
+                        directory=_HOME,
+                        filters="CSV (*.csv);;All Files (*)",
+                    ),
+                )
 
     def _open_dialog(self, purpose: str, dialog: FileDialog) -> None:
         self.dialog, self.dialog_purpose = dialog, purpose
@@ -254,8 +274,15 @@ class PluginManagerApp(ImApp):
             self.dialog = None
             if purpose == "install_archive":
                 # As in the Qt tool: no archive chosen, so offer a folder instead.
-                self._open_dialog("install_folder", FileDialog(
-                    "Choose a plugin folder", mode="folder", action="Choose folder", directory=_HOME))
+                self._open_dialog(
+                    "install_folder",
+                    FileDialog(
+                        "Choose a plugin folder",
+                        mode="folder",
+                        action="Choose folder",
+                        directory=_HOME,
+                    ),
+                )
 
     # ── confirm / notice / rename dialog ───────────────────────────────
     def _draw_message(self, box: Any) -> None:

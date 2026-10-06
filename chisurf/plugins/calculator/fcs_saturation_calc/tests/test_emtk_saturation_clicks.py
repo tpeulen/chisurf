@@ -17,8 +17,8 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.calculator.fcs_saturation_calc.gui.app import make_app
-from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.calculator.fcs_saturation_calc.gui.panel import TABS
+from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 
 from .driving import BIG, SMALL, SatDriver, hermetic_env
 
@@ -44,7 +44,9 @@ def drv():
     d = SatDriver(app, BIG)
     d.draw(3)
     yield d
-    app.model.save_user_settings = lambda: None  # a closing window saves the session: not the point of these tests
+    app.model.save_user_settings = lambda: (
+        None
+    )  # a closing window saves the session: not the point of these tests
     app.close()
 
 
@@ -127,7 +129,9 @@ def test_compute_gives_the_qt_tools_curves(drv):
 
 def test_save_and_load_session_buttons_write_and_restore_the_settings_file(drv, tmp_path):
     m = model(drv)
-    m.save_user_settings = type(m).save_user_settings.__get__(m)  # the real writer, into the temporary settings folder
+    m.save_user_settings = type(m).save_user_settings.__get__(
+        m
+    )  # the real writer, into the temporary settings folder
     type_power(drv, "1.5")
     drv.click("save_session")
     path = Path(m.get_user_settings_path())
@@ -156,7 +160,11 @@ def test_save_scheme_dialog_writes_the_typed_name_and_adds_the_suffix(drv, tmp_p
     written = tmp_path / "my_dye.json"
     assert written.is_file() and drv.app.dialog is None
     data = json.loads(written.read_text())
-    assert data["n_states"] == 3 and data["state_labels"] == ["S0", "S1", "T1"] and data["dark_rates"]["k2_1"] == 250.0
+    assert (
+        data["n_states"] == 3
+        and data["state_labels"] == ["S0", "S1", "T1"]
+        and data["dark_rates"]["k2_1"] == 250.0
+    )
     assert drv.app.status == f"Saved {written}"
 
 
@@ -177,7 +185,9 @@ def test_save_scheme_to_an_unwritable_place_reports_instead_of_raising(drv, tmp_
     drv.select_all()
     drv.type_text("blocked/scheme.json")
     drv.click_text("Save", last=True)
-    assert drv.app.error.startswith("Error:") and any(s.startswith("Error:") for s in drv.draw(2).strings)
+    assert drv.app.error.startswith("Error:") and any(
+        s.startswith("Error:") for s in drv.draw(2).strings
+    )
 
 
 def test_load_scheme_dialog_loads_the_picked_file_and_marks_the_preset_custom(drv, tmp_path):
@@ -187,7 +197,9 @@ def test_load_scheme_dialog_loads_the_picked_file_and_marks_the_preset_custom(dr
     assert drv.app.dialog is not None and drv.app.file_window.title == "Load scheme"
     drv.click_text("cy5_copy.json")
     drv.click_text("Open", last=True)
-    assert drv.app.dialog is None and sat(drv).n_states == 4 and model(drv).scheme_preset == "Custom"
+    assert (
+        drv.app.dialog is None and sat(drv).n_states == 4 and model(drv).scheme_preset == "Custom"
+    )
     assert drv.app.status == "Loaded cy5_copy.json"
     assert {"S0", "S1", "P", "T1"} <= set(drv.draw(2).strings)
     for name, y in series_after(drv).items():
@@ -217,7 +229,9 @@ def test_a_dropped_scheme_is_loaded_and_a_stray_file_is_refused(drv, tmp_path):
     assert drv.drop(str(tmp_path / "notes.txt")) in (True, False)
     assert drv.app.error == "Error: drop a scheme .json file." and sat(drv).n_states == 3
     drv.drop(str(tmp_path / "dropped.json"))
-    assert sat(drv).n_states == 2 and drv.app.status == "Loaded dropped.json" and drv.app.error == ""
+    assert (
+        sat(drv).n_states == 2 and drv.app.status == "Loaded dropped.json" and drv.app.error == ""
+    )
     drv.drop(str(tmp_path / "missing.json"))
     assert drv.app.error.startswith("Error:") and sat(drv).n_states == 2
 
@@ -230,8 +244,12 @@ def type_power(drv, text):
 
 
 def test_the_scheme_list_picks_every_preset_and_custom_changes_nothing(drv):
-    sizes = {"Two-state (ground + excited)": 2, "Rhodamine 6G (3-state, triplet)": 3, "Cyanine 5 (4-state, isomer + triplet)": 4,
-             "Oxazine 1 (3-state, triplet)": 3}
+    sizes = {
+        "Two-state (ground + excited)": 2,
+        "Rhodamine 6G (3-state, triplet)": 3,
+        "Cyanine 5 (4-state, isomer + triplet)": 4,
+        "Oxazine 1 (3-state, triplet)": 3,
+    }
     for label, n in sizes.items():
         pick(drv, "scheme_preset", label)
         assert model(drv).scheme_preset == label and sat(drv).n_states == n
@@ -239,7 +257,9 @@ def test_the_scheme_list_picks_every_preset_and_custom_changes_nothing(drv):
     pick(drv, "scheme_preset", "Oxazine 1 (3-state, triplet)")
     before = rate(drv, "k2_1")
     pick(drv, "scheme_preset", "Custom")
-    assert model(drv).scheme_preset == "Custom" and rate(drv, "k2_1") == before  # a label for edited schemes, not a scheme
+    assert (
+        model(drv).scheme_preset == "Custom" and rate(drv, "k2_1") == before
+    )  # a label for edited schemes, not a scheme
 
 
 def test_picking_the_cyanine_preset_gives_the_qt_tools_curves(drv):
@@ -250,7 +270,10 @@ def test_picking_the_cyanine_preset_gives_the_qt_tools_curves(drv):
             assert np.allclose(series(drv, source)[name], y, rtol=1e-9, atol=1e-12), (source, name)
 
 
-@pytest.mark.parametrize("text, expected", [("2", 2.0), ("0", 0.0), ("0.05", 0.05), ("500", 100.0), ("-3", 0.0), ("1e-3", 0.001)])
+@pytest.mark.parametrize(
+    "text, expected",
+    [("2", 2.0), ("0", 0.0), ("0.05", 0.05), ("500", 100.0), ("-3", 0.0), ("1e-3", 0.001)],
+)
 def test_laser_power_is_typed_and_clamped_to_zero_and_100_mw(drv, text, expected):
     type_power(drv, text)
     assert model(drv).power_mW == pytest.approx(expected)
@@ -265,7 +288,9 @@ def test_a_typed_power_gives_the_qt_tools_curves_and_summary(drv):
     type_power(drv, "0")
     for name, y in golden_y("power_0").items():
         assert np.allclose(series(drv)[name], y, rtol=1e-9, atol=1e-12)
-    assert np.allclose(series(drv)["Saturated"], series(drv)["Unperturbed Gaussian"])  # no excitation, no saturation
+    assert np.allclose(
+        series(drv)["Saturated"], series(drv)["Unperturbed Gaussian"]
+    )  # no excitation, no saturation
 
 
 def test_a_typed_text_that_is_not_a_number_is_ignored(drv):
@@ -287,7 +312,9 @@ def test_the_power_arrows_and_the_wheel_step_the_value(drv):
 def test_the_logarithmic_power_slider_is_clicked_and_dragged(drv):
     x, y, w, h = drv.rect("power_log.slider")
     drv.click_at(x + w / 2, y + h / 2)  # the middle of 0.001 .. 100 mW is 0.1 mW
-    assert model(drv).power_mW == pytest.approx(10 ** -0.5, rel=0.2)  # the middle of 0.001 .. 100 mW on a log scale
+    assert model(drv).power_mW == pytest.approx(
+        10**-0.5, rel=0.2
+    )  # the middle of 0.001 .. 100 mW on a log scale
     drv.drag((x + w * 0.5, y + h / 2), (x + w * 0.99, y + h / 2))
     assert model(drv).power_mW > 30.0
     drv.drag((x + w * 0.99, y + h / 2), (x + 1, y + h / 2))
@@ -295,7 +322,9 @@ def test_the_logarithmic_power_slider_is_clicked_and_dragged(drv):
     assert "Power (log)" in drv.draw(2).strings
 
 
-@pytest.mark.parametrize("text, expected", [("640", 640.0), ("1500", 1200.0), ("100", 200.0), ("561.5", 561.5)])
+@pytest.mark.parametrize(
+    "text, expected", [("640", 640.0), ("1500", 1200.0), ("100", 200.0), ("561.5", 561.5)]
+)
 def test_the_wavelength_is_typed_and_clamped(drv, text, expected):
     drv.type_into("wavelength_nm", text)
     assert model(drv).wavelength_nm == pytest.approx(expected)
@@ -332,7 +361,9 @@ def test_the_dye_list_reads_the_extinction_from_the_chosen_dye(drv):
 def test_the_rate_unit_list_rescales_the_dark_rates_and_the_table_title(drv):
     pick(drv, "rate_unit", "1/ms")
     assert rate(drv, "k2_1") == pytest.approx(250000.0) and model(drv).rate_unit == "1/ms"
-    assert "K_dark (1/ms), row to column" in " ".join(s.replace("v ", "") for s in drv.draw(2).strings)
+    assert "K_dark (1/ms), row to column" in " ".join(
+        s.replace("v ", "") for s in drv.draw(2).strings
+    )
     pick(drv, "rate_unit", "1/us")
     assert rate(drv, "k2_1") == pytest.approx(250.0)
     for unit in ("1/s", "1/ns"):
@@ -352,7 +383,12 @@ def test_the_bunching_checkbox_changes_the_saturated_curve_and_back(drv):
 def test_number_of_states_is_typed_clamped_and_resizes_every_table(drv, text, expected):
     drv.type_into("n_states", text)
     assert sat(drv).n_states == expected
-    assert len(drv.app.panel.dark_rows()) == len(drv.app.panel.exc_rows()) == len(drv.app.panel.brightness_rows()) == expected
+    assert (
+        len(drv.app.panel.dark_rows())
+        == len(drv.app.panel.exc_rows())
+        == len(drv.app.panel.brightness_rows())
+        == expected
+    )
     assert len(drv.control("dark_rows").records) == expected
     assert len(sat(drv).state_labels) == expected
 
@@ -387,7 +423,9 @@ def test_rates_are_clamped_and_zero_removes_the_transition(drv):
     edit(drv, "dark_rows", 2, "c0", "abc")
     assert rate(drv, "k3_1") == 1e9  # not a number: unchanged
     edit(drv, "dark_rows", 2, "c0", "0")
-    assert rate(drv, "k3_1") == 0.0 and all((s, d) != (2, 0) for s, d, g, v in drv.app.panel.state_edges(model(drv)))
+    assert rate(drv, "k3_1") == 0.0 and all(
+        (s, d) != (2, 0) for s, d, g, v in drv.app.panel.state_edges(model(drv))
+    )
 
 
 def test_the_ground_state_row_and_the_diagonal_of_k_dark_cannot_be_edited(drv):
@@ -436,12 +474,16 @@ def test_the_optics_values_are_typed_and_equal_the_qt_curves(drv):
     assert s.extinction == 100000.0
     tab(drv, "FCS curve")
     type_power(drv, "0.05")
-    assert "1.3" in " ".join(v for _l, v in drv.app.panel.info_rows() if "Volume" in _l)  # the guide's 1.33 at 50 uW
+    assert "1.3" in " ".join(
+        v for _l, v in drv.app.panel.info_rows() if "Volume" in _l
+    )  # the guide's 1.33 at 50 uW
 
 
 def test_the_optics_limits_clamp_values_and_inverted_limits_are_refused(drv):
     tab(drv, "State diagram")
-    assert edit(drv, "optics_rows", 1, "value", "5000")  # the wavelength is limited to 200 .. 1200 while Bounds is on
+    assert edit(
+        drv, "optics_rows", 1, "value", "5000"
+    )  # the wavelength is limited to 200 .. 1200 while Bounds is on
     assert sat(drv)._wavelength.value == 1200.0
     assert edit(drv, "optics_rows", 1, "hi", "900")
     assert sat(drv)._wavelength.bounds[1] == 900.0
@@ -462,12 +504,17 @@ def test_the_relaxation_times_are_results_and_cannot_be_edited(drv):
     value = rows[r1]["value"]
     assert not edit(drv, "optics_rows", r1, "value", "7")
     drv.click_cell("optics_rows", r1, "fixed")
-    assert drv.app.panel.optics_rows()[r1]["value"] == value and drv.app.panel.optics_rows()[r1]["fixed"] is None
+    assert (
+        drv.app.panel.optics_rows()[r1]["value"] == value
+        and drv.app.panel.optics_rows()[r1]["fixed"] is None
+    )
 
 
 def test_a_table_header_click_changes_no_value(drv):
     before = [r["value"] for r in drv.app.panel.brightness_rows()]
-    x, y, w, h = drv._header(drv, "brightness_rows", "value") if hasattr(drv, "_header") else (0, 0, 0, 0)
+    x, y, w, h = (
+        drv._header(drv, "brightness_rows", "value") if hasattr(drv, "_header") else (0, 0, 0, 0)
+    )
     control = drv.control("brightness_rows")
     hx, hy, hw, hh = control._header_box
     drv.click_at(hx + 90, hy + hh / 2)  # the Value header: sorts
@@ -478,9 +525,17 @@ def test_a_table_header_click_changes_no_value(drv):
 # -- the tabs and the plots ---------------------------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("name, marker", [("State diagram", "dark transition"), ("FCS curve", "FCS Saturation Effect"),
-                                          ("Info", "FCS saturation summary"), ("Volume profile", "Radial Spatial Volume Profiles"),
-                                          ("Volume(P)", "Volume Expansion vs Laser Power"), ("Diffusion time", "Diffusion Time vs Laser Power")])
+@pytest.mark.parametrize(
+    "name, marker",
+    [
+        ("State diagram", "dark transition"),
+        ("FCS curve", "FCS Saturation Effect"),
+        ("Info", "FCS saturation summary"),
+        ("Volume profile", "Radial Spatial Volume Profiles"),
+        ("Volume(P)", "Volume Expansion vs Laser Power"),
+        ("Diffusion time", "Diffusion Time vs Laser Power"),
+    ],
+)
 def test_each_tab_button_shows_its_panel(drv, name, marker):
     other = "Info" if name != "Info" else "FCS curve"
     tab(drv, other)
@@ -491,7 +546,9 @@ def test_each_tab_button_shows_its_panel(drv, name, marker):
 
 def test_the_state_diagram_shows_the_scheme_the_tables_hold(drv):
     painter = tab(drv, "State diagram")
-    assert {"S0", "S1", "T1", "250", "2.5", "0.5"} <= set(painter.strings) and "σ 1" in painter.strings
+    assert {"S0", "S1", "T1", "250", "2.5", "0.5"} <= set(
+        painter.strings
+    ) and "σ 1" in painter.strings
     edit(drv, "dark_rows", 2, "c0", "0")
     assert "0.5" not in drv.draw(2).strings  # the transition is gone with its arrow
     pick(drv, "scheme_preset", "Cyanine 5 (4-state, isomer + triplet)")
@@ -501,7 +558,13 @@ def test_the_state_diagram_shows_the_scheme_the_tables_hold(drv):
 def test_the_info_tab_lists_the_qt_summary_rows(drv):
     tab(drv, "Info")
     strings = drv.draw(2).strings
-    for label in ("Power P_total:", "Peak focal rate k_exc(0,0):", "Volume expansion V_eff/V_0:", "Saturated G(0):", "Relaxation times:"):
+    for label in (
+        "Power P_total:",
+        "Peak focal rate k_exc(0,0):",
+        "Volume expansion V_eff/V_0:",
+        "Saturated G(0):",
+        "Relaxation times:",
+    ):
         assert label in strings, label
     assert "1.933×" in strings  # the Qt summary's number for 0.2 mW
 
@@ -510,7 +573,11 @@ def test_the_normalise_checkbox_scales_both_curves_to_one_and_back(drv):
     tab(drv, "FCS curve")
     drv.click("normalize_fcs")
     s = series(drv)
-    assert model(drv).normalize_fcs and s["Saturated"][0] == pytest.approx(1.0) and s["Unperturbed Gaussian"][0] == pytest.approx(1.0)
+    assert (
+        model(drv).normalize_fcs
+        and s["Saturated"][0] == pytest.approx(1.0)
+        and s["Unperturbed Gaussian"][0] == pytest.approx(1.0)
+    )
     drv.click("normalize_fcs")
     assert not np.isclose(series(drv)["Saturated"][0], 1.0)
     for name, y in golden_y("default").items():
@@ -550,8 +617,15 @@ def ticks(painter):
     return [s for s in painter.strings if re.fullmatch(r"-?[\d.]+(e[+-]?\d+)?", s)]
 
 
-@pytest.mark.parametrize("tab_name, source", [("FCS curve", "fcs_curves_series"), ("Volume profile", "volume_profile_series"),
-                                              ("Volume(P)", "volume_power_series"), ("Diffusion time", "tau_d_power_series")])
+@pytest.mark.parametrize(
+    "tab_name, source",
+    [
+        ("FCS curve", "fcs_curves_series"),
+        ("Volume profile", "volume_profile_series"),
+        ("Volume(P)", "volume_power_series"),
+        ("Diffusion time", "tau_d_power_series"),
+    ],
+)
 def test_a_drag_pans_each_plot(drv, tab_name, source):
     tab(drv, tab_name)
     before = ticks(drv.draw(2))
@@ -560,8 +634,15 @@ def test_a_drag_pans_each_plot(drv, tab_name, source):
     assert ticks(drv.draw(2)) != before
 
 
-@pytest.mark.parametrize("tab_name, source", [("FCS curve", "fcs_curves_series"), ("Volume profile", "volume_profile_series"),
-                                              ("Volume(P)", "volume_power_series"), ("Diffusion time", "tau_d_power_series")])
+@pytest.mark.parametrize(
+    "tab_name, source",
+    [
+        ("FCS curve", "fcs_curves_series"),
+        ("Volume profile", "volume_profile_series"),
+        ("Volume(P)", "volume_power_series"),
+        ("Diffusion time", "tau_d_power_series"),
+    ],
+)
 def test_the_wheel_zooms_each_plot(drv, tab_name, source):
     tab(drv, tab_name)
     before = ticks(drv.draw(2))
@@ -644,14 +725,25 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         assert_tour_card_clear(tour, drv.size)
         if tour.awaiting:
             waited.append(operate(drv, step))
-            assert not tour.awaiting, f"{step['title']}: operating {step.get('target')} did not release the step"
+            assert not tour.awaiting, (
+                f"{step['title']}: operating {step.get('target')} did not release the step"
+            )
         if step.get("tab") and not tour.awaiting:
             assert drv.app.result_tab in TABS
         drv.draw(2)
         drv.click_text("Finish ✓" if tour.step_idx == len(tour.steps) - 1 else "Next ►")
     assert not tour.active
-    assert waited == ["wavelength_nm", "optics", "optics", "power_mW", "power_mW", "power_mW", "show_state_profiles",
-                      "Volume(P)", "normalize_fcs"]
+    assert waited == [
+        "wavelength_nm",
+        "optics",
+        "optics",
+        "power_mW",
+        "power_mW",
+        "power_mW",
+        "show_state_profiles",
+        "Volume(P)",
+        "normalize_fcs",
+    ]
     # the worked example ended where the guide said: 2 mW gives 3.3x the volume of the unsaturated Gaussian
     assert model(drv).power_mW == 2.0 and model(drv).normalize_fcs
 

@@ -50,23 +50,42 @@ class HmmApp(ImApp):
         )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
-            get_target_rect=lambda key: self.item_rects.get(key)
-            or next((f.rects[key] for f in self.forms.values() if key in f.rects), None),
+            get_target_rect=lambda key: (
+                self.item_rects.get(key)
+                or next((f.rects[key] for f in self.forms.values() if key in f.rects), None)
+            ),
             owner=self,
             wait_for_controls=True,
         )
         for form in self.forms.values():
             form.on_used = self.tour.notify_used
         self.docks = DockManager(
-            Split("h", 0.28, Region("controls"),
-                  Split("v", 0.46, Region("trace"), Split("h", 0.55, Region("states"), Region("analysis")))),
+            Split(
+                "h",
+                0.28,
+                Region("controls"),
+                Split(
+                    "v",
+                    0.46,
+                    Region("trace"),
+                    Split("h", 0.55, Region("states"), Region("analysis")),
+                ),
+            ),
             name="hmm",
         )
-        self.docks.add_window("controls", tr("Model"), self.controls, dock="controls", closable=False)
+        self.docks.add_window(
+            "controls", tr("Model"), self.controls, dock="controls", closable=False
+        )
         self.docks.add_window("trace", tr("Trace"), self.trace_plot, dock="trace", closable=False)
-        self.docks.add_window("states", tr("Fitted states"), self.states_window, dock="states", closable=False)
-        self.docks.add_window("histogram", tr("Histogram"), self.histogram_plot, dock="analysis", closable=False)
-        self.docks.add_window("dwell", "Dwell times", self.dwell_plot, dock="analysis", closable=False)
+        self.docks.add_window(
+            "states", tr("Fitted states"), self.states_window, dock="states", closable=False
+        )
+        self.docks.add_window(
+            "histogram", tr("Histogram"), self.histogram_plot, dock="analysis", closable=False
+        )
+        self.docks.add_window(
+            "dwell", "Dwell times", self.dwell_plot, dock="analysis", closable=False
+        )
         self.docks.add_window("scan", "Scan", self.scan_plot, dock="analysis", closable=False)
         super().__init__(self.render, continuous=False)
 
@@ -85,9 +104,14 @@ class HmmApp(ImApp):
         self.dialog_action = action
         title = {"add": "Add trace files", "save": "Save the fit as JSON"}[action]
         self.dialog = FileDialog(
-            title, mode="save" if action == "save" else "open", multiselect=action == "add", directory=self.last_dir or None,
+            title,
+            mode="save" if action == "save" else "open",
+            multiselect=action == "add",
+            directory=self.last_dir or None,
             filename="hmm_fit.json" if action == "save" else "",
-            filters="Traces (*.csv *.txt *.dat *.npy);;All files (*)" if action == "add" else "JSON (*.json);;All files (*)",
+            filters="Traces (*.csv *.txt *.dat *.npy);;All files (*)"
+            if action == "add"
+            else "JSON (*.json);;All files (*)",
         )
         self.dialog_window = DialogWindow(title, size=(760, 540))
 
@@ -131,16 +155,40 @@ class HmmApp(ImApp):
         has_data = bool(m._traces or m.files)
         pressed = button_row(
             [
-                {"label": "Fit", "key": "request_run", "enabled": idle and has_data,
-                 "tip": "Fit the model with the chosen number of states and decode the state path."},
-                {"label": "Scan states", "key": "request_scan", "enabled": idle and has_data,
-                 "tip": "Fit every state count in the range and score each by AIC and BIC."},
-                {"label": "Demo trace", "key": "demo", "enabled": idle,
-                 "tip": "Replace the traces by a generated three-state trace with known means and dwell times (a demo, not data)."},
-                {"label": "Save fit...", "key": "save", "enabled": idle and m.fit is not None,
-                 "tip": "Write the last fit (states, transitions, dwell times) as JSON."},
-                {"label": "Help", "key": "help", "tip": "Explain the model, the state scan and what refutes a fit."},
-                {"label": "Guide", "key": "guide", "tip": "Walk through loading, the state count and the checks of a fit."},
+                {
+                    "label": "Fit",
+                    "key": "request_run",
+                    "enabled": idle and has_data,
+                    "tip": "Fit the model with the chosen number of states and decode the state path.",
+                },
+                {
+                    "label": "Scan states",
+                    "key": "request_scan",
+                    "enabled": idle and has_data,
+                    "tip": "Fit every state count in the range and score each by AIC and BIC.",
+                },
+                {
+                    "label": "Demo trace",
+                    "key": "demo",
+                    "enabled": idle,
+                    "tip": "Replace the traces by a generated three-state trace with known means and dwell times (a demo, not data).",
+                },
+                {
+                    "label": "Save fit...",
+                    "key": "save",
+                    "enabled": idle and m.fit is not None,
+                    "tip": "Write the last fit (states, transitions, dwell times) as JSON.",
+                },
+                {
+                    "label": "Help",
+                    "key": "help",
+                    "tip": "Explain the model, the state scan and what refutes a fit.",
+                },
+                {
+                    "label": "Guide",
+                    "key": "guide",
+                    "tip": "Walk through loading, the state count and the checks of a fit.",
+                },
             ],
             remember=self.remember,
         )
@@ -158,7 +206,11 @@ class HmmApp(ImApp):
             self.help_window.show()
         elif pressed == "guide":
             self.tour.start()
-        im.text_wrapped(self.job.progress if self.job.busy else (self.job.error and "Error: " + self.job.error) or m.status)
+        im.text_wrapped(
+            self.job.progress
+            if self.job.busy
+            else (self.job.error and "Error: " + self.job.error) or m.status
+        )
         if self.message:
             im.text_wrapped(self.message)
         im.separator()
@@ -166,12 +218,24 @@ class HmmApp(ImApp):
         self.form("files")
         pressed = button_row(
             [
-                {"label": "Add files...", "key": "add_files", "enabled": idle,
-                 "tip": "Choose binned trace files (several are fitted jointly as separate sequences); dropping files on the window does the same."},
-                {"label": "Remove", "key": "remove", "enabled": idle and bool(m.files),
-                 "tip": "Remove the selected file (the last one when none is selected)."},
-                {"label": "Clear", "key": "clear", "enabled": idle and bool(m.files),
-                 "tip": "Remove every trace file."},
+                {
+                    "label": "Add files...",
+                    "key": "add_files",
+                    "enabled": idle,
+                    "tip": "Choose binned trace files (several are fitted jointly as separate sequences); dropping files on the window does the same.",
+                },
+                {
+                    "label": "Remove",
+                    "key": "remove",
+                    "enabled": idle and bool(m.files),
+                    "tip": "Remove the selected file (the last one when none is selected).",
+                },
+                {
+                    "label": "Clear",
+                    "key": "clear",
+                    "enabled": idle and bool(m.files),
+                    "tip": "Remove every trace file.",
+                },
             ],
             remember=self.remember,
         )
@@ -182,10 +246,14 @@ class HmmApp(ImApp):
         elif pressed == "clear":
             m.clear_files()
         if m._traces:
-            im.text_disabled(f"{len(m._traces)} trace(s) loaded, {sum(len(t) for t in m._traces)} bins.")
+            im.text_disabled(
+                f"{len(m._traces)} trace(s) loaded, {sum(len(t) for t in m._traces)} bins."
+            )
         self.form("model")
         opened = im.collapsing_header("Fitting")
-        im.set_item_tooltip("Baum-Welch settings: iterations, tolerance, decoder, seed, acceleration.")
+        im.set_item_tooltip(
+            "Baum-Welch settings: iterations, tolerance, decoder, seed, acceleration."
+        )
         if opened:
             self.form("fitting")
         opened = im.collapsing_header("State scan range")
@@ -193,7 +261,9 @@ class HmmApp(ImApp):
         if opened:
             self.form("scan")
 
-    def plot(self, name, series, x_label, y_label, log_y=False, empty="Fit the model to see this plot."):
+    def plot(
+        self, name, series, x_label, y_label, log_y=False, empty="Fit the model to see this plot."
+    ):
         if not series:
             im.text_wrapped(empty)
             return
@@ -206,7 +276,9 @@ class HmmApp(ImApp):
                 x, y = np.asarray(item["x"], float), np.asarray(item["y"], float)
                 if log_y:
                     y = np.where(y > 0, y, np.nan)
-                implot.set_next_line_style(hex_colour(item.get("color", "#888888")), float(item.get("width", 1)))
+                implot.set_next_line_style(
+                    hex_colour(item.get("color", "#888888")), float(item.get("width", 1))
+                )
                 implot.plot_line(str(item["name"]), x, y)
                 if item.get("symbol"):
                     implot.plot_scatter(str(item["name"]) + "##pts", x, y)
@@ -214,20 +286,41 @@ class HmmApp(ImApp):
             implot.end_plot()
 
     def trace_plot(self, box):
-        self.plot("trace", self.model.trace_series(), "time" if self.model.settings.time_step != 1.0 else "bin",
-                  "counts per bin", empty="Load a trace (Add files... or Demo trace).")
+        self.plot(
+            "trace",
+            self.model.trace_series(),
+            "time" if self.model.settings.time_step != 1.0 else "bin",
+            "counts per bin",
+            empty="Load a trace (Add files... or Demo trace).",
+        )
 
     def histogram_plot(self, box):
-        self.plot("histogram", self.model.histogram_series(), "counts per bin", "occurrences",
-                  empty="Load a trace to see the intensity histogram.")
+        self.plot(
+            "histogram",
+            self.model.histogram_series(),
+            "counts per bin",
+            "occurrences",
+            empty="Load a trace to see the intensity histogram.",
+        )
 
     def dwell_plot(self, box):
-        self.plot("dwell", self.model.dwell_series(), "dwell time", "occurrences", log_y=True,
-                  empty="Fit the model to see the dwell-time histograms.")
+        self.plot(
+            "dwell",
+            self.model.dwell_series(),
+            "dwell time",
+            "occurrences",
+            log_y=True,
+            empty="Fit the model to see the dwell-time histograms.",
+        )
 
     def scan_plot(self, box):
-        self.plot("scan", self.model.scan_series(), "states", "information criterion",
-                  empty="Press Scan states to score a range of state counts.")
+        self.plot(
+            "scan",
+            self.model.scan_series(),
+            "states",
+            "information criterion",
+            empty="Press Scan states to score a range of state counts.",
+        )
 
     def states_window(self, box):
         if self.model.fit is None:
@@ -278,16 +371,36 @@ class HmmApp(ImApp):
     # -- settings ------------------------------------------------------------------------------ #
     def export_settings(self):
         s = self.model.settings
-        return {"files": list(self.model.files), "n_states": s.n_states, "covariance_type": s.covariance_type,
-                "time_step": s.time_step, "n_iter": s.n_iter, "tol": s.tol, "accelerate": s.accelerate,
-                "decode": s.decode, "random_state": s.random_state, "min_states": self.model.min_states,
-                "max_states": self.model.max_states, "last_dir": self.last_dir}
+        return {
+            "files": list(self.model.files),
+            "n_states": s.n_states,
+            "covariance_type": s.covariance_type,
+            "time_step": s.time_step,
+            "n_iter": s.n_iter,
+            "tol": s.tol,
+            "accelerate": s.accelerate,
+            "decode": s.decode,
+            "random_state": s.random_state,
+            "min_states": self.model.min_states,
+            "max_states": self.model.max_states,
+            "last_dir": self.last_dir,
+        }
 
     def restore_settings(self, settings):
         if not isinstance(settings, dict):
             return
-        for key in ("n_states", "covariance_type", "time_step", "n_iter", "tol", "accelerate", "decode",
-                    "random_state", "min_states", "max_states"):
+        for key in (
+            "n_states",
+            "covariance_type",
+            "time_step",
+            "n_iter",
+            "tol",
+            "accelerate",
+            "decode",
+            "random_state",
+            "min_states",
+            "max_states",
+        ):
             if key in settings:
                 try:
                     setattr(self.model, key, settings[key])

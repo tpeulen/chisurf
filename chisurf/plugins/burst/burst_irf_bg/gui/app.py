@@ -95,7 +95,9 @@ class BurstIrfBackgroundGui:
         self.form_state = FormState()
         spec = load_view_spec(str(Path(__file__).parent / "irf_bg.view.json"))
         self._fields = self._leaf_sections(spec["sections"][0])
-        cap_widths(list(self._fields.values()))   # a photon count is a few digits, not the panel wide
+        cap_widths(
+            list(self._fields.values())
+        )  # a photon count is a few digits, not the panel wide
         self.labels = LabelColumn()
         table = load_view_spec(str(Path(__file__).parent / "irf_bg_results_emtk.view.json"))
         self.results_section = table["sections"][0]
@@ -183,13 +185,20 @@ class BurstIrfBackgroundGui:
 
         if self.tour.active:
             if self.tour.awaiting:
-                self.tour.draw(float(w), float(h))   # the highlighted control must stay clickable: no overlay window over the docks
+                self.tour.draw(
+                    float(w), float(h)
+                )  # the highlighted control must stay clickable: no overlay window over the docks
             else:
                 # In a window of its own, over the docks: drawn into the root window the card's buttons sat under the dock
                 # windows (a button is hovered only when no other window is under the pointer), so Close Tour, Prev and
                 # most Next presses never arrived.
-                flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_BACKGROUND | im.WindowFlags.NO_SAVED_SETTINGS
-                         | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_NAV)
+                flags = (
+                    im.WindowFlags.NO_DECORATION
+                    | im.WindowFlags.NO_BACKGROUND
+                    | im.WindowFlags.NO_SAVED_SETTINGS
+                    | im.WindowFlags.NO_MOVE
+                    | im.WindowFlags.NO_NAV
+                )
                 im.begin("##irf_bg_tour_overlay", (0.0, 0.0, float(w), float(h)), flags)
                 self.tour.draw(float(w), float(h))
                 im.end()
@@ -215,9 +224,18 @@ class BurstIrfBackgroundGui:
             self.labels.measure([f["label"] for f in labelled(list(self._fields.values()))])
             self.labels.pad(list(self._fields.values()))
         draw_sections(
-            [self._fields[a] for a in ("min_photons", "photon_window", "time_window_ms", "baseline_quantile",
-                                       "micro_time_binning")],
-            target, self.form_state,
+            [
+                self._fields[a]
+                for a in (
+                    "min_photons",
+                    "photon_window",
+                    "time_window_ms",
+                    "baseline_quantile",
+                    "micro_time_binning",
+                )
+            ],
+            target,
+            self.form_state,
         )
         if not running:
             self._sync_binning()
@@ -230,21 +248,53 @@ class BurstIrfBackgroundGui:
 
         # Actions: one wrapped row (Compute, Stop live only while it runs, hand-off, export, guide, help)
         controller = getattr(self, "controller", None)
-        pressed = button_row([
-            {"label": icon_label("🌙", "Compute"), "key": "toolAction_run", "keys": ("irf_bg_run",),
-             "enabled": not running, "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
-             "tip": "Extract the instrument response (IRF) and the per-detector background rates from the loaded files."},
-            {"label": "Stop computation", "key": "Stop", "enabled": running,
-             "tip": "Cancel at the next file boundary and retain the previous results." if running
-             else "Nothing is running; a computation in progress can be stopped here."},
-            {"label": icon_label("🎯", "Send to MLE"), "key": "send_to_mle",
-             "tip": "Send the extracted IRF and background patterns to the burst-MLE lifetime fit."},
-            *([{"label": "Export MLE patterns", "key": "patterns",
-                "tip": "Save per-detector IRF and background patterns in a NumPy archive for scripted MLE fitting."}]
-              if controller is not None else []),
-            {"label": icon_label("📖", "Guide"), "key": "guide", "tip": "Start a step-by-step guided tour of this tool."},
-            {"label": icon_label("❓", "Help"), "key": "help", "tip": "Open the help window with reference documentation."},
-        ], remember=self.remember)
+        pressed = button_row(
+            [
+                {
+                    "label": icon_label("🌙", "Compute"),
+                    "key": "toolAction_run",
+                    "keys": ("irf_bg_run",),
+                    "enabled": not running,
+                    "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
+                    "tip": "Extract the instrument response (IRF) and the per-detector background rates from the loaded files.",
+                },
+                {
+                    "label": "Stop computation",
+                    "key": "Stop",
+                    "enabled": running,
+                    "tip": "Cancel at the next file boundary and retain the previous results."
+                    if running
+                    else "Nothing is running; a computation in progress can be stopped here.",
+                },
+                {
+                    "label": icon_label("🎯", "Send to MLE"),
+                    "key": "send_to_mle",
+                    "tip": "Send the extracted IRF and background patterns to the burst-MLE lifetime fit.",
+                },
+                *(
+                    [
+                        {
+                            "label": "Export MLE patterns",
+                            "key": "patterns",
+                            "tip": "Save per-detector IRF and background patterns in a NumPy archive for scripted MLE fitting.",
+                        }
+                    ]
+                    if controller is not None
+                    else []
+                ),
+                {
+                    "label": icon_label("📖", "Guide"),
+                    "key": "guide",
+                    "tip": "Start a step-by-step guided tour of this tool.",
+                },
+                {
+                    "label": icon_label("❓", "Help"),
+                    "key": "help",
+                    "tip": "Open the help window with reference documentation.",
+                },
+            ],
+            remember=self.remember,
+        )
         if pressed == "toolAction_run":
             self.track("toolAction_run")
             self.track("irf_bg_run")

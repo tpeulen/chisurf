@@ -17,9 +17,15 @@ import numpy as np
 import pytest
 
 from chisurf.core.fio.image import imwrite
+from chisurf.plugins.microscopy.imaging_emtk.testing import (
+    Driver,
+    dialog_open,
+    hermetic_env,
+    numeric_ticks,
+    walk,
+)
 from chisurf.plugins.microscopy.img_flow import core, demo
 from chisurf.plugins.microscopy.img_flow.gui.app import ImgFlowApp, make_app
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, hermetic_env, numeric_ticks, walk
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -31,12 +37,24 @@ QT_SPEC = json.loads((PLUGIN / "gui" / "flow.view.json").read_text(encoding="utf
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "flow_emtk.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
-_make = importlib.util.spec_from_file_location("flow_make_data", EVIDENCE / "scripts" / "make_data.py")
+_make = importlib.util.spec_from_file_location(
+    "flow_make_data", EVIDENCE / "scripts" / "make_data.py"
+)
 _data = importlib.util.module_from_spec(_make)
 _make.loader.exec_module(_data)
 TIMING = _data.TIMING
 #: The settings of the Qt capture's TIFF scenarios.
-BASE = dict(tile=16, n_lags=4, min_quality=0.5, step=0, method="stics", distance=4, subtract_average="frame", arrow_scale=1.0, **TIMING)
+BASE = dict(
+    tile=16,
+    n_lags=4,
+    min_quality=0.5,
+    step=0,
+    method="stics",
+    distance=4,
+    subtract_average="frame",
+    arrow_scale=1.0,
+    **TIMING,
+)
 
 
 def have_simulator() -> bool:
@@ -47,7 +65,9 @@ def have_simulator() -> bool:
     return hasattr(tttrlib, "SimEngine") and hasattr(tttrlib, "SimVectorGrid")
 
 
-needs_simulator = pytest.mark.skipif(not have_simulator(), reason="tttrlib was built without the photon simulator")
+needs_simulator = pytest.mark.skipif(
+    not have_simulator(), reason="tttrlib was built without the photon simulator"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -128,7 +148,11 @@ def settings_of(**changes):
 
 def test_the_map_gives_the_numbers_the_qt_window_showed(app, drv, flow_tif):
     m = loaded(app, drv, flow_tif)
-    assert m.status_line == QT_VALUES["tiff_loaded"]["model_status"] == "flow.tif: 80 frames of 48x48, 1 channel(s). Ready."
+    assert (
+        m.status_line
+        == QT_VALUES["tiff_loaded"]["model_status"]
+        == "flow.tif: 80 frames of 48x48, 1 channel(s). Ready."
+    )
     mapped(app, drv)
     qt = QT_VALUES["tiff_stics"]
     assert m.status_line == qt["model_status"] == "25/25 tiles, mean speed 2.93 µm/s"
@@ -140,35 +164,58 @@ def test_the_map_gives_the_numbers_the_qt_window_showed(app, drv, flow_tif):
     np.testing.assert_allclose(r.quality, qt["quality"], rtol=1e-12)
     assert m.flow_vectors() == qt["vectors"] and list(m.flow_extent()) == qt["extent"]
     assert [{k: f"{v:.4g}" for k, v in row.items()} for row in m.tile_table_rows()] == [
-        {k: v for k, v in row.items()} for row in qt["vector_rows"]]
+        {k: v for k, v in row.items()} for row in qt["vector_rows"]
+    ]
 
 
-def test_the_estimator_called_without_the_view_model_gives_the_same_field_and_the_speed_written_into_the_stack(app, drv, flow_tif, flow_stack):
+def test_the_estimator_called_without_the_view_model_gives_the_same_field_and_the_speed_written_into_the_stack(
+    app, drv, flow_tif, flow_stack
+):
     m = loaded(app, drv, flow_tif)
     mapped(app, drv)
-    timing = core.scan_timing(48, pixel_duration_us=TIMING["pixel_duration_us"], line_duration_ms=TIMING["line_duration_ms"],
-                              frame_duration_ms=TIMING["frame_duration_ms"], pixel_size_nm=TIMING["pixel_size_nm"])
+    timing = core.scan_timing(
+        48,
+        pixel_duration_us=TIMING["pixel_duration_us"],
+        line_duration_ms=TIMING["line_duration_ms"],
+        frame_duration_ms=TIMING["frame_duration_ms"],
+        pixel_size_nm=TIMING["pixel_size_nm"],
+    )
     direct = core.analyse(flow_stack, timing, tile=16, n_lags=4)
     np.testing.assert_allclose(m.result.vx, direct.vx, rtol=1e-12)
     truth = _data.expected_speed_um_s(0.5)  # 0.5 px/frame along +x
     summary = m.result.summary(0.5)
-    assert summary["mean_vx"] == pytest.approx(truth, rel=0.15) and summary["mean_vx"] < truth  # conservative, as documented
-    assert abs(summary["mean_vy"]) < 0.15 * summary["mean_vx"] and summary["coherence"] > 0.99  # along +x
+    assert (
+        summary["mean_vx"] == pytest.approx(truth, rel=0.15) and summary["mean_vx"] < truth
+    )  # conservative, as documented
+    assert (
+        abs(summary["mean_vy"]) < 0.15 * summary["mean_vx"] and summary["coherence"] > 0.99
+    )  # along +x
 
 
 def test_each_scenario_of_the_qt_capture_is_reproduced(app, drv, flow_tif):
     mapped(app, drv, flow_tif)
-    for key, changes in (("tiff_quality_099", dict(min_quality=0.99)), ("tiff_subtract_stack", dict(min_quality=0.5, subtract_average="stack")),
-                         ("tiff_too_many_lags", dict(subtract_average="frame", n_lags=30)),
-                         ("tiff_pcf", dict(n_lags=4, method="pcf", distance=4)),
-                         ("tiff_tile24_step24_scale2", dict(method="stics", tile=24, step=24, arrow_scale=2.0))):
+    for key, changes in (
+        ("tiff_quality_099", dict(min_quality=0.99)),
+        ("tiff_subtract_stack", dict(min_quality=0.5, subtract_average="stack")),
+        ("tiff_too_many_lags", dict(subtract_average="frame", n_lags=30)),
+        ("tiff_pcf", dict(n_lags=4, method="pcf", distance=4)),
+        ("tiff_tile24_step24_scale2", dict(method="stics", tile=24, step=24, arrow_scale=2.0)),
+    ):
         use(app, **changes)
         drv.click("map_flow")
         drv.settle()
         qt = QT_VALUES[key]
         assert app.model.status_line == qt["model_status"], key
-        assert len(app.model.flow_vectors()) == qt["n_vectors"] and app.model.result.n_escaped == qt["n_escaped"], key
-        np.testing.assert_allclose(np.nan_to_num(np.asarray(app.model.result.vx), nan=-999), qt["vx"], rtol=1e-12, err_msg=key)
+        assert (
+            len(app.model.flow_vectors()) == qt["n_vectors"]
+            and app.model.result.n_escaped == qt["n_escaped"]
+        ), key
+        np.testing.assert_allclose(
+            np.nan_to_num(np.asarray(app.model.result.vx), nan=-999),
+            qt["vx"],
+            rtol=1e-12,
+            err_msg=key,
+        )
 
 
 # ── 2. the live Qt tool on the same file ────────────────────────────────────────────────────────────────────── #
@@ -180,6 +227,7 @@ def qt_tool():
     if importlib.util.find_spec("qtpy") is None:
         pytest.skip("Qt is not installed")
     import os
+
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     from qtpy import QtWidgets
 
@@ -213,10 +261,17 @@ def qt_table_cells(tool):
     return [[table.item(r, c).text() for c in range(7)] for r in range(table.rowCount())]
 
 
-SCENARIOS = {"defaults": {}, "small tile": {"tile": 8, "step": 8}, "stack background": {"subtract_average": "stack"},
-             "tight quality": {"min_quality": 0.99}, "two lags": {"n_lags": 2}, "escaping lags": {"n_lags": 30},
-             "pair correlation": {"method": "pcf", "distance": 4}, "pair distance 8": {"method": "pcf", "distance": 8},
-             "tile 24 step 24": {"tile": 24, "step": 24, "arrow_scale": 2.0}}
+SCENARIOS = {
+    "defaults": {},
+    "small tile": {"tile": 8, "step": 8},
+    "stack background": {"subtract_average": "stack"},
+    "tight quality": {"min_quality": 0.99},
+    "two lags": {"n_lags": 2},
+    "escaping lags": {"n_lags": 30},
+    "pair correlation": {"method": "pcf", "distance": 4},
+    "pair distance 8": {"method": "pcf", "distance": 8},
+    "tile 24 step 24": {"tile": 24, "step": 24, "arrow_scale": 2.0},
+}
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
@@ -228,13 +283,20 @@ def test_the_qt_tool_and_the_emtk_app_agree_on_every_result(app, drv, qt_tool, f
     m = app.model
     assert m.status_line == qt_tool.statusBar().currentMessage() == qt.status
     for name in ("vx", "vy", "quality", "x", "y"):
-        np.testing.assert_array_equal(getattr(m.result, name), getattr(qt.result, name), err_msg=name)
+        np.testing.assert_array_equal(
+            getattr(m.result, name), getattr(qt.result, name), err_msg=name
+        )
     assert m.result.n_escaped == qt.result.n_escaped and m.summary_html() == qt.summary_html()
     assert m.flow_vectors() == qt.flow_vectors() and m.flow_extent() == qt.flow_extent()
     assert [s["name"] for s in m.profile_series()] == [s["name"] for s in qt.profile_series()]
     for a, b in zip(m.profile_series(), qt.profile_series()):
-        np.testing.assert_array_equal(np.asarray(a["y"], dtype=float), np.asarray(b["y"], dtype=float))
-    cells = [[f"{r[k]:.4g}" for k in ("x", "y", "vx", "vy", "speed", "angle", "quality")] for r in m.tile_table_rows()]
+        np.testing.assert_array_equal(
+            np.asarray(a["y"], dtype=float), np.asarray(b["y"], dtype=float)
+        )
+    cells = [
+        [f"{r[k]:.4g}" for k in ("x", "y", "vx", "vy", "speed", "angle", "quality")]
+        for r in m.tile_table_rows()
+    ]
     assert cells == qt_table_cells(qt_tool)
     if not m.result.kept(m.min_quality).any():
         assert m.diagnose() == qt.diagnose()
@@ -249,8 +311,19 @@ def test_the_demo_is_loaded_and_mapped_as_the_qt_tool_does(app, drv, qt_tool, wi
     m = app.model
     qt = qt_tool.model
     fresh = FlowViewModel()
-    for k in ("method", "tile", "step", "n_lags", "distance", "subtract_average", "min_quality", "arrow_scale"):
-        setattr(qt, k, getattr(fresh, k))  # the Qt tool is shared by the module: start from the defaults the new app has
+    for k in (
+        "method",
+        "tile",
+        "step",
+        "n_lags",
+        "distance",
+        "subtract_average",
+        "min_quality",
+        "arrow_scale",
+    ):
+        setattr(
+            qt, k, getattr(fresh, k)
+        )  # the Qt tool is shared by the module: start from the defaults the new app has
     qt.load_demo()
     assert m.status_line == qt.status and "frames of 64x64, 1 channel(s). Ready." in m.status_line
     assert Path(m.filename) == with_demo == Path(qt.filename)
@@ -266,24 +339,49 @@ def test_the_demo_is_loaded_and_mapped_as_the_qt_tool_does(app, drv, qt_tool, wi
 
 
 @needs_simulator
-@pytest.mark.xfail(strict=True, reason="tttrlib 0.27.0 reads the simulated demo PTU back as an all-zero stack, so Map flow ends in 'No arrows' "
-                   "(the plugin's own test_the_demo_is_a_readable_ptu_whose_flow_comes_back fails the same way); see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="tttrlib 0.27.0 reads the simulated demo PTU back as an all-zero stack, so Map flow ends in 'No arrows' "
+    "(the plugin's own test_the_demo_is_a_readable_ptu_whose_flow_comes_back fails the same way); see REPORT.md section 10",
+)
 def test_the_demo_gives_arrows_along_plus_x_with_a_parabolic_profile(app, drv, with_demo):
     drv.click("demo")
     drv.settle(timeout=300)
     drv.click("map_flow")
     drv.settle()
     summary = app.model.result.summary(0.5)
-    assert app.model.result.n_escaped == 0 and summary["n_kept"] >= 0.8 * summary["n_tiles"] and summary["mean_vx"] > 0
+    assert (
+        app.model.result.n_escaped == 0
+        and summary["n_kept"] >= 0.8 * summary["n_tiles"]
+        and summary["mean_vx"] > 0
+    )
 
 
-@pytest.mark.parametrize("attr", ["tile", "n_lags", "distance", "min_quality", "pixel_duration_us", "frame_duration_ms", "line_duration_ms",
-                                  "pixel_size_nm", "arrow_scale", "step"])
+@pytest.mark.parametrize(
+    "attr",
+    [
+        "tile",
+        "n_lags",
+        "distance",
+        "min_quality",
+        "pixel_duration_us",
+        "frame_duration_ms",
+        "line_duration_ms",
+        "pixel_size_nm",
+        "arrow_scale",
+        "step",
+    ],
+)
 def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, drv, qt_tool, attr):
-    from chisurf.gui.autoform.sections.builtin import ValueWidget
     from qtpy import QtWidgets
 
-    editor = {vw._section.attr: vw.editor for vw in qt_tool.findChildren(ValueWidget) if getattr(vw, "_section", None)}[attr]
+    from chisurf.gui.autoform.sections.builtin import ValueWidget
+
+    editor = {
+        vw._section.attr: vw.editor
+        for vw in qt_tool.findChildren(ValueWidget)
+        if getattr(vw, "_section", None)
+    }[attr]
     drv.draw(2)
     if attr in ("arrow_scale", "step"):
         drv.click("Display and estimator.fold")
@@ -299,7 +397,12 @@ def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, d
 
 def test_choosing_a_file_reads_its_channels_and_does_not_map(app, drv, flow_tif):
     m = loaded(app, drv, flow_tif)
-    assert Path(m.filename) == flow_tif and m.channel_names() == ["ch0"] and m.channel == "ch0" and m.result is None
+    assert (
+        Path(m.filename) == flow_tif
+        and m.channel_names() == ["ch0"]
+        and m.channel == "ch0"
+        and m.result is None
+    )
 
 
 def test_a_typed_path_is_taken_on_enter_and_on_click_away_but_not_before(app, drv, flow_tif):
@@ -313,11 +416,19 @@ def test_a_typed_path_is_taken_on_enter_and_on_click_away_but_not_before(app, dr
 def test_browse_opens_the_dialog_and_a_chosen_file_is_loaded(app, drv, flow_tif):
     app.model.folder = str(flow_tif.parent)
     drv.click("open_file")
-    assert dialog_open(drv) and app.dialog.title == "Open image" and "Open image" in drv.draw(1).strings
+    assert (
+        dialog_open(drv)
+        and app.dialog.title == "Open image"
+        and "Open image" in drv.draw(1).strings
+    )
     drv.click_text("flow.tif")
     drv.click_text("Open", last=True)
     drv.settle()
-    assert Path(app.model.filename) == flow_tif and app.model.folder == str(flow_tif.parent) and not dialog_open(drv)
+    assert (
+        Path(app.model.filename) == flow_tif
+        and app.model.folder == str(flow_tif.parent)
+        and not dialog_open(drv)
+    )
 
 
 def test_browse_cancel_the_window_close_button_and_escape_change_nothing(app, drv, flow_tif):
@@ -342,8 +453,17 @@ class FakeClient:
 
     def call(self, method, params=None):
         if method == "mmfdb.datasets.browse":
-            return {"datasets": [{"artifact_id": "a1", "artifact_kind": "raw_data", "data_format": "tif", "original_filename": "stored.tif"}],
-                    "total": 1}
+            return {
+                "datasets": [
+                    {
+                        "artifact_id": "a1",
+                        "artifact_kind": "raw_data",
+                        "data_format": "tif",
+                        "original_filename": "stored.tif",
+                    }
+                ],
+                "total": 1,
+            }
         if method == "mmfdb.datasets.open":
             return {"local_path": self.path}
         raise AssertionError(method)
@@ -365,13 +485,18 @@ def open_picker(app, drv, path):
 
 def test_the_database_button_picks_a_dataset(app, drv, flow_tif):
     open_picker(app, drv, flow_tif)
-    assert app.picker.accept()  # the picker's own accept: what the "Open selected" button would call (see the xfail below)
+    assert (
+        app.picker.accept()
+    )  # the picker's own accept: what the "Open selected" button would call (see the xfail below)
     drv.settle()
     assert Path(app.model.filename) == flow_tif and app.model.channel_names() == ["ch0"]
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the dataset picker's buttons share one id ('...##dataset') and its Open selected / Cancel "
-                   "never fire; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the dataset picker's buttons share one id ('...##dataset') and its Open selected / Cancel "
+    "never fire; see REPORT.md section 10",
+)
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flow_tif):
     import time
 
@@ -407,10 +532,24 @@ def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, flow_tif):
     host.resize(900, 600)
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile(str(flow_tif))])
-    enter = QtGui.QDragEnterEvent(QtCore.QPoint(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    enter = QtGui.QDragEnterEvent(
+        QtCore.QPoint(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dragEnterEvent(enter)
     assert enter.isAccepted()
-    host.dropEvent(QtGui.QDropEvent(QtCore.QPointF(10, 10), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier))
+    host.dropEvent(
+        QtGui.QDropEvent(
+            QtCore.QPointF(10, 10),
+            QtCore.Qt.CopyAction,
+            mime,
+            QtCore.Qt.LeftButton,
+            QtCore.Qt.NoModifier,
+        )
+    )
     assert Path(app.model.filename) == flow_tif and qapp is not None
     host.close()
 
@@ -420,7 +559,10 @@ def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, flow_tif):
 
 def test_map_flow_with_nothing_loaded_says_so(app, drv):
     drv.click("map_flow")
-    assert app.model.status_line == QT_VALUES["empty_map"]["model_status"] == "Load an image first." and not app.job.busy
+    assert (
+        app.model.status_line == QT_VALUES["empty_map"]["model_status"] == "Load an image first."
+        and not app.job.busy
+    )
     assert "Load an image first." in drv.strings()
 
 
@@ -437,7 +579,10 @@ def test_a_corrupt_and_a_missing_file_report_the_qt_reasons(app, drv, tmp_path):
     assert app.model.status_line.startswith("Could not read the file:")
     drv.click("map_flow")
     drv.settle()
-    assert app.model.status_line.startswith("Flow map failed:") and "missing.tif" in app.model.status_line
+    assert (
+        app.model.status_line.startswith("Flow map failed:")
+        and "missing.tif" in app.model.status_line
+    )
 
 
 def test_too_few_frames_are_refused_with_the_qt_messages(app, drv, tmp_path):
@@ -448,23 +593,36 @@ def test_too_few_frames_are_refused_with_the_qt_messages(app, drv, tmp_path):
     assert "Too few frames" in app.model.status_line
     drv.click("map_flow")
     drv.settle()
-    assert app.model.status_line == QT_VALUES["two_frames"]["model_status"] and app.model.result is None
+    assert (
+        app.model.status_line == QT_VALUES["two_frames"]["model_status"]
+        and app.model.result is None
+    )
 
 
 def test_tiles_that_escape_are_refused_and_the_status_says_why_in_the_qt_words(app, drv, flow_tif):
     mapped(app, drv, flow_tif, **settings_of(n_lags=30))
     m = app.model
-    assert m.status_line == QT_VALUES["tiff_too_many_lags"]["model_status"] and m.result.n_escaped == 25 and not m.flow_vectors()
+    assert (
+        m.status_line == QT_VALUES["tiff_too_many_lags"]["model_status"]
+        and m.result.n_escaped == 25
+        and not m.flow_vectors()
+    )
     assert m.status_line.startswith("No arrows: All 25 tile(s) were refused")
     text = " ".join(drv.strings())
     assert "No arrows." in text and "Use fewer frame lags, or a larger tile." in text
-    assert "No arrows \u2014 nothing passed the quality threshold, or the field is empty." in " ".join(drv.draw(2).strings)  # under the image, wrapped
+    assert (
+        "No arrows \u2014 nothing passed the quality threshold, or the field is empty."
+        in " ".join(drv.draw(2).strings)
+    )  # under the image, wrapped
 
 
 def test_nothing_above_the_quality_threshold_is_explained_not_blank(app, drv, flow_tif):
     mapped(app, drv, flow_tif, **settings_of(min_quality=1.0))
     assert not app.model.flow_vectors()
-    assert app.model.status_line.startswith("No arrows:") and "best tile scored" in app.model.status_line
+    assert (
+        app.model.status_line.startswith("No arrows:")
+        and "best tile scored" in app.model.status_line
+    )
     assert "No arrows." in " ".join(drv.strings())
 
 
@@ -474,7 +632,11 @@ def test_a_new_file_clears_the_previous_result(app, drv, flow_tif, tmp_path, flo
     other = tmp_path / "other.tif"
     imwrite(other, flow_stack)
     loaded(app, drv, other)
-    assert app.model.result is None and app.model.tile_table_rows() == [] and app.model.profile_series() == []
+    assert (
+        app.model.result is None
+        and app.model.tile_table_rows() == []
+        and app.model.profile_series() == []
+    )
 
 
 def test_the_actions_and_the_form_are_greyed_while_a_worker_runs(app, drv, flow_tif):
@@ -515,14 +677,20 @@ def test_a_demo_that_cannot_be_made_is_reported(app, drv, monkeypatch, tmp_path)
 
 
 def test_the_estimator_list_offers_the_two_qt_estimators_and_each_is_picked(app, drv):
-    for label, value in (("Pair correlation — when it arrives", "pcf"), ("STICS — where the peak moves", "stics")):
+    for label, value in (
+        ("Pair correlation — when it arrives", "pcf"),
+        ("STICS — where the peak moves", "stics"),
+    ):
         pick(drv, "method", label)
         assert app.model.method == value
 
 
 def test_the_background_list_offers_the_two_qt_choices(app, drv):
     drv.click("Display and estimator.fold")
-    for label, value in (("Also the time-average (immobile)", "stack"), ("Each frame's own mean", "frame")):
+    for label, value in (
+        ("Also the time-average (immobile)", "stack"),
+        ("Each frame's own mean", "frame"),
+    ):
         pick(drv, "subtract_average", label)
         assert app.model.subtract_average == value
 
@@ -582,7 +750,9 @@ def test_changing_a_setting_does_not_re_map_by_itself_as_in_the_qt_tool(app, drv
     mapped(app, drv, flow_tif)
     before = app.model.status_line
     pick(drv, "method", "Pair correlation — when it arrives")
-    assert not app.job.busy and app.model.status_line == before and app.model.result.method == "stics"
+    assert (
+        not app.job.busy and app.model.status_line == before and app.model.result.method == "stics"
+    )
 
 
 # ── 6. export ────────────────────────────────────────────────────────────────────────────────────────────── #
@@ -590,14 +760,20 @@ def test_changing_a_setting_does_not_re_map_by_itself_as_in_the_qt_tool(app, drv
 
 def test_export_without_a_result_says_so(app, drv):
     drv.click("request_export")
-    assert app.model.status_line == QT_VALUES["empty_export"]["status"] == "Nothing to export yet" and not dialog_open(drv)
+    assert app.model.status_line == QT_VALUES["empty_export"][
+        "status"
+    ] == "Nothing to export yet" and not dialog_open(drv)
 
 
 def test_export_csv_writes_the_file_the_qt_tool_wrote(app, drv, flow_tif, tmp_path):
     mapped(app, drv, flow_tif)
     drv.click("request_export")
     painter = drv.draw(2)
-    assert dialog_open(drv) and app.dialog.title == "Export flow map" and "flow_map.csv" in painter.strings
+    assert (
+        dialog_open(drv)
+        and app.dialog.title == "Export flow map"
+        and "flow_map.csv" in painter.strings
+    )
     drv.click_text("Save", last=True)
     written = tmp_path / "flow_map.csv"
     assert written.read_text() == QT_CSV
@@ -621,7 +797,9 @@ def test_export_to_a_typed_name_cancel_and_an_unwritable_place(app, drv, flow_ti
     blocker = tmp_path / "afile"
     blocker.write_text("x")
     app.model.write_export(str(blocker / "x.csv"))
-    assert app.model.status_line.startswith("Could not write") and "Could not write" in " ".join(drv.strings())
+    assert app.model.status_line.startswith("Could not write") and "Could not write" in " ".join(
+        drv.strings()
+    )
 
 
 # ── 7. the views ─────────────────────────────────────────────────────────────────────────────────────────── #
@@ -629,7 +807,10 @@ def test_export_to_a_typed_name_cancel_and_an_unwritable_place(app, drv, flow_ti
 
 def test_every_view_says_what_to_do_before_there_is_a_result(app, drv):
     strings = drv.draw(2).strings
-    assert any(s.startswith("Load a TIFF") or "press" in s.lower() for s in strings) or app.model.summary_html()
+    assert (
+        any(s.startswith("Load a TIFF") or "press" in s.lower() for s in strings)
+        or app.model.summary_html()
+    )
     assert any(s.startswith("Map a file (or load the demo)") for s in strings)
     drv.click_text("Profile")
     assert any(s.startswith("Map a file: the speed") for s in drv.draw(2).strings)
@@ -646,7 +827,9 @@ def test_the_quiver_draws_one_arrow_per_tile_with_the_qt_caption(app, drv, flow_
     assert {"x", "y"} <= set(drv.painter.strings)
 
 
-def test_the_arrow_scale_changes_the_drawn_length_and_says_so_and_never_the_numbers(app, drv, flow_tif):
+def test_the_arrow_scale_changes_the_drawn_length_and_says_so_and_never_the_numbers(
+    app, drv, flow_tif
+):
     m = mapped(app, drv, flow_tif)
     vectors = m.flow_vectors()
     drv.click("Display and estimator.fold")
@@ -660,18 +843,27 @@ def test_the_profile_shows_speed_and_vx_and_the_demo_truth_only_for_the_demo(app
     m = mapped(app, drv, flow_tif)
     drv.click_text("Profile")
     strings = set(drv.draw(3).strings)
-    assert {"speed", "v_x", "y (µm)", "velocity (µm/s)"} <= strings and "simulated truth" not in strings
+    assert {
+        "speed",
+        "v_x",
+        "y (µm)",
+        "velocity (µm/s)",
+    } <= strings and "simulated truth" not in strings
     assert [s["name"] for s in m.profile_series()] == ["speed", "v_x"]
 
 
 @needs_simulator
-def test_the_demo_adds_its_simulated_truth_to_the_profile_even_when_no_arrow_survives(app, drv, with_demo):
+def test_the_demo_adds_its_simulated_truth_to_the_profile_even_when_no_arrow_survives(
+    app, drv, with_demo
+):
     drv.click("demo")
     drv.settle(timeout=300)
     drv.click("map_flow")
     drv.settle()
     drv.click_text("Profile")
-    assert "simulated truth" in drv.draw(3).strings and "simulated truth" in [s["name"] for s in app.model.profile_series()]
+    assert "simulated truth" in drv.draw(3).strings and "simulated truth" in [
+        s["name"] for s in app.model.profile_series()
+    ]
 
 
 def test_a_drag_pans_the_flow_field_and_the_profile_and_a_new_result_refits_it(app, drv, flow_tif):
@@ -697,16 +889,25 @@ def column_values(drv, expect, header_text):
     """The cells of one column (those drawn under its header), in the order drawn."""
     texts = drv.draw(2).texts
     hx, hy, hw, hh = [t[:4] for t in texts if t[5].endswith(header_text)][-1]
-    return [t[5] for t in texts if t[5] in expect and hx - 60 <= t[0] <= hx + hw + 60 and t[1] > hy + hh - 1]
+    return [
+        t[5]
+        for t in texts
+        if t[5] in expect and hx - 60 <= t[0] <= hx + hw + 60 and t[1] > hy + hh - 1
+    ]
 
 
 def test_the_tile_table_header_sorts_by_value_and_a_row_click_changes_nothing(app, flow_tif):
-    drv = Driver(app, BIG)  # seven columns: at 1000 px the Speed header lies beyond the window and the table scrolls sideways
+    drv = Driver(
+        app, BIG
+    )  # seven columns: at 1000 px the Speed header lies beyond the window and the table scrolls sideways
     mapped(app, drv, flow_tif)
     drv.click_text("Tiles")
     speeds = {f"{r['speed']:.4g}" for r in app.model.tile_table_rows()}
     unsorted = column_values(drv, speeds, "Speed")
-    assert len(unsorted) >= 15 and unsorted == [f"{r['speed']:.4g}" for r in app.model.tile_table_rows()][: len(unsorted)]
+    assert (
+        len(unsorted) >= 15
+        and unsorted == [f"{r['speed']:.4g}" for r in app.model.tile_table_rows()][: len(unsorted)]
+    )
 
     def header():
         return [t[:4] for t in drv.draw(1).texts if t[5].endswith("Speed")][-1]
@@ -721,7 +922,10 @@ def test_the_tile_table_header_sorts_by_value_and_a_row_click_changes_nothing(ap
     assert app.model.export_settings() == before and app.model.result is not None
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel never reaches an implot inside a DockManager window; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel never reaches an implot inside a DockManager window; see REPORT.md section 10",
+)
 def test_the_wheel_zooms_the_flow_field(app, drv, flow_tif):
     mapped(app, drv, flow_tif)
     drv.draw(3)
@@ -731,7 +935,10 @@ def test_the_wheel_zooms_the_flow_field(app, drv, flow_tif):
     assert numeric_ticks(drv.draw(2)) != before
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the wheel does not reach a spin field inside a DockManager window; see REPORT.md section 10")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the wheel does not reach a spin field inside a DockManager window; see REPORT.md section 10",
+)
 def test_the_wheel_over_the_tile_field_steps_it(app, drv):
     x, y, w, h = drv.rect("tile")
     drv.wheel(x + w * 0.3, y + h / 2, 1)
@@ -772,7 +979,9 @@ def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
 
 
 @needs_simulator
-def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, with_demo):
+def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+    app, with_demo
+):
     """The guided tour keeps the demo workflow: Load demo, then Map flow, each pressed by the user."""
     drv = Driver(app, BIG)
     drv.click("guide")
@@ -790,9 +999,18 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
                 drv.click("map_flow")
                 drv.settle()
             drv.draw(2)
-            assert not app.tour.awaiting, f"{step['title']}: operating the control did not release the step"
-        drv.click_text("Finish ✓" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next ►", last=True)
-    assert not app.tour.active and app.model.result is not None and "frames of 64x64" in app.model.status or app.model.result is not None
+            assert not app.tour.awaiting, (
+                f"{step['title']}: operating the control did not release the step"
+            )
+        drv.click_text(
+            "Finish ✓" if app.tour.step_idx == len(app.tour.steps) - 1 else "Next ►", last=True
+        )
+    assert (
+        not app.tour.active
+        and app.model.result is not None
+        and "frames of 64x64" in app.model.status
+        or app.model.result is not None
+    )
 
 
 def test_every_guide_target_is_a_drawn_control_or_window(app, drv, flow_tif):
@@ -813,10 +1031,22 @@ def test_every_guide_target_is_a_drawn_control_or_window(app, drv, flow_tif):
         assert rect and rect[2] > 0 and rect[3] > 0, f"{step['title']}: nothing drawn for {key!r}"
         seen.add(key)
     app.tour.stop()
-    assert {"demo", "filename", "Scanner.fold", "tile", "n_lags", "computed", "Flow field", "Profile", "min_quality"} <= seen
+    assert {
+        "demo",
+        "filename",
+        "Scanner.fold",
+        "tile",
+        "n_lags",
+        "computed",
+        "Flow field",
+        "Profile",
+        "min_quality",
+    } <= seen
 
 
-def test_a_file_chosen_in_the_dialog_does_not_release_the_demo_step_but_the_demo_does(app, flow_tif):
+def test_a_file_chosen_in_the_dialog_does_not_release_the_demo_step_but_the_demo_does(
+    app, flow_tif
+):
     drv = Driver(app, BIG)
     app.model.folder = str(flow_tif.parent)
     drv.click("guide")
@@ -835,30 +1065,71 @@ def test_a_file_chosen_in_the_dialog_does_not_release_the_demo_step_but_the_demo
 
 def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
     m = app.model
-    m.method, m.tile, m.n_lags, m.distance, m.min_quality, m.subtract_average = "pcf", 32, 7, 6, 0.75, "stack"
-    m.pixel_duration_us, m.frame_duration_ms, m.line_duration_ms, m.pixel_size_nm, m.arrow_scale, m.step = 12.5, 100.0, 1.5, 64.0, 3.0, 8
+    m.method, m.tile, m.n_lags, m.distance, m.min_quality, m.subtract_average = (
+        "pcf",
+        32,
+        7,
+        6,
+        0.75,
+        "stack",
+    )
+    (
+        m.pixel_duration_us,
+        m.frame_duration_ms,
+        m.line_duration_ms,
+        m.pixel_size_nm,
+        m.arrow_scale,
+        m.step,
+    ) = 12.5, 100.0, 1.5, 64.0, 3.0, 8
     m.folder = "/tmp"
     saved = json.loads(json.dumps(app.export_settings()))
     other = make_app()
     other.restore_settings(saved)
     assert other.export_settings() == saved and other.model.method == "pcf"
-    other.restore_settings({"method": "magic", "tile": "big", "n_lags": 2.5, "min_quality": None, "subtract_average": 3, "step": True})
+    other.restore_settings(
+        {
+            "method": "magic",
+            "tile": "big",
+            "n_lags": 2.5,
+            "min_quality": None,
+            "subtract_average": 3,
+            "step": True,
+        }
+    )
     assert other.export_settings() == saved
     other.restore_settings(None)
     assert not {"filename", "channel"} & set(saved)
 
 
 def test_the_imaging_hub_contract_matches_the_qt_tool(app, drv, flow_tif):
-    app.apply_setup_settings({"detectors": {"green": {"chs": [0]}}, "pixel_duration_us": 10.0, "line_duration_ms": 0.64, "frame_duration_ms": 30.0,
-                              "pixel_size_nm": 50.0})
+    app.apply_setup_settings(
+        {
+            "detectors": {"green": {"chs": [0]}},
+            "pixel_duration_us": 10.0,
+            "line_duration_ms": 0.64,
+            "frame_duration_ms": 30.0,
+            "pixel_size_nm": 50.0,
+        }
+    )
     m = app.model
-    assert (m.pixel_duration_us, m.line_duration_ms, m.frame_duration_ms, m.pixel_size_nm) == (10.0, 0.64, 30.0, 50.0)
+    assert (m.pixel_duration_us, m.line_duration_ms, m.frame_duration_ms, m.pixel_size_nm) == (
+        10.0,
+        0.64,
+        30.0,
+        50.0,
+    )
     assert list(m.detectors) == ["green"]
     app.apply_setup_settings({"pixel_duration_us": -1.0, "frame_duration_ms": "x"})
-    assert m.pixel_duration_us == 10.0 and m.frame_duration_ms == 30.0  # not positive numbers: ignored
+    assert (
+        m.pixel_duration_us == 10.0 and m.frame_duration_ms == 30.0
+    )  # not positive numbers: ignored
     app.apply_pipeline_context({"source": str(flow_tif), "hdf5": "/x/y.h5"})
     drv.settle()
-    assert Path(m.filename) == flow_tif and m.channel_names() == ["ch0"] and m.pipeline_hdf5 == "/x/y.h5"
+    assert (
+        Path(m.filename) == flow_tif
+        and m.channel_names() == ["ch0"]
+        and m.pipeline_hdf5 == "/x/y.h5"
+    )
     m.pipeline_sink = lambda *a, **k: None
     app.set_frame_request_callback(lambda: None)
     app.close()
@@ -866,7 +1137,15 @@ def test_the_imaging_hub_contract_matches_the_qt_tool(app, drv, flow_tif):
 
 def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, flow_tif):
     for size in ((1200, 800), (800, 600)):
-        assert {"Settings", "Map flow", "Load demo", "Export CSV", "Browse", "Database", "Flow"} <= set(drv.draw(3, size).strings)
+        assert {
+            "Settings",
+            "Map flow",
+            "Load demo",
+            "Export CSV",
+            "Browse",
+            "Database",
+            "Flow",
+        } <= set(drv.draw(3, size).strings)
     mapped(app, drv, flow_tif)
     for size in ((1200, 800), (800, 600)):
         assert any("mean speed (25 of 25 tiles)" in s for s in drv.draw(3, size).strings)
@@ -888,12 +1167,27 @@ def test_every_spec_key_exists_on_the_model():
     model = make_app().model
     for section in walk(EMTK_SPEC["sections"]):
         options = options_of(section)
-        for name in (section.get("attr"), section.get("call"), section.get("options_source"), options.get("source"), section.get("source"),
-                     options.get("image_source"), options.get("vectors_source"), options.get("extent_source"), options.get("scale_attr")):
+        for name in (
+            section.get("attr"),
+            section.get("call"),
+            section.get("options_source"),
+            options.get("source"),
+            section.get("source"),
+            options.get("image_source"),
+            options.get("vectors_source"),
+            options.get("extent_source"),
+            options.get("scale_attr"),
+        ):
             if name:
                 assert hasattr(model, name), (section.get("title"), name)
-        for name in (section.get("call"), options.get("source"), section.get("options_source"), options.get("image_source"),
-                     options.get("vectors_source"), options.get("extent_source")):
+        for name in (
+            section.get("call"),
+            options.get("source"),
+            section.get("options_source"),
+            options.get("image_source"),
+            options.get("vectors_source"),
+            options.get("extent_source"),
+        ):
             if name:
                 assert callable(getattr(model, name)), name
         for button in section.get("buttons", []):
@@ -904,10 +1198,16 @@ def test_every_spec_key_exists_on_the_model():
 
 def test_every_qt_setting_is_in_the_emtk_spec_with_the_same_range_and_choices():
     def values(sections):
-        return {s["attr"]: s for s in walk(sections) if s.get("type") in ("value", "toggle", "choice") and s.get("attr")}
+        return {
+            s["attr"]: s
+            for s in walk(sections)
+            if s.get("type") in ("value", "toggle", "choice") and s.get("attr")
+        }
 
     qt, emtk = values(QT_SPEC["sections"]), values(EMTK_SPEC["sections"])
-    assert set(emtk) - set(qt) == {"filename"} and not set(qt) - set(emtk) - {"filename"}  # the Qt data-source is declared by options.attr
+    assert set(emtk) - set(qt) == {"filename"} and not set(qt) - set(emtk) - {
+        "filename"
+    }  # the Qt data-source is declared by options.attr
     for attr, spec in qt.items():
         for key in ("minimum", "maximum", "decimals", "label", "options", "labels", "description"):
             assert spec.get(key) == emtk[attr].get(key), (attr, key)
@@ -919,7 +1219,15 @@ def test_every_control_has_a_tooltip():
     inventory = emtk_inventory(build_emtk_app("img_flow"))
     assert inventory["controls_without_tooltip"] == []
     for section in walk(EMTK_SPEC["sections"]):
-        if section.get("type") in ("value", "choice", "toggle", "custom", "panel", "button_row", "info"):
+        if section.get("type") in (
+            "value",
+            "choice",
+            "toggle",
+            "custom",
+            "panel",
+            "button_row",
+            "info",
+        ):
             assert section.get("description"), section.get("attr") or section.get("title")
         for column in options_of(section).get("columns", []):
             assert column.get("description"), column

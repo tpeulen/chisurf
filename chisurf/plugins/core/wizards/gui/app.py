@@ -33,10 +33,19 @@ class WizardHubApp(CalculatorHubApp):
 
     def __init__(self, entries=None):
         super().__init__(entries=default_wizards() if entries is None else entries)
-        self.help_window = EmTkHelpWindow(title="Wizards - Help", resource=HERE / "help.md", owner=self,
-                                          on_start_guide=self.start_guide, size=(700.0, 480.0))
-        self.tour = EmTkGuidedTour(steps=HERE / "guide.json", get_target_rect=lambda name: self.item_rects.get(name),
-                                   owner=self, wait_for_controls=True)
+        self.help_window = EmTkHelpWindow(
+            title="Wizards - Help",
+            resource=HERE / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+            size=(700.0, 480.0),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=HERE / "guide.json",
+            get_target_rect=lambda name: self.item_rects.get(name),
+            owner=self,
+            wait_for_controls=True,
+        )
 
     # -- children: the entry names its own factory ----------------------------------------------------------------- #
     def select(self, id):
@@ -49,7 +58,9 @@ class WizardHubApp(CalculatorHubApp):
         if id not in self.children:
             try:
                 if not entry.emtk:
-                    raise RuntimeError("it has no native window yet; the Qt wizard remains available")
+                    raise RuntimeError(
+                        "it has no native window yet; the Qt wizard remains available"
+                    )
                 module, attr = entry.emtk.split(":")
                 child = getattr(importlib.import_module(module), attr)()
                 setter = getattr(child, "set_frame_request_callback", None)
@@ -104,7 +115,12 @@ class WizardHubApp(CalculatorHubApp):
                 first, last = first or rect, rect
                 self.item_rects["entry:" + entry.id] = rect
             if first is not None:
-                self.item_rects["wizards_list"] = (first[0], first[1], first[2], last[1] + last[3] - first[1])
+                self.item_rects["wizards_list"] = (
+                    first[0],
+                    first[1],
+                    first[2],
+                    last[1] + last[3] - first[1],
+                )
             im.separator()
             if im.button(tr("Guide")):
                 self.start_guide()
@@ -120,10 +136,14 @@ class WizardHubApp(CalculatorHubApp):
         hint = tr("Select a wizard on the left to get started.")
         wrap = max(width - left - 16.0, 50.0)
         shown = [entry.label if entry else "", entry.description if entry else hint, self.error]
-        header_h = max(_HEADER_H, 10.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] for t in shown if t))
+        header_h = max(
+            _HEADER_H, 10.0 + sum(im.calc_text_size(t, wrap_width=wrap)[1] for t in shown if t)
+        )
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, header_h), im.Cond.ALWAYS)
-        if im.begin("Wizard description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            "Wizard description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        ):
             if entry:
                 im.text_unformatted(entry.label)
                 im.text_wrapped(entry.description)

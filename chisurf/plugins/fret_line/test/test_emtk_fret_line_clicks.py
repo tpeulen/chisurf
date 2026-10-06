@@ -35,7 +35,11 @@ def tab(drv, name):
 
 
 def param(drv, canonical="distance.mean.0", index=0):
-    return next(p for p in drv.app.model.components[index]["model"].parameters_all if p.canonical_id == canonical)
+    return next(
+        p
+        for p in drv.app.model.components[index]["model"].parameters_all
+        if p.canonical_id == canonical
+    )
 
 
 def pick(drv, field, label):
@@ -61,13 +65,18 @@ def edit_cell(drv, row_label, column, text):
     drv.draw(2)
     drv.app.pointer_release(hx + 6, y + h / 2, 1, 0)
     drv.draw(1)
-    for _ in range(14):  # Ctrl+A does not select in a table cell editor (emtk gap, test below): clear it by hand
+    for _ in range(
+        14
+    ):  # Ctrl+A does not select in a table cell editor (emtk gap, test below): clear it by hand
         drv.key(keys.KEY_BACKSPACE)
     drv.type_text(text)
     drv.enter()
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: Ctrl+A in a table cell editor does not select its text (it does in every input field)")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: Ctrl+A in a table cell editor does not select its text (it does in every input field)",
+)
 def test_ctrl_a_selects_the_text_of_a_table_cell_being_edited(drv):
     x, y, w, h = drv.text_rect("RDA0")
     hx = drv.text_rect("Value")[0]
@@ -134,7 +143,9 @@ def test_the_model_combo_replaces_the_selected_component_keeping_its_weight(drv)
     assert m.weight == 2.5
     pick(drv, "model_label", "Lifetime")
     assert m.components[0]["model_name"] == "Lifetime" and m.weight == 2.5
-    assert "C0: Lifetime" in drv.draw(2).strings and not any("RDA0" == s for s in drv.draw(2).strings)
+    assert "C0: Lifetime" in drv.draw(2).strings and not any(
+        "RDA0" == s for s in drv.draw(2).strings
+    )
     pick(drv, "model_label", "FRET: FD (Worm-like chain)")
     assert m.components[0]["model_name"] == "FRET: FD (Worm-like chain)"
 
@@ -215,7 +226,9 @@ def test_load_curve_file_opens_a_chooser_whose_cancel_leaves_everything(drv):
     assert drv.app.file_dialog is None and not drv.app.loaded_curves
 
 
-def test_a_curve_file_chosen_in_the_chooser_is_bound_to_the_model_input_and_unload_removes_it(drv, tmp_path, monkeypatch):
+def test_a_curve_file_chosen_in_the_chooser_is_bound_to_the_model_input_and_unload_removes_it(
+    drv, tmp_path, monkeypatch
+):
     monkeypatch.chdir(tmp_path)
     x = np.linspace(0, 50, 200)
     np.savetxt(tmp_path / "irf.csv", np.c_[x, np.exp(-((x - 10) ** 2) / 4)], delimiter=",")
@@ -230,7 +243,10 @@ def test_a_curve_file_chosen_in_the_chooser_is_bound_to_the_model_input_and_unlo
     assert getattr(model.datasets, "response", None) is not None and drv.app.file_dialog is None
     assert any(s.startswith("response: ") and "not loaded" not in s for s in drv.draw(2).strings)
     drv.click(drv.text_rect("Unload curve", last=False))
-    assert getattr(model.datasets, "response", None) is None and "response: not loaded" in drv.draw(2).strings
+    assert (
+        getattr(model.datasets, "response", None) is None
+        and "response: not loaded" in drv.draw(2).strings
+    )
 
 
 def test_a_curve_file_that_is_no_curve_reports_why_in_the_editor(drv, tmp_path, monkeypatch):
@@ -241,7 +257,10 @@ def test_a_curve_file_that_is_no_curve_reports_why_in_the_editor(drv, tmp_path, 
     drv.click(drv.text_rect("bad.csv"))
     drv.click(drv.text_rect("Open"))
     drv.draw(3)
-    assert getattr(drv.app.model.selected["model"].datasets, "response", None) is None and drv.app.error
+    assert (
+        getattr(drv.app.model.selected["model"].datasets, "response", None) is None
+        and drv.app.error
+    )
 
 
 # -- the sweep tab ---------------------------------------------------------------------------------------------------------- #
@@ -297,17 +316,28 @@ def test_the_filter_narrows_the_vary_list_and_the_choice_is_clicked(drv):
     drv.click("sweep_filter", fx=0.3)
     drv.type_text("fraction")
     drv.enter()
-    assert m.sweep_labels() == ["fraction · C0 [FRET: FD (Gaussian)]", "fraction · C1 [FRET: FD (Gaussian)]"]
+    assert m.sweep_labels() == [
+        "fraction · C0 [FRET: FD (Gaussian)]",
+        "fraction · C1 [FRET: FD (Gaussian)]",
+    ]
     pick(drv, "sweep_label", "fraction · C1 [FRET: FD (Gaussian)]")
-    assert m.sweep_label == "fraction · C1 [FRET: FD (Gaussian)]" and "fraction · C1 [FRET: FD (Gaussian)]" in drv.draw(2).strings
+    assert (
+        m.sweep_label == "fraction · C1 [FRET: FD (Gaussian)]"
+        and "fraction · C1 [FRET: FD (Gaussian)]" in drv.draw(2).strings
+    )
     drv.click("sweep_filter", fx=0.3)
     drv.select_all()
     drv.key(keys.KEY_BACKSPACE)
-    drv.click("minimum")  # a click away commits the emptied field (Enter does not: emtk gap, test below)
+    drv.click(
+        "minimum"
+    )  # a click away commits the emptied field (Enter does not: emtk gap, test below)
     assert m.sweep_filter == "" and len(m.sweep_labels()) > 10
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: Enter in a text field that was emptied does not commit it (a click away does)")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: Enter in a text field that was emptied does not commit it (a click away does)",
+)
 def test_enter_commits_an_emptied_filter_field(drv):
     tab(drv, "Sweep")
     drv.type_into("sweep_filter", "fraction")
@@ -327,7 +357,11 @@ def test_add_fret_line_computes_the_line_shows_it_in_the_table_and_the_legends(d
     drv.type_into("minimum", "20")
     drv.type_into("maximum", "120")
     add_line(drv)
-    assert len(m.lines) == 1 and m.lines[0]["name"] == "Line 1" and len(m.lines[0]["result"]["tau_f"]) == 100
+    assert (
+        len(m.lines) == 1
+        and m.lines[0]["name"] == "Line 1"
+        and len(m.lines[0]["result"]["tau_f"]) == 100
+    )
     assert "Line 1" in legend(drv)
     tab(drv, "FRET lines")
     shown = drv.draw(2).strings
@@ -373,7 +407,9 @@ def test_show_all_hide_all_remove_and_clear_buttons(drv):
         add_line(drv)
     tab(drv, "FRET lines")
     drv.click("hide_all")
-    assert [l["visible"] for l in m.lines] == [False] * 3 and "Line 1" not in [s for s in legend(drv) if False]
+    assert [l["visible"] for l in m.lines] == [False] * 3 and "Line 1" not in [
+        s for s in legend(drv) if False
+    ]
     drv.click("show_all")
     assert all(l["visible"] for l in m.lines)
     drv.click(drv.text_rect("Line 2", last=False))
@@ -395,14 +431,18 @@ def test_the_dynamic_line_is_built_with_clicks_and_typed_distances(drv):
     drv.click("sweep_filter", fx=0.3)
     drv.type_text("fraction · C0")
     drv.enter()
-    assert m.sweep_label == "fraction · C0 [FRET: FD (Gaussian)]"  # the filter moved the choice onto a listed target
+    assert (
+        m.sweep_label == "fraction · C0 [FRET: FD (Gaussian)]"
+    )  # the filter moved the choice onto a listed target
     drv.type_into("minimum", "0")
     drv.type_into("maximum", "1")
     add_line(drv)
     line = m.lines[0]
     tf = np.asarray(line["result"]["tau_f"])
     assert tf.min() < tf.max() and "fraction" in line["sweep_label"]
-    assert param(drv, index=1).value == 70.0 and param(drv, index=0).value == 50.0  # the user's distances survive the sweep
+    assert (
+        param(drv, index=1).value == 70.0 and param(drv, index=0).value == 50.0
+    )  # the user's distances survive the sweep
 
 
 # -- Save CSV and Push to ndX -------------------------------------------------------------------------------------------------- #
@@ -414,7 +454,9 @@ def test_save_and_push_are_greyed_without_lines_and_a_click_then_does_nothing(dr
     assert drv.app.file_dialog is None and not drv.app.message_window.open
 
 
-def test_save_csv_opens_the_chooser_cancel_closes_it_and_a_typed_name_writes_the_file(drv, tmp_path, monkeypatch):
+def test_save_csv_opens_the_chooser_cancel_closes_it_and_a_typed_name_writes_the_file(
+    drv, tmp_path, monkeypatch
+):
     monkeypatch.chdir(tmp_path)
     add_line(drv)
     drv.click("save_csv")
@@ -430,7 +472,9 @@ def test_save_csv_opens_the_chooser_cancel_closes_it_and_a_typed_name_writes_the
     drv.type_text(name)
     drv.click(drv.text_rect("Save", last=True))
     path = tmp_path / "lines.csv"
-    assert path.exists() and path.read_text().startswith("# 1 FRET line(s)\n# line,sweep,log,components")
+    assert path.exists() and path.read_text().startswith(
+        "# 1 FRET line(s)\n# line,sweep,log,components"
+    )
     shown = " ".join(drv.draw(3).strings)
     assert drv.app.message_window.open and "Saved 1 line(s) to:" in shown
     drv.click(drv.text_rect("OK"))
@@ -486,7 +530,9 @@ def test_the_wheel_zooms_the_plot(drv):
 
 def test_the_divider_between_the_editor_and_the_left_window_can_be_dragged(drv):
     drv.draw(2)
-    _split, _rect, (bx, by, bw, bh) = next(s for s in drv.app.docks.splitters if s[0].axis == "h" and s[2][3] > s[2][2])
+    _split, _rect, (bx, by, bw, bh) = next(
+        s for s in drv.app.docks.splitters if s[0].axis == "h" and s[2][3] > s[2][2]
+    )
     before = drv.rect("component_rows")[2]
     drv.drag((bx + bw / 2, by + bh / 2), (bx + bw / 2 + 100, by + bh / 2))
     assert drv.rect("component_rows")[2] > before + 50
@@ -532,9 +578,16 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(drv):
             elif target.get("name") == "add_component":
                 tab(drv, "Components")
                 drv.click("add_component")
-            assert not tour.awaiting, f"{step['title']}: operating the control did not release the step"
+            assert not tour.awaiting, (
+                f"{step['title']}: operating the control did not release the step"
+            )
         tour.next()
-    assert not tour.active and len(seen) == 3 and drv.app.model.minimum == 20.0 and len(drv.app.model.lines) == 1
+    assert (
+        not tour.active
+        and len(seen) == 3
+        and drv.app.model.minimum == 20.0
+        and len(drv.app.model.lines) == 1
+    )
 
 
 def test_every_guide_target_is_a_drawn_control(drv):
@@ -551,7 +604,14 @@ def test_every_guide_target_is_a_drawn_control(drv):
                 break
         else:
             raise AssertionError(f"{step['title']}: {key} is not drawn on any tab")
-    assert {"component_rows", "minimum", "add_line", "add_component", "sweep_label", "save_csv"} <= seen
+    assert {
+        "component_rows",
+        "minimum",
+        "add_line",
+        "add_component",
+        "sweep_label",
+        "save_csv",
+    } <= seen
 
 
 def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):
@@ -567,8 +627,18 @@ def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):
                 break
         card_w, card_h = min(480.0, BIG[0] - 40.0), 150.0
         x, y = place_tour_card(rect, float(BIG[0]), float(BIG[1]), card_w, card_h)
-        clear = x + card_w <= rect[0] or x >= rect[0] + rect[2] or y + card_h <= rect[1] or y >= rect[1] + rect[3]
-        free = rect[0] + rect[2] + card_w + 16 <= BIG[0] or rect[0] - card_w - 16 >= 0 or rect[1] + rect[3] + card_h + 16 <= BIG[1] or rect[1] - card_h - 16 >= 0
+        clear = (
+            x + card_w <= rect[0]
+            or x >= rect[0] + rect[2]
+            or y + card_h <= rect[1]
+            or y >= rect[1] + rect[3]
+        )
+        free = (
+            rect[0] + rect[2] + card_w + 16 <= BIG[0]
+            or rect[0] - card_w - 16 >= 0
+            or rect[1] + rect[3] + card_h + 16 <= BIG[1]
+            or rect[1] - card_h - 16 >= 0
+        )
         assert clear or not free, step["title"]
 
 
@@ -588,7 +658,10 @@ def test_the_whole_flow_works_in_the_small_window_too(tmp_path):
     d.draw(3)
     d.type_into("maximum", "110")
     d.click("add_line")
-    assert [l["name"] for l in app.model.lines] == ["Line 1", "Line 2"] and app.model.maximum == 110.0
+    assert [l["name"] for l in app.model.lines] == [
+        "Line 1",
+        "Line 2",
+    ] and app.model.maximum == 110.0
     d.click("save_csv")
     assert app.file_dialog is not None
     d.click(d.text_rect("Cancel"))

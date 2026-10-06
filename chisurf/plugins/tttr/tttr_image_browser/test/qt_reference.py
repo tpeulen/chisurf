@@ -20,7 +20,9 @@ from qtpy import QtCore, QtGui, QtWidgets
 folder, setup_file, work = (pathlib.Path(a) for a in sys.argv[1:4])
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 QtCore.QSettings.setDefaultFormat(QtCore.QSettings.IniFormat)
-QtCore.QSettings.setPath(QtCore.QSettings.IniFormat, QtCore.QSettings.UserScope, str(work / "qsettings"))
+QtCore.QSettings.setPath(
+    QtCore.QSettings.IniFormat, QtCore.QSettings.UserScope, str(work / "qsettings")
+)
 
 from chisurf.gui import dialogs
 from chisurf.plugins.tttr.tttr_image_browser.gui import tool as tool_mod
@@ -125,14 +127,19 @@ copy_dir = work / "qt_copy"
 copy_dir.mkdir()
 chosen["dir"] = str(copy_dir)
 ws._on_export()
-out["copy"] = {p.name: hashlib.md5(p.read_bytes()).hexdigest() for p in sorted(copy_dir.rglob("*.ptu"))}
+out["copy"] = {
+    p.name: hashlib.md5(p.read_bytes()).hexdigest() for p in sorted(copy_dir.rglob("*.ptu"))
+}
 tiff_dir = work / "qt_tiff"
 tiff_dir.mkdir()
 chosen["dir"] = str(tiff_dir)
 ws._on_save_tiff()
 import tifffile
 
-out["tiff"] = {p.name: [list(tifffile.imread(p).shape), int(tifffile.imread(p).sum())] for p in sorted(tiff_dir.iterdir())}
+out["tiff"] = {
+    p.name: [list(tifffile.imread(p).shape), int(tifffile.imread(p).sum())]
+    for p in sorted(tiff_dir.iterdir())
+}
 
 # Next with a recording coordinator
 calls = []
@@ -156,9 +163,13 @@ w._on_next_step()
 out["next_calls"] = [list(c) for c in calls]
 
 # caches
-out["cache_dirs_before"] = sorted(str(p.relative_to(folder)) for p in folder.rglob(".tttr_image_cache"))
+out["cache_dirs_before"] = sorted(
+    str(p.relative_to(folder)) for p in folder.rglob(".tttr_image_cache")
+)
 ws._on_clear_caches()
-out["cache_dirs_after"] = sorted(str(p.relative_to(folder)) for p in folder.rglob(".tttr_image_cache"))
+out["cache_dirs_after"] = sorted(
+    str(p.relative_to(folder)) for p in folder.rglob(".tttr_image_cache")
+)
 out["messages"] = messages
 
 # a folder dropped on the workspace
@@ -166,7 +177,11 @@ ws.model.clear()
 out["entries_after_clear"] = [e["label"] for e in ws.model.file_entries()]
 md = QtCore.QMimeData()
 md.setUrls([QtCore.QUrl.fromLocalFile(str(folder / "sub"))])
-ws.dropEvent(QtGui.QDropEvent(QtCore.QPointF(5, 5), QtCore.Qt.CopyAction, md, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier))
+ws.dropEvent(
+    QtGui.QDropEvent(
+        QtCore.QPointF(5, 5), QtCore.Qt.CopyAction, md, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier
+    )
+)
 out["drop_folder"] = [e["label"] for e in ws.model.file_entries()]
 
 bar = w.findChildren(QtWidgets.QToolBar)[0]

@@ -1,4 +1,5 @@
 """Qt-free style-file editor and QSS palette migration."""
+
 from __future__ import annotations
 
 import pathlib
@@ -19,7 +20,7 @@ def color(value):
         if len(digits) == 3:
             digits = "".join(c * 2 for c in digits)
         if len(digits) == 6:
-            return tuple(int(digits[i:i + 2], 16) for i in (0, 2, 4)) + (255,)
+            return tuple(int(digits[i : i + 2], 16) for i in (0, 2, 4)) + (255,)
     match = re.fullmatch(r"rgba?\(([^)]+)\)", value)
     if match:
         parts = [float(v.strip()) for v in match[1].split(",")]
@@ -36,19 +37,29 @@ def color(value):
 
 # Specific roles are handled by native controls, rather than Qt widget selectors.
 _ROLES = {
-    "*": (im.Col.WINDOW_BG, im.Col.TEXT), "QWidget": (im.Col.WINDOW_BG, im.Col.TEXT),
+    "*": (im.Col.WINDOW_BG, im.Col.TEXT),
+    "QWidget": (im.Col.WINDOW_BG, im.Col.TEXT),
     "QWidget:disabled": (None, im.Col.TEXT_DISABLED),
-    "QLineEdit": (im.Col.FRAME_BG, None), "QPlainTextEdit": (im.Col.FRAME_BG, None),
-    "QComboBox": (im.Col.FRAME_BG, None), "QSpinBox": (im.Col.FRAME_BG, None),
-    "QAbstractButton": (im.Col.BUTTON, None), "QPushButton": (im.Col.BUTTON, None),
-    "QPushButton:hover": (im.Col.BUTTON_HOVERED, None), "QPushButton:pressed": (im.Col.BUTTON_ACTIVE, None),
-    "QAbstractItemView": (im.Col.FRAME_BG, None), "QTreeView": (im.Col.FRAME_BG, None),
+    "QLineEdit": (im.Col.FRAME_BG, None),
+    "QPlainTextEdit": (im.Col.FRAME_BG, None),
+    "QComboBox": (im.Col.FRAME_BG, None),
+    "QSpinBox": (im.Col.FRAME_BG, None),
+    "QAbstractButton": (im.Col.BUTTON, None),
+    "QPushButton": (im.Col.BUTTON, None),
+    "QPushButton:hover": (im.Col.BUTTON_HOVERED, None),
+    "QPushButton:pressed": (im.Col.BUTTON_ACTIVE, None),
+    "QAbstractItemView": (im.Col.FRAME_BG, None),
+    "QTreeView": (im.Col.FRAME_BG, None),
     "QHeaderView::section": (im.Col.HEADER, None),
-    "QTabBar::tab": (im.Col.TAB, None), "QTabBar::tab:selected": (im.Col.TAB_SELECTED, None),
+    "QTabBar::tab": (im.Col.TAB, None),
+    "QTabBar::tab:selected": (im.Col.TAB_SELECTED, None),
     "QTabBar::tab:hover": (im.Col.HEADER_HOVERED, None),
-    "QMenu": (im.Col.POPUP_BG, None), "QToolTip": (im.Col.POPUP_BG, None),
-    "QMenuBar::item": (im.Col.MENU_BAR_BG, None), "QMenu::item:selected": (im.Col.HEADER_ACTIVE, None),
-    "QWidget:item:selected": (im.Col.HEADER_ACTIVE, None), "QWidget:item:hover": (im.Col.HEADER_HOVERED, None),
+    "QMenu": (im.Col.POPUP_BG, None),
+    "QToolTip": (im.Col.POPUP_BG, None),
+    "QMenuBar::item": (im.Col.MENU_BAR_BG, None),
+    "QMenu::item:selected": (im.Col.HEADER_ACTIVE, None),
+    "QWidget:item:selected": (im.Col.HEADER_ACTIVE, None),
+    "QWidget:item:hover": (im.Col.HEADER_HOVERED, None),
     "QDockWidget::title": (im.Col.TITLE_BG, None),
     "QScrollBar:vertical": (im.Col.SCROLLBAR_BG, None),
     "QScrollBar::handle:vertical": (im.Col.SCROLLBAR_GRAB, None),
@@ -71,7 +82,13 @@ def convert_qss(source: str) -> tuple[Style, list[str]]:
                 prop, value = (v.strip() for v in declaration.split(":", 1))
                 role = None
                 if roles:
-                    role = roles[0] if prop in ("background", "background-color") else roles[1] if prop == "color" else None
+                    role = (
+                        roles[0]
+                        if prop in ("background", "background-color")
+                        else roles[1]
+                        if prop == "color"
+                        else None
+                    )
                     if prop == "selection-background-color":
                         role = im.Col.HEADER_ACTIVE
                     elif prop == "border-color":
@@ -90,12 +107,23 @@ class StyleManagerModel:
     def __init__(self, styles_dir=None, package_dir=None):
         import chisurf
         from chisurf.core.settings import get_path
+
         self.styles_dir = pathlib.Path(styles_dir or get_path("settings") / "styles")
-        self.package_dir = pathlib.Path(package_dir or pathlib.Path(chisurf.__file__).parent / "gui" / "styles")
+        self.package_dir = pathlib.Path(
+            package_dir or pathlib.Path(chisurf.__file__).parent / "gui" / "styles"
+        )
         self.styles_dir.mkdir(parents=True, exist_ok=True)
         self.editor = TextEditor()
-        self.editor.set_language(Language(name="QSS", comment_start="/*", comment_end="*/", has_double_quoted_strings=True,
-            has_single_quoted_strings=True, punctuation=frozenset("{}:;,.#()")))
+        self.editor.set_language(
+            Language(
+                name="QSS",
+                comment_start="/*",
+                comment_end="*/",
+                has_double_quoted_strings=True,
+                has_single_quoted_strings=True,
+                punctuation=frozenset("{}:;,.#()"),
+            )
+        )
         self.current_file = None
         self.saved_text = ""
         self.status = ""
@@ -188,8 +216,11 @@ class StyleManagerModel:
             self.applied_style = style
             self.ignored_rules = ignored
             from chisurf.core.settings.settings_utils import update_settings_section
+
             persisted = update_settings_section("gui", {"style_sheet": self.current_file.name})
-            self.status = f"Applied {self.current_file.name}; {len(ignored)} Qt-only declarations retained."
+            self.status = (
+                f"Applied {self.current_file.name}; {len(ignored)} Qt-only declarations retained."
+            )
             if not persisted:
                 self.status += " Preference could not be saved."
             return True
@@ -238,8 +269,15 @@ class StyleManagerApp(ImApp):
 
     def request_file(self, operation):
         self.dialog_operation = operation
-        self.file_dialog = FileDialog("Open style" if operation == "open" else "Save style as", mode="open" if operation == "open" else "save",
-            directory=str(self.model.styles_dir), filters="Style sheets (*.qss)", filename=self.model.current_file.name if operation != "open" and self.model.current_file else "custom.qss")
+        self.file_dialog = FileDialog(
+            "Open style" if operation == "open" else "Save style as",
+            mode="open" if operation == "open" else "save",
+            directory=str(self.model.styles_dir),
+            filters="Style sheets (*.qss)",
+            filename=self.model.current_file.name
+            if operation != "open" and self.model.current_file
+            else "custom.qss",
+        )
 
     def accept_dialog(self, result):
         if result is False:
@@ -264,8 +302,16 @@ class StyleManagerApp(ImApp):
         im.set_next_window_pos(viewport.pos)
         im.set_next_window_size(viewport.size)
         if im.begin("Style Manager##native_style_root"):
-            im.begin_child("style_content", (viewport.pos[0] + 8, viewport.pos[1] + 8,
-                max(100, viewport.size[0] - 16), max(100, viewport.size[1] - 16)), scrollable=False)
+            im.begin_child(
+                "style_content",
+                (
+                    viewport.pos[0] + 8,
+                    viewport.pos[1] + 8,
+                    max(100, viewport.size[0] - 16),
+                    max(100, viewport.size[1] - 16),
+                ),
+                scrollable=False,
+            )
             im.push_font({"family": "monospace", "size": 10})
             self._draw_main()
             im.pop_font()
@@ -292,7 +338,9 @@ class StyleManagerApp(ImApp):
         im.same_line()
         if im.button("Open"):
             self.request_file("open")
-        im.set_item_tooltip("Choose a style sheet from another directory; unsaved changes require confirmation")
+        im.set_item_tooltip(
+            "Choose a style sheet from another directory; unsaved changes require confirmation"
+        )
         im.same_line()
         if im.button("Save"):
             if m.current_file:
@@ -303,12 +351,16 @@ class StyleManagerApp(ImApp):
         im.same_line()
         if im.button("Save As"):
             self.request_file("save")
-        im.set_item_tooltip("Choose another destination; existing files require replacement confirmation")
+        im.set_item_tooltip(
+            "Choose another destination; existing files require replacement confirmation"
+        )
         if wide_toolbar:
             im.same_line()
         if im.button("Apply"):
             m.apply()
-        im.set_item_tooltip("Save and apply supported palette rules to this native window; Qt-only rules remain in the file")
+        im.set_item_tooltip(
+            "Save and apply supported palette rules to this native window; Qt-only rules remain in the file"
+        )
         im.same_line()
         if im.button("Reset styles"):
             self.pending = ("reset", None)
@@ -317,17 +369,27 @@ class StyleManagerApp(ImApp):
         if m.ignored_rules:
             if im.collapsing_header(f"Qt-only declarations ({len(m.ignored_rules)})"):
                 im.text_wrapped(", ".join(dict.fromkeys(m.ignored_rules)))
-            im.set_item_tooltip("Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim")
+            im.set_item_tooltip(
+                "Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim"
+            )
         im.text_wrapped(m.status)
-        im.text_editor("##style_source", m.editor, (0, max(100, im.get_content_region_avail()[1] - 8)))
-        im.set_item_tooltip("Edit QSS source with syntax highlighting, selection, clipboard and undo/redo")
+        im.text_editor(
+            "##style_source", m.editor, (0, max(100, im.get_content_region_avail()[1] - 8))
+        )
+        im.set_item_tooltip(
+            "Edit QSS source with syntax highlighting, selection, clipboard and undo/redo"
+        )
 
     def _draw_dialogs(self):
         if self.pending:
             im.set_next_window_size((480, 180), im.Cond.FIRST_USE_EVER)
             if im.begin("Confirm style change"):
                 operation, path = self.pending
-                im.text_wrapped("Remove all user QSS files and restore defaults?" if operation == "reset" else "Discard unsaved changes?")
+                im.text_wrapped(
+                    "Remove all user QSS files and restore defaults?"
+                    if operation == "reset"
+                    else "Discard unsaved changes?"
+                )
                 if im.button("Reset files" if operation == "reset" else "Discard changes"):
                     if operation == "reset":
                         self.model.reset(discard=True)
@@ -337,7 +399,9 @@ class StyleManagerApp(ImApp):
                         self.new_visible = True
                         self.model.editor.set_text(self.model.saved_text)
                     self.pending = None
-                im.set_item_tooltip("Confirm the requested operation; discarded content cannot be restored")
+                im.set_item_tooltip(
+                    "Confirm the requested operation; discarded content cannot be restored"
+                )
                 im.same_line()
                 if im.button("Cancel change"):
                     self.pending = None
@@ -347,10 +411,14 @@ class StyleManagerApp(ImApp):
             im.set_next_window_size((480, 190), im.Cond.FIRST_USE_EVER)
             if im.begin("New style"):
                 _, self.new_name = im.input_text("File name", self.new_name)
-                im.set_item_tooltip("Enter a file name; .qss is added automatically and directory components are rejected")
+                im.set_item_tooltip(
+                    "Enter a file name; .qss is added automatically and directory components are rejected"
+                )
                 if im.button("Create style") and self.model.new(self.new_name):
                     self.new_visible = False
-                im.set_item_tooltip("Create the file in your styles directory; existing names are preserved")
+                im.set_item_tooltip(
+                    "Create the file in your styles directory; existing names are preserved"
+                )
                 im.same_line()
                 if im.button("Cancel new"):
                     self.new_visible = False

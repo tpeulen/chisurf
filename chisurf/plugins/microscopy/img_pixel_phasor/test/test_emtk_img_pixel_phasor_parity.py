@@ -14,14 +14,21 @@ import numpy as np
 import pytest
 from emtk import keys
 
-from test.gui.emtk_layout_checks import SIZES, assert_disjoint, assert_icons_clear, assert_inside, assert_short, assert_texts_apart, draw
-
-from chisurf.plugins.microscopy.img_pixel_phasor.gui.app import PhasorApp, make_app
-from chisurf.plugins.microscopy.img_pixel_phasor.gui.model import PhasorModel
-from chisurf.plugins.microscopy.img_pixel_phasor.gui.view_model import PhasorImgViewModel
 from chisurf.plugins.microscopy.imaging_emtk import pixel_checks as C
 from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, hermetic_env, walk
+from chisurf.plugins.microscopy.img_pixel_phasor.gui.app import PhasorApp, make_app
+from chisurf.plugins.microscopy.img_pixel_phasor.gui.model import PhasorModel
+from chisurf.plugins.microscopy.img_pixel_phasor.gui.view_model import PhasorImgViewModel
+from test.gui.emtk_layout_checks import (
+    SIZES,
+    assert_disjoint,
+    assert_icons_clear,
+    assert_inside,
+    assert_short,
+    assert_texts_apart,
+    draw,
+)
 
 HERE = Path(__file__).parent
 PLUGIN = HERE.parent
@@ -32,9 +39,25 @@ EMTK_SPEC = json.loads((PLUGIN / "gui" / "phasor_emtk.view.json").read_text(enco
 QT_SPEC = json.loads((PLUGIN / "gui" / "phasor.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
 
-TABS = ("Intensity", "Selected", "Phasor g", "Phasor s", "Phasor g movie", "Phasor s movie", "Frames (movie)", "Phasor plot", "Phasor plot movie")
-TOOL = C.Tool(make_app=make_app, tabs=TABS, role="pixel_phasor", hdf5_label="Add phasor to HDF5",
-              maps={"Intensity": "intensity_map", "Phasor g": "g_map", "Phasor s": "s_map"}, axes={"Phasor plot": ("g", "s")})
+TABS = (
+    "Intensity",
+    "Selected",
+    "Phasor g",
+    "Phasor s",
+    "Phasor g movie",
+    "Phasor s movie",
+    "Frames (movie)",
+    "Phasor plot",
+    "Phasor plot movie",
+)
+TOOL = C.Tool(
+    make_app=make_app,
+    tabs=TABS,
+    role="pixel_phasor",
+    hdf5_label="Add phasor to HDF5",
+    maps={"Intensity": "intensity_map", "Phasor g": "g_map", "Phasor s": "s_map"},
+    axes={"Phasor plot": ("g", "s")},
+)
 #: the simulated stream's laser rate (MHz): what the header gives when the frequency is -1
 FREQ = 40.0
 
@@ -100,11 +123,17 @@ def test_the_maps_match_the_stream_the_qt_numbers_and_a_direct_tttrlib_call(app,
     assert g.shape == s.shape == (32, 32) and np.isfinite(g).all() and np.isfinite(s).all()
     tttr = tttrlib.TTTR(str(flim))
     clsm = tttrlib.CLSMImage(tttr, channels=[0], fill=True)
-    ref = np.asarray(clsm.get_phasor(tttr, None, -1.0, 3, True))[0]  # -1: from the header (40 MHz); FREQ is the same in MHz
+    ref = np.asarray(clsm.get_phasor(tttr, None, -1.0, 3, True))[
+        0
+    ]  # -1: from the header (40 MHz); FREQ is the same in MHz
     np.testing.assert_allclose(g, ref[..., 0], atol=1e-12)
     np.testing.assert_allclose(s, ref[..., 1], atol=1e-12)
     assert m.results_text == QT_VALUES["results_text"] == "flim.ptu: 32x32 px.\nWindows: ch0."
-    assert {"g (ch0)", "s (ch0)"} <= set(m._columns) and "n_photons (ch0)" in m._columns or {"g (ch0)", "s (ch0)"} <= set(m._columns)
+    assert (
+        {"g (ch0)", "s (ch0)"} <= set(m._columns)
+        and "n_photons (ch0)" in m._columns
+        or {"g (ch0)", "s (ch0)"} <= set(m._columns)
+    )
 
 
 def test_the_phasor_of_each_half_is_the_one_of_its_lifetime(app, drv, flim):
@@ -120,12 +149,20 @@ def test_the_phasor_of_each_half_is_the_one_of_its_lifetime(app, drv, flim):
         p /= p.sum()
         t = (k + 20) * res
         ww = w[:, sl]
-        assert (m.g_map()[:, sl] * ww).sum() / ww.sum() == pytest.approx((p * np.cos(omega * t)).sum(), abs=0.02)
-        assert (m.s_map()[:, sl] * ww).sum() / ww.sum() == pytest.approx((p * np.sin(omega * t)).sum(), abs=0.02)
-    assert m.g_map()[:, :16].mean() > m.g_map()[:, 16:].mean(), "the shorter lifetime lies further right on the semicircle"
+        assert (m.g_map()[:, sl] * ww).sum() / ww.sum() == pytest.approx(
+            (p * np.cos(omega * t)).sum(), abs=0.02
+        )
+        assert (m.s_map()[:, sl] * ww).sum() / ww.sum() == pytest.approx(
+            (p * np.sin(omega * t)).sum(), abs=0.02
+        )
+    assert m.g_map()[:, :16].mean() > m.g_map()[:, 16:].mean(), (
+        "the shorter lifetime lies further right on the semicircle"
+    )
 
 
-def test_an_explicit_frequency_in_mhz_equals_the_header_value_and_another_one_moves_the_phasor(app, drv, flim):
+def test_an_explicit_frequency_in_mhz_equals_the_header_value_and_another_one_moves_the_phasor(
+    app, drv, flim
+):
     """The field is MHz: 40 MHz is what the header says (-1), so the maps are the same; before the unit was converted a typed 40 gave (1, 0)."""
     auto = phasor_app(app, drv, flim, frequency=-1.0).g_map().copy()
     drv.type_into("frequency", "40")
@@ -164,7 +201,12 @@ def test_the_phasor_frequency_and_min_photons_fields_need_a_new_run(app, drv, fl
 def test_the_phasor_plot_histogram_counts_every_valid_pixel_once(app, drv, flim):
     m = phasor_app(app, drv, flim)
     hist = m.phasor_histogram_map()
-    assert hist is not None and hist.shape == (160, 160) and hist.min() >= 0 and np.expm1(hist).sum() <= 1024 + 1e-6
+    assert (
+        hist is not None
+        and hist.shape == (160, 160)
+        and hist.min() >= 0
+        and np.expm1(hist).sum() <= 1024 + 1e-6
+    )
 
 
 def test_the_movies_have_one_image_per_frame(app, drv, flim):
@@ -175,9 +217,17 @@ def test_the_movies_have_one_image_per_frame(app, drv, flim):
 
 
 def test_two_detector_windows_give_two_phasor_sets(app, drv, flim2):
-    app.model.detectors = {"first": {"chs": [0], "micro_time_ranges": []}, "second": {"chs": [1], "micro_time_ranges": []}}
+    app.model.detectors = {
+        "first": {"chs": [0], "micro_time_ranges": []},
+        "second": {"chs": [1], "micro_time_ranges": []},
+    }
     m = phasor_app(app, drv, flim2)
-    assert list(m._by_window) == ["first", "second"] and {"g (first)", "s (first)", "g (second)", "s (second)"} <= set(m._columns)
+    assert list(m._by_window) == ["first", "second"] and {
+        "g (first)",
+        "s (first)",
+        "g (second)",
+        "s (second)",
+    } <= set(m._columns)
 
 
 # ── cursors on the phasor plane ──
@@ -194,7 +244,9 @@ def test_an_ellipse_cursor_selects_pixels_and_the_selected_map_is_gated(app, drv
     assert m.cursor_summary() == "1024 of 1024 px (100.0 %)"
     drv.click_text("Add ellipse")
     assert len(m.cursors) == 1
-    assert m.cursor_mask().sum() == 0  # the default ellipse sits in the middle of the plane, between the two clusters
+    assert (
+        m.cursor_mask().sum() == 0
+    )  # the default ellipse sits in the middle of the plane, between the two clusters
     roi = m.cursors.get("Ellipse").roi
     px, py, pw, ph = app.item_rects["Phasor plot"]
     x0, x1, y0, y1 = m.cursor_extent()
@@ -218,11 +270,22 @@ def test_rectangle_and_polygon_cursors_are_added_in_phasor_units(app, drv, flim)
     x0, x1, y0, y1 = m.cursor_extent()
     assert len(m.cursors) == 2
     for entry in m.cursors:
-        pts = entry.roi.vertices if hasattr(entry.roi, "vertices") else np.array([[entry.roi.x0, entry.roi.y0], [entry.roi.x1, entry.roi.y1]])
-        assert (pts[:, 0] >= x0).all() and (pts[:, 0] <= x1).all() and (pts[:, 1] >= y0).all() and (pts[:, 1] <= y1).all()
+        pts = (
+            entry.roi.vertices
+            if hasattr(entry.roi, "vertices")
+            else np.array([[entry.roi.x0, entry.roi.y0], [entry.roi.x1, entry.roi.y1]])
+        )
+        assert (
+            (pts[:, 0] >= x0).all()
+            and (pts[:, 0] <= x1).all()
+            and (pts[:, 1] >= y0).all()
+            and (pts[:, 1] <= y1).all()
+        )
 
 
-def test_invert_and_the_enabled_box_change_the_selection_and_clear_all_selects_everything(app, drv, flim):
+def test_invert_and_the_enabled_box_change_the_selection_and_clear_all_selects_everything(
+    app, drv, flim
+):
     m = phasor_app(app, drv, flim)
     open_regions(app, drv)
     drv.click_text("Add ellipse")
@@ -262,13 +325,17 @@ def test_a_cursor_handle_dragged_with_the_pointer_changes_the_selection(app, drv
     x0, x1, y0, y1 = m.cursor_extent()
     roi = m.cursors.get("Rectangle").roi
     first = int(m.cursor_mask().sum())
+
     # the rectangle's far corner (x1, y1 in phasor units) to the plot's middle: the box shrinks
     def to_px(g, s):
         return px + (g - x0) / (x1 - x0) * pw, py + ph - (s - y0) / (y1 - y0) * ph
+
     start = to_px(roi.x1, roi.y1)
     end = to_px((roi.x0 + roi.x1) / 2, (roi.y0 + roi.y1) / 2)
     drv.drag(start, end, steps=8)
-    assert (roi.x1, roi.y1) != (m.cursors.get("Rectangle").roi.x0, 0) and int(m.cursor_mask().sum()) <= first
+    assert (roi.x1, roi.y1) != (m.cursors.get("Rectangle").roi.x0, 0) and int(
+        m.cursor_mask().sum()
+    ) <= first
 
 
 def test_cursors_are_saved_and_loaded_as_json_through_the_dialogs(app, drv, flim, tmp_path):
@@ -300,13 +367,19 @@ def test_the_cursors_are_part_of_the_saved_settings(app, drv, flim):
     assert len(fresh.model.cursors) == 1 and fresh.model.frequency == FREQ
 
 
-def test_the_irf_reference_of_a_window_is_typed_or_browsed_and_applied_by_the_next_run(app, drv, flim, tmp_path):
+def test_the_irf_reference_of_a_window_is_typed_or_browsed_and_applied_by_the_next_run(
+    app, drv, flim, tmp_path
+):
     irf = Path(data.irf_ptu(tmp_path / "irf.ptu"))
     m = phasor_app(app, drv, flim)
     before = m.g_map().copy()
     drv.click("IRF reference.fold")
     drv.type_into("irf_path", str(irf))
-    assert m.detectors["ch0"]["irf"] == [str(irf)] and "Press Run" in m.status_line and m.needs_recompute()
+    assert (
+        m.detectors["ch0"]["irf"] == [str(irf)]
+        and "Press Run" in m.status_line
+        and m.needs_recompute()
+    )
     C.run(app, drv)
     assert not np.array_equal(before, m.g_map())
     app.model.folder = str(irf.parent)
@@ -341,8 +414,11 @@ def test_the_database_button_picks_a_dataset(app, drv, flim):
     C.database_button_picks_a_dataset(app, drv, flim)
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; "
-                   "see okf/plugins/emtk-ports/img_drift/REPORT.md")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: the dataset picker's buttons share one id and its Open selected / Cancel never fire; "
+    "see okf/plugins/emtk-ports/img_drift/REPORT.md",
+)
 def test_the_open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim):
     C.open_selected_button_of_the_database_picker_can_be_pressed(app, drv, flim)
 
@@ -362,12 +438,18 @@ def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, flim):
 # ── 3. running ──────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_run_without_a_file_does_nothing_with_one_it_computes_and_a_second_run_says_it_is_up_to_date(app, drv, flim):
-    C.run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_it_is_up_to_date(app, drv, flim)
+def test_run_without_a_file_does_nothing_with_one_it_computes_and_a_second_run_says_it_is_up_to_date(
+    app, drv, flim
+):
+    C.run_without_a_file_does_nothing_and_with_one_computes_and_a_second_run_says_it_is_up_to_date(
+        app, drv, flim
+    )
 
 
 def test_cancel_stops_a_running_calculation(app, drv, flim, monkeypatch):
-    C.cancel_stops_a_running_calculation_and_keeps_the_previous_state(app, drv, flim, TOOL, monkeypatch)
+    C.cancel_stops_a_running_calculation_and_keeps_the_previous_state(
+        app, drv, flim, TOOL, monkeypatch
+    )
 
 
 def test_cancel_is_idle_when_nothing_runs(app, drv):
@@ -403,12 +485,18 @@ def test_a_window_added_in_the_editor_is_computed_by_the_next_run(app, drv, flim
 # ── 5. the outputs ──────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(app, drv, stream, tmp_path):
-    target = C.hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(app, drv, stream, tmp_path, source_ref=False)
+def test_hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(
+    app, drv, stream, tmp_path
+):
+    target = C.hdf5_is_greyed_without_a_result_asks_for_a_file_writes_the_table_and_the_next_press_writes_to_the_remembered_one(
+        app, drv, stream, tmp_path, source_ref=False
+    )
     from chisurf.core.datastore import numeric_column
     from chisurf.core.fluorescence.imaging import read_imaging_table
 
-    np.testing.assert_allclose(numeric_column(read_imaging_table(str(target)), "g (ch0)"), app.model.g_map().ravel())
+    np.testing.assert_allclose(
+        numeric_column(read_imaging_table(str(target)), "g (ch0)"), app.model.g_map().ravel()
+    )
 
 
 def test_the_hdf5_dialog_cancel_writes_nothing(app, drv, stream, tmp_path):
@@ -420,7 +508,9 @@ def test_an_unwritable_hdf5_place_is_reported(app, drv, stream, tmp_path):
 
 
 def test_the_container_button_writes_the_artifact_beside_the_source(app, drv, stream):
-    C.container_is_greyed_without_a_result_and_writes_the_artifact_beside_the_source(app, drv, stream, "phasor")
+    C.container_is_greyed_without_a_result_and_writes_the_artifact_beside_the_source(
+        app, drv, stream, "phasor"
+    )
 
 
 def test_ndx_opens_over_the_maps_and_back_returns(app, drv, stream):
@@ -440,7 +530,9 @@ def test_closing_a_computed_session_flushes_the_hdf5_and_the_container(app, drv,
 # ── 6. the maps ─────────────────────────────────────────────────────────────────────────────────────────────── #
 
 
-def test_every_tab_draws_empty_with_a_message_and_populated_with_a_picture_with_axes(app, drv, flim):
+def test_every_tab_draws_empty_with_a_message_and_populated_with_a_picture_with_axes(
+    app, drv, flim
+):
     C.every_tab_draws_empty_with_a_message_and_populated_with_a_picture(app, drv, flim, TOOL)
 
 
@@ -469,7 +561,9 @@ def test_guide_button_starts_the_tour_and_close_tour_ends_it(app):
     C.guide_button_starts_the_tour_and_close_tour_ends_it(app)
 
 
-def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(app, drv, stream, tmp_path):
+def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
+    app, drv, stream, tmp_path
+):
     out = tmp_path / "walk"
     out.mkdir()
 
@@ -485,7 +579,8 @@ def test_the_tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_
         C.save_in_dialog(drv, "walk.imaging.h5")
 
     C.tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
-        app, drv, stream, {"file": choose, "run": lambda: drv.click("run_maps"), "saved": hdf5})
+        app, drv, stream, {"file": choose, "run": lambda: drv.click("run_maps"), "saved": hdf5}
+    )
     assert (out / "walk.imaging.h5").exists() and app.model._columns
 
 
@@ -494,11 +589,22 @@ def test_every_guide_target_is_a_drawn_control_or_window(app, drv, flim):
 
 
 def test_settings_round_trip_and_invalid_values_are_ignored(app, drv):
-    C.settings_round_trip_and_invalid_values_are_ignored(app, drv, {"n_ph_min": 7, "frequency": 80.0}, {"n_ph_min": "many"})
+    C.settings_round_trip_and_invalid_values_are_ignored(
+        app, drv, {"n_ph_min": 7, "frequency": 80.0}, {"n_ph_min": "many"}
+    )
 
 
 def test_the_imaging_hub_drives_the_tool(app, drv, flim):
-    C.hub_contract(TOOL, flim, drv, {"green": {"chs": [0], "micro_time_ranges": []}, "red": {"chs": [1], "micro_time_ranges": [(0, 100)]}}, {})
+    C.hub_contract(
+        TOOL,
+        flim,
+        drv,
+        {
+            "green": {"chs": [0], "micro_time_ranges": []},
+            "red": {"chs": [1], "micro_time_ranges": [(0, 100)]},
+        },
+        {},
+    )
 
 
 def test_the_hub_starts_the_run_through_start(app, drv, flim):
@@ -511,10 +617,23 @@ def test_the_hub_starts_the_run_through_start(app, drv, flim):
 def test_every_qt_control_has_an_emtk_equivalent():
     qt_labels = {s.get("label") for s in walk(QT_SPEC["sections"]) if s.get("label")}
     assert qt_labels == {"TTTR file", "Min photons", "Frequency (MHz, -1=auto)"}
-    emtk = {s.get("label") for s in walk(EMTK_SPEC["sections"]) if s.get("label")} | {b["label"] for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", [])}
-    assert {"TTTR file", "Min photons", "Frequency (MHz, -1=auto)", "Run", "Add phasor to HDF5", "ndX", "Next", "Detector window"} <= emtk
+    emtk = {s.get("label") for s in walk(EMTK_SPEC["sections"]) if s.get("label")} | {
+        b["label"] for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", [])
+    }
+    assert {
+        "TTTR file",
+        "Min photons",
+        "Frequency (MHz, -1=auto)",
+        "Run",
+        "Add phasor to HDF5",
+        "ndX",
+        "Next",
+        "Detector window",
+    } <= emtk
     qt_tabs = [s["title"] for s in walk(QT_SPEC["sections"]) if s.get("type") == "custom"]
-    assert sorted(set(qt_tabs) - {"Phasor cursors"}) == sorted(TABS) and sorted(p["title"] for p in EMTK_SPEC["sections"][1:]) == sorted(TABS)
+    assert sorted(set(qt_tabs) - {"Phasor cursors"}) == sorted(TABS) and sorted(
+        p["title"] for p in EMTK_SPEC["sections"][1:]
+    ) == sorted(TABS)
 
 
 def test_every_spec_attribute_and_action_exists_on_the_model():
@@ -529,8 +648,17 @@ def test_every_spec_attribute_and_action_exists_on_the_model():
                 assert hasattr(model, section[key]), (key, section)
         if section.get("type") == "custom" and section.get("options", {}).get("source"):
             assert callable(getattr(model, section["options"]["source"])), section
-    assert not [s for s in walk(EMTK_SPEC["sections"]) if s.get("type") not in ("custom", "panel") and not s.get("description")]
-    assert not [b for s in walk(EMTK_SPEC["sections"]) for b in s.get("buttons", []) if not b.get("description")]
+    assert not [
+        s
+        for s in walk(EMTK_SPEC["sections"])
+        if s.get("type") not in ("custom", "panel") and not s.get("description")
+    ]
+    assert not [
+        b
+        for s in walk(EMTK_SPEC["sections"])
+        for b in s.get("buttons", [])
+        if not b.get("description")
+    ]
 
 
 def test_the_port_is_qt_free():
@@ -555,12 +683,33 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, flim
     for tab in TOOL.tabs:
         app.docks.focus(tab)
         painter = draw(app, size)
-        if tab != "Phasor plot movie":  # a 160-bin image: the plot draws the y label over its three-digit ticks (emtk gap, see the report)
+        if (
+            tab != "Phasor plot movie"
+        ):  # a 160-bin image: the plot draws the y label over its three-digit ticks (emtk gap, see the report)
             C.texts_apart(painter, ignore=(str(flim),))
-    app.docks.focus("Detectors")  # the shared editor draws its row buttons over their cells: only the frame is checked
+    app.docks.focus(
+        "Detectors"
+    )  # the shared editor draws its row buttons over their cells: only the frame is checked
     painter = draw(app, size)
-    assert_inside({k: v for k, v in app.item_rects.items() if k in ("detectors.add_detector", "detectors.section_detectors")}, size)
-    names = ("run_maps", "request_hdf5", "save_container", "open_ndx", "next_step", "filename", "open_file", "open_database", "display_window")
+    assert_inside(
+        {
+            k: v
+            for k, v in app.item_rects.items()
+            if k in ("detectors.add_detector", "detectors.section_detectors")
+        },
+        size,
+    )
+    names = (
+        "run_maps",
+        "request_hdf5",
+        "save_container",
+        "open_ndx",
+        "next_step",
+        "filename",
+        "open_file",
+        "open_database",
+        "display_window",
+    )
     rects = {k: app.form.rects[k] for k in names}
     rects.update({k: app.item_rects[k] for k in ("help", "guide", "cancel")})
     assert_inside(rects, size)
@@ -587,7 +736,10 @@ def test_zz_the_real_user_settings_were_never_touched():
     assert data.real_settings_state() == _REAL_BEFORE
 
 
-@pytest.mark.xfail(strict=True, reason="emtk gap: Enter on an emptied text field commits nothing (okf/plugins/emtk-ports/scripts/emtk_gaps_repro.py); Clear IRF is the way")
+@pytest.mark.xfail(
+    strict=True,
+    reason="emtk gap: Enter on an emptied text field commits nothing (okf/plugins/emtk-ports/scripts/emtk_gaps_repro.py); Clear IRF is the way",
+)
 def test_an_emptied_irf_field_is_committed_on_enter(app, drv, flim):
     phasor_app(app, drv, flim)
     app.model.commit_irf("somewhere.ptu")

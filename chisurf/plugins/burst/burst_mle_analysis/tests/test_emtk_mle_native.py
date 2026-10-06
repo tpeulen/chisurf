@@ -77,14 +77,22 @@ def test_empty_state_draws_no_data_at_both_sizes(monkeypatch, app):
             shown.update(" ".join(texts(drv.draw())).split(". "))
     assert spy.calls == []
     text = " ".join(shown)
-    for message in ("No fit yet", "No burst lifetimes yet", "No bursts loaded", "No lifetime table yet", "Add burst (.bur) files to begin"):
+    for message in (
+        "No fit yet",
+        "No burst lifetimes yet",
+        "No bursts loaded",
+        "No lifetime table yet",
+        "Add burst (.bur) files to begin",
+    ):
         assert message in text, message
 
 
 def test_a_dropped_burst_table_loads_the_analysis_and_lists_the_file(app, burst_table):
     drv = Driver(app)
     assert drv.drop(burst_table)
-    assert app.model.n_bursts == 2980 and [p.name for p in app.model.session.bur_files] == ["m000.bur"]
+    assert app.model.n_bursts == 2980 and [p.name for p in app.model.session.bur_files] == [
+        "m000.bur"
+    ]
     shown = texts(drv.draw(2))
     assert "m000.bur" in shown
     assert not drv.drop(burst_table), "a table already listed is not added twice"
@@ -136,7 +144,9 @@ def test_the_parameter_table_edits_a_start_value_and_a_fixed_flag(fitted):
     assert rec["tau"]["start"] == 4.0 and rec["gamma"]["fixed"] is True
     cell = drv.text_rect(drv.draw(2), "4")
     drv.click((cell[0], cell[1], cell[2], cell[3]), clicks=2)
-    assert window_table(window).editing is not None, "a double click on the Start cell did not open it"
+    assert window_table(window).editing is not None, (
+        "a double click on the Start cell did not open it"
+    )
     for _ in range(8):  # empty the open cell with the keyboard: End, then Backspace
         drv.app.key(keys.KEY_END, "")
         drv.app.key(keys.KEY_BACKSPACE, "")
@@ -209,8 +219,24 @@ def test_the_batch_rows_equal_the_engines_batch(batch):
     window, _drv = batch
     session = window.model.session
     again = session.run_batch()
-    mine = np.sort(np.array([r["Tau (green)"] for r in again if "Tau (green)" in r and np.isfinite(r["Tau (green)"])]))
-    theirs = np.sort(np.array([r["Tau (green)"] for r in window.model.burst_results if "Tau (green)" in r and np.isfinite(r["Tau (green)"])]))
+    mine = np.sort(
+        np.array(
+            [
+                r["Tau (green)"]
+                for r in again
+                if "Tau (green)" in r and np.isfinite(r["Tau (green)"])
+            ]
+        )
+    )
+    theirs = np.sort(
+        np.array(
+            [
+                r["Tau (green)"]
+                for r in window.model.burst_results
+                if "Tau (green)" in r and np.isfinite(r["Tau (green)"])
+            ]
+        )
+    )
     np.testing.assert_allclose(mine, theirs, rtol=1e-12)
 
 

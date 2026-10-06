@@ -24,7 +24,7 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 DATA = REPO / "test" / "data" / "atomic_coordinates" / "trajectory" / "hgbp1"
 TRAJ, TOP = str(DATA / "hgbp1_transition.dcd"), str(DATA / "topol.pdb")
-R = [[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]      # 90 degrees about z
+R = [[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]  # 90 degrees about z
 T = [10.0, 0.0, 0.0]
 STRIDE = 4
 
@@ -114,14 +114,32 @@ def qt(tmp_path_factory):
     target = tmp_path_factory.mktemp("qt") / "moved.dcd"
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, TRAJ, TOP, str(target), json.dumps(R), json.dumps(T),
-                           str(STRIDE)], capture_output=True, text=True, timeout=300, env=env, cwd=str(REPO))
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            _QT,
+            TRAJ,
+            TOP,
+            str(target),
+            json.dumps(R),
+            json.dumps(T),
+            str(STRIDE),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
+        cwd=str(REPO),
+    )
     line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
+    if line is None and (
+        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
+    ):
         pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
     # Any other failure is the Qt widget's own: skipping it hid a broken Qt host.
     assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
+    facts = json.loads(line[len("FACTS") :])
     facts["target"] = target
     return facts
 
@@ -133,7 +151,9 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, tmp_path):
     app = _loaded()
     try:
         app.begin_save()
-        assert app.dialog.title == "Save trajectory" and app.dialog.filters == [("DCD trajectory", ["*.dcd"])]
+        assert app.dialog.title == "Save trajectory" and app.dialog.filters == [
+            ("DCD trajectory", ["*.dcd"])
+        ]
         assert app.dialog.filename == "hgbp1_transition_moved.dcd"
         target = tmp_path / "moved.dcd"
         _pick(app, target)
@@ -144,9 +164,11 @@ def test_a_save_writes_what_the_qt_widget_writes(qt, tmp_path):
         assert ours.n_frames == theirs.n_frames == 116
         assert np.asarray(ours.xyz) == pytest.approx(np.asarray(theirs.xyz), abs=1e-4)
         assert np.asarray(ours.xyz) == pytest.approx(expected, abs=1e-3)
-        x, y, z = source[0, 0]                                 # (10 - y, x, z), the help page's example
+        x, y, z = source[0, 0]  # (10 - y, x, z), the help page's example
         assert np.asarray(ours.xyz)[0, 0] == pytest.approx([10 - y, x, z], abs=1e-3)
-        assert _messages(app.model.log_text())[-1] == f"Rotated/translated trajectory saved: {target}"
+        assert (
+            _messages(app.model.log_text())[-1] == f"Rotated/translated trajectory saved: {target}"
+        )
         assert qt["matrix"] == R
     finally:
         app.close()
@@ -171,7 +193,9 @@ def test_nothing_chosen_a_cancel_and_a_failure_answer_as_the_qt_widget_does(qt, 
         [(title, _text)] = qt["errors"]
         assert title == "Save failed" and app.status.startswith("Save failed: ")
         assert _messages(app.model.log_text())[-1].startswith("Save failed: ")
-        assert any(s.startswith("Save failed: ") for s in _draw(app).strings)      # shown, not only stored
+        assert any(
+            s.startswith("Save failed: ") for s in _draw(app).strings
+        )  # shown, not only stored
     finally:
         app.close()
 
@@ -185,8 +209,13 @@ def test_the_editors_write_the_matrix_and_translation(monkeypatch):
         # the cells are typed fields (the Qt editors are line edits): Enter in them hands the text over
         answers = {"##r01": "-1", "##r10": "1", "##r00": "0", "##r11": "0", "##t0": "10"}
         original = im.input_text
-        monkeypatch.setattr(im, "input_text", lambda label, v, *a, **k: (True, answers[label]) if label in answers
-                            else original(label, v, *a, **k))
+        monkeypatch.setattr(
+            im,
+            "input_text",
+            lambda label, v, *a, **k: (
+                (True, answers[label]) if label in answers else original(label, v, *a, **k)
+            ),
+        )
         _draw(app, n=1)
         monkeypatch.setattr(im, "input_text", original)
         assert np.asarray(app.model.rotation_matrix).tolist() == R
@@ -196,9 +225,14 @@ def test_the_editors_write_the_matrix_and_translation(monkeypatch):
         app.close()
 
 
-@pytest.mark.parametrize("matrix, words", [([[1, 0.5, 0], [0, 1, 0], [0, 0, 1]], "sheared"),
-                                           ([[-1, 0, 0], [0, 1, 0], [0, 0, 1]], "mirrored"),
-                                           (R, "")])
+@pytest.mark.parametrize(
+    "matrix, words",
+    [
+        ([[1, 0.5, 0], [0, 1, 0], [0, 0, 1]], "sheared"),
+        ([[-1, 0, 0], [0, 1, 0], [0, 0, 1]], "mirrored"),
+        (R, ""),
+    ],
+)
 def test_a_matrix_that_is_not_a_rotation_is_named(matrix, words):
     assert (words in rotation_problem(matrix)) and (bool(rotation_problem(matrix)) == bool(words))
     app = RotateTranslateApp()
@@ -217,8 +251,11 @@ def test_frames_are_requested_and_the_form_disabled_while_saving(monkeypatch, tm
 
     gate = threading.Event()
     original = view_model.RotateTranslateViewModel.save_rotated_translated
-    monkeypatch.setattr(view_model.RotateTranslateViewModel, "save_rotated_translated",
-                        lambda self, target: (gate.wait(10), original(self, target))[1])
+    monkeypatch.setattr(
+        view_model.RotateTranslateViewModel,
+        "save_rotated_translated",
+        lambda self, target: (gate.wait(10), original(self, target))[1],
+    )
     app = _loaded()
     try:
         app.save(str(tmp_path / "moved.dcd"))
@@ -241,15 +278,32 @@ def test_the_guide_points_at_real_controls_and_waits(monkeypatch):
     try:
         _draw(app, size, painter=PixelPainter)
         keys = {app.tour._target_key(s.get("target")) for s in app.tour.steps} - {""}
-        assert keys == {"trajectory", "topology", "rotation_matrix", "translation", "stride", "save", "log"}
+        assert keys == {
+            "trajectory",
+            "topology",
+            "rotation_matrix",
+            "translation",
+            "stride",
+            "save",
+            "log",
+        }
         assert keys <= set(app.item_rects)
         steps = app.tour.steps
-        index = next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == "rotation_matrix")
+        index = next(
+            i for i, s in enumerate(steps) if s.get("target", {}).get("name") == "rotation_matrix"
+        )
         app.tour.start(index)
-        assert app.tour.awaiting and steps[index]["title"] in " ".join(_draw(app, size, n=1).strings)
+        assert app.tour.awaiting and steps[index]["title"] in " ".join(
+            _draw(app, size, n=1).strings
+        )
         original = im.input_text
-        monkeypatch.setattr(im, "input_text", lambda label, v, *a, **k: (True, "0.5") if label == "##r22"
-                            else original(label, v, *a, **k))
+        monkeypatch.setattr(
+            im,
+            "input_text",
+            lambda label, v, *a, **k: (
+                (True, "0.5") if label == "##r22" else original(label, v, *a, **k)
+            ),
+        )
         _draw(app, size, n=1)
         monkeypatch.setattr(im, "input_text", original)
         assert not app.tour.awaiting
@@ -263,7 +317,9 @@ def test_the_guide_points_at_real_controls_and_waits(monkeypatch):
             _draw(app, size, n=1, painter=PixelPainter)
 
         for target, button in (("trajectory", "trajectory_browse"), ("save", "save")):
-            index = next(i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target)
+            index = next(
+                i for i, s in enumerate(steps) if s.get("target", {}).get("name") == target
+            )
             app.tour.start(index)
             assert app.tour.awaiting
             _draw(app, size, n=1, painter=PixelPainter)
@@ -281,7 +337,13 @@ def test_draws_empty_and_populated(size, tmp_path):
     app = RotateTranslateApp()
     try:
         strings = _draw(app, size).strings
-        assert {"Rotation matrix", "Translation [Ang.]", "💾  Save rotated/translated…", "Stride", "Log"} <= {s.strip() for s in strings}
+        assert {
+            "Rotation matrix",
+            "Translation [Ang.]",
+            "💾  Save rotated/translated…",
+            "Stride",
+            "Log",
+        } <= {s.strip() for s in strings}
         app = _loaded()
         app.save(str(tmp_path / "moved.dcd"))
         _settle(app)
@@ -298,7 +360,10 @@ def test_settings_round_trip():
     other.restore_settings(json.loads(json.dumps(app.export_settings())))
     m = other.model
     assert (m.trajectory_filename, m.topology_filename, m.stride) == (TRAJ, TOP, STRIDE)
-    assert np.asarray(m.rotation_matrix).tolist() == R and np.asarray(m.translation_vector).tolist() == T
+    assert (
+        np.asarray(m.rotation_matrix).tolist() == R
+        and np.asarray(m.translation_vector).tolist() == T
+    )
 
 
 def test_help_opens_with_its_page():

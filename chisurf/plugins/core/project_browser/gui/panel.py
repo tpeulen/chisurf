@@ -8,7 +8,11 @@ from typing import Any
 
 def _cell(value: Any) -> str:
     """A cell's text; a long stored blob (the version's metadata) is cut, the tooltip of the row has no more either."""
-    text = "" if value is None else (json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value))
+    text = (
+        ""
+        if value is None
+        else (json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value))
+    )
     return text if len(text) <= 160 else text[:157] + "..."
 
 
@@ -43,7 +47,9 @@ class ProjectPanel:
 
     # -- fields -------------------------------------------------------------------------------------------- #
     search = property(lambda s: s.model.search, lambda s, v: setattr(s.model, "search", str(v)))
-    show_public = property(lambda s: s.model.show_public, lambda s, v: setattr(s.model, "show_public", bool(v)))
+    show_public = property(
+        lambda s: s.model.show_public, lambda s, v: setattr(s.model, "show_public", bool(v))
+    )
     expanded = property(lambda s: s.app.expanded)
     name = property(lambda s: s.app.name, lambda s, v: setattr(s.app, "name", str(v)))
     notes = property(lambda s: s.app.notes, lambda s, v: setattr(s.app, "notes", str(v)))
@@ -56,8 +62,13 @@ class ProjectPanel:
     def visibility_name(self, value: str) -> None:
         self.app.visibility = 1 if str(value).lower() == "public" else 0
 
-    show_id = property(lambda s: s.app.column_shown("show_id"), lambda s, v: setattr(s.app, "show_id", bool(v)))
-    show_status = property(lambda s: s.app.column_shown("show_status"), lambda s, v: setattr(s.app, "show_status", bool(v)))
+    show_id = property(
+        lambda s: s.app.column_shown("show_id"), lambda s, v: setattr(s.app, "show_id", bool(v))
+    )
+    show_status = property(
+        lambda s: s.app.column_shown("show_status"),
+        lambda s, v: setattr(s.app, "show_status", bool(v)),
+    )
 
     def columns_changed(self, *_value) -> None:
         """The Show ID / Show status toggles: the table re-reads :meth:`browser_columns` on the next frame."""
@@ -68,7 +79,9 @@ class ProjectPanel:
 
         out = []
         for column in SPEC["_columns"]:
-            shown = (column["key"] != "id" or self.show_id) and (column["key"] != "status" or self.show_status)
+            shown = (column["key"] != "id" or self.show_id) and (
+                column["key"] != "status" or self.show_status
+            )
             out.append({**column, "visible": shown})
         return out
 
@@ -105,26 +118,45 @@ class ProjectPanel:
         rows = []
         for project in self.model.projects:
             pid = project.get("project_id", "")
-            rows.append({
-                "row_id": pid, "parent_id": "",
-                "project_name": f"{project.get('project_name', '(unnamed)')} ({project.get('version_count', 0)} versions)",
-                "id": pid, "owner_user_id": project.get("owner_user_id", ""), "status": "",
-                "visibility": project.get("visibility", "private"), "dataset_count": "", "fit_count": "",
-                "created_at": _created(project), "notes": "",
-                "tooltip": f"Project: {pid}\nOwner: {project.get('owner_user_id', '')}\nVersions: {project.get('version_count', 0)}",
-            })
+            rows.append(
+                {
+                    "row_id": pid,
+                    "parent_id": "",
+                    "project_name": f"{project.get('project_name', '(unnamed)')} ({project.get('version_count', 0)} versions)",
+                    "id": pid,
+                    "owner_user_id": project.get("owner_user_id", ""),
+                    "status": "",
+                    "visibility": project.get("visibility", "private"),
+                    "dataset_count": "",
+                    "fit_count": "",
+                    "created_at": _created(project),
+                    "notes": "",
+                    "tooltip": f"Project: {pid}\nOwner: {project.get('owner_user_id', '')}\nVersions: {project.get('version_count', 0)}",
+                }
+            )
             for version in project.get("versions", []):
-                rows.append({
-                    "row_id": version.get("version_id", ""), "parent_id": pid,
-                    "project_name": f"v{version.get('version_number', '?')} {version.get('project_name', '')}",
-                    "id": version.get("version_id", ""), "owner_user_id": version.get("owner_user_id", ""),
-                    "status": version.get("status", ""), "visibility": version.get("visibility", project.get("visibility", "private")),
-                    "dataset_count": version.get("dataset_count", 0), "fit_count": version.get("fit_count", 0),
-                    "created_at": _created(version), "notes": str(version.get("notes") or "")[:60],
-                    "tooltip": (f"Version: {version.get('version_id', '')}\nProject: {version.get('project_id', '')}\nOwner: {version.get('owner_user_id', '')}\n"
-                                f"Created: {version.get('created_at', '')}\nDatasets: {version.get('dataset_count', 0)}  Fits: {version.get('fit_count', 0)}\n"
-                                f"{version.get('notes') or ''}"),
-                })
+                rows.append(
+                    {
+                        "row_id": version.get("version_id", ""),
+                        "parent_id": pid,
+                        "project_name": f"v{version.get('version_number', '?')} {version.get('project_name', '')}",
+                        "id": version.get("version_id", ""),
+                        "owner_user_id": version.get("owner_user_id", ""),
+                        "status": version.get("status", ""),
+                        "visibility": version.get(
+                            "visibility", project.get("visibility", "private")
+                        ),
+                        "dataset_count": version.get("dataset_count", 0),
+                        "fit_count": version.get("fit_count", 0),
+                        "created_at": _created(version),
+                        "notes": str(version.get("notes") or "")[:60],
+                        "tooltip": (
+                            f"Version: {version.get('version_id', '')}\nProject: {version.get('project_id', '')}\nOwner: {version.get('owner_user_id', '')}\n"
+                            f"Created: {version.get('created_at', '')}\nDatasets: {version.get('dataset_count', 0)}  Fits: {version.get('fit_count', 0)}\n"
+                            f"{version.get('notes') or ''}"
+                        ),
+                    }
+                )
         return rows
 
     def summary_rows(self) -> list[dict]:

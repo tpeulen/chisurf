@@ -118,7 +118,12 @@ def test_the_navigation_list_equals_the_qt_tools_panels(ui, qapp, qtbot):
 
 
 def test_the_search_matches_what_the_qt_search_does(ui):
-    for query, role in (("count", "count_rate"), ("PIE", "alex_creator"), ("routing channel", "photon_table"), ("audio", "audifier")):
+    for query, role in (
+        ("count", "count_rate"),
+        ("PIE", "alex_creator"),
+        ("routing channel", "photon_table"),
+        ("audio", "audifier"),
+    ):
         ui.app.filter = query
         assert role in {p["role"] for p in ui.app.matching_panels()}, query
     ui.app.filter = "no-such-tool"
@@ -292,7 +297,9 @@ def test_layout(ui, size):
     lay.assert_inside(rects, size)
     left = max(r[0] + r[2] for k, r in rects.items() if k.startswith("nav.")) + 8
     assert left < 0.34 * size[0] + 40, "the navigation list is narrow"
-    assert ui.app.child_box[2] * ui.app.child_box[3] > 0.55 * size[0] * size[1], "the tool gets the space"
+    assert ui.app.child_box[2] * ui.app.child_box[3] > 0.55 * size[0] * size[1], (
+        "the tool gets the space"
+    )
 
 
 def test_every_control_has_a_tooltip_and_every_text_is_translated(ui):

@@ -11,7 +11,14 @@ from __future__ import annotations
 
 import pathlib
 
-from chisurf.plugins.traj.emtk_tool import STRUCTURE_FILTERS, SaveAction, icon_label, TrajToolApp, topology_field, trajectory_field
+from chisurf.plugins.traj.emtk_tool import (
+    STRUCTURE_FILTERS,
+    SaveAction,
+    TrajToolApp,
+    icon_label,
+    topology_field,
+    trajectory_field,
+)
 
 from .view_model import MDConverterViewModel
 
@@ -39,20 +46,35 @@ CONVERT = SaveAction(
 )
 
 PATHS = [
-    topology_field(attr="topology_path", filters=[("PDB-File", ["*.pdb"])], dialog_title="Open PDB-File",
-                   tooltip="Topology (PDB) — required for trajectory formats without topology.",
-                   browse_tooltip="Topology (PDB) — required for trajectory formats without topology."),
-    trajectory_field(attr="trajectory", dialog_title="Open trajectory",
-                     filters=[("Trajectory", ["*.dcd"])], folder=lambda model: model.use_folder,
-                     placeholder="Drop a DCD trajectory (or, in folder mode, a folder of PDBs)",
-                     tooltip="Input trajectory file, or a folder of PDBs when 'Input is a folder of PDBs' is on.",
-                     browse_tooltip="Input trajectory file, or a folder of PDBs when 'Input is a folder of PDBs' "
-                                    "is on."),
-    trajectory_field(key="target", label="Target folder", attr="target_directory", setter="set_target_directory",
-                     filters=STRUCTURE_FILTERS, folder=True, dialog_title="Choose Target-Folder",
-                     placeholder="Folder the converted file(s) are written to",
-                     tooltip="Output directory the converted file(s) are written to.",
-                     browse_tooltip="Output directory the converted file(s) are written to."),
+    topology_field(
+        attr="topology_path",
+        filters=[("PDB-File", ["*.pdb"])],
+        dialog_title="Open PDB-File",
+        tooltip="Topology (PDB) — required for trajectory formats without topology.",
+        browse_tooltip="Topology (PDB) — required for trajectory formats without topology.",
+    ),
+    trajectory_field(
+        attr="trajectory",
+        dialog_title="Open trajectory",
+        filters=[("Trajectory", ["*.dcd"])],
+        folder=lambda model: model.use_folder,
+        placeholder="Drop a DCD trajectory (or, in folder mode, a folder of PDBs)",
+        tooltip="Input trajectory file, or a folder of PDBs when 'Input is a folder of PDBs' is on.",
+        browse_tooltip="Input trajectory file, or a folder of PDBs when 'Input is a folder of PDBs' "
+        "is on.",
+    ),
+    trajectory_field(
+        key="target",
+        label="Target folder",
+        attr="target_directory",
+        setter="set_target_directory",
+        filters=STRUCTURE_FILTERS,
+        folder=True,
+        dialog_title="Choose Target-Folder",
+        placeholder="Folder the converted file(s) are written to",
+        tooltip="Output directory the converted file(s) are written to.",
+        browse_tooltip="Output directory the converted file(s) are written to.",
+    ),
 ]
 
 
@@ -60,8 +82,16 @@ class MDConverterApp(TrajToolApp):
     """The trajectory converter window."""
 
     def __init__(self, model: MDConverterViewModel | None = None) -> None:
-        super().__init__(model or MDConverterViewModel(), HERE, "convert_structures.view.json",
-                         "traj_convert_io", "Trajectory-converter", PATHS, CONVERT, action_key="traj_convert_run")
+        super().__init__(
+            model or MDConverterViewModel(),
+            HERE,
+            "convert_structures.view.json",
+            "traj_convert_io",
+            "Trajectory-converter",
+            PATHS,
+            CONVERT,
+            action_key="traj_convert_run",
+        )
 
 
 def make_app(**kwargs) -> MDConverterApp:

@@ -75,7 +75,9 @@ def tap(qapp, host, key, text="", hold=0.05):
 
 def mouse(qapp, host, kind, x, y, button=K.LeftButton, buttons=None):
     buttons = button if buttons is None else buttons
-    qapp.sendEvent(host, QtGui.QMouseEvent(kind, QtCore.QPointF(x, y), button, buttons, K.NoModifier))
+    qapp.sendEvent(
+        host, QtGui.QMouseEvent(kind, QtCore.QPointF(x, y), button, buttons, K.NoModifier)
+    )
 
 
 def click(qapp, host, x, y, button=K.LeftButton):
@@ -156,9 +158,9 @@ def test_breakout_letter_keys_are_not_directions_and_releases_are_independent(qa
     pump(qapp, 0.3)
     assert app.game.paddle_x == x0, "D must not steer the paddle (arrows only)"
     assert not app.keys.held
-    press(qapp, host, K.Key_Left)           # both held
+    press(qapp, host, K.Key_Left)  # both held
     press(qapp, host, K.Key_Right)
-    release(qapp, host, K.Key_Right)        # Right up, Left still down
+    release(qapp, host, K.Key_Right)  # Right up, Left still down
     assert "left" in app.keys.held.values()
     release(qapp, host, K.Key_Left)
     assert not app.keys.held
@@ -282,7 +284,9 @@ def test_pong_pointer_drag_moves_the_player_paddle(qapp):
 def test_tetris_left_right_move_one_cell_per_press_and_up_rotates(qapp):
     import random
 
-    random.seed(7)               # the first piece is random: pin it, or the O piece (no visible rotation) flakes this
+    random.seed(
+        7
+    )  # the first piece is random: pin it, or the O piece (no visible rotation) flakes this
     host = _host(qapp, "tetris")
     app = host.control
     game = app.game
@@ -294,7 +298,7 @@ def test_tetris_left_right_move_one_cell_per_press_and_up_rotates(qapp):
     assert game.x == x0 + 1
     assert not app.keys.held
     tap(qapp, host, K.Key_Up, hold=0.02)
-    assert game.coords != coords or game.shape == 1   # the square piece rotates onto itself
+    assert game.coords != coords or game.shape == 1  # the square piece rotates onto itself
 
 
 def test_tetris_held_left_repeats_and_focus_loss_stops_it(qapp):
@@ -316,7 +320,9 @@ def test_tetris_space_drops_the_piece_pause_and_reset(qapp):
     app = host.control
     game = app.game
     tap(qapp, host, K.Key_Space, " ", hold=0.02)
-    assert any(cell is not None for row in game.well for cell in row), "the dropped piece never landed"
+    assert any(cell is not None for row in game.well for cell in row), (
+        "the dropped piece never landed"
+    )
     tap(qapp, host, K.Key_P, "p")
     assert game.paused
     tap(qapp, host, K.Key_P, "p")
@@ -431,9 +437,9 @@ def test_number_quest_click_the_plot_dials_and_the_caption_submits(qapp, monkeyp
     left = next(v for k, v in rects.items() if k == "##306" or k == "##324")
     row = rects["##324"]
     click(qapp, host, row[0] + row[2] * 0.2, row[1] + row[3] / 2)
-    assert len(app.history) == 1                       # left half submits
+    assert len(app.history) == 1  # left half submits
     click(qapp, host, row[0] + row[2] * 0.8, row[1] + row[3] / 2)
-    assert app.history == []                           # right half starts a new round
+    assert app.history == []  # right half starts a new round
     assert left
 
 
@@ -449,7 +455,10 @@ def test_every_game_in_the_hub_receives_a_real_key(qapp):
         assert child is not None, name
         got = []
         original = child.key
-        child.key = lambda key, text="", modifiers=0, g=got, o=original: (g.append(key), o(key, text, modifiers))[1]
+        child.key = lambda key, text="", modifiers=0, g=got, o=original: (
+            g.append(key),
+            o(key, text, modifiers),
+        )[1]
         pump(qapp, 0.1)
         tap(qapp, host, K.Key_Left, hold=0.02)
         seen[name] = got

@@ -9,18 +9,27 @@ from pathlib import Path
 
 def run_fresh(source, tmp_path):
     """Exercise cold imports without pytest's preloaded GUI or dictionary cache."""
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen",
-               CHISURF_SETTINGS_DIR=str(tmp_path / "settings"),
-               MMFDB_SETTINGS_DIR=str(tmp_path / "mmfdb"))
-    result = subprocess.run([sys.executable, "-c", textwrap.dedent(source)],
-                            cwd=Path(__file__).resolve().parents[2], env=env,
-                            capture_output=True, text=True, timeout=90)
+    env = dict(
+        os.environ,
+        QT_QPA_PLATFORM="offscreen",
+        CHISURF_SETTINGS_DIR=str(tmp_path / "settings"),
+        MMFDB_SETTINGS_DIR=str(tmp_path / "mmfdb"),
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(source)],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=90,
+    )
     assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_import_and_empty_editor_do_not_load_dictionary(tmp_path):
     """An unused catalog must not delay an ordinary fit or an empty metadata pane."""
-    run_fresh('''
+    run_fresh(
+        """
         from qtpy import QtWidgets
         from chisurf.core.fio.mmcif import pdbx_metadata as facade
         calls = []
@@ -37,12 +46,15 @@ def test_import_and_empty_editor_do_not_load_dictionary(tmp_path):
         assert calls.count('keys') == 1
         assert module.ALL_METADATA_KEYS is keys
         assert calls.count('keys') == 1
-    ''', tmp_path)
+    """,
+        tmp_path,
+    )
 
 
 def test_key_model_does_not_allocate_standard_items(tmp_path):
     """Keep all keys and descriptions without one heavyweight Qt item per key."""
-    run_fresh('''
+    run_fresh(
+        """
         from qtpy import QtCore, QtGui, QtWidgets
         from chisurf.core.fio.mmcif import pdbx_metadata as facade
         keys = ['_catalog.key_' + str(i) for i in range(10000)]
@@ -66,12 +78,15 @@ def test_key_model_does_not_allocate_standard_items(tmp_path):
         assert editor.get_data() == [{'key': '_catalog.key_10', 'value': 'x'},
                                      {'key': '_custom.extra', 'value': 'y'}]
         assert not first.model().index(-1, 0).isValid()
-    ''', tmp_path)
+    """,
+        tmp_path,
+    )
 
 
 def test_large_catalog_layout_does_not_scan_every_key(tmp_path):
     """Opening a metadata pane must not measure 10,000 labels per combobox."""
-    run_fresh('''
+    run_fresh(
+        """
         from qtpy import QtCore, QtWidgets
         from chisurf.core.fio.mmcif import pdbx_metadata as facade
         facade.get_pdbx_metadata_keys = lambda: ['_catalog.key_' + str(i) for i in range(10000)]
@@ -93,12 +108,15 @@ def test_large_catalog_layout_does_not_scan_every_key(tmp_path):
         app.processEvents()
         assert len(calls) < 1000, len(calls)
         assert editor.table.cellWidget(0, 0).count() > 10000
-    ''', tmp_path)
+    """,
+        tmp_path,
+    )
 
 
 def test_metadata_popup_has_uniform_rows_and_keeps_catalog(tmp_path):
     """The styled popup must not request every role for every dictionary row."""
-    run_fresh('''
+    run_fresh(
+        """
         from qtpy import QtCore, QtWidgets
         from chisurf.core.fio.mmcif import pdbx_metadata as facade
         facade.get_pdbx_metadata_keys = lambda: ['_catalog.key_' + str(i) for i in range(10000)]
@@ -117,12 +135,15 @@ def test_metadata_popup_has_uniform_rows_and_keeps_catalog(tmp_path):
         assert combo.itemData(index, QtCore.Qt.UserRole + 1) == 'Full description'
         assert isinstance(combo.view().itemDelegate(), module.TooltipDelegate)
         combo.hidePopup()
-    ''', tmp_path)
+    """,
+        tmp_path,
+    )
 
 
 def test_dictionary_constant_survives_from_and_star_imports(tmp_path):
     """The historical public catalog remains a real list for explicit imports."""
-    run_fresh('''
+    run_fresh(
+        """
         from chisurf.gui.widgets.metadata_editor import *
         assert isinstance(ALL_METADATA_KEYS, list)
         assert MetadataEditor.__name__ == 'MetadataEditor'
@@ -130,4 +151,6 @@ def test_dictionary_constant_survives_from_and_star_imports(tmp_path):
         assert isinstance(ALL_METADATA_KEYS, list)
         assert len(ALL_METADATA_KEYS) > 5000
         assert '_flr_sample.entity_assembly_id' in ALL_METADATA_KEYS
-    ''', tmp_path)
+    """,
+        tmp_path,
+    )

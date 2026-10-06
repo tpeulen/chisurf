@@ -223,7 +223,12 @@ def test_the_spec_keeps_every_qt_field():
     def fields(node, out):
         for s in node:
             if s.get("attr"):
-                out[s["attr"]] = (s.get("kind"), s.get("minimum"), s.get("maximum"), s.get("options"))
+                out[s["attr"]] = (
+                    s.get("kind"),
+                    s.get("minimum"),
+                    s.get("maximum"),
+                    s.get("options"),
+                )
             fields(s.get("sections", []), out)
         return out
 
@@ -320,8 +325,17 @@ def test_every_control_has_a_tooltip():
 
     def walk(sections):
         for s in sections:
-            if s.get("type") in ("value", "choice", "toggle", "table", "data_table", "custom",
-                                 "info", "button_row", "panel"):
+            if s.get("type") in (
+                "value",
+                "choice",
+                "toggle",
+                "table",
+                "data_table",
+                "custom",
+                "info",
+                "button_row",
+                "panel",
+            ):
                 assert s.get("description"), s.get("attr") or s.get("title") or s
             for c in s.get("columns", []):
                 assert c.get("description"), c

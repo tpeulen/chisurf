@@ -254,7 +254,11 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         """The *Multiple selection* check box: switching it off keeps only the current file."""
         self.multi_select = bool(on)
         if not self.multi_select and len(self.selected_files) > 1:
-            keep = self.current_file if self.current_file in self.selected_files else self.selected_files[-1]
+            keep = (
+                self.current_file
+                if self.current_file in self.selected_files
+                else self.selected_files[-1]
+            )
             self.selected_files = [keep]
             self.current_file = keep
             self.notify("select")
@@ -484,7 +488,9 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         if written:
             self.status_line = f"Wrote {len(written)} TIFF stack(s) to {folder}."
         else:
-            self.status_line = "No TIFF stack written: no file gave an image (check the detector setup)."
+            self.status_line = (
+                "No TIFF stack written: no file gave an image (check the detector setup)."
+            )
 
     def do_export_docx(self, path: str) -> None:
         """Write the DOCX report of the listed files (name, rating, annotation, mosaic) to *path*."""
@@ -551,7 +557,9 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         if isinstance(folder, str) and pathlib.Path(folder).is_dir():
             self.open_folder(folder)
             known = {rec.get("path") for rec in self._files}
-            wanted = [p for p in state.get("selected_files", []) if isinstance(p, str) and p in known]
+            wanted = [
+                p for p in state.get("selected_files", []) if isinstance(p, str) and p in known
+            ]
             if wanted:
                 self.selected_files = wanted
                 self.current_file = wanted[-1]

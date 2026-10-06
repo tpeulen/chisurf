@@ -53,8 +53,14 @@ def test_pointer_and_wheel_reach_the_embedded_wizard_in_its_own_coordinates(drv,
     batch.model.add_paths([str(tmp_path)])
     drv.draw(3)
     tx, ty, tw, th = batch.form.rects["file_rows"]
-    first = lambda: sorted((t for t in drv.draw(2).texts if bx + tx <= t[0] <= bx + tx + tw and by + ty + 20 <= t[1] <= by + ty + th),
-                           key=lambda t: t[1])[0][5]  # noqa: E731
+    first = lambda: sorted(
+        (
+            t
+            for t in drv.draw(2).texts
+            if bx + tx <= t[0] <= bx + tx + tw and by + ty + 20 <= t[1] <= by + ty + th
+        ),
+        key=lambda t: t[1],
+    )[0][5]  # noqa: E731
     before = first()
     drv.wheel(bx + tx + tw / 2, by + ty + th / 2, steps=-4)
     assert first() != before

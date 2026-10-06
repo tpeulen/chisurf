@@ -69,10 +69,27 @@ def populate(app: Any, path: Any) -> None:
 DATA = {
     "windows": {"prompt": [0, 2048], "delayed": [2048, 4095]},
     "detectors": {
-        "green": {"chs": [8, 0, 3], "micro_time_ranges": [[0, 4095]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0},
-        "red": {"chs": [9, 1, 2], "micro_time_ranges": [[0, 2048]], "g_factor": 1.25, "l1": 0.01, "l2": 0.02},
+        "green": {
+            "chs": [8, 0, 3],
+            "micro_time_ranges": [[0, 4095]],
+            "g_factor": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+        },
+        "red": {
+            "chs": [9, 1, 2],
+            "micro_time_ranges": [[0, 2048]],
+            "g_factor": 1.25,
+            "l1": 0.01,
+            "l2": 0.02,
+        },
     },
-    "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 13.5, "micro_time_resolution": 3.25, "micro_time_binning": 2},
+    "tttr_reading": {
+        "file_type": "SPC-130",
+        "macro_time_resolution": 13.5,
+        "micro_time_resolution": 3.25,
+        "micro_time_binning": 2,
+    },
     "polarization_resolved": True,
 }
 STAMP = "2026-09-01T10:00:00"
@@ -94,9 +111,15 @@ def norm(setup):
             }
             for n, d in sorted(setup.get("detectors", {}).items())
         },
-        "reading": {k: reading.get(k) for k in ("file_type", "macro_time_resolution", "micro_time_resolution", "micro_time_binning")},
+        "reading": {
+            k: reading.get(k)
+            for k in (
+                "file_type",
+                "macro_time_resolution",
+                "micro_time_resolution",
+                "micro_time_binning",
+            )
+        },
         "polarization_resolved": bool(setup.get("polarization_resolved", True)),
         "apply_lut": bool(setup.get("apply_lut", False)),
     }
-
-

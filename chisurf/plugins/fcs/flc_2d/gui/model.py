@@ -199,7 +199,6 @@ class _FlcModel:
         """Return species-correlation plot series."""
         return self._correlation or []
 
-
     # -- what the native window needs ------------------------------------ #
     def enabled(self, name: str) -> bool:
         """Whether the field or action *name* is usable now.

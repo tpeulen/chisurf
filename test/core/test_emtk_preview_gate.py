@@ -35,13 +35,12 @@ def one_preview(tmp_path, monkeypatch):
     emtk_readiness._read.cache_clear()
 
 
-
 def test_the_list_is_read_and_ids_are_strings(one_preview):
     ids = emtk_readiness.preview_ids()
     assert ids and all(isinstance(i, str) for i in ids)
     assert emtk_readiness.is_preview(one_preview)
     assert not emtk_readiness.is_preview("fcs_channel_preset")
-    assert not emtk_readiness.is_preview("model_manager")      # accepted: swapped
+    assert not emtk_readiness.is_preview("model_manager")  # accepted: swapped
 
 
 def test_a_missing_or_broken_file_means_nothing_is_a_preview(tmp_path, monkeypatch):
@@ -122,5 +121,7 @@ def test_no_plugin_with_an_accepted_report_stays_a_preview():
         text = report.read_text(encoding="utf-8")
         if re.search(r"\*\*Accepted\*\*|\*\*Accepted\.\*\*", text):
             accepted.add(report.parent.name)
-    still_preview = sorted(i for i in emtk_readiness.preview_ids() if i.replace("_", "-") in accepted or i in accepted)
+    still_preview = sorted(
+        i for i in emtk_readiness.preview_ids() if i.replace("_", "-") in accepted or i in accepted
+    )
     assert not still_preview, f"accepted but still listed as preview: {still_preview}"

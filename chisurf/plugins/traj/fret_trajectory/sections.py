@@ -84,12 +84,21 @@ class _TrajectoryIoSection(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
-        self._edit = self._row(layout, "Trajectory", "Drop a DCD trajectory here or browse…",
-                               "Open DCD trajectories.", self._browse)
+        self._edit = self._row(
+            layout,
+            "Trajectory",
+            "Drop a DCD trajectory here or browse…",
+            "Open DCD trajectories.",
+            self._browse,
+        )
         self._edit.setText(self._model.trajectory_file)
-        self._top_edit = self._row(layout, "Topology", "PDB naming the atoms — required for DCD",
-                                   "Open the PDB that names the atoms; a DCD stores coordinates only.",
-                                   self._browse_topology)
+        self._top_edit = self._row(
+            layout,
+            "Topology",
+            "PDB naming the atoms — required for DCD",
+            "Open the PDB that names the atoms; a DCD stores coordinates only.",
+            self._browse_topology,
+        )
         self._top_edit.setText(self._model.topology_filename)
 
         _enable_file_drop(self._edit, self._load)
@@ -124,14 +133,18 @@ class _TrajectoryIoSection(QtWidgets.QWidget):
     def _browse(self) -> None:
         import chisurf.gui.widgets
 
-        filenames = chisurf.gui.widgets.open_files("Open Trajectory-File", "DCD trajectories (*.dcd)")
+        filenames = chisurf.gui.widgets.open_files(
+            "Open Trajectory-File", "DCD trajectories (*.dcd)"
+        )
         if filenames:
             self._model.set_trajectory_files(filenames)
 
     def _browse_topology(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename("Open topology", "Structures (*.pdb *.cif *.ent)")
+        filename = chisurf.gui.widgets.get_filename(
+            "Open topology", "Structures (*.pdb *.cif *.ent)"
+        )
         if filename:
             self._load_topology(filename)
 
