@@ -749,3 +749,142 @@ def minimize(
         message=str(r.message),
         hess_inv=hess_inv,
     )
+
+# --------------------------------------------------------------------------
+# ODE integration: ``scipy.integrate.odeint`` (LSODA) on bff.odeint.
+
+__all__ += ["ODEintWarning", "odeint"]
+
+
+class ODEintWarning(Warning):
+    """Warning raised during the execution of `odeint`, as in scipy."""
+
+
+def odeint(
+    func,
+    y0,
+    t,
+    args=(),
+    Dfun=None,
+    col_deriv=0,
+    full_output=0,
+    ml=None,
+    mu=None,
+    rtol=None,
+    atol=None,
+    tcrit=None,
+    h0=0.0,
+    hmax=0.0,
+    hmin=0.0,
+    ixpr=0,
+    mxstep=0,
+    mxhnil=0,
+    mxordn=12,
+    mxords=5,
+    printmessg=0,
+    tfirst=False,
+):
+    """Integrate ``dy/dt = func(y, t, *args)`` -- ``scipy.integrate.odeint``
+    on IMP.bff's port of the same LSODA.
+
+    Parameters
+    ----------
+    func : callable
+        ``func(y, t, *args) -> dy/dt`` (``func(t, y, *args)`` with
+        ``tfirst=True``).
+    y0 : array_like
+        State at ``t[0]``.
+    t : array_like
+        Output times; the first is the start.
+    args : tuple, optional
+        Extra arguments to ``func``.
+    Dfun, col_deriv, ml, mu : None
+        A user Jacobian (full or banded) is not provided; LSODA differences
+        the full Jacobian itself, as scipy does without ``Dfun``. Passing one
+        raises ``NotImplementedError``.
+    full_output : bool, optional
+        Also return scipy's ``infodict``.
+    rtol, atol, tcrit, h0, hmax, hmin, ixpr, mxstep, mxhnil, mxordn, mxords
+        scipy's options, with scipy's defaults.
+    printmessg : bool, optional
+        Warn with the convergence message even on success.
+    tfirst : bool, optional
+        ``func`` takes ``t`` first.
+
+    Returns
+    -------
+    y : ndarray, shape (len(t), len(y0))
+        The solution at each time. On a failure (an ``ODEintWarning`` is
+        issued) the rows after the last reached time are NaN.
+    infodict : dict
+        With ``full_output``: ``hu``, ``tcur``, ``tolsf``, ``tsw``, ``nst``,
+        ``nfe``, ``nje``, ``nqu``, ``imxer``, ``lenrw``, ``leniw``, ``mused``,
+        ``message``.
+    """
+    import warnings
+
+    if Dfun is not None or col_deriv or ml is not None or mu is not None:
+        raise NotImplementedError(
+            "odeint: a user Jacobian (Dfun, col_deriv, ml, mu) is not provided; "
+            "LSODA differences the full Jacobian"
+        )
+    if not isinstance(args, tuple):
+        args = (args,)
+    y0 = np.array(y0, dtype=float, copy=True).ravel()
+    t = np.array(t, dtype=float, copy=True).ravel()
+    bff = _bff()
+
+    class _Rhs(bff.OdeFunction):
+        def evaluate(self, y, tt):
+            y = np.asarray(y, dtype=float)
+            out = func(tt, y, *args) if tfirst else func(y, tt, *args)
+            return np.asarray(out, dtype=float).ravel()
+
+    def _tol(v):
+        if v is None:
+            return []
+        return np.atleast_1d(np.asarray(v, dtype=float)).tolist()
+
+    r = bff.odeint(
+        _Rhs(),
+        y0.tolist(),
+        t.tolist(),
+        _tol(rtol),
+        _tol(atol),
+        [] if tcrit is None else _tol(tcrit),
+        float(h0),
+        float(hmax),
+        float(hmin),
+        int(ixpr),
+        int(mxstep or 0),
+        int(mxhnil),
+        int(mxordn),
+        int(mxords),
+    )
+    y = np.asarray(r.y, dtype=float).reshape(len(t), len(y0))
+    if r.istate < 0:
+        warnings.warn(
+            f"{r.message} Run with full_output = 1 to get quantitative information.",
+            ODEintWarning,
+            stacklevel=2,
+        )
+    elif printmessg:
+        warnings.warn(r.message, ODEintWarning, stacklevel=2)
+    if not full_output:
+        return y
+    info = {
+        "hu": np.asarray(r.hu, dtype=float),
+        "tcur": np.asarray(r.tcur, dtype=float),
+        "tolsf": np.asarray(r.tolsf, dtype=float),
+        "tsw": np.asarray(r.tsw, dtype=float),
+        "nst": np.asarray(r.nst, dtype=np.int32),
+        "nfe": np.asarray(r.nfe, dtype=np.int32),
+        "nje": np.asarray(r.nje, dtype=np.int32),
+        "nqu": np.asarray(r.nqu, dtype=np.int32),
+        "imxer": int(r.imxer),
+        "lenrw": int(r.lenrw),
+        "leniw": int(r.leniw),
+        "mused": np.asarray(r.mused, dtype=np.int32),
+        "message": r.message,
+    }
+    return y, info

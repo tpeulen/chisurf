@@ -52,7 +52,6 @@ chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
 chisurf/core/fluorescence/tcspc/irf_estimation.py
 # curve_fit -> bff; erf -> local
 # curve_fit -> bff; j0 -> local
-chisurf/core/math/reaction/continuous.py
 # least_squares -> bff (ndimage -> tttrlib.ndimage done)
 # digamma/polygamma/gammaln: VB-MCMC hot loops, vectorized C++
 

@@ -105,7 +105,25 @@ Tests: imp.bff `test/numerics/test_special_functions.py` (21), chisurf
    duplicate) were deleted and `OptimizationCancelled` moved into
    `chisurf/core/math/optimization/__init__.py`, its three importers
    unchanged. Nothing needed `leastsq` full_output semantics.
-   **Pending (route 3):** `odeint` (reaction/continuous) -- T-20261006-BFFOPT; special functions +
+   **odeint landed 2026-10-06:** imp.bff `48cb33681` ports SciPy's C LSODA
+   (`src/internal/Lsoda.cpp`) and drives it as `_odepackmodule.c` does;
+   `chisurf.core.math.numerics.odeint` takes scipy's signature (Dfun /
+   banded refused), and `core/math/reaction/continuous.py` -- the
+   stopped-flow kinetics -- is routed and off the allow-list. **Decided by
+   measurement:** stiff schemes (fast pre-equilibrium) take LSODA ~450
+   evaluations and an explicit RK45 >200000, so a local RK was never an
+   option. Parity: solutions far inside tolerance, same Adams->BDF switch;
+   step counts part at LU rounding on Robertson (670 vs 724).
+   **Route 3 left:** special functions + distributions, expm, pinvh (the
+   special-functions lane), and the least_squares/curve_fit call sites (the
+   curve-fit lane). T-20261006-BFFOPT (minimize, leastsqbound, odeint) is
+   done.
+   **Trap:** HEAD's `test/test_scipy_seam.py` is red until the route-1
+   numpy-sweep code edits (hmm, deer trio, rand, pixelwise, geometry,
+   forster dialog, misc_helpers) are committed -- their allow-list strikes
+   landed in `b55729944` but the code changes are still uncommitted in the
+   shared tree. Commit them with the scipy-retirement lane, do not re-add
+   the lines. special functions +
    distributions, expm, pinvh -- the special-functions lane. **Boost.Math is
    already a header-only bff dependency** (SpecialFunctions.cpp uses it).
 5. Trap: imp.bff builds share `cmake-build-arm64` with other agents -- wrap

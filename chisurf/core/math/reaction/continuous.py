@@ -3,11 +3,11 @@ from __future__ import annotations
 from functools import reduce
 
 import numpy as np
-from scipy.integrate import odeint
 
 import chisurf.core.fitting.parameter
 import chisurf.core.parameter
 from chisurf import typing
+from chisurf.core.math.numerics import odeint
 
 
 def stoichometry_matrix(
