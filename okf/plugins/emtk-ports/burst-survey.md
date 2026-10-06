@@ -1,5 +1,34 @@
 # Burst and large-tool survey (card S, second pass 2026-10-02)
 
+## Where to pick this up (T-20261006-ALEXHUB, done 2026-10-06)
+
+**The ALEX Suite is native, as a simple Next workflow.** Cards **AS1-AS4 done**: `a577affef` (AS1: Qt-free
+`alex_suite/gui/alternation_model.py`, `demo.py`), `4f6add194` (AS3: `gui/export_model.py`), `5d54f60de` (AS2:
+`gui/step_apps.py`, titration on `TitrationViewModel` with emtk file choosers), `5912033fa` (AS4: `gui/native.py`
+`AlexHubApp(BurstAnalysisHubApp)`, manifest `entrypoints.emtk`, hub-membership extractor on its `STEPS`), `4e51d24fe`
+(evidence, guide 66 "The simple workflow"). Evidence in `alex_suite/` (`after_steps/`, `compare.json` lost 0,
+`deliberate.json`); report text in the T-20261006-ALEXHUB hand-back (subagents may not write REPORT.md).
+
+Measured, and how to re-derive it: `alex_suite/demo.py` writes a seeded µs-ALEX stream (period 8000 ticks, donor 0 /
+acceptor 1, micro-time 0); with Load demo data and Next presses only the hub converts it (period 8000, gates 235-3685 /
+4235-7685, contrast ~15000x), the burst search finds **462 bursts** in the container, Accurate FRET calibrates
+(alpha 0.009, delta 0.067 vs the planted 0.06 direct excitation, gamma 0.94, beta 1.10) and ndX shows two FRET populations
+at S ~ 0.5 (`alex_suite/tests/test_emtk_native_hub.py::test_next_alone_takes_the_demo_from_files_to_an_es_histogram`, 11 s).
+On the PIE fixture the alternation step leaves the data alone and the search still finds **198 bursts**.
+**Traps:** a status line wider than its room becomes one hovered item over Back / >> / Next and they stop taking clicks
+(`ToolHubApp` defect, worked around in `AlexHubApp.render` by `_fit`; known-issues); a burst run inside a `.pto` is not a
+file, so tools that test `is_file()`/`exists()` refuse it (Accurate FRET and the browser fixed in `5912033fa`); ndX opens
+on its last-used axes, the hub sets E/S itself once the load is in.
+
+Open, in order:
+1. Retire the Qt shells: `alex_suite/gui/tool.py` (+ `alternation.py`, `titration.py`, `legacy_export_panel.py`,
+   `tests/test_workflow_shape.py`, `tests/test_ndx_step.py`) and the three-tab `AlexSuiteApp` in `gui/app.py`, together with
+   Burst Analysis's (item 4 below). `gui/app.py` and `tests/test_emtk_clicks.py` carry the typed-field lane's uncommitted
+   edits and `tests/test_emtk_typed_fields.py` drives `AlexSuiteApp`: retire it with that lane, not over it.
+2. The help window shows markdown emphasis raw (`**Next**`): `chisurf/emtk/help_guide.py` has no inline emphasis.
+3. The setup step's own button reads "Proceed to Data Selection" in the ALEX rail (shared setup app; a label attribute as
+   done for the data step would fix it).
+
 ## Where to pick this up (T-20261005-BURSTEMTK, done 2026-10-06)
 
 **Burst Analysis and Burst Selection are native.** Card status: **BS0-BS6 done** (`9c39340c4`, `ee14af4bd`, `ddd07e123`),
@@ -19,12 +48,8 @@ them, do not commit them).
 
 Open, in order:
 
-1. **`alex_suite` shell (AS4).** `AlexSuiteTool` still subclasses the Qt shell (`burst_analysis/gui/tool.py`), and its
-   native app is a separate three-tab app that hosts none of the burst tools, so `test_hub_membership.py` keeps reading
-   its children from `alex_suite/gui/tool.py`. The way forward is an `AlexHubApp(BurstAnalysisHubApp)` with ALEX's own
-   `STEPS` (channels, data, alternation, selection, background, accurate FRET, E-S, browser, titration, BVA, legacy
-   export) and `_to_<role>` for the four ALEX-only roles (`alex_suite/gui/tool.py::_apply_context_to_panel`); the hand-off
-   plumbing (`workflow_context.py`, `_apply_downstream`, `_changed`) is reusable as is.
+1. ~~**`alex_suite` shell (AS4).**~~ Done 2026-10-06 (T-20261006-ALEXHUB, section above): `AlexHubApp(BurstAnalysisHubApp)`
+   in `alex_suite/gui/native.py`; `test_hub_membership.py` reads its `STEPS`.
 2. **ToolHubApp limits** the hub inherits (fixed rail, clips `7. Burst segmentation (H2MM)` at 800 px; the header repeats
    the rail badge): an additive option in `chisurf/emtk/tool_hub.py` (collapsible rail, header display name). Recorded in
    `okf/references/known-issues.md`.
@@ -266,10 +291,10 @@ every control carries a tooltip, no emoji, no hard-coded palette, **no invented 
 **Tests**: `tests/` 5 files, 38 functions (`test_alternation` 13, `test_api` 15, `test_arrival_converts` 4, `test_workflow_shape` 5, `test_ndx_step` 1). `test_alternation.py:210` uses an external `.sm` file (B5). A shared note on the settings store: the alternation step writes setups to both stores (known issue in `okf/references/known-issues.md`, `_merged_setups`); do not change that in a port.
 
 **Proposed cut** (the manifest switch waits for the burst_analysis shell; until then each card is checked with `--entry ...gui.app:make_app...` per panel):
-* **AS2 Titration (S).** Type A: the model exists; make `TitrationApp` take the `TitrationViewModel` and a `FileDialog`, drop the panel coupling. Data: `bh_spc132_sm_dna` `.bur` files as concentrations (labelled test series, ratios are not chemistry).
-* **AS3 Legacy export (S).** Take `files`/`run_export`/status from a small Qt-free model instead of `panel`.
-* **AS1 Alternation (M).** Move `run`, `_convert_detected`, `_publish`, `_store_phase` to a Qt-free `gui/alternation_model.py` (the app reads only the model), report and phase plot stay in the app. Only external data proves conversion (B5): add a synthetic phase fixture for the Qt-free part.
-* **AS4 Shell (L, blocked).** After BA0-BA2 and the step plugins' cards; `AlexSuiteTool` is a subclass, so it cannot be switched earlier.
+* **AS2 Titration (S). DONE `5d54f60de`.** Type A: the model exists; make `TitrationApp` take the `TitrationViewModel` and a `FileDialog`, drop the panel coupling. Data: `bh_spc132_sm_dna` `.bur` files as concentrations (labelled test series, ratios are not chemistry).
+* **AS3 Legacy export (S). DONE `4f6add194`.** Take `files`/`run_export`/status from a small Qt-free model instead of `panel`.
+* **AS1 Alternation (M). DONE `a577affef`.** Move `run`, `_convert_detected`, `_publish`, `_store_phase` to a Qt-free `gui/alternation_model.py` (the app reads only the model), report and phase plot stay in the app. Only external data proves conversion (B5): add a synthetic phase fixture for the Qt-free part.
+* **AS4 Shell (L). DONE `5912033fa` (was blocked on Burst Analysis).** After BA0-BA2 and the step plugins' cards; `AlexSuiteTool` is a subclass, so it cannot be switched earlier.
 
 ## 9. mfd_prepare
 

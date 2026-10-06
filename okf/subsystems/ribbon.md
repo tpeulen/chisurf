@@ -71,9 +71,15 @@ Hub scopes that decide where a new tool goes:
    Burst Analysis opens `burst_analysis/gui/native.py` on `chisurf/emtk/tool_hub.py`
    (`entrypoints.emtk`): the legacy steps in order, each the native app of its plugin
    (Burst Selection's included), with the workflow hand-off of the Qt shell. Accurate
-   FRET and Photon-by-photon kinetics are reachable natively as its side tools. Left:
-   the ALEX Suite still subclasses the Qt shell (card AS4) and the hub inherits two
-   ToolHubApp limits (fixed rail, header badge); the ordered list is in
+   FRET and Photon-by-photon kinetics are reachable natively as its side tools.
+   **The ALEX Suite is native too (2026-10-06, T-20261006-ALEXHUB):** its ribbon button
+   opens `alex_suite/gui/native.py`, Burst Analysis's hub with ALEX's seven numbered steps
+   walked by Next (µs-ALEX converted on arrival, a demo measurement on the files step) and
+   four side tools; the five burst steps it shares with Burst Analysis are listed in
+   `test_hub_membership.py`'s `SHARED`. Left: the hub inherits three ToolHubApp limits
+   (fixed rail, header badge, a status line wider than its room covers Back / Next: worked
+   around in `AlexHubApp` only, see known-issues) and the Qt shells
+   are still on disk; the ordered list is in
    [burst-survey.md](../plugins/emtk-ports/burst-survey.md).
 2. **Ribbon buttons that still open Qt:** none. MMFDB Admin is native
    since 2026-10-06 (T-20261005-MMFDBEMTK, `entrypoints.emtk`; parity in
