@@ -48,6 +48,7 @@ saving_projects
 35_combining_repeats
 53_reusing_results
 63_pto_inspector
+102_mmfdb_admin
 ```
 
 ## smFRET: efficiency, stoichiometry and corrections
@@ -247,6 +248,7 @@ irf_estimation
 | [Sending a gated burst population to FCS, TCSPC, PDA or PCH](52_send_bursts_to_analysis.md) | ndX bridge, `*.from_bursts` services |
 | [Reusing results: when a step recomputes](53_reusing_results.md) | `chisurf.core.runtime.analysis_cache`, burst workflow steps |
 | [Inspecting a container: what is in a .pto](63_pto_inspector.md) | `pto_inspector` plugin, `core.fio.pto`, `core.plugin.operations`, `csg_pto_inspect` |
+| [Administering the measurement database: MMFDB Admin](102_mmfdb_admin.md) | `mmfdb_admin` plugin (native emtk app), MMFDB RPC services, `python -m chisurf.emtk --plugin mmfdb_admin` |
 | [Hidden Markov models of binned traces](54_hidden_markov_models.md) | `hmm` plugin, `chisurf.core.math.hmm`, `csc hmm` |
 | [Pair correlation and flow maps: where molecules go](55_pair_correlation.md) | `experiments.ics.pair_correlation`, `experiments.ics.flow_map` |
 | [FCS saturation and focal-volume expansion](56_fcs_saturation.md) | `fcs_saturation` calculator, `FCS (kinetics)` model, `chisurf.core.fluorescence.fcs.saturation` |

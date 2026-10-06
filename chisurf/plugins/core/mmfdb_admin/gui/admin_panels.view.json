@@ -29,7 +29,7 @@
         {"type": "custom", "key": "data_table", "title": "",
          "description": "One row per record. Double-click a row to open it in its own panel.",
          "options": {"source": "visible_rows", "row_key": "_row", "activated_call": "open_item",
-           "expand": true, "reserve": 24, "fit_columns": true, "column_picker": true,
+           "expand": true, "reserve": 36, "fit_columns": true, "column_picker": true,
            "columns": [
              {"key": "type", "title": "type", "width": 110, "tooltip": "The record type."},
              {"key": "id", "title": "id", "width": 160, "tooltip": "The record's id."},

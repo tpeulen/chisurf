@@ -556,9 +556,10 @@ class MMFDBAdminApp(ImApp):
         if not comparison:
             im.text_wrapped("Pick a group or a probe to compare its spectra.")
         for stype, traces in comparison:
+            # The caption names the plot under it (drawn after, it read as the next plot's title).
+            im.text_unformatted(f"{stype.title()} Spectrum")
             px, py = im.get_cursor_screen_pos()
             self.plot(f"dup_{stype}", traces, (px, py, rw - 12.0, 170.0), "Wavelength", "Intensity", "")
-            im.text_unformatted(f"{stype.title()} Spectrum")
         im.separator()
         im.text_unformatted(dialog.metadata_text())
         im.end_child()

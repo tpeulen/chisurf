@@ -99,6 +99,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    :maxdepth: 1
 
    photon_container
+   measurement_database
    microtime_shift
    microtime_histogram
    live_streaming_analysis
