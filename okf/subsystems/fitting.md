@@ -967,3 +967,22 @@ support-plane F-test interval agree.
   `run_fit(fit_index/fit_uid)` for GUI, macros, plugins, and the server.
 
 See [Core](/subsystems/core.md) and the [Core target](/specs/core.md).
+
+
+## Completed-result notifications (2026-10-07)
+
+`Fit._notify_update` publishes the already-computed owner and exact grouped or
+global-model members, deduplicating object references. C++ graph write-back
+uses this notification half without a second model evaluation; `notify=False`
+still publishes nothing. `FitGroup.update` publishes its own owner after its
+members. Main resolves the event's fit UID to every window presenting that
+owner instead of repainting only the active window.
+
+The parameter DTO retains the complete scientific inventory and adds
+`active_in_structure`. Only the link menu filters that flag; legacy DTOs with
+no flag remain visible. Current Parse FCS has 134 ports and 6 active equation
+targets. Re-derive with the completion/display/menu/editor focused regression
+files (23 passes), and compare the three shipped A488 curves to explicit
+weighted-residual arithmetic. Their global chi2r 0.9999763241843488 rounds to
+1.0000 legitimately; no objective formula was changed. See
+[readiness evidence](../validation/release-readiness-w7.md).

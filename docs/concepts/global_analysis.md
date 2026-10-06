@@ -182,3 +182,21 @@ For the posterior's structure — which parameters the data actually constrains
   {cite}`beechem1985` global versus target analysis; {cite}`ameloot1986` which
   rate constants a decay surface can determine at all; {cite}`beechem1992` the
   method review — what to link, what not to, and how to test a link.
+
+
+## Active equations and completed global results
+
+A catalogue model retains the parameter ports of every selectable equation so
+changing its topology preserves parameter identity and saved state. Linking is
+presented against the active equation: the target menu offers only the ports
+that equation reads, including its fixed parameters. For example, the FCS
+equation **3D Gauss, 1 bunching** has six active targets even though the whole
+catalogue owns 134 ports.
+
+Completion refreshes the global fit and the member fit windows from the same
+computed model objects. Notifications do not require evaluating the fitted
+curve again. A displayed reduced chi-square of **1.0000** can be ordinary
+rounding: the shipped three-A488 Confocor example gives approximately
+0.9999763242, whose explicit weighted-residual sum agrees with the reported
+value. Check the residual arithmetic before treating that display as a defect.
+The [global-analysis workflow](../guides/60_global_analysis.md) shows the target menu.

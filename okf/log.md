@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W7: graph-completed fits publish exact owner/member notifications without another model evaluation, Main refreshes UID-matched windows, and Parse link menus filter additive active-structure metadata while preserving134 catalogue ports.23 focused regressions pass; inspected real A488 before/after receipts confirm unchanged science and six active targets. Global chi2r0.9999763241843488 legitimately rounds to1.0000; no formula correction was needed. [Evidence](validation/release-readiness-w7.md).
+
 - PRD-154 W7: correct the committed IMP.bff pin over HEADf42c30fb1; the working-tree starting pin8d8e46083 was an existing foreign lock hunk and cannot be used as the staging baseline. All21 provider references and the exact SCM version now name verified e6137af4f; all other lock edits remain uncommitted and untouched.
 
 - PRD-154 W7: pin immutable IMP.bff e6137af4f and SCM0.15.0a2.dev215+ge6137af4f after coherent canonical-Git installation. 32 owning provider/science tests and15 ChiSurf provider/legacy trace tests pass; both old dwell-label failures are repaired at their native root. F-test/QuEst factories render with PNGs inspected; QuEst legacy clipping/import gaps remain explicitly W6d/W9. [Receipt](validation/release-readiness-w7/provider-installed.json).

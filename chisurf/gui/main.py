@@ -1863,33 +1863,48 @@ class Main(
         except Exception:
             pass
 
-    def _refresh_fit_display(self, payload: dict = None) -> None:
-        """Refresh chi-square display and plot in the active fit subwindow.
+    def _refresh_fit_display(self, payload: dict | None = None) -> None:
+        """Refresh the windows presenting the fit named by a completion event.
 
         Parameters
         ----------
         payload : dict, optional
-            Event payload (may contain ``fit_uid``).
+            Event payload containing ``fit_uid``. Without an owner, refresh the
+            active window for existing local callers.
         """
-        try:
+        uid = str((payload or {}).get("fit_uid") or "")
+        if uid:
+            targets = []
+            for sub in self.mdiarea.subWindowList():
+                pending = [getattr(sub, "fit", None)]
+                seen = set()
+                while pending:
+                    fit = pending.pop()
+                    if fit is None or id(fit) in seen:
+                        continue
+                    seen.add(id(fit))
+                    if str(getattr(fit, "unique_identifier", "") or "") == uid:
+                        targets.append(sub)
+                        break
+                    pending.extend(getattr(fit, "grouped_fits", None) or [])
+                    pending.extend(getattr(getattr(fit, "_model", None), "fits", None) or [])
+        else:
             sub = self.mdiarea.activeSubWindow()
-            if sub is None:
-                return
-            if hasattr(sub, "fit_widget") and sub.fit_widget is not None:
-                fw = sub.fit_widget
-                if hasattr(fw, "update_chi2"):
-                    fw.update_chi2()
-            # Re-pull the model curve: a plain DockArea ``update()`` is only a
-            # Qt repaint and leaves the plotted trace stale. ``refresh_current_plot``
-            # invokes the visible Plot's own ``update``/``update_all`` so a
-            # parameter change or finished fit is reflected immediately.
-            if hasattr(sub, "refresh_current_plot"):
-                sub.refresh_current_plot()
-            elif hasattr(sub, "plot_tab_widget") and sub.plot_tab_widget is not None:
-                if hasattr(sub.plot_tab_widget, "update"):
-                    sub.plot_tab_widget.update()
-        except Exception:
-            pass
+            targets = [sub] if sub is not None else []
+        for sub in targets:
+            try:
+                if hasattr(sub, "fit_widget") and sub.fit_widget is not None:
+                    fw = sub.fit_widget
+                    if hasattr(fw, "update_chi2"):
+                        fw.update_chi2()
+                # Re-pull the model curve rather than merely repainting Qt.
+                if hasattr(sub, "refresh_current_plot"):
+                    sub.refresh_current_plot()
+                elif hasattr(sub, "plot_tab_widget") and sub.plot_tab_widget is not None:
+                    if hasattr(sub.plot_tab_widget, "update"):
+                        sub.plot_tab_widget.update()
+            except Exception:
+                cs.logging.exception("could not refresh completed fit window '%s'", uid)
 
     def _show_only_selected_member_editor(self, fit_group) -> None:
         """Show only the selected group member's model editor; hide the rest.

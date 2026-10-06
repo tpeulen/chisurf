@@ -146,7 +146,18 @@ def _collect_param_list(fit: Any, fit_uid: str = "") -> list[dict[str, Any]]:
     try:
         plist = list(getattr(model, "parameters_all", None) or [])
         groups = _group_names(model)
-        return [_param_entry(p, fit_uid, groups.get(id(p), "")) for p in plist]
+        structure_ids = getattr(model, "structure_parameter_ids", None)
+        active_ids = set(structure_ids()) if callable(structure_ids) else None
+        entries = []
+        for p in plist:
+            entry = _param_entry(p, fit_uid, groups.get(id(p), ""))
+            # Catalogue ports remain in the DTO for topology and identity. The
+            # menu can distinguish them from the equation currently displayed.
+            entry["active_in_structure"] = (
+                active_ids is None or getattr(p, "canonical_id", None) in active_ids
+            )
+            entries.append(entry)
+        return entries
     except Exception:
         import chisurf.logging
 

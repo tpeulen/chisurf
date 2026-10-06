@@ -6416,11 +6416,16 @@ actions, its always-empty Local fits table, the silent `append_global_parameter`
 macro, unnamed background / Lin. table copies. Still open -- details and
 reproduction in `okf/validation/manual-screenshots/{fcs,general,anisotropy}.json`:
 
-- **Global fit after a run:** the member fit windows do not redraw, and the global
-  fit's Info reports exactly chi2r = 1.0000 -- check that the global fit evaluates
-  the same fit objects the windows show.
-- **Link menu of a Parse-Model fit** lists ~150 parameters (every catalogue
-  equation's), not the active formula's six.
+- **Resolved 2026-10-07, global completion/display:** graph write-back now
+  publishes exact root/member fit events without reevaluation; Main refreshes
+  UID-matched windows. The real three-A488 fixture gives chi2r
+  0.9999763241843488, legitimately formatted as 1.0000; explicit residual
+  arithmetic agrees, so no objective formula was changed. 23 focused cases pass.
+- **Resolved 2026-10-07, Parse-Model link menu:** additive active-structure
+  metadata restricts the menu to the equation's six targets while retaining
+  all 134 scientific catalogue ports and identities. Actual before/after menus
+  and native member/global Info pages were rendered and inspected. See
+  [verification](../validation/release-readiness-w7.md).
 - **FCS hub:** the Correlator labels lag time in ms, the Merger in s, for the same curves.
 - **Confocor3 reader** loads every file as AC1/AC2/CC12/CC21 together; no single-channel option.
 - **Global View Load** needs the fitting server: on fits it does not know it reports

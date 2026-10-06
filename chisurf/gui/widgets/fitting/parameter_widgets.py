@@ -1224,7 +1224,11 @@ class ParameterActionsMixin:
         local_idx: int | None,
     ) -> None:
         """Populate one fit's (or member fit's) submenu with link targets."""
-        targets = [p for p in parameters if str(p.get("uid", "") or "") != source_uid]
+        targets = [
+            p for p in parameters
+            if str(p.get("uid", "") or "") != source_uid
+            and p.get("active_in_structure", True)
+        ]
         if not targets:
             # An empty popup reads as a broken menu. Say which it is.
             empty = menu.addAction("(no parameters)")

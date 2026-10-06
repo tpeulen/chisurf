@@ -1254,6 +1254,8 @@ class Fit(cs.core.base.Base):
             # fit, T-20260901-11). The bookkeeping half of update() still
             # runs, and finalize() below refreshes the controllers.
             self.model.find_parameters()
+            if notify:
+                self._notify_update()
         else:
             if notify:
                 self.update()
@@ -1491,31 +1493,46 @@ class Fit(cs.core.base.Base):
                 block = cov_m[np.ix_(cols, cols)]
                 a.error_estimate = float(np.sqrt(max(block.sum(), 0.0)))
 
-    def update(self) -> None:
-        """Update the model and notify observers.
+    def _notify_update(self, include_members: bool = True) -> None:
+        """Publish current results without evaluating their models again.
 
-        The notification half is real: ``fit.updated`` goes out on the shared
-        event bus, which is what the GUI's plot windows subscribe to. That
-        makes this method the *one* owner of the recompute-then-redraw
-        contract -- a range change, a parameter edit or a script calling
-        ``fit.update()`` all get the redraw for free, instead of each GUI
-        path carrying (and sometimes dropping) its own notification.
+        Parameters
+        ----------
+        include_members : bool, optional
+            Notify the exact local fits of a group or global model as well.
+            A group update already notified its members while computing them.
+        """
+        from chisurf.server.startup import get_shared_event_bus
+
+        bus = get_shared_event_bus()
+        if bus is None:
+            return
+        pending = [self]
+        seen = set()
+        while pending:
+            fit = pending.pop()
+            if id(fit) in seen:
+                continue
+            seen.add(id(fit))
+            bus.publish(
+                "fit.updated",
+                {
+                    "fit_uid": str(getattr(fit, "unique_identifier", "") or ""),
+                    "fit_name": str(getattr(fit, "name", "") or ""),
+                },
+            )
+            if include_members:
+                pending.extend(getattr(fit, "grouped_fits", None) or [])
+                pending.extend(getattr(getattr(fit, "_model", None), "fits", None) or [])
+
+    def update(self) -> None:
+        """Update the model and notify observers of it and its local fits.
+
+        Model computation and publication are separate so a completed C++ graph
+        can announce its existing result without recomputing the same curve.
         """
         self.model.update()
-        try:
-            from chisurf.server.startup import get_shared_event_bus
-
-            bus = get_shared_event_bus()
-            if bus is not None:
-                bus.publish(
-                    "fit.updated",
-                    {
-                        "fit_uid": str(getattr(self, "unique_identifier", "") or ""),
-                        "fit_name": str(getattr(self, "name", "") or ""),
-                    },
-                )
-        except Exception:
-            pass  # headless without a bus: the recompute already happened
+        self._notify_update()
 
     def grid_scan(
         self,
@@ -2053,6 +2070,7 @@ class FitGroup(Fit):
         """Update all grouped fits."""
         for f in self.grouped_fits:
             f.update()
+        self._notify_update(include_members=False)
 
     def run(self, local_first: bool = None, **kwargs):
         """Run local fits followed by a global least-squares optimization."""
@@ -2124,6 +2142,8 @@ class FitGroup(Fit):
             # Same as Fit.run: the joint graph's write-back already
             # evaluated the global model once (T-20260901-11).
             self.model.find_parameters()
+            if notify:
+                self._notify_update()
         else:
             if notify:
                 self.update()

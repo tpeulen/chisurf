@@ -31,15 +31,12 @@ Open, in order:
    `"controller"`), so a project saved before 2026-10-06 should restore; only
    the LinePlot and ProteinMC round-trips are tested. Re-derive: load an old
    `.cs.pto` with plot state through `test/gui/restore_probe/session_probe.py`.
-2. **`test/test_ui_schemas.py` was red before this change (71 failures at
-   `3b4f8b6db`).** The scheme is generated from the Qt loader's dataclasses and
-   lagged emtk's dialect. This change taught it emtk's documented layout keys
-   (`_EMTK_LAYOUT_KEYS` in `chisurf/core/dataspec/schema.py`: width, weight,
-   min_width, min_chars, wrap_before, wrap_indent, elide, field, hidden_when,
-   filter); every plot spec passes. Still rejected across other specs: `name`
-   (127), `dock` (91), unknown section types (61), `tab`, `window`, `page`,
-   `panels` -- emtk's docking/window dialect, which needs a decision on how it
-   enters the scheme rather than more keys.
+2. **Resolved by the readiness schema work (2026-10-06):** the native
+   reader vocabulary now comes from emtk, with current ndX extensions and
+   application layout metadata. All 647 schema cases pass; valid docking keys,
+   named native forms and section templates are retained. There is no
+   `_EMTK_LAYOUT_KEYS` reader authority to extend. Re-derive with
+   `pixi run -e test python -m pytest test/test_ui_schemas.py -q`.
 3. **Done 2026-10-06:** Figure 24 of `docs/manual/reference_curves.md` is a real
    donor-reference figure (`manual_donor_reference.png`, `manual_fitting.py`).
    Handover of the whole session: `okf/plans/2026-10-06-handover-fit-window-docs.md`.
@@ -182,3 +179,16 @@ slow all-model sweep above.
 
 Related: [chiplot](/subsystems/chiplot.md), [GUI & AutoForm](/subsystems/gui-autoform.md),
 [user models](../../docs/reference/user_models.md).
+
+
+## Completion and active target menus (2026-10-07)
+
+Fit completion now notifies exact member/root owners without recomputing graph
+results, and Main routes fit UID events to the windows presenting those fits.
+Parse equation link menus show only active ports; the full catalogue state
+remains intact. 23 focused completion/display/menu/editor tests pass.
+Actual A488 member/global Info and before/after menu PNGs were inspected.
+The previous global chi2r 1.0000 concern is legitimate rounding of
+0.9999763241843488 on the shipped fixture, not an objective defect.
+Continue the open list above; [readiness evidence](../validation/release-readiness-w7.md)
+contains the scientific receipt and explicit interaction-gate limitations.

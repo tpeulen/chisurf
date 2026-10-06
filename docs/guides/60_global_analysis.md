@@ -225,3 +225,19 @@ free-parameter count per fit. It will remind you to re-run the fits.
 - [Lifetime and anisotropy fitting](10_lifetime_anisotropy_fitting.md) — the
   most common thing to fit globally
 - Tool: **Global View** (`chisurf/plugins/core/globalview/`).
+
+
+## Link the active equation and inspect completion
+
+In a Parse-Model parameter's link menu, **All parameters** lists the active
+equation's targets. Select **3D Gauss, 1 bunching** in an FCS fit: its menu has
+`b`, `ba`, `bt`, `N`, `s`, and `td`, rather than the parameters of all catalogue
+equations. Fixed parameters remain available as deliberate link targets.
+
+![Six active FCS equation link targets](figures/global_analysis_active_link_targets.png)
+
+After running a global fit, member windows refresh their curves and chi-square
+readouts, even when another window is active. The global report reflects the
+same fitted member objects. The [global-analysis concept](../concepts/global_analysis.md)
+explains why a value rounded to 1.0000 is not by itself evidence of an incorrect
+objective.
