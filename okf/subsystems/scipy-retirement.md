@@ -9,6 +9,47 @@ timestamp: '2026-10-05T00:00:00Z'
 
 # Where to pick this up
 
+**Special functions / distributions / expm / pinvh landed 2026-10-06
+(T-20261006-BFFSPEC).** imp.bff `f804209a1` (`include/Numerics.h`):
+`gammaln, erf, erfc, digamma, i0e, j0, j1, ndtr, gammainc(c), zeta(s,q),
+fresnel` call **scipy's own xsf** (vendored privately, `thirdparty/xsf`, BSD;
+only `src/Numerics.cpp` includes it) -- bit-identical to scipy 1.18;
+`betainc(inv), fdtr/fdtrc/fdtri, stdtr, binom pmf, ncx2 pdf` are Boost.Math
+under scipy's policies and wrapper edge cases (1e-12..1e-13: scipy vendors its
+own Boost); `chdtrc/chdtri` xsf, bit-identical; `expm` Eigen Pade (1e-11).
+chisurf `38805e98c`: `chisurf/core/math/special.py` (scipy names/argument
+orders; numpy-side `logsumexp, xlogy, polygamma, poisson.logpmf, rankdata,
+pinvh` written as scipy writes them; `norm/beta/f/chi2/t/binom/poisson/ncx2`
+objects carry only the methods chisurf calls). 16 files struck (40 -> 23 at
+HEAD); ndxplorer `897c275` routes projection_scores + mask_helpers.
+Tests: imp.bff `test/numerics/test_special_functions.py` (21), chisurf
+`test/core/test_special_shim.py` (10).
+1. **Traps.** scipy 1.18 computes `fdtr/fdtrc/fdtri` with **Boost**, not the
+   Cephes functions of the same name xsf also carries (those differ ~1e-14) --
+   check `_special_ufuncs.cpp` for which backend a ufunc really uses before
+   porting it. bff is a unity build (`bff_all.cpp`): anonymous-namespace
+   helpers need file-unique names (`kInf` collided).
+2. **Behaviour change:** a saved ParseModel expression may call only the 23
+   names in `special.ELEMENTWISE` as `scipy.special.<name>` (was: any scipy
+   ufunc). Add a name there (backed by bff) if a user model needs one.
+3. **Still on scipy from this lane's scope:** `parameter_transform/models.yaml`
+   three `root_scalar` imports (optimizer lane; its `ncx2` imports are routed),
+   and the curve-signal trio below.
+4. **Curve signal -> tttrlib: library LANDED, callers NOT committed.**
+   tttrlib `ad86f1bed`: `tttrlib.signal` (lfilter, savgol_coeffs,
+   savgol_filter) and `tttrlib.interpolate` (splrep with given knots, splev)
+   over `modules/math/Signal.h` -- 60 parity tests bit-identical to scipy 1.18
+   (`test/python/misc/test_signal_parity.py`), built into arm64 with
+   `build_tools/build_tttrlib.py::_build_into`. **Next step:** the three
+   chisurf caller hunks are in the working tree, uncommitted and with their
+   suites NOT yet run (the run returned no output when the session stopped):
+   `plugins/tttr/audifier/core.py` (lfilter; its silent "no scipy -> dry
+   signal" fallback removed), `core/fluorescence/tcspc/irf_estimation.py`
+   (savgol_filter), `core/fluorescence/fcs/__init__.py` (splrep/splev;
+   fallback now only on FITPACK's ValueError). Run the audifier / IRF
+   estimator / FCS-weighting tests, commit hunk-only, strike those three
+   allow-list lines (23 -> 20).
+
 **Route 3 (bff) status, 2026-10-06 (T-20261005-BFFNUM).** This route struck 5 + 6 files (69 -> 64, then minimize -6).
 1. **Landed:** `bff.nnls` / `bff.bvls` (imp.bff `b0882780d`,
    `include/LinearLeastSquares.h`; incremental thin QR, parity with scipy 1.18 to
