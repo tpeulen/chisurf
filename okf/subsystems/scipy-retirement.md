@@ -20,11 +20,18 @@ timestamp: '2026-10-05T00:00:00Z'
 2. **Landed:** `FitResidualFunction` + `FitMinimizer::set_residual_function`
    (imp.bff `9d862174e`; the `directorout` typemap reads the residual ndarray
    through its buffer).
-   The chisurf shim's `least_squares` / `curve_fit` already use it (parity with
-   scipy: x 1e-4 rel, pcov 2%); **no call site is routed to them yet** -- that is
-   the next step (~25 files: roi/picking, ics precision/calibration, pch,
-   frap, tracking, irf_bg, saturation, titration, flc_2d, psf, ndxplorer
-   curve_fit, decay_fit). Measure: 1000-point exponential fit 5.0 ms vs scipy
+   **Every `least_squares` / `curve_fit` caller is routed (2026-10-06,
+   T-20261006-LSQROUTE, chisurf `de808edd9`, ndxplorer `d8f791c`):** 17
+   chisurf files + ndXplorer's curve fit; none used a robust loss or a callable
+   Jacobian. Parity with scipy: x 1e-4 rel, pcov 2%, plus a scipy-oracle test
+   per option the callers use (`method="lm"`, budgets, `diff_step`, midpoint
+   start) in `test/core/test_numerics_shim.py`. Two traps found on the way:
+   **budget units** -- scipy's trf/dogbox `max_nfev` excludes the n
+   Jacobian evaluations per iteration that MINPACK counts, so the shim hands
+   MINPACK `max_nfev * (n + 1)` and `curve_fit` picks lm/trf (and their
+   default budgets) the way scipy does; and **a start at a box's midpoint was
+   returned unfitted** (bff `db5c6b17e`: asin's 2e-16 residue defeated both
+   MINPACK zero-fallbacks; four decay-fit tests caught it). Measure: 1000-point exponential fit 5.0 ms vs scipy
    1.5 ms -- callback overhead per evaluation, not iteration count (29 vs ~28).
 3. **Known difference:** with a parameter pinned at its bound, the relative ftol
    stop fires while free parameters are still ~1e-5 off (MINPACK + leastsqbound
