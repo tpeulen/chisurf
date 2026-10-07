@@ -1,0 +1,48 @@
+{
+  "title": "TCSPC simulator",
+  "sections": [
+    {"type": "tabs", "key": "simulator", "title": "Simulator", "description": "Decay, anisotropy and simulation preview.", "sections": [
+      {"type": "tab", "key": "decay", "title": "Decay", "description": "Configure the lifetime decay and instrument response.", "sections": [
+        {"type": "value", "attr": "sample_name", "kind": "str", "label": "Name", "description": "Name of the generated dataset."},
+        {"type": "value", "attr": "lifetime_spectrum_text", "kind": "str", "label": "Lifetime spectrum", "description": "Interleaved amplitude, lifetime pairs; lifetimes are in ns. Rise amplitudes and zero lifetimes are accepted."},
+        {"type": "custom", "key": "data_source", "description": "Read lifetime spectrum values from a file.", "options": {"attr": "lifetime_spectrum_file", "call": "load_lifetime_spectrum_file", "label": "Spectrum file", "mode": "open", "filter": "Spectrum files (*.csv *.txt *.dat)", "extensions": [".csv", ".txt", ".dat"], "mmfdb": false, "primary": false, "description": "Load a flat list or a table whose first two columns contain amplitude and lifetime."}},
+        {"type": "group", "n_col": 2, "sections": [
+          {"type": "value", "attr": "n_tac", "kind": "int", "minimum": 1, "maximum": 10000, "label": "TAC bins", "description": "Number of time channels in the generated histogram."},
+          {"type": "value", "attr": "dt", "kind": "float", "minimum": 0.000001, "decimals": 6, "label": "Bin width [ns]", "description": "Time interval represented by each histogram bin."},
+          {"type": "value", "attr": "p0", "kind": "float", "minimum": 0, "maximum": 9999999, "label": "Peak count", "description": "Peak photon count before Poisson sampling."},
+          {"type": "value", "attr": "rep_rate", "kind": "float", "minimum": 0.000001, "label": "Repetition rate [MHz]", "description": "Excitation repetition rate carried by the reader's calibration."}
+        ]},
+        {"type": "toggle", "attr": "add_noise", "label": "Poisson noise", "description": "Sample counting noise from the deterministic expectation."},
+        {"type": "value", "attr": "seed_text", "kind": "str", "label": "Random seed", "description": "Integer random seed for repeatable counting noise; leave empty for a new random realization."},
+        {"type": "info", "source": "irf_label", "description": "Currently selected measured IRF or Gaussian fallback."},
+        {"type": "choice", "attr": "irf_candidate", "options_source": "irf_choices", "label": "Session curve", "description": "Choose one real curve, including an explicitly identified member of a dataset group."},
+        {"type": "button_row", "buttons": [
+          {"label": "Select IRF", "action": "select_irf", "description": "Use the selected session curve as the measured instrument response."},
+          {"label": "Unload IRF", "action": "unload_irf", "description": "Remove the measured response and restore the Gaussian IRF."}
+        ]},
+        {"type": "group", "n_col": 2, "sections": [
+          {"type": "value", "attr": "irf_mean", "kind": "float", "minimum": -1000, "maximum": 1000, "decimals": 3, "label": "Gaussian mean [ns]", "description": "Peak position of the Gaussian fallback IRF."},
+          {"type": "value", "attr": "irf_sigma", "kind": "float", "minimum": 0.0001, "maximum": 1000, "decimals": 4, "label": "Gaussian sigma [ns]", "description": "Standard deviation of the Gaussian fallback IRF."}
+        ]}
+      ]},
+      {"type": "tab", "key": "anisotropy", "title": "Anisotropy", "description": "Choose polarization and rotational dynamics.", "sections": [
+        {"type": "choice", "attr": "polarization", "options": ["vm", "vv/vh"], "labels": ["VM (magic angle)", "VV/VH (polarized)"], "label": "Mode", "description": "Generate one magic-angle decay or the parallel/perpendicular pair."},
+        {"type": "group", "n_col": 3, "sections": [
+          {"type": "value", "attr": "g_factor", "kind": "float", "minimum": 0.0001, "maximum": 100, "decimals": 4, "label": "g", "description": "Parallel/perpendicular detection sensitivity ratio."},
+          {"type": "value", "attr": "l1", "kind": "float", "minimum": -10, "maximum": 10, "decimals": 4, "label": "l1", "description": "Mixing factor of the parallel VV channel."},
+          {"type": "value", "attr": "l2", "kind": "float", "minimum": -10, "maximum": 10, "decimals": 4, "label": "l2", "description": "Mixing factor of the perpendicular VH channel."}
+        ]},
+        {"type": "value", "attr": "rotation_spectrum_text", "kind": "str", "label": "Rotation b, rho [ns]", "description": "Interleaved anisotropy amplitude and rotational correlation time pairs."},
+        {"type": "custom", "key": "simulator_anisotropy", "height": 190, "description": "Ideal anisotropy decay r(t) on a linear axis."}
+      ]},
+      {"type": "tab", "key": "preview", "title": "Preview", "description": "Simulate and import the exact displayed histogram.", "sections": [
+        {"type": "button_row", "buttons": [
+          {"label": "Simulate", "action": "simulate_preview", "description": "Generate a preview through the reader using all current settings, including noise and seed."},
+          {"label": "Add", "action": "add_preview", "description": "Import the cached preview group without drawing a fresh random realization."}
+        ]},
+        {"type": "custom", "key": "simulator_decay", "height": 420, "description": "Log-counts VM or VV/VH decay with the selected instrument response overlaid."}
+      ]}
+    ]},
+    {"type": "info", "source": "status", "description": "Simulation or input validation status."}
+  ]
+}

@@ -570,6 +570,51 @@ class SetupMixin:
 
         self._refresh_setup_ui()
 
+    def _reader_plugin_context(self: Main):
+        """Reuse one main-owned context over the active API, transport and session.
+
+        Explicit ``plugin_context`` or ``api`` injection takes precedence.
+        Otherwise the already installed fitting transport identifies the RPC
+        service: an embedded server supplies its shared state, while a transport
+        without an embedded server addresses the external service. No connection
+        or server startup happens while selecting a reader.
+        """
+        from chisurf.core.api import ChiSurfAPI
+        from chisurf.core.api.context import PluginContext
+
+        injected = getattr(self, "plugin_context", None)
+        if isinstance(injected, PluginContext):
+            self._reader_settings_context = injected
+            return injected
+        cached = getattr(self, "_reader_settings_context", None)
+        api = getattr(self, "api", None)
+        if not isinstance(api, ChiSurfAPI):
+            api = getattr(cs, "api", None)
+        if isinstance(api, ChiSurfAPI):
+            if cached is None or cached.api is not api:
+                cached = PluginContext(api=api, client=api.client, main_window=self)
+                self._reader_settings_context = cached
+            return cached
+        if cached is not None:
+            return cached
+
+        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+        from chisurf.server.startup import session_state_from_live_chisurf
+
+        fitting = get_fitting_client()
+        transport = getattr(fitting, "_client", None)
+        server = getattr(cs, "__chisurf_rpc_server__", None)
+        state = getattr(server, "state", None)
+        if state is not None:
+            mode = "hybrid" if transport is not None else "local"
+        else:
+            state = session_state_from_live_chisurf()
+            mode = "server" if transport is not None else "local"
+        api = ChiSurfAPI(client=transport, mode=mode, state=state)
+        context = PluginContext(api=api, client=transport, main_window=self)
+        self._reader_settings_context = context
+        return context
+
     def _refresh_setup_ui(self: Main):
         """Show the reader widget for the current setup — no dispatch."""
         from qtpy import QtWidgets
@@ -601,7 +646,16 @@ class SetupMixin:
             widget = hosts.get(id(reader))
             if widget is None or is_deleted(widget) or getattr(widget.control, "closed", False):
                 # Validate the whole declaration before installing its host.
-                surface = ReaderSettingsApp(reader)
+                from chisurf.core.experiments.tcspc.simulator import TCSPCSimulatorSetup
+
+                context = SetupMixin._reader_plugin_context(self)
+                if isinstance(reader, TCSPCSimulatorSetup):
+                    from chisurf.emtk.tcspc_simulator import SimulatorSettingsApp
+
+                    surface = SimulatorSettingsApp(reader, context=context)
+                else:
+                    surface = ReaderSettingsApp(reader)
+                    surface.context = context
                 if widget is not None and not is_deleted(widget):
                     self.layout_experiment_reader.removeWidget(widget)
                     widget.deleteLater()

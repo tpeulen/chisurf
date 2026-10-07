@@ -234,11 +234,18 @@ class ReaderSettingsApp(ImApp):
         self.calibration_host.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
         self.calibration_host.show()
 
+    @property
+    def primary_sources(self) -> dict[str, _DataSource]:
+        """Return measurement inputs, excluding declared auxiliary settings files."""
+        return {name: source for name, source in self.sources.items()
+                if source.options.get("primary", True)}
+
     def choose_input(self, on_selected=None) -> None:
         """Use the existing declared source picker for the shell's import action."""
-        source = self.sources.get("filename")
-        if source is None and len(self.sources) == 1:
-            source = next(iter(self.sources.values()))
+        primary = self.primary_sources
+        source = primary.get("filename")
+        if source is None and len(primary) == 1:
+            source = next(iter(primary.values()))
         if source is None:
             raise ValueError("reader has no unambiguous declared input source")
         self._input_selected = on_selected

@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: prepare full three-tab native Simulator/IRF/plots without changing eight scientific bodies; compose one app-owned context and distinguish auxiliary spectra from primary import sources.69 parent installed-SDK checks pass; six Prompt mode/tab and typed-host PNGs inspected. Pending typed-path flush preserves invalid/close/read-only behavior. Real cached local/remote group Add and YAML/legacy retirement remain the row5 gate. [Receipt](validation/release-readiness-w1/simulator-prerequisite/receipt.md).
+
 - PRD-154 W1: publish emtk309d97012 semantic tabs, ordinary pending-edit commit and scoped header targets; canonical installed revision passes81 tests and baseline/three after PNGs are inspected. Update all21 lock references while preserving foreign lock hunks. Rewrite the durable resume around completed CSV/SDT and open simulator cached-group/context/primary-input gates. [Receipt](validation/release-readiness-w1/form-tabs/receipt.json).
 
 - PRD-154 W1: retire the configured SDT legacy classes/UI and use the headless native reader; trusted historical descriptor decode remains source-free.15 parent targeted config/alias/host/import checks pass; actual source loads once and all3x1024 curves import with preview2 retained. Final native host PNG inspected; source/doc/knowledge updates preserve frozen CSV and foreign lazy exports. [Receipt](validation/release-readiness-w1/sdt-retirement/receipt.md).

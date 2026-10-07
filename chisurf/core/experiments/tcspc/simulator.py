@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+import re
+from pathlib import Path
+
 import numpy as np
 
 import chisurf.core.data
@@ -7,6 +11,7 @@ import chisurf.core.fluorescence
 import chisurf.core.fluorescence.decay
 import chisurf.core.fluorescence.tcspc
 from chisurf import typing
+from chisurf.core.support.i18n import tr
 
 from .reader import TCSPCReader
 
@@ -326,12 +331,6 @@ class TCSPCSimulatorSetup(TCSPCReader):
         """
         super().__init__(*args, **kwargs)
         self.experiment = kwargs.get("experiment", None)
-        if lifetime_spectrum:
-            # Mirror the spectrum into the controller's line edit when a GUI
-            # controller is attached. Headless/API use has no controller.
-            line_edit = getattr(self.controller, "lineEdit_2", None)
-            if line_edit is not None:
-                line_edit.setText(",".join([str(x) for x in lifetime_spectrum]))
         self.instrument_response_function = instrument_response_function
         self.sample_name = sample_name
         if lifetime_spectrum is None:
@@ -346,6 +345,7 @@ class TCSPCSimulatorSetup(TCSPCReader):
         self.irf_sigma = irf_sigma
         self.add_noise = add_noise
         self.seed = seed
+        self.lifetime_spectrum_file = ""
         # -- anisotropy --------------------------------------------------
         # Detection mode: 'vm' (magic angle) or 'vv/vh' (polarized pair).
         # The rotation spectrum is interleaved (b_1, rho_1, b_2, rho_2, ...).
@@ -361,6 +361,74 @@ class TCSPCSimulatorSetup(TCSPCReader):
         # ``is_vv_vh`` flag mirrors it so anything that inspects the setup
         # (e.g. context help) sees a consistent pair.
         self.is_vv_vh = self.polarization != "vm"
+
+    @staticmethod
+    def _spectrum_text(values) -> str:
+        """Format interleaved spectrum values without changing their ordering."""
+        return ", ".join(str(float(value)) for value in np.asarray(values).ravel())
+
+    @staticmethod
+    def _parse_spectrum(text: str) -> np.ndarray:
+        """Parse paired values, including rise amplitudes and zero lifetimes."""
+        values = np.asarray([float(value) for value in re.split(r"[\s,;]+", str(text).strip())
+                             if value], dtype=np.float64)
+        if values.size % 2 or not np.all(np.isfinite(values)):
+            raise ValueError("A spectrum needs finite amplitude/time pairs")
+        return values
+
+    @property
+    def lifetime_spectrum_text(self) -> str:
+        """Return the editable lifetime spectrum over the owning array."""
+        return self._spectrum_text(self.lifetime_spectrum)
+
+    @lifetime_spectrum_text.setter
+    def lifetime_spectrum_text(self, text: str) -> None:
+        """Replace the lifetime array only after the complete text parses."""
+        self.lifetime_spectrum = self._parse_spectrum(text)
+
+    @property
+    def rotation_spectrum_text(self) -> str:
+        """Return the editable anisotropy amplitude/rotation-time pairs."""
+        return self._spectrum_text(self.rotation_spectrum)
+
+    @rotation_spectrum_text.setter
+    def rotation_spectrum_text(self, text: str) -> None:
+        """Replace rotation pairs only after the complete text parses."""
+        self.rotation_spectrum = self._parse_spectrum(text)
+
+    def load_lifetime_spectrum_file(self, filename: str) -> None:
+        """Read a flat spectrum or the first two columns of an amplitude/time table."""
+        if not filename:
+            return
+        data = None
+        for delimiter in (None, ",", ";"):
+            try:
+                data = np.loadtxt(filename, dtype=float, delimiter=delimiter, ndmin=2)
+                break
+            except ValueError:
+                continue
+        if data is None or not data.size:
+            raise ValueError("The spectrum file has no readable numeric amplitude/time pairs")
+        values = data.ravel() if min(data.shape) == 1 else data[:, :2].ravel()
+        parsed = self._parse_spectrum(self._spectrum_text(values))
+        self.lifetime_spectrum = parsed
+        self.lifetime_spectrum_file = str(filename)
+
+    def view_spec(self) -> dict:
+        """Return the declared native simulator settings without importing a GUI."""
+        spec = json.loads(Path(__file__).with_name("tcspc_simulator.view.json").read_text())
+
+        def translate(value):
+            """Translate declared display strings while retaining bindings and values."""
+            if isinstance(value, dict):
+                return {key: [tr(label) for label in item] if key == "labels" else
+                        tr(item) if key in {"title", "label", "description", "text", "filter"}
+                        and isinstance(item, str) else translate(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [translate(item) for item in value]
+            return value
+
+        return translate(spec)
 
     def simulate(self) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Simulate a magic-angle decay from the setup's current parameters.

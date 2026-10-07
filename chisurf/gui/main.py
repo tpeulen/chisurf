@@ -679,12 +679,16 @@ class Main(
         if controller is not None and callable(getattr(controller, "get_filename", None)):
             import_file(controller.get_filename())
             return
+        host = (getattr(self, "_native_reader_settings_hosts", None) or {}).get(id(reader))
+        if host is not None and not host.control.primary_sources:
+            # A generator's auxiliary settings file is not an import source.
+            import_file(None, reader)
+            return
         filename = getattr(reader, "filename", None)
         if filename:
             import_file(filename, reader)
             return
-        host = (getattr(self, "_native_reader_settings_hosts", None) or {}).get(id(reader))
-        if host is not None and host.control.sources:
+        if host is not None and host.control.primary_sources:
             host.control.choose_input(lambda path: import_file(path, reader))
             return
         # Generator readers declare no input file and create data through read().

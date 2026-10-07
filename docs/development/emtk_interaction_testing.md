@@ -187,3 +187,20 @@ reopen/translation. Switching pages commits pending ordinary values using
 the existing parsing/bounds/callback rules before the next page reads them.
 Custom controls with their own nested FormState own those pending edits;
 the simulator explicitly flushes its auxiliary spectrum input lifecycle.
+
+
+## Simulator declaration and app-owned context
+
+SimulatorSettingsApp binds the original scientific reader through a frontend
+adapter; no numerical generator/read body is changed. Real tabs retain decay
+settings/IRF, anisotropy and computed preview. Noise/seed stay explicit and
+view construction preserves supplied spectra and parameters. Add retains the
+computed preview group; its remote/import acceptance is a separate gate.
+Main now owns one cached PluginContext, retaining injected API/state/client
+identities or composing from its existing transport/embedded state/live list
+aliases without starting a service or connecting a new client.
+Data sources declare primary:false for auxiliary settings files. Main
+imports generators with filenameNone before considering inherited filename;
+only measurement inputs can launch the import picker. The simulator commits
+its nested spectrum-path buffer on tab use through the original setter;
+invalid input retains science/pending/error state and close/read-only guards.
