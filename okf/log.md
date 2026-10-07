@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: reconcile the resume after completed simulator/configured Add acceptance; next active source unit is Structure row6, followed by the coordinated PDB/FRET native-host retirement. Cached mask/import, packaging, provider and metadata demo commits are landed; remaining RMF/communication/mixed-harness gates stay explicit.
+
 - PRD-154 W1: declare existing imp-tricks in extension builds and package statpot JSONs from a clean wheel (owner6d61c586a);3 parent provider/resource guards pass, canonical BFF unchanged. Record exact RMF output/back-end science gate instead of losing metadata or swapping formats. Integrate MMFDB342ebe4a5 administrative packaged demo evidence (45 parent/7 wheel checks, real120/63 row bytes and pinned DB), with caption sync remaining.
 
 - PRD-154 W1: complete the configured native Simulator port and legacy widget/UI/export retirement;58 parent installed-SDK configured/science/header/real local/server Add cases pass, six host mode/tab PNGs inspected, GUI presets explicit and core defaults preserved. Fix communication reporter TypeError without expanding allowances; broad existing communication migration remains a recorded programme gate. [Receipt](validation/release-readiness-w1/simulator-retirement/receipt.md).
