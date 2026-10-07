@@ -313,6 +313,10 @@ PATH = "%VCPKG_INSTALLATION_ROOT%\\installed\\x64-windows\\bin;%PATH%"
      "modules/mmfdb/pyproject.toml",
      "modules/mmfdb/src/**",
  ] }
+ build-imp-tricks = { cmd = "pip install -e modules/imp-tricks --no-deps", inputs = [
+     "modules/imp-tricks/pyproject.toml",
+     "modules/imp-tricks/src/**",
+ ] }
  build-tttrlib = { cmd = "python build_tools/build_tttrlib.py", inputs = [
      "build_tools/build_tttrlib.py",
      "modules/tttrlib/pyproject.toml",
@@ -327,6 +331,7 @@ PATH = "%VCPKG_INSTALLATION_ROOT%\\installed\\x64-windows\\bin;%PATH%"
       "build-tttrlib",
      "build-chimol",
      "build-mmfdb",
+     "build-imp-tricks",
  ] }
  chisurf = { cmd = "python -m chisurf", depends-on = ["build-extensions", "i18n-compile"] }
 

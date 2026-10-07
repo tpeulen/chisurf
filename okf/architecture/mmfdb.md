@@ -384,3 +384,14 @@ not authorize adding another identity-provider stack. Its conda-only/full-suite
 commands and co-author trailer instruction are superseded by the current
 [testing](../workflows/testing.md) and
 [change-tracking](../workflows/change-tracking.md) rules.
+
+
+## Packaged administrative metadata demo (2026-10-07)
+
+Owning MMFDB342ebe4a5 removes a transplanted ChiSurf fixture path, phantom
+burst artifact/count and user-home report. Three existing synthetic CSV
+resources provide120 source rows and the actual63-row threshold selection,
+stored as managed source/output bytes with hashes and lineage. The backend
+uses its authenticated resolved database; repeated IDs/references are stable
+and conflicting overrides reject before writes. Parent45 targeted checks
+and owner7 installed-wheel checks pass, no dependencies or photon claims.

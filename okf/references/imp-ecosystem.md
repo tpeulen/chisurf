@@ -444,3 +444,14 @@ remain unstaged; the exact committed eager-loader variant passes separately.
 Current pixi IMP.bff uses get_av/ProbeSimulation; old av/restraints/quenching
 subpackage probes do not establish a missing canonical provider. Quest stale
 science consumers remain the already-recorded Quest migration front.
+
+
+## Declared structural provider and clean resources (2026-10-07)
+
+The extension build chain installs the existing imp-tricks package with
+--no-deps. Isolated cold imports resolve canonical cgmol/statpot kernels and
+four owned JSON databases without a caller PYTHONPATH. Owner6d61c586a adds
+the missing clean-wheel resource declaration/regression; generated build/egg
+metadata had masked the gap. Canonical IMP.bff origin/hash/version remain
+e6137af4f; no provider/build-mode fallback was introduced. ProteinMC sampling
+still requires a truthful RMF output contract absent from the core provider.

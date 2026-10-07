@@ -1,3 +1,19 @@
+## ProteinMC RMF output missing from canonical core provider (2026-10-07)
+
+status: open
+
+After the declared cgmol installation and clean statpot resource fix, the
+three real source-free ProteinMC sampling cases initialize their potentials
+but fail at ProteinMCRunner.run -> ProteinMCRmfWriter -> rmf._bff. Canonical
+IMP.bff e6137af4f build=core has no RmfStructureWriter. The owning molecular
+output/backend programme must preserve hierarchy, atom identity, radii/masses,
+chain/residue/atom names and per-frame statistics under a truthful declared
+format. A DCD-only default loses required metadata; no streaming molecular
+.pto writer was found in the inspected trajectory paths. This cannot be fixed
+as an import change without an output/backend contract. Do not silently
+mislabel .rmf3, substitute a provider fallback or declare sampling acceptance
+from import green. [Exact receipt and trace](../validation/release-readiness-w1/provider-build/receipt.md).
+
 ## Direct-communication guard migration debt (2026-10-07)
 
 status: open

@@ -226,3 +226,14 @@ Source-only plugin tests and fixtures are excluded from runtime wheel/sdist
 resources. Reader JSON, settings and rendering shaders remain installed.
 The molecular viewer resolves its bundled 148L/topology/trajectory demos via
 its own resource catalogue, retaining explicit user data directories.
+
+
+## Canonical structural provider build
+
+The extension build includes imp-tricks through its declared no-deps editable
+task. Cold isolated imports and clean wheel tests verify cgmol kernels and
+statistical-potential data. Source-tree wheels can reuse stale generated
+metadata; always use a clean source copy for runtime resource coverage.
+The Model-free BFF core remains the pinned provider; RMF output requires its
+explicit molecular-output/backend contract and cannot be replaced by a
+mislabeled coordinate-only file.
