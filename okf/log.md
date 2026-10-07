@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 toolkit0.1.7 canonical:** installed/pinned SDK`2c30fc559` combines table Ctrl/Command modifiers, software texture/font clipping and declared code-editor tooltips. Parent261 installed checks pass/1expectedskip;21 references/version match, lock-check0 and before/after images inspected. Qt Help body already clipped correctly; narrow category layout is separately owned. Fifteen inherited form typing findings remain explicitly tracked. [Evidence](validation/release-readiness-w1/sdk-0.1.7/acceptance.json).
+
 - **2026-10-07 · W1 Microtime parity audit found owning shared roots:** native raw JSON edit and full independent reference calibration missing; preview ratio alone lacks archival/provenance semantics. Real table Ctrl/Super+A corrupts editing because modifiers were dropped (15 new shortcut cases/126 family checks now pass in source). Long All-help overlaps its footer; owning renderer repair active. Synthetic Demo is now generated with known counts/timing. Final shared install/renders/publication remain pending. [Resume](prds/prd-154.md).
 
 - **2026-10-07 · W1 Microtime before retained:** inspected six legacy tab frames and two native comparisons; three .dat export pairs are byte-identical. Frozen full setup/count arrays preserve provenance qualifications. Found live Edit JSON parity gap in shared native detector setup; existing form restoration is active before retirement acceptance. [Before evidence](validation/release-readiness-w1/microtime-before/parent-review.json).

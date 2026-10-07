@@ -1,3 +1,17 @@
+## Native form static type declarations incomplete (2026-10-07)
+
+status: open
+
+SDK0.1.7 view_form.py retains15 inherited diagnostics unchanged under exact
+pre-edit shadow comparison:5 dynamically installed InputTextFlags members,
+2 numeric local int/float assignments,1 optional item rectangle,1 packing-list
+annotation,1 dynamically installed tab-bar layout stack and5 TextEditor
+binding attributes. Runtime APIs exist and261 installed owner checks pass.
+Complete typing in the classes/functions that own these contracts; avoid
+source ignores or per-application casts. This is broader declaration work
+than the one-line code-editor tooltip root and remains a programme gate.
+[Exact baseline and categories](../validation/release-readiness-w1/sdk-0.1.7/editor-type-comparison.json).
+
 ## ProteinMC RMF output missing from canonical core provider (2026-10-07)
 
 status: open
