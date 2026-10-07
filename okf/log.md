@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: preserve launcher precedence when inserting bundled roots and skip an already-resolved ndxplorer editable root;20 bootstrap/environment/native-shifter checks, Ruff and mypy pass. Remove only five obsolete import-order comments, preserving foreign test hunks. ndxplorer test namespace relocation is separately verified before pointer publication.
+
 - PRD-154 W1: fix IMP namespace bootstrap in owning imp-tricks commit eb198e21b;3 exact-tree regressions and pixi/arm64 cold imports pass, preserving foreign lazy-loader work. Verify current wgpu-py lock with pixi lock --check and resolve its stale issue. Bundled path regression is green9; reader/UI retirement and ndxplorer namespace work continue.
 
 - PRD-154 W1: retire the uncalled SpcFileWidget and dedicated UI; preserve CsvWidget byte-for-byte and executable mode. Parent inspected real BH SPC132 baseline;19 parent and20 child targeted cases pass, scoped Ruff/compile clean. Continue full CSV/SDT/simulator parity. [Receipts](validation/release-readiness-w1/spc-retirement/parent-verification.json).

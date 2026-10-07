@@ -12,7 +12,7 @@ import tempfile
 repo = pathlib.Path(sys.argv[1])
 sys.path.insert(0, str(repo))
 import numpy as np  # noqa: E402
-import test.gui.emtk_port_parity  # noqa: E402,F401  (before the plugin import)
+import test.gui.emtk_port_parity  # noqa: E402,F401
 from qtpy import QtWidgets  # noqa: E402
 
 app = QtWidgets.QApplication([])

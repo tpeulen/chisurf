@@ -19,7 +19,7 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
 # isort: off
-from test.gui.emtk_port_parity import qt_free  # noqa: E402,F401  (before the plugin import)
+from test.gui.emtk_port_parity import qt_free  # noqa: E402,F401
 from chisurf.plugins.tttr.microtime_histogram.gui.model import HistogramModel  # noqa: E402
 # isort: on
 

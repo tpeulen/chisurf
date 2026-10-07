@@ -442,3 +442,13 @@ test/plugins/burst/test_background_diagnostics.py
 test/plugins/burst/test_irf_background_window.py
 test/test_build_tttrlib_sibling_envs.py
 ```
+
+
+## Source companion path precedence
+
+The launcher/cwd stays first when ChiSurf adds bundled source roots. An
+editable ndxplorer finder already resolving the package needs no extra
+module root on sys.path. Plugin test helpers can be imported after a native
+plugin; preimporting test.gui to conceal a shadowing companion is unnecessary.
+Verify test/core/test_bundled_packages.py and the existing foreign-environment
+path tests. Keep ndxplorer tests in tests/ rather than a top-level test package.

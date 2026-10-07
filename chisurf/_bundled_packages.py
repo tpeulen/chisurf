@@ -8,6 +8,7 @@ environments that a launcher put on the path.
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 import os
 import sys
@@ -29,11 +30,11 @@ _TRUTHY = {"1", "true", "yes", "on"}
 
 
 def bootstrap_bundled_packages() -> tuple[Path, ...]:
-    """Prepend available in-tree package roots and return those added.
+    """Insert available companion roots after the launcher and return those added.
 
     Installed ChiSurf distributions contain ``mmfdb`` as a normal
     packages, so their installation needs no path adjustment. A source checkout
-    keeps those packages below ``modules/``; prepending their roots ensures the
+    keeps those packages below ``modules/``; adding their roots ensures the
     checkout consistently uses the matching bundled versions instead of a stale
     environment installation.
     """
@@ -42,6 +43,8 @@ def bootstrap_bundled_packages() -> tuple[Path, ...]:
     added: list[Path] = []
 
     for module_name, source_dir in _BUNDLED_PACKAGE_PATHS:
+        if module_name == "ndxplorer" and importlib.util.find_spec("ndxplorer") is not None:
+            continue
         package_root = project_root / "modules" / module_name
         if source_dir:
             package_root /= source_dir
@@ -51,7 +54,7 @@ def bootstrap_bundled_packages() -> tuple[Path, ...]:
             existing.add(package_root)
 
     if added:
-        sys.path[0:0] = [str(path) for path in added]
+        sys.path[1:1] = [str(path) for path in added]
     return tuple(added)
 
 

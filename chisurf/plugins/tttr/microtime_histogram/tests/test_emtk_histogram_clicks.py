@@ -19,7 +19,7 @@ import pytest
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
 # isort: off
-from test.gui.emtk_port_parity import qt_free  # noqa: E402,F401  (before the plugin import)
+from test.gui.emtk_port_parity import qt_free  # noqa: E402,F401
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui as _Ui, hermetic  # noqa: E402,F401
 from emtk import keys  # noqa: E402
 from emtk.app import LEFT_BUTTON  # noqa: E402

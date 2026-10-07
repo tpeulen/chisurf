@@ -23,7 +23,6 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 sys.path.insert(0, str(REPO))
 # isort: off
-# Before the plugin import, which puts modules/ndxplorer (and its own `test` package) on sys.path.
 from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  # noqa: E402
 
 from emtk.testing import PixelPainter, RecordingPainter  # noqa: E402
