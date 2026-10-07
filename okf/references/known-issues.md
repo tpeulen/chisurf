@@ -6535,3 +6535,31 @@ every tab with the same data. Do not count the W7 factory-only PNG as a complete
 migration baseline. Numerical provider readiness is separate: the immutable
 IMP.bff core wheel supplies F arrays and residual callbacks with scientific
 oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
+
+
+## Standalone parameter JSON/YAML file corruption (2026-10-07)
+
+status: open — owning repair active
+
+Base parameter file serialization turns a native GraphPort into a repr string;
+loading installs that string and value/get_state then raises AttributeError
+for missing is_linked. The old save/load test never read the restored value;
+its green result hid corruption. Root repair uses existing portable state in
+Parameter-only file hooks, preserving live in-process to_dict/from_dict links
+and graph/value paths. Grid owns exact source/regressions; do not mark the
+88-pass/old-xfail update unit complete before real file roundtrips pass.
+[Current acceptance front](../validation/release-readiness-w1.md).
+
+## Mixed targeted Qt/pyqtgraph process teardown (2026-10-07)
+
+status: open
+
+A19-file targeted FCS/layout/chiplot group can fail late in ViewBox.resizeEvent
+via childrenBounds/mapFromItemToView/updateMatrix when ChildGroup is deleted,
+then SIGSEGV. Its previous run reached279passes/3old skips/4resize failures;
+a fresh isolated chiplot family passes59 with normal exit. Splitting verifies
+individual source behavior but does not fix the native lifetime problem. No
+skip/retention/forced-exit workaround is added. A deterministic minimal owner
+reproduction is not yet established; the chiplot/Qt retirement owners must
+close this lifetime gate before programme completion. Keep original crash
+evidence, diagnose ownership, and do not infer a product fix from isolation.
