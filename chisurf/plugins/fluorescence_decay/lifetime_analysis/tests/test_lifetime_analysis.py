@@ -71,8 +71,8 @@ def test_lifetime_panel_factories_import_expected_widgets(monkeypatch) -> None:
             "MaxentDecayWidget",
             MainWindow,
         ),
-        "chisurf.plugins.tttr.microtime_histogram.wizard": (
-            "MicrotimeHistogram",
+        "chisurf.plugins.tttr.microtime_histogram.gui.app": (
+            "create_host",
             Widget,
         ),
         "chisurf.plugins.vv_vh_g_factor.gui.app": ("create_host", Widget),

@@ -514,7 +514,7 @@ def test_migrated_modules_import(qapp):
     import importlib
 
     for name in (
-        "chisurf.plugins.tttr.microtime_histogram.wizard",
+        "chisurf.plugins.tttr.microtime_histogram.gui.app",
         "chisurf.plugins.fcs.fcs_correlator.correlator_panel",
         "chisurf.plugins.fcs.fcs_correlator.filter_panel",
         "chisurf.plugins.fcs.fcs_correlator.merger_panel",

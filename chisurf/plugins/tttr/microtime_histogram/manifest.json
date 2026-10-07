@@ -20,7 +20,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.tttr.microtime_histogram.wizard:MicrotimeHistogram",
     "cli": "microtime-histogram=chisurf.plugins.tttr.microtime_histogram.__main__:main",
     "emtk": "chisurf.plugins.tttr.microtime_histogram.gui.app:create_app"
   },

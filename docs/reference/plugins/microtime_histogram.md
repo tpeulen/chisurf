@@ -21,7 +21,7 @@ Create and inspect TTTR microtime histograms.
 | Menu path | Spectroscopy → Fluorescence decay → **Histogram-Microtime** |
 | Categories | Spectroscopy, Fluorescence decay, TTTR |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui |
+| Surfaces | cli, emtk |
 | State namespace | `microtime_histogram` |
 
 ## Parameters
@@ -39,9 +39,9 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Detector | `detector` | choice |  | choices: `detector_options` | Detector of the setup whose interleaved routing channels (parallel, perpendicular, parallel, ...) and G-factor are used. |
-| Parallel | `parallel_text` | text |  |  | Comma-separated routing channels of the parallel (VV) stream; choosing a detector fills them. |
-| Perpendicular | `perpendicular_text` | text |  |  | Comma-separated routing channels of the perpendicular (VH) stream; empty when polarization resolution is off. |
-| Polarization resolved | `polarized` | bool |  |  | Split the detector channels into alternating VV/VH routes; unchecked gives one unpolarized stream. |
+| Parallel | `parallel_text` | str |  |  | Comma-separated routing channels of the parallel (VV) stream; choosing a detector fills them. |
+| Perpendicular | `perpendicular_text` | str |  |  | Comma-separated routing channels of the perpendicular (VH) stream; empty when polarization resolution is off. |
+| Polarization resolved | `polarized` | bool |  |  | Switch the current ordered routes between alternating VV/VH and one unpolarized stream. Manual channel edits update the working detector definition; time step, G-factor and shifts are retained. |
 
 ### Reading and gates
 
@@ -68,7 +68,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Output | `output` | text |  |  | Single-column export: VV bins followed by VH bins, compatible with read_vv_vh. |
+| Output | `output` | str |  |  | Single-column export: VV bins followed by VH bins, compatible with read_vv_vh. |
 | Polarization | `polarization` | choice |  | choices: vm, vv, vh | TCSPC reader polarization mode used when the saved decay is transferred. |
 
 ## Theory and workflow

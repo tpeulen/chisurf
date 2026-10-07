@@ -9,6 +9,16 @@
           "type": "button_row",
           "buttons": [
             {
+              "action": "demo",
+              "label": "Generate synthetic demo",
+              "description": "Replace queued inputs with a deterministic synthetic PTU in the settings cache: 3000 VV + 1500 VH photons at 32 ps per channel. Press Compute separately; saved setups and measurement files are unchanged."
+            }
+          ]
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
               "action": "compute",
               "label": "▶  Compute",
               "description": "Read the selected photons and burst gates in a background worker."
@@ -58,14 +68,14 @@
               "type": "value",
               "attr": "parallel_text",
               "label": "Parallel",
-              "kind": "text",
+              "kind": "str",
               "description": "Comma-separated routing channels of the parallel (VV) stream; choosing a detector fills them."
             },
             {
               "type": "value",
               "attr": "perpendicular_text",
               "label": "Perpendicular",
-              "kind": "text",
+              "kind": "str",
               "description": "Comma-separated routing channels of the perpendicular (VH) stream; empty when polarization resolution is off."
             }
           ]
@@ -74,7 +84,7 @@
           "type": "toggle",
           "attr": "polarized",
           "label": "Polarization resolved",
-          "description": "Split the detector channels into alternating VV/VH routes; unchecked gives one unpolarized stream."
+          "description": "Switch the current ordered routes between alternating VV/VH and one unpolarized stream. Manual channel edits update the working detector definition; time step, G-factor and shifts are retained."
         }
       ]
     },
@@ -191,7 +201,7 @@
               "type": "value",
               "attr": "output",
               "label": "Output",
-              "kind": "text",
+              "kind": "str",
               "description": "Single-column export: VV bins followed by VH bins, compatible with read_vv_vh."
             },
             {

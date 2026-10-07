@@ -19,7 +19,7 @@ only the photons of selected bursts ({ref}`concept-tcspc-lifetime` explains what
 - **Detector and channels.** A detector of the setup is a list of routing channels, interleaved parallel, perpendicular,
   parallel, ... when the detector is polarization resolved; the histogram of the even entries is the **VV** (parallel)
   decay $I_\parallel(t)$, that of the odd ones the **VH** (perpendicular) decay $I_\perp(t)$. Without polarization
-  resolution all channels form one stream.
+  resolution the selected detector channels form one stream.
 - **Excitation window.** A micro-time gate $[t_a, t_b]$ (inclusive) keeps the photons excited by one pulse of an
   alternating scheme (PIE / nsALEX).
 - **Bursts.** A burst-index file lists inclusive photon-index ranges; only photons inside any range are used and
@@ -40,6 +40,22 @@ This is the trace shown as *VV + 2G VH*. Its full width at half maximum (the dis
 peak and the first bin after it at or below half the maximum) is a quick diagnostic of the instrument response of the
 channel pair, not a lifetime.
 
+The physical width depends on the acquisition time step as well as the bin
+width. The measured BH132 example in the [workflow](../guides/89_microtime_histogram.md)
+has provider/header-derived timing of 3.2958984375 ps (0.0032958984375 ns); its
+113-bin width is 0.3724365234375 ns at binning one under that timing. This
+headerless SPC fixture does not independently establish instrument calibration.
+The native tool retains the provider/header-derived value unless
+an explicit saved setup override or manual histogram step is selected.
+A 25 ps manual setting used for legacy validation gives 2.825 ns for the same
+113 bins. It establishes histogram/count parity, not physical time calibration;
+the older unsaved 50 ps field value is likewise not header provenance.
+
+The guided synthetic demonstration instead defines its clocks explicitly:
+32 ps micro-time bins and a 25 ns macro-time clock, with 3,000 parallel and
+1,500 perpendicular photons and a known four-bin width of 0.128 ns. Those
+generated values validate the workflow; they do not calibrate an instrument.
+
 ## Histogram shifts
 
 The VV and VH histograms can be shifted against each other by whole bins to line up the two detectors' prompt response.
@@ -48,8 +64,13 @@ The shift pads with zeros and clips at the edge: counts are not wrapped. This di
 
 ## Export
 
-The decay is written as one integer column, the VV bins followed by the VH bins, the layout the TCSPC reader for
-polarized decays takes.
+The polarized decay is written as one integer column, the VV bins followed by the VH bins, the layout the TCSPC reader for
+polarized decays takes. Without polarization resolution, the export contains one histogram instead.
+
+The native histogram app uses this same model in standalone and existing Qt
+hosts. Transfer passes the effective time step, G-factor and polarization to
+the TCSPC reader; the plain integer export carries no timing header. Preserve
+the calibration separately when loading that file outside the transfer route.
 
 ## See also
 

@@ -1,14 +1,13 @@
-"""The native histogram app against the Qt wizard on the same photons (BH_SPC132.spc, green detector).
+"""The native histogram app against preserved legacy measured-SPC outputs.
 
-The Qt wizard runs in a subprocess (this process stays Qt-free); its cumulative VV|VH export, channel lists and G-factor
-are compared with the emtk model fed the same detector, binning and shifts.
+The successful legacy wizard run was frozen before retirement. Counts, routing
+and FWHM bins remain identical; its unsaved 50 ps initializer is not treated as
+an instrument calibration. Explicit/native/header timing branches have separate guards.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -35,22 +34,17 @@ def hermetic(tmp_path, monkeypatch):
 
 
 @pytest.fixture(scope="module")
-def qt(tmp_path_factory):
-    root = tmp_path_factory.mktemp("qt_ref")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", HOME=str(root / "home"),
-               CHISURF_SETTINGS_DIR=str(root / "s"), MMFDB_SETTINGS_DIR=str(root / "m"),
-               MMFDB_DATABASE_PATH=str(root / "m.sqlite"), PYTHONPATH=f"{REPO}:{os.environ.get('PYTHONPATH', '')}")
-    run = subprocess.run([sys.executable, str(HERE / "qt_reference.py"), str(REPO), str(root / "ref.npz")],
-                         capture_output=True, text=True, env=env, timeout=300)
-    assert run.returncode == 0, run.stderr[-2000:]      # a broken Qt host fails here, it is never skipped
-    info = json.loads(next(line for line in run.stdout.splitlines() if line.startswith("JSON"))[4:])
-    return info, dict(np.load(root / "ref.npz"))
+def legacy():
+    """Read the successful pre-retirement run and its immutable count vectors."""
+    folder = HERE / "data"
+    info = json.loads((folder / "legacy_reference.json").read_text())
+    return info, {name: np.load(folder / f"legacy_{name}.npy") for name in ("default", "shifted")}
 
 
 def emtk_model(info):
     model = HistogramModel()
     model.auto_save = False
-    model.set_setup({"detectors": {info["detector"]: info["setup"]}, "windows": {}, "tttr_reading": {}})
+    model.set_setup(info["full_setup"])
     model.filetype = "SPC-130"      # the wizard reads with its (disabled) format box: SPC-130
     model.binning, model.vv_shift, model.vh_shift, model.g_factor = info["binning"], info["vv"], info["vh"], info["g"]
     model.add_paths([PHOTONS])
@@ -59,8 +53,8 @@ def emtk_model(info):
 
 
 @pytest.mark.parametrize("name", ["default", "shifted"])
-def test_the_export_equals_the_qt_wizards_for_the_same_photons(qt, name):
-    info, arrays = qt
+def test_the_export_equals_preserved_legacy_counts_for_the_same_photons(legacy, name):
+    info, arrays = legacy
     model = emtk_model(info[name])
     assert model.parallel == info[name]["parallel"] and model.perpendicular == info[name]["perpendicular"]
     assert model.g_factor == info[name]["g"]
@@ -69,10 +63,10 @@ def test_the_export_equals_the_qt_wizards_for_the_same_photons(qt, name):
     assert model.fwhm_bins == qt_channels                                       # same crossing rule, same width
 
 
-def test_the_qt_reference_is_not_empty(qt):
-    info, arrays = qt
+def test_the_preserved_reference_is_not_empty(legacy):
+    info, arrays = legacy
     assert arrays["default"].sum() > 100_000 and info["default"]["detector"] == "green"
-    assert info["default"]["output_name"] == "decay.dat"
+    assert "no physical calibration provenance" in info["default"]["timing_provenance"]
 
 
 def test_qt_free():

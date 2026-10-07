@@ -5,6 +5,10 @@ parallel (VV) and perpendicular (VH) streams, gated by excitation window and opt
 column.
 
 ## Inputs and options (tab 1)
+- **Generate synthetic demo** writes a deterministic PTU to the application settings cache and replaces queued inputs
+  with that file and its synthetic detector definition. It contains 3000 VV and 1500 VH photons, with 32 ps micro-time
+  channels and a four-channel FWHM (0.128 ns). This is a control demonstration, not an instrument calibration.
+  Press **Compute** separately; no saved setup or measurement file is overwritten.
 - **Run** — **Compute** reads the selected photons in the background; **Save** writes the decay to *Output*; **Save as…**
   asks for another name; **Transfer to ChiSurf** saves and adds the TCSPC dataset. *Autosave after compute* writes
   *Output* once the computation succeeds.
@@ -14,7 +18,9 @@ column.
 - **Burst selections** — queue `.bst`/`.bur` photon-index files; photon bounds are inclusive, overlaps are counted once
   and bounds are clipped to the stream. **Find TTTR** looks four folders up for the matching photon files.
 - **Detector and channels** — the detector chooses the interleaved routing channels (parallel, perpendicular, ...) and
-  the G-factor; *Parallel* / *Perpendicular* can be edited. Without *Polarization resolved* there is one unpolarized stream.
+  the G-factor; *Parallel* / *Perpendicular* can be edited. Switching *Polarization resolved* merges or splits the current
+  ordered routes and synchronizes the working detector definition, retaining the time step, G-factor and shifts.
+  Without polarization resolution the export contains one selected stream, with no VH photons appended.
 - **Reading and gates** — *Excitation window* applies an inclusive micro-time gate, *Binning* groups adjacent bins.
 - **Time step, G-factor and shifts** — *dt* is read from the file header (typing a value keeps it); the shifts pad or
   clip the VV / VH histogram (the photon Micro-time Shifter instead wraps modulo the TAC period).
@@ -27,5 +33,7 @@ The export is the VV bins followed by the VH bins as one integer column. The dia
 its FWHM is the width between the integer crossings of half the maximum. Transfer hands the time step, G-factor and
 polarization to the TCSPC workspace.
 
-Further reading: [Decays and correlation curves straight from a photon file](docs/guides/73_tttr_decay_and_correlation.md),
+Further reading: [Microtime histogram workflow](docs/guides/89_microtime_histogram.md),
+[Histogram timing and polarization](docs/concepts/microtime_histogram.md),
+[Decays and correlation curves straight from a photon file](docs/guides/73_tttr_decay_and_correlation.md),
 [TCSPC lifetime fitting](docs/concepts/tcspc_lifetime.md).

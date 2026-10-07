@@ -38,10 +38,10 @@ def _lazy_lifetime(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 
 
 def _microtime_histogram(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Create the microtime histogram panel."""
-    from chisurf.plugins.tttr.microtime_histogram.wizard import MicrotimeHistogram
+    """Host the existing native microtime histogram panel."""
+    from chisurf.plugins.tttr.microtime_histogram.gui.app import create_host
 
-    return MicrotimeHistogram(parent=parent)
+    return create_host(parent=parent)
 
 
 def _vv_vh_g_factor(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:

@@ -21,4 +21,3 @@ chisurf/plugins/modelling/fps_json_editor/gui
 chisurf/plugins/modelling/fret/gui
 chisurf/plugins/modelling/structure_tools/gui
 chisurf/plugins/ndxplorer
-chisurf/plugins/tttr/microtime_histogram

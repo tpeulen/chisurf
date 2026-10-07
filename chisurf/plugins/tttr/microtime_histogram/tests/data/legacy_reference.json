@@ -1,0 +1,1349 @@
+{
+  "default": {
+    "parallel": [
+      8,
+      3
+    ],
+    "perpendicular": [
+      0
+    ],
+    "detector": "green",
+    "setup": {
+      "chs": [
+        8,
+        0,
+        3
+      ],
+      "micro_time_ranges": [
+        [
+          0,
+          4095
+        ]
+      ],
+      "g_factor": 1.0,
+      "l1": 0.0,
+      "l2": 0.0
+    },
+    "full_setup": {
+      "windows": {
+        "prompt": [
+          0,
+          2048
+        ],
+        "delayed": [
+          2048,
+          4095
+        ]
+      },
+      "detectors": {
+        "green": {
+          "chs": [
+            8,
+            0,
+            3
+          ],
+          "micro_time_ranges": [
+            [
+              0,
+              4095
+            ]
+          ],
+          "g_factor": 1.0,
+          "l1": 0.0,
+          "l2": 0.0
+        },
+        "red": {
+          "chs": [
+            9,
+            1,
+            2
+          ],
+          "micro_time_ranges": [
+            [
+              0,
+              2048
+            ]
+          ],
+          "g_factor": 1.0,
+          "l1": 0.0,
+          "l2": 0.0
+        },
+        "yellow": {
+          "chs": [
+            9,
+            1,
+            2
+          ],
+          "micro_time_ranges": [
+            [
+              2048,
+              4095
+            ]
+          ],
+          "g_factor": 1.0,
+          "l1": 0.0,
+          "l2": 0.0
+        }
+      },
+      "tttr_reading": {
+        "file_type": "SPC-130",
+        "macro_time_resolution": 50.0,
+        "micro_time_resolution": 50.0,
+        "micro_time_binning": 1,
+        "effective_micro_time_resolution": 50.0,
+        "excitation_period": 50.0
+      },
+      "channels": {
+        "prompt_green": [
+          {
+            "window_range": [
+              0,
+              2048
+            ],
+            "detector_chs": [
+              8,
+              0,
+              3
+            ],
+            "micro_time_range": [
+              0,
+              4095
+            ]
+          }
+        ],
+        "prompt_red": [
+          {
+            "window_range": [
+              0,
+              2048
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              0,
+              2048
+            ]
+          }
+        ],
+        "prompt_yellow": [
+          {
+            "window_range": [
+              0,
+              2048
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              2048,
+              4095
+            ]
+          }
+        ],
+        "delayed_green": [
+          {
+            "window_range": [
+              2048,
+              4095
+            ],
+            "detector_chs": [
+              8,
+              0,
+              3
+            ],
+            "micro_time_range": [
+              0,
+              4095
+            ]
+          }
+        ],
+        "delayed_red": [
+          {
+            "window_range": [
+              2048,
+              4095
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              0,
+              2048
+            ]
+          }
+        ],
+        "delayed_yellow": [
+          {
+            "window_range": [
+              2048,
+              4095
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              2048,
+              4095
+            ]
+          }
+        ]
+      },
+      "setup_name": "",
+      "apply_lut": false,
+      "polarization_resolved": true,
+      "channel_luts": {},
+      "channel_shifts": {}
+    },
+    "timing_provenance": "unsaved legacy initializer50 ps; no physical calibration provenance",
+    "binning": 1,
+    "vv": 0,
+    "vh": 0,
+    "g": 1.0,
+    "dt": 0.05,
+    "fwhm_text": "5.65 ns (113.0 channels)",
+    "shape": [
+      8192
+    ],
+    "sum": 135967.0,
+    "scenes": [
+      {
+        "tab": "Histogram",
+        "png": "default-legacy-tab-0.png"
+      },
+      {
+        "tab": "Detector Setup",
+        "png": "default-legacy-tab-1.png"
+      }
+    ],
+    "inventory": {
+      "controls": [
+        "/users/tpeulen/dev/chisurf/test/data/tttr/bh/132/bh_spc132.spc",
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "8",
+        "9",
+        "adjustshifts\u2026",
+        "applytaclinearization(lut)whenreading",
+        "binning",
+        "calibration",
+        "channel",
+        "channels",
+        "clear",
+        "compute",
+        "configureluts\u2026",
+        "delayed",
+        "detector",
+        "detectorname",
+        "detectors",
+        "dropbidfilesbelow",
+        "droptttrfilesbelow",
+        "dt[ns]",
+        "eff.microtime(ps)",
+        "end",
+        "filetype",
+        "fwhm(vv+2g*vh)",
+        "g-factor",
+        "g-factorchannels",
+        "green",
+        "l1",
+        "l2",
+        "load",
+        "lut",
+        "luthandling(taclinearization)",
+        "macrotimeres.(ns)",
+        "microtimebinning",
+        "microtimeranges",
+        "microtimeres.(ps)",
+        "opticalsetup\u2026",
+        "output",
+        "parallel",
+        "perpendicular",
+        "pie-windows",
+        "piewindows",
+        "polarization",
+        "polarizationresolved",
+        "prompt",
+        "public",
+        "red",
+        "save",
+        "setup",
+        "shift",
+        "start",
+        "transfertochisurf",
+        "tttrreadingroutine",
+        "vhtimeshift(channels)",
+        "vvtimeshift(channels)",
+        "windowname",
+        "yellow",
+        "\u2014none\u2014",
+        "\u2610none",
+        "\u2611\ufe0fall",
+        "\u270f\ufe0frename",
+        "\u2753",
+        "\u2795add",
+        "\u2795files",
+        "\u2796remove",
+        "\ud83d\udcbesave",
+        "\ud83d\udcc1folder",
+        "\ud83d\udcc2read",
+        "\ud83d\udccaplot",
+        "\ud83d\udcddeditjson",
+        "\ud83d\udce5assignlut\u2026",
+        "\ud83d\uddc4\ufe0fdatabase",
+        "\ud83d\uddd1\ufe0f",
+        "\ud83d\uddd1\ufe0fclear",
+        "\ud83d\uddd1\ufe0fdelete",
+        "\ud83e\uddee",
+        "\ud83e\uddeeg-factor"
+      ],
+      "labels": [
+        "Binning",
+        "Calibration:",
+        "Detector:",
+        "Detectors",
+        "Drop BID files below:",
+        "Drop TTTR files below:",
+        "Eff. microtime (ps):",
+        "FWHM (VV + 2G*VH)",
+        "File Type:",
+        "G-Factor",
+        "Macrotime res. (ns):",
+        "Microtime binning:",
+        "Microtime res. (ps):",
+        "Output",
+        "PIE-Windows",
+        "Parallel",
+        "Perpendicular",
+        "Polarization",
+        "Setup:",
+        "TTTR Reading Routine:",
+        "VH Timeshift (channels)",
+        "VV Timeshift (channels)",
+        "dt [ns]"
+      ],
+      "buttons": [
+        "Adjust shifts\u2026",
+        "Apply TAC linearization (LUT) when reading",
+        "Compute",
+        "Configure LUTs\u2026",
+        "Optical Setup\u2026",
+        "Polarization resolved",
+        "Public",
+        "Save",
+        "Transfer to ChiSurf",
+        "clear",
+        "load",
+        "\u25b6  LUT handling (TAC linearization)",
+        "\u25b6  PIE Windows",
+        "\u25bc  Detectors",
+        "\u25bc  TTTR Reading routine",
+        "\u2610 None",
+        "\u2611\ufe0f All",
+        "\u270f\ufe0f Rename",
+        "\u2753",
+        "\u2795 Add",
+        "\u2795 Files",
+        "\u2796 Remove",
+        "\ud83d\udcbe Save",
+        "\ud83d\udcc1 Folder",
+        "\ud83d\udcc2 Read",
+        "\ud83d\udcca Plot",
+        "\ud83d\udcdd Edit JSON",
+        "\ud83d\udce5 Assign LUT\u2026",
+        "\ud83d\uddc4\ufe0f Database",
+        "\ud83d\uddd1\ufe0f",
+        "\ud83d\uddd1\ufe0f Clear",
+        "\ud83d\uddd1\ufe0f Delete",
+        "\ud83e\uddee",
+        "\ud83e\uddee G-factor"
+      ],
+      "line_edits": 45,
+      "combos": 9,
+      "spin_boxes": 14,
+      "tables": 11
+    },
+    "combo_values": {
+      "setup_selection_combobox": [],
+      "detector_selection_combobox": [
+        "green",
+        "red",
+        "yellow"
+      ],
+      "comboBox_2": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "16",
+        "32"
+      ],
+      "comboBox_polarization": [
+        "vm",
+        "vv",
+        "vh"
+      ],
+      "comboBox": [
+        "Auto",
+        "PTU",
+        "HT3",
+        "SPC-130",
+        "SPC-600_256",
+        "SPC-600_4096",
+        "PHOTON-HDF5",
+        "CZ-RAW",
+        "SM",
+        "PHOTONS",
+        "SPC-QC",
+        "BRIGHTEYES-TTR",
+        "FLIMLABS-STT1",
+        "FLIMLABS-ITT1",
+        "PTO"
+      ],
+      "setup_combo": [
+        ""
+      ],
+      "": [
+        "Latest"
+      ],
+      "micro_binning_combo": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "16",
+        "32",
+        "64",
+        "128"
+      ],
+      "file_type_combo": [
+        "Auto",
+        "PTU",
+        "HT3",
+        "SPC-130",
+        "SPC-600_256",
+        "SPC-600_4096",
+        "PHOTON-HDF5",
+        "CZ-RAW",
+        "SM",
+        "PHOTONS",
+        "SPC-QC",
+        "BRIGHTEYES-TTR",
+        "FLIMLABS-STT1",
+        "FLIMLABS-ITT1",
+        "PTO"
+      ]
+    }
+  },
+  "shifted": {
+    "parallel": [
+      8,
+      3
+    ],
+    "perpendicular": [
+      0
+    ],
+    "detector": "green",
+    "setup": {
+      "chs": [
+        8,
+        0,
+        3
+      ],
+      "micro_time_ranges": [
+        [
+          0,
+          4095
+        ]
+      ],
+      "g_factor": 1.0,
+      "l1": 0.0,
+      "l2": 0.0
+    },
+    "full_setup": {
+      "windows": {
+        "prompt": [
+          0,
+          2048
+        ],
+        "delayed": [
+          2048,
+          4095
+        ]
+      },
+      "detectors": {
+        "green": {
+          "chs": [
+            8,
+            0,
+            3
+          ],
+          "micro_time_ranges": [
+            [
+              0,
+              4095
+            ]
+          ],
+          "g_factor": 1.0,
+          "l1": 0.0,
+          "l2": 0.0
+        },
+        "red": {
+          "chs": [
+            9,
+            1,
+            2
+          ],
+          "micro_time_ranges": [
+            [
+              0,
+              2048
+            ]
+          ],
+          "g_factor": 1.0,
+          "l1": 0.0,
+          "l2": 0.0
+        },
+        "yellow": {
+          "chs": [
+            9,
+            1,
+            2
+          ],
+          "micro_time_ranges": [
+            [
+              2048,
+              4095
+            ]
+          ],
+          "g_factor": 1.0,
+          "l1": 0.0,
+          "l2": 0.0
+        }
+      },
+      "tttr_reading": {
+        "file_type": "SPC-130",
+        "macro_time_resolution": 50.0,
+        "micro_time_resolution": 50.0,
+        "micro_time_binning": 1,
+        "effective_micro_time_resolution": 50.0,
+        "excitation_period": 50.0
+      },
+      "channels": {
+        "prompt_green": [
+          {
+            "window_range": [
+              0,
+              2048
+            ],
+            "detector_chs": [
+              8,
+              0,
+              3
+            ],
+            "micro_time_range": [
+              0,
+              4095
+            ]
+          }
+        ],
+        "prompt_red": [
+          {
+            "window_range": [
+              0,
+              2048
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              0,
+              2048
+            ]
+          }
+        ],
+        "prompt_yellow": [
+          {
+            "window_range": [
+              0,
+              2048
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              2048,
+              4095
+            ]
+          }
+        ],
+        "delayed_green": [
+          {
+            "window_range": [
+              2048,
+              4095
+            ],
+            "detector_chs": [
+              8,
+              0,
+              3
+            ],
+            "micro_time_range": [
+              0,
+              4095
+            ]
+          }
+        ],
+        "delayed_red": [
+          {
+            "window_range": [
+              2048,
+              4095
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              0,
+              2048
+            ]
+          }
+        ],
+        "delayed_yellow": [
+          {
+            "window_range": [
+              2048,
+              4095
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              2048,
+              4095
+            ]
+          }
+        ]
+      },
+      "setup_name": "",
+      "apply_lut": false,
+      "polarization_resolved": true,
+      "channel_luts": {},
+      "channel_shifts": {}
+    },
+    "timing_provenance": "unsaved legacy initializer50 ps; no physical calibration provenance",
+    "binning": 4,
+    "vv": 3,
+    "vh": -2,
+    "g": 1.25,
+    "dt": 0.2,
+    "fwhm_text": "7.40 ns (37.0 channels)",
+    "shape": [
+      2048
+    ],
+    "sum": 135967.0,
+    "scenes": [
+      {
+        "tab": "Histogram",
+        "png": "shifted-legacy-tab-0.png"
+      },
+      {
+        "tab": "Detector Setup",
+        "png": "shifted-legacy-tab-1.png"
+      }
+    ],
+    "inventory": {
+      "controls": [
+        "/users/tpeulen/dev/chisurf/test/data/tttr/bh/132/bh_spc132.spc",
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "8",
+        "9",
+        "adjustshifts\u2026",
+        "applytaclinearization(lut)whenreading",
+        "binning",
+        "calibration",
+        "channel",
+        "channels",
+        "clear",
+        "compute",
+        "configureluts\u2026",
+        "delayed",
+        "detector",
+        "detectorname",
+        "detectors",
+        "dropbidfilesbelow",
+        "droptttrfilesbelow",
+        "dt[ns]",
+        "eff.microtime(ps)",
+        "end",
+        "filetype",
+        "fwhm(vv+2g*vh)",
+        "g-factor",
+        "g-factorchannels",
+        "green",
+        "l1",
+        "l2",
+        "load",
+        "lut",
+        "luthandling(taclinearization)",
+        "macrotimeres.(ns)",
+        "microtimebinning",
+        "microtimeranges",
+        "microtimeres.(ps)",
+        "opticalsetup\u2026",
+        "output",
+        "parallel",
+        "perpendicular",
+        "pie-windows",
+        "piewindows",
+        "polarization",
+        "polarizationresolved",
+        "prompt",
+        "public",
+        "red",
+        "save",
+        "setup",
+        "shift",
+        "start",
+        "transfertochisurf",
+        "tttrreadingroutine",
+        "vhtimeshift(channels)",
+        "vvtimeshift(channels)",
+        "windowname",
+        "yellow",
+        "\u2014none\u2014",
+        "\u2610none",
+        "\u2611\ufe0fall",
+        "\u270f\ufe0frename",
+        "\u2753",
+        "\u2795add",
+        "\u2795files",
+        "\u2796remove",
+        "\ud83d\udcbesave",
+        "\ud83d\udcc1folder",
+        "\ud83d\udcc2read",
+        "\ud83d\udccaplot",
+        "\ud83d\udcddeditjson",
+        "\ud83d\udce5assignlut\u2026",
+        "\ud83d\uddc4\ufe0fdatabase",
+        "\ud83d\uddd1\ufe0f",
+        "\ud83d\uddd1\ufe0fclear",
+        "\ud83d\uddd1\ufe0fdelete",
+        "\ud83e\uddee",
+        "\ud83e\uddeeg-factor"
+      ],
+      "labels": [
+        "Binning",
+        "Calibration:",
+        "Detector:",
+        "Detectors",
+        "Drop BID files below:",
+        "Drop TTTR files below:",
+        "Eff. microtime (ps):",
+        "FWHM (VV + 2G*VH)",
+        "File Type:",
+        "G-Factor",
+        "Macrotime res. (ns):",
+        "Microtime binning:",
+        "Microtime res. (ps):",
+        "Output",
+        "PIE-Windows",
+        "Parallel",
+        "Perpendicular",
+        "Polarization",
+        "Setup:",
+        "TTTR Reading Routine:",
+        "VH Timeshift (channels)",
+        "VV Timeshift (channels)",
+        "dt [ns]"
+      ],
+      "buttons": [
+        "Adjust shifts\u2026",
+        "Apply TAC linearization (LUT) when reading",
+        "Compute",
+        "Configure LUTs\u2026",
+        "Optical Setup\u2026",
+        "Polarization resolved",
+        "Public",
+        "Save",
+        "Transfer to ChiSurf",
+        "clear",
+        "load",
+        "\u25b6  LUT handling (TAC linearization)",
+        "\u25b6  PIE Windows",
+        "\u25bc  Detectors",
+        "\u25bc  TTTR Reading routine",
+        "\u2610 None",
+        "\u2611\ufe0f All",
+        "\u270f\ufe0f Rename",
+        "\u2753",
+        "\u2795 Add",
+        "\u2795 Files",
+        "\u2796 Remove",
+        "\ud83d\udcbe Save",
+        "\ud83d\udcc1 Folder",
+        "\ud83d\udcc2 Read",
+        "\ud83d\udcca Plot",
+        "\ud83d\udcdd Edit JSON",
+        "\ud83d\udce5 Assign LUT\u2026",
+        "\ud83d\uddc4\ufe0f Database",
+        "\ud83d\uddd1\ufe0f",
+        "\ud83d\uddd1\ufe0f Clear",
+        "\ud83d\uddd1\ufe0f Delete",
+        "\ud83e\uddee",
+        "\ud83e\uddee G-factor"
+      ],
+      "line_edits": 45,
+      "combos": 9,
+      "spin_boxes": 14,
+      "tables": 11
+    },
+    "combo_values": {
+      "setup_selection_combobox": [],
+      "detector_selection_combobox": [
+        "green",
+        "red",
+        "yellow"
+      ],
+      "comboBox_2": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "16",
+        "32"
+      ],
+      "comboBox_polarization": [
+        "vm",
+        "vv",
+        "vh"
+      ],
+      "comboBox": [
+        "Auto",
+        "PTU",
+        "HT3",
+        "SPC-130",
+        "SPC-600_256",
+        "SPC-600_4096",
+        "PHOTON-HDF5",
+        "CZ-RAW",
+        "SM",
+        "PHOTONS",
+        "SPC-QC",
+        "BRIGHTEYES-TTR",
+        "FLIMLABS-STT1",
+        "FLIMLABS-ITT1",
+        "PTO"
+      ],
+      "setup_combo": [
+        ""
+      ],
+      "": [
+        "Latest"
+      ],
+      "micro_binning_combo": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "16",
+        "32",
+        "64",
+        "128"
+      ],
+      "file_type_combo": [
+        "Auto",
+        "PTU",
+        "HT3",
+        "SPC-130",
+        "SPC-600_256",
+        "SPC-600_4096",
+        "PHOTON-HDF5",
+        "CZ-RAW",
+        "SM",
+        "PHOTONS",
+        "SPC-QC",
+        "BRIGHTEYES-TTR",
+        "FLIMLABS-STT1",
+        "FLIMLABS-ITT1",
+        "PTO"
+      ]
+    }
+  },
+  "explicit-validation-calibration": {
+    "parallel": [
+      8,
+      3
+    ],
+    "perpendicular": [
+      0
+    ],
+    "detector": "green",
+    "setup": {
+      "chs": [
+        8,
+        0,
+        3
+      ],
+      "micro_time_ranges": [
+        [
+          0,
+          4095
+        ]
+      ],
+      "g_factor": 1.0,
+      "l1": 0.0,
+      "l2": 0.0
+    },
+    "full_setup": {
+      "windows": {
+        "prompt": [
+          0,
+          2048
+        ],
+        "delayed": [
+          2048,
+          4095
+        ]
+      },
+      "detectors": {
+        "green": {
+          "chs": [
+            8,
+            0,
+            3
+          ],
+          "micro_time_ranges": [
+            [
+              0,
+              4095
+            ]
+          ],
+          "g_factor": 1.0,
+          "l1": 0.0,
+          "l2": 0.0
+        },
+        "red": {
+          "chs": [
+            9,
+            1,
+            2
+          ],
+          "micro_time_ranges": [
+            [
+              0,
+              2048
+            ]
+          ],
+          "g_factor": 1.0,
+          "l1": 0.0,
+          "l2": 0.0
+        },
+        "yellow": {
+          "chs": [
+            9,
+            1,
+            2
+          ],
+          "micro_time_ranges": [
+            [
+              2048,
+              4095
+            ]
+          ],
+          "g_factor": 1.0,
+          "l1": 0.0,
+          "l2": 0.0
+        }
+      },
+      "tttr_reading": {
+        "file_type": "SPC-130",
+        "macro_time_resolution": 50.0,
+        "micro_time_resolution": 25.0,
+        "micro_time_binning": 1,
+        "effective_micro_time_resolution": 25.0,
+        "excitation_period": 50.0
+      },
+      "channels": {
+        "prompt_green": [
+          {
+            "window_range": [
+              0,
+              2048
+            ],
+            "detector_chs": [
+              8,
+              0,
+              3
+            ],
+            "micro_time_range": [
+              0,
+              4095
+            ]
+          }
+        ],
+        "prompt_red": [
+          {
+            "window_range": [
+              0,
+              2048
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              0,
+              2048
+            ]
+          }
+        ],
+        "prompt_yellow": [
+          {
+            "window_range": [
+              0,
+              2048
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              2048,
+              4095
+            ]
+          }
+        ],
+        "delayed_green": [
+          {
+            "window_range": [
+              2048,
+              4095
+            ],
+            "detector_chs": [
+              8,
+              0,
+              3
+            ],
+            "micro_time_range": [
+              0,
+              4095
+            ]
+          }
+        ],
+        "delayed_red": [
+          {
+            "window_range": [
+              2048,
+              4095
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              0,
+              2048
+            ]
+          }
+        ],
+        "delayed_yellow": [
+          {
+            "window_range": [
+              2048,
+              4095
+            ],
+            "detector_chs": [
+              9,
+              1,
+              2
+            ],
+            "micro_time_range": [
+              2048,
+              4095
+            ]
+          }
+        ]
+      },
+      "setup_name": "validation-declared-25ps",
+      "apply_lut": false,
+      "polarization_resolved": true,
+      "channel_luts": {},
+      "channel_shifts": {}
+    },
+    "timing_provenance": "validation user-entered25 ps, not asserted as the measurement calibration",
+    "binning": 1,
+    "vv": 0,
+    "vh": 0,
+    "g": 1.0,
+    "dt": 0.025,
+    "fwhm_text": "2.83 ns (113.0 channels)",
+    "shape": [
+      8192
+    ],
+    "sum": 135967.0,
+    "scenes": [
+      {
+        "tab": "Histogram",
+        "png": "explicit-validation-calibration-legacy-tab-0.png"
+      },
+      {
+        "tab": "Detector Setup",
+        "png": "explicit-validation-calibration-legacy-tab-1.png"
+      }
+    ],
+    "inventory": {
+      "controls": [
+        "/users/tpeulen/dev/chisurf/test/data/tttr/bh/132/bh_spc132.spc",
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "8",
+        "9",
+        "adjustshifts\u2026",
+        "applytaclinearization(lut)whenreading",
+        "binning",
+        "calibration",
+        "channel",
+        "channels",
+        "clear",
+        "compute",
+        "configureluts\u2026",
+        "delayed",
+        "detector",
+        "detectorname",
+        "detectors",
+        "dropbidfilesbelow",
+        "droptttrfilesbelow",
+        "dt[ns]",
+        "eff.microtime(ps)",
+        "end",
+        "filetype",
+        "fwhm(vv+2g*vh)",
+        "g-factor",
+        "g-factorchannels",
+        "green",
+        "l1",
+        "l2",
+        "load",
+        "lut",
+        "luthandling(taclinearization)",
+        "macrotimeres.(ns)",
+        "microtimebinning",
+        "microtimeranges",
+        "microtimeres.(ps)",
+        "opticalsetup\u2026",
+        "output",
+        "parallel",
+        "perpendicular",
+        "pie-windows",
+        "piewindows",
+        "polarization",
+        "polarizationresolved",
+        "prompt",
+        "public",
+        "red",
+        "save",
+        "setup",
+        "shift",
+        "start",
+        "transfertochisurf",
+        "tttrreadingroutine",
+        "vhtimeshift(channels)",
+        "vvtimeshift(channels)",
+        "windowname",
+        "yellow",
+        "\u2014none\u2014",
+        "\u2610none",
+        "\u2611\ufe0fall",
+        "\u270f\ufe0frename",
+        "\u2753",
+        "\u2795add",
+        "\u2795files",
+        "\u2796remove",
+        "\ud83d\udcbesave",
+        "\ud83d\udcc1folder",
+        "\ud83d\udcc2read",
+        "\ud83d\udccaplot",
+        "\ud83d\udcddeditjson",
+        "\ud83d\udce5assignlut\u2026",
+        "\ud83d\uddc4\ufe0fdatabase",
+        "\ud83d\uddd1\ufe0f",
+        "\ud83d\uddd1\ufe0fclear",
+        "\ud83d\uddd1\ufe0fdelete",
+        "\ud83e\uddee",
+        "\ud83e\uddeeg-factor"
+      ],
+      "labels": [
+        "Binning",
+        "Calibration:",
+        "Detector:",
+        "Detectors",
+        "Drop BID files below:",
+        "Drop TTTR files below:",
+        "Eff. microtime (ps):",
+        "FWHM (VV + 2G*VH)",
+        "File Type:",
+        "G-Factor",
+        "Macrotime res. (ns):",
+        "Microtime binning:",
+        "Microtime res. (ps):",
+        "Output",
+        "PIE-Windows",
+        "Parallel",
+        "Perpendicular",
+        "Polarization",
+        "Setup:",
+        "TTTR Reading Routine:",
+        "VH Timeshift (channels)",
+        "VV Timeshift (channels)",
+        "dt [ns]"
+      ],
+      "buttons": [
+        "Adjust shifts\u2026",
+        "Apply TAC linearization (LUT) when reading",
+        "Compute",
+        "Configure LUTs\u2026",
+        "Optical Setup\u2026",
+        "Polarization resolved",
+        "Public",
+        "Save",
+        "Transfer to ChiSurf",
+        "clear",
+        "load",
+        "\u25b6  LUT handling (TAC linearization)",
+        "\u25b6  PIE Windows",
+        "\u25bc  Detectors",
+        "\u25bc  TTTR Reading routine",
+        "\u2610 None",
+        "\u2611\ufe0f All",
+        "\u270f\ufe0f Rename",
+        "\u2753",
+        "\u2795 Add",
+        "\u2795 Files",
+        "\u2796 Remove",
+        "\ud83d\udcbe Save",
+        "\ud83d\udcc1 Folder",
+        "\ud83d\udcc2 Read",
+        "\ud83d\udcca Plot",
+        "\ud83d\udcdd Edit JSON",
+        "\ud83d\udce5 Assign LUT\u2026",
+        "\ud83d\uddc4\ufe0f Database",
+        "\ud83d\uddd1\ufe0f",
+        "\ud83d\uddd1\ufe0f Clear",
+        "\ud83d\uddd1\ufe0f Delete",
+        "\ud83e\uddee",
+        "\ud83e\uddee G-factor"
+      ],
+      "line_edits": 45,
+      "combos": 9,
+      "spin_boxes": 14,
+      "tables": 11
+    },
+    "combo_values": {
+      "setup_selection_combobox": [],
+      "detector_selection_combobox": [
+        "green",
+        "red",
+        "yellow"
+      ],
+      "comboBox_2": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "16",
+        "32"
+      ],
+      "comboBox_polarization": [
+        "vm",
+        "vv",
+        "vh"
+      ],
+      "comboBox": [
+        "Auto",
+        "PTU",
+        "HT3",
+        "SPC-130",
+        "SPC-600_256",
+        "SPC-600_4096",
+        "PHOTON-HDF5",
+        "CZ-RAW",
+        "SM",
+        "PHOTONS",
+        "SPC-QC",
+        "BRIGHTEYES-TTR",
+        "FLIMLABS-STT1",
+        "FLIMLABS-ITT1",
+        "PTO"
+      ],
+      "setup_combo": [
+        ""
+      ],
+      "": [
+        "Latest"
+      ],
+      "micro_binning_combo": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "16",
+        "32",
+        "64",
+        "128"
+      ],
+      "file_type_combo": [
+        "Auto",
+        "PTU",
+        "HT3",
+        "SPC-130",
+        "SPC-600_256",
+        "SPC-600_4096",
+        "PHOTON-HDF5",
+        "CZ-RAW",
+        "SM",
+        "PHOTONS",
+        "SPC-QC",
+        "BRIGHTEYES-TTR",
+        "FLIMLABS-STT1",
+        "FLIMLABS-ITT1",
+        "PTO"
+      ]
+    }
+  }
+}

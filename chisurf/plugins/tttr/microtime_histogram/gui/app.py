@@ -9,6 +9,8 @@ channel-definition editor, not a copy. Computing runs on a worker, so the window
 from __future__ import annotations
 
 import json
+from copy import deepcopy
+from itertools import zip_longest
 from pathlib import Path
 
 import numpy as np
@@ -19,6 +21,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
@@ -77,6 +80,32 @@ class HistogramFields:
             model.update_output_filename()
         elif name == "detector":
             model.select_detector(value)
+        elif name == "polarized":
+            resolved = bool(value)
+            if resolved != model.polarized:
+                routing = (
+                    [
+                        channel
+                        for pair in zip_longest(model.parallel, model.perpendicular)
+                        for channel in pair
+                        if channel is not None
+                    ]
+                    if model.polarized
+                    else list(model.parallel)
+                )
+                settings = deepcopy(model.setup)
+                settings["polarization_resolved"] = resolved
+                detector = settings.get("detectors", {}).get(model.detector)
+                if detector is not None:
+                    detector["chs"] = routing
+                # The shared callback reselects the detector; retain the Inputs overrides.
+                overrides = model.filetype, model.binning, model.g_factor
+                app.editor.load_definition(settings)
+                if detector is None:
+                    model.parallel = routing[::2] if resolved else routing
+                    model.perpendicular = routing[1::2] if resolved else []
+                model.filetype, model.binning, model.g_factor = overrides
+                model.update_output_filename()
         elif name == "dt_ns":
             if float(value) > 0:
                 model.dt_ns, model.dt_manual = float(value), True
@@ -93,6 +122,8 @@ class HistogramFields:
     def enabled(self, name):
         app = self._app
         model = app.model
+        if name == "demo":
+            return not app.job.running and app.editor._future is None
         if name in ("compute",):
             return bool(model.selected_files()) and not app.job.running
         if name == "save":
@@ -120,7 +151,7 @@ class HistogramApp(TourTarget, ImApp):
         self.run_spec = {"sections": [p for p in spec["sections"] if p.get("title") == "Run"]}      # always on top
         self.spec = {"sections": [p for p in spec["sections"] if p.get("title") != "Run"]}
         for section in self.walk(self.spec["sections"]):
-            if section.get("kind") == "text":
+            if section.get("kind") in ("text", "str"):
                 section.pop("width", None)                  # a text field takes the dock's width, never more
         self.labels = LabelColumn()
         self.form = FormState()
@@ -226,6 +257,25 @@ class HistogramApp(TourTarget, ImApp):
             self.model.message = f"{len(self.model.bid_files)} burst selection(s) queued."
             self.find_sources()
 
+    def demo(self):
+        """Queue a known synthetic PTU without changing saved setups or starting analysis."""
+        if not self.fields.enabled("demo"):
+            return False
+        from ..demo import SETUP, demo_folder, make_demo
+
+        try:
+            source = make_demo(demo_folder())
+        except (OSError, RuntimeError) as error:
+            self.model.message = tr("Could not generate demonstration: {error}").format(error=error)
+            return False
+        self.model = HistogramModel()
+        self.editor.load_definition(SETUP)
+        self.model.auto_save = False
+        self.add_files([source])
+        self.model.message = tr("Synthetic demo queued: 3000 VV + 1500 VH photons. Press Compute.")
+        self.docks.focus("inputs")
+        return True
+
     def run(self, operation, on_complete=None):
         if self.job.running or self.editor._future is not None:
             return False
@@ -294,6 +344,7 @@ class HistogramApp(TourTarget, ImApp):
             return snapshot
 
         def publish(model):
+            self.editor.load_definition(model.setup)
             self.model = model
             self.input_signature = self.fingerprint()
             if auto_transfer:
@@ -585,4 +636,14 @@ class HistogramApp(TourTarget, ImApp):
 
 
 def create_app(reader=None, add_dataset=None):
+    """Create the declared native histogram workflow and its optional I/O callbacks."""
     return HistogramApp(reader=reader, add_dataset=add_dataset)
+
+
+def create_host(parent=None):
+    """Host the existing native workflow for a remaining legacy Qt caller."""
+    from emtk.qt_host import ControlHost
+
+    host = ControlHost(create_app(), parent=parent)
+    host.setWindowTitle(tr("Histogram-Microtime"))
+    return host
