@@ -236,3 +236,10 @@ why the seed's job is only to be non-degenerate and visible.
 pushes measurements in afterwards left the Files dock empty while the estimate
 ran on files it did not show — which reads as "the tool has no data". The
 embedded widget now re-syncs on the model's own notification.
+
+
+## Burst Selection legacy fallback retirement — 2026-10-07
+
+The unused legacy GUI/assets and runtime selector are removed. Public BurstSelectionTool/wizard retain the implemented modern Qt tool; the production Burst Analysis hub still uses the existing native factory. Native model/backend/search and output contracts are unchanged. Frozen real m000/m001 runs retain198 bursts (71/127),353909 photons/45868 selected, active71×10 table, ten numeric-column hashes, settings and72 control IDs. All10 after scenes were inspected against preserved before evidence; the loaded legacy143-row BUR diagnostic is not a legacy search rerun. Prior shared JSON/Preview controls are added by their earlier unit; existing header elision/read-clock0 are qualified rather than claimed as new corrections.
+
+Parent26 owning runtime cases and968 available guard/import cases pass (16expectedskips), scoped Ruff4/mypy2 clean. Current packaged instructions no longer recommend the deleted selector: four dated originals are archived in [history](../validation/release-readiness-w1/burst-selection-retirement/package-notes-history.zip), current reference paths remain and foreign verification formatting is preserved. Existing paired theory/workflow and one real figure accompany the source; canonical catalogue regeneration is byte-identical for the owned page. [Acceptance](../validation/release-readiness-w1/burst-selection-retirement/acceptance.json). Next is Channel14 and Designerhelpers; modern Qt surface retirement stays with W9.

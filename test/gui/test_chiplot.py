@@ -540,8 +540,6 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.burst.burst_background.gui.sections",
         # Batch 21
         "chisurf.plugins.burst.burst_browser.gui.sections",
-        # Batch 23
-        "chisurf.plugins.burst.burst_selection.gui.legacy.burst_selector",
         # NB: irf_estimator.gui.tool (Batch 24) is intentionally NOT listed — like
         # burst_fcs_correlator it transitively imports IMP, which segfaults in this
         # shared test process. Verified standalone + screenshot-checked instead.

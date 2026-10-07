@@ -55,7 +55,6 @@ chisurf/plugins/burst/accurate_fret/__init__.py
 chisurf/plugins/burst/burst_2cde/tests/test_gui.py
 chisurf/plugins/burst/burst_bva/tests/test_construction_smoke.py
 chisurf/plugins/burst/burst_h2mm/core/surrogate.py
-chisurf/plugins/burst/burst_selection/__init__.py
 chisurf/plugins/burst/burst_selection/api/mmfdb.py
 chisurf/plugins/burst/burst_selection/api/replay.py
 chisurf/plugins/burst/burst_selection/api/transformer.py

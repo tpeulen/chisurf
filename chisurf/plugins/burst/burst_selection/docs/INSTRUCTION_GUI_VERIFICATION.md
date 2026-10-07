@@ -2,18 +2,19 @@
 
 ## Goal
 
-Validate the migrated PyQt GUI (`gui/tool.py`) against the legacy GUI
-(`gui/legacy/burst_selector.py`) in a real desktop environment with Qt
-rendering.
+Verify the current native Burst Analysis hub selection step and, separately,
+the retained modern Qt tool (`gui/tool.py`). The public tool/wizard still uses
+modern Qt; the older fallback is removed and cannot be launched for comparison.
 
-This is a **manual** procedure — no existing test can exercise
-`QApplication` widgets headlessly on this system.
+Use real inputs, owning measured oracles and archived before control inventories.
+Headless QApplication tests are available, but construction does not prove
+readable plots or reachable controls. The detailed checklist below describes
+the retained modern Qt surface; native controls have their own measured receipt.
 
 ## Background
 
-The migrated GUI has been incrementally fixed and passes all automated
-tests, but has **never been opened in a desktop session**. Several
-classes of issue can only be caught visually:
+Visual verification complements the bounded source/binding tests. Several
+classes of issue need actual rendered states:
 
 - Plot rendering (pyqtgraph)
 - Layout overflow / clipping
@@ -27,17 +28,21 @@ classes of issue can only be caught visually:
 ### 1. Launch the migrated GUI
 
 ```bash
-cd /Users/tpeulen/dev/chisurf
-python -m chisurf
+pixi run -e test python -m chisurf
 ```
 
-From the menu bar:
-**Spectroscopy > Single-Molecule > Burst-Selection**
+Open the native **Burst Analysis** hub selection step. For the separately
+retained modern Qt wizard, use:
+
+```bash
+pixi run -e test python -m chisurf.plugins.burst.burst_selection.wizard
+```
 
 ### 2. Visual checklist
 
-Compare against the legacy GUI (launched by setting
-`USE_LEGACY_GUI = True` in `__init__.py` and restarting).
+Compare with archived before inventories, not a new fallback launch. The old
+Legacy-column marks below record historical intended controls; they do not
+assert current legacy availability or acceptance of the new surface.
 
 | Check | Expected | Legacy | Migrated |
 |-------|----------|--------|----------|
@@ -118,14 +123,15 @@ After analysis:
 
 - All items in the visual and functional checklists pass
 - No crashes, no unhandled exceptions in the console
-- `.bur` output from migrated GUI is byte-identical to legacy output for the
-  same input
+- Saved `.bur` output round-trips through the API and matches its owning
+  measured oracle; the archived loaded fallback diagnostic is not a legacy
+  search rerun or numerical parity proof
 
 ## If something fails
 
-Fix the issue directly in `gui/tool.py` and re-test. Do NOT fall back to
-`USE_LEGACY_GUI = True` except for comparison — the goal is to identify and
-fix all migrated GUI issues.
+Fix the root in the owning surface or UI toolkit and re-test the actual
+interface. Do not add a package switch, fallback module or fake legacy class.
+Preserve scientific settings and output contracts.
 
 ## After verification
 
@@ -133,4 +139,5 @@ Update `STATUS.md`:
 
 - Mark all checklist items as ✅ or ❌
 - Note any fixes that were applied
-- If fully passing, advance to `INSTRUCTION_TTTRLIB_BURSTFILTER.md`
+- Treat future engine/framework changes as separate maintained plans, not an
+  automatic consequence of GUI verification

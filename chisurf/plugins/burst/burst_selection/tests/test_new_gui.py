@@ -17,7 +17,6 @@ from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups import (
     setup_id_for_name,
 )
-from chisurf.plugins.burst.burst_selection import USE_LEGACY_GUI
 from chisurf.plugins.burst.burst_selection.api.models import BurstFilterMode
 from chisurf.plugins.burst.burst_selection.gui import tool as tool_module
 from chisurf.plugins.burst.burst_selection.gui.client import BurstSelectionClient
@@ -1781,10 +1780,11 @@ def test_client_load_diagnostics_accepts_unset_microtime_ranges() -> None:
     assert len(diag["selected"]) == len(diag["tttr"])
 
 
-def test_plugin_uses_migrated_gui_by_default() -> None:
-    """The plugin-level switch should select the migrated GUI."""
-    assert USE_LEGACY_GUI is False
-    assert BurstSelectionTool.__name__ == "BurstSelectionTool"
+def test_public_plugin_resolves_the_current_gui_tool() -> None:
+    """The public launcher retains the current tool without a legacy selector."""
+    from chisurf.plugins.burst.burst_selection import BurstSelectionTool as PublicTool
+
+    assert PublicTool is BurstSelectionTool
 
 
 def test_analysis_worker_reports_per_file_progress_to_the_task() -> None:

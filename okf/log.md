@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 Burst13 fallback retirement landed:**4legacy/assets deletions and obsolete switch/callback/reference cleanup preserve modern Qt/wizard/native/backend. Parent26 runtime+968available guards/import checks (16skips) pass; real198bursts/71×10 column hashes/settings/72controls and10after PNGs accepted. Four stale packaged instruction originals moved toOKFhistory; supported paths/current notes preserved without adopting foreign formatting. Paired guide/concept/one realfigure and identical regenerated catalogue included. Next Channel14→Designerhelpers. [Acceptance](validation/release-readiness-w1/burst-selection-retirement/acceptance.json).
+
 - **2026-10-07 · Burst13 midway ownership saved:** source9paths/4deletes frozen/composed; parent26 owning cases pass, numeric hashes/settings/72controls and10after scenes accepted. Publication still waits exact stale packaged switch/history instructions; parent paired docs/nativefigure ready. Durable source-before/after/patch/render/proof archive and current-job handoff let another agent continue without chat/private snapshots. Channel14 remains held. [Resume](validation/release-readiness-w1/current-job/handoff.md).
 
 - **2026-10-07 · Current-job handoff advanced to Burst13:** Microtime f902c09dd and its board scopes are complete; source13 production is released with fresh9path snapshots and exact fallback/assets/flag/callback scope. Modern Qt tool/wizard and native scientific routines remain. The durable handoff/state now identify source13 next steps and preserve the completed Microtime ownership bundle with17accepted renders/composition proofs; no dependency on chat context. [Resume](validation/release-readiness-w1/current-job/handoff.md).

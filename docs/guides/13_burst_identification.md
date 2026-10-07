@@ -32,6 +32,25 @@ max-tree and Bayesian Blocks — trade sensitivity against false positives.
 
 ### Open the tool
 
+The Burst Analysis workflow hosts the existing native emtk selection panel.
+Its public modern Qt tool and wizard remain available to existing callers
+while the shell migration continues. The earlier legacy fallback, its assets
+and the USE_LEGACY_GUI switch are retired; restarting or changing a switch
+cannot select that implementation. The search/API/backend and output contracts
+are unchanged.
+
+```{figure} figures/burst_native_selection_verified.png
+:name: fig-burst-native-selection-verified
+:width: 100%
+
+The native panel after processing copied bundled m000/m001 SPC measurements
+with the preserved test setup and filter settings: 198 bursts (71/127),
+353,909 photons and 45,868 selected photons. The active m000 table has 71 rows
+and ten numeric columns; every numeric-column hash and setting matched the
+preserved before run. This two-file validation is separate from the ten-file
+example below and is not an instrument-calibration claim.
+```
+
 **Spectroscopy → Single-Molecule → Burst Analysis → 2. Burst Selection**. The same panel opens on
 its own as *Spectroscopy:Single-Molecule:Burst Selection*; in the workflow the
 files of step 1 carry over. Add files with 📂 (or drop them on the **Files**

@@ -16,21 +16,16 @@ else:
     name = "Spectroscopy:Single-Molecule:Burst-Selection"
     cli_entrypoint = "burst-selection=chisurf.plugins.burst.burst_selection.cli:cli"
 
-USE_LEGACY_GUI = False
-
-__all__ = ["BurstSelectionTool", "USE_LEGACY_GUI"]
+__all__ = ["BurstSelectionTool"]
 
 
 def __getattr__(name: str):
-    """Lazily import the GUI tool (PRD-23: no Qt import as a package side effect).
+    """Lazily import the current GUI tool without a Qt package import side effect.
 
     Keeps ``from ...burst_selection import BurstSelectionTool`` working while the
     Qt-free ``api``/``cli`` submodules can be imported headlessly (no Qt needed).
     """
     if name == "BurstSelectionTool":
-        if USE_LEGACY_GUI:
-            from .gui.legacy.burst_selector import BurstSelectionTool
-        else:
-            from .gui.tool import BurstSelectionTool
+        from .gui.tool import BurstSelectionTool
         return BurstSelectionTool
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
