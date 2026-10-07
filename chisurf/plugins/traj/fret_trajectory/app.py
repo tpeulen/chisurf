@@ -4,7 +4,7 @@ Drawn from ``structure2transfer.view.json`` by the shared trajectory-tool app:
 the Reference panel (trajectory and topology rows of the custom ``fret_traj_io``
 section, the stride), the Dipole atoms panel (the custom ``fret_atom_pairs``
 section: chain → residue → atom pickers for the two donor and two acceptor
-atoms, as the Qt PDBSelectors cascade), Parameters, and Process (the custom
+atoms), Parameters, and Process (the custom
 ``fret_run`` button and the log).
 """
 

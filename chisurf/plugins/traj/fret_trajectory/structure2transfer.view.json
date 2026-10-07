@@ -1,5 +1,5 @@
 {
-  "_comment": "Declarative AutoForm layout for the Structure-to-Transfer (Trajectory->FRET) tool. A trajectory picker + read stride (Reference panel), the donor/acceptor dipole atom-pair selectors hosting four PDBSelector widgets (Dipole atoms panel), the dye parameters (R0, tau0, dipole averaging, frame time-step) and the Process button with a live log. Replaces the former structure2transfer.ui.",
+  "_comment": "Declarative native AutoForm layout for the Trajectory-to-FRET tool. Trajectory/topology sources and read stride (Reference), twelve cascading donor/acceptor chain/residue/atom choices (Dipole atoms), dye parameters (R0, tau0, dipole averaging, frame time-step), and Process with its live log.",
   "sections": [
     {
       "type": "panel",

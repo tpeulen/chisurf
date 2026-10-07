@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: retire legacy PDBSelector/FRET UI and host the existing native app in the live trajectory hub;69 parent targeted tests plus665 contracts pass, actual116x6 output byte-identical and four before/after/close PNGs inspected. Preserve eight tabs and scientific bodies; owned close cancels queued work. Final mixed capture exits0, resolving its measured historical shutdown issue. Paired docs and catalogue updated; rows8/9 are next. [Receipt](validation/release-readiness-w1/fret-retirement/receipt.md).
+
 - PRD-154 W1: synchronize the two translated legacy MMFDB demo captions with the owning packaged synthetic table contract;2 parent actual-handler regressions pass, six before/after state PNGs inspected and genuine120/63 result preserved. Declining starts no task; other controls, native UI, storage and foreign hunks remain untouched. [Receipt](validation/release-readiness-w1/mmfdb-captions/receipt.json).
 
 - PRD-154 W1: complete configured native Structure reader retirement;10 parent targeted/root/import checks pass, final148L host PNG inspected, lazy filename and actual cached-source counts preserved. Retire modelling/controller and uncalled folder/thread/UI/export chain while preserving PDBSelector for row7 and all foreign hunks/modes. Global communication debt stays explicit. [Receipt](validation/release-readiness-w1/structure-retirement/receipt.md).

@@ -1,12 +1,13 @@
-"""GUI (widget-level) tests for the Trajectory→FRET tool."""
+"""Native-surface tests for the Trajectory→FRET tool."""
 
 import pathlib
+import time
 
 import numpy as np
-from qtpy import QtWidgets
+from emtk.testing import Driver
 
 from chisurf.core.structure.trajectory_data import Trajectory
-from chisurf.gui.widgets.pdb import PDBSelector
+from chisurf.plugins.traj.fret_trajectory.app import FretTrajectoryApp, make_app
 
 
 def _fret_trajectory(path, n_frames: int = 5) -> str:
@@ -45,105 +46,78 @@ def _fret_trajectory(path, n_frames: int = 5) -> str:
     return str(topology_path)
 
 
-def test_structure2transfer_creation(qapp, qtbot):
-    from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
-
-    widget = Structure2Transfer()
-    qtbot.addWidget(widget)
-    assert isinstance(widget, QtWidgets.QWidget)
-    # AutoForm-backed: a Qt-free view-model drives a single AutoForm.
-    assert hasattr(widget, "model")
-    assert hasattr(widget, "auto_form")
-
-
-def test_widget_properties_delegate_to_model(qapp, qtbot):
-    from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
-
-    widget = Structure2Transfer()
-    qtbot.addWidget(widget)
-    widget.trajectory_file = "/data/example.h5"
-    widget.t_step = 0.25
-    widget.forster_radius = 55.0
-    widget.tau0 = 3.5
-    widget.stride = 3
-    assert widget.trajectory_file == "/data/example.h5"
-    assert widget.model.trajectory_file == "/data/example.h5"
-    assert widget.t_step == 0.25
-    assert widget.forster_radius == 55.0
-    assert widget.tau0 == 3.5
-    assert widget.stride == 3
+def test_native_surface_creation():
+    """The shipped factory constructs its declared native form and scientific model."""
+    app = make_app()
+    try:
+        assert isinstance(app, FretTrajectoryApp)
+        assert app.model.view_spec().sections
+        assert app.form.custom["fret_atom_pairs"]
+    finally:
+        app.close()
 
 
-def test_form_renders_with_live_log(qapp, qtbot):
-    from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
-
-    widget = Structure2Transfer()
-    qtbot.addWidget(widget)
-    widget.resize(560, 480)
-    widget.show()
-    qapp.processEvents()
-
-    # The AutoForm built a non-trivial section tree ...
-    assert widget.auto_form.findChildren(QtWidgets.QWidget)
-    # ... including the four PDBSelector atom pickers ...
-    selectors = widget.auto_form.findChildren(PDBSelector)
-    assert len(selectors) == 4
-    # ... the picker/run tool buttons ...
-    assert widget.auto_form.findChildren(QtWidgets.QToolButton)
-    # ... and the live log (info section bound to log_html) shows the initial entry.
-    browsers = widget.auto_form.findChildren(QtWidgets.QTextBrowser)
-    assert browsers
-    assert any("Ready" in b.toPlainText() for b in browsers)
-
-    # The whole widget paints headlessly without Qt errors.
-    pixmap = widget.grab()
-    assert not pixmap.isNull()
-    assert pixmap.width() > 0 and pixmap.height() > 0
+def test_surface_settings_are_the_scientific_model_values():
+    """Native settings retain the original timing, radius, lifetime and stride values."""
+    app = make_app()
+    try:
+        model = app.model
+        model.trajectory_file = "/data/example.h5"
+        model.t_step, model.forster_radius, model.tau0, model.stride = 0.25, 55.0, 3.5, 3
+        assert model.trajectory_file == "/data/example.h5"
+        assert (model.t_step, model.forster_radius, model.tau0, model.stride) == (
+            0.25,
+            55.0,
+            3.5,
+            3,
+        )
+    finally:
+        app.close()
 
 
-def test_gui_interaction_process(qapp, qtbot, tmp_path):
-    """Drive the real widgets: load the trajectory, pick atoms, click Process."""
-    from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
+def test_form_renders_with_live_log_and_dipole_choices(tmp_path):
+    """Real atom names, the Process control and the initial log remain reachable."""
+    source = tmp_path / "traj.dcd"
+    topology = _fret_trajectory(source)
+    app = make_app()
+    try:
+        app.model.set_topology(topology)
+        app.model.set_trajectory(str(source))
+        driver = Driver(app, (800, 700))
+        painter = driver.frame(2)
+        assert {"Donor", "Acceptor", "Chain", "Residue", "Atom", "Log"}.issubset(painter.strings)
+        assert driver.rect("process")
+        assert app.atom_index().name(0) == "N"
+        assert app.model.log_text()[0].endswith("Ready")
+    finally:
+        app.close()
 
+
+def test_gui_interaction_process(tmp_path):
+    """Click the native Process action and write the same five-frame transfer table."""
     n_frames = 5
     source = tmp_path / "traj.dcd"
     output = tmp_path / "transfer.csv"
     topology = _fret_trajectory(source, n_frames=n_frames)
 
-    widget = Structure2Transfer()
-    qtbot.addWidget(widget)
-    widget.show()
-    qapp.processEvents()
-
-    # Load the trajectory through the real view-model (populates the pickers).
-    widget.model.set_topology(topology)
-    widget.model.set_trajectory(str(source))
-    qapp.processEvents()
-
-    # The atom-pair section hosts the four real PDBSelector widgets.
-    selectors = widget.auto_form.findChildren(PDBSelector)
-    assert len(selectors) == 4
-    for selector in selectors:
-        assert selector.atoms is not None
-
-    # Choose donor (0, 1) and acceptor (2, 3) through the hosting section's setters,
-    # which drive the actual PDBSelector combos and push indices to the model.
-    section = widget.model.atom_pair_section
-    section.set_donor(0, 1)
-    section.set_acceptor(2, 3)
-    qapp.processEvents()
-    assert tuple(widget.donor) == (0, 1)
-    assert tuple(widget.acceptor) == (2, 3)
-
-    # Invoke the Process action headlessly (output path supplied instead of a dialog).
-    result = widget.model.run_section.run(output_file=str(output))
-    qapp.processEvents()
-
-    # Functional result: the model computed a transfer series and wrote the file.
-    assert output.exists()
-    assert result is not None
-    assert result.shape == (n_frames, 6)
-    assert np.all(np.isfinite(result))
-    assert any(
-        "Finished" in b.toPlainText() for b in widget.auto_form.findChildren(QtWidgets.QTextBrowser)
-    )
+    app = make_app()
+    try:
+        app.model.set_topology(topology)
+        app.model.set_trajectory(str(source))
+        app.model.donor, app.model.acceptor = (0, 1), (2, 3)
+        driver = Driver(app, (800, 700))
+        driver.click("process")
+        assert app.dialog is not None
+        app.dialog.draw = lambda: [str(output)]
+        driver.frame(1)
+        deadline = time.monotonic() + 10
+        while app.running:
+            assert time.monotonic() < deadline, "processing did not finish"
+            driver.frame(1)
+            time.sleep(0.01)
+        result = np.loadtxt(output, skiprows=1)
+        assert result.shape == (n_frames, 6)
+        assert np.all(np.isfinite(result))
+        assert any("Finished" in line for line in app.model.log_text())
+    finally:
+        app.close()

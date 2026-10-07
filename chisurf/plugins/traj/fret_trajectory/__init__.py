@@ -15,19 +15,13 @@ if _manifest is not None:
 else:
     name = "Structure:Trajectory:FRET"
 
-__all__ = ["Structure2Transfer"]
+__all__ = ["FretTrajectoryApp", "make_app"]
 
 
 def __getattr__(attribute):
-    # Lazy export: the Qt widget (and its qtpy import) must not load before the
-    # native EMTK factory declared in the manifest.
-    if attribute == "Structure2Transfer":
-        from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
+    """Resolve the native surface lazily without loading an optional Qt host."""
+    if attribute in __all__:
+        from chisurf.plugins.traj.fret_trajectory import app
 
-        return Structure2Transfer
+        return getattr(app, attribute)
     raise AttributeError(attribute)
-
-
-if __name__ == "plugin":
-    window = __getattr__("Structure2Transfer")()
-    window.show()

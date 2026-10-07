@@ -9,7 +9,6 @@ from qtpy import QtGui, QtWidgets
 
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.gui.widgets.tools import ChisurfDockTool
-from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
 from chisurf.plugins.traj.potential_energy.widget import PotentialEnergyWidget
 from chisurf.plugins.traj.traj_align.widget import AlignTrajectoryWidget
 from chisurf.plugins.traj.traj_convert.widget import MDConverter
@@ -19,6 +18,15 @@ from chisurf.plugins.traj.traj_rotate_translate.widget import RotateTranslateTra
 from chisurf.plugins.traj.traj_save_topology.widget import SaveTopology
 
 ToolFactory = Callable[[], QtWidgets.QWidget]
+
+
+def _make_fret_host() -> QtWidgets.QWidget:
+    """Host the declared native FRET tool inside the remaining Qt workspace."""
+    from emtk.qt_host import ControlHost
+
+    from chisurf.plugins.traj.fret_trajectory.app import make_app
+
+    return ControlHost(make_app())
 
 
 class TrajectoryToolsTool(ChisurfDockTool):
@@ -34,6 +42,7 @@ class TrajectoryToolsTool(ChisurfDockTool):
         self.resize(850, 520)
         self._tools: dict[str, QtWidgets.QWidget] = {}
         self._active_tool = ""
+        self._fret_host_closed = False
         self._init_ui()
         self._add_tools()
         self._select_tool(next(iter(self._tools), ""))
@@ -72,7 +81,7 @@ class TrajectoryToolsTool(ChisurfDockTool):
             ("Align", AlignTrajectoryWidget),
             ("Convert", MDConverter),
             ("Energy Calc", PotentialEnergyWidget),
-            ("FRET", Structure2Transfer),
+            ("FRET", _make_fret_host),
             ("Join", JoinTrajectoriesWidget),
             ("Remove Clashed", RemoveClashedFrames),
             ("Rot Translate", RotateTranslateTrajectoryWidget),
@@ -119,6 +128,11 @@ class TrajectoryToolsTool(ChisurfDockTool):
         self.status_bar.showMessage(f"{self._active_tool}: {paths[0].name}")
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        """Persist the window geometry on close."""
+        """Persist geometry and close the workspace's owned native FRET surface."""
         self.save_window_geometry()
+        if not self._fret_host_closed:
+            self._fret_host_closed = True
+            host = self._tools.get("FRET")
+            if host is not None:
+                host.close()
         super().closeEvent(event)

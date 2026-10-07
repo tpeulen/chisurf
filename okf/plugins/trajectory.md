@@ -41,9 +41,9 @@ buttons — DCD and XTC store coordinates only, so the atom names come from a
 PDB named separately) plus built-in `value`/
 `choice`/`toggle`/`table` field sections over a live `info` log bound to the
 model's `log_html`. Irreducibly-dynamic Qt (the `potential_energy` per-potential
-parameter editor + potentials table, the `fret_trajectory` four `PDBSelector`
-donor/acceptor pickers) lives in bespoke `@register_section` custom widgets that
-drive the Qt-free model.
+parameter editor + potentials table) lives in bespoke `@register_section`
+custom widgets that drive the Qt-free model. FRET now uses the declared native
+form: four cascading chain/residue/atom rows replace its retired Qt selectors.
 
 The view-models are unit-tested headlessly (each ships a `test/` with a
 `test_view_model.py` running the real compute on realistic fixtures, plus a
@@ -60,3 +60,14 @@ workspace.
 
 See also [modelling plugins](/plugins/modelling.md), [compiled modules](/subsystems/compiled-modules.md),
 and [plugin system](/architecture/plugin-system.md).
+
+
+## Native FRET host retirement — 2026-10-07
+
+The FRET manifest and standalone launcher use FretTrajectoryApp. The remaining
+Qt trajectory workspace hosts that same app and closes only its owned FRET
+surface once. Twelve cascading selectors become four native rows; scientific
+parameters and116×6 reference bytes are preserved. PDBSelector and the legacy
+FRET widget/sections retire.69 targeted tests and665 contract checks pass; real
+before/after and clean-close renders inspected.
+[Evidence](../validation/release-readiness-w1/fret-retirement/receipt.md).

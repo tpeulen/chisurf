@@ -215,6 +215,15 @@ What ChiSurf computes:
   ({src}`chisurf/plugins/modelling/fret/core/trajectory.py`) builds an AV per
   frame and returns $\langle E\rangle_\text{AV}$ per frame and label pair.
 
+The trajectory-tools FRET tab and standalone window share the native panel.
+Four chain → residue → atom triples select the dipole endpoints; each triple
+occupies one row and its choices cascade. The layout preserves the atom
+selections, per-frame geometry, units and rate above.
+The hgbp example in the {doc}`trajectory tools guide </guides/81_trajectory_tools>`
+uses stride 4 and a 4 ns donor lifetime and retains the previous 116-row,
+six-column table byte-for-byte, with independent distance, orientation and
+rate checks.
+
 ## Assumptions worth stating
 
 * **One topology for every frame.** A DCD file stores coordinates only. Atom

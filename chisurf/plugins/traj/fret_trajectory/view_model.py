@@ -7,10 +7,9 @@ averaging, read stride) — plus a running log, and performs the actual work by
 driving a :class:`~.traj2fret.CalculateTransfer` engine over the trajectory to
 produce the FRET/transfer time-series and write the CSV output.
 
-It is deliberately free of Qt so the compute can be unit-tested headlessly; the
-GUI (``sections`` + ``gui``) owns all Qt concerns (the trajectory picker, the
-four :class:`~chisurf.gui.widgets.pdb.PDBSelector` atom pickers and the Process
-button) and drives this model. Mirrors
+It is deliberately free of Qt so the compute can be unit-tested headlessly. The
+native app draws the declared trajectory/topology rows, twelve cascading atom
+choices and Process action, and drives this model. Mirrors
 :class:`chisurf.plugins.traj.traj_align.view_model.AlignTrajectoryViewModel`.
 """
 

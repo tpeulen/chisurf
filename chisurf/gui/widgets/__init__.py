@@ -20,7 +20,6 @@ _SUB_PACKAGES = {
     "fortune",
     "node_editor",
     "parameter_editor",
-    "pdb",
     "ribbon",
     "structure",
     "wizard",

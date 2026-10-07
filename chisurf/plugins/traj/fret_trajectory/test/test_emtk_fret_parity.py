@@ -1,16 +1,14 @@
-"""The native Trajectory→FRET at parity with the Qt Structure2Transfer tool.
+"""The native Trajectory→FRET at parity with preserved legacy numerical output.
 
-The Qt tool runs in a subprocess (this process stays Qt-free) on the hgbp1 test
-trajectory with the same dipole atoms: its pickers' choice and its table are compared
-with the emtk app's, and the table against distances, κ² and rates computed here from
-the coordinates (the rate as 3/2 κ² (R0/R)⁶ / τ0).
+The retired Qt tool's successful hgbp1 run was captured before deleting its
+selectors. Its labels, missing-input message and 116×6 table remain an immutable
+fixture. Distances, κ² and rates are also independently computed from coordinates
+(the rate as 3/2 κ² (R0/R)⁶ / τ0).
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -56,45 +54,11 @@ def _loaded(dipoles=True):
     return app
 
 
-_QT = r"""
-import json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.traj.fret_trajectory import sections
-from chisurf.plugins.traj.fret_trajectory.gui import Structure2Transfer
-traj, top, target = sys.argv[1:4]
-told = []
-sections.dialogs.information = lambda parent, title, text: told.append([title, text])
-w = Structure2Transfer()
-m = w.model
-w.model.run_section.run()                             # nothing chosen
-io = w.findChild(sections._TrajectoryIoSection)
-io._load_topology(top); io._load(traj)                 # the topology row now exists in the Qt tool too
-m.stride, m.forster_radius, m.tau0, m.t_step, m.dipoles = 4, 52.0, 4.0, 1.0, True
-pairs = m.atom_pair_section
-pairs.set_donor(1, 20); pairs.set_acceptor(3000, 3010)
-labels = [[s.chain_combo.currentText(), s.residue_combo.currentText(), s.atom_combo.currentText()]
-          for s in (pairs.d1, pairs.d2, pairs.a1, pairs.a2)]
-result = m.run_section.run(target)
-print("FACTS" + json.dumps({"told": told, "labels": labels, "rows": result.tolist(), "log": m._log}))
-"""
-
-
 @pytest.fixture(scope="module")
-def qt(tmp_path_factory):
-    pytest.importorskip("qtpy")
-    target = tmp_path_factory.mktemp("qt") / "fret.csv"
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run([sys.executable, "-c", _QT, TRAJ, TOP, str(target)], capture_output=True, text=True,
-                          timeout=300, env=env, cwd=str(REPO))
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and ("No module named" in proc.stderr or "could not connect to display" in proc.stderr):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt tool's: a skip here once hid a broken topology row.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    facts = json.loads(line[len("FACTS"):])
-    facts["target"] = target
+def legacy():
+    """Read the successful legacy run preserved before selector retirement."""
+    facts = json.loads((HERE / "data" / "legacy_hgbp_fret.json").read_text())
+    assert np.asarray(facts["rows"]).shape == (116, 6)
     return facts
 
 
@@ -116,13 +80,17 @@ def reference():
 
 
 # 1. the Qt tool's pickers and table; the table is the physics
-def test_processing_writes_what_the_qt_tool_writes(qt, reference, tmp_path):
+def test_processing_writes_the_preserved_legacy_output(legacy, reference, tmp_path):
     app = _loaded()
     try:
         _draw(app)
         index = app.atom_index()
         labels = [[*map(str, index.where(i)), index.name(i)] for i in (*DONOR, *ACCEPTOR)]
-        assert labels == qt["labels"] == [["A", "1", "CA"], ["A", "3", "C"], ["B", "332", "HA"], ["B", "334", "CA"]]
+        assert (
+            labels
+            == legacy["labels"]
+            == [["A", "1", "CA"], ["A", "3", "C"], ["B", "332", "HA"], ["B", "334", "CA"]]
+        )
         app.begin_save()
         assert app.dialog.title == "Output-file" and app.dialog.filename == "hgbp1_transition_fret.csv"
         target = tmp_path / "fret.csv"
@@ -131,7 +99,7 @@ def test_processing_writes_what_the_qt_tool_writes(qt, reference, tmp_path):
         assert app.dialog is None and app.running
         _settle(app)
         ours = np.loadtxt(target, skiprows=1)
-        theirs = np.asarray(qt["rows"])
+        theirs = np.asarray(legacy["rows"])
         assert ours.shape == theirs.shape == (116, 6)
         np.testing.assert_allclose(ours, theirs, rtol=1e-3, atol=1e-2)
         r, kappa, rate = reference
@@ -174,11 +142,12 @@ def test_the_trajectory_may_come_before_its_topology():
         app.close()
 
 
-def test_nothing_chosen_and_a_cancel_answer_as_the_qt_tool_does(qt, tmp_path):
+def test_nothing_chosen_and_a_cancel_preserve_the_legacy_answer(legacy, tmp_path):
     app = FretTrajectoryApp()
     try:
         app.begin_save()
-        assert [app.status] == [text for _title, text in qt["told"]] == ["Open a trajectory first."]
+        assert [app.status] == [text for _title, text in legacy["told"]] == ["Open a trajectory first."]
+        app.close()
         app = _loaded()
         app.begin_save()
         app.dialog.draw = lambda: False

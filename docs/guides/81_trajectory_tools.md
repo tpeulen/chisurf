@@ -48,11 +48,12 @@ PDB or mmCIF of the same molecule with the same atoms in the same order. A PDB
 or mmCIF on its own is read as a one-frame trajectory. HDF5 and XTC
 trajectories are no longer read.
 
-**Example data.** Every number and screenshot below uses the T4 lysozyme
+**Example data.** The T4 lysozyme worked examples use the
 normal-mode ensemble in
 `chisurf/plugins/modelling/fret/examples/olga_t4l/`:
 `3GUN_NMSim_cl-rep_894.dcd` (894 frames) with the topology
 `3GUN_NMSim_cl-rep-001.pdb` (1293 heavy atoms, 162 Cα).
+The native FRET figure also shows the hgbp example described in that section.
 
 ## Align
 
@@ -210,19 +211,25 @@ the radius of gyration is 15.9 Å (15.3–16.4 Å over the frames). `FrameNbr` i
 
 Writes, for every frame, the donor–acceptor distance, the orientation factor
 and the FRET rate. The dye transition dipoles are taken from two atoms each.
+The hub's FRET tab hosts the same native panel as the standalone FRET window.
+Its **Reference**, **Dipole atoms**, **Parameters** and **Process** sections
+retain file browse and drops, settings, output selection and the live log.
 
-```{figure} figures/traj_tools_fret.png
+```{figure} figures/traj_tools_fret_native_hgbp.png
 :name: fig-traj-tools-fret
 :width: 100%
 
-The FRET tab with Cα→Cβ of residue 36 as the donor dipole and of residue 132
-as the acceptor dipole, R0 = 52 Å, τ0 = 4 ns. Each dipole is two atom
-pickers (chain, residue, atom).
+The native FRET panel inside Trajectory Tools after processing the hgbp
+trajectory at stride 4, R0 = 52 Å and τ0 = 4 ns. The donor atom indices are
+(1, 20), the acceptor indices (3000, 3010); the log confirms 116 output frames.
 ```
 
 * **Trajectory**, **Topology** (the PDB naming the atoms; either may be chosen first), **Stride**.
 * **Dipole atoms**: two atoms for the **Donor** and two for the **Acceptor**.
-  The distance is taken between the dipole centres.
+  Each of the four selectors puts chain, residue and atom on one horizontal
+  row; donor and acceptor sit side by side. All twelve choices cascade: a
+  chain limits its residues, and a residue limits its atoms. The distance is
+  taken between the dipole centres.
 * **R0 [Ang]**: the Förster radius for κ² = 2/3.
 * **τ0 [ns]**: donor lifetime without acceptor.
 * **t-step [ns]**: time between frames, which sets the `time[ns]` column.
@@ -230,6 +237,25 @@ pickers (chain, residue, atom).
   only the first atom of each dye is used and κ² = 2/3.
 * **▶ Process trajectory** writes the table. With several trajectories each
   one gets `<name>.<i>.csv`.
+
+The inherited defaults are stride 1, R0 = 52 Å, τ0 = 2.6 ns, t-step = 1 ns and
+dipoles enabled. The worked scenes deliberately use a 4 ns donor lifetime.
+For the hosted figure, choose `hgbp1_transition.dcd` with `topol.pdb` from
+`test/data/atomic_coordinates/trajectory/hgbp1/` and the atom indices above.
+At stride 4 and τ0 = 4 ns this produces the accepted 116×6 table byte-for-byte;
+the distance, orientation and rate are also checked directly from coordinates.
+
+Open the same panel as a standalone native window:
+
+```bash
+csg_traj_fret_analysis --size 1200x800
+python -m chisurf.emtk --plugin traj_fret --size 1200x800
+```
+
+Closing the parent Trajectory Tools hub closes its owned FRET panel once and
+cancels queued FRET work. The seven other tool tabs retain their existing
+ownership. Headless calculation uses `FretTrajectoryViewModel`, as shown
+[below](#headless).
 
 The output columns are `Frame`, `time[ns]`, `RDA[Ang]`, `kappa`, `kappa2` and
 `FRETrate[1/ns]`, with $k = \tfrac32\,\kappa^2\,(R_0/R)^6/\tau_0$. On the
