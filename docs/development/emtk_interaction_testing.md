@@ -154,3 +154,15 @@ Legacy loader/configuration removal follows the CSV/SDT/simulator ports.
 SDT source configuration is explicit in its constructor and stays lazy; it
 works with the committed base reader independently of the pending CSV port.
 A missing source can be restored and is opened only for preview/import.
+
+
+## Session curves retain group-member identity
+
+Session curve inputs use ChiSurfAPI, separately from file/MMFDB materialization.
+Dataset summaries retain the outer index and list direct members, including
+one-member groups. Keep the parent UID and selected member UID together.
+get_dataset_info/get_dataset_curve_data accept member_uid; an unknown supplied
+UID fails without index/name fallback and never changes the active group member.
+IRF/model dataset actions forward these identities while retaining fit_index
+and action_fixed slots; a copied IRF retains the selected name.
+The native Simulator picker integration follows this API prerequisite.

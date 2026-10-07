@@ -193,53 +193,48 @@ class ChiSurfAPI:
     # ── datasets ─────────────────────────────────────────────────
 
     def list_datasets(self) -> list[dict[str, Any]]:
+        """Return owning-session summaries with stable indices and direct group members."""
         if self.mode == "server" and self.client is not None:
             return self.client.dataset__list()
-        result: list[dict[str, Any]] = []
-        for idx, d in enumerate(self._state.datasets):
-            result.append(
-                {
-                    "index": idx,
-                    "uid": str(getattr(d, "unique_identifier", "") or ""),
-                    "name": str(getattr(d, "name", "") or ""),
-                    "type": type(d).__name__,
-                    "experiment": str(getattr(getattr(d, "experiment", None), "name", "") or ""),
-                    "filename": str(getattr(d, "filename", "") or ""),
-                }
-            )
-        return result
+        from chisurf.server.services.datasets import list_datasets
+
+        return list_datasets(self._state)["datasets"]
 
     def get_dataset_info(
-        self, dataset_index: int | None = None, dataset_uid: str | None = None
+        self, dataset_index: int | None = None, dataset_uid: str | None = None,
+        *, member_uid: str | None = None,
     ) -> dict[str, Any]:
+        """Read dataset metadata, optionally identifying one direct child by ``member_uid``."""
         if self.mode == "server" and self.client is not None:
-            return self.client.dataset__get(dataset_index=dataset_index, dataset_uid=dataset_uid)
-        d, idx = _local_dataset(dataset_index, dataset_uid)
-        if d is None:
-            return {"ok": False, "error": "dataset not found"}
-        return {
-            "ok": True,
-            "dataset": {
-                "index": idx,
-                "uid": str(getattr(d, "unique_identifier", "") or ""),
-                "name": str(getattr(d, "name", "") or ""),
-                "type": type(d).__name__,
-                "experiment": str(getattr(getattr(d, "experiment", None), "name", "") or ""),
-                "filename": str(getattr(d, "filename", "") or ""),
-                "length": int(len(getattr(d, "y", []))) if hasattr(d, "y") else None,
-            },
-        }
+            params = {"dataset_index": dataset_index, "dataset_uid": dataset_uid}
+            if member_uid is not None:
+                params["member_uid"] = member_uid
+            return self.client.dataset__get(**params)
+        from chisurf.server.services.datasets import get_dataset_info
+
+        return get_dataset_info(self._state, dataset_index, dataset_uid, member_uid=member_uid)
 
     def get_dataset_curve_data(
-        self, dataset_index: int | None = None, dataset_uid: str | None = None
+        self, dataset_index: int | None = None, dataset_uid: str | None = None,
+        *, member_uid: str | None = None,
     ) -> dict[str, Any]:
+        """Read exact dataset/member arrays without changing a group's active selection."""
         if self.mode == "server" and self.client is not None:
-            return self.client.dataset__curve_data(
-                dataset_index=dataset_index, dataset_uid=dataset_uid
-            )
-        d, _ = _local_dataset(dataset_index, dataset_uid)
+            params = {"dataset_index": dataset_index, "dataset_uid": dataset_uid}
+            if member_uid is not None:
+                params["member_uid"] = member_uid
+            return self.client.dataset__curve_data(**params)
+        from chisurf.server.services.datasets import (
+            NOT_FOUND,
+            _resolve_dataset,
+            _resolve_dataset_member,
+            service_error,
+        )
+
+        parent, index = _resolve_dataset(self._state, dataset_index, dataset_uid)
+        d, member_index = _resolve_dataset_member(parent, member_uid)
         if d is None:
-            return {"ok": False, "error": "dataset not found"}
+            return service_error("dataset not found", error_code=NOT_FOUND)
         try:
             result: dict[str, Any] = {"ok": True}
             x = getattr(d, "x", None)
@@ -254,6 +249,9 @@ class ChiSurfAPI:
             ey = getattr(d, "ey", None)
             if ey is not None:
                 result["ey"] = np.asarray(ey, dtype=float).tolist()
+            if member_uid is not None:
+                result.update(dataset_index=index, dataset_uid=str(getattr(parent, "unique_identifier", "")),
+                              member_index=member_index, member_uid=str(getattr(d, "unique_identifier", "")))
             return result
         except Exception as e:
             return {"ok": False, "error": str(e)}

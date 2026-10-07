@@ -55,8 +55,28 @@ def _find_fits_using_dataset(dataset: Any, state: SessionState) -> list[Any]:
     return dependent
 
 
+def _dataset_members(dataset: Any) -> list[Any] | None:
+    """Return direct members of a domain data group, excluding iterable curves."""
+    from chisurf.core.data import DataGroup
+
+    return list(dataset) if isinstance(dataset, DataGroup) else None
+
+
+def _resolve_dataset_member(dataset: Any, member_uid: str | None = None) -> tuple[Any, int | None]:
+    """Resolve an explicit child UID without changing the group's active member."""
+    if member_uid is None:
+        return dataset, None
+    members = _dataset_members(dataset)
+    if members is None:
+        return None, None
+    matches = [(member, index) for index, member in enumerate(members)
+               if str(getattr(member, "unique_identifier", "")) == member_uid]
+    return matches[0] if len(matches) == 1 else (None, None)
+
+
 def _dataset_dto(
-    dataset: Any, index: int | None, *, include_length: bool = False
+    dataset: Any, index: int | None, *, include_length: bool = False,
+    parent_uid: str | None = None, member_index: int | None = None,
 ) -> dict[str, Any]:
     """Build a serialisable summary dict for a dataset.
 
@@ -68,18 +88,31 @@ def _dataset_dto(
         Positional index.
     include_length : bool
         If ``True``, include the ``length`` field.
+    parent_uid : str, optional
+        Owning group UID for a direct member. ``index`` remains the outer index.
+    member_index : int, optional
+        Position within the owning group; never an index into the session.
 
     """
-    dto = {
+    members = _dataset_members(dataset)
+    empty_group = members is not None and not members
+    dto: dict[str, Any] = {
         "index": index,
         "uid": str(getattr(dataset, "unique_identifier", "") or ""),
         "name": str(getattr(dataset, "name", "") or ""),
         "type": type(dataset).__name__,
-        "experiment": str(getattr(getattr(dataset, "experiment", None), "name", "") or ""),
+        "experiment": "" if empty_group else str(getattr(getattr(dataset, "experiment", None), "name", "") or ""),
         "filename": str(getattr(dataset, "filename", "") or ""),
     }
     if include_length:
-        dto["length"] = int(len(getattr(dataset, "y", []))) if hasattr(dataset, "y") else None
+        dto["length"] = None if empty_group else (
+            int(len(getattr(dataset, "y", []))) if hasattr(dataset, "y") else None)
+    if parent_uid is not None:
+        dto.update(parent_uid=parent_uid, member_index=member_index)
+    elif members is not None:
+        dto["members"] = [_dataset_dto(member, index, include_length=True,
+                                       parent_uid=dto["uid"], member_index=position)
+                          for position, member in enumerate(members)]
     return dto
 
 
@@ -103,10 +136,11 @@ def _resolve_dataset(
 
     """
     datasets = list(state.datasets)
-    if dataset_uid is not None:
+    if dataset_uid:
         for i, dataset in enumerate(datasets):
             if str(getattr(dataset, "unique_identifier", "")) == dataset_uid:
                 return dataset, i
+        return None, -1
     if dataset_index is not None and 0 <= dataset_index < len(datasets):
         return datasets[dataset_index], dataset_index
     return None, -1
@@ -167,6 +201,7 @@ def get_dataset_info(
     state: SessionState,
     dataset_index: int | None = None,
     dataset_uid: str | None = None,
+    member_uid: str | None = None,
 ) -> ServiceResult:
     """Return detailed info for a single dataset.
 
@@ -178,14 +213,19 @@ def get_dataset_info(
         Positional index.
     dataset_uid : str, optional
         Unique identifier.
+    member_uid : str, optional
+        Explicit UID of one direct child within the selected dataset group.
 
     """
-    d, _ = _resolve_dataset(state, dataset_index, dataset_uid)
+    parent, index = _resolve_dataset(state, dataset_index, dataset_uid)
+    d, member_index = _resolve_dataset_member(parent, member_uid)
     if d is None:
         return service_error("dataset not found", error_code=NOT_FOUND)
     return {
         "ok": True,
-        "dataset": _dataset_dto(d, dataset_index, include_length=True),
+        "dataset": _dataset_dto(d, index, include_length=True,
+                                 parent_uid=str(getattr(parent, "unique_identifier", ""))
+                                 if member_uid is not None else None, member_index=member_index),
     }
 
 
@@ -547,9 +587,11 @@ def get_dataset_curve_data(
     state: SessionState,
     dataset_index: int | None = None,
     dataset_uid: str | None = None,
+    member_uid: str | None = None,
 ) -> ServiceResult:
-    """Return x/y/ex/ey arrays for a dataset."""
-    d, _ = _resolve_dataset(state, dataset_index, dataset_uid)
+    """Return x/y/ex/ey for a dataset or explicit direct member, without changing selection."""
+    parent, index = _resolve_dataset(state, dataset_index, dataset_uid)
+    d, member_index = _resolve_dataset_member(parent, member_uid)
     if d is None:
         return service_error("dataset not found", error_code=NOT_FOUND)
     try:
@@ -558,6 +600,9 @@ def get_dataset_curve_data(
         result["y"] = _sanitize_float_list(getattr(d, "y", None))
         result["ex"] = _sanitize_float_list(getattr(d, "ex", None))
         result["ey"] = _sanitize_float_list(getattr(d, "ey", None))
+        if member_uid is not None:
+            result.update(dataset_index=index, dataset_uid=str(getattr(parent, "unique_identifier", "")),
+                          member_index=member_index, member_uid=str(getattr(d, "unique_identifier", "")))
         return result
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)

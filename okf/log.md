@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- PRD-154 W1: retain session-group member identity in local/server DTOs, explicit child reads, generated RPC contracts and actual IRF/model actions.20 new regressions red→green; parent repeats119 targeted API/service/client/protocol/IRF cases. Stale UIDs cannot retarget indices; supplied local SessionState and active group selection are preserved. Native picker/context and grouped remote Add remain explicit simulator gates. [Receipt](validation/release-readiness-w1/session-curve-api/receipt.json).
+
 - PRD-154 W1: remove an accidental SDT prerequisite dependency on the pending CSV initializer. Configure the SDT source explicitly and lazily; committed-base probe proves missing-source construction and real three-curve import/exact calibration.10 targeted tests, Ruff and mypy pass; native layout and ordered loader retirement remain unchanged.
 
 - PRD-154 W1: prepare the original single-PDB StructureReader native declaration, preserving internal-coordinate/read override semantics and showing actual counts.4 reader cases and27 bounded structure/schema cases pass; parent inspected148L against legacy, scoped quality checks clean, mode100755 retained. Ordered YAML/controller/folder retirement remains after CSV/SDT/simulator. [Inventory](validation/release-readiness-w1/structure-prerequisite/structure-148L.json).

@@ -238,12 +238,12 @@ METHOD_PARAM_SCHEMAS = {
     },
     "dataset.get": {
         "required_params": [],
-        "optional_params": ["dataset_index", "dataset_uid"],
+        "optional_params": ["dataset_index", "dataset_uid", "member_uid"],
         "result": "DatasetDetailResult",
     },
     "dataset.curve_data": {
         "required_params": [],
-        "optional_params": ["dataset_index", "dataset_uid"],
+        "optional_params": ["dataset_index", "dataset_uid", "member_uid"],
         "result": "DatasetCurveDataResult",
     },
     "dataset.remove": {

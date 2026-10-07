@@ -164,7 +164,8 @@ def remove_component(name: str, fit: cs.core.fitting.fit.FitGroup = None) -> Non
 
 
 def _resolve_selected_curve(
-    dataset_idx: int, curve_name: str, selector: typing.Any = None
+    dataset_idx: int, curve_name: str, selector: typing.Any = None, *,
+    dataset_uid: str | None = None, member_uid: str | None = None,
 ) -> cs.core.curve.Curve | None:
     """Resolve the curve a data-selector picked, by index then by name.
 
@@ -186,6 +187,9 @@ def _resolve_selected_curve(
         path-like name still resolves.
     selector : typing.Any, optional
         Widget exposing a `datasets` sequence. Absent for pure models.
+    dataset_uid, member_uid : str, optional
+        Stable owning dataset and direct child identities. When supplied,
+        resolution is exact and never falls back to selector positions or names.
 
     Returns
     -------
@@ -193,17 +197,25 @@ def _resolve_selected_curve(
         The resolved curve, or None when neither index nor name matches.
     """
     try:
+        imported = list(getattr(cs, "imported_datasets", []) or [])
+    except Exception:
+        imported = []
+
+    if dataset_uid is not None or member_uid is not None:
+        from chisurf.core.api import _resolve_indexed
+        from chisurf.server.services.datasets import _resolve_dataset_member
+
+        parent, _ = _resolve_indexed(imported, int(dataset_idx), dataset_uid)
+        curve, _ = _resolve_dataset_member(parent, member_uid)
+        return curve
+
+    try:
         selector_datasets = list(getattr(selector, "datasets", []) or [])
     except Exception:
         selector_datasets = []
 
     if 0 <= int(dataset_idx) < len(selector_datasets):
         return selector_datasets[int(dataset_idx)]
-
-    try:
-        imported = list(getattr(cs, "imported_datasets", []) or [])
-    except Exception:
-        imported = []
 
     name = str(curve_name or "").strip()
     if name:
@@ -219,7 +231,9 @@ def _resolve_selected_curve(
     return None
 
 
-def change_irf(dataset_idx: int, irf_name: str, fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def change_irf(dataset_idx: int, irf_name: str, fit: cs.core.fitting.fit.FitGroup = None, *,
+               dataset_uid: str | None = None, member_uid: str | None = None) -> None:
+    """Attach the selected IRF, retaining optional stable parent/member identities."""
     if fit is None:
         gui = cs.cs
         fit = gui.current_fit
@@ -228,13 +242,16 @@ def change_irf(dataset_idx: int, irf_name: str, fit: cs.core.fitting.fit.FitGrou
         dataset_idx,
         irf_name,
         selector=getattr(getattr(fit.model, "convolve", None), "irf_select", None),
+        **({"dataset_uid": dataset_uid, "member_uid": member_uid}
+           if dataset_uid is not None or member_uid is not None else {}),
     )
 
     if irf_curve is None:
         return
 
     for f in fit[fit.selected_fit_index :]:
-        f.model.convolve._irf = cs.core.data.DataCurve(x=irf_curve.x, y=irf_curve.y)
+        f.model.convolve._irf = cs.core.data.DataCurve(
+            x=irf_curve.x, y=irf_curve.y, name=getattr(irf_curve, "name", None) or irf_name)
 
     fit.update()
     _sync_editors(fit)

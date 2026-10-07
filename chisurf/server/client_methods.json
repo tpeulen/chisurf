@@ -1,8 +1,8 @@
 {
   "methods": [
     {"name": "dataset__list", "rpc": "dataset.list", "params": [], "result_key": "datasets", "default": []},
-    {"name": "dataset__get", "rpc": "dataset.get", "params": [{"name": "dataset_index", "default": null}, {"name": "dataset_uid", "default": null}], "result_key": "dataset", "default": {}},
-    {"name": "dataset__curve_data", "rpc": "dataset.curve_data", "params": [{"name": "dataset_index", "default": null}, {"name": "dataset_uid", "default": null}]},
+    {"name": "dataset__get", "rpc": "dataset.get", "params": [{"name": "dataset_index", "default": null}, {"name": "dataset_uid", "default": null}, {"name": "member_uid", "default": null}], "result_key": "dataset", "default": {}},
+    {"name": "dataset__curve_data", "rpc": "dataset.curve_data", "params": [{"name": "dataset_index", "default": null}, {"name": "dataset_uid", "default": null}, {"name": "member_uid", "default": null}]},
     {"name": "dataset__remove", "rpc": "dataset.remove", "params": [{"name": "dataset_indices", "default": null}, {"name": "dataset_uids", "default": null}]},
     {"name": "dataset__clear", "rpc": "dataset.clear", "params": []},
     {"name": "dataset__rename", "rpc": "dataset.rename", "params": [{"name": "new_name", "required": true}, {"name": "dataset_index", "default": null}, {"name": "dataset_uid", "default": null}]},
