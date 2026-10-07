@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **2026-10-07 · W1 detector responsive budget measured:** the JSON footer extra row caused an11px scrollbar at720px, hiding gch below the unchanged700px threshold. Same-row packing restores the original708px table; parent exact guard1pass/0.76s and real tail/mixing edits are verified, with three images inspected. Shared reference-calibration input routing remains active before Microtime acceptance. Local .zed/tasks.json remains present, ignored and untracked with all four original tasks. [Evidence](validation/release-readiness-w1/detector-width/receipt.json).
+
 - **2026-10-07 · W1 native detector Edit JSON restored:** declared complete-definition editor validates before applying, preserves metadata/preview/store identity and keeps Save separate. Parent8 JSON checks pass; source/test typing/Ruff clean and five measured before/after images inspected. Full reference calibration and720px owner-page boundary remain active before Microtime retirement acceptance. [Evidence](validation/release-readiness-w1/detector-json/acceptance.json).
 
 - **2026-10-07 · W1 shared native Help root:** translated header/category packing restores last-section reachability in narrow windows; full text/live links scroll with stable reading position and a measured footer reserve. Parent11 installed checks pass; scoped typing/Ruff clean, actual Qt/Pixel/narrow/2×DPI images inspected. Guided-tour foreign code and scientific help text preserved. [Evidence](validation/release-readiness-w1/native-help/acceptance.json).
